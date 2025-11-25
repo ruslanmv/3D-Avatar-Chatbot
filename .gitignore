@@ -56,4 +56,22 @@ typings/
 
 # dotenv environment variables file
 .env
+.env.local
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Build files
+dist/
+build/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
 

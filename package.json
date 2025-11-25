@@ -1,0 +1,32 @@
+{
+  "name": "3d-avatar-chatbot",
+  "version": "1.0.0",
+  "description": "Enterprise-grade 3D Avatar Chatbot with OpenAI, Speech-to-Text, and Text-to-Speech capabilities",
+  "main": "index.html",
+  "scripts": {
+    "start": "http-server -p 8080 -c-1",
+    "dev": "http-server -p 8080 -c-1 -o",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "3d",
+    "avatar",
+    "chatbot",
+    "openai",
+    "speech",
+    "threejs",
+    "ai",
+    "conversation"
+  ],
+  "author": "ruslanmv",
+  "license": "MIT",
+  "dependencies": {
+    "openai": "^4.20.1"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
