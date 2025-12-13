@@ -27,9 +27,9 @@ class ChatManager {
     addMessage(content, sender = 'user', save = true) {
         const message = {
             id: Date.now(),
-            content: content,
-            sender: sender,
-            timestamp: new Date().toISOString()
+            content,
+            sender,
+            timestamp: new Date().toISOString(),
         };
 
         // Remove welcome message if exists
@@ -55,6 +55,7 @@ class ChatManager {
 
     /**
      * Create message DOM element
+     * @param message
      */
     createMessageElement(message) {
         const messageDiv = document.createElement('div');
@@ -152,7 +153,7 @@ class ChatManager {
     clearMessages() {
         // Keep welcome message, remove others
         const messages = this.messageContainer.querySelectorAll('.message');
-        messages.forEach(msg => msg.remove());
+        messages.forEach((msg) => msg.remove());
 
         // Show welcome message again
         if (!this.messageContainer.querySelector('.welcome-message')) {
@@ -182,6 +183,7 @@ class ChatManager {
 
     /**
      * Format timestamp
+     * @param timestamp
      */
     formatTime(timestamp) {
         const date = new Date(timestamp);
@@ -198,7 +200,7 @@ class ChatManager {
             return date.toLocaleTimeString('en-US', {
                 hour: 'numeric',
                 minute: '2-digit',
-                hour12: true
+                hour12: true,
             });
         }
 
@@ -208,7 +210,7 @@ class ChatManager {
             day: 'numeric',
             hour: 'numeric',
             minute: '2-digit',
-            hour12: true
+            hour12: true,
         });
     }
 
@@ -235,7 +237,7 @@ class ChatManager {
                 this.messageHistory = JSON.parse(saved);
 
                 // Restore messages to UI
-                this.messageHistory.forEach(message => {
+                this.messageHistory.forEach((message) => {
                     const messageElement = this.createMessageElement(message);
                     this.messageContainer.appendChild(messageElement);
                 });
@@ -255,9 +257,9 @@ class ChatManager {
      */
     exportChatAsText() {
         let text = '3D Avatar Chatbot - Conversation History\n';
-        text += '=' .repeat(50) + '\n\n';
+        text += `${'='.repeat(50)}\n\n`;
 
-        this.messageHistory.forEach(message => {
+        this.messageHistory.forEach((message) => {
             const sender = message.sender === 'user' ? 'You' : 'AI';
             const time = new Date(message.timestamp).toLocaleString();
             text += `[${time}] ${sender}:\n${message.content}\n\n`;
@@ -300,15 +302,15 @@ class ChatManager {
 
     /**
      * Search messages
+     * @param query
      */
     searchMessages(query) {
-        return this.messageHistory.filter(message =>
-            message.content.toLowerCase().includes(query.toLowerCase())
-        );
+        return this.messageHistory.filter((message) => message.content.toLowerCase().includes(query.toLowerCase()));
     }
 
     /**
      * Set waiting state
+     * @param waiting
      */
     setWaitingState(waiting) {
         this.isWaitingForResponse = waiting;
@@ -321,6 +323,7 @@ class ChatManager {
 
     /**
      * Show error message
+     * @param errorMessage
      */
     showError(errorMessage) {
         const errorDiv = document.createElement('div');
@@ -346,6 +349,7 @@ class ChatManager {
 
     /**
      * Show info message
+     * @param infoMessage
      */
     showInfo(infoMessage) {
         const infoDiv = document.createElement('div');
@@ -364,6 +368,8 @@ class ChatManager {
 
     /**
      * Update message (for streaming responses in future)
+     * @param messageId
+     * @param newContent
      */
     updateMessage(messageId, newContent) {
         const messageElement = this.messageContainer.querySelector(`[data-message-id="${messageId}"]`);
@@ -375,7 +381,7 @@ class ChatManager {
         }
 
         // Update in history
-        const messageIndex = this.messageHistory.findIndex(m => m.id === messageId);
+        const messageIndex = this.messageHistory.findIndex((m) => m.id === messageId);
         if (messageIndex !== -1) {
             this.messageHistory[messageIndex].content = newContent;
             this.saveChatHistory();
