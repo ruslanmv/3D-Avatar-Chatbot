@@ -67,7 +67,9 @@ class AvatarController {
      */
     createPlaceholder() {
         const ctx = this.canvas.getContext('2d');
-        if (!ctx) return;
+        if (!ctx) {
+            return;
+        }
 
         // Set canvas size
         this.canvas.width = this.canvas.offsetWidth;
@@ -98,16 +100,22 @@ class AvatarController {
      * Animate placeholder avatar
      */
     animatePlaceholder() {
-        if (!this.canvas) return;
+        if (!this.canvas) {
+            return;
+        }
 
         const ctx = this.canvas.getContext('2d');
-        if (!ctx) return;
+        if (!ctx) {
+            return;
+        }
 
         let scale = 1;
         let direction = 0.01;
 
         const animate = () => {
-            if (!this.isInitialized) return;
+            if (!this.isInitialized) {
+                return;
+            }
 
             // Clear canvas
             ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -157,10 +165,13 @@ class AvatarController {
 
     /**
      * Create error placeholder
+     * @param errorMsg
      */
     createErrorPlaceholder(errorMsg) {
         const ctx = this.canvas.getContext('2d');
-        if (!ctx) return;
+        if (!ctx) {
+            return;
+        }
 
         this.canvas.width = this.canvas.offsetWidth;
         this.canvas.height = this.canvas.offsetHeight;
@@ -183,13 +194,14 @@ class AvatarController {
 
     /**
      * Set avatar state
+     * @param state
      */
     setState(state) {
         this.currentState = state;
 
         // Update status indicator
         if (this.statusIndicator) {
-            this.statusIndicator.className = 'status-indicator ' + state;
+            this.statusIndicator.className = `status-indicator ${state}`;
         }
 
         // Update status text
@@ -205,10 +217,10 @@ class AvatarController {
      */
     getStateText() {
         const stateTexts = {
-            'idle': 'Ready',
-            'listening': 'Listening...',
-            'thinking': 'Thinking...',
-            'speaking': 'Speaking...'
+            idle: 'Ready',
+            listening: 'Listening...',
+            thinking: 'Thinking...',
+            speaking: 'Speaking...',
         };
         return stateTexts[this.currentState] || 'Ready';
     }
@@ -218,16 +230,17 @@ class AvatarController {
      */
     getStateColor() {
         const stateColors = {
-            'idle': '#10b981',
-            'listening': '#3b82f6',
-            'thinking': '#6366f1',
-            'speaking': '#f59e0b'
+            idle: '#10b981',
+            listening: '#3b82f6',
+            thinking: '#6366f1',
+            speaking: '#f59e0b',
         };
         return stateColors[this.currentState] || '#10b981';
     }
 
     /**
      * Play animation (if avatar viewer supports it)
+     * @param animationName
      */
     playAnimation(animationName) {
         if (this.avatarViewer && typeof this.avatarViewer.playAnimation === 'function') {

@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="description" content="Try our 3D Avatar Chatbot - Lightweight demo for GitHub Pages" />
+        <meta name="keywords" content="3D Avatar, Chatbot, AI, OpenAI, Demo" />
+        <meta name="author" content="Ruslan Magana" />
+        <title>3D Avatar Chatbot - Live Demo</title>
+
+        <!-- Favicon -->
+        <link
+            rel="icon"
+            href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>"
+        />
+
+        <!-- Google Fonts -->
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
+
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            :root {
+                --primary: #6366f1;
+                --primary-dark: #4f46e5;
+                --success: #10b981;
+                --danger: #ef4444;
+                --warning: #f59e0b;
+                --bg: #0f172a;
+                --bg-card: #1e293b;
+                --text: #f1f5f9;
+                --text-muted: #94a3b8;
+                --border: #334155;
+            }
+
+            body {
+                font-family:
+                    'Inter',
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    'Segoe UI',
+                    sans-serif;
+                background: linear-gradient(135deg, var(--bg) 0%, #1e293b 100%);
+                color: var(--text);
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .banner {
+                background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+                padding: 1rem;
+                text-align: center;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            }
+
+            .banner h1 {
+                font-size: 1.5rem;
+                font-weight: 700;
+                margin-bottom: 0.5rem;
+            }
+
+            .banner p {
+                font-size: 0.875rem;
+                opacity: 0.9;
+            }
+
+            .banner a {
+                color: white;
+                text-decoration: underline;
+                opacity: 0.9;
+            }
+
+            .container {
+                max-width: 1200px;
+                width: 100%;
+                margin: 0 auto;
+                padding: 2rem 1rem;
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 1.5rem;
+            }
+
+            .card {
+                background: var(--bg-card);
+                border-radius: 12px;
+                padding: 1.5rem;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+            }
+
+            .card h2 {
+                font-size: 1.25rem;
+                margin-bottom: 1rem;
+                color: var(--primary);
+            }
+
+            .setup-section {
+                display: grid;
+                gap: 1rem;
+            }
+
+            .input-group {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .input-group label {
+                font-weight: 500;
+                font-size: 0.875rem;
+                color: var(--text-muted);
+            }
+
+            .input-group input,
+            .input-group select {
+                background: var(--bg);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 0.75rem;
+                color: var(--text);
+                font-size: 0.875rem;
+                transition: all 0.2s;
+            }
+
+            .input-group input:focus,
+            .input-group select:focus {
+                outline: none;
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+            }
+
+            .btn {
+                background: var(--primary);
+                color: white;
+                border: none;
+                border-radius: 8px;
+                padding: 0.75rem 1.5rem;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s;
+                font-size: 0.875rem;
+            }
+
+            .btn:hover {
+                background: var(--primary-dark);
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+            }
+
+            .btn:disabled {
+                background: var(--border);
+                cursor: not-allowed;
+                transform: none;
+            }
+
+            .btn-secondary {
+                background: var(--bg);
+                border: 1px solid var(--border);
+            }
+
+            .btn-secondary:hover {
+                background: var(--border);
+            }
+
+            .status {
+                padding: 0.75rem;
+                border-radius: 8px;
+                font-size: 0.875rem;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+
+            .status.success {
+                background: rgba(16, 185, 129, 0.1);
+                border: 1px solid var(--success);
+                color: var(--success);
+            }
+
+            .status.error {
+                background: rgba(239, 68, 68, 0.1);
+                border: 1px solid var(--danger);
+                color: var(--danger);
+            }
+
+            .status.warning {
+                background: rgba(245, 158, 11, 0.1);
+                border: 1px solid var(--warning);
+                color: var(--warning);
+            }
+
+            .features {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 1rem;
+            }
+
+            .feature-item {
+                background: var(--bg);
+                padding: 1rem;
+                border-radius: 8px;
+                border: 1px solid var(--border);
+            }
+
+            .feature-item h3 {
+                font-size: 1rem;
+                margin-bottom: 0.5rem;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+
+            .feature-item p {
+                font-size: 0.8125rem;
+                color: var(--text-muted);
+                line-height: 1.5;
+            }
+
+            .footer {
+                background: var(--bg-card);
+                padding: 1.5rem;
+                text-align: center;
+                border-top: 1px solid var(--border);
+            }
+
+            .footer p {
+                font-size: 0.875rem;
+                color: var(--text-muted);
+            }
+
+            .footer a {
+                color: var(--primary);
+                text-decoration: none;
+            }
+
+            .footer a:hover {
+                text-decoration: underline;
+            }
+
+            @media (max-width: 768px) {
+                .container {
+                    padding: 1rem;
+                }
+
+                .banner h1 {
+                    font-size: 1.25rem;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <!-- Banner -->
+        <div class="banner">
+            <h1>🤖 3D Avatar Chatbot - Live Demo</h1>
+            <p>
+                Production-ready AI chatbot with 3D avatar, speech recognition, and text-to-speech.
+                <a href="https://github.com/ruslanmv/3D-Avatar-Chatbot" target="_blank">View on GitHub</a>
+            </p>
+        </div>
+
+        <!-- Main Container -->
+        <div class="container">
+            <!-- Setup Card -->
+            <div class="card">
+                <h2>⚙️ Quick Setup</h2>
+                <div id="statusContainer"></div>
+
+                <div class="setup-section">
+                    <div class="input-group">
+                        <label for="apiKeyInput">OpenAI API Key *</label>
+                        <input type="password" id="apiKeyInput" placeholder="sk-..." autocomplete="off" />
+                        <small style="color: var(--text-muted); font-size: 0.75rem">
+                            Get your API key from
+                            <a href="https://platform.openai.com/api-keys" target="_blank" style="color: var(--primary)"
+                                >OpenAI Platform</a
+                            >. Your key is stored locally in your browser only.
+                        </small>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="modelSelect">AI Model</label>
+                        <select id="modelSelect">
+                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Faster, Cheaper)</option>
+                            <option value="gpt-4">GPT-4 (Smarter, Slower)</option>
+                            <option value="gpt-4-turbo-preview">GPT-4 Turbo (Best Quality)</option>
+                        </select>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem">
+                        <button class="btn" onclick="launchChatbot()">Launch Chatbot</button>
+                        <button class="btn btn-secondary" onclick="clearSettings()">Clear Settings</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Features Card -->
+            <div class="card">
+                <h2>✨ Features</h2>
+                <div class="features">
+                    <div class="feature-item">
+                        <h3>🎭 3D Avatar</h3>
+                        <p>Interactive 3D character with state animations (idle, listening, thinking, speaking)</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>🧠 AI Powered</h3>
+                        <p>Powered by OpenAI GPT models for intelligent conversations</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>🎤 Voice Input</h3>
+                        <p>Speech recognition for natural voice interactions</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>🔊 Voice Output</h3>
+                        <p>Text-to-speech with customizable voice settings</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>🎭 Personalities</h3>
+                        <p>6 distinct modes: Kids, Educational, Professional, Creative, Storyteller, Coach</p>
+                    </div>
+                    <div class="feature-item">
+                        <h3>🔒 Privacy First</h3>
+                        <p>Your API key is stored locally, no data sent to our servers</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info Card -->
+            <div class="card">
+                <h2>ℹ️ About This Demo</h2>
+                <p style="color: var(--text-muted); line-height: 1.6; margin-bottom: 1rem">
+                    This is a lightweight demo version hosted on GitHub Pages. To use it, you need to provide your own
+                    OpenAI API key. Your key is stored securely in your browser's local storage and is never sent to any
+                    server except OpenAI's API.
+                </p>
+                <p style="color: var(--text-muted); line-height: 1.6">
+                    For the full experience with all features, clone the repository and run it locally. Visit our
+                    <a
+                        href="https://github.com/ruslanmv/3D-Avatar-Chatbot"
+                        target="_blank"
+                        style="color: var(--primary)"
+                        >GitHub repository</a
+                    >
+                    for complete documentation and installation instructions.
+                </p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>
+                Created by <a href="https://ruslanmv.com" target="_blank">Ruslan Magana</a> | Licensed under
+                <a href="https://github.com/ruslanmv/3D-Avatar-Chatbot/blob/main/LICENSE" target="_blank">Apache 2.0</a>
+            </p>
+        </div>
+
+        <script>
+            // Load saved settings
+            window.addEventListener('DOMContentLoaded', () => {
+                const savedApiKey = localStorage.getItem('openai_api_key');
+                const savedModel = localStorage.getItem('openai_model') || 'gpt-3.5-turbo';
+
+                if (savedApiKey) {
+                    document.getElementById('apiKeyInput').value = savedApiKey;
+                    showStatus('success', '✓ Saved API key loaded. Ready to launch!');
+                } else {
+                    showStatus('warning', '⚠ Please enter your OpenAI API key to get started.');
+                }
+
+                document.getElementById('modelSelect').value = savedModel;
+            });
+
+            function showStatus(type, message) {
+                const container = document.getElementById('statusContainer');
+                container.innerHTML = `<div class="status ${type}">${message}</div>`;
+            }
+
+            function launchChatbot() {
+                const apiKey = document.getElementById('apiKeyInput').value.trim();
+                const model = document.getElementById('modelSelect').value;
+
+                if (!apiKey) {
+                    showStatus('error', '✗ Please enter your OpenAI API key.');
+                    return;
+                }
+
+                if (!apiKey.startsWith('sk-') || apiKey.length < 20) {
+                    showStatus('error', '✗ Invalid API key format. It should start with "sk-" and be longer.');
+                    return;
+                }
+
+                // Save settings
+                localStorage.setItem('openai_api_key', apiKey);
+                localStorage.setItem('openai_model', model);
+
+                showStatus('success', '✓ Settings saved! Launching chatbot...');
+
+                // Redirect to main application
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1000);
+            }
+
+            function clearSettings() {
+                if (confirm('Are you sure you want to clear all saved settings?')) {
+                    localStorage.clear();
+                    document.getElementById('apiKeyInput').value = '';
+                    document.getElementById('modelSelect').value = 'gpt-3.5-turbo';
+                    showStatus('warning', '⚠ Settings cleared. Please enter your API key to continue.');
+                }
+            }
+
+            // Allow Enter key to launch
+            document.getElementById('apiKeyInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    launchChatbot();
+                }
+            });
+        </script>
+    </body>
+</html>
