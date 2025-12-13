@@ -13,7 +13,7 @@ class SpeechService {
             onResult: null,
             onError: null,
             onStart: null,
-            onEnd: null
+            onEnd: null,
         };
 
         // Speech Synthesis (Text-to-Speech)
@@ -25,7 +25,7 @@ class SpeechService {
         this.speakingCallbacks = {
             onStart: null,
             onEnd: null,
-            onError: null
+            onError: null,
         };
 
         this.initializeSpeechRecognition();
@@ -151,16 +151,19 @@ class SpeechService {
         const savedVoiceName = AppConfig.speech.selectedVoice;
 
         if (savedVoiceName) {
-            const savedVoice = this.voices.find(voice => voice.name === savedVoiceName);
-            if (savedVoice) return savedVoice;
+            const savedVoice = this.voices.find((voice) => voice.name === savedVoiceName);
+            if (savedVoice) {
+                return savedVoice;
+            }
         }
 
         // Find a good default voice (prefer English, female voices)
-        const englishVoices = this.voices.filter(voice => voice.lang.startsWith('en'));
-        const femaleVoices = englishVoices.filter(voice =>
-            voice.name.toLowerCase().includes('female') ||
-            voice.name.toLowerCase().includes('samantha') ||
-            voice.name.toLowerCase().includes('victoria')
+        const englishVoices = this.voices.filter((voice) => voice.lang.startsWith('en'));
+        const femaleVoices = englishVoices.filter(
+            (voice) =>
+                voice.name.toLowerCase().includes('female') ||
+                voice.name.toLowerCase().includes('samantha') ||
+                voice.name.toLowerCase().includes('victoria')
         );
 
         return femaleVoices[0] || englishVoices[0] || this.voices[0];
@@ -168,6 +171,7 @@ class SpeechService {
 
     /**
      * Start speech recognition
+     * @param callbacks
      */
     startRecognition(callbacks = {}) {
         if (!this.isRecognitionSupported) {
@@ -209,6 +213,8 @@ class SpeechService {
 
     /**
      * Speak text using text-to-speech
+     * @param text
+     * @param callbacks
      */
     speak(text, callbacks = {}) {
         if (!this.isSynthesisSupported) {
@@ -327,6 +333,7 @@ class SpeechService {
 
     /**
      * Set recognition language
+     * @param lang
      */
     setRecognitionLanguage(lang) {
         if (this.recognition) {
@@ -341,7 +348,7 @@ class SpeechService {
         return {
             recognition: this.isRecognitionSupported,
             synthesis: this.isSynthesisSupported,
-            voiceCount: this.voices.length
+            voiceCount: this.voices.length,
         };
     }
 
@@ -352,7 +359,7 @@ class SpeechService {
         const results = {
             recognition: false,
             synthesis: false,
-            error: null
+            error: null,
         };
 
         // Test recognition
@@ -361,7 +368,7 @@ class SpeechService {
                 // Just check if we can create instance
                 results.recognition = true;
             } catch (error) {
-                results.error = 'Recognition test failed: ' + error.message;
+                results.error = `Recognition test failed: ${error.message}`;
             }
         }
 
@@ -374,7 +381,7 @@ class SpeechService {
                 this.synthesis.cancel();
                 results.synthesis = true;
             } catch (error) {
-                results.error = (results.error || '') + ' Synthesis test failed: ' + error.message;
+                results.error = `${results.error || ''} Synthesis test failed: ${error.message}`;
             }
         }
 

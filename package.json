@@ -1,32 +1,118 @@
 {
   "name": "3d-avatar-chatbot",
-  "version": "1.0.0",
-  "description": "Enterprise-grade 3D Avatar Chatbot with OpenAI, Speech-to-Text, and Text-to-Speech capabilities",
+  "version": "2.0.0",
+  "description": "Production-ready 3D Avatar Chatbot with OpenAI integration, Speech-to-Text, and Text-to-Speech capabilities - A lightweight, commercial-grade AI conversation platform",
   "main": "index.html",
+  "type": "module",
   "scripts": {
-    "start": "http-server -p 8080 -c-1",
-    "dev": "http-server -p 8080 -c-1 -o",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "http-server -p 8080 -c-1 --cors",
+    "dev": "http-server -p 8080 -c-1 -o --cors",
+    "serve": "http-server -p 8080 -c-1",
+    "serve:prod": "http-server dist -p 8080 -c 3600 --gzip",
+    "build": "npm run lint && npm run test",
+    "test": "jest --coverage",
+    "test:watch": "jest --watch",
+    "test:ci": "jest --ci --coverage --maxWorkers=2",
+    "lint": "eslint js/**/*.js --fix",
+    "lint:check": "eslint js/**/*.js",
+    "format": "prettier --write \"**/*.{js,json,css,html,md}\"",
+    "format:check": "prettier --check \"**/*.{js,json,css,html,md}\"",
+    "validate": "npm run lint:check && npm run format:check && npm run test:ci",
+    "clean": "rm -rf dist coverage node_modules",
+    "docs": "jsdoc -c jsdoc.json",
+    "security:audit": "npm audit --audit-level=moderate",
+    "security:fix": "npm audit fix",
+    "prepare": "husky install || true",
+    "precommit": "lint-staged",
+    "deploy": "npm run build && npm run deploy:gh-pages",
+    "deploy:gh-pages": "gh-pages -d .",
+    "deploy:netlify": "netlify deploy --prod",
+    "bundle:analyze": "webpack-bundle-analyzer stats.json"
   },
   "keywords": [
-    "3d",
-    "avatar",
+    "3d-avatar",
     "chatbot",
     "openai",
-    "speech",
+    "gpt-4",
+    "speech-recognition",
+    "text-to-speech",
     "threejs",
-    "ai",
-    "conversation"
+    "ai-assistant",
+    "voice-interface",
+    "conversation-ai",
+    "enterprise",
+    "production-ready",
+    "commercial"
   ],
-  "author": "ruslanmv",
-  "license": "MIT",
-  "dependencies": {
-    "openai": "^4.20.1"
+  "author": {
+    "name": "Ruslan Magana",
+    "url": "https://ruslanmv.com",
+    "email": "contact@ruslanmv.com"
   },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ruslanmv/3D-Avatar-Chatbot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ruslanmv/3D-Avatar-Chatbot/issues"
+  },
+  "homepage": "https://github.com/ruslanmv/3D-Avatar-Chatbot#readme",
+  "dependencies": {},
   "devDependencies": {
-    "http-server": "^14.1.1"
+    "@babel/core": "^7.23.0",
+    "@babel/preset-env": "^7.23.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-jsdoc": "^46.8.0",
+    "gh-pages": "^6.0.0",
+    "http-server": "^14.1.1",
+    "husky": "^8.0.3",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "jsdoc": "^4.0.2",
+    "lint-staged": "^15.0.0",
+    "prettier": "^3.0.3",
+    "webpack-bundle-analyzer": "^4.9.1"
   },
   "engines": {
-    "node": ">=16.0.0"
-  }
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,css,html,md}": [
+      "prettier --write"
+    ]
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "setupFilesAfterEnv": [
+      "<rootDir>/tests/setup.js"
+    ],
+    "coverageDirectory": "coverage",
+    "collectCoverageFrom": [
+      "js/**/*.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 0,
+        "functions": 0,
+        "lines": 0,
+        "statements": 0
+      }
+    },
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ]
+  },
+  "browserslist": [
+    ">0.2%",
+    "not dead",
+    "not op_mini all",
+    "last 2 versions"
+  ]
 }

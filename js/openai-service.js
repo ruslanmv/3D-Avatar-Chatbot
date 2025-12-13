@@ -12,12 +12,15 @@ class OpenAIService {
 
     /**
      * Initialize the service with system prompt based on personality
+     * @param personality
      */
     initialize(personality) {
-        this.conversationHistory = [{
-            role: 'system',
-            content: personality.systemPrompt
-        }];
+        this.conversationHistory = [
+            {
+                role: 'system',
+                content: personality.systemPrompt,
+            },
+        ];
     }
 
     /**
@@ -33,7 +36,7 @@ class OpenAIService {
         // Add user message to history
         this.conversationHistory.push({
             role: 'user',
-            content: message
+            content: message,
         });
 
         // Trim history if too long (keep system message + recent messages)
@@ -50,11 +53,10 @@ class OpenAIService {
             // Add assistant's response to history
             this.conversationHistory.push({
                 role: 'assistant',
-                content: assistantMessage
+                content: assistantMessage,
             });
 
             return assistantMessage;
-
         } catch (error) {
             console.error('OpenAI API Error:', error);
 
@@ -78,7 +80,7 @@ class OpenAIService {
 
     /**
      * Make the actual API request to OpenAI
-     * @returns {Promise<Object>} - API response
+     * @returns {Promise<object>} - API response
      */
     async makeAPIRequest() {
         const personality = AppConfig.getCurrentPersonality();
@@ -88,16 +90,16 @@ class OpenAIService {
             model: AppConfig.openai.model,
             messages: this.conversationHistory,
             max_tokens: AppConfig.openai.maxTokens,
-            temperature: temperature,
+            temperature,
         };
 
         const response = await fetch(this.apiEndpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${AppConfig.openai.apiKey}`
+                Authorization: `Bearer ${AppConfig.openai.apiKey}`,
             },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify(requestBody),
         });
 
         if (!response.ok) {
@@ -118,11 +120,12 @@ class OpenAIService {
 
     /**
      * Change personality and reinitialize
+     * @param personality
      */
     changePersonality(personality) {
         const systemMessage = {
             role: 'system',
-            content: personality.systemPrompt
+            content: personality.systemPrompt,
         };
 
         // Keep recent conversation but update system prompt
@@ -149,6 +152,7 @@ class OpenAIService {
 
     /**
      * Import conversation history from JSON
+     * @param jsonString
      */
     importHistory(jsonString) {
         try {
