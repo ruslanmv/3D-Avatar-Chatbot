@@ -84,25 +84,47 @@ education, customer engagement, and professional applications.
 
 ---
 
-## 🚀 Live Demo
+## 🚀 Live Demo & Deployment
 
-**[Try the Live Demo →](https://ruslanmv.github.io/3D-Avatar-Chatbot/demo.html)**
+### Try the Demo
+**[Live Demo →](https://ruslanmv.github.io/3D-Avatar-Chatbot/demo.html)**
 
-Experience the chatbot in action on GitHub Pages. Simply provide your OpenAI API
+Experience the chatbot on GitHub Pages. Simply provide your OpenAI API
 key (stored locally in your browser) and start chatting!
+
+### Deploy to Production (5 Minutes)
+
+**Deploy to Vercel - Free & Instant:**
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/ruslanmv/3D-Avatar-Chatbot)
+
+**Quick Start Guides:**
+- 🚀 [Vercel Quick Start](./VERCEL_QUICKSTART.md) - Deploy in 5 minutes
+- 📘 [Production Deployment Guide](./PRODUCTION_DEPLOYMENT.md) - Complete guide
 
 ---
 
 ## ⚡ Quick Start
 
-### Prerequisites
+### For Production Use (Recommended)
 
+**Deploy to Vercel in 3 steps:**
+
+1. Click the "Deploy with Vercel" button above
+2. Sign in and deploy (takes 1 minute)
+3. Configure your OpenAI API key in settings
+
+See [VERCEL_QUICKSTART.md](./VERCEL_QUICKSTART.md) for detailed instructions.
+
+### For Development
+
+**Prerequisites:**
 - Node.js >= 18.0.0
 - npm >= 9.0.0
 - OpenAI API key ([Get one here](https://platform.openai.com/api-keys))
 - Modern web browser (Chrome, Edge, Safari, or Firefox)
 
-### Installation
+**Installation:**
 
 ```bash
 # Clone the repository
@@ -110,13 +132,9 @@ git clone https://github.com/ruslanmv/3D-Avatar-Chatbot.git
 cd 3D-Avatar-Chatbot
 
 # Install dependencies
-make install
-# or
 npm install
 
 # Start development server
-make dev
-# or
 npm run dev
 ```
 
