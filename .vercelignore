@@ -1,0 +1,5 @@
+# Vercel
+.vercel
+
+# Local development
+.env.local

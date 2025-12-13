@@ -37,7 +37,6 @@ class ChatbotApplication {
 
             // Check if API key is configured
             this.checkConfiguration();
-
         } catch (error) {
             console.error('Failed to initialize application:', error);
             this.showInitializationError(error);
@@ -162,11 +161,11 @@ class ChatbotApplication {
 
         // Speech rate/pitch sliders
         this.elements.speechRate.addEventListener('input', (e) => {
-            this.elements.speechRateValue.textContent = e.target.value + 'x';
+            this.elements.speechRateValue.textContent = `${e.target.value}x`;
         });
 
         this.elements.speechPitch.addEventListener('input', (e) => {
-            this.elements.speechPitchValue.textContent = e.target.value + 'x';
+            this.elements.speechPitchValue.textContent = `${e.target.value}x`;
         });
 
         // Window resize
@@ -252,7 +251,6 @@ class ChatbotApplication {
             } else {
                 AvatarController.idle();
             }
-
         } catch (error) {
             console.error('Error sending message:', error);
             this.showTypingIndicator(false);
@@ -313,12 +311,13 @@ class ChatbotApplication {
             onEnd: () => {
                 this.showRecordingIndicator(false);
                 this.elements.voiceInputBtn.classList.remove('recording');
-            }
+            },
         });
     }
 
     /**
      * Speak response using TTS
+     * @param text
      */
     speakResponse(text) {
         AvatarController.speak();
@@ -334,12 +333,13 @@ class ChatbotApplication {
             onError: (error) => {
                 console.error('TTS error:', error);
                 AvatarController.idle();
-            }
+            },
         });
     }
 
     /**
      * Handle personality change
+     * @param personalityKey
      */
     handlePersonalityChange(personalityKey) {
         AppConfig.savePersonality(personalityKey);
@@ -369,6 +369,7 @@ class ChatbotApplication {
 
     /**
      * Show/hide typing indicator
+     * @param show
      */
     showTypingIndicator(show) {
         this.elements.typingIndicator.style.display = show ? 'inline' : 'none';
@@ -381,6 +382,7 @@ class ChatbotApplication {
 
     /**
      * Show/hide recording indicator
+     * @param show
      */
     showRecordingIndicator(show) {
         this.elements.recordingIndicator.style.display = show ? 'inline' : 'none';
@@ -394,9 +396,9 @@ class ChatbotApplication {
         this.elements.apiKeyInput.value = AppConfig.openai.apiKey || '';
         this.elements.modelSelect.value = AppConfig.openai.model;
         this.elements.speechRate.value = AppConfig.speech.rate;
-        this.elements.speechRateValue.textContent = AppConfig.speech.rate + 'x';
+        this.elements.speechRateValue.textContent = `${AppConfig.speech.rate}x`;
         this.elements.speechPitch.value = AppConfig.speech.pitch;
-        this.elements.speechPitchValue.textContent = AppConfig.speech.pitch + 'x';
+        this.elements.speechPitchValue.textContent = `${AppConfig.speech.pitch}x`;
         this.elements.showTimestamps.checked = AppConfig.ui.showTimestamps;
         this.elements.soundEffects.checked = AppConfig.ui.soundEffects;
 
@@ -421,13 +423,13 @@ class ChatbotApplication {
         AppConfig.saveSpeechSettings({
             rate: parseFloat(this.elements.speechRate.value),
             pitch: parseFloat(this.elements.speechPitch.value),
-            selectedVoice: this.elements.voiceSelect.value
+            selectedVoice: this.elements.voiceSelect.value,
         });
 
         // Save UI settings
         AppConfig.saveUISettings({
             showTimestamps: this.elements.showTimestamps.checked,
-            soundEffects: this.elements.soundEffects.checked
+            soundEffects: this.elements.soundEffects.checked,
         });
 
         // Close modal
@@ -449,7 +451,7 @@ class ChatbotApplication {
         const voices = SpeechService.getVoices();
         this.elements.voiceSelect.innerHTML = '<option value="">Default</option>';
 
-        voices.forEach(voice => {
+        voices.forEach((voice) => {
             const option = document.createElement('option');
             option.value = voice.name;
             option.textContent = `${voice.name} (${voice.lang})`;
@@ -495,11 +497,12 @@ class ChatbotApplication {
 
     /**
      * Show initialization error
+     * @param error
      */
     showInitializationError(error) {
         const loadingText = document.querySelector('.loading-text');
         if (loadingText) {
-            loadingText.textContent = 'Failed to initialize: ' + error.message;
+            loadingText.textContent = `Failed to initialize: ${error.message}`;
             loadingText.style.color = '#ef4444';
         }
     }
@@ -516,7 +519,7 @@ class ChatbotApplication {
             configured: AppConfig.isConfigured(),
             features: SpeechService.getFeatures(),
             messageCount: ChatManager.getMessageCount(),
-            tokenEstimate: OpenAIService.getTokenCount()
+            tokenEstimate: OpenAIService.getTokenCount(),
         };
     }
 }

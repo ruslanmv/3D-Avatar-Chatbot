@@ -46,7 +46,7 @@ const AppConfig = {
 Remember to keep everything age-appropriate and educational!`,
             temperature: 0.8,
         },
-        'educational': {
+        educational: {
             name: 'Educational',
             icon: '📚',
             description: 'Informative and teaching-focused',
@@ -62,7 +62,7 @@ Remember to keep everything age-appropriate and educational!`,
 Your goal is to make learning effective and enjoyable.`,
             temperature: 0.7,
         },
-        'professional': {
+        professional: {
             name: 'Professional',
             icon: '💼',
             description: 'Business-focused and efficient',
@@ -78,7 +78,7 @@ Your goal is to make learning effective and enjoyable.`,
 Help users achieve their professional goals efficiently.`,
             temperature: 0.6,
         },
-        'creative': {
+        creative: {
             name: 'Creative',
             icon: '🎨',
             description: 'Imaginative and artistic',
@@ -94,7 +94,7 @@ Help users achieve their professional goals efficiently.`,
 Help users unlock their creative potential!`,
             temperature: 0.9,
         },
-        'storyteller': {
+        storyteller: {
             name: 'Storyteller',
             icon: '📖',
             description: 'Engaging narratives and stories',
@@ -110,7 +110,7 @@ Help users unlock their creative potential!`,
 Take users on captivating journeys through the power of story!`,
             temperature: 0.9,
         },
-        'coach': {
+        coach: {
             name: 'Life Coach',
             icon: '🌟',
             description: 'Motivational and supportive',
