@@ -1,6 +1,7 @@
 # 🚀 Production Deployment Guide - 3D Avatar Chatbot
 
-> **Complete guide for deploying your enterprise-ready 3D Avatar Chatbot to Vercel**
+> **Complete guide for deploying your enterprise-ready 3D Avatar Chatbot to
+> Vercel**
 
 ## 📋 Table of Contents
 
@@ -44,15 +45,16 @@ Before deploying, ensure you have:
 ### Option 2: Deploy from GitHub
 
 1. **Fork the Repository**
-   ```bash
-   # Go to GitHub and fork: https://github.com/ruslanmv/3D-Avatar-Chatbot
-   ```
+
+    ```bash
+    # Go to GitHub and fork: https://github.com/ruslanmv/3D-Avatar-Chatbot
+    ```
 
 2. **Import to Vercel**
-   - Go to [Vercel Dashboard](https://vercel.com/dashboard)
-   - Click "Add New" → "Project"
-   - Import your forked repository
-   - Click "Deploy"
+    - Go to [Vercel Dashboard](https://vercel.com/dashboard)
+    - Click "Add New" → "Project"
+    - Import your forked repository
+    - Click "Deploy"
 
 ---
 
@@ -97,9 +99,11 @@ vercel --prod
 
 ### Important: API Key Security
 
-**Your OpenAI API key is stored in the browser's localStorage, NOT on the server.**
+**Your OpenAI API key is stored in the browser's localStorage, NOT on the
+server.**
 
 This means:
+
 - ✅ No server-side environment variables needed
 - ✅ Complete privacy - your key never leaves your browser
 - ✅ No risk of exposing keys in server logs
@@ -108,22 +112,23 @@ This means:
 ### First-Time Setup (After Deployment)
 
 1. **Visit Your Deployed App**
-   ```
-   https://your-app.vercel.app
-   ```
+
+    ```
+    https://your-app.vercel.app
+    ```
 
 2. **Open Settings**
-   - Click the gear icon (⚙️) in the top-right corner
+    - Click the gear icon (⚙️) in the top-right corner
 
 3. **Configure Your API Key**
-   - Enter your OpenAI API key (starts with `sk-`)
-   - Select your preferred model (GPT-3.5 Turbo recommended for testing)
-   - Click "Save Settings"
+    - Enter your OpenAI API key (starts with `sk-`)
+    - Select your preferred model (GPT-3.5 Turbo recommended for testing)
+    - Click "Save Settings"
 
 4. **Start Chatting!**
-   - Choose a personality from the dropdown
-   - Type a message or use voice input
-   - The avatar will respond with voice and animation
+    - Choose a personality from the dropdown
+    - Type a message or use voice input
+    - The avatar will respond with voice and animation
 
 ---
 
@@ -155,6 +160,7 @@ https://your-app.vercel.app/demo
 ### 3. Browser Compatibility
 
 Test on:
+
 - [ ] Chrome (recommended)
 - [ ] Edge (recommended)
 - [ ] Safari (Mac/iOS)
@@ -190,6 +196,7 @@ vercel domains add chatbot.yourdomain.com
 Add these records to your DNS provider:
 
 **For subdomain (recommended):**
+
 ```
 Type: CNAME
 Name: chatbot
@@ -197,6 +204,7 @@ Value: cname.vercel-dns.com
 ```
 
 **For apex domain:**
+
 ```
 Type: A
 Name: @
@@ -210,19 +218,20 @@ Value: 76.76.19.19
 ### 1. Enable Compression
 
 Already configured in `vercel.json`:
+
 ```json
 {
-  "headers": [
-    {
-      "source": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|webp|ico))",
-      "headers": [
+    "headers": [
         {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
+            "source": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|webp|ico))",
+            "headers": [
+                {
+                    "key": "Cache-Control",
+                    "value": "public, max-age=31536000, immutable"
+                }
+            ]
         }
-      ]
-    }
-  ]
+    ]
 }
 ```
 
@@ -232,11 +241,13 @@ The project uses optimized SVG icons and minimal images for fast loading.
 
 ### 3. Enable Edge Network
 
-Vercel automatically deploys to their global Edge Network for lowest latency worldwide.
+Vercel automatically deploys to their global Edge Network for lowest latency
+worldwide.
 
 ### 4. Monitor Performance
 
 Check your deployment's performance:
+
 ```bash
 vercel inspect [deployment-url]
 ```
@@ -248,12 +259,14 @@ vercel inspect [deployment-url]
 ### Vercel Analytics (Built-in)
 
 Enable in your project:
+
 1. Go to Vercel Dashboard
 2. Select your project
 3. Click "Analytics" tab
 4. Click "Enable Analytics"
 
 Tracks:
+
 - Page views
 - Unique visitors
 - Geographic distribution
@@ -265,12 +278,17 @@ Add Google Analytics or other tools by editing `index.html`:
 
 ```html
 <!-- Google Analytics -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
+<script
+    async
+    src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"
+></script>
 <script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'GA_MEASUREMENT_ID');
+    window.dataLayer = window.dataLayer || [];
+    function gtag() {
+        dataLayer.push(arguments);
+    }
+    gtag('js', new Date());
+    gtag('config', 'GA_MEASUREMENT_ID');
 </script>
 ```
 
@@ -279,7 +297,10 @@ Add Google Analytics or other tools by editing `index.html`:
 Integrate Sentry for production error tracking:
 
 ```html
-<script src="https://js.sentry-cdn.com/YOUR_PROJECT_ID.min.js" crossorigin="anonymous"></script>
+<script
+    src="https://js.sentry-cdn.com/YOUR_PROJECT_ID.min.js"
+    crossorigin="anonymous"
+></script>
 ```
 
 ---
@@ -289,6 +310,7 @@ Integrate Sentry for production error tracking:
 ### 1. Content Security Policy
 
 Already configured in `vercel.json` with secure headers:
+
 - ✅ X-Content-Type-Options: nosniff
 - ✅ X-Frame-Options: DENY
 - ✅ X-XSS-Protection: 1; mode=block
@@ -304,6 +326,7 @@ Already configured in `vercel.json` with secure headers:
 ### 3. Rate Limiting
 
 Configure OpenAI rate limits in your OpenAI account:
+
 - Set monthly spending limit
 - Enable usage notifications
 - Monitor API usage regularly
@@ -319,6 +342,7 @@ Vercel automatically handles CORS for static sites.
 ### Issue: Deployment Failed
 
 **Solution:**
+
 ```bash
 # Check build logs
 vercel logs [deployment-url]
@@ -332,6 +356,7 @@ vercel --prod --force
 **Symptoms:** Settings don't persist after refresh
 
 **Solution:**
+
 1. Check browser localStorage is enabled
 2. Clear browser cache and try again
 3. Try a different browser
@@ -342,6 +367,7 @@ vercel --prod --force
 **Symptoms:** Microphone button doesn't work
 
 **Solution:**
+
 1. Check browser permissions for microphone
 2. Use HTTPS (required for microphone access)
 3. Use Chrome, Edge, or Safari (Firefox not supported)
@@ -352,6 +378,7 @@ vercel --prod --force
 **Symptoms:** Avatar shows placeholder or error
 
 **Solution:**
+
 1. Check browser console for errors
 2. Ensure `app.js` is loading correctly
 3. Try hard refresh (Ctrl+Shift+R / Cmd+Shift+R)
@@ -362,6 +389,7 @@ vercel --prod --force
 **Symptoms:** AI takes long to respond
 
 **Solution:**
+
 1. Check your OpenAI API rate limits
 2. Try a faster model (gpt-3.5-turbo)
 3. Check your internet connection
@@ -372,6 +400,7 @@ vercel --prod --force
 **Symptoms:** Pages not found after deployment
 
 **Solution:**
+
 ```bash
 # Check vercel.json configuration
 # Ensure these routes exist:
@@ -394,32 +423,34 @@ vercel --prod
 To make the app installable on mobile:
 
 1. Create `manifest.json`:
+
 ```json
 {
-  "name": "3D Avatar Chatbot",
-  "short_name": "AvatarChat",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#6366f1",
-  "icons": [
-    {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
+    "name": "3D Avatar Chatbot",
+    "short_name": "AvatarChat",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0f172a",
+    "theme_color": "#6366f1",
+    "icons": [
+        {
+            "src": "/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
 }
 ```
 
 2. Add to `index.html`:
+
 ```html
-<link rel="manifest" href="/manifest.json">
+<link rel="manifest" href="/manifest.json" />
 ```
 
 ---
@@ -429,6 +460,7 @@ To make the app installable on mobile:
 ### Automatic Deployments
 
 Vercel automatically deploys:
+
 - ✅ Every push to `main` branch → Production
 - ✅ Every push to other branches → Preview deployment
 - ✅ Every pull request → Preview deployment
@@ -438,12 +470,13 @@ Vercel automatically deploys:
 1. Go to Vercel Dashboard → Project Settings
 2. Click "Git" tab
 3. Configure:
-   - Production Branch: `main`
-   - Auto Deploy: Enable
+    - Production Branch: `main`
+    - Auto Deploy: Enable
 
 ### Preview Deployments
 
 Every pull request gets a unique preview URL:
+
 ```
 https://3d-avatar-chatbot-[branch-name]-[your-username].vercel.app
 ```
@@ -463,6 +496,7 @@ https://3d-avatar-chatbot-[branch-name]-[your-username].vercel.app
 ### Upgrade If Needed
 
 For high-traffic production:
+
 - **Pro Plan**: $20/month, 1TB bandwidth
 - **Enterprise**: Custom pricing, dedicated support
 
@@ -473,6 +507,7 @@ For high-traffic production:
 Before going live:
 
 ### Pre-Launch
+
 - [ ] Test all features in production environment
 - [ ] Verify OpenAI API key works
 - [ ] Test on multiple browsers
@@ -483,6 +518,7 @@ Before going live:
 - [ ] Configure OpenAI spending limits
 
 ### Post-Launch
+
 - [ ] Monitor error logs daily (first week)
 - [ ] Check performance metrics
 - [ ] Gather user feedback
@@ -495,16 +531,19 @@ Before going live:
 ## 🎓 Additional Resources
 
 ### Documentation
+
 - [Vercel Documentation](https://vercel.com/docs)
 - [OpenAI API Documentation](https://platform.openai.com/docs)
 - [Web Speech API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API)
 
 ### Support
+
 - [Vercel Support](https://vercel.com/support)
 - [GitHub Issues](https://github.com/ruslanmv/3D-Avatar-Chatbot/issues)
 - [OpenAI Community](https://community.openai.com)
 
 ### Learn More
+
 - [Vercel Platform Overview](https://vercel.com/docs/concepts)
 - [OpenAI Best Practices](https://platform.openai.com/docs/guides/production-best-practices)
 - [Web Performance Optimization](https://web.dev/performance/)
@@ -516,12 +555,14 @@ Before going live:
 Your 3D Avatar Chatbot is now live in production!
 
 **Share your deployment:**
+
 ```
 🤖 Check out my AI Avatar Chatbot: https://your-app.vercel.app
 Built with OpenAI, Three.js, and vanilla JavaScript!
 ```
 
 **Next Steps:**
+
 1. Share with users and collect feedback
 2. Monitor usage and performance
 3. Plan feature enhancements
@@ -532,4 +573,4 @@ Built with OpenAI, Three.js, and vanilla JavaScript!
 
 **Made with ❤️ by [Ruslan Magana](https://ruslanmv.com)**
 
-*Production-Ready • Enterprise-Grade • Open Source*
+_Production-Ready • Enterprise-Grade • Open Source_

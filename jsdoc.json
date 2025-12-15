@@ -9,7 +9,6 @@
     "destination": "./docs",
     "recurse": true,
     "readme": "README.md",
-    "template": "node_modules/docdash",
     "encoding": "utf8"
   },
   "templates": {
@@ -19,9 +18,5 @@
       "outputSourceFiles": true,
       "includeDate": false
     }
-  },
-  "docdash": {
-    "static": true,
-    "sort": true
   }
 }
