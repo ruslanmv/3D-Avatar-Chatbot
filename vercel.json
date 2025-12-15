@@ -1,17 +1,8 @@
 {
-  "version": 3,
-  "builds": [
-    {
-      "src": "index.html",
-      "use": "@vercel/static"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
-  ],
+  "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": ".",
+  "installCommand": "npm install --legacy-peer-deps || npm install || true",
   "headers": [
     {
       "source": "/(.*)",
