@@ -1,0 +1,953 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+            name="description"
+            content="Professional 3D Avatar Chatbot - AI-powered conversations with realistic 3D animations"
+        />
+        <meta name="keywords" content="3D avatar, AI chatbot, OpenAI, GPT-4, speech recognition, text-to-speech" />
+        <title>3D Avatar Chatbot - Professional AI Assistant</title>
+
+        <!-- Fonts -->
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
+
+        <!-- Styles -->
+        <link rel="stylesheet" href="css/chatbot.css" />
+        <style>
+            #avatar-container {
+                width: 100%;
+                height: 65vh;
+                position: relative;
+                overflow: hidden;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                border-radius: 20px;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            }
+
+            .loading-overlay {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(255, 255, 255, 0.95);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10;
+                border-radius: 20px;
+            }
+
+            .loading-spinner {
+                width: 60px;
+                height: 60px;
+                border: 6px solid #f3f3f3;
+                border-top: 6px solid #667eea;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+            }
+
+            @keyframes spin {
+                0% {
+                    transform: rotate(0deg);
+                }
+                100% {
+                    transform: rotate(360deg);
+                }
+            }
+
+            .avatar-status-badge {
+                position: absolute;
+                bottom: 20px;
+                left: 20px;
+                background: rgba(255, 255, 255, 0.95);
+                padding: 12px 20px;
+                border-radius: 50px;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                font-size: 14px;
+                font-weight: 500;
+                backdrop-filter: blur(10px);
+                transition: all 0.3s ease;
+            }
+
+            .status-dot {
+                width: 10px;
+                height: 10px;
+                border-radius: 50%;
+                background: #10b981;
+                animation: pulse-dot 2s infinite;
+            }
+
+            @keyframes pulse-dot {
+                0%,
+                100% {
+                    opacity: 1;
+                }
+                50% {
+                    opacity: 0.5;
+                }
+            }
+
+            .status-dot.speaking {
+                background: #3b82f6;
+                animation: pulse-speak 0.5s infinite;
+            }
+
+            @keyframes pulse-speak {
+                0%,
+                100% {
+                    transform: scale(1);
+                }
+                50% {
+                    transform: scale(1.2);
+                }
+            }
+
+            .status-dot.listening {
+                background: #f59e0b;
+            }
+
+            .avatar-controls {
+                position: absolute;
+                top: 20px;
+                right: 20px;
+                display: flex;
+                gap: 10px;
+            }
+
+            .avatar-control-btn {
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                background: rgba(255, 255, 255, 0.9);
+                border: none;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.3s ease;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            }
+
+            .avatar-control-btn:hover {
+                background: white;
+                transform: scale(1.1);
+            }
+
+            .emotion-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+                margin-top: 12px;
+            }
+
+            .emotion-btn {
+                padding: 12px;
+                border: 2px solid transparent;
+                border-radius: 12px;
+                background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 25%);
+                cursor: pointer;
+                transition: all 0.3s ease;
+                font-weight: 500;
+                font-size: 14px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+            }
+
+            .emotion-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            }
+
+            .emotion-btn:active {
+                transform: translateY(0);
+            }
+
+            .emotion-btn.happy {
+                background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+                color: #92400e;
+            }
+
+            .emotion-btn.angry {
+                background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+                color: #991b1b;
+            }
+
+            .emotion-btn.neutral {
+                background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+                color: #1e40af;
+            }
+
+            .emotion-btn.dance {
+                background: linear-gradient(135deg, #e9d5ff 0%, #d8b4fe 100%);
+                color: #6b21a8;
+            }
+
+            .conversation-item {
+                padding: 12px;
+                margin-bottom: 8px;
+                border-radius: 10px;
+                font-size: 13px;
+                line-height: 1.5;
+                animation: slideIn 0.3s ease;
+            }
+
+            @keyframes slideIn {
+                from {
+                    opacity: 0;
+                    transform: translateY(-10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            .conversation-item.user {
+                background: #e0e7ff;
+                color: #3730a3;
+                margin-left: 20px;
+            }
+
+            .conversation-item.assistant {
+                background: #ddd6fe;
+                color: #5b21b6;
+                margin-right: 20px;
+            }
+
+            .conversation-item .label {
+                font-weight: 600;
+                margin-bottom: 4px;
+            }
+
+            .personality-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 6px 12px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border-radius: 20px;
+                font-size: 12px;
+                font-weight: 600;
+                margin-top: 8px;
+            }
+        </style>
+
+        <!-- Three.js -->
+        <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.min.js"></script>
+    </head>
+    <body>
+        <div class="main-container">
+            <!-- Header -->
+            <header
+                class="app-header"
+                style="
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    border-radius: 16px;
+                    margin-bottom: 20px;
+                "
+            >
+                <div class="header-left">
+                    <h1 class="app-title" style="color: white">
+                        <span class="avatar-icon">🤖</span>
+                        3D Avatar Chatbot
+                    </h1>
+                    <p style="color: rgba(255, 255, 255, 0.9); margin: 0; font-size: 14px">
+                        Professional AI Assistant with Realistic Animations
+                    </p>
+                </div>
+                <div class="header-right">
+                    <div class="personality-selector">
+                        <label for="personalitySelect" style="color: white">Personality:</label>
+                        <select id="personalitySelect" class="personality-dropdown">
+                            <option value="friendly-kids">Friendly Kids 👶</option>
+                            <option value="educational">Educational 📚</option>
+                            <option value="professional" selected>Professional 💼</option>
+                            <option value="creative">Creative 🎨</option>
+                            <option value="storyteller">Storyteller 📖</option>
+                            <option value="coach">Life Coach 🌟</option>
+                        </select>
+                    </div>
+                    <button
+                        id="settingsBtn"
+                        class="icon-btn"
+                        title="Settings"
+                        style="color: white; border: 2px solid rgba(255, 255, 255, 0.3)"
+                    >
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                            <path
+                                fill-rule="evenodd"
+                                d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
+                                clip-rule="evenodd"
+                            />
+                        </svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Main Content -->
+            <div class="content-wrapper" style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px">
+                <!-- 3D Avatar Section -->
+                <div>
+                    <div id="avatar-container">
+                        <!-- Loading Overlay -->
+                        <div id="loading-overlay" class="loading-overlay">
+                            <div style="text-center">
+                                <div class="loading-spinner" style="margin: 0 auto 16px"></div>
+                                <p style="color: #4b5563; font-weight: 600">Loading 3D Avatar...</p>
+                            </div>
+                        </div>
+
+                        <!-- Avatar Canvas -->
+                        <canvas id="avatarCanvas"></canvas>
+
+                        <!-- Status Badge -->
+                        <div class="avatar-status-badge">
+                            <span class="status-dot" id="statusDot"></span>
+                            <span id="avatarStatus">Ready to chat</span>
+                        </div>
+
+                        <!-- Avatar Controls -->
+                        <div class="avatar-controls">
+                            <button class="avatar-control-btn" id="resetCameraBtn" title="Reset Camera">
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                    <path
+                                        fill-rule="evenodd"
+                                        d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
+                                        clip-rule="evenodd"
+                                    />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Emotion Controls -->
+                    <div
+                        style="
+                            margin-top: 20px;
+                            background: white;
+                            padding: 20px;
+                            border-radius: 16px;
+                            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                        "
+                    >
+                        <h3 style="margin: 0 0 12px 0; font-size: 16px; font-weight: 600; color: #1f2937">
+                            Avatar Emotions
+                        </h3>
+                        <div class="emotion-grid">
+                            <button class="emotion-btn happy" data-emotion="happy"><span>😊</span> Happy</button>
+                            <button class="emotion-btn angry" data-emotion="angry"><span>😠</span> Angry</button>
+                            <button class="emotion-btn neutral" data-emotion="neutral"><span>😐</span> Neutral</button>
+                            <button class="emotion-btn dance" data-emotion="dance"><span>💃</span> Dance</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Section -->
+                <div>
+                    <div
+                        style="
+                            background: white;
+                            border-radius: 16px;
+                            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                            display: flex;
+                            flex-direction: column;
+                            height: 100%;
+                        "
+                    >
+                        <!-- Chat Header -->
+                        <div style="padding: 20px; border-bottom: 1px solid #e5e7eb">
+                            <div style="display: flex; align-items: center; justify-content: space-between">
+                                <div>
+                                    <h2 style="margin: 0; font-size: 18px; font-weight: 600; color: #1f2937">
+                                        AI Conversation
+                                    </h2>
+                                    <p style="margin: 4px 0 0 0; font-size: 13px; color: #6b7280">
+                                        Powered by OpenAI GPT
+                                    </p>
+                                </div>
+                                <button
+                                    id="clearChatBtn"
+                                    style="
+                                        padding: 8px 12px;
+                                        background: #fee2e2;
+                                        color: #991b1b;
+                                        border: none;
+                                        border-radius: 8px;
+                                        cursor: pointer;
+                                        font-size: 12px;
+                                        font-weight: 500;
+                                    "
+                                >
+                                    Clear Chat
+                                </button>
+                            </div>
+                            <div class="personality-badge">
+                                <span>🤖</span>
+                                <span id="currentPersonality">Professional Mode</span>
+                            </div>
+                        </div>
+
+                        <!-- Chat Messages -->
+                        <div id="chatMessages" style="flex: 1; padding: 20px; overflow-y: auto; max-height: 400px">
+                            <div style="text-align: center; padding: 40px 20px; color: #9ca3af">
+                                <div style="font-size: 48px; margin-bottom: 16px">👋</div>
+                                <h3 style="margin: 0 0 8px 0; color: #4b5563">Welcome!</h3>
+                                <p style="margin: 0; font-size: 14px">
+                                    Start a conversation by typing below or using voice input
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Chat Input -->
+                        <div style="padding: 20px; border-top: 1px solid #e5e7eb">
+                            <div style="display: flex; gap: 8px; margin-bottom: 12px">
+                                <button
+                                    id="voiceInputBtn"
+                                    style="
+                                        width: 44px;
+                                        height: 44px;
+                                        border-radius: 12px;
+                                        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                                        border: none;
+                                        color: white;
+                                        cursor: pointer;
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: center;
+                                        transition: all 0.3s;
+                                    "
+                                >
+                                    <svg id="micIcon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                        <path
+                                            fill-rule="evenodd"
+                                            d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z"
+                                            clip-rule="evenodd"
+                                        />
+                                    </svg>
+                                </button>
+                                <input
+                                    type="text"
+                                    id="chatInput"
+                                    placeholder="Type your message or use voice..."
+                                    style="
+                                        flex: 1;
+                                        padding: 12px 16px;
+                                        border: 2px solid #e5e7eb;
+                                        border-radius: 12px;
+                                        font-size: 14px;
+                                        transition: border-color 0.3s;
+                                    "
+                                    autocomplete="off"
+                                />
+                                <button
+                                    id="sendBtn"
+                                    style="
+                                        width: 44px;
+                                        height: 44px;
+                                        border-radius: 12px;
+                                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                        border: none;
+                                        color: white;
+                                        cursor: pointer;
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: center;
+                                        transition: all 0.3s;
+                                    "
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                        <path
+                                            d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"
+                                        />
+                                    </svg>
+                                </button>
+                            </div>
+                            <div
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: space-between;
+                                    font-size: 12px;
+                                "
+                            >
+                                <span id="recordingIndicator" style="color: #ef4444; display: none"
+                                    >🔴 Recording...</span
+                                >
+                                <span id="typingIndicator" style="color: #667eea; display: none"
+                                    >AI is thinking...</span
+                                >
+                                <label
+                                    style="
+                                        display: flex;
+                                        align-items: center;
+                                        gap: 6px;
+                                        cursor: pointer;
+                                        color: #6b7280;
+                                    "
+                                >
+                                    <input type="checkbox" id="autoSpeakToggle" checked style="cursor: pointer" />
+                                    <span>Auto-speak responses</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settingsModal" class="modal" style="display: none">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Settings</h2>
+                    <button class="close-btn" onclick="document.getElementById('settingsModal').style.display = 'none'">
+                        &times;
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="settings-section">
+                        <h3>OpenAI Configuration</h3>
+                        <div class="form-group">
+                            <label for="apiKeyInput">API Key:</label>
+                            <input type="password" id="apiKeyInput" class="form-input" placeholder="sk-..." />
+                            <small class="form-hint">Your OpenAI API key (stored locally)</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="modelSelect">Model:</label>
+                            <select id="modelSelect" class="form-input">
+                                <option value="gpt-4-turbo-preview">GPT-4 Turbo</option>
+                                <option value="gpt-4">GPT-4</option>
+                                <option value="gpt-3.5-turbo" selected>GPT-3.5 Turbo</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>Voice Settings</h3>
+                        <div class="form-group">
+                            <label for="voiceSelect">Voice:</label>
+                            <select id="voiceSelect" class="form-input">
+                                <option value="">Default</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="speechRate">Speech Rate:</label>
+                            <input
+                                type="range"
+                                id="speechRate"
+                                min="0.5"
+                                max="2"
+                                step="0.1"
+                                value="1"
+                                class="range-input"
+                            />
+                            <span id="speechRateValue">1.0x</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="speechPitch">Speech Pitch:</label>
+                            <input
+                                type="range"
+                                id="speechPitch"
+                                min="0.5"
+                                max="2"
+                                step="0.1"
+                                value="1"
+                                class="range-input"
+                            />
+                            <span id="speechPitchValue">1.0x</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="saveSettingsBtn" class="btn-primary">Save Settings</button>
+                    <button
+                        class="btn-secondary"
+                        onclick="document.getElementById('settingsModal').style.display = 'none'"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scripts -->
+        <script src="js/config.js"></script>
+        <script src="js/openai-service.js"></script>
+        <script src="js/speech-service.js"></script>
+        <script src="js/chat-manager.js"></script>
+        <script src="js/avatar-controller.js"></script>
+
+        <!-- Main Integration Script -->
+        <script>
+            // 3D Avatar Setup
+            let scene, camera, renderer, avatar, mixer, clock;
+            let speaking = false;
+            let currentEmotion = 'neutral';
+            let chatManager, speechService, avatarController;
+
+            // Initialize Three.js Scene
+            function initAvatar() {
+                const container = document.getElementById('avatar-container');
+                const canvas = document.getElementById('avatarCanvas');
+
+                // Scene
+                scene = new THREE.Scene();
+                scene.background = null;
+
+                // Camera
+                camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+                camera.position.set(0, 1.5, 3);
+
+                // Renderer
+                renderer = new THREE.WebGLRenderer({
+                    canvas: canvas,
+                    alpha: true,
+                    antialias: true,
+                });
+                renderer.setSize(container.clientWidth, container.clientHeight);
+                renderer.setPixelRatio(window.devicePixelRatio);
+                renderer.shadowMap.enabled = true;
+
+                // Lights
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                scene.add(ambientLight);
+
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(5, 10, 7);
+                directionalLight.castShadow = true;
+                scene.add(directionalLight);
+
+                const pointLight = new THREE.PointLight(0xffffff, 0.4, 100);
+                pointLight.position.set(-5, 5, 5);
+                scene.add(pointLight);
+
+                // Controls
+                const controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.05;
+                controls.minDistance = 1.5;
+                controls.maxDistance = 6;
+                controls.enablePan = false;
+                controls.maxPolarAngle = Math.PI / 1.5;
+
+                // Clock
+                clock = new THREE.Clock();
+
+                // Load Robot Model
+                loadRobotAvatar();
+
+                // Resize handler
+                window.addEventListener('resize', onWindowResize);
+
+                // Animation loop
+                animate();
+
+                // Reset camera button
+                document.getElementById('resetCameraBtn').addEventListener('click', () => {
+                    camera.position.set(0, 1.5, 3);
+                    controls.target.set(0, 1, 0);
+                    controls.update();
+                });
+            }
+
+            function loadRobotAvatar() {
+                const loader = new THREE.GLTFLoader();
+
+                loader.load(
+                    'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/models/gltf/RobotExpressive/RobotExpressive.glb',
+                    function (gltf) {
+                        avatar = gltf.scene;
+                        scene.add(avatar);
+
+                        avatar.scale.set(1.5, 1.5, 1.5);
+                        avatar.position.y = -1;
+
+                        avatar.traverse((child) => {
+                            if (child.isMesh) {
+                                child.castShadow = true;
+                                child.receiveShadow = true;
+                            }
+                        });
+
+                        // Setup animations
+                        mixer = new THREE.AnimationMixer(avatar);
+                        window.avatarAnimations = {};
+
+                        gltf.animations.forEach((clip) => {
+                            window.avatarAnimations[clip.name.toLowerCase()] = clip;
+                        });
+
+                        // Start idle animation
+                        const idleClip = THREE.AnimationClip.findByName(gltf.animations, 'Idle');
+                        if (idleClip) {
+                            mixer.clipAction(idleClip).play();
+                        }
+
+                        document.getElementById('loading-overlay').style.display = 'none';
+                    },
+                    undefined,
+                    function (error) {
+                        console.error('Error loading avatar:', error);
+                        document.getElementById('loading-overlay').style.display = 'none';
+                    }
+                );
+            }
+
+            function animate() {
+                requestAnimationFrame(animate);
+
+                const delta = clock.getDelta();
+                if (mixer) mixer.update(delta);
+
+                renderer.render(scene, camera);
+            }
+
+            function onWindowResize() {
+                const container = document.getElementById('avatar-container');
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            }
+
+            function triggerEmotion(emotion) {
+                if (!mixer || !window.avatarAnimations) return;
+
+                const clip = window.avatarAnimations[emotion];
+                if (clip) {
+                    mixer.stopAllAction();
+                    const action = mixer.clipAction(clip);
+                    action.setLoop(THREE.LoopOnce);
+                    action.reset();
+                    action.play();
+
+                    // Return to idle
+                    setTimeout(() => {
+                        const idleClip = window.avatarAnimations['idle'];
+                        if (idleClip) {
+                            mixer.stopAllAction();
+                            mixer.clipAction(idleClip).play();
+                        }
+                    }, clip.duration * 1000);
+                }
+            }
+
+            function updateAvatarStatus(text, state = 'ready') {
+                document.getElementById('avatarStatus').textContent = text;
+                const dot = document.getElementById('statusDot');
+                dot.className = 'status-dot ' + state;
+            }
+
+            // Chat Integration
+            function addMessage(sender, text) {
+                const messagesDiv = document.getElementById('chatMessages');
+
+                // Remove welcome message
+                const welcome = messagesDiv.querySelector('[style*="text-align: center"]');
+                if (welcome) welcome.remove();
+
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `conversation-item ${sender}`;
+                messageDiv.innerHTML = `
+                <div class="label">${sender === 'user' ? 'You' : 'AI Assistant'}</div>
+                <div>${text}</div>
+            `;
+
+                messagesDiv.appendChild(messageDiv);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
+
+            // Initialize on load
+            document.addEventListener('DOMContentLoaded', async function () {
+                // Initialize 3D Avatar
+                initAvatar();
+
+                // Initialize services from existing codebase
+                if (window.ChatManager) {
+                    chatManager = new ChatManager();
+                }
+
+                // Emotion buttons
+                document.querySelectorAll('.emotion-btn').forEach((btn) => {
+                    btn.addEventListener('click', function () {
+                        const emotion = this.dataset.emotion;
+                        triggerEmotion(emotion);
+                        updateAvatarStatus(`Feeling ${emotion}`, emotion);
+                    });
+                });
+
+                // Send button
+                document.getElementById('sendBtn').addEventListener('click', sendMessage);
+                document.getElementById('chatInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') sendMessage();
+                });
+
+                // Voice button
+                document.getElementById('voiceInputBtn').addEventListener('click', startVoiceInput);
+
+                // Clear chat
+                document.getElementById('clearChatBtn').addEventListener('click', () => {
+                    document.getElementById('chatMessages').innerHTML = `
+                    <div style="text-align: center; padding: 40px 20px; color: #9ca3af;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">👋</div>
+                        <h3 style="margin: 0 0 8px 0; color: #4b5563;">Welcome!</h3>
+                        <p style="margin: 0; font-size: 14px;">Start a conversation by typing below or using voice input</p>
+                    </div>
+                `;
+                });
+
+                // Settings button
+                document.getElementById('settingsBtn').addEventListener('click', () => {
+                    document.getElementById('settingsModal').style.display = 'flex';
+                });
+
+                // Personality selector
+                document.getElementById('personalitySelect').addEventListener('change', function () {
+                    const personalities = {
+                        'friendly-kids': 'Friendly Kids Mode',
+                        educational: 'Educational Mode',
+                        professional: 'Professional Mode',
+                        creative: 'Creative Mode',
+                        storyteller: 'Storyteller Mode',
+                        coach: 'Life Coach Mode',
+                    };
+                    document.getElementById('currentPersonality').textContent = personalities[this.value];
+                });
+            });
+
+            async function sendMessage() {
+                const input = document.getElementById('chatInput');
+                const message = input.value.trim();
+
+                if (!message) return;
+
+                addMessage('user', message);
+                input.value = '';
+
+                updateAvatarStatus('Thinking...', 'listening');
+                document.getElementById('typingIndicator').style.display = 'block';
+
+                // Use existing chat manager if available
+                try {
+                    let response;
+                    if (chatManager && chatManager.sendMessage) {
+                        response = await chatManager.sendMessage(message);
+                    } else {
+                        // Fallback response
+                        response = getSimpleResponse(message);
+                    }
+
+                    document.getElementById('typingIndicator').style.display = 'none';
+                    addMessage('assistant', response);
+
+                    // Speak response if auto-speak is enabled
+                    if (document.getElementById('autoSpeakToggle').checked) {
+                        speakText(response);
+                    } else {
+                        updateAvatarStatus('Ready to chat', 'ready');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    document.getElementById('typingIndicator').style.display = 'none';
+                    updateAvatarStatus('Ready to chat', 'ready');
+                }
+            }
+
+            function getSimpleResponse(text) {
+                text = text.toLowerCase();
+
+                if (text.includes('hello') || text.includes('hi')) {
+                    triggerEmotion('happy');
+                    return 'Hello! How can I assist you today?';
+                } else if (text.includes('how are you')) {
+                    triggerEmotion('happy');
+                    return "I'm functioning perfectly, thank you for asking! How can I help you?";
+                } else if (text.includes('bye') || text.includes('goodbye')) {
+                    triggerEmotion('happy');
+                    return 'Goodbye! Have a wonderful day!';
+                } else if (text.includes('dance')) {
+                    triggerEmotion('dance');
+                    return 'Let me show you some moves! 💃';
+                } else {
+                    return "That's interesting! Could you tell me more about that?";
+                }
+            }
+
+            function speakText(text) {
+                updateAvatarStatus('Speaking...', 'speaking');
+                triggerEmotion('happy');
+
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 0.9;
+                utterance.pitch = 1.0;
+
+                utterance.onend = () => {
+                    updateAvatarStatus('Ready to chat', 'ready');
+                };
+
+                window.speechSynthesis.speak(utterance);
+            }
+
+            function startVoiceInput() {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+                if (!SpeechRecognition) {
+                    alert('Speech recognition is not supported in your browser');
+                    return;
+                }
+
+                const recognition = new SpeechRecognition();
+                recognition.lang = 'en-US';
+                recognition.continuous = false;
+
+                recognition.onstart = () => {
+                    updateAvatarStatus('Listening...', 'listening');
+                    document.getElementById('recordingIndicator').style.display = 'block';
+                    document.getElementById('voiceInputBtn').style.background =
+                        'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+                };
+
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    document.getElementById('chatInput').value = transcript;
+                    document.getElementById('recordingIndicator').style.display = 'none';
+                    document.getElementById('voiceInputBtn').style.background =
+                        'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+
+                    // Auto send
+                    setTimeout(() => sendMessage(), 500);
+                };
+
+                recognition.onerror = () => {
+                    document.getElementById('recordingIndicator').style.display = 'none';
+                    document.getElementById('voiceInputBtn').style.background =
+                        'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                    updateAvatarStatus('Ready to chat', 'ready');
+                };
+
+                recognition.onend = () => {
+                    document.getElementById('recordingIndicator').style.display = 'none';
+                    document.getElementById('voiceInputBtn').style.background =
+                        'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                };
+
+                recognition.start();
+            }
+        </script>
+        <script src="js/main.js"></script>
+    </body>
+</html>
