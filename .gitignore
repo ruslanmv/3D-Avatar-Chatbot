@@ -163,6 +163,9 @@ api-docs/
 docs/**/*.html
 docs/**/*.js
 docs/**/*.css
+docs/fonts/
+docs/scripts/
+docs/styles/
 !docs/**/*.md
 
 # =============================================================================
