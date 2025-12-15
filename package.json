@@ -9,7 +9,7 @@
     "dev": "http-server -p 8080 -c-1 -o --cors",
     "serve": "http-server -p 8080 -c-1",
     "serve:prod": "http-server dist -p 8080 -c 3600 --gzip",
-    "build": "npm run lint && npm run test",
+    "build": "echo 'No build required - static site'",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
