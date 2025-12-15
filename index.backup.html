@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="description" content="Enterprise 3D Avatar Chatbot with AI-powered conversations" />
+        <title>3D Avatar Chatbot - AI Powered Conversations</title>
+        <link rel="stylesheet" href="css/chatbot.css" />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
+    </head>
+    <body>
+        <!-- Loading Screen -->
+        <div id="loadingScreen" class="loading-screen">
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <p class="loading-text">Initializing Avatar...</p>
+            </div>
+        </div>
+
+        <!-- Main Container -->
+        <div id="mainContainer" class="main-container" style="display: none">
+            <!-- Header -->
+            <header class="app-header">
+                <div class="header-left">
+                    <h1 class="app-title">
+                        <span class="avatar-icon">🤖</span>
+                        3D Avatar Chatbot
+                    </h1>
+                </div>
+                <div class="header-right">
+                    <div class="personality-selector">
+                        <label for="personalitySelect">Personality:</label>
+                        <select id="personalitySelect" class="personality-dropdown">
+                            <option value="friendly-kids">Friendly Kids 👶</option>
+                            <option value="educational">Educational 📚</option>
+                            <option value="professional">Professional 💼</option>
+                            <option value="creative">Creative 🎨</option>
+                            <option value="storyteller">Storyteller 📖</option>
+                            <option value="coach">Life Coach 🌟</option>
+                        </select>
+                    </div>
+                    <button id="settingsBtn" class="icon-btn" title="Settings">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                            <path
+                                d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"
+                            />
+                        </svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="content-wrapper">
+                <!-- 3D Avatar Container -->
+                <div id="avatarContainer" class="avatar-container">
+                    <canvas id="avatarCanvas"></canvas>
+
+                    <!-- Avatar Status -->
+                    <div class="avatar-status">
+                        <span id="avatarStatusIndicator" class="status-indicator idle"></span>
+                        <span id="avatarStatusText" class="status-text">Ready</span>
+                    </div>
+
+                    <!-- Avatar Controls -->
+                    <div class="avatar-controls">
+                        <button id="toggleAvatarBtn" class="control-btn" title="Toggle Avatar">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                                <path
+                                    fill-rule="evenodd"
+                                    d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
+                                    clip-rule="evenodd"
+                                />
+                            </svg>
+                        </button>
+                        <button id="resetCameraBtn" class="control-btn" title="Reset Camera">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                <path
+                                    d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"
+                                />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Chatbot Container -->
+                <div id="chatbotContainer" class="chatbot-container">
+                    <!-- Chat Header -->
+                    <div class="chat-header">
+                        <div class="chat-header-info">
+                            <div class="chat-avatar">
+                                <span class="chat-avatar-icon">💬</span>
+                            </div>
+                            <div class="chat-header-text">
+                                <h3 class="chat-title">AI Assistant</h3>
+                                <p class="chat-subtitle">Ask me anything!</p>
+                            </div>
+                        </div>
+                        <div class="chat-header-actions">
+                            <button id="clearChatBtn" class="icon-btn-small" title="Clear Chat">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                                    <path
+                                        d="M5.5 5.5A.5.5 0 016 6v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm2.5 0a.5.5 0 01.5.5v6a.5.5 0 01-1 0V6a.5.5 0 01.5-.5zm3 .5a.5.5 0 00-1 0v6a.5.5 0 001 0V6z"
+                                    />
+                                    <path
+                                        fill-rule="evenodd"
+                                        d="M14.5 3a1 1 0 01-1 1H13v9a2 2 0 01-2 2H5a2 2 0 01-2-2V4h-.5a1 1 0 01-1-1V2a1 1 0 011-1H6a1 1 0 011-1h2a1 1 0 011 1h3.5a1 1 0 011 1v1zM4.118 4L4 4.059V13a1 1 0 001 1h6a1 1 0 001-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"
+                                        clip-rule="evenodd"
+                                    />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Chat Messages -->
+                    <div id="chatMessages" class="chat-messages">
+                        <div class="welcome-message">
+                            <div class="welcome-icon">👋</div>
+                            <h2>Hello! I'm your AI assistant</h2>
+                            <p>
+                                I can chat with you using voice or text. Choose a personality above and start the
+                                conversation!
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Chat Input -->
+                    <div class="chat-input-container">
+                        <div class="input-wrapper">
+                            <button id="voiceInputBtn" class="voice-btn" title="Voice Input">
+                                <svg id="micIcon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                    <path
+                                        fill-rule="evenodd"
+                                        d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z"
+                                        clip-rule="evenodd"
+                                    />
+                                </svg>
+                            </button>
+                            <input
+                                type="text"
+                                id="chatInput"
+                                class="chat-input"
+                                placeholder="Type your message or use voice..."
+                                autocomplete="off"
+                            />
+                            <button id="sendBtn" class="send-btn" title="Send Message">
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                    <path
+                                        d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"
+                                    />
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="input-footer">
+                            <span class="input-hint">
+                                <span id="recordingIndicator" class="recording-indicator" style="display: none">
+                                    🔴 Recording...
+                                </span>
+                                <span id="typingIndicator" class="typing-indicator" style="display: none">
+                                    AI is thinking...
+                                </span>
+                            </span>
+                            <label class="toggle-speech">
+                                <input type="checkbox" id="autoSpeakToggle" checked />
+                                <span>Auto-speak responses</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settingsModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Settings</h2>
+                    <button class="close-btn" onclick="document.getElementById('settingsModal').style.display = 'none'">
+                        &times;
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="settings-section">
+                        <h3>OpenAI Configuration</h3>
+                        <div class="form-group">
+                            <label for="apiKeyInput">API Key:</label>
+                            <input type="password" id="apiKeyInput" class="form-input" placeholder="sk-..." />
+                            <small class="form-hint">Your OpenAI API key (stored locally)</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="modelSelect">Model:</label>
+                            <select id="modelSelect" class="form-input">
+                                <option value="gpt-4-turbo-preview">GPT-4 Turbo</option>
+                                <option value="gpt-4">GPT-4</option>
+                                <option value="gpt-3.5-turbo" selected>GPT-3.5 Turbo</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>Voice Settings</h3>
+                        <div class="form-group">
+                            <label for="voiceSelect">Voice:</label>
+                            <select id="voiceSelect" class="form-input">
+                                <option value="">Default</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="speechRate">Speech Rate:</label>
+                            <input
+                                type="range"
+                                id="speechRate"
+                                min="0.5"
+                                max="2"
+                                step="0.1"
+                                value="1"
+                                class="range-input"
+                            />
+                            <span id="speechRateValue">1.0x</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="speechPitch">Speech Pitch:</label>
+                            <input
+                                type="range"
+                                id="speechPitch"
+                                min="0.5"
+                                max="2"
+                                step="0.1"
+                                value="1"
+                                class="range-input"
+                            />
+                            <span id="speechPitchValue">1.0x</span>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>Display</h3>
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="showTimestamps" checked />
+                                <span>Show message timestamps</span>
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="soundEffects" checked />
+                                <span>Enable sound effects</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="saveSettingsBtn" class="btn-primary">Save Settings</button>
+                    <button
+                        class="btn-secondary"
+                        onclick="document.getElementById('settingsModal').style.display = 'none'"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scripts -->
+        <script src="app.js"></script>
+        <script src="js/config.js"></script>
+        <script src="js/openai-service.js"></script>
+        <script src="js/speech-service.js"></script>
+        <script src="js/chat-manager.js"></script>
+        <script src="js/avatar-controller.js"></script>
+        <script src="js/main.js"></script>
+    </body>
+</html>
