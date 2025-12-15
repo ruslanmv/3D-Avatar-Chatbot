@@ -3,3 +3,50 @@
 
 # Local development
 .env.local
+.env
+
+# Development files
+node_modules
+npm-debug.log*
+.DS_Store
+
+# Testing
+coverage
+*.test.js
+tests/
+
+# Build artifacts
+dist
+build
+
+# Documentation (auto-generated, excluded from deployment)
+docs/
+
+# Git
+.git
+.github
+.gitignore
+.gitattributes
+
+# Editor
+.vscode
+.idea
+*.swp
+
+# Backups
+*.backup.*
+index.backup.html
+
+# CI/CD
+.husky
+
+# Documentation files
+*.md
+!README.md
+
+# Configuration files not needed in production
+.eslintrc.json
+.prettierrc.json
+.editorconfig
+jsdoc.json
+jest.config.js
