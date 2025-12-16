@@ -64,18 +64,19 @@ let floorMesh = null;
 let dirLight = null;
 
 /* ============================
-   Configuration
+   Configuration & LLM Manager
    ============================ */
-const config = {
-    provider: localStorage.getItem('ai_provider') || 'none',
-    apiKey: localStorage.getItem('ai_api_key') || '',
-    model: localStorage.getItem('ai_model') || '',
-    systemPrompt:
-        localStorage.getItem('system_prompt') ||
-        'You are a helpful AI assistant named Nexus. You are friendly, professional, and knowledgeable.',
-    watsonxProjectId: localStorage.getItem('watsonx_project_id') || '',
-    baseUrl: localStorage.getItem('base_url') || '',
-};
+let llmManager = null;
+
+// Initialize LLMManager when available
+function initLLMManager() {
+    if (typeof window.LLMManager !== 'undefined') {
+        llmManager = new window.LLMManager();
+        console.log('[Nexus] LLMManager initialized');
+    } else {
+        console.warn('[Nexus] LLMManager not loaded yet');
+    }
+}
 
 /* ============================
    Helpers
@@ -780,100 +781,136 @@ function openInfo() {
 /* ============================
    Provider UI + Storage
    ============================ */
-function updateProviderFields() {
+async function updateProviderFields() {
     const selected = document.querySelector('input[name="provider"]:checked');
     const provider = selected ? selected.value : 'none';
 
     const modelSelect = $('model-select');
     const watsonxRow = $('watsonx-project-row');
     const baseurlRow = $('baseurl-row');
+    const ollamaRow = $('ollama-baseurl-row');
 
     if (!modelSelect) return;
-    modelSelect.innerHTML = '<option value="">Select a model...</option>';
 
-    if (provider === 'watsonx') {
-        if (watsonxRow) watsonxRow.style.display = 'block';
-        if (baseurlRow) baseurlRow.style.display = 'block';
+    // Show/hide provider-specific fields
+    if (watsonxRow) watsonxRow.style.display = provider === 'watsonx' ? 'block' : 'none';
+    if (baseurlRow) baseurlRow.style.display = provider === 'watsonx' || provider === 'openai' ? 'block' : 'none';
+    if (ollamaRow) ollamaRow.style.display = provider === 'ollama' ? 'block' : 'none';
 
-        [
-            'meta-llama/llama-3-70b-instruct',
-            'meta-llama/llama-3-8b-instruct',
-            'ibm/granite-13b-chat-v2',
-            'mistralai/mixtral-8x7b-instruct-v01',
-        ].forEach((m) => {
-            const opt = document.createElement('option');
-            opt.value = m;
-            opt.textContent = m;
-            modelSelect.appendChild(opt);
-        });
+    if (provider === 'none') {
+        modelSelect.innerHTML = '<option value="">No AI provider selected</option>';
         return;
     }
 
-    if (watsonxRow) watsonxRow.style.display = 'none';
-    if (baseurlRow) baseurlRow.style.display = 'none';
+    // Show loading state
+    modelSelect.innerHTML = '<option value="">Loading models...</option>';
+    modelSelect.disabled = true;
 
-    if (provider === 'openai') {
-        ['gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'].forEach((m) => {
-            const opt = document.createElement('option');
-            opt.value = m;
-            opt.textContent = m.toUpperCase();
-            modelSelect.appendChild(opt);
-        });
-    } else if (provider === 'claude') {
-        [
-            'claude-3-5-sonnet-20241022',
-            'claude-3-opus-20240229',
-            'claude-3-sonnet-20240229',
-            'claude-3-haiku-20240307',
-        ].forEach((m) => {
-            const opt = document.createElement('option');
-            opt.value = m;
-            opt.textContent = m.toUpperCase().replace(/-/g, ' ');
-            modelSelect.appendChild(opt);
-        });
+    if (!llmManager) {
+        modelSelect.innerHTML = '<option value="">LLMManager not initialized</option>';
+        return;
     }
+
+    // Temporarily update provider to fetch models
+    llmManager.updateSettings({ provider: provider });
+
+    // Fetch models dynamically
+    const { models, error } = await llmManager.fetchAvailableModels();
+
+    modelSelect.innerHTML = '';
+    modelSelect.disabled = false;
+
+    if (error) {
+        console.warn('[Nexus] Model fetch warning:', error);
+    }
+
+    const settings = llmManager.getSettings();
+    const currentModel = provider === 'watsonx' ? settings.watsonx.model_id : settings[provider]?.model || '';
+
+    models.forEach((m) => {
+        const opt = document.createElement('option');
+        opt.value = m;
+        opt.textContent = m;
+        if (m === currentModel) opt.selected = true;
+        modelSelect.appendChild(opt);
+    });
 }
 
 function loadConfigIntoUI() {
-    const providerRadio = document.querySelector(`input[name="provider"][value="${config.provider}"]`);
+    if (!llmManager) {
+        console.warn('[Nexus] LLMManager not initialized');
+        return;
+    }
+
+    const settings = llmManager.getSettings();
+
+    const providerRadio = document.querySelector(`input[name="provider"][value="${settings.provider}"]`);
     if (providerRadio) {
         providerRadio.checked = true;
         updateProviderFields();
     }
 
-    if ($('api-key')) $('api-key').value = config.apiKey;
-    if ($('model-select')) $('model-select').value = config.model;
-    if ($('system-prompt')) $('system-prompt').value = config.systemPrompt;
-    if ($('watsonx-project-id')) $('watsonx-project-id').value = config.watsonxProjectId;
-    if ($('base-url')) $('base-url').value = config.baseUrl;
+    const provider = settings.provider;
+    if ($('api-key')) $('api-key').value = settings[provider]?.api_key || '';
+    if ($('system-prompt')) $('system-prompt').value = settings.system_prompt;
+    if ($('watsonx-project-id')) $('watsonx-project-id').value = settings.watsonx?.project_id || '';
+    if ($('base-url')) {
+        if (provider === 'watsonx') $('base-url').value = settings.watsonx?.base_url || '';
+        else if (provider === 'openai') $('base-url').value = settings.openai?.base_url || '';
+        else if (provider === 'ollama') $('base-url').value = settings.ollama?.base_url || '';
+    }
+
+    // Model will be set by updateProviderFields()
 }
 
 function saveSettings() {
+    if (!llmManager) {
+        return showMessage('LLMManager not initialized', 'error');
+    }
+
     const selected = document.querySelector('input[name="provider"]:checked');
     const provider = selected ? selected.value : 'none';
 
     const apiKey = ($('api-key') && $('api-key').value) || '';
     const model = ($('model-select') && $('model-select').value) || '';
-    const systemPrompt = ($('system-prompt') && $('system-prompt').value) || config.systemPrompt;
+    const systemPrompt = ($('system-prompt') && $('system-prompt').value) || '';
     const watsonxProjectId = ($('watsonx-project-id') && $('watsonx-project-id').value) || '';
     const baseUrl = ($('base-url') && $('base-url').value) || '';
 
-    if (provider !== 'none' && !apiKey) return showMessage('Please enter an API key', 'error');
-    if (provider !== 'none' && !model) return showMessage('Please select a model', 'error');
+    if (provider !== 'none' && provider !== 'ollama' && !apiKey) {
+        return showMessage('Please enter an API key', 'error');
+    }
+    if (provider !== 'none' && !model) {
+        return showMessage('Please select a model', 'error');
+    }
 
-    localStorage.setItem('ai_provider', provider);
-    localStorage.setItem('ai_api_key', apiKey);
-    localStorage.setItem('ai_model', model);
-    localStorage.setItem('system_prompt', systemPrompt);
-    localStorage.setItem('watsonx_project_id', watsonxProjectId);
-    localStorage.setItem('base_url', baseUrl);
+    // Build updates object based on provider
+    const updates = {
+        provider: provider,
+        system_prompt: systemPrompt,
+    };
 
-    config.provider = provider;
-    config.apiKey = apiKey;
-    config.model = model;
-    config.systemPrompt = systemPrompt;
-    config.watsonxProjectId = watsonxProjectId;
-    config.baseUrl = baseUrl;
+    if (provider === 'watsonx') {
+        updates.watsonx = {
+            api_key: apiKey,
+            project_id: watsonxProjectId,
+            model_id: model,
+            base_url: baseUrl,
+        };
+    } else if (provider === 'ollama') {
+        updates.ollama = {
+            base_url: baseUrl || 'http://localhost:11434',
+            model: model,
+        };
+    } else if (provider !== 'none') {
+        updates[provider] = {
+            api_key: apiKey,
+            model: model,
+            base_url: baseUrl,
+        };
+    }
+
+    llmManager.updateSettings(updates);
 
     const modal = $('settings-modal');
     if (modal) {
@@ -892,97 +929,25 @@ async function handleUserMessage(text) {
     setStatus('listening', 'THINKING...');
 
     try {
-        const response = config.provider === 'none' ? getSimpleResponse(text) : await callLLM(text);
+        if (!llmManager) {
+            throw new Error('LLMManager not initialized');
+        }
+
+        const settings = llmManager.getSettings();
+        const response = await llmManager.sendMessage(text, settings.system_prompt);
+
         addMessageToHistory('avatar', response);
         speakText(response);
     } catch (error) {
         logError('Error processing message', error);
-        addMessageToHistory('avatar', 'Sorry, I encountered an error. Please check your settings.');
+        const errorMsg = error.message || 'Unknown error';
+        addMessageToHistory('avatar', `Sorry, I encountered an error: ${errorMsg}. Please check your settings.`);
         setStatus('idle', 'ERROR');
         setTimeout(() => setStatus('idle', 'READY'), 2000);
     }
 }
 
-function getSimpleResponse(text) {
-    const t = (text || '').toLowerCase();
-    if (t.includes('hello') || t.includes('hi')) return 'Hello! How can I assist you today?';
-    if (t.includes('how are you')) return "I'm functioning perfectly, thank you for asking! How can I help you?";
-    if (t.includes('bye') || t.includes('goodbye')) return 'Goodbye! Have a wonderful day!';
-    if (t.includes('help')) return 'I can chat with you. To use AI features, configure an AI provider in Settings.';
-    return "That's interesting! Could you tell me more about that?";
-}
-
-async function callLLM(userMessage) {
-    if (config.provider === 'openai') return callOpenAI(userMessage);
-    if (config.provider === 'claude') return callClaude(userMessage);
-    if (config.provider === 'watsonx') return callWatsonX(userMessage);
-    return 'Provider not configured.';
-}
-
-async function callOpenAI(userMessage) {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.apiKey}` },
-        body: JSON.stringify({
-            model: config.model,
-            messages: [
-                { role: 'system', content: config.systemPrompt },
-                { role: 'user', content: userMessage },
-            ],
-            max_tokens: 500,
-        }),
-    });
-
-    if (!res.ok) throw new Error(`OpenAI API error: ${res.status} ${await res.text()}`);
-    const data = await res.json();
-    return (
-        (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) ||
-        'No response.'
-    );
-}
-
-async function callClaude(userMessage) {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': config.apiKey,
-            'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-            model: config.model,
-            max_tokens: 500,
-            system: config.systemPrompt,
-            messages: [{ role: 'user', content: userMessage }],
-        }),
-    });
-
-    if (!res.ok) throw new Error(`Claude API error: ${res.status} ${await res.text()}`);
-    const data = await res.json();
-    return (data && data.content && data.content[0] && data.content[0].text) || 'No response.';
-}
-
-async function callWatsonX(userMessage) {
-    const baseUrl = config.baseUrl || 'https://us-south.ml.cloud.ibm.com';
-    const res = await fetch(`${baseUrl}/ml/v1/text/generation?version=2023-05-29`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${config.apiKey}`,
-            Accept: 'application/json',
-        },
-        body: JSON.stringify({
-            model_id: config.model,
-            input: `${config.systemPrompt}\n\nUser: ${userMessage}\n\nAssistant:`,
-            parameters: { max_new_tokens: 500, temperature: 0.7 },
-            project_id: config.watsonxProjectId,
-        }),
-    });
-
-    if (!res.ok) throw new Error(`WatsonX API error: ${res.status} ${await res.text()}`);
-    const data = await res.json();
-    return (data && data.results && data.results[0] && data.results[0].generated_text) || 'No response.';
-}
+/* Old LLM functions removed - now handled by LLMManager.js */
 
 /* ============================
    Speech
@@ -1245,6 +1210,9 @@ async function init() {
     if (!vendorAssertOrAbort()) return;
 
     try {
+        // Initialize LLM Manager first
+        initLLMManager();
+
         setupThreeJS();
         setupEventListeners();
         setupModals();
