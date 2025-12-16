@@ -5,7 +5,11 @@
 # License: Apache 2.0
 # =============================================================================
 
-.PHONY: help install dev build test lint format clean deploy docs security audit all
+.PHONY: help install install-dev check-node dev start serve serve-vercel vercel-check \
+        build validate test test-watch test-ci coverage lint lint-check format format-check \
+        security security-audit security-fix docs docs-serve deploy deploy-netlify \
+        clean clean-cache clean-all reset info version audit all ci quick \
+        update-deps check-updates list-scripts watch-lint watch-test
 
 # Default target
 .DEFAULT_GOAL := help
@@ -22,6 +26,11 @@ PROJECT_NAME := 3D Avatar Chatbot
 VERSION := 2.0.0
 NODE_VERSION := $(shell node --version 2>/dev/null || echo "not installed")
 NPM_VERSION := $(shell npm --version 2>/dev/null || echo "not installed")
+
+# Vercel variables (for local demo)
+VERCEL_PORT ?= 3000
+VERCEL_BIN := $(shell command -v vercel 2>/dev/null)
+VERCEL_LOCAL := ./node_modules/.bin/vercel
 
 # =============================================================================
 # Help Target - Self-documenting Makefile
@@ -74,9 +83,32 @@ start: ## Start production server
 	@echo "$(BLUE)Starting server...$(NC)"
 	npm start
 
-serve: ## Serve the application locally
-	@echo "$(BLUE)Serving application on http://localhost:8080$(NC)"
-	npm run serve
+# Default local serve uses Vercel demo server (best parity for Nexus)
+serve: serve-vercel ## Serve the application locally (Vercel demo)
+
+vercel-check: check-node ## Check if Vercel CLI is available (global or local)
+	@if [ -n "$(VERCEL_BIN)" ]; then \
+		echo "$(GREEN)✓ Vercel CLI detected (global)$(NC)"; \
+	elif [ -x "$(VERCEL_LOCAL)" ]; then \
+		echo "$(GREEN)✓ Vercel CLI detected (local)$(NC)"; \
+	else \
+		echo "$(RED)Error: Vercel CLI is not installed$(NC)"; \
+		echo "$(YELLOW)Fix: run one of these:$(NC)"; \
+		echo "  $(YELLOW)npm install -g vercel$(NC)"; \
+		echo "  $(YELLOW)npm install --save-dev vercel$(NC)"; \
+		exit 1; \
+	fi
+
+serve-vercel: vercel-check ## Serve the application locally using Vercel demo server
+	@echo "$(BLUE)Starting Vercel demo server...$(NC)"
+	@echo "$(YELLOW)→ http://localhost:$(VERCEL_PORT)$(NC)"
+	@if [ -n "$(VERCEL_BIN)" ]; then \
+		vercel dev --port $(VERCEL_PORT); \
+	elif [ -x "$(VERCEL_LOCAL)" ]; then \
+		$(VERCEL_LOCAL) dev --port $(VERCEL_PORT); \
+	else \
+		npx vercel dev --port $(VERCEL_PORT); \
+	fi
 
 # =============================================================================
 # Build & Validation
@@ -256,8 +288,6 @@ list-scripts: ## List all npm scripts
 # =============================================================================
 # Development Helpers
 # =============================================================================
-
-.PHONY: watch-lint watch-test
 
 watch-lint: ## Watch files and lint on change
 	@echo "$(BLUE)Watching files for linting...$(NC)"
