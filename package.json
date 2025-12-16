@@ -58,7 +58,6 @@
     "url": "https://github.com/ruslanmv/3D-Avatar-Chatbot/issues"
   },
   "homepage": "https://github.com/ruslanmv/3D-Avatar-Chatbot#readme",
-  "dependencies": {},
   "devDependencies": {
     "@babel/core": "^7.23.0",
     "@babel/preset-env": "^7.23.0",
@@ -73,6 +72,7 @@
     "jsdoc": "^4.0.2",
     "lint-staged": "^15.0.0",
     "prettier": "^3.0.3",
+    "vercel": "^50.0.1",
     "webpack-bundle-analyzer": "^4.9.1"
   },
   "engines": {
