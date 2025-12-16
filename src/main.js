@@ -217,6 +217,28 @@ function populateAvatarSelect(items) {
 }
 
 /* =========================================================
+   Avatar positioning helpers
+   ========================================================= */
+
+/**
+ * Places the avatar so its lowest point sits at the specified floor height.
+ * This prevents the model from being cut off by the floor plane.
+ * @param {THREE.Object3D} avatarRoot - The loaded avatar object
+ * @param {number} floorY - The Y coordinate of the floor (default: 0)
+ * @returns {object} Object containing bounding box and size information
+ */
+function placeAvatarOnFloor(avatarRoot, floorY = 0) {
+    const box = new THREE.Box3().setFromObject(avatarRoot);
+    const size = box.getSize(new THREE.Vector3());
+    const minY = box.min.y;
+
+    // Move avatar so the lowest point touches the floor
+    avatarRoot.position.y += floorY - minY;
+
+    return { box, size };
+}
+
+/* =========================================================
    Camera framing — THE BIG FIX
    ========================================================= */
 function frameObjectToCamera(object, fitOffset = 1.35) {
@@ -323,7 +345,7 @@ function setupThreeJS() {
     pointLight.position.set(-5, 5, 5);
     scene.add(pointLight);
 
-    // Floor reference plane (helps “floating in void” issue)
+    // Floor reference plane (helps "floating in void" issue)
     floorMesh = new THREE.Mesh(
         new THREE.PlaneGeometry(50, 50),
         new THREE.MeshStandardMaterial({ color: 0x0b1f2b, roughness: 1, metalness: 0 })
@@ -331,6 +353,12 @@ function setupThreeJS() {
     floorMesh.rotation.x = -Math.PI / 2;
     floorMesh.position.y = -1;
     floorMesh.receiveShadow = true;
+
+    // Prevent floor from hiding avatar (depth buffer fix)
+    floorMesh.material.depthWrite = false;
+    floorMesh.material.depthTest = true;
+    floorMesh.renderOrder = 0;
+
     scene.add(floorMesh);
 
     controls = new OrbitControls(camera, renderer.domElement);
@@ -446,17 +474,22 @@ function loadAvatar(url, source) {
             currentAvatar = gltf.scene;
             scene.add(currentAvatar);
 
-            // Remove old “hacky” transforms that caused cropping:
+            // Remove old "hacky" transforms that caused cropping:
             // currentAvatar.scale.set(1.5, 1.5, 1.5);
             // currentAvatar.position.y = -1;
 
-            // Ensure shadows
+            // Ensure shadows and render order
             currentAvatar.traverse((child) => {
                 if (child.isMesh) {
                     child.castShadow = true;
                     child.receiveShadow = true;
+                    // Ensure avatar renders after floor to prevent clipping
+                    child.renderOrder = 1;
                 }
             });
+
+            // Place avatar on floor to prevent clipping through ground plane
+            placeAvatarOnFloor(currentAvatar, 0);
 
             // Auto-center + auto-frame (the real fix)
             onWindowResize(); // ensure correct aspect first
