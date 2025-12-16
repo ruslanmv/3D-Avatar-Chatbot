@@ -35,6 +35,8 @@
     class LLMManager {
         constructor() {
             this._settings = this._loadSettings();
+            this._watsonxTokenCache = null; // Cache for Watsonx IAM token
+            this._watsonxTokenExpiry = 0;
             console.log('[LLMManager] Initialized with provider:', this._settings.provider);
         }
 
@@ -134,6 +136,103 @@
         }
 
         // ===============================================
+        // Proxy Support
+        // ===============================================
+
+        /**
+         * Check if proxy is enabled and configured
+         * @returns {boolean}
+         */
+        _hasProxy() {
+            const { enable_proxy, proxy_url } = this._settings.proxy || {};
+            return enable_proxy === true && typeof proxy_url === 'string' && proxy_url.trim().length > 0;
+        }
+
+        /**
+         * Get proxy base URL
+         * @returns {string}
+         */
+        _proxyBase() {
+            return (this._settings.proxy?.proxy_url || 'http://localhost:8080').replace(/\/$/, '');
+        }
+
+        /**
+         * Send request through proxy server
+         * @param {string} url - Target API URL
+         * @param {string} method - HTTP method
+         * @param {object} headers - Request headers
+         * @param {object|string} body - Request body
+         * @returns {Promise<Response>}
+         */
+        async _fetchViaProxy(url, method, headers, body) {
+            const proxyUrl = `${this._proxyBase()}/proxy`;
+
+            console.log(`[LLMManager] Proxying ${method} request to ${url}`);
+
+            const response = await fetch(proxyUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    url,
+                    method,
+                    headers,
+                    body,
+                }),
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Proxy error (${response.status}): ${errorText}`);
+            }
+
+            // Return a Response-like object that matches fetch API
+            const text = await response.text();
+            return {
+                ok: response.ok,
+                status: response.status,
+                statusText: response.statusText,
+                text: async () => text,
+                json: async () => JSON.parse(text),
+            };
+        }
+
+        /**
+         * Get or refresh Watsonx IAM token
+         * @returns {Promise<string>} Bearer token
+         */
+        async _getWatsonxToken() {
+            const { api_key } = this._settings.watsonx;
+
+            // If token is cached and not expired, use it
+            const now = Date.now();
+            if (this._watsonxTokenCache && now < this._watsonxTokenExpiry) {
+                console.log('[LLMManager] Using cached Watsonx token');
+                return this._watsonxTokenCache;
+            }
+
+            // Token format check: if it already starts with "Bearer ", extract the token
+            let cleanApiKey = api_key;
+            if (api_key.startsWith('Bearer ')) {
+                cleanApiKey = api_key.substring(7);
+            }
+
+            // If the api_key looks like a raw IAM token, cache it
+            // (Real IAM tokens are JWTs, typically very long)
+            if (cleanApiKey.length > 100) {
+                console.log('[LLMManager] Caching Watsonx IAM token');
+                this._watsonxTokenCache = cleanApiKey;
+                // Watsonx tokens typically expire in 1 hour, cache for 50 minutes
+                this._watsonxTokenExpiry = now + 50 * 60 * 1000;
+                return cleanApiKey;
+            }
+
+            // If we have a shorter key, it might be an API key that needs exchange
+            // For now, just return it and let the API call fail with a helpful error
+            console.warn('[LLMManager] Watsonx API key may need IAM token exchange');
+            return cleanApiKey;
+        }
+
+        // ===============================================
         // Provider API Implementations
         // ===============================================
 
@@ -142,26 +241,34 @@
             if (!api_key) throw new Error('OpenAI API Key missing');
 
             const url = `${(base_url || 'https://api.openai.com').replace(/\/$/, '')}/v1/chat/completions`;
+            const headers = {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${api_key}`,
+            };
+            const body = {
+                model: model,
+                messages: [
+                    { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
+                    { role: 'user', content: userMessage },
+                ],
+                max_tokens: 500,
+            };
 
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${api_key}`,
-                },
-                body: JSON.stringify({
-                    model: model,
-                    messages: [
-                        { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
-                        { role: 'user', content: userMessage },
-                    ],
-                    max_tokens: 500,
-                }),
-            });
+            let res;
+            if (this._hasProxy()) {
+                res = await this._fetchViaProxy(url, 'POST', headers, body);
+            } else {
+                res = await fetch(url, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify(body),
+                });
+            }
 
             if (!res.ok) {
                 const err = await res.text();
-                throw new Error(`OpenAI Error: ${res.status} - ${err}`);
+                const corsHint = !this._hasProxy() ? '\n\nHint: Enable proxy in settings to fix CORS issues.' : '';
+                throw new Error(`OpenAI Error: ${res.status} - ${err}${corsHint}`);
             }
 
             const data = await res.json();
@@ -173,25 +280,33 @@
             if (!api_key) throw new Error('Claude API Key missing');
 
             const url = `${(base_url || 'https://api.anthropic.com').replace(/\/$/, '')}/v1/messages`;
+            const headers = {
+                'Content-Type': 'application/json',
+                'x-api-key': api_key,
+                'anthropic-version': '2023-06-01',
+            };
+            const body = {
+                model: model,
+                system: systemPrompt || 'You are a helpful assistant.',
+                messages: [{ role: 'user', content: userMessage }],
+                max_tokens: 1024,
+            };
 
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': api_key,
-                    'anthropic-version': '2023-06-01',
-                },
-                body: JSON.stringify({
-                    model: model,
-                    system: systemPrompt || 'You are a helpful assistant.',
-                    messages: [{ role: 'user', content: userMessage }],
-                    max_tokens: 1024,
-                }),
-            });
+            let res;
+            if (this._hasProxy()) {
+                res = await this._fetchViaProxy(url, 'POST', headers, body);
+            } else {
+                res = await fetch(url, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify(body),
+                });
+            }
 
             if (!res.ok) {
                 const err = await res.text();
-                throw new Error(`Claude Error: ${res.status} - ${err}`);
+                const corsHint = !this._hasProxy() ? '\n\nHint: Enable proxy in settings to fix CORS issues.' : '';
+                throw new Error(`Claude Error: ${res.status} - ${err}${corsHint}`);
             }
 
             const data = await res.json();
@@ -199,32 +314,43 @@
         }
 
         async _chatWatsonx(userMessage, systemPrompt) {
-            const { api_key, project_id, model_id, base_url } = this._settings.watsonx;
-            if (!api_key || !project_id) throw new Error('Watsonx credentials missing');
+            const { project_id, model_id, base_url } = this._settings.watsonx;
+            if (!project_id) throw new Error('Watsonx credentials missing');
+
+            // Get token (uses cache if available)
+            const token = await this._getWatsonxToken();
 
             const url = `${(base_url || 'https://us-south.ml.cloud.ibm.com').replace(/\/$/, '')}/ml/v1/text/generation?version=2023-05-29`;
-
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${api_key}`,
-                    Accept: 'application/json',
+            const headers = {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+                Accept: 'application/json',
+            };
+            const body = {
+                model_id: model_id,
+                project_id: project_id,
+                input: `${systemPrompt || 'You are a helpful assistant.'}\n\nUser: ${userMessage}\n\nAssistant:`,
+                parameters: {
+                    max_new_tokens: 500,
+                    temperature: 0.7,
                 },
-                body: JSON.stringify({
-                    model_id: model_id,
-                    project_id: project_id,
-                    input: `${systemPrompt || 'You are a helpful assistant.'}\n\nUser: ${userMessage}\n\nAssistant:`,
-                    parameters: {
-                        max_new_tokens: 500,
-                        temperature: 0.7,
-                    },
-                }),
-            });
+            };
+
+            let res;
+            if (this._hasProxy()) {
+                res = await this._fetchViaProxy(url, 'POST', headers, body);
+            } else {
+                res = await fetch(url, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify(body),
+                });
+            }
 
             if (!res.ok) {
                 const err = await res.text();
-                throw new Error(`Watsonx Error: ${res.status} - ${err}`);
+                const corsHint = !this._hasProxy() ? '\n\nHint: Enable proxy in settings to fix CORS issues.' : '';
+                throw new Error(`Watsonx Error: ${res.status} - ${err}${corsHint}`);
             }
 
             const data = await res.json();
@@ -234,19 +360,27 @@
         async _chatOllama(userMessage, systemPrompt) {
             const { base_url, model } = this._settings.ollama;
             const url = `${(base_url || 'http://localhost:11434').replace(/\/$/, '')}/api/chat`;
+            const headers = { 'Content-Type': 'application/json' };
+            const body = {
+                model: model,
+                messages: [
+                    { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
+                    { role: 'user', content: userMessage },
+                ],
+                stream: false,
+            };
 
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    model: model,
-                    messages: [
-                        { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
-                        { role: 'user', content: userMessage },
-                    ],
-                    stream: false,
-                }),
-            });
+            let res;
+            // Ollama typically doesn't need proxy (local), but support it anyway
+            if (this._hasProxy()) {
+                res = await this._fetchViaProxy(url, 'POST', headers, body);
+            } else {
+                res = await fetch(url, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify(body),
+                });
+            }
 
             if (!res.ok) {
                 const err = await res.text();
@@ -272,9 +406,14 @@
 
             try {
                 const url = `${(base_url || 'https://api.openai.com').replace(/\/$/, '')}/v1/models`;
-                const res = await fetch(url, {
-                    headers: { Authorization: `Bearer ${api_key}` },
-                });
+                const headers = { Authorization: `Bearer ${api_key}` };
+
+                let res;
+                if (this._hasProxy()) {
+                    res = await this._fetchViaProxy(url, 'GET', headers, null);
+                } else {
+                    res = await fetch(url, { headers });
+                }
 
                 if (!res.ok) throw new Error(res.statusText);
 
@@ -410,6 +549,10 @@
                 provider: LLMProvider.NONE,
                 system_prompt:
                     'You are a helpful AI assistant named Nexus. You are friendly, professional, and knowledgeable.',
+                proxy: {
+                    enable_proxy: false,
+                    proxy_url: 'http://localhost:8080',
+                },
                 openai: {
                     api_key: '',
                     model: 'gpt-4o',

@@ -752,6 +752,12 @@ function setupModals() {
         radio.addEventListener('change', updateProviderFields);
     });
 
+    // Proxy checkbox event listener
+    const enableProxyCheckbox = $('enable-proxy');
+    if (enableProxyCheckbox) {
+        enableProxyCheckbox.addEventListener('change', toggleProxyUrlField);
+    }
+
     if (settingsModal) {
         settingsModal.addEventListener('click', (e) => {
             if (e.target === settingsModal) hideModal(settingsModal);
@@ -781,6 +787,18 @@ function openInfo() {
 /* ============================
    Provider UI + Storage
    ============================ */
+
+/**
+ * Toggle proxy URL input visibility based on checkbox state
+ */
+function toggleProxyUrlField() {
+    const enableProxy = $('enable-proxy');
+    const proxyUrlRow = $('proxy-url-row');
+    if (enableProxy && proxyUrlRow) {
+        proxyUrlRow.style.display = enableProxy.checked ? 'block' : 'none';
+    }
+}
+
 async function updateProviderFields() {
     const selected = document.querySelector('input[name="provider"]:checked');
     const provider = selected ? selected.value : 'none';
@@ -860,6 +878,15 @@ function loadConfigIntoUI() {
         else if (provider === 'ollama') $('base-url').value = settings.ollama?.base_url || '';
     }
 
+    // Load proxy settings
+    if ($('enable-proxy')) {
+        $('enable-proxy').checked = settings.proxy?.enable_proxy || false;
+        toggleProxyUrlField();
+    }
+    if ($('proxy-url')) {
+        $('proxy-url').value = settings.proxy?.proxy_url || 'http://localhost:8080';
+    }
+
     // Model will be set by updateProviderFields()
 }
 
@@ -884,10 +911,18 @@ function saveSettings() {
         return showMessage('Please select a model', 'error');
     }
 
+    // Get proxy settings
+    const enableProxy = $('enable-proxy') ? $('enable-proxy').checked : false;
+    const proxyUrl = $('proxy-url') ? $('proxy-url').value : 'http://localhost:8080';
+
     // Build updates object based on provider
     const updates = {
         provider: provider,
         system_prompt: systemPrompt,
+        proxy: {
+            enable_proxy: enableProxy,
+            proxy_url: proxyUrl,
+        },
     };
 
     if (provider === 'watsonx') {
