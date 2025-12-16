@@ -48,6 +48,14 @@ let loaderWatchdogTimer = null;
 let avatarItems = []; // [{name,file,url}]
 let avatarBasePath = '/vendor/avatars';
 
+/* =========================================================
+   LocalStorage keys for persistence
+   ========================================================= */
+const STORAGE_KEYS = {
+    CHAT_HISTORY: 'nexus_chat_history',
+    LAST_AVATAR: 'nexus_last_avatar',
+};
+
 /** Framing state */
 let lastFrameFitOffset = 1.35;
 
@@ -1032,6 +1040,12 @@ function toggleVoiceInput() {
 
 function startVoiceInput() {
     if (!recognition) return showMessage('Speech recognition not supported in this browser', 'error');
+
+    // Stop any ongoing text-to-speech when user starts speaking
+    if (window.speechSynthesis && window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+    }
+
     try {
         recognition.start();
     } catch (e) {
@@ -1073,6 +1087,13 @@ function addMessageToHistory(sender, text) {
     senderDiv.className = `message-sender ${sender}`;
     senderDiv.textContent = sender === 'user' ? 'YOU' : 'NEXUS';
 
+    // Add timestamp
+    const timestamp = document.createElement('span');
+    timestamp.className = 'message-timestamp';
+    timestamp.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    timestamp.style.cssText = 'margin-left: 8px; opacity: 0.6; font-size: 0.85em;';
+    senderDiv.appendChild(timestamp);
+
     const textDiv = document.createElement('div');
     textDiv.className = 'message-text';
     textDiv.textContent = text;
@@ -1081,7 +1102,14 @@ function addMessageToHistory(sender, text) {
     messageDiv.appendChild(textDiv);
     chatHistory.appendChild(messageDiv);
 
-    chatHistory.scrollTop = chatHistory.scrollHeight;
+    // Smart scroll: only auto-scroll if user is already near bottom
+    const isNearBottom = chatHistory.scrollHeight - chatHistory.scrollTop - chatHistory.clientHeight < 100;
+    if (isNearBottom) {
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    // Persist chat history to localStorage
+    saveChatHistory();
 }
 
 function clearHistory() {
@@ -1092,6 +1120,91 @@ function clearHistory() {
       <p>System Log Ready.</p>
       <p class="sub-text">All transmissions will be recorded here.</p>
     </div>`;
+    // Clear from localStorage
+    try {
+        localStorage.removeItem(STORAGE_KEYS.CHAT_HISTORY);
+    } catch (e) {
+        console.warn('Could not clear chat history from localStorage:', e);
+    }
+}
+
+/**
+ * Save current chat history to localStorage
+ */
+function saveChatHistory() {
+    try {
+        const chatHistory = $('chat-history');
+        if (!chatHistory) return;
+
+        const messages = [];
+        chatHistory.querySelectorAll('.chat-message').forEach((msg) => {
+            const sender = msg.classList.contains('user') ? 'user' : 'assistant';
+            const textEl = msg.querySelector('.message-text');
+            const timestampEl = msg.querySelector('.message-timestamp');
+
+            if (textEl) {
+                messages.push({
+                    sender,
+                    text: textEl.textContent,
+                    timestamp: timestampEl ? timestampEl.textContent : new Date().toLocaleTimeString(),
+                });
+            }
+        });
+
+        localStorage.setItem(STORAGE_KEYS.CHAT_HISTORY, JSON.stringify(messages));
+    } catch (e) {
+        console.warn('Could not save chat history to localStorage:', e);
+    }
+}
+
+/**
+ * Restore chat history from localStorage
+ */
+function restoreChatHistory() {
+    try {
+        const saved = localStorage.getItem(STORAGE_KEYS.CHAT_HISTORY);
+        if (!saved) return;
+
+        const messages = JSON.parse(saved);
+        const chatHistory = $('chat-history');
+        if (!chatHistory || !Array.isArray(messages)) return;
+
+        // Clear empty state
+        const emptyState = chatHistory.querySelector('.empty-state');
+        if (emptyState) emptyState.remove();
+
+        // Restore messages
+        messages.forEach((msg) => {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${msg.sender}`;
+
+            const senderDiv = document.createElement('div');
+            senderDiv.className = `message-sender ${msg.sender}`;
+            senderDiv.textContent = msg.sender === 'user' ? 'YOU' : 'NEXUS';
+
+            // Add timestamp
+            const timestamp = document.createElement('span');
+            timestamp.className = 'message-timestamp';
+            timestamp.textContent = msg.timestamp;
+            timestamp.style.cssText = 'margin-left: 8px; opacity: 0.6; font-size: 0.85em;';
+            senderDiv.appendChild(timestamp);
+
+            const textDiv = document.createElement('div');
+            textDiv.className = 'message-text';
+            textDiv.textContent = msg.text;
+
+            messageDiv.appendChild(senderDiv);
+            messageDiv.appendChild(textDiv);
+            chatHistory.appendChild(messageDiv);
+        });
+
+        // Scroll to bottom
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+
+        console.log(`[Nexus] Restored ${messages.length} messages from chat history`);
+    } catch (e) {
+        console.warn('Could not restore chat history from localStorage:', e);
+    }
 }
 
 function showMessage(text, type) {
@@ -1137,6 +1250,9 @@ async function init() {
         setupModals();
         initSpeechRecognition();
         loadConfigIntoUI();
+
+        // Restore chat history from previous session
+        restoreChatHistory();
 
         await loadAvatarManifest();
         loadDefaultAvatarFromManifest();
