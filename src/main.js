@@ -425,9 +425,15 @@ function loadAvatar(url, source) {
     animations = {};
     currentAnimationAction = null;
 
-    if (currentObjectURL) {
+    // Revoke previous blob URL if it exists and is different from the new one
+    if (currentObjectURL && currentObjectURL !== url) {
         URL.revokeObjectURL(currentObjectURL);
         currentObjectURL = null;
+    }
+
+    // Store new blob URL if this is an upload
+    if (url && url.startsWith('blob:')) {
+        currentObjectURL = url;
     }
 
     const loader = new GLTFLoader();
@@ -494,6 +500,12 @@ function loadAvatar(url, source) {
             showLoading('Failed to load avatar. Try another preset.');
             setStatus('idle', 'ERROR');
             showMessage('Failed to load avatar. Please try another one.', 'error');
+
+            // Clean up blob URL after error
+            if (currentObjectURL && currentObjectURL.startsWith('blob:')) {
+                URL.revokeObjectURL(currentObjectURL);
+                currentObjectURL = null;
+            }
         }
     );
 }
@@ -574,8 +586,26 @@ function setupEventListeners() {
         avatarUpload.addEventListener('change', (e) => {
             const file = e.target.files && e.target.files[0];
             if (!file) return;
-            currentObjectURL = URL.createObjectURL(file);
-            loadAvatar(currentObjectURL, 'upload');
+
+            // Validate file extension - prefer .glb over .gltf
+            const fileName = file.name.toLowerCase();
+            const ext = fileName.split('.').pop();
+
+            if (ext !== 'glb' && ext !== 'gltf') {
+                showMessage('Please upload a .glb or .gltf file', 'error');
+                e.target.value = ''; // Reset file input
+                return;
+            }
+
+            if (ext === 'gltf') {
+                showMessage(
+                    'Warning: .gltf files with external assets may not load correctly. .glb is recommended.',
+                    'warning'
+                );
+            }
+
+            const blobURL = URL.createObjectURL(file);
+            loadAvatar(blobURL, 'upload');
         });
     }
 
