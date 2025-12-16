@@ -17,7 +17,7 @@ tests/
 
 # Build artifacts
 dist
-build
+/build
 
 # Documentation (auto-generated, excluded from deployment)
 docs/
@@ -50,3 +50,8 @@ index.backup.html
 .editorconfig
 jsdoc.json
 jest.config.js
+
+# IMPORTANT: vendor folder and its contents MUST be deployed
+# This includes Three.js libraries required for 3D rendering
+!vendor/
+!vendor/**/*
