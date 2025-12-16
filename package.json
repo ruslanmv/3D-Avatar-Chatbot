@@ -3,32 +3,47 @@
   "version": "2.0.0",
   "description": "Production-ready 3D Avatar Chatbot with OpenAI integration, Speech-to-Text, and Text-to-Speech capabilities - A lightweight, commercial-grade AI conversation platform",
   "main": "index.html",
-  "type": "module",
+
+
+  "type": "commonjs",
+
   "scripts": {
-    "start": "http-server -p 8080 -c-1 --cors",
-    "dev": "http-server -p 8080 -c-1 -o --cors",
-    "serve": "http-server -p 8080 -c-1",
-    "serve:prod": "http-server dist -p 8080 -c 3600 --gzip",
-    "build": "echo 'No build required - static site'",
+
+    "start": "http-server -p 3000 -c-1 --cors",
+    "dev": "http-server -p 3000 -c-1 -o --cors",
+    "serve": "http-server -p 3000 -c-1",
+    "serve:prod": "http-server . -p 3000 -c 3600 --gzip",
+
+
+    "build": "echo \"No build required - static site\"",
+    "vercel-build": "bash scripts/vendor-three-global.sh || true",
+
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
-    "lint": "eslint js/**/*.js --fix",
-    "lint:check": "eslint js/**/*.js",
+
+    "lint": "eslint src/**/*.js tests/**/*.js --fix",
+    "lint:check": "eslint src/**/*.js tests/**/*.js",
     "format": "prettier --write \"**/*.{js,json,css,html,md}\"",
     "format:check": "prettier --check \"**/*.{js,json,css,html,md}\"",
     "validate": "npm run lint:check && npm run format:check && npm run test:ci",
+
     "clean": "rm -rf dist coverage node_modules",
     "docs": "jsdoc -c jsdoc.json",
+
     "security:audit": "npm audit --audit-level=moderate",
     "security:fix": "npm audit fix",
+
     "prepare": "husky install || true",
     "precommit": "lint-staged",
+
     "deploy": "npm run build && npm run deploy:gh-pages",
     "deploy:gh-pages": "gh-pages -d .",
     "deploy:netlify": "netlify deploy --prod",
+
     "bundle:analyze": "webpack-bundle-analyzer stats.json"
   },
+
   "keywords": [
     "3d-avatar",
     "chatbot",
@@ -58,6 +73,7 @@
     "url": "https://github.com/ruslanmv/3D-Avatar-Chatbot/issues"
   },
   "homepage": "https://github.com/ruslanmv/3D-Avatar-Chatbot#readme",
+
   "devDependencies": {
     "@babel/core": "^7.23.0",
     "@babel/preset-env": "^7.23.0",
@@ -75,10 +91,12 @@
     "vercel": "^50.0.1",
     "webpack-bundle-analyzer": "^4.9.1"
   },
+
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
   },
+
   "lint-staged": {
     "*.js": [
       "eslint --fix",
@@ -88,6 +106,7 @@
       "prettier --write"
     ]
   },
+
   "jest": {
     "testEnvironment": "jsdom",
     "setupFilesAfterEnv": [
@@ -95,7 +114,7 @@
     ],
     "coverageDirectory": "coverage",
     "collectCoverageFrom": [
-      "js/**/*.js"
+      "src/**/*.js"
     ],
     "coverageThreshold": {
       "global": {
@@ -109,6 +128,7 @@
       "**/tests/**/*.test.js"
     ]
   },
+
   "browserslist": [
     ">0.2%",
     "not dead",
