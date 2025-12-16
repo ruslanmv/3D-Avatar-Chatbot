@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# Third-party vendor libraries (not maintained by us)
+vendor/
+
+# Generated files
+docs/
+
+# Temporary files
+*.log
+.vercel/
+.cache/
+
+# Lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
