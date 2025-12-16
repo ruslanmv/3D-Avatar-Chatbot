@@ -12,7 +12,7 @@
  * - Optionally restricts allowed frontend origins via env
  *
  * Env:
- * - PORT=8080
+ * - PORT=3001 (default, avoids conflict with frontend on 8080)
  * - ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5500
  */
 
@@ -20,7 +20,7 @@ import express from 'express';
 import cors from 'cors';
 
 const app = express();
-const PORT = Number(process.env.PORT || 8080);
+const PORT = Number(process.env.PORT || 3001);
 
 // ---- CORS to allow your frontend to call the proxy ----
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || '*')

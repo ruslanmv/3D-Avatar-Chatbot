@@ -545,13 +545,17 @@
         }
 
         _getDefaults() {
+            // Auto-detect proxy URL based on environment
+            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            const defaultProxyUrl = isLocalhost ? 'http://localhost:3001' : '/api/proxy';
+
             return {
                 provider: LLMProvider.NONE,
                 system_prompt:
                     'You are a helpful AI assistant named Nexus. You are friendly, professional, and knowledgeable.',
                 proxy: {
                     enable_proxy: false,
-                    proxy_url: 'http://localhost:8080',
+                    proxy_url: defaultProxyUrl,
                 },
                 openai: {
                     api_key: '',

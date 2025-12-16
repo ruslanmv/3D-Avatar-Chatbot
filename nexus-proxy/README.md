@@ -10,11 +10,11 @@ npm install
 npm start
 ```
 
-Server runs on http://localhost:8080
+Server runs on http://localhost:3001
 
 ## Environment Variables
 
-- `PORT=8080` - Server port (default: 8080)
+- `PORT=3001` - Server port (default: 3001, avoids conflict with frontend)
 - `ALLOWED_ORIGINS=*` - Comma-separated list of allowed origins (default: \*)
 
 ## Supported Providers

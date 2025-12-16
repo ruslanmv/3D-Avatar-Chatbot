@@ -884,7 +884,10 @@ function loadConfigIntoUI() {
         toggleProxyUrlField();
     }
     if ($('proxy-url')) {
-        $('proxy-url').value = settings.proxy?.proxy_url || 'http://localhost:8080';
+        // Auto-detect proxy URL: localhost:3001 for local dev, /api/proxy for production
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const defaultProxyUrl = isLocalhost ? 'http://localhost:3001' : '/api/proxy';
+        $('proxy-url').value = settings.proxy?.proxy_url || defaultProxyUrl;
     }
 
     // Model will be set by updateProviderFields()
@@ -913,7 +916,10 @@ function saveSettings() {
 
     // Get proxy settings
     const enableProxy = $('enable-proxy') ? $('enable-proxy').checked : false;
-    const proxyUrl = $('proxy-url') ? $('proxy-url').value : 'http://localhost:8080';
+    // Auto-detect proxy URL if not specified
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const defaultProxyUrl = isLocalhost ? 'http://localhost:3001' : '/api/proxy';
+    const proxyUrl = $('proxy-url') && $('proxy-url').value ? $('proxy-url').value : defaultProxyUrl;
 
     // Build updates object based on provider
     const updates = {
