@@ -269,3 +269,7 @@ openai-key.txt
 # *.glb
 # *.gltf
 # Uncomment above if using Git LFS for 3D models
+.env*.local
+
+ copy *
+* copy*.*
