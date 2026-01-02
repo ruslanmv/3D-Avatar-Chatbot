@@ -5,7 +5,7 @@
     { "name": "Robot Expressive", "file": "RobotExpressive.glb" },
     { "name": "Student", "file": "student.glb" },
     { "name": "Woman", "file": "woman.glb" },
-    { "name": "Soldier", "file": "soldier.glb" },
+    { "name": "Soldier", "file": "Soldier.glb" },
     { "name": "Anime", "file": "anime.glb" }
   ]
 }
