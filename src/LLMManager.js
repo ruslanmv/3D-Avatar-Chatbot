@@ -583,39 +583,38 @@
         _getDefaults() {
             // Prefer same-origin proxy everywhere (works on Vercel AND locally via vercel dev).
             // If the user runs the standalone nexus-proxy/server.js (8080), same-origin still works.
-            const defaultProxyUrl = "/api/proxy";
+            const defaultProxyUrl = '/api/proxy';
 
             return {
                 provider: LLMProvider.NONE,
                 system_prompt:
-                    "You are a helpful AI assistant named Nexus. You are friendly, professional, and knowledgeable.",
+                    'You are a helpful AI assistant named Nexus. You are friendly, professional, and knowledgeable.',
                 proxy: {
                     enable_proxy: false,
-                    proxy_url: defaultProxyUrl
+                    proxy_url: defaultProxyUrl,
                 },
                 openai: {
-                    api_key: "",
-                    model: "gpt-4o",
-                    base_url: ""
+                    api_key: '',
+                    model: 'gpt-4o',
+                    base_url: '',
                 },
                 claude: {
-                    api_key: "",
-                    model: "claude-3-5-sonnet-20241022",
-                    base_url: ""
+                    api_key: '',
+                    model: 'claude-3-5-sonnet-20241022',
+                    base_url: '',
                 },
                 watsonx: {
-                    api_key: "",
-                    project_id: "",
-                    model_id: "ibm/granite-13b-chat-v2",
-                    base_url: "https://us-south.ml.cloud.ibm.com"
+                    api_key: '',
+                    project_id: '',
+                    model_id: 'ibm/granite-13b-chat-v2',
+                    base_url: 'https://us-south.ml.cloud.ibm.com',
                 },
                 ollama: {
-                    base_url: "http://localhost:11434",
-                    model: "llama3"
-                }
+                    base_url: 'http://localhost:11434',
+                    model: 'llama3',
+                },
             };
         }
-
 
         // ===============================================
         // Utilities
