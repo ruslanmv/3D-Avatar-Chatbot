@@ -1,21 +1,27 @@
 /**
- * Nexus Avatar - Main Application Controller (PROD, GLOBAL build) — FIXED
+ * Nexus Avatar - Main Application Controller (PROD, GLOBAL build) — UPDATED (LANG + VOICE PREFS)
  *
- * Fixes implemented:
- * ✅ Auto-center + auto-frame avatar (prevents bottom cropping / off-center framing)
- * ✅ Removes hardcoded scale/position hacks that caused cropping
- * ✅ Proper resize handling bound to viewport size (not just window)
- * ✅ Adds floor reference plane for depth + “not floating” feel
- * ✅ Adds Reset View + Auto Frame buttons support (if present in index.html)
- * ✅ Improves emotion button pressed-state + status text hooks (if present)
- *
- * - NO ES module imports
- * - Expects vendor scripts in index.html:
- *     THREE (global)
- *     OrbitControls + GLTFLoader (legacy examples/js)
+ * Key additions in this version:
+ * ✅ Speech Settings persisted (language, voice, preference, rate, pitch)
+ * ✅ "Any / Male / Female" preference filter (heuristic based)
+ * ✅ Voice dropdown filters by selected Language
+ * ✅ "Auto (best match)" logic in speakText
+ * ✅ "TEST VOICE" button support
+ * ✅ Preserves ViewerEngine + Proxy + Test Connection patch logic
  */
 
 'use strict';
+
+/* =========================================================
+   Speech Settings (persisted)
+   ========================================================= */
+const SpeechSettings = {
+    lang: localStorage.getItem('speech_lang') || 'en-US',
+    voiceURI: localStorage.getItem('speech_voice_uri') || '',
+    voicePref: localStorage.getItem('speech_voice_pref') || 'any', // any|female|male
+    rate: parseFloat(localStorage.getItem('speech_rate') || '0.9'),
+    pitch: parseFloat(localStorage.getItem('speech_pitch') || '1.0'),
+};
 
 /* =========================================================
    Strict Global Aliases (GLOBAL build)
@@ -56,7 +62,7 @@ let floorMesh = null;
 let dirLight = null;
 
 /* ============================
-   Configuration
+   Configuration (Providers)
    ============================ */
 const config = {
     provider: localStorage.getItem('ai_provider') || 'none',
@@ -184,6 +190,7 @@ async function loadAvatarManifest() {
             }));
 
         populateAvatarSelect(avatarItems);
+        window.__AVATAR_ITEMS__ = avatarItems; // expose to module bridge
         return avatarItems;
     } catch (e) {
         logError('Avatar manifest load failed', e);
@@ -214,47 +221,38 @@ function populateAvatarSelect(items) {
         opt.textContent = it.name;
         select.appendChild(opt);
     });
+
+    // Expose manifest to module engine (ViewerEngine)
+    window.__AVATAR_ITEMS__ = avatarItems;
+    window.__AVATAR_BASE_PATH__ = avatarBasePath;
 }
 
 /* =========================================================
    Avatar positioning helpers
    ========================================================= */
-
-/**
- * Places the avatar so its lowest point sits at the specified floor height.
- * This prevents the model from being cut off by the floor plane.
- * @param {THREE.Object3D} avatarRoot - The loaded avatar object
- * @param {number} floorY - The Y coordinate of the floor (default: 0)
- * @returns {object} Object containing bounding box and size information
- */
 function placeAvatarOnFloor(avatarRoot, floorY = 0) {
     const box = new THREE.Box3().setFromObject(avatarRoot);
     const size = box.getSize(new THREE.Vector3());
     const minY = box.min.y;
 
-    // Move avatar so the lowest point touches the floor
     avatarRoot.position.y += floorY - minY;
-
     return { box, size };
 }
 
 /* =========================================================
-   Camera framing — THE BIG FIX
+   Camera framing
    ========================================================= */
 function frameObjectToCamera(object, fitOffset = 1.35) {
     if (!object || !camera) return;
 
-    // Compute bounding box
     const box = new THREE.Box3().setFromObject(object);
     if (!isFinite(box.min.x) || !isFinite(box.max.x)) return;
 
-    const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
 
     // Recenter model to origin
     object.position.sub(center);
 
-    // Recompute after recenter
     const box2 = new THREE.Box3().setFromObject(object);
     const size2 = box2.getSize(new THREE.Vector3());
     const center2 = box2.getCenter(new THREE.Vector3());
@@ -264,7 +262,6 @@ function frameObjectToCamera(object, fitOffset = 1.35) {
     const fitWidthDistance = fitHeightDistance / camera.aspect;
     const distance = fitOffset * Math.max(fitHeightDistance, fitWidthDistance);
 
-    // Nice diagonal view direction
     const direction = new THREE.Vector3(1, 0.6, 1).normalize();
     camera.position.copy(direction.multiplyScalar(distance));
 
@@ -279,14 +276,12 @@ function frameObjectToCamera(object, fitOffset = 1.35) {
         camera.lookAt(center2);
     }
 
-    // Place floor just below the model
     if (floorMesh) {
         const worldBox = new THREE.Box3().setFromObject(object);
         const yMin = worldBox.min.y;
         floorMesh.position.y = yMin - 0.02;
     }
 
-    // Keep for buttons
     lastFrameFitOffset = fitOffset;
 }
 
@@ -296,7 +291,6 @@ function resetView() {
     controls.target.set(0, 1, 0);
     controls.update();
 
-    // If avatar exists, framing is usually better than a hard reset
     if (currentAvatar) frameObjectToCamera(currentAvatar, lastFrameFitOffset);
 }
 
@@ -331,7 +325,6 @@ function setupThreeJS() {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    // Lighting
     scene.add(new THREE.AmbientLight(0xffffff, 0.55));
 
     dirLight = new THREE.DirectionalLight(0xffffff, 0.95);
@@ -345,7 +338,6 @@ function setupThreeJS() {
     pointLight.position.set(-5, 5, 5);
     scene.add(pointLight);
 
-    // Floor reference plane (helps "floating in void" issue)
     floorMesh = new THREE.Mesh(
         new THREE.PlaneGeometry(50, 50),
         new THREE.MeshStandardMaterial({ color: 0x0b1f2b, roughness: 1, metalness: 0 })
@@ -353,12 +345,9 @@ function setupThreeJS() {
     floorMesh.rotation.x = -Math.PI / 2;
     floorMesh.position.y = -1;
     floorMesh.receiveShadow = true;
-
-    // Prevent floor from hiding avatar (depth buffer fix)
     floorMesh.material.depthWrite = false;
     floorMesh.material.depthTest = true;
     floorMesh.renderOrder = 0;
-
     scene.add(floorMesh);
 
     controls = new OrbitControls(camera, renderer.domElement);
@@ -372,7 +361,6 @@ function setupThreeJS() {
 
     clock = new THREE.Clock();
 
-    // Resize both on window changes and on viewport size changes
     window.addEventListener('resize', onWindowResize);
 
     if (window.ResizeObserver) {
@@ -428,7 +416,52 @@ function disposeObject3D(obj) {
 /* ============================
    Avatar Loading
    ============================ */
+function waitForViewerEngineReady(timeoutMs = 8000) {
+    if (window.__NEXUS_VIEWER_READY__) {
+        const p = window.__NEXUS_VIEWER_READY__;
+        const t = new Promise((_, reject) => setTimeout(() => reject(new Error('ViewerEngine not ready')), timeoutMs));
+        return Promise.race([p, t]).then(() => true);
+    }
+
+    const start = Date.now();
+    return new Promise((resolve, reject) => {
+        (function tick() {
+            if (window.NEXUS_VIEWER && typeof window.NEXUS_VIEWER.loadAvatar === 'function') return resolve(true);
+            if (Date.now() - start > timeoutMs) return reject(new Error('ViewerEngine not ready'));
+            setTimeout(tick, 50);
+        })();
+    });
+}
+
 function loadAvatar(url, source) {
+    // ViewerEngine path
+    if (window.__USE_GLTF_VIEWER_ENGINE__) {
+        showLoading('Loading 3D Avatar...');
+        setStatus('idle', 'LOADING...');
+        startLoaderWatchdog(20000);
+
+        (async () => {
+            try {
+                await waitForViewerEngineReady(8000);
+                await window.NEXUS_VIEWER.loadAvatar(url);
+                stopLoaderWatchdog();
+                hideLoading();
+                setStatus('idle', 'READY');
+                const hint = document.getElementById('viewport-hint');
+                if (hint) hint.classList.add('hidden');
+                console.log(`[Nexus] Avatar loaded (viewer-engine):`, url);
+            } catch (e) {
+                stopLoaderWatchdog();
+                console.error(e);
+                showLoading('Viewer engine not ready / failed to load avatar. See console.');
+                setStatus('idle', 'ERROR');
+            }
+        })();
+
+        return;
+    }
+
+    // Legacy path
     showLoading('Loading 3D Avatar...');
     setStatus('idle', 'LOADING...');
     startLoaderWatchdog(20000);
@@ -453,13 +486,11 @@ function loadAvatar(url, source) {
     animations = {};
     currentAnimationAction = null;
 
-    // Revoke previous blob URL if it exists and is different from the new one
     if (currentObjectURL && currentObjectURL !== url) {
         URL.revokeObjectURL(currentObjectURL);
         currentObjectURL = null;
     }
 
-    // Store new blob URL if this is an upload
     if (url && url.startsWith('blob:')) {
         currentObjectURL = url;
     }
@@ -474,28 +505,19 @@ function loadAvatar(url, source) {
             currentAvatar = gltf.scene;
             scene.add(currentAvatar);
 
-            // Remove old "hacky" transforms that caused cropping:
-            // currentAvatar.scale.set(1.5, 1.5, 1.5);
-            // currentAvatar.position.y = -1;
-
-            // Ensure shadows and render order
             currentAvatar.traverse((child) => {
                 if (child.isMesh) {
                     child.castShadow = true;
                     child.receiveShadow = true;
-                    // Ensure avatar renders after floor to prevent clipping
                     child.renderOrder = 1;
                 }
             });
 
-            // Place avatar on floor to prevent clipping through ground plane
             placeAvatarOnFloor(currentAvatar, 0);
 
-            // Auto-center + auto-frame (the real fix)
-            onWindowResize(); // ensure correct aspect first
+            onWindowResize();
             frameObjectToCamera(currentAvatar, lastFrameFitOffset);
 
-            // Animations
             if (Array.isArray(gltf.animations) && gltf.animations.length > 0) {
                 mixer = new THREE.AnimationMixer(currentAvatar);
                 gltf.animations.forEach((clip) => {
@@ -534,7 +556,6 @@ function loadAvatar(url, source) {
             setStatus('idle', 'ERROR');
             showMessage('Failed to load avatar. Please try another one.', 'error');
 
-            // Clean up blob URL after error
             if (currentObjectURL && currentObjectURL.startsWith('blob:')) {
                 URL.revokeObjectURL(currentObjectURL);
                 currentObjectURL = null;
@@ -561,6 +582,11 @@ function findIdleAnimation() {
 }
 
 function playAnimation(name, loop) {
+    if (window.__USE_GLTF_VIEWER_ENGINE__ && window.NEXUS_VIEWER && typeof window.NEXUS_VIEWER.playAnimationByName === 'function') {
+        window.NEXUS_VIEWER.playAnimationByName(name);
+        return;
+    }
+
     const key = (name || '').toLowerCase();
     if (!mixer || !animations[key]) {
         logWarn(`Animation "${key}" not found; falling back to idle/first.`);
@@ -595,6 +621,125 @@ function playAnimation(name, loop) {
     }
 }
 
+/* =========================================================
+   Speech Settings UI & Logic
+   ========================================================= */
+
+// Heuristic to guess gender from voice name
+function guessGender(voice) {
+    const s = `${voice.name} ${voice.voiceURI}`.toLowerCase();
+    // Common patterns across OS/browsers (not perfect, but helpful)
+    if (/(female|woman|zira|susan|samantha|victoria|tessa|karen|serena|monica|lucia|alice|emma|olivia)/i.test(s)) return 'female';
+    if (/(male|man|david|mark|daniel|george|alex|fred|tom|diego|luca|paul|joel)/i.test(s)) return 'male';
+    return 'unknown';
+}
+
+function pickBestVoice() {
+    const voices = window.speechSynthesis?.getVoices?.() || [];
+    if (!voices.length) return null;
+
+    const targetLang = (SpeechSettings.lang || 'en-US').toLowerCase();
+    const base = targetLang.split('-')[0];
+    const pref = (SpeechSettings.voicePref || 'any').toLowerCase();
+
+    // 1) exact voiceURI preference
+    if (SpeechSettings.voiceURI) {
+        const exact = voices.find((v) => v.voiceURI === SpeechSettings.voiceURI);
+        if (exact) return exact;
+    }
+
+    // 2) Exact language match
+    let candidates = voices.filter((v) => (v.lang || '').toLowerCase() === targetLang);
+    if (!candidates.length) {
+        // 3) Base language match
+        candidates = voices.filter((v) => (v.lang || '').toLowerCase().startsWith(base));
+    }
+    // Fallback: all voices if no lang match (rare, but possible)
+    if (!candidates.length) candidates = voices;
+
+    // 4) Apply Gender Preference
+    if (pref === 'female' || pref === 'male') {
+        const preferred = candidates.filter((v) => guessGender(v) === pref);
+        if (preferred.length) return preferred[0];
+    }
+
+    // 5) Default best match
+    return candidates[0] || null;
+}
+
+function refreshVoiceList() {
+    const voiceEl = document.getElementById('speech-voice');
+    if (!voiceEl || !('speechSynthesis' in window)) return;
+
+    const voices = window.speechSynthesis.getVoices() || [];
+    const lang = (SpeechSettings.lang || 'en-US').toLowerCase();
+    const base = lang.split('-')[0];
+
+    // Filter by language base to keep list relevant
+    const filtered = voices.filter((v) => (v.lang || '').toLowerCase().startsWith(base));
+    const list = filtered.length ? filtered : voices;
+
+    voiceEl.innerHTML = `<option value="">Auto (best match)</option>`;
+    for (const v of list) {
+        const opt = document.createElement('option');
+        opt.value = v.voiceURI;
+        opt.textContent = `${v.name} — ${v.lang}`;
+        voiceEl.appendChild(opt);
+    }
+
+    // restore selection
+    voiceEl.value = SpeechSettings.voiceURI || '';
+}
+
+function saveSpeechSettingsFromUI() {
+    const langEl = document.getElementById('speech-lang');
+    const voiceEl = document.getElementById('speech-voice');
+    const prefEl = document.getElementById('speech-voice-pref');
+    const rateEl = document.getElementById('speech-rate');
+    const pitchEl = document.getElementById('speech-pitch');
+
+    if (langEl) {
+        SpeechSettings.lang = langEl.value || 'en-US';
+        localStorage.setItem('speech_lang', SpeechSettings.lang);
+    }
+    if (voiceEl) {
+        SpeechSettings.voiceURI = voiceEl.value || '';
+        localStorage.setItem('speech_voice_uri', SpeechSettings.voiceURI);
+    }
+    if (prefEl) {
+        SpeechSettings.voicePref = prefEl.value || 'any';
+        localStorage.setItem('speech_voice_pref', SpeechSettings.voicePref);
+    }
+    if (rateEl) {
+        const v = parseFloat(rateEl.value || '0.9');
+        SpeechSettings.rate = Number.isFinite(v) ? v : 0.9;
+        localStorage.setItem('speech_rate', String(SpeechSettings.rate));
+    }
+    if (pitchEl) {
+        const v = parseFloat(pitchEl.value || '1.0');
+        SpeechSettings.pitch = Number.isFinite(v) ? v : 1.0;
+        localStorage.setItem('speech_pitch', String(SpeechSettings.pitch));
+    }
+
+    // Apply to recognition immediately if running
+    if (recognition) recognition.lang = SpeechSettings.lang;
+}
+
+function loadSpeechSettingsIntoUI() {
+    const langEl = document.getElementById('speech-lang');
+    const voiceEl = document.getElementById('speech-voice');
+    const prefEl = document.getElementById('speech-voice-pref');
+    const rateEl = document.getElementById('speech-rate');
+    const pitchEl = document.getElementById('speech-pitch');
+
+    if (langEl) langEl.value = SpeechSettings.lang;
+    if (prefEl) prefEl.value = SpeechSettings.voicePref || 'any';
+    if (rateEl) rateEl.value = String(SpeechSettings.rate);
+    if (pitchEl) pitchEl.value = String(SpeechSettings.pitch);
+
+    if (voiceEl) voiceEl.value = SpeechSettings.voiceURI || '';
+}
+
 /* ============================
    UI / Events
    ============================ */
@@ -620,21 +765,17 @@ function setupEventListeners() {
             const file = e.target.files && e.target.files[0];
             if (!file) return;
 
-            // Validate file extension - prefer .glb over .gltf
             const fileName = file.name.toLowerCase();
             const ext = fileName.split('.').pop();
 
             if (ext !== 'glb' && ext !== 'gltf') {
                 showMessage('Please upload a .glb or .gltf file', 'error');
-                e.target.value = ''; // Reset file input
+                e.target.value = '';
                 return;
             }
 
             if (ext === 'gltf') {
-                showMessage(
-                    'Warning: .gltf files with external assets may not load correctly. .glb is recommended.',
-                    'warning'
-                );
+                showMessage('Warning: .gltf files with external assets may not load correctly. .glb is recommended.', 'warning');
             }
 
             const blobURL = URL.createObjectURL(file);
@@ -689,16 +830,11 @@ function setupEventListeners() {
     const infoBtn = $('info-btn');
     if (infoBtn) infoBtn.addEventListener('click', openInfo);
 
-    // Viewport buttons (if present in HTML)
     const resetBtn = $('reset-view-btn');
     if (resetBtn) resetBtn.addEventListener('click', () => resetView());
 
     const frameBtn = $('frame-avatar-btn');
-    if (frameBtn)
-        frameBtn.addEventListener(
-            'click',
-            () => currentAvatar && frameObjectToCamera(currentAvatar, lastFrameFitOffset)
-        );
+    if (frameBtn) frameBtn.addEventListener('click', () => currentAvatar && frameObjectToCamera(currentAvatar, lastFrameFitOffset));
 
     const readyBtn = $('ready-btn');
     if (readyBtn) {
@@ -707,6 +843,69 @@ function setupEventListeners() {
             showMessage('Session started.', 'success');
         });
     }
+
+    // --- SPEECH SETTINGS UI WIRING ---
+    const langEl = document.getElementById('speech-lang');
+    if (langEl) {
+        langEl.addEventListener('change', () => {
+            SpeechSettings.lang = langEl.value || 'en-US';
+            localStorage.setItem('speech_lang', SpeechSettings.lang);
+
+            // Changing language implies resetting voice specific URI to Auto (so we don't keep an English voice for Italian text)
+            SpeechSettings.voiceURI = '';
+            localStorage.setItem('speech_voice_uri', '');
+
+            if (recognition) recognition.lang = SpeechSettings.lang;
+
+            refreshVoiceList();
+            loadSpeechSettingsIntoUI();
+        });
+    }
+
+    const prefEl = document.getElementById('speech-voice-pref');
+    if (prefEl) {
+        prefEl.addEventListener('change', () => {
+            SpeechSettings.voicePref = prefEl.value || 'any';
+            localStorage.setItem('speech_voice_pref', SpeechSettings.voicePref);
+        });
+    }
+
+    const voiceEl = document.getElementById('speech-voice');
+    if (voiceEl) {
+        voiceEl.addEventListener('change', (e) => {
+            SpeechSettings.voiceURI = e.target.value || '';
+            localStorage.setItem('speech_voice_uri', SpeechSettings.voiceURI);
+        });
+    }
+
+    document.getElementById('speech-rate')?.addEventListener('input', (e) => {
+        const v = parseFloat(e.target.value || '0.9');
+        SpeechSettings.rate = Number.isFinite(v) ? v : 0.9;
+        localStorage.setItem('speech_rate', String(SpeechSettings.rate));
+    });
+
+    document.getElementById('speech-pitch')?.addEventListener('input', (e) => {
+        const v = parseFloat(e.target.value || '1.0');
+        SpeechSettings.pitch = Number.isFinite(v) ? v : 1.0;
+        localStorage.setItem('speech_pitch', String(SpeechSettings.pitch));
+    });
+
+    // TEST VOICE BUTTON
+    document.getElementById('test-tts')?.addEventListener('click', () => {
+        const sampleByLang = {
+            'en-US': 'Hello! This is Nexus. Your voice settings are working.',
+            'en-GB': 'Hello! This is Nexus. Voice test complete.',
+            'it-IT': 'Ciao! Sono Nexus. Le impostazioni della voce funzionano.',
+            'es-ES': '¡Hola! Soy Nexus. La configuración de voz funciona.',
+            'fr-FR': 'Bonjour ! Je suis Nexus. Les paramètres de voix fonctionnent.',
+            'de-DE': 'Hallo! Ich bin Nexus. Deine Spracheinstellungen funktionieren.',
+            'pt-BR': 'Olá! Eu sou Nexus. O teste de voz funcionou.',
+            'ja-JP': 'こんにちは、Nexusです。音声テストは成功しました。',
+            'ko-KR': '안녕하세요, 넥서스입니다. 음성 설정이 작동 중입니다.',
+        };
+        const sample = sampleByLang[SpeechSettings.lang] || 'Voice test successful.';
+        speakText(sample);
+    });
 }
 
 /* ============================
@@ -721,12 +920,6 @@ function setupModals() {
     const cancelSettings = $('cancel-settings');
     const saveSettingsBtn = $('save-settings');
 
-    // Support both "active class" and "hidden attribute" styles
-    function showModal(modal) {
-        if (!modal) return;
-        modal.classList.add('active');
-        modal.hidden = false;
-    }
     function hideModal(modal) {
         if (!modal) return;
         modal.classList.remove('active');
@@ -758,6 +951,12 @@ function setupModals() {
 function openSettings() {
     const modal = $('settings-modal');
     if (!modal) return;
+
+    // Load config + speech settings into UI whenever settings opens
+    loadConfigIntoUI();
+    loadSpeechSettingsIntoUI();
+    refreshVoiceList();
+
     modal.classList.add('active');
     modal.hidden = false;
 }
@@ -812,17 +1011,14 @@ function updateProviderFields() {
             modelSelect.appendChild(opt);
         });
     } else if (provider === 'claude') {
-        [
-            'claude-3-5-sonnet-20241022',
-            'claude-3-opus-20240229',
-            'claude-3-sonnet-20240229',
-            'claude-3-haiku-20240307',
-        ].forEach((m) => {
-            const opt = document.createElement('option');
-            opt.value = m;
-            opt.textContent = m.toUpperCase().replace(/-/g, ' ');
-            modelSelect.appendChild(opt);
-        });
+        ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'].forEach(
+            (m) => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m.toUpperCase().replace(/-/g, ' ');
+                modelSelect.appendChild(opt);
+            }
+        );
     }
 }
 
@@ -853,6 +1049,7 @@ function saveSettings() {
     if (provider !== 'none' && !apiKey) return showMessage('Please enter an API key', 'error');
     if (provider !== 'none' && !model) return showMessage('Please select a model', 'error');
 
+    // ✅ Persist provider settings
     localStorage.setItem('ai_provider', provider);
     localStorage.setItem('ai_api_key', apiKey);
     localStorage.setItem('ai_model', model);
@@ -866,6 +1063,9 @@ function saveSettings() {
     config.systemPrompt = systemPrompt;
     config.watsonxProjectId = watsonxProjectId;
     config.baseUrl = baseUrl;
+
+    // ✅ Persist speech settings
+    saveSpeechSettingsFromUI();
 
     const modal = $('settings-modal');
     if (modal) {
@@ -911,80 +1111,50 @@ async function callLLM(userMessage) {
     return 'Provider not configured.';
 }
 
-async function callOpenAI(userMessage) {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.apiKey}` },
-        body: JSON.stringify({
-            model: config.model,
-            messages: [
-                { role: 'system', content: config.systemPrompt },
-                { role: 'user', content: userMessage },
-            ],
-            max_tokens: 500,
-        }),
-    });
-
-    if (!res.ok) throw new Error(`OpenAI API error: ${res.status} ${await res.text()}`);
-    const data = await res.json();
-    return (
-        (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) ||
-        'No response.'
-    );
-}
-
-async function callClaude(userMessage) {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': config.apiKey,
-            'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-            model: config.model,
-            max_tokens: 500,
-            system: config.systemPrompt,
-            messages: [{ role: 'user', content: userMessage }],
-        }),
-    });
-
-    if (!res.ok) throw new Error(`Claude API error: ${res.status} ${await res.text()}`);
-    const data = await res.json();
-    return (data && data.content && data.content[0] && data.content[0].text) || 'No response.';
-}
-
-async function callWatsonX(userMessage) {
-    const baseUrl = config.baseUrl || 'https://us-south.ml.cloud.ibm.com';
-    const res = await fetch(`${baseUrl}/ml/v1/text/generation?version=2023-05-29`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${config.apiKey}`,
-            Accept: 'application/json',
-        },
-        body: JSON.stringify({
-            model_id: config.model,
-            input: `${config.systemPrompt}\n\nUser: ${userMessage}\n\nAssistant:`,
-            parameters: { max_new_tokens: 500, temperature: 0.7 },
-            project_id: config.watsonxProjectId,
-        }),
-    });
-
-    if (!res.ok) throw new Error(`WatsonX API error: ${res.status} ${await res.text()}`);
-    const data = await res.json();
-    return (data && data.results && data.results[0] && data.results[0].generated_text) || 'No response.';
-}
-
 /* ============================
    Speech
    ============================ */
 function speakText(text) {
     setStatus('speaking', 'SPEAKING...');
+    try {
+        window.NEXUS_VIEWER?.playAnimationByName?.('Talk');
+    } catch (_) {}
+
+    if (!('speechSynthesis' in window)) {
+        setStatus('idle', 'READY');
+        return;
+    }
+
+    // Stop any current utterance to avoid overlapping
+    try {
+        window.speechSynthesis.cancel();
+    } catch (_) {}
+
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 0.9;
-    utterance.pitch = 1.0;
-    utterance.onend = () => setStatus('idle', 'READY');
+
+    // ✅ Apply settings
+    utterance.lang = SpeechSettings.lang;
+    utterance.rate = SpeechSettings.rate;
+    utterance.pitch = SpeechSettings.pitch;
+
+    // Use smart voice picker (handles specific selection or auto-best-match)
+    const v = pickBestVoice();
+    if (v) utterance.voice = v;
+
+    utterance.onend = () => {
+        setStatus('idle', 'READY');
+        try {
+            window.NEXUS_VIEWER?.playAnimationByName?.('Idle');
+        } catch (_) {}
+    };
+
+    utterance.onerror = () => {
+        setStatus('idle', 'READY');
+        try {
+            window.NEXUS_VIEWER?.playAnimationByName?.('Idle');
+        } catch (_) {}
+    };
+
     window.speechSynthesis.speak(utterance);
 }
 
@@ -996,13 +1166,20 @@ function initSpeechRecognition() {
     }
 
     recognition = new SR();
-    recognition.lang = 'en-US';
+
+    // ✅ Apply persisted language
+    recognition.lang = SpeechSettings.lang;
+
     recognition.continuous = false;
     recognition.interimResults = false;
 
     recognition.onstart = () => {
         isListening = true;
         setStatus('listening', 'LISTENING...');
+        try {
+            window.NEXUS_VIEWER?.playAnimationByName?.('Idle');
+        } catch (_) {}
+
         const btn = $('listen-btn');
         if (btn) btn.classList.add('active');
         if ($('voice-btn-text')) $('voice-btn-text').textContent = 'LISTENING...';
@@ -1033,6 +1210,7 @@ function toggleVoiceInput() {
 function startVoiceInput() {
     if (!recognition) return showMessage('Speech recognition not supported in this browser', 'error');
     try {
+        recognition.lang = SpeechSettings.lang; // ✅ ensure current setting
         recognition.start();
     } catch (e) {
         logError('Error starting recognition', e);
@@ -1042,6 +1220,9 @@ function startVoiceInput() {
 function stopVoiceInput() {
     isListening = false;
     setStatus('idle', 'READY');
+    try {
+        window.NEXUS_VIEWER?.playAnimationByName?.('Idle');
+    } catch (_) {}
 
     const btn = $('listen-btn');
     if (btn) btn.classList.remove('active');
@@ -1070,6 +1251,7 @@ function addMessageToHistory(sender, text) {
     messageDiv.className = `chat-message ${sender}`;
 
     const senderDiv = document.createElement('div');
+    messageDiv.className = `chat-message ${sender}`;
     senderDiv.className = `message-sender ${sender}`;
     senderDiv.textContent = sender === 'user' ? 'YOU' : 'NEXUS';
 
@@ -1129,14 +1311,30 @@ async function init() {
     showLoading('Loading 3D Avatar...');
     setStatus('idle', 'BOOTING...');
 
-    if (!vendorAssertOrAbort()) return;
+    const useViewerEngine = !!window.__USE_GLTF_VIEWER_ENGINE__;
+
+    if (!useViewerEngine) {
+        if (!vendorAssertOrAbort()) return;
+    }
 
     try {
-        setupThreeJS();
+        if (!useViewerEngine) {
+            setupThreeJS();
+        }
+
+        // Voices load async in Chrome; keep list current
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.onvoiceschanged = () => {
+                refreshVoiceList();
+            };
+        }
+
         setupEventListeners();
         setupModals();
         initSpeechRecognition();
         loadConfigIntoUI();
+        loadSpeechSettingsIntoUI();
+        refreshVoiceList(); // initial attempt
 
         await loadAvatarManifest();
         loadDefaultAvatarFromManifest();
@@ -1152,3 +1350,227 @@ if (document.readyState === 'loading') {
 } else {
     init();
 }
+
+/* =====================================================================
+   PATCH_LLM_PROXY_TEST_CONNECTION_V1
+   - Fixes CORS by routing Claude + WatsonX (and OpenAI) via proxy
+   - Adds Settings -> "Test Connection" button
+   - Improves WatsonX auth: accept IAM API key OR Bearer access token
+   ===================================================================== */
+
+async function __nexusDetectProxyUrl() {
+    if (window.__NEXUS_PROXY_URL__) return window.__NEXUS_PROXY_URL__;
+
+    // Prefer same-origin /api/proxy if it exists.
+    try {
+        const r = await fetch('/api/proxy', { method: 'OPTIONS' });
+        if (r && (r.status === 200 || r.status === 204)) {
+            window.__NEXUS_PROXY_URL__ = '/api/proxy';
+            return window.__NEXUS_PROXY_URL__;
+        }
+    } catch (_) {}
+
+    // Fallback: local nexus-proxy
+    const candidates = ['http://127.0.0.1:3001/proxy', 'http://localhost:3001/proxy'];
+    for (const url of candidates) {
+        try {
+            const health = url.replace(/\/proxy$/, '/health');
+            const r = await fetch(health, { method: 'GET' });
+            if (r && r.ok) {
+                window.__NEXUS_PROXY_URL__ = url;
+                return window.__NEXUS_PROXY_URL__;
+            }
+        } catch (_) {}
+    }
+
+    window.__NEXUS_PROXY_URL__ = null;
+    return null;
+}
+
+async function __nexusProxyFetch(upstreamUrl, fetchOptions) {
+    const proxyUrl = await __nexusDetectProxyUrl();
+    if (!proxyUrl) {
+        throw new Error(
+            'CORS proxy not running. Start it with: `node nexus-proxy/server.js` (local), or deploy on Vercel (production).'
+        );
+    }
+
+    const method = (fetchOptions?.method || 'GET').toUpperCase();
+    const headers = fetchOptions?.headers || {};
+    const body = fetchOptions?.body;
+
+    const payload = { url: upstreamUrl, method, headers, body: body === undefined ? undefined : body };
+
+    const res = await fetch(proxyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+
+    return res;
+}
+
+// ---- WatsonX: turn IAM API key into Bearer token (cached) ----
+let __nexusWatsonxTokenCache = { token: null, expMs: 0 };
+
+function __looksLikeJwt(s) {
+    return typeof s === 'string' && s.split('.').length === 3;
+}
+
+async function __getWatsonxBearer(apiKeyOrToken) {
+    const raw = (apiKeyOrToken || '').trim();
+    if (!raw) throw new Error('Missing WatsonX credential.');
+
+    if (__looksLikeJwt(raw)) return raw;
+    if (raw.toLowerCase().startsWith('bearer ')) return raw.slice(7).trim();
+
+    const now = Date.now();
+    if (__nexusWatsonxTokenCache.token && __nexusWatsonxTokenCache.expMs - now > 60_000) {
+        return __nexusWatsonxTokenCache.token;
+    }
+
+    const form = new URLSearchParams();
+    form.set('grant_type', 'urn:ibm:params:oauth:grant-type:apikey');
+    form.set('apikey', raw);
+
+    const res = await __nexusProxyFetch('https://iam.cloud.ibm.com/identity/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+        body: form.toString(),
+    });
+
+    const text = await res.text();
+    if (!res.ok) throw new Error(`WatsonX IAM token error: ${res.status} ${text}`);
+
+    const data = JSON.parse(text);
+    const token = data.access_token;
+    const expiresIn = Number(data.expires_in || 3600);
+    if (!token) throw new Error('WatsonX IAM token response missing access_token.');
+
+    __nexusWatsonxTokenCache = { token, expMs: now + expiresIn * 1000 };
+    return token;
+}
+
+/**
+ * Override: OpenAI via proxy.
+ */
+async function callOpenAI(userMessage) {
+    const upstreamUrl = 'https://api.openai.com/v1/chat/completions';
+    const res = await __nexusProxyFetch(upstreamUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.apiKey}` },
+        body: JSON.stringify({
+            model: config.model,
+            messages: [
+                { role: 'system', content: config.systemPrompt },
+                { role: 'user', content: userMessage },
+            ],
+            max_tokens: 500,
+        }),
+    });
+
+    const text = await res.text();
+    if (!res.ok) throw new Error(`OpenAI API error: ${res.status} ${text}`);
+    const data = JSON.parse(text);
+    return (data?.choices?.[0]?.message?.content) || 'No response.';
+}
+
+/**
+ * Override: Claude via proxy.
+ */
+async function callClaude(userMessage) {
+    const upstreamUrl = 'https://api.anthropic.com/v1/messages';
+    const res = await __nexusProxyFetch(upstreamUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': config.apiKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+            model: config.model,
+            max_tokens: 500,
+            system: config.systemPrompt,
+            messages: [{ role: 'user', content: userMessage }],
+        }),
+    });
+
+    const text = await res.text();
+    if (!res.ok) throw new Error(`Claude API error: ${res.status} ${text}`);
+    const data = JSON.parse(text);
+    return (data?.content?.[0]?.text) || 'No response.';
+}
+
+/**
+ * Override: WatsonX via proxy.
+ */
+async function callWatsonX(userMessage) {
+    const baseUrl = config.baseUrl || 'https://us-south.ml.cloud.ibm.com';
+    const bearer = await __getWatsonxBearer(config.apiKey);
+
+    const upstreamUrl = `${baseUrl}/ml/v1/text/generation?version=2023-05-29`;
+    const res = await __nexusProxyFetch(upstreamUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${bearer}`, Accept: 'application/json' },
+        body: JSON.stringify({
+            model_id: config.model,
+            input: `${config.systemPrompt}\n\nUser: ${userMessage}\n\nAssistant:`,
+            parameters: { max_new_tokens: 300, temperature: 0.7 },
+            project_id: config.watsonxProjectId,
+        }),
+    });
+
+    const text = await res.text();
+    if (!res.ok) throw new Error(`WatsonX API error: ${res.status} ${text}`);
+    const data = JSON.parse(text);
+    return (data?.results?.[0]?.generated_text) || 'No response.';
+}
+
+// ---- Test Connection button (Settings modal) ----
+async function __nexusTestConnection() {
+    if (!config || config.provider === 'none') return { ok: false, message: 'Select a provider first.' };
+    if (!config.apiKey) return { ok: false, message: 'Enter an API key/token first.' };
+    if (!config.model) return { ok: false, message: 'Select a model first.' };
+
+    const ping = 'Respond with the single word: OK';
+
+    try {
+        const reply = await callLLM(ping);
+        const short = String(reply || '').trim().slice(0, 120);
+        return { ok: true, message: `✅ Connected. Reply: ${short || 'OK'}` };
+    } catch (e) {
+        return { ok: false, message: `❌ ${e.message || e}` };
+    }
+}
+
+function __nexusWireTestButton() {
+    const btn = document.getElementById('test-connection-btn');
+    const status = document.getElementById('test-connection-status');
+    if (!btn) return;
+
+    btn.addEventListener('click', async () => {
+        // Pull latest values from the Settings inputs (test without saving)
+        try {
+            const selected = document.querySelector('input[name="provider"]:checked');
+            const provider = selected ? selected.value : 'none';
+            const apiKey = (document.getElementById('api-key')?.value || '').trim();
+            const model = (document.getElementById('model-select')?.value || '').trim();
+            const systemPrompt = (document.getElementById('system-prompt')?.value || config.systemPrompt).trim();
+            const watsonxProjectId = (document.getElementById('watsonx-project-id')?.value || '').trim();
+            const baseUrl = (document.getElementById('base-url')?.value || '').trim();
+
+            config.provider = provider;
+            config.apiKey = apiKey;
+            config.model = model;
+            config.systemPrompt = systemPrompt;
+            config.watsonxProjectId = watsonxProjectId;
+            config.baseUrl = baseUrl;
+        } catch (_) {}
+
+        btn.disabled = true;
+        if (status) status.textContent = 'Testing...';
+
+        const result = await __nexusTestConnection();
+        if (status) status.textContent = result.message;
+
+        btn.disabled = false;
+    });
+}
+
+window.addEventListener('DOMContentLoaded', __nexusWireTestButton);
