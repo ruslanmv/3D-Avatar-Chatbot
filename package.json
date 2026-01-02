@@ -8,26 +8,21 @@
     "start": "node nexus-proxy/server.js",
     "dev": "node nexus-proxy/server.js",
     "dev:watch": "node --watch nexus-proxy/server.js",
-
     "build": "echo 'Static site served by nexus-proxy (no bundle step)'",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
-
     "lint": "ESLINT_USE_FLAT_CONFIG=false eslint js/**/*.js --fix",
     "lint:check": "ESLINT_USE_FLAT_CONFIG=false eslint js/**/*.js",
     "format": "prettier --write \"**/*.{js,json,css,html,md}\"",
     "format:check": "prettier --check \"**/*.{js,json,css,html,md}\"",
     "validate": "npm run lint:check && npm run format:check && npm run test:ci",
     "clean": "rm -rf dist coverage node_modules",
-
     "docs": "jsdoc -c jsdoc.json",
     "security:audit": "npm audit --audit-level=moderate",
     "security:fix": "npm audit fix",
-
     "prepare": "(command -v git >/dev/null 2>&1 && husky install) || true",
     "precommit": "lint-staged",
-
     "deploy": "npm run build && npm run deploy:gh-pages",
     "deploy:gh-pages": "gh-pages -d .",
     "deploy:netlify": "netlify deploy --prod",
@@ -79,8 +74,8 @@
     "webpack-bundle-analyzer": "^4.9.1"
   },
   "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=9.0.0"
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
   },
   "lint-staged": {
     "*.js": [
