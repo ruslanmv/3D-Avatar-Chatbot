@@ -582,7 +582,11 @@ function findIdleAnimation() {
 }
 
 function playAnimation(name, loop) {
-    if (window.__USE_GLTF_VIEWER_ENGINE__ && window.NEXUS_VIEWER && typeof window.NEXUS_VIEWER.playAnimationByName === 'function') {
+    if (
+        window.__USE_GLTF_VIEWER_ENGINE__ &&
+        window.NEXUS_VIEWER &&
+        typeof window.NEXUS_VIEWER.playAnimationByName === 'function'
+    ) {
         window.NEXUS_VIEWER.playAnimationByName(name);
         return;
     }
@@ -629,7 +633,8 @@ function playAnimation(name, loop) {
 function guessGender(voice) {
     const s = `${voice.name} ${voice.voiceURI}`.toLowerCase();
     // Common patterns across OS/browsers (not perfect, but helpful)
-    if (/(female|woman|zira|susan|samantha|victoria|tessa|karen|serena|monica|lucia|alice|emma|olivia)/i.test(s)) return 'female';
+    if (/(female|woman|zira|susan|samantha|victoria|tessa|karen|serena|monica|lucia|alice|emma|olivia)/i.test(s))
+        return 'female';
     if (/(male|man|david|mark|daniel|george|alex|fred|tom|diego|luca|paul|joel)/i.test(s)) return 'male';
     return 'unknown';
 }
@@ -775,7 +780,10 @@ function setupEventListeners() {
             }
 
             if (ext === 'gltf') {
-                showMessage('Warning: .gltf files with external assets may not load correctly. .glb is recommended.', 'warning');
+                showMessage(
+                    'Warning: .gltf files with external assets may not load correctly. .glb is recommended.',
+                    'warning'
+                );
             }
 
             const blobURL = URL.createObjectURL(file);
@@ -834,7 +842,11 @@ function setupEventListeners() {
     if (resetBtn) resetBtn.addEventListener('click', () => resetView());
 
     const frameBtn = $('frame-avatar-btn');
-    if (frameBtn) frameBtn.addEventListener('click', () => currentAvatar && frameObjectToCamera(currentAvatar, lastFrameFitOffset));
+    if (frameBtn)
+        frameBtn.addEventListener(
+            'click',
+            () => currentAvatar && frameObjectToCamera(currentAvatar, lastFrameFitOffset)
+        );
 
     const readyBtn = $('ready-btn');
     if (readyBtn) {
@@ -1011,14 +1023,17 @@ function updateProviderFields() {
             modelSelect.appendChild(opt);
         });
     } else if (provider === 'claude') {
-        ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'].forEach(
-            (m) => {
-                const opt = document.createElement('option');
-                opt.value = m;
-                opt.textContent = m.toUpperCase().replace(/-/g, ' ');
-                modelSelect.appendChild(opt);
-            }
-        );
+        [
+            'claude-3-5-sonnet-20241022',
+            'claude-3-opus-20240229',
+            'claude-3-sonnet-20240229',
+            'claude-3-haiku-20240307',
+        ].forEach((m) => {
+            const opt = document.createElement('option');
+            opt.value = m;
+            opt.textContent = m.toUpperCase().replace(/-/g, ' ');
+            modelSelect.appendChild(opt);
+        });
     }
 }
 
@@ -1472,7 +1487,7 @@ async function callOpenAI(userMessage) {
     const text = await res.text();
     if (!res.ok) throw new Error(`OpenAI API error: ${res.status} ${text}`);
     const data = JSON.parse(text);
-    return (data?.choices?.[0]?.message?.content) || 'No response.';
+    return data?.choices?.[0]?.message?.content || 'No response.';
 }
 
 /**
@@ -1494,7 +1509,7 @@ async function callClaude(userMessage) {
     const text = await res.text();
     if (!res.ok) throw new Error(`Claude API error: ${res.status} ${text}`);
     const data = JSON.parse(text);
-    return (data?.content?.[0]?.text) || 'No response.';
+    return data?.content?.[0]?.text || 'No response.';
 }
 
 /**
@@ -1519,7 +1534,7 @@ async function callWatsonX(userMessage) {
     const text = await res.text();
     if (!res.ok) throw new Error(`WatsonX API error: ${res.status} ${text}`);
     const data = JSON.parse(text);
-    return (data?.results?.[0]?.generated_text) || 'No response.';
+    return data?.results?.[0]?.generated_text || 'No response.';
 }
 
 // ---- Test Connection button (Settings modal) ----
@@ -1532,7 +1547,9 @@ async function __nexusTestConnection() {
 
     try {
         const reply = await callLLM(ping);
-        const short = String(reply || '').trim().slice(0, 120);
+        const short = String(reply || '')
+            .trim()
+            .slice(0, 120);
         return { ok: true, message: `✅ Connected. Reply: ${short || 'OK'}` };
     } catch (e) {
         return { ok: false, message: `❌ ${e.message || e}` };
