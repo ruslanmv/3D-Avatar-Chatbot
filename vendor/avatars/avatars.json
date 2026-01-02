@@ -1,9 +1,11 @@
 {
   "basePath": "/vendor/avatars",
   "items": [
-    { "name": "Robot Expressive", "file": "RobotExpressive.glb" }
-    ,
-    { "name": "Soldier", "file": "Soldier.glb" },
+    { "name": "Avatar", "file": "girl.glb" },
+    { "name": "Robot Expressive", "file": "RobotExpressive.glb" },
+    { "name": "Student", "file": "student.glb" },
+    { "name": "Woman", "file": "woman.glb" },
+    { "name": "Soldier", "file": "soldier.glb" },
     { "name": "Anime", "file": "anime.glb" }
   ]
 }
