@@ -1,0 +1,20 @@
+{
+  "name": "nexus-proxy",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Nexus Proxy Server - serves frontend and securely proxies AI provider requests (OpenAI, Claude, WatsonX)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "health": "node -e \"fetch('http://127.0.0.1:8080/health').then(r=>r.json()).then(console.log).catch(console.error)\""
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
