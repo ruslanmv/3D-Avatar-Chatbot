@@ -1,119 +1,124 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Matrix Avatar Chat</title>
-  <link rel="stylesheet" href="./ui.css" />
-</head>
-<body>
-  <canvas id="matrixRain" aria-hidden="true"></canvas>
-  <div class="scanlines" aria-hidden="true"></div>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Matrix Avatar Chat</title>
+        <link rel="stylesheet" href="./ui.css" />
+    </head>
+    <body>
+        <canvas id="matrixRain" aria-hidden="true"></canvas>
+        <div class="scanlines" aria-hidden="true"></div>
 
-  <header class="topbar">
-    <div class="brand">
-      <div class="brand__mark" aria-hidden="true">⬡</div>
-      <div class="brand__text">
-        <div class="brand__title">MATRIX AVATAR</div>
-        <div class="brand__sub">secure channel // v0.1</div>
-      </div>
-    </div>
+        <header class="topbar">
+            <div class="brand">
+                <div class="brand__mark" aria-hidden="true">⬡</div>
+                <div class="brand__text">
+                    <div class="brand__title">MATRIX AVATAR</div>
+                    <div class="brand__sub">secure channel // v0.1</div>
+                </div>
+            </div>
 
-    <div class="topbar__controls">
-      <label class="control">
-        <span class="control__label">persona</span>
-        <select id="personaSelect" class="select">
-          </select>
-      </label>
+            <div class="topbar__controls">
+                <label class="control">
+                    <span class="control__label">persona</span>
+                    <select id="personaSelect" class="select"></select>
+                </label>
 
-      <button id="clearBtn" class="btn btn--ghost" type="button" title="Clear chat">clear</button>
-      <button id="settingsBtn" class="btn" type="button" title="Settings">settings</button>
-    </div>
-  </header>
+                <button id="clearBtn" class="btn btn--ghost" type="button" title="Clear chat">clear</button>
+                <button id="settingsBtn" class="btn" type="button" title="Settings">settings</button>
+            </div>
+        </header>
 
-  <main class="layout">
-    <section class="panel panel--avatar">
-      <div class="avatarCard">
-        <div class="avatarFrame">
-          <canvas id="avatarViz" width="440" height="440" aria-label="Avatar visualization"></canvas>
-          <div class="avatarGlow" aria-hidden="true"></div>
-        </div>
+        <main class="layout">
+            <section class="panel panel--avatar">
+                <div class="avatarCard">
+                    <div class="avatarFrame">
+                        <canvas id="avatarViz" width="440" height="440" aria-label="Avatar visualization"></canvas>
+                        <div class="avatarGlow" aria-hidden="true"></div>
+                    </div>
 
-        <div class="statusRow">
-          <div class="pill" id="statePill">
-            <span class="dot" aria-hidden="true"></span>
-            <span id="stateText">idle</span>
-          </div>
-          <div class="hint">TIP: type a message or press the mic</div>
-        </div>
-      </div>
+                    <div class="statusRow">
+                        <div class="pill" id="statePill">
+                            <span class="dot" aria-hidden="true"></span>
+                            <span id="stateText">idle</span>
+                        </div>
+                        <div class="hint">TIP: type a message or press the mic</div>
+                    </div>
+                </div>
 
-      <div class="panelFooter">
-        <div class="small">
-          This UI uses the existing <code>/js</code> modules via an adapter.
-        </div>
-      </div>
-    </section>
+                <div class="panelFooter">
+                    <div class="small">This UI uses the existing <code>/js</code> modules via an adapter.</div>
+                </div>
+            </section>
 
-    <section class="panel panel--chat">
-      <div class="chatCard">
-        <div id="messages" class="messages" aria-live="polite"></div>
+            <section class="panel panel--chat">
+                <div class="chatCard">
+                    <div id="messages" class="messages" aria-live="polite"></div>
 
-        <div class="composer">
-          <textarea id="input" class="input" rows="1" placeholder="Type your message..."></textarea>
-          <button id="micBtn" class="btn btn--ghost" type="button" title="Voice input">mic</button>
-          <button id="sendBtn" class="btn" type="button">send</button>
-        </div>
+                    <div class="composer">
+                        <textarea id="input" class="input" rows="1" placeholder="Type your message..."></textarea>
+                        <button id="micBtn" class="btn btn--ghost" type="button" title="Voice input">mic</button>
+                        <button id="sendBtn" class="btn" type="button">send</button>
+                    </div>
 
-        <div class="footerRow">
-          <label class="toggle">
-            <input id="autoSpeakToggle" type="checkbox" />
-            <span>auto-speak</span>
-          </label>
-          <div id="toast" class="toast" role="status" aria-live="polite"></div>
-        </div>
-      </div>
-    </section>
-  </main>
+                    <div class="footerRow">
+                        <label class="toggle">
+                            <input id="autoSpeakToggle" type="checkbox" />
+                            <span>auto-speak</span>
+                        </label>
+                        <div id="toast" class="toast" role="status" aria-live="polite"></div>
+                    </div>
+                </div>
+            </section>
+        </main>
 
-  <div id="modalBackdrop" class="modalBackdrop hidden" aria-hidden="true"></div>
-  <dialog id="settingsModal" class="modal">
-    <form method="dialog" class="modal__inner">
-      <div class="modal__header">
-        <div>
-          <div class="modal__title">Settings</div>
-          <div class="modal__sub">Stored locally in your browser.</div>
-        </div>
-        <button id="closeSettings" class="btn btn--ghost" value="cancel" type="submit">close</button>
-      </div>
+        <div id="modalBackdrop" class="modalBackdrop hidden" aria-hidden="true"></div>
+        <dialog id="settingsModal" class="modal">
+            <form method="dialog" class="modal__inner">
+                <div class="modal__header">
+                    <div>
+                        <div class="modal__title">Settings</div>
+                        <div class="modal__sub">Stored locally in your browser.</div>
+                    </div>
+                    <button id="closeSettings" class="btn btn--ghost" value="cancel" type="submit">close</button>
+                </div>
 
-      <div class="modal__body">
-        <label class="field">
-          <span class="field__label">OpenAI API key</span>
-          <input id="apiKey" class="field__input" type="password" placeholder="sk-..." autocomplete="off" />
-          <span class="field__hint">Used by <code>/js/openai-service.js</code>.</span>
-        </label>
+                <div class="modal__body">
+                    <label class="field">
+                        <span class="field__label">OpenAI API key</span>
+                        <input
+                            id="apiKey"
+                            class="field__input"
+                            type="password"
+                            placeholder="sk-..."
+                            autocomplete="off"
+                        />
+                        <span class="field__hint">Used by <code>/js/openai-service.js</code>.</span>
+                    </label>
 
-        <label class="field">
-          <span class="field__label">Model</span>
-          <input id="model" class="field__input" type="text" placeholder="gpt-3.5-turbo" />
-          <span class="field__hint">Example: <code>gpt-4o-mini</code>, <code>gpt-4.1-mini</code>, etc.</span>
-        </label>
-      </div>
+                    <label class="field">
+                        <span class="field__label">Model</span>
+                        <input id="model" class="field__input" type="text" placeholder="gpt-3.5-turbo" />
+                        <span class="field__hint"
+                            >Example: <code>gpt-4o-mini</code>, <code>gpt-4.1-mini</code>, etc.</span
+                        >
+                    </label>
+                </div>
 
-      <div class="modal__footer">
-        <button id="saveSettings" class="btn" type="button">save</button>
-      </div>
-    </form>
-  </dialog>
+                <div class="modal__footer">
+                    <button id="saveSettings" class="btn" type="button">save</button>
+                </div>
+            </form>
+        </dialog>
 
-  <script src="../js/config.js"></script>
-  <script src="../js/openai-service.js"></script>
-  <script src="../js/speech-service.js"></script>
-  
-  <script src="./core/adapter-js.js"></script>
-  <script src="./core/controller.js"></script>
+        <script src="../js/config.js"></script>
+        <script src="../js/openai-service.js"></script>
+        <script src="../js/speech-service.js"></script>
 
-  <script src="./ui.js"></script>
-</body>
+        <script src="./core/adapter-js.js"></script>
+        <script src="./core/controller.js"></script>
+
+        <script src="./ui.js"></script>
+    </body>
 </html>
