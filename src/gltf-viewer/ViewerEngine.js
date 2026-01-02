@@ -120,7 +120,15 @@ export class ViewerEngine {
         this.currentRoot = gltf.scene;
         this.scene.add(this.currentRoot);
 
-        this.currentRoot.traverse((o) => {
+        
+
+        /* NEXUS_PATCH_LIFE_ENGINE_VIEWERENGINE_REGISTER */
+        try {
+            // ProceduralAnimator is a GLOBAL script (index.html loads it).
+            // In module context we still can call window.*.
+            window.NEXUS_PROCEDURAL_ANIMATOR?.registerAvatar?.(this.currentRoot, Array.isArray(this.clips) && this.clips.length > 0);
+        } catch (_) {}
+this.currentRoot.traverse((o) => {
             if (o.isMesh) {
                 o.castShadow = false;
                 o.receiveShadow = false;
@@ -173,7 +181,14 @@ export class ViewerEngine {
     animate() {
         this._raf = requestAnimationFrame(() => this.animate());
         const dt = this.clock.getDelta();
-        this.mixer?.update(dt);
+        
+
+        /* NEXUS_PATCH_LIFE_ENGINE_VIEWERENGINE_UPDATE */
+        try {
+            const t = this.clock.getElapsedTime();
+            window.NEXUS_PROCEDURAL_ANIMATOR?.update?.(t, dt);
+        } catch (_) {}
+this.mixer?.update(dt);
         this.controls.update();
         this.renderer.render(this.scene, this.camera);
     }

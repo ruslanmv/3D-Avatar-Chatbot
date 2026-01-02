@@ -375,7 +375,14 @@ function animate() {
     requestAnimationFrame(animate);
     const delta = clock ? clock.getDelta() : 0;
     if (mixer) mixer.update(delta);
-    if (controls) controls.update();
+    
+    /* NEXUS_PATCH_LIFE_ENGINE_UPDATE_LOOP */
+    try {
+        // clock exists only in legacy ThreeJS path; guard it.
+        const t = (typeof clock !== "undefined" && clock) ? clock.getElapsedTime() : (performance.now() * 0.001);
+        window.NEXUS_PROCEDURAL_ANIMATOR?.update?.(t, delta);
+    } catch (_) {}
+if (controls) controls.update();
     if (renderer && scene && camera) renderer.render(scene, camera);
 }
 
@@ -444,7 +451,14 @@ function loadAvatar(url, source) {
             try {
                 await waitForViewerEngineReady(8000);
                 await window.NEXUS_VIEWER.loadAvatar(url);
-                stopLoaderWatchdog();
+                
+                /* NEXUS_PATCH_LIFE_ENGINE_REGISTER_VIEWER */
+                try {
+                    const root = window.NEXUS_VIEWER?.currentRoot || null;
+                    const hasClips = Array.isArray(window.NEXUS_VIEWER?.clips) && window.NEXUS_VIEWER.clips.length > 0;
+                    window.NEXUS_PROCEDURAL_ANIMATOR?.registerAvatar?.(root, hasClips);
+                } catch (_) {}
+stopLoaderWatchdog();
                 hideLoading();
                 setStatus('idle', 'READY');
                 const hint = document.getElementById('viewport-hint');
@@ -505,7 +519,12 @@ function loadAvatar(url, source) {
             currentAvatar = gltf.scene;
             scene.add(currentAvatar);
 
-            currentAvatar.traverse((child) => {
+            
+            /* NEXUS_PATCH_LIFE_ENGINE_REGISTER_LEGACY */
+            try {
+                window.NEXUS_PROCEDURAL_ANIMATOR?.registerAvatar?.(currentAvatar, Array.isArray(gltf.animations) && gltf.animations.length > 0);
+            } catch (_) {}
+currentAvatar.traverse((child) => {
                 if (child.isMesh) {
                     child.castShadow = true;
                     child.receiveShadow = true;
@@ -817,7 +836,13 @@ function setupEventListeners() {
     document.querySelectorAll('.emotion-btn').forEach((btn) => {
         btn.addEventListener('click', () => {
             const emotion = (btn.dataset.emotion || '').toLowerCase();
-            const mapped = Object.keys(animations).find((k) => k.includes(emotion)) || findIdleAnimation();
+            
+            /* NEXUS_PATCH_LIFE_ENGINE_EMOTION_MODE */
+            try {
+                // Match your UI labels: IDLE/HAPPY/THINKING/DANCE/TALK
+                window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.(emotion, 1600);
+            } catch (_) {}
+const mapped = Object.keys(animations).find((k) => k.includes(emotion)) || findIdleAnimation();
             if (mapped) playAnimation(mapped, false);
 
             const emotionActive = $('emotion-active');
@@ -1131,7 +1156,12 @@ async function callLLM(userMessage) {
    ============================ */
 function speakText(text) {
     setStatus('speaking', 'SPEAKING...');
+    
+    /* NEXUS_PATCH_LIFE_ENGINE_TALK_MODE */
     try {
+        window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.("talk", 30000);
+    } catch (_) {}
+try {
         window.NEXUS_VIEWER?.playAnimationByName?.('Talk');
     } catch (_) {}
 
@@ -1157,6 +1187,8 @@ function speakText(text) {
     if (v) utterance.voice = v;
 
     utterance.onend = () => {
+        /* NEXUS_PATCH_LIFE_ENGINE_TALK_END */
+        try { window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.("idle", 1); } catch (_) {}
         setStatus('idle', 'READY');
         try {
             window.NEXUS_VIEWER?.playAnimationByName?.('Idle');
@@ -1164,6 +1196,8 @@ function speakText(text) {
     };
 
     utterance.onerror = () => {
+        /* NEXUS_PATCH_LIFE_ENGINE_TALK_ERR */
+        try { window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.("idle", 1); } catch (_) {}
         setStatus('idle', 'READY');
         try {
             window.NEXUS_VIEWER?.playAnimationByName?.('Idle');
