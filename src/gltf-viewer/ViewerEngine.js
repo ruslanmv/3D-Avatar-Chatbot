@@ -55,7 +55,9 @@ export class ViewerEngine {
         this.clips = [];
         this.currentRoot = null;
 
+        // Initialize GLTF loader with CORS support for Vercel production
         this.loader = new GLTFLoader();
+        this.loader.setCrossOrigin('anonymous');
 
         // ✅ FIX: decoder files live under /examples/js/libs/draco/ (not jsm/)
         const draco = new DRACOLoader();

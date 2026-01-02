@@ -26,7 +26,22 @@
       ]
     },
     {
-      "source": "/(.*)\\.(js|css|png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|eot|glb|gltf|bin|wasm|json)",
+      "source": "/(.*)\\.wasm",
+      "headers": [
+        { "key": "Content-Type", "value": "application/wasm" },
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/(.*)\\.(glb|gltf)",
+      "headers": [
+        { "key": "Content-Type", "value": "model/gltf-binary" },
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" }
+      ]
+    },
+    {
+      "source": "/(.*)\\.(js|css|png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|eot|bin|json)",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
     },
     {
@@ -47,6 +62,11 @@
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/demo", "destination": "/demo.html" },
+    { "source": "/vendor/(.*)", "destination": "/vendor/$1" },
+    { "source": "/src/(.*)", "destination": "/src/$1" },
+    { "source": "/css/(.*)", "destination": "/css/$1" },
+    { "source": "/js/(.*)", "destination": "/js/$1" },
+    { "source": "/matrix/(.*)", "destination": "/matrix/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
 
