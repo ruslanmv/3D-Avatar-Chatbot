@@ -1,123 +1,129 @@
 /**
- * Vercel Serverless Function - CORS Proxy for AI APIs
+ * Vercel Serverless Proxy (Production)
  *
- * This serverless function provides the same functionality as nexus-proxy/server.js
- * but runs as a Vercel Edge/Serverless Function.
+ * Endpoint:
+ *   POST /api/proxy
+ * Body:
+ *   { url, method, headers, body }
  *
- * Endpoint: /api/proxy
- * Method: POST
- * Body: { url, method, headers, body }
+ * Security:
+ * - HTTPS only
+ * - Allowlist upstream domains (prevents open relay)
  *
- * Usage in production:
- * - Frontend calls: https://yourdomain.vercel.app/api/proxy
- * - No separate server needed - fully serverless
- *
- * Local development:
- * - Use nexus-proxy/server.js on port 3001
- * - Or use `vercel dev` which will serve this function at http://localhost:3000/api/proxy
+ * Notes:
+ * - Returns upstream status + upstream response body as text (passthrough)
+ * - Copies only safe response headers (content-type)
  */
 
-// Allowlist of upstream domains (prevents open relay)
-const ALLOWED_HOSTS = [
-    'iam.cloud.ibm.com',
-    'us-south.ml.cloud.ibm.com',
-    'eu-de.ml.cloud.ibm.com',
-    'api.openai.com',
-    'api.anthropic.com',
+const ALLOW = [
+  "https://api.openai.com",
+  "https://api.anthropic.com",
+  "https://iam.cloud.ibm.com",
+  "https://us-south.ml.cloud.ibm.com",
+  "https://eu-de.ml.cloud.ibm.com",
 ];
 
-/**
- * Check if URL is in allowlist
- */
-function isAllowedUrl(urlString) {
-    try {
-        const parsed = new URL(urlString);
-        return ALLOWED_HOSTS.some((h) => parsed.hostname === h || parsed.hostname.endsWith('.' + h));
-    } catch {
-        return false;
-    }
+function httpsOnly(url) {
+  return /^https:\/\//i.test(String(url || ""));
 }
 
-/**
- * Main handler for Vercel serverless function
- */
+function isAllowedUrl(url) {
+  const u = String(url || "");
+  return ALLOW.some((base) => u.startsWith(base));
+}
+
+function copySafeHeaders(upstreamHeaders) {
+  const out = {};
+  const ct = upstreamHeaders.get("content-type");
+  if (ct) out["content-type"] = ct;
+  return out;
+}
+
+// Remove hop-by-hop + unsafe headers from client to upstream
+function sanitizeRequestHeaders(headersObj) {
+  const unsafe = new Set([
+    "host",
+    "connection",
+    "content-length",
+    "transfer-encoding",
+    "keep-alive",
+    "proxy-authenticate",
+    "proxy-authorization",
+    "te",
+    "trailer",
+    "upgrade",
+    "origin", // let upstream decide; don't forward browser origin
+    "referer",
+  ]);
+
+  const out = {};
+  const h = headersObj && typeof headersObj === "object" ? headersObj : {};
+  for (const [k, v] of Object.entries(h)) {
+    const key = String(k || "").toLowerCase();
+    if (!key || unsafe.has(key)) continue;
+    out[k] = v;
+  }
+  return out;
+}
+
 export default async function handler(req, res) {
-    // CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // CORS: in production you can set this to your domain instead of "*"
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type,Authorization,X-Requested-With,anthropic-version,x-api-key,Accept"
+  );
 
-    // Handle preflight
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
+  if (req.method === "OPTIONS") return res.status(204).end();
+  if (req.method !== "POST") return res.status(405).json({ error: "Method Not Allowed" });
+
+  try {
+    const { url, method, headers, body } = req.body || {};
+
+    if (!url || typeof url !== "string") {
+      return res.status(400).json({ error: 'Missing "url" in request body.' });
+    }
+    if (!httpsOnly(url)) {
+      return res.status(400).json({ error: "Only https:// URLs are allowed." });
+    }
+    if (!isAllowedUrl(url)) {
+      return res.status(403).json({ error: "Target URL not in allowlist." });
     }
 
-    // Only POST allowed
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed' });
+    const m = String(method || "POST").toUpperCase();
+
+    // Build upstream request headers
+    const upstreamHeadersObj = sanitizeRequestHeaders(headers);
+    const upstreamHeaders = new Headers(upstreamHeadersObj);
+
+    const hasBody = body !== undefined && body !== null;
+
+    // If body exists and CT missing, set JSON by default
+    if (hasBody && !upstreamHeaders.has("content-type")) {
+      upstreamHeaders.set("content-type", "application/json");
     }
 
-    try {
-        const { url, method, headers, body } = req.body || {};
+    const upstreamBody =
+      !hasBody ? undefined : typeof body === "string" ? body : JSON.stringify(body);
 
-        // Validate inputs
-        if (!url || typeof url !== 'string') {
-            return res.status(400).json({ error: 'Missing or invalid "url" in request body' });
-        }
+    const upstream = await fetch(url, {
+      method: m,
+      headers: upstreamHeaders,
+      body: upstreamBody,
+    });
 
-        if (!isAllowedUrl(url)) {
-            return res.status(403).json({
-                error: 'Target URL not in allowlist',
-                hint: 'Only OpenAI, Anthropic, and IBM Watsonx APIs are allowed',
-            });
-        }
+    const text = await upstream.text();
 
-        const upstreamMethod = (method || 'GET').toUpperCase();
+    res.status(upstream.status);
 
-        // Build upstream request headers (filter unsafe headers)
-        const upstreamHeaders = {};
-        const unsafeHeaders = ['host', 'connection', 'content-length', 'transfer-encoding'];
+    // Copy safe response headers
+    const safe = copySafeHeaders(upstream.headers);
+    for (const [k, v] of Object.entries(safe)) res.setHeader(k, v);
 
-        if (headers && typeof headers === 'object') {
-            Object.keys(headers).forEach((key) => {
-                const lower = key.toLowerCase();
-                if (!unsafeHeaders.includes(lower)) {
-                    upstreamHeaders[key] = headers[key];
-                }
-            });
-        }
-
-        // Build fetch options
-        const fetchOptions = {
-            method: upstreamMethod,
-            headers: upstreamHeaders,
-        };
-
-        // Add body if not GET/HEAD
-        if (upstreamMethod !== 'GET' && upstreamMethod !== 'HEAD' && body !== undefined) {
-            fetchOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
-        }
-
-        // Make upstream request
-        const upstream = await fetch(url, fetchOptions);
-
-        // Get response text
-        const text = await upstream.text();
-
-        // Copy safe response headers
-        const safeResponseHeaders = ['content-type', 'content-encoding', 'cache-control'];
-        safeResponseHeaders.forEach((h) => {
-            const val = upstream.headers.get(h);
-            if (val) res.setHeader(h, val);
-        });
-
-        // Return upstream response
-        return res.status(upstream.status).send(text);
-    } catch (error) {
-        console.error('[Proxy Error]', error);
-        return res.status(500).json({
-            error: 'Proxy request failed',
-            message: error.message,
-        });
-    }
+    return res.send(text);
+  } catch (err) {
+    console.error("[api/proxy] error:", err);
+    return res.status(500).json({ error: err?.message || String(err) });
+  }
 }
