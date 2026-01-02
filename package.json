@@ -5,25 +5,29 @@
   "main": "index.html",
   "type": "module",
   "scripts": {
-    "start": "http-server -p 8080 -c-1 --cors",
-    "dev": "http-server -p 8080 -c-1 -o --cors",
-    "serve": "http-server -p 8080 -c-1",
-    "serve:prod": "http-server dist -p 8080 -c 3600 --gzip",
-    "build": "echo 'Static site - vendor folder contains Three.js libraries' && echo 'Verifying vendor files...' && ls -la vendor/three-0.147.0/build/ && ls -la vendor/three-0.147.0/examples/js/controls/ && ls -la vendor/three-0.147.0/examples/js/loaders/",
+    "start": "node nexus-proxy/server.js",
+    "dev": "node nexus-proxy/server.js",
+    "dev:watch": "node --watch nexus-proxy/server.js",
+
+    "build": "echo 'Static site served by nexus-proxy (no bundle step)'",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
+
     "lint": "ESLINT_USE_FLAT_CONFIG=false eslint js/**/*.js --fix",
     "lint:check": "ESLINT_USE_FLAT_CONFIG=false eslint js/**/*.js",
     "format": "prettier --write \"**/*.{js,json,css,html,md}\"",
     "format:check": "prettier --check \"**/*.{js,json,css,html,md}\"",
     "validate": "npm run lint:check && npm run format:check && npm run test:ci",
     "clean": "rm -rf dist coverage node_modules",
+
     "docs": "jsdoc -c jsdoc.json",
     "security:audit": "npm audit --audit-level=moderate",
     "security:fix": "npm audit fix",
-    "prepare": "husky install || true",
+
+    "prepare": "(command -v git >/dev/null 2>&1 && husky install) || true",
     "precommit": "lint-staged",
+
     "deploy": "npm run build && npm run deploy:gh-pages",
     "deploy:gh-pages": "gh-pages -d .",
     "deploy:netlify": "netlify deploy --prod",
@@ -65,7 +69,6 @@
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-jsdoc": "^46.8.0",
     "gh-pages": "^6.0.0",
-    "http-server": "^14.1.1",
     "husky": "^8.0.3",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",

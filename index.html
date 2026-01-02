@@ -1,574 +1,549 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-        <title>Nexus Avatar - AI-Powered 3D Interface</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Nexus Avatar - AI-Powered 3D Interface</title>
 
-        <meta
-            name="description"
-            content="Professional 3D Avatar Chatbot with AI-powered conversations, realistic animations, and multi-provider LLM support (OpenAI, Claude, WatsonX)"
-        />
-        <meta
-            name="keywords"
-            content="3D avatar, AI chatbot, OpenAI, Claude, WatsonX, speech recognition, text-to-speech, Three.js"
-        />
-        <meta name="theme-color" content="#071821" />
+    <meta
+      name="description"
+      content="Professional 3D Avatar Chatbot with AI-powered conversations, realistic animations, and multi-provider LLM support (OpenAI, Claude, WatsonX)"
+    />
+    <meta
+      name="keywords"
+      content="3D avatar, AI chatbot, OpenAI, Claude, WatsonX, speech recognition, text-to-speech, Three.js"
+    />
+    <meta name="theme-color" content="#071821" />
 
-        <!-- Fonts -->
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-        <link
-            href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap"
-            rel="stylesheet"
-        />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
 
-        <!-- Styles -->
-        <link rel="stylesheet" href="styles/main.css" />
+    <link rel="stylesheet" href="styles/main.css" />
 
-        <!-- ==========================================================
-         GLOBAL Three.js vendor (non-module) - ORDER MATTERS
-         ========================================================== -->
-        <script defer src="vendor/three-0.147.0/build/three.min.js"></script>
-        <script defer src="vendor/three-0.147.0/examples/js/controls/OrbitControls.js"></script>
-        <script defer src="vendor/three-0.147.0/examples/js/loaders/GLTFLoader.js"></script>
+    <link rel="icon" href="favicon.ico" />
 
-        <!-- Preflight + aliases -->
-        <script defer src="src/vendor-guard.js"></script>
+    <script defer src="vendor/three-0.147.0/build/three.min.js"></script>
+    <script defer src="vendor/three-0.147.0/examples/js/controls/OrbitControls.js"></script>
+    <script defer src="vendor/three-0.147.0/examples/js/loaders/GLTFLoader.js"></script>
 
-        <!-- Optional: Debug harness -->
-        <script defer>
-            (function () {
-                const stamp = () => new Date().toISOString();
-                const log = (...a) => console.log('%c[NEXUS][DEBUG]', 'color:#00e5ff', stamp(), ...a);
-                const warn = (...a) => console.warn('%c[NEXUS][DEBUG]', 'color:#ffb300', stamp(), ...a);
-                const err = (...a) => console.error('%c[NEXUS][DEBUG]', 'color:#ff5252', stamp(), ...a);
+    <script defer src="src/vendor-guard.js"></script>
 
-                window.addEventListener(
-                    'error',
-                    (e) =>
-                        err('WINDOW_ERROR:', e.message, 'at', e.filename, ':', e.lineno, ':', e.colno, e.error || ''),
-                    true
-                );
-                window.addEventListener('unhandledrejection', (e) => err('UNHANDLED_REJECTION:', e.reason));
+    <script>
+      // Single source of truth for enabling the high-quality engine:
+      window.__USE_GLTF_VIEWER_ENGINE__ = true;
+    </script>
 
-                async function inspect(url) {
-                    try {
-                        const r = await fetch(url, { cache: 'no-store' });
-                        const ct = r.headers.get('content-type') || '(missing)';
-                        const body = await r.text();
-                        const head = body.slice(0, 200);
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "/vendor/three-0.147.0/build/three.module.js",
+          "three/addons/": "/vendor/three-0.147.0/examples/jsm/"
+        }
+      }
+    </script>
 
-                        log('Inspect:', url, '|', r.status, r.statusText, '| CT:', ct);
-                        if (/<!doctype html|<html/i.test(head)) err('❌ HTML served instead of asset:', url);
+    <script type="module" src="src/engine-bridge.js"></script>
 
-                        if (url.endsWith('.js') && !/javascript|ecmascript/i.test(ct)) {
-                            warn('⚠️ Suspicious Content-Type for JS:', ct, 'for', url);
-                            warn('If nosniff is enabled, the browser may refuse to execute this file.');
-                        }
-                    } catch (e) {
-                        err('❌ Fetch failed:', url, e);
-                    }
-                }
+    <script defer>
+      (function () {
+        const stamp = () => new Date().toISOString();
+        const log = (...a) => console.log("%c[NEXUS][DEBUG]", "color:#00e5ff", stamp(), ...a);
+        const err = (...a) => console.error("%c[NEXUS][DEBUG]", "color:#ff5252", stamp(), ...a);
 
-                window.addEventListener('DOMContentLoaded', () => {
-                    log('DOMContentLoaded.');
-                    log('typeof window.THREE =', typeof window.THREE);
-                    log('typeof window.OrbitControls =', typeof window.OrbitControls);
-                    log('typeof window.GLTFLoader =', typeof window.GLTFLoader);
+        window.addEventListener("error", (e) =>
+          err("WINDOW_ERROR:", e.message, "at", e.filename, ":", e.lineno, e.error || "")
+        );
 
-                    inspect('/vendor/three-0.147.0/build/three.min.js');
-                    inspect('/vendor/three-0.147.0/examples/js/controls/OrbitControls.js');
-                    inspect('/vendor/three-0.147.0/examples/js/loaders/GLTFLoader.js');
-                    inspect('/vendor/avatars/avatars.json');
-                });
-            })();
-        </script>
+        window.addEventListener("DOMContentLoaded", () => {
+          log("DOMContentLoaded.");
+        });
+      })();
+    </script>
 
-        <!-- Inline UI fixes:
-         - Conversation log scroll always works
-         - QUICK ACTIONS + AVATAR are collapsed by default and toggle on click
-         - No <details> (so nothing auto-collapses by browser defaults)
-    -->
-        <style>
-            /* Chatbot flow */
-            .control-panel {
-                display: flex;
-                flex-direction: column;
-                gap: 14px;
-            }
-            .control-panel .panel-input {
-                order: 1;
-            }
-            .control-panel .panel-chat {
-                order: 2;
-            }
-            .control-panel .panel-actions {
-                order: 3;
-            }
-            .control-panel .panel-avatar {
-                order: 4;
-            }
+    <style>
+      /* Chatbot flow */
+      .control-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .control-panel .panel-input {
+        order: 1;
+      }
+      .control-panel .panel-chat {
+        order: 2;
+      }
+      .control-panel .panel-actions {
+        order: 3;
+      }
+      .control-panel .panel-avatar {
+        order: 4;
+      }
 
-            /* Ensure chat log can scroll (fixes “no scroll”) */
-            .history-section .chat-history {
-                min-height: 360px;
-                max-height: 520px;
-                overflow-y: auto !important;
-                overscroll-behavior: contain;
-                -webkit-overflow-scrolling: touch;
-                padding-right: 6px;
-            }
+      /* Ensure chat log can scroll */
+      .history-section .chat-history {
+        min-height: 360px;
+        max-height: 520px;
+        overflow-y: auto !important;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        padding-right: 6px;
+      }
 
-            /* Collapsible */
-            .collapsible .collapse-toggle {
-                width: 100%;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 12px;
-                background: transparent;
-                border: 0;
-                padding: 0;
-                color: inherit;
-                cursor: pointer;
-            }
-            .collapsible .collapse-toggle:focus-visible {
-                outline: 2px solid rgba(0, 229, 255, 0.7);
-                outline-offset: 6px;
-                border-radius: 10px;
-            }
+      /* Collapsible */
+      .collapsible .collapse-toggle {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        background: transparent;
+        border: 0;
+        padding: 0;
+        color: inherit;
+        cursor: pointer;
+      }
+      .collapsible .collapse-toggle:focus-visible {
+        outline: 2px solid rgba(0, 229, 255, 0.7);
+        outline-offset: 6px;
+        border-radius: 10px;
+      }
 
-            .collapsible .chevron {
-                display: inline-flex;
-                font-size: 18px;
-                line-height: 1;
-                transform: rotate(-90deg); /* collapsed default */
-                transition: transform 200ms ease;
-                opacity: 0.9;
-                user-select: none;
-            }
-            .collapsible.is-open .chevron {
-                transform: rotate(0deg);
-            }
+      .collapsible .chevron {
+        display: inline-flex;
+        font-size: 18px;
+        line-height: 1;
+        transform: rotate(-90deg);
+        transition: transform 200ms ease;
+        opacity: 0.9;
+        user-select: none;
+      }
+      .collapsible.is-open .chevron {
+        transform: rotate(0deg);
+      }
 
-            .collapsible .collapse-panel {
-                display: none; /* collapsed default */
-                margin-top: 12px;
-            }
-            .collapsible.is-open .collapse-panel {
-                display: block;
-            }
+      .collapsible .collapse-panel {
+        display: none;
+        margin-top: 12px;
+      }
+      .collapsible.is-open .collapse-panel {
+        display: block;
+      }
 
-            /* Quick actions grid */
-            .quick-actions {
-                display: grid;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 10px;
-            }
-            .quick-actions .emotion-btn {
-                padding: 10px 12px;
-            }
+      /* Quick actions grid */
+      .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+      .quick-actions .emotion-btn {
+        padding: 10px 12px;
+      }
 
-            /* Make the input section feel primary */
-            .panel-input .input-wrapper .text-input {
-                width: 100%;
-            }
+      .panel-input .input-wrapper .text-input {
+        width: 100%;
+      }
 
-            @media (prefers-reduced-motion: reduce) {
-                .collapsible .chevron {
-                    transition: none !important;
-                }
-            }
-        </style>
+      @media (prefers-reduced-motion: reduce) {
+        .collapsible .chevron {
+          transition: none !important;
+        }
+      }
 
-        <noscript>
-            <style>
-                .noscript-banner {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    padding: 12px 16px;
-                    background: #ff5252;
-                    color: #000;
-                    font-family: system-ui, sans-serif;
-                    font-weight: 700;
-                    z-index: 9999;
-                    text-align: center;
-                }
-            </style>
-            <div class="noscript-banner">JavaScript is required to run Nexus Avatar.</div>
-        </noscript>
-    </head>
+      /* Small layout improvement for settings rows */
+      .inline-row {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
 
-    <body>
-        <!-- Background Effects -->
-        <div class="background-grid" aria-hidden="true"></div>
-        <div class="background-gradient" aria-hidden="true"></div>
+      .select-input {
+        width: 100%;
+      }
 
-        <!-- Main Container -->
-        <div class="main-container">
-            <!-- Header -->
-            <header class="header glass-panel">
-                <div class="header-content">
-                    <div class="logo">
-                        <div class="logo-icon" aria-hidden="true">⬢</div>
-                        <h1>NEXUS AVATAR</h1>
-                    </div>
-                    <div class="header-controls">
-                        <button class="icon-btn" id="settings-btn" title="Settings" aria-label="Settings" type="button">
-                            <svg
-                                width="20"
-                                height="20"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"
-                                aria-hidden="true"
-                            >
-                                <circle cx="12" cy="12" r="3" />
-                                <path
-                                    d="M12 1v6m0 6v6m5.66-13l-3 3m-3.46 3.46l-3 3m13.96-.66l-6 6m-6-6l-6 6M23 12h-6m-6 0H1"
-                                />
-                            </svg>
-                        </button>
+      .hint-mini {
+        font-size: 12px;
+        opacity: 0.85;
+        margin-top: 6px;
+        line-height: 1.3;
+      }
+      .hint-mini code {
+        opacity: 0.95;
+      }
+    </style>
 
-                        <button class="icon-btn" id="info-btn" title="Info" aria-label="Info" type="button">
-                            <svg
-                                width="20"
-                                height="20"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"
-                                aria-hidden="true"
-                            >
-                                <circle cx="12" cy="12" r="10" />
-                                <line x1="12" y1="16" x2="12" y2="12" />
-                                <line x1="12" y1="8" x2="12.01" y2="8" />
-                            </svg>
-                        </button>
-                    </div>
+    <noscript>
+      <style>
+        .noscript-banner {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          padding: 12px 16px;
+          background: #ff5252;
+          color: #000;
+          font-family: system-ui, sans-serif;
+          font-weight: 700;
+          z-index: 9999;
+          text-align: center;
+        }
+      </style>
+      <div class="noscript-banner">JavaScript is required to run Nexus Avatar.</div>
+    </noscript>
+  </head>
+
+  <body>
+    <div class="background-grid" aria-hidden="true"></div>
+    <div class="background-gradient" aria-hidden="true"></div>
+
+    <div class="main-container">
+      <header class="header glass-panel">
+        <div class="header-content">
+          <div class="logo">
+            <div class="logo-icon" aria-hidden="true">⬢</div>
+            <h1>NEXUS AVATAR</h1>
+          </div>
+          <div class="header-controls">
+            <button class="icon-btn" id="settings-btn" title="Settings" aria-label="Settings" type="button">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M12 1v6m0 6v6m5.66-13l-3 3m-3.46 3.46l-3 3m13.96-.66l-6 6m-6-6l-6 6M23 12h-6m-6 0H1" />
+              </svg>
+            </button>
+
+            <button class="icon-btn" id="info-btn" title="Info" aria-label="Info" type="button">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="16" x2="12" y2="12" />
+                <line x1="12" y1="8" x2="12.01" y2="8" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div class="content-grid">
+        <section class="avatar-section">
+          <div class="glass-panel viewport-container">
+            <div id="avatar-viewport" class="avatar-viewport" aria-label="3D Avatar Viewport">
+              <div id="loading-overlay" class="loading-overlay" role="status" aria-live="polite">
+                <div class="loading-content">
+                  <div class="loader" aria-hidden="true"></div>
+                  <p id="loading-text" class="loading-text">Loading 3D Avatar...</p>
+                  <div class="loading-bar" aria-hidden="true">
+                    <div class="loading-progress"></div>
+                  </div>
                 </div>
-            </header>
-
-            <!-- Main Layout -->
-            <div class="content-grid">
-                <!-- Avatar Viewport -->
-                <section class="avatar-section">
-                    <div class="glass-panel viewport-container">
-                        <div id="avatar-viewport" class="avatar-viewport" aria-label="3D Avatar Viewport">
-                            <!-- Three.js renders here -->
-
-                            <!-- Loading overlay (default visible; JS hides it on success) -->
-                            <div id="loading-overlay" class="loading-overlay" role="status" aria-live="polite">
-                                <div class="loading-content">
-                                    <div class="loader" aria-hidden="true"></div>
-                                    <p id="loading-text" class="loading-text">Loading 3D Avatar...</p>
-                                    <div class="loading-bar" aria-hidden="true">
-                                        <div class="loading-progress"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- HUD Overlay -->
-                        <div class="hud-overlay" aria-hidden="true">
-                            <div class="hud-corner hud-tl"></div>
-                            <div class="hud-corner hud-tr"></div>
-                            <div class="hud-corner hud-bl"></div>
-                            <div class="hud-corner hud-br"></div>
-
-                            <div class="status-badge" id="status-badge" aria-hidden="false">
-                                <div class="status-indicator" id="status-indicator"></div>
-                                <span class="status-text" id="status-text">BOOTING...</span>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Control Panel -->
-                <aside class="control-panel">
-                    <!-- 1) Input -->
-                    <div class="glass-panel control-section panel-input">
-                        <h2 class="section-title"><span class="title-icon">▶</span> CHAT</h2>
-
-                        <div class="input-group">
-                            <label class="input-label" for="speech-text">MESSAGE</label>
-                            <div class="input-wrapper">
-                                <input
-                                    type="text"
-                                    id="speech-text"
-                                    class="text-input"
-                                    placeholder="Type your message…"
-                                    autocomplete="off"
-                                />
-                                <button class="primary-btn" id="speak-btn" aria-label="Send" type="button">
-                                    <svg
-                                        width="16"
-                                        height="16"
-                                        viewBox="0 0 24 24"
-                                        fill="currentColor"
-                                        aria-hidden="true"
-                                    >
-                                        <polygon points="5 3 19 12 5 21 5 3" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="input-group">
-                            <label class="input-label">VOICE</label>
-                            <button class="voice-btn" id="listen-btn" type="button" aria-pressed="false">
-                                <svg
-                                    class="mic-icon"
-                                    width="20"
-                                    height="20"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    aria-hidden="true"
-                                >
-                                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                                    <line x1="12" y1="19" x2="12" y2="23" />
-                                    <line x1="8" y1="23" x2="16" y2="23" />
-                                </svg>
-                                <span id="voice-btn-text">ACTIVATE VOICE</span>
-                            </button>
-                            <p class="voice-status" id="recognition-status">Voice system standby</p>
-                        </div>
-                    </div>
-
-                    <!-- 2) Conversation (scrollable) -->
-                    <div class="glass-panel control-section history-section panel-chat">
-                        <div class="section-header">
-                            <h2 class="section-title"><span class="title-icon">◇</span> CONVERSATION</h2>
-                            <button class="clear-btn" id="clear-history" type="button">CLEAR</button>
-                        </div>
-                        <div class="chat-history" id="chat-history">
-                            <div class="empty-state">No transmissions recorded</div>
-                        </div>
-                    </div>
-
-                    <!-- 3) Quick Actions (collapsed by default; toggles open/close) -->
-                    <div
-                        class="glass-panel control-section panel-actions collapsible"
-                        data-collapsible
-                        data-default="collapsed"
-                    >
-                        <button class="collapse-toggle" type="button" aria-expanded="false">
-                            <h2 class="section-title" style="margin: 0">
-                                <span class="title-icon">◆</span>
-                                <span class="collapse-title">QUICK ACTIONS</span>
-                            </h2>
-                            <span class="chevron" aria-hidden="true">▾</span>
-                        </button>
-
-                        <div class="collapse-panel" data-collapse-panel>
-                            <div class="quick-actions">
-                                <button class="emotion-btn" data-emotion="idle" data-color="blue" type="button">
-                                    <span class="emotion-icon">🧘</span>
-                                    <span class="emotion-label">IDLE</span>
-                                </button>
-                                <button class="emotion-btn" data-emotion="happy" data-color="green" type="button">
-                                    <span class="emotion-icon">😊</span>
-                                    <span class="emotion-label">HAPPY</span>
-                                </button>
-                                <button class="emotion-btn" data-emotion="thinking" data-color="purple" type="button">
-                                    <span class="emotion-icon">🤔</span>
-                                    <span class="emotion-label">THINKING</span>
-                                </button>
-                                <button class="emotion-btn" data-emotion="dance" data-color="orange" type="button">
-                                    <span class="emotion-icon">🕺</span>
-                                    <span class="emotion-label">DANCE</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 4) Avatar (collapsed by default; toggles open/close) -->
-                    <div
-                        class="glass-panel control-section panel-avatar collapsible"
-                        data-collapsible
-                        data-default="collapsed"
-                    >
-                        <button class="collapse-toggle" type="button" aria-expanded="false">
-                            <h2 class="section-title" style="margin: 0">
-                                <span class="title-icon">⬡</span>
-                                <span class="collapse-title">AVATAR</span>
-                            </h2>
-                            <span class="chevron" aria-hidden="true">▾</span>
-                        </button>
-
-                        <div class="collapse-panel" data-collapse-panel>
-                            <div class="input-group">
-                                <label class="input-label" for="avatar-select">PRESET</label>
-                                <select id="avatar-select" class="select-input">
-                                    <option value="" selected>Loading avatars...</option>
-                                </select>
-
-                                <p class="voice-status" style="margin-top: 8px; opacity: 0.8">
-                                    Loaded from <code>/vendor/avatars/avatars.json</code>
-                                </p>
-                            </div>
-
-                            <div class="input-group">
-                                <label class="input-label" for="avatar-upload">UPLOAD (.glb / .gltf)</label>
-                                <input id="avatar-upload" class="text-input" type="file" accept=".glb,.gltf" />
-                            </div>
-                        </div>
-                    </div>
-                </aside>
+              </div>
             </div>
+
+            <div class="hud-overlay" aria-hidden="true">
+              <div class="hud-corner hud-tl"></div>
+              <div class="hud-corner hud-tr"></div>
+              <div class="hud-corner hud-bl"></div>
+              <div class="hud-corner hud-br"></div>
+
+              <div class="status-badge" id="status-badge" aria-hidden="false">
+                <div class="status-indicator" id="status-indicator"></div>
+                <span class="status-text" id="status-text">BOOTING...</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <aside class="control-panel">
+          <div class="glass-panel control-section panel-input">
+            <h2 class="section-title"><span class="title-icon">▶</span> CHAT</h2>
+
+            <div class="input-group">
+              <label class="input-label" for="speech-text">MESSAGE</label>
+              <div class="input-wrapper">
+                <input type="text" id="speech-text" class="text-input" placeholder="Type your message…" autocomplete="off" />
+                <button class="primary-btn" id="speak-btn" aria-label="Send" type="button">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <polygon points="5 3 19 12 5 21 5 3" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label class="input-label">VOICE</label>
+              <button class="voice-btn" id="listen-btn" type="button" aria-pressed="false">
+                <svg class="mic-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="23" />
+                  <line x1="8" y1="23" x2="16" y2="23" />
+                </svg>
+                <span id="voice-btn-text">ACTIVATE VOICE</span>
+              </button>
+              <p class="voice-status" id="recognition-status">Voice system standby</p>
+            </div>
+          </div>
+
+          <div class="glass-panel control-section history-section panel-chat">
+            <div class="section-header">
+              <h2 class="section-title"><span class="title-icon">◇</span> CONVERSATION</h2>
+              <button class="clear-btn" id="clear-history" type="button">CLEAR</button>
+            </div>
+            <div class="chat-history" id="chat-history">
+              <div class="empty-state">No transmissions recorded</div>
+            </div>
+          </div>
+
+          <div class="glass-panel control-section panel-actions collapsible" data-collapsible data-default="collapsed">
+            <button class="collapse-toggle" type="button" aria-expanded="false">
+              <h2 class="section-title" style="margin: 0">
+                <span class="title-icon">◆</span>
+                <span class="collapse-title">QUICK ACTIONS</span>
+              </h2>
+              <span class="chevron" aria-hidden="true">▾</span>
+            </button>
+
+            <div class="collapse-panel" data-collapse-panel>
+              <div class="quick-actions">
+                <button class="emotion-btn" data-emotion="idle" data-color="blue" type="button">
+                  <span class="emotion-icon">🧘</span>
+                  <span class="emotion-label">IDLE</span>
+                </button>
+                <button class="emotion-btn" data-emotion="happy" data-color="green" type="button">
+                  <span class="emotion-icon">😊</span>
+                  <span class="emotion-label">HAPPY</span>
+                </button>
+                <button class="emotion-btn" data-emotion="thinking" data-color="purple" type="button">
+                  <span class="emotion-icon">🤔</span>
+                  <span class="emotion-label">THINKING</span>
+                </button>
+                <button class="emotion-btn" data-emotion="dance" data-color="orange" type="button">
+                  <span class="emotion-icon">🕺</span>
+                  <span class="emotion-label">DANCE</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass-panel control-section panel-avatar collapsible" data-collapsible data-default="collapsed">
+            <button class="collapse-toggle" type="button" aria-expanded="false">
+              <h2 class="section-title" style="margin: 0">
+                <span class="title-icon">⬡</span>
+                <span class="collapse-title">AVATAR</span>
+              </h2>
+              <span class="chevron" aria-hidden="true">▾</span>
+            </button>
+
+            <div class="collapse-panel" data-collapse-panel>
+              <div class="input-group">
+                <label class="input-label" for="avatar-select">PRESET</label>
+                <select id="avatar-select" class="select-input">
+                  <option value="" selected>Loading avatars...</option>
+                </select>
+
+                <p class="voice-status" style="margin-top: 8px; opacity: 0.8">
+                  Loaded from <code>/vendor/avatars/avatars.json</code>
+                </p>
+              </div>
+
+              <div class="input-group">
+                <label class="input-label" for="avatar-upload">UPLOAD (.glb / .gltf)</label>
+                <input id="avatar-upload" class="text-input" type="file" accept=".glb,.gltf" />
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="settings-modal">
+      <div class="modal glass-panel">
+        <div class="modal-header">
+          <h2 class="modal-title"><span class="title-icon">⚙</span> SYSTEM CONFIGURATION</h2>
+          <button class="close-btn" id="close-settings" type="button" aria-label="Close settings">✕</button>
         </div>
 
-        <!-- Settings Modal -->
-        <div class="modal-overlay" id="settings-modal">
-            <div class="modal glass-panel">
-                <div class="modal-header">
-                    <h2 class="modal-title"><span class="title-icon">⚙</span> SYSTEM CONFIGURATION</h2>
-                    <button class="close-btn" id="close-settings" type="button" aria-label="Close settings">✕</button>
+        <div class="modal-content">
+          <div class="config-section">
+            <h3 class="config-title">AI PROVIDER</h3>
+            <div class="provider-grid">
+              <label class="provider-card">
+                <input type="radio" name="provider" value="openai" class="provider-radio" />
+                <div class="provider-content">
+                  <div class="provider-icon">🤖</div>
+                  <div class="provider-name">OpenAI</div>
                 </div>
+              </label>
+              <label class="provider-card">
+                <input type="radio" name="provider" value="claude" class="provider-radio" />
+                <div class="provider-content">
+                  <div class="provider-icon">⚡</div>
+                  <div class="provider-name">Claude</div>
+                </div>
+              </label>
+              <label class="provider-card">
+                <input type="radio" name="provider" value="watsonx" class="provider-radio" />
+                <div class="provider-content">
+                  <div class="provider-icon">🔷</div>
+                  <div class="provider-name">WatsonX</div>
+                </div>
+              </label>
+              <label class="provider-card">
+                <input type="radio" name="provider" value="none" class="provider-radio" checked />
+                <div class="provider-content">
+                  <div class="provider-icon">○</div>
+                  <div class="provider-name">None</div>
+                </div>
+              </label>
+            </div>
+          </div>
 
-                <div class="modal-content">
-                    <div class="config-section">
-                        <h3 class="config-title">AI PROVIDER</h3>
-                        <div class="provider-grid">
-                            <label class="provider-card">
-                                <input type="radio" name="provider" value="openai" class="provider-radio" />
-                                <div class="provider-content">
-                                    <div class="provider-icon">🤖</div>
-                                    <div class="provider-name">OpenAI</div>
-                                </div>
-                            </label>
-                            <label class="provider-card">
-                                <input type="radio" name="provider" value="claude" class="provider-radio" />
-                                <div class="provider-content">
-                                    <div class="provider-icon">⚡</div>
-                                    <div class="provider-name">Claude</div>
-                                </div>
-                            </label>
-                            <label class="provider-card">
-                                <input type="radio" name="provider" value="watsonx" class="provider-radio" />
-                                <div class="provider-content">
-                                    <div class="provider-icon">🔷</div>
-                                    <div class="provider-name">WatsonX</div>
-                                </div>
-                            </label>
-                            <label class="provider-card">
-                                <input type="radio" name="provider" value="none" class="provider-radio" checked />
-                                <div class="provider-content">
-                                    <div class="provider-icon">○</div>
-                                    <div class="provider-name">None</div>
-                                </div>
-                            </label>
-                        </div>
-                    </div>
+          <div class="config-section">
+            <h3 class="config-title">API CONFIGURATION</h3>
 
-                    <div class="config-section">
-                        <h3 class="config-title">API CONFIGURATION</h3>
+            <div class="input-group">
+              <label class="input-label" for="api-key">API KEY</label>
+              <input type="password" id="api-key" class="text-input" placeholder="Enter your API key..." />
+            </div>
 
-                        <div class="input-group">
-                            <label class="input-label" for="api-key">API KEY</label>
-                            <input
-                                type="password"
-                                id="api-key"
-                                class="text-input"
-                                placeholder="Enter your API key..."
-                            />
-                        </div>
+            <div class="input-group" id="watsonx-project-row" style="display: none">
+              <label class="input-label" for="watsonx-project-id">WATSONX PROJECT ID</label>
+              <input id="watsonx-project-id" class="text-input" placeholder="Project ID..." />
+            </div>
 
-                        <div class="input-group" id="watsonx-project-row" style="display: none">
-                            <label class="input-label" for="watsonx-project-id">WATSONX PROJECT ID</label>
-                            <input id="watsonx-project-id" class="text-input" placeholder="Project ID..." />
-                        </div>
+            <div class="input-group" id="baseurl-row" style="display: none">
+              <label class="input-label" for="base-url">BASE URL (optional)</label>
+              <input id="base-url" class="text-input" placeholder="https://..." />
+            </div>
 
-                        <div class="input-group" id="baseurl-row" style="display: none">
-                            <label class="input-label" for="base-url">BASE URL (optional)</label>
-                            <input id="base-url" class="text-input" placeholder="https://..." />
-                        </div>
+            <div class="input-group">
+              <label class="input-label" for="model-select">MODEL</label>
+              <select id="model-select" class="select-input">
+                <option value="">Select a model...</option>
+              </select>
+            </div>
+          </div>
 
-                        <div class="input-group">
-                            <label class="input-label" for="model-select">MODEL</label>
-                            <select id="model-select" class="select-input">
-                                <option value="">Select a model...</option>
-                            </select>
-                        </div>
-                    </div>
+          <div class="config-section">
+            <h3 class="config-title">SPEECH</h3>
 
-                    <div class="config-section">
-                        <h3 class="config-title">SYSTEM PROMPT</h3>
-                        <textarea
-                            id="system-prompt"
-                            class="textarea-input"
-                            placeholder="Define the avatar's personality and behavior..."
-                            rows="4"
-                        >
+            <div class="input-group">
+              <label class="input-label" for="speech-lang">LANGUAGE</label>
+              <select id="speech-lang" class="select-input">
+                <option value="en-US">English (US)</option>
+                <option value="en-GB">English (UK)</option>
+                <option value="it-IT">Italiano</option>
+                <option value="es-ES">Español</option>
+                <option value="fr-FR">Français</option>
+                <option value="de-DE">Deutsch</option>
+                <option value="pt-BR">Português (BR)</option>
+                <option value="ja-JP">日本語</option>
+                <option value="ko-KR">한국어</option>
+              </select>
+            </div>
+
+            <div class="input-group">
+              <label class="input-label" for="speech-voice-pref">VOICE PREFERENCE</label>
+              <select id="speech-voice-pref" class="select-input">
+                <option value="any">Any</option>
+                <option value="female">Prefer Female</option>
+                <option value="male">Prefer Male</option>
+              </select>
+              <p class="voice-status" style="margin-top: 8px; opacity: 0.8">
+                Note: gender/style depends on installed voices in your OS/browser.
+              </p>
+            </div>
+
+            <div class="input-group">
+              <label class="input-label" for="speech-voice">VOICE</label>
+              <select id="speech-voice" class="select-input">
+                <option value="">Auto (best match)</option>
+              </select>
+            </div>
+
+            <div class="input-group">
+              <label class="input-label" for="speech-rate">RATE</label>
+              <input id="speech-rate" class="text-input" type="number" min="0.5" max="1.5" step="0.1" value="0.9" />
+            </div>
+
+            <div class="input-group">
+              <label class="input-label" for="speech-pitch">PITCH</label>
+              <input id="speech-pitch" class="text-input" type="number" min="0.5" max="2.0" step="0.1" value="1.0" />
+            </div>
+
+            <div class="modal-footer" style="justify-content: flex-start; gap: 10px; padding: 0">
+              <button class="secondary-btn" id="test-tts" type="button">TEST VOICE</button>
+              <span id="test-tts-status" style="font-size: 12px; opacity: 0.85"></span>
+            </div>
+          </div>
+
+          <div class="config-section">
+            <h3 class="config-title">SYSTEM PROMPT</h3>
+            <textarea id="system-prompt" class="textarea-input" placeholder="Define the avatar's personality and behavior..." rows="4">
 You are a helpful AI assistant named Nexus. You are friendly, professional, and knowledgeable.</textarea
-                        >
-                    </div>
+            >
+          </div>
 
-                    <div class="modal-footer">
-                        <button class="secondary-btn" id="cancel-settings" type="button">CANCEL</button>
-                        <button class="primary-btn" id="save-settings" type="button">SAVE CONFIGURATION</button>
-                    </div>
-                </div>
-            </div>
+          <div class="modal-footer">
+            <button class="secondary-btn" id="cancel-settings" type="button">CANCEL</button>
+            <button class="secondary-btn" id="test-connection-btn" type="button">TEST CONNECTION</button>
+            <span id="test-connection-status" style="margin-left: 10px; font-size: 12px; opacity: 0.85"></span>
+
+            <button class="primary-btn" id="save-settings" type="button">SAVE CONFIGURATION</button>
+          </div>
         </div>
+      </div>
+    </div>
 
-        <!-- Info Modal -->
-        <div class="modal-overlay" id="info-modal">
-            <div class="modal glass-panel">
-                <div class="modal-header">
-                    <h2 class="modal-title"><span class="title-icon">ℹ</span> SYSTEM INFORMATION</h2>
-                    <button class="close-btn" id="close-info" type="button" aria-label="Close info">✕</button>
-                </div>
-                <div class="modal-content">
-                    <div class="info-section">
-                        <h3 class="config-title">FEATURES</h3>
-                        <ul class="info-list">
-                            <li>🎭 <strong>Real-time 3D avatar</strong> with emotions and animations</li>
-                            <li>🗣️ <strong>Text-to-speech synthesis</strong></li>
-                            <li>🎤 <strong>Voice recognition</strong> (Chrome/Edge)</li>
-                            <li>🤖 <strong>Multi-provider AI</strong> (OpenAI, Claude, WatsonX)</li>
-                            <li>💾 <strong>Client-side storage</strong> for API keys</li>
-                            <li>🎨 <strong>Professional UI</strong> with glassmorphism</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
+    <div class="modal-overlay" id="info-modal">
+      <div class="modal glass-panel">
+        <div class="modal-header">
+          <h2 class="modal-title"><span class="title-icon">ℹ</span> SYSTEM INFORMATION</h2>
+          <button class="close-btn" id="close-info" type="button" aria-label="Close info">✕</button>
         </div>
+        <div class="modal-content">
+          <div class="info-section">
+            <h3 class="config-title">FEATURES</h3>
+            <ul class="info-list">
+              <li>🎭 <strong>Real-time 3D avatar</strong> with emotions and animations</li>
+              <li>🗣️ <strong>Text-to-speech synthesis</strong></li>
+              <li>🎤 <strong>Voice recognition</strong> (Chrome/Edge)</li>
+              <li>🤖 <strong>Multi-provider AI</strong> (OpenAI, Claude, WatsonX)</li>
+              <li>💾 <strong>Client-side storage</strong> for API keys</li>
+              <li>🎨 <strong>Professional UI</strong> with glassmorphism</li>
+              <li>🌐 <strong>Language selector</strong> for speech input/output</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
 
-        <!-- Collapsible behavior (no dependency on main.js) -->
-        <script defer>
-            window.addEventListener('DOMContentLoaded', () => {
-                document.querySelectorAll('[data-collapsible]').forEach((root) => {
-                    const toggle = root.querySelector('.collapse-toggle');
-                    const panel = root.querySelector('[data-collapse-panel]');
-                    if (!toggle || !panel) return;
+    <script defer>
+      window.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll("[data-collapsible]").forEach((root) => {
+          const toggle = root.querySelector(".collapse-toggle");
+          const panel = root.querySelector("[data-collapse-panel]");
+          if (!toggle || !panel) return;
 
-                    // default collapsed unless explicitly set otherwise
-                    const shouldCollapse = (root.getAttribute('data-default') || 'collapsed') === 'collapsed';
-                    if (shouldCollapse) {
-                        root.classList.remove('is-open');
-                        toggle.setAttribute('aria-expanded', 'false');
-                    } else {
-                        root.classList.add('is-open');
-                        toggle.setAttribute('aria-expanded', 'true');
-                    }
+          const shouldCollapse = (root.getAttribute("data-default") || "collapsed") === "collapsed";
+          if (shouldCollapse) {
+            root.classList.remove("is-open");
+            toggle.setAttribute("aria-expanded", "false");
+          } else {
+            root.classList.add("is-open");
+            toggle.setAttribute("aria-expanded", "true");
+          }
 
-                    toggle.addEventListener('click', () => {
-                        const isOpen = root.classList.toggle('is-open');
-                        toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-                    });
-                });
-            });
-        </script>
+          toggle.addEventListener("click", () => {
+            const isOpen = root.classList.toggle("is-open");
+            toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+          });
+        });
+      });
+    </script>
 
-        <!-- App script MUST be classic (NOT type=module) for legacy globals -->
-        <script defer src="src/main.js"></script>
-    </body>
+    <script defer src="src/main.js"></script>
+  </body>
 </html>
