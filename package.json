@@ -4,16 +4,12 @@
   "description": "Production-ready 3D Avatar Chatbot with OpenAI integration, Speech-to-Text, and Text-to-Speech capabilities - A lightweight, commercial-grade AI conversation platform",
   "main": "index.html",
   "type": "module",
-
-  "packageManager": "npm@10.8.2",
-
   "scripts": {
     "start": "node nexus-proxy/server.js",
     "dev": "node nexus-proxy/server.js",
     "dev:watch": "node --watch nexus-proxy/server.js",
 
     "build": "echo 'Static site served by nexus-proxy (no bundle step)'",
-
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
@@ -37,7 +33,6 @@
     "deploy:netlify": "netlify deploy --prod",
     "bundle:analyze": "webpack-bundle-analyzer stats.json"
   },
-
   "keywords": [
     "3d-avatar",
     "chatbot",
@@ -53,26 +48,20 @@
     "production-ready",
     "commercial"
   ],
-
   "author": {
     "name": "Ruslan Magana",
     "url": "https://ruslanmv.com",
     "email": "contact@ruslanmv.com"
   },
-
   "license": "Apache-2.0",
-
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ruslanmv/3D-Avatar-Chatbot.git"
   },
-
   "bugs": {
     "url": "https://github.com/ruslanmv/3D-Avatar-Chatbot/issues"
   },
-
   "homepage": "https://github.com/ruslanmv/3D-Avatar-Chatbot#readme",
-
   "devDependencies": {
     "@babel/core": "^7.23.0",
     "@babel/preset-env": "^7.23.0",
@@ -89,12 +78,10 @@
     "vercel": "^50.0.1",
     "webpack-bundle-analyzer": "^4.9.1"
   },
-
   "engines": {
-    "node": "20.x",
-    "npm": "10.x"
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   },
-
   "lint-staged": {
     "*.js": [
       "eslint --fix",
@@ -104,7 +91,6 @@
       "prettier --write"
     ]
   },
-
   "jest": {
     "testEnvironment": "jsdom",
     "setupFilesAfterEnv": [
@@ -126,7 +112,6 @@
       "**/tests/**/*.test.js"
     ]
   },
-
   "browserslist": [
     ">0.2%",
     "not dead",
