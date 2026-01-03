@@ -274,3 +274,14 @@ openai-key.txt
  copy *
 * copy*.*
 !vendor/three-0.147.0/**
+# Patch script backups
+*.bak.*
+
+# =============================================================================
+# VRM Factory
+# =============================================================================
+vrm-factory/temp/*
+!vrm-factory/temp/.gitkeep
+vrm-factory/addons/*.zip
+vrm-factory/**/__pycache__/
+vrm-factory/**/*.pyc

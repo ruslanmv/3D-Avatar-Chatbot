@@ -5,9 +5,15 @@ import { DRACOLoader } from '../../vendor/three-0.147.0/examples/jsm/loaders/DRA
 import { KTX2Loader } from '../../vendor/three-0.147.0/examples/jsm/loaders/KTX2Loader.js';
 import { RoomEnvironment } from '../../vendor/three-0.147.0/examples/jsm/environments/RoomEnvironment.js';
 import { MeshoptDecoder } from '../../vendor/three-0.147.0/examples/jsm/libs/meshopt_decoder.module.js';
+import { VRSupport } from './VRSupport.js';
+import { VRControllers } from './VRControllers.js';
+import { AvatarManager } from './AvatarManager.js';
+import { VRChatPanel } from './VRChatPanel.js';
+import { VRChatIntegration } from './VRChatIntegration.js';
 
 export class ViewerEngine {
     constructor(containerEl) {
+        console.log('[ViewerEngine] Initializing...');
         this.containerEl = containerEl;
 
         this.scene = new THREE.Scene();
@@ -16,9 +22,12 @@ export class ViewerEngine {
         const w = containerEl.clientWidth || window.innerWidth;
         const h = containerEl.clientHeight || window.innerHeight;
 
+        // Camera
         this.camera = new THREE.PerspectiveCamera(35, w / h, 0.01, 100);
-        this.camera.position.set(0, 1.4, 2.6);
+        // Initial desktop pose (auto-framed after avatar loads)
+        this.camera.position.set(0, 1.4, 2.2);
 
+        // Renderer
         this.renderer = new THREE.WebGLRenderer({
             antialias: true,
             alpha: true,
@@ -26,7 +35,6 @@ export class ViewerEngine {
             preserveDrawingBuffer: false,
         });
 
-        // Quality defaults (viewer-like)
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
         this.renderer.setSize(w, h);
         this.renderer.outputEncoding = THREE.sRGBEncoding;
@@ -37,29 +45,26 @@ export class ViewerEngine {
         containerEl.innerHTML = '';
         containerEl.appendChild(this.renderer.domElement);
 
+        // OrbitControls (Desktop Interaction)
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.05;
+
+        // ✅ Defaults (will be adapted per-avatar in frameObject)
+        this.controls.minDistance = 0.5;
+        this.controls.maxDistance = 25.0; // ✅ allow zooming out for huge models
         this.controls.target.set(0, 1.0, 0);
         this.controls.update();
 
-        // PMREM / IBL environment
+        // Environment
         const pmrem = new THREE.PMREMGenerator(this.renderer);
-        const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-        this.scene.environment = env;
+        this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+        this.scene.add(new THREE.HemisphereLight(0xffffff, 0x222233, 0.25));
 
-        // Soft fill (IBL does most of the work)
-        const hemi = new THREE.HemisphereLight(0xffffff, 0x222233, 0.25);
-        this.scene.add(hemi);
-
-        this.mixer = null;
-        this.clips = [];
-        this.currentRoot = null;
-
-        // Initialize GLTF loader with CORS support for Vercel production
+        // Loaders
         this.loader = new GLTFLoader();
         this.loader.setCrossOrigin('anonymous');
 
-        // ✅ FIX: decoder files live under /examples/js/libs/draco/ (not jsm/)
         const draco = new DRACOLoader();
         draco.setDecoderPath('/vendor/three-0.147.0/examples/js/libs/draco/');
         this.loader.setDRACOLoader(draco);
@@ -68,14 +73,89 @@ export class ViewerEngine {
         ktx2.setTranscoderPath('/vendor/three-0.147.0/examples/jsm/libs/basis/');
         ktx2.detectSupport(this.renderer);
         this.loader.setKTX2Loader(ktx2);
-
         this.loader.setMeshoptDecoder(MeshoptDecoder);
+
+        // VR Systems
+        this.vrSupport = new VRSupport(this.renderer, this.camera, this.scene);
+        this.vrControllers = new VRControllers(this.renderer, this.scene, this.camera);
+
+        // Avatar Manager (Single Source of Truth)
+        this.avatarManager = new AvatarManager({
+            scene: this.scene,
+            loader: this.loader,
+            camera: this.camera,
+            renderer: this.renderer,
+        });
+
+        // VR UI
+        this.vrChatPanel = new VRChatPanel({
+            scene: this.scene,
+            camera: this.camera,
+            controller: this.vrControllers.controller1,
+        });
+        this.vrChatPanel.setVisible(false);
+
+        // Wire chat panel to VR controllers for dragging support
+        this.vrControllers.setChatPanel(this.vrChatPanel);
+
+        // Integration
+        this.vrChatIntegration = new VRChatIntegration({
+            avatarManager: this.avatarManager,
+            vrChatPanel: this.vrChatPanel,
+            vrControllers: this.vrControllers,
+            speechService: window.SpeechService || null,
+            chatManager: window.ChatManager || null,
+        });
+
+        // --- Event Listeners ---
+        window.addEventListener('vr-session-start', async () => {
+            console.log('[ViewerEngine] VR Session Starting...');
+
+            this.controls.enabled = false;
+            this.vrControllers.setEnabled(true);
+
+            if (!this.vrChatIntegration.isInitialized) {
+                console.log('[ViewerEngine] Initializing VR Chat System...');
+                await this.vrChatIntegration.initialize('/vendor/avatars/avatars.json');
+            }
+
+            this.vrControllers.setMenuButtonCallback(() => {
+                const isVisible = this.vrChatPanel.group.visible;
+                console.log(`[ViewerEngine] Toggling Menu: ${!isVisible}`);
+                if (isVisible) this.vrChatIntegration.disable();
+                else this.vrChatIntegration.enable();
+            });
+
+            console.log('[ViewerEngine] VR Started. Controls Disabled. Press Left Menu/X to toggle chat.');
+        });
+
+        window.addEventListener('vr-session-end', () => {
+            console.log('[ViewerEngine] VR Session Ending...');
+
+            this.controls.enabled = true;
+
+            // Reset, then re-frame if an avatar exists
+            this.camera.position.set(0, 1.4, 2.2);
+            this.controls.target.set(0, 1.0, 0);
+            this.controls.update();
+
+            if (this.avatarManager?.currentRoot) {
+                // ✅ use improved framing (not too close, can zoom out for huge models)
+                this.frameObject(this.avatarManager.currentRoot, 1.35);
+            }
+
+            this.vrControllers.setEnabled(false);
+            this.vrControllers.resetPosition();
+            this.vrChatIntegration.disable();
+
+            console.log('[ViewerEngine] VR Ended. Controls Enabled.');
+        });
 
         this._onResize = () => this.resize();
         window.addEventListener('resize', this._onResize);
 
-        this._raf = null;
         this.animate();
+        console.log('[ViewerEngine] Ready.');
     }
 
     resize() {
@@ -84,97 +164,109 @@ export class ViewerEngine {
         this.camera.aspect = w / h;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(w, h);
+
+        // Optional: if you want perfect reframing after resize, uncomment:
+        // if (!this.renderer.xr.isPresenting && this.avatarManager?.currentRoot) {
+        //   this.frameObject(this.avatarManager.currentRoot, 1.35);
+        // }
     }
 
-    disposeCurrent() {
-        if (!this.currentRoot) return;
-        this.scene.remove(this.currentRoot);
+    /**
+     * ✅ Improved Auto-frame (not too close + supports huge models):
+     * - Uses both vertical and horizontal FOV to compute a correct fit.
+     * - Adaptive min/max distance based on model size.
+     * - Updates OrbitControls min/maxDistance so user can zoom far enough.
+     */
+    frameObject(root, fitOffset = 1.35) {
+        if (!root) return;
 
-        this.currentRoot.traverse((obj) => {
-            if (obj.geometry) obj.geometry.dispose?.();
-            if (obj.material) {
-                const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-                mats.forEach((m) => {
-                    if (!m) return;
-                    for (const k in m) {
-                        const v = m[k];
-                        if (v && v.isTexture) v.dispose?.();
-                    }
-                    m.dispose?.();
-                });
-            }
-        });
+        root.updateWorldMatrix(true, true);
 
-        this.currentRoot = null;
-        this.mixer = null;
-        this.clips = [];
-    }
+        const box = new THREE.Box3().setFromObject(root);
+        if (!isFinite(box.min.x) || !isFinite(box.max.x)) return;
 
-    async loadAvatar(url) {
-        this.disposeCurrent();
-
-        const gltf = await new Promise((resolve, reject) => {
-            this.loader.load(url, resolve, undefined, reject);
-        });
-
-        this.currentRoot = gltf.scene;
-        this.scene.add(this.currentRoot);
-
-        this.currentRoot.traverse((o) => {
-            if (o.isMesh) {
-                o.castShadow = false;
-                o.receiveShadow = false;
-            }
-        });
-
-        this.clips = gltf.animations || [];
-        if (this.clips.length) {
-            this.mixer = new THREE.AnimationMixer(this.currentRoot);
-            const action = this.mixer.clipAction(this.clips[0]);
-            action.play();
-        }
-
-        this.frameToContent();
-    }
-
-    frameToContent() {
-        if (!this.currentRoot) return;
-
-        const box = new THREE.Box3().setFromObject(this.currentRoot);
         const size = box.getSize(new THREE.Vector3());
         const center = box.getCenter(new THREE.Vector3());
 
-        const maxDim = Math.max(size.x, size.y, size.z);
-        const fitDist = maxDim / (2 * Math.tan((this.camera.fov * Math.PI) / 360));
-        const dist = fitDist * 1.35;
+        // Better composition: bias target slightly upward (toward head/torso)
+        const target = center.clone();
+        target.y += size.y * 0.12;
 
-        const dir = new THREE.Vector3(0, 0.25, 1).normalize();
-        this.camera.position.copy(center).add(dir.multiplyScalar(dist));
-        this.controls.target.copy(center);
+        // Compute distance required to fit object in view (height + width)
+        const aspect = this.camera.aspect;
+        const vFov = THREE.MathUtils.degToRad(this.camera.fov);
+        const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
+
+        const fitHeightDistance = size.y / 2 / Math.tan(vFov / 2);
+        const fitWidthDistance = size.x / 2 / Math.tan(hFov / 2);
+
+        let distance = Math.max(fitHeightDistance, fitWidthDistance) * fitOffset;
+
+        // Adaptive clamp based on model size
+        const maxSize = Math.max(size.x, size.y, size.z);
+
+        // Don't allow tiny models to push camera too close
+        const minD = THREE.MathUtils.clamp(maxSize * 0.9, 0.8, 2.0);
+
+        // Allow huge models to be framed and allow zooming out
+        const maxD = Math.max(6.0, maxSize * 4.0);
+
+        distance = THREE.MathUtils.clamp(distance, minD, maxD);
+
+        // Place camera on a pleasant diagonal view
+        const dir = new THREE.Vector3(0.28, 0.08, 1).normalize();
+        const newPos = target.clone().add(dir.multiplyScalar(distance));
+
+        this.camera.position.copy(newPos);
+        this.controls.target.copy(target);
+
+        // ✅ Critical: allow user zoom range based on avatar size
+        this.controls.minDistance = Math.max(0.35, minD * 0.5);
+        this.controls.maxDistance = Math.max(10.0, distance * 4.0, maxD);
+
         this.controls.update();
+        this.camera.updateProjectionMatrix();
     }
 
-    playAnimationByName(name) {
-        if (!this.mixer || !this.clips?.length) return false;
-        const wanted = (name || '').toLowerCase();
+    // Forward load calls to AvatarManager
+    async loadAvatar(url, name = '') {
+        if (this.renderer.xr.isPresenting) {
+            console.log('[ViewerEngine] Skipping desktop loadAvatar because VR is active');
+            return;
+        }
 
-        // exact then fuzzy
-        let clip = this.clips.find((c) => (c.name || '').toLowerCase() === wanted);
-        if (!clip) clip = this.clips.find((c) => (c.name || '').toLowerCase().includes(wanted));
-        if (!clip) return false;
+        console.log(`[ViewerEngine] Loading desktop avatar: ${url}`);
+        const info = await this.avatarManager.setAvatarByUrl(url, name);
 
-        this.mixer.stopAllAction();
-        const action = this.mixer.clipAction(clip);
-        action.reset();
-        action.play();
-        return true;
+        if (this.avatarManager.currentRoot) {
+            this.vrControllers.registerAvatar(this.avatarManager.currentRoot);
+
+            // ✅ Improved auto-frame (balanced distance + supports huge models)
+            this.frameObject(this.avatarManager.currentRoot, 1.35);
+        }
+
+        return info;
     }
 
     animate() {
-        this._raf = requestAnimationFrame(() => this.animate());
-        const dt = this.clock.getDelta();
-        this.mixer?.update(dt);
-        this.controls.update();
-        this.renderer.render(this.scene, this.camera);
+        this.renderer.setAnimationLoop(() => {
+            const dt = this.clock.getDelta();
+
+            try {
+                const t = this.clock.getElapsedTime();
+                window.NEXUS_PROCEDURAL_ANIMATOR?.update?.(t, dt);
+            } catch (_) {}
+
+            this.avatarManager?.update(dt);
+            this.vrControllers.update(dt);
+
+            if (this.renderer.xr.isPresenting) {
+                this.vrChatPanel?.update();
+            } else {
+                this.controls.update();
+            }
+
+            this.renderer.render(this.scene, this.camera);
+        });
     }
 }

@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>VR Chatbot - Meta Quest Compatible</title>
+
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                margin: 0;
+                overflow: hidden;
+                background-color: #000;
+                font-family: Arial, sans-serif;
+            }
+
+            #info {
+                position: absolute;
+                top: 20px;
+                width: 100%;
+                text-align: center;
+                color: #00ff00;
+                font-size: 18px;
+                font-weight: bold;
+                z-index: 1000;
+                text-shadow: 0 0 10px #000;
+                pointer-events: none;
+            }
+
+            #debug {
+                position: absolute;
+                top: 60px;
+                left: 20px;
+                color: #ffff00;
+                font-size: 12px;
+                background: rgba(0, 0, 0, 0.8);
+                padding: 10px;
+                border-radius: 5px;
+                z-index: 1000;
+                max-width: 300px;
+                font-family: monospace;
+            }
+
+            #status {
+                position: absolute;
+                bottom: 20px;
+                left: 20px;
+                color: #00ff00;
+                font-size: 14px;
+                background: rgba(0, 0, 0, 0.8);
+                padding: 10px 20px;
+                border-radius: 8px;
+                z-index: 1000;
+            }
+
+            .vr-overlay {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(0, 0, 0, 0.9);
+                color: white;
+                padding: 30px;
+                border-radius: 10px;
+                z-index: 2000;
+                text-align: center;
+                max-width: 90%;
+            }
+
+            .vr-overlay h2 {
+                color: #00ff00;
+                margin-bottom: 20px;
+            }
+
+            .vr-overlay button {
+                background: #00ff00;
+                color: #000;
+                border: none;
+                padding: 15px 30px;
+                font-size: 18px;
+                border-radius: 5px;
+                cursor: pointer;
+                margin: 10px;
+                font-weight: bold;
+            }
+
+            .vr-overlay button:hover {
+                background: #00dd00;
+            }
+
+            .hide {
+                display: none;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="info">🥽 VR CHATBOT - Meta Quest Ready</div>
+
+        <div id="debug">
+            <div>Browser: <span id="browser-info">Detecting...</span></div>
+            <div>WebXR: <span id="webxr-status">Checking...</span></div>
+            <div>HTTPS: <span id="https-status">Checking...</span></div>
+            <div>VR Session: <span id="vr-session">Not started</span></div>
+        </div>
+
+        <div id="status">Initializing 3D scene...</div>
+
+        <div id="no-webxr-overlay" class="vr-overlay hide">
+            <h2>⚠️ WebXR Not Available</h2>
+            <p>Your browser doesn't support WebXR or you're not using HTTPS.</p>
+            <p><strong>For Meta Quest:</strong></p>
+            <ul style="text-align: left; margin: 20px">
+                <li>Use Quest Browser (built-in browser)</li>
+                <li>Make sure site is served over HTTPS</li>
+                <li>Grant permissions when prompted</li>
+            </ul>
+            <button onclick="location.reload()">Reload Page</button>
+            <button onclick="document.getElementById('no-webxr-overlay').classList.add('hide')">Close</button>
+        </div>
+
+        <!-- Three.js from CDN -->
+        <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+        <script src="https://unpkg.com/three@0.160.0/examples/js/webxr/VRButton.js"></script>
+
+        <script>
+            // Debug info
+            function updateDebug() {
+                document.getElementById('browser-info').textContent = navigator.userAgent.includes('Quest')
+                    ? 'Meta Quest'
+                    : 'Desktop';
+                document.getElementById('https-status').textContent =
+                    location.protocol === 'https:' ? '✅ Yes' : '❌ No';
+
+                if (navigator.xr) {
+                    navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+                        document.getElementById('webxr-status').textContent = supported
+                            ? '✅ Supported'
+                            : '❌ Not supported';
+                        if (!supported && location.protocol !== 'https:') {
+                            setTimeout(() => {
+                                document.getElementById('no-webxr-overlay').classList.remove('hide');
+                            }, 2000);
+                        }
+                    });
+                } else {
+                    document.getElementById('webxr-status').textContent = '❌ Not available';
+                }
+            }
+
+            updateDebug();
+
+            // Status update
+            function updateStatus(message) {
+                document.getElementById('status').textContent = message;
+                console.log('[VR Chatbot]', message);
+            }
+
+            // Create scene
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x505050);
+
+            // Camera
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 1.6, 3);
+
+            // Renderer
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.xr.enabled = true;
+            document.body.appendChild(renderer.domElement);
+
+            // Add VR button
+            try {
+                const vrButton = THREE.VRButton.createButton(renderer);
+                vrButton.style.zIndex = '1001';
+                document.body.appendChild(vrButton);
+                updateStatus('VR button added - Click to enter VR');
+            } catch (e) {
+                console.error('VR Button error:', e);
+                updateStatus('VR not available - Desktop mode only');
+            }
+
+            // Simple lighting - very bright for visibility
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+            dirLight.position.set(5, 5, 5);
+            scene.add(dirLight);
+
+            // Add a simple test cube (always visible)
+            const cubeGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+            const cubeMaterial = new THREE.MeshStandardMaterial({
+                color: 0x00ff00,
+                emissive: 0x00ff00,
+                emissiveIntensity: 0.2,
+            });
+            const testCube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+            testCube.position.set(0, 1.6, -2);
+            scene.add(testCube);
+
+            // Add a floor grid
+            const gridHelper = new THREE.GridHelper(10, 10, 0x00ff00, 0x00ff00);
+            gridHelper.material.opacity = 0.3;
+            gridHelper.material.transparent = true;
+            scene.add(gridHelper);
+
+            // Add reference sphere (avatar placeholder)
+            const sphereGeometry = new THREE.SphereGeometry(0.2, 32, 32);
+            const sphereMaterial = new THREE.MeshStandardMaterial({
+                color: 0xff00ff,
+                emissive: 0xff00ff,
+                emissiveIntensity: 0.3,
+            });
+            const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+            sphere.position.set(0, 1.2, -1.5);
+            scene.add(sphere);
+
+            // Track VR session
+            renderer.xr.addEventListener('sessionstart', () => {
+                updateStatus('VR Session Started! 🥽');
+                document.getElementById('vr-session').textContent = '✅ Active';
+                document.getElementById('debug').style.display = 'none';
+                console.log('VR session started successfully');
+            });
+
+            renderer.xr.addEventListener('sessionend', () => {
+                updateStatus('VR Session Ended');
+                document.getElementById('vr-session').textContent = '❌ Ended';
+                document.getElementById('debug').style.display = 'block';
+                console.log('VR session ended');
+            });
+
+            // Animation loop
+            let frameCount = 0;
+            function animate() {
+                frameCount++;
+
+                // Rotate cube
+                testCube.rotation.x += 0.01;
+                testCube.rotation.y += 0.01;
+
+                // Pulse sphere
+                sphere.scale.setScalar(1 + Math.sin(frameCount * 0.05) * 0.1);
+
+                // Update status periodically
+                if (frameCount % 60 === 0) {
+                    updateStatus(
+                        renderer.xr.isPresenting ? 'VR Mode Active 🥽' : 'Desktop Mode - Click VR button to enter VR'
+                    );
+                }
+
+                renderer.render(scene, camera);
+            }
+
+            renderer.setAnimationLoop(animate);
+
+            // Window resize
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            // Initial status
+            updateStatus('Scene loaded! Desktop mode active');
+            console.log('3D scene initialized successfully');
+            console.log('Objects in scene:', scene.children.length);
+        </script>
+    </body>
+</html>
