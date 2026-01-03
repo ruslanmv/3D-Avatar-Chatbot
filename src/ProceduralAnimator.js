@@ -36,6 +36,9 @@
     // Default false for safety.
     let allowWithMixer = false;
 
+    // Force mode: when true, procedural animations ALWAYS run (used for quick actions)
+    let forceMode = false;
+
     // Mouse input (normalized -1..1)
     const mouse = { x: 0, y: 0 };
     let inputInit = false;
@@ -253,14 +256,13 @@
         bones = findBones(avatarRoot);
         captureRestPose(avatarRoot);
 
-        // If no baked animations, apply natural standing pose (geometry-based T-pose fix)
-        if (!hasBakedAnimations) {
-            // Use geometry-aware quaternion rotation for reliable arm positioning
-            // Works across different rig conventions (Mixamo, VRM, custom)
-            fixTPose();
-            // Re-capture to treat this as new rest pose:
-            captureRestPose(avatarRoot);
-        }
+        // ALWAYS apply natural standing pose fix (geometry-based T-pose correction)
+        // Some models have baked animations but still start in T-pose
+        // Use geometry-aware quaternion rotation for reliable arm positioning
+        // Works across different rig conventions (Mixamo, VRM, custom)
+        fixTPose();
+        // Re-capture to treat this as new rest pose:
+        captureRestPose(avatarRoot);
 
         mode = 'idle';
         modeUntilMs = 0;
@@ -284,18 +286,27 @@
         mode = (nextMode || 'idle').toLowerCase();
         const dur = Number.isFinite(durationMs) ? durationMs : 1200;
         modeUntilMs = performance.now() + Math.max(0, dur);
+
+        // Enable force mode for non-idle modes (quick actions)
+        // This makes procedural animations visible even with baked animations
+        forceMode = mode !== 'idle';
     }
 
     function update(timeSec, dtSec) {
         if (!avatarRoot || !bones) return;
 
         // expire mode
-        if (mode !== 'idle' && performance.now() > modeUntilMs) mode = 'idle';
+        if (mode !== 'idle' && performance.now() > modeUntilMs) {
+            mode = 'idle';
+            forceMode = false; // Disable force mode when returning to idle
+        }
 
         // If mixer is active and we are not allowed, bail (do not fight baked clips)
-        if (hasBakedAnimations && !allowWithMixer) return;
+        // UNLESS forceMode is enabled (quick actions override this)
+        if (hasBakedAnimations && !allowWithMixer && !forceMode) return;
 
         // Reset touched bones each frame to avoid drift
+        // Include all bones that might be modified by procedural animations
         const touched = [
             bones.hips,
             bones.spine,
@@ -304,6 +315,8 @@
             bones.head,
             bones.leftUpperArm,
             bones.rightUpperArm,
+            bones.leftLowerArm,
+            bones.rightLowerArm,
         ];
         touched.forEach((b) => b && restoreToRest(b));
 
@@ -333,45 +346,71 @@
         }
 
         // ---------------------------
-        // Mode overlays (simple)
+        // Mode overlays - EXAGGERATED for visibility
         // ---------------------------
         if (mode === 'thinking') {
-            // slight head tilt + slow sway
+            // More pronounced head tilt + body sway
             if (bones.head) {
-                const tilt = Math.sin(timeSec * 1.4) * 0.12;
-                applyOffsetEuler(bones.head, new THREE.Euler(0.1, 0.0, tilt));
+                const tilt = Math.sin(timeSec * 1.4) * 0.25; // Increased from 0.12
+                applyOffsetEuler(bones.head, new THREE.Euler(0.15, 0.0, tilt));
             }
             if (bones.hips) {
-                const sway = Math.sin(timeSec * 1.2) * 0.08;
+                const sway = Math.sin(timeSec * 1.2) * 0.15; // Increased from 0.08
                 applyOffsetEuler(bones.hips, new THREE.Euler(0, sway, 0));
+            }
+            if (bones.chest) {
+                const twist = Math.sin(timeSec * 1.3) * 0.1;
+                applyOffsetEuler(bones.chest, new THREE.Euler(0, -twist, 0));
             }
         } else if (mode === 'happy') {
-            // chest up + tiny bounce
+            // Energetic bounce + chest up
             if (bones.chest) {
-                const up = Math.sin(timeSec * 3.2) * 0.06;
-                applyOffsetEuler(bones.chest, new THREE.Euler(-0.1 + up, 0, 0));
+                const up = Math.sin(timeSec * 3.2) * 0.12; // Doubled from 0.06
+                applyOffsetEuler(bones.chest, new THREE.Euler(-0.15 + up, 0, 0));
             }
             if (bones.hips) {
-                const bounce = Math.sin(timeSec * 3.2) * 0.04;
+                const bounce = Math.sin(timeSec * 3.2) * 0.1; // Increased from 0.04
                 applyOffsetEuler(bones.hips, new THREE.Euler(bounce, 0, 0));
             }
+            // Add arm waves for happy
+            if (bones.leftUpperArm) {
+                const wave = Math.sin(timeSec * 3.0) * 0.3;
+                applyOffsetEuler(bones.leftUpperArm, new THREE.Euler(wave, 0, 0));
+            }
+            if (bones.rightUpperArm) {
+                const wave = Math.sin(timeSec * 3.0 + Math.PI) * 0.3; // Phase shifted
+                applyOffsetEuler(bones.rightUpperArm, new THREE.Euler(wave, 0, 0));
+            }
         } else if (mode === 'dance') {
+            // Exaggerated dance motion
             if (bones.hips) {
-                const sway = Math.sin(timeSec * 5.0) * 0.18;
+                const sway = Math.sin(timeSec * 5.0) * 0.35; // Increased from 0.18
                 applyOffsetEuler(bones.hips, new THREE.Euler(0, sway, 0));
             }
             if (bones.chest) {
-                const twist = Math.sin(timeSec * 6.0) * 0.12;
+                const twist = Math.sin(timeSec * 6.0) * 0.25; // Increased from 0.12
                 applyOffsetEuler(bones.chest, new THREE.Euler(0, twist, 0));
             }
+            // Add arm movements for dance
+            if (bones.leftUpperArm) {
+                const armMove = Math.sin(timeSec * 4.0) * 0.4;
+                applyOffsetEuler(bones.leftUpperArm, new THREE.Euler(armMove, 0, Math.sin(timeSec * 3.0) * 0.2));
+            }
+            if (bones.rightUpperArm) {
+                const armMove = Math.sin(timeSec * 4.0 + Math.PI) * 0.4;
+                applyOffsetEuler(
+                    bones.rightUpperArm,
+                    new THREE.Euler(armMove, 0, Math.sin(timeSec * 3.0 + Math.PI) * 0.2)
+                );
+            }
         } else if (mode === 'talk') {
-            // small nod
+            // Visible nodding
             if (bones.head) {
-                const nod = Math.sin(timeSec * 10.0) * 0.06;
+                const nod = Math.sin(timeSec * 10.0) * 0.12; // Doubled from 0.06
                 applyOffsetEuler(bones.head, new THREE.Euler(nod, 0, 0));
             }
             if (bones.chest) {
-                const breathTalk = Math.sin(timeSec * 6.0) * 0.03;
+                const breathTalk = Math.sin(timeSec * 6.0) * 0.06; // Doubled from 0.03
                 applyOffsetEuler(bones.chest, new THREE.Euler(breathTalk, 0, 0));
             }
         }
