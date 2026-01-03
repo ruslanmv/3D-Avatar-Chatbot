@@ -1,6 +1,7 @@
 /**
  * VR Controllers Module
  * Handles controller input, locomotion, and interaction for WebXR
+ * Fixed: Safe session checks, preventing errors during context loss
  */
 
 import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
@@ -159,7 +160,8 @@ export class VRControllers {
 
     // Handle ray-based interaction
     handleRayInteraction() {
-        if (!this.enabled) return;
+        // Safety check: ensure VR is active before accessing controllers
+        if (!this.enabled || !this.renderer.xr.isPresenting) return;
 
         [this.controller1, this.controller2].forEach((controller) => {
             if (!controller) return;
@@ -193,7 +195,9 @@ export class VRControllers {
 
     // Poll gamepad input for movement
     pollGamepadInput() {
-        if (!this.enabled) return;
+        // Crucial Check: Do not poll if renderer is not presenting VR
+        // This prevents accessing null session objects during shutdown
+        if (!this.enabled || !this.renderer.xr.isPresenting) return;
 
         const session = this.renderer.xr.getSession();
         if (!session) return;
@@ -291,7 +295,8 @@ export class VRControllers {
 
     // Update method (call in animation loop)
     update() {
-        if (!this.enabled) return;
+        // Guard clause: ensure renderer and XR state are valid
+        if (!this.enabled || !this.renderer || !this.renderer.xr.isPresenting) return;
 
         this.pollGamepadInput();
         this.handleRayInteraction();

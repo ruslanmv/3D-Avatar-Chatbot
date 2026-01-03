@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>VR Detection Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #000; color: #0f0; }
+        .test { margin: 10px 0; padding: 10px; background: #111; }
+        .pass { color: #0f0; }
+        .fail { color: #f00; }
+    </style>
+</head>
+<body>
+    <h1>VR Detection Test</h1>
+    <div id="results"></div>
+
+    <script>
+        const results = document.getElementById('results');
+
+        function addResult(test, pass, message) {
+            const div = document.createElement('div');
+            div.className = 'test ' + (pass ? 'pass' : 'fail');
+            div.innerHTML = `<strong>${pass ? '✓' : '✗'} ${test}:</strong> ${message}`;
+            results.appendChild(div);
+        }
+
+        // Test 1: WebXR API
+        if (navigator.xr) {
+            addResult('WebXR API', true, 'navigator.xr is available');
+
+            // Test 2: VR Session Support
+            navigator.xr.isSessionSupported('immersive-vr').then(supported => {
+                addResult('VR Support', supported, supported ? 'immersive-vr is supported' : 'immersive-vr not supported');
+            }).catch(err => {
+                addResult('VR Support', false, 'Error checking support: ' + err.message);
+            });
+        } else {
+            addResult('WebXR API', false, 'navigator.xr is not available (use HTTPS or localhost)');
+        }
+
+        // Test 3: WebGL
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        if (gl) {
+            addResult('WebGL', true, 'WebGL context created successfully');
+            addResult('WebGL Vendor', true, gl.getParameter(gl.VENDOR));
+            addResult('WebGL Renderer', true, gl.getParameter(gl.RENDERER));
+        } else {
+            addResult('WebGL', false, 'Failed to create WebGL context');
+        }
+
+        // Test 4: HTTPS
+        const isSecure = window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        addResult('Secure Context', isSecure, window.location.protocol + '//' + window.location.hostname);
+
+        // Test 5: Browser
+        const ua = navigator.userAgent;
+        const isQuest = ua.includes('Quest');
+        const isChrome = ua.includes('Chrome');
+        addResult('Browser', true, isQuest ? 'Meta Quest Browser' : (isChrome ? 'Chrome' : 'Other'));
+
+        // Test 6: Screen
+        addResult('Screen Size', true, `${window.innerWidth}x${window.innerHeight}`);
+        addResult('Device Pixel Ratio', true, window.devicePixelRatio);
+    </script>
+</body>
+</html>
