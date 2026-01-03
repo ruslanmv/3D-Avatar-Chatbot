@@ -2,6 +2,7 @@
  * VR Controllers Module
  * Handles controller input, locomotion, and interaction for WebXR
  * Fixed: Safe session checks, preventing errors during context loss
+ * Enhanced: Sketchfab-style 6DOF movement (forward/back, strafe, up/down, rotation)
  */
 
 import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
@@ -27,6 +28,7 @@ export class VRControllers {
         // Locomotion
         this.playerRig = new THREE.Group();
         this.moveSpeed = 0.05;
+        this.verticalSpeed = 0.04; // Speed for up/down movement
         this.turnSpeed = 0.02;
         this.deadzone = 0.15;
 
@@ -217,11 +219,15 @@ export class VRControllers {
                     this.applyLocomotion(axes[0], axes[1]);
                 }
             } else if (handedness === 'right') {
-                // Right stick: rotation (turn left/right)
+                // Right stick: rotation (X-axis) + vertical movement (Y-axis)
                 if (axes.length >= 4) {
-                    this.applyRotation(axes[2]);
+                    // Quest controllers: right stick is axes[2] (X) and axes[3] (Y)
+                    this.applyRotation(axes[2]); // X-axis: rotate left/right
+                    this.applyVerticalMovement(axes[3]); // Y-axis: move up/down
                 } else if (axes.length >= 2) {
-                    this.applyRotation(axes[0]);
+                    // Fallback: some controllers only have 2 axes per hand
+                    this.applyRotation(axes[0]); // X-axis: rotate left/right
+                    this.applyVerticalMovement(axes[1]); // Y-axis: move up/down
                 }
             }
 
@@ -278,6 +284,17 @@ export class VRControllers {
 
         // Rotate around Y axis
         this.playerRig.rotateY(-mx * this.turnSpeed);
+    }
+
+    // Apply vertical movement (up/down) from thumbstick
+    applyVerticalMovement(y) {
+        // Apply deadzone
+        const my = Math.abs(y) > this.deadzone ? y : 0;
+        if (!my) return;
+
+        // Move up/down along world Y axis (like Sketchfab)
+        // Negative Y on stick = push up = move up in world
+        this.playerRig.position.y += -my * this.verticalSpeed;
     }
 
     // Button handlers (can be overridden)

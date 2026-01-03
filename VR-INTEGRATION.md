@@ -1,6 +1,7 @@
 # VR Integration - Unified Desktop & VR Mode
 
-The main chatbot (`index.html`) now supports VR mode automatically! No need for separate `.vr` files.
+The main chatbot (`index.html`) now supports VR mode automatically! No need for
+separate `.vr` files.
 
 ## 🎯 **What's New**
 
@@ -97,13 +98,13 @@ The system automatically:
 
 All 3D formats work in VR mode:
 
-| Format | Desktop | VR | Notes                     |
-| ------ | ------- | -- | ------------------------- |
-| GLB    | ✅      | ✅ | Fully supported           |
-| GLTF   | ✅      | ✅ | Fully supported           |
-| VRM    | ✅      | ✅ | With expressions          |
-| FBX    | ❌      | ❌ | Not supported (use GLB)   |
-| OBJ    | ❌      | ❌ | Not supported (use GLB)   |
+| Format | Desktop | VR  | Notes                   |
+| ------ | ------- | --- | ----------------------- |
+| GLB    | ✅      | ✅  | Fully supported         |
+| GLTF   | ✅      | ✅  | Fully supported         |
+| VRM    | ✅      | ✅  | With expressions        |
+| FBX    | ❌      | ❌  | Not supported (use GLB) |
+| OBJ    | ❌      | ❌  | Not supported (use GLB) |
 
 ## 🔧 **VR Button Customization**
 
@@ -147,13 +148,11 @@ The button uses your app's theme:
 **Possible causes:**
 
 1. **Browser doesn't support WebXR**
-
     - ✅ Use Chrome, Edge, or Quest Browser
     - ❌ Firefox VR support limited
     - ❌ Safari doesn't support WebXR
 
 2. **Not using HTTPS (production)**
-
     - ✅ Local network: Use IP address (`http://192.168.1.X`)
     - ✅ Production: Deploy with HTTPS (Vercel, Netlify)
     - ❌ Production HTTP won't work
@@ -178,13 +177,11 @@ The button uses your app's theme:
 **Possible issues:**
 
 1. **Camera position**
-
     - Avatar might be behind you
     - Try moving head/looking around
     - Click avatar selector to reload
 
 2. **Lighting too dark**
-
     - Our viewer uses IBL (image-based lighting)
     - Should work automatically
     - If dark, check model materials
@@ -221,13 +218,11 @@ The button uses your app's theme:
 ### **For VR Users**
 
 1. **Test desktop first**
-
     - Verify avatar loads
     - Test animations
     - Check chat works
 
 2. **Then try VR**
-
     - Click VR button
     - Grant permissions
     - Look around
@@ -240,7 +235,6 @@ The button uses your app's theme:
 ### **For Developers**
 
 1. **Test both modes**
-
     - Desktop functionality
     - VR compatibility
     - Switching between modes
@@ -382,4 +376,5 @@ Click VR Button → VR Mode (immersive)
 
 ---
 
-For issues or questions, see [META-QUEST-SETUP.md](META-QUEST-SETUP.md) for detailed troubleshooting.
+For issues or questions, see [META-QUEST-SETUP.md](META-QUEST-SETUP.md) for
+detailed troubleshooting.

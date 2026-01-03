@@ -2,6 +2,9 @@
 
 Complete guide to using VR controllers with the 3D Avatar Chatbot.
 
+**✨ Enhanced with Sketchfab-style 6DOF movement (forward/back, strafe, up/down,
+rotation)**
+
 ## 🎮 **Controller Layout**
 
 ### **Meta Quest 2/3 Controllers**
@@ -22,14 +25,15 @@ Complete guide to using VR controllers with the 3D Avatar Chatbot.
 
 ### **Movement (Left Controller)**
 
-| Input           | Action              | Speed           |
-| --------------- | ------------------- | --------------- |
-| **Left Stick**  | Move Forward/Back   | Adjustable      |
-|                 | Strafe Left/Right   | Default: 0.05   |
-| **Left Trigger**| Select/Click        | -               |
-| **Left Grip**   | Special Action      | -               |
+| Input            | Action            | Speed         |
+| ---------------- | ----------------- | ------------- |
+| **Left Stick**   | Move Forward/Back | Adjustable    |
+|                  | Strafe Left/Right | Default: 0.05 |
+| **Left Trigger** | Select/Click      | -             |
+| **Left Grip**    | Special Action    | -             |
 
 **How to move:**
+
 ```
 Push Stick Forward  → Move forward in view direction
 Push Stick Back     → Move backward
@@ -37,52 +41,69 @@ Push Stick Left     → Strafe left
 Push Stick Right    → Strafe right
 ```
 
-### **Camera (Right Controller)**
+### **Camera & Vertical Movement (Right Controller)**
 
-| Input            | Action           | Speed           |
-| ---------------- | ---------------- | --------------- |
-| **Right Stick**  | Turn Left/Right  | Adjustable      |
-|                  |                  | Default: 0.02   |
-| **Right Trigger**| Select/Click     | -               |
-| **Right Grip**   | Special Action   | -               |
+| Input             | Action                  | Speed         |
+| ----------------- | ----------------------- | ------------- |
+| **Right Stick X** | Turn Left/Right         | Adjustable    |
+|                   |                         | Default: 0.02 |
+| **Right Stick Y** | Move Up/Down (Vertical) | Adjustable    |
+|                   |                         | Default: 0.04 |
+| **Right Trigger** | Select/Click            | -             |
+| **Right Grip**    | Special Action          | -             |
 
-**How to turn:**
+**How to turn and move vertically:**
+
 ```
 Push Stick Left   → Turn left
 Push Stick Right  → Turn right
+Push Stick Up     → Move up (fly up / get closer)
+Push Stick Down   → Move down (fly down / go away)
 ```
 
 ### **Interaction (Both Controllers)**
 
-| Input            | Action                        |
-| ---------------- | ----------------------------- |
-| **Point at UI**  | Cyan ray appears              |
-| **Trigger**      | Click button/select object    |
-| **Ray turns green**| Hovering over clickable item|
+| Input               | Action                       |
+| ------------------- | ---------------------------- |
+| **Point at UI**     | Cyan ray appears             |
+| **Trigger**         | Click button/select object   |
+| **Ray turns green** | Hovering over clickable item |
 
 ## 🎯 **Features**
 
 ### ✅ **Locomotion**
 
-**Smooth Movement:**
-- Walk around the virtual space
+**Smooth Movement (6DOF):**
+
+- Walk around the virtual space (forward/back/strafe)
+- Move up and down vertically (fly/crouch)
 - Move relative to where you're looking
 - Adjustable speed (default: medium)
 - Deadzone to prevent drift (15%)
 
 **Rotation:**
-- Smooth turning with right thumbstick
+
+- Smooth turning with right thumbstick X-axis
 - Turn your viewpoint left/right
 - No snap turning (smooth only)
+
+**Vertical Movement:**
+
+- Move up/down with right thumbstick Y-axis
+- Perfect for getting closer to avatar
+- Move away to see full scene
+- Sketchfab-style 6DOF navigation
 
 ### ✅ **Ray Interaction**
 
 **Visual Feedback:**
+
 - **Cyan ray** = Default (no hit)
 - **Green ray** = Hovering over clickable object
 - **Ray length** = Distance to object
 
 **Clickable Elements:**
+
 - UI buttons
 - Avatar (for expressions/animations)
 - Menu items
@@ -102,21 +123,28 @@ Currently requires code edit (will add UI later):
 
 ```javascript
 // In src/gltf-viewer/VRControllers.js
-this.moveSpeed = 0.05;  // Default: 0.05 (medium)
+this.moveSpeed = 0.05; // Default: 0.05 (medium)
 // Try: 0.03 (slow), 0.10 (fast)
+```
+
+### **Adjust Vertical Movement Speed**
+
+```javascript
+this.verticalSpeed = 0.04; // Default: 0.04 (medium)
+// Try: 0.02 (slow), 0.08 (fast)
 ```
 
 ### **Adjust Turn Speed**
 
 ```javascript
-this.turnSpeed = 0.02;  // Default: 0.02 (medium)
+this.turnSpeed = 0.02; // Default: 0.02 (medium)
 // Try: 0.01 (slow), 0.04 (fast)
 ```
 
 ### **Adjust Deadzone**
 
 ```javascript
-this.deadzone = 0.15;  // Default: 15%
+this.deadzone = 0.15; // Default: 15%
 // Lower = more sensitive
 // Higher = less drift
 ```
@@ -125,18 +153,19 @@ this.deadzone = 0.15;  // Default: 15%
 
 ### **Quest-Specific**
 
-| Button   | Hand  | Index | Function (Current) |
-| -------- | ----- | ----- | ------------------ |
-| Trigger  | Both  | 0     | Select/Click       |
-| Grip     | Both  | 1     | Reserved           |
-| X        | Left  | 4     | Reserved           |
-| Y        | Left  | 5     | Reserved           |
-| A        | Right | 4     | Reserved           |
-| B        | Right | 5     | Reserved           |
-| Menu     | Left  | -     | System menu        |
-| Oculus   | Right | -     | System home        |
+| Button  | Hand  | Index | Function (Current) |
+| ------- | ----- | ----- | ------------------ |
+| Trigger | Both  | 0     | Select/Click       |
+| Grip    | Both  | 1     | Reserved           |
+| X       | Left  | 4     | Reserved           |
+| Y       | Left  | 5     | Reserved           |
+| A       | Right | 4     | Reserved           |
+| B       | Right | 5     | Reserved           |
+| Menu    | Left  | -     | System menu        |
+| Oculus  | Right | -     | System home        |
 
 **Reserved buttons** can be customized for:
+
 - Quick expressions
 - Teleport
 - Menu toggle
@@ -171,13 +200,23 @@ this.deadzone = 0.15;  // Default: 15%
 3. Release to stop turning
 ```
 
-### **Example 4: Explore Scene**
+### **Example 4: Explore Scene (Full 6DOF)**
 
 ```
 1. Left stick = Move forward/back/strafe
-2. Right stick = Turn left/right
-3. Head tracking = Look around
-4. Combine for smooth navigation
+2. Right stick X-axis = Turn left/right
+3. Right stick Y-axis = Move up/down
+4. Head tracking = Look around
+5. Combine for smooth Sketchfab-style navigation
+```
+
+### **Example 5: Get Closer to Avatar**
+
+```
+1. Push right thumbstick up to fly up/get closer
+2. Use left stick to move around avatar
+3. Push right stick down to move away
+4. Perfect for detailed viewing
 ```
 
 ## 🐛 **Troubleshooting**
@@ -185,6 +224,7 @@ this.deadzone = 0.15;  // Default: 15%
 ### **Movement Not Working**
 
 **Check:**
+
 - ✅ Are you in VR mode? (Click ENTER VR)
 - ✅ Is left controller connected?
 - ✅ Is thumbstick past deadzone? (push further)
@@ -193,6 +233,7 @@ this.deadzone = 0.15;  // Default: 15%
 ### **Can't Click Buttons**
 
 **Check:**
+
 - ✅ Is ray visible? (cyan/green line)
 - ✅ Ray pointing at button?
 - ✅ Trigger fully pressed?
@@ -201,6 +242,7 @@ this.deadzone = 0.15;  // Default: 15%
 ### **Controllers Not Visible**
 
 **Check:**
+
 - ✅ VR session started successfully?
 - ✅ Controllers turned on?
 - ✅ Controllers paired with Quest?
@@ -209,6 +251,7 @@ this.deadzone = 0.15;  // Default: 15%
 ### **Drift / Unwanted Movement**
 
 **Fix:**
+
 - Increase deadzone value
 - Check controller calibration in Quest settings
 - Replace controller batteries if low
@@ -216,6 +259,7 @@ this.deadzone = 0.15;  // Default: 15%
 ### **Movement Too Fast/Slow**
 
 **Fix:**
+
 - Adjust `moveSpeed` value
 - Try different speeds: 0.03 (slow), 0.05 (medium), 0.10 (fast)
 
@@ -268,7 +312,7 @@ if (avatar && viewer.vrControllers) {
 ```javascript
 // In VRControllers.js
 const material = new THREE.MeshStandardMaterial({
-    color: 0xff00ff,  // Change to magenta
+    color: 0xff00ff, // Change to magenta
     emissive: 0xff00ff,
     emissiveIntensity: 0.5,
 });
@@ -303,9 +347,10 @@ Z-axis (forward out of screen)
 ```
 
 **Movement:**
+
 - Forward = -Z direction relative to camera
 - Strafe = ±X direction relative to camera
-- Up/Down = ±Y (currently disabled for ground movement)
+- Up/Down = ±Y (enabled for 6DOF Sketchfab-style navigation)
 
 ### **Raycasting**
 
@@ -374,15 +419,19 @@ function detectPinch(inputSource) {
 
 ## ✅ **Summary**
 
-**Basic Controls:**
+**Enhanced Sketchfab-Style Controls:**
+
 ```
-Left Stick  = Move (forward/back/strafe)
-Right Stick = Turn (left/right)
-Trigger     = Click/Select
-Ray         = Point and interact
+Left Stick X/Y     = Move (forward/back/strafe)
+Right Stick X      = Turn (left/right)
+Right Stick Y      = Vertical (up/down)
+Trigger            = Click/Select
+Ray                = Point and interact
+Full 6DOF Movement = Go anywhere in 3D space!
 ```
 
 **To Use:**
+
 1. Enter VR mode
 2. Controllers appear automatically
 3. Use thumbsticks to move
@@ -393,4 +442,5 @@ Ray         = Point and interact
 
 ---
 
-For issues or questions, see [META-QUEST-SETUP.md](META-QUEST-SETUP.md) for troubleshooting.
+For issues or questions, see [META-QUEST-SETUP.md](META-QUEST-SETUP.md) for
+troubleshooting.

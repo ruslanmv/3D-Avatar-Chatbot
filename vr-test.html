@@ -133,7 +133,8 @@
                 document.getElementById('browser-info').textContent = navigator.userAgent.includes('Quest')
                     ? 'Meta Quest'
                     : 'Desktop';
-                document.getElementById('https-status').textContent = location.protocol === 'https:' ? '✅ Yes' : '❌ No';
+                document.getElementById('https-status').textContent =
+                    location.protocol === 'https:' ? '✅ Yes' : '❌ No';
 
                 if (navigator.xr) {
                     navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
@@ -251,9 +252,7 @@
                 // Update status periodically
                 if (frameCount % 60 === 0) {
                     updateStatus(
-                        renderer.xr.isPresenting
-                            ? 'VR Mode Active 🥽'
-                            : 'Desktop Mode - Click VR button to enter VR',
+                        renderer.xr.isPresenting ? 'VR Mode Active 🥽' : 'Desktop Mode - Click VR button to enter VR'
                     );
                 }
 

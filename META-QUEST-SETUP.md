@@ -8,9 +8,9 @@ Complete guide to getting the VR Chatbot working on Meta Quest 3/2.
 
 WebXR **WILL NOT WORK** without HTTPS (except on localhost).
 
-❌ **Won't work:** `http://yoursite.com`
-✅ **Will work:** `https://yoursite.com`
-✅ **Will work:** `http://localhost:8080` (local development only)
+❌ **Won't work:** `http://yoursite.com` ✅ **Will work:**
+`https://yoursite.com` ✅ **Will work:** `http://localhost:8080` (local
+development only)
 
 ### 2. **Use Quest Browser**
 
@@ -32,10 +32,10 @@ python3 -m http.server 8080
 
 You should see:
 
--   ✅ A green rotating cube
--   ✅ A pulsing magenta sphere
--   ✅ A grid floor
--   ✅ "ENTER VR" button (may be grayed out without headset)
+- ✅ A green rotating cube
+- ✅ A pulsing magenta sphere
+- ✅ A grid floor
+- ✅ "ENTER VR" button (may be grayed out without headset)
 
 ### **Step 2: Test on Meta Quest**
 
@@ -56,7 +56,6 @@ You should see:
 2. **Make sure Quest is on same WiFi** as your computer
 
 3. **On Meta Quest:**
-
     - Put on headset
     - Open **Quest Browser** (not Chrome or Firefox)
     - Navigate to: `http://YOUR_IP:8080/vr-test.html`
@@ -84,13 +83,11 @@ You should see:
 #### **Option B: Production Deployment (Requires HTTPS)**
 
 1. **Deploy to a service with HTTPS:**
-
     - Vercel: `vercel --prod`
     - Netlify: `netlify deploy --prod`
     - GitHub Pages (with custom domain)
 
 2. **On Meta Quest:**
-
     - Open Quest Browser
     - Navigate to your HTTPS URL
     - Click "ENTER VR"
@@ -109,9 +106,9 @@ WebXR: ❌ Not supported
 
 **Fixes:**
 
--   ✅ Use Quest Browser (not Chrome/Firefox)
--   ✅ Update Quest firmware to latest version
--   ✅ Enable experimental features in Quest settings
+- ✅ Use Quest Browser (not Chrome/Firefox)
+- ✅ Update Quest firmware to latest version
+- ✅ Enable experimental features in Quest settings
 
 **If HTTPS shows ❌ on production:**
 
@@ -121,9 +118,9 @@ HTTPS: ❌ No
 
 **Fixes:**
 
--   Deploy to Vercel/Netlify (auto HTTPS)
--   Use local network with IP address
--   Don't use `http://` in production
+- Deploy to Vercel/Netlify (auto HTTPS)
+- Use local network with IP address
+- Don't use `http://` in production
 
 ### **Issue 2: VR Button Grayed Out**
 
@@ -131,9 +128,9 @@ HTTPS: ❌ No
 
 **Fixes:**
 
--   Make sure headset is on your head (proximity sensor)
--   Restart Quest Browser
--   Restart Quest headset
+- Make sure headset is on your head (proximity sensor)
+- Restart Quest Browser
+- Restart Quest headset
 
 ### **Issue 3: Black Screen in VR**
 
@@ -142,7 +139,6 @@ HTTPS: ❌ No
 **Possible causes:**
 
 1. **Camera too far from objects**
-
     - Our test cube is at -2m from camera
     - Check you're looking forward (not down)
 
@@ -160,23 +156,23 @@ HTTPS: ❌ No
 
 **On Desktop:**
 
--   Normal - you need a VR headset
--   Page still works in desktop mode
+- Normal - you need a VR headset
+- Page still works in desktop mode
 
 **On Quest:**
 
--   Check Quest Browser is up to date
--   Enable WebXR in Quest settings:
-    -   Settings > System > Developer > Enable USB Debugging
+- Check Quest Browser is up to date
+- Enable WebXR in Quest settings:
+    - Settings > System > Developer > Enable USB Debugging
 
 ### **Issue 5: Performance Issues / Lag**
 
 **Solutions:**
 
--   Close other apps on Quest
--   Lower graphics quality in scene
--   Check WiFi signal strength
--   Reduce polygon count of 3D models
+- Close other apps on Quest
+- Lower graphics quality in scene
+- Check WiFi signal strength
+- Reduce polygon count of 3D models
 
 ## 📱 **Production Deployment for Quest**
 
@@ -213,17 +209,17 @@ netlify deploy --prod
 
 Before deploying to production, test these:
 
--   [ ] vr-test.html loads on desktop
--   [ ] Green cube is visible and rotating
--   [ ] Magenta sphere is pulsing
--   [ ] Debug info shows correct browser
--   [ ] VR button appears on Quest Browser
--   [ ] VR button is clickable (not grayed out)
--   [ ] VR session starts when clicked
--   [ ] Scene is visible in VR
--   [ ] Head tracking works (look around)
--   [ ] Can see objects clearly
--   [ ] Performance is smooth (60+ FPS)
+- [ ] vr-test.html loads on desktop
+- [ ] Green cube is visible and rotating
+- [ ] Magenta sphere is pulsing
+- [ ] Debug info shows correct browser
+- [ ] VR button appears on Quest Browser
+- [ ] VR button is clickable (not grayed out)
+- [ ] VR session starts when clicked
+- [ ] Scene is visible in VR
+- [ ] Head tracking works (look around)
+- [ ] Can see objects clearly
+- [ ] Performance is smooth (60+ FPS)
 
 ## 🔧 **Developer Console on Quest**
 
@@ -252,19 +248,16 @@ ReferenceError: THREE is not defined
 Meta Quest 3 has limited GPU compared to PC. Optimize:
 
 1. **Keep polygon count low:**
-
     - < 50,000 triangles total
     - Use simple materials
     - Avoid complex shaders
 
 2. **Lighting:**
-
     - Use baked lighting when possible
     - Limit to 2-3 dynamic lights
     - Avoid shadows (expensive)
 
 3. **Textures:**
-
     - Max 1024x1024 (prefer 512x512)
     - Use compressed formats
     - Limit total VRAM usage
@@ -278,18 +271,18 @@ Meta Quest 3 has limited GPU compared to PC. Optimize:
 
 **Head Tracking:**
 
--   ✅ Automatic - just look around
+- ✅ Automatic - just look around
 
 **Controllers:**
 
--   ✅ Point at UI elements
--   ✅ Trigger to click
--   ✅ Thumbstick to move (if enabled)
+- ✅ Point at UI elements
+- ✅ Trigger to click
+- ✅ Thumbstick to move (if enabled)
 
 **Hands:**
 
--   🚧 Hand tracking not yet implemented
--   Use controllers for now
+- 🚧 Hand tracking not yet implemented
+- Use controllers for now
 
 ## 🆘 **Still Not Working?**
 
@@ -313,21 +306,21 @@ Meta Quest 3 has limited GPU compared to PC. Optimize:
 
 ### **Get Help:**
 
--   Check browser console for errors
--   Screenshot debug info panel
--   Note exact error messages
--   Open GitHub issue with details
+- Check browser console for errors
+- Screenshot debug info panel
+- Note exact error messages
+- Open GitHub issue with details
 
 ## ✅ **Success Indicators**
 
 You know it's working when:
 
--   ✅ Debug panel shows all green checkmarks
--   ✅ "ENTER VR" button is blue and clickable
--   ✅ Clicking button shows "VR Session Started! 🥽"
--   ✅ You see 3D objects in immersive space
--   ✅ Head tracking is smooth
--   ✅ Objects are at correct scale (arm's length)
+- ✅ Debug panel shows all green checkmarks
+- ✅ "ENTER VR" button is blue and clickable
+- ✅ Clicking button shows "VR Session Started! 🥽"
+- ✅ You see 3D objects in immersive space
+- ✅ Head tracking is smooth
+- ✅ Objects are at correct scale (arm's length)
 
 ## 🎉 **Next Steps**
 
@@ -340,9 +333,10 @@ Once vr-test.html works:
 
 ---
 
-**Remember:** Always test with **vr-test.html** first before trying the full chatbot!
+**Remember:** Always test with **vr-test.html** first before trying the full
+chatbot!
 
 For more info, see:
 
--   [VR-README.md](VR-README.md) - Complete VR features guide
--   [DEPLOYMENT.md](DEPLOYMENT.md) - Production deployment guide
+- [VR-README.md](VR-README.md) - Complete VR features guide
+- [DEPLOYMENT.md](DEPLOYMENT.md) - Production deployment guide
