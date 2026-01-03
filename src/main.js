@@ -1,5 +1,5 @@
 /**
- * Nexus Avatar - Main Application Controller (PROD, GLOBAL build) — UPDATED (LANG + VOICE PREFS)
+ * Nexus Avatar - Main Application Controller (PROD, GLOBAL build) — UPDATED (LANG + VOICE PREFS + SMART ANIMATION)
  *
  * Key additions in this version:
  * ✅ Speech Settings persisted (language, voice, preference, rate, pitch)
@@ -8,9 +8,17 @@
  * ✅ "Auto (best match)" logic in speakText
  * ✅ "TEST VOICE" button support
  * ✅ Preserves ViewerEngine + Proxy + Test Connection patch logic
+ * ✅ GLOBAL TOGGLE for Procedural Animations (Breathing/Head Look)
+ * ✅ SMART FILTER: Detects "TPose" clips vs real motion
  */
 
 'use strict';
+
+/* =========================================================
+   Global Configuration
+   ========================================================= */
+// Set this to FALSE to completely disable breathing, head tracking, and T-pose fixing.
+const ENABLE_PROCEDURAL_ANIMATION = true; 
 
 /* =========================================================
    Speech Settings (persisted)
@@ -377,11 +385,14 @@ function animate() {
     if (mixer) mixer.update(delta);
 
     /* NEXUS_PATCH_LIFE_ENGINE_UPDATE_LOOP */
-    try {
-        // clock exists only in legacy ThreeJS path; guard it.
-        const t = typeof clock !== 'undefined' && clock ? clock.getElapsedTime() : performance.now() * 0.001;
-        window.NEXUS_PROCEDURAL_ANIMATOR?.update?.(t, delta);
-    } catch (_) {}
+    if (ENABLE_PROCEDURAL_ANIMATION) {
+        try {
+            // clock exists only in legacy ThreeJS path; guard it.
+            const t = typeof clock !== 'undefined' && clock ? clock.getElapsedTime() : performance.now() * 0.001;
+            window.NEXUS_PROCEDURAL_ANIMATOR?.update?.(t, delta);
+        } catch (_) {}
+    }
+    
     if (controls) controls.update();
     if (renderer && scene && camera) renderer.render(scene, camera);
 }
@@ -453,11 +464,22 @@ function loadAvatar(url, source) {
                 await window.NEXUS_VIEWER.loadAvatar(url);
 
                 /* NEXUS_PATCH_LIFE_ENGINE_REGISTER_VIEWER */
-                try {
-                    const root = window.NEXUS_VIEWER?.currentRoot || null;
-                    const hasClips = Array.isArray(window.NEXUS_VIEWER?.clips) && window.NEXUS_VIEWER.clips.length > 0;
-                    window.NEXUS_PROCEDURAL_ANIMATOR?.registerAvatar?.(root, hasClips);
-                } catch (_) {}
+                if (ENABLE_PROCEDURAL_ANIMATION) {
+                    try {
+                        const root = window.NEXUS_VIEWER?.currentRoot || null;
+                        const clips = window.NEXUS_VIEWER?.clips || [];
+                        
+                        // Smart Filter for Viewer Engine
+                        const ignoreList = ['tpose', 't-pose', 'apose', 'a-pose', 'static', 'idle_pose'];
+                        const hasActiveMotion = clips.some(clip => {
+                            const name = (clip.name || '').toLowerCase();
+                            return !ignoreList.some(ignore => name.includes(ignore));
+                        });
+
+                        window.NEXUS_PROCEDURAL_ANIMATOR?.registerAvatar?.(root, hasActiveMotion);
+                    } catch (_) {}
+                }
+
                 stopLoaderWatchdog();
                 hideLoading();
                 setStatus('idle', 'READY');
@@ -519,13 +541,26 @@ function loadAvatar(url, source) {
             currentAvatar = gltf.scene;
             scene.add(currentAvatar);
 
-            /* NEXUS_PATCH_LIFE_ENGINE_REGISTER_LEGACY */
-            try {
-                window.NEXUS_PROCEDURAL_ANIMATOR?.registerAvatar?.(
-                    currentAvatar,
-                    Array.isArray(gltf.animations) && gltf.animations.length > 0
-                );
-            } catch (_) {}
+            /* NEXUS_PATCH_LIFE_ENGINE_REGISTER_LEGACY (With Smart Filter) */
+            if (ENABLE_PROCEDURAL_ANIMATION) {
+                try {
+                    const allClips = gltf.animations || [];
+                    const ignoreList = ['tpose', 't-pose', 'apose', 'a-pose', 'static', 'idle_pose', 'reference'];
+                    
+                    // Filter to find "Real" motion
+                    const validClips = allClips.filter(clip => {
+                        const name = (clip.name || '').toLowerCase();
+                        return !ignoreList.some(ignore => name.includes(ignore));
+                    });
+
+                    // If valid clips exist, we treat it as active motion (Animator won't fix T-Pose)
+                    // If no valid clips exist, we treat it as static (Animator WILL fix T-Pose)
+                    const hasActiveMotion = validClips.length > 0;
+                    
+                    window.NEXUS_PROCEDURAL_ANIMATOR?.registerAvatar?.(currentAvatar, hasActiveMotion);
+                } catch (_) {}
+            }
+
             currentAvatar.traverse((child) => {
                 if (child.isMesh) {
                     child.castShadow = true;
@@ -840,10 +875,12 @@ function setupEventListeners() {
             const emotion = (btn.dataset.emotion || '').toLowerCase();
 
             /* NEXUS_PATCH_LIFE_ENGINE_EMOTION_MODE */
-            try {
-                // Match your UI labels: IDLE/HAPPY/THINKING/DANCE/TALK
-                window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.(emotion, 1600);
-            } catch (_) {}
+            if (ENABLE_PROCEDURAL_ANIMATION) {
+                try {
+                    // Match your UI labels: IDLE/HAPPY/THINKING/DANCE/TALK
+                    window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.(emotion, 1600);
+                } catch (_) {}
+            }
             const mapped = Object.keys(animations).find((k) => k.includes(emotion)) || findIdleAnimation();
             if (mapped) playAnimation(mapped, false);
 
@@ -1160,9 +1197,11 @@ function speakText(text) {
     setStatus('speaking', 'SPEAKING...');
 
     /* NEXUS_PATCH_LIFE_ENGINE_TALK_MODE */
-    try {
-        window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.('talk', 30000);
-    } catch (_) {}
+    if (ENABLE_PROCEDURAL_ANIMATION) {
+        try {
+            window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.('talk', 30000);
+        } catch (_) {}
+    }
     try {
         window.NEXUS_VIEWER?.playAnimationByName?.('Talk');
     } catch (_) {}
@@ -1190,9 +1229,11 @@ function speakText(text) {
 
     utterance.onend = () => {
         /* NEXUS_PATCH_LIFE_ENGINE_TALK_END */
-        try {
-            window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.('idle', 1);
-        } catch (_) {}
+        if (ENABLE_PROCEDURAL_ANIMATION) {
+            try {
+                window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.('idle', 1);
+            } catch (_) {}
+        }
         setStatus('idle', 'READY');
         try {
             window.NEXUS_VIEWER?.playAnimationByName?.('Idle');
@@ -1201,9 +1242,11 @@ function speakText(text) {
 
     utterance.onerror = () => {
         /* NEXUS_PATCH_LIFE_ENGINE_TALK_ERR */
-        try {
-            window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.('idle', 1);
-        } catch (_) {}
+        if (ENABLE_PROCEDURAL_ANIMATION) {
+            try {
+                window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.('idle', 1);
+            } catch (_) {}
+        }
         setStatus('idle', 'READY');
         try {
             window.NEXUS_VIEWER?.playAnimationByName?.('Idle');

@@ -1,7 +1,7 @@
 /**
- * VR Controllers Module (Simplified - Movement Focus)
+ * VR Controllers Module (Fixed for Meta Quest)
  * Handles controller input and locomotion for WebXR
- * PRIORITY: Make joypads work for navigation
+ * FIX: Uses 'connected' event to capture gamepad data reliably
  */
 
 import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
@@ -16,18 +16,25 @@ export class VRControllers {
         this.scene = scene;
         this.camera = camera;
 
-        // Locomotion (using old working values)
+        // Locomotion Settings
         this.playerRig = new THREE.Group();
-        this.moveSpeed = 0.05; // meters per frame (old working value)
-        this.verticalSpeed = 0.04; // meters per frame
-        this.turnSpeed = 0.02; // radians per frame
+        this.moveSpeed = 0.05; 
+        this.verticalSpeed = 0.04;
+        this.turnSpeed = 0.02;
         this.deadzone = 0.15;
 
-        // Controllers
-        this.controller1 = null; // index 0 (left)
-        this.controller2 = null; // index 1 (right)
+        // Controller References (Visuals)
+        this.controller1 = null; 
+        this.controller2 = null;
         this.controllerGrip1 = null;
         this.controllerGrip2 = null;
+
+        // Input Source Storage (The Fix)
+        // We store the actual WebXR input sources here when they connect
+        this.controllers = {
+            left: null,
+            right: null
+        };
 
         // Interaction
         this.raycaster = new THREE.Raycaster();
@@ -37,83 +44,72 @@ export class VRControllers {
 
         // State
         this.enabled = false;
-
-        // Debug mode
         this.debug = true;
 
         this.init();
     }
 
     init() {
-        // Put camera under rig (so moving rig moves the "player")
+        // Setup Player Rig
         this.playerRig.add(this.camera);
         this.scene.add(this.playerRig);
 
         this.setupControllers();
-        console.log('[VRControllers] Initialized - Movement Focus Mode');
+        console.log('[VRControllers] Initialized - Meta Quest Fixed Mode');
     }
 
     // ---------- Setup ----------
     setupControllers() {
-        // Controller 1 (index 0 - typically left)
+        // Controller 1 (Index 0)
         this.controller1 = this.renderer.xr.getController(0);
         this.controller1.addEventListener('selectstart', () => (this.selecting = true));
         this.controller1.addEventListener('selectend', () => (this.selecting = false));
-        this.controller1.addEventListener('connected', (event) => this.onControllerConnected(event, 0));
-        this.controller1.addEventListener('disconnected', () => this.onControllerDisconnected(0));
+        // IMPORTANT: Pass the event to the handler to capture input source
+        this.controller1.addEventListener('connected', (e) => this.onControllerConnected(e));
+        this.controller1.addEventListener('disconnected', (e) => this.onControllerDisconnected(e));
         this.scene.add(this.controller1);
 
-        // Controller 2 (index 1 - typically right)
+        // Controller 2 (Index 1)
         this.controller2 = this.renderer.xr.getController(1);
         this.controller2.addEventListener('selectstart', () => (this.selecting = true));
         this.controller2.addEventListener('selectend', () => (this.selecting = false));
-        this.controller2.addEventListener('connected', (event) => this.onControllerConnected(event, 1));
-        this.controller2.addEventListener('disconnected', () => this.onControllerDisconnected(1));
+        this.controller2.addEventListener('connected', (e) => this.onControllerConnected(e));
+        this.controller2.addEventListener('disconnected', (e) => this.onControllerDisconnected(e));
         this.scene.add(this.controller2);
 
-        // Add ray visualizations
+        // Visuals (Rays & Grips)
         this.addRayVisual(this.controller1);
         this.addRayVisual(this.controller2);
 
-        // Add controller grips
         this.controllerGrip1 = this.renderer.xr.getControllerGrip(0);
+        this.addControllerModel(this.controllerGrip1);
         this.scene.add(this.controllerGrip1);
 
         this.controllerGrip2 = this.renderer.xr.getControllerGrip(1);
-        this.scene.add(this.controllerGrip2);
-
-        // Add simple controller visualizations
-        this.addControllerModel(this.controllerGrip1);
         this.addControllerModel(this.controllerGrip2);
-
-        console.log('[VRControllers] Controllers setup complete');
+        this.scene.add(this.controllerGrip2);
     }
 
     addRayVisual(controller) {
         if (!controller) return;
-
         const geometry = new THREE.BufferGeometry().setFromPoints([
             new THREE.Vector3(0, 0, 0),
             new THREE.Vector3(0, 0, -1),
         ]);
-
         const material = new THREE.LineBasicMaterial({
             color: 0x00e5ff,
             linewidth: 2,
             opacity: 0.8,
             transparent: true,
         });
-
         const line = new THREE.Line(geometry, material);
         line.name = 'ray';
         line.scale.z = 5;
-
         controller.add(line);
     }
 
     addControllerModel(grip) {
         if (!grip) return;
-
         const geometry = new THREE.SphereGeometry(0.03, 16, 16);
         const material = new THREE.MeshStandardMaterial({
             color: 0x00e5ff,
@@ -122,238 +118,187 @@ export class VRControllers {
             roughness: 0.5,
             metalness: 0.5,
         });
-
         const sphere = new THREE.Mesh(geometry, material);
         grip.add(sphere);
     }
 
-    onControllerConnected(event, index) {
-        console.log(`[VRControllers] Controller ${index} connected:`, event?.data?.handedness || 'unknown');
-    }
-
-    onControllerDisconnected(index) {
-        console.log(`[VRControllers] Controller ${index} disconnected`);
-    }
-
-    // Add object to be interactable
-    addInteractable(object, callback) {
-        object.userData.onClick = callback;
-        this.interactables.push(object);
-    }
-
-    // Remove interactable
-    removeInteractable(object) {
-        const index = this.interactables.indexOf(object);
-        if (index > -1) {
-            this.interactables.splice(index, 1);
+    // ---------- Event Handlers (The Fix) ----------
+    
+    onControllerConnected(event) {
+        const xrInputSource = event.data;
+        
+        if (xrInputSource && xrInputSource.handedness) {
+            console.log(`[VRControllers] Connected: ${xrInputSource.handedness}`);
+            // Store the input source directly
+            this.controllers[xrInputSource.handedness] = xrInputSource;
         }
     }
 
-    // Get intersections from controller ray
-    getIntersections(controller) {
-        this.tempMatrix.identity().extractRotation(controller.matrixWorld);
-
-        this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
-        this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
-
-        return this.raycaster.intersectObjects(this.interactables, true);
+    onControllerDisconnected(event) {
+        const xrInputSource = event.data;
+        
+        if (xrInputSource && xrInputSource.handedness) {
+            console.log(`[VRControllers] Disconnected: ${xrInputSource.handedness}`);
+            // clear the stored controller
+            this.controllers[xrInputSource.handedness] = null;
+        }
     }
 
-    // Handle ray-based interaction
-    handleRayInteraction() {
-        // Safety check: ensure VR is active before accessing controllers
+    // ---------- Input Processing ----------
+
+    pollGamepadInput(dt) {
         if (!this.enabled || !this.renderer.xr.isPresenting) return;
 
+        // 1. Process Left Controller (Movement)
+        const leftSource = this.controllers['left'];
+        if (leftSource && leftSource.gamepad) {
+            const axes = leftSource.gamepad.axes;
+            
+            // Quest controllers usually map [2, 3] for thumbsticks in some modes, 
+            // but standard WebXR mapping is [2, 3] or [0, 1] depending on profile.
+            // Standard mapping: axes[2] = X, axes[3] = Y for 'touchpad', 
+            // but for THUMBSTICK it is usually axes[2] and axes[3].
+            // HOWEVER, simple mapping often puts stick on 2/3. 
+            // Let's try 2/3 first (common for XR Standard), fallback to 0/1.
+            
+            // Standard WebXR Gamepad mapping:
+            // 0,1 = Trackpad (if present)
+            // 2,3 = Thumbstick
+            
+            let x = 0, y = 0;
+            
+            if (axes.length >= 4) {
+                x = axes[2];
+                y = axes[3];
+            } else if (axes.length >= 2) {
+                x = axes[0];
+                y = axes[1];
+            }
+
+            if (this.debug && (Math.abs(x) > 0.1 || Math.abs(y) > 0.1)) {
+                 // console.log(`[VR] Left Stick: ${x.toFixed(2)}, ${y.toFixed(2)}`);
+            }
+            
+            this.applyLocomotion(x, y, dt);
+        }
+
+        // 2. Process Right Controller (Rotation/Vertical)
+        const rightSource = this.controllers['right'];
+        if (rightSource && rightSource.gamepad) {
+            const axes = rightSource.gamepad.axes;
+            
+            let x = 0, y = 0;
+            if (axes.length >= 4) {
+                x = axes[2];
+                y = axes[3];
+            } else if (axes.length >= 2) {
+                x = axes[0];
+                y = axes[1];
+            }
+
+            this.applyRotation(x, dt); 
+            this.applyVerticalMovement(y, dt);
+        }
+    }
+
+    applyLocomotion(x, y, dt) {
+        if (Math.abs(x) < this.deadzone) x = 0;
+        if (Math.abs(y) < this.deadzone) y = 0;
+        if (x === 0 && y === 0) return;
+
+        // Get camera direction (yaw only)
+        const xrCamera = this.renderer.xr.getCamera(this.camera);
+        const forward = new THREE.Vector3();
+        xrCamera.getWorldDirection(forward);
+        forward.y = 0;
+        forward.normalize();
+
+        const right = new THREE.Vector3();
+        right.crossVectors(forward, new THREE.Vector3(0, 1, 0));
+
+        const speed = dt ? this.moveSpeed * dt * 60 : this.moveSpeed;
+
+        // Note: y is usually inverted on gamepads (-1 is forward)
+        // If your controls are backward, flip the signs here
+        this.playerRig.position.addScaledVector(forward, -y * speed);
+        this.playerRig.position.addScaledVector(right, x * speed);
+    }
+
+    applyRotation(x, dt) {
+        if (Math.abs(x) < this.deadzone) return;
+
+        const speed = dt ? this.turnSpeed * dt * 60 : this.turnSpeed;
+        // Negative x usually turns Left, Positive Right
+        this.playerRig.rotateY(-x * speed);
+    }
+
+    applyVerticalMovement(y, dt) {
+        if (Math.abs(y) < this.deadzone) return;
+
+        const speed = dt ? this.verticalSpeed * dt * 60 : this.verticalSpeed;
+        // -y to pull up, +y to push down usually, adjust to preference
+        this.playerRig.position.y += -y * speed;
+    }
+
+    // ---------- Standard Methods ----------
+
+    update(dt) {
+        if (!this.enabled || !this.renderer || !this.renderer.xr.isPresenting) return;
+        this.pollGamepadInput(dt);
+        this.handleRayInteraction();
+    }
+
+    handleRayInteraction() {
+        if (!this.enabled || !this.renderer.xr.isPresenting) return;
+        
         [this.controller1, this.controller2].forEach((controller) => {
             if (!controller) return;
-
+            
             const intersections = this.getIntersections(controller);
             const line = controller.getObjectByName('ray');
 
-            // Update ray length based on hit
             if (line) {
                 if (intersections.length > 0) {
                     line.scale.z = intersections[0].distance;
-                    line.material.color.setHex(0x00ff00); // Green when hitting
+                    line.material.color.setHex(0x00ff00);
                 } else {
                     line.scale.z = 5;
-                    line.material.color.setHex(0x00e5ff); // Cyan default
+                    line.material.color.setHex(0x00e5ff);
                 }
             }
 
-            // Handle selection
             if (this.selecting && intersections.length > 0) {
                 const hit = intersections[0];
-                const object = hit.object;
-
-                // Call onClick callback if exists
-                if (object.userData?.onClick) {
-                    object.userData.onClick(hit);
+                if (hit.object.userData?.onClick) {
+                    hit.object.userData.onClick(hit);
                 }
             }
         });
     }
 
-    // Poll gamepad input for movement
-    pollGamepadInput(dt) {
-        // Guard: Do not poll if renderer is not presenting VR
-        if (!this.enabled || !this.renderer.xr.isPresenting) return;
-
-        const session = this.renderer.xr.getSession();
-        if (!session) return;
-
-        let leftInput = null;
-        let rightInput = null;
-
-        // Find left and right input sources
-        for (const inputSource of session.inputSources) {
-            if (!inputSource?.gamepad) continue;
-
-            if (inputSource.handedness === 'left') {
-                leftInput = inputSource.gamepad;
-            } else if (inputSource.handedness === 'right') {
-                rightInput = inputSource.gamepad;
-            }
-        }
-
-        // Process left controller (movement)
-        if (leftInput && leftInput.axes && leftInput.axes.length >= 2) {
-            const x = leftInput.axes[0];
-            const y = leftInput.axes[1];
-
-            if (this.debug && (Math.abs(x) > 0.1 || Math.abs(y) > 0.1)) {
-                console.log(`[VRControllers] LEFT stick: x=${x.toFixed(2)}, y=${y.toFixed(2)}`);
-            }
-
-            this.applyLocomotion(x, y, dt);
-        }
-
-        // Process right controller (turn + vertical)
-        if (rightInput && rightInput.axes && rightInput.axes.length >= 2) {
-            const x = rightInput.axes[0];
-            const y = rightInput.axes[1];
-
-            if (this.debug && (Math.abs(x) > 0.1 || Math.abs(y) > 0.1)) {
-                console.log(`[VRControllers] RIGHT stick: x=${x.toFixed(2)}, y=${y.toFixed(2)}`);
-            }
-
-            this.applyRotation(x, dt); // X-axis: rotate left/right
-            this.applyVerticalMovement(y, dt); // Y-axis: move up/down
-        }
-
-        // Debug: log if no input found
-        if (this.debug && !leftInput && !rightInput) {
-            // Only log once per session to avoid spam
-            if (!this._noInputLogged) {
-                console.warn('[VRControllers] No gamepad input sources found');
-                this._noInputLogged = true;
-            }
-        }
+    getIntersections(controller) {
+        this.tempMatrix.identity().extractRotation(controller.matrixWorld);
+        this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+        this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
+        return this.raycaster.intersectObjects(this.interactables, true);
     }
 
-    // Apply locomotion from thumbstick
-    applyLocomotion(x, y, dt) {
-        // Apply deadzone
-        const mx = Math.abs(x) > this.deadzone ? x : 0;
-        const my = Math.abs(y) > this.deadzone ? y : 0;
-
-        if (!mx && !my) return;
-
-        // Get camera direction (ignoring Y axis for ground movement)
-        const xrCamera = this.renderer.xr.getCamera(this.camera);
-        const direction = new THREE.Vector3();
-        xrCamera.getWorldDirection(direction);
-        direction.y = 0;
-        direction.normalize();
-
-        // Calculate right vector
-        const right = new THREE.Vector3();
-        right.crossVectors(direction, new THREE.Vector3(0, 1, 0)).normalize();
-
-        // Apply movement (use dt if provided, otherwise use fixed speed)
-        const speed = dt ? this.moveSpeed * dt * 60 : this.moveSpeed;
-
-        this.playerRig.position.addScaledVector(direction, -my * speed);
-        this.playerRig.position.addScaledVector(right, mx * speed);
-
-        if (this.debug) {
-            console.log(
-                `[VRControllers] Moving: forward=${(-my * speed).toFixed(3)}, strafe=${(mx * speed).toFixed(3)}`
-            );
-        }
+    addInteractable(object, callback) {
+        object.userData.onClick = callback;
+        this.interactables.push(object);
     }
 
-    // Apply rotation from thumbstick
-    applyRotation(x, dt) {
-        // Apply deadzone
-        const mx = Math.abs(x) > this.deadzone ? x : 0;
-        if (!mx) return;
-
-        // Rotate around Y axis (use dt if provided, otherwise use fixed speed)
-        const speed = dt ? this.turnSpeed * dt * 60 : this.turnSpeed;
-        this.playerRig.rotateY(-mx * speed);
-
-        if (this.debug) {
-            console.log(`[VRControllers] Rotating: ${(-mx * speed).toFixed(3)} rad`);
-        }
-    }
-
-    // Apply vertical movement (up/down) from thumbstick
-    applyVerticalMovement(y, dt) {
-        // Apply deadzone
-        const my = Math.abs(y) > this.deadzone ? y : 0;
-        if (!my) return;
-
-        // Move up/down along world Y axis
-        const speed = dt ? this.verticalSpeed * dt * 60 : this.verticalSpeed;
-        this.playerRig.position.y += -my * speed;
-
-        if (this.debug) {
-            console.log(`[VRControllers] Vertical: ${(-my * speed).toFixed(3)}`);
-        }
-    }
-
-    // Update method (call in animation loop)
-    update(dt) {
-        // Guard clause: ensure renderer and XR state are valid
-        if (!this.enabled || !this.renderer || !this.renderer.xr.isPresenting) return;
-
-        this.pollGamepadInput(dt);
-        this.handleRayInteraction();
-    }
-
-    // Enable/disable controllers
     setEnabled(enabled) {
         this.enabled = enabled;
         console.log(`[VRControllers] ${enabled ? 'Enabled' : 'Disabled'}`);
-
-        // Reset no-input flag when enabling
-        if (enabled) {
-            this._noInputLogged = false;
-        }
     }
 
-    // Teleport player to position
-    teleportTo(position) {
-        this.playerRig.position.copy(position);
-    }
-
-    // Reset position
-    resetPosition() {
-        this.playerRig.position.set(0, 0, 0);
-        this.playerRig.rotation.set(0, 0, 0);
-    }
-
-    // Dispose
     dispose() {
         if (this.controller1) this.scene.remove(this.controller1);
         if (this.controller2) this.scene.remove(this.controller2);
         if (this.controllerGrip1) this.scene.remove(this.controllerGrip1);
         if (this.controllerGrip2) this.scene.remove(this.controllerGrip2);
         if (this.playerRig) this.scene.remove(this.playerRig);
-
         this.interactables = [];
-
-        console.log('[VRControllers] Disposed');
     }
 }
