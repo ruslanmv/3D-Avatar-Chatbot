@@ -313,8 +313,11 @@ export class VRControllers {
         this.enabled = enabled;
         console.log(`[VRControllers] System ${enabled ? 'Enabled' : 'Disabled'}`);
         if (enabled) {
-            this.playerRig.position.set(0, 0, 0);
+            // Position player in front of avatar (not on top of it)
+            // Z=2.5 puts you in front, Y=0 is ground level
+            this.playerRig.position.set(0, 0, 2.5);
             this.playerRig.rotation.set(0, 0, 0);
+            console.log('[VRControllers] Positioned in front of avatar');
         }
     }
 
