@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>VRM Chatbot - WebXR Ready</title>
+
+        <style>
+            body {
+                margin: 0;
+                overflow: hidden;
+                background-color: #202020;
+                font-family: 'Orbitron', sans-serif;
+            }
+
+            #info {
+                position: absolute;
+                top: 10px;
+                width: 100%;
+                text-align: center;
+                color: white;
+                font-family: sans-serif;
+                pointer-events: none;
+                z-index: 10;
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+            }
+
+            #avatar-viewport {
+                width: 100vw;
+                height: 100vh;
+                position: relative;
+            }
+
+            #controls-panel {
+                position: absolute;
+                top: 60px;
+                right: 20px;
+                background: rgba(7, 24, 33, 0.9);
+                border: 1px solid rgba(0, 229, 255, 0.3);
+                border-radius: 12px;
+                padding: 20px;
+                color: white;
+                max-width: 300px;
+                z-index: 100;
+                backdrop-filter: blur(10px);
+            }
+
+            .control-group {
+                margin-bottom: 15px;
+            }
+
+            .control-group label {
+                display: block;
+                margin-bottom: 5px;
+                font-size: 12px;
+                color: #00e5ff;
+                text-transform: uppercase;
+            }
+
+            .control-group button {
+                width: 100%;
+                padding: 10px;
+                background: rgba(0, 229, 255, 0.2);
+                border: 1px solid #00e5ff;
+                border-radius: 6px;
+                color: #00e5ff;
+                cursor: pointer;
+                font-family: inherit;
+                transition: all 0.3s;
+            }
+
+            .control-group button:hover {
+                background: rgba(0, 229, 255, 0.4);
+                transform: translateY(-2px);
+            }
+
+            .control-group input[type='file'] {
+                width: 100%;
+                padding: 8px;
+                background: rgba(0, 229, 255, 0.1);
+                border: 1px solid rgba(0, 229, 255, 0.3);
+                border-radius: 6px;
+                color: white;
+                font-size: 12px;
+            }
+
+            .expression-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+                margin-top: 10px;
+            }
+
+            .expression-btn {
+                padding: 8px;
+                background: rgba(0, 229, 255, 0.2);
+                border: 1px solid #00e5ff;
+                border-radius: 6px;
+                color: #00e5ff;
+                cursor: pointer;
+                font-size: 11px;
+                transition: all 0.3s;
+            }
+
+            .expression-btn:hover {
+                background: rgba(0, 229, 255, 0.4);
+            }
+
+            #status {
+                position: absolute;
+                bottom: 20px;
+                left: 20px;
+                color: #00e5ff;
+                font-size: 14px;
+                z-index: 10;
+                background: rgba(7, 24, 33, 0.8);
+                padding: 10px 20px;
+                border-radius: 8px;
+                border: 1px solid rgba(0, 229, 255, 0.3);
+            }
+        </style>
+
+        <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet" />
+    </head>
+    <body>
+        <div id="info">VRM CHATBOT - WebXR Ready (Desktop + Meta Quest 3)</div>
+
+        <div id="avatar-viewport"></div>
+
+        <div id="controls-panel">
+            <h3 style="margin-top: 0; color: #00e5ff; font-size: 16px">CONTROLS</h3>
+
+            <div class="control-group">
+                <label>Load VRM Avatar</label>
+                <input type="file" id="vrm-upload" accept=".vrm,.glb,.gltf" />
+            </div>
+
+            <div class="control-group">
+                <label>Convert GLB to VRM</label>
+                <button id="convert-btn">Upload & Convert GLB</button>
+            </div>
+
+            <div class="control-group">
+                <label>Expressions</label>
+                <div class="expression-grid">
+                    <button class="expression-btn" data-expression="neutral">Neutral</button>
+                    <button class="expression-btn" data-expression="joy">Happy</button>
+                    <button class="expression-btn" data-expression="angry">Angry</button>
+                    <button class="expression-btn" data-expression="sorrow">Sad</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <button id="blink-btn">Blink</button>
+            </div>
+
+            <div class="control-group">
+                <button id="talk-btn">Toggle Talk</button>
+            </div>
+        </div>
+
+        <div id="status">Status: Initializing...</div>
+
+        <!-- Three.js and dependencies -->
+        <script type="importmap">
+            {
+                "imports": {
+                    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+                    "@pixiv/three-vrm": "https://unpkg.com/@pixiv/three-vrm@2.1.0/lib/three-vrm.module.js"
+                }
+            }
+        </script>
+
+        <script type="module">
+            import * as THREE from 'three';
+            import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+            import { VRButton } from 'three/addons/webxr/VRButton.js';
+            import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+            import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+
+            // Make THREE global for compatibility
+            window.THREE = THREE;
+            window.THREE_VRM = { VRMLoaderPlugin, VRMUtils };
+            window.THREE.GLTFLoader = GLTFLoader;
+            window.THREE.VRButton = VRButton;
+            window.THREE.OrbitControls = OrbitControls;
+
+            // Status update helper
+            function updateStatus(message) {
+                document.getElementById('status').textContent = `Status: ${message}`;
+                console.log(`[WebXR Chatbot] ${message}`);
+            }
+
+            // Initialize scene
+            updateStatus('Setting up 3D scene...');
+
+            const container = document.getElementById('avatar-viewport');
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x303030);
+
+            const camera = new THREE.PerspectiveCamera(30.0, window.innerWidth / window.innerHeight, 0.1, 20.0);
+            camera.position.set(0.0, 1.4, 1.5);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.xr.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            // Add VR button
+            container.appendChild(VRButton.createButton(renderer));
+
+            // Lighting
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+            dirLight.position.set(1.0, 1.0, 1.0).normalize();
+            scene.add(dirLight);
+
+            const ambLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambLight);
+
+            const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+            hemiLight.position.set(0, 20, 0);
+            scene.add(hemiLight);
+
+            // Controls
+            const controls = new OrbitControls(camera, renderer.domElement);
+            controls.target.set(0, 1.0, 0);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.update();
+
+            // VRM state
+            let currentVRM = null;
+            const clock = new THREE.Clock();
+            let isTalking = false;
+
+            // Load VRM function
+            async function loadVRM(url) {
+                updateStatus('Loading VRM...');
+
+                const loader = new GLTFLoader();
+                loader.register((parser) => new VRMLoaderPlugin(parser));
+
+                try {
+                    const gltf = await loader.loadAsync(url);
+                    const vrm = gltf.userData.vrm;
+
+                    if (!vrm) {
+                        throw new Error('No VRM data found in file');
+                    }
+
+                    // Remove previous avatar
+                    if (currentVRM) {
+                        scene.remove(currentVRM.scene);
+                    }
+
+                    currentVRM = vrm;
+
+                    // Optimize
+                    VRMUtils.removeUnnecessaryVertices(vrm.scene);
+                    VRMUtils.removeUnnecessaryJoints(vrm.scene);
+
+                    // Position
+                    vrm.scene.rotation.y = Math.PI;
+
+                    // Fix T-pose
+                    const humanoid = vrm.humanoid;
+                    if (humanoid) {
+                        const leftArm = humanoid.getNormalizedBoneNode('leftUpperArm');
+                        const rightArm = humanoid.getNormalizedBoneNode('rightUpperArm');
+                        if (leftArm) leftArm.rotation.z = Math.PI / 3;
+                        if (rightArm) rightArm.rotation.z = -Math.PI / 3;
+                    }
+
+                    scene.add(vrm.scene);
+                    updateStatus('VRM loaded successfully!');
+                } catch (error) {
+                    console.error('Error loading VRM:', error);
+                    updateStatus('Error loading VRM: ' + error.message);
+                }
+            }
+
+            // Upload VRM
+            document.getElementById('vrm-upload').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const url = URL.createObjectURL(file);
+                    loadVRM(url);
+                }
+            });
+
+            // Expressions
+            document.querySelectorAll('.expression-btn').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    if (!currentVRM) return;
+                    const expression = btn.dataset.expression;
+
+                    // Reset all expressions
+                    if (currentVRM.expressionManager) {
+                        ['neutral', 'joy', 'angry', 'sorrow'].forEach((exp) => {
+                            currentVRM.expressionManager.setValue(exp, 0);
+                        });
+
+                        // Set selected expression
+                        currentVRM.expressionManager.setValue(expression, 1.0);
+                        updateStatus(`Expression: ${expression}`);
+                    }
+                });
+            });
+
+            // Blink
+            document.getElementById('blink-btn').addEventListener('click', () => {
+                if (!currentVRM || !currentVRM.expressionManager) return;
+                currentVRM.expressionManager.setValue('blink', 1.0);
+                setTimeout(() => {
+                    currentVRM.expressionManager.setValue('blink', 0);
+                }, 150);
+            });
+
+            // Talk toggle
+            document.getElementById('talk-btn').addEventListener('click', () => {
+                isTalking = !isTalking;
+                updateStatus(isTalking ? 'Talking...' : 'Stopped talking');
+            });
+
+            // Convert GLB to VRM
+            document.getElementById('convert-btn').addEventListener('click', async () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.glb,.gltf';
+
+                input.onchange = async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    updateStatus('Uploading to VRM Factory...');
+
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    try {
+                        const response = await fetch('http://localhost:8000/convert-to-vrm/', {
+                            method: 'POST',
+                            body: formData,
+                        });
+
+                        const result = await response.json();
+
+                        if (result.status === 'success') {
+                            updateStatus('Conversion successful! Downloading...');
+                            // Download the VRM
+                            window.open(`http://localhost:8000${result.download_url}`, '_blank');
+                        } else {
+                            updateStatus('Conversion failed: ' + result.message);
+                        }
+                    } catch (error) {
+                        updateStatus('Error: ' + error.message);
+                        console.error('Conversion error:', error);
+                    }
+                };
+
+                input.click();
+            });
+
+            // Animation loop
+            renderer.setAnimationLoop(() => {
+                const delta = clock.getDelta();
+
+                controls.update();
+
+                if (currentVRM) {
+                    currentVRM.update(delta);
+
+                    // Auto blink
+                    if (Math.random() < 0.01 && currentVRM.expressionManager) {
+                        const blinkValue = Math.sin(clock.elapsedTime * 50) > 0.9 ? 1.0 : 0.0;
+                        currentVRM.expressionManager.setValue('blink', blinkValue);
+                    }
+
+                    // Talking animation
+                    if (isTalking && currentVRM.expressionManager) {
+                        const talkValue = (Math.sin(clock.elapsedTime * 15) + 1) * 0.3;
+                        currentVRM.expressionManager.setValue('aa', talkValue);
+                    } else if (currentVRM.expressionManager) {
+                        currentVRM.expressionManager.setValue('aa', 0);
+                    }
+                }
+
+                renderer.render(scene, camera);
+            });
+
+            // Window resize
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            // Load default avatar
+            updateStatus('Ready! Upload a VRM avatar or convert a GLB file.');
+        </script>
+    </body>
+</html>
