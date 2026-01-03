@@ -10,6 +10,8 @@ import { VRControllers } from './VRControllers.js';
 
 export class ViewerEngine {
     constructor(containerEl) {
+        console.log('[ViewerEngine] Initializing...');
+        
         this.containerEl = containerEl;
 
         this.scene = new THREE.Scene();
@@ -77,16 +79,24 @@ export class ViewerEngine {
         this.vrSupport = new VRSupport(this.renderer, this.camera, this.scene);
 
         // Initialize VR Controllers
+        // We pass the scene so controllers can parent themselves to the PlayerRig which is added to the scene
         this.vrControllers = new VRControllers(this.renderer, this.scene, this.camera);
+        console.log('[ViewerEngine] VRControllers instantiated.');
 
         // Link VR session events to controllers
         window.addEventListener('vr-session-start', () => {
+            console.log('[ViewerEngine] VR Session Starting - Enabling Controllers');
             this.vrControllers.setEnabled(true);
         });
 
         window.addEventListener('vr-session-end', () => {
+            console.log('[ViewerEngine] VR Session Ended - Disabling Controllers');
             this.vrControllers.setEnabled(false);
             this.vrControllers.resetPosition();
+            
+            // Reset desktop controls
+            this.camera.position.set(0, 1.4, 2.6);
+            this.controls.target.set(0, 1.0, 0);
         });
 
         this._onResize = () => this.resize();
@@ -94,6 +104,8 @@ export class ViewerEngine {
 
         this._raf = null;
         this.animate();
+        
+        console.log('[ViewerEngine] Initialization Complete.');
     }
 
     resize() {
@@ -106,6 +118,8 @@ export class ViewerEngine {
 
     disposeCurrent() {
         if (!this.currentRoot) return;
+        console.log('[ViewerEngine] Disposing current avatar...');
+        
         this.scene.remove(this.currentRoot);
 
         this.currentRoot.traverse((obj) => {
@@ -129,45 +143,62 @@ export class ViewerEngine {
     }
 
     async loadAvatar(url) {
+        console.log(`[ViewerEngine] Loading avatar: ${url}`);
         this.disposeCurrent();
 
-        const gltf = await new Promise((resolve, reject) => {
-            this.loader.load(url, resolve, undefined, reject);
-        });
-
-        this.currentRoot = gltf.scene;
-        this.scene.add(this.currentRoot);
-
-        /* NEXUS_PATCH_LIFE_ENGINE_VIEWERENGINE_REGISTER */
         try {
-            // ProceduralAnimator is a GLOBAL script (index.html loads it).
-            // In module context we still can call window.*.
-            window.NEXUS_PROCEDURAL_ANIMATOR?.registerAvatar?.(
-                this.currentRoot,
-                Array.isArray(this.clips) && this.clips.length > 0
-            );
-        } catch (_) {}
+            const gltf = await new Promise((resolve, reject) => {
+                this.loader.load(url, resolve, undefined, reject);
+            });
 
-        // Register avatar with VR controllers for click rotation
-        try {
-            this.vrControllers?.registerAvatar?.(this.currentRoot);
-        } catch (_) {}
+            this.currentRoot = gltf.scene;
+            this.scene.add(this.currentRoot);
+            console.log('[ViewerEngine] Avatar added to scene');
 
-        this.currentRoot.traverse((o) => {
-            if (o.isMesh) {
-                o.castShadow = false;
-                o.receiveShadow = false;
+            /* NEXUS_PATCH_LIFE_ENGINE_VIEWERENGINE_REGISTER */
+            try {
+                // ProceduralAnimator is a GLOBAL script (index.html loads it).
+                if (window.NEXUS_PROCEDURAL_ANIMATOR?.registerAvatar) {
+                    window.NEXUS_PROCEDURAL_ANIMATOR.registerAvatar(
+                        this.currentRoot,
+                        Array.isArray(this.clips) && this.clips.length > 0
+                    );
+                    console.log('[ViewerEngine] Registered with ProceduralAnimator');
+                }
+            } catch (err) {
+                console.warn('[ViewerEngine] ProceduralAnimator registration failed:', err);
             }
-        });
 
-        this.clips = gltf.animations || [];
-        if (this.clips.length) {
-            this.mixer = new THREE.AnimationMixer(this.currentRoot);
-            const action = this.mixer.clipAction(this.clips[0]);
-            action.play();
+            // Register avatar with VR controllers for "Grab & Spin"
+            try {
+                if (this.vrControllers && this.vrControllers.registerAvatar) {
+                    this.vrControllers.registerAvatar(this.currentRoot);
+                    console.log('[ViewerEngine] Registered avatar with VRControllers (Grab & Spin Ready)');
+                }
+            } catch (err) {
+                console.error('[ViewerEngine] Failed to register avatar with VRControllers:', err);
+            }
+
+            this.currentRoot.traverse((o) => {
+                if (o.isMesh) {
+                    o.castShadow = false;
+                    o.receiveShadow = false;
+                }
+            });
+
+            this.clips = gltf.animations || [];
+            if (this.clips.length) {
+                this.mixer = new THREE.AnimationMixer(this.currentRoot);
+                const action = this.mixer.clipAction(this.clips[0]);
+                action.play();
+                console.log(`[ViewerEngine] Playing initial animation: ${this.clips[0].name}`);
+            }
+
+            this.frameToContent();
+            
+        } catch (error) {
+            console.error('[ViewerEngine] Error loading avatar:', error);
         }
-
-        this.frameToContent();
     }
 
     frameToContent() {
@@ -181,10 +212,13 @@ export class ViewerEngine {
         const fitDist = maxDim / (2 * Math.tan((this.camera.fov * Math.PI) / 360));
         const dist = fitDist * 1.35;
 
-        const dir = new THREE.Vector3(0, 0.25, 1).normalize();
-        this.camera.position.copy(center).add(dir.multiplyScalar(dist));
-        this.controls.target.copy(center);
-        this.controls.update();
+        // Only adjust camera if NOT in VR (VR user controls their own camera)
+        if (!this.renderer.xr.isPresenting) {
+            const dir = new THREE.Vector3(0, 0.25, 1).normalize();
+            this.camera.position.copy(center).add(dir.multiplyScalar(dist));
+            this.controls.target.copy(center);
+            this.controls.update();
+        }
     }
 
     playAnimationByName(name) {
@@ -196,6 +230,7 @@ export class ViewerEngine {
         if (!clip) clip = this.clips.find((c) => (c.name || '').toLowerCase().includes(wanted));
         if (!clip) return false;
 
+        console.log(`[ViewerEngine] Switching animation to: ${clip.name}`);
         this.mixer.stopAllAction();
         const action = this.mixer.clipAction(clip);
         action.reset();
@@ -213,10 +248,13 @@ export class ViewerEngine {
                 const t = this.clock.getElapsedTime();
                 window.NEXUS_PROCEDURAL_ANIMATOR?.update?.(t, dt);
             } catch (_) {}
-            this.mixer?.update(dt);
+            
+            if (this.mixer) this.mixer.update(dt);
 
             // Update VR controllers with delta-time (handles input, interaction, and locomotion)
-            this.vrControllers.update(dt);
+            if (this.vrControllers) {
+                this.vrControllers.update(dt);
+            }
 
             // Only update controls in desktop mode
             if (!this.renderer.xr.isPresenting) {
