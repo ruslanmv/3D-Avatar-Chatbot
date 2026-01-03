@@ -13,6 +13,7 @@ export class VRChatIntegration {
         this.chatManager = chatManager;
 
         this.isInitialized = false;
+        this.hasLoadedAvatar = false; // [FIX] Track if we've loaded the 3D model yet
         this.currentAvatarIndex = 0;
 
         console.log('[VRChatIntegration] Initializing VR chatbot system...');
@@ -24,33 +25,24 @@ export class VRChatIntegration {
      */
     async initialize(manifestUrl = '/vendor/avatars/avatars.json') {
         try {
-            // Load avatar manifest
+            // [FIX] Only load avatar manifest data - do NOT spawn 3D model yet
+            // This prevents overlap with desktop avatar system
             const avatars = await this.avatarManager.initFromManifest(manifestUrl);
-            console.log(`[VRChatIntegration] Loaded ${avatars.length} avatars`);
+            console.log(`[VRChatIntegration] Loaded ${avatars.length} avatar definitions (models not spawned yet)`);
 
             // Set avatars in VR panel
             this.vrChatPanel.setAvatars(avatars);
 
-            // Load default/saved avatar
+            // [FIX] Store preferred avatar index but DON'T load it yet
             const savedAvatarName = localStorage.getItem('vr_avatar_name');
             if (savedAvatarName) {
-                try {
-                    await this.avatarManager.setAvatarByName(savedAvatarName);
-                    const current = this.avatarManager.getCurrent();
-                    this.currentAvatarIndex = current.index >= 0 ? current.index : 0;
-                } catch (e) {
-                    console.warn('[VRChatIntegration] Saved avatar not found, loading first avatar');
-                    await this.avatarManager.setAvatarByIndex(0);
-                }
+                const idx = avatars.findIndex((a) => a.name === savedAvatarName);
+                this.currentAvatarIndex = idx >= 0 ? idx : 0;
             } else {
-                await this.avatarManager.setAvatarByIndex(0);
+                this.currentAvatarIndex = 0;
             }
 
-            // Register avatar with VR controllers for grab-and-spin
-            const currentRoot = this.avatarManager.currentRoot;
-            if (currentRoot) {
-                this.vrControllers.registerAvatar(currentRoot);
-            }
+            console.log(`[VRChatIntegration] Will load avatar index ${this.currentAvatarIndex} when menu opens`);
 
             // Wire up callbacks
             this.setupCallbacks();
@@ -348,12 +340,34 @@ export class VRChatIntegration {
     /**
      * Enable VR chat system
      */
-    enable() {
+    async enable() {
         if (!this.isInitialized) {
             console.warn('[VRChatIntegration] Cannot enable - not initialized');
             return;
         }
+
         this.vrChatPanel.setVisible(true);
+
+        // [FIX] Lazy load avatar on first open to prevent desktop overlap
+        if (!this.hasLoadedAvatar) {
+            console.log('[VRChatIntegration] First open - spawning VR avatar...');
+            try {
+                await this.avatarManager.setAvatarByIndex(this.currentAvatarIndex);
+
+                // Register avatar with VR controllers for grab-and-spin
+                const currentRoot = this.avatarManager.currentRoot;
+                if (currentRoot) {
+                    this.vrControllers.registerAvatar(currentRoot);
+                }
+
+                this.hasLoadedAvatar = true;
+                console.log('[VRChatIntegration] ✅ VR avatar loaded successfully');
+            } catch (error) {
+                console.error('[VRChatIntegration] Failed to load VR avatar:', error);
+                this.vrChatPanel.appendMessage('bot', 'Failed to load avatar');
+            }
+        }
+
         console.log('[VRChatIntegration] VR chat enabled');
     }
 

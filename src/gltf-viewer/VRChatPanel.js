@@ -35,16 +35,20 @@ export class VRChatPanel {
         this.texture = new THREE.CanvasTexture(this.canvas);
         this.texture.needsUpdate = true;
 
-        // Create panel surface
+        // [FIX] Use PlaneGeometry for stability - curved UI can wait for v2
         const panelGeo = new THREE.PlaneGeometry(this.panelWidth, this.panelHeight);
         const panelMat = new THREE.MeshBasicMaterial({
             map: this.texture,
             transparent: true,
             opacity: 0.95,
+            side: THREE.FrontSide,
+            depthTest: false, // [FIX] Ensure visibility over avatar
+            depthWrite: false,
         });
 
         this.panelMesh = new THREE.Mesh(panelGeo, panelMat);
         this.panelMesh.name = 'PanelSurface';
+        this.panelMesh.renderOrder = 999; // [FIX] Render on top
         this.group.add(this.panelMesh);
 
         // Interactable elements
@@ -168,7 +172,7 @@ export class VRChatPanel {
                 opacity: 0.85,
             });
             const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.set(x, y, 0.002);
+            mesh.position.set(x, y, 0.01); // [FIX] Z=0.01 for proper hitbox alignment
             mesh.name = `Btn:${key}`;
             mesh.userData.label = label;
             mesh.userData.type = 'button';
@@ -210,7 +214,7 @@ export class VRChatPanel {
                 opacity: 0.75,
             });
             const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.set(-0.2 + i * 0.2, y, 0.002);
+            mesh.position.set(-0.2 + i * 0.2, y, 0.01); // [FIX] Z=0.01 for proper hitbox alignment
             mesh.name = `Chip:${prompt.key}`;
             mesh.userData.label = prompt.text;
             mesh.userData.type = 'chip';
@@ -242,7 +246,7 @@ export class VRChatPanel {
             opacity: 0.85,
         });
         const back = new THREE.Mesh(backGeo, backMat);
-        back.position.set(-0.3, this.panelHeight / 2 + 0.06, 0.002);
+        back.position.set(-0.3, this.panelHeight / 2 + 0.06, 0.01); // [FIX] Z=0.01
         back.name = 'Btn:back';
         back.userData.label = '← Back';
         back.userData.type = 'button';
@@ -258,7 +262,7 @@ export class VRChatPanel {
         const toggleGeo = new THREE.PlaneGeometry(toggleWidth, buttonHeight);
 
         const stt = new THREE.Mesh(toggleGeo, backMat.clone());
-        stt.position.set(0.05, this.panelHeight / 2 + 0.06, 0.002);
+        stt.position.set(0.05, this.panelHeight / 2 + 0.06, 0.01); // [FIX] Z=0.01
         stt.name = 'Btn:stt';
         stt.userData.label = 'STT';
         stt.userData.type = 'toggle';
@@ -272,7 +276,7 @@ export class VRChatPanel {
 
         // TTS toggle button
         const tts = new THREE.Mesh(toggleGeo, backMat.clone());
-        tts.position.set(0.28, this.panelHeight / 2 + 0.06, 0.002);
+        tts.position.set(0.28, this.panelHeight / 2 + 0.06, 0.01); // [FIX] Z=0.01
         tts.name = 'Btn:tts';
         tts.userData.label = 'TTS';
         tts.userData.type = 'toggle';
@@ -325,7 +329,7 @@ export class VRChatPanel {
             });
             const card = new THREE.Mesh(geo, mat);
 
-            card.position.set(startX + c * (cardW + gap), startY - r * (cardH + gap), 0.002);
+            card.position.set(startX + c * (cardW + gap), startY - r * (cardH + gap), 0.01); // [FIX] Z=0.01
             card.name = `AvatarCard:${idx}`;
             card.userData.avatarIndex = idx;
             card.userData.avatarName = avatar.name;

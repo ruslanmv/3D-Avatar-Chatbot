@@ -62,6 +62,8 @@ export class VRControllers {
 
         // UI Callbacks
         this.onUIButtonClick = null;
+        this.onMenuButtonPress = null; // [FIX] Menu toggle callback
+        this.menuButtonWasPressed = false; // Track button state
 
         // Hover state for UI
         this.hoveredUI = null;
@@ -276,9 +278,21 @@ export class VRControllers {
     // =========================================================================
 
     pollGamepadInput(dt) {
-        // 1. Left Hand -> Walk / Strafe
+        // [FIX] Check for menu button press on left controller
         const left = this.controllers.left;
         if (left && left.gamepad) {
+            // Button index 4 is typically the "Menu" or "X" button on left controller
+            const menuButton = left.gamepad.buttons[4];
+            if (menuButton && menuButton.pressed && !this.menuButtonWasPressed) {
+                this.menuButtonWasPressed = true;
+                if (this.onMenuButtonPress) {
+                    this.onMenuButtonPress();
+                }
+            } else if (!menuButton || !menuButton.pressed) {
+                this.menuButtonWasPressed = false;
+            }
+
+            // 1. Left Hand -> Walk / Strafe
             const axes = left.gamepad.axes;
             let x = 0,
                 y = 0;
@@ -374,6 +388,11 @@ export class VRControllers {
 
     setUIButtonCallback(callback) {
         this.onUIButtonClick = callback;
+    }
+
+    setMenuButtonCallback(callback) {
+        this.onMenuButtonPress = callback;
+        console.log('[VRControllers] Menu button callback registered');
     }
 
     setEnabled(enabled) {

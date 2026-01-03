@@ -87,6 +87,7 @@ export class ViewerEngine {
             scene: this.scene,
             loader: this.loader,
             camera: this.camera,
+            renderer: this.renderer, // [FIX] Pass renderer for XR checks
         });
 
         // Initialize VR Chat Panel (only visible in VR)
@@ -105,28 +106,34 @@ export class ViewerEngine {
             chatManager: window.ChatManager || null,
         });
 
-        // Initialize VR chat system (async - loads avatars)
-        this.vrChatIntegration
-            .initialize('/vendor/avatars/avatars.json')
-            .then(() => {
-                console.log('[ViewerEngine] ✅ VR Chat System Ready');
-            })
-            .catch((err) => {
-                console.error('[ViewerEngine] ❌ VR Chat System Failed:', err);
+        // [FIX] Link VR session events - initialize chat system ONLY when VR starts
+        window.addEventListener('vr-session-start', async () => {
+            this.vrControllers.setEnabled(true);
+
+            // [FIX] Initialize VR Chat System only when session starts to prevent desktop overlap
+            if (!this.vrChatIntegration.isInitialized) {
+                console.log('[ViewerEngine] Initializing VR Chat System...');
+                await this.vrChatIntegration.initialize('/vendor/avatars/avatars.json');
+            }
+
+            // [FIX] Bind Menu Toggle (Left Controller Button)
+            this.vrControllers.setMenuButtonCallback(() => {
+                const isVisible = this.vrChatPanel.group.visible;
+                if (isVisible) {
+                    this.vrChatIntegration.disable(); // Hide menu
+                } else {
+                    this.vrChatIntegration.enable(); // Show menu (lazy loads avatar on first open)
+                }
             });
 
-        // Link VR session events to controllers and chat panel
-        window.addEventListener('vr-session-start', () => {
-            this.vrControllers.setEnabled(true);
-            this.vrChatIntegration.enable();
-            console.log('[ViewerEngine] VR Session Started - Chat System Enabled');
+            console.log('[ViewerEngine] VR Started. Chat Hidden. Press Left Menu/X to toggle.');
         });
 
         window.addEventListener('vr-session-end', () => {
             this.vrControllers.setEnabled(false);
             this.vrControllers.resetPosition();
             this.vrChatIntegration.disable();
-            console.log('[ViewerEngine] VR Session Ended - Chat System Disabled');
+            console.log('[ViewerEngine] VR Session Ended');
         });
 
         this._onResize = () => this.resize();

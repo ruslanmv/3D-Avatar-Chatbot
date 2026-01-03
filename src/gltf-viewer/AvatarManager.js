@@ -7,10 +7,11 @@
 import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
 
 export class AvatarManager {
-    constructor({ scene, loader, camera }) {
+    constructor({ scene, loader, camera, renderer }) {
         this.scene = scene;
         this.loader = loader; // GLTFLoader instance
         this.camera = camera;
+        this.renderer = renderer; // [FIX] Needed for correct XR check
 
         this.avatars = [];
         this.basePath = '';
@@ -115,6 +116,16 @@ export class AvatarManager {
         try {
             // Remove old avatar
             if (this.currentRoot) {
+                // [FIX] Unregister from Procedural Animator before removal
+                try {
+                    if (window.NEXUS_PROCEDURAL_ANIMATOR?.unregisterAvatar) {
+                        window.NEXUS_PROCEDURAL_ANIMATOR.unregisterAvatar(this.currentRoot);
+                        console.log('[AvatarManager] Unregistered avatar from procedural animator');
+                    }
+                } catch (e) {
+                    console.warn('[AvatarManager] Procedural unregister failed:', e);
+                }
+
                 this.scene.remove(this.currentRoot);
                 this.disposeObject(this.currentRoot);
                 this.currentRoot = null;
@@ -158,8 +169,13 @@ export class AvatarManager {
 
             console.log(`[AvatarManager] Avatar loaded successfully: ${name}`);
 
-            // Frame avatar in view (optional - can be disabled)
-            this.frameAvatar();
+            // [FIX] Check renderer XR state correctly - only frame in desktop mode
+            const isVR = this.renderer?.xr?.isPresenting;
+            if (!isVR) {
+                this.frameAvatar();
+            } else {
+                console.log('[AvatarManager] Skipping frame in VR mode');
+            }
 
             // Callback
             if (this.onAvatarChanged) {
