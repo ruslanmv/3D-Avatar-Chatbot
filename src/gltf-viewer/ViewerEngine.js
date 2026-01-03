@@ -23,8 +23,8 @@ export class ViewerEngine {
         const h = containerEl.clientHeight || window.innerHeight;
 
         // Camera
-        this.camera = new THREE.PerspectiveCamera(35, w / h, 0.01, 100);
-        // Initial desktop pose (auto-framed after avatar loads)
+        this.camera = new THREE.PerspectiveCamera(35, w / h, 0.01, 1000);
+        // Initial desktop pose (auto-framed later)
         this.camera.position.set(0, 1.4, 2.2);
 
         // Renderer
@@ -49,10 +49,6 @@ export class ViewerEngine {
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
         this.controls.enableDamping = true;
         this.controls.dampingFactor = 0.05;
-
-        // ✅ Defaults (will be adapted per-avatar in frameObject)
-        this.controls.minDistance = 0.5;
-        this.controls.maxDistance = 25.0; // ✅ allow zooming out for huge models
         this.controls.target.set(0, 1.0, 0);
         this.controls.update();
 
@@ -79,7 +75,7 @@ export class ViewerEngine {
         this.vrSupport = new VRSupport(this.renderer, this.camera, this.scene);
         this.vrControllers = new VRControllers(this.renderer, this.scene, this.camera);
 
-        // Avatar Manager (Single Source of Truth)
+        // Avatar Manager
         this.avatarManager = new AvatarManager({
             scene: this.scene,
             loader: this.loader,
@@ -87,15 +83,15 @@ export class ViewerEngine {
             renderer: this.renderer,
         });
 
-        // VR UI
+        // VR UI (Attached to Left Controller)
         this.vrChatPanel = new VRChatPanel({
             scene: this.scene,
             camera: this.camera,
-            controller: this.vrControllers.controller1,
+            controller: this.vrControllers.controller1, 
         });
         this.vrChatPanel.setVisible(false);
 
-        // Wire chat panel to VR controllers for dragging support
+        // Allow controllers to drag the panel
         this.vrControllers.setChatPanel(this.vrChatPanel);
 
         // Integration
@@ -110,45 +106,38 @@ export class ViewerEngine {
         // --- Event Listeners ---
         window.addEventListener('vr-session-start', async () => {
             console.log('[ViewerEngine] VR Session Starting...');
-
+            
+            // Disable desktop controls to stop conflict
             this.controls.enabled = false;
             this.vrControllers.setEnabled(true);
 
+            // Lazy Load VR Avatar System
             if (!this.vrChatIntegration.isInitialized) {
-                console.log('[ViewerEngine] Initializing VR Chat System...');
                 await this.vrChatIntegration.initialize('/vendor/avatars/avatars.json');
             }
 
+            // Menu Toggle (Left Button)
             this.vrControllers.setMenuButtonCallback(() => {
                 const isVisible = this.vrChatPanel.group.visible;
-                console.log(`[ViewerEngine] Toggling Menu: ${!isVisible}`);
                 if (isVisible) this.vrChatIntegration.disable();
                 else this.vrChatIntegration.enable();
             });
 
-            console.log('[ViewerEngine] VR Started. Controls Disabled. Press Left Menu/X to toggle chat.');
+            console.log('[ViewerEngine] VR Started. Left Menu/X toggles chat.');
         });
 
         window.addEventListener('vr-session-end', () => {
             console.log('[ViewerEngine] VR Session Ending...');
-
+            
             this.controls.enabled = true;
-
-            // Reset, then re-frame if an avatar exists
-            this.camera.position.set(0, 1.4, 2.2);
-            this.controls.target.set(0, 1.0, 0);
-            this.controls.update();
-
-            if (this.avatarManager?.currentRoot) {
-                // ✅ use improved framing (not too close, can zoom out for huge models)
-                this.frameObject(this.avatarManager.currentRoot, 1.35);
-            }
-
             this.vrControllers.setEnabled(false);
             this.vrControllers.resetPosition();
             this.vrChatIntegration.disable();
 
-            console.log('[ViewerEngine] VR Ended. Controls Enabled.');
+            // Re-frame desktop camera if avatar exists
+            if (this.avatarManager?.currentRoot) {
+                this.frameObject(this.avatarManager.currentRoot, 1.35);
+            }
         });
 
         this._onResize = () => this.resize();
@@ -164,87 +153,71 @@ export class ViewerEngine {
         this.camera.aspect = w / h;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(w, h);
-
-        // Optional: if you want perfect reframing after resize, uncomment:
-        // if (!this.renderer.xr.isPresenting && this.avatarManager?.currentRoot) {
-        //   this.frameObject(this.avatarManager.currentRoot, 1.35);
-        // }
     }
 
     /**
-     * ✅ Improved Auto-frame (not too close + supports huge models):
-     * - Uses both vertical and horizontal FOV to compute a correct fit.
-     * - Adaptive min/max distance based on model size.
-     * - Updates OrbitControls min/maxDistance so user can zoom far enough.
+     * [FIX] Smart Auto-Framing
+     * Adjusts camera distance based on object bounding box size.
+     * Works for tiny objects (zoom in) and huge objects (zoom out).
      */
     frameObject(root, fitOffset = 1.35) {
         if (!root) return;
 
         root.updateWorldMatrix(true, true);
-
         const box = new THREE.Box3().setFromObject(root);
-        if (!isFinite(box.min.x) || !isFinite(box.max.x)) return;
+        if (box.isEmpty()) return;
 
         const size = box.getSize(new THREE.Vector3());
         const center = box.getCenter(new THREE.Vector3());
 
-        // Better composition: bias target slightly upward (toward head/torso)
+        // Focus on upper body (better for avatars)
         const target = center.clone();
-        target.y += size.y * 0.12;
+        target.y += size.y * 0.15; 
 
-        // Compute distance required to fit object in view (height + width)
-        const aspect = this.camera.aspect;
-        const vFov = THREE.MathUtils.degToRad(this.camera.fov);
-        const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
-
-        const fitHeightDistance = size.y / 2 / Math.tan(vFov / 2);
-        const fitWidthDistance = size.x / 2 / Math.tan(hFov / 2);
-
+        // Calculate size-based distance
+        const maxSize = Math.max(size.x, size.y, size.z);
+        const fitHeightDistance = (size.y / 2) / Math.tan((Math.PI * this.camera.fov) / 360);
+        const fitWidthDistance = (size.x / 2) / Math.tan((Math.PI * this.camera.fov * this.camera.aspect) / 360);
+        
         let distance = Math.max(fitHeightDistance, fitWidthDistance) * fitOffset;
 
-        // Adaptive clamp based on model size
-        const maxSize = Math.max(size.x, size.y, size.z);
+        // [FIX] Clamping logic for Tiny vs Huge
+        // If tiny (<0.5m), allow camera very close (0.1m)
+        // If huge (>10m), allow camera very far (100m)
+        const minAllowed = Math.max(0.1, maxSize * 0.5); 
+        const maxAllowed = Math.max(10.0, maxSize * 10.0);
+        
+        distance = THREE.MathUtils.clamp(distance, minAllowed, maxAllowed);
 
-        // Don't allow tiny models to push camera too close
-        const minD = THREE.MathUtils.clamp(maxSize * 0.9, 0.8, 2.0);
-
-        // Allow huge models to be framed and allow zooming out
-        const maxD = Math.max(6.0, maxSize * 4.0);
-
-        distance = THREE.MathUtils.clamp(distance, minD, maxD);
-
-        // Place camera on a pleasant diagonal view
-        const dir = new THREE.Vector3(0.28, 0.08, 1).normalize();
-        const newPos = target.clone().add(dir.multiplyScalar(distance));
+        // Position Camera
+        const direction = new THREE.Vector3(0, 0.1, 1).normalize(); // Slight angle
+        const newPos = target.clone().add(direction.multiplyScalar(distance));
 
         this.camera.position.copy(newPos);
         this.controls.target.copy(target);
 
-        // ✅ Critical: allow user zoom range based on avatar size
-        this.controls.minDistance = Math.max(0.35, minD * 0.5);
-        this.controls.maxDistance = Math.max(10.0, distance * 4.0, maxD);
-
+        // [FIX] Update OrbitControls limits so user isn't stuck
+        this.controls.minDistance = minAllowed * 0.5;
+        this.controls.maxDistance = maxAllowed * 2.0;
+        
         this.controls.update();
-        this.camera.updateProjectionMatrix();
     }
 
-    // Forward load calls to AvatarManager
+    // Load Desktop Avatar
     async loadAvatar(url, name = '') {
-        if (this.renderer.xr.isPresenting) {
-            console.log('[ViewerEngine] Skipping desktop loadAvatar because VR is active');
-            return;
-        }
+        // Skip if in VR (prevents overlap)
+        if (this.renderer.xr.isPresenting) return;
 
         console.log(`[ViewerEngine] Loading desktop avatar: ${url}`);
         const info = await this.avatarManager.setAvatarByUrl(url, name);
 
         if (this.avatarManager.currentRoot) {
+            // Register for VR interaction (so it's ready if we enter VR)
             this.vrControllers.registerAvatar(this.avatarManager.currentRoot);
-
-            // ✅ Improved auto-frame (balanced distance + supports huge models)
+            
+            // Frame it on desktop
             this.frameObject(this.avatarManager.currentRoot, 1.35);
         }
-
         return info;
     }
 

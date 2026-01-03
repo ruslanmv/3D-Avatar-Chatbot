@@ -3,8 +3,8 @@
  * --------------------------------------------------------
  * CONTROLS:
  * - Left Stick:  Move Walk / Strafe
- * - Right Stick: Turn (X-axis) / Fly Up & Down (Y-axis) <-- RESTORED
- * - Triggers:    "Grab and Spin" the Avatar
+ * - Right Stick: Turn (X-axis) / Fly Up & Down (Y-axis)
+ * - Triggers:    "Grab and Spin" the Avatar OR "Drag" the UI Panel
  * --------------------------------------------------------
  */
 
@@ -20,20 +20,18 @@ export class VRControllers {
         this.scene = scene;
         this.camera = camera;
 
-        // --- Configuration ---
         this.options = {
-            moveSpeed: 1.8, // Horizontal speed
-            verticalSpeed: 1.2, // Vertical fly speed (Restored)
-            turnSpeed: 2.0, // Turning speed
-            rotationSensitivity: 5.5, // Avatar spin speed (increased slightly)
-            deadzone: 0.15, // Stick deadzone
+            moveSpeed: 1.8,
+            verticalSpeed: 1.2,
+            turnSpeed: 2.0,
+            rotationSensitivity: 5.5,
+            deadzone: 0.15,
             rayLength: 5,
             rayColor: 0x00e5ff,
             rayGrabColor: 0x00ff00,
             ...options,
         };
 
-        // --- State ---
         this.enabled = false;
         this.playerRig = new THREE.Group();
 
@@ -49,46 +47,36 @@ export class VRControllers {
         // Interaction
         this.raycaster = new THREE.Raycaster();
         this.tempMatrix = new THREE.Matrix4();
-        this.interactables = []; // Avatar interactables
-        this.uiInteractables = []; // UI panel interactables
-        this.chatPanel = null; // Reference to VRChatPanel for dragging
+        this.interactables = [];      // Avatar interactables
+        this.uiInteractables = [];    // UI panel interactables
+        this.chatPanel = null;        // Reference to VRChatPanel
 
-        // Dragging State
-        this.dragState = {
-            active: false,
-            hand: null,
-            object: null,
-            previousX: 0,
-        };
+        // Dragging State (Avatar)
+        this.dragState = { active: false, hand: null, object: null, previousX: 0 };
 
-        // UI Drag State (for dragging chat panel)
-        this.uiDragState = {
-            active: false,
-            hand: null,
-        };
+        // Dragging State (UI Panel)
+        this.uiDragState = { active: false, hand: null };
 
         // UI Callbacks
         this.onUIButtonClick = null;
-        this.onMenuButtonPress = null; // [FIX] Menu toggle callback
-        this.menuButtonWasPressed = false; // Track button state
-
-        // Hover state for UI
+        this.onMenuButtonPress = null;
+        this.menuButtonWasPressed = false;
         this.hoveredUI = null;
 
         this.init();
     }
 
+    // Pass the panel instance so we can call beginDrag/dragTo
+    setChatPanel(panel) {
+        this.chatPanel = panel || null;
+    }
+
     init() {
         console.log('[VRControllers] Initializing...');
-
-        // 1. Setup Player Rig
         this.playerRig.add(this.camera);
         this.scene.add(this.playerRig);
-
-        // 2. Setup Controllers
         this.setupControllers();
-
-        console.log('[VRControllers] Ready. Standard Exploration + Grab Spin.');
+        console.log('[VRControllers] Ready.');
     }
 
     // =========================================================================
@@ -96,21 +84,19 @@ export class VRControllers {
     // =========================================================================
 
     setupControllers() {
-        // --- Controller 0 (Left) ---
+        // --- Left Controller (0) ---
         this.controller1 = this.renderer.xr.getController(0);
         this.playerRig.add(this.controller1);
         this._bindEvents(this.controller1, 0);
 
-        // --- Controller 1 (Right) ---
+        // --- Right Controller (1) ---
         this.controller2 = this.renderer.xr.getController(1);
         this.playerRig.add(this.controller2);
         this._bindEvents(this.controller2, 1);
 
-        // --- Visuals (Rays) ---
         this.addRayVisual(this.controller1);
         this.addRayVisual(this.controller2);
 
-        // --- Grip Models ---
         this.controllerGrip1 = this.renderer.xr.getControllerGrip(0);
         this.addControllerModel(this.controllerGrip1);
         this.playerRig.add(this.controllerGrip1);
@@ -126,16 +112,18 @@ export class VRControllers {
         controller.addEventListener('connected', (e) => {
             const hand = getHand(e.data);
             this.controllers[hand] = e.data;
-            console.log(`[VRControllers] Connected: ${hand}`);
         });
 
         controller.addEventListener('disconnected', (e) => {
             const hand = getHand(e.data);
             this.controllers[hand] = null;
+            // Stop drags if controller disconnects
             if (this.dragState.active && this.dragState.hand === hand) {
                 this._endDrag(hand);
             }
-            console.log(`[VRControllers] Disconnected: ${hand}`);
+            if (this.uiDragState.active && this.uiDragState.hand === hand) {
+                this._endUIDrag(hand);
+            }
         });
 
         controller.addEventListener('selectstart', (e) => {
@@ -146,6 +134,7 @@ export class VRControllers {
         controller.addEventListener('selectend', (e) => {
             const hand = getHand(e.data);
             this._endDrag(hand);
+            this._endUIDrag(hand);
         });
     }
 
@@ -170,7 +159,7 @@ export class VRControllers {
     }
 
     // =========================================================================
-    // INTERACTION LOGIC (GRAB & SPIN)
+    // INTERACTION LOGIC
     // =========================================================================
 
     _startDrag(controller, hand) {
@@ -180,45 +169,37 @@ export class VRControllers {
         this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
         this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
 
-        // PRIORITY 1: Check UI interactions first
+        // 1. UI Check (Buttons OR Handle Drag)
         const uiIntersects = this.raycaster.intersectObjects(this.uiInteractables, false);
         if (uiIntersects.length > 0) {
-            const uiTarget = uiIntersects[0].object;
             const hit = uiIntersects[0];
+            const target = hit.object;
 
-            // Check if this is a panel handle (for dragging) vs a button (for clicking)
-            if (this.chatPanel && uiTarget.userData && uiTarget.userData.type === 'handle') {
-                // Start dragging the panel
-                const dragStarted = this.chatPanel.beginDrag ? this.chatPanel.beginDrag(hit.point) : false;
-                if (dragStarted) {
-                    this.uiDragState.active = true;
-                    this.uiDragState.hand = hand;
-                    console.log(`[VRControllers] 🖐️ Started dragging UI panel (${hand})`);
-                    return;
+            // Is it the Drag Handle? (Must be unpinned to move)
+            if (this.chatPanel && !this.chatPanel.isPinned && target.userData?.type === 'handle') {
+                if (this.chatPanel.beginDrag(hit.point)) {
+                    this.uiDragState = { active: true, hand };
+                    const line = controller.getObjectByName('ray');
+                    if (line) line.material.color.setHex(this.options.rayGrabColor);
+                    console.log(`[VRControllers] Started dragging UI with ${hand}`);
                 }
+                return;
             }
 
-            // Otherwise handle as normal UI click
-            this._handleUIClick(uiTarget);
+            // Normal Button Click
+            this._handleUIClick(target);
             return;
         }
 
-        // PRIORITY 2: Check avatar grab interactions
+        // 2. Avatar Grab (Spin)
         const intersects = this.raycaster.intersectObjects(this.interactables, true);
-
         if (intersects.length > 0) {
             let target = intersects[0].object;
             while (target) {
                 if (target.userData && target.userData.isRotatable) {
-                    this.dragState.active = true;
-                    this.dragState.hand = hand;
-                    this.dragState.object = target;
-                    this.dragState.previousX = controller.position.x;
-
+                    this.dragState = { active: true, hand, object: target, previousX: controller.position.x };
                     const line = controller.getObjectByName('ray');
                     if (line) line.material.color.setHex(this.options.rayGrabColor);
-
-                    console.log(`[VRControllers] ✊ Grabbed Avatar (${hand})`);
                     return;
                 }
                 target = target.parent;
@@ -227,53 +208,12 @@ export class VRControllers {
     }
 
     _handleUIClick(mesh) {
-        if (!mesh || !mesh.name) return;
-
-        console.log(`[VRControllers] 👆 UI Click: ${mesh.name}`);
-
-        // Call callback with mesh name and userData
-        if (this.onUIButtonClick) {
+        if (mesh && mesh.name && this.onUIButtonClick) {
             this.onUIButtonClick(mesh.name, mesh.userData);
         }
     }
 
-    _updateUIHover() {
-        if (!this.controller2) return;
-
-        this.tempMatrix.identity().extractRotation(this.controller2.matrixWorld);
-        this.raycaster.ray.origin.setFromMatrixPosition(this.controller2.matrixWorld);
-        this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
-
-        const uiIntersects = this.raycaster.intersectObjects(this.uiInteractables, false);
-
-        // Reset previous hover
-        if (this.hoveredUI && (uiIntersects.length === 0 || uiIntersects[0].object !== this.hoveredUI)) {
-            if (this.hoveredUI.userData.onHoverExit) {
-                this.hoveredUI.userData.onHoverExit(this.hoveredUI);
-            }
-            this.hoveredUI = null;
-        }
-
-        // Set new hover
-        if (uiIntersects.length > 0) {
-            const newHover = uiIntersects[0].object;
-            if (newHover !== this.hoveredUI) {
-                this.hoveredUI = newHover;
-                if (this.hoveredUI.userData.onHoverEnter) {
-                    this.hoveredUI.userData.onHoverEnter(this.hoveredUI);
-                }
-            }
-        }
-    }
-
     _endDrag(hand) {
-        // Handle UI panel drag end
-        if (this.uiDragState.active && this.uiDragState.hand === hand) {
-            this._endUIDrag(hand);
-            return;
-        }
-
-        // Handle avatar drag end
         if (this.dragState.active && this.dragState.hand === hand) {
             const controller = hand === 'left' ? this.controller1 : this.controller2;
             if (controller) {
@@ -283,17 +223,22 @@ export class VRControllers {
             this.dragState.active = false;
             this.dragState.object = null;
             this.dragState.hand = null;
-            console.log(`[VRControllers] ✋ Released Avatar`);
         }
     }
 
     _endUIDrag(hand) {
-        if (this.chatPanel && this.chatPanel.endDrag) {
-            this.chatPanel.endDrag();
+        if (this.uiDragState.active && this.uiDragState.hand === hand) {
+            if (this.chatPanel) this.chatPanel.endDrag();
+            
+            const controller = hand === 'left' ? this.controller1 : this.controller2;
+            if (controller) {
+                const line = controller.getObjectByName('ray');
+                if (line) line.material.color.setHex(this.options.rayColor);
+            }
+            
+            this.uiDragState.active = false;
+            this.uiDragState.hand = null;
         }
-        this.uiDragState.active = false;
-        this.uiDragState.hand = null;
-        console.log(`[VRControllers] ✋ Released UI panel`);
     }
 
     _updateDragging() {
@@ -303,122 +248,116 @@ export class VRControllers {
         if (!controller) return;
 
         const currentX = controller.position.x;
-        const deltaX = currentX - this.dragState.previousX;
+        const delta = currentX - this.dragState.previousX;
 
-        if (Math.abs(deltaX) > 0.0001) {
-            this.dragState.object.rotation.y += deltaX * this.options.rotationSensitivity;
+        // Spin Avatar
+        if (Math.abs(delta) > 0.0001) {
+            this.dragState.object.rotation.y += delta * this.options.rotationSensitivity;
         }
         this.dragState.previousX = currentX;
     }
 
+    // [FIX] Added missing method
     _updateUIDragging() {
         if (!this.uiDragState.active || !this.chatPanel) return;
 
         const controller = this.uiDragState.hand === 'left' ? this.controller1 : this.controller2;
         if (!controller) return;
 
-        // Raycast to find new position
         this.tempMatrix.identity().extractRotation(controller.matrixWorld);
         this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
         this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
 
-        // Find intersection point in space (use a fixed distance)
-        const dragDistance = 1.5; // Distance at which to place the panel
-        const targetPoint = this.raycaster.ray.origin
-            .clone()
-            .add(this.raycaster.ray.direction.clone().multiplyScalar(dragDistance));
+        // Raycast against panel elements to find current world hit point
+        // We use the panel interactables (which include the handle and panel surface)
+        const hits = this.raycaster.intersectObjects(this.chatPanel.getInteractables(), false);
+        
+        if (hits.length > 0) {
+            this.chatPanel.dragTo(hits[0].point);
+        }
+    }
 
-        // Update panel position if dragTo method exists
-        if (this.chatPanel.dragTo) {
-            this.chatPanel.dragTo(targetPoint);
+    // [FIX] Added missing method
+    _updateUIHover() {
+        if (!this.controller2) return; // Right hand is pointer
+
+        // Skip hover check if dragging to save perf
+        if (this.uiDragState.active || this.dragState.active) return;
+
+        this.tempMatrix.identity().extractRotation(this.controller2.matrixWorld);
+        this.raycaster.ray.origin.setFromMatrixPosition(this.controller2.matrixWorld);
+        this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
+
+        const intersects = this.raycaster.intersectObjects(this.uiInteractables, false);
+
+        // Hover Exit
+        if (this.hoveredUI && (!intersects.length || intersects[0].object !== this.hoveredUI)) {
+            if (this.hoveredUI.userData.onHoverExit) {
+                this.hoveredUI.userData.onHoverExit(this.hoveredUI);
+            }
+            this.hoveredUI = null;
+        }
+
+        // Hover Enter
+        if (intersects.length > 0) {
+            const newHover = intersects[0].object;
+            if (newHover !== this.hoveredUI) {
+                this.hoveredUI = newHover;
+                if (this.hoveredUI.userData.onHoverEnter) {
+                    this.hoveredUI.userData.onHoverEnter(this.hoveredUI);
+                }
+            }
         }
     }
 
     // =========================================================================
-    // LOCOMOTION (STANDARD VR EXPLORATION)
+    // LOCOMOTION
     // =========================================================================
 
     pollGamepadInput(dt) {
-        // [FIX] Check for menu button press on left controller
         const left = this.controllers.left;
         if (left && left.gamepad) {
-            // Button index 4 is typically the "Menu" or "X" button on left controller
-            const menuButton = left.gamepad.buttons[4];
-            if (menuButton && menuButton.pressed && !this.menuButtonWasPressed) {
+            // Menu Toggle (Button 4/Menu or 3/X)
+            const menuBtn = left.gamepad.buttons[4] || left.gamepad.buttons[3];
+            if (menuBtn && menuBtn.pressed && !this.menuButtonWasPressed) {
                 this.menuButtonWasPressed = true;
-                if (this.onMenuButtonPress) {
-                    this.onMenuButtonPress();
-                }
-            } else if (!menuButton || !menuButton.pressed) {
+                if (this.onMenuButtonPress) this.onMenuButtonPress();
+            } else if (!menuBtn || !menuBtn.pressed) {
                 this.menuButtonWasPressed = false;
             }
 
-            // 1. Left Hand -> Walk / Strafe
             const axes = left.gamepad.axes;
-            let x = 0,
-                y = 0;
-            if (axes.length >= 4) {
-                x = axes[2];
-                y = axes[3];
-            } else if (axes.length >= 2) {
-                x = axes[0];
-                y = axes[1];
-            }
-
-            this._applyMove(x, y, dt);
+            if (axes.length >= 4) this._applyMove(axes[2], axes[3], dt);
         }
 
-        // 2. Right Hand -> Turn (X) + Fly Up/Down (Y)
         const right = this.controllers.right;
         if (right && right.gamepad) {
             const axes = right.gamepad.axes;
-            let x = 0,
-                y = 0;
-            // Standard WebXR often maps stick to 2,3
             if (axes.length >= 4) {
-                x = axes[2];
-                y = axes[3];
-            } else if (axes.length >= 2) {
-                x = axes[0];
-                y = axes[1];
+                this._applyTurn(axes[2], dt);
+                this._applyVertical(axes[3], dt);
             }
-
-            this._applyTurn(x, dt);
-            this._applyVertical(y, dt); // RESTORED
         }
     }
 
     _applyMove(x, y, dt) {
-        if (Math.abs(x) < this.options.deadzone) x = 0;
-        if (Math.abs(y) < this.options.deadzone) y = 0;
-        if (x === 0 && y === 0) return;
-
-        // Get Camera Direction (Ground Projected)
-        const xrCam = this.renderer.xr.getCamera(this.camera);
-        const forward = new THREE.Vector3();
-        xrCam.getWorldDirection(forward);
-        forward.y = 0;
-        forward.normalize();
-
-        const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0));
-
+        if (Math.abs(x) < 0.15 && Math.abs(y) < 0.15) return;
+        const cam = this.renderer.xr.getCamera(this.camera);
+        const fwd = new THREE.Vector3(); cam.getWorldDirection(fwd); fwd.y = 0; fwd.normalize();
+        const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0,1,0));
         const speed = this.options.moveSpeed * dt;
-        this.playerRig.position.addScaledVector(forward, -y * speed);
+        this.playerRig.position.addScaledVector(fwd, -y * speed);
         this.playerRig.position.addScaledVector(right, x * speed);
     }
 
     _applyTurn(x, dt) {
-        if (Math.abs(x) < this.options.deadzone) return;
-        const speed = this.options.turnSpeed * dt;
-        this.playerRig.rotateY(-x * speed);
+        if (Math.abs(x) < 0.15) return;
+        this.playerRig.rotateY(-x * this.options.turnSpeed * dt);
     }
 
-    // RESTORED: Fly Up/Down Logic
     _applyVertical(y, dt) {
-        if (Math.abs(y) < this.options.deadzone) return;
-        const speed = this.options.verticalSpeed * dt;
-        // -y is typically "up" on thumbstick push
-        this.playerRig.position.y += -y * speed;
+        if (Math.abs(y) < 0.15) return;
+        this.playerRig.position.y += -y * this.options.verticalSpeed * dt;
     }
 
     // =========================================================================
@@ -427,57 +366,40 @@ export class VRControllers {
 
     update(dt) {
         if (!this.enabled || !this.renderer.xr.isPresenting) return;
+        
         this.pollGamepadInput(dt);
         this._updateDragging();
+        
+        // [FIX] Ensure these are called
         this._updateUIDragging();
         this._updateUIHover();
     }
 
-    registerAvatar(avatarRoot) {
-        if (!avatarRoot) return;
-        avatarRoot.userData.isRotatable = true;
-        if (!this.interactables.includes(avatarRoot)) {
-            this.interactables.push(avatarRoot);
-        }
-        console.log('[VRControllers] Avatar registered. Hold trigger to spin.');
+    registerAvatar(root) {
+        if (!root) return;
+        root.userData.isRotatable = true;
+        // [FIX] Clear old avatar interactables
+        this.interactables = [root];
     }
 
-    registerUIInteractables(interactables) {
-        if (!interactables || !Array.isArray(interactables)) return;
-        this.uiInteractables = interactables;
-        console.log(`[VRControllers] Registered ${interactables.length} UI interactables.`);
+    registerUIInteractables(list) {
+        this.uiInteractables = list || [];
     }
 
-    setUIButtonCallback(callback) {
-        this.onUIButtonClick = callback;
-    }
-
-    setMenuButtonCallback(callback) {
-        this.onMenuButtonPress = callback;
-        console.log('[VRControllers] Menu button callback registered');
-    }
-
-    setChatPanel(panel) {
-        this.chatPanel = panel || null;
-        console.log('[VRControllers] Chat panel reference set for dragging support');
-    }
+    setUIButtonCallback(cb) { this.onUIButtonClick = cb; }
+    setMenuButtonCallback(cb) { this.onMenuButtonPress = cb; }
 
     setEnabled(enabled) {
         this.enabled = enabled;
-        console.log(`[VRControllers] System ${enabled ? 'Enabled' : 'Disabled'}`);
         if (enabled) {
-            // Position player in front of avatar (not on top of it)
-            // Z=2.5 puts you in front, Y=0 is ground level
             this.playerRig.position.set(0, 0, 2.5);
             this.playerRig.rotation.set(0, 0, 0);
-            console.log('[VRControllers] Positioned in front of avatar');
         }
     }
 
     resetPosition() {
         this.playerRig.position.set(0, 0, 0);
         this.playerRig.rotation.set(0, 0, 0);
-        console.log('[VRControllers] Position Reset');
     }
 
     dispose() {
@@ -486,9 +408,7 @@ export class VRControllers {
         if (this.controllerGrip1) this.playerRig.remove(this.controllerGrip1);
         if (this.controllerGrip2) this.playerRig.remove(this.controllerGrip2);
         if (this.playerRig) this.scene.remove(this.playerRig);
-
         this.interactables = [];
-        this.controllers = { left: null, right: null };
-        console.log('[VRControllers] Disposed cleanly.');
+        this.uiInteractables = [];
     }
 }
