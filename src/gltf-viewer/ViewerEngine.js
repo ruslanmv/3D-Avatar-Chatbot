@@ -5,6 +5,7 @@ import { DRACOLoader } from '../../vendor/three-0.147.0/examples/jsm/loaders/DRA
 import { KTX2Loader } from '../../vendor/three-0.147.0/examples/jsm/loaders/KTX2Loader.js';
 import { RoomEnvironment } from '../../vendor/three-0.147.0/examples/jsm/environments/RoomEnvironment.js';
 import { MeshoptDecoder } from '../../vendor/three-0.147.0/examples/jsm/libs/meshopt_decoder.module.js';
+import { VRSupport } from './VRSupport.js';
 
 export class ViewerEngine {
     constructor(containerEl) {
@@ -71,6 +72,9 @@ export class ViewerEngine {
 
         this.loader.setMeshoptDecoder(MeshoptDecoder);
 
+        // Initialize VR Support
+        this.vrSupport = new VRSupport(this.renderer, this.camera, this.scene);
+
         this._onResize = () => this.resize();
         window.addEventListener('resize', this._onResize);
 
@@ -120,6 +124,15 @@ export class ViewerEngine {
         this.currentRoot = gltf.scene;
         this.scene.add(this.currentRoot);
 
+        /* NEXUS_PATCH_LIFE_ENGINE_VIEWERENGINE_REGISTER */
+        try {
+            // ProceduralAnimator is a GLOBAL script (index.html loads it).
+            // In module context we still can call window.*.
+            window.NEXUS_PROCEDURAL_ANIMATOR?.registerAvatar?.(
+                this.currentRoot,
+                Array.isArray(this.clips) && this.clips.length > 0
+            );
+        } catch (_) {}
         this.currentRoot.traverse((o) => {
             if (o.isMesh) {
                 o.castShadow = false;
@@ -171,10 +184,23 @@ export class ViewerEngine {
     }
 
     animate() {
-        this._raf = requestAnimationFrame(() => this.animate());
-        const dt = this.clock.getDelta();
-        this.mixer?.update(dt);
-        this.controls.update();
-        this.renderer.render(this.scene, this.camera);
+        // Use setAnimationLoop for VR compatibility (works in both VR and desktop mode)
+        this.renderer.setAnimationLoop(() => {
+            const dt = this.clock.getDelta();
+
+            /* NEXUS_PATCH_LIFE_ENGINE_VIEWERENGINE_UPDATE */
+            try {
+                const t = this.clock.getElapsedTime();
+                window.NEXUS_PROCEDURAL_ANIMATOR?.update?.(t, dt);
+            } catch (_) {}
+            this.mixer?.update(dt);
+
+            // Only update controls in desktop mode
+            if (!this.renderer.xr.isPresenting) {
+                this.controls.update();
+            }
+
+            this.renderer.render(this.scene, this.camera);
+        });
     }
 }
