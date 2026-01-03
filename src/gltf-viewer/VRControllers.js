@@ -187,13 +187,7 @@ export class VRControllers {
             const hit = uiIntersects[0];
 
             // Check if this is a panel handle (for dragging) vs a button (for clicking)
-            if (
-                this.chatPanel &&
-                this.chatPanel.isPinned !== undefined &&
-                !this.chatPanel.isPinned &&
-                uiTarget.userData &&
-                uiTarget.userData.type === 'handle'
-            ) {
+            if (this.chatPanel && uiTarget.userData && uiTarget.userData.type === 'handle') {
                 // Start dragging the panel
                 const dragStarted = this.chatPanel.beginDrag ? this.chatPanel.beginDrag(hit.point) : false;
                 if (dragStarted) {

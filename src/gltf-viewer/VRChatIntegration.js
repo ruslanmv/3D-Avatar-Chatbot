@@ -126,6 +126,12 @@ export class VRChatIntegration {
     handleUIClick(name, userData) {
         console.log(`[VRChatIntegration] Button clicked: ${name}`);
 
+        // Let panel handle its own built-in actions (STT/TTS toggles with desktop settings sync)
+        if (this.vrChatPanel.handleUIAction && this.vrChatPanel.handleUIAction(name, userData)) {
+            console.log('[VRChatIntegration] Handled by panel built-in action');
+            return;
+        }
+
         // Main buttons
         if (name === 'Btn:mic') {
             this.handleMicButton();
@@ -145,10 +151,6 @@ export class VRChatIntegration {
         // Settings buttons
         else if (name === 'Btn:back') {
             this.vrChatPanel.setMode('chat');
-        } else if (name === 'Btn:stt') {
-            this.handleSTTToggle();
-        } else if (name === 'Btn:tts') {
-            this.handleTTSToggle();
         }
         // Quick prompts
         else if (name.startsWith('Chip:')) {
