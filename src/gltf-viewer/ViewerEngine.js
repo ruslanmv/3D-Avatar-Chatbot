@@ -6,6 +6,7 @@ import { KTX2Loader } from '../../vendor/three-0.147.0/examples/jsm/loaders/KTX2
 import { RoomEnvironment } from '../../vendor/three-0.147.0/examples/jsm/environments/RoomEnvironment.js';
 import { MeshoptDecoder } from '../../vendor/three-0.147.0/examples/jsm/libs/meshopt_decoder.module.js';
 import { VRSupport } from './VRSupport.js';
+import { VRControllers } from './VRControllers.js';
 
 export class ViewerEngine {
     constructor(containerEl) {
@@ -74,6 +75,19 @@ export class ViewerEngine {
 
         // Initialize VR Support
         this.vrSupport = new VRSupport(this.renderer, this.camera, this.scene);
+
+        // Initialize VR Controllers
+        this.vrControllers = new VRControllers(this.renderer, this.scene, this.camera);
+
+        // Link VR session events to controllers
+        window.addEventListener('vr-session-start', () => {
+            this.vrControllers.setEnabled(true);
+        });
+
+        window.addEventListener('vr-session-end', () => {
+            this.vrControllers.setEnabled(false);
+            this.vrControllers.resetPosition();
+        });
 
         this._onResize = () => this.resize();
         window.addEventListener('resize', this._onResize);
@@ -194,6 +208,9 @@ export class ViewerEngine {
                 window.NEXUS_PROCEDURAL_ANIMATOR?.update?.(t, dt);
             } catch (_) {}
             this.mixer?.update(dt);
+
+            // Update VR controllers (handles input and interaction)
+            this.vrControllers.update();
 
             // Only update controls in desktop mode
             if (!this.renderer.xr.isPresenting) {
