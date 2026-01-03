@@ -1,0 +1,21 @@
+# Temporary files
+temp/*
+*.pyc
+__pycache__/
+*.log
+
+# Development files
+.git/
+.gitignore
+README.md
+.env
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Keep addons folder structure but ignore large files
+!addons/
+addons/*.blend
