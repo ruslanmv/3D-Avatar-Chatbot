@@ -3,7 +3,9 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-        <title>Nexus Avatar - AI-Powered 3D Interface</title>
+
+        <!-- ✅ Updated name -->
+        <title>VR NEXUS Avatar - AI-Powered 3D Interface</title>
 
         <meta
             name="description"
@@ -24,6 +26,7 @@
 
         <link rel="stylesheet" href="styles/main.css" />
 
+        <!-- ✅ Keep your favicon.ico (no VR icon button anymore) -->
         <link rel="icon" href="favicon.ico" />
 
         <script defer src="vendor/three-0.147.0/build/three.min.js"></script>
@@ -192,7 +195,7 @@
                     text-align: center;
                 }
             </style>
-            <div class="noscript-banner">JavaScript is required to run Nexus Avatar.</div>
+            <div class="noscript-banner">JavaScript is required to run VR NEXUS Avatar.</div>
         </noscript>
     </head>
 
@@ -205,8 +208,11 @@
                 <div class="header-content">
                     <div class="logo">
                         <div class="logo-icon" aria-hidden="true">⬢</div>
-                        <h1>NEXUS AVATAR</h1>
+
+                        <!-- ✅ Updated visible name -->
+                        <h1>VR NEXUS AVATAR</h1>
                     </div>
+
                     <div class="header-controls">
                         <button class="icon-btn" id="settings-btn" title="Settings" aria-label="Settings" type="button">
                             <svg
@@ -241,39 +247,8 @@
                             </svg>
                         </button>
 
-                        <a
-                            href="index-vr.html"
-                            class="icon-btn vr-btn"
-                            title="Enter VR Mode"
-                            aria-label="VR Mode"
-                            style="
-                                background: linear-gradient(135deg, #00e5ff 0%, #00b8d4 100%);
-                                color: #000;
-                                font-weight: bold;
-                                padding: 8px 16px;
-                                border-radius: 8px;
-                                text-decoration: none;
-                                display: inline-flex;
-                                align-items: center;
-                                gap: 6px;
-                                transition: all 0.3s;
-                            "
-                        >
-                            <svg
-                                width="20"
-                                height="20"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"
-                                aria-hidden="true"
-                            >
-                                <rect x="2" y="7" width="20" height="10" rx="2" />
-                                <circle cx="8" cy="12" r="2" />
-                                <circle cx="16" cy="12" r="2" />
-                            </svg>
-                            <span style="font-size: 12px">VR</span>
-                        </a>
+                        <!-- ✅ REMOVED: VR button that links to index-vr.html -->
+                        <!-- (This was the upper button + icon you wanted removed) -->
                     </div>
                 </div>
             </header>
@@ -486,12 +461,7 @@
 
                         <div class="input-group">
                             <label class="input-label" for="api-key">API KEY</label>
-                            <input
-                                type="password"
-                                id="api-key"
-                                class="text-input"
-                                placeholder="Enter your API key..."
-                            />
+                            <input type="password" id="api-key" class="text-input" placeholder="Enter your API key..." />
                         </div>
 
                         <div class="input-group" id="watsonx-project-row" style="display: none">
@@ -588,18 +558,13 @@
                             class="textarea-input"
                             placeholder="Define the avatar's personality and behavior..."
                             rows="4"
-                        >
-You are a helpful AI assistant named Nexus. You are friendly, professional, and knowledgeable.</textarea
-                        >
+                        >You are a helpful AI assistant named Nexus. You are friendly, professional, and knowledgeable.</textarea>
                     </div>
 
                     <div class="modal-footer">
                         <button class="secondary-btn" id="cancel-settings" type="button">CANCEL</button>
                         <button class="secondary-btn" id="test-connection-btn" type="button">TEST CONNECTION</button>
-                        <span
-                            id="test-connection-status"
-                            style="margin-left: 10px; font-size: 12px; opacity: 0.85"
-                        ></span>
+                        <span id="test-connection-status" style="margin-left: 10px; font-size: 12px; opacity: 0.85"></span>
 
                         <button class="primary-btn" id="save-settings" type="button">SAVE CONFIGURATION</button>
                     </div>

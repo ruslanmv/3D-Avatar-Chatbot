@@ -1,400 +1,441 @@
 /**
- * VR Chat Integration Module
- * Wires together VRChatPanel, AvatarManager, SpeechService, and ChatManager
- * Handles all VR chatbot interactions
+ * VR Chat Integration Module (Fixed & Production Ready)
+ * -----------------------------------------------------
+ * Fixes:
+ * - Proper named export: `export class VRChatIntegration` (matches ViewerEngine import)
+ * - No avatar overlap: uses ONE shared AvatarManager (desktop + VR)
+ * - VR avatar stays synced with desktop (same AvatarManager currentRoot)
+ * - Works with your panel controls:
+ *    - Btn:pin          -> vrChatPanel.togglePinned()
+ *    - Btn:avatar_prev  -> vrChatPanel.prevAvatar()  + avatarManager.setAvatarByIndex()
+ *    - Btn:avatar_next  -> vrChatPanel.nextAvatar()  + avatarManager.setAvatarByIndex()
+ *
+ * Notes:
+ * - This module does NOT create any second avatar. It always reuses avatarManager.currentRoot.
+ * - If no avatar exists yet, it loads the currently selected avatar index once.
  */
 
 export class VRChatIntegration {
-    constructor({ avatarManager, vrChatPanel, vrControllers, speechService, chatManager }) {
-        this.avatarManager = avatarManager;
-        this.vrChatPanel = vrChatPanel;
-        this.vrControllers = vrControllers;
-        this.speechService = speechService;
-        this.chatManager = chatManager;
+  constructor({ avatarManager, vrChatPanel, vrControllers, speechService, chatManager }) {
+    if (!avatarManager || !vrChatPanel || !vrControllers) {
+      throw new Error('[VRChatIntegration] avatarManager, vrChatPanel, and vrControllers are required.');
+    }
 
-        this.isInitialized = false;
-        this.hasLoadedAvatar = false; // [FIX] Track if we've loaded the 3D model yet
+    this.avatarManager = avatarManager;
+    this.vrChatPanel = vrChatPanel;
+    this.vrControllers = vrControllers;
+    this.speechService = speechService || null;
+    this.chatManager = chatManager || null;
+
+    this.isInitialized = false;
+    this._callbacksWired = false;
+
+    this.currentAvatarIndex = 0;
+
+    // Keep a stable reference for optional bot bridging
+    this._boundHandleBot = (text) => this.handleBotResponse(text);
+
+    console.log('[VRChatIntegration] Constructed');
+  }
+
+  /**
+   * Initialize: loads avatar manifest definitions + wires UI callbacks.
+   * Does NOT spawn a 3D model by itself.
+   */
+  async initialize(manifestUrl = '/vendor/avatars/avatars.json') {
+    try {
+      const avatars = await this.avatarManager.initFromManifest(manifestUrl);
+      console.log(`[VRChatIntegration] Loaded ${avatars?.length ?? 0} avatar definitions`);
+
+      this.vrChatPanel.setAvatars(Array.isArray(avatars) ? avatars : []);
+
+      // Restore saved selection (by name if available)
+      const savedAvatarName = this._safeGetLocalStorage('vr_avatar_name');
+      if (savedAvatarName && Array.isArray(avatars) && avatars.length) {
+        const idx = avatars.findIndex((a) => a?.name === savedAvatarName);
+        this.currentAvatarIndex = idx >= 0 ? idx : 0;
+      } else {
         this.currentAvatarIndex = 0;
+      }
 
-        console.log('[VRChatIntegration] Initializing VR chatbot system...');
+      // Keep panel in sync with restored index (if panel supports it)
+      if (typeof this.vrChatPanel.setCurrentAvatarIndex === 'function') {
+        this.vrChatPanel.setCurrentAvatarIndex(this.currentAvatarIndex);
+      } else {
+        // fallback: panel stores its own index; try to set via direct property if present
+        this.vrChatPanel.currentAvatarIndex = this.currentAvatarIndex;
+        this.vrChatPanel.redraw?.();
+      }
+
+      if (!this._callbacksWired) {
+        this._wireCallbacks();
+        this._callbacksWired = true;
+      }
+
+      // Register UI interactables with controllers
+      const interactables = this.vrChatPanel.getInteractables?.() || [];
+      this.vrControllers.registerUIInteractables(interactables);
+
+      // Optional hover effects
+      interactables.forEach((mesh) => {
+        if (!mesh?.userData) mesh.userData = {};
+        mesh.userData.onHoverEnter = (m) => this.vrChatPanel.highlightInteractable?.(m);
+        mesh.userData.onHoverExit = (m) => this.vrChatPanel.resetInteractable?.(m);
+      });
+
+      // Optional: allow your global sendMessage() pipeline to notify VR of bot messages.
+      // If your app already has a bot callback, you can call:
+      //   window.VR_CHAT_HANDLE_BOT("text")
+      window.VR_CHAT_HANDLE_BOT = this._boundHandleBot;
+
+      this.isInitialized = true;
+      this.vrChatPanel.appendMessage?.(
+        'bot',
+        "Hello! I'm ready to chat in VR. Tap the microphone button to speak."
+      );
+
+      console.log('[VRChatIntegration] ✅ Initialized');
+      return true;
+    } catch (err) {
+      console.error('[VRChatIntegration] Failed to initialize:', err);
+      this.isInitialized = false;
+      return false;
+    }
+  }
+
+  /**
+   * Ensure VR uses the same shared avatar instance as desktop.
+   * - If AvatarManager already has currentRoot: just register it with controllers.
+   * - Otherwise: load selected avatar index ONCE (this becomes shared for desktop+VR).
+   */
+  async syncAvatarFromDesktop() {
+    if (!this.isInitialized) return;
+
+    if (this.avatarManager.currentRoot) {
+      this.vrControllers.registerAvatar?.(this.avatarManager.currentRoot);
+      return;
     }
 
-    /**
-     * Initialize the VR chat system
-     * @param {string} manifestUrl - Avatar manifest URL
-     */
-    async initialize(manifestUrl = '/vendor/avatars/avatars.json') {
-        try {
-            // [FIX] Only load avatar manifest data - do NOT spawn 3D model yet
-            // This prevents overlap with desktop avatar system
-            const avatars = await this.avatarManager.initFromManifest(manifestUrl);
-            console.log(`[VRChatIntegration] Loaded ${avatars.length} avatar definitions (models not spawned yet)`);
+    try {
+      await this.avatarManager.setAvatarByIndex(this.currentAvatarIndex);
+      if (this.avatarManager.currentRoot) {
+        this.vrControllers.registerAvatar?.(this.avatarManager.currentRoot);
+      }
+    } catch (err) {
+      console.error('[VRChatIntegration] syncAvatarFromDesktop failed:', err);
+      this.vrChatPanel.appendMessage?.('bot', 'Failed to load avatar.');
+    }
+  }
 
-            // Set avatars in VR panel
-            this.vrChatPanel.setAvatars(avatars);
-
-            // [FIX] Store preferred avatar index but DON'T load it yet
-            const savedAvatarName = localStorage.getItem('vr_avatar_name');
-            if (savedAvatarName) {
-                const idx = avatars.findIndex((a) => a.name === savedAvatarName);
-                this.currentAvatarIndex = idx >= 0 ? idx : 0;
-            } else {
-                this.currentAvatarIndex = 0;
-            }
-
-            console.log(`[VRChatIntegration] Will load avatar index ${this.currentAvatarIndex} when menu opens`);
-
-            // Wire up callbacks
-            this.setupCallbacks();
-
-            // Register UI interactables with VR controllers
-            const interactables = this.vrChatPanel.getInteractables();
-            this.vrControllers.registerUIInteractables(interactables);
-
-            // Set up hover effects
-            interactables.forEach((mesh) => {
-                mesh.userData.onHoverEnter = (m) => this.vrChatPanel.highlightInteractable(m);
-                mesh.userData.onHoverExit = (m) => this.vrChatPanel.resetInteractable(m);
-            });
-
-            this.isInitialized = true;
-            console.log('[VRChatIntegration] ✅ VR chatbot system ready!');
-
-            // Show welcome message
-            this.vrChatPanel.appendMessage(
-                'bot',
-                "Hello! I'm ready to chat in VR. Tap the microphone button to speak."
-            );
-
-            return true;
-        } catch (error) {
-            console.error('[VRChatIntegration] Failed to initialize:', error);
-            return false;
-        }
+  /**
+   * Enable VR Chat UI. Does NOT spawn duplicates.
+   */
+  async enable() {
+    if (!this.isInitialized) {
+      console.warn('[VRChatIntegration] Cannot enable - not initialized');
+      return;
     }
 
-    /**
-     * Setup all callbacks and event handlers
-     */
-    setupCallbacks() {
-        // Avatar change callback
-        this.avatarManager.onAvatarChanged = (avatar) => {
-            console.log(`[VRChatIntegration] Avatar changed to: ${avatar.name}`);
-            localStorage.setItem('vr_avatar_name', avatar.name);
-            this.vrChatPanel.appendMessage('bot', `Switched to ${avatar.name}`);
+    this.vrChatPanel.setVisible?.(true);
 
-            // Re-register with VR controllers
-            if (this.avatarManager.currentRoot) {
-                this.vrControllers.registerAvatar(this.avatarManager.currentRoot);
-            }
-        };
+    // Always bind to existing shared avatar if present; else load once.
+    await this.syncAvatarFromDesktop();
 
-        // UI button click callback
-        this.vrControllers.setUIButtonCallback((name, userData) => {
-            this.handleUIClick(name, userData);
-        });
+    console.log('[VRChatIntegration] Enabled');
+  }
 
-        // Speech recognition callbacks
-        if (this.speechService) {
-            this.speechService.setRecognitionCallbacks({
-                onStart: () => {
-                    this.vrChatPanel.setStatus('listening');
-                    console.log('[VRChatIntegration] 🎤 Listening...');
-                },
-                onEnd: () => {
-                    this.vrChatPanel.setStatus('idle');
-                    console.log('[VRChatIntegration] Listening ended');
-                },
-                onResult: (transcript, confidence) => {
-                    console.log(`[VRChatIntegration] Recognized: "${transcript}" (${confidence})`);
-                    this.handleUserMessage(transcript);
-                },
-                onError: (error) => {
-                    console.error('[VRChatIntegration] Speech error:', error);
-                    this.vrChatPanel.setStatus('idle');
-                    this.vrChatPanel.appendMessage('bot', `Speech error: ${error}`);
-                },
-            });
-        }
+  /**
+   * Disable VR Chat UI (keeps avatar loaded; desktop stays synced).
+   */
+  disable() {
+    this.vrChatPanel.setVisible?.(false);
+
+    if (this.speechService?.isRecognizing) {
+      this.speechService.stopRecognition?.();
     }
 
-    /**
-     * Handle UI button clicks
-     * @param {string} name - Button mesh name
-     * @param {Object} userData - Button user data
-     */
-    handleUIClick(name, userData) {
-        console.log(`[VRChatIntegration] Button clicked: ${name}`);
+    console.log('[VRChatIntegration] Disabled');
+  }
 
-        // Main buttons
-        if (name === 'Btn:mic') {
-            this.handleMicButton();
-        } else if (name === 'Btn:send') {
-            this.handleSendButton();
-        } else if (name === 'Btn:clear') {
-            this.handleClearButton();
-        } else if (name === 'Btn:settings') {
-            this.handleSettingsButton();
-        } else if (name === 'Btn:pin') {
-            this.handlePinButton();
+  // ---------------------------------------------------------------------------
+  // Internal wiring
+  // ---------------------------------------------------------------------------
+
+  _wireCallbacks() {
+    // Shared avatar change callback (desktop + VR)
+    this.avatarManager.onAvatarChanged = (avatar) => {
+      const name = avatar?.name || '';
+      if (name) this._safeSetLocalStorage('vr_avatar_name', name);
+
+      // Try to keep panel index in sync if avatar includes index
+      if (Number.isFinite(avatar?.index)) {
+        this.currentAvatarIndex = avatar.index;
+        if (typeof this.vrChatPanel.setCurrentAvatarIndex === 'function') {
+          this.vrChatPanel.setCurrentAvatarIndex(this.currentAvatarIndex);
         }
-        // Settings buttons
-        else if (name === 'Btn:back') {
-            this.vrChatPanel.setMode('chat');
-        } else if (name === 'Btn:stt') {
-            this.handleSTTToggle();
-        } else if (name === 'Btn:tts') {
-            this.handleTTSToggle();
-        }
-        // Quick prompts
-        else if (name.startsWith('Chip:')) {
-            this.handleQuickPrompt(userData.label);
-        }
-        // Avatar cards
-        else if (name.startsWith('AvatarCard:')) {
-            this.handleAvatarSwitch(userData.avatarIndex);
-        }
+      }
+
+      this.vrChatPanel.appendMessage?.('bot', `Switched to ${name || 'avatar'}`);
+
+      if (this.avatarManager.currentRoot) {
+        this.vrControllers.registerAvatar?.(this.avatarManager.currentRoot);
+      }
+    };
+
+    // UI click events from VRControllers
+    this.vrControllers.setUIButtonCallback?.((name, userData) => {
+      this.handleUIClick(name, userData);
+    });
+
+    // Speech recognition callbacks (optional)
+    if (this.speechService?.setRecognitionCallbacks) {
+      this.speechService.setRecognitionCallbacks({
+        onStart: () => this.vrChatPanel.setStatus?.('listening'),
+        onEnd: () => this.vrChatPanel.setStatus?.('idle'),
+        onResult: (transcript) => this.handleUserMessage(transcript),
+        onError: (error) => {
+          console.error('[VRChatIntegration] Speech error:', error);
+          this.vrChatPanel.setStatus?.('idle');
+          this.vrChatPanel.appendMessage?.('bot', `Speech error: ${error}`);
+        },
+      });
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // UI Click handling
+  // ---------------------------------------------------------------------------
+
+  async handleUIClick(name, userData = {}) {
+    // Main row
+    if (name === 'Btn:mic') return this.handleMicButton();
+    if (name === 'Btn:send') return this.handleSendButton();
+    if (name === 'Btn:clear') return this.handleClearButton();
+    if (name === 'Btn:settings') return this.handleSettingsButton();
+
+    // ✅ Your requested behavior:
+    if (name === 'Btn:pin') {
+      const pinned = this.vrChatPanel.togglePinned?.() ?? false;
+      this.vrChatPanel.appendMessage?.(
+        'bot',
+        pinned ? 'Panel pinned (frozen). Click pin again to move with your hand.' : 'Panel unpinned (follows hand).'
+      );
+      return;
     }
 
-    /**
-     * Handle microphone button
-     */
-    handleMicButton() {
-        if (!this.speechService || !this.speechService.isRecognitionAvailable()) {
-            this.vrChatPanel.appendMessage('bot', 'Speech recognition not available in your browser.');
-            return;
-        }
+    // Settings screen
+    if (name === 'Btn:back') return this.vrChatPanel.setMode?.('chat');
+    if (name === 'Btn:stt') return this.handleSTTToggle();
+    if (name === 'Btn:tts') return this.handleTTSToggle();
 
-        if (!this.vrChatPanel.sttEnabled) {
-            this.vrChatPanel.appendMessage('bot', 'Speech recognition is disabled. Enable it in Settings.');
-            return;
-        }
-
-        if (this.speechService.isRecognizing) {
-            this.speechService.stopRecognition();
-        } else {
-            this.speechService.startRecognition({
-                onStart: () => this.vrChatPanel.setStatus('listening'),
-                onEnd: () => this.vrChatPanel.setStatus('idle'),
-                onResult: (text) => this.handleUserMessage(text),
-                onError: (err) => {
-                    this.vrChatPanel.setStatus('idle');
-                    this.vrChatPanel.appendMessage('bot', `Error: ${err}`);
-                },
-            });
-        }
+    // Avatar navigation (Prev/Next)
+    if (name === 'Btn:avatar_prev') {
+      const idx = this.vrChatPanel.prevAvatar?.();
+      if (Number.isFinite(idx) && idx >= 0) {
+        await this._switchAvatarByIndex(idx);
+      }
+      return;
     }
 
-    /**
-     * Handle send button
-     */
-    handleSendButton() {
-        // In VR, we primarily use voice input
-        // This could open a VR keyboard in a future version
-        this.vrChatPanel.appendMessage('bot', 'Voice input recommended. Tap microphone to speak.');
+    if (name === 'Btn:avatar_next') {
+      const idx = this.vrChatPanel.nextAvatar?.();
+      if (Number.isFinite(idx) && idx >= 0) {
+        await this._switchAvatarByIndex(idx);
+      }
+      return;
     }
 
-    /**
-     * Handle clear button
-     */
-    handleClearButton() {
-        this.vrChatPanel.clearMessages();
-        if (this.chatManager) {
-            this.chatManager.clearMessages();
-        }
-        console.log('[VRChatIntegration] Chat cleared');
+    // Optional quick prompts if you add chips later
+    if (name?.startsWith('Chip:')) {
+      const prompt = userData?.label;
+      return this.handleQuickPrompt(prompt);
+    }
+  }
+
+  async _switchAvatarByIndex(idx) {
+    const n = this.avatarManager?.avatars?.length ?? this.vrChatPanel?.avatars?.length ?? 0;
+    const safeIdx = Number.isFinite(idx) ? Math.max(0, idx | 0) : -1;
+    if (safeIdx < 0) return;
+
+    try {
+      this.vrChatPanel.setStatus?.('thinking');
+      await this.avatarManager.setAvatarByIndex(safeIdx);
+      this.currentAvatarIndex = safeIdx;
+
+      // Save by name if possible
+      const name = this.avatarManager?.avatars?.[safeIdx]?.name || this.vrChatPanel?.avatars?.[safeIdx]?.name;
+      if (name) this._safeSetLocalStorage('vr_avatar_name', name);
+
+      this.vrChatPanel.setStatus?.('idle');
+
+      if (this.avatarManager.currentRoot) {
+        this.vrControllers.registerAvatar?.(this.avatarManager.currentRoot);
+      }
+    } catch (err) {
+      console.error('[VRChatIntegration] Avatar switch failed:', err);
+      this.vrChatPanel.setStatus?.('idle');
+      this.vrChatPanel.appendMessage?.('bot', 'Failed to switch avatar');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Buttons
+  // ---------------------------------------------------------------------------
+
+  handleMicButton() {
+    if (!this.speechService || !this.speechService.isRecognitionAvailable?.()) {
+      this.vrChatPanel.appendMessage?.('bot', 'Speech recognition not available in your browser.');
+      return;
     }
 
-    /**
-     * Handle settings button
-     */
-    handleSettingsButton() {
-        const newMode = this.vrChatPanel.mode === 'settings' ? 'chat' : 'settings';
-        this.vrChatPanel.setMode(newMode);
+    if (!this.vrChatPanel.sttEnabled) {
+      this.vrChatPanel.appendMessage?.('bot', 'Speech recognition is disabled. Enable it in Settings.');
+      return;
     }
 
-    /**
-     * Handle pin button (toggle head-locked)
-     */
-    handlePinButton() {
-        const isHeadLocked = !this.vrChatPanel.headLocked;
-        this.vrChatPanel.setHeadLocked(isHeadLocked);
-        this.vrChatPanel.appendMessage('bot', isHeadLocked ? 'Panel locked to view' : 'Panel position fixed');
+    if (this.speechService.isRecognizing) {
+      this.speechService.stopRecognition?.();
+      return;
     }
 
-    /**
-     * Handle STT toggle
-     */
-    handleSTTToggle() {
-        const newState = !this.vrChatPanel.sttEnabled;
-        this.vrChatPanel.setSTTEnabled(newState);
-        console.log(`[VRChatIntegration] STT ${newState ? 'enabled' : 'disabled'}`);
+    this.speechService.startRecognition?.({
+      onStart: () => this.vrChatPanel.setStatus?.('listening'),
+      onEnd: () => this.vrChatPanel.setStatus?.('idle'),
+      onResult: (text) => this.handleUserMessage(text),
+      onError: (err) => {
+        this.vrChatPanel.setStatus?.('idle');
+        this.vrChatPanel.appendMessage?.('bot', `Error: ${err}`);
+      },
+    });
+  }
+
+  handleSendButton() {
+    this.vrChatPanel.appendMessage?.('bot', 'Voice input recommended. Tap microphone to speak.');
+  }
+
+  handleClearButton() {
+    this.vrChatPanel.clearMessages?.();
+    this.chatManager?.clearMessages?.();
+  }
+
+  handleSettingsButton() {
+    const newMode = this.vrChatPanel.mode === 'settings' ? 'chat' : 'settings';
+    this.vrChatPanel.setMode?.(newMode);
+  }
+
+  handleSTTToggle() {
+    const next = !this.vrChatPanel.sttEnabled;
+    this.vrChatPanel.setSTTEnabled?.(next);
+  }
+
+  handleTTSToggle() {
+    const next = !this.vrChatPanel.ttsEnabled;
+    this.vrChatPanel.setTTSEnabled?.(next);
+  }
+
+  handleQuickPrompt(prompt) {
+    if (prompt) this.handleUserMessage(prompt);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Chat pipeline
+  // ---------------------------------------------------------------------------
+
+  handleUserMessage(text) {
+    const cleaned = String(text || '').trim();
+    if (!cleaned) return;
+
+    this.vrChatPanel.appendMessage?.('user', cleaned);
+    this.chatManager?.addMessage?.(cleaned, 'user');
+
+    this.processUserMessage(cleaned);
+  }
+
+  async processUserMessage(text) {
+    this.vrChatPanel.setStatus?.('thinking');
+
+    try {
+      if (typeof window.sendMessage === 'function') {
+        await window.sendMessage(text);
+        // IMPORTANT:
+        // If your sendMessage pipeline does not call window.VR_CHAT_HANDLE_BOT,
+        // you can manually call handleBotResponse() from wherever you receive the AI reply.
+      } else {
+        this.handleBotResponse(`You said: "${text}". AI integration needed.`);
+      }
+    } catch (err) {
+      console.error('[VRChatIntegration] AI processing error:', err);
+      this.handleBotResponse('Sorry, I encountered an error processing your message.');
+    }
+  }
+
+  handleBotResponse(text) {
+    const cleaned = String(text || '').trim();
+    if (!cleaned) {
+      this.vrChatPanel.setStatus?.('idle');
+      return;
     }
 
-    /**
-     * Handle TTS toggle
-     */
-    handleTTSToggle() {
-        const newState = !this.vrChatPanel.ttsEnabled;
-        this.vrChatPanel.setTTSEnabled(newState);
-        console.log(`[VRChatIntegration] TTS ${newState ? 'enabled' : 'disabled'}`);
+    this.vrChatPanel.appendMessage?.('bot', cleaned);
+    this.chatManager?.addMessage?.(cleaned, 'bot');
+
+    if (this.vrChatPanel.ttsEnabled && this.speechService?.isSynthesisAvailable?.()) {
+      this.vrChatPanel.setStatus?.('speaking');
+      this.speechService.speak?.(cleaned, {
+        onStart: () => this.vrChatPanel.setStatus?.('speaking'),
+        onEnd: () => this.vrChatPanel.setStatus?.('idle'),
+        onError: () => this.vrChatPanel.setStatus?.('idle'),
+      });
+    } else {
+      this.vrChatPanel.setStatus?.('idle');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Cleanup
+  // ---------------------------------------------------------------------------
+
+  dispose() {
+    try {
+      if (this.speechService) {
+        this.speechService.stopRecognition?.();
+        this.speechService.stopSpeaking?.();
+      }
+    } catch (_) {}
+
+    // Do NOT dispose avatarManager here (shared with desktop)
+    this.vrChatPanel?.dispose?.();
+
+    // Remove global hook if it points to us
+    if (window.VR_CHAT_HANDLE_BOT === this._boundHandleBot) {
+      try {
+        delete window.VR_CHAT_HANDLE_BOT;
+      } catch (_) {
+        window.VR_CHAT_HANDLE_BOT = undefined;
+      }
     }
 
-    /**
-     * Handle quick prompt chip
-     * @param {string} prompt - Prompt text
-     */
-    handleQuickPrompt(prompt) {
-        this.handleUserMessage(prompt);
+    console.log('[VRChatIntegration] Disposed');
+  }
+
+  // ---------------------------------------------------------------------------
+  // LocalStorage helpers (safe)
+  // ---------------------------------------------------------------------------
+
+  _safeGetLocalStorage(key) {
+    try {
+      return localStorage.getItem(key);
+    } catch (_) {
+      return null;
     }
+  }
 
-    /**
-     * Handle avatar switch
-     * @param {number} index - Avatar index
-     */
-    async handleAvatarSwitch(index) {
-        try {
-            this.vrChatPanel.setStatus('thinking');
-            await this.avatarManager.setAvatarByIndex(index);
-            this.currentAvatarIndex = index;
-            this.vrChatPanel.setStatus('idle');
-        } catch (error) {
-            console.error('[VRChatIntegration] Avatar switch failed:', error);
-            this.vrChatPanel.appendMessage('bot', 'Failed to switch avatar');
-            this.vrChatPanel.setStatus('idle');
-        }
-    }
-
-    /**
-     * Handle user message (from voice or quick prompt)
-     * @param {string} text - User message text
-     */
-    handleUserMessage(text) {
-        if (!text || text.trim().length === 0) return;
-
-        console.log(`[VRChatIntegration] User: ${text}`);
-
-        // Add to VR panel
-        this.vrChatPanel.appendMessage('user', text);
-
-        // Add to desktop chat manager (if available)
-        if (this.chatManager) {
-            this.chatManager.addMessage(text, 'user');
-        }
-
-        // Process message (send to AI)
-        this.processUserMessage(text);
-    }
-
-    /**
-     * Process user message and get AI response
-     * @param {string} text - User message
-     */
-    async processUserMessage(text) {
-        this.vrChatPanel.setStatus('thinking');
-
-        try {
-            // Check if sendMessage function exists (from main.js)
-            if (typeof window.sendMessage === 'function') {
-                // Use existing sendMessage function
-                await window.sendMessage(text);
-            } else {
-                // Fallback: echo response
-                const response = `You said: "${text}". AI integration needed.`;
-                this.handleBotResponse(response);
-            }
-        } catch (error) {
-            console.error('[VRChatIntegration] AI processing error:', error);
-            this.handleBotResponse('Sorry, I encountered an error processing your message.');
-        }
-    }
-
-    /**
-     * Handle bot response
-     * @param {string} text - Bot response text
-     */
-    handleBotResponse(text) {
-        console.log(`[VRChatIntegration] Bot: ${text}`);
-
-        // Add to VR panel
-        this.vrChatPanel.appendMessage('bot', text);
-
-        // Add to desktop chat manager (if available)
-        if (this.chatManager) {
-            this.chatManager.addMessage(text, 'bot');
-        }
-
-        // Speak response if TTS enabled
-        if (this.vrChatPanel.ttsEnabled && this.speechService && this.speechService.isSynthesisAvailable()) {
-            this.vrChatPanel.setStatus('speaking');
-            this.speechService.speak(text, {
-                onStart: () => this.vrChatPanel.setStatus('speaking'),
-                onEnd: () => this.vrChatPanel.setStatus('idle'),
-                onError: () => this.vrChatPanel.setStatus('idle'),
-            });
-        } else {
-            this.vrChatPanel.setStatus('idle');
-        }
-    }
-
-    /**
-     * Enable VR chat system
-     */
-    async enable() {
-        if (!this.isInitialized) {
-            console.warn('[VRChatIntegration] Cannot enable - not initialized');
-            return;
-        }
-
-        this.vrChatPanel.setVisible(true);
-
-        // [FIX] Lazy load avatar on first open to prevent desktop overlap
-        if (!this.hasLoadedAvatar) {
-            console.log('[VRChatIntegration] First open - spawning VR avatar...');
-            try {
-                await this.avatarManager.setAvatarByIndex(this.currentAvatarIndex);
-
-                // Register avatar with VR controllers for grab-and-spin
-                const currentRoot = this.avatarManager.currentRoot;
-                if (currentRoot) {
-                    this.vrControllers.registerAvatar(currentRoot);
-                }
-
-                this.hasLoadedAvatar = true;
-                console.log('[VRChatIntegration] ✅ VR avatar loaded successfully');
-            } catch (error) {
-                console.error('[VRChatIntegration] Failed to load VR avatar:', error);
-                this.vrChatPanel.appendMessage('bot', 'Failed to load avatar');
-            }
-        }
-
-        console.log('[VRChatIntegration] VR chat enabled');
-    }
-
-    /**
-     * Disable VR chat system
-     */
-    disable() {
-        this.vrChatPanel.setVisible(false);
-        if (this.speechService && this.speechService.isRecognizing) {
-            this.speechService.stopRecognition();
-        }
-        console.log('[VRChatIntegration] VR chat disabled');
-    }
-
-    /**
-     * Dispose and cleanup
-     */
-    dispose() {
-        if (this.speechService) {
-            this.speechService.stopRecognition();
-            this.speechService.stopSpeaking();
-        }
-        this.avatarManager?.dispose();
-        this.vrChatPanel?.dispose();
-        console.log('[VRChatIntegration] Disposed');
-    }
+  _safeSetLocalStorage(key, value) {
+    try {
+      localStorage.setItem(key, value);
+    } catch (_) {}
+  }
 }
 
-// Make available globally for easy access
+// Optional global exposure (keep if you rely on it)
 window.VRChatIntegration = VRChatIntegration;
