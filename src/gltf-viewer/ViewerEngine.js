@@ -147,6 +147,12 @@ export class ViewerEngine {
                 Array.isArray(this.clips) && this.clips.length > 0
             );
         } catch (_) {}
+
+        // Register avatar with VR controllers for click rotation
+        try {
+            this.vrControllers?.registerAvatar?.(this.currentRoot);
+        } catch (_) {}
+
         this.currentRoot.traverse((o) => {
             if (o.isMesh) {
                 o.castShadow = false;
