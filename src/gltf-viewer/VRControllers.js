@@ -49,7 +49,8 @@ export class VRControllers {
         // Interaction
         this.raycaster = new THREE.Raycaster();
         this.tempMatrix = new THREE.Matrix4();
-        this.interactables = [];
+        this.interactables = []; // Avatar interactables
+        this.uiInteractables = []; // UI panel interactables
 
         // Dragging State
         this.dragState = {
@@ -58,6 +59,12 @@ export class VRControllers {
             object: null,
             previousX: 0,
         };
+
+        // UI Callbacks
+        this.onUIButtonClick = null;
+
+        // Hover state for UI
+        this.hoveredUI = null;
 
         this.init();
     }
@@ -164,6 +171,15 @@ export class VRControllers {
         this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
         this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
 
+        // PRIORITY 1: Check UI interactions first
+        const uiIntersects = this.raycaster.intersectObjects(this.uiInteractables, false);
+        if (uiIntersects.length > 0) {
+            const uiTarget = uiIntersects[0].object;
+            this._handleUIClick(uiTarget);
+            return;
+        }
+
+        // PRIORITY 2: Check avatar grab interactions
         const intersects = this.raycaster.intersectObjects(this.interactables, true);
 
         if (intersects.length > 0) {
@@ -182,6 +198,46 @@ export class VRControllers {
                     return;
                 }
                 target = target.parent;
+            }
+        }
+    }
+
+    _handleUIClick(mesh) {
+        if (!mesh || !mesh.name) return;
+
+        console.log(`[VRControllers] 👆 UI Click: ${mesh.name}`);
+
+        // Call callback with mesh name and userData
+        if (this.onUIButtonClick) {
+            this.onUIButtonClick(mesh.name, mesh.userData);
+        }
+    }
+
+    _updateUIHover() {
+        if (!this.controller2) return;
+
+        this.tempMatrix.identity().extractRotation(this.controller2.matrixWorld);
+        this.raycaster.ray.origin.setFromMatrixPosition(this.controller2.matrixWorld);
+        this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
+
+        const uiIntersects = this.raycaster.intersectObjects(this.uiInteractables, false);
+
+        // Reset previous hover
+        if (this.hoveredUI && (uiIntersects.length === 0 || uiIntersects[0].object !== this.hoveredUI)) {
+            if (this.hoveredUI.userData.onHoverExit) {
+                this.hoveredUI.userData.onHoverExit(this.hoveredUI);
+            }
+            this.hoveredUI = null;
+        }
+
+        // Set new hover
+        if (uiIntersects.length > 0) {
+            const newHover = uiIntersects[0].object;
+            if (newHover !== this.hoveredUI) {
+                this.hoveredUI = newHover;
+                if (this.hoveredUI.userData.onHoverEnter) {
+                    this.hoveredUI.userData.onHoverEnter(this.hoveredUI);
+                }
             }
         }
     }
@@ -298,6 +354,7 @@ export class VRControllers {
         if (!this.enabled || !this.renderer.xr.isPresenting) return;
         this.pollGamepadInput(dt);
         this._updateDragging();
+        this._updateUIHover();
     }
 
     registerAvatar(avatarRoot) {
@@ -307,6 +364,16 @@ export class VRControllers {
             this.interactables.push(avatarRoot);
         }
         console.log('[VRControllers] Avatar registered. Hold trigger to spin.');
+    }
+
+    registerUIInteractables(interactables) {
+        if (!interactables || !Array.isArray(interactables)) return;
+        this.uiInteractables = interactables;
+        console.log(`[VRControllers] Registered ${interactables.length} UI interactables.`);
+    }
+
+    setUIButtonCallback(callback) {
+        this.onUIButtonClick = callback;
     }
 
     setEnabled(enabled) {

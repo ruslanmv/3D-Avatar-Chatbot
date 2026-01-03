@@ -7,6 +7,9 @@ import { RoomEnvironment } from '../../vendor/three-0.147.0/examples/jsm/environ
 import { MeshoptDecoder } from '../../vendor/three-0.147.0/examples/jsm/libs/meshopt_decoder.module.js';
 import { VRSupport } from './VRSupport.js';
 import { VRControllers } from './VRControllers.js';
+import { AvatarManager } from './AvatarManager.js';
+import { VRChatPanel } from './VRChatPanel.js';
+import { VRChatIntegration } from './VRChatIntegration.js';
 
 export class ViewerEngine {
     constructor(containerEl) {
@@ -79,14 +82,51 @@ export class ViewerEngine {
         // Initialize VR Controllers
         this.vrControllers = new VRControllers(this.renderer, this.scene, this.camera);
 
-        // Link VR session events to controllers
+        // Initialize Avatar Manager (manages avatar loading and switching for VR and desktop)
+        this.avatarManager = new AvatarManager({
+            scene: this.scene,
+            loader: this.loader,
+            camera: this.camera,
+        });
+
+        // Initialize VR Chat Panel (only visible in VR)
+        this.vrChatPanel = new VRChatPanel({
+            scene: this.scene,
+            camera: this.camera,
+        });
+        this.vrChatPanel.setVisible(false); // Hidden until VR session starts
+
+        // Initialize VR Chat Integration (wires everything together)
+        this.vrChatIntegration = new VRChatIntegration({
+            avatarManager: this.avatarManager,
+            vrChatPanel: this.vrChatPanel,
+            vrControllers: this.vrControllers,
+            speechService: window.SpeechService || null,
+            chatManager: window.ChatManager || null,
+        });
+
+        // Initialize VR chat system (async - loads avatars)
+        this.vrChatIntegration
+            .initialize('/vendor/avatars/avatars.json')
+            .then(() => {
+                console.log('[ViewerEngine] ✅ VR Chat System Ready');
+            })
+            .catch((err) => {
+                console.error('[ViewerEngine] ❌ VR Chat System Failed:', err);
+            });
+
+        // Link VR session events to controllers and chat panel
         window.addEventListener('vr-session-start', () => {
             this.vrControllers.setEnabled(true);
+            this.vrChatIntegration.enable();
+            console.log('[ViewerEngine] VR Session Started - Chat System Enabled');
         });
 
         window.addEventListener('vr-session-end', () => {
             this.vrControllers.setEnabled(false);
             this.vrControllers.resetPosition();
+            this.vrChatIntegration.disable();
+            console.log('[ViewerEngine] VR Session Ended - Chat System Disabled');
         });
 
         this._onResize = () => this.resize();
@@ -215,8 +255,16 @@ export class ViewerEngine {
             } catch (_) {}
             this.mixer?.update(dt);
 
+            // Update avatar manager (for animations)
+            this.avatarManager?.update(dt);
+
             // Update VR controllers with delta-time (handles input, interaction, and locomotion)
             this.vrControllers.update(dt);
+
+            // Update VR chat panel (head-locked positioning)
+            if (this.renderer.xr.isPresenting) {
+                this.vrChatPanel?.update();
+            }
 
             // Only update controls in desktop mode
             if (!this.renderer.xr.isPresenting) {
