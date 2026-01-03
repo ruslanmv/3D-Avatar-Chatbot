@@ -51,6 +51,7 @@ export class VRControllers {
         this.tempMatrix = new THREE.Matrix4();
         this.interactables = []; // Avatar interactables
         this.uiInteractables = []; // UI panel interactables
+        this.chatPanel = null; // Reference to VRChatPanel for dragging
 
         // Dragging State
         this.dragState = {
@@ -58,6 +59,12 @@ export class VRControllers {
             hand: null,
             object: null,
             previousX: 0,
+        };
+
+        // UI Drag State (for dragging chat panel)
+        this.uiDragState = {
+            active: false,
+            hand: null,
         };
 
         // UI Callbacks
@@ -167,7 +174,7 @@ export class VRControllers {
     // =========================================================================
 
     _startDrag(controller, hand) {
-        if (this.dragState.active) return;
+        if (this.dragState.active || this.uiDragState.active) return;
 
         this.tempMatrix.identity().extractRotation(controller.matrixWorld);
         this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
@@ -177,6 +184,27 @@ export class VRControllers {
         const uiIntersects = this.raycaster.intersectObjects(this.uiInteractables, false);
         if (uiIntersects.length > 0) {
             const uiTarget = uiIntersects[0].object;
+            const hit = uiIntersects[0];
+
+            // Check if this is a panel handle (for dragging) vs a button (for clicking)
+            if (
+                this.chatPanel &&
+                this.chatPanel.isPinned !== undefined &&
+                !this.chatPanel.isPinned &&
+                uiTarget.userData &&
+                uiTarget.userData.type === 'handle'
+            ) {
+                // Start dragging the panel
+                const dragStarted = this.chatPanel.beginDrag ? this.chatPanel.beginDrag(hit.point) : false;
+                if (dragStarted) {
+                    this.uiDragState.active = true;
+                    this.uiDragState.hand = hand;
+                    console.log(`[VRControllers] 🖐️ Started dragging UI panel (${hand})`);
+                    return;
+                }
+            }
+
+            // Otherwise handle as normal UI click
             this._handleUIClick(uiTarget);
             return;
         }
@@ -245,6 +273,13 @@ export class VRControllers {
     }
 
     _endDrag(hand) {
+        // Handle UI panel drag end
+        if (this.uiDragState.active && this.uiDragState.hand === hand) {
+            this._endUIDrag(hand);
+            return;
+        }
+
+        // Handle avatar drag end
         if (this.dragState.active && this.dragState.hand === hand) {
             const controller = hand === 'left' ? this.controller1 : this.controller2;
             if (controller) {
@@ -256,6 +291,15 @@ export class VRControllers {
             this.dragState.hand = null;
             console.log(`[VRControllers] ✋ Released Avatar`);
         }
+    }
+
+    _endUIDrag(hand) {
+        if (this.chatPanel && this.chatPanel.endDrag) {
+            this.chatPanel.endDrag();
+        }
+        this.uiDragState.active = false;
+        this.uiDragState.hand = null;
+        console.log(`[VRControllers] ✋ Released UI panel`);
     }
 
     _updateDragging() {
@@ -271,6 +315,29 @@ export class VRControllers {
             this.dragState.object.rotation.y += deltaX * this.options.rotationSensitivity;
         }
         this.dragState.previousX = currentX;
+    }
+
+    _updateUIDragging() {
+        if (!this.uiDragState.active || !this.chatPanel) return;
+
+        const controller = this.uiDragState.hand === 'left' ? this.controller1 : this.controller2;
+        if (!controller) return;
+
+        // Raycast to find new position
+        this.tempMatrix.identity().extractRotation(controller.matrixWorld);
+        this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+        this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
+
+        // Find intersection point in space (use a fixed distance)
+        const dragDistance = 1.5; // Distance at which to place the panel
+        const targetPoint = this.raycaster.ray.origin
+            .clone()
+            .add(this.raycaster.ray.direction.clone().multiplyScalar(dragDistance));
+
+        // Update panel position if dragTo method exists
+        if (this.chatPanel.dragTo) {
+            this.chatPanel.dragTo(targetPoint);
+        }
     }
 
     // =========================================================================
@@ -368,6 +435,7 @@ export class VRControllers {
         if (!this.enabled || !this.renderer.xr.isPresenting) return;
         this.pollGamepadInput(dt);
         this._updateDragging();
+        this._updateUIDragging();
         this._updateUIHover();
     }
 
@@ -393,6 +461,11 @@ export class VRControllers {
     setMenuButtonCallback(callback) {
         this.onMenuButtonPress = callback;
         console.log('[VRControllers] Menu button callback registered');
+    }
+
+    setChatPanel(panel) {
+        this.chatPanel = panel || null;
+        console.log('[VRControllers] Chat panel reference set for dragging support');
     }
 
     setEnabled(enabled) {

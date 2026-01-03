@@ -137,6 +137,10 @@ export class VRChatIntegration {
             this.handleSettingsButton();
         } else if (name === 'Btn:pin') {
             this.handlePinButton();
+        } else if (name === 'Btn:avatar_prev') {
+            this.handleAvatarPrev();
+        } else if (name === 'Btn:avatar_next') {
+            this.handleAvatarNext();
         }
         // Settings buttons
         else if (name === 'Btn:back') {
@@ -266,6 +270,53 @@ export class VRChatIntegration {
     }
 
     /**
+     * Handle avatar previous button
+     */
+    async handleAvatarPrev() {
+        const avatars = this.avatarManager.getAvatars();
+        if (!avatars || avatars.length === 0) return;
+
+        const newIndex = (this.currentAvatarIndex - 1 + avatars.length) % avatars.length;
+        await this.handleAvatarSwitch(newIndex);
+    }
+
+    /**
+     * Handle avatar next button
+     */
+    async handleAvatarNext() {
+        const avatars = this.avatarManager.getAvatars();
+        if (!avatars || avatars.length === 0) return;
+
+        const newIndex = (this.currentAvatarIndex + 1) % avatars.length;
+        await this.handleAvatarSwitch(newIndex);
+    }
+
+    /**
+     * Sync with desktop avatar instead of creating duplicate
+     * This prevents avatar overlap issues
+     */
+    async syncAvatarFromDesktop() {
+        // Check if desktop already loaded an avatar
+        if (this.avatarManager.currentRoot) {
+            console.log('[VRChatIntegration] Reusing existing desktop avatar (no duplicate)');
+            // Just register existing avatar with VR controllers
+            if (this.vrControllers && this.vrControllers.registerAvatar) {
+                this.vrControllers.registerAvatar(this.avatarManager.currentRoot);
+            }
+            return;
+        }
+
+        // No avatar exists yet - load the preferred one
+        console.log('[VRChatIntegration] No existing avatar - loading new one');
+        await this.avatarManager.setAvatarByIndex(this.currentAvatarIndex);
+
+        // Register with VR controllers
+        if (this.avatarManager.currentRoot && this.vrControllers && this.vrControllers.registerAvatar) {
+            this.vrControllers.registerAvatar(this.avatarManager.currentRoot);
+        }
+    }
+
+    /**
      * Handle user message (from voice or quick prompt)
      * @param {string} text - User message text
      */
@@ -348,22 +399,15 @@ export class VRChatIntegration {
 
         this.vrChatPanel.setVisible(true);
 
-        // [FIX] Lazy load avatar on first open to prevent desktop overlap
+        // [FIX] Sync with desktop avatar to prevent overlap
         if (!this.hasLoadedAvatar) {
-            console.log('[VRChatIntegration] First open - spawning VR avatar...');
+            console.log('[VRChatIntegration] First open - syncing avatar...');
             try {
-                await this.avatarManager.setAvatarByIndex(this.currentAvatarIndex);
-
-                // Register avatar with VR controllers for grab-and-spin
-                const currentRoot = this.avatarManager.currentRoot;
-                if (currentRoot) {
-                    this.vrControllers.registerAvatar(currentRoot);
-                }
-
+                await this.syncAvatarFromDesktop();
                 this.hasLoadedAvatar = true;
-                console.log('[VRChatIntegration] ✅ VR avatar loaded successfully');
+                console.log('[VRChatIntegration] ✅ VR avatar ready');
             } catch (error) {
-                console.error('[VRChatIntegration] Failed to load VR avatar:', error);
+                console.error('[VRChatIntegration] Failed to sync avatar:', error);
                 this.vrChatPanel.appendMessage('bot', 'Failed to load avatar');
             }
         }
