@@ -274,3 +274,5 @@ openai-key.txt
  copy *
 * copy*.*
 !vendor/three-0.147.0/**
+# Patch script backups
+*.bak.*
