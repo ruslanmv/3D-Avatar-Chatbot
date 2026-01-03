@@ -391,6 +391,24 @@ export class VRChatPanel {
         return this.interactables;
     }
 
+    /**
+     * Highlight an interactable mesh on hover (optional visual feedback)
+     * @param {THREE.Mesh} mesh - The mesh to highlight
+     */
+    highlightInteractable(mesh) {
+        // Quest 3 panel uses ray feedback instead of mesh highlighting
+        // This is a no-op for compatibility with VRChatIntegration
+    }
+
+    /**
+     * Reset an interactable mesh after hover exit
+     * @param {THREE.Mesh} mesh - The mesh to reset
+     */
+    resetInteractable(mesh) {
+        // Quest 3 panel uses ray feedback instead of mesh highlighting
+        // This is a no-op for compatibility with VRChatIntegration
+    }
+
     // =====================================================================
     // LAYOUT + HITBOXES
     // =====================================================================
