@@ -43,7 +43,7 @@ class WebXRChatbot {
         // Renderer
         this.renderer = new THREE.WebGLRenderer({
             antialias: true,
-            alpha: true
+            alpha: true,
         });
         this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
         this.renderer.setPixelRatio(window.devicePixelRatio);

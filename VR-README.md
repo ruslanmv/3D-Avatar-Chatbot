@@ -1,18 +1,22 @@
 # WebXR VR Chatbot - Complete Guide
 
-This guide covers everything you need to run the 3D Avatar Chatbot in VR mode, including Meta Quest 3 support and GLB-to-VRM conversion.
+This guide covers everything you need to run the 3D Avatar Chatbot in VR mode,
+including Meta Quest 3 support and GLB-to-VRM conversion.
 
 ## 🎯 What's New
 
 ### VR Features
+
 - ✅ **WebXR Support** - Works on Meta Quest 3, Quest 2, and other VR headsets
 - ✅ **Desktop Compatible** - Seamless experience on Chrome/Edge browsers
-- ✅ **VRM Format** - Industry-standard avatar format with expressions and visemes
+- ✅ **VRM Format** - Industry-standard avatar format with expressions and
+  visemes
 - ✅ **Auto-Conversion** - Convert GLB files to VRM automatically
 - ✅ **Real-time Expressions** - Dynamic facial expressions in VR
 - ✅ **Lip Sync Ready** - Viseme blendshapes for realistic talking animations
 
 ### Technical Stack
+
 - **Three.js** - 3D rendering
 - **@pixiv/three-vrm** - VRM avatar support
 - **WebXR API** - VR headset integration
@@ -41,55 +45,60 @@ This guide covers everything you need to run the 3D Avatar Chatbot in VR mode, i
 ### Option 1: Desktop Mode (Easiest)
 
 1. **Open the VR-enabled interface:**
-   ```bash
-   # Start a local server
-   python3 -m http.server 8080
-   ```
+
+    ```bash
+    # Start a local server
+    python3 -m http.server 8080
+    ```
 
 2. **Navigate to:**
-   ```
-   http://localhost:8080/index-vr.html
-   ```
+
+    ```
+    http://localhost:8080/index-vr.html
+    ```
 
 3. **Upload a VRM avatar** using the file picker
 
 4. **Interact:**
-   - Orbit camera with mouse
-   - Test expressions
-   - Try talking animation
+    - Orbit camera with mouse
+    - Test expressions
+    - Try talking animation
 
 ### Option 2: VR Mode (Meta Quest 3)
 
 1. **Start local server:**
-   ```bash
-   python3 -m http.server 8080
-   ```
+
+    ```bash
+    python3 -m http.server 8080
+    ```
 
 2. **Find your computer's IP:**
-   ```bash
-   # On Mac/Linux
-   ifconfig | grep inet
 
-   # On Windows
-   ipconfig
-   ```
+    ```bash
+    # On Mac/Linux
+    ifconfig | grep inet
+
+    # On Windows
+    ipconfig
+    ```
 
 3. **On Meta Quest 3:**
-   - Open Quest Browser
-   - Navigate to: `http://YOUR_IP:8080/index-vr.html`
-   - Click "ENTER VR" button
-   - Put on headset and enjoy!
+    - Open Quest Browser
+    - Navigate to: `http://YOUR_IP:8080/index-vr.html`
+    - Click "ENTER VR" button
+    - Put on headset and enjoy!
 
 ### Option 3: Convert GLB to VRM
 
 If you have GLB files that need to be converted:
 
 1. **Start VRM Factory backend:**
-   ```bash
-   cd vrm-factory
-   docker build -t vrm-factory .
-   docker run -p 8000:8000 vrm-factory
-   ```
+
+    ```bash
+    cd vrm-factory
+    docker build -t vrm-factory .
+    docker run -p 8000:8000 vrm-factory
+    ```
 
 2. **Open the VR interface** (`index-vr.html`)
 
@@ -102,11 +111,13 @@ If you have GLB files that need to be converted:
 ## 🎮 Controls
 
 ### Desktop Mode
+
 - **Mouse Drag** - Rotate camera
 - **Mouse Wheel** - Zoom in/out
 - **Right Panel** - Expression controls, file upload
 
 ### VR Mode (Meta Quest)
+
 - **Controllers** - Point and select UI elements
 - **Look Around** - Natural head movement
 - **Walk** - Use controller thumbsticks (if enabled)
@@ -122,10 +133,11 @@ The VRM Factory converts static GLB models into fully rigged VRM avatars.
 2. **VRM Blender Addon** - Download from:
    https://github.com/saturday06/VRM-Addon-for-Blender/releases
 
-   Place the zip file at:
-   ```
-   vrm-factory/addons/VRM_Addon_for_Blender.zip
-   ```
+    Place the zip file at:
+
+    ```
+    vrm-factory/addons/VRM_Addon_for_Blender.zip
+    ```
 
 ### Building the Factory
 
@@ -143,7 +155,8 @@ The API will be available at `http://localhost:8000`
 
 ### API Documentation
 
-Visit `http://localhost:8000/docs` for interactive API documentation (Swagger UI)
+Visit `http://localhost:8000/docs` for interactive API documentation (Swagger
+UI)
 
 ## 📱 Deployment Options
 
@@ -158,6 +171,7 @@ Visit `http://localhost:8000/docs` for interactive API documentation (Swagger UI
 WebXR requires HTTPS in production. Options:
 
 #### Option A: Netlify (Free)
+
 ```bash
 # Install Netlify CLI
 npm install -g netlify-cli
@@ -167,6 +181,7 @@ netlify deploy --prod
 ```
 
 #### Option B: Vercel (Free)
+
 ```bash
 # Install Vercel CLI
 npm install -g vercel
@@ -176,6 +191,7 @@ vercel --prod
 ```
 
 #### Option C: GitHub Pages (Free)
+
 ```bash
 # Push to GitHub
 git push origin main
@@ -183,27 +199,29 @@ git push origin main
 # Enable Pages in repository settings
 ```
 
-**Note:** For GitHub Pages, configure custom domain with SSL or use the provided `https://*.github.io` domain.
+**Note:** For GitHub Pages, configure custom domain with SSL or use the provided
+`https://*.github.io` domain.
 
 ## 🎨 Adding Custom Avatars
 
 ### VRM Avatars (Recommended)
 
 1. Obtain VRM file from:
-   - [VRoid Studio](https://vroid.com/studio) - Create custom avatars
-   - [VRoid Hub](https://hub.vroid.com/) - Download community avatars
-   - [Booth](https://booth.pm/) - Purchase professional avatars
+    - [VRoid Studio](https://vroid.com/studio) - Create custom avatars
+    - [VRoid Hub](https://hub.vroid.com/) - Download community avatars
+    - [Booth](https://booth.pm/) - Purchase professional avatars
 
 2. Upload via the web interface
 
 ### GLB/GLTF Models
 
 1. Use the VRM Factory to convert:
-   ```bash
-   curl -X POST "http://localhost:8000/convert-to-vrm/" \
-        -F "file=@model.glb" \
-        -o response.json
-   ```
+
+    ```bash
+    curl -X POST "http://localhost:8000/convert-to-vrm/" \
+         -F "file=@model.glb" \
+         -o response.json
+    ```
 
 2. Download converted VRM and upload to chatbot
 
@@ -214,6 +232,7 @@ git push origin main
 **Problem:** No "ENTER VR" button visible
 
 **Solutions:**
+
 - Ensure you're using HTTPS (required for WebXR)
 - Check browser supports WebXR (Chrome, Edge, Quest Browser)
 - Verify VR headset is connected/paired
@@ -223,6 +242,7 @@ git push origin main
 **Problem:** Blank screen or error loading avatar
 
 **Solutions:**
+
 - Check browser console for errors (F12)
 - Verify file is valid VRM/GLB format
 - Try re-exporting from VRoid Studio
@@ -233,6 +253,7 @@ git push origin main
 **Problem:** Facial expressions don't change
 
 **Solutions:**
+
 - Ensure avatar has blendshapes/shape keys
 - Check VRM file includes expression metadata
 - Try converting GLB to VRM via factory
@@ -242,6 +263,7 @@ git push origin main
 **Problem:** GLB to VRM conversion errors
 
 **Solutions:**
+
 - Verify Docker is running
 - Check Blender logs in container
 - Ensure model has clean topology
@@ -279,12 +301,12 @@ To integrate VRM support into the existing chatbot (`index.html`):
 
 ```html
 <script type="importmap">
-{
-  "imports": {
-    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-    "@pixiv/three-vrm": "https://unpkg.com/@pixiv/three-vrm@2.1.0/lib/three-vrm.module.js"
-  }
-}
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "@pixiv/three-vrm": "https://unpkg.com/@pixiv/three-vrm@2.1.0/lib/three-vrm.module.js"
+        }
+    }
 </script>
 ```
 
@@ -320,7 +342,8 @@ speechSynthesis.addEventListener('end', () => {
 
 - **VRM Specification:** https://github.com/vrm-c/vrm-specification
 - **three-vrm Library:** https://github.com/pixiv/three-vrm
-- **WebXR API:** https://developer.mozilla.org/en-US/docs/Web/API/WebXR_Device_API
+- **WebXR API:**
+  https://developer.mozilla.org/en-US/docs/Web/API/WebXR_Device_API
 - **VRoid Studio:** https://vroid.com/studio
 - **Meta Quest Developer:** https://developer.oculus.com/
 
@@ -342,4 +365,5 @@ This VR extension maintains the same Apache 2.0 license as the main project.
 
 **Ready to experience your chatbot in VR!** 🥽✨
 
-For questions or issues, please open a GitHub issue or check the main README.md for contact information.
+For questions or issues, please open a GitHub issue or check the main README.md
+for contact information.
