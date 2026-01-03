@@ -209,8 +209,8 @@ export class ViewerEngine {
             } catch (_) {}
             this.mixer?.update(dt);
 
-            // Update VR controllers (handles input and interaction)
-            this.vrControllers.update();
+            // Update VR controllers with delta-time (handles input, interaction, and locomotion)
+            this.vrControllers.update(dt);
 
             // Only update controls in desktop mode
             if (!this.renderer.xr.isPresenting) {
