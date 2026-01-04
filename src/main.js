@@ -1481,11 +1481,13 @@ function updateProviderFields() {
         if (watsonxRow) watsonxRow.style.display = 'block';
         if (baseurlRow) baseurlRow.style.display = 'block';
 
+        // Updated Watsonx models (latest versions as of 2025/2026)
         [
-            'meta-llama/llama-3-70b-instruct',
-            'meta-llama/llama-3-8b-instruct',
-            'ibm/granite-13b-chat-v2',
-            'mistralai/mixtral-8x7b-instruct-v01',
+            'ibm/granite-3-1-8b-instruct', // Updated from granite-3-8b-instruct
+            'meta-llama/llama-3-3-70b-instruct', // Updated from llama-3-70b (3.3 offers 405B performance)
+            'meta-llama/llama-3-1-8b-instruct', // Updated from llama-3-8b (3.1 has 128k context)
+            'mistralai/mistral-large-2407', // Updated from mixtral-8x7b (Mistral Large 2 flagship)
+            'mistralai/mistral-nemo', // New mid-sized model (12B)
         ].forEach((m) => {
             const opt = document.createElement('option');
             opt.value = m;
@@ -2237,3 +2239,61 @@ function __nexusWireTestButton() {
 }
 
 window.addEventListener('DOMContentLoaded', __nexusWireTestButton);
+
+/* =====================================================================
+   FETCH MODELS BUTTON
+   - Manually fetch latest available models from the selected provider
+   - Useful for refreshing model list without reloading the page
+   ===================================================================== */
+function __nexusWireFetchModelsButton() {
+    const btn = document.getElementById('fetch-models-btn');
+    if (!btn) return;
+
+    btn.addEventListener('click', async () => {
+        const selected = document.querySelector('input[name="provider"]:checked');
+        const provider = selected ? selected.value : 'none';
+
+        if (provider === 'none') {
+            alert('Please select a provider first (OpenAI, Claude, Watsonx, or Ollama)');
+            return;
+        }
+
+        if (provider === 'watsonx') {
+            alert('Watsonx models are fetched automatically. Use the dropdown to see available models.');
+            return;
+        }
+
+        if (provider === 'ollama') {
+            alert('Ollama models are fetched automatically. Use the dropdown to see available models.');
+            return;
+        }
+
+        const modelSelect = document.getElementById('model-select');
+        if (!modelSelect) return;
+
+        // Disable button during fetch
+        btn.disabled = true;
+        const originalText = btn.textContent;
+        btn.textContent = '⏳ Fetching...';
+
+        try {
+            await fetchAndPopulateModels(provider, modelSelect);
+
+            // Show success feedback
+            btn.textContent = '✅ Updated!';
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }, 2000);
+        } catch (e) {
+            console.error('[Main] Failed to fetch models:', e);
+            btn.textContent = '❌ Error';
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }, 2000);
+        }
+    });
+}
+
+window.addEventListener('DOMContentLoaded', __nexusWireFetchModelsButton);

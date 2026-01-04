@@ -398,9 +398,13 @@
 
         async _fetchOpenAIModels() {
             const { api_key, base_url } = this._settings.openai;
+
+            // Fallback models (always point to latest flagship versions)
+            const fallback = ['gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo', 'o1-preview', 'o1-mini'];
+
             if (!api_key) {
                 return {
-                    models: ['gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'],
+                    models: fallback,
                     error: 'Missing API Key - using default list',
                 };
             }
@@ -419,14 +423,30 @@
                 if (!res.ok) throw new Error(res.statusText);
 
                 const data = await res.json();
+
+                // SMART FILTERING & SORTING: Prioritize gpt-4o, then gpt-4, then o1 models
                 const models = (data.data || [])
                     .map((m) => m.id)
-                    .filter((id) => id.includes('gpt'))
-                    .sort();
-                return { models: models.length > 0 ? models : ['gpt-4o', 'gpt-3.5-turbo'], error: null };
+                    .filter((id) => id.startsWith('gpt') || id.startsWith('o1'))
+                    .sort((a, b) => {
+                        // Priority 1: gpt-4o (flagship)
+                        if (a === 'gpt-4o') return -1;
+                        if (b === 'gpt-4o') return 1;
+
+                        // Priority 2: o1 models
+                        const aO1 = a.startsWith('o1');
+                        const bO1 = b.startsWith('o1');
+                        if (aO1 && !bO1) return -1;
+                        if (!aO1 && bO1) return 1;
+
+                        // Priority 3: Alphabetical
+                        return a.localeCompare(b);
+                    });
+
+                return { models: models.length > 0 ? models : fallback, error: null };
             } catch (e) {
                 return {
-                    models: ['gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'],
+                    models: fallback,
                     error: `Network error: ${e.message} - using defaults`,
                 };
             }
@@ -435,12 +455,12 @@
         async _fetchClaudeModels() {
             const { api_key, base_url } = this._settings.claude;
 
-            // Fallback models if API call fails
+            // Fallback models using "latest" aliases (auto-update to newest versions)
             const fallback = [
-                'claude-3-5-sonnet-20240620',
-                'claude-3-opus-20240229',
-                'claude-3-sonnet-20240229',
-                'claude-3-haiku-20240307',
+                'claude-3-5-sonnet-latest', // ✅ Auto-updates to newest 3.5 Sonnet
+                'claude-3-5-haiku-latest', // ✅ Auto-updates to newest 3.5 Haiku
+                'claude-3-opus-latest', // ✅ Auto-updates to newest Opus
+                'claude-3-5-sonnet-20241022', // Specific backup
             ];
 
             if (!api_key) {
@@ -476,11 +496,26 @@
 
                 const data = await response.json();
 
-                // Extract model IDs from response
+                // SMART SORTING: Prioritize "latest" aliases and "3-5" series
                 const models = (data.data || [])
                     .map((m) => m.id)
                     .filter((id) => id && id.startsWith('claude-'))
-                    .sort();
+                    .sort((a, b) => {
+                        // Priority 1: Aliases containing "latest"
+                        const aLatest = a.includes('latest');
+                        const bLatest = b.includes('latest');
+                        if (aLatest && !bLatest) return -1;
+                        if (!aLatest && bLatest) return 1;
+
+                        // Priority 2: "3-5" series (newest)
+                        const a35 = a.includes('3-5');
+                        const b35 = b.includes('3-5');
+                        if (a35 && !b35) return -1;
+                        if (!a35 && b35) return 1;
+
+                        // Priority 3: Newest date (descending)
+                        return b.localeCompare(a);
+                    });
 
                 if (models.length === 0) {
                     console.warn('[LLMManager] No Claude models found in API response, using fallback');
@@ -500,6 +535,10 @@
 
         async _fetchOllamaModels() {
             const { base_url } = this._settings.ollama;
+
+            // Updated fallback models (latest versions)
+            const fallback = ['llama3.3', 'llama3.2', 'mistral', 'codellama'];
+
             try {
                 const url = `${(base_url || 'http://localhost:11434').replace(/\/$/, '')}/api/tags`;
                 const res = await fetch(url);
@@ -509,24 +548,25 @@
                 const data = await res.json();
                 const models = (data.models || []).map((m) => m.name).sort();
                 return {
-                    models: models.length > 0 ? models : ['llama3'],
+                    models: models.length > 0 ? models : fallback,
                     error: models.length === 0 ? 'No models found' : null,
                 };
             } catch (e) {
                 return {
-                    models: ['llama3', 'mistral', 'codellama'],
+                    models: fallback,
                     error: `Cannot connect to Ollama: ${e.message} - using defaults`,
                 };
             }
         }
 
         async _fetchWatsonxModels() {
+            // Updated fallback models (latest versions as of 2025/2026)
             const fallback = [
-                'ibm/granite-13b-chat-v2',
-                'ibm/granite-3-8b-instruct',
-                'meta-llama/llama-3-70b-instruct',
-                'meta-llama/llama-3-8b-instruct',
-                'mistralai/mixtral-8x7b-instruct-v01',
+                'ibm/granite-3-1-8b-instruct', // Updated from granite-3-8b-instruct
+                'meta-llama/llama-3-3-70b-instruct', // Updated from llama-3-70b-instruct (3.3 offers 405B performance)
+                'meta-llama/llama-3-1-8b-instruct', // Updated from llama-3-8b-instruct (3.1 has 128k context)
+                'mistralai/mistral-large-2407', // Updated from mixtral-8x7b (Mistral Large 2 flagship)
+                'mistralai/mistral-nemo', // New mid-sized model (12B)
             ];
 
             // Watsonx regions (based on Python model_catalog.py)
@@ -648,7 +688,7 @@
                 },
                 claude: {
                     api_key: '',
-                    model: 'claude-3-5-sonnet-20240620',
+                    model: 'claude-3-5-sonnet-latest',
                     base_url: '',
                 },
                 watsonx: {
@@ -684,7 +724,7 @@
                 },
                 claude: {
                     api_key: '',
-                    model: 'claude-3-5-sonnet-20240620',
+                    model: 'claude-3-5-sonnet-latest',
                     base_url: '',
                 },
                 watsonx: {
