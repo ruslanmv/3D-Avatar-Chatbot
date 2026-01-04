@@ -976,7 +976,7 @@ function saveSpeechSettingsFromUI() {
             ? voices.find((v) => v.voiceURI === SpeechSettings.voiceURI)
             : null;
 
-        window.SpeechService.saveTTSConfig({
+        const ttsConfig = {
             // ✅ Store NAME here (what legacy VR logic expects)
             speechVoice: selectedVoiceObj?.name || '',
 
@@ -991,7 +991,18 @@ function saveSpeechSettingsFromUI() {
             speechVolume: 1.0, // Default volume (not exposed in UI yet)
             speechLang: SpeechSettings.lang,
             ttsEnabled: true, // Default enabled (not exposed in UI yet)
+        };
+
+        // ✅ Debug logging
+        console.log('[Desktop] 💾 Saving TTS settings:', {
+            voiceName: ttsConfig.speechVoice,
+            voiceURI: ttsConfig.speechVoiceURI?.slice(0, 50),
+            preference: ttsConfig.speechVoicePref,
+            rate: ttsConfig.speechRate,
+            availableVoices: voices.length,
         });
+
+        window.SpeechService.saveTTSConfig(ttsConfig);
     }
 }
 
