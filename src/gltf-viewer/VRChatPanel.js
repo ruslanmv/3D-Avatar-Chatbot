@@ -53,6 +53,16 @@ export class VRChatPanel {
         this.ttsEnabled = true;
 
         // -----------------------
+        // Voice Settings (VR UI State)
+        // -----------------------
+        this.availableVoices = [];
+        this.currentVoiceIndex = 0;
+        this.voiceGenderFilter = 'any'; // 'any' | 'male' | 'female'
+        this.voiceRate = 0.9;
+        this.voicePitch = 1.0;
+        this._voicesLoaded = false;
+
+        // -----------------------
         // Drag & Position Logic (Quest-like)
         // -----------------------
         this._isDragging = false;
@@ -167,6 +177,15 @@ export class VRChatPanel {
         this.sttEnabled = !!this.settings.sttEnabled;
         this.ttsEnabled = !!this.settings.ttsEnabled;
 
+        // ✅ Load voice settings from desktop
+        this.voiceGenderFilter = this.settings.speechVoicePref || 'any';
+        this.voiceRate = this.settings.speechRate || 0.9;
+        this.voicePitch = this.settings.speechPitch || 1.0;
+
+        // ✅ Load and filter voices, then try to match the saved voice
+        this._loadAndFilterVoices();
+        this._matchSavedVoice();
+
         this.redraw();
     }
 
@@ -260,6 +279,16 @@ export class VRChatPanel {
                     console.warn('[VRChatPanel] Failed to load speech settings:', e);
                 }
 
+                // ✅ Enhanced debug logging for speech settings
+                console.log('[VRChatPanel] 📥 Loaded TTS settings from nexus_settings_v1:', {
+                    voiceName: speechSettings.speechVoice || '(empty)',
+                    voiceURI: speechSettings.speechVoiceURI?.slice(0, 50) || '(empty)',
+                    preference: speechSettings.speechVoicePref || 'any',
+                    rate: speechSettings.speechRate,
+                    pitch: speechSettings.speechPitch,
+                    ttsEnabled: speechSettings.ttsEnabled,
+                    rawDataExists: !!speechRaw,
+                });
                 console.log('[VRChatPanel] Loaded unified settings:', {
                     provider: unified.provider,
                     model: model,
@@ -592,14 +621,77 @@ export class VRChatPanel {
             tts: { x: W - P - 250, y: setTopY, w: 250, h: 92 },
         };
 
-        const avatarRect = { x: P, y: setTopY + 120, w: W - P * 2, h: 320 };
-        const navY = avatarRect.y + 112;
+        const avatarRect = { x: P, y: setTopY + 120, w: W - P * 2, h: 280 }; // Reduced from 320 to make room
+        const navY = avatarRect.y + 192;
         const settingsNav = {
             prev: { x: P + 26, y: navY, w: 110, h: 110 },
             next: { x: W - P - 136, y: navY, w: 110, h: 110 },
         };
 
-        return { W, H, handle, btnRow, chatArea, chips, settingsTop, avatarRect, settingsNav };
+        // ✅ Voice Settings Section (below avatar card)
+        const voiceY = avatarRect.y + avatarRect.h + 20;
+        const voiceRect = { x: P, y: voiceY, w: W - P * 2, h: 360 };
+
+        // Voice selector navigation (prev/next arrows)
+        const voiceNavY = voiceY + 72;
+        const voiceNav = {
+            prev: { x: P + 20, y: voiceNavY, w: 100, h: 100 },
+            next: { x: W - P - 120, y: voiceNavY, w: 100, h: 100 },
+        };
+
+        // Gender filter buttons (row of 3)
+        const genderY = voiceY + 190;
+        const genderBtnW = 140;
+        const genderGap = 16;
+        const genderStartX = P + (W - P * 2 - genderBtnW * 3 - genderGap * 2) / 2;
+        const genderBtns = {
+            any: { x: genderStartX, y: genderY, w: genderBtnW, h: 68 },
+            male: { x: genderStartX + genderBtnW + genderGap, y: genderY, w: genderBtnW, h: 68 },
+            female: { x: genderStartX + (genderBtnW + genderGap) * 2, y: genderY, w: genderBtnW, h: 68 },
+        };
+
+        // Rate and Pitch controls (simplified for Quest: +/- buttons)
+        const controlY = voiceY + 280;
+        const controlBtnW = 80;
+        const controlGap = 20;
+        const rateControls = {
+            label: { x: P + 30, y: controlY, w: 140, h: 50 },
+            decrease: { x: P + 180, y: controlY, w: controlBtnW, h: 60 },
+            increase: { x: P + 180 + controlBtnW + controlGap, y: controlY, w: controlBtnW, h: 60 },
+        };
+        const pitchControls = {
+            label: { x: W - P - 380, y: controlY, w: 140, h: 50 },
+            decrease: { x: W - P - 220, y: controlY, w: controlBtnW, h: 60 },
+            increase: { x: W - P - 220 + controlBtnW + controlGap, y: controlY, w: controlBtnW, h: 60 },
+        };
+
+        // Action buttons (Test Voice, Save Settings)
+        const actionY = voiceY + 320;
+        const actionBtnW = 200;
+        const actionGap = 20;
+        const actionStartX = P + (W - P * 2 - actionBtnW * 2 - actionGap) / 2;
+        const voiceActions = {
+            test: { x: actionStartX, y: actionY, w: actionBtnW, h: 68 },
+            save: { x: actionStartX + actionBtnW + actionGap, y: actionY, w: actionBtnW, h: 68 },
+        };
+
+        return {
+            W,
+            H,
+            handle,
+            btnRow,
+            chatArea,
+            chips,
+            settingsTop,
+            avatarRect,
+            settingsNav,
+            voiceRect,
+            voiceNav,
+            genderBtns,
+            rateControls,
+            pitchControls,
+            voiceActions,
+        };
     }
 
     _createHitboxes() {
@@ -632,7 +724,50 @@ export class VRChatPanel {
         const prev = this._makeHitbox('Btn:avatar_prev', nav.prev, 'button', { key: 'avatar_prev' });
         const next = this._makeHitbox('Btn:avatar_next', nav.next, 'button', { key: 'avatar_next' });
 
-        [back, stt, tts, prev, next].forEach((m) => {
+        // ✅ Voice Settings Hitboxes
+        const voiceNav = L.voiceNav;
+        const voicePrev = this._makeHitbox('Btn:voice_prev', voiceNav.prev, 'button', { key: 'voice_prev' });
+        const voiceNext = this._makeHitbox('Btn:voice_next', voiceNav.next, 'button', { key: 'voice_next' });
+
+        const genderBtns = L.genderBtns;
+        const genderAny = this._makeHitbox('Btn:gender_any', genderBtns.any, 'button', { key: 'gender_any' });
+        const genderMale = this._makeHitbox('Btn:gender_male', genderBtns.male, 'button', { key: 'gender_male' });
+        const genderFemale = this._makeHitbox('Btn:gender_female', genderBtns.female, 'button', {
+            key: 'gender_female',
+        });
+
+        const rateControls = L.rateControls;
+        const rateDec = this._makeHitbox('Btn:rate_dec', rateControls.decrease, 'button', { key: 'rate_dec' });
+        const rateInc = this._makeHitbox('Btn:rate_inc', rateControls.increase, 'button', { key: 'rate_inc' });
+
+        const pitchControls = L.pitchControls;
+        const pitchDec = this._makeHitbox('Btn:pitch_dec', pitchControls.decrease, 'button', { key: 'pitch_dec' });
+        const pitchInc = this._makeHitbox('Btn:pitch_inc', pitchControls.increase, 'button', { key: 'pitch_inc' });
+
+        const voiceActions = L.voiceActions;
+        const testVoice = this._makeHitbox('Btn:test_voice', voiceActions.test, 'button', { key: 'test_voice' });
+        const saveVoice = this._makeHitbox('Btn:save_voice', voiceActions.save, 'button', { key: 'save_voice' });
+
+        const settingsMeshes = [
+            back,
+            stt,
+            tts,
+            prev,
+            next,
+            voicePrev,
+            voiceNext,
+            genderAny,
+            genderMale,
+            genderFemale,
+            rateDec,
+            rateInc,
+            pitchDec,
+            pitchInc,
+            testVoice,
+            saveVoice,
+        ];
+
+        settingsMeshes.forEach((m) => {
             this.group.remove(m);
             this.settingsGroup.add(m);
         });
@@ -642,6 +777,17 @@ export class VRChatPanel {
         this.buttons.tts = tts;
         this.buttons.avatar_prev = prev;
         this.buttons.avatar_next = next;
+        this.buttons.voice_prev = voicePrev;
+        this.buttons.voice_next = voiceNext;
+        this.buttons.gender_any = genderAny;
+        this.buttons.gender_male = genderMale;
+        this.buttons.gender_female = genderFemale;
+        this.buttons.rate_dec = rateDec;
+        this.buttons.rate_inc = rateInc;
+        this.buttons.pitch_dec = pitchDec;
+        this.buttons.pitch_inc = pitchInc;
+        this.buttons.test_voice = testVoice;
+        this.buttons.save_voice = saveVoice;
     }
 
     _makeHitbox(name, rect, type, userData = {}) {
@@ -839,9 +985,16 @@ export class VRChatPanel {
         if (!voiceName && voiceURI && typeof speechSynthesis !== 'undefined') {
             try {
                 const voices = speechSynthesis.getVoices() || [];
+                console.log('[VRChatPanel] 🔍 Resolving voice name from URI:', {
+                    targetURI: voiceURI.slice(0, 50),
+                    availableVoices: voices.length,
+                });
                 const foundVoice = voices.find((v) => v.voiceURI === voiceURI);
                 if (foundVoice) {
                     voiceName = foundVoice.name;
+                    console.log('[VRChatPanel] ✅ Voice resolved:', voiceName);
+                } else {
+                    console.log('[VRChatPanel] ⚠️ Voice URI not found in available voices');
                 }
             } catch (e) {
                 console.warn('[VRChatPanel] Failed to resolve voice name:', e);
@@ -859,10 +1012,83 @@ export class VRChatPanel {
         this._drawSoftIcon(ctx, L.settingsNav.prev, '◀');
         this._drawSoftIcon(ctx, L.settingsNav.next, '▶');
 
-        // Hint
+        // ✅ VOICE SETTINGS SECTION
+        const voiceRect = L.voiceRect;
+
+        // Voice settings card
+        this._roundRect(ctx, voiceRect.x, voiceRect.y, voiceRect.w, voiceRect.h, 26);
+        ctx.fillStyle = 'rgba(255,255,255,0.06)';
+        ctx.fill();
+
+        // Title
+        ctx.fillStyle = T.accent;
+        ctx.font = '700 28px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillText('VOICE SETTINGS', voiceRect.x + 22, voiceRect.y + 42);
+
+        // Current voice display with navigation arrows
+        const currentVoice = this._getCurrentVoice();
+        const voiceDisplayName = currentVoice ? currentVoice.name : 'Loading voices...';
+        const voiceGender = currentVoice ? this._guessGender(currentVoice) : 'unknown';
+        const voiceCount = this.availableVoices.length;
+        const voiceIndex = this.currentVoiceIndex + 1;
+
+        ctx.fillStyle = T.text;
+        ctx.font = '800 40px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        const truncatedName = voiceDisplayName.length > 24 ? voiceDisplayName.slice(0, 21) + '...' : voiceDisplayName;
+        ctx.fillText(truncatedName, voiceRect.x + 140, voiceRect.y + 126);
+
         ctx.fillStyle = T.textDim;
-        ctx.font = '500 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        ctx.fillText('Desktop settings are shared automatically.', rect.x + 22, rect.y + rect.h - 24);
+        ctx.font = '600 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillText(`${voiceIndex} / ${voiceCount}  [${voiceGender}]`, voiceRect.x + 140, voiceRect.y + 158);
+
+        // Voice navigation arrows
+        this._drawSoftIcon(ctx, L.voiceNav.prev, '◀');
+        this._drawSoftIcon(ctx, L.voiceNav.next, '▶');
+
+        // Gender filter buttons
+        ctx.fillStyle = T.textDim;
+        ctx.font = '600 24px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillText('Gender Filter:', voiceRect.x + 22, voiceRect.y + 210);
+
+        this._drawGenderButton(ctx, L.genderBtns.any, 'Any', this.voiceGenderFilter === 'any');
+        this._drawGenderButton(ctx, L.genderBtns.male, 'Male', this.voiceGenderFilter === 'male');
+        this._drawGenderButton(ctx, L.genderBtns.female, 'Female', this.voiceGenderFilter === 'female');
+
+        // Rate control
+        ctx.fillStyle = T.textDim;
+        ctx.font = '600 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillText('Rate:', L.rateControls.label.x, L.rateControls.label.y + 36);
+
+        this._drawControlBtn(ctx, L.rateControls.decrease, '−');
+        this._drawControlBtn(ctx, L.rateControls.increase, '+');
+
+        ctx.fillStyle = T.text;
+        ctx.font = '700 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        const rateValue = this.voiceRate.toFixed(1);
+        ctx.textAlign = 'center';
+        const rateCenter = L.rateControls.decrease.x + (L.rateControls.increase.x - L.rateControls.decrease.x) / 2;
+        ctx.fillText(rateValue, rateCenter, L.rateControls.decrease.y + 86);
+        ctx.textAlign = 'left';
+
+        // Pitch control
+        ctx.fillStyle = T.textDim;
+        ctx.font = '600 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillText('Pitch:', L.pitchControls.label.x, L.pitchControls.label.y + 36);
+
+        this._drawControlBtn(ctx, L.pitchControls.decrease, '−');
+        this._drawControlBtn(ctx, L.pitchControls.increase, '+');
+
+        ctx.fillStyle = T.text;
+        ctx.font = '700 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        const pitchValue = this.voicePitch.toFixed(1);
+        ctx.textAlign = 'center';
+        const pitchCenter = L.pitchControls.decrease.x + (L.pitchControls.increase.x - L.pitchControls.decrease.x) / 2;
+        ctx.fillText(pitchValue, pitchCenter, L.pitchControls.decrease.y + 86);
+        ctx.textAlign = 'left';
+
+        // Action buttons
+        this._drawActionBtn(ctx, L.voiceActions.test, '🔊 Test Voice', false);
+        this._drawActionBtn(ctx, L.voiceActions.save, '💾 Save Settings', true);
     }
 
     _drawFooter(ctx) {
@@ -935,6 +1161,45 @@ export class VRChatPanel {
         ctx.textAlign = 'left';
     }
 
+    _drawGenderButton(ctx, rect, label, isActive) {
+        const T = this.theme;
+        this._roundRect(ctx, rect.x, rect.y, rect.w, rect.h, 16);
+        ctx.fillStyle = isActive ? T.accent : 'rgba(255,255,255,0.04)';
+        ctx.fill();
+
+        ctx.fillStyle = isActive ? 'rgba(20,20,20,0.95)' : T.textDim;
+        ctx.font = '800 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, rect.x + rect.w / 2, rect.y + 46);
+        ctx.textAlign = 'left';
+    }
+
+    _drawControlBtn(ctx, rect, label) {
+        const T = this.theme;
+        this._roundRect(ctx, rect.x, rect.y, rect.w, rect.h, 14);
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.fill();
+
+        ctx.fillStyle = T.text;
+        ctx.font = '900 32px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, rect.x + rect.w / 2, rect.y + 46);
+        ctx.textAlign = 'left';
+    }
+
+    _drawActionBtn(ctx, rect, label, isHighlighted) {
+        const T = this.theme;
+        this._roundRect(ctx, rect.x, rect.y, rect.w, rect.h, 16);
+        ctx.fillStyle = isHighlighted ? T.accent : 'rgba(255,255,255,0.10)';
+        ctx.fill();
+
+        ctx.fillStyle = isHighlighted ? 'rgba(20,20,20,0.95)' : T.text;
+        ctx.font = '800 24px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, rect.x + rect.w / 2, rect.y + 46);
+        ctx.textAlign = 'left';
+    }
+
     _statusLabel() {
         switch (this.status) {
             case 'listening':
@@ -970,6 +1235,92 @@ export class VRChatPanel {
         ctx.arcTo(x, y + h, x, y, rr);
         ctx.arcTo(x, y, x + w, y, rr);
         ctx.closePath();
+    }
+
+    // =====================================================================
+    // VOICE HELPERS
+    // =====================================================================
+
+    _guessGender(voice) {
+        const n = (voice.name || '').toLowerCase();
+        const m = /male|man|masculine|david|mark|james|paul|richard|daniel|alex\s*male|victor|oscar/i;
+        const f =
+            /female|woman|feminine|zira|samantha|victoria|kate|hazel|karen|moira|susan|fiona|joanna|salli|kendra|kimberly/i;
+        if (f.test(n)) return 'female';
+        if (m.test(n)) return 'male';
+        return 'unknown';
+    }
+
+    _loadAndFilterVoices() {
+        if (typeof speechSynthesis === 'undefined') {
+            this.availableVoices = [];
+            return;
+        }
+
+        const allVoices = speechSynthesis.getVoices() || [];
+        const lang = this.settings.speechLang || 'en-US';
+        const base = lang.split('-')[0].toLowerCase();
+
+        // Filter by language
+        let filtered = allVoices.filter((v) => (v.lang || '').toLowerCase().startsWith(base));
+        if (!filtered.length) filtered = allVoices;
+
+        // Filter by gender preference
+        if (this.voiceGenderFilter === 'male' || this.voiceGenderFilter === 'female') {
+            const byGender = filtered.filter((v) => this._guessGender(v) === this.voiceGenderFilter);
+            if (byGender.length) {
+                filtered = byGender;
+            }
+        }
+
+        this.availableVoices = filtered;
+
+        // Clamp current index
+        if (this.currentVoiceIndex >= this.availableVoices.length) {
+            this.currentVoiceIndex = Math.max(0, this.availableVoices.length - 1);
+        }
+
+        console.log('[VRChatPanel] 🎤 Loaded voices:', {
+            total: allVoices.length,
+            filtered: this.availableVoices.length,
+            genderFilter: this.voiceGenderFilter,
+            currentIndex: this.currentVoiceIndex,
+        });
+    }
+
+    _getCurrentVoice() {
+        if (!this.availableVoices.length) return null;
+        return this.availableVoices[this.currentVoiceIndex] || null;
+    }
+
+    _matchSavedVoice() {
+        if (!this.availableVoices.length) return;
+
+        const savedURI = this.settings.speechVoiceURI || '';
+        const savedName = this.settings.speechVoice || '';
+
+        // Try to match by URI first (most reliable)
+        if (savedURI) {
+            const byURI = this.availableVoices.findIndex((v) => v.voiceURI === savedURI);
+            if (byURI >= 0) {
+                this.currentVoiceIndex = byURI;
+                console.log('[VRChatPanel] ✅ Matched saved voice by URI:', this.availableVoices[byURI].name);
+                return;
+            }
+        }
+
+        // Fallback to name matching
+        if (savedName) {
+            const byName = this.availableVoices.findIndex((v) => v.name === savedName);
+            if (byName >= 0) {
+                this.currentVoiceIndex = byName;
+                console.log('[VRChatPanel] ✅ Matched saved voice by name:', this.availableVoices[byName].name);
+                return;
+            }
+        }
+
+        console.log('[VRChatPanel] ℹ️ No saved voice match found, using first available');
+        this.currentVoiceIndex = 0;
     }
 
     _wrapText(ctx, text, x, y, maxX, lineHeight) {
@@ -1020,7 +1371,212 @@ export class VRChatPanel {
             return true;
         }
 
+        // ✅ Voice navigation
+        if (key === 'voice_prev') {
+            this._loadAndFilterVoices();
+            if (this.availableVoices.length > 0) {
+                this.currentVoiceIndex =
+                    (this.currentVoiceIndex - 1 + this.availableVoices.length) % this.availableVoices.length;
+                console.log('[VRChatPanel] ◀ Previous voice:', this._getCurrentVoice()?.name);
+                this.redraw();
+            }
+            return true;
+        }
+
+        if (key === 'voice_next') {
+            this._loadAndFilterVoices();
+            if (this.availableVoices.length > 0) {
+                this.currentVoiceIndex = (this.currentVoiceIndex + 1) % this.availableVoices.length;
+                console.log('[VRChatPanel] ▶ Next voice:', this._getCurrentVoice()?.name);
+                this.redraw();
+            }
+            return true;
+        }
+
+        // ✅ Gender filter
+        if (key === 'gender_any') {
+            this.voiceGenderFilter = 'any';
+            this._loadAndFilterVoices();
+            console.log('[VRChatPanel] Gender filter: Any');
+            this.redraw();
+            return true;
+        }
+
+        if (key === 'gender_male') {
+            this.voiceGenderFilter = 'male';
+            this._loadAndFilterVoices();
+            console.log('[VRChatPanel] Gender filter: Male');
+            this.redraw();
+            return true;
+        }
+
+        if (key === 'gender_female') {
+            this.voiceGenderFilter = 'female';
+            this._loadAndFilterVoices();
+            console.log('[VRChatPanel] Gender filter: Female');
+            this.redraw();
+            return true;
+        }
+
+        // ✅ Rate controls
+        if (key === 'rate_dec') {
+            this.voiceRate = Math.max(0.5, this.voiceRate - 0.1);
+            console.log('[VRChatPanel] Rate decreased:', this.voiceRate.toFixed(1));
+            this.redraw();
+            return true;
+        }
+
+        if (key === 'rate_inc') {
+            this.voiceRate = Math.min(2.0, this.voiceRate + 0.1);
+            console.log('[VRChatPanel] Rate increased:', this.voiceRate.toFixed(1));
+            this.redraw();
+            return true;
+        }
+
+        // ✅ Pitch controls
+        if (key === 'pitch_dec') {
+            this.voicePitch = Math.max(0.5, this.voicePitch - 0.1);
+            console.log('[VRChatPanel] Pitch decreased:', this.voicePitch.toFixed(1));
+            this.redraw();
+            return true;
+        }
+
+        if (key === 'pitch_inc') {
+            this.voicePitch = Math.min(2.0, this.voicePitch + 0.1);
+            console.log('[VRChatPanel] Pitch increased:', this.voicePitch.toFixed(1));
+            this.redraw();
+            return true;
+        }
+
+        // ✅ Test voice
+        if (key === 'test_voice') {
+            this._testVoice();
+            return true;
+        }
+
+        // ✅ Save voice settings
+        if (key === 'save_voice') {
+            this._saveVoiceSettings();
+            return true;
+        }
+
         return false;
+    }
+
+    // =====================================================================
+    // VOICE ACTIONS
+    // =====================================================================
+
+    _testVoice() {
+        const voice = this._getCurrentVoice();
+        if (!voice) {
+            console.warn('[VRChatPanel] No voice selected for testing');
+            return;
+        }
+
+        console.log('[VRChatPanel] 🔊 Testing voice:', voice.name);
+
+        if (typeof speechSynthesis === 'undefined') {
+            console.warn('[VRChatPanel] Speech synthesis not available');
+            return;
+        }
+
+        // Stop any ongoing speech
+        speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance('Hello! This is a voice test. How do I sound?');
+        utterance.voice = voice;
+        utterance.rate = this.voiceRate;
+        utterance.pitch = this.voicePitch;
+        utterance.volume = 1.0;
+
+        utterance.onstart = () => {
+            console.log('[VRChatPanel] ▶️ Voice test started');
+        };
+
+        utterance.onend = () => {
+            console.log('[VRChatPanel] ✅ Voice test completed');
+        };
+
+        utterance.onerror = (event) => {
+            if (event.error !== 'interrupted') {
+                console.error('[VRChatPanel] ❌ Voice test error:', event.error);
+            }
+        };
+
+        speechSynthesis.speak(utterance);
+    }
+
+    _saveVoiceSettings() {
+        const voice = this._getCurrentVoice();
+        if (!voice) {
+            console.warn('[VRChatPanel] No voice selected to save');
+            return;
+        }
+
+        console.log('[VRChatPanel] 💾 Saving voice settings to localStorage');
+
+        // Build the TTS config object
+        const ttsConfig = {
+            speechVoice: voice.name,
+            speechVoiceURI: voice.voiceURI,
+            speechVoicePref: this.voiceGenderFilter,
+            speechRate: this.voiceRate,
+            speechPitch: this.voicePitch,
+            speechVolume: 1.0,
+            speechLang: voice.lang || 'en-US',
+            ttsEnabled: this.ttsEnabled,
+            sttEnabled: this.sttEnabled,
+        };
+
+        // Save to unified settings (nexus_settings_v1)
+        try {
+            let settings = {};
+            const raw = localStorage.getItem('nexus_settings_v1');
+            if (raw) {
+                try {
+                    settings = JSON.parse(raw);
+                } catch (e) {
+                    console.warn('[VRChatPanel] Failed to parse existing settings:', e);
+                }
+            }
+
+            settings = { ...settings, ...ttsConfig };
+            localStorage.setItem('nexus_settings_v1', JSON.stringify(settings));
+
+            console.log('[VRChatPanel] ✅ Voice settings saved:', {
+                name: voice.name,
+                uri: voice.voiceURI.slice(0, 50),
+                gender: this.voiceGenderFilter,
+                rate: this.voiceRate,
+                pitch: this.voicePitch,
+            });
+
+            // Also save to individual localStorage keys for backward compatibility with desktop
+            localStorage.setItem('speech_voice_uri', voice.voiceURI);
+            localStorage.setItem('speech_rate', String(this.voiceRate));
+            localStorage.setItem('speech_pitch', String(this.voicePitch));
+            localStorage.setItem('speech_lang', voice.lang || 'en-US');
+
+            // Update local settings state
+            this.settings.speechVoice = voice.name;
+            this.settings.speechVoiceURI = voice.voiceURI;
+            this.settings.speechVoicePref = this.voiceGenderFilter;
+            this.settings.speechRate = this.voiceRate;
+            this.settings.speechPitch = this.voicePitch;
+
+            // Update SpeechService if available
+            if (window.SpeechService && typeof window.SpeechService.saveTTSConfig === 'function') {
+                window.SpeechService.saveTTSConfig(ttsConfig);
+            }
+
+            // Visual feedback: redraw to show updated settings
+            this.redraw();
+
+            console.log('[VRChatPanel] 🔄 Settings synced across desktop and VR');
+        } catch (error) {
+            console.error('[VRChatPanel] ❌ Failed to save voice settings:', error);
+        }
     }
 
     // =====================================================================
