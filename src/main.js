@@ -782,6 +782,7 @@ function loadSTTSettingsIntoUI() {
     const googleSTTModel = $('google-stt-model');
     const sttLanguage = $('stt-language');
     const sttInterimResults = $('stt-interim-results');
+    const sttMicrophone = $('stt-microphone');
 
     if (sttProvider) sttProvider.value = sttConfig.provider;
     if (wasmModelSize) wasmModelSize.value = sttConfig.wasm.modelSize;
@@ -791,6 +792,7 @@ function loadSTTSettingsIntoUI() {
     if (googleSTTModel) googleSTTModel.value = sttConfig.google.model;
     if (sttLanguage) sttLanguage.value = sttConfig.language;
     if (sttInterimResults) sttInterimResults.checked = sttConfig.interimResults;
+    if (sttMicrophone && sttConfig.microphoneDeviceId) sttMicrophone.value = sttConfig.microphoneDeviceId;
 
     // Update provider-specific UI
     updateSTTProviderUI(sttConfig.provider);
@@ -807,11 +809,13 @@ function saveSTTSettingsFromUI() {
     const googleSTTModel = $('google-stt-model');
     const sttLanguage = $('stt-language');
     const sttInterimResults = $('stt-interim-results');
+    const sttMicrophone = $('stt-microphone');
 
     window.SpeechService.saveSTTConfig({
         provider: sttProvider ? sttProvider.value : 'webspeech',
         language: sttLanguage ? sttLanguage.value : 'en-US',
         interimResults: sttInterimResults ? sttInterimResults.checked : true,
+        microphoneDeviceId: sttMicrophone ? sttMicrophone.value : '',
         wasm: {
             modelSize: wasmModelSize ? wasmModelSize.value : 'base',
         },
@@ -932,6 +936,59 @@ async function testSTT() {
             statusElement.textContent = `❌ Failed: ${error.message}`;
             statusElement.style.color = '#ef4444';
         }
+    }
+}
+
+/**
+ * Load available microphones into the selector
+ */
+async function loadAvailableMicrophones() {
+    const microphoneSelect = $('stt-microphone');
+    if (!microphoneSelect) return;
+
+    try {
+        console.log('[Main] Loading available microphones...');
+
+        // Request microphone permission first (required for device labels)
+        await navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+            // Stop the stream immediately, we just needed permission
+            stream.getTracks().forEach((track) => track.stop());
+        });
+
+        // Enumerate devices
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioInputs = devices.filter((device) => device.kind === 'audioinput');
+
+        console.log(`[Main] Found ${audioInputs.length} microphones`);
+
+        // Clear existing options (except default)
+        microphoneSelect.innerHTML = '<option value="">Default (System Default)</option>';
+
+        // Add microphone options
+        audioInputs.forEach((device, index) => {
+            const option = document.createElement('option');
+            option.value = device.deviceId;
+            option.textContent = device.label || `Microphone ${index + 1}`;
+            microphoneSelect.appendChild(option);
+        });
+
+        // Load selected microphone from config
+        if (window.SpeechService) {
+            const sttConfig = window.SpeechService.getSTTConfig();
+            if (sttConfig.microphoneDeviceId) {
+                microphoneSelect.value = sttConfig.microphoneDeviceId;
+            }
+        }
+
+        console.log('[Main] Microphones loaded successfully');
+    } catch (error) {
+        console.error('[Main] Failed to load microphones:', error);
+        // If permission denied, show a helpful message
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'Permission denied - click to allow microphone access';
+        microphoneSelect.innerHTML = '';
+        microphoneSelect.appendChild(option);
     }
 }
 
@@ -1129,6 +1186,16 @@ function setupEventListeners() {
             testSTT();
         });
     }
+
+    const refreshMicrophonesBtn = document.getElementById('refresh-microphones');
+    if (refreshMicrophonesBtn) {
+        refreshMicrophonesBtn.addEventListener('click', () => {
+            loadAvailableMicrophones();
+        });
+    }
+
+    // Load microphones on page load
+    loadAvailableMicrophones();
 }
 
 /* ============================

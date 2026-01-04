@@ -665,8 +665,8 @@ class SpeechService {
         }
 
         try {
-            // Request microphone access
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            // Request microphone access with selected device
+            const stream = await navigator.mediaDevices.getUserMedia(this._getAudioConstraints());
 
             // Create MediaRecorder
             const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
@@ -800,6 +800,24 @@ class SpeechService {
     // ============================================================================
 
     /**
+     * Get audio constraints with selected microphone
+     * @returns {object} Audio constraints for getUserMedia
+     */
+    _getAudioConstraints() {
+        if (this.sttConfig.microphoneDeviceId) {
+            console.log(`[SpeechService] 🎤 Using selected microphone: ${this.sttConfig.microphoneDeviceId}`);
+            return {
+                audio: {
+                    deviceId: { exact: this.sttConfig.microphoneDeviceId },
+                },
+            };
+        } else {
+            console.log('[SpeechService] 🎤 Using browser default microphone');
+            return { audio: true };
+        }
+    }
+
+    /**
      * Load STT configuration from localStorage
      * @returns {object} STT configuration
      */
@@ -808,6 +826,7 @@ class SpeechService {
             provider: 'webspeech', // 'webspeech' | 'wasm' | 'openai' | 'google'
             language: 'en-US',
             interimResults: true,
+            microphoneDeviceId: '', // Empty = use browser default microphone
             wasm: {
                 modelSize: 'base', // 'tiny' | 'base' | 'small'
                 modelPath: '/models/whisper',
@@ -995,8 +1014,8 @@ class SpeechService {
             // Ensure worker is loaded
             await this._ensureWhisperWorker();
 
-            // Request microphone access
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            // Request microphone access with selected device
+            const stream = await navigator.mediaDevices.getUserMedia(this._getAudioConstraints());
 
             const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
                 ? 'audio/webm;codecs=opus'
@@ -1229,8 +1248,8 @@ class SpeechService {
         }
 
         try {
-            // Request microphone access
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            // Request microphone access with selected device
+            const stream = await navigator.mediaDevices.getUserMedia(this._getAudioConstraints());
 
             const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
                 ? 'audio/webm;codecs=opus'
@@ -1341,8 +1360,8 @@ class SpeechService {
         }
 
         try {
-            // Request microphone access
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            // Request microphone access with selected device
+            const stream = await navigator.mediaDevices.getUserMedia(this._getAudioConstraints());
 
             const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
                 ? 'audio/webm;codecs=opus'
@@ -1476,15 +1495,17 @@ class SpeechService {
         try {
             console.log('[SpeechService] 🎚️ Starting audio level monitoring...');
 
-            // Request microphone access for monitoring
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            // Request microphone access for monitoring with selected device
+            const stream = await navigator.mediaDevices.getUserMedia(this._getAudioConstraints());
 
             // Get audio devices info
             const devices = await navigator.mediaDevices.enumerateDevices();
             const audioInputs = devices.filter((d) => d.kind === 'audioinput');
             console.log(`[SpeechService] 🎤 Available microphones: ${audioInputs.length}`);
             audioInputs.forEach((device, index) => {
-                console.log(`  ${index + 1}. ${device.label || `Microphone ${index + 1}`}`);
+                const isSelected = this.sttConfig.microphoneDeviceId === device.deviceId;
+                const marker = isSelected ? '✅ [SELECTED]' : '  ';
+                console.log(`  ${marker} ${index + 1}. ${device.label || `Microphone ${index + 1}`}`);
             });
 
             // Create audio context for level monitoring

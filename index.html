@@ -639,6 +639,19 @@
                         </div>
 
                         <div class="input-group">
+                            <label class="input-label" for="stt-microphone">MICROPHONE DEVICE</label>
+                            <select id="stt-microphone" class="select-input">
+                                <option value="">Default (System Default)</option>
+                            </select>
+                            <button class="secondary-btn" id="refresh-microphones" type="button" style="margin-top: 8px">
+                                🔄 Refresh Microphones
+                            </button>
+                            <p class="voice-status" style="margin-top: 8px; opacity: 0.8">
+                                Select which microphone to use for speech recognition
+                            </p>
+                        </div>
+
+                        <div class="input-group">
                             <label class="input-label">
                                 <input type="checkbox" id="stt-interim-results" checked />
                                 <span style="margin-left: 8px">Show interim results (real-time)</span>
