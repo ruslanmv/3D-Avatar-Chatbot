@@ -567,7 +567,7 @@
                         </div>
 
                         <!-- WASM Whisper Settings -->
-                        <div id="wasm-stt-settings" style="display: none;">
+                        <div id="wasm-stt-settings" style="display: none">
                             <div class="input-group">
                                 <label class="input-label" for="wasm-model-size">WASM MODEL SIZE</label>
                                 <select id="wasm-model-size" class="select-input">
@@ -579,7 +579,7 @@
                         </div>
 
                         <!-- OpenAI Whisper Settings -->
-                        <div id="openai-stt-settings" style="display: none;">
+                        <div id="openai-stt-settings" style="display: none">
                             <div class="input-group">
                                 <label class="input-label" for="openai-whisper-model">OPENAI WHISPER MODEL</label>
                                 <select id="openai-whisper-model" class="select-input">
@@ -601,10 +601,15 @@
                         </div>
 
                         <!-- Google Cloud STT Settings -->
-                        <div id="google-stt-settings" style="display: none;">
+                        <div id="google-stt-settings" style="display: none">
                             <div class="input-group">
                                 <label class="input-label" for="google-stt-key">GOOGLE CLOUD API KEY</label>
-                                <input id="google-stt-key" class="text-input" type="password" placeholder="Your Google Cloud API key" />
+                                <input
+                                    id="google-stt-key"
+                                    class="text-input"
+                                    type="password"
+                                    placeholder="Your Google Cloud API key"
+                                />
                             </div>
                             <div class="input-group">
                                 <label class="input-label" for="google-stt-model">MODEL</label>
@@ -635,12 +640,14 @@
                         <div class="input-group">
                             <label class="input-label">
                                 <input type="checkbox" id="stt-interim-results" checked />
-                                <span style="margin-left: 8px;">Show interim results (real-time)</span>
+                                <span style="margin-left: 8px">Show interim results (real-time)</span>
                             </label>
                         </div>
 
                         <div class="modal-footer" style="justify-content: flex-start; gap: 10px; padding: 0">
-                            <button class="secondary-btn" id="test-stt" type="button">🎤 TEST SPEECH RECOGNITION</button>
+                            <button class="secondary-btn" id="test-stt" type="button">
+                                🎤 TEST SPEECH RECOGNITION
+                            </button>
                             <span id="test-stt-status" style="font-size: 12px; opacity: 0.85"></span>
                         </div>
                     </div>

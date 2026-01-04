@@ -767,6 +767,175 @@ function loadSpeechSettingsIntoUI() {
 }
 
 /* ============================
+   STT Settings Helpers
+   ============================ */
+function loadSTTSettingsIntoUI() {
+    if (!window.SpeechService) return;
+
+    const sttConfig = window.SpeechService.getSTTConfig();
+
+    const sttProvider = $('stt-provider');
+    const wasmModelSize = $('wasm-model-size');
+    const openaiWhisperModel = $('openai-whisper-model');
+    const openaiSTTKey = $('openai-stt-key');
+    const googleSTTKey = $('google-stt-key');
+    const googleSTTModel = $('google-stt-model');
+    const sttLanguage = $('stt-language');
+    const sttInterimResults = $('stt-interim-results');
+
+    if (sttProvider) sttProvider.value = sttConfig.provider;
+    if (wasmModelSize) wasmModelSize.value = sttConfig.wasm.modelSize;
+    if (openaiWhisperModel) openaiWhisperModel.value = sttConfig.openai.model;
+    if (openaiSTTKey) openaiSTTKey.value = sttConfig.openai.apiKey;
+    if (googleSTTKey) googleSTTKey.value = sttConfig.google.apiKey;
+    if (googleSTTModel) googleSTTModel.value = sttConfig.google.model;
+    if (sttLanguage) sttLanguage.value = sttConfig.language;
+    if (sttInterimResults) sttInterimResults.checked = sttConfig.interimResults;
+
+    // Update provider-specific UI
+    updateSTTProviderUI(sttConfig.provider);
+}
+
+function saveSTTSettingsFromUI() {
+    if (!window.SpeechService) return;
+
+    const sttProvider = $('stt-provider');
+    const wasmModelSize = $('wasm-model-size');
+    const openaiWhisperModel = $('openai-whisper-model');
+    const openaiSTTKey = $('openai-stt-key');
+    const googleSTTKey = $('google-stt-key');
+    const googleSTTModel = $('google-stt-model');
+    const sttLanguage = $('stt-language');
+    const sttInterimResults = $('stt-interim-results');
+
+    window.SpeechService.saveSTTConfig({
+        provider: sttProvider ? sttProvider.value : 'webspeech',
+        language: sttLanguage ? sttLanguage.value : 'en-US',
+        interimResults: sttInterimResults ? sttInterimResults.checked : true,
+        wasm: {
+            modelSize: wasmModelSize ? wasmModelSize.value : 'base',
+        },
+        openai: {
+            apiKey: openaiSTTKey ? openaiSTTKey.value.trim() : '',
+            model: openaiWhisperModel ? openaiWhisperModel.value : 'whisper-1',
+        },
+        google: {
+            apiKey: googleSTTKey ? googleSTTKey.value.trim() : '',
+            model: googleSTTModel ? googleSTTModel.value : 'default',
+        },
+    });
+
+    // Update recognition options
+    window.SpeechService.setRecognitionOptions({
+        lang: sttLanguage ? sttLanguage.value : 'en-US',
+        interimResults: sttInterimResults ? sttInterimResults.checked : true,
+    });
+}
+
+function updateSTTProviderUI(provider) {
+    const wasmSTTSettings = $('wasm-stt-settings');
+    const openaiSTTSettings = $('openai-stt-settings');
+    const googleSTTSettings = $('google-stt-settings');
+
+    // Hide all provider-specific settings
+    if (wasmSTTSettings) wasmSTTSettings.style.display = 'none';
+    if (openaiSTTSettings) openaiSTTSettings.style.display = 'none';
+    if (googleSTTSettings) googleSTTSettings.style.display = 'none';
+
+    // Show relevant provider settings
+    switch (provider) {
+        case 'wasm':
+            if (wasmSTTSettings) wasmSTTSettings.style.display = 'block';
+            break;
+        case 'openai':
+            if (openaiSTTSettings) openaiSTTSettings.style.display = 'block';
+            break;
+        case 'google':
+            if (googleSTTSettings) googleSTTSettings.style.display = 'block';
+            break;
+    }
+}
+
+async function testSTT() {
+    if (!window.SpeechService) {
+        showMessage('Speech service not available', 'error');
+        return;
+    }
+
+    const statusElement = $('test-stt-status');
+
+    try {
+        if (statusElement) {
+            statusElement.textContent = 'Starting STT test...';
+            statusElement.style.color = '#3b82f6';
+        }
+
+        // Start STT with test callbacks
+        const started = await window.SpeechService.startSTT({
+            onStart: () => {
+                if (statusElement) {
+                    statusElement.textContent = '🎤 Listening... (speak now)';
+                    statusElement.style.color = '#10b981';
+                }
+            },
+            onInterim: (interimText) => {
+                if (statusElement) {
+                    statusElement.textContent = `📝 Interim: "${interimText}"`;
+                    statusElement.style.color = '#f59e0b';
+                }
+            },
+            onResult: (transcript, confidence) => {
+                const confidencePercent = Math.round(confidence * 100);
+                if (statusElement) {
+                    statusElement.textContent = `✅ Transcribed: "${transcript}" (${confidencePercent}% confidence)`;
+                    statusElement.style.color = '#10b981';
+                }
+                console.log('[STT Test] Result:', transcript);
+
+                // Show success message
+                setTimeout(() => {
+                    if (statusElement) {
+                        statusElement.textContent = 'Test completed successfully!';
+                    }
+                }, 2000);
+            },
+            onError: (error, context) => {
+                const errorMsg = context ? `${error}: ${context}` : error;
+                if (statusElement) {
+                    statusElement.textContent = `❌ Error: ${errorMsg}`;
+                    statusElement.style.color = '#ef4444';
+                }
+                console.error('[STT Test] Error:', error, context);
+            },
+            onEnd: () => {
+                console.log('[STT Test] Recognition ended');
+            },
+        });
+
+        if (!started) {
+            throw new Error('Failed to start STT');
+        }
+
+        // Auto-stop after 10 seconds
+        setTimeout(() => {
+            if (window.SpeechService.isRecognizing) {
+                window.SpeechService.stopSTT();
+                if (statusElement) {
+                    statusElement.textContent = 'Test timeout (10s limit)';
+                    statusElement.style.color = '#f59e0b';
+                }
+            }
+        }, 10000);
+    } catch (error) {
+        console.error('[STT Test] Failed:', error);
+        if (statusElement) {
+            statusElement.textContent = `❌ Failed: ${error.message}`;
+            statusElement.style.color = '#ef4444';
+        }
+    }
+}
+
+/* ============================
    UI / Events
    ============================ */
 function setEmotionPressed(btn) {
@@ -945,6 +1114,21 @@ function setupEventListeners() {
         const sample = sampleByLang[SpeechSettings.lang] || 'Voice test successful.';
         speakText(sample);
     });
+
+    // --- STT SETTINGS UI WIRING ---
+    const sttProvider = document.getElementById('stt-provider');
+    if (sttProvider) {
+        sttProvider.addEventListener('change', (e) => {
+            updateSTTProviderUI(e.target.value);
+        });
+    }
+
+    const testSTTBtn = document.getElementById('test-stt');
+    if (testSTTBtn) {
+        testSTTBtn.addEventListener('click', () => {
+            testSTT();
+        });
+    }
 }
 
 /* ============================
@@ -994,6 +1178,7 @@ function openSettings() {
     // Load config + speech settings into UI whenever settings opens
     loadConfigIntoUI();
     loadSpeechSettingsIntoUI();
+    loadSTTSettingsIntoUI();
     refreshVoiceList();
 
     modal.classList.add('active');
@@ -1108,6 +1293,9 @@ function saveSettings() {
 
     // ✅ Persist speech settings
     saveSpeechSettingsFromUI();
+
+    // ✅ Persist STT settings
+    saveSTTSettingsFromUI();
 
     const modal = $('settings-modal');
     if (modal) {
