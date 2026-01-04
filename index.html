@@ -476,9 +476,19 @@
 
                         <div class="input-group">
                             <label class="input-label" for="model-select">MODEL</label>
-                            <select id="model-select" class="select-input">
-                                <option value="">Select a model...</option>
-                            </select>
+                            <div style="display: flex; gap: 8px; align-items: center">
+                                <select id="model-select" class="select-input" style="flex: 1">
+                                    <option value="">Select a model...</option>
+                                </select>
+                                <button
+                                    id="fetch-models-btn"
+                                    class="btn-primary"
+                                    style="white-space: nowrap; font-size: 0.875rem"
+                                    title="Fetch latest available models from the API"
+                                >
+                                    🔄 Fetch Models
+                                </button>
+                            </div>
                         </div>
                     </div>
 

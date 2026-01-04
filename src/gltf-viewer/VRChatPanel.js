@@ -201,38 +201,88 @@ export class VRChatPanel {
 
     /**
      * IMPORTANT:
-     * These keys MUST match your desktop implementation.
-     * If your desktop uses different keys, change them here to match exactly.
+     * Reads from unified LLM settings (nexus_llm_settings) which is shared between
+     * desktop and VR. Falls back to legacy keys for backward compatibility.
      */
     _desktopStorageKey() {
-        // Common pattern used in many apps; adjust if your desktop uses another key.
-        return 'nexus_settings_v1';
+        return 'nexus_llm_settings'; // Unified LLM settings key
     }
 
     _loadDesktopSettings() {
         try {
-            // 1) Preferred: a single JSON blob
-            const raw = localStorage.getItem(this._desktopStorageKey());
-            if (raw) return JSON.parse(raw);
+            // 1) FIRST: Try unified LLM settings (shared with desktop LLMManager)
+            const unifiedRaw = localStorage.getItem('nexus_llm_settings');
+            if (unifiedRaw) {
+                const unified = JSON.parse(unifiedRaw);
 
-            // 2) Fallback: try common separate keys (optional)
-            const provider = localStorage.getItem('provider');
-            const apiKey = localStorage.getItem('apiKey');
-            const model = localStorage.getItem('model');
-            const baseUrl = localStorage.getItem('baseUrl');
-            const systemPrompt = localStorage.getItem('systemPrompt');
+                // Extract provider-specific settings from unified format
+                let apiKey = '';
+                let model = '';
+                let baseUrl = '';
+                let watsonxProjectId = '';
 
-            const any = provider || apiKey || model || baseUrl || systemPrompt;
-            if (!any) return null;
+                if (unified.provider === 'openai' && unified.openai) {
+                    apiKey = unified.openai.api_key || '';
+                    model = unified.openai.model || 'gpt-4o';
+                    baseUrl = unified.openai.base_url || '';
+                } else if (unified.provider === 'claude' && unified.claude) {
+                    apiKey = unified.claude.api_key || '';
+                    model = unified.claude.model || 'claude-3-5-sonnet-20241022';
+                    baseUrl = unified.claude.base_url || '';
+                } else if (unified.provider === 'watsonx' && unified.watsonx) {
+                    apiKey = unified.watsonx.api_key || '';
+                    model = unified.watsonx.model_id || 'ibm/granite-13b-chat-v2';
+                    baseUrl = unified.watsonx.base_url || '';
+                    watsonxProjectId = unified.watsonx.project_id || '';
+                } else if (unified.provider === 'ollama' && unified.ollama) {
+                    model = unified.ollama.model || 'llama3';
+                    baseUrl = unified.ollama.base_url || '';
+                }
 
-            return {
-                provider: provider || 'none',
-                apiKey: apiKey || '',
-                model: model || '',
-                baseUrl: baseUrl || '',
-                systemPrompt: systemPrompt || this._defaultSettings().systemPrompt,
-            };
-        } catch (_) {
+                console.log('[VRChatPanel] Loaded unified settings:', {
+                    provider: unified.provider,
+                    model: model,
+                });
+
+                return {
+                    provider: unified.provider || 'none',
+                    apiKey: apiKey,
+                    model: model,
+                    baseUrl: baseUrl,
+                    watsonxProjectId: watsonxProjectId,
+                    systemPrompt: unified.system_prompt || this._defaultSettings().systemPrompt,
+                };
+            }
+
+            // 2) SECOND: Try legacy individual keys (backward compatibility)
+            const legacyProvider = localStorage.getItem('ai_provider');
+            if (legacyProvider) {
+                console.log('[VRChatPanel] Loaded legacy settings:', { provider: legacyProvider });
+                return {
+                    provider: legacyProvider || 'none',
+                    apiKey: localStorage.getItem('ai_api_key') || '',
+                    model: localStorage.getItem('ai_model') || '',
+                    baseUrl: localStorage.getItem('base_url') || '',
+                    watsonxProjectId: localStorage.getItem('watsonx_project_id') || '',
+                    systemPrompt: localStorage.getItem('system_prompt') || this._defaultSettings().systemPrompt,
+                };
+            }
+
+            // 3) THIRD: Try old nexus_settings_v1 (speech-only, but check anyway)
+            const oldRaw = localStorage.getItem('nexus_settings_v1');
+            if (oldRaw) {
+                const parsed = JSON.parse(oldRaw);
+                // Only use if it has LLM settings (rare)
+                if (parsed.provider && parsed.provider !== 'none') {
+                    console.log('[VRChatPanel] Loaded old settings:', { provider: parsed.provider });
+                    return parsed;
+                }
+            }
+
+            console.log('[VRChatPanel] No settings found, using defaults');
+            return null;
+        } catch (e) {
+            console.warn('[VRChatPanel] Failed to load desktop settings:', e);
             return null;
         }
     }
@@ -729,25 +779,35 @@ export class VRChatPanel {
         const idx = total ? this.currentAvatarIndex : 0;
         const name = total ? this.avatars[idx]?.name || `Avatar ${idx + 1}` : 'No avatars loaded';
 
+        // Title
         ctx.fillStyle = T.textDim;
         ctx.font = '700 26px system-ui, -apple-system, Segoe UI, Roboto, Arial';
         ctx.fillText('AVATAR', rect.x + 22, rect.y + 52);
 
+        // Avatar name (reduced size to make room)
         ctx.fillStyle = T.text;
-        ctx.font = '900 44px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        ctx.fillText(name.slice(0, 36), rect.x + 22, rect.y + 120);
+        ctx.font = '900 38px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillText(name.slice(0, 36), rect.x + 22, rect.y + 100);
 
-        ctx.fillStyle = T.textDim;
-        ctx.font = '600 26px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        ctx.fillText(total ? `${idx + 1} / ${total}` : '0 / 0', rect.x + 22, rect.y + 162);
-
-        // Show the provider/model from desktop settings (read-only display)
+        // Counter
         ctx.fillStyle = T.textDim;
         ctx.font = '600 24px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        ctx.fillText(`Provider: ${this.settings.provider || 'none'}`, rect.x + 22, rect.y + 214);
-        ctx.fillText(`Model: ${this.settings.model || '(auto)'}`, rect.x + 22, rect.y + 250);
+        ctx.fillText(total ? `${idx + 1} / ${total}` : '0 / 0', rect.x + 22, rect.y + 136);
 
-        // Nav arrows
+        // Provider/Model settings (ABOVE nav arrows to prevent overlap)
+        const providerText = this.settings.provider || 'none';
+        const modelText = this.settings.model || '(auto)';
+        const truncatedModel = modelText.length > 30 ? modelText.slice(0, 27) + '...' : modelText;
+
+        ctx.fillStyle = providerText !== 'none' ? T.accent : T.textDim;
+        ctx.font = '600 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillText(`AI: ${providerText.toUpperCase()}`, rect.x + 22, rect.y + 174);
+
+        ctx.fillStyle = T.textDim;
+        ctx.font = '500 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillText(`Model: ${truncatedModel}`, rect.x + 22, rect.y + 204);
+
+        // Nav arrows (positioned below provider/model text)
         this._drawSoftIcon(ctx, L.settingsNav.prev, '◀');
         this._drawSoftIcon(ctx, L.settingsNav.next, '▶');
 

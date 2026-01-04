@@ -98,7 +98,7 @@ function loadConfig() {
                 baseUrl = settings.openai.base_url || '';
             } else if (settings.provider === 'claude' && settings.claude) {
                 apiKey = settings.claude.api_key || '';
-                model = settings.claude.model || 'claude-3-5-sonnet-20241022';
+                model = settings.claude.model || 'claude-3-5-sonnet-20240620';
                 baseUrl = settings.claude.base_url || '';
             } else if (settings.provider === 'watsonx' && settings.watsonx) {
                 apiKey = settings.watsonx.api_key || '';
@@ -179,7 +179,7 @@ const config = loadConfig();
             } else if (config.provider === 'claude') {
                 patch.claude = {
                     api_key: config.apiKey,
-                    model: config.model || 'claude-3-5-sonnet-20241022',
+                    model: config.model || 'claude-3-5-sonnet-20240620',
                     base_url: config.baseUrl || '',
                 };
             } else if (config.provider === 'watsonx') {
@@ -1393,26 +1393,158 @@ function openInfo() {
 /* ============================
    Provider UI + Storage
    ============================ */
+
+/**
+ * Fetch available models from LLMManager and populate dropdown
+ * @param {string} provider - Provider name (openai, claude, etc.)
+ * @param {HTMLSelectElement} selectElement - The select element to populate
+ */
+async function fetchAndPopulateModels(provider, selectElement) {
+    if (!selectElement) {
+        console.warn('[Main] Cannot fetch models: missing selectElement');
+        return;
+    }
+
+    // Ensure LLMManager instance exists
+    if (!window._nexusLLM) {
+        if (typeof window.LLMManager !== 'function') {
+            console.error('[Main] LLMManager not loaded');
+            selectElement.innerHTML = '<option value="">LLMManager not loaded</option>';
+            return;
+        }
+        console.log('[Main] Creating LLMManager instance for model fetching');
+        window._nexusLLM = new window.LLMManager();
+    }
+
+    // Add loading option
+    selectElement.innerHTML = '<option value="">Loading models...</option>';
+
+    try {
+        // Temporarily update provider to fetch models for selected provider
+        // (User may have selected different provider but not saved yet)
+        const currentSettings = window._nexusLLM.getSettings();
+        const originalProvider = currentSettings.provider;
+
+        if (provider !== originalProvider) {
+            console.log(
+                `[Main] Temporarily switching provider from ${originalProvider} to ${provider} for model fetch`
+            );
+            window._nexusLLM.updateSettings({ provider: provider });
+        }
+
+        const result = await window._nexusLLM.fetchAvailableModels();
+
+        // Restore original provider if we changed it
+        if (provider !== originalProvider) {
+            window._nexusLLM.updateSettings({ provider: originalProvider });
+        }
+
+        if (result.error) {
+            console.warn(`[Main] Model fetch warning: ${result.error}`);
+
+            // Show error prominently if it's an authentication issue
+            if (
+                result.error.includes('401') ||
+                result.error.includes('Authentication') ||
+                result.error.includes('invalid')
+            ) {
+                alert(
+                    `⚠️ ${provider.toUpperCase()} Authentication Error\n\n${result.error}\n\nPlease check your API key in Settings and try again.`
+                );
+            }
+        }
+
+        selectElement.innerHTML = '<option value="">Select a model...</option>';
+
+        if (result.models && result.models.length > 0) {
+            result.models.forEach((m) => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m.toUpperCase().replace(/-/g, ' ');
+                selectElement.appendChild(opt);
+            });
+
+            const statusMsg = result.error
+                ? `⚠️ Loaded ${result.models.length} ${provider} models (using defaults due to error)`
+                : `✅ Loaded ${result.models.length} ${provider} models`;
+            console.log(`[Main] ${statusMsg}`);
+        } else {
+            selectElement.innerHTML = '<option value="">No models available</option>';
+        }
+
+        // Restore current selection if it exists
+        if (config.model && result.models.includes(config.model)) {
+            selectElement.value = config.model;
+        }
+    } catch (e) {
+        console.error('[Main] Failed to fetch models:', e);
+        selectElement.innerHTML = '<option value="">Error loading models</option>';
+    }
+}
+
 function updateProviderFields() {
     const selected = document.querySelector('input[name="provider"]:checked');
     const provider = selected ? selected.value : 'none';
 
     const modelSelect = $('model-select');
+    const apiKeyInput = $('api-key');
+    const baseUrlInput = $('base-url');
     const watsonxRow = $('watsonx-project-row');
     const baseurlRow = $('baseurl-row');
 
     if (!modelSelect) return;
     modelSelect.innerHTML = '<option value="">Select a model...</option>';
 
+    // Load provider-specific API key from unified settings
+    try {
+        const unified = localStorage.getItem('nexus_llm_settings');
+        if (unified && apiKeyInput) {
+            const settings = JSON.parse(unified);
+
+            // Update API key field to show the correct provider's key
+            if (provider === 'openai' && settings.openai?.api_key) {
+                apiKeyInput.value = settings.openai.api_key;
+                if (baseUrlInput) baseUrlInput.value = settings.openai.base_url || '';
+            } else if (provider === 'claude' && settings.claude?.api_key) {
+                apiKeyInput.value = settings.claude.api_key;
+                if (baseUrlInput) baseUrlInput.value = settings.claude.base_url || '';
+            } else if (provider === 'watsonx' && settings.watsonx?.api_key) {
+                apiKeyInput.value = settings.watsonx.api_key;
+                if (baseUrlInput) baseUrlInput.value = settings.watsonx.base_url || 'https://us-south.ml.cloud.ibm.com';
+            } else if (provider === 'ollama') {
+                apiKeyInput.value = ''; // Ollama doesn't need API key
+                if (baseUrlInput) baseUrlInput.value = settings.ollama?.base_url || 'http://localhost:11434';
+            } else {
+                // No key saved for this provider, clear the field
+                apiKeyInput.value = '';
+                if (baseUrlInput) baseUrlInput.value = '';
+            }
+        } else if (apiKeyInput && !unified) {
+            // No unified settings, check if current config matches this provider
+            if (config.provider === provider) {
+                apiKeyInput.value = config.apiKey || '';
+                if (baseUrlInput) baseUrlInput.value = config.baseUrl || '';
+            } else {
+                // Different provider, clear the field
+                apiKeyInput.value = '';
+                if (baseUrlInput) baseUrlInput.value = '';
+            }
+        }
+    } catch (e) {
+        console.warn('[Main] Failed to load provider-specific API key:', e);
+    }
+
     if (provider === 'watsonx') {
         if (watsonxRow) watsonxRow.style.display = 'block';
         if (baseurlRow) baseurlRow.style.display = 'block';
 
+        // Updated Watsonx models (latest versions as of 2025/2026)
         [
-            'meta-llama/llama-3-70b-instruct',
-            'meta-llama/llama-3-8b-instruct',
-            'ibm/granite-13b-chat-v2',
-            'mistralai/mixtral-8x7b-instruct-v01',
+            'ibm/granite-3-1-8b-instruct', // Updated from granite-3-8b-instruct
+            'meta-llama/llama-3-3-70b-instruct', // Updated from llama-3-70b (3.3 offers 405B performance)
+            'meta-llama/llama-3-1-8b-instruct', // Updated from llama-3-8b (3.1 has 128k context)
+            'mistralai/mistral-large-2407', // Updated from mixtral-8x7b (Mistral Large 2 flagship)
+            'mistralai/mistral-nemo', // New mid-sized model (12B)
         ].forEach((m) => {
             const opt = document.createElement('option');
             opt.value = m;
@@ -1425,25 +1557,29 @@ function updateProviderFields() {
     if (watsonxRow) watsonxRow.style.display = 'none';
     if (baseurlRow) baseurlRow.style.display = 'none';
 
-    if (provider === 'openai') {
-        ['gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'].forEach((m) => {
-            const opt = document.createElement('option');
-            opt.value = m;
-            opt.textContent = m.toUpperCase();
-            modelSelect.appendChild(opt);
-        });
-    } else if (provider === 'claude') {
-        [
-            'claude-3-5-sonnet-20241022',
-            'claude-3-opus-20240229',
-            'claude-3-sonnet-20240229',
-            'claude-3-haiku-20240307',
-        ].forEach((m) => {
-            const opt = document.createElement('option');
-            opt.value = m;
-            opt.textContent = m.toUpperCase().replace(/-/g, ' ');
-            modelSelect.appendChild(opt);
-        });
+    // Only fetch models if valid API key is present
+    const currentKey = apiKeyInput ? apiKeyInput.value.trim() : '';
+    const hasValidKey = currentKey && currentKey.length > 10;
+
+    if (provider === 'openai' && hasValidKey) {
+        // Only fetch if key looks valid (starts with sk-)
+        if (currentKey.startsWith('sk-') && !currentKey.startsWith('sk-ant-')) {
+            fetchAndPopulateModels('openai', modelSelect);
+        } else {
+            modelSelect.innerHTML =
+                '<option value="">⚠️ Please enter a valid OpenAI API key (starts with "sk-") and save settings first</option>';
+        }
+    } else if (provider === 'claude' && hasValidKey) {
+        // Only fetch if key looks valid (starts with sk-ant-)
+        if (currentKey.startsWith('sk-ant-')) {
+            fetchAndPopulateModels('claude', modelSelect);
+        } else {
+            modelSelect.innerHTML =
+                '<option value="">⚠️ Please enter a valid Claude API key (starts with "sk-ant-") and save settings first</option>';
+        }
+    } else if (provider === 'openai' || provider === 'claude') {
+        // No API key configured yet
+        modelSelect.innerHTML = '<option value="">⚠️ Please enter your API key above and save settings first</option>';
     }
 }
 
@@ -1465,14 +1601,38 @@ function saveSettings() {
     const selected = document.querySelector('input[name="provider"]:checked');
     const provider = selected ? selected.value : 'none';
 
-    const apiKey = ($('api-key') && $('api-key').value) || '';
+    const apiKey = ($('api-key') && $('api-key').value.trim()) || '';
     const model = ($('model-select') && $('model-select').value) || '';
     const systemPrompt = ($('system-prompt') && $('system-prompt').value) || config.systemPrompt;
     const watsonxProjectId = ($('watsonx-project-id') && $('watsonx-project-id').value) || '';
     const baseUrl = ($('base-url') && $('base-url').value) || '';
 
-    if (provider !== 'none' && !apiKey) return showMessage('Please enter an API key', 'error');
-    if (provider !== 'none' && !model) return showMessage('Please select a model', 'error');
+    if (provider !== 'none' && provider !== 'ollama' && !apiKey) {
+        return showMessage('Please enter an API key', 'error');
+    }
+    if (provider !== 'none' && !model) {
+        return showMessage('Please select a model', 'error');
+    }
+
+    // Validate API key format matches provider
+    if (apiKey) {
+        if (provider === 'claude' && !apiKey.startsWith('sk-ant-')) {
+            return showMessage(
+                '❌ Invalid Claude API Key!\n\nClaude keys must start with "sk-ant-"\n\nYou entered a key starting with: ' +
+                    apiKey.substring(0, 7) +
+                    '\n\nThis looks like an OpenAI key. Please check your API key.',
+                'error'
+            );
+        }
+        if (provider === 'openai' && (!apiKey.startsWith('sk-') || apiKey.startsWith('sk-ant-'))) {
+            return showMessage(
+                '❌ Invalid OpenAI API Key!\n\nOpenAI keys must start with "sk-" (NOT "sk-ant-")\n\nYou entered a key starting with: ' +
+                    apiKey.substring(0, 10) +
+                    '\n\nThis looks like a Claude key. Please check your API key.',
+                'error'
+            );
+        }
+    }
 
     // ✅ Persist provider settings
     localStorage.setItem('ai_provider', provider);
@@ -1516,7 +1676,7 @@ function saveSettings() {
             } else if (provider === 'claude') {
                 patch.claude = {
                     api_key: apiKey,
-                    model: model || 'claude-3-5-sonnet-20241022',
+                    model: model || 'claude-3-5-sonnet-20240620',
                     base_url: baseUrl || '',
                 };
             } else if (provider === 'watsonx') {
@@ -2177,3 +2337,139 @@ function __nexusWireTestButton() {
 }
 
 window.addEventListener('DOMContentLoaded', __nexusWireTestButton);
+
+/* =====================================================================
+   FETCH MODELS BUTTON
+   - Manually fetch latest available models from the selected provider
+   - Useful for refreshing model list without reloading the page
+   ===================================================================== */
+function __nexusWireFetchModelsButton() {
+    const btn = document.getElementById('fetch-models-btn');
+    if (!btn) return;
+
+    btn.addEventListener('click', async () => {
+        const selected = document.querySelector('input[name="provider"]:checked');
+        const provider = selected ? selected.value : 'none';
+
+        if (provider === 'none') {
+            alert('Please select a provider first (OpenAI, Claude, Watsonx, or Ollama)');
+            return;
+        }
+
+        if (provider === 'watsonx') {
+            alert('Watsonx models are fetched automatically. Use the dropdown to see available models.');
+            return;
+        }
+
+        if (provider === 'ollama') {
+            alert('Ollama models are fetched automatically. Use the dropdown to see available models.');
+            return;
+        }
+
+        const modelSelect = document.getElementById('model-select');
+        if (!modelSelect) return;
+
+        // Disable button during fetch
+        btn.disabled = true;
+        const originalText = btn.textContent;
+        btn.textContent = '⏳ Fetching...';
+
+        try {
+            await fetchAndPopulateModels(provider, modelSelect);
+
+            // Show success feedback
+            btn.textContent = '✅ Updated!';
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }, 2000);
+        } catch (e) {
+            console.error('[Main] Failed to fetch models:', e);
+            btn.textContent = '❌ Error';
+            setTimeout(() => {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }, 2000);
+        }
+    });
+}
+
+window.addEventListener('DOMContentLoaded', __nexusWireFetchModelsButton);
+
+/* =====================================================================
+   DEBUG HELPER: Check Stored API Keys
+   - Run window.debugAPIKeys() in console to see what's stored
+   - Helps diagnose authentication issues
+   ===================================================================== */
+window.debugAPIKeys = function () {
+    console.log('=== NEXUS API KEY DEBUGGER ===\n');
+
+    try {
+        // Check unified settings
+        const unified = localStorage.getItem('nexus_llm_settings');
+        if (unified) {
+            const settings = JSON.parse(unified);
+            console.log('📦 Unified Settings (nexus_llm_settings):');
+            console.log('  Provider:', settings.provider || 'none');
+
+            if (settings.openai?.api_key) {
+                const key = settings.openai.api_key;
+                console.log(
+                    '  OpenAI Key:',
+                    key.substring(0, 12) + '...' + key.substring(key.length - 4),
+                    `(${key.length} chars)`
+                );
+                console.log('    ✓ Starts with:', key.substring(0, 7));
+                console.log('    ✓ Valid format:', key.startsWith('sk-') && !key.startsWith('sk-ant-') ? '✅' : '❌');
+            }
+
+            if (settings.claude?.api_key) {
+                const key = settings.claude.api_key;
+                console.log(
+                    '  Claude Key:',
+                    key.substring(0, 12) + '...' + key.substring(key.length - 4),
+                    `(${key.length} chars)`
+                );
+                console.log('    ✓ Starts with:', key.substring(0, 7));
+                console.log('    ✓ Valid format:', key.startsWith('sk-ant-') ? '✅' : '❌');
+            }
+
+            if (settings.watsonx?.api_key) {
+                const key = settings.watsonx.api_key;
+                console.log(
+                    '  Watsonx Key:',
+                    key.substring(0, 12) + '...' + key.substring(key.length - 4),
+                    `(${key.length} chars)`
+                );
+            }
+
+            if (settings.ollama?.base_url) {
+                console.log('  Ollama URL:', settings.ollama.base_url);
+            }
+        } else {
+            console.log('📦 No unified settings found (nexus_llm_settings is empty)');
+        }
+
+        // Check legacy settings
+        console.log('\n📜 Legacy Settings:');
+        const legacyProvider = localStorage.getItem('ai_provider');
+        const legacyKey = localStorage.getItem('ai_api_key');
+        if (legacyProvider) {
+            console.log('  Provider:', legacyProvider);
+        }
+        if (legacyKey) {
+            console.log('  API Key:', legacyKey.substring(0, 12) + '...' + legacyKey.substring(legacyKey.length - 4));
+        }
+
+        console.log('\n💡 Tips:');
+        console.log('  - OpenAI keys should start with "sk-" (NOT "sk-ant-")');
+        console.log('  - Claude keys should start with "sk-ant-"');
+        console.log('  - If keys look wrong, delete them in Settings and re-enter');
+        console.log('  - To reset: localStorage.clear() then reload page');
+        console.log('\n=== END DEBUG ===');
+    } catch (e) {
+        console.error('Error debugging API keys:', e);
+    }
+};
+
+console.log('💡 Tip: Run window.debugAPIKeys() in console to check your stored API keys');
