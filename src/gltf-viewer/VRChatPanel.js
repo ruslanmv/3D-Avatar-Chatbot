@@ -3,23 +3,23 @@
  * ------------------------------------------------------------------------
  * GOALS (your request):
  * 1) VR uses the SAME settings as Desktop (provider/model/apiKey/baseUrl/systemPrompt, speech prefs, etc.).
- *    - We read/write from the same localStorage keys your desktop UI already uses.
- *    - No separate VR-only settings menu is required; VR toggles are mirrors of Desktop settings.
+ * - We read/write from the same localStorage keys your desktop UI already uses.
+ * - No separate VR-only settings menu is required; VR toggles are mirrors of Desktop settings.
  *
  * 2) Quest 3 friendly visuals:
- *    - Remove neon/outer borders (no "frame" box).
- *    - Soft glass card, subtle header handle, big readable type.
- *    - No hard cyan outlines everywhere.
+ * - Remove neon/outer borders (no "frame" box).
+ * - Soft glass card, subtle header handle, big readable type.
+ * - No hard cyan outlines everywhere.
  *
  * 3) Drag works reliably:
- *    - Always draggable via top handle (no pinned logic needed).
- *    - Comfortable distance clamp for Quest.
+ * - Always draggable via top handle (no pinned logic needed).
+ * - Comfortable distance clamp for Quest.
  *
  * IMPORTANT:
  * - You MUST call panel.syncFromDesktopSettings() once after desktop settings load/save,
- *   OR call it every time you open the VR panel.
+ * OR call it every time you open the VR panel.
  * - If you already have a settings save event in your desktop code, call:
- *     vrChatPanel.syncFromDesktopSettings();
+ * vrChatPanel.syncFromDesktopSettings();
  */
 
 import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
@@ -156,6 +156,40 @@ export class VRChatPanel {
         // Initial sync from desktop settings (safe even if empty)
         this.syncFromDesktopSettings();
 
+        // ✅ Auto-refresh if desktop settings change while panel is open (e.g. from another tab)
+        this._onStorage = (e) => {
+            const k = e.key;
+
+            // Unified LLM settings used by VR panel (provider/model/apiKey/baseUrl/system prompt)
+            if (k === 'nexus_llm_settings') {
+                this.syncFromDesktopSettings();
+                return;
+            }
+
+            // Speech settings live here in your code
+            if (k === 'nexus_settings_v1') {
+                this.syncFromDesktopSettings();
+                return;
+            }
+
+            // Legacy compatibility keys (only if some older UI writes them)
+            if (
+                k === 'ai_provider' ||
+                k === 'ai_model' ||
+                k === 'ai_api_key' ||
+                k === 'openai_model' ||        // very old desktop demo
+                k === 'openai_api_key'         // very old desktop demo
+            ) {
+                this.syncFromDesktopSettings();
+                return;
+            }
+
+        
+
+        };
+
+        window.addEventListener('storage', this._onStorage);
+
         this.redraw();
     }
 
@@ -172,6 +206,9 @@ export class VRChatPanel {
     syncFromDesktopSettings() {
         const s = this._loadDesktopSettings();
         if (s) this.settings = { ...this.settings, ...s };
+
+        // NEW: ensure avatar selection is applied whenever we sync
+        this._syncAvatarSelectionFromStorage();
 
         // Mirror common toggles (speech)
         this.sttEnabled = !!this.settings.sttEnabled;
@@ -260,8 +297,10 @@ export class VRChatPanel {
 
                 // ✅ Also load speech settings from nexus_settings_v1
                 let speechSettings = {};
+                // FIX: Define speechRaw in outer scope so it can be logged later
+                let speechRaw = null;
                 try {
-                    const speechRaw = localStorage.getItem('nexus_settings_v1');
+                    speechRaw = localStorage.getItem('nexus_settings_v1');
                     if (speechRaw) {
                         const speech = JSON.parse(speechRaw);
                         speechSettings = {
@@ -287,7 +326,7 @@ export class VRChatPanel {
                     rate: speechSettings.speechRate,
                     pitch: speechSettings.speechPitch,
                     ttsEnabled: speechSettings.ttsEnabled,
-                    rawDataExists: !!speechRaw,
+                    rawDataExists: !!speechRaw, // Now accessing the variable declared above
                 });
                 console.log('[VRChatPanel] Loaded unified settings:', {
                     provider: unified.provider,
@@ -343,6 +382,36 @@ export class VRChatPanel {
         try {
             localStorage.setItem(this._desktopStorageKey(), JSON.stringify(obj));
         } catch (_) {}
+    }
+
+    // --- Avatar selection persistence (Desktop <-> VR) ---
+    _avatarStorageKey() {
+        return 'nexus_selected_avatar_name';
+    }
+
+    _loadSelectedAvatarName() {
+        return (
+            localStorage.getItem(this._avatarStorageKey()) ||
+            localStorage.getItem('selected_avatar_name') ||
+            localStorage.getItem('selected_avatar') ||
+            ''
+        );
+    }
+
+    _saveSelectedAvatarName(name) {
+        try {
+            localStorage.setItem(this._avatarStorageKey(), String(name || ''));
+        } catch (_) {}
+    }
+
+    _syncAvatarSelectionFromStorage() {
+        const selectedName = this._loadSelectedAvatarName();
+        if (!selectedName || !Array.isArray(this.avatars) || !this.avatars.length) return;
+
+        const idx = this.avatars.findIndex((a) => (a?.name || '') === selectedName);
+        if (idx >= 0) {
+            this.currentAvatarIndex = idx;
+        }
     }
 
     // =====================================================================
@@ -511,6 +580,10 @@ export class VRChatPanel {
 
     setAvatars(list) {
         this.avatars = Array.isArray(list) ? list : [];
+
+        // NEW: sync chosen avatar from localStorage (desktop selection)
+        this._syncAvatarSelectionFromStorage();
+
         this.currentAvatarIndex = Math.max(0, Math.min(this.currentAvatarIndex, this.avatars.length - 1));
         this.redraw();
     }
@@ -518,6 +591,10 @@ export class VRChatPanel {
     nextAvatar() {
         if (!this.avatars.length) return 0;
         this.currentAvatarIndex = (this.currentAvatarIndex + 1) % this.avatars.length;
+
+        // NEW: persist selection
+        this._saveSelectedAvatarName(this.avatars[this.currentAvatarIndex]?.name || '');
+
         this.redraw();
         return this.currentAvatarIndex;
     }
@@ -525,6 +602,10 @@ export class VRChatPanel {
     prevAvatar() {
         if (!this.avatars.length) return 0;
         this.currentAvatarIndex = (this.currentAvatarIndex - 1 + this.avatars.length) % this.avatars.length;
+
+        // NEW: persist selection
+        this._saveSelectedAvatarName(this.avatars[this.currentAvatarIndex]?.name || '');
+
         this.redraw();
         return this.currentAvatarIndex;
     }
@@ -602,16 +683,8 @@ export class VRChatPanel {
         const contentH = footerY - contentY - 18;
         const chatArea = { x: P, y: contentY, w: W - P * 2, h: contentH };
 
-        // Chips
-        const chipH = 64;
-        const chipY = chatArea.y + chatArea.h - chipH - 10;
-        const chipGap = 16;
-        const chipW = (chatArea.w - chipGap * 2) / 3;
-        const chips = [
-            { key: 'q_sum', label: 'Summarize', x: P, y: chipY, w: chipW, h: chipH },
-            { key: 'q_exp', label: 'Explain', x: P + chipW + chipGap, y: chipY, w: chipW, h: chipH },
-            { key: 'q_nxt', label: 'Next', x: P + (chipW + chipGap) * 2, y: chipY, w: chipW, h: chipH },
-        ];
+        // Chips (Disabled/Removed)
+        const chips = [];
 
         // Settings (mirrors desktop toggles)
         const setTopY = contentY + 10;
@@ -621,28 +694,24 @@ export class VRChatPanel {
             tts: { x: W - P - 250, y: setTopY, w: 250, h: 92 },
         };
 
-        // ✅ FIX 2: Reduce heights to prevent overlap with footer (footerY = 886px)
-        const avatarRect = { x: P, y: setTopY + 120, w: W - P * 2, h: 240 }; // Reduced by 40px
-        const navY = avatarRect.y + 152; // Adjusted for new height
+        // ✅ FIX: COMPACT LAYOUT FOR SETTINGS TO PREVENT OVERLAP
+        const avatarRect = { x: P, y: setTopY + 120, w: W - P * 2, h: 220 }; // Reduced from 240
+        const navY = avatarRect.y + 65; // Center arrows vertically
         const settingsNav = {
             prev: { x: P + 26, y: navY, w: 110, h: 110 },
             next: { x: W - P - 136, y: navY, w: 110, h: 110 },
         };
 
-        // ✅ Voice Settings Section (below avatar card)
-        const voiceY = avatarRect.y + avatarRect.h + 15; // Reduced gap from 20 to 15
-        const voiceRect = { x: P, y: voiceY, w: W - P * 2, h: 300 }; // Reduced by 60px
-        // New calculation: setTopY(288) + 120 + Avatar(240) + Gap(15) + Voice(300) = 843px < footerY(886px) ✅
+        const voiceY = avatarRect.y + avatarRect.h + 15;
+        const voiceRect = { x: P, y: voiceY, w: W - P * 2, h: 330 }; // Adjusted to 330
 
-        // Voice selector navigation (prev/next arrows)
-        const voiceNavY = voiceY + 70;
+        const voiceNavY = voiceY + 50; // Shifted up
         const voiceNav = {
             prev: { x: P + 20, y: voiceNavY, w: 100, h: 100 },
             next: { x: W - P - 120, y: voiceNavY, w: 100, h: 100 },
         };
 
-        // Gender filter buttons (row of 3) - adjusted for tighter spacing
-        const genderY = voiceY + 180;
+        const genderY = voiceY + 135; // Shifted up
         const genderBtnW = 140;
         const genderGap = 16;
         const genderStartX = P + (W - P * 2 - genderBtnW * 3 - genderGap * 2) / 2;
@@ -652,8 +721,7 @@ export class VRChatPanel {
             female: { x: genderStartX + (genderBtnW + genderGap) * 2, y: genderY, w: genderBtnW, h: 68 },
         };
 
-        // Rate and Pitch controls (simplified for Quest: +/- buttons) - adjusted for new height
-        const controlY = voiceY + 260;
+        const controlY = voiceY + 210; // Shifted up
         const controlBtnW = 80;
         const controlGap = 20;
         const rateControls = {
@@ -667,14 +735,13 @@ export class VRChatPanel {
             increase: { x: W - P - 220 + controlBtnW + controlGap, y: controlY, w: controlBtnW, h: 60 },
         };
 
-        // Action buttons (Test Voice, Save Settings) - adjusted to fit within 300px height
-        const actionY = voiceY + 232; // Reduced to fit better
+        const actionY = voiceY + 300; // Shifted up
         const actionBtnW = 200;
         const actionGap = 20;
         const actionStartX = P + (W - P * 2 - actionBtnW * 2 - actionGap) / 2;
         const voiceActions = {
-            test: { x: actionStartX, y: actionY, w: actionBtnW, h: 60 }, // Reduced height from 68 to 60
-            save: { x: actionStartX + actionBtnW + actionGap, y: actionY, w: actionBtnW, h: 60 },
+            test: { x: actionStartX, y: actionY - 30, w: actionBtnW, h: 60 },
+            save: { x: actionStartX + actionBtnW + actionGap, y: actionY - 30, w: actionBtnW, h: 60 },
         };
 
         return {
@@ -875,13 +942,11 @@ export class VRChatPanel {
         const T = this.theme;
         const area = L.chatArea;
 
-        // ✅ FIX 1: SAVE CONTEXT & CREATE CLIPPING REGION
-        // This prevents text from overflowing into the chips and footer buttons
+        // ✅ FIX: CLIP TEXT TO AREA (PREVENTS OVERFLOW INTO FOOTER)
         ctx.save();
         ctx.beginPath();
-        // Define the rectangle where text is allowed to exist
         ctx.rect(area.x, area.y, area.w, area.h);
-        ctx.clip(); // Nothing drawn after this line can escape this box
+        ctx.clip();
 
         // messages region top
         const pad = 18;
@@ -907,7 +972,7 @@ export class VRChatPanel {
             if (y > area.y + area.h - 120) return;
         });
 
-        // ✅ RESTORE CONTEXT (Turn off clipping so we can draw chips and transcript on top)
+        // ✅ RESTORE CONTEXT BEFORE DRAWING CHIPS
         ctx.restore();
 
         // Transcript display (show interim/final transcript during STT)
@@ -966,15 +1031,17 @@ export class VRChatPanel {
         ctx.font = '700 26px system-ui, -apple-system, Segoe UI, Roboto, Arial';
         ctx.fillText('AVATAR', rect.x + 22, rect.y + 52);
 
-        // Avatar name (reduced size to make room)
+        // ✅ FIX: Center Name and Counter
         ctx.fillStyle = T.text;
         ctx.font = '900 38px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        ctx.fillText(name.slice(0, 36), rect.x + 22, rect.y + 100);
+        ctx.textAlign = 'center';
+        ctx.fillText(name.slice(0, 36), rect.x + rect.w / 2, rect.y + 100);
 
         // Counter
         ctx.fillStyle = T.textDim;
         ctx.font = '600 24px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        ctx.fillText(total ? `${idx + 1} / ${total}` : '0 / 0', rect.x + 22, rect.y + 136);
+        ctx.fillText(total ? `${idx + 1} / ${total}` : '0 / 0', rect.x + rect.w / 2, rect.y + 136);
+        ctx.textAlign = 'left';
 
         // Provider/Model settings (ABOVE nav arrows to prevent overlap)
         const providerText = this.settings.provider || 'none';
@@ -1048,11 +1115,11 @@ export class VRChatPanel {
         ctx.fillStyle = T.text;
         ctx.font = '800 40px system-ui, -apple-system, Segoe UI, Roboto, Arial';
         const truncatedName = voiceDisplayName.length > 24 ? voiceDisplayName.slice(0, 21) + '...' : voiceDisplayName;
-        ctx.fillText(truncatedName, voiceRect.x + 140, voiceRect.y + 126);
+        ctx.fillText(truncatedName, voiceRect.x + 140, voiceRect.y + 100); // Shifted Y
 
         ctx.fillStyle = T.textDim;
         ctx.font = '600 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        ctx.fillText(`${voiceIndex} / ${voiceCount}  [${voiceGender}]`, voiceRect.x + 140, voiceRect.y + 158);
+        ctx.fillText(`${voiceIndex} / ${voiceCount}  [${voiceGender}]`, voiceRect.x + 140, voiceRect.y + 142); // Shifted Y
 
         // Voice navigation arrows
         this._drawSoftIcon(ctx, L.voiceNav.prev, '◀');
@@ -1099,9 +1166,9 @@ export class VRChatPanel {
         ctx.fillText(pitchValue, pitchCenter, L.pitchControls.decrease.y + 86);
         ctx.textAlign = 'left';
 
-        // Action buttons
-        this._drawActionBtn(ctx, L.voiceActions.test, '🔊 Test Voice', false);
-        this._drawActionBtn(ctx, L.voiceActions.save, '💾 Save Settings', true);
+        // ✅ FIX: Shortened labels for Test and Save
+        this._drawActionBtn(ctx, L.voiceActions.test, '🔊 Test', false);
+        this._drawActionBtn(ctx, L.voiceActions.save, '💾 Save', true);
     }
 
     _drawFooter(ctx) {
@@ -1362,7 +1429,7 @@ export class VRChatPanel {
     /**
      * Optional helper: call this from your UI click handler.
      * Example:
-     *   if (panel.handleUIAction(mesh.name, mesh.userData)) return;
+     * if (panel.handleUIAction(mesh.name, mesh.userData)) return;
      */
     handleUIAction(name, userData = {}) {
         const key = userData?.key;
@@ -1556,6 +1623,8 @@ export class VRChatPanel {
 
             settings = { ...settings, ...ttsConfig };
             localStorage.setItem('nexus_settings_v1', JSON.stringify(settings));
+            // ✅ Sync immediately within the same context
+            this.syncFromDesktopSettings();
 
             console.log('[VRChatPanel] ✅ Voice settings saved:', {
                 name: voice.name,
@@ -1597,6 +1666,12 @@ export class VRChatPanel {
     // =====================================================================
 
     dispose() {
+        // ✅ cleanup storage listener
+        if (this._onStorage) {
+            window.removeEventListener('storage', this._onStorage);
+            this._onStorage = null;
+        }
+
         try {
             this.texture?.dispose?.();
         } catch (_) {}

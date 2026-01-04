@@ -167,7 +167,7 @@
          * @param {object|string} body - Request body
          * @returns {Promise<Response>}
          */
-        async _fetchViaProxy(url, method, headers, body) {
+        async _fetchViaProxy_old(url, method, headers, body) {
             // Use proxy_url directly - it already includes /proxy or /api/proxy
             const proxyUrl = this._proxyBase();
 
@@ -199,6 +199,80 @@
                 json: async () => JSON.parse(text),
             };
         }
+
+        async _fetchViaProxy(url, method, headers, body) {
+            const configured = this._proxyBase(); // could be "/api/proxy" or "http://localhost:3001/api/proxy" etc.
+
+            // Normalize: if someone configured "http://localhost:3001" without path, append "/api/proxy"
+            const normalizeProxy = (p) => {
+                const s = String(p || '').trim().replace(/\/$/, '');
+                if (!s) return '';
+                if (s.endsWith('/api/proxy') || s.endsWith('/proxy')) return s;
+                // If it's same-origin "/api/proxy" keep
+                if (s === '/api/proxy') return s;
+                return s + '/api/proxy';
+            };
+
+            const primary = normalizeProxy(configured || '/api/proxy');
+
+            // ✅ If running on localhost, try common local proxy ports as fallback
+            const isLocal =
+                typeof window !== 'undefined' &&
+                (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+            const fallbacks = isLocal
+                ? [
+                    'http://localhost:3001/api/proxy',
+                    'http://localhost:3000/api/proxy',
+                    'http://127.0.0.1:3001/api/proxy',
+                    'http://127.0.0.1:3000/api/proxy',
+                ]
+                : [];
+
+            const candidates = [primary, ...fallbacks].filter(Boolean);
+
+            let lastErr = null;
+
+            for (const proxyUrl of candidates) {
+                console.log(`[LLMManager] Proxying ${method} request to ${url} via ${proxyUrl}`);
+
+                try {
+                    const response = await fetch(proxyUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url, method, headers, body }),
+                    });
+
+                    // ✅ Special-case: if same-origin "/api/proxy" doesn't exist locally, it will return 404.
+                    // Then try fallbacks.
+                    if (response.status === 404) {
+                        lastErr = new Error(`Proxy route not found at ${proxyUrl} (404)`);
+                        continue;
+                    }
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`Proxy error (${response.status}): ${errorText}`);
+                    }
+
+                    const text = await response.text();
+                    return {
+                        ok: true,
+                        status: response.status,
+                        statusText: response.statusText,
+                        text: async () => text,
+                        json: async () => JSON.parse(text),
+                    };
+                } catch (e) {
+                    lastErr = e;
+                    continue;
+                }
+            }
+
+            // If we got here, nothing worked
+            throw lastErr || new Error('Proxy error: no proxy endpoint succeeded');
+        }
+
 
         /**
          * Get or refresh Watsonx IAM token
@@ -297,7 +371,7 @@
             return data.choices?.[0]?.message?.content || 'No response';
         }
 
-        async _chatClaude(userMessage, systemPrompt, conversationHistory = []) {
+        async _chatClaude_old(userMessage, systemPrompt, conversationHistory = []) {
             const { api_key: rawKey, model, base_url } = this._settings.claude;
 
             // Trim whitespace (prevents copy/paste issues)
@@ -351,6 +425,81 @@
             const data = await res.json();
             return data.content?.[0]?.text || 'No response';
         }
+
+        async _chatClaude(userMessage, systemPrompt, conversationHistory = []) {
+            const { api_key: rawKey, model: configuredModel, base_url } = this._settings.claude;
+
+            const api_key = (rawKey || '').trim();
+            if (!api_key) throw new Error('Claude API Key missing. Please add your API key in Settings.');
+            if (!api_key.startsWith('sk-ant-')) {
+                throw new Error(
+                    'Invalid Claude API key format. Anthropic keys should start with "sk-ant-". Please check your API key in Settings.'
+                );
+            }
+
+            const url = `${(base_url || 'https://api.anthropic.com').replace(/\/$/, '')}/v1/messages`;
+            const headers = {
+                'Content-Type': 'application/json',
+                'x-api-key': api_key,
+                'anthropic-version': '2023-06-01',
+            };
+
+            const messages = [...conversationHistory, { role: 'user', content: userMessage }];
+
+            // ✅ Do NOT assume "-latest" works. Prefer configured, but fallback if empty.
+            const primaryModel = (configuredModel || '').trim() || 'claude-3-5-sonnet-20241022';
+
+            const attempt = async (modelToUse) => {
+                const body = {
+                    model: modelToUse,
+                    system: systemPrompt || 'You are a helpful assistant.',
+                    messages,
+                    max_tokens: 1024,
+                };
+
+                let res;
+                if (this._hasProxy()) res = await this._fetchViaProxy(url, 'POST', headers, body);
+                else {
+                    res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+                }
+
+                if (!res.ok) {
+                    const errText = await res.text();
+                    throw new Error(`Claude Error: ${res.status} - ${errText}`);
+                }
+                return await res.json();
+            };
+
+            try {
+                const data = await attempt(primaryModel);
+                return data.content?.[0]?.text || 'No response';
+            } catch (e) {
+                // ✅ If Anthropic says "model not found", auto-fallback once
+                const msg = String(e?.message || '');
+                const looksLikeModelNotFound =
+                    msg.includes('not_found_error') || msg.includes('"type":"not_found_error"') || msg.includes('model:');
+
+                if (looksLikeModelNotFound) {
+                    const fallbackModel = 'claude-3-5-sonnet-20241022';
+
+                    console.warn('[LLMManager] Claude model invalid. Falling back:', {
+                        from: primaryModel,
+                        to: fallbackModel,
+                    });
+
+                    // Persist the fallback so next call is clean
+                    this._settings.claude.model = fallbackModel;
+                    this._saveSettings();
+
+                    const data2 = await attempt(fallbackModel);
+                    return data2.content?.[0]?.text || 'No response';
+                }
+
+                // otherwise rethrow
+                throw e;
+            }
+        }
+
 
         async _chatWatsonx(userMessage, systemPrompt, conversationHistory = []) {
             const { project_id, model_id, base_url } = this._settings.watsonx;
@@ -800,7 +949,7 @@
             };
         }
 
-        _getDefaults() {
+        _getDefaults_old() {
             // Prefer same-origin proxy everywhere (works on Vercel AND locally via vercel dev).
             // If the user runs the standalone nexus-proxy/server.js (8080), same-origin still works.
             const defaultProxyUrl = '/api/proxy';
@@ -835,6 +984,47 @@
                 },
             };
         }
+
+        _getDefaults() {
+            // ✅ Robust proxy default:
+            // - On Vercel: "/api/proxy" works
+            // - On many local dev servers: "/api/proxy" does NOT exist (404)
+            // We'll still default to "/api/proxy", but _fetchViaProxy() will auto-fallback to localhost:3001/3000.
+            const defaultProxyUrl = '/api/proxy';
+
+            return {
+                provider: LLMProvider.NONE,
+                system_prompt:
+                    'You are a helpful AI assistant named Nexus. You are friendly, professional, and knowledgeable.',
+                proxy: {
+                    enable_proxy: false,
+                    proxy_url: defaultProxyUrl,
+                },
+                openai: {
+                    api_key: '',
+                    model: 'gpt-4o',
+                    base_url: '',
+                },
+                claude: {
+                    api_key: '',
+                    // ✅ DO NOT use "-latest" aliases here (they can 404 on Anthropic)
+                    model: 'claude-3-5-sonnet-20241022',
+                    base_url: '',
+                },
+                watsonx: {
+                    api_key: '',
+                    project_id: '',
+                    model_id: 'ibm/granite-13b-chat-v2',
+                    base_url: 'https://us-south.ml.cloud.ibm.com',
+                },
+                ollama: {
+                    base_url: 'http://localhost:11434',
+                    model: 'llama3',
+                },
+            };
+        }
+
+
 
         // ===============================================
         // Utilities
