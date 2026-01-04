@@ -41,6 +41,10 @@ export class VRChatPanel {
         this.avatars = [];
         this.currentAvatarIndex = 0;
 
+        // Speech-to-text transcript display
+        this.transcript = '';
+        this.transcriptMode = 'idle'; // 'idle' | 'interim' | 'final'
+
         // Mirrors desktop settings (synced via localStorage)
         this.settings = this._defaultSettings();
 
@@ -293,6 +297,8 @@ export class VRChatPanel {
         const visible = !!v;
         this.group.visible = visible;
 
+        console.log('[VRChatPanel] 👁️ Panel visibility:', visible);
+
         if (!visible) {
             this._isDragging = false;
             return;
@@ -303,6 +309,13 @@ export class VRChatPanel {
 
         this._spawnNearLeftHandOnce(this._spawnDistance);
         this.redraw();
+
+        // Log final position and distance to camera for debugging
+        const camPos = new THREE.Vector3();
+        this.camera.getWorldPosition(camPos);
+        const dist = this.group.position.distanceTo(camPos);
+        console.log('[VRChatPanel] ✅ Panel visible at world position:', this.group.position.toArray());
+        console.log('[VRChatPanel] 📏 Distance to camera:', dist.toFixed(2), 'm');
     }
 
     setLeftController(controller) {
@@ -323,23 +336,40 @@ export class VRChatPanel {
 
         // If controller exists, bias towards it slightly (still comfortable)
         if (this.leftController) {
-            this.group.position.copy(this.leftController.position);
-            this.group.quaternion.copy(this.leftController.quaternion);
-            this.group.translateX(0.14);
-            this.group.translateY(0.05);
-            this.group.translateZ(-0.12);
+            // Update world matrix to ensure latest transforms
+            this.leftController.updateWorldMatrix(true, false);
 
-            // Clamp to dist from camera
-            const toCam = this._tmpVec3.copy(this.group.position).sub(camPos);
-            const d = toCam.length();
-            if (d > dist) {
-                toCam.normalize();
-                this.group.position.copy(camPos).add(toCam.multiplyScalar(dist));
+            // Use WORLD coordinates instead of local
+            const ctrlWorldPos = new THREE.Vector3();
+            const ctrlWorldQuat = new THREE.Quaternion();
+            this.leftController.getWorldPosition(ctrlWorldPos);
+            this.leftController.getWorldQuaternion(ctrlWorldQuat);
+
+            // Check if position is valid (not NaN or zero)
+            if (isFinite(ctrlWorldPos.x) && isFinite(ctrlWorldPos.y) && isFinite(ctrlWorldPos.z)) {
+                console.log('[VRChatPanel] 🎯 Spawning from left controller world position:', ctrlWorldPos.toArray());
+
+                this.group.position.copy(ctrlWorldPos);
+                this.group.quaternion.copy(ctrlWorldQuat);
+                this.group.translateX(0.14);
+                this.group.translateY(0.05);
+                this.group.translateZ(-0.12);
+
+                // Clamp to dist from camera
+                const toCam = this._tmpVec3.copy(this.group.position).sub(camPos);
+                const d = toCam.length();
+                if (d > dist) {
+                    toCam.normalize();
+                    this.group.position.copy(camPos).add(toCam.multiplyScalar(dist));
+                }
+            } else {
+                console.warn('[VRChatPanel] ⚠️ Controller position invalid, using camera spawn');
             }
         }
 
         // Face camera on spawn
         this.group.lookAt(camPos);
+        console.log('[VRChatPanel] 📍 Panel spawned at world position:', this.group.position.toArray());
     }
 
     // =====================================================================
@@ -353,6 +383,27 @@ export class VRChatPanel {
 
     setStatus(status) {
         this.status = status || 'idle';
+        this.redraw();
+    }
+
+    /**
+     * Set transcript text for VR speech-to-text display
+     * @param {string} text - Transcript text
+     * @param {string} mode - 'interim' or 'final'
+     */
+    setTranscript(text, mode = 'interim') {
+        this.transcript = String(text ?? '');
+        this.transcriptMode = mode;
+        console.log(`[VRChatPanel] Transcript (${mode}): "${this.transcript}"`);
+        this.redraw();
+    }
+
+    /**
+     * Clear transcript display
+     */
+    clearTranscript() {
+        this.transcript = '';
+        this.transcriptMode = 'idle';
         this.redraw();
     }
 
@@ -626,6 +677,21 @@ export class VRChatPanel {
             y += 18;
             if (y > area.y + area.h - 120) return;
         });
+
+        // Transcript display (show interim/final transcript during STT)
+        if (this.transcript && this.transcriptMode !== 'idle') {
+            const transcriptY = area.y + area.h - 160;
+            const transcriptStyle = this.transcriptMode === 'interim' ? 'italic' : 'normal';
+
+            ctx.font = '700 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+            ctx.fillStyle = this.transcriptMode === 'interim' ? T.accent : 'rgba(255, 215, 0, 0.95)';
+            const prefix = this.transcriptMode === 'interim' ? '🎤 Listening...' : '🎤 Transcribed:';
+            ctx.fillText(prefix, area.x + 18, transcriptY);
+
+            ctx.font = `${transcriptStyle} 30px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+            ctx.fillStyle = T.text;
+            this._wrapText(ctx, this.transcript, area.x + 18, transcriptY + 36, area.x + area.w - 18, 38);
+        }
 
         // Chips
         L.chips.forEach((c) => {

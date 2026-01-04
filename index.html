@@ -27,6 +27,7 @@
 
         <link rel="icon" href="favicon.ico" />
 
+        <!-- Three.js + addons (required for vendor-guard.js and ProceduralAnimator.js) -->
         <script defer src="vendor/three-0.147.0/build/three.min.js"></script>
         <script defer src="vendor/three-0.147.0/examples/js/controls/OrbitControls.js"></script>
         <script defer src="vendor/three-0.147.0/examples/js/loaders/GLTFLoader.js"></script>
@@ -551,6 +552,121 @@
                     </div>
 
                     <div class="config-section">
+                        <h3 class="config-title">SPEECH-TO-TEXT (STT)</h3>
+
+                        <div class="input-group">
+                            <label class="input-label" for="stt-provider">STT PROVIDER</label>
+                            <select id="stt-provider" class="select-input">
+                                <option value="webspeech">Web Speech API (Browser Native)</option>
+                                <option value="wasm">WASM Whisper (Client-side, Offline)</option>
+                                <option value="openai">OpenAI Whisper API (Server-side)</option>
+                                <option value="google">Google Cloud STT (Server-side)</option>
+                            </select>
+                            <p class="voice-status" style="margin-top: 8px; opacity: 0.8">
+                                Auto-fallback: Web Speech → WASM → OpenAI/Google
+                            </p>
+                        </div>
+
+                        <!-- WASM Whisper Settings -->
+                        <div id="wasm-stt-settings" style="display: none">
+                            <div class="input-group">
+                                <label class="input-label" for="wasm-model-size">WASM MODEL SIZE</label>
+                                <select id="wasm-model-size" class="select-input">
+                                    <option value="tiny">Tiny (75MB, Fastest)</option>
+                                    <option value="base" selected>Base (142MB, Balanced)</option>
+                                    <option value="small">Small (466MB, Better Quality)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- OpenAI Whisper Settings -->
+                        <div id="openai-stt-settings" style="display: none">
+                            <div class="input-group">
+                                <label class="input-label" for="openai-whisper-model">OPENAI WHISPER MODEL</label>
+                                <select id="openai-whisper-model" class="select-input">
+                                    <option value="whisper-1" selected>whisper-1</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label class="input-label" for="openai-stt-key">OPENAI API KEY (Optional)</label>
+                                <input
+                                    id="openai-stt-key"
+                                    class="text-input"
+                                    type="password"
+                                    placeholder="Uses main API key if empty"
+                                />
+                                <p class="voice-status" style="margin-top: 8px; opacity: 0.8">
+                                    Leave empty to use the main OpenAI API key above
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Google Cloud STT Settings -->
+                        <div id="google-stt-settings" style="display: none">
+                            <div class="input-group">
+                                <label class="input-label" for="google-stt-key">GOOGLE CLOUD API KEY</label>
+                                <input
+                                    id="google-stt-key"
+                                    class="text-input"
+                                    type="password"
+                                    placeholder="Your Google Cloud API key"
+                                />
+                            </div>
+                            <div class="input-group">
+                                <label class="input-label" for="google-stt-model">MODEL</label>
+                                <select id="google-stt-model" class="select-input">
+                                    <option value="default">Default</option>
+                                    <option value="latest_long">Latest Long (Best Quality)</option>
+                                    <option value="latest_short">Latest Short (Low Latency)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="input-label" for="stt-language">STT LANGUAGE</label>
+                            <select id="stt-language" class="select-input">
+                                <option value="en-US">English (US)</option>
+                                <option value="en-GB">English (UK)</option>
+                                <option value="es-ES">Español</option>
+                                <option value="fr-FR">Français</option>
+                                <option value="de-DE">Deutsch</option>
+                                <option value="it-IT">Italiano</option>
+                                <option value="pt-BR">Português (BR)</option>
+                                <option value="ja-JP">日本語</option>
+                                <option value="ko-KR">한국어</option>
+                                <option value="zh-CN">中文</option>
+                            </select>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="input-label" for="stt-microphone">MICROPHONE DEVICE</label>
+                            <select id="stt-microphone" class="select-input">
+                                <option value="">Default (System Default)</option>
+                            </select>
+                            <button class="secondary-btn" id="refresh-microphones" type="button" style="margin-top: 8px">
+                                🔄 Refresh Microphones
+                            </button>
+                            <p class="voice-status" style="margin-top: 8px; opacity: 0.8">
+                                Select which microphone to use for speech recognition
+                            </p>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="input-label">
+                                <input type="checkbox" id="stt-interim-results" checked />
+                                <span style="margin-left: 8px">Show interim results (real-time)</span>
+                            </label>
+                        </div>
+
+                        <div class="modal-footer" style="justify-content: flex-start; gap: 10px; padding: 0">
+                            <button class="secondary-btn" id="test-stt" type="button">
+                                🎤 TEST SPEECH RECOGNITION
+                            </button>
+                            <span id="test-stt-status" style="font-size: 12px; opacity: 0.85"></span>
+                        </div>
+                    </div>
+
+                    <div class="config-section">
                         <h3 class="config-title">SYSTEM PROMPT</h3>
                         <textarea
                             id="system-prompt"
@@ -622,6 +738,10 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
                 });
             });
         </script>
+
+        <!-- Speech and logging utilities (must load before main.js) -->
+        <script defer src="js/nexus-logger.js"></script>
+        <script defer src="js/speech-service.js"></script>
 
         <script defer src="src/ProceduralAnimator.js"></script>
         <script defer src="src/main.js"></script>
