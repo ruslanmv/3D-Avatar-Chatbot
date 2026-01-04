@@ -19,6 +19,10 @@ class SpeechService {
             onEnd: null,
         };
 
+        // VR Fallback (MediaRecorder for Quest)
+        this.vrRecorder = null;
+        this.vrRecordingChunks = [];
+
         // Speech Synthesis (Text-to-Speech)
         this.synthesis = window.speechSynthesis;
         this.isSynthesisSupported = 'speechSynthesis' in window;
@@ -39,8 +43,37 @@ class SpeechService {
             lang: 'en-US',
         };
 
+        // Detect browser environment
+        this.browserInfo = this.detectBrowser();
+
         this.initializeSpeechRecognition();
         this.initializeSpeechSynthesis();
+    }
+
+    /**
+     * Detect browser environment
+     * @returns {object} Browser detection info
+     */
+    detectBrowser() {
+        const ua = navigator.userAgent;
+        const info = {
+            isQuest: ua.includes('Quest') || ua.includes('Oculus'),
+            isChrome: ua.includes('Chrome') && !ua.includes('Edge'),
+            isEdge: ua.includes('Edge'),
+            isSafari: ua.includes('Safari') && !ua.includes('Chrome'),
+            isFirefox: ua.includes('Firefox'),
+            userAgent: ua,
+        };
+
+        // Log browser detection
+        console.log('[SpeechService] Browser:', info.isQuest ? '🥽 Quest VR' : '🖥️ Desktop');
+        if (window.NEXUS_LOGGER) {
+            window.NEXUS_LOGGER.info('STT Browser detected', {
+                browser: info.isQuest ? 'Quest' : info.isChrome ? 'Chrome' : 'Other',
+            });
+        }
+
+        return info;
     }
 
     /**
@@ -54,13 +87,21 @@ class SpeechService {
             this.isRecognitionSupported = true;
             this.recognition = new SpeechRecognition();
 
+            console.log('[SpeechService] ✅ Web Speech Recognition available');
+            if (window.NEXUS_LOGGER) {
+                window.NEXUS_LOGGER.info('STT Web Speech API available');
+            }
+
             // Configure recognition with options
             this.applyRecognitionOptions();
 
             // Set up event handlers
             this.recognition.onstart = () => {
                 this.isRecognizing = true;
-                console.log('Speech recognition started');
+                console.log('[SpeechService] 🎙️ Speech recognition started');
+                if (window.NEXUS_LOGGER) {
+                    window.NEXUS_LOGGER.info('STT started');
+                }
                 if (this.recognitionCallbacks.onStart) {
                     this.recognitionCallbacks.onStart();
                 }
@@ -84,19 +125,32 @@ class SpeechService {
 
                 // Call interim callback if available
                 if (interimTranscript && this.recognitionCallbacks.onInterim) {
+                    console.log(`[SpeechService] 📝 Interim: "${interimTranscript.trim()}"`);
+                    if (window.NEXUS_LOGGER) {
+                        window.NEXUS_LOGGER.info('STT interim', { text: interimTranscript.trim() });
+                    }
                     this.recognitionCallbacks.onInterim(interimTranscript.trim());
                 }
 
                 // Call result callback for final transcripts
                 if (finalTranscript && this.recognitionCallbacks.onResult) {
                     const confidence = event.results[event.resultIndex][0].confidence || 1.0;
-                    console.log(`Speech recognized: "${finalTranscript.trim()}" (confidence: ${confidence})`);
+                    const confidencePercent = Math.round(confidence * 100);
+                    console.log(
+                        `[SpeechService] ✅ Final: "${finalTranscript.trim()}" (${confidencePercent}% confidence)`
+                    );
+                    if (window.NEXUS_LOGGER) {
+                        window.NEXUS_LOGGER.info('STT final', {
+                            text: finalTranscript.trim(),
+                            confidence: confidencePercent,
+                        });
+                    }
                     this.recognitionCallbacks.onResult(finalTranscript.trim(), confidence);
                 }
             };
 
             this.recognition.onerror = (event) => {
-                console.error('Speech recognition error:', event.error);
+                console.error(`[SpeechService] ⚠️ Error: ${event.error}`);
                 this.isRecognizing = false;
 
                 let errorMessage = 'Speech recognition failed';
@@ -128,6 +182,10 @@ class SpeechService {
                         break;
                 }
 
+                if (window.NEXUS_LOGGER) {
+                    window.NEXUS_LOGGER.error('STT error', { error: event.error, message: errorMessage });
+                }
+
                 if (this.recognitionCallbacks.onError) {
                     this.recognitionCallbacks.onError(errorMessage, errorContext);
                 }
@@ -135,13 +193,19 @@ class SpeechService {
 
             this.recognition.onend = () => {
                 this.isRecognizing = false;
-                console.log('Speech recognition ended');
+                console.log('[SpeechService] ⏹️ Speech recognition ended');
+                if (window.NEXUS_LOGGER) {
+                    window.NEXUS_LOGGER.info('STT ended');
+                }
                 if (this.recognitionCallbacks.onEnd) {
                     this.recognitionCallbacks.onEnd();
                 }
             };
         } else {
-            console.warn('Speech Recognition API not supported in this browser');
+            console.warn('[SpeechService] ❌ Speech Recognition API not supported in this browser');
+            if (window.NEXUS_LOGGER) {
+                window.NEXUS_LOGGER.warn('STT not supported', { browser: this.browserInfo.userAgent });
+            }
         }
     }
 
@@ -510,6 +574,149 @@ class SpeechService {
         }
 
         return results;
+    }
+
+    /**
+     * Start VR fallback recording using MediaRecorder
+     * Used when Web Speech API is not available (e.g., Quest Browser)
+     * @param {object} callbacks - Event callbacks
+     * @returns {Promise<boolean>} Success status
+     */
+    async startVRFallbackRecording(callbacks = {}) {
+        console.log('[SpeechService] 🎙️ Starting VR fallback recording (MediaRecorder)');
+        if (window.NEXUS_LOGGER) {
+            window.NEXUS_LOGGER.info('STT VR fallback started');
+        }
+
+        try {
+            // Request microphone access
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            // Create MediaRecorder
+            const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+                ? 'audio/webm;codecs=opus'
+                : 'audio/webm';
+
+            this.vrRecorder = new MediaRecorder(stream, { mimeType });
+            this.vrRecordingChunks = [];
+
+            console.log(`[SpeechService] Recording with ${mimeType}`);
+
+            // Handle recording events
+            this.vrRecorder.onstart = () => {
+                console.log('[SpeechService] 🎤 VR recording started');
+                if (window.NEXUS_LOGGER) {
+                    window.NEXUS_LOGGER.info('STT VR recording active');
+                }
+                this.isRecognizing = true;
+                if (callbacks.onStart) {
+                    callbacks.onStart();
+                }
+            };
+
+            this.vrRecorder.ondataavailable = (event) => {
+                if (event.data && event.data.size > 0) {
+                    this.vrRecordingChunks.push(event.data);
+                    console.log(`[SpeechService] Recorded chunk: ${event.data.size} bytes`);
+                }
+            };
+
+            this.vrRecorder.onerror = (event) => {
+                console.error('[SpeechService] ⚠️ VR recording error:', event.error);
+                if (window.NEXUS_LOGGER) {
+                    window.NEXUS_LOGGER.error('STT VR recording error', { error: String(event.error) });
+                }
+                if (callbacks.onError) {
+                    callbacks.onError('recording-error', String(event.error || event));
+                }
+                this.isRecognizing = false;
+                stream.getTracks().forEach((track) => track.stop());
+            };
+
+            this.vrRecorder.onstop = async () => {
+                console.log('[SpeechService] ⏹️ VR recording stopped, processing...');
+                this.isRecognizing = false;
+
+                if (callbacks.onEnd) {
+                    callbacks.onEnd();
+                }
+
+                try {
+                    // Create blob from recorded chunks
+                    const blob = new Blob(this.vrRecordingChunks, { type: this.vrRecorder.mimeType });
+                    console.log(`[SpeechService] Recorded ${blob.size} bytes, sending to server...`);
+
+                    if (window.NEXUS_LOGGER) {
+                        window.NEXUS_LOGGER.info('STT VR sending audio to server', { size: blob.size });
+                    }
+
+                    // Send to server for transcription
+                    const formData = new FormData();
+                    formData.append('audio', blob, 'speech.webm');
+
+                    const response = await fetch('/api/stt', {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`STT server error: HTTP ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    const transcript = result.text || '';
+                    const confidence = result.confidence || 1.0;
+
+                    console.log(
+                        `[SpeechService] ✅ VR transcription: "${transcript}" (${Math.round(confidence * 100)}%)`
+                    );
+                    if (window.NEXUS_LOGGER) {
+                        window.NEXUS_LOGGER.info('STT VR result', { text: transcript, confidence });
+                    }
+
+                    if (callbacks.onResult) {
+                        callbacks.onResult(transcript, confidence);
+                    }
+                } catch (error) {
+                    console.error('[SpeechService] ⚠️ VR transcription failed:', error);
+                    if (window.NEXUS_LOGGER) {
+                        window.NEXUS_LOGGER.error('STT VR transcription failed', { error: error.message });
+                    }
+                    if (callbacks.onError) {
+                        callbacks.onError('stt-upload-failed', error.message);
+                    }
+                } finally {
+                    // Clean up stream
+                    stream.getTracks().forEach((track) => track.stop());
+                    this.vrRecordingChunks = [];
+                }
+            };
+
+            // Start recording
+            this.vrRecorder.start();
+            return true;
+        } catch (error) {
+            console.error('[SpeechService] ⚠️ Failed to start VR recording:', error);
+            if (window.NEXUS_LOGGER) {
+                window.NEXUS_LOGGER.error('STT VR mic failed', { error: error.message });
+            }
+            if (callbacks.onError) {
+                callbacks.onError('mic-failed', error.message);
+            }
+            this.isRecognizing = false;
+            return false;
+        }
+    }
+
+    /**
+     * Stop VR fallback recording
+     */
+    stopVRFallbackRecording() {
+        if (this.vrRecorder && this.vrRecorder.state !== 'inactive') {
+            console.log('[SpeechService] Stopping VR recording...');
+            this.vrRecorder.stop();
+        }
+        this.isRecognizing = false;
     }
 }
 

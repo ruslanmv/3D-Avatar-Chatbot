@@ -1231,6 +1231,14 @@ function initSpeechRecognition() {
     recognition.onstart = () => {
         isListening = true;
         setStatus('listening', 'LISTENING...');
+
+        console.log('[Desktop STT] 🎙️ Recognition started');
+        if (window.NEXUS_LOGGER) {
+            window.NEXUS_LOGGER.info('Desktop STT started', {
+                browser: navigator.userAgent.includes('Quest') ? 'Quest' : 'Desktop',
+            });
+        }
+
         try {
             window.NEXUS_VIEWER?.playAnimationByName?.('Idle');
         } catch (_) {}
@@ -1251,17 +1259,24 @@ function initSpeechRecognition() {
 
         // Clear input and set placeholder
         const inputField = $('speech-text');
+        console.log('[Desktop STT] 🖱️ Input field found:', !!inputField);
         if (inputField) {
             inputField.value = '';
             inputField.placeholder = 'Listening...';
             inputField.style.fontStyle = 'normal';
             inputField.style.opacity = '1';
+        } else {
+            console.error('[Desktop STT] ❌ ERROR: speech-text input not found!');
         }
     };
 
     recognition.onresult = (event) => {
         const inputField = $('speech-text');
         if (!inputField) {
+            console.error('[Desktop STT] ❌ ERROR: speech-text input field not found in onresult!');
+            if (window.NEXUS_LOGGER) {
+                window.NEXUS_LOGGER.error('Desktop STT input field missing');
+            }
             return;
         }
 
@@ -1273,13 +1288,21 @@ function initSpeechRecognition() {
 
         if (isFinal) {
             // Final result - show with confidence
+            const confidencePercent = Math.round(confidence * 100);
+
+            console.log(`[Desktop STT] ✅ FINAL: "${transcript}" (${confidencePercent}% confidence)`);
+            if (window.NEXUS_LOGGER) {
+                window.NEXUS_LOGGER.info('Desktop STT final', { text: transcript, confidence: confidencePercent });
+            }
+
             inputField.value = transcript;
             inputField.style.fontStyle = 'normal';
             inputField.style.opacity = '1';
             inputField.placeholder = 'Type your message…';
 
+            console.log('[Desktop STT] 📤 Populated input field with:', transcript);
+
             // Show confidence feedback
-            const confidencePercent = Math.round(confidence * 100);
             showMessage(
                 `🎤 Transcribed (${confidencePercent}% confidence): "${transcript}"\nReview and press SEND, or click ACTIVATE VOICE to record again.`,
                 'info'
@@ -1293,6 +1316,11 @@ function initSpeechRecognition() {
             stopVoiceInput();
         } else {
             // Interim result - show in italic
+            console.log(`[Desktop STT] 📝 INTERIM: "${transcript}"`);
+            if (window.NEXUS_LOGGER) {
+                window.NEXUS_LOGGER.info('Desktop STT interim', { text: transcript });
+            }
+
             inputField.value = transcript;
             inputField.style.fontStyle = 'italic';
             inputField.style.opacity = '0.7';
@@ -1300,11 +1328,22 @@ function initSpeechRecognition() {
     };
 
     recognition.onerror = (event) => {
-        logError('Speech recognition error', event && event.error);
+        const errorType = event && event.error;
+        console.error(`[Desktop STT] ⚠️ ERROR: ${errorType}`);
+        if (window.NEXUS_LOGGER) {
+            window.NEXUS_LOGGER.error('Desktop STT error', { error: errorType });
+        }
+        logError('Speech recognition error', errorType);
         stopVoiceInput();
     };
 
-    recognition.onend = () => stopVoiceInput();
+    recognition.onend = () => {
+        console.log('[Desktop STT] ⏹️ Recognition ended');
+        if (window.NEXUS_LOGGER) {
+            window.NEXUS_LOGGER.info('Desktop STT ended');
+        }
+        stopVoiceInput();
+    };
 }
 
 function toggleVoiceInput() {

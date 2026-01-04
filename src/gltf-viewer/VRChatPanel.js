@@ -41,6 +41,10 @@ export class VRChatPanel {
         this.avatars = [];
         this.currentAvatarIndex = 0;
 
+        // Speech-to-text transcript display
+        this.transcript = '';
+        this.transcriptMode = 'idle'; // 'idle' | 'interim' | 'final'
+
         // Mirrors desktop settings (synced via localStorage)
         this.settings = this._defaultSettings();
 
@@ -356,6 +360,27 @@ export class VRChatPanel {
         this.redraw();
     }
 
+    /**
+     * Set transcript text for VR speech-to-text display
+     * @param {string} text - Transcript text
+     * @param {string} mode - 'interim' or 'final'
+     */
+    setTranscript(text, mode = 'interim') {
+        this.transcript = String(text ?? '');
+        this.transcriptMode = mode;
+        console.log(`[VRChatPanel] Transcript (${mode}): "${this.transcript}"`);
+        this.redraw();
+    }
+
+    /**
+     * Clear transcript display
+     */
+    clearTranscript() {
+        this.transcript = '';
+        this.transcriptMode = 'idle';
+        this.redraw();
+    }
+
     setAvatars(list) {
         this.avatars = Array.isArray(list) ? list : [];
         this.currentAvatarIndex = Math.max(0, Math.min(this.currentAvatarIndex, this.avatars.length - 1));
@@ -626,6 +651,21 @@ export class VRChatPanel {
             y += 18;
             if (y > area.y + area.h - 120) return;
         });
+
+        // Transcript display (show interim/final transcript during STT)
+        if (this.transcript && this.transcriptMode !== 'idle') {
+            const transcriptY = area.y + area.h - 160;
+            const transcriptStyle = this.transcriptMode === 'interim' ? 'italic' : 'normal';
+
+            ctx.font = '700 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+            ctx.fillStyle = this.transcriptMode === 'interim' ? T.accent : 'rgba(255, 215, 0, 0.95)';
+            const prefix = this.transcriptMode === 'interim' ? '🎤 Listening...' : '🎤 Transcribed:';
+            ctx.fillText(prefix, area.x + 18, transcriptY);
+
+            ctx.font = `${transcriptStyle} 30px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+            ctx.fillStyle = T.text;
+            this._wrapText(ctx, this.transcript, area.x + 18, transcriptY + 36, area.x + area.w - 18, 38);
+        }
 
         // Chips
         L.chips.forEach((c) => {

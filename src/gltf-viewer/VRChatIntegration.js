@@ -139,9 +139,14 @@ export class VRChatIntegration {
                     return;
                 }
 
-                if (!this.speechService.isRecognitionAvailable()) {
-                    this.vrChatPanel.appendMessage('bot', 'Speech recognition not available.');
-                    return;
+                // Check if Web Speech API is available, otherwise use VR fallback
+                const useFallback = !this.speechService.isRecognitionAvailable();
+
+                if (useFallback) {
+                    console.log('[VRChatIntegration] Using VR fallback recording (MediaRecorder)');
+                    if (window.NEXUS_LOGGER) {
+                        window.NEXUS_LOGGER.info('VR PTT using fallback', { method: 'MediaRecorder' });
+                    }
                 }
 
                 // Request microphone permission if not granted
@@ -155,31 +160,75 @@ export class VRChatIntegration {
                     this.vrChatPanel.appendMessage('bot', '✅ Microphone ready!');
                 }
 
-                // Start speech recognition
+                // Use VR fallback if Web Speech API not available
+                if (useFallback) {
+                    await this.speechService.startVRFallbackRecording({
+                        onStart: () => {
+                            this.vrChatPanel.setStatus('listening');
+                            this.vrChatPanel.setTranscript('Recording...', 'interim');
+                            console.log('[VRChatIntegration] 🎤 VR Fallback recording started');
+                        },
+                        onResult: (text, confidence) => {
+                            const confidencePercent = Math.round(confidence * 100);
+                            console.log(`[VRChatIntegration] ✅ VR Fallback result: "${text}" (${confidencePercent}%)`);
+
+                            this.vrChatPanel.setTranscript(text, 'final');
+                            this.vrChatPanel.appendMessage(
+                                'bot',
+                                `🎤 Heard: "${text}" (${confidencePercent}% confidence)`
+                            );
+
+                            setTimeout(() => {
+                                this.vrChatPanel.clearTranscript();
+                                this.handleUserMessage(text);
+                            }, 1500);
+                        },
+                        onError: (error, context) => {
+                            console.error('[VRChatIntegration] VR Fallback error:', error);
+                            this.vrChatPanel.setStatus('idle');
+                            this.vrChatPanel.clearTranscript();
+                            const errorMsg = context ? `${error}: ${context}` : error;
+                            this.vrChatPanel.appendMessage('bot', `Speech error: ${errorMsg}`);
+                        },
+                        onEnd: () => {
+                            this.vrChatPanel.setStatus('idle');
+                        },
+                    });
+                    return;
+                }
+
+                // Use standard Web Speech API
                 await this.speechService.startRecognition({
                     onStart: () => {
                         this.vrChatPanel.setStatus('listening');
+                        this.vrChatPanel.setTranscript('Listening...', 'interim');
                         console.log('[VRChatIntegration] 🎤 PTT: Listening...');
                     },
                     onInterim: (interimText) => {
-                        console.log('[VRChatIntegration] PTT Interim:', interimText);
+                        console.log('[VRChatIntegration] 📝 PTT Interim:', interimText);
+                        this.vrChatPanel.setTranscript(interimText, 'interim');
                     },
                     onResult: (text, confidence) => {
                         const confidencePercent = Math.round(confidence * 100);
                         console.log(
-                            `[VRChatIntegration] 🎤 PTT Transcribed: "${text}" (${confidencePercent}% confidence)`
+                            `[VRChatIntegration] ✅ PTT Transcribed: "${text}" (${confidencePercent}% confidence)`
                         );
 
-                        // Show what was transcribed in VR panel
+                        // Show final transcript
+                        this.vrChatPanel.setTranscript(text, 'final');
                         this.vrChatPanel.appendMessage('bot', `🎤 Heard: "${text}" (${confidencePercent}% confidence)`);
 
-                        // Send to chatbot
-                        console.log(`[VRChatIntegration] 📤 PTT Sending to chatbot: "${text}"`);
-                        this.handleUserMessage(text);
+                        // Send to chatbot after brief delay to show transcript
+                        setTimeout(() => {
+                            this.vrChatPanel.clearTranscript();
+                            console.log(`[VRChatIntegration] 📤 PTT Sending to chatbot: "${text}"`);
+                            this.handleUserMessage(text);
+                        }, 1500);
                     },
                     onError: (error, context) => {
                         console.error('[VRChatIntegration] PTT error:', error);
                         this.vrChatPanel.setStatus('idle');
+                        this.vrChatPanel.clearTranscript();
                         const errorMsg = context ? `${error}\n${context}` : error;
                         this.vrChatPanel.appendMessage('bot', `Speech error: ${errorMsg}`);
                     },
@@ -191,7 +240,12 @@ export class VRChatIntegration {
             // On PTT end (button released)
             () => {
                 if (this.speechService.isRecognizing) {
-                    this.speechService.stopRecognition();
+                    // Stop either Web Speech or VR fallback recording
+                    if (!this.speechService.isRecognitionAvailable()) {
+                        this.speechService.stopVRFallbackRecording();
+                    } else {
+                        this.speechService.stopRecognition();
+                    }
                     console.log('[VRChatIntegration] 🎤 PTT: Stopped');
                 }
             }
