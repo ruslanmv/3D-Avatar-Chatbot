@@ -239,9 +239,31 @@ export class VRChatPanel {
                     baseUrl = unified.ollama.base_url || '';
                 }
 
+                // ✅ Also load speech settings from nexus_settings_v1
+                let speechSettings = {};
+                try {
+                    const speechRaw = localStorage.getItem('nexus_settings_v1');
+                    if (speechRaw) {
+                        const speech = JSON.parse(speechRaw);
+                        speechSettings = {
+                            speechLang: speech.speechLang || this._defaultSettings().speechLang,
+                            speechVoice: speech.speechVoice || this._defaultSettings().speechVoice,
+                            speechVoiceURI: speech.speechVoiceURI || '',
+                            speechVoicePref: speech.speechVoicePref || this._defaultSettings().speechVoicePref,
+                            speechRate: speech.speechRate || this._defaultSettings().speechRate,
+                            speechPitch: speech.speechPitch || this._defaultSettings().speechPitch,
+                            sttEnabled: typeof speech.sttEnabled === 'boolean' ? speech.sttEnabled : true,
+                            ttsEnabled: typeof speech.ttsEnabled === 'boolean' ? speech.ttsEnabled : true,
+                        };
+                    }
+                } catch (e) {
+                    console.warn('[VRChatPanel] Failed to load speech settings:', e);
+                }
+
                 console.log('[VRChatPanel] Loaded unified settings:', {
                     provider: unified.provider,
                     model: model,
+                    speech: speechSettings.speechVoice || 'auto',
                 });
 
                 return {
@@ -251,6 +273,7 @@ export class VRChatPanel {
                     baseUrl: baseUrl,
                     watsonxProjectId: watsonxProjectId,
                     systemPrompt: unified.system_prompt || this._defaultSettings().systemPrompt,
+                    ...speechSettings,
                 };
             }
 
@@ -807,7 +830,32 @@ export class VRChatPanel {
         ctx.font = '500 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
         ctx.fillText(`Model: ${truncatedModel}`, rect.x + 22, rect.y + 204);
 
-        // Nav arrows (positioned below provider/model text)
+        // ✅ Voice Settings Display (resolve from URI if name is empty)
+        let voiceName = this.settings.speechVoice || '';
+        const voiceURI = this.settings.speechVoiceURI || '';
+        const voicePref = this.settings.speechVoicePref || 'any';
+
+        // If voice name is empty but URI exists, try to resolve from available voices
+        if (!voiceName && voiceURI && typeof speechSynthesis !== 'undefined') {
+            try {
+                const voices = speechSynthesis.getVoices() || [];
+                const foundVoice = voices.find((v) => v.voiceURI === voiceURI);
+                if (foundVoice) {
+                    voiceName = foundVoice.name;
+                }
+            } catch (e) {
+                console.warn('[VRChatPanel] Failed to resolve voice name:', e);
+            }
+        }
+
+        const displayVoice = voiceName || 'Auto';
+        const truncatedVoice = displayVoice.length > 30 ? displayVoice.slice(0, 27) + '...' : displayVoice;
+
+        ctx.fillStyle = T.textDim;
+        ctx.font = '500 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillText(`Voice: ${truncatedVoice} [${voicePref}]`, rect.x + 22, rect.y + 234);
+
+        // Nav arrows (positioned below provider/model/voice text)
         this._drawSoftIcon(ctx, L.settingsNav.prev, '◀');
         this._drawSoftIcon(ctx, L.settingsNav.next, '▶');
 
