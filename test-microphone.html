@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
@@ -568,12 +568,16 @@
                         case 'audio-capture':
                             errorMessage = 'No microphone detected';
                             solution =
-                                '• Plug in a microphone<br>' + '• Check microphone connection<br>' + '• Grant microphone permission';
+                                '• Plug in a microphone<br>' +
+                                '• Check microphone connection<br>' +
+                                '• Grant microphone permission';
                             break;
                         case 'not-allowed':
                             errorMessage = 'Microphone permission denied';
                             solution =
-                                '• Click 🔒 in address bar<br>' + '• Allow microphone access<br>' + '• Refresh page and try again';
+                                '• Click 🔒 in address bar<br>' +
+                                '• Allow microphone access<br>' +
+                                '• Refresh page and try again';
                             break;
                     }
 

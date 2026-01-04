@@ -94,6 +94,7 @@ class SpeechService {
             this.recognition = new SpeechRecognition();
 
             console.log('[SpeechService] ✅ Web Speech Recognition available');
+            console.log('[SpeechService] 📊 Recognition implementation:', SpeechRecognition.name);
             if (window.NEXUS_LOGGER) {
                 window.NEXUS_LOGGER.info('STT Web Speech API available');
             }
@@ -104,12 +105,65 @@ class SpeechService {
             // Set up event handlers
             this.recognition.onstart = () => {
                 this.isRecognizing = true;
-                console.log('[SpeechService] 🎙️ Speech recognition started');
+                const timestamp = new Date().toISOString();
+                console.log(`[SpeechService] 🎙️ Speech recognition started at ${timestamp}`);
+                console.log('[SpeechService] 📋 Options:', {
+                    continuous: this.recognition.continuous,
+                    interimResults: this.recognition.interimResults,
+                    lang: this.recognition.lang,
+                    maxAlternatives: this.recognition.maxAlternatives,
+                });
                 if (window.NEXUS_LOGGER) {
-                    window.NEXUS_LOGGER.info('STT started');
+                    window.NEXUS_LOGGER.info('STT started', { timestamp });
                 }
                 if (this.recognitionCallbacks.onStart) {
                     this.recognitionCallbacks.onStart();
+                }
+
+                // Start monitoring audio levels
+                this._startAudioMonitoring();
+            };
+
+            this.recognition.onaudiostart = () => {
+                console.log('[SpeechService] 🔊 Audio capture started - browser is now listening to microphone');
+                if (window.NEXUS_LOGGER) {
+                    window.NEXUS_LOGGER.info('STT audio capture started');
+                }
+            };
+
+            this.recognition.onaudioend = () => {
+                console.log('[SpeechService] 🔇 Audio capture ended');
+                if (window.NEXUS_LOGGER) {
+                    window.NEXUS_LOGGER.info('STT audio capture ended');
+                }
+                this._stopAudioMonitoring();
+            };
+
+            this.recognition.onsoundstart = () => {
+                console.log('[SpeechService] 🔊 Sound detected - audio is being picked up!');
+                if (window.NEXUS_LOGGER) {
+                    window.NEXUS_LOGGER.info('STT sound detected');
+                }
+            };
+
+            this.recognition.onsoundend = () => {
+                console.log('[SpeechService] 🔇 Sound ended');
+                if (window.NEXUS_LOGGER) {
+                    window.NEXUS_LOGGER.info('STT sound ended');
+                }
+            };
+
+            this.recognition.onspeechstart = () => {
+                console.log('[SpeechService] 🗣️ Speech detected - recognition is processing speech!');
+                if (window.NEXUS_LOGGER) {
+                    window.NEXUS_LOGGER.info('STT speech detected');
+                }
+            };
+
+            this.recognition.onspeechend = () => {
+                console.log('[SpeechService] 🗣️ Speech ended');
+                if (window.NEXUS_LOGGER) {
+                    window.NEXUS_LOGGER.info('STT speech ended');
                 }
             };
 
@@ -156,7 +210,14 @@ class SpeechService {
             };
 
             this.recognition.onerror = (event) => {
-                console.error(`[SpeechService] ⚠️ Error: ${event.error}`);
+                const timestamp = new Date().toISOString();
+                console.error(`[SpeechService] ⚠️ Error at ${timestamp}: ${event.error}`);
+                console.error('[SpeechService] 📊 Error details:', {
+                    error: event.error,
+                    message: event.message,
+                    timestamp,
+                    wasRecognizing: this.isRecognizing,
+                });
                 this.isRecognizing = false;
 
                 let errorMessage = 'Speech recognition failed';
@@ -165,6 +226,15 @@ class SpeechService {
                 switch (event.error) {
                     case 'no-speech':
                         errorMessage = 'No speech detected. Please try again.';
+                        console.warn('[SpeechService] ⚠️ NO-SPEECH DEBUG INFO:');
+                        console.warn('  - Microphone permission: granted');
+                        console.warn('  - Recognition started: YES');
+                        console.warn(
+                            '  - Audio events received: Check logs above for 🔊 onaudiostart, onsoundstart, onspeechstart'
+                        );
+                        console.warn('  - Timeout: ~8 seconds passed without detecting speech');
+                        console.warn('  - SOLUTION: Check microphone settings, increase volume, speak louder');
+                        console.warn('  - TRY: Use test-microphone.html to verify microphone is working');
                         break;
                     case 'audio-capture':
                         errorMessage = 'Microphone not found or permission denied.';
@@ -1392,6 +1462,109 @@ class SpeechService {
             reader.onerror = reject;
             reader.readAsDataURL(blob);
         });
+    }
+
+    // ============================================================================
+    // Audio Level Monitoring (for debugging)
+    // ============================================================================
+
+    /**
+     * Start monitoring audio levels during speech recognition
+     * This helps debug microphone issues
+     */
+    async _startAudioMonitoring() {
+        try {
+            console.log('[SpeechService] 🎚️ Starting audio level monitoring...');
+
+            // Request microphone access for monitoring
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            // Get audio devices info
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const audioInputs = devices.filter((d) => d.kind === 'audioinput');
+            console.log(`[SpeechService] 🎤 Available microphones: ${audioInputs.length}`);
+            audioInputs.forEach((device, index) => {
+                console.log(`  ${index + 1}. ${device.label || `Microphone ${index + 1}`}`);
+            });
+
+            // Create audio context for level monitoring
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const analyser = audioContext.createAnalyser();
+            const microphone = audioContext.createMediaStreamSource(stream);
+
+            analyser.fftSize = 256;
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            microphone.connect(analyser);
+
+            // Store for cleanup
+            this._audioMonitoring = {
+                stream,
+                audioContext,
+                analyser,
+                microphone,
+                intervalId: null,
+            };
+
+            let logCount = 0;
+            const maxLogs = 10; // Log levels for first 10 checks
+
+            // Monitor audio levels every 500ms
+            this._audioMonitoring.intervalId = setInterval(() => {
+                analyser.getByteFrequencyData(dataArray);
+
+                // Calculate average volume
+                let sum = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                    sum += dataArray[i];
+                }
+                const average = sum / bufferLength;
+                const percentage = (average / 255) * 100;
+                const db = average > 0 ? 20 * Math.log10(average / 255) : -100;
+
+                // Log first few checks
+                if (logCount < maxLogs) {
+                    console.log(`[SpeechService] 🎚️ Audio level: ${db.toFixed(1)} dB (${percentage.toFixed(0)}%)`);
+                    logCount++;
+
+                    if (logCount === maxLogs) {
+                        console.log('[SpeechService] 🎚️ (Audio level logging stopped - check passed)');
+                    }
+                }
+
+                // Alert if significant audio detected
+                if (percentage > 5 && logCount >= maxLogs) {
+                    console.log(`[SpeechService] 🔊 Audio spike detected: ${db.toFixed(1)} dB`);
+                }
+            }, 500);
+        } catch (error) {
+            console.warn('[SpeechService] ⚠️ Could not start audio monitoring:', error.message);
+            console.warn('  This is OK - monitoring is optional for debugging only');
+        }
+    }
+
+    /**
+     * Stop audio level monitoring
+     */
+    _stopAudioMonitoring() {
+        if (this._audioMonitoring) {
+            console.log('[SpeechService] 🎚️ Stopping audio level monitoring');
+
+            if (this._audioMonitoring.intervalId) {
+                clearInterval(this._audioMonitoring.intervalId);
+            }
+
+            if (this._audioMonitoring.stream) {
+                this._audioMonitoring.stream.getTracks().forEach((track) => track.stop());
+            }
+
+            if (this._audioMonitoring.audioContext) {
+                this._audioMonitoring.audioContext.close();
+            }
+
+            this._audioMonitoring = null;
+        }
     }
 }
 
