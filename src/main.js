@@ -1549,12 +1549,29 @@ function updateProviderFields() {
     if (watsonxRow) watsonxRow.style.display = 'none';
     if (baseurlRow) baseurlRow.style.display = 'none';
 
-    if (provider === 'openai') {
-        // Dynamically fetch OpenAI models from API (non-hardcoded)
-        fetchAndPopulateModels('openai', modelSelect);
-    } else if (provider === 'claude') {
-        // Dynamically fetch Claude models from API (non-hardcoded)
-        fetchAndPopulateModels('claude', modelSelect);
+    // Only fetch models if valid API key is present
+    const currentKey = apiKeyInput ? apiKeyInput.value.trim() : '';
+    const hasValidKey = currentKey && currentKey.length > 10;
+
+    if (provider === 'openai' && hasValidKey) {
+        // Only fetch if key looks valid (starts with sk-)
+        if (currentKey.startsWith('sk-') && !currentKey.startsWith('sk-ant-')) {
+            fetchAndPopulateModels('openai', modelSelect);
+        } else {
+            modelSelect.innerHTML =
+                '<option value="">⚠️ Please enter a valid OpenAI API key (starts with "sk-") and save settings first</option>';
+        }
+    } else if (provider === 'claude' && hasValidKey) {
+        // Only fetch if key looks valid (starts with sk-ant-)
+        if (currentKey.startsWith('sk-ant-')) {
+            fetchAndPopulateModels('claude', modelSelect);
+        } else {
+            modelSelect.innerHTML =
+                '<option value="">⚠️ Please enter a valid Claude API key (starts with "sk-ant-") and save settings first</option>';
+        }
+    } else if (provider === 'openai' || provider === 'claude') {
+        // No API key configured yet
+        modelSelect.innerHTML = '<option value="">⚠️ Please enter your API key above and save settings first</option>';
     }
 }
 
