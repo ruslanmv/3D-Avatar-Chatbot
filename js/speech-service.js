@@ -76,7 +76,7 @@ class SpeechService {
                     const transcript = result[0].transcript;
 
                     if (result.isFinal) {
-                        finalTranscript += transcript + ' ';
+                        finalTranscript += `${transcript} `;
                     } else {
                         interimTranscript += transcript;
                     }
@@ -149,7 +149,9 @@ class SpeechService {
      * Apply recognition options to the recognition instance
      */
     applyRecognitionOptions() {
-        if (!this.recognition) return;
+        if (!this.recognition) {
+            return;
+        }
 
         this.recognition.continuous = this.recognitionOptions.continuous;
         this.recognition.interimResults = this.recognitionOptions.interimResults;
@@ -267,7 +269,7 @@ class SpeechService {
 
     /**
      * Set recognition options
-     * @param {Object} options - Recognition options
+     * @param {object} options - Recognition options
      */
     setRecognitionOptions(options = {}) {
         this.recognitionOptions = {
@@ -280,7 +282,7 @@ class SpeechService {
 
     /**
      * Start speech recognition
-     * @param {Object} callbacks - Event callbacks
+     * @param {object} callbacks - Event callbacks
      * @param {boolean} requestPermission - Whether to request mic permission first (default: true)
      */
     async startRecognition(callbacks = {}, requestPermission = true) {

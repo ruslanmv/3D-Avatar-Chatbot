@@ -310,13 +310,17 @@ class ChatbotApplication {
                 // Set the final transcript
                 this.elements.chatInput.value = transcript;
 
-                // Automatically send if confidence is high
-                if (confidence > 0.7) {
-                    this.handleSendMessage();
-                } else {
-                    AvatarController.idle();
-                    ChatManager.showInfo('Please review the transcription and press send.');
-                }
+                // Show what was transcribed with confidence level
+                const confidencePercent = Math.round(confidence * 100);
+                ChatManager.showInfo(
+                    `🎤 Transcribed (${confidencePercent}% confidence): "${transcript}"\n` +
+                        'Review and press Send, or click the microphone to record again.'
+                );
+
+                // Focus on input for easy editing/sending
+                AvatarController.idle();
+                this.elements.chatInput.focus();
+                this.elements.chatInput.select(); // Highlight text for easy review
             },
             onError: (error, context) => {
                 this.showRecordingIndicator(false);

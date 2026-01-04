@@ -165,7 +165,17 @@ export class VRChatIntegration {
                         console.log('[VRChatIntegration] PTT Interim:', interimText);
                     },
                     onResult: (text, confidence) => {
-                        console.log(`[VRChatIntegration] PTT Recognized: "${text}"`);
+                        const confidencePercent = Math.round(confidence * 100);
+                        console.log(`[VRChatIntegration] 🎤 PTT Transcribed: "${text}" (${confidencePercent}% confidence)`);
+
+                        // Show what was transcribed in VR panel
+                        this.vrChatPanel.appendMessage(
+                            'bot',
+                            `🎤 Heard: "${text}" (${confidencePercent}% confidence)`
+                        );
+
+                        // Send to chatbot
+                        console.log(`[VRChatIntegration] 📤 PTT Sending to chatbot: "${text}"`);
                         this.handleUserMessage(text);
                     },
                     onError: (error, context) => {
@@ -284,7 +294,17 @@ export class VRChatIntegration {
                     console.log('[VRChatIntegration] Listening ended');
                 },
                 onResult: (text, confidence) => {
-                    console.log(`[VRChatIntegration] Recognized: "${text}" (confidence: ${confidence})`);
+                    const confidencePercent = Math.round(confidence * 100);
+                    console.log(`[VRChatIntegration] 🎤 Transcribed: "${text}" (${confidencePercent}% confidence)`);
+
+                    // Show what was transcribed in VR panel
+                    this.vrChatPanel.appendMessage(
+                        'bot',
+                        `🎤 Heard: "${text}" (${confidencePercent}% confidence)`
+                    );
+
+                    // Send to chatbot
+                    console.log(`[VRChatIntegration] 📤 Sending to chatbot: "${text}"`);
                     this.handleUserMessage(text);
                 },
                 onError: (error, context) => {
