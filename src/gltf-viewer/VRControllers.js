@@ -84,6 +84,11 @@ export class VRControllers {
         // Hover state for UI
         this.hoveredUI = null;
 
+        // Debug tracking for button/axes changes (edge-triggered logging)
+        this._debugLastButtons = { left: [], right: [] };
+        this._debugLastAxes = { left: [], right: [] };
+        this.debugInput = true; // Set to false to disable detailed input logging
+
         this.init();
     }
 
@@ -136,6 +141,25 @@ export class VRControllers {
             const hand = getHand(e.data);
             this.controllers[hand] = e.data;
             console.log(`[VRControllers] Connected: ${hand}`);
+
+            // Log detailed gamepad info for debugging button mapping
+            if (e.data?.gamepad) {
+                const gp = e.data.gamepad;
+                console.log(`[VRControllers] 🎮 ${hand} gamepad:`, {
+                    id: gp.id,
+                    buttons: gp.buttons.length,
+                    axes: gp.axes.length,
+                    mapping: gp.mapping,
+                });
+                console.log(
+                    `[VRControllers] 🎮 ${hand} button snapshot:`,
+                    gp.buttons.map((b, i) => ({ index: i, pressed: b.pressed, value: b.value.toFixed(2) }))
+                );
+                console.log(
+                    `[VRControllers] 🎮 ${hand} axes snapshot:`,
+                    gp.axes.map((v, i) => ({ index: i, value: v.toFixed(2) }))
+                );
+            }
         });
 
         controller.addEventListener('disconnected', (e) => {
@@ -402,11 +426,27 @@ export class VRControllers {
         // Menu button check on left controller
         const left = this.controllers.left;
         if (left && left.gamepad) {
+            // Debug: Log all button changes (edge-triggered, only on state change)
+            if (this.debugInput) {
+                const gp = left.gamepad;
+                const last = this._debugLastButtons.left;
+                gp.buttons.forEach((b, i) => {
+                    const prevPressed = last[i]?.pressed ?? false;
+                    if (b.pressed !== prevPressed) {
+                        const action = b.pressed ? 'PRESSED' : 'RELEASED';
+                        console.log(
+                            `[VRControllers] 🎮 LEFT button[${i}] ${action} (value=${b.value.toFixed(2)})`
+                        );
+                    }
+                    last[i] = { pressed: b.pressed, value: b.value };
+                });
+            }
+
             // Button index 0 is X button on Quest left controller
             const menuButton = left.gamepad.buttons[0];
             if (menuButton && menuButton.pressed && !this.menuButtonWasPressed) {
                 this.menuButtonWasPressed = true;
-                console.log('[VRControllers] ❌ X button pressed - toggling chat panel');
+                console.log('[VRControllers] ✅ X button (button[0]) pressed - toggling chat panel');
                 if (this.onMenuButtonPress) {
                     this.onMenuButtonPress();
                 }
@@ -449,6 +489,22 @@ export class VRControllers {
         // 2. Right Hand -> Turn (X) + Fly Up/Down (Y)
         const right = this.controllers.right;
         if (right && right.gamepad) {
+            // Debug: Log all button changes (edge-triggered, only on state change)
+            if (this.debugInput) {
+                const gp = right.gamepad;
+                const last = this._debugLastButtons.right;
+                gp.buttons.forEach((b, i) => {
+                    const prevPressed = last[i]?.pressed ?? false;
+                    if (b.pressed !== prevPressed) {
+                        const action = b.pressed ? 'PRESSED' : 'RELEASED';
+                        console.log(
+                            `[VRControllers] 🎮 RIGHT button[${i}] ${action} (value=${b.value.toFixed(2)})`
+                        );
+                    }
+                    last[i] = { pressed: b.pressed, value: b.value };
+                });
+            }
+
             const axes = right.gamepad.axes;
             let x = 0;
             let y = 0;

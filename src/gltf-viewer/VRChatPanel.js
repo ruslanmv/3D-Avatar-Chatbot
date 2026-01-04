@@ -309,6 +309,13 @@ export class VRChatPanel {
 
         this._spawnNearLeftHandOnce(this._spawnDistance);
         this.redraw();
+
+        // Log final position and distance to camera for debugging
+        const camPos = new THREE.Vector3();
+        this.camera.getWorldPosition(camPos);
+        const dist = this.group.position.distanceTo(camPos);
+        console.log('[VRChatPanel] ✅ Panel visible at world position:', this.group.position.toArray());
+        console.log('[VRChatPanel] 📏 Distance to camera:', dist.toFixed(2), 'm');
     }
 
     setLeftController(controller) {

@@ -421,6 +421,22 @@ class SpeechService {
     }
 
     /**
+     * Set persistent recognition callbacks (used by VRChatIntegration)
+     * These are used as defaults and can be overridden per startRecognition call.
+     * @param {object} callbacks - Recognition callbacks
+     */
+    setRecognitionCallbacks(callbacks = {}) {
+        this.recognitionCallbacks = {
+            ...this.recognitionCallbacks,
+            ...callbacks,
+        };
+        console.log('[SpeechService] ✅ Recognition callbacks registered:', Object.keys(callbacks));
+        if (window.NEXUS_LOGGER) {
+            window.NEXUS_LOGGER.info('STT recognition callbacks registered', { keys: Object.keys(callbacks) });
+        }
+    }
+
+    /**
      * Start speech recognition
      * @param {object} callbacks - Event callbacks
      * @param {boolean} requestPermission - Whether to request mic permission first (default: true)

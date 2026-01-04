@@ -125,9 +125,21 @@ export class ViewerEngine {
 
             this.vrControllers.setMenuButtonCallback(() => {
                 const isVisible = this.vrChatPanel.group.visible;
-                console.log(`[ViewerEngine] 🔄 Toggling chat panel: ${!isVisible}`);
-                if (isVisible) this.vrChatIntegration.disable();
-                else this.vrChatIntegration.enable();
+                console.log(
+                    `[ViewerEngine] 🔄 Toggling chat panel: ${!isVisible} (integrationInitialized=${this.vrChatIntegration.isInitialized})`
+                );
+
+                if (this.vrChatIntegration.isInitialized) {
+                    // Normal path: use integration (handles speech, avatar, etc.)
+                    if (isVisible) this.vrChatIntegration.disable();
+                    else this.vrChatIntegration.enable();
+                } else {
+                    // Fallback: show panel even if integration failed (for debugging)
+                    this.vrChatPanel.setVisible(!isVisible);
+                    console.warn(
+                        '[ViewerEngine] ⚠️ VRChatIntegration not initialized, toggled panel directly (fallback mode)'
+                    );
+                }
             });
 
             console.log('[ViewerEngine] ✅ VR Started. Press Left X button to toggle chat.');
