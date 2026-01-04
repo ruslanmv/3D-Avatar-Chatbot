@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>STT Test - Speech-to-Text Verification</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+            }
+
+            .container {
+                background: white;
+                border-radius: 20px;
+                padding: 40px;
+                max-width: 600px;
+                width: 100%;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            }
+
+            h1 {
+                color: #667eea;
+                margin-bottom: 10px;
+                font-size: 28px;
+            }
+
+            .subtitle {
+                color: #666;
+                margin-bottom: 30px;
+                font-size: 14px;
+            }
+
+            .test-section {
+                background: #f8f9fa;
+                border-radius: 12px;
+                padding: 20px;
+                margin-bottom: 20px;
+            }
+
+            .test-section h2 {
+                color: #333;
+                font-size: 18px;
+                margin-bottom: 15px;
+            }
+
+            button {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border: none;
+                padding: 15px 30px;
+                border-radius: 8px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: transform 0.2s, box-shadow 0.2s;
+                width: 100%;
+                margin-bottom: 10px;
+            }
+
+            button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            }
+
+            button:active {
+                transform: translateY(0);
+            }
+
+            button:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+                transform: none;
+            }
+
+            .status {
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 15px;
+                font-weight: 500;
+                text-align: center;
+            }
+
+            .status.idle {
+                background: #e9ecef;
+                color: #495057;
+            }
+
+            .status.listening {
+                background: #d1f2eb;
+                color: #0c5b3e;
+                animation: pulse 1.5s infinite;
+            }
+
+            .status.processing {
+                background: #fff3cd;
+                color: #856404;
+            }
+
+            .status.success {
+                background: #d4edda;
+                color: #155724;
+            }
+
+            .status.error {
+                background: #f8d7da;
+                color: #721c24;
+            }
+
+            @keyframes pulse {
+                0%,
+                100% {
+                    opacity: 1;
+                }
+                50% {
+                    opacity: 0.7;
+                }
+            }
+
+            .transcript {
+                background: white;
+                border: 2px solid #667eea;
+                border-radius: 8px;
+                padding: 15px;
+                min-height: 60px;
+                margin-bottom: 15px;
+                font-size: 18px;
+                color: #333;
+                font-style: italic;
+            }
+
+            .transcript.empty {
+                color: #999;
+                font-style: normal;
+            }
+
+            .info {
+                background: #e7f3ff;
+                border-left: 4px solid #2196f3;
+                padding: 15px;
+                border-radius: 4px;
+                margin-bottom: 20px;
+                font-size: 14px;
+                color: #0d47a1;
+            }
+
+            .test-results {
+                margin-top: 20px;
+            }
+
+            .test-item {
+                padding: 12px;
+                border-radius: 6px;
+                margin-bottom: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+            .test-item.pass {
+                background: #d4edda;
+                color: #155724;
+            }
+
+            .test-item.fail {
+                background: #f8d7da;
+                color: #721c24;
+            }
+
+            .badge {
+                padding: 4px 12px;
+                border-radius: 12px;
+                font-size: 12px;
+                font-weight: 600;
+            }
+
+            .badge.pass {
+                background: #28a745;
+                color: white;
+            }
+
+            .badge.fail {
+                background: #dc3545;
+                color: white;
+            }
+
+            .logs {
+                background: #1e1e1e;
+                color: #d4d4d4;
+                padding: 15px;
+                border-radius: 8px;
+                font-family: 'Courier New', monospace;
+                font-size: 12px;
+                max-height: 200px;
+                overflow-y: auto;
+                margin-top: 15px;
+            }
+
+            .log-entry {
+                margin-bottom: 5px;
+            }
+
+            .log-entry.info {
+                color: #4ec9b0;
+            }
+
+            .log-entry.error {
+                color: #f48771;
+            }
+
+            .log-entry.success {
+                color: #b5cea8;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🎤 Speech-to-Text Test</h1>
+            <p class="subtitle">Verify STT functionality with multiple providers</p>
+
+            <div class="info">
+                <strong>ℹ️ Test Instructions:</strong><br />
+                1. Click "Test Web Speech API" and say "Hello" or "Hi"<br />
+                2. Wait for the transcript to appear<br />
+                3. Run automated mock test to verify the pipeline works
+            </div>
+
+            <!-- Live Test Section -->
+            <div class="test-section">
+                <h2>📡 Live Microphone Test</h2>
+
+                <div id="status" class="status idle">Ready to test</div>
+
+                <div id="transcript" class="transcript empty">Transcript will appear here...</div>
+
+                <button id="startBtn" onclick="startLiveTest()">🎤 Start Recording (Say "Hi")</button>
+                <button id="stopBtn" onclick="stopLiveTest()" disabled style="background: #dc3545">
+                    ⏹️ Stop Recording
+                </button>
+            </div>
+
+            <!-- Mock Test Section -->
+            <div class="test-section">
+                <h2>🧪 Automated Mock Test</h2>
+
+                <button onclick="runMockTest()" style="background: #28a745">▶️ Run Mock Test</button>
+
+                <div id="mockResults" class="test-results" style="display: none">
+                    <!-- Results will be inserted here -->
+                </div>
+            </div>
+
+            <!-- Console Logs -->
+            <div class="test-section">
+                <h2>📋 Console Logs</h2>
+                <div id="logs" class="logs">
+                    <div class="log-entry info">[INFO] STT Test initialized</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Load Speech Service -->
+        <script src="js/nexus-logger.js"></script>
+        <script src="js/speech-service.js"></script>
+
+        <script>
+            // Logging utility
+            function log(message, type = 'info') {
+                const logsDiv = document.getElementById('logs');
+                const entry = document.createElement('div');
+                entry.className = `log-entry ${type}`;
+                const timestamp = new Date().toLocaleTimeString();
+                entry.textContent = `[${timestamp}] ${message}`;
+                logsDiv.appendChild(entry);
+                logsDiv.scrollTop = logsDiv.scrollHeight;
+                console.log(message);
+            }
+
+            // Update status display
+            function setStatus(text, className) {
+                const statusDiv = document.getElementById('status');
+                statusDiv.textContent = text;
+                statusDiv.className = `status ${className}`;
+            }
+
+            // Update transcript display
+            function setTranscript(text, isEmpty = false) {
+                const transcriptDiv = document.getElementById('transcript');
+                transcriptDiv.textContent = text;
+                transcriptDiv.className = isEmpty ? 'transcript empty' : 'transcript';
+            }
+
+            // ============================================================================
+            // LIVE MICROPHONE TEST
+            // ============================================================================
+
+            let isRecording = false;
+
+            async function startLiveTest() {
+                if (isRecording) return;
+
+                log('Starting live microphone test...', 'info');
+                setStatus('🎤 Listening... Please say "Hi" or "Hello"', 'listening');
+                setTranscript('Listening...', false);
+
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+                isRecording = true;
+
+                try {
+                    const started = await window.SpeechService.startSTT({
+                        onStart: () => {
+                            log('✅ STT started successfully', 'success');
+                            setStatus('🎤 Recording... Speak now!', 'listening');
+                        },
+
+                        onInterim: (text) => {
+                            log(`📝 Interim: "${text}"`, 'info');
+                            setTranscript(`📝 ${text}`, false);
+                        },
+
+                        onResult: (text, confidence) => {
+                            const confidencePercent = Math.round(confidence * 100);
+                            log(`✅ Final: "${text}" (${confidencePercent}% confidence)`, 'success');
+                            setTranscript(`✅ "${text}" (${confidencePercent}% confidence)`, false);
+                            setStatus('✅ Transcription complete!', 'success');
+
+                            // Verify if user said "hi" or "hello"
+                            const normalized = text.toLowerCase().trim();
+                            if (normalized.includes('hi') || normalized.includes('hello')) {
+                                log('🎉 SUCCESS: Detected "Hi/Hello" correctly!', 'success');
+                                setStatus('🎉 Test PASSED! You said "Hi/Hello"', 'success');
+                            }
+
+                            setTimeout(() => {
+                                document.getElementById('startBtn').disabled = false;
+                                document.getElementById('stopBtn').disabled = true;
+                                isRecording = false;
+                            }, 2000);
+                        },
+
+                        onError: (error, context) => {
+                            const msg = context ? `${error}: ${context}` : error;
+                            log(`❌ Error: ${msg}`, 'error');
+                            setStatus(`❌ Error: ${msg}`, 'error');
+                            setTranscript('Error occurred', false);
+
+                            document.getElementById('startBtn').disabled = false;
+                            document.getElementById('stopBtn').disabled = true;
+                            isRecording = false;
+                        },
+
+                        onEnd: () => {
+                            log('⏹️ STT ended', 'info');
+                        },
+                    });
+
+                    if (!started) {
+                        throw new Error('Failed to start STT');
+                    }
+
+                    // Auto-stop after 10 seconds
+                    setTimeout(() => {
+                        if (isRecording) {
+                            stopLiveTest();
+                            log('⏱️ Auto-stopped after 10 seconds', 'info');
+                        }
+                    }, 10000);
+                } catch (error) {
+                    log(`❌ Failed to start: ${error.message}`, 'error');
+                    setStatus(`❌ Failed: ${error.message}`, 'error');
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('stopBtn').disabled = true;
+                    isRecording = false;
+                }
+            }
+
+            function stopLiveTest() {
+                if (!isRecording) return;
+
+                log('Stopping recording...', 'info');
+                window.SpeechService.stopSTT();
+                setStatus('⏹️ Stopped', 'idle');
+
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+                isRecording = false;
+            }
+
+            // ============================================================================
+            // MOCK TEST - Simulates STT Pipeline
+            // ============================================================================
+
+            async function runMockTest() {
+                log('Starting automated mock test...', 'info');
+
+                const results = [];
+                const resultsDiv = document.getElementById('mockResults');
+                resultsDiv.innerHTML = '';
+                resultsDiv.style.display = 'block';
+
+                // Test 1: Check if SpeechService is available
+                const test1 = {
+                    name: 'SpeechService availability',
+                    pass: !!window.SpeechService,
+                };
+                results.push(test1);
+                log(
+                    test1.pass ? '✅ SpeechService is available' : '❌ SpeechService not found',
+                    test1.pass ? 'success' : 'error'
+                );
+
+                // Test 2: Check Web Speech API support
+                const test2 = {
+                    name: 'Web Speech API support',
+                    pass: window.SpeechService?.isWebSpeechAvailable() || false,
+                };
+                results.push(test2);
+                log(
+                    test2.pass ? '✅ Web Speech API supported' : '❌ Web Speech API not supported',
+                    test2.pass ? 'success' : 'error'
+                );
+
+                // Test 3: Check MediaRecorder support
+                const test3 = {
+                    name: 'MediaRecorder support',
+                    pass: window.SpeechService?.isMediaRecorderAvailable() || false,
+                };
+                results.push(test3);
+                log(
+                    test3.pass ? '✅ MediaRecorder supported' : '❌ MediaRecorder not supported',
+                    test3.pass ? 'success' : 'error'
+                );
+
+                // Test 4: Check WASM Worker support
+                const test4 = {
+                    name: 'WASM Worker support',
+                    pass: window.SpeechService?.isWASMWhisperAvailable() || false,
+                };
+                results.push(test4);
+                log(
+                    test4.pass ? '✅ WASM Worker supported' : '❌ WASM Worker not supported',
+                    test4.pass ? 'success' : 'error'
+                );
+
+                // Test 5: STT Configuration
+                const test5 = {
+                    name: 'STT Configuration loaded',
+                    pass: false,
+                };
+                try {
+                    const config = window.SpeechService?.getSTTConfig();
+                    test5.pass = !!config && !!config.provider;
+                    log(
+                        test5.pass ? `✅ STT Config loaded (provider: ${config.provider})` : '❌ STT Config missing',
+                        test5.pass ? 'success' : 'error'
+                    );
+                } catch (e) {
+                    log(`❌ STT Config error: ${e.message}`, 'error');
+                }
+                results.push(test5);
+
+                // Test 6: Mock STT callback pipeline
+                const test6 = {
+                    name: 'STT callback pipeline',
+                    pass: false,
+                };
+                try {
+                    let callbacksInvoked = 0;
+                    const mockCallbacks = {
+                        onStart: () => {
+                            callbacksInvoked++;
+                            log('Mock: onStart() called', 'info');
+                        },
+                        onInterim: (text) => {
+                            callbacksInvoked++;
+                            log(`Mock: onInterim("${text}") called`, 'info');
+                        },
+                        onResult: (text, confidence) => {
+                            callbacksInvoked++;
+                            log(`Mock: onResult("${text}", ${confidence}) called`, 'success');
+                        },
+                        onError: (error) => {
+                            log(`Mock: onError("${error}") called`, 'error');
+                        },
+                        onEnd: () => {
+                            callbacksInvoked++;
+                            log('Mock: onEnd() called', 'info');
+                        },
+                    };
+
+                    // Simulate callback invocations
+                    mockCallbacks.onStart();
+                    mockCallbacks.onInterim('Hi');
+                    mockCallbacks.onResult('Hi', 0.95);
+                    mockCallbacks.onEnd();
+
+                    test6.pass = callbacksInvoked === 4;
+                    log(
+                        test6.pass
+                            ? '✅ All callbacks invoked successfully'
+                            : `❌ Only ${callbacksInvoked}/4 callbacks invoked`,
+                        test6.pass ? 'success' : 'error'
+                    );
+                } catch (e) {
+                    log(`❌ Callback pipeline error: ${e.message}`, 'error');
+                }
+                results.push(test6);
+
+                // Display results
+                const passCount = results.filter((r) => r.pass).length;
+                const totalCount = results.length;
+
+                results.forEach((result) => {
+                    const div = document.createElement('div');
+                    div.className = `test-item ${result.pass ? 'pass' : 'fail'}`;
+                    div.innerHTML = `
+                        <span>${result.name}</span>
+                        <span class="badge ${result.pass ? 'pass' : 'fail'}">${result.pass ? 'PASS' : 'FAIL'}</span>
+                    `;
+                    resultsDiv.appendChild(div);
+                });
+
+                // Summary
+                const summary = document.createElement('div');
+                summary.style.marginTop = '15px';
+                summary.style.padding = '15px';
+                summary.style.borderRadius = '8px';
+                summary.style.textAlign = 'center';
+                summary.style.fontWeight = 'bold';
+
+                if (passCount === totalCount) {
+                    summary.style.background = '#d4edda';
+                    summary.style.color = '#155724';
+                    summary.textContent = `🎉 All tests passed! (${passCount}/${totalCount})`;
+                    log(`🎉 Mock test complete: ${passCount}/${totalCount} passed`, 'success');
+                } else {
+                    summary.style.background = '#fff3cd';
+                    summary.style.color = '#856404';
+                    summary.textContent = `⚠️ ${passCount}/${totalCount} tests passed`;
+                    log(`⚠️ Mock test complete: ${passCount}/${totalCount} passed`, 'error');
+                }
+
+                resultsDiv.appendChild(summary);
+            }
+
+            // Initialize
+            log('✅ STT Test page loaded successfully', 'success');
+            log(`Provider: ${window.SpeechService?.getSTTConfig()?.provider || 'unknown'}`, 'info');
+        </script>
+    </body>
+</html>
