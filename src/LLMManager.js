@@ -238,8 +238,19 @@
         // ===============================================
 
         async _chatOpenAI(userMessage, systemPrompt) {
-            const { api_key, model, base_url } = this._settings.openai;
-            if (!api_key) throw new Error('OpenAI API Key missing');
+            const { api_key: rawKey, model, base_url } = this._settings.openai;
+
+            // Trim whitespace (prevents copy/paste issues)
+            const api_key = (rawKey || '').trim();
+
+            if (!api_key) {
+                throw new Error('OpenAI API Key missing. Please add your API key in Settings.');
+            }
+
+            // Validate key format (OpenAI keys start with sk- but NOT sk-ant-)
+            if (!api_key.startsWith('sk-') || api_key.startsWith('sk-ant-')) {
+                throw new Error('Invalid OpenAI API key format. OpenAI keys should start with "sk-" (not "sk-ant-"). Please check your API key in Settings.');
+            }
 
             const url = `${(base_url || 'https://api.openai.com').replace(/\/$/, '')}/v1/chat/completions`;
             const headers = {
@@ -277,8 +288,19 @@
         }
 
         async _chatClaude(userMessage, systemPrompt) {
-            const { api_key, model, base_url } = this._settings.claude;
-            if (!api_key) throw new Error('Claude API Key missing');
+            const { api_key: rawKey, model, base_url } = this._settings.claude;
+
+            // Trim whitespace (prevents copy/paste issues)
+            const api_key = (rawKey || '').trim();
+
+            if (!api_key) {
+                throw new Error('Claude API Key missing. Please add your API key in Settings.');
+            }
+
+            // Validate key format
+            if (!api_key.startsWith('sk-ant-')) {
+                throw new Error('Invalid Claude API key format. Anthropic keys should start with "sk-ant-". Please check your API key in Settings.');
+            }
 
             const url = `${(base_url || 'https://api.anthropic.com').replace(/\/$/, '')}/v1/messages`;
             const headers = {
@@ -397,15 +419,27 @@
         // ===============================================
 
         async _fetchOpenAIModels() {
-            const { api_key, base_url } = this._settings.openai;
+            const { api_key: rawKey, base_url } = this._settings.openai;
 
             // Fallback models (always point to latest flagship versions)
             const fallback = ['gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo', 'o1-preview', 'o1-mini'];
+
+            // Trim whitespace
+            const api_key = (rawKey || '').trim();
 
             if (!api_key) {
                 return {
                     models: fallback,
                     error: 'Missing API Key - using default list',
+                };
+            }
+
+            // Validate key format
+            if (!api_key.startsWith('sk-') || api_key.startsWith('sk-ant-')) {
+                console.warn('[LLMManager] ⚠️ OpenAI API key should start with "sk-" (not "sk-ant-"), got:', api_key.substring(0, 10) + '...');
+                return {
+                    models: fallback,
+                    error: 'Invalid API key format. OpenAI keys should start with "sk-" (not "sk-ant-"). Please check your API key in Settings.',
                 };
             }
 
@@ -453,7 +487,7 @@
         }
 
         async _fetchClaudeModels() {
-            const { api_key, base_url } = this._settings.claude;
+            const { api_key: rawKey, base_url } = this._settings.claude;
 
             // Fallback models using "latest" aliases (auto-update to newest versions)
             const fallback = [
@@ -463,10 +497,22 @@
                 'claude-3-5-sonnet-20241022', // Specific backup
             ];
 
+            // Trim whitespace (prevents copy/paste issues)
+            const api_key = (rawKey || '').trim();
+
             if (!api_key) {
                 return {
                     models: fallback,
                     error: 'No API key - using default model list',
+                };
+            }
+
+            // Validate key format (Anthropic keys start with sk-ant-)
+            if (!api_key.startsWith('sk-ant-')) {
+                console.warn('[LLMManager] ⚠️ Claude API key should start with "sk-ant-", got:', api_key.substring(0, 10) + '...');
+                return {
+                    models: fallback,
+                    error: 'Invalid API key format. Anthropic keys should start with "sk-ant-". Please check your API key in Settings.',
                 };
             }
 
@@ -479,6 +525,8 @@
                     'x-api-key': api_key,
                     'anthropic-version': '2023-06-01',
                 };
+
+                console.log('[LLMManager] 🔑 Using Claude API key:', api_key.substring(0, 12) + '...' + api_key.substring(api_key.length - 4));
 
                 let response;
                 if (this._hasProxy()) {
@@ -525,7 +573,16 @@
                 console.log('[LLMManager] ✅ Fetched Claude models:', models);
                 return { models: models, error: null };
             } catch (e) {
-                console.warn('[LLMManager] Failed to fetch Claude models:', e.message);
+                console.error('[LLMManager] ❌ Failed to fetch Claude models:', e.message);
+
+                // Enhanced error message for authentication failures
+                if (e.message && e.message.includes('401')) {
+                    return {
+                        models: fallback,
+                        error: '⚠️ Authentication failed (401). Your Claude API key is invalid or expired. Please check: https://console.anthropic.com/settings/keys',
+                    };
+                }
+
                 return {
                     models: fallback,
                     error: `Could not fetch models: ${e.message} - using defaults`,

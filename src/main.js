@@ -1439,6 +1439,11 @@ async function fetchAndPopulateModels(provider, selectElement) {
 
         if (result.error) {
             console.warn(`[Main] Model fetch warning: ${result.error}`);
+
+            // Show error prominently if it's an authentication issue
+            if (result.error.includes('401') || result.error.includes('Authentication') || result.error.includes('invalid')) {
+                alert(`⚠️ ${provider.toUpperCase()} Authentication Error\n\n${result.error}\n\nPlease check your API key in Settings and try again.`);
+            }
         }
 
         selectElement.innerHTML = '<option value="">Select a model...</option>';
@@ -1451,7 +1456,10 @@ async function fetchAndPopulateModels(provider, selectElement) {
                 selectElement.appendChild(opt);
             });
 
-            console.log(`[Main] ✅ Loaded ${result.models.length} ${provider} models`);
+            const statusMsg = result.error
+                ? `⚠️ Loaded ${result.models.length} ${provider} models (using defaults due to error)`
+                : `✅ Loaded ${result.models.length} ${provider} models`;
+            console.log(`[Main] ${statusMsg}`);
         } else {
             selectElement.innerHTML = '<option value="">No models available</option>';
         }
@@ -2297,3 +2305,69 @@ function __nexusWireFetchModelsButton() {
 }
 
 window.addEventListener('DOMContentLoaded', __nexusWireFetchModelsButton);
+
+/* =====================================================================
+   DEBUG HELPER: Check Stored API Keys
+   - Run window.debugAPIKeys() in console to see what's stored
+   - Helps diagnose authentication issues
+   ===================================================================== */
+window.debugAPIKeys = function () {
+    console.log('=== NEXUS API KEY DEBUGGER ===\n');
+
+    try {
+        // Check unified settings
+        const unified = localStorage.getItem('nexus_llm_settings');
+        if (unified) {
+            const settings = JSON.parse(unified);
+            console.log('📦 Unified Settings (nexus_llm_settings):');
+            console.log('  Provider:', settings.provider || 'none');
+
+            if (settings.openai?.api_key) {
+                const key = settings.openai.api_key;
+                console.log('  OpenAI Key:', key.substring(0, 12) + '...' + key.substring(key.length - 4), `(${key.length} chars)`);
+                console.log('    ✓ Starts with:', key.substring(0, 7));
+                console.log('    ✓ Valid format:', key.startsWith('sk-') && !key.startsWith('sk-ant-') ? '✅' : '❌');
+            }
+
+            if (settings.claude?.api_key) {
+                const key = settings.claude.api_key;
+                console.log('  Claude Key:', key.substring(0, 12) + '...' + key.substring(key.length - 4), `(${key.length} chars)`);
+                console.log('    ✓ Starts with:', key.substring(0, 7));
+                console.log('    ✓ Valid format:', key.startsWith('sk-ant-') ? '✅' : '❌');
+            }
+
+            if (settings.watsonx?.api_key) {
+                const key = settings.watsonx.api_key;
+                console.log('  Watsonx Key:', key.substring(0, 12) + '...' + key.substring(key.length - 4), `(${key.length} chars)`);
+            }
+
+            if (settings.ollama?.base_url) {
+                console.log('  Ollama URL:', settings.ollama.base_url);
+            }
+        } else {
+            console.log('📦 No unified settings found (nexus_llm_settings is empty)');
+        }
+
+        // Check legacy settings
+        console.log('\n📜 Legacy Settings:');
+        const legacyProvider = localStorage.getItem('ai_provider');
+        const legacyKey = localStorage.getItem('ai_api_key');
+        if (legacyProvider) {
+            console.log('  Provider:', legacyProvider);
+        }
+        if (legacyKey) {
+            console.log('  API Key:', legacyKey.substring(0, 12) + '...' + legacyKey.substring(legacyKey.length - 4));
+        }
+
+        console.log('\n💡 Tips:');
+        console.log('  - OpenAI keys should start with "sk-" (NOT "sk-ant-")');
+        console.log('  - Claude keys should start with "sk-ant-"');
+        console.log('  - If keys look wrong, delete them in Settings and re-enter');
+        console.log('  - To reset: localStorage.clear() then reload page');
+        console.log('\n=== END DEBUG ===');
+    } catch (e) {
+        console.error('Error debugging API keys:', e);
+    }
+};
+
+console.log('💡 Tip: Run window.debugAPIKeys() in console to check your stored API keys');
