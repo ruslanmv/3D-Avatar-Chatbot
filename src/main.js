@@ -207,6 +207,81 @@ const config = loadConfig();
 })();
 
 /* ============================
+   One-Time Migration: Legacy TTS Settings → Unified Settings
+   ============================ */
+// Migrate existing TTS settings from individual keys to nexus_settings_v1
+(function migrateLegacyTTSSettings() {
+    try {
+        // Check if unified settings already have TTS config
+        const unifiedRaw = localStorage.getItem('nexus_settings_v1');
+        if (unifiedRaw) {
+            try {
+                const settings = JSON.parse(unifiedRaw);
+                // If speechVoice or speechRate exists, assume migration already done
+                if (settings.speechVoice !== undefined || settings.speechRate !== undefined) {
+                    console.log('[Main] TTS settings already in unified format, skipping migration');
+                    return;
+                }
+            } catch (e) {
+                // Invalid JSON, will recreate below
+            }
+        }
+
+        // Check if legacy TTS settings exist
+        const legacyVoiceURI = localStorage.getItem('speech_voice_uri');
+        const legacyRate = localStorage.getItem('speech_rate');
+        const legacyPitch = localStorage.getItem('speech_pitch');
+        const legacyLang = localStorage.getItem('speech_lang');
+
+        if (!legacyVoiceURI && !legacyRate && !legacyPitch && !legacyLang) {
+            console.log('[Main] No legacy TTS settings to migrate');
+            return;
+        }
+
+        console.log('[Main] 🔄 Migrating legacy TTS settings to unified format...');
+
+        // Resolve the voice object from URI
+        const voices = window.speechSynthesis?.getVoices?.() || [];
+        const resolvedVoice = legacyVoiceURI ? voices.find((v) => v.voiceURI === legacyVoiceURI) : null;
+
+        // Build unified TTS config from legacy settings
+        const ttsConfig = {
+            // ✅ Name goes here
+            speechVoice: resolvedVoice?.name || '',
+
+            // ✅ URI goes here
+            speechVoiceURI: legacyVoiceURI || '',
+
+            speechRate: legacyRate ? parseFloat(legacyRate) : 0.9,
+            speechPitch: legacyPitch ? parseFloat(legacyPitch) : 1.0,
+            speechVolume: 1.0, // Default (not stored in legacy)
+            speechLang: legacyLang || 'en-US',
+            ttsEnabled: true, // Default (not stored in legacy)
+        };
+
+        // Save to unified format
+        if (window.SpeechService) {
+            window.SpeechService.saveTTSConfig(ttsConfig);
+            console.log('[Main] ✅ TTS migration complete! VR will now use desktop voice settings');
+        } else {
+            // Fallback: save directly if SpeechService not loaded yet
+            let settings = {};
+            if (unifiedRaw) {
+                try {
+                    settings = JSON.parse(unifiedRaw);
+                } catch (e) {
+                    // Ignore parse error
+                }
+            }
+            localStorage.setItem('nexus_settings_v1', JSON.stringify({ ...settings, ...ttsConfig }));
+            console.log('[Main] ✅ TTS migration complete (direct save)');
+        }
+    } catch (e) {
+        console.warn('[Main] TTS migration failed (non-fatal):', e);
+    }
+})();
+
+/* ============================
    Helpers
    ============================ */
 function $(id) {
@@ -831,16 +906,28 @@ function refreshVoiceList() {
     const voices = window.speechSynthesis.getVoices() || [];
     const lang = (SpeechSettings.lang || 'en-US').toLowerCase();
     const base = lang.split('-')[0];
+    const genderPref = (SpeechSettings.voicePref || 'any').toLowerCase();
 
     // Filter by language base to keep list relevant
-    const filtered = voices.filter((v) => (v.lang || '').toLowerCase().startsWith(base));
+    let filtered = voices.filter((v) => (v.lang || '').toLowerCase().startsWith(base));
     const list = filtered.length ? filtered : voices;
 
+    // ✅ Filter by gender preference
+    let genderFiltered = list;
+    if (genderPref === 'female' || genderPref === 'male') {
+        const byGender = list.filter((v) => guessGender(v) === genderPref);
+        if (byGender.length) {
+            genderFiltered = byGender;
+        }
+    }
+
     voiceEl.innerHTML = `<option value="">Auto (best match)</option>`;
-    for (const v of list) {
+    for (const v of genderFiltered) {
         const opt = document.createElement('option');
         opt.value = v.voiceURI;
-        opt.textContent = `${v.name} — ${v.lang}`;
+        const gender = guessGender(v);
+        const genderLabel = gender !== 'unknown' ? ` [${gender}]` : '';
+        opt.textContent = `${v.name}${genderLabel} — ${v.lang}`;
         voiceEl.appendChild(opt);
     }
 
@@ -880,6 +967,32 @@ function saveSpeechSettingsFromUI() {
 
     // Apply to recognition immediately if running
     if (recognition) recognition.lang = SpeechSettings.lang;
+
+    // Also save to unified nexus_settings_v1 for VR compatibility
+    if (window.SpeechService) {
+        // Resolve the selected voice object so we can store BOTH name and URI
+        const voices = window.speechSynthesis?.getVoices?.() || [];
+        const selectedVoiceObj = SpeechSettings.voiceURI
+            ? voices.find((v) => v.voiceURI === SpeechSettings.voiceURI)
+            : null;
+
+        window.SpeechService.saveTTSConfig({
+            // ✅ Store NAME here (what legacy VR logic expects)
+            speechVoice: selectedVoiceObj?.name || '',
+
+            // ✅ Store URI explicitly (best identifier)
+            speechVoiceURI: SpeechSettings.voiceURI || '',
+
+            // ✅ Store voice preference (gender filter)
+            speechVoicePref: SpeechSettings.voicePref || 'any',
+
+            speechRate: SpeechSettings.rate,
+            speechPitch: SpeechSettings.pitch,
+            speechVolume: 1.0, // Default volume (not exposed in UI yet)
+            speechLang: SpeechSettings.lang,
+            ttsEnabled: true, // Default enabled (not exposed in UI yet)
+        });
+    }
 }
 
 function loadSpeechSettingsIntoUI() {
@@ -1263,6 +1376,9 @@ function setupEventListeners() {
         prefEl.addEventListener('change', () => {
             SpeechSettings.voicePref = prefEl.value || 'any';
             localStorage.setItem('speech_voice_pref', SpeechSettings.voicePref);
+
+            // ✅ Refresh voice list to show only matching gender
+            refreshVoiceList();
         });
     }
 
@@ -1722,15 +1838,25 @@ function saveSettings() {
    ============================ */
 async function handleUserMessage(text) {
     addMessageToHistory('user', text);
+
+    // ✅ Add user message to chat session history
+    chatHistory.addMessage('user', text);
+
     setStatus('listening', 'THINKING...');
 
     try {
         const response = config.provider === 'none' ? getSimpleResponse(text) : await callLLM(text);
         addMessageToHistory('avatar', response);
+
+        // ✅ Add assistant response to chat session history
+        chatHistory.addMessage('assistant', response);
+
         speakText(response);
     } catch (error) {
         logError('Error processing message', error);
-        addMessageToHistory('avatar', 'Sorry, I encountered an error. Please check your settings.');
+        const errorMsg = 'Sorry, I encountered an error. Please check your settings.';
+        addMessageToHistory('avatar', errorMsg);
+        chatHistory.addMessage('assistant', errorMsg);
         setStatus('idle', 'ERROR');
         setTimeout(() => setStatus('idle', 'READY'), 2000);
     }
@@ -1746,6 +1872,14 @@ function getSimpleResponse(text) {
 }
 
 async function callLLM(userMessage) {
+    // ✅ Use LLMManager with conversation history if available
+    if (window._nexusLLM && config.provider !== 'none') {
+        const history = window.chatHistory.getHistory();
+        const systemPrompt = config.systemPrompt || 'You are a helpful AI assistant named Nexus.';
+        return await window._nexusLLM.sendMessage(userMessage, systemPrompt, history);
+    }
+
+    // Fallback to legacy provider functions
     if (config.provider === 'openai') return callOpenAI(userMessage);
     if (config.provider === 'claude') return callClaude(userMessage);
     if (config.provider === 'watsonx') return callWatsonX(userMessage);
@@ -2028,13 +2162,19 @@ function addMessageToHistory(sender, text) {
 }
 
 function clearHistory() {
-    const chatHistory = $('chat-history');
-    if (!chatHistory) return;
-    chatHistory.innerHTML = `
+    const chatHistoryEl = $('chat-history');
+    if (!chatHistoryEl) return;
+    chatHistoryEl.innerHTML = `
     <div class="empty-state">
       <p>System Log Ready.</p>
       <p class="sub-text">All transmissions will be recorded here.</p>
     </div>`;
+
+    // ✅ Also clear the chat session history (context memory)
+    if (window.chatHistory) {
+        window.chatHistory.clear();
+        showMessage('Chat history and context memory cleared', 'success');
+    }
 }
 
 function showMessage(text, type) {
@@ -2064,6 +2204,78 @@ function showMessage(text, type) {
         setTimeout(() => notification.remove(), 350);
     }, 3000);
 }
+
+/* ============================
+   Chat Session History (Token-Limited Context)
+   ============================ */
+class ChatSessionHistory {
+    constructor(maxTokens = 500) {
+        this.maxTokens = maxTokens;
+        this.messages = []; // Array of {role: 'user'|'assistant', content: string}
+    }
+
+    /**
+     * Estimate token count (rough approximation: 1 token ≈ 4 characters)
+     * @param {string} text
+     * @returns {number} Estimated token count
+     */
+    estimateTokens(text) {
+        return Math.ceil((text || '').length / 4);
+    }
+
+    /**
+     * Get total token count of current history
+     * @returns {number} Total tokens
+     */
+    getTotalTokens() {
+        return this.messages.reduce((sum, msg) => sum + this.estimateTokens(msg.content), 0);
+    }
+
+    /**
+     * Add a message to history with sliding window token management
+     * @param {string} role - 'user' or 'assistant'
+     * @param {string} content - Message content
+     */
+    addMessage(role, content) {
+        this.messages.push({ role, content });
+
+        // ✅ Sliding window: Remove oldest messages if over token limit
+        while (this.getTotalTokens() > this.maxTokens && this.messages.length > 2) {
+            // Keep at least the last exchange (1 user + 1 assistant)
+            const removed = this.messages.shift();
+            console.log(`[ChatHistory] Removed oldest message (${this.estimateTokens(removed.content)} tokens)`);
+        }
+
+        console.log(`[ChatHistory] History: ${this.messages.length} messages, ${this.getTotalTokens()} tokens`);
+    }
+
+    /**
+     * Get message history in format suitable for LLM APIs
+     * @returns {Array} Message history
+     */
+    getHistory() {
+        return [...this.messages];
+    }
+
+    /**
+     * Clear all history (e.g., when starting new session)
+     */
+    clear() {
+        this.messages = [];
+        console.log('[ChatHistory] History cleared');
+    }
+
+    /**
+     * Get history summary for display
+     * @returns {string}
+     */
+    getSummary() {
+        return `${this.messages.length} messages (${this.getTotalTokens()} tokens / ${this.maxTokens} max)`;
+    }
+}
+
+// ✅ Global chat session instance (accessible via window for VR integration)
+window.chatHistory = new ChatSessionHistory(500);
 
 /* ============================
    Init
