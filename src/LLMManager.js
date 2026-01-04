@@ -238,8 +238,21 @@
         // ===============================================
 
         async _chatOpenAI(userMessage, systemPrompt) {
-            const { api_key, model, base_url } = this._settings.openai;
-            if (!api_key) throw new Error('OpenAI API Key missing');
+            const { api_key: rawKey, model, base_url } = this._settings.openai;
+
+            // Trim whitespace (prevents copy/paste issues)
+            const api_key = (rawKey || '').trim();
+
+            if (!api_key) {
+                throw new Error('OpenAI API Key missing. Please add your API key in Settings.');
+            }
+
+            // Validate key format (OpenAI keys start with sk- but NOT sk-ant-)
+            if (!api_key.startsWith('sk-') || api_key.startsWith('sk-ant-')) {
+                throw new Error(
+                    'Invalid OpenAI API key format. OpenAI keys should start with "sk-" (not "sk-ant-"). Please check your API key in Settings.'
+                );
+            }
 
             const url = `${(base_url || 'https://api.openai.com').replace(/\/$/, '')}/v1/chat/completions`;
             const headers = {
@@ -277,8 +290,21 @@
         }
 
         async _chatClaude(userMessage, systemPrompt) {
-            const { api_key, model, base_url } = this._settings.claude;
-            if (!api_key) throw new Error('Claude API Key missing');
+            const { api_key: rawKey, model, base_url } = this._settings.claude;
+
+            // Trim whitespace (prevents copy/paste issues)
+            const api_key = (rawKey || '').trim();
+
+            if (!api_key) {
+                throw new Error('Claude API Key missing. Please add your API key in Settings.');
+            }
+
+            // Validate key format
+            if (!api_key.startsWith('sk-ant-')) {
+                throw new Error(
+                    'Invalid Claude API key format. Anthropic keys should start with "sk-ant-". Please check your API key in Settings.'
+                );
+            }
 
             const url = `${(base_url || 'https://api.anthropic.com').replace(/\/$/, '')}/v1/messages`;
             const headers = {
@@ -397,11 +423,30 @@
         // ===============================================
 
         async _fetchOpenAIModels() {
-            const { api_key, base_url } = this._settings.openai;
+            const { api_key: rawKey, base_url } = this._settings.openai;
+
+            // Fallback models (always point to latest flagship versions)
+            const fallback = ['gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo', 'o1-preview', 'o1-mini'];
+
+            // Trim whitespace
+            const api_key = (rawKey || '').trim();
+
             if (!api_key) {
                 return {
-                    models: ['gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'],
+                    models: fallback,
                     error: 'Missing API Key - using default list',
+                };
+            }
+
+            // Validate key format
+            if (!api_key.startsWith('sk-') || api_key.startsWith('sk-ant-')) {
+                console.warn(
+                    '[LLMManager] ⚠️ OpenAI API key should start with "sk-" (not "sk-ant-"), got:',
+                    api_key.substring(0, 10) + '...'
+                );
+                return {
+                    models: fallback,
+                    error: 'Invalid API key format. OpenAI keys should start with "sk-" (not "sk-ant-"). Please check your API key in Settings.',
                 };
             }
 
@@ -419,34 +464,151 @@
                 if (!res.ok) throw new Error(res.statusText);
 
                 const data = await res.json();
+
+                // SMART FILTERING & SORTING: Prioritize gpt-4o, then gpt-4, then o1 models
                 const models = (data.data || [])
                     .map((m) => m.id)
-                    .filter((id) => id.includes('gpt'))
-                    .sort();
-                return { models: models.length > 0 ? models : ['gpt-4o', 'gpt-3.5-turbo'], error: null };
+                    .filter((id) => id.startsWith('gpt') || id.startsWith('o1'))
+                    .sort((a, b) => {
+                        // Priority 1: gpt-4o (flagship)
+                        if (a === 'gpt-4o') return -1;
+                        if (b === 'gpt-4o') return 1;
+
+                        // Priority 2: o1 models
+                        const aO1 = a.startsWith('o1');
+                        const bO1 = b.startsWith('o1');
+                        if (aO1 && !bO1) return -1;
+                        if (!aO1 && bO1) return 1;
+
+                        // Priority 3: Alphabetical
+                        return a.localeCompare(b);
+                    });
+
+                return { models: models.length > 0 ? models : fallback, error: null };
             } catch (e) {
                 return {
-                    models: ['gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'],
+                    models: fallback,
                     error: `Network error: ${e.message} - using defaults`,
                 };
             }
         }
 
         async _fetchClaudeModels() {
-            // Claude doesn't have a public models endpoint, return curated list
-            return {
-                models: [
-                    'claude-3-5-sonnet-20241022',
-                    'claude-3-opus-20240229',
-                    'claude-3-sonnet-20240229',
-                    'claude-3-haiku-20240307',
-                ],
-                error: null,
-            };
+            const { api_key: rawKey, base_url } = this._settings.claude;
+
+            // Fallback models using "latest" aliases (auto-update to newest versions)
+            const fallback = [
+                'claude-3-5-sonnet-latest', // ✅ Auto-updates to newest 3.5 Sonnet
+                'claude-3-5-haiku-latest', // ✅ Auto-updates to newest 3.5 Haiku
+                'claude-3-opus-latest', // ✅ Auto-updates to newest Opus
+                'claude-3-5-sonnet-20241022', // Specific backup
+            ];
+
+            // Trim whitespace (prevents copy/paste issues)
+            const api_key = (rawKey || '').trim();
+
+            if (!api_key) {
+                return {
+                    models: fallback,
+                    error: 'No API key - using default model list',
+                };
+            }
+
+            // Validate key format (Anthropic keys start with sk-ant-)
+            if (!api_key.startsWith('sk-ant-')) {
+                console.warn(
+                    '[LLMManager] ⚠️ Claude API key should start with "sk-ant-", got:',
+                    api_key.substring(0, 10) + '...'
+                );
+                return {
+                    models: fallback,
+                    error: 'Invalid API key format. Anthropic keys should start with "sk-ant-". Please check your API key in Settings.',
+                };
+            }
+
+            try {
+                const apiBase = base_url || 'https://api.anthropic.com';
+                const url = `${apiBase.replace(/\/$/, '')}/v1/models`;
+
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'x-api-key': api_key,
+                    'anthropic-version': '2023-06-01',
+                };
+
+                console.log(
+                    '[LLMManager] 🔑 Using Claude API key:',
+                    api_key.substring(0, 12) + '...' + api_key.substring(api_key.length - 4)
+                );
+
+                let response;
+                if (this._hasProxy()) {
+                    response = await this._fetchViaProxy(url, 'GET', headers, null);
+                } else {
+                    response = await fetch(url, {
+                        method: 'GET',
+                        headers: headers,
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                }
+
+                const data = await response.json();
+
+                // SMART SORTING: Prioritize "latest" aliases and "3-5" series
+                const models = (data.data || [])
+                    .map((m) => m.id)
+                    .filter((id) => id && id.startsWith('claude-'))
+                    .sort((a, b) => {
+                        // Priority 1: Aliases containing "latest"
+                        const aLatest = a.includes('latest');
+                        const bLatest = b.includes('latest');
+                        if (aLatest && !bLatest) return -1;
+                        if (!aLatest && bLatest) return 1;
+
+                        // Priority 2: "3-5" series (newest)
+                        const a35 = a.includes('3-5');
+                        const b35 = b.includes('3-5');
+                        if (a35 && !b35) return -1;
+                        if (!a35 && b35) return 1;
+
+                        // Priority 3: Newest date (descending)
+                        return b.localeCompare(a);
+                    });
+
+                if (models.length === 0) {
+                    console.warn('[LLMManager] No Claude models found in API response, using fallback');
+                    return { models: fallback, error: 'No models in API response - using defaults' };
+                }
+
+                console.log('[LLMManager] ✅ Fetched Claude models:', models);
+                return { models: models, error: null };
+            } catch (e) {
+                console.error('[LLMManager] ❌ Failed to fetch Claude models:', e.message);
+
+                // Enhanced error message for authentication failures
+                if (e.message && e.message.includes('401')) {
+                    return {
+                        models: fallback,
+                        error: '⚠️ Authentication failed (401). Your Claude API key is invalid or expired. Please check: https://console.anthropic.com/settings/keys',
+                    };
+                }
+
+                return {
+                    models: fallback,
+                    error: `Could not fetch models: ${e.message} - using defaults`,
+                };
+            }
         }
 
         async _fetchOllamaModels() {
             const { base_url } = this._settings.ollama;
+
+            // Updated fallback models (latest versions)
+            const fallback = ['llama3.3', 'llama3.2', 'mistral', 'codellama'];
+
             try {
                 const url = `${(base_url || 'http://localhost:11434').replace(/\/$/, '')}/api/tags`;
                 const res = await fetch(url);
@@ -456,28 +618,53 @@
                 const data = await res.json();
                 const models = (data.models || []).map((m) => m.name).sort();
                 return {
-                    models: models.length > 0 ? models : ['llama3'],
+                    models: models.length > 0 ? models : fallback,
                     error: models.length === 0 ? 'No models found' : null,
                 };
             } catch (e) {
                 return {
-                    models: ['llama3', 'mistral', 'codellama'],
+                    models: fallback,
                     error: `Cannot connect to Ollama: ${e.message} - using defaults`,
                 };
             }
         }
 
         async _fetchWatsonxModels() {
+            // Updated fallback models (latest versions as of 2025/2026)
             const fallback = [
-                'ibm/granite-13b-chat-v2',
-                'meta-llama/llama-3-70b-instruct',
-                'meta-llama/llama-3-8b-instruct',
-                'mistralai/mixtral-8x7b-instruct-v01',
+                'ibm/granite-3-1-8b-instruct', // Updated from granite-3-8b-instruct
+                'meta-llama/llama-3-3-70b-instruct', // Updated from llama-3-70b-instruct (3.3 offers 405B performance)
+                'meta-llama/llama-3-1-8b-instruct', // Updated from llama-3-8b-instruct (3.1 has 128k context)
+                'mistralai/mistral-large-2407', // Updated from mixtral-8x7b (Mistral Large 2 flagship)
+                'mistralai/mistral-nemo', // New mid-sized model (12B)
             ];
 
-            const bases = ['https://us-south.ml.cloud.ibm.com', 'https://eu-de.ml.cloud.ibm.com'];
-            const endpoint = '/ml/v1/foundation_model_specs?version=2024-09-16';
+            // Watsonx regions (based on Python model_catalog.py)
+            const bases = [
+                'https://us-south.ml.cloud.ibm.com',
+                'https://eu-de.ml.cloud.ibm.com',
+                'https://jp-tok.ml.cloud.ibm.com',
+                'https://au-syd.ml.cloud.ibm.com',
+            ];
+
+            // Watsonx foundation model specs endpoint with filters
+            const endpoint =
+                '/ml/v1/foundation_model_specs?version=2024-09-16&filters=!function_embedding,!lifecycle_withdrawn';
             const allModels = new Set();
+            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+
+            // Helper to check if model is deprecated/withdrawn
+            const isDeprecatedOrWithdrawn = (lifecycle) => {
+                if (!Array.isArray(lifecycle)) return false;
+                for (const entry of lifecycle) {
+                    const id = entry.id || '';
+                    const startDate = entry.start_date || '';
+                    if ((id === 'deprecated' || id === 'withdrawn') && startDate <= today) {
+                        return true;
+                    }
+                }
+                return false;
+            };
 
             for (const base of bases) {
                 try {
@@ -485,9 +672,15 @@
                     if (res.ok) {
                         const json = await res.json();
                         (json.resources || []).forEach((m) => {
-                            if (m.model_id && !m.model_id.includes('deprecated')) {
-                                allModels.add(m.model_id);
+                            const modelId = m.model_id;
+                            const lifecycle = m.lifecycle || [];
+
+                            // Skip if no model_id or if deprecated/withdrawn
+                            if (!modelId || isDeprecatedOrWithdrawn(lifecycle)) {
+                                return;
                             }
+
+                            allModels.add(modelId);
                         });
                     }
                 } catch (e) {
@@ -565,7 +758,7 @@
                 },
                 claude: {
                     api_key: '',
-                    model: 'claude-3-5-sonnet-20241022',
+                    model: 'claude-3-5-sonnet-latest',
                     base_url: '',
                 },
                 watsonx: {
@@ -601,7 +794,7 @@
                 },
                 claude: {
                     api_key: '',
-                    model: 'claude-3-5-sonnet-20241022',
+                    model: 'claude-3-5-sonnet-latest',
                     base_url: '',
                 },
                 watsonx: {
