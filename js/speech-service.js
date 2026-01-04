@@ -961,6 +961,44 @@ class SpeechService {
     }
 
     /**
+     * Save TTS configuration to unified localStorage (nexus_settings_v1)
+     * This ensures desktop TTS settings are available in VR mode
+     * @param {object} config - TTS configuration object
+     * @param {string} config.speechVoice - Voice URI to use
+     * @param {number} config.speechRate - Speech rate (0.1-10)
+     * @param {number} config.speechPitch - Speech pitch (0-2)
+     * @param {number} config.speechVolume - Speech volume (0-1)
+     * @param {string} config.speechLang - Speech language code
+     * @param {boolean} config.ttsEnabled - Whether TTS is enabled
+     */
+    saveTTSConfig(config) {
+        try {
+            // Read existing nexus_settings_v1 or create new
+            let settings = {};
+            const raw = localStorage.getItem('nexus_settings_v1');
+            if (raw) {
+                try {
+                    settings = JSON.parse(raw);
+                } catch (e) {
+                    console.warn('[SpeechService] Failed to parse existing nexus_settings_v1, creating new:', e);
+                }
+            }
+
+            // Merge TTS config into settings
+            settings = {
+                ...settings,
+                ...config,
+            };
+
+            // Save back to localStorage
+            localStorage.setItem('nexus_settings_v1', JSON.stringify(settings));
+            console.log('[SpeechService] ✅ TTS config saved to nexus_settings_v1:', config);
+        } catch (error) {
+            console.error('[SpeechService] ❌ Failed to save TTS config:', error);
+        }
+    }
+
+    /**
      * Check if Web Speech API is available
      * @returns {boolean}
      */

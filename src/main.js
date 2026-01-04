@@ -207,6 +207,72 @@ const config = loadConfig();
 })();
 
 /* ============================
+   One-Time Migration: Legacy TTS Settings → Unified Settings
+   ============================ */
+// Migrate existing TTS settings from individual keys to nexus_settings_v1
+(function migrateLegacyTTSSettings() {
+    try {
+        // Check if unified settings already have TTS config
+        const unifiedRaw = localStorage.getItem('nexus_settings_v1');
+        if (unifiedRaw) {
+            try {
+                const settings = JSON.parse(unifiedRaw);
+                // If speechVoice or speechRate exists, assume migration already done
+                if (settings.speechVoice !== undefined || settings.speechRate !== undefined) {
+                    console.log('[Main] TTS settings already in unified format, skipping migration');
+                    return;
+                }
+            } catch (e) {
+                // Invalid JSON, will recreate below
+            }
+        }
+
+        // Check if legacy TTS settings exist
+        const legacyVoice = localStorage.getItem('speech_voice_uri');
+        const legacyRate = localStorage.getItem('speech_rate');
+        const legacyPitch = localStorage.getItem('speech_pitch');
+        const legacyLang = localStorage.getItem('speech_lang');
+
+        if (!legacyVoice && !legacyRate && !legacyPitch && !legacyLang) {
+            console.log('[Main] No legacy TTS settings to migrate');
+            return;
+        }
+
+        console.log('[Main] 🔄 Migrating legacy TTS settings to unified format...');
+
+        // Build unified TTS config from legacy settings
+        const ttsConfig = {
+            speechVoice: legacyVoice || '',
+            speechRate: legacyRate ? parseFloat(legacyRate) : 0.9,
+            speechPitch: legacyPitch ? parseFloat(legacyPitch) : 1.0,
+            speechVolume: 1.0, // Default (not stored in legacy)
+            speechLang: legacyLang || 'en-US',
+            ttsEnabled: true, // Default (not stored in legacy)
+        };
+
+        // Save to unified format
+        if (window.SpeechService) {
+            window.SpeechService.saveTTSConfig(ttsConfig);
+            console.log('[Main] ✅ TTS migration complete! VR will now use desktop voice settings');
+        } else {
+            // Fallback: save directly if SpeechService not loaded yet
+            let settings = {};
+            if (unifiedRaw) {
+                try {
+                    settings = JSON.parse(unifiedRaw);
+                } catch (e) {
+                    // Ignore parse error
+                }
+            }
+            localStorage.setItem('nexus_settings_v1', JSON.stringify({ ...settings, ...ttsConfig }));
+            console.log('[Main] ✅ TTS migration complete (direct save)');
+        }
+    } catch (e) {
+        console.warn('[Main] TTS migration failed (non-fatal):', e);
+    }
+})();
+
+/* ============================
    Helpers
    ============================ */
 function $(id) {
@@ -880,6 +946,18 @@ function saveSpeechSettingsFromUI() {
 
     // Apply to recognition immediately if running
     if (recognition) recognition.lang = SpeechSettings.lang;
+
+    // Also save to unified nexus_settings_v1 for VR compatibility
+    if (window.SpeechService) {
+        window.SpeechService.saveTTSConfig({
+            speechVoice: SpeechSettings.voiceURI || '',
+            speechRate: SpeechSettings.rate,
+            speechPitch: SpeechSettings.pitch,
+            speechVolume: 1.0, // Default volume (not exposed in UI yet)
+            speechLang: SpeechSettings.lang,
+            ttsEnabled: true, // Default enabled (not exposed in UI yet)
+        });
+    }
 }
 
 function loadSpeechSettingsIntoUI() {
