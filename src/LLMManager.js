@@ -73,32 +73,35 @@
          * Main API Router: Send message to active provider
          * @param {string} userMessage - User's input text
          * @param {string} systemPrompt - System/persona prompt (optional)
+         * @param {Array} conversationHistory - Previous messages for context (optional)
          * @returns {Promise<string>} AI response
          */
-        async sendMessage(userMessage, systemPrompt) {
+        async sendMessage(userMessage, systemPrompt, conversationHistory = []) {
             const cfg = this._settings;
             const provider = cfg.provider;
 
-            console.log(`[LLMManager] Sending message to ${provider}`);
+            console.log(
+                `[LLMManager] Sending message to ${provider} with ${conversationHistory.length} history messages`
+            );
 
             if (provider === LLMProvider.NONE) {
                 return this._getSimpleResponse(userMessage);
             }
 
             if (provider === LLMProvider.OPENAI) {
-                return await this._chatOpenAI(userMessage, systemPrompt);
+                return await this._chatOpenAI(userMessage, systemPrompt, conversationHistory);
             }
 
             if (provider === LLMProvider.CLAUDE) {
-                return await this._chatClaude(userMessage, systemPrompt);
+                return await this._chatClaude(userMessage, systemPrompt, conversationHistory);
             }
 
             if (provider === LLMProvider.WATSONX) {
-                return await this._chatWatsonx(userMessage, systemPrompt);
+                return await this._chatWatsonx(userMessage, systemPrompt, conversationHistory);
             }
 
             if (provider === LLMProvider.OLLAMA) {
-                return await this._chatOllama(userMessage, systemPrompt);
+                return await this._chatOllama(userMessage, systemPrompt, conversationHistory);
             }
 
             throw new Error(`Provider ${provider} is not implemented.`);
@@ -237,7 +240,7 @@
         // Provider API Implementations
         // ===============================================
 
-        async _chatOpenAI(userMessage, systemPrompt) {
+        async _chatOpenAI(userMessage, systemPrompt, conversationHistory = []) {
             const { api_key: rawKey, model, base_url } = this._settings.openai;
 
             // Trim whitespace (prevents copy/paste issues)
@@ -259,12 +262,17 @@
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${api_key}`,
             };
+
+            // ✅ Build messages with conversation history
+            const messages = [
+                { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
+                ...conversationHistory, // Include previous conversation for context
+                { role: 'user', content: userMessage },
+            ];
+
             const body = {
                 model: model,
-                messages: [
-                    { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
-                    { role: 'user', content: userMessage },
-                ],
+                messages: messages,
                 max_tokens: 500,
             };
 
@@ -289,7 +297,7 @@
             return data.choices?.[0]?.message?.content || 'No response';
         }
 
-        async _chatClaude(userMessage, systemPrompt) {
+        async _chatClaude(userMessage, systemPrompt, conversationHistory = []) {
             const { api_key: rawKey, model, base_url } = this._settings.claude;
 
             // Trim whitespace (prevents copy/paste issues)
@@ -312,10 +320,14 @@
                 'x-api-key': api_key,
                 'anthropic-version': '2023-06-01',
             };
+
+            // ✅ Build messages with conversation history
+            const messages = [...conversationHistory, { role: 'user', content: userMessage }];
+
             const body = {
                 model: model,
                 system: systemPrompt || 'You are a helpful assistant.',
-                messages: [{ role: 'user', content: userMessage }],
+                messages: messages,
                 max_tokens: 1024,
             };
 
@@ -340,7 +352,7 @@
             return data.content?.[0]?.text || 'No response';
         }
 
-        async _chatWatsonx(userMessage, systemPrompt) {
+        async _chatWatsonx(userMessage, systemPrompt, conversationHistory = []) {
             const { project_id, model_id, base_url } = this._settings.watsonx;
             if (!project_id) throw new Error('Watsonx credentials missing');
 
@@ -353,10 +365,19 @@
                 Authorization: `Bearer ${token}`,
                 Accept: 'application/json',
             };
+
+            // ✅ Build input string with conversation history
+            let input = `${systemPrompt || 'You are a helpful assistant.'}\n\n`;
+            for (const msg of conversationHistory) {
+                const speaker = msg.role === 'user' ? 'User' : 'Assistant';
+                input += `${speaker}: ${msg.content}\n\n`;
+            }
+            input += `User: ${userMessage}\n\nAssistant:`;
+
             const body = {
                 model_id: model_id,
                 project_id: project_id,
-                input: `${systemPrompt || 'You are a helpful assistant.'}\n\nUser: ${userMessage}\n\nAssistant:`,
+                input: input,
                 parameters: {
                     max_new_tokens: 500,
                     temperature: 0.7,
@@ -384,16 +405,21 @@
             return data.results?.[0]?.generated_text || 'No response';
         }
 
-        async _chatOllama(userMessage, systemPrompt) {
+        async _chatOllama(userMessage, systemPrompt, conversationHistory = []) {
             const { base_url, model } = this._settings.ollama;
             const url = `${(base_url || 'http://localhost:11434').replace(/\/$/, '')}/api/chat`;
             const headers = { 'Content-Type': 'application/json' };
+
+            // ✅ Build messages with conversation history
+            const messages = [
+                { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
+                ...conversationHistory, // Include previous conversation for context
+                { role: 'user', content: userMessage },
+            ];
+
             const body = {
                 model: model,
-                messages: [
-                    { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
-                    { role: 'user', content: userMessage },
-                ],
+                messages: messages,
                 stream: false,
             };
 
