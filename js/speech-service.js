@@ -700,7 +700,17 @@ class SpeechService {
 
         this.currentUtterance.onerror = (event) => {
             this.isSpeaking = false;
-            console.error('Speech synthesis error:', event);
+
+            // ✅ Ignore "interrupted" errors (non-fatal - happens when user speaks while TTS is active)
+            if (event.error === 'interrupted') {
+                console.log('[SpeechService] TTS interrupted (user is speaking, non-fatal)');
+                if (this.speakingCallbacks.onEnd) {
+                    this.speakingCallbacks.onEnd();
+                }
+                return;
+            }
+
+            console.error('[SpeechService] Speech synthesis error:', event.error);
             if (this.speakingCallbacks.onError) {
                 this.speakingCallbacks.onError('Text-to-speech failed');
             }
@@ -719,11 +729,17 @@ class SpeechService {
     }
 
     /**
-     * Stop speaking
+     * Stop speaking (improved to prevent interrupted errors)
      */
     stopSpeaking() {
-        if (this.isSpeaking || this.synthesis.speaking) {
-            this.synthesis.cancel();
+        try {
+            if (this.isSpeaking || this.synthesis.speaking) {
+                this.synthesis.cancel();
+                this.isSpeaking = false;
+                this.currentUtterance = null;
+            }
+        } catch (e) {
+            console.warn('[SpeechService] Error stopping speech (non-fatal):', e);
             this.isSpeaking = false;
         }
     }

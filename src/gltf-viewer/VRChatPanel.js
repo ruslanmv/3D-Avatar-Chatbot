@@ -830,10 +830,26 @@ export class VRChatPanel {
         ctx.font = '500 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
         ctx.fillText(`Model: ${truncatedModel}`, rect.x + 22, rect.y + 204);
 
-        // ✅ Voice Settings Display
-        const voiceName = this.settings.speechVoice || 'Auto';
+        // ✅ Voice Settings Display (resolve from URI if name is empty)
+        let voiceName = this.settings.speechVoice || '';
+        const voiceURI = this.settings.speechVoiceURI || '';
         const voicePref = this.settings.speechVoicePref || 'any';
-        const truncatedVoice = voiceName.length > 30 ? voiceName.slice(0, 27) + '...' : voiceName;
+
+        // If voice name is empty but URI exists, try to resolve from available voices
+        if (!voiceName && voiceURI && typeof speechSynthesis !== 'undefined') {
+            try {
+                const voices = speechSynthesis.getVoices() || [];
+                const foundVoice = voices.find((v) => v.voiceURI === voiceURI);
+                if (foundVoice) {
+                    voiceName = foundVoice.name;
+                }
+            } catch (e) {
+                console.warn('[VRChatPanel] Failed to resolve voice name:', e);
+            }
+        }
+
+        const displayVoice = voiceName || 'Auto';
+        const truncatedVoice = displayVoice.length > 30 ? displayVoice.slice(0, 27) + '...' : displayVoice;
 
         ctx.fillStyle = T.textDim;
         ctx.font = '500 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
