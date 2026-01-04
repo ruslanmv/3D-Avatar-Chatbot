@@ -621,26 +621,28 @@ export class VRChatPanel {
             tts: { x: W - P - 250, y: setTopY, w: 250, h: 92 },
         };
 
-        const avatarRect = { x: P, y: setTopY + 120, w: W - P * 2, h: 280 }; // Reduced from 320 to make room
-        const navY = avatarRect.y + 192;
+        // ✅ FIX 2: Reduce heights to prevent overlap with footer (footerY = 886px)
+        const avatarRect = { x: P, y: setTopY + 120, w: W - P * 2, h: 240 }; // Reduced by 40px
+        const navY = avatarRect.y + 152; // Adjusted for new height
         const settingsNav = {
             prev: { x: P + 26, y: navY, w: 110, h: 110 },
             next: { x: W - P - 136, y: navY, w: 110, h: 110 },
         };
 
         // ✅ Voice Settings Section (below avatar card)
-        const voiceY = avatarRect.y + avatarRect.h + 20;
-        const voiceRect = { x: P, y: voiceY, w: W - P * 2, h: 360 };
+        const voiceY = avatarRect.y + avatarRect.h + 15; // Reduced gap from 20 to 15
+        const voiceRect = { x: P, y: voiceY, w: W - P * 2, h: 300 }; // Reduced by 60px
+        // New calculation: setTopY(288) + 120 + Avatar(240) + Gap(15) + Voice(300) = 843px < footerY(886px) ✅
 
         // Voice selector navigation (prev/next arrows)
-        const voiceNavY = voiceY + 72;
+        const voiceNavY = voiceY + 70;
         const voiceNav = {
             prev: { x: P + 20, y: voiceNavY, w: 100, h: 100 },
             next: { x: W - P - 120, y: voiceNavY, w: 100, h: 100 },
         };
 
-        // Gender filter buttons (row of 3)
-        const genderY = voiceY + 190;
+        // Gender filter buttons (row of 3) - adjusted for tighter spacing
+        const genderY = voiceY + 180;
         const genderBtnW = 140;
         const genderGap = 16;
         const genderStartX = P + (W - P * 2 - genderBtnW * 3 - genderGap * 2) / 2;
@@ -650,8 +652,8 @@ export class VRChatPanel {
             female: { x: genderStartX + (genderBtnW + genderGap) * 2, y: genderY, w: genderBtnW, h: 68 },
         };
 
-        // Rate and Pitch controls (simplified for Quest: +/- buttons)
-        const controlY = voiceY + 280;
+        // Rate and Pitch controls (simplified for Quest: +/- buttons) - adjusted for new height
+        const controlY = voiceY + 260;
         const controlBtnW = 80;
         const controlGap = 20;
         const rateControls = {
@@ -665,14 +667,14 @@ export class VRChatPanel {
             increase: { x: W - P - 220 + controlBtnW + controlGap, y: controlY, w: controlBtnW, h: 60 },
         };
 
-        // Action buttons (Test Voice, Save Settings)
-        const actionY = voiceY + 320;
+        // Action buttons (Test Voice, Save Settings) - adjusted to fit within 300px height
+        const actionY = voiceY + 232; // Reduced to fit better
         const actionBtnW = 200;
         const actionGap = 20;
         const actionStartX = P + (W - P * 2 - actionBtnW * 2 - actionGap) / 2;
         const voiceActions = {
-            test: { x: actionStartX, y: actionY, w: actionBtnW, h: 68 },
-            save: { x: actionStartX + actionBtnW + actionGap, y: actionY, w: actionBtnW, h: 68 },
+            test: { x: actionStartX, y: actionY, w: actionBtnW, h: 60 }, // Reduced height from 68 to 60
+            save: { x: actionStartX + actionBtnW + actionGap, y: actionY, w: actionBtnW, h: 60 },
         };
 
         return {
@@ -873,6 +875,14 @@ export class VRChatPanel {
         const T = this.theme;
         const area = L.chatArea;
 
+        // ✅ FIX 1: SAVE CONTEXT & CREATE CLIPPING REGION
+        // This prevents text from overflowing into the chips and footer buttons
+        ctx.save();
+        ctx.beginPath();
+        // Define the rectangle where text is allowed to exist
+        ctx.rect(area.x, area.y, area.w, area.h);
+        ctx.clip(); // Nothing drawn after this line can escape this box
+
         // messages region top
         const pad = 18;
         let y = area.y + pad + 18;
@@ -896,6 +906,9 @@ export class VRChatPanel {
             y += 18;
             if (y > area.y + area.h - 120) return;
         });
+
+        // ✅ RESTORE CONTEXT (Turn off clipping so we can draw chips and transcript on top)
+        ctx.restore();
 
         // Transcript display (show interim/final transcript during STT)
         if (this.transcript && this.transcriptMode !== 'idle') {
