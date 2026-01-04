@@ -361,7 +361,9 @@ class SpeechService {
 
         try {
             const raw = localStorage.getItem('nexus_settings_v1');
-            if (!raw) return defaults;
+            if (!raw) {
+                return defaults;
+            }
 
             const s = JSON.parse(raw);
             return {
@@ -393,7 +395,9 @@ class SpeechService {
 
         if (savedVoiceName) {
             const savedVoice = this.voices.find((v) => v.name === savedVoiceName);
-            if (savedVoice) return savedVoice;
+            if (savedVoice) {
+                return savedVoice;
+            }
             console.warn('[SpeechService] ⚠️ Saved voice not found, falling back:', savedVoiceName);
         }
 
@@ -559,7 +563,9 @@ class SpeechService {
         // Respect desktop/VR toggle
         if (!prefs.ttsEnabled) {
             console.log('[SpeechService] 🔇 TTS disabled (prefs.ttsEnabled=false). Skipping speak().');
-            if (callbacks.onEnd) callbacks.onEnd();
+            if (callbacks.onEnd) {
+                callbacks.onEnd();
+            }
             return true; // treat as success
         }
 
@@ -1638,7 +1644,7 @@ class SpeechService {
 
                 // Alert if significant audio detected
                 if (percentage > 5 && logCount >= maxLogs) {
-                    console.log(`[SpeechService] 🔊 Audio spike detected: ${db.toFixed(1)} dB`);
+                    // console.log(`[SpeechService] 🔊 Audio spike detected: ${db.toFixed(1)} dB`);
                 }
             }, 500);
         } catch (error) {
