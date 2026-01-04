@@ -228,21 +228,30 @@ const config = loadConfig();
         }
 
         // Check if legacy TTS settings exist
-        const legacyVoice = localStorage.getItem('speech_voice_uri');
+        const legacyVoiceURI = localStorage.getItem('speech_voice_uri');
         const legacyRate = localStorage.getItem('speech_rate');
         const legacyPitch = localStorage.getItem('speech_pitch');
         const legacyLang = localStorage.getItem('speech_lang');
 
-        if (!legacyVoice && !legacyRate && !legacyPitch && !legacyLang) {
+        if (!legacyVoiceURI && !legacyRate && !legacyPitch && !legacyLang) {
             console.log('[Main] No legacy TTS settings to migrate');
             return;
         }
 
         console.log('[Main] 🔄 Migrating legacy TTS settings to unified format...');
 
+        // Resolve the voice object from URI
+        const voices = window.speechSynthesis?.getVoices?.() || [];
+        const resolvedVoice = legacyVoiceURI ? voices.find((v) => v.voiceURI === legacyVoiceURI) : null;
+
         // Build unified TTS config from legacy settings
         const ttsConfig = {
-            speechVoice: legacyVoice || '',
+            // ✅ Name goes here
+            speechVoice: resolvedVoice?.name || '',
+
+            // ✅ URI goes here
+            speechVoiceURI: legacyVoiceURI || '',
+
             speechRate: legacyRate ? parseFloat(legacyRate) : 0.9,
             speechPitch: legacyPitch ? parseFloat(legacyPitch) : 1.0,
             speechVolume: 1.0, // Default (not stored in legacy)
@@ -949,8 +958,19 @@ function saveSpeechSettingsFromUI() {
 
     // Also save to unified nexus_settings_v1 for VR compatibility
     if (window.SpeechService) {
+        // Resolve the selected voice object so we can store BOTH name and URI
+        const voices = window.speechSynthesis?.getVoices?.() || [];
+        const selectedVoiceObj = SpeechSettings.voiceURI
+            ? voices.find((v) => v.voiceURI === SpeechSettings.voiceURI)
+            : null;
+
         window.SpeechService.saveTTSConfig({
-            speechVoice: SpeechSettings.voiceURI || '',
+            // ✅ Store NAME here (what legacy VR logic expects)
+            speechVoice: selectedVoiceObj?.name || '',
+
+            // ✅ Store URI explicitly (best identifier)
+            speechVoiceURI: SpeechSettings.voiceURI || '',
+
             speechRate: SpeechSettings.rate,
             speechPitch: SpeechSettings.pitch,
             speechVolume: 1.0, // Default volume (not exposed in UI yet)
