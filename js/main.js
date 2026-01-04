@@ -102,6 +102,23 @@ class ChatbotApplication {
             speechPitchValue: document.getElementById('speechPitchValue'),
             showTimestamps: document.getElementById('showTimestamps'),
             soundEffects: document.getElementById('soundEffects'),
+
+            // STT settings
+            sttProvider: document.getElementById('stt-provider'),
+            wasmModelSize: document.getElementById('wasm-model-size'),
+            openaiWhisperModel: document.getElementById('openai-whisper-model'),
+            openaiSTTKey: document.getElementById('openai-stt-key'),
+            googleSTTKey: document.getElementById('google-stt-key'),
+            googleSTTModel: document.getElementById('google-stt-model'),
+            sttLanguage: document.getElementById('stt-language'),
+            sttInterimResults: document.getElementById('stt-interim-results'),
+            testSTT: document.getElementById('test-stt'),
+            testSTTStatus: document.getElementById('test-stt-status'),
+
+            // STT provider settings containers
+            wasmSTTSettings: document.getElementById('wasm-stt-settings'),
+            openaiSTTSettings: document.getElementById('openai-stt-settings'),
+            googleSTTSettings: document.getElementById('google-stt-settings'),
         };
     }
 
@@ -166,6 +183,16 @@ class ChatbotApplication {
 
         this.elements.speechPitch.addEventListener('input', (e) => {
             this.elements.speechPitchValue.textContent = `${e.target.value}x`;
+        });
+
+        // STT provider selection
+        this.elements.sttProvider.addEventListener('change', (e) => {
+            this.updateSTTProviderUI(e.target.value);
+        });
+
+        // Test STT button
+        this.elements.testSTT.addEventListener('click', () => {
+            this.testSTT();
         });
 
         // Window resize
@@ -264,9 +291,9 @@ class ChatbotApplication {
     }
 
     /**
-     * Handle voice input
+     * Handle voice input (improved with interim results and permission handling)
      */
-    handleVoiceInput() {
+    async handleVoiceInput() {
         if (!SpeechService.isRecognitionAvailable()) {
             ChatManager.showError('Voice input is not supported in your browser. Please use Chrome, Edge, or Safari.');
             return;
@@ -286,31 +313,60 @@ class ChatbotApplication {
         this.showRecordingIndicator(true);
         this.elements.voiceInputBtn.classList.add('recording');
 
-        SpeechService.startRecognition({
+        // Start recognition with interim results
+        await SpeechService.startRecognition({
+            onStart: () => {
+                console.log('🎤 Voice input started');
+                this.elements.chatInput.placeholder = 'Listening...';
+            },
+            onInterim: (interimText) => {
+                // Show interim results in real-time
+                this.elements.chatInput.value = interimText;
+                this.elements.chatInput.style.fontStyle = 'italic';
+                this.elements.chatInput.style.opacity = '0.7';
+            },
             onResult: (transcript, confidence) => {
                 this.showRecordingIndicator(false);
                 this.elements.voiceInputBtn.classList.remove('recording');
 
-                // Set the transcript as input
+                // Reset input styling
+                this.elements.chatInput.style.fontStyle = 'normal';
+                this.elements.chatInput.style.opacity = '1';
+                this.elements.chatInput.placeholder = 'Type your message...';
+
+                // Set the final transcript
                 this.elements.chatInput.value = transcript;
 
-                // Automatically send if confidence is high
-                if (confidence > 0.7) {
-                    this.handleSendMessage();
-                } else {
-                    AvatarController.idle();
-                    ChatManager.showInfo('Please review the transcription and press send.');
-                }
+                // Show what was transcribed with confidence level
+                const confidencePercent = Math.round(confidence * 100);
+                ChatManager.showInfo(
+                    `🎤 Transcribed (${confidencePercent}% confidence): "${transcript}"\n` +
+                        'Review and press Send, or click the microphone to record again.'
+                );
+
+                // Focus on input for easy editing/sending
+                AvatarController.idle();
+                this.elements.chatInput.focus();
+                this.elements.chatInput.select(); // Highlight text for easy review
             },
-            onError: (error) => {
+            onError: (error, context) => {
                 this.showRecordingIndicator(false);
                 this.elements.voiceInputBtn.classList.remove('recording');
-                ChatManager.showError(error);
+
+                // Reset input styling
+                this.elements.chatInput.style.fontStyle = 'normal';
+                this.elements.chatInput.style.opacity = '1';
+                this.elements.chatInput.placeholder = 'Type your message...';
+
+                // Show error with context if available
+                const errorMsg = context ? `${error}\n${context}` : error;
+                ChatManager.showError(errorMsg);
                 AvatarController.idle();
             },
             onEnd: () => {
                 this.showRecordingIndicator(false);
                 this.elements.voiceInputBtn.classList.remove('recording');
+                this.elements.chatInput.placeholder = 'Type your message...';
             },
         });
     }
@@ -402,6 +458,20 @@ class ChatbotApplication {
         this.elements.showTimestamps.checked = AppConfig.ui.showTimestamps;
         this.elements.soundEffects.checked = AppConfig.ui.soundEffects;
 
+        // Load STT settings
+        const sttConfig = SpeechService.getSTTConfig();
+        this.elements.sttProvider.value = sttConfig.provider;
+        this.elements.wasmModelSize.value = sttConfig.wasm.modelSize;
+        this.elements.openaiWhisperModel.value = sttConfig.openai.model;
+        this.elements.openaiSTTKey.value = sttConfig.openai.apiKey;
+        this.elements.googleSTTKey.value = sttConfig.google.apiKey;
+        this.elements.googleSTTModel.value = sttConfig.google.model;
+        this.elements.sttLanguage.value = sttConfig.language;
+        this.elements.sttInterimResults.checked = sttConfig.interimResults;
+
+        // Update provider-specific UI
+        this.updateSTTProviderUI(sttConfig.provider);
+
         // Show modal
         this.elements.settingsModal.style.display = 'flex';
     }
@@ -432,6 +502,30 @@ class ChatbotApplication {
             soundEffects: this.elements.soundEffects.checked,
         });
 
+        // Save STT settings
+        SpeechService.saveSTTConfig({
+            provider: this.elements.sttProvider.value,
+            language: this.elements.sttLanguage.value,
+            interimResults: this.elements.sttInterimResults.checked,
+            wasm: {
+                modelSize: this.elements.wasmModelSize.value,
+            },
+            openai: {
+                apiKey: this.elements.openaiSTTKey.value.trim(),
+                model: this.elements.openaiWhisperModel.value,
+            },
+            google: {
+                apiKey: this.elements.googleSTTKey.value.trim(),
+                model: this.elements.googleSTTModel.value,
+            },
+        });
+
+        // Update recognition options
+        SpeechService.setRecognitionOptions({
+            lang: this.elements.sttLanguage.value,
+            interimResults: this.elements.sttInterimResults.checked,
+        });
+
         // Close modal
         this.elements.settingsModal.style.display = 'none';
 
@@ -460,6 +554,91 @@ class ChatbotApplication {
             }
             this.elements.voiceSelect.appendChild(option);
         });
+    }
+
+    /**
+     * Update STT provider UI visibility
+     * @param provider
+     */
+    updateSTTProviderUI(provider) {
+        // Hide all provider-specific settings
+        this.elements.wasmSTTSettings.style.display = 'none';
+        this.elements.openaiSTTSettings.style.display = 'none';
+        this.elements.googleSTTSettings.style.display = 'none';
+
+        // Show relevant provider settings
+        switch (provider) {
+            case 'wasm':
+                this.elements.wasmSTTSettings.style.display = 'block';
+                break;
+            case 'openai':
+                this.elements.openaiSTTSettings.style.display = 'block';
+                break;
+            case 'google':
+                this.elements.googleSTTSettings.style.display = 'block';
+                break;
+        }
+    }
+
+    /**
+     * Test STT functionality
+     */
+    async testSTT() {
+        const statusElement = this.elements.testSTTStatus;
+
+        try {
+            statusElement.textContent = 'Starting STT test...';
+            statusElement.style.color = '#3b82f6';
+
+            // Start STT with test callbacks
+            const started = await SpeechService.startSTT({
+                onStart: () => {
+                    statusElement.textContent = '🎤 Listening... (speak now)';
+                    statusElement.style.color = '#10b981';
+                },
+                onInterim: (interimText) => {
+                    statusElement.textContent = `📝 Interim: "${interimText}"`;
+                    statusElement.style.color = '#f59e0b';
+                },
+                onResult: (transcript, confidence) => {
+                    const confidencePercent = Math.round(confidence * 100);
+                    statusElement.textContent = `✅ Transcribed: "${transcript}" (${confidencePercent}% confidence)`;
+                    statusElement.style.color = '#10b981';
+                    console.log('[STT Test] Result:', transcript);
+
+                    // Show success message
+                    setTimeout(() => {
+                        statusElement.textContent = 'Test completed successfully!';
+                    }, 2000);
+                },
+                onError: (error, context) => {
+                    const errorMsg = context ? `${error}: ${context}` : error;
+                    statusElement.textContent = `❌ Error: ${errorMsg}`;
+                    statusElement.style.color = '#ef4444';
+                    console.error('[STT Test] Error:', error, context);
+                },
+                onEnd: () => {
+                    console.log('[STT Test] Recognition ended');
+                },
+            });
+
+            if (!started) {
+                throw new Error('Failed to start STT');
+            }
+
+            // Auto-stop after 10 seconds
+            setTimeout(() => {
+                if (SpeechService.isRecognizing) {
+                    SpeechService.stopSTT();
+                    statusElement.textContent = 'Test timeout (10s limit)';
+                    statusElement.style.color = '#f59e0b';
+                }
+            }, 10000);
+        } catch (error) {
+            console.error('[STT Test] Failed:', error);
+            statusElement.textContent = `❌ Failed: ${error.message}`;
+            statusElement.style.color = '#ef4444';
+        }
     }
 
     /**
