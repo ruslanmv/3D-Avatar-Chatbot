@@ -357,10 +357,7 @@ export class VRControllers {
         controller.getWorldPosition(this._tmpV1);
         this.dragState.object.getWorldPosition(this._tmpV2);
 
-        const currentHandAngle = Math.atan2(
-            this._tmpV1.x - this._tmpV2.x,
-            this._tmpV1.z - this._tmpV2.z
-        );
+        const currentHandAngle = Math.atan2(this._tmpV1.x - this._tmpV2.x, this._tmpV1.z - this._tmpV2.z);
 
         // ✅ FIX: wrap delta to avoid jumps at PI / -PI boundary
         let delta = currentHandAngle - this.dragState.startHandAngle;

@@ -166,13 +166,12 @@ export class VRChatIntegration {
                     },
                     onResult: (text, confidence) => {
                         const confidencePercent = Math.round(confidence * 100);
-                        console.log(`[VRChatIntegration] 🎤 PTT Transcribed: "${text}" (${confidencePercent}% confidence)`);
+                        console.log(
+                            `[VRChatIntegration] 🎤 PTT Transcribed: "${text}" (${confidencePercent}% confidence)`
+                        );
 
                         // Show what was transcribed in VR panel
-                        this.vrChatPanel.appendMessage(
-                            'bot',
-                            `🎤 Heard: "${text}" (${confidencePercent}% confidence)`
-                        );
+                        this.vrChatPanel.appendMessage('bot', `🎤 Heard: "${text}" (${confidencePercent}% confidence)`);
 
                         // Send to chatbot
                         console.log(`[VRChatIntegration] 📤 PTT Sending to chatbot: "${text}"`);
@@ -271,7 +270,10 @@ export class VRChatIntegration {
                 const granted = await this.speechService.requestMicrophonePermission();
                 if (!granted) {
                     this.vrChatPanel.setStatus('idle');
-                    this.vrChatPanel.appendMessage('bot', 'Microphone permission denied. Please allow mic access in browser settings.');
+                    this.vrChatPanel.appendMessage(
+                        'bot',
+                        'Microphone permission denied. Please allow mic access in browser settings.'
+                    );
                     return;
                 }
                 this.vrChatPanel.appendMessage('bot', '✅ Microphone ready! Tap mic button to speak.');
@@ -298,10 +300,7 @@ export class VRChatIntegration {
                     console.log(`[VRChatIntegration] 🎤 Transcribed: "${text}" (${confidencePercent}% confidence)`);
 
                     // Show what was transcribed in VR panel
-                    this.vrChatPanel.appendMessage(
-                        'bot',
-                        `🎤 Heard: "${text}" (${confidencePercent}% confidence)`
-                    );
+                    this.vrChatPanel.appendMessage('bot', `🎤 Heard: "${text}" (${confidencePercent}% confidence)`);
 
                     // Send to chatbot
                     console.log(`[VRChatIntegration] 📤 Sending to chatbot: "${text}"`);
