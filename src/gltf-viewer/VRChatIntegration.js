@@ -528,15 +528,33 @@ export class VRChatIntegration {
         this.vrChatPanel.setStatus('thinking');
 
         try {
-            // Check if sendMessage function exists (from main.js)
-            if (typeof window.sendMessage === 'function') {
-                // Use existing sendMessage function
-                await window.sendMessage(text);
-            } else {
-                // Fallback: echo response
-                const response = `You said: "${text}". AI integration needed.`;
-                this.handleBotResponse(response);
+            // 1) Ensure LLMManager instance exists (uses same settings as desktop)
+            if (!window._nexusLLM) {
+                if (typeof window.LLMManager !== 'function') {
+                    throw new Error(
+                        'LLMManager not loaded. Ensure src/LLMManager.js is included before VRChatIntegration.'
+                    );
+                }
+                console.log('[VRChatIntegration] Creating LLMManager instance for VR');
+                window._nexusLLM = new window.LLMManager();
             }
+
+            // 2) Get settings and send message to configured AI provider
+            const settings = window._nexusLLM.getSettings();
+            const systemPrompt =
+                settings.system_prompt ||
+                'You are a helpful AI assistant named Nexus. You are friendly, professional, and knowledgeable.';
+
+            console.log('[VRChatIntegration] Sending to AI:', {
+                provider: settings.provider,
+                useProxy: settings.proxy?.enable_proxy,
+                textPreview: text.slice(0, 50),
+            });
+
+            const reply = await window._nexusLLM.sendMessage(text, systemPrompt);
+
+            // 3) Show + speak AI response
+            this.handleBotResponse(reply);
         } catch (error) {
             console.error('[VRChatIntegration] AI processing error:', error);
             this.handleBotResponse('Sorry, I encountered an error processing your message.');

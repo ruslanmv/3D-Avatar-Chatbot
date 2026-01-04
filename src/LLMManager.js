@@ -165,9 +165,10 @@
          * @returns {Promise<Response>}
          */
         async _fetchViaProxy(url, method, headers, body) {
-            const proxyUrl = `${this._proxyBase()}/proxy`;
+            // Use proxy_url directly - it already includes /proxy or /api/proxy
+            const proxyUrl = this._proxyBase();
 
-            console.log(`[LLMManager] Proxying ${method} request to ${url}`);
+            console.log(`[LLMManager] Proxying ${method} request to ${url} via ${proxyUrl}`);
 
             const response = await fetch(proxyUrl, {
                 method: 'POST',
