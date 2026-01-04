@@ -405,8 +405,7 @@ class SpeechService {
         const fallbackPool = langVoices.length ? langVoices : this.voices;
 
         // Slight preference heuristic for female/natural voices
-        const preferred =
-            fallbackPool.find((v) => /female|samantha|victoria/i.test(v.name)) || fallbackPool[0] || null;
+        const preferred = fallbackPool.find((v) => /female|samantha|victoria/i.test(v.name)) || fallbackPool[0] || null;
 
         return preferred;
     }

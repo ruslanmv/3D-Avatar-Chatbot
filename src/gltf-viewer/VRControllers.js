@@ -434,9 +434,7 @@ export class VRControllers {
                     const prevPressed = last[i]?.pressed ?? false;
                     if (b.pressed !== prevPressed) {
                         const action = b.pressed ? 'PRESSED' : 'RELEASED';
-                        console.log(
-                            `[VRControllers] 🎮 LEFT button[${i}] ${action} (value=${b.value.toFixed(2)})`
-                        );
+                        console.log(`[VRControllers] 🎮 LEFT button[${i}] ${action} (value=${b.value.toFixed(2)})`);
                     }
                     last[i] = { pressed: b.pressed, value: b.value };
                 });
@@ -497,9 +495,7 @@ export class VRControllers {
                     const prevPressed = last[i]?.pressed ?? false;
                     if (b.pressed !== prevPressed) {
                         const action = b.pressed ? 'PRESSED' : 'RELEASED';
-                        console.log(
-                            `[VRControllers] 🎮 RIGHT button[${i}] ${action} (value=${b.value.toFixed(2)})`
-                        );
+                        console.log(`[VRControllers] 🎮 RIGHT button[${i}] ${action} (value=${b.value.toFixed(2)})`);
                     }
                     last[i] = { pressed: b.pressed, value: b.value };
                 });

@@ -138,6 +138,75 @@ function loadConfig() {
 const config = loadConfig();
 
 /* ============================
+   One-Time Migration: Legacy → Unified Settings
+   ============================ */
+// Automatically migrate existing settings to unified format for VR compatibility
+(function migrateLegacySettings() {
+    try {
+        // Check if unified settings already exist
+        if (localStorage.getItem('nexus_llm_settings')) {
+            console.log('[Main] Unified settings already exist, skipping migration');
+            return;
+        }
+
+        // Check if legacy settings exist
+        const legacyProvider = localStorage.getItem('ai_provider');
+        if (!legacyProvider || legacyProvider === 'none') {
+            console.log('[Main] No legacy settings to migrate');
+            return;
+        }
+
+        // Create LLMManager and save current config to unified format
+        if (typeof window.LLMManager === 'function') {
+            console.log('[Main] 🔄 Migrating legacy settings to unified format...');
+            window._nexusLLM = new window.LLMManager();
+
+            const patch = {
+                provider: config.provider,
+                system_prompt: config.systemPrompt,
+                proxy: {
+                    enable_proxy: true,
+                    proxy_url: '/api/proxy',
+                },
+            };
+
+            if (config.provider === 'openai') {
+                patch.openai = {
+                    api_key: config.apiKey,
+                    model: config.model || 'gpt-4o',
+                    base_url: config.baseUrl || '',
+                };
+            } else if (config.provider === 'claude') {
+                patch.claude = {
+                    api_key: config.apiKey,
+                    model: config.model || 'claude-3-5-sonnet-20241022',
+                    base_url: config.baseUrl || '',
+                };
+            } else if (config.provider === 'watsonx') {
+                patch.watsonx = {
+                    api_key: config.apiKey,
+                    project_id: config.watsonxProjectId || '',
+                    model_id: config.model || 'ibm/granite-13b-chat-v2',
+                    base_url: config.baseUrl || 'https://us-south.ml.cloud.ibm.com',
+                };
+            } else if (config.provider === 'ollama') {
+                patch.ollama = {
+                    base_url: config.baseUrl || 'http://localhost:11434',
+                    model: config.model || 'llama3',
+                };
+            }
+
+            window._nexusLLM.updateSettings(patch);
+            console.log('[Main] ✅ Migration complete! VR will now use:', config.provider);
+        } else {
+            console.warn('[Main] LLMManager not loaded yet, migration will retry on settings save');
+        }
+    } catch (e) {
+        console.warn('[Main] Migration failed (non-fatal):', e);
+    }
+})();
+
+/* ============================
    Helpers
    ============================ */
 function $(id) {
