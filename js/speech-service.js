@@ -23,6 +23,12 @@ class SpeechService {
         this.vrRecorder = null;
         this.vrRecordingChunks = [];
 
+        // STT Provider Configuration
+        this.sttConfig = this.loadSTTConfig();
+        this.currentSTTProvider = null; // Current active provider
+        this.whisperWorker = null; // WASM Whisper worker
+        this.whisperModelLoaded = false;
+
         // Speech Synthesis (Text-to-Speech)
         this.synthesis = window.speechSynthesis;
         this.isSynthesisSupported = 'speechSynthesis' in window;
@@ -717,6 +723,675 @@ class SpeechService {
             this.vrRecorder.stop();
         }
         this.isRecognizing = false;
+    }
+
+    // ============================================================================
+    // UNIFIED STT API - Automatic Provider Fallback
+    // ============================================================================
+
+    /**
+     * Load STT configuration from localStorage
+     * @returns {object} STT configuration
+     */
+    loadSTTConfig() {
+        const defaultConfig = {
+            provider: 'webspeech', // 'webspeech' | 'wasm' | 'openai' | 'google'
+            language: 'en-US',
+            interimResults: true,
+            wasm: {
+                modelSize: 'base', // 'tiny' | 'base' | 'small'
+                modelPath: '/models/whisper',
+            },
+            openai: {
+                apiKey: '', // Empty = use main API key
+                model: 'whisper-1',
+            },
+            google: {
+                apiKey: '',
+                model: 'default', // 'default' | 'latest_long' | 'latest_short'
+            },
+        };
+
+        try {
+            const saved = localStorage.getItem('stt_config');
+            return saved ? { ...defaultConfig, ...JSON.parse(saved) } : defaultConfig;
+        } catch (error) {
+            console.warn('[SpeechService] Failed to load STT config:', error);
+            return defaultConfig;
+        }
+    }
+
+    /**
+     * Save STT configuration to localStorage
+     * @param {object} config - Configuration object
+     */
+    saveSTTConfig(config) {
+        try {
+            this.sttConfig = { ...this.sttConfig, ...config };
+            localStorage.setItem('stt_config', JSON.stringify(this.sttConfig));
+            console.log('[SpeechService] STT config saved:', this.sttConfig);
+        } catch (error) {
+            console.error('[SpeechService] Failed to save STT config:', error);
+        }
+    }
+
+    /**
+     * Get current STT configuration
+     * @returns {object} Current configuration
+     */
+    getSTTConfig() {
+        return { ...this.sttConfig };
+    }
+
+    /**
+     * Check if Web Speech API is available
+     * @returns {boolean}
+     */
+    isWebSpeechAvailable() {
+        return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+    }
+
+    /**
+     * Check if MediaRecorder is available (for WASM fallback)
+     * @returns {boolean}
+     */
+    isMediaRecorderAvailable() {
+        return (
+            typeof window.MediaRecorder !== 'undefined' &&
+            navigator.mediaDevices &&
+            typeof navigator.mediaDevices.getUserMedia === 'function'
+        );
+    }
+
+    /**
+     * Check if WASM Whisper is available
+     * @returns {boolean}
+     */
+    isWASMWhisperAvailable() {
+        return typeof Worker !== 'undefined' && this.isMediaRecorderAvailable();
+    }
+
+    /**
+     * Unified STT entry point with automatic fallback
+     * Falls back in order: Web Speech → WASM Whisper → OpenAI → Google
+     * @param {object} callbacks - Event callbacks
+     * @returns {Promise<boolean>} Success status
+     */
+    async startSTT(callbacks = {}) {
+        console.log('[SpeechService] 🎙️ Starting STT with provider:', this.sttConfig.provider);
+
+        // Try preferred provider first
+        switch (this.sttConfig.provider) {
+            case 'webspeech':
+                if (this.isWebSpeechAvailable()) {
+                    this.currentSTTProvider = 'webspeech';
+                    return this.startRecognition(callbacks);
+                }
+                console.warn('[SpeechService] Web Speech not available, trying fallback...');
+                break;
+
+            case 'wasm':
+                if (this.isWASMWhisperAvailable()) {
+                    this.currentSTTProvider = 'wasm';
+                    return this.startWASMWhisper(callbacks);
+                }
+                console.warn('[SpeechService] WASM Whisper not available, trying fallback...');
+                break;
+
+            case 'openai':
+                this.currentSTTProvider = 'openai';
+                return this.startOpenAIWhisper(callbacks);
+
+            case 'google':
+                this.currentSTTProvider = 'google';
+                return this.startGoogleSTT(callbacks);
+        }
+
+        // Automatic fallback chain
+        if (this.isWebSpeechAvailable()) {
+            console.log('[SpeechService] Fallback: Using Web Speech API');
+            this.currentSTTProvider = 'webspeech';
+            return this.startRecognition(callbacks);
+        }
+
+        if (this.isWASMWhisperAvailable()) {
+            console.log('[SpeechService] Fallback: Using WASM Whisper');
+            this.currentSTTProvider = 'wasm';
+            return this.startWASMWhisper(callbacks);
+        }
+
+        // Try OpenAI/Google as last resort
+        if (this.sttConfig.openai.apiKey || this.sttConfig.provider === 'openai') {
+            console.log('[SpeechService] Fallback: Using OpenAI Whisper API');
+            this.currentSTTProvider = 'openai';
+            return this.startOpenAIWhisper(callbacks);
+        }
+
+        if (this.sttConfig.google.apiKey || this.sttConfig.provider === 'google') {
+            console.log('[SpeechService] Fallback: Using Google Cloud STT');
+            this.currentSTTProvider = 'google';
+            return this.startGoogleSTT(callbacks);
+        }
+
+        // No STT available
+        console.error('[SpeechService] ❌ No STT providers available!');
+        if (callbacks.onError) {
+            callbacks.onError(
+                'stt-unavailable',
+                'No speech-to-text providers available. Please enable microphone or configure API keys.'
+            );
+        }
+        return false;
+    }
+
+    /**
+     * Stop current STT session
+     */
+    stopSTT() {
+        console.log('[SpeechService] Stopping STT (provider:', this.currentSTTProvider, ')');
+
+        switch (this.currentSTTProvider) {
+            case 'webspeech':
+                this.stopRecognition();
+                break;
+            case 'wasm':
+                this.stopWASMWhisper();
+                break;
+            case 'openai':
+            case 'google':
+                this.stopVRFallbackRecording();
+                break;
+        }
+
+        this.currentSTTProvider = null;
+    }
+
+    // ============================================================================
+    // WASM Whisper Implementation
+    // ============================================================================
+
+    /**
+     * Start WASM Whisper transcription
+     * @param {object} callbacks - Event callbacks
+     * @returns {Promise<boolean>}
+     */
+    async startWASMWhisper(callbacks = {}) {
+        console.log('[SpeechService] 🎙️ Starting WASM Whisper transcription');
+        if (window.NEXUS_LOGGER) {
+            window.NEXUS_LOGGER.info('STT WASM Whisper started');
+        }
+
+        try {
+            // Ensure worker is loaded
+            await this._ensureWhisperWorker();
+
+            // Request microphone access
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+                ? 'audio/webm;codecs=opus'
+                : 'audio/webm';
+
+            this.vrRecorder = new MediaRecorder(stream, { mimeType });
+            this.vrRecordingChunks = [];
+
+            this.vrRecorder.onstart = () => {
+                console.log('[SpeechService] 🎤 WASM recording started');
+                this.isRecognizing = true;
+                if (callbacks.onStart) {
+                    callbacks.onStart();
+                }
+            };
+
+            this.vrRecorder.ondataavailable = (event) => {
+                if (event.data && event.data.size > 0) {
+                    this.vrRecordingChunks.push(event.data);
+                }
+            };
+
+            this.vrRecorder.onstop = async () => {
+                console.log('[SpeechService] ⏹️ WASM recording stopped, transcribing...');
+                this.isRecognizing = false;
+
+                if (callbacks.onEnd) {
+                    callbacks.onEnd();
+                }
+
+                try {
+                    const blob = new Blob(this.vrRecordingChunks, { type: this.vrRecorder.mimeType });
+                    console.log(`[SpeechService] Transcribing ${blob.size} bytes with WASM...`);
+
+                    // Convert audio to PCM and transcribe
+                    const transcript = await this._transcribeWithWhisperWasm(blob);
+
+                    console.log(`[SpeechService] ✅ WASM transcription: "${transcript}"`);
+                    if (window.NEXUS_LOGGER) {
+                        window.NEXUS_LOGGER.info('STT WASM result', { text: transcript });
+                    }
+
+                    if (callbacks.onResult) {
+                        callbacks.onResult(transcript, 1.0); // WASM doesn't return confidence
+                    }
+                } catch (error) {
+                    console.error('[SpeechService] ⚠️ WASM transcription failed:', error);
+                    if (window.NEXUS_LOGGER) {
+                        window.NEXUS_LOGGER.error('STT WASM failed', { error: error.message });
+                    }
+                    if (callbacks.onError) {
+                        callbacks.onError('wasm-transcription-failed', error.message);
+                    }
+                } finally {
+                    stream.getTracks().forEach((track) => track.stop());
+                    this.vrRecordingChunks = [];
+                }
+            };
+
+            this.vrRecorder.start();
+            return true;
+        } catch (error) {
+            console.error('[SpeechService] ⚠️ Failed to start WASM Whisper:', error);
+            if (callbacks.onError) {
+                callbacks.onError('wasm-mic-failed', error.message);
+            }
+            this.isRecognizing = false;
+            return false;
+        }
+    }
+
+    /**
+     * Stop WASM Whisper transcription
+     */
+    stopWASMWhisper() {
+        if (this.vrRecorder && this.vrRecorder.state !== 'inactive') {
+            console.log('[SpeechService] Stopping WASM recording...');
+            this.vrRecorder.stop();
+        }
+        this.isRecognizing = false;
+    }
+
+    /**
+     * Ensure Whisper worker is loaded
+     * @returns {Promise<void>}
+     */
+    async _ensureWhisperWorker() {
+        if (this.whisperWorker && this.whisperModelLoaded) {
+            return;
+        }
+
+        console.log('[SpeechService] Loading Whisper WASM worker...');
+
+        return new Promise((resolve, reject) => {
+            try {
+                this.whisperWorker = new Worker('/workers/whisper-worker.js');
+
+                this.whisperWorker.onmessage = (event) => {
+                    const { type, error } = event.data;
+
+                    if (type === 'model-loaded') {
+                        this.whisperModelLoaded = true;
+                        console.log('[SpeechService] ✅ Whisper model loaded');
+                        resolve();
+                    } else if (type === 'model-load-error') {
+                        console.error('[SpeechService] ❌ Whisper model load failed:', error);
+                        reject(new Error(error));
+                    }
+                };
+
+                this.whisperWorker.onerror = (error) => {
+                    console.error('[SpeechService] ❌ Worker error:', error);
+                    reject(error);
+                };
+
+                // Load model
+                this.whisperWorker.postMessage({
+                    type: 'load-model',
+                    modelSize: this.sttConfig.wasm.modelSize,
+                    modelPath: this.sttConfig.wasm.modelPath,
+                });
+            } catch (error) {
+                console.error('[SpeechService] ❌ Failed to create worker:', error);
+                reject(error);
+            }
+        });
+    }
+
+    /**
+     * Transcribe audio with Whisper WASM
+     * @param {Blob} audioBlob - Audio blob
+     * @returns {Promise<string>} Transcript
+     */
+    async _transcribeWithWhisperWasm(audioBlob) {
+        // Convert blob to PCM Float32Array @ 16kHz
+        const pcmData = await this._decodeBlobToMonoPCM(audioBlob);
+
+        return new Promise((resolve, reject) => {
+            const onMessage = (event) => {
+                const { type, transcript, error } = event.data;
+
+                if (type === 'transcription-complete') {
+                    this.whisperWorker.removeEventListener('message', onMessage);
+                    resolve(transcript);
+                } else if (type === 'transcription-error') {
+                    this.whisperWorker.removeEventListener('message', onMessage);
+                    reject(new Error(error));
+                }
+            };
+
+            this.whisperWorker.addEventListener('message', onMessage);
+
+            // Send audio to worker
+            this.whisperWorker.postMessage(
+                {
+                    type: 'transcribe',
+                    audio: pcmData,
+                    language: this.sttConfig.language.split('-')[0], // 'en-US' → 'en'
+                },
+                [pcmData.buffer]
+            );
+        });
+    }
+
+    /**
+     * Decode audio blob to mono PCM Float32Array @ 16kHz
+     * @param {Blob} blob - Audio blob
+     * @returns {Promise<Float32Array>} PCM data
+     */
+    async _decodeBlobToMonoPCM(blob) {
+        const arrayBuffer = await blob.arrayBuffer();
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+        // Get mono channel
+        let pcm = audioBuffer.getChannelData(0);
+
+        // Resample to 16kHz if needed
+        if (audioBuffer.sampleRate !== 16000) {
+            pcm = this._resampleFloat32(pcm, audioBuffer.sampleRate, 16000);
+        }
+
+        return pcm;
+    }
+
+    /**
+     * Resample Float32Array to target sample rate
+     * @param {Float32Array} samples - Input samples
+     * @param {number} fromRate - Source sample rate
+     * @param {number} toRate - Target sample rate
+     * @returns {Float32Array} Resampled data
+     */
+    _resampleFloat32(samples, fromRate, toRate) {
+        if (fromRate === toRate) {
+            return samples;
+        }
+
+        const ratio = fromRate / toRate;
+        const newLength = Math.round(samples.length / ratio);
+        const result = new Float32Array(newLength);
+
+        for (let i = 0; i < newLength; i++) {
+            const srcIndex = i * ratio;
+            const srcIndexInt = Math.floor(srcIndex);
+            const fraction = srcIndex - srcIndexInt;
+
+            const sample1 = samples[srcIndexInt] || 0;
+            const sample2 = samples[srcIndexInt + 1] || samples[srcIndexInt] || 0;
+
+            // Linear interpolation
+            result[i] = sample1 + (sample2 - sample1) * fraction;
+        }
+
+        return result;
+    }
+
+    // ============================================================================
+    // OpenAI Whisper API Implementation
+    // ============================================================================
+
+    /**
+     * Start OpenAI Whisper API transcription
+     * @param {object} callbacks - Event callbacks
+     * @returns {Promise<boolean>}
+     */
+    async startOpenAIWhisper(callbacks = {}) {
+        console.log('[SpeechService] 🎙️ Starting OpenAI Whisper API transcription');
+        if (window.NEXUS_LOGGER) {
+            window.NEXUS_LOGGER.info('STT OpenAI Whisper started');
+        }
+
+        try {
+            // Request microphone access
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+                ? 'audio/webm;codecs=opus'
+                : 'audio/webm';
+
+            this.vrRecorder = new MediaRecorder(stream, { mimeType });
+            this.vrRecordingChunks = [];
+
+            this.vrRecorder.onstart = () => {
+                console.log('[SpeechService] 🎤 OpenAI recording started');
+                this.isRecognizing = true;
+                if (callbacks.onStart) {
+                    callbacks.onStart();
+                }
+            };
+
+            this.vrRecorder.ondataavailable = (event) => {
+                if (event.data && event.data.size > 0) {
+                    this.vrRecordingChunks.push(event.data);
+                }
+            };
+
+            this.vrRecorder.onstop = async () => {
+                console.log('[SpeechService] ⏹️ OpenAI recording stopped, uploading...');
+                this.isRecognizing = false;
+
+                if (callbacks.onEnd) {
+                    callbacks.onEnd();
+                }
+
+                try {
+                    const blob = new Blob(this.vrRecordingChunks, { type: this.vrRecorder.mimeType });
+                    console.log(`[SpeechService] Uploading ${blob.size} bytes to OpenAI...`);
+
+                    const formData = new FormData();
+                    formData.append('file', blob, 'audio.webm');
+                    formData.append('model', this.sttConfig.openai.model);
+                    formData.append('language', this.sttConfig.language.split('-')[0]);
+
+                    const apiKey = this.sttConfig.openai.apiKey || AppConfig?.openai?.apiKey || '';
+                    if (!apiKey) {
+                        throw new Error('OpenAI API key not configured');
+                    }
+
+                    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+                        method: 'POST',
+                        headers: {
+                            Authorization: `Bearer ${apiKey}`,
+                        },
+                        body: formData,
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.text();
+                        throw new Error(`OpenAI API error: ${response.status} - ${error}`);
+                    }
+
+                    const result = await response.json();
+                    const transcript = result.text || '';
+
+                    console.log(`[SpeechService] ✅ OpenAI transcription: "${transcript}"`);
+                    if (window.NEXUS_LOGGER) {
+                        window.NEXUS_LOGGER.info('STT OpenAI result', { text: transcript });
+                    }
+
+                    if (callbacks.onResult) {
+                        callbacks.onResult(transcript, 1.0);
+                    }
+                } catch (error) {
+                    console.error('[SpeechService] ⚠️ OpenAI transcription failed:', error);
+                    if (window.NEXUS_LOGGER) {
+                        window.NEXUS_LOGGER.error('STT OpenAI failed', { error: error.message });
+                    }
+                    if (callbacks.onError) {
+                        callbacks.onError('openai-transcription-failed', error.message);
+                    }
+                } finally {
+                    stream.getTracks().forEach((track) => track.stop());
+                    this.vrRecordingChunks = [];
+                }
+            };
+
+            this.vrRecorder.start();
+            return true;
+        } catch (error) {
+            console.error('[SpeechService] ⚠️ Failed to start OpenAI Whisper:', error);
+            if (callbacks.onError) {
+                callbacks.onError('openai-mic-failed', error.message);
+            }
+            this.isRecognizing = false;
+            return false;
+        }
+    }
+
+    // ============================================================================
+    // Google Cloud STT Implementation
+    // ============================================================================
+
+    /**
+     * Start Google Cloud STT transcription
+     * @param {object} callbacks - Event callbacks
+     * @returns {Promise<boolean>}
+     */
+    async startGoogleSTT(callbacks = {}) {
+        console.log('[SpeechService] 🎙️ Starting Google Cloud STT');
+        if (window.NEXUS_LOGGER) {
+            window.NEXUS_LOGGER.info('STT Google Cloud started');
+        }
+
+        try {
+            // Request microphone access
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+                ? 'audio/webm;codecs=opus'
+                : 'audio/webm';
+
+            this.vrRecorder = new MediaRecorder(stream, { mimeType });
+            this.vrRecordingChunks = [];
+
+            this.vrRecorder.onstart = () => {
+                console.log('[SpeechService] 🎤 Google recording started');
+                this.isRecognizing = true;
+                if (callbacks.onStart) {
+                    callbacks.onStart();
+                }
+            };
+
+            this.vrRecorder.ondataavailable = (event) => {
+                if (event.data && event.data.size > 0) {
+                    this.vrRecordingChunks.push(event.data);
+                }
+            };
+
+            this.vrRecorder.onstop = async () => {
+                console.log('[SpeechService] ⏹️ Google recording stopped, uploading...');
+                this.isRecognizing = false;
+
+                if (callbacks.onEnd) {
+                    callbacks.onEnd();
+                }
+
+                try {
+                    const blob = new Blob(this.vrRecordingChunks, { type: this.vrRecorder.mimeType });
+                    console.log(`[SpeechService] Uploading ${blob.size} bytes to Google Cloud...`);
+
+                    // Convert blob to base64
+                    const base64Audio = await this._blobToBase64(blob);
+
+                    const apiKey = this.sttConfig.google.apiKey;
+                    if (!apiKey) {
+                        throw new Error('Google Cloud API key not configured');
+                    }
+
+                    const requestBody = {
+                        config: {
+                            encoding: 'WEBM_OPUS',
+                            sampleRateHertz: 48000,
+                            languageCode: this.sttConfig.language,
+                            model: this.sttConfig.google.model,
+                        },
+                        audio: {
+                            content: base64Audio.split(',')[1], // Remove data:audio/webm;base64, prefix
+                        },
+                    };
+
+                    const response = await fetch(`https://speech.googleapis.com/v1/speech:recognize?key=${apiKey}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(requestBody),
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.text();
+                        throw new Error(`Google Cloud API error: ${response.status} - ${error}`);
+                    }
+
+                    const result = await response.json();
+                    const transcript = result.results?.[0]?.alternatives?.[0]?.transcript || '';
+                    const confidence = result.results?.[0]?.alternatives?.[0]?.confidence || 1.0;
+
+                    console.log(
+                        `[SpeechService] ✅ Google transcription: "${transcript}" (${Math.round(confidence * 100)}%)`
+                    );
+                    if (window.NEXUS_LOGGER) {
+                        window.NEXUS_LOGGER.info('STT Google result', { text: transcript, confidence });
+                    }
+
+                    if (callbacks.onResult) {
+                        callbacks.onResult(transcript, confidence);
+                    }
+                } catch (error) {
+                    console.error('[SpeechService] ⚠️ Google transcription failed:', error);
+                    if (window.NEXUS_LOGGER) {
+                        window.NEXUS_LOGGER.error('STT Google failed', { error: error.message });
+                    }
+                    if (callbacks.onError) {
+                        callbacks.onError('google-transcription-failed', error.message);
+                    }
+                } finally {
+                    stream.getTracks().forEach((track) => track.stop());
+                    this.vrRecordingChunks = [];
+                }
+            };
+
+            this.vrRecorder.start();
+            return true;
+        } catch (error) {
+            console.error('[SpeechService] ⚠️ Failed to start Google Cloud STT:', error);
+            if (callbacks.onError) {
+                callbacks.onError('google-mic-failed', error.message);
+            }
+            this.isRecognizing = false;
+            return false;
+        }
+    }
+
+    /**
+     * Convert blob to base64
+     * @param {Blob} blob - Audio blob
+     * @returns {Promise<string>} Base64 string
+     */
+    async _blobToBase64(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
     }
 }
 
