@@ -1426,7 +1426,9 @@ async function fetchAndPopulateModels(provider, selectElement) {
         const originalProvider = currentSettings.provider;
 
         if (provider !== originalProvider) {
-            console.log(`[Main] Temporarily switching provider from ${originalProvider} to ${provider} for model fetch`);
+            console.log(
+                `[Main] Temporarily switching provider from ${originalProvider} to ${provider} for model fetch`
+            );
             window._nexusLLM.updateSettings({ provider: provider });
         }
 
@@ -1441,8 +1443,14 @@ async function fetchAndPopulateModels(provider, selectElement) {
             console.warn(`[Main] Model fetch warning: ${result.error}`);
 
             // Show error prominently if it's an authentication issue
-            if (result.error.includes('401') || result.error.includes('Authentication') || result.error.includes('invalid')) {
-                alert(`⚠️ ${provider.toUpperCase()} Authentication Error\n\n${result.error}\n\nPlease check your API key in Settings and try again.`);
+            if (
+                result.error.includes('401') ||
+                result.error.includes('Authentication') ||
+                result.error.includes('invalid')
+            ) {
+                alert(
+                    `⚠️ ${provider.toUpperCase()} Authentication Error\n\n${result.error}\n\nPlease check your API key in Settings and try again.`
+                );
             }
         }
 
@@ -2406,21 +2414,33 @@ window.debugAPIKeys = function () {
 
             if (settings.openai?.api_key) {
                 const key = settings.openai.api_key;
-                console.log('  OpenAI Key:', key.substring(0, 12) + '...' + key.substring(key.length - 4), `(${key.length} chars)`);
+                console.log(
+                    '  OpenAI Key:',
+                    key.substring(0, 12) + '...' + key.substring(key.length - 4),
+                    `(${key.length} chars)`
+                );
                 console.log('    ✓ Starts with:', key.substring(0, 7));
                 console.log('    ✓ Valid format:', key.startsWith('sk-') && !key.startsWith('sk-ant-') ? '✅' : '❌');
             }
 
             if (settings.claude?.api_key) {
                 const key = settings.claude.api_key;
-                console.log('  Claude Key:', key.substring(0, 12) + '...' + key.substring(key.length - 4), `(${key.length} chars)`);
+                console.log(
+                    '  Claude Key:',
+                    key.substring(0, 12) + '...' + key.substring(key.length - 4),
+                    `(${key.length} chars)`
+                );
                 console.log('    ✓ Starts with:', key.substring(0, 7));
                 console.log('    ✓ Valid format:', key.startsWith('sk-ant-') ? '✅' : '❌');
             }
 
             if (settings.watsonx?.api_key) {
                 const key = settings.watsonx.api_key;
-                console.log('  Watsonx Key:', key.substring(0, 12) + '...' + key.substring(key.length - 4), `(${key.length} chars)`);
+                console.log(
+                    '  Watsonx Key:',
+                    key.substring(0, 12) + '...' + key.substring(key.length - 4),
+                    `(${key.length} chars)`
+                );
             }
 
             if (settings.ollama?.base_url) {

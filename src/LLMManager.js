@@ -249,7 +249,9 @@
 
             // Validate key format (OpenAI keys start with sk- but NOT sk-ant-)
             if (!api_key.startsWith('sk-') || api_key.startsWith('sk-ant-')) {
-                throw new Error('Invalid OpenAI API key format. OpenAI keys should start with "sk-" (not "sk-ant-"). Please check your API key in Settings.');
+                throw new Error(
+                    'Invalid OpenAI API key format. OpenAI keys should start with "sk-" (not "sk-ant-"). Please check your API key in Settings.'
+                );
             }
 
             const url = `${(base_url || 'https://api.openai.com').replace(/\/$/, '')}/v1/chat/completions`;
@@ -299,7 +301,9 @@
 
             // Validate key format
             if (!api_key.startsWith('sk-ant-')) {
-                throw new Error('Invalid Claude API key format. Anthropic keys should start with "sk-ant-". Please check your API key in Settings.');
+                throw new Error(
+                    'Invalid Claude API key format. Anthropic keys should start with "sk-ant-". Please check your API key in Settings.'
+                );
             }
 
             const url = `${(base_url || 'https://api.anthropic.com').replace(/\/$/, '')}/v1/messages`;
@@ -436,7 +440,10 @@
 
             // Validate key format
             if (!api_key.startsWith('sk-') || api_key.startsWith('sk-ant-')) {
-                console.warn('[LLMManager] ⚠️ OpenAI API key should start with "sk-" (not "sk-ant-"), got:', api_key.substring(0, 10) + '...');
+                console.warn(
+                    '[LLMManager] ⚠️ OpenAI API key should start with "sk-" (not "sk-ant-"), got:',
+                    api_key.substring(0, 10) + '...'
+                );
                 return {
                     models: fallback,
                     error: 'Invalid API key format. OpenAI keys should start with "sk-" (not "sk-ant-"). Please check your API key in Settings.',
@@ -509,7 +516,10 @@
 
             // Validate key format (Anthropic keys start with sk-ant-)
             if (!api_key.startsWith('sk-ant-')) {
-                console.warn('[LLMManager] ⚠️ Claude API key should start with "sk-ant-", got:', api_key.substring(0, 10) + '...');
+                console.warn(
+                    '[LLMManager] ⚠️ Claude API key should start with "sk-ant-", got:',
+                    api_key.substring(0, 10) + '...'
+                );
                 return {
                     models: fallback,
                     error: 'Invalid API key format. Anthropic keys should start with "sk-ant-". Please check your API key in Settings.',
@@ -526,7 +536,10 @@
                     'anthropic-version': '2023-06-01',
                 };
 
-                console.log('[LLMManager] 🔑 Using Claude API key:', api_key.substring(0, 12) + '...' + api_key.substring(api_key.length - 4));
+                console.log(
+                    '[LLMManager] 🔑 Using Claude API key:',
+                    api_key.substring(0, 12) + '...' + api_key.substring(api_key.length - 4)
+                );
 
                 let response;
                 if (this._hasProxy()) {
