@@ -64,16 +64,78 @@ let dirLight = null;
 /* ============================
    Configuration (Providers)
    ============================ */
-const config = {
-    provider: localStorage.getItem('ai_provider') || 'none',
-    apiKey: localStorage.getItem('ai_api_key') || '',
-    model: localStorage.getItem('ai_model') || '',
-    systemPrompt:
-        localStorage.getItem('system_prompt') ||
-        'You are a helpful AI assistant named Nexus. You are friendly, professional, and knowledgeable.',
-    watsonxProjectId: localStorage.getItem('watsonx_project_id') || '',
-    baseUrl: localStorage.getItem('base_url') || '',
-};
+
+/**
+ * Load config from unified LLMManager settings or fall back to legacy keys.
+ * This ensures desktop and VR share the same settings (nexus_llm_settings).
+ */
+function loadConfig() {
+    const defaults = {
+        provider: 'none',
+        apiKey: '',
+        model: '',
+        systemPrompt: 'You are a helpful AI assistant named Nexus. You are friendly, professional, and knowledgeable.',
+        watsonxProjectId: '',
+        baseUrl: '',
+    };
+
+    try {
+        // 1) Try loading from unified LLMManager key (shared with VR)
+        const unified = localStorage.getItem('nexus_llm_settings');
+        if (unified) {
+            const settings = JSON.parse(unified);
+            console.log('[Main] Loading config from unified settings (nexus_llm_settings):', settings.provider);
+
+            // Extract provider-specific settings
+            let apiKey = '';
+            let model = '';
+            let baseUrl = '';
+            let watsonxProjectId = '';
+
+            if (settings.provider === 'openai' && settings.openai) {
+                apiKey = settings.openai.api_key || '';
+                model = settings.openai.model || 'gpt-4o';
+                baseUrl = settings.openai.base_url || '';
+            } else if (settings.provider === 'claude' && settings.claude) {
+                apiKey = settings.claude.api_key || '';
+                model = settings.claude.model || 'claude-3-5-sonnet-20241022';
+                baseUrl = settings.claude.base_url || '';
+            } else if (settings.provider === 'watsonx' && settings.watsonx) {
+                apiKey = settings.watsonx.api_key || '';
+                model = settings.watsonx.model_id || 'ibm/granite-13b-chat-v2';
+                baseUrl = settings.watsonx.base_url || 'https://us-south.ml.cloud.ibm.com';
+                watsonxProjectId = settings.watsonx.project_id || '';
+            } else if (settings.provider === 'ollama' && settings.ollama) {
+                model = settings.ollama.model || 'llama3';
+                baseUrl = settings.ollama.base_url || 'http://localhost:11434';
+            }
+
+            return {
+                provider: settings.provider || defaults.provider,
+                apiKey: apiKey,
+                model: model,
+                systemPrompt: settings.system_prompt || defaults.systemPrompt,
+                watsonxProjectId: watsonxProjectId,
+                baseUrl: baseUrl,
+            };
+        }
+    } catch (e) {
+        console.warn('[Main] Failed to load unified settings, falling back to legacy keys:', e);
+    }
+
+    // 2) Fall back to legacy localStorage keys (backward compatible)
+    console.log('[Main] Loading config from legacy localStorage keys');
+    return {
+        provider: localStorage.getItem('ai_provider') || defaults.provider,
+        apiKey: localStorage.getItem('ai_api_key') || defaults.apiKey,
+        model: localStorage.getItem('ai_model') || defaults.model,
+        systemPrompt: localStorage.getItem('system_prompt') || defaults.systemPrompt,
+        watsonxProjectId: localStorage.getItem('watsonx_project_id') || defaults.watsonxProjectId,
+        baseUrl: localStorage.getItem('base_url') || defaults.baseUrl,
+    };
+}
+
+const config = loadConfig();
 
 /* ============================
    Helpers
@@ -1357,6 +1419,59 @@ function saveSettings() {
     config.systemPrompt = systemPrompt;
     config.watsonxProjectId = watsonxProjectId;
     config.baseUrl = baseUrl;
+
+    // ✅ ALSO persist to unified LLMManager storage (for VR)
+    // Production-safe: desktop keeps legacy keys; VR gets nexus_llm_settings.
+    try {
+        if (typeof window.LLMManager === 'function') {
+            window._nexusLLM = window._nexusLLM || new window.LLMManager();
+
+            // Build the unified settings object that matches LLMManager defaults structure.
+            const patch = {
+                provider: provider,
+                system_prompt: systemPrompt,
+
+                // Enable proxy for production to avoid CORS (VR browsers need this)
+                proxy: {
+                    enable_proxy: true,
+                    proxy_url: '/api/proxy',
+                },
+            };
+
+            if (provider === 'openai') {
+                patch.openai = {
+                    api_key: apiKey,
+                    model: model || 'gpt-4o',
+                    base_url: baseUrl || '',
+                };
+            } else if (provider === 'claude') {
+                patch.claude = {
+                    api_key: apiKey,
+                    model: model || 'claude-3-5-sonnet-20241022',
+                    base_url: baseUrl || '',
+                };
+            } else if (provider === 'watsonx') {
+                patch.watsonx = {
+                    api_key: apiKey,
+                    project_id: watsonxProjectId || '',
+                    model_id: model || 'ibm/granite-13b-chat-v2',
+                    base_url: baseUrl || 'https://us-south.ml.cloud.ibm.com',
+                };
+            } else if (provider === 'ollama') {
+                patch.ollama = {
+                    base_url: baseUrl || 'http://localhost:11434',
+                    model: model || 'llama3',
+                };
+            }
+
+            window._nexusLLM.updateSettings(patch);
+            console.log('[Main] ✅ Unified LLM settings saved to nexus_llm_settings for VR:', provider);
+        } else {
+            console.warn('[Main] LLMManager not loaded; VR will not inherit unified settings.');
+        }
+    } catch (e) {
+        console.warn('[Main] Failed to save unified LLM settings:', e);
+    }
 
     // ✅ Persist speech settings
     saveSpeechSettingsFromUI();
