@@ -64,16 +64,147 @@ let dirLight = null;
 /* ============================
    Configuration (Providers)
    ============================ */
-const config = {
-    provider: localStorage.getItem('ai_provider') || 'none',
-    apiKey: localStorage.getItem('ai_api_key') || '',
-    model: localStorage.getItem('ai_model') || '',
-    systemPrompt:
-        localStorage.getItem('system_prompt') ||
-        'You are a helpful AI assistant named Nexus. You are friendly, professional, and knowledgeable.',
-    watsonxProjectId: localStorage.getItem('watsonx_project_id') || '',
-    baseUrl: localStorage.getItem('base_url') || '',
-};
+
+/**
+ * Load config from unified LLMManager settings or fall back to legacy keys.
+ * This ensures desktop and VR share the same settings (nexus_llm_settings).
+ */
+function loadConfig() {
+    const defaults = {
+        provider: 'none',
+        apiKey: '',
+        model: '',
+        systemPrompt: 'You are a helpful AI assistant named Nexus. You are friendly, professional, and knowledgeable.',
+        watsonxProjectId: '',
+        baseUrl: '',
+    };
+
+    try {
+        // 1) Try loading from unified LLMManager key (shared with VR)
+        const unified = localStorage.getItem('nexus_llm_settings');
+        if (unified) {
+            const settings = JSON.parse(unified);
+            console.log('[Main] Loading config from unified settings (nexus_llm_settings):', settings.provider);
+
+            // Extract provider-specific settings
+            let apiKey = '';
+            let model = '';
+            let baseUrl = '';
+            let watsonxProjectId = '';
+
+            if (settings.provider === 'openai' && settings.openai) {
+                apiKey = settings.openai.api_key || '';
+                model = settings.openai.model || 'gpt-4o';
+                baseUrl = settings.openai.base_url || '';
+            } else if (settings.provider === 'claude' && settings.claude) {
+                apiKey = settings.claude.api_key || '';
+                model = settings.claude.model || 'claude-3-5-sonnet-20241022';
+                baseUrl = settings.claude.base_url || '';
+            } else if (settings.provider === 'watsonx' && settings.watsonx) {
+                apiKey = settings.watsonx.api_key || '';
+                model = settings.watsonx.model_id || 'ibm/granite-13b-chat-v2';
+                baseUrl = settings.watsonx.base_url || 'https://us-south.ml.cloud.ibm.com';
+                watsonxProjectId = settings.watsonx.project_id || '';
+            } else if (settings.provider === 'ollama' && settings.ollama) {
+                model = settings.ollama.model || 'llama3';
+                baseUrl = settings.ollama.base_url || 'http://localhost:11434';
+            }
+
+            return {
+                provider: settings.provider || defaults.provider,
+                apiKey: apiKey,
+                model: model,
+                systemPrompt: settings.system_prompt || defaults.systemPrompt,
+                watsonxProjectId: watsonxProjectId,
+                baseUrl: baseUrl,
+            };
+        }
+    } catch (e) {
+        console.warn('[Main] Failed to load unified settings, falling back to legacy keys:', e);
+    }
+
+    // 2) Fall back to legacy localStorage keys (backward compatible)
+    console.log('[Main] Loading config from legacy localStorage keys');
+    return {
+        provider: localStorage.getItem('ai_provider') || defaults.provider,
+        apiKey: localStorage.getItem('ai_api_key') || defaults.apiKey,
+        model: localStorage.getItem('ai_model') || defaults.model,
+        systemPrompt: localStorage.getItem('system_prompt') || defaults.systemPrompt,
+        watsonxProjectId: localStorage.getItem('watsonx_project_id') || defaults.watsonxProjectId,
+        baseUrl: localStorage.getItem('base_url') || defaults.baseUrl,
+    };
+}
+
+const config = loadConfig();
+
+/* ============================
+   One-Time Migration: Legacy → Unified Settings
+   ============================ */
+// Automatically migrate existing settings to unified format for VR compatibility
+(function migrateLegacySettings() {
+    try {
+        // Check if unified settings already exist
+        if (localStorage.getItem('nexus_llm_settings')) {
+            console.log('[Main] Unified settings already exist, skipping migration');
+            return;
+        }
+
+        // Check if legacy settings exist
+        const legacyProvider = localStorage.getItem('ai_provider');
+        if (!legacyProvider || legacyProvider === 'none') {
+            console.log('[Main] No legacy settings to migrate');
+            return;
+        }
+
+        // Create LLMManager and save current config to unified format
+        if (typeof window.LLMManager === 'function') {
+            console.log('[Main] 🔄 Migrating legacy settings to unified format...');
+            window._nexusLLM = new window.LLMManager();
+
+            const patch = {
+                provider: config.provider,
+                system_prompt: config.systemPrompt,
+                proxy: {
+                    enable_proxy: true,
+                    proxy_url: '/api/proxy',
+                },
+            };
+
+            if (config.provider === 'openai') {
+                patch.openai = {
+                    api_key: config.apiKey,
+                    model: config.model || 'gpt-4o',
+                    base_url: config.baseUrl || '',
+                };
+            } else if (config.provider === 'claude') {
+                patch.claude = {
+                    api_key: config.apiKey,
+                    model: config.model || 'claude-3-5-sonnet-20241022',
+                    base_url: config.baseUrl || '',
+                };
+            } else if (config.provider === 'watsonx') {
+                patch.watsonx = {
+                    api_key: config.apiKey,
+                    project_id: config.watsonxProjectId || '',
+                    model_id: config.model || 'ibm/granite-13b-chat-v2',
+                    base_url: config.baseUrl || 'https://us-south.ml.cloud.ibm.com',
+                };
+            } else if (config.provider === 'ollama') {
+                patch.ollama = {
+                    base_url: config.baseUrl || 'http://localhost:11434',
+                    model: config.model || 'llama3',
+                };
+            }
+
+            window._nexusLLM.updateSettings(patch);
+            console.log('[Main] ✅ Migration complete! VR will now use:', config.provider);
+        } else {
+            console.warn('[Main] LLMManager not loaded yet, migration will retry on settings save');
+        }
+    } catch (e) {
+        console.warn('[Main] Migration failed (non-fatal):', e);
+    }
+})();
 
 /* ============================
    Helpers
@@ -767,6 +898,232 @@ function loadSpeechSettingsIntoUI() {
 }
 
 /* ============================
+   STT Settings Helpers
+   ============================ */
+function loadSTTSettingsIntoUI() {
+    if (!window.SpeechService) return;
+
+    const sttConfig = window.SpeechService.getSTTConfig();
+
+    const sttProvider = $('stt-provider');
+    const wasmModelSize = $('wasm-model-size');
+    const openaiWhisperModel = $('openai-whisper-model');
+    const openaiSTTKey = $('openai-stt-key');
+    const googleSTTKey = $('google-stt-key');
+    const googleSTTModel = $('google-stt-model');
+    const sttLanguage = $('stt-language');
+    const sttInterimResults = $('stt-interim-results');
+    const sttMicrophone = $('stt-microphone');
+
+    if (sttProvider) sttProvider.value = sttConfig.provider;
+    if (wasmModelSize) wasmModelSize.value = sttConfig.wasm.modelSize;
+    if (openaiWhisperModel) openaiWhisperModel.value = sttConfig.openai.model;
+    if (openaiSTTKey) openaiSTTKey.value = sttConfig.openai.apiKey;
+    if (googleSTTKey) googleSTTKey.value = sttConfig.google.apiKey;
+    if (googleSTTModel) googleSTTModel.value = sttConfig.google.model;
+    if (sttLanguage) sttLanguage.value = sttConfig.language;
+    if (sttInterimResults) sttInterimResults.checked = sttConfig.interimResults;
+    if (sttMicrophone && sttConfig.microphoneDeviceId) sttMicrophone.value = sttConfig.microphoneDeviceId;
+
+    // Update provider-specific UI
+    updateSTTProviderUI(sttConfig.provider);
+}
+
+function saveSTTSettingsFromUI() {
+    if (!window.SpeechService) return;
+
+    const sttProvider = $('stt-provider');
+    const wasmModelSize = $('wasm-model-size');
+    const openaiWhisperModel = $('openai-whisper-model');
+    const openaiSTTKey = $('openai-stt-key');
+    const googleSTTKey = $('google-stt-key');
+    const googleSTTModel = $('google-stt-model');
+    const sttLanguage = $('stt-language');
+    const sttInterimResults = $('stt-interim-results');
+    const sttMicrophone = $('stt-microphone');
+
+    window.SpeechService.saveSTTConfig({
+        provider: sttProvider ? sttProvider.value : 'webspeech',
+        language: sttLanguage ? sttLanguage.value : 'en-US',
+        interimResults: sttInterimResults ? sttInterimResults.checked : true,
+        microphoneDeviceId: sttMicrophone ? sttMicrophone.value : '',
+        wasm: {
+            modelSize: wasmModelSize ? wasmModelSize.value : 'base',
+        },
+        openai: {
+            apiKey: openaiSTTKey ? openaiSTTKey.value.trim() : '',
+            model: openaiWhisperModel ? openaiWhisperModel.value : 'whisper-1',
+        },
+        google: {
+            apiKey: googleSTTKey ? googleSTTKey.value.trim() : '',
+            model: googleSTTModel ? googleSTTModel.value : 'default',
+        },
+    });
+
+    // Update recognition options
+    window.SpeechService.setRecognitionOptions({
+        lang: sttLanguage ? sttLanguage.value : 'en-US',
+        interimResults: sttInterimResults ? sttInterimResults.checked : true,
+    });
+}
+
+function updateSTTProviderUI(provider) {
+    const wasmSTTSettings = $('wasm-stt-settings');
+    const openaiSTTSettings = $('openai-stt-settings');
+    const googleSTTSettings = $('google-stt-settings');
+
+    // Hide all provider-specific settings
+    if (wasmSTTSettings) wasmSTTSettings.style.display = 'none';
+    if (openaiSTTSettings) openaiSTTSettings.style.display = 'none';
+    if (googleSTTSettings) googleSTTSettings.style.display = 'none';
+
+    // Show relevant provider settings
+    switch (provider) {
+        case 'wasm':
+            if (wasmSTTSettings) wasmSTTSettings.style.display = 'block';
+            break;
+        case 'openai':
+            if (openaiSTTSettings) openaiSTTSettings.style.display = 'block';
+            break;
+        case 'google':
+            if (googleSTTSettings) googleSTTSettings.style.display = 'block';
+            break;
+    }
+}
+
+async function testSTT() {
+    if (!window.SpeechService) {
+        showMessage('Speech service not available', 'error');
+        return;
+    }
+
+    const statusElement = $('test-stt-status');
+
+    try {
+        if (statusElement) {
+            statusElement.textContent = 'Starting STT test...';
+            statusElement.style.color = '#3b82f6';
+        }
+
+        // Start STT with test callbacks
+        const started = await window.SpeechService.startSTT({
+            onStart: () => {
+                if (statusElement) {
+                    statusElement.textContent = '🎤 Listening... (speak now)';
+                    statusElement.style.color = '#10b981';
+                }
+            },
+            onInterim: (interimText) => {
+                if (statusElement) {
+                    statusElement.textContent = `📝 Interim: "${interimText}"`;
+                    statusElement.style.color = '#f59e0b';
+                }
+            },
+            onResult: (transcript, confidence) => {
+                const confidencePercent = Math.round(confidence * 100);
+                if (statusElement) {
+                    statusElement.textContent = `✅ Transcribed: "${transcript}" (${confidencePercent}% confidence)`;
+                    statusElement.style.color = '#10b981';
+                }
+                console.log('[STT Test] Result:', transcript);
+
+                // Show success message
+                setTimeout(() => {
+                    if (statusElement) {
+                        statusElement.textContent = 'Test completed successfully!';
+                    }
+                }, 2000);
+            },
+            onError: (error, context) => {
+                const errorMsg = context ? `${error}: ${context}` : error;
+                if (statusElement) {
+                    statusElement.textContent = `❌ Error: ${errorMsg}`;
+                    statusElement.style.color = '#ef4444';
+                }
+                console.error('[STT Test] Error:', error, context);
+            },
+            onEnd: () => {
+                console.log('[STT Test] Recognition ended');
+            },
+        });
+
+        if (!started) {
+            throw new Error('Failed to start STT');
+        }
+
+        // Auto-stop after 10 seconds
+        setTimeout(() => {
+            if (window.SpeechService.isRecognizing) {
+                window.SpeechService.stopSTT();
+                if (statusElement) {
+                    statusElement.textContent = 'Test timeout (10s limit)';
+                    statusElement.style.color = '#f59e0b';
+                }
+            }
+        }, 10000);
+    } catch (error) {
+        console.error('[STT Test] Failed:', error);
+        if (statusElement) {
+            statusElement.textContent = `❌ Failed: ${error.message}`;
+            statusElement.style.color = '#ef4444';
+        }
+    }
+}
+
+/**
+ * Load available microphones into the selector
+ */
+async function loadAvailableMicrophones() {
+    const microphoneSelect = $('stt-microphone');
+    if (!microphoneSelect) return;
+
+    try {
+        console.log('[Main] Loading available microphones...');
+
+        // Request microphone permission first (required for device labels)
+        await navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+            // Stop the stream immediately, we just needed permission
+            stream.getTracks().forEach((track) => track.stop());
+        });
+
+        // Enumerate devices
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioInputs = devices.filter((device) => device.kind === 'audioinput');
+
+        console.log(`[Main] Found ${audioInputs.length} microphones`);
+
+        // Clear existing options (except default)
+        microphoneSelect.innerHTML = '<option value="">Default (System Default)</option>';
+
+        // Add microphone options
+        audioInputs.forEach((device, index) => {
+            const option = document.createElement('option');
+            option.value = device.deviceId;
+            option.textContent = device.label || `Microphone ${index + 1}`;
+            microphoneSelect.appendChild(option);
+        });
+
+        // Load selected microphone from config
+        if (window.SpeechService) {
+            const sttConfig = window.SpeechService.getSTTConfig();
+            if (sttConfig.microphoneDeviceId) {
+                microphoneSelect.value = sttConfig.microphoneDeviceId;
+            }
+        }
+
+        console.log('[Main] Microphones loaded successfully');
+    } catch (error) {
+        console.error('[Main] Failed to load microphones:', error);
+        // If permission denied, show a helpful message
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'Permission denied - click to allow microphone access';
+        microphoneSelect.innerHTML = '';
+        microphoneSelect.appendChild(option);
+    }
+}
+
+/* ============================
    UI / Events
    ============================ */
 function setEmotionPressed(btn) {
@@ -945,6 +1302,31 @@ function setupEventListeners() {
         const sample = sampleByLang[SpeechSettings.lang] || 'Voice test successful.';
         speakText(sample);
     });
+
+    // --- STT SETTINGS UI WIRING ---
+    const sttProvider = document.getElementById('stt-provider');
+    if (sttProvider) {
+        sttProvider.addEventListener('change', (e) => {
+            updateSTTProviderUI(e.target.value);
+        });
+    }
+
+    const testSTTBtn = document.getElementById('test-stt');
+    if (testSTTBtn) {
+        testSTTBtn.addEventListener('click', () => {
+            testSTT();
+        });
+    }
+
+    const refreshMicrophonesBtn = document.getElementById('refresh-microphones');
+    if (refreshMicrophonesBtn) {
+        refreshMicrophonesBtn.addEventListener('click', () => {
+            loadAvailableMicrophones();
+        });
+    }
+
+    // Load microphones on page load
+    loadAvailableMicrophones();
 }
 
 /* ============================
@@ -994,6 +1376,7 @@ function openSettings() {
     // Load config + speech settings into UI whenever settings opens
     loadConfigIntoUI();
     loadSpeechSettingsIntoUI();
+    loadSTTSettingsIntoUI();
     refreshVoiceList();
 
     modal.classList.add('active');
@@ -1106,8 +1489,64 @@ function saveSettings() {
     config.watsonxProjectId = watsonxProjectId;
     config.baseUrl = baseUrl;
 
+    // ✅ ALSO persist to unified LLMManager storage (for VR)
+    // Production-safe: desktop keeps legacy keys; VR gets nexus_llm_settings.
+    try {
+        if (typeof window.LLMManager === 'function') {
+            window._nexusLLM = window._nexusLLM || new window.LLMManager();
+
+            // Build the unified settings object that matches LLMManager defaults structure.
+            const patch = {
+                provider: provider,
+                system_prompt: systemPrompt,
+
+                // Enable proxy for production to avoid CORS (VR browsers need this)
+                proxy: {
+                    enable_proxy: true,
+                    proxy_url: '/api/proxy',
+                },
+            };
+
+            if (provider === 'openai') {
+                patch.openai = {
+                    api_key: apiKey,
+                    model: model || 'gpt-4o',
+                    base_url: baseUrl || '',
+                };
+            } else if (provider === 'claude') {
+                patch.claude = {
+                    api_key: apiKey,
+                    model: model || 'claude-3-5-sonnet-20241022',
+                    base_url: baseUrl || '',
+                };
+            } else if (provider === 'watsonx') {
+                patch.watsonx = {
+                    api_key: apiKey,
+                    project_id: watsonxProjectId || '',
+                    model_id: model || 'ibm/granite-13b-chat-v2',
+                    base_url: baseUrl || 'https://us-south.ml.cloud.ibm.com',
+                };
+            } else if (provider === 'ollama') {
+                patch.ollama = {
+                    base_url: baseUrl || 'http://localhost:11434',
+                    model: model || 'llama3',
+                };
+            }
+
+            window._nexusLLM.updateSettings(patch);
+            console.log('[Main] ✅ Unified LLM settings saved to nexus_llm_settings for VR:', provider);
+        } else {
+            console.warn('[Main] LLMManager not loaded; VR will not inherit unified settings.');
+        }
+    } catch (e) {
+        console.warn('[Main] Failed to save unified LLM settings:', e);
+    }
+
     // ✅ Persist speech settings
     saveSpeechSettingsFromUI();
+
+    // ✅ Persist STT settings
+    saveSTTSettingsFromUI();
 
     const modal = $('settings-modal');
     if (modal) {
@@ -1226,35 +1665,124 @@ function initSpeechRecognition() {
     recognition.lang = SpeechSettings.lang;
 
     recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.interimResults = true; // ✅ Enable interim results for real-time feedback
 
     recognition.onstart = () => {
         isListening = true;
         setStatus('listening', 'LISTENING...');
+
+        console.log('[Desktop STT] 🎙️ Recognition started');
+        if (window.NEXUS_LOGGER) {
+            window.NEXUS_LOGGER.info('Desktop STT started', {
+                browser: navigator.userAgent.includes('Quest') ? 'Quest' : 'Desktop',
+            });
+        }
+
         try {
             window.NEXUS_VIEWER?.playAnimationByName?.('Idle');
         } catch (_) {}
 
         const btn = $('listen-btn');
-        if (btn) btn.classList.add('active');
-        if ($('voice-btn-text')) $('voice-btn-text').textContent = 'LISTENING...';
-        if ($('recognition-status')) $('recognition-status').textContent = 'Listening to your voice...';
-        if (btn) btn.setAttribute('aria-pressed', 'true');
+        if (btn) {
+            btn.classList.add('active');
+        }
+        if ($('voice-btn-text')) {
+            $('voice-btn-text').textContent = 'LISTENING...';
+        }
+        if ($('recognition-status')) {
+            $('recognition-status').textContent = 'Listening to your voice...';
+        }
+        if (btn) {
+            btn.setAttribute('aria-pressed', 'true');
+        }
+
+        // Clear input and set placeholder
+        const inputField = $('speech-text');
+        console.log('[Desktop STT] 🖱️ Input field found:', !!inputField);
+        if (inputField) {
+            inputField.value = '';
+            inputField.placeholder = 'Listening...';
+            inputField.style.fontStyle = 'normal';
+            inputField.style.opacity = '1';
+        } else {
+            console.error('[Desktop STT] ❌ ERROR: speech-text input not found!');
+        }
     };
 
     recognition.onresult = (event) => {
-        const transcript =
-            (event && event.results && event.results[0] && event.results[0][0] && event.results[0][0].transcript) || '';
-        if ($('speech-text')) $('speech-text').value = transcript;
-        if (transcript) handleUserMessage(transcript);
+        const inputField = $('speech-text');
+        if (!inputField) {
+            console.error('[Desktop STT] ❌ ERROR: speech-text input field not found in onresult!');
+            if (window.NEXUS_LOGGER) {
+                window.NEXUS_LOGGER.error('Desktop STT input field missing');
+            }
+            return;
+        }
+
+        // Check if this is the final result
+        const result = event.results[event.results.length - 1];
+        const transcript = result[0].transcript || '';
+        const confidence = result[0].confidence || 0;
+        const isFinal = result.isFinal;
+
+        if (isFinal) {
+            // Final result - show with confidence
+            const confidencePercent = Math.round(confidence * 100);
+
+            console.log(`[Desktop STT] ✅ FINAL: "${transcript}" (${confidencePercent}% confidence)`);
+            if (window.NEXUS_LOGGER) {
+                window.NEXUS_LOGGER.info('Desktop STT final', { text: transcript, confidence: confidencePercent });
+            }
+
+            inputField.value = transcript;
+            inputField.style.fontStyle = 'normal';
+            inputField.style.opacity = '1';
+            inputField.placeholder = 'Type your message…';
+
+            console.log('[Desktop STT] 📤 Populated input field with:', transcript);
+
+            // Show confidence feedback
+            showMessage(
+                `🎤 Transcribed (${confidencePercent}% confidence): "${transcript}"\nReview and press SEND, or click ACTIVATE VOICE to record again.`,
+                'info'
+            );
+
+            // Focus and select for easy review
+            inputField.focus();
+            inputField.select();
+
+            // Stop listening after final result
+            stopVoiceInput();
+        } else {
+            // Interim result - show in italic
+            console.log(`[Desktop STT] 📝 INTERIM: "${transcript}"`);
+            if (window.NEXUS_LOGGER) {
+                window.NEXUS_LOGGER.info('Desktop STT interim', { text: transcript });
+            }
+
+            inputField.value = transcript;
+            inputField.style.fontStyle = 'italic';
+            inputField.style.opacity = '0.7';
+        }
     };
 
     recognition.onerror = (event) => {
-        logError('Speech recognition error', event && event.error);
+        const errorType = event && event.error;
+        console.error(`[Desktop STT] ⚠️ ERROR: ${errorType}`);
+        if (window.NEXUS_LOGGER) {
+            window.NEXUS_LOGGER.error('Desktop STT error', { error: errorType });
+        }
+        logError('Speech recognition error', errorType);
         stopVoiceInput();
     };
 
-    recognition.onend = () => stopVoiceInput();
+    recognition.onend = () => {
+        console.log('[Desktop STT] ⏹️ Recognition ended');
+        if (window.NEXUS_LOGGER) {
+            window.NEXUS_LOGGER.info('Desktop STT ended');
+        }
+        stopVoiceInput();
+    };
 }
 
 function toggleVoiceInput() {
@@ -1280,10 +1808,28 @@ function stopVoiceInput() {
     } catch (_) {}
 
     const btn = $('listen-btn');
-    if (btn) btn.classList.remove('active');
-    if ($('voice-btn-text')) $('voice-btn-text').textContent = 'ACTIVATE VOICE';
-    if ($('recognition-status')) $('recognition-status').textContent = 'Voice system standby';
-    if (btn) btn.setAttribute('aria-pressed', 'false');
+    if (btn) {
+        btn.classList.remove('active');
+    }
+    if ($('voice-btn-text')) {
+        $('voice-btn-text').textContent = 'ACTIVATE VOICE';
+    }
+    if ($('recognition-status')) {
+        $('recognition-status').textContent = 'Voice system standby';
+    }
+    if (btn) {
+        btn.setAttribute('aria-pressed', 'false');
+    }
+
+    // Reset input field styling
+    const inputField = $('speech-text');
+    if (inputField) {
+        inputField.style.fontStyle = 'normal';
+        inputField.style.opacity = '1';
+        if (!inputField.value) {
+            inputField.placeholder = 'Type your message…';
+        }
+    }
 
     if (recognition) {
         try {
