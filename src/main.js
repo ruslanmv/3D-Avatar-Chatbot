@@ -1420,7 +1420,22 @@ async function fetchAndPopulateModels(provider, selectElement) {
     selectElement.innerHTML = '<option value="">Loading models...</option>';
 
     try {
+        // Temporarily update provider to fetch models for selected provider
+        // (User may have selected different provider but not saved yet)
+        const currentSettings = window._nexusLLM.getSettings();
+        const originalProvider = currentSettings.provider;
+
+        if (provider !== originalProvider) {
+            console.log(`[Main] Temporarily switching provider from ${originalProvider} to ${provider} for model fetch`);
+            window._nexusLLM.updateSettings({ provider: provider });
+        }
+
         const result = await window._nexusLLM.fetchAvailableModels();
+
+        // Restore original provider if we changed it
+        if (provider !== originalProvider) {
+            window._nexusLLM.updateSettings({ provider: originalProvider });
+        }
 
         if (result.error) {
             console.warn(`[Main] Model fetch warning: ${result.error}`);

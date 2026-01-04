@@ -523,14 +523,38 @@
         async _fetchWatsonxModels() {
             const fallback = [
                 'ibm/granite-13b-chat-v2',
+                'ibm/granite-3-8b-instruct',
                 'meta-llama/llama-3-70b-instruct',
                 'meta-llama/llama-3-8b-instruct',
                 'mistralai/mixtral-8x7b-instruct-v01',
             ];
 
-            const bases = ['https://us-south.ml.cloud.ibm.com', 'https://eu-de.ml.cloud.ibm.com'];
-            const endpoint = '/ml/v1/foundation_model_specs?version=2024-09-16';
+            // Watsonx regions (based on Python model_catalog.py)
+            const bases = [
+                'https://us-south.ml.cloud.ibm.com',
+                'https://eu-de.ml.cloud.ibm.com',
+                'https://jp-tok.ml.cloud.ibm.com',
+                'https://au-syd.ml.cloud.ibm.com',
+            ];
+
+            // Watsonx foundation model specs endpoint with filters
+            const endpoint =
+                '/ml/v1/foundation_model_specs?version=2024-09-16&filters=!function_embedding,!lifecycle_withdrawn';
             const allModels = new Set();
+            const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+
+            // Helper to check if model is deprecated/withdrawn
+            const isDeprecatedOrWithdrawn = (lifecycle) => {
+                if (!Array.isArray(lifecycle)) return false;
+                for (const entry of lifecycle) {
+                    const id = entry.id || '';
+                    const startDate = entry.start_date || '';
+                    if ((id === 'deprecated' || id === 'withdrawn') && startDate <= today) {
+                        return true;
+                    }
+                }
+                return false;
+            };
 
             for (const base of bases) {
                 try {
@@ -538,9 +562,15 @@
                     if (res.ok) {
                         const json = await res.json();
                         (json.resources || []).forEach((m) => {
-                            if (m.model_id && !m.model_id.includes('deprecated')) {
-                                allModels.add(m.model_id);
+                            const modelId = m.model_id;
+                            const lifecycle = m.lifecycle || [];
+
+                            // Skip if no model_id or if deprecated/withdrawn
+                            if (!modelId || isDeprecatedOrWithdrawn(lifecycle)) {
+                                return;
                             }
+
+                            allModels.add(modelId);
                         });
                     }
                 } catch (e) {
