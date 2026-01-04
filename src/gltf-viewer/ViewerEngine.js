@@ -114,6 +114,10 @@ export class ViewerEngine {
             this.controls.enabled = false;
             this.vrControllers.setEnabled(true);
 
+            // Refresh controller reference after VR session starts
+            this.vrChatPanel.setLeftController(this.vrControllers.controller1);
+            console.log('[ViewerEngine] 🎮 Controller reference refreshed for VR session');
+
             if (!this.vrChatIntegration.isInitialized) {
                 console.log('[ViewerEngine] Initializing VR Chat System...');
                 await this.vrChatIntegration.initialize('/vendor/avatars/avatars.json');
@@ -121,12 +125,12 @@ export class ViewerEngine {
 
             this.vrControllers.setMenuButtonCallback(() => {
                 const isVisible = this.vrChatPanel.group.visible;
-                console.log(`[ViewerEngine] Toggling Menu: ${!isVisible}`);
+                console.log(`[ViewerEngine] 🔄 Toggling chat panel: ${!isVisible}`);
                 if (isVisible) this.vrChatIntegration.disable();
                 else this.vrChatIntegration.enable();
             });
 
-            console.log('[ViewerEngine] VR Started. Controls Disabled. Press Left Menu/X to toggle chat.');
+            console.log('[ViewerEngine] ✅ VR Started. Press Left X button to toggle chat.');
         });
 
         window.addEventListener('vr-session-end', () => {

@@ -297,6 +297,8 @@ export class VRChatPanel {
         const visible = !!v;
         this.group.visible = visible;
 
+        console.log('[VRChatPanel] 👁️ Panel visibility:', visible);
+
         if (!visible) {
             this._isDragging = false;
             return;
@@ -327,23 +329,40 @@ export class VRChatPanel {
 
         // If controller exists, bias towards it slightly (still comfortable)
         if (this.leftController) {
-            this.group.position.copy(this.leftController.position);
-            this.group.quaternion.copy(this.leftController.quaternion);
-            this.group.translateX(0.14);
-            this.group.translateY(0.05);
-            this.group.translateZ(-0.12);
+            // Update world matrix to ensure latest transforms
+            this.leftController.updateWorldMatrix(true, false);
 
-            // Clamp to dist from camera
-            const toCam = this._tmpVec3.copy(this.group.position).sub(camPos);
-            const d = toCam.length();
-            if (d > dist) {
-                toCam.normalize();
-                this.group.position.copy(camPos).add(toCam.multiplyScalar(dist));
+            // Use WORLD coordinates instead of local
+            const ctrlWorldPos = new THREE.Vector3();
+            const ctrlWorldQuat = new THREE.Quaternion();
+            this.leftController.getWorldPosition(ctrlWorldPos);
+            this.leftController.getWorldQuaternion(ctrlWorldQuat);
+
+            // Check if position is valid (not NaN or zero)
+            if (isFinite(ctrlWorldPos.x) && isFinite(ctrlWorldPos.y) && isFinite(ctrlWorldPos.z)) {
+                console.log('[VRChatPanel] 🎯 Spawning from left controller world position:', ctrlWorldPos.toArray());
+
+                this.group.position.copy(ctrlWorldPos);
+                this.group.quaternion.copy(ctrlWorldQuat);
+                this.group.translateX(0.14);
+                this.group.translateY(0.05);
+                this.group.translateZ(-0.12);
+
+                // Clamp to dist from camera
+                const toCam = this._tmpVec3.copy(this.group.position).sub(camPos);
+                const d = toCam.length();
+                if (d > dist) {
+                    toCam.normalize();
+                    this.group.position.copy(camPos).add(toCam.multiplyScalar(dist));
+                }
+            } else {
+                console.warn('[VRChatPanel] ⚠️ Controller position invalid, using camera spawn');
             }
         }
 
         // Face camera on spawn
         this.group.lookAt(camPos);
+        console.log('[VRChatPanel] 📍 Panel spawned at world position:', this.group.position.toArray());
     }
 
     // =====================================================================

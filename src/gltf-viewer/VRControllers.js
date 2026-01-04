@@ -402,11 +402,11 @@ export class VRControllers {
         // Menu button check on left controller
         const left = this.controllers.left;
         if (left && left.gamepad) {
-            // Button index 4 is typically "Menu" or "X" button on left controller
-            // Button index 3 is fallback
-            const menuButton = left.gamepad.buttons[4] || left.gamepad.buttons[3];
+            // Button index 0 is X button on Quest left controller
+            const menuButton = left.gamepad.buttons[0];
             if (menuButton && menuButton.pressed && !this.menuButtonWasPressed) {
                 this.menuButtonWasPressed = true;
+                console.log('[VRControllers] ❌ X button pressed - toggling chat panel');
                 if (this.onMenuButtonPress) {
                     this.onMenuButtonPress();
                 }
@@ -415,18 +415,18 @@ export class VRControllers {
             }
 
             // Push-to-talk button check on left controller
-            // Button index 5 is typically "Y" button, index 1 is grip/squeeze
-            const pttButton = left.gamepad.buttons[5] || left.gamepad.buttons[1];
+            // Button index 1 is Y button on Quest left controller
+            const pttButton = left.gamepad.buttons[1];
             if (pttButton && pttButton.pressed && !this.pushToTalkButtonWasPressed) {
                 this.pushToTalkButtonWasPressed = true;
                 if (this.onPushToTalkStart) {
-                    console.log('[VRControllers] 🎤 Push-to-talk: START');
+                    console.log('[VRControllers] 🎤 Push-to-talk Y button: START');
                     this.onPushToTalkStart();
                 }
             } else if ((!pttButton || !pttButton.pressed) && this.pushToTalkButtonWasPressed) {
                 this.pushToTalkButtonWasPressed = false;
                 if (this.onPushToTalkEnd) {
-                    console.log('[VRControllers] 🎤 Push-to-talk: END');
+                    console.log('[VRControllers] 🎤 Push-to-talk Y button: END');
                     this.onPushToTalkEnd();
                 }
             }
