@@ -1400,9 +1400,20 @@ function openInfo() {
  * @param {HTMLSelectElement} selectElement - The select element to populate
  */
 async function fetchAndPopulateModels(provider, selectElement) {
-    if (!selectElement || !window._nexusLLM) {
-        console.warn('[Main] Cannot fetch models: missing selectElement or LLMManager');
+    if (!selectElement) {
+        console.warn('[Main] Cannot fetch models: missing selectElement');
         return;
+    }
+
+    // Ensure LLMManager instance exists
+    if (!window._nexusLLM) {
+        if (typeof window.LLMManager !== 'function') {
+            console.error('[Main] LLMManager not loaded');
+            selectElement.innerHTML = '<option value="">LLMManager not loaded</option>';
+            return;
+        }
+        console.log('[Main] Creating LLMManager instance for model fetching');
+        window._nexusLLM = new window.LLMManager();
     }
 
     // Add loading option
