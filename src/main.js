@@ -1226,7 +1226,7 @@ function initSpeechRecognition() {
     recognition.lang = SpeechSettings.lang;
 
     recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.interimResults = true; // ✅ Enable interim results for real-time feedback
 
     recognition.onstart = () => {
         isListening = true;
@@ -1236,17 +1236,67 @@ function initSpeechRecognition() {
         } catch (_) {}
 
         const btn = $('listen-btn');
-        if (btn) btn.classList.add('active');
-        if ($('voice-btn-text')) $('voice-btn-text').textContent = 'LISTENING...';
-        if ($('recognition-status')) $('recognition-status').textContent = 'Listening to your voice...';
-        if (btn) btn.setAttribute('aria-pressed', 'true');
+        if (btn) {
+            btn.classList.add('active');
+        }
+        if ($('voice-btn-text')) {
+            $('voice-btn-text').textContent = 'LISTENING...';
+        }
+        if ($('recognition-status')) {
+            $('recognition-status').textContent = 'Listening to your voice...';
+        }
+        if (btn) {
+            btn.setAttribute('aria-pressed', 'true');
+        }
+
+        // Clear input and set placeholder
+        const inputField = $('speech-text');
+        if (inputField) {
+            inputField.value = '';
+            inputField.placeholder = 'Listening...';
+            inputField.style.fontStyle = 'normal';
+            inputField.style.opacity = '1';
+        }
     };
 
     recognition.onresult = (event) => {
-        const transcript =
-            (event && event.results && event.results[0] && event.results[0][0] && event.results[0][0].transcript) || '';
-        if ($('speech-text')) $('speech-text').value = transcript;
-        if (transcript) handleUserMessage(transcript);
+        const inputField = $('speech-text');
+        if (!inputField) {
+            return;
+        }
+
+        // Check if this is the final result
+        const result = event.results[event.results.length - 1];
+        const transcript = result[0].transcript || '';
+        const confidence = result[0].confidence || 0;
+        const isFinal = result.isFinal;
+
+        if (isFinal) {
+            // Final result - show with confidence
+            inputField.value = transcript;
+            inputField.style.fontStyle = 'normal';
+            inputField.style.opacity = '1';
+            inputField.placeholder = 'Type your message…';
+
+            // Show confidence feedback
+            const confidencePercent = Math.round(confidence * 100);
+            showMessage(
+                `🎤 Transcribed (${confidencePercent}% confidence): "${transcript}"\nReview and press SEND, or click ACTIVATE VOICE to record again.`,
+                'info'
+            );
+
+            // Focus and select for easy review
+            inputField.focus();
+            inputField.select();
+
+            // Stop listening after final result
+            stopVoiceInput();
+        } else {
+            // Interim result - show in italic
+            inputField.value = transcript;
+            inputField.style.fontStyle = 'italic';
+            inputField.style.opacity = '0.7';
+        }
     };
 
     recognition.onerror = (event) => {
@@ -1280,10 +1330,28 @@ function stopVoiceInput() {
     } catch (_) {}
 
     const btn = $('listen-btn');
-    if (btn) btn.classList.remove('active');
-    if ($('voice-btn-text')) $('voice-btn-text').textContent = 'ACTIVATE VOICE';
-    if ($('recognition-status')) $('recognition-status').textContent = 'Voice system standby';
-    if (btn) btn.setAttribute('aria-pressed', 'false');
+    if (btn) {
+        btn.classList.remove('active');
+    }
+    if ($('voice-btn-text')) {
+        $('voice-btn-text').textContent = 'ACTIVATE VOICE';
+    }
+    if ($('recognition-status')) {
+        $('recognition-status').textContent = 'Voice system standby';
+    }
+    if (btn) {
+        btn.setAttribute('aria-pressed', 'false');
+    }
+
+    // Reset input field styling
+    const inputField = $('speech-text');
+    if (inputField) {
+        inputField.style.fontStyle = 'normal';
+        inputField.style.opacity = '1';
+        if (!inputField.value) {
+            inputField.placeholder = 'Type your message…';
+        }
+    }
 
     if (recognition) {
         try {
