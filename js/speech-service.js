@@ -323,7 +323,14 @@ class SpeechService {
      */
     loadVoices() {
         this.voices = this.synthesis.getVoices();
-        console.log(`Loaded ${this.voices.length} voices`);
+        console.log(`[SpeechService] 🔊 Loaded ${this.voices.length} voices`);
+
+        if (this.voices.length === 0) {
+            console.warn('[SpeechService] ⚠️ Voices empty; will retry on voiceschanged');
+        } else {
+            const preview = this.voices.slice(0, 5).map((v) => `${v.name} (${v.lang})`);
+            console.log('[SpeechService] 🔊 First voices:', preview);
+        }
 
         // Dispatch custom event for voice list update
         window.dispatchEvent(new CustomEvent('voicesLoaded', { detail: this.voices }));
@@ -337,28 +344,71 @@ class SpeechService {
     }
 
     /**
+     * Get speech preferences from localStorage (shared with desktop/VR settings)
+     * Removes dependency on global AppConfig
+     * @returns {object} Speech preferences with safe defaults
+     */
+    _getSpeechPrefs() {
+        // Defaults
+        const defaults = {
+            speechVoice: '', // voice name
+            speechRate: 0.9,
+            speechPitch: 1.0,
+            speechVolume: 1.0,
+            speechLang: 'en-US',
+            ttsEnabled: true,
+        };
+
+        try {
+            const raw = localStorage.getItem('nexus_settings_v1');
+            if (!raw) return defaults;
+
+            const s = JSON.parse(raw);
+            return {
+                ...defaults,
+                speechVoice: s.speechVoice || s.selectedVoice || '',
+                speechRate: typeof s.speechRate === 'number' ? s.speechRate : defaults.speechRate,
+                speechPitch: typeof s.speechPitch === 'number' ? s.speechPitch : defaults.speechPitch,
+                speechVolume: typeof s.speechVolume === 'number' ? s.speechVolume : defaults.speechVolume,
+                speechLang: s.speechLang || defaults.speechLang,
+                ttsEnabled: typeof s.ttsEnabled === 'boolean' ? s.ttsEnabled : defaults.ttsEnabled,
+            };
+        } catch (e) {
+            console.warn('[SpeechService] ⚠️ Failed reading speech prefs from localStorage:', e);
+            return defaults;
+        }
+    }
+
+    /**
      * Get default or preferred voice
      */
     getPreferredVoice() {
-        const savedVoiceName = AppConfig.speech.selectedVoice;
+        const prefs = this._getSpeechPrefs();
+        const savedVoiceName = prefs.speechVoice;
+
+        console.log('[SpeechService] 🔎 getPreferredVoice()', {
+            savedVoiceName,
+            voicesLoaded: this.voices?.length || 0,
+        });
 
         if (savedVoiceName) {
-            const savedVoice = this.voices.find((voice) => voice.name === savedVoiceName);
-            if (savedVoice) {
-                return savedVoice;
-            }
+            const savedVoice = this.voices.find((v) => v.name === savedVoiceName);
+            if (savedVoice) return savedVoice;
+            console.warn('[SpeechService] ⚠️ Saved voice not found, falling back:', savedVoiceName);
         }
 
-        // Find a good default voice (prefer English, female voices)
-        const englishVoices = this.voices.filter((voice) => voice.lang.startsWith('en'));
-        const femaleVoices = englishVoices.filter(
-            (voice) =>
-                voice.name.toLowerCase().includes('female') ||
-                voice.name.toLowerCase().includes('samantha') ||
-                voice.name.toLowerCase().includes('victoria')
-        );
+        // Prefer matching language
+        const lang = prefs.speechLang || 'en-US';
+        const langPrefix = lang.split('-')[0];
 
-        return femaleVoices[0] || englishVoices[0] || this.voices[0];
+        const langVoices = this.voices.filter((v) => v.lang?.toLowerCase().startsWith(langPrefix.toLowerCase()));
+        const fallbackPool = langVoices.length ? langVoices : this.voices;
+
+        // Slight preference heuristic for female/natural voices
+        const preferred =
+            fallbackPool.find((v) => /female|samantha|victoria/i.test(v.name)) || fallbackPool[0] || null;
+
+        return preferred;
     }
 
     /**
@@ -505,6 +555,15 @@ class SpeechService {
             return false;
         }
 
+        const prefs = this._getSpeechPrefs();
+
+        // Respect desktop/VR toggle
+        if (!prefs.ttsEnabled) {
+            console.log('[SpeechService] 🔇 TTS disabled (prefs.ttsEnabled=false). Skipping speak().');
+            if (callbacks.onEnd) callbacks.onEnd();
+            return true; // treat as success
+        }
+
         // Stop any current speech
         this.stopSpeaking();
 
@@ -517,10 +576,18 @@ class SpeechService {
             this.currentUtterance.voice = voice;
         }
 
-        // Set properties from config
-        this.currentUtterance.rate = AppConfig.speech.rate;
-        this.currentUtterance.pitch = AppConfig.speech.pitch;
-        this.currentUtterance.volume = AppConfig.speech.volume;
+        // Set properties from prefs instead of AppConfig
+        this.currentUtterance.rate = prefs.speechRate;
+        this.currentUtterance.pitch = prefs.speechPitch;
+        this.currentUtterance.volume = prefs.speechVolume;
+
+        console.log('[SpeechService] 🗣️ speak()', {
+            textPreview: String(text).slice(0, 60),
+            rate: this.currentUtterance.rate,
+            pitch: this.currentUtterance.pitch,
+            volume: this.currentUtterance.volume,
+            selectedVoice: this.currentUtterance.voice?.name || '(default)',
+        });
 
         // Set callbacks
         this.speakingCallbacks = callbacks;

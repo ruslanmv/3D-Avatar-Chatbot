@@ -558,15 +558,22 @@ export class VRChatIntegration {
             this.chatManager.addMessage(text, 'bot');
         }
 
-        // Speak response if TTS enabled
-        if (this.vrChatPanel.ttsEnabled && this.speechService && this.speechService.isSynthesisAvailable()) {
-            this.vrChatPanel.setStatus('speaking');
-            this.speechService.speak(text, {
-                onStart: () => this.vrChatPanel.setStatus('speaking'),
-                onEnd: () => this.vrChatPanel.setStatus('idle'),
-                onError: () => this.vrChatPanel.setStatus('idle'),
-            });
-        } else {
+        // Speak response if TTS enabled (non-fatal)
+        try {
+            if (this.vrChatPanel.ttsEnabled && this.speechService && this.speechService.isSynthesisAvailable()) {
+                console.log('[VRChatIntegration] 🗣️ TTS enabled, speaking response');
+                this.vrChatPanel.setStatus('speaking');
+                this.speechService.speak(text, {
+                    onStart: () => this.vrChatPanel.setStatus('speaking'),
+                    onEnd: () => this.vrChatPanel.setStatus('idle'),
+                    onError: () => this.vrChatPanel.setStatus('idle'),
+                });
+            } else {
+                console.log('[VRChatIntegration] 🔇 TTS disabled, not speaking');
+                this.vrChatPanel.setStatus('idle');
+            }
+        } catch (e) {
+            console.error('[VRChatIntegration] ⚠️ TTS error (non-fatal):', e);
             this.vrChatPanel.setStatus('idle');
         }
     }
