@@ -264,9 +264,9 @@ class ChatbotApplication {
     }
 
     /**
-     * Handle voice input
+     * Handle voice input (improved with interim results and permission handling)
      */
-    handleVoiceInput() {
+    async handleVoiceInput() {
         if (!SpeechService.isRecognitionAvailable()) {
             ChatManager.showError('Voice input is not supported in your browser. Please use Chrome, Edge, or Safari.');
             return;
@@ -286,12 +286,28 @@ class ChatbotApplication {
         this.showRecordingIndicator(true);
         this.elements.voiceInputBtn.classList.add('recording');
 
-        SpeechService.startRecognition({
+        // Start recognition with interim results
+        await SpeechService.startRecognition({
+            onStart: () => {
+                console.log('🎤 Voice input started');
+                this.elements.chatInput.placeholder = 'Listening...';
+            },
+            onInterim: (interimText) => {
+                // Show interim results in real-time
+                this.elements.chatInput.value = interimText;
+                this.elements.chatInput.style.fontStyle = 'italic';
+                this.elements.chatInput.style.opacity = '0.7';
+            },
             onResult: (transcript, confidence) => {
                 this.showRecordingIndicator(false);
                 this.elements.voiceInputBtn.classList.remove('recording');
 
-                // Set the transcript as input
+                // Reset input styling
+                this.elements.chatInput.style.fontStyle = 'normal';
+                this.elements.chatInput.style.opacity = '1';
+                this.elements.chatInput.placeholder = 'Type your message...';
+
+                // Set the final transcript
                 this.elements.chatInput.value = transcript;
 
                 // Automatically send if confidence is high
@@ -302,15 +318,24 @@ class ChatbotApplication {
                     ChatManager.showInfo('Please review the transcription and press send.');
                 }
             },
-            onError: (error) => {
+            onError: (error, context) => {
                 this.showRecordingIndicator(false);
                 this.elements.voiceInputBtn.classList.remove('recording');
-                ChatManager.showError(error);
+
+                // Reset input styling
+                this.elements.chatInput.style.fontStyle = 'normal';
+                this.elements.chatInput.style.opacity = '1';
+                this.elements.chatInput.placeholder = 'Type your message...';
+
+                // Show error with context if available
+                const errorMsg = context ? `${error}\n${context}` : error;
+                ChatManager.showError(errorMsg);
                 AvatarController.idle();
             },
             onEnd: () => {
                 this.showRecordingIndicator(false);
                 this.elements.voiceInputBtn.classList.remove('recording');
+                this.elements.chatInput.placeholder = 'Type your message...';
             },
         });
     }

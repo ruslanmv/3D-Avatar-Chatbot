@@ -71,6 +71,9 @@ export class VRControllers {
         this.onUIButtonClick = null;
         this.onMenuButtonPress = null; // Menu toggle callback
         this.menuButtonWasPressed = false; // Track button state
+        this.onPushToTalkStart = null; // Push-to-talk start callback
+        this.onPushToTalkEnd = null; // Push-to-talk end callback
+        this.pushToTalkButtonWasPressed = false; // Track PTT button state
 
         // Hover state for UI
         this.hoveredUI = null;
@@ -370,6 +373,23 @@ export class VRControllers {
                 this.menuButtonWasPressed = false;
             }
 
+            // Push-to-talk button check on left controller
+            // Button index 5 is typically "Y" button, index 1 is grip/squeeze
+            const pttButton = left.gamepad.buttons[5] || left.gamepad.buttons[1];
+            if (pttButton && pttButton.pressed && !this.pushToTalkButtonWasPressed) {
+                this.pushToTalkButtonWasPressed = true;
+                if (this.onPushToTalkStart) {
+                    console.log('[VRControllers] 🎤 Push-to-talk: START');
+                    this.onPushToTalkStart();
+                }
+            } else if ((!pttButton || !pttButton.pressed) && this.pushToTalkButtonWasPressed) {
+                this.pushToTalkButtonWasPressed = false;
+                if (this.onPushToTalkEnd) {
+                    console.log('[VRControllers] 🎤 Push-to-talk: END');
+                    this.onPushToTalkEnd();
+                }
+            }
+
             // 1. Left Hand -> Walk / Strafe
             const axes = left.gamepad.axes;
             let x = 0,
@@ -470,6 +490,17 @@ export class VRControllers {
     setMenuButtonCallback(callback) {
         this.onMenuButtonPress = callback;
         console.log('[VRControllers] Menu button callback registered');
+    }
+
+    /**
+     * Set push-to-talk callbacks for VR voice input
+     * @param {Function} onStart - Called when PTT button is pressed
+     * @param {Function} onEnd - Called when PTT button is released
+     */
+    setPushToTalkCallbacks(onStart, onEnd) {
+        this.onPushToTalkStart = onStart;
+        this.onPushToTalkEnd = onEnd;
+        console.log('[VRControllers] 🎤 Push-to-talk callbacks registered (Y button or grip)');
     }
 
     setChatPanel(panel) {

@@ -9,8 +9,11 @@ class SpeechService {
         this.recognition = null;
         this.isRecognitionSupported = false;
         this.isRecognizing = false;
+        this.micPermissionGranted = false;
+        this.micStream = null;
         this.recognitionCallbacks = {
             onResult: null,
+            onInterim: null, // NEW: Callback for interim results
             onError: null,
             onStart: null,
             onEnd: null,
@@ -28,6 +31,14 @@ class SpeechService {
             onError: null,
         };
 
+        // Recognition options (configurable)
+        this.recognitionOptions = {
+            continuous: false,
+            interimResults: true, // Enable interim results by default
+            maxAlternatives: 1,
+            lang: 'en-US',
+        };
+
         this.initializeSpeechRecognition();
         this.initializeSpeechSynthesis();
     }
@@ -43,11 +54,8 @@ class SpeechService {
             this.isRecognitionSupported = true;
             this.recognition = new SpeechRecognition();
 
-            // Configure recognition
-            this.recognition.continuous = false; // Stop after first result
-            this.recognition.interimResults = false; // Only final results
-            this.recognition.lang = 'en-US'; // Default language
-            this.recognition.maxAlternatives = 1;
+            // Configure recognition with options
+            this.applyRecognitionOptions();
 
             // Set up event handlers
             this.recognition.onstart = () => {
@@ -59,14 +67,31 @@ class SpeechService {
             };
 
             this.recognition.onresult = (event) => {
-                const result = event.results[0][0];
-                const transcript = result.transcript;
-                const confidence = result.confidence;
+                let interimTranscript = '';
+                let finalTranscript = '';
 
-                console.log(`Speech recognized: "${transcript}" (confidence: ${confidence})`);
+                // Process all results from the current index
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const result = event.results[i];
+                    const transcript = result[0].transcript;
 
-                if (this.recognitionCallbacks.onResult) {
-                    this.recognitionCallbacks.onResult(transcript, confidence);
+                    if (result.isFinal) {
+                        finalTranscript += transcript + ' ';
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+
+                // Call interim callback if available
+                if (interimTranscript && this.recognitionCallbacks.onInterim) {
+                    this.recognitionCallbacks.onInterim(interimTranscript.trim());
+                }
+
+                // Call result callback for final transcripts
+                if (finalTranscript && this.recognitionCallbacks.onResult) {
+                    const confidence = event.results[event.resultIndex][0].confidence || 1.0;
+                    console.log(`Speech recognized: "${finalTranscript.trim()}" (confidence: ${confidence})`);
+                    this.recognitionCallbacks.onResult(finalTranscript.trim(), confidence);
                 }
             };
 
@@ -75,23 +100,36 @@ class SpeechService {
                 this.isRecognizing = false;
 
                 let errorMessage = 'Speech recognition failed';
+                let errorContext = '';
+
                 switch (event.error) {
                     case 'no-speech':
                         errorMessage = 'No speech detected. Please try again.';
                         break;
                     case 'audio-capture':
                         errorMessage = 'Microphone not found or permission denied.';
+                        errorContext = 'Please check your microphone connection.';
                         break;
                     case 'not-allowed':
-                        errorMessage = 'Microphone access denied. Please allow microphone access.';
+                        errorMessage = 'Microphone access denied.';
+                        errorContext = 'Please allow microphone access in your browser settings.';
+                        this.micPermissionGranted = false;
                         break;
                     case 'network':
-                        errorMessage = 'Network error. Please check your connection.';
+                        errorMessage = 'Network error occurred.';
+                        errorContext = 'Speech recognition requires an internet connection in most browsers.';
+                        break;
+                    case 'aborted':
+                        errorMessage = 'Speech recognition was aborted.';
+                        break;
+                    case 'service-not-allowed':
+                        errorMessage = 'Speech recognition service not allowed.';
+                        errorContext = 'This may happen in VR or incognito mode.';
                         break;
                 }
 
                 if (this.recognitionCallbacks.onError) {
-                    this.recognitionCallbacks.onError(errorMessage);
+                    this.recognitionCallbacks.onError(errorMessage, errorContext);
                 }
             };
 
@@ -105,6 +143,18 @@ class SpeechService {
         } else {
             console.warn('Speech Recognition API not supported in this browser');
         }
+    }
+
+    /**
+     * Apply recognition options to the recognition instance
+     */
+    applyRecognitionOptions() {
+        if (!this.recognition) return;
+
+        this.recognition.continuous = this.recognitionOptions.continuous;
+        this.recognition.interimResults = this.recognitionOptions.interimResults;
+        this.recognition.lang = this.recognitionOptions.lang;
+        this.recognition.maxAlternatives = this.recognitionOptions.maxAlternatives;
     }
 
     /**
@@ -170,10 +220,70 @@ class SpeechService {
     }
 
     /**
-     * Start speech recognition
-     * @param callbacks
+     * Request microphone permission using getUserMedia
+     * This is especially important for VR and ensures permission before starting recognition
+     * @returns {Promise<boolean>} True if permission granted
      */
-    startRecognition(callbacks = {}) {
+    async requestMicrophonePermission() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            console.warn('getUserMedia not supported');
+            return false;
+        }
+
+        if (this.micPermissionGranted && this.micStream) {
+            return true;
+        }
+
+        try {
+            // Request microphone access
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            this.micStream = stream;
+            this.micPermissionGranted = true;
+            console.log('✅ Microphone permission granted');
+
+            // Stop the stream - we don't need to keep it open
+            // The Web Speech API will request it again when needed
+            setTimeout(() => {
+                if (this.micStream) {
+                    this.micStream.getTracks().forEach((track) => track.stop());
+                }
+            }, 100);
+
+            return true;
+        } catch (error) {
+            console.error('Microphone permission denied:', error);
+            this.micPermissionGranted = false;
+            return false;
+        }
+    }
+
+    /**
+     * Check if microphone permission is granted
+     * @returns {boolean}
+     */
+    hasMicrophonePermission() {
+        return this.micPermissionGranted;
+    }
+
+    /**
+     * Set recognition options
+     * @param {Object} options - Recognition options
+     */
+    setRecognitionOptions(options = {}) {
+        this.recognitionOptions = {
+            ...this.recognitionOptions,
+            ...options,
+        };
+        this.applyRecognitionOptions();
+        console.log('Recognition options updated:', this.recognitionOptions);
+    }
+
+    /**
+     * Start speech recognition
+     * @param {Object} callbacks - Event callbacks
+     * @param {boolean} requestPermission - Whether to request mic permission first (default: true)
+     */
+    async startRecognition(callbacks = {}, requestPermission = true) {
         if (!this.isRecognitionSupported) {
             const error = 'Speech recognition is not supported in your browser. Please use Chrome, Edge, or Safari.';
             if (callbacks.onError) {
@@ -187,8 +297,20 @@ class SpeechService {
             return false;
         }
 
+        // Request microphone permission first (important for VR)
+        if (requestPermission && !this.micPermissionGranted) {
+            const granted = await this.requestMicrophonePermission();
+            if (!granted) {
+                const error = 'Microphone permission required for speech recognition';
+                if (callbacks.onError) {
+                    callbacks.onError(error, 'Please allow microphone access when prompted.');
+                }
+                return false;
+            }
+        }
+
         // Set callbacks
-        this.recognitionCallbacks = callbacks;
+        this.recognitionCallbacks = { ...this.recognitionCallbacks, ...callbacks };
 
         try {
             this.recognition.start();
@@ -196,7 +318,7 @@ class SpeechService {
         } catch (error) {
             console.error('Failed to start recognition:', error);
             if (callbacks.onError) {
-                callbacks.onError('Failed to start speech recognition');
+                callbacks.onError('Failed to start speech recognition', error.message);
             }
             return false;
         }
