@@ -1479,11 +1479,52 @@ function updateProviderFields() {
     const provider = selected ? selected.value : 'none';
 
     const modelSelect = $('model-select');
+    const apiKeyInput = $('api-key');
+    const baseUrlInput = $('base-url');
     const watsonxRow = $('watsonx-project-row');
     const baseurlRow = $('baseurl-row');
 
     if (!modelSelect) return;
     modelSelect.innerHTML = '<option value="">Select a model...</option>';
+
+    // Load provider-specific API key from unified settings
+    try {
+        const unified = localStorage.getItem('nexus_llm_settings');
+        if (unified && apiKeyInput) {
+            const settings = JSON.parse(unified);
+
+            // Update API key field to show the correct provider's key
+            if (provider === 'openai' && settings.openai?.api_key) {
+                apiKeyInput.value = settings.openai.api_key;
+                if (baseUrlInput) baseUrlInput.value = settings.openai.base_url || '';
+            } else if (provider === 'claude' && settings.claude?.api_key) {
+                apiKeyInput.value = settings.claude.api_key;
+                if (baseUrlInput) baseUrlInput.value = settings.claude.base_url || '';
+            } else if (provider === 'watsonx' && settings.watsonx?.api_key) {
+                apiKeyInput.value = settings.watsonx.api_key;
+                if (baseUrlInput) baseUrlInput.value = settings.watsonx.base_url || 'https://us-south.ml.cloud.ibm.com';
+            } else if (provider === 'ollama') {
+                apiKeyInput.value = ''; // Ollama doesn't need API key
+                if (baseUrlInput) baseUrlInput.value = settings.ollama?.base_url || 'http://localhost:11434';
+            } else {
+                // No key saved for this provider, clear the field
+                apiKeyInput.value = '';
+                if (baseUrlInput) baseUrlInput.value = '';
+            }
+        } else if (apiKeyInput && !unified) {
+            // No unified settings, check if current config matches this provider
+            if (config.provider === provider) {
+                apiKeyInput.value = config.apiKey || '';
+                if (baseUrlInput) baseUrlInput.value = config.baseUrl || '';
+            } else {
+                // Different provider, clear the field
+                apiKeyInput.value = '';
+                if (baseUrlInput) baseUrlInput.value = '';
+            }
+        }
+    } catch (e) {
+        console.warn('[Main] Failed to load provider-specific API key:', e);
+    }
 
     if (provider === 'watsonx') {
         if (watsonxRow) watsonxRow.style.display = 'block';
@@ -1535,14 +1576,38 @@ function saveSettings() {
     const selected = document.querySelector('input[name="provider"]:checked');
     const provider = selected ? selected.value : 'none';
 
-    const apiKey = ($('api-key') && $('api-key').value) || '';
+    const apiKey = ($('api-key') && $('api-key').value.trim()) || '';
     const model = ($('model-select') && $('model-select').value) || '';
     const systemPrompt = ($('system-prompt') && $('system-prompt').value) || config.systemPrompt;
     const watsonxProjectId = ($('watsonx-project-id') && $('watsonx-project-id').value) || '';
     const baseUrl = ($('base-url') && $('base-url').value) || '';
 
-    if (provider !== 'none' && !apiKey) return showMessage('Please enter an API key', 'error');
-    if (provider !== 'none' && !model) return showMessage('Please select a model', 'error');
+    if (provider !== 'none' && provider !== 'ollama' && !apiKey) {
+        return showMessage('Please enter an API key', 'error');
+    }
+    if (provider !== 'none' && !model) {
+        return showMessage('Please select a model', 'error');
+    }
+
+    // Validate API key format matches provider
+    if (apiKey) {
+        if (provider === 'claude' && !apiKey.startsWith('sk-ant-')) {
+            return showMessage(
+                '❌ Invalid Claude API Key!\n\nClaude keys must start with "sk-ant-"\n\nYou entered a key starting with: ' +
+                    apiKey.substring(0, 7) +
+                    '\n\nThis looks like an OpenAI key. Please check your API key.',
+                'error'
+            );
+        }
+        if (provider === 'openai' && (!apiKey.startsWith('sk-') || apiKey.startsWith('sk-ant-'))) {
+            return showMessage(
+                '❌ Invalid OpenAI API Key!\n\nOpenAI keys must start with "sk-" (NOT "sk-ant-")\n\nYou entered a key starting with: ' +
+                    apiKey.substring(0, 10) +
+                    '\n\nThis looks like a Claude key. Please check your API key.',
+                'error'
+            );
+        }
+    }
 
     // ✅ Persist provider settings
     localStorage.setItem('ai_provider', provider);
