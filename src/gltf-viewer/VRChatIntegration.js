@@ -527,6 +527,11 @@ export class VRChatIntegration {
     async processUserMessage(text) {
         this.vrChatPanel.setStatus('thinking');
 
+        // ✅ Add user message to chat session history
+        if (window.chatHistory) {
+            window.chatHistory.addMessage('user', text);
+        }
+
         try {
             // 1) Ensure LLMManager instance exists (uses same settings as desktop)
             if (!window._nexusLLM) {
@@ -545,19 +550,24 @@ export class VRChatIntegration {
                 settings.system_prompt ||
                 'You are a helpful AI assistant named Nexus. You are friendly, professional, and knowledgeable.';
 
+            // ✅ Get conversation history for context
+            const history = window.chatHistory ? window.chatHistory.getHistory() : [];
+
             console.log('[VRChatIntegration] Sending to AI:', {
                 provider: settings.provider,
                 useProxy: settings.proxy?.enable_proxy,
                 textPreview: text.slice(0, 50),
+                historyMessages: history.length,
             });
 
-            const reply = await window._nexusLLM.sendMessage(text, systemPrompt);
+            const reply = await window._nexusLLM.sendMessage(text, systemPrompt, history);
 
             // 3) Show + speak AI response
             this.handleBotResponse(reply);
         } catch (error) {
             console.error('[VRChatIntegration] AI processing error:', error);
-            this.handleBotResponse('Sorry, I encountered an error processing your message.');
+            const errorMsg = 'Sorry, I encountered an error processing your message.';
+            this.handleBotResponse(errorMsg);
         }
     }
 
@@ -574,6 +584,11 @@ export class VRChatIntegration {
         // Add to desktop chat manager (if available)
         if (this.chatManager) {
             this.chatManager.addMessage(text, 'bot');
+        }
+
+        // ✅ Add bot response to chat session history
+        if (window.chatHistory) {
+            window.chatHistory.addMessage('assistant', text);
         }
 
         // Speak response if TTS enabled (non-fatal)

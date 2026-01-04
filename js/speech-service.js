@@ -344,14 +344,68 @@ class SpeechService {
     }
 
     /**
+     * Ensure voices are loaded (Quest/VR timing fix)
+     * On some browsers (Quest especially), speechSynthesis.getVoices() returns []
+     * until voiceschanged fires. This ensures voices are loaded before selecting.
+     * @param {number} timeoutMs - Maximum time to wait for voices (default: 1500ms)
+     * @returns {Promise<boolean>} True if voices loaded, false if timeout
+     */
+    async _ensureVoicesLoaded(timeoutMs = 1500) {
+        if (this.voices && this.voices.length) {
+            return true;
+        }
+
+        // Try loading immediately
+        this.loadVoices();
+        if (this.voices.length) {
+            return true;
+        }
+
+        // Wait for voiceschanged (common on Quest/Chrome)
+        return new Promise((resolve) => {
+            let done = false;
+
+            const finish = (ok) => {
+                if (done) {
+                    return;
+                }
+                done = true;
+                resolve(ok);
+            };
+
+            const t = setTimeout(() => finish(false), timeoutMs);
+
+            const handler = () => {
+                clearTimeout(t);
+                this.loadVoices();
+                finish(this.voices.length > 0);
+            };
+
+            // Modern listener
+            if (speechSynthesis.addEventListener) {
+                speechSynthesis.addEventListener('voiceschanged', handler, { once: true });
+            } else {
+                // Fallback
+                const prev = speechSynthesis.onvoiceschanged;
+                speechSynthesis.onvoiceschanged = (e) => {
+                    if (typeof prev === 'function') {
+                        prev(e);
+                    }
+                    handler();
+                };
+            }
+        });
+    }
+
+    /**
      * Get speech preferences from localStorage (shared with desktop/VR settings)
      * Removes dependency on global AppConfig
      * @returns {object} Speech preferences with safe defaults
      */
     _getSpeechPrefs() {
-        // Defaults
         const defaults = {
-            speechVoice: '', // voice name
+            speechVoice: '', // voice NAME
+            speechVoiceURI: '', // voice URI
             speechRate: 0.9,
             speechPitch: 1.0,
             speechVolume: 1.0,
@@ -366,9 +420,24 @@ class SpeechService {
             }
 
             const s = JSON.parse(raw);
+
+            // Back-compat safety:
+            // Some older builds accidentally stored URI in speechVoice.
+            // We only treat speechVoice as a URI if it "looks like" one.
+            const speechVoiceRaw = s.speechVoice || s.selectedVoice || '';
+            const looksLikeURI =
+                typeof speechVoiceRaw === 'string' &&
+                (speechVoiceRaw.includes('://') || speechVoiceRaw.startsWith('urn:') || speechVoiceRaw.includes('.'));
+
             return {
                 ...defaults,
-                speechVoice: s.speechVoice || s.selectedVoice || '',
+
+                // ✅ Name (only if it doesn't look like a URI)
+                speechVoice: looksLikeURI ? '' : speechVoiceRaw,
+
+                // ✅ URI from explicit field first; fallback to legacy mistake if it looks like URI
+                speechVoiceURI: s.speechVoiceURI || (looksLikeURI ? speechVoiceRaw : ''),
+
                 speechRate: typeof s.speechRate === 'number' ? s.speechRate : defaults.speechRate,
                 speechPitch: typeof s.speechPitch === 'number' ? s.speechPitch : defaults.speechPitch,
                 speechVolume: typeof s.speechVolume === 'number' ? s.speechVolume : defaults.speechVolume,
@@ -386,30 +455,41 @@ class SpeechService {
      */
     getPreferredVoice() {
         const prefs = this._getSpeechPrefs();
-        const savedVoiceName = prefs.speechVoice;
 
         console.log('[SpeechService] 🔎 getPreferredVoice()', {
-            savedVoiceName,
+            speechVoice: prefs.speechVoice,
+            speechVoiceURI: prefs.speechVoiceURI,
+            lang: prefs.speechLang,
             voicesLoaded: this.voices?.length || 0,
         });
 
-        if (savedVoiceName) {
-            const savedVoice = this.voices.find((v) => v.name === savedVoiceName);
-            if (savedVoice) {
-                return savedVoice;
+        // 1) Exact URI match (best)
+        if (prefs.speechVoiceURI) {
+            const byURI = this.voices.find((v) => v.voiceURI === prefs.speechVoiceURI);
+            if (byURI) {
+                return byURI;
             }
-            console.warn('[SpeechService] ⚠️ Saved voice not found, falling back:', savedVoiceName);
+            console.warn('[SpeechService] ⚠️ Saved voiceURI not found:', prefs.speechVoiceURI);
         }
 
-        // Prefer matching language
+        // 2) Exact name match (backwards compatible)
+        if (prefs.speechVoice) {
+            const byName = this.voices.find((v) => v.name === prefs.speechVoice);
+            if (byName) {
+                return byName;
+            }
+            console.warn('[SpeechService] ⚠️ Saved voice name not found:', prefs.speechVoice);
+        }
+
+        // 3) Language fallback
         const lang = prefs.speechLang || 'en-US';
-        const langPrefix = lang.split('-')[0];
+        const base = lang.split('-')[0].toLowerCase();
 
-        const langVoices = this.voices.filter((v) => v.lang?.toLowerCase().startsWith(langPrefix.toLowerCase()));
-        const fallbackPool = langVoices.length ? langVoices : this.voices;
+        const langVoices = this.voices.filter((v) => (v.lang || '').toLowerCase().startsWith(base));
+        const pool = langVoices.length ? langVoices : this.voices;
 
-        // Slight preference heuristic for female/natural voices
-        const preferred = fallbackPool.find((v) => /female|samantha|victoria/i.test(v.name)) || fallbackPool[0] || null;
+        // 4) Friendly heuristic fallback
+        const preferred = pool.find((v) => /female|samantha|victoria|zira|google/i.test(v.name)) || pool[0] || null;
 
         return preferred;
     }
@@ -549,7 +629,7 @@ class SpeechService {
      * @param text
      * @param callbacks
      */
-    speak(text, callbacks = {}) {
+    async speak(text, callbacks = {}) {
         if (!this.isSynthesisSupported) {
             console.warn('Speech synthesis not supported');
             if (callbacks.onError) {
@@ -566,14 +646,19 @@ class SpeechService {
             if (callbacks.onEnd) {
                 callbacks.onEnd();
             }
-            return true; // treat as success
+            return true;
         }
+
+        // ✅ Quest/VR timing fix: ensure voices are actually available
+        await this._ensureVoicesLoaded();
 
         // Stop any current speech
         this.stopSpeaking();
 
-        // Create utterance
         this.currentUtterance = new SpeechSynthesisUtterance(text);
+
+        // ✅ Apply language (helps selection)
+        this.currentUtterance.lang = prefs.speechLang || 'en-US';
 
         // Set voice
         const voice = this.getPreferredVoice();
@@ -581,25 +666,26 @@ class SpeechService {
             this.currentUtterance.voice = voice;
         }
 
-        // Set properties from prefs instead of AppConfig
+        // Apply properties
         this.currentUtterance.rate = prefs.speechRate;
         this.currentUtterance.pitch = prefs.speechPitch;
         this.currentUtterance.volume = prefs.speechVolume;
 
         console.log('[SpeechService] 🗣️ speak()', {
             textPreview: String(text).slice(0, 60),
+            lang: this.currentUtterance.lang,
             rate: this.currentUtterance.rate,
             pitch: this.currentUtterance.pitch,
             volume: this.currentUtterance.volume,
             selectedVoice: this.currentUtterance.voice?.name || '(default)',
+            selectedVoiceURI: this.currentUtterance.voice?.voiceURI || '(none)',
+            voicesLoaded: this.voices.length,
         });
 
-        // Set callbacks
         this.speakingCallbacks = callbacks;
 
         this.currentUtterance.onstart = () => {
             this.isSpeaking = true;
-            console.log('Started speaking:', text);
             if (this.speakingCallbacks.onStart) {
                 this.speakingCallbacks.onStart();
             }
@@ -607,7 +693,6 @@ class SpeechService {
 
         this.currentUtterance.onend = () => {
             this.isSpeaking = false;
-            console.log('Finished speaking');
             if (this.speakingCallbacks.onEnd) {
                 this.speakingCallbacks.onEnd();
             }
@@ -615,13 +700,22 @@ class SpeechService {
 
         this.currentUtterance.onerror = (event) => {
             this.isSpeaking = false;
-            console.error('Speech synthesis error:', event);
+
+            // ✅ Ignore "interrupted" errors (non-fatal - happens when user speaks while TTS is active)
+            if (event.error === 'interrupted') {
+                console.log('[SpeechService] TTS interrupted (user is speaking, non-fatal)');
+                if (this.speakingCallbacks.onEnd) {
+                    this.speakingCallbacks.onEnd();
+                }
+                return;
+            }
+
+            console.error('[SpeechService] Speech synthesis error:', event.error);
             if (this.speakingCallbacks.onError) {
                 this.speakingCallbacks.onError('Text-to-speech failed');
             }
         };
 
-        // Speak
         try {
             this.synthesis.speak(this.currentUtterance);
             return true;
@@ -635,11 +729,17 @@ class SpeechService {
     }
 
     /**
-     * Stop speaking
+     * Stop speaking (improved to prevent interrupted errors)
      */
     stopSpeaking() {
-        if (this.isSpeaking || this.synthesis.speaking) {
-            this.synthesis.cancel();
+        try {
+            if (this.isSpeaking || this.synthesis.speaking) {
+                this.synthesis.cancel();
+                this.isSpeaking = false;
+                this.currentUtterance = null;
+            }
+        } catch (e) {
+            console.warn('[SpeechService] Error stopping speech (non-fatal):', e);
             this.isSpeaking = false;
         }
     }
@@ -958,6 +1058,44 @@ class SpeechService {
      */
     getSTTConfig() {
         return { ...this.sttConfig };
+    }
+
+    /**
+     * Save TTS configuration to unified localStorage (nexus_settings_v1)
+     * This ensures desktop TTS settings are available in VR mode
+     * @param {object} config - TTS configuration object
+     * @param {string} config.speechVoice - Voice URI to use
+     * @param {number} config.speechRate - Speech rate (0.1-10)
+     * @param {number} config.speechPitch - Speech pitch (0-2)
+     * @param {number} config.speechVolume - Speech volume (0-1)
+     * @param {string} config.speechLang - Speech language code
+     * @param {boolean} config.ttsEnabled - Whether TTS is enabled
+     */
+    saveTTSConfig(config) {
+        try {
+            // Read existing nexus_settings_v1 or create new
+            let settings = {};
+            const raw = localStorage.getItem('nexus_settings_v1');
+            if (raw) {
+                try {
+                    settings = JSON.parse(raw);
+                } catch (e) {
+                    console.warn('[SpeechService] Failed to parse existing nexus_settings_v1, creating new:', e);
+                }
+            }
+
+            // Merge TTS config into settings
+            settings = {
+                ...settings,
+                ...config,
+            };
+
+            // Save back to localStorage
+            localStorage.setItem('nexus_settings_v1', JSON.stringify(settings));
+            console.log('[SpeechService] ✅ TTS config saved to nexus_settings_v1:', config);
+        } catch (error) {
+            console.error('[SpeechService] ❌ Failed to save TTS config:', error);
+        }
     }
 
     /**
