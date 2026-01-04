@@ -98,7 +98,7 @@ function loadConfig() {
                 baseUrl = settings.openai.base_url || '';
             } else if (settings.provider === 'claude' && settings.claude) {
                 apiKey = settings.claude.api_key || '';
-                model = settings.claude.model || 'claude-3-5-sonnet-20241022';
+                model = settings.claude.model || 'claude-3-5-sonnet-20240620';
                 baseUrl = settings.claude.base_url || '';
             } else if (settings.provider === 'watsonx' && settings.watsonx) {
                 apiKey = settings.watsonx.api_key || '';
@@ -179,7 +179,7 @@ const config = loadConfig();
             } else if (config.provider === 'claude') {
                 patch.claude = {
                     api_key: config.apiKey,
-                    model: config.model || 'claude-3-5-sonnet-20241022',
+                    model: config.model || 'claude-3-5-sonnet-20240620',
                     base_url: config.baseUrl || '',
                 };
             } else if (config.provider === 'watsonx') {
@@ -1393,6 +1393,53 @@ function openInfo() {
 /* ============================
    Provider UI + Storage
    ============================ */
+
+/**
+ * Fetch available models from LLMManager and populate dropdown
+ * @param {string} provider - Provider name (openai, claude, etc.)
+ * @param {HTMLSelectElement} selectElement - The select element to populate
+ */
+async function fetchAndPopulateModels(provider, selectElement) {
+    if (!selectElement || !window._nexusLLM) {
+        console.warn('[Main] Cannot fetch models: missing selectElement or LLMManager');
+        return;
+    }
+
+    // Add loading option
+    selectElement.innerHTML = '<option value="">Loading models...</option>';
+
+    try {
+        const result = await window._nexusLLM.fetchAvailableModels();
+
+        if (result.error) {
+            console.warn(`[Main] Model fetch warning: ${result.error}`);
+        }
+
+        selectElement.innerHTML = '<option value="">Select a model...</option>';
+
+        if (result.models && result.models.length > 0) {
+            result.models.forEach((m) => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m.toUpperCase().replace(/-/g, ' ');
+                selectElement.appendChild(opt);
+            });
+
+            console.log(`[Main] ✅ Loaded ${result.models.length} ${provider} models`);
+        } else {
+            selectElement.innerHTML = '<option value="">No models available</option>';
+        }
+
+        // Restore current selection if it exists
+        if (config.model && result.models.includes(config.model)) {
+            selectElement.value = config.model;
+        }
+    } catch (e) {
+        console.error('[Main] Failed to fetch models:', e);
+        selectElement.innerHTML = '<option value="">Error loading models</option>';
+    }
+}
+
 function updateProviderFields() {
     const selected = document.querySelector('input[name="provider"]:checked');
     const provider = selected ? selected.value : 'none';
@@ -1426,24 +1473,11 @@ function updateProviderFields() {
     if (baseurlRow) baseurlRow.style.display = 'none';
 
     if (provider === 'openai') {
-        ['gpt-4o', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo'].forEach((m) => {
-            const opt = document.createElement('option');
-            opt.value = m;
-            opt.textContent = m.toUpperCase();
-            modelSelect.appendChild(opt);
-        });
+        // Dynamically fetch OpenAI models from API (non-hardcoded)
+        fetchAndPopulateModels('openai', modelSelect);
     } else if (provider === 'claude') {
-        [
-            'claude-3-5-sonnet-20241022',
-            'claude-3-opus-20240229',
-            'claude-3-sonnet-20240229',
-            'claude-3-haiku-20240307',
-        ].forEach((m) => {
-            const opt = document.createElement('option');
-            opt.value = m;
-            opt.textContent = m.toUpperCase().replace(/-/g, ' ');
-            modelSelect.appendChild(opt);
-        });
+        // Dynamically fetch Claude models from API (non-hardcoded)
+        fetchAndPopulateModels('claude', modelSelect);
     }
 }
 
@@ -1516,7 +1550,7 @@ function saveSettings() {
             } else if (provider === 'claude') {
                 patch.claude = {
                     api_key: apiKey,
-                    model: model || 'claude-3-5-sonnet-20241022',
+                    model: model || 'claude-3-5-sonnet-20240620',
                     base_url: baseUrl || '',
                 };
             } else if (provider === 'watsonx') {

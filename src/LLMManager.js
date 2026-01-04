@@ -433,16 +433,69 @@
         }
 
         async _fetchClaudeModels() {
-            // Claude doesn't have a public models endpoint, return curated list
-            return {
-                models: [
-                    'claude-3-5-sonnet-20241022',
-                    'claude-3-opus-20240229',
-                    'claude-3-sonnet-20240229',
-                    'claude-3-haiku-20240307',
-                ],
-                error: null,
-            };
+            const { api_key, base_url } = this._settings.claude;
+
+            // Fallback models if API call fails
+            const fallback = [
+                'claude-3-5-sonnet-20240620',
+                'claude-3-opus-20240229',
+                'claude-3-sonnet-20240229',
+                'claude-3-haiku-20240307',
+            ];
+
+            if (!api_key) {
+                return {
+                    models: fallback,
+                    error: 'No API key - using default model list',
+                };
+            }
+
+            try {
+                const apiBase = base_url || 'https://api.anthropic.com';
+                const url = `${apiBase.replace(/\/$/, '')}/v1/models`;
+
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'x-api-key': api_key,
+                    'anthropic-version': '2023-06-01',
+                };
+
+                let response;
+                if (this._hasProxy()) {
+                    response = await this._fetchViaProxy(url, 'GET', headers, null);
+                } else {
+                    response = await fetch(url, {
+                        method: 'GET',
+                        headers: headers,
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                }
+
+                const data = await response.json();
+
+                // Extract model IDs from response
+                const models = (data.data || [])
+                    .map((m) => m.id)
+                    .filter((id) => id && id.startsWith('claude-'))
+                    .sort();
+
+                if (models.length === 0) {
+                    console.warn('[LLMManager] No Claude models found in API response, using fallback');
+                    return { models: fallback, error: 'No models in API response - using defaults' };
+                }
+
+                console.log('[LLMManager] ✅ Fetched Claude models:', models);
+                return { models: models, error: null };
+            } catch (e) {
+                console.warn('[LLMManager] Failed to fetch Claude models:', e.message);
+                return {
+                    models: fallback,
+                    error: `Could not fetch models: ${e.message} - using defaults`,
+                };
+            }
         }
 
         async _fetchOllamaModels() {
@@ -565,7 +618,7 @@
                 },
                 claude: {
                     api_key: '',
-                    model: 'claude-3-5-sonnet-20241022',
+                    model: 'claude-3-5-sonnet-20240620',
                     base_url: '',
                 },
                 watsonx: {
@@ -601,7 +654,7 @@
                 },
                 claude: {
                     api_key: '',
-                    model: 'claude-3-5-sonnet-20241022',
+                    model: 'claude-3-5-sonnet-20240620',
                     base_url: '',
                 },
                 watsonx: {
