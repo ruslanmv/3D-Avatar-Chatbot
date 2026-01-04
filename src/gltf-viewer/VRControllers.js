@@ -25,7 +25,7 @@ export class VRControllers {
             moveSpeed: 1.8, // Horizontal speed
             verticalSpeed: 1.2, // Vertical fly speed
             turnSpeed: 2.0, // Turning speed
-            rotationSensitivity: 3.5, // Avatar spin speed (reduced from 5.5 for smoother control)
+            rotationSensitivity: 3.5, // Used for yaw-based spin responsiveness if you later add smoothing
             deadzone: 0.15, // Stick deadzone
             rayLength: 5,
             rayColor: 0x00e5ff,
@@ -53,12 +53,18 @@ export class VRControllers {
         this.uiInteractables = []; // UI panel interactables
         this.chatPanel = null; // Reference to VRChatPanel for dragging
 
+        // Reusable vectors to avoid allocations each frame (important on Quest)
+        this._tmpV1 = new THREE.Vector3();
+        this._tmpV2 = new THREE.Vector3();
+
         // Dragging State (Avatar rotation)
+        // FIX: switch from previousX to turntable angle tracking
         this.dragState = {
             active: false,
             hand: null,
             object: null,
-            previousX: 0,
+            startHandAngle: 0,
+            startObjectRotation: 0,
         };
 
         // UI Drag State (for dragging chat panel)
@@ -157,7 +163,9 @@ export class VRControllers {
     }
 
     addRayVisual(controller) {
-        if (!controller) return;
+        if (!controller) {
+            return;
+        }
         const line = new THREE.Line(
             new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -1)]),
             new THREE.LineBasicMaterial({ color: this.options.rayColor, opacity: 0.8, transparent: true })
@@ -168,7 +176,9 @@ export class VRControllers {
     }
 
     addControllerModel(grip) {
-        if (!grip) return;
+        if (!grip) {
+            return;
+        }
         const sphere = new THREE.Mesh(
             new THREE.SphereGeometry(0.04, 16, 16),
             new THREE.MeshStandardMaterial({ color: 0x00e5ff, roughness: 0.5 })
@@ -181,7 +191,9 @@ export class VRControllers {
     // =========================================================================
 
     _startDrag(controller, hand) {
-        if (this.dragState.active || this.uiDragState.active) return;
+        if (this.dragState.active || this.uiDragState.active) {
+            return;
+        }
 
         this.tempMatrix.identity().extractRotation(controller.matrixWorld);
         this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
@@ -193,16 +205,16 @@ export class VRControllers {
             const uiTarget = uiIntersects[0].object;
             const hit = uiIntersects[0];
 
-            // Check if this is a panel handle (for dragging) vs a button (for clicking)
             // Quest 3 panel is always draggable (no pin concept)
             if (this.chatPanel && uiTarget.userData && uiTarget.userData.type === 'handle') {
-                // Start dragging the panel
                 const dragStarted = this.chatPanel.beginDrag ? this.chatPanel.beginDrag(hit.point) : false;
                 if (dragStarted) {
                     this.uiDragState.active = true;
                     this.uiDragState.hand = hand;
                     const line = controller.getObjectByName('ray');
-                    if (line) line.material.color.setHex(this.options.rayGrabColor);
+                    if (line) {
+                        line.material.color.setHex(this.options.rayGrabColor);
+                    }
                     console.log(`[VRControllers] 🖐️ Started dragging UI panel (${hand})`);
                     return;
                 }
@@ -223,12 +235,24 @@ export class VRControllers {
                     this.dragState.active = true;
                     this.dragState.hand = hand;
                     this.dragState.object = target;
-                    this.dragState.previousX = controller.position.x;
+
+                    // ✅ FIX: turntable mode using WORLD positions (stable on Quest)
+                    controller.getWorldPosition(this._tmpV1);
+                    target.getWorldPosition(this._tmpV2);
+
+                    this.dragState.startHandAngle = Math.atan2(
+                        this._tmpV1.x - this._tmpV2.x,
+                        this._tmpV1.z - this._tmpV2.z
+                    );
+
+                    this.dragState.startObjectRotation = target.rotation.y;
 
                     const line = controller.getObjectByName('ray');
-                    if (line) line.material.color.setHex(this.options.rayGrabColor);
+                    if (line) {
+                        line.material.color.setHex(this.options.rayGrabColor);
+                    }
 
-                    console.log(`[VRControllers] ✊ Grabbed Avatar (${hand})`);
+                    console.log(`[VRControllers] ✊ Grabbed Avatar (${hand}) - Turntable mode (world-space)`);
                     return;
                 }
                 target = target.parent;
@@ -237,21 +261,25 @@ export class VRControllers {
     }
 
     _handleUIClick(mesh) {
-        if (!mesh || !mesh.name) return;
+        if (!mesh || !mesh.name) {
+            return;
+        }
 
         console.log(`[VRControllers] 👆 UI Click: ${mesh.name}`);
 
-        // Call callback with mesh name and userData
         if (this.onUIButtonClick) {
             this.onUIButtonClick(mesh.name, mesh.userData);
         }
     }
 
     _updateUIHover() {
-        if (!this.controller2) return;
+        if (!this.controller2) {
+            return;
+        }
 
-        // Skip hover check if dragging (performance + avoid conflicts)
-        if (this.uiDragState.active || this.dragState.active) return;
+        if (this.uiDragState.active || this.dragState.active) {
+            return;
+        }
 
         this.tempMatrix.identity().extractRotation(this.controller2.matrixWorld);
         this.raycaster.ray.origin.setFromMatrixPosition(this.controller2.matrixWorld);
@@ -284,12 +312,14 @@ export class VRControllers {
             const controller = hand === 'left' ? this.controller1 : this.controller2;
             if (controller) {
                 const line = controller.getObjectByName('ray');
-                if (line) line.material.color.setHex(this.options.rayColor);
+                if (line) {
+                    line.material.color.setHex(this.options.rayColor);
+                }
             }
             this.dragState.active = false;
             this.dragState.object = null;
             this.dragState.hand = null;
-            console.log(`[VRControllers] ✋ Released Avatar`);
+            console.log('[VRControllers] ✋ Released Avatar');
         }
     }
 
@@ -302,49 +332,63 @@ export class VRControllers {
             const controller = hand === 'left' ? this.controller1 : this.controller2;
             if (controller) {
                 const line = controller.getObjectByName('ray');
-                if (line) line.material.color.setHex(this.options.rayColor);
+                if (line) {
+                    line.material.color.setHex(this.options.rayColor);
+                }
             }
 
             this.uiDragState.active = false;
             this.uiDragState.hand = null;
-            console.log(`[VRControllers] ✋ Released UI panel`);
+            console.log('[VRControllers] ✋ Released UI panel');
         }
     }
 
     _updateDragging() {
-        if (!this.dragState.active || !this.dragState.object) return;
+        if (!this.dragState.active || !this.dragState.object) {
+            return;
+        }
 
         const controller = this.dragState.hand === 'left' ? this.controller1 : this.controller2;
-        if (!controller) return;
-
-        const currentX = controller.position.x;
-        const deltaX = currentX - this.dragState.previousX;
-
-        if (Math.abs(deltaX) > 0.0001) {
-            this.dragState.object.rotation.y += deltaX * this.options.rotationSensitivity;
+        if (!controller) {
+            return;
         }
-        this.dragState.previousX = currentX;
+
+        // ✅ FIX: compute hand angle around object using WORLD positions
+        controller.getWorldPosition(this._tmpV1);
+        this.dragState.object.getWorldPosition(this._tmpV2);
+
+        const currentHandAngle = Math.atan2(
+            this._tmpV1.x - this._tmpV2.x,
+            this._tmpV1.z - this._tmpV2.z
+        );
+
+        // ✅ FIX: wrap delta to avoid jumps at PI / -PI boundary
+        let delta = currentHandAngle - this.dragState.startHandAngle;
+        delta = ((delta + Math.PI) % (2 * Math.PI)) - Math.PI;
+
+        // Apply 1:1 turntable rotation (no stepping)
+        this.dragState.object.rotation.y = this.dragState.startObjectRotation + delta;
     }
 
     _updateUIDragging() {
-        if (!this.uiDragState.active || !this.chatPanel) return;
+        if (!this.uiDragState.active || !this.chatPanel) {
+            return;
+        }
 
         const controller = this.uiDragState.hand === 'left' ? this.controller1 : this.controller2;
-        if (!controller) return;
+        if (!controller) {
+            return;
+        }
 
-        // Quest-like dragging: raycast against panel to find world hit point
         this.tempMatrix.identity().extractRotation(controller.matrixWorld);
         this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
         this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
 
-        // Raycast against panel interactables to get current world-space hit point
         const hits = this.raycaster.intersectObjects(this.chatPanel.getInteractables(), false);
 
         if (hits.length > 0) {
-            // Use actual raycast hit point (feels natural like Quest)
             this.chatPanel.dragTo(hits[0].point);
         } else {
-            // Fallback: use ray at comfortable distance if not hitting panel
             const fallbackDist = 1.0;
             const fallbackPoint = this.raycaster.ray.origin
                 .clone()
@@ -392,8 +436,8 @@ export class VRControllers {
 
             // 1. Left Hand -> Walk / Strafe
             const axes = left.gamepad.axes;
-            let x = 0,
-                y = 0;
+            let x = 0;
+            let y = 0;
             if (axes.length >= 4) {
                 x = axes[2];
                 y = axes[3];
@@ -409,8 +453,8 @@ export class VRControllers {
         const right = this.controllers.right;
         if (right && right.gamepad) {
             const axes = right.gamepad.axes;
-            let x = 0,
-                y = 0;
+            let x = 0;
+            let y = 0;
             // Standard WebXR often maps stick to 2,3
             if (axes.length >= 4) {
                 x = axes[2];
@@ -426,11 +470,16 @@ export class VRControllers {
     }
 
     _applyMove(x, y, dt) {
-        if (Math.abs(x) < this.options.deadzone) x = 0;
-        if (Math.abs(y) < this.options.deadzone) y = 0;
-        if (x === 0 && y === 0) return;
+        if (Math.abs(x) < this.options.deadzone) {
+            x = 0;
+        }
+        if (Math.abs(y) < this.options.deadzone) {
+            y = 0;
+        }
+        if (x === 0 && y === 0) {
+            return;
+        }
 
-        // Get Camera Direction (Ground Projected)
         const xrCam = this.renderer.xr.getCamera(this.camera);
         const forward = new THREE.Vector3();
         xrCam.getWorldDirection(forward);
@@ -445,15 +494,18 @@ export class VRControllers {
     }
 
     _applyTurn(x, dt) {
-        if (Math.abs(x) < this.options.deadzone) return;
+        if (Math.abs(x) < this.options.deadzone) {
+            return;
+        }
         const speed = this.options.turnSpeed * dt;
         this.playerRig.rotateY(-x * speed);
     }
 
     _applyVertical(y, dt) {
-        if (Math.abs(y) < this.options.deadzone) return;
+        if (Math.abs(y) < this.options.deadzone) {
+            return;
+        }
         const speed = this.options.verticalSpeed * dt;
-        // -y is typically "up" on thumbstick push
         this.playerRig.position.y += -y * speed;
     }
 
@@ -462,23 +514,28 @@ export class VRControllers {
     // =========================================================================
 
     update(dt) {
-        if (!this.enabled || !this.renderer.xr.isPresenting) return;
+        if (!this.enabled || !this.renderer.xr.isPresenting) {
+            return;
+        }
         this.pollGamepadInput(dt);
-        this._updateDragging();
+        this._updateDragging(); // rotation fix lives here
         this._updateUIDragging();
         this._updateUIHover();
     }
 
     registerAvatar(avatarRoot) {
-        if (!avatarRoot) return;
+        if (!avatarRoot) {
+            return;
+        }
         avatarRoot.userData.isRotatable = true;
-        // Clear old interactables and set new one
         this.interactables = [avatarRoot];
         console.log('[VRControllers] Avatar registered. Hold trigger to spin.');
     }
 
     registerUIInteractables(interactables) {
-        if (!interactables || !Array.isArray(interactables)) return;
+        if (!interactables || !Array.isArray(interactables)) {
+            return;
+        }
         this.uiInteractables = interactables;
         console.log(`[VRControllers] Registered ${interactables.length} UI interactables.`);
     }
@@ -512,8 +569,6 @@ export class VRControllers {
         this.enabled = enabled;
         console.log(`[VRControllers] System ${enabled ? 'Enabled' : 'Disabled'}`);
         if (enabled) {
-            // Position player in front of avatar (not on top of it)
-            // Z=2.5 puts you in front, Y=0 is ground level
             this.playerRig.position.set(0, 0, 2.5);
             this.playerRig.rotation.set(0, 0, 0);
             console.log('[VRControllers] Positioned in front of avatar');
@@ -527,11 +582,21 @@ export class VRControllers {
     }
 
     dispose() {
-        if (this.controller1) this.playerRig.remove(this.controller1);
-        if (this.controller2) this.playerRig.remove(this.controller2);
-        if (this.controllerGrip1) this.playerRig.remove(this.controllerGrip1);
-        if (this.controllerGrip2) this.playerRig.remove(this.controllerGrip2);
-        if (this.playerRig) this.scene.remove(this.playerRig);
+        if (this.controller1) {
+            this.playerRig.remove(this.controller1);
+        }
+        if (this.controller2) {
+            this.playerRig.remove(this.controller2);
+        }
+        if (this.controllerGrip1) {
+            this.playerRig.remove(this.controllerGrip1);
+        }
+        if (this.controllerGrip2) {
+            this.playerRig.remove(this.controllerGrip2);
+        }
+        if (this.playerRig) {
+            this.scene.remove(this.playerRig);
+        }
 
         this.interactables = [];
         this.uiInteractables = [];
