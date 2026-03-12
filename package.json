@@ -112,5 +112,9 @@
     "not dead",
     "not op_mini all",
     "last 2 versions"
-  ]
+  ],
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^4.22.1"
+  }
 }

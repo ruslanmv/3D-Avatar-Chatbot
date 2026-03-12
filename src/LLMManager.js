@@ -24,6 +24,7 @@
         CLAUDE: 'claude',
         WATSONX: 'watsonx',
         OLLAMA: 'ollama',
+        OLLABRIDGE: 'ollabridge',
     };
 
     const STORAGE_KEY = 'nexus_llm_settings';
@@ -104,6 +105,10 @@
                 return await this._chatOllama(userMessage, systemPrompt, conversationHistory);
             }
 
+            if (provider === LLMProvider.OLLABRIDGE) {
+                return await this._chatOllaBridge(userMessage, systemPrompt, conversationHistory);
+            }
+
             throw new Error(`Provider ${provider} is not implemented.`);
         }
 
@@ -130,6 +135,9 @@
                 }
                 if (provider === LLMProvider.OLLAMA) {
                     return await this._fetchOllamaModels();
+                }
+                if (provider === LLMProvider.OLLABRIDGE) {
+                    return await this._fetchOllaBridgeModels();
                 }
                 return { models: [], error: `Unknown provider: ${provider}` };
             } catch (e) {
@@ -444,6 +452,61 @@
             return data.message?.content || 'No response';
         }
 
+        /**
+         * OllaBridge Provider — OpenAI-compatible gateway to HomePilot personas
+         * Connects through OllaBridge to chat with HomePilot persona agents
+         * or any other model available through the OllaBridge gateway.
+         */
+        async _chatOllaBridge(userMessage, systemPrompt, conversationHistory = []) {
+            const { api_key: rawKey, pair_token: rawPairToken, model, base_url } = this._settings.ollabridge;
+
+            const api_key = (rawKey || '').trim();
+            const pair_token = (rawPairToken || '').trim();
+            const authToken = api_key || pair_token;
+            if (!authToken) {
+                throw new Error(
+                    'OllaBridge: No API key or pairing token. Add an API key or use the Pair button in Settings.'
+                );
+            }
+
+            const url = `${(base_url || 'http://localhost:11435').replace(/\/$/, '')}/v1/chat/completions`;
+            const headers = {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${authToken}`,
+            };
+
+            const messages = [
+                { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
+                ...conversationHistory,
+                { role: 'user', content: userMessage },
+            ];
+
+            const body = {
+                model: model || 'default',
+                messages: messages,
+                max_tokens: 800,
+            };
+
+            let res;
+            if (this._hasProxy()) {
+                res = await this._fetchViaProxy(url, 'POST', headers, body);
+            } else {
+                res = await fetch(url, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify(body),
+                });
+            }
+
+            if (!res.ok) {
+                const err = await res.text();
+                throw new Error(`OllaBridge Error: ${res.status} - ${err}`);
+            }
+
+            const data = await res.json();
+            return data.choices?.[0]?.message?.content || 'No response';
+        }
+
         // ===============================================
         // Model Fetchers
         // ===============================================
@@ -655,6 +718,48 @@
             }
         }
 
+        async _fetchOllaBridgeModels() {
+            const { api_key: rawKey, pair_token: rawPairToken, base_url } = this._settings.ollabridge;
+            const api_key = (rawKey || '').trim();
+            const pair_token = (rawPairToken || '').trim();
+            const authToken = api_key || pair_token;
+
+            const fallback = ['default'];
+
+            if (!authToken) {
+                return {
+                    models: fallback,
+                    error: 'Missing API Key or Pairing Token - using default list',
+                };
+            }
+
+            try {
+                const url = `${(base_url || 'http://localhost:11435').replace(/\/$/, '')}/v1/models`;
+                const headers = { Authorization: `Bearer ${authToken}` };
+
+                let res;
+                if (this._hasProxy()) {
+                    res = await this._fetchViaProxy(url, 'GET', headers, null);
+                } else {
+                    res = await fetch(url, { headers });
+                }
+
+                if (!res.ok) throw new Error('Could not reach OllaBridge gateway');
+
+                const data = await res.json();
+                const models = (data.data || []).map((m) => m.id).sort();
+                return {
+                    models: models.length > 0 ? models : fallback,
+                    error: models.length === 0 ? 'No models found on OllaBridge' : null,
+                };
+            } catch (e) {
+                return {
+                    models: fallback,
+                    error: `Cannot connect to OllaBridge: ${e.message} - using defaults`,
+                };
+            }
+        }
+
         async _fetchWatsonxModels() {
             // Updated fallback models (latest versions as of 2025/2026)
             const fallback = [
@@ -797,6 +902,12 @@
                     base_url: 'http://localhost:11434',
                     model: 'llama3',
                 },
+                ollabridge: {
+                    api_key: '',
+                    pair_token: '',
+                    base_url: 'http://localhost:11435',
+                    model: 'default',
+                },
             };
         }
 
@@ -833,7 +944,62 @@
                     base_url: 'http://localhost:11434',
                     model: 'llama3',
                 },
+                ollabridge: {
+                    api_key: '',
+                    pair_token: '',
+                    base_url: 'http://localhost:11435',
+                    model: 'default',
+                },
             };
+        }
+
+        // ===============================================
+        // OllaBridge Pairing
+        // ===============================================
+
+        /**
+         * Exchange a pairing code for a persistent bearer token from OllaBridge.
+         * The returned token is stored in settings.ollabridge.pair_token and persisted.
+         *
+         * @param {string} code - The 6-digit pairing code from the OllaBridge console
+         * @param {string} [label] - Friendly device label (default: '3d-avatar')
+         * @returns {Promise<{ok: boolean, token?: string, device_id?: string, error?: string}>}
+         */
+        async pairWithOllaBridge(code, label = '3d-avatar') {
+            const base_url = (this._settings.ollabridge?.base_url || 'http://localhost:11435').replace(/\/$/, '');
+            const url = `${base_url}/pair`;
+
+            try {
+                let res;
+                const headers = { 'Content-Type': 'application/json' };
+                const body = { code: code.trim(), label };
+
+                if (this._hasProxy()) {
+                    res = await this._fetchViaProxy(url, 'POST', headers, body);
+                } else {
+                    res = await fetch(url, {
+                        method: 'POST',
+                        headers,
+                        body: JSON.stringify(body),
+                    });
+                }
+
+                if (!res.ok) {
+                    const err = await res.text();
+                    return { ok: false, error: `Pairing failed: ${res.status} - ${err}` };
+                }
+
+                const data = await res.json();
+                if (data.ok && data.token) {
+                    // Store the paired token in settings
+                    this._settings.ollabridge.pair_token = data.token;
+                    this._saveSettings();
+                    return { ok: true, token: data.token, device_id: data.device_id };
+                }
+                return { ok: false, error: 'Unexpected response from OllaBridge' };
+            } catch (e) {
+                return { ok: false, error: `Cannot reach OllaBridge: ${e.message}` };
+            }
         }
 
         // ===============================================

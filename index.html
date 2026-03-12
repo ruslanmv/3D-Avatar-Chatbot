@@ -442,6 +442,13 @@
                                 </div>
                             </label>
                             <label class="provider-card">
+                                <input type="radio" name="provider" value="ollabridge" class="provider-radio" />
+                                <div class="provider-content">
+                                    <div class="provider-icon">🌉</div>
+                                    <div class="provider-name">OllaBridge</div>
+                                </div>
+                            </label>
+                            <label class="provider-card">
                                 <input type="radio" name="provider" value="none" class="provider-radio" checked />
                                 <div class="provider-content">
                                     <div class="provider-icon">○</div>
@@ -462,6 +469,32 @@
                                 class="text-input"
                                 placeholder="Enter your API key..."
                             />
+                        </div>
+
+                        <div class="input-group" id="ollabridge-pair-row" style="display: none">
+                            <label class="input-label">OR PAIR WITH CODE</label>
+                            <div style="display: flex; gap: 8px; align-items: center">
+                                <input
+                                    type="text"
+                                    id="ollabridge-pair-code"
+                                    class="text-input"
+                                    placeholder="Enter 6-digit pairing code..."
+                                    maxlength="6"
+                                    style="flex: 1; letter-spacing: 0.3em; text-align: center; font-size: 1.1rem"
+                                />
+                                <button
+                                    id="ollabridge-pair-btn"
+                                    class="btn-primary"
+                                    style="white-space: nowrap; font-size: 0.875rem"
+                                    title="Exchange pairing code for a persistent token"
+                                >
+                                    🔗 Pair
+                                </button>
+                            </div>
+                            <div
+                                id="ollabridge-pair-status"
+                                style="font-size: 0.75rem; margin-top: 4px; color: #888"
+                            ></div>
                         </div>
 
                         <div class="input-group" id="watsonx-project-row" style="display: none">

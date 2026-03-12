@@ -90,11 +90,35 @@ app.use(express.static(REPO_ROOT, { extensions: ['html'] }));
 // -----------------------------
 function isAllowedUrl(url) {
     const u = String(url || '');
-    return ALLOW.some((base) => u.startsWith(base));
+    // Allow configured upstream APIs
+    if (ALLOW.some((base) => u.startsWith(base))) return true;
+    // Allow local network URLs (OllaBridge, HomePilot, Ollama on LAN)
+    if (isLocalNetworkUrl(u)) return true;
+    return false;
+}
+
+function isLocalNetworkUrl(url) {
+    try {
+        const u = new URL(url);
+        const host = u.hostname;
+        return (
+            host === 'localhost' ||
+            host === '127.0.0.1' ||
+            host === '0.0.0.0' ||
+            host.startsWith('192.168.') ||
+            host.startsWith('10.') ||
+            /^172\.(1[6-9]|2\d|3[01])\./.test(host)
+        );
+    } catch {
+        return false;
+    }
 }
 
 function httpsOnly(url) {
-    return /^https:\/\//i.test(String(url || ''));
+    const u = String(url || '');
+    // Allow HTTP for local network (OllaBridge, Ollama, HomePilot)
+    if (isLocalNetworkUrl(u)) return true;
+    return /^https:\/\//i.test(u);
 }
 
 // Pass through only safe headers (but keep content-type)
