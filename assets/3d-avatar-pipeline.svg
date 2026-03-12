@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 480" fill="none">
+  <defs>
+    <linearGradient id="av-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8b5cf6"/>
+      <stop offset="50%" style="stop-color:#ec4899"/>
+      <stop offset="100%" style="stop-color:#f43f5e"/>
+    </linearGradient>
+    <linearGradient id="av-blue" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#06b6d4"/>
+      <stop offset="100%" style="stop-color:#3b82f6"/>
+    </linearGradient>
+    <linearGradient id="av-green" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#22c55e"/>
+      <stop offset="100%" style="stop-color:#10b981"/>
+    </linearGradient>
+    <filter id="av-glow">
+      <feDropShadow dx="0" dy="2" stdDeviation="5" flood-color="#8b5cf6" flood-opacity="0.3"/>
+    </filter>
+    <filter id="av-glow-blue">
+      <feDropShadow dx="0" dy="2" stdDeviation="5" flood-color="#3b82f6" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="480" rx="16" fill="#0f172a"/>
+  <rect width="900" height="480" rx="16" fill="url(#av-grad)" opacity="0.03"/>
+
+  <!-- Title -->
+  <text x="450" y="38" text-anchor="middle" font-family="system-ui, sans-serif" font-size="22" font-weight="800" fill="#e2e8f0">3D Avatar Chatbot + HomePilot Pipeline</text>
+  <text x="450" y="56" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" fill="#64748b">Talk to AI personas through an animated 3D character in your browser</text>
+
+  <!-- ═══ STEP 1: USER ═══ -->
+  <rect x="40" y="80" width="180" height="140" rx="14" fill="#1e293b" stroke="url(#av-grad)" stroke-width="2" filter="url(#av-glow)"/>
+  <text x="130" y="108" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" font-weight="700" fill="#c4b5fd" letter-spacing="2">STEP 1</text>
+  <text x="130" y="140" text-anchor="middle" font-family="system-ui, sans-serif" font-size="36">🎤</text>
+  <text x="130" y="170" text-anchor="middle" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#e2e8f0">You Speak</text>
+  <text x="130" y="188" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#94a3b8">Voice or text input</text>
+  <text x="130" y="203" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#94a3b8">WebXR / Browser</text>
+  <!-- Animated sound waves -->
+  <circle cx="130" cy="138" r="28" stroke="#8b5cf6" stroke-width="1" fill="none" opacity="0.3">
+    <animate attributeName="r" values="25;35;25" dur="2s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.4;0;0.4" dur="2s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Arrow 1→2 -->
+  <line x1="220" y1="150" x2="270" y2="150" stroke="#8b5cf6" stroke-width="2" stroke-dasharray="6,4">
+    <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1s" repeatCount="indefinite"/>
+  </line>
+  <polygon points="268,144 280,150 268,156" fill="#8b5cf6"/>
+  <text x="250" y="140" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="#a78bfa">STT</text>
+
+  <!-- ═══ STEP 2: 3D AVATAR ═══ -->
+  <rect x="280" y="80" width="200" height="140" rx="14" fill="#1e293b" stroke="url(#av-blue)" stroke-width="2" filter="url(#av-glow-blue)"/>
+  <text x="380" y="108" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" font-weight="700" fill="#67e8f9" letter-spacing="2">STEP 2</text>
+  <text x="380" y="140" text-anchor="middle" font-family="system-ui, sans-serif" font-size="36">🎭</text>
+  <text x="380" y="170" text-anchor="middle" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#e2e8f0">3D Avatar App</text>
+  <text x="380" y="188" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#94a3b8">VRM model + lip sync</text>
+  <text x="380" y="203" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#94a3b8">Pair or API Key auth</text>
+  <!-- Animated avatar bounce -->
+  <g>
+    <animateTransform attributeName="transform" type="translate" values="0,0; 0,-3; 0,0" dur="2.5s" repeatCount="indefinite"/>
+  </g>
+
+  <!-- Arrow 2→3 -->
+  <line x1="480" y1="150" x2="530" y2="150" stroke="#3b82f6" stroke-width="2" stroke-dasharray="6,4">
+    <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1s" repeatCount="indefinite"/>
+  </line>
+  <polygon points="528,144 540,150 528,156" fill="#3b82f6"/>
+  <text x="505" y="140" text-anchor="middle" font-family="system-ui, sans-serif" font-size="8" fill="#60a5fa">API</text>
+
+  <!-- ═══ STEP 3: OLLABRIDGE ═══ -->
+  <rect x="540" y="80" width="160" height="140" rx="14" fill="#1e293b" stroke="url(#av-blue)" stroke-width="2"/>
+  <text x="620" y="108" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" font-weight="700" fill="#67e8f9" letter-spacing="2">STEP 3</text>
+  <text x="620" y="140" text-anchor="middle" font-family="system-ui, sans-serif" font-size="36">🌉</text>
+  <text x="620" y="170" text-anchor="middle" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#e2e8f0">OllaBridge</text>
+  <text x="620" y="188" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#94a3b8">Routes persona:* →</text>
+  <text x="620" y="203" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#94a3b8">HomePilot</text>
+
+  <!-- Arrow 3→4 -->
+  <line x1="700" y1="150" x2="750" y2="150" stroke="#f59e0b" stroke-width="2" stroke-dasharray="6,4">
+    <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1s" repeatCount="indefinite"/>
+  </line>
+  <polygon points="748,144 760,150 748,156" fill="#f59e0b"/>
+
+  <!-- ═══ STEP 4: HOMEPILOT ═══ -->
+  <rect x="760" y="80" width="120" height="140" rx="14" fill="#1e293b" stroke="#f59e0b" stroke-width="2"/>
+  <text x="820" y="108" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" font-weight="700" fill="#fbbf24" letter-spacing="2">STEP 4</text>
+  <text x="820" y="140" text-anchor="middle" font-family="system-ui, sans-serif" font-size="36">🏠</text>
+  <text x="820" y="170" text-anchor="middle" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#e2e8f0">HomePilot</text>
+  <text x="820" y="188" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#94a3b8">Persona responds</text>
+  <text x="820" y="203" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#94a3b8">with memory</text>
+
+  <!-- ═══ RETURN PATH (bottom) ═══ -->
+  <!-- Return arrow: HomePilot → OllaBridge → Avatar → TTS → User hears -->
+  <path d="M 820 220 L 820 260 L 130 260 L 130 290" stroke="url(#av-green)" stroke-width="2" fill="none" stroke-dasharray="8,4">
+    <animate attributeName="stroke-dashoffset" from="0" to="24" dur="2s" repeatCount="indefinite"/>
+  </path>
+  <polygon points="124,288 130,300 136,288" fill="#22c55e"/>
+
+  <!-- Return label -->
+  <rect x="370" y="248" width="160" height="20" rx="10" fill="#1e293b" stroke="#22c55e" stroke-width="1"/>
+  <text x="450" y="262" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#4ade80">Response flows back</text>
+
+  <!-- ═══ RESULT: AVATAR SPEAKS ═══ -->
+  <rect x="40" y="300" width="820" height="130" rx="14" fill="#1e293b" stroke="url(#av-green)" stroke-width="2">
+    <animate attributeName="stroke-opacity" values="0.5;1;0.5" dur="3s" repeatCount="indefinite"/>
+  </rect>
+  <rect x="40" y="300" width="820" height="130" rx="14" fill="url(#av-green)" opacity="0.04"/>
+
+  <text x="450" y="330" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" font-weight="800" fill="#4ade80">Avatar Responds</text>
+
+  <!-- Avatar features -->
+  <g transform="translate(80, 350)">
+    <rect width="150" height="60" rx="10" fill="#0f172a" stroke="#22c55e" stroke-width="1"/>
+    <text x="75" y="22" text-anchor="middle" font-family="system-ui, sans-serif" font-size="20">🗣️</text>
+    <text x="75" y="40" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="600" fill="#86efac">Text-to-Speech</text>
+    <text x="75" y="54" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#64748b">Natural voice output</text>
+  </g>
+
+  <g transform="translate(260, 350)">
+    <rect width="150" height="60" rx="10" fill="#0f172a" stroke="#22c55e" stroke-width="1"/>
+    <text x="75" y="22" text-anchor="middle" font-family="system-ui, sans-serif" font-size="20">👄</text>
+    <text x="75" y="40" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="600" fill="#86efac">Lip Sync</text>
+    <text x="75" y="54" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#64748b">Viseme animation</text>
+  </g>
+
+  <g transform="translate(440, 350)">
+    <rect width="150" height="60" rx="10" fill="#0f172a" stroke="#22c55e" stroke-width="1"/>
+    <text x="75" y="22" text-anchor="middle" font-family="system-ui, sans-serif" font-size="20">💃</text>
+    <text x="75" y="40" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="600" fill="#86efac">3D Animation</text>
+    <text x="75" y="54" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#64748b">Gestures + emotions</text>
+  </g>
+
+  <g transform="translate(620, 350)">
+    <rect width="210" height="60" rx="10" fill="#0f172a" stroke="#22c55e" stroke-width="1"/>
+    <text x="105" y="22" text-anchor="middle" font-family="system-ui, sans-serif" font-size="20">🧠</text>
+    <text x="105" y="40" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="600" fill="#86efac">Persona Memory</text>
+    <text x="105" y="54" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#64748b">Remembers across sessions</text>
+    <!-- Animated memory sparkle -->
+    <circle cx="190" cy="14" r="3" fill="#22c55e">
+      <animate attributeName="opacity" values="0;1;0" dur="2s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+
+  <!-- ═══ PAIRING CALLOUT ═══ -->
+  <rect x="280" y="440" width="340" height="30" rx="15" fill="#1e293b" stroke="#8b5cf6" stroke-width="1"/>
+  <text x="450" y="460" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="#c4b5fd">🔗 Pair once with a 6-digit code — no API key copying needed</text>
+  <!-- Animated sparkle -->
+  <circle cx="610" cy="455" r="3" fill="#8b5cf6">
+    <animate attributeName="opacity" values="0;1;0" dur="1.5s" repeatCount="indefinite"/>
+  </circle>
+</svg>

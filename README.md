@@ -92,7 +92,7 @@ This is a **cutting-edge, production-ready AI chatbot platform** that combines:
 - 🎭 **Interactive 3D Animated Avatar** - Realistic robot with emotions and
   gestures
 - 🤖 **Multi-AI Provider Support** - OpenAI GPT-4, Claude Opus/Sonnet, IBM
-  Watsonx, Ollama
+  Watsonx, Ollama, OllaBridge
 - 🥽 **Full VR/WebXR Integration** - Immersive conversations in virtual reality
   (Quest 2/3, Pico, etc.)
 - 🎤 **Advanced Speech-to-Text** - Real-time voice recognition with multiple
@@ -109,7 +109,8 @@ This is a **cutting-edge, production-ready AI chatbot platform** that combines:
 | Feature                       | Description                                         | Status        |
 | ----------------------------- | --------------------------------------------------- | ------------- |
 | 🎭 **3D Avatar**              | Real-time animated robot with emotion controls      | ✅ Production |
-| 🧠 **Multi-AI Support**       | OpenAI, Claude, Watsonx, Ollama integration         | ✅ Production |
+| 🧠 **Multi-AI Support**       | OpenAI, Claude, Watsonx, Ollama, OllaBridge         | ✅ Production |
+| 🔗 **HomePilot Personas**     | Chat with persistent AI personas via OllaBridge     | ✅ Production |
 | 🥽 **VR/WebXR**               | Full Quest 2/3 support with 6DOF controllers        | ✅ Production |
 | 🎤 **Voice Input**            | Advanced speech-to-text with microphone selection   | ✅ Production |
 | 🔊 **Voice Output**           | Natural TTS with voice/rate/pitch customization     | ✅ Production |
@@ -276,12 +277,13 @@ npm run dev
 
 ### API Key Requirements
 
-| Provider | Key Format            | Example                     | Get Key Link                                                  |
-| -------- | --------------------- | --------------------------- | ------------------------------------------------------------- |
-| OpenAI   | `sk-` (not `sk-ant-`) | `sk-proj-abc...`            | [OpenAI Keys](https://platform.openai.com/api-keys)           |
-| Claude   | `sk-ant-`             | `sk-ant-api03...`           | [Anthropic Keys](https://console.anthropic.com/settings/keys) |
-| Watsonx  | IAM API Key           | `xxxxxxxxxxxxxxxxxxxxxxxxx` | [IBM Cloud](https://cloud.ibm.com)                            |
-| Ollama   | None (local)          | N/A                         | [ollama.ai](https://ollama.ai)                                |
+| Provider   | Key Format            | Example                     | Get Key Link                                                  |
+| ---------- | --------------------- | --------------------------- | ------------------------------------------------------------- |
+| OpenAI     | `sk-` (not `sk-ant-`) | `sk-proj-abc...`            | [OpenAI Keys](https://platform.openai.com/api-keys)           |
+| Claude     | `sk-ant-`             | `sk-ant-api03...`           | [Anthropic Keys](https://console.anthropic.com/settings/keys) |
+| Watsonx    | IAM API Key           | `xxxxxxxxxxxxxxxxxxxxxxxxx` | [IBM Cloud](https://cloud.ibm.com)                            |
+| Ollama     | None (local)          | N/A                         | [ollama.ai](https://ollama.ai)                                |
+| OllaBridge | `sk-ollabridge-`      | `sk-ollabridge-xY9k...`     | [OllaBridge](https://github.com/ruslanmv/ollabridge)          |
 
 **Automatic Validation**: The system validates key format and prevents saving
 wrong keys! ✅
@@ -638,6 +640,94 @@ you may not use this file except in compliance with the License.
 - [WebXR Device API](https://www.w3.org/TR/webxr/)
 - [Web Speech API Guide](https://developer.mozilla.org/en-US/docs/Web/API/Web_Speech_API)
 - [Vercel Deployment Guide](https://vercel.com/docs)
+- [OllaBridge Gateway](https://github.com/ruslanmv/ollabridge)
+- [HomePilot Personas](https://github.com/ruslanmv/HomePilot)
+
+---
+
+## 🔗 OllaBridge + HomePilot Integration
+
+<div align="center">
+
+**NEW in v2.1** — Connect your 3D Avatar to
+[HomePilot](https://github.com/ruslanmv/HomePilot) personas via
+[OllaBridge](https://github.com/ruslanmv/ollabridge)
+
+</div>
+
+The **OllaBridge provider** turns your 3D Avatar into a front-end for
+HomePilot's rich persona system. Each persona brings its own personality,
+long-term memory, and tool capabilities — all accessible through the familiar
+OpenAI-compatible API.
+
+### How It Works
+
+```
+┌─────────────────────────────────┐
+│   3D Avatar Chatbot (Browser)   │
+│                                 │
+│   3D Avatar ↔ Chat ↔ Voice I/O  │
+│         │                       │
+│   LLMManager (provider:         │
+│     ollabridge)                  │
+└─────────┬───────────────────────┘
+          │  POST /v1/chat/completions
+          │  model="persona:my-therapist"
+          ▼
+┌─────────────────────────────────┐
+│   OllaBridge Gateway (:11435)   │
+│   Routes persona:* → HomePilot  │
+│   Routes default  → Ollama      │
+└─────────┬───────────────────────┘
+          │
+          ▼
+┌─────────────────────────────────┐
+│   HomePilot Backend (:8000)     │
+│                                 │
+│   Persona with:                 │
+│   - Personality & system prompt │
+│   - Long-term memory (LTM)     │
+│   - MCP tools (Gmail, GitHub…) │
+│   - Avatar appearance           │
+└─────────────────────────────────┘
+```
+
+### Quick Setup
+
+1. **Start HomePilot** — `make run` (backend on `:8000`)
+2. **Start OllaBridge** — `ollabridge start` with HomePilot enabled:
+    ```env
+    HOMEPILOT_ENABLED=true
+    HOMEPILOT_BASE_URL=http://localhost:8000
+    ```
+3. **Open 3D Avatar Chatbot** — Select **OllaBridge** as provider in Settings
+4. **Fetch Models** — Click the fetch button to discover personas
+5. **Select a persona** (e.g., `persona:my-therapist` or
+   `personality:storyteller`)
+6. **Chat!** — The 3D avatar speaks with the persona's personality and memory
+
+### Available Personas
+
+HomePilot ships with **15 built-in personalities** plus unlimited custom
+personas:
+
+| Personality               | Description                     |
+| ------------------------- | ------------------------------- |
+| `personality:assistant`   | Proactive home AI               |
+| `personality:therapist`   | Empathetic wellness companion   |
+| `personality:storyteller` | Narrative-driven storyteller    |
+| `personality:motivation`  | Encouraging coach               |
+| `personality:kids-trivia` | Educational trivia for children |
+| `persona:<project-id>`    | Any custom persona you create   |
+
+### Settings Configuration
+
+| Setting      | Value                              | Description                   |
+| ------------ | ---------------------------------- | ----------------------------- |
+| **Provider** | `OllaBridge`                       | Select from provider dropdown |
+| **Base URL** | `http://localhost:11435`           | OllaBridge gateway address    |
+| **API Key**  | `sk-ollabridge-...`                | Your OllaBridge API key       |
+| **Model**    | `persona:...` or `personality:...` | Discovered from Fetch Models  |
 
 ---
 
@@ -661,6 +751,40 @@ you may not use this file except in compliance with the License.
 - Settings now use unified `nexus_llm_settings` key (auto-migration included)
 - API keys are validated before saving (prevents wrong provider keys)
 - VR mode now requires WebXR-compatible browser
+
+---
+
+## Compatible with HomePilot
+
+<p align="center">
+  <a href="https://github.com/ruslanmv/HomePilot">
+    <img src="assets/homepilot-logo.svg" alt="HomePilot" width="300" />
+  </a>
+</p>
+
+Talk to [HomePilot](https://github.com/ruslanmv/HomePilot) AI personas through
+your 3D avatar. Connect via [OllaBridge](https://github.com/ruslanmv/ollabridge)
+gateway with API key or device pairing.
+
+<p align="center">
+  <img src="assets/3d-avatar-pipeline.svg" alt="3D Avatar + HomePilot Pipeline" width="800" />
+</p>
+
+<p align="center">
+  <img src="assets/ollabridge-architecture.svg" alt="OllaBridge Architecture" width="800" />
+</p>
+
+**Quick setup:**
+
+```bash
+# 1. Start HomePilot
+cd HomePilot && make install && make run
+
+# 2. Start OllaBridge with pairing
+ollabridge start --auth-mode pairing
+
+# 3. Open 3D Avatar, select OllaBridge provider, enter pairing code
+```
 
 ---
 
