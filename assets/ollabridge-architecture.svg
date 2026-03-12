@@ -1,0 +1,179 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520" fill="none">
+  <defs>
+    <linearGradient id="ob-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#06b6d4"/>
+      <stop offset="50%" style="stop-color:#3b82f6"/>
+      <stop offset="100%" style="stop-color:#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="ob-green" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#22c55e"/>
+      <stop offset="100%" style="stop-color:#10b981"/>
+    </linearGradient>
+    <linearGradient id="ob-amber" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#f59e0b"/>
+      <stop offset="100%" style="stop-color:#ef4444"/>
+    </linearGradient>
+    <linearGradient id="ob-purple" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#8b5cf6"/>
+      <stop offset="100%" style="stop-color:#ec4899"/>
+    </linearGradient>
+    <filter id="ob-glow">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#3b82f6" flood-opacity="0.3"/>
+    </filter>
+    <filter id="ob-glow-green">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#22c55e" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="520" rx="16" fill="#0f172a"/>
+  <rect width="900" height="520" rx="16" fill="url(#ob-grad)" opacity="0.03"/>
+
+  <!-- Title -->
+  <text x="450" y="40" text-anchor="middle" font-family="system-ui, sans-serif" font-size="22" font-weight="800" fill="#e2e8f0">OllaBridge Gateway Architecture</text>
+  <text x="450" y="60" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" fill="#64748b">Unified OpenAI-compatible API for local AI + HomePilot personas</text>
+
+  <!-- ═══ CLIENT LAYER ═══ -->
+  <!-- 3D Avatar -->
+  <rect x="40" y="85" width="160" height="70" rx="10" fill="#1e293b" stroke="#8b5cf6" stroke-width="1.5" filter="url(#ob-glow)"/>
+  <text x="120" y="115" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24">🎭</text>
+  <text x="120" y="137" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" font-weight="600" fill="#c4b5fd">3D Avatar Chatbot</text>
+
+  <!-- Python SDK -->
+  <rect x="240" y="85" width="140" height="70" rx="10" fill="#1e293b" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="310" y="115" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24">🐍</text>
+  <text x="310" y="137" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" font-weight="600" fill="#93c5fd">Python / OpenAI SDK</text>
+
+  <!-- curl / HTTP -->
+  <rect x="420" y="85" width="130" height="70" rx="10" fill="#1e293b" stroke="#06b6d4" stroke-width="1.5"/>
+  <text x="485" y="115" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24">💻</text>
+  <text x="485" y="137" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" font-weight="600" fill="#67e8f9">curl / HTTP</text>
+
+  <!-- LangChain -->
+  <rect x="590" y="85" width="130" height="70" rx="10" fill="#1e293b" stroke="#06b6d4" stroke-width="1.5"/>
+  <text x="655" y="115" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24">🦜</text>
+  <text x="655" y="137" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" font-weight="600" fill="#67e8f9">LangChain</text>
+
+  <!-- Any App -->
+  <rect x="760" y="85" width="100" height="70" rx="10" fill="#1e293b" stroke="#475569" stroke-width="1" stroke-dasharray="4,3"/>
+  <text x="810" y="115" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24">📱</text>
+  <text x="810" y="137" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" font-weight="600" fill="#94a3b8">Any App</text>
+
+  <!-- Animated data flow lines from clients to gateway -->
+  <line x1="120" y1="155" x2="120" y2="210" stroke="#8b5cf6" stroke-width="1.5" stroke-dasharray="6,4">
+    <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1.5s" repeatCount="indefinite"/>
+  </line>
+  <line x1="310" y1="155" x2="310" y2="210" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="6,4">
+    <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1.5s" repeatCount="indefinite"/>
+  </line>
+  <line x1="485" y1="155" x2="485" y2="210" stroke="#06b6d4" stroke-width="1.5" stroke-dasharray="6,4">
+    <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1.5s" repeatCount="indefinite"/>
+  </line>
+  <line x1="655" y1="155" x2="600" y2="210" stroke="#06b6d4" stroke-width="1.5" stroke-dasharray="6,4">
+    <animate attributeName="stroke-dashoffset" from="20" to="0" dur="1.5s" repeatCount="indefinite"/>
+  </line>
+  <line x1="810" y1="155" x2="700" y2="210" stroke="#475569" stroke-width="1" stroke-dasharray="4,3">
+    <animate attributeName="stroke-dashoffset" from="20" to="0" dur="2s" repeatCount="indefinite"/>
+  </line>
+
+  <!-- Protocol label -->
+  <rect x="330" y="172" width="180" height="20" rx="10" fill="#1e293b" stroke="#3b82f6" stroke-width="1"/>
+  <text x="420" y="186" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#93c5fd">OpenAI API / Bearer Token</text>
+
+  <!-- ═══ OLLABRIDGE GATEWAY ═══ -->
+  <rect x="40" y="210" width="770" height="110" rx="14" fill="#1e293b" stroke="url(#ob-grad)" stroke-width="2" filter="url(#ob-glow)"/>
+
+  <!-- Pulsing glow on gateway -->
+  <rect x="40" y="210" width="770" height="110" rx="14" fill="url(#ob-grad)" opacity="0.06">
+    <animate attributeName="opacity" values="0.03;0.08;0.03" dur="3s" repeatCount="indefinite"/>
+  </rect>
+
+  <!-- Gateway title -->
+  <text x="425" y="236" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" font-weight="800" fill="url(#ob-grad)">🌉 OllaBridge Gateway :11435</text>
+
+  <!-- Auth box -->
+  <rect x="60" y="250" width="130" height="56" rx="8" fill="#0f172a" stroke="#f59e0b" stroke-width="1"/>
+  <text x="125" y="270" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="700" fill="#fbbf24">AUTH</text>
+  <text x="125" y="284" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#94a3b8">API Key / Pairing</text>
+  <text x="125" y="296" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#94a3b8">Local Trust</text>
+
+  <!-- Router box -->
+  <rect x="210" y="250" width="160" height="56" rx="8" fill="#0f172a" stroke="#3b82f6" stroke-width="1"/>
+  <text x="290" y="270" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="700" fill="#60a5fa">SMART ROUTER</text>
+  <text x="290" y="284" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#94a3b8">persona:* → HomePilot</text>
+  <text x="290" y="296" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#94a3b8">model:* → Ollama</text>
+
+  <!-- Registry box -->
+  <rect x="390" y="250" width="130" height="56" rx="8" fill="#0f172a" stroke="#8b5cf6" stroke-width="1"/>
+  <text x="455" y="270" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="700" fill="#a78bfa">REGISTRY</text>
+  <text x="455" y="284" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#94a3b8">Node health</text>
+  <text x="455" y="296" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#94a3b8">Load balancing</text>
+
+  <!-- Pairing box -->
+  <rect x="540" y="250" width="120" height="56" rx="8" fill="#0f172a" stroke="#22c55e" stroke-width="1"/>
+  <text x="600" y="270" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="700" fill="#4ade80">PAIRING</text>
+  <text x="600" y="284" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#94a3b8">Code exchange</text>
+  <text x="600" y="296" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#94a3b8">mtx_* tokens</text>
+  <!-- Animated pulse on pairing -->
+  <circle cx="650" cy="258" r="4" fill="#22c55e">
+    <animate attributeName="opacity" values="1;0.3;1" dur="2s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Relay box -->
+  <rect x="680" y="250" width="110" height="56" rx="8" fill="#0f172a" stroke="#06b6d4" stroke-width="1"/>
+  <text x="735" y="270" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="700" fill="#22d3ee">RELAY</text>
+  <text x="735" y="284" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#94a3b8">WebSocket hub</text>
+  <text x="735" y="296" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#94a3b8">Remote nodes</text>
+
+  <!-- ═══ BACKEND LAYER ═══ -->
+  <!-- Animated data flow lines from gateway to backends -->
+  <line x1="200" y1="320" x2="200" y2="370" stroke="#22c55e" stroke-width="2" stroke-dasharray="6,4">
+    <animate attributeName="stroke-dashoffset" from="0" to="20" dur="1.2s" repeatCount="indefinite"/>
+  </line>
+  <line x1="500" y1="320" x2="500" y2="370" stroke="#f59e0b" stroke-width="2" stroke-dasharray="6,4">
+    <animate attributeName="stroke-dashoffset" from="0" to="20" dur="1.2s" repeatCount="indefinite"/>
+  </line>
+  <line x1="730" y1="320" x2="730" y2="370" stroke="#06b6d4" stroke-width="2" stroke-dasharray="6,4">
+    <animate attributeName="stroke-dashoffset" from="0" to="20" dur="1.2s" repeatCount="indefinite"/>
+  </line>
+
+  <!-- Ollama -->
+  <rect x="80" y="370" width="240" height="110" rx="12" fill="#1e293b" stroke="url(#ob-green)" stroke-width="1.5" filter="url(#ob-glow-green)"/>
+  <text x="200" y="398" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" font-weight="700" fill="#4ade80">🦙 Ollama :11434</text>
+  <text x="200" y="418" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="#94a3b8">Local LLM inference</text>
+  <rect x="105" y="430" width="66" height="22" rx="6" fill="#0f172a" stroke="#22c55e" stroke-width="1"/>
+  <text x="138" y="445" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#86efac">DeepSeek</text>
+  <rect x="180" y="430" width="56" height="22" rx="6" fill="#0f172a" stroke="#22c55e" stroke-width="1"/>
+  <text x="208" y="445" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#86efac">Llama3</text>
+  <rect x="245" y="430" width="56" height="22" rx="6" fill="#0f172a" stroke="#22c55e" stroke-width="1"/>
+  <text x="273" y="445" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#86efac">Qwen2</text>
+  <text x="200" y="470" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#64748b">GPU / CPU inference</text>
+
+  <!-- HomePilot -->
+  <rect x="370" y="370" width="260" height="110" rx="12" fill="#1e293b" stroke="url(#ob-amber)" stroke-width="1.5"/>
+  <text x="500" y="398" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" font-weight="700" fill="#fbbf24">🏠 HomePilot :8000</text>
+  <text x="500" y="418" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="#94a3b8">AI personas + memory</text>
+  <rect x="385" y="430" width="72" height="22" rx="6" fill="#0f172a" stroke="#f59e0b" stroke-width="1"/>
+  <text x="421" y="445" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#fde68a">Assistant</text>
+  <rect x="465" y="430" width="60" height="22" rx="6" fill="#0f172a" stroke="#f59e0b" stroke-width="1"/>
+  <text x="495" y="445" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#fde68a">Mentor</text>
+  <rect x="533" y="430" width="80" height="22" rx="6" fill="#0f172a" stroke="#f59e0b" stroke-width="1"/>
+  <text x="573" y="445" text-anchor="middle" font-family="system-ui, sans-serif" font-size="9" fill="#fde68a">Storyteller</text>
+  <text x="500" y="470" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#64748b">16 personality agents</text>
+  <!-- Animated memory indicator -->
+  <circle cx="390" cy="398" r="3" fill="#f59e0b">
+    <animate attributeName="r" values="2;4;2" dur="2s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="1;0.4;1" dur="2s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Remote Node -->
+  <rect x="680" y="370" width="170" height="110" rx="12" fill="#1e293b" stroke="#06b6d4" stroke-width="1" stroke-dasharray="5,3"/>
+  <text x="765" y="398" text-anchor="middle" font-family="system-ui, sans-serif" font-size="14" font-weight="700" fill="#22d3ee">🌐 Remote Nodes</text>
+  <text x="765" y="418" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="#94a3b8">WebSocket relay</text>
+  <text x="765" y="440" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#64748b">GPU clusters</text>
+  <text x="765" y="456" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#64748b">Cloud endpoints</text>
+  <text x="765" y="472" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#64748b">Edge devices</text>
+
+  <!-- Footer -->
+  <text x="450" y="505" text-anchor="middle" font-family="system-ui, sans-serif" font-size="11" fill="#475569">One API endpoint • Any client • All your models and personas unified</text>
+</svg>

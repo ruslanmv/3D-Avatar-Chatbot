@@ -108,6 +108,10 @@ function loadConfig() {
             } else if (settings.provider === 'ollama' && settings.ollama) {
                 model = settings.ollama.model || 'llama3';
                 baseUrl = settings.ollama.base_url || 'http://localhost:11434';
+            } else if (settings.provider === 'ollabridge' && settings.ollabridge) {
+                apiKey = settings.ollabridge.api_key || '';
+                model = settings.ollabridge.model || 'default';
+                baseUrl = settings.ollabridge.base_url || 'http://localhost:11435';
             }
 
             return {
@@ -193,6 +197,12 @@ const config = loadConfig();
                 patch.ollama = {
                     base_url: config.baseUrl || 'http://localhost:11434',
                     model: config.model || 'llama3',
+                };
+            } else if (config.provider === 'ollabridge') {
+                patch.ollabridge = {
+                    api_key: config.apiKey,
+                    base_url: config.baseUrl || 'http://localhost:11435',
+                    model: config.model || 'default',
                 };
             }
 
@@ -1630,6 +1640,9 @@ function updateProviderFields() {
             } else if (provider === 'ollama') {
                 apiKeyInput.value = ''; // Ollama doesn't need API key
                 if (baseUrlInput) baseUrlInput.value = settings.ollama?.base_url || 'http://localhost:11434';
+            } else if (provider === 'ollabridge' && settings.ollabridge) {
+                apiKeyInput.value = settings.ollabridge.api_key || '';
+                if (baseUrlInput) baseUrlInput.value = settings.ollabridge.base_url || 'http://localhost:11435';
             } else {
                 // No key saved for this provider, clear the field
                 apiKeyInput.value = '';
@@ -1672,6 +1685,8 @@ function updateProviderFields() {
 
     if (watsonxRow) watsonxRow.style.display = 'none';
     if (baseurlRow) baseurlRow.style.display = 'none';
+    const pairRowHide = $('ollabridge-pair-row');
+    if (pairRowHide) pairRowHide.style.display = 'none';
 
     // Only fetch models if valid API key is present
     const currentKey = apiKeyInput ? apiKeyInput.value.trim() : '';
@@ -1692,6 +1707,24 @@ function updateProviderFields() {
         } else {
             modelSelect.innerHTML =
                 '<option value="">⚠️ Please enter a valid Claude API key (starts with "sk-ant-") and save settings first</option>';
+        }
+    } else if (provider === 'ollabridge') {
+        if (baseurlRow) baseurlRow.style.display = 'block';
+        // Show pairing row for OllaBridge
+        const pairRow = $('ollabridge-pair-row');
+        if (pairRow) pairRow.style.display = 'block';
+        // Fetch models from OllaBridge gateway (includes HomePilot personas)
+        const ollaKey = apiKeyInput ? apiKeyInput.value.trim() : '';
+        // Also check for stored pair token
+        let hasPairToken = false;
+        try {
+            const unified = JSON.parse(localStorage.getItem('nexus_llm_settings') || '{}');
+            hasPairToken = !!(unified.ollabridge && unified.ollabridge.pair_token);
+        } catch (_) {}
+        if (ollaKey || hasPairToken) {
+            fetchAndPopulateModels('ollabridge', modelSelect);
+        } else {
+            modelSelect.innerHTML = '<option value="default">default</option>';
         }
     } else if (provider === 'openai' || provider === 'claude') {
         // No API key configured yet
@@ -1723,7 +1756,7 @@ function saveSettings() {
     const watsonxProjectId = ($('watsonx-project-id') && $('watsonx-project-id').value) || '';
     const baseUrl = ($('base-url') && $('base-url').value) || '';
 
-    if (provider !== 'none' && provider !== 'ollama' && !apiKey) {
+    if (provider !== 'none' && provider !== 'ollama' && provider !== 'ollabridge' && !apiKey) {
         return showMessage('Please enter an API key', 'error');
     }
     if (provider !== 'none' && !model) {
@@ -1806,6 +1839,12 @@ function saveSettings() {
                 patch.ollama = {
                     base_url: baseUrl || 'http://localhost:11434',
                     model: model || 'llama3',
+                };
+            } else if (provider === 'ollabridge') {
+                patch.ollabridge = {
+                    api_key: apiKey,
+                    base_url: baseUrl || 'http://localhost:11435',
+                    model: model || 'default',
                 };
             }
 
@@ -2564,7 +2603,7 @@ function __nexusWireFetchModelsButton() {
         const provider = selected ? selected.value : 'none';
 
         if (provider === 'none') {
-            alert('Please select a provider first (OpenAI, Claude, Watsonx, or Ollama)');
+            alert('Please select a provider first (OpenAI, Claude, Watsonx, Ollama, or OllaBridge)');
             return;
         }
 
@@ -2607,6 +2646,80 @@ function __nexusWireFetchModelsButton() {
 }
 
 window.addEventListener('DOMContentLoaded', __nexusWireFetchModelsButton);
+
+/* =====================================================================
+   OllaBridge Pairing Button
+   - Exchanges a 6-digit code for a persistent bearer token
+   - Stores the token in LLMManager settings (ollabridge.pair_token)
+   ===================================================================== */
+function __nexusWireOllaBridgePairButton() {
+    const btn = document.getElementById('ollabridge-pair-btn');
+    if (!btn) return;
+
+    btn.addEventListener('click', async () => {
+        const codeInput = document.getElementById('ollabridge-pair-code');
+        const statusDiv = document.getElementById('ollabridge-pair-status');
+        if (!codeInput) return;
+
+        const code = codeInput.value.trim();
+        if (!code || code.length < 4) {
+            if (statusDiv) {
+                statusDiv.textContent = 'Please enter the pairing code from the OllaBridge console.';
+                statusDiv.style.color = '#f59e0b';
+            }
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = '⏳ Pairing...';
+        if (statusDiv) {
+            statusDiv.textContent = 'Exchanging code...';
+            statusDiv.style.color = '#888';
+        }
+
+        try {
+            if (!window._nexusLLM) {
+                throw new Error('LLMManager not loaded');
+            }
+
+            const result = await window._nexusLLM.pairWithOllaBridge(code);
+
+            if (result.ok) {
+                codeInput.value = '';
+                if (statusDiv) {
+                    statusDiv.textContent = `✅ Paired successfully! Device: ${result.device_id || 'unknown'}. Token saved.`;
+                    statusDiv.style.color = '#22c55e';
+                }
+                btn.textContent = '✅ Paired!';
+
+                // Refresh models now that we have a token
+                const modelSelect = document.getElementById('model-select');
+                if (modelSelect) {
+                    fetchAndPopulateModels('ollabridge', modelSelect);
+                }
+            } else {
+                if (statusDiv) {
+                    statusDiv.textContent = `❌ ${result.error || 'Pairing failed'}`;
+                    statusDiv.style.color = '#ef4444';
+                }
+                btn.textContent = '❌ Failed';
+            }
+        } catch (e) {
+            if (statusDiv) {
+                statusDiv.textContent = `❌ Error: ${e.message}`;
+                statusDiv.style.color = '#ef4444';
+            }
+            btn.textContent = '❌ Error';
+        }
+
+        setTimeout(() => {
+            btn.textContent = '🔗 Pair';
+            btn.disabled = false;
+        }, 3000);
+    });
+}
+
+window.addEventListener('DOMContentLoaded', __nexusWireOllaBridgePairButton);
 
 /* =====================================================================
    DEBUG HELPER: Check Stored API Keys
