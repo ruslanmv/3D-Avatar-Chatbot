@@ -192,12 +192,9 @@
                 }),
             });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`Proxy error (${response.status}): ${errorText}`);
-            }
-
-            // Return a Response-like object that matches fetch API
+            // Return upstream response as-is (including non-OK status codes like 401).
+            // Callers handle error status codes themselves — throwing here would hide
+            // the real upstream error message (e.g. "Invalid or expired pairing code").
             const text = await response.text();
             return {
                 ok: response.ok,
@@ -458,22 +455,26 @@
          * or any other model available through the OllaBridge gateway.
          */
         async _chatOllaBridge(userMessage, systemPrompt, conversationHistory = []) {
-            const { api_key: rawKey, pair_token: rawPairToken, model, base_url } = this._settings.ollabridge;
+            const { api_key: rawKey, pair_token: rawPairToken, auth_mode, model, base_url } = this._settings.ollabridge;
 
             const api_key = (rawKey || '').trim();
             const pair_token = (rawPairToken || '').trim();
             const authToken = api_key || pair_token;
-            if (!authToken) {
+            const isLocalTrust = auth_mode === 'local-trust';
+
+            if (!authToken && !isLocalTrust) {
                 throw new Error(
-                    'OllaBridge: No API key or pairing token. Add an API key or use the Pair button in Settings.'
+                    'OllaBridge: No API key or pairing token. Add an API key, use Device Pairing, or switch to Local Trust mode in Settings.'
                 );
             }
 
             const url = `${(base_url || 'http://localhost:11435').replace(/\/$/, '')}/v1/chat/completions`;
             const headers = {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${authToken}`,
             };
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
 
             const messages = [
                 { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
@@ -719,14 +720,15 @@
         }
 
         async _fetchOllaBridgeModels() {
-            const { api_key: rawKey, pair_token: rawPairToken, base_url } = this._settings.ollabridge;
+            const { api_key: rawKey, pair_token: rawPairToken, auth_mode, base_url } = this._settings.ollabridge;
             const api_key = (rawKey || '').trim();
             const pair_token = (rawPairToken || '').trim();
             const authToken = api_key || pair_token;
+            const isLocalTrust = auth_mode === 'local-trust';
 
             const fallback = ['default'];
 
-            if (!authToken) {
+            if (!authToken && !isLocalTrust) {
                 return {
                     models: fallback,
                     error: 'Missing API Key or Pairing Token - using default list',
@@ -735,7 +737,10 @@
 
             try {
                 const url = `${(base_url || 'http://localhost:11435').replace(/\/$/, '')}/v1/models`;
-                const headers = { Authorization: `Bearer ${authToken}` };
+                const headers = {};
+                if (authToken) {
+                    headers['Authorization'] = `Bearer ${authToken}`;
+                }
 
                 let res;
                 if (this._hasProxy()) {
@@ -905,6 +910,7 @@
                 ollabridge: {
                     api_key: '',
                     pair_token: '',
+                    auth_mode: 'pairing',
                     base_url: 'http://localhost:11435',
                     model: 'default',
                 },
@@ -947,6 +953,7 @@
                 ollabridge: {
                     api_key: '',
                     pair_token: '',
+                    auth_mode: 'pairing',
                     base_url: 'http://localhost:11435',
                     model: 'default',
                 },
@@ -998,7 +1005,59 @@
                 }
                 return { ok: false, error: 'Unexpected response from OllaBridge' };
             } catch (e) {
-                return { ok: false, error: `Cannot reach OllaBridge: ${e.message}` };
+                const hint =
+                    e.message && e.message.includes('Failed to fetch')
+                        ? '. This is likely a CORS issue — ensure OllaBridge has CORS_ORIGINS configured for this origin, or run the proxy server.'
+                        : '';
+                return { ok: false, error: `Cannot reach OllaBridge: ${e.message}${hint}` };
+            }
+        }
+
+        /**
+         * Fetch OllaBridge auth mode info from /pair/info endpoint.
+         * Returns which authentication modes are available.
+         *
+         * @returns {Promise<{auth_mode: string, pairing_enabled: boolean, pairing_available: boolean, device_count: number, error?: string}>}
+         */
+        async getOllaBridgeAuthInfo() {
+            const base_url = (this._settings.ollabridge?.base_url || 'http://localhost:11435').replace(/\/$/, '');
+            const url = `${base_url}/pair/info`;
+
+            try {
+                let res;
+                if (this._hasProxy()) {
+                    res = await this._fetchViaProxy(url, 'GET', {}, null);
+                } else {
+                    res = await fetch(url);
+                }
+
+                if (!res.ok) {
+                    return {
+                        auth_mode: 'unknown',
+                        pairing_enabled: false,
+                        pairing_available: false,
+                        device_count: 0,
+                        error: `HTTP ${res.status}`,
+                    };
+                }
+
+                const data = await res.json();
+                return {
+                    auth_mode: data.auth_mode || 'required',
+                    pairing_enabled: data.pairing_enabled || false,
+                    pairing_available: data.pairing_available || false,
+                    device_count: data.device_count || 0,
+                    ttl_remaining: data.ttl_remaining || 0,
+                    code_display: data.code_display || '',
+                };
+            } catch (e) {
+                return {
+                    auth_mode: 'unknown',
+                    pairing_enabled: false,
+                    pairing_available: false,
+                    device_count: 0,
+                    error: e.message,
+                };
             }
         }
 
