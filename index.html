@@ -471,15 +471,28 @@
                             />
                         </div>
 
+                        <div class="input-group" id="ollabridge-auth-row" style="display: none">
+                            <label class="input-label" for="ollabridge-auth-mode">AUTHENTICATION MODE</label>
+                            <select id="ollabridge-auth-mode" class="select-input">
+                                <option value="pairing">📱 Device Pairing</option>
+                                <option value="apikey">🔑 API Key</option>
+                                <option value="local-trust">🏠 Local Trust</option>
+                            </select>
+                            <div
+                                id="ollabridge-auth-hint"
+                                style="font-size: 0.7rem; color: #888; margin-top: 6px"
+                            ></div>
+                        </div>
+
                         <div class="input-group" id="ollabridge-pair-row" style="display: none">
-                            <label class="input-label">OR PAIR WITH CODE</label>
+                            <label class="input-label">PAIR WITH CODE</label>
                             <div style="display: flex; gap: 8px; align-items: center">
                                 <input
                                     type="text"
                                     id="ollabridge-pair-code"
                                     class="text-input"
                                     placeholder="Enter 6-digit pairing code..."
-                                    maxlength="6"
+                                    maxlength="7"
                                     style="flex: 1; letter-spacing: 0.3em; text-align: center; font-size: 1.1rem"
                                 />
                                 <button

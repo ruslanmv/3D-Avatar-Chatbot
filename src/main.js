@@ -1687,6 +1687,8 @@ function updateProviderFields() {
     if (baseurlRow) baseurlRow.style.display = 'none';
     const pairRowHide = $('ollabridge-pair-row');
     if (pairRowHide) pairRowHide.style.display = 'none';
+    const authRowHide = $('ollabridge-auth-row');
+    if (authRowHide) authRowHide.style.display = 'none';
 
     // Only fetch models if valid API key is present
     const currentKey = apiKeyInput ? apiKeyInput.value.trim() : '';
@@ -1710,9 +1712,13 @@ function updateProviderFields() {
         }
     } else if (provider === 'ollabridge') {
         if (baseurlRow) baseurlRow.style.display = 'block';
-        // Show pairing row for OllaBridge
-        const pairRow = $('ollabridge-pair-row');
-        if (pairRow) pairRow.style.display = 'block';
+        // Show auth mode dropdown for OllaBridge
+        const authRow = $('ollabridge-auth-row');
+        if (authRow) authRow.style.display = 'block';
+
+        // Show/hide correct fields based on current auth mode selection
+        _updateOllaBridgeAuthUI();
+
         // Fetch models from OllaBridge gateway (includes HomePilot personas)
         const ollaKey = apiKeyInput ? apiKeyInput.value.trim() : '';
         // Also check for stored pair token
@@ -1730,6 +1736,65 @@ function updateProviderFields() {
         // No API key configured yet
         modelSelect.innerHTML = '<option value="">⚠️ Please enter your API key above and save settings first</option>';
     }
+}
+
+/**
+ * Update the OllaBridge settings UI based on the selected auth mode dropdown.
+ * Shows/hides fields dynamically: pairing code, API key, or just base URL.
+ */
+function _updateOllaBridgeAuthUI() {
+    const authModeSelect = $('ollabridge-auth-mode');
+    const authHint = $('ollabridge-auth-hint');
+    const pairRow = $('ollabridge-pair-row');
+    const apiKeyInput = $('api-key');
+    const apiKeyRow = apiKeyInput ? apiKeyInput.closest('.input-group') : null;
+
+    if (!authModeSelect) return;
+
+    // Restore saved auth mode from settings
+    try {
+        const unified = JSON.parse(localStorage.getItem('nexus_llm_settings') || '{}');
+        if (unified.ollabridge?.auth_mode) {
+            authModeSelect.value = unified.ollabridge.auth_mode;
+        }
+    } catch (_) {}
+
+    function applyAuthMode() {
+        const mode = authModeSelect.value;
+
+        if (mode === 'pairing') {
+            // Device Pairing: show pair code row, hide API key
+            if (pairRow) pairRow.style.display = 'block';
+            if (apiKeyRow) apiKeyRow.style.display = 'none';
+            if (authHint) {
+                authHint.textContent = 'Enter the 6-digit pairing code from OllaBridge console and click Pair.';
+                authHint.style.color = '#888';
+            }
+        } else if (mode === 'apikey') {
+            // API Key: show API key field, hide pair code
+            if (pairRow) pairRow.style.display = 'none';
+            if (apiKeyRow) apiKeyRow.style.display = 'block';
+            if (authHint) {
+                authHint.textContent = 'Enter your OllaBridge API key.';
+                authHint.style.color = '#888';
+            }
+        } else if (mode === 'local-trust') {
+            // Local Trust: hide both API key and pair code
+            if (pairRow) pairRow.style.display = 'none';
+            if (apiKeyRow) apiKeyRow.style.display = 'none';
+            if (authHint) {
+                authHint.textContent = 'No credentials needed — requests from localhost are trusted.';
+                authHint.style.color = '#22c55e';
+            }
+        }
+    }
+
+    // Apply immediately
+    applyAuthMode();
+
+    // Re-apply on dropdown change
+    authModeSelect.removeEventListener('change', applyAuthMode);
+    authModeSelect.addEventListener('change', applyAuthMode);
 }
 
 function loadConfigIntoUI() {
@@ -1841,10 +1906,13 @@ function saveSettings() {
                     model: model || 'llama3',
                 };
             } else if (provider === 'ollabridge') {
+                const authModeSelect = $('ollabridge-auth-mode');
+                const authMode = authModeSelect ? authModeSelect.value : 'pairing';
                 patch.ollabridge = {
-                    api_key: apiKey,
+                    api_key: authMode === 'apikey' ? apiKey : '',
                     base_url: baseUrl || 'http://localhost:11435',
                     model: model || 'default',
+                    auth_mode: authMode,
                 };
             }
 
@@ -2678,9 +2746,24 @@ function __nexusWireOllaBridgePairButton() {
         }
 
         try {
+            // Auto-create LLMManager if not yet instantiated
             if (!window._nexusLLM) {
-                throw new Error('LLMManager not loaded');
+                if (typeof window.LLMManager !== 'function') {
+                    throw new Error('LLMManager script not loaded. Refresh the page.');
+                }
+                window._nexusLLM = new window.LLMManager();
             }
+
+            // Apply the current base_url and enable proxy before pairing
+            // (proxy avoids CORS when pairing from a different origin)
+            const baseUrlInput = document.getElementById('base-url');
+            const pairPatch = {
+                proxy: { enable_proxy: true, proxy_url: '/api/proxy' },
+            };
+            if (baseUrlInput && baseUrlInput.value.trim()) {
+                pairPatch.ollabridge = { base_url: baseUrlInput.value.trim() };
+            }
+            window._nexusLLM.updateSettings(pairPatch);
 
             const result = await window._nexusLLM.pairWithOllaBridge(code);
 
