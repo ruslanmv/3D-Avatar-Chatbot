@@ -30,6 +30,19 @@
     const STORAGE_KEY = 'nexus_llm_settings';
 
     /**
+     * PersonaUnavailableError — thrown when a persona model is unpublished or not found.
+     * Allows the UI to display a friendly message instead of a generic error.
+     */
+    class PersonaUnavailableError extends Error {
+        constructor(message, modelName, shouldRefreshModels = false) {
+            super(message);
+            this.name = 'PersonaUnavailableError';
+            this.modelName = modelName;
+            this.shouldRefreshModels = shouldRefreshModels;
+        }
+    }
+
+    /**
      * LLMManager Class
      * Handles all LLM provider operations
      */
@@ -38,6 +51,7 @@
             this._settings = this._loadSettings();
             this._watsonxTokenCache = null; // Cache for Watsonx IAM token
             this._watsonxTokenExpiry = 0;
+            this._modelsStale = false; // Set true when a persona becomes unavailable
             console.log('[LLMManager] Initialized with provider:', this._settings.provider);
         }
 
@@ -113,10 +127,19 @@
         }
 
         /**
+         * Whether the model list is stale (e.g. a persona was unpublished).
+         * @returns {boolean}
+         */
+        get modelsStale() {
+            return this._modelsStale;
+        }
+
+        /**
          * Fetch available models from active provider
          * @returns {Promise<{models: string[], error: string|null}>}
          */
         async fetchAvailableModels() {
+            this._modelsStale = false; // Clear stale flag on explicit fetch
             const provider = this._settings.provider;
             console.log(`[LLMManager] Fetching models for ${provider}`);
 
@@ -468,7 +491,8 @@
                 );
             }
 
-            const url = `${(base_url || 'http://localhost:11435').replace(/\/$/, '')}/v1/chat/completions`;
+            const baseUrlClean = (base_url || 'http://localhost:11435').replace(/\/$/, '');
+            const url = `${baseUrlClean}/v1/chat/completions`;
             const headers = {
                 'Content-Type': 'application/json',
             };
@@ -476,11 +500,33 @@
                 headers['Authorization'] = `Bearer ${authToken}`;
             }
 
-            const messages = [
-                { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
-                ...conversationHistory,
-                { role: 'user', content: userMessage },
-            ];
+            // When use_remote_prompt is on and talking to a persona/personality,
+            // skip the local system prompt — HomePilot builds a superior one.
+            const useRemote = this._settings.ollabridge.use_remote_prompt;
+            const isRemotePersona =
+                useRemote &&
+                typeof model === 'string' &&
+                (model.startsWith('persona:') || model.startsWith('personality:'));
+
+            // Request persona context enrichment from OllaBridge memory bridge
+            if (isRemotePersona) {
+                headers['X-Include-Persona-Context'] = 'true';
+            }
+
+            // Fetch persona context for avatar/TTS (non-blocking, fire-and-forget on first call)
+            if (isRemotePersona && typeof global.PersonaContextBridge !== 'undefined') {
+                global.PersonaContextBridge.fetchContext({
+                    baseUrl: baseUrlClean,
+                    model: model,
+                    authToken: authToken,
+                }).catch(() => {}); // Never block chat on context fetch
+            }
+
+            const messages = [];
+            if (!isRemotePersona) {
+                messages.push({ role: 'system', content: systemPrompt || 'You are a helpful assistant.' });
+            }
+            messages.push(...conversationHistory, { role: 'user', content: userMessage });
 
             const body = {
                 model: model || 'default',
@@ -500,11 +546,41 @@
             }
 
             if (!res.ok) {
-                const err = await res.text();
-                throw new Error(`OllaBridge Error: ${res.status} - ${err}`);
+                // Try to parse structured error from HomePilot via OllaBridge
+                let errBody = null;
+                try {
+                    errBody = await res.json();
+                } catch (_) {
+                    const errText = await res.text();
+                    throw new Error(`OllaBridge Error: ${res.status} - ${errText}`);
+                }
+
+                const errInfo = errBody?.detail?.error || errBody?.error;
+
+                if (
+                    res.status === 404 &&
+                    (errInfo?.code === 'persona_unpublished' || errInfo?.code === 'model_not_found')
+                ) {
+                    this._modelsStale = true;
+                    throw new PersonaUnavailableError(
+                        errInfo.message || 'This persona is no longer available.',
+                        model || 'unknown',
+                        true
+                    );
+                }
+
+                throw new Error(`OllaBridge Error: ${res.status} - ${JSON.stringify(errBody)}`);
             }
 
             const data = await res.json();
+
+            // If OllaBridge returned inline persona context, update the bridge cache
+            if (data.x_persona_context && typeof global.PersonaContextBridge !== 'undefined') {
+                global.PersonaContextBridge._context = data.x_persona_context;
+                global.PersonaContextBridge._fetchedAt = Date.now();
+                global.PersonaContextBridge._lastModel = model;
+            }
+
             return data.choices?.[0]?.message?.content || 'No response';
         }
 
@@ -752,9 +828,29 @@
                 if (!res.ok) throw new Error('Could not reach OllaBridge gateway');
 
                 const data = await res.json();
-                const models = (data.data || []).map((m) => m.id).sort();
+                const entries = data.data || [];
+                const models = entries.map((m) => m.id).sort();
+                // Build display name map for persona/personality models
+                const modelNames = {};
+                entries.forEach((m) => {
+                    if (m.name) {
+                        modelNames[m.id] = m.name;
+                    } else if (typeof m.id === 'string') {
+                        if (m.id.startsWith('personality:')) {
+                            modelNames[m.id] = m.id
+                                .slice(12)
+                                .replace(/_/g, ' ')
+                                .replace(/\b\w/g, (c) => c.toUpperCase());
+                        } else if (m.id.startsWith('persona:')) {
+                            const body = m.id.slice(8);
+                            const alias = body.includes('--') ? body.split('--')[0] : body;
+                            modelNames[m.id] = alias.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+                        }
+                    }
+                });
                 return {
                     models: models.length > 0 ? models : fallback,
+                    modelNames,
                     error: models.length === 0 ? 'No models found on OllaBridge' : null,
                 };
             } catch (e) {
@@ -956,6 +1052,7 @@
                     auth_mode: 'pairing',
                     base_url: 'http://localhost:11435',
                     model: 'default',
+                    use_remote_prompt: true,
                 },
             };
         }
