@@ -8,7 +8,7 @@
  * Uses a canvas-textured Three.js plane, same pattern as VRChatPanel.
  */
 
-import * as THREE from 'three';
+import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
 
 export class VRMediaPanel {
     /**
