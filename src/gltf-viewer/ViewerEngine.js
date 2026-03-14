@@ -292,6 +292,9 @@ export class ViewerEngine {
 
             if (this.renderer.xr.isPresenting) {
                 this.vrChatPanel?.update();
+                // Animate floating mic recording indicator
+                this.vrChatPanel?._animateMicIndicator(dt);
+                this.vrChatPanel?._updateMicIndicatorPosition();
             } else {
                 this.controls.update();
             }
