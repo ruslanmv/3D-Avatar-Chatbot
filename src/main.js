@@ -1590,10 +1590,26 @@ async function fetchAndPopulateModels(provider, selectElement) {
 
         if (result.models && result.models.length > 0) {
             const nameMap = result.modelNames || {};
-            result.models.forEach((m) => {
+
+            // Deduplicate display names — add numeric suffix when the same
+            // persona name appears more than once (e.g. "Lina (1)", "Lina (2)")
+            const displayNames = result.models.map((m) => nameMap[m] || m.toUpperCase().replace(/-/g, ' '));
+            const nameFreq = {};
+            displayNames.forEach((n) => {
+                nameFreq[n] = (nameFreq[n] || 0) + 1;
+            });
+            const nameCounter = {};
+
+            result.models.forEach((m, i) => {
+                const baseName = displayNames[i];
+                let label = baseName;
+                if (nameFreq[baseName] > 1) {
+                    nameCounter[baseName] = (nameCounter[baseName] || 0) + 1;
+                    label = `${baseName} (${nameCounter[baseName]})`;
+                }
                 const opt = document.createElement('option');
                 opt.value = m;
-                opt.textContent = nameMap[m] || m.toUpperCase().replace(/-/g, ' ');
+                opt.textContent = label;
                 selectElement.appendChild(opt);
             });
 
@@ -1975,12 +1991,23 @@ async function handleUserMessage(text) {
 
     try {
         const response = config.provider === 'none' ? getSimpleResponse(text) : await callLLM(text);
-        addMessageToHistory('avatar', response);
+
+        // Handle structured response (object with text + attachments) or plain string
+        let displayText;
+        let attachments = [];
+        if (response && typeof response === 'object' && typeof response.text === 'string') {
+            displayText = response.text;
+            attachments = response.attachments || [];
+        } else {
+            displayText = String(response);
+        }
+
+        addMessageToHistory('avatar', displayText, attachments);
 
         // ✅ Add assistant response to chat session history
-        chatHistory.addMessage('assistant', response);
+        chatHistory.addMessage('assistant', displayText);
 
-        speakText(response);
+        speakText(displayText);
     } catch (error) {
         logError('Error processing message', error);
 
@@ -2017,6 +2044,25 @@ async function callLLM(userMessage) {
     if (window._nexusLLM && config.provider !== 'none') {
         const history = window.chatHistory.getHistory();
         const systemPrompt = config.systemPrompt || 'You are a helpful AI assistant named Nexus.';
+
+        // Use structured response for OllaBridge to get attachments
+        if (config.provider === 'ollabridge' && typeof window._nexusLLM.sendMessageStructured === 'function') {
+            const raw = await window._nexusLLM.sendMessageStructured(userMessage, systemPrompt, history);
+            // Normalize via BridgeResponseAdapter if available
+            if (typeof window.BridgeResponseAdapter?.normalizeResponse === 'function') {
+                return window.BridgeResponseAdapter.normalizeResponse(raw);
+            }
+            // Manual extraction fallback
+            const text = raw?.choices?.[0]?.message?.content || raw?.text || String(raw);
+            return {
+                text,
+                attachments: raw?.x_attachments || [],
+                avatar_directives: raw?.x_avatar_directives || raw?.x_directives || {},
+                persona_context: raw?.x_persona_context || null,
+                meta: {},
+            };
+        }
+
         return await window._nexusLLM.sendMessage(userMessage, systemPrompt, history);
     }
 
@@ -2294,7 +2340,7 @@ function stopVoiceInput() {
 /* ============================
    Chat UI
    ============================ */
-function addMessageToHistory(sender, text) {
+function addMessageToHistory(sender, text, attachments) {
     const chatHistory = $('chat-history');
     if (!chatHistory) return;
 
@@ -2315,8 +2361,41 @@ function addMessageToHistory(sender, text) {
 
     messageDiv.appendChild(senderDiv);
     messageDiv.appendChild(textDiv);
-    chatHistory.appendChild(messageDiv);
 
+    // Render image attachments inline
+    if (Array.isArray(attachments) && attachments.length > 0) {
+        attachments.forEach((att) => {
+            if (att.type === 'image' && att.url) {
+                const imgContainer = document.createElement('div');
+                imgContainer.style.cssText = 'margin-top: 8px; max-width: 300px;';
+
+                const img = document.createElement('img');
+                img.src = att.url;
+                img.alt = att.name || 'Image';
+                img.style.cssText =
+                    'width: 100%; border-radius: 8px; cursor: pointer; border: 1px solid rgba(0,229,255,0.3);';
+                img.loading = 'lazy';
+
+                // Click to open in new tab
+                img.addEventListener('click', () => window.open(att.url, '_blank'));
+
+                if (att.name) {
+                    const label = document.createElement('div');
+                    label.textContent = att.name;
+                    label.style.cssText =
+                        'font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 4px; text-align: center;';
+                    imgContainer.appendChild(img);
+                    imgContainer.appendChild(label);
+                } else {
+                    imgContainer.appendChild(img);
+                }
+
+                messageDiv.appendChild(imgContainer);
+            }
+        });
+    }
+
+    chatHistory.appendChild(messageDiv);
     chatHistory.scrollTop = chatHistory.scrollHeight;
 }
 

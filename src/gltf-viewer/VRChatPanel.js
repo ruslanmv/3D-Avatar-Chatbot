@@ -41,6 +41,10 @@ export class VRChatPanel {
         this.avatars = [];
         this.currentAvatarIndex = 0;
 
+        // Phase A: Attachment card hit areas for tap-to-view
+        this._attachmentHitAreas = [];
+        this._thumbnailCache = new Map(); // Phase B: url → Image | null
+
         // Speech-to-text transcript display
         this.transcript = '';
         this.transcriptMode = 'idle'; // 'idle' | 'interim' | 'final'
@@ -506,6 +510,22 @@ export class VRChatPanel {
         this.redraw();
     }
 
+    /**
+     * Phase 5: Append a rich message with text + attachments + directives.
+     * @param {Object} message - { role, text, attachments, directives }
+     */
+    appendRichMessage(message) {
+        const entry = {
+            role: message.role || 'bot',
+            text: String(message.text ?? '').trim(),
+            attachments: message.attachments || [],
+            directives: message.directives || {},
+        };
+        this.messages.push(entry);
+        if (this.messages.length > 10) this.messages.shift();
+        this.redraw();
+    }
+
     clearMessages() {
         this.messages = [];
         this.redraw();
@@ -618,6 +638,11 @@ export class VRChatPanel {
             this.buttons[c.key] = this._makeHitbox(`Chip:${c.key}`, c, 'chip', { key: c.key, label: c.label });
         });
 
+        // Chat area hitbox (for attachment card tap detection)
+        // Placed slightly behind other hitboxes (z=0.005 vs 0.01) so chips/buttons take priority
+        this.buttons.chatArea = this._makeHitbox('ChatArea:tap', L.chatArea, 'chat-area', { key: 'chat-area' });
+        this.buttons.chatArea.position.z = 0.005;
+
         // Settings group
         this.settingsGroup = new THREE.Group();
         this.settingsGroup.name = 'SettingsGroup';
@@ -727,6 +752,9 @@ export class VRChatPanel {
         const T = this.theme;
         const area = L.chatArea;
 
+        // Clear attachment hit areas for this frame
+        this._attachmentHitAreas = [];
+
         // messages region top
         const pad = 18;
         let y = area.y + pad + 18;
@@ -746,6 +774,16 @@ export class VRChatPanel {
             ctx.font = '500 32px system-ui, -apple-system, Segoe UI, Roboto, Arial';
             ctx.fillStyle = T.text;
             y = this._wrapText(ctx, m.text, area.x + 18, y + 18, area.x + area.w - 18, 40) + 18;
+
+            // Phase A: Render interactive attachment cards for images
+            if (m.attachments && m.attachments.length > 0) {
+                const images = m.attachments.filter((a) => a.type === 'image');
+                images.forEach((att) => {
+                    y += 6;
+                    const cardH = this._drawAttachmentCard(ctx, att, area.x + 18, y, area.w - 36);
+                    y += cardH;
+                });
+            }
 
             y += 18;
             if (y > area.y + area.h - 120) return;
@@ -778,6 +816,174 @@ export class VRChatPanel {
             ctx.fillText(c.label, c.x + c.w / 2, c.y + 43);
             ctx.textAlign = 'left';
         });
+    }
+
+    // =================================================================
+    // Phase A: Attachment card rendering + hit detection
+    // Phase B: Inline thumbnail rendering (progressive enhancement)
+    // =================================================================
+
+    /**
+     * Draw a styled attachment card under a message.
+     * Phase B upgrades this to show an actual image thumbnail when cached.
+     * @returns {number} total height consumed by the card
+     */
+    _drawAttachmentCard(ctx, attachment, x, y, maxW) {
+        const T = this.theme;
+        const cardH = 78;
+        const cardW = Math.min(maxW, 420);
+        const r = 12;
+
+        // Phase B: Check thumbnail cache for inline image
+        const cached = this._thumbnailCache.get(attachment.url);
+        if (cached && cached instanceof Image && cached.complete && cached.naturalWidth > 0) {
+            return this._drawAttachmentThumb(ctx, attachment, cached, x, y, cardW);
+        }
+
+        // Phase A: Styled card with icon and label
+        // Card background
+        ctx.save();
+        this._roundRect(ctx, x, y, cardW, cardH, r);
+        ctx.fillStyle = 'rgba(0, 229, 255, 0.08)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0, 229, 255, 0.35)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Photo icon (camera-style)
+        const iconX = x + 18;
+        const iconY = y + cardH / 2;
+        ctx.fillStyle = T.accent;
+        ctx.font = '600 30px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🖼', iconX, iconY);
+
+        // Label
+        const labelX = iconX + 44;
+        ctx.font = '600 26px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillStyle = T.text;
+        ctx.textBaseline = 'middle';
+        const name = attachment.name || 'Photo';
+        ctx.fillText(name, labelX, iconY - 10);
+
+        // Hint
+        ctx.font = '400 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillStyle = T.textDim;
+        ctx.fillText('Tap to view', labelX, iconY + 16);
+
+        ctx.textBaseline = 'alphabetic';
+        ctx.restore();
+
+        // Store hit area for tap detection
+        this._attachmentHitAreas.push({ x, y, w: cardW, h: cardH, attachment });
+
+        // Phase B: Trigger async thumbnail load
+        if (!this._thumbnailCache.has(attachment.url)) {
+            this._loadThumbnail(attachment.url);
+        }
+
+        return cardH;
+    }
+
+    /**
+     * Phase B: Draw an inline thumbnail inside the attachment card.
+     * Called when the thumbnail image is cached and loaded.
+     * @returns {number} total height consumed
+     */
+    _drawAttachmentThumb(ctx, attachment, img, x, y, cardW) {
+        const T = this.theme;
+        const thumbMaxW = 180;
+        const thumbMaxH = 120;
+
+        // Scale image to fit within thumbnail bounds
+        const scale = Math.min(thumbMaxW / img.naturalWidth, thumbMaxH / img.naturalHeight, 1);
+        const thumbW = Math.round(img.naturalWidth * scale);
+        const thumbH = Math.round(img.naturalHeight * scale);
+
+        const cardH = thumbH + 44; // thumb + label + padding
+        const r = 12;
+
+        // Card background
+        ctx.save();
+        this._roundRect(ctx, x, y, cardW, cardH, r);
+        ctx.fillStyle = 'rgba(0, 229, 255, 0.06)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0, 229, 255, 0.25)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Thumbnail image (with rounded corners via clip)
+        const imgX = x + 14;
+        const imgY = y + 10;
+        ctx.save();
+        this._roundRect(ctx, imgX, imgY, thumbW, thumbH, 8);
+        ctx.clip();
+        ctx.drawImage(img, imgX, imgY, thumbW, thumbH);
+        ctx.restore();
+
+        // Label to the right of thumbnail
+        const labelX = imgX + thumbW + 16;
+        const labelMaxW = cardW - thumbW - 50;
+        if (labelMaxW > 60) {
+            ctx.font = '600 24px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+            ctx.fillStyle = T.text;
+            ctx.textBaseline = 'middle';
+            const name = attachment.name || 'Photo';
+            ctx.fillText(name, labelX, imgY + thumbH / 2 - 10, labelMaxW);
+
+            ctx.font = '400 19px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+            ctx.fillStyle = T.textDim;
+            ctx.fillText('Tap to expand', labelX, imgY + thumbH / 2 + 14, labelMaxW);
+            ctx.textBaseline = 'alphabetic';
+        }
+
+        ctx.restore();
+
+        // Store hit area
+        this._attachmentHitAreas.push({ x, y, w: cardW, h: cardH, attachment });
+
+        return cardH;
+    }
+
+    /**
+     * Phase B: Load a thumbnail image asynchronously. Triggers redraw on completion.
+     */
+    _loadThumbnail(url) {
+        if (this._thumbnailCache.has(url)) return;
+
+        // Sentinel to prevent duplicate loads
+        this._thumbnailCache.set(url, 'loading');
+
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+            this._thumbnailCache.set(url, img);
+            // Evict oldest if cache too large
+            if (this._thumbnailCache.size > 20) {
+                const oldest = this._thumbnailCache.keys().next().value;
+                this._thumbnailCache.delete(oldest);
+            }
+            this.redraw();
+        };
+        img.onerror = () => {
+            this._thumbnailCache.set(url, null); // null sentinel — don't retry
+        };
+        img.src = url;
+    }
+
+    /**
+     * Check if a canvas-coordinate tap hit an attachment card.
+     * @param {number} canvasX - X in canvas pixels
+     * @param {number} canvasY - Y in canvas pixels
+     * @returns {Object|null} The attachment object if hit, null otherwise
+     */
+    handleAttachmentTap(canvasX, canvasY) {
+        for (const area of this._attachmentHitAreas) {
+            if (canvasX >= area.x && canvasX <= area.x + area.w && canvasY >= area.y && canvasY <= area.y + area.h) {
+                return area.attachment;
+            }
+        }
+        return null;
     }
 
     _drawSettings(ctx) {

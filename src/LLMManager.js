@@ -495,6 +495,10 @@
             const url = `${baseUrlClean}/v1/chat/completions`;
             const headers = {
                 'Content-Type': 'application/json',
+                // Phase 1B: Client identification — lets OllaBridge apply
+                // client-aware response shaping (normalization, media, directives).
+                'X-Client-Type': 'vr-chatbot',
+                'X-Client-Capabilities': 'text_chat,voice_output,image_panel,avatar_pose,avatar_emotion',
             };
             if (authToken) {
                 headers['Authorization'] = `Bearer ${authToken}`;
@@ -582,6 +586,156 @@
             }
 
             return data.choices?.[0]?.message?.content || 'No response';
+        }
+
+        // ===============================================
+        // Phase 5: Structured response for VR-aware callers
+        // ===============================================
+
+        /**
+         * Send a message and return the full structured response (not just text).
+         *
+         * Returns the raw response object from OllaBridge, including
+         * x_attachments, x_avatar_directives, x_persona_context if present.
+         * Use BridgeResponseAdapter.normalizeResponse() on the result.
+         *
+         * Falls back to { text: "..." } wrapper for non-OllaBridge providers.
+         *
+         * @param {string} userMessage
+         * @param {string} systemPrompt
+         * @param {Array} conversationHistory
+         * @returns {Promise<Object>} raw response object
+         */
+        async sendMessageStructured(userMessage, systemPrompt = '', conversationHistory = []) {
+            const provider = this._settings.provider;
+
+            // Only OllaBridge returns structured enriched responses
+            if (provider === 'ollabridge') {
+                return this._chatOllaBridgeStructured(userMessage, systemPrompt, conversationHistory);
+            }
+
+            // All other providers: wrap text in a simple object
+            const text = await this.sendMessage(userMessage, systemPrompt, conversationHistory);
+            return { text };
+        }
+
+        /**
+         * OllaBridge chat that returns the full response object (not just text).
+         * @private
+         */
+        async _chatOllaBridgeStructured(userMessage, systemPrompt, conversationHistory) {
+            const { base_url, model, auth_mode } = this._settings.ollabridge;
+
+            let authToken = '';
+            if (auth_mode === 'api_key') {
+                authToken = (this._settings.ollabridge.api_key || '').trim();
+            } else if (auth_mode === 'pairing') {
+                authToken = (this._settings.ollabridge.pair_token || '').trim();
+            }
+
+            if (!authToken && auth_mode !== 'local-trust') {
+                throw new Error('OllaBridge: No API key or pairing token.');
+            }
+
+            const baseUrlClean = (base_url || 'http://localhost:11435').replace(/\/$/, '');
+            const url = `${baseUrlClean}/v1/chat/completions`;
+            const headers = {
+                'Content-Type': 'application/json',
+                'X-Client-Type': 'vr-chatbot',
+                'X-Client-Capabilities': 'text_chat,voice_output,image_panel,avatar_pose,avatar_emotion',
+            };
+            if (authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+            }
+
+            const useRemote = this._settings.ollabridge.use_remote_prompt;
+            const isRemotePersona =
+                useRemote &&
+                typeof model === 'string' &&
+                (model.startsWith('persona:') || model.startsWith('personality:'));
+
+            if (isRemotePersona) {
+                headers['X-Include-Persona-Context'] = 'true';
+            }
+
+            const messages = [];
+            if (!isRemotePersona) {
+                messages.push({ role: 'system', content: systemPrompt || 'You are a helpful assistant.' });
+            }
+            messages.push(...conversationHistory, { role: 'user', content: userMessage });
+
+            const body = {
+                model: model || 'default',
+                messages: messages,
+                max_tokens: 800,
+            };
+
+            let res;
+            if (this._hasProxy()) {
+                res = await this._fetchViaProxy(url, 'POST', headers, body);
+            } else {
+                res = await fetch(url, {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify(body),
+                });
+            }
+
+            if (!res.ok) {
+                let errBody = null;
+                try {
+                    errBody = await res.json();
+                } catch (_) {
+                    const errText = await res.text();
+                    throw new Error(`OllaBridge Error: ${res.status} - ${errText}`);
+                }
+
+                const errInfo = errBody?.detail?.error || errBody?.error;
+                if (
+                    res.status === 404 &&
+                    (errInfo?.code === 'persona_unpublished' || errInfo?.code === 'model_not_found')
+                ) {
+                    this._modelsStale = true;
+                    throw new PersonaUnavailableError(
+                        errInfo.message || 'This persona is no longer available.',
+                        model || 'unknown',
+                        true
+                    );
+                }
+                throw new Error(`OllaBridge Error: ${res.status} - ${JSON.stringify(errBody)}`);
+            }
+
+            const data = await res.json();
+
+            // Update persona context cache if returned inline
+            if (data.x_persona_context && typeof global.PersonaContextBridge !== 'undefined') {
+                global.PersonaContextBridge._context = data.x_persona_context;
+                global.PersonaContextBridge._fetchedAt = Date.now();
+                global.PersonaContextBridge._lastModel = model;
+            }
+
+            // Resolve relative attachment URLs to absolute OllaBridge URLs.
+            // The proxy returns paths like /v1/media/proxy/... which must be
+            // resolved against OllaBridge, not the page origin.
+            // Also append ?token= so <img> tags can authenticate (they can't
+            // set custom headers).  Essential for remote/cloud deployments
+            // and for non-public files (outfit images, view-pack angles).
+            if (Array.isArray(data.x_attachments)) {
+                data.x_attachments = data.x_attachments.map((att) => {
+                    if (att.url && att.url.startsWith('/')) {
+                        att.url = `${baseUrlClean}${att.url}`;
+                    }
+                    // Append auth token for <img> tag requests
+                    if (authToken && att.url && !att.url.includes('token=')) {
+                        const sep = att.url.includes('?') ? '&' : '?';
+                        att.url = `${att.url}${sep}token=${encodeURIComponent(authToken)}`;
+                    }
+                    return att;
+                });
+            }
+
+            // Return the full response object — caller uses BridgeResponseAdapter
+            return data;
         }
 
         // ===============================================
