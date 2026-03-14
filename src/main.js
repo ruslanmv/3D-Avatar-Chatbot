@@ -2004,6 +2004,16 @@ async function handleUserMessage(text) {
 
         addMessageToHistory('avatar', displayText, attachments);
 
+        // ✅ Forward rich response (with attachments) to VR panel
+        if (window.sendBotResponseToVR) {
+            window.sendBotResponseToVR({
+                text: displayText,
+                attachments: attachments,
+                avatar_directives: response?.avatar_directives || {},
+                persona_context: response?.persona_context || null,
+            });
+        }
+
         // ✅ Add assistant response to chat session history
         chatHistory.addMessage('assistant', displayText);
 

@@ -147,6 +147,10 @@ export class VRChatPanel {
         this.group.visible = false;
         this.scene.add(this.group);
 
+        // Floating mic recording indicator (lives outside this.group so it
+        // stays visible even when the chat panel is hidden)
+        this._buildMicIndicator();
+
         // Initial sync from desktop settings (safe even if empty)
         this.syncFromDesktopSettings();
 
@@ -321,6 +325,166 @@ export class VRChatPanel {
     }
 
     // =====================================================================
+    // FLOATING MIC INDICATOR (visible even when panel is hidden)
+    // =====================================================================
+
+    _buildMicIndicator() {
+        this.micIndicator = new THREE.Group();
+        this.micIndicator.name = 'VRMicIndicator';
+        this.micIndicator.visible = false;
+        this._micIndicatorTime = 0;
+
+        // --- Mic icon sprite (white mic on dark pill) ---
+        const iconSize = 64;
+        const iconCanvas = document.createElement('canvas');
+        iconCanvas.width = iconSize;
+        iconCanvas.height = iconSize;
+        const ic = iconCanvas.getContext('2d');
+
+        // Dark pill background
+        ic.fillStyle = 'rgba(20, 22, 28, 0.85)';
+        ic.beginPath();
+        ic.arc(iconSize / 2, iconSize / 2, iconSize / 2 - 2, 0, Math.PI * 2);
+        ic.fill();
+
+        // Mic icon (simple vector: body + base)
+        ic.strokeStyle = '#ffffff';
+        ic.fillStyle = '#ffffff';
+        ic.lineWidth = 3;
+        const cx = iconSize / 2;
+        const cy = iconSize / 2 - 4;
+        // Mic body (rounded rect)
+        const bw = 10,
+            bh = 18,
+            br = 5;
+        ic.beginPath();
+        ic.moveTo(cx - bw / 2 + br, cy - bh / 2);
+        ic.lineTo(cx + bw / 2 - br, cy - bh / 2);
+        ic.quadraticCurveTo(cx + bw / 2, cy - bh / 2, cx + bw / 2, cy - bh / 2 + br);
+        ic.lineTo(cx + bw / 2, cy + bh / 2 - br);
+        ic.quadraticCurveTo(cx + bw / 2, cy + bh / 2, cx + bw / 2 - br, cy + bh / 2);
+        ic.lineTo(cx - bw / 2 + br, cy + bh / 2);
+        ic.quadraticCurveTo(cx - bw / 2, cy + bh / 2, cx - bw / 2, cy + bh / 2 - br);
+        ic.lineTo(cx - bw / 2, cy - bh / 2 + br);
+        ic.quadraticCurveTo(cx - bw / 2, cy - bh / 2, cx - bw / 2 + br, cy - bh / 2);
+        ic.fill();
+        // Arc under mic
+        ic.beginPath();
+        ic.arc(cx, cy + 2, 10, 0, Math.PI, false);
+        ic.stroke();
+        // Stem
+        ic.beginPath();
+        ic.moveTo(cx, cy + 12);
+        ic.lineTo(cx, cy + 18);
+        ic.stroke();
+        // Base
+        ic.beginPath();
+        ic.moveTo(cx - 6, cy + 18);
+        ic.lineTo(cx + 6, cy + 18);
+        ic.stroke();
+
+        const iconTex = new THREE.CanvasTexture(iconCanvas);
+        iconTex.needsUpdate = true;
+        const iconMat = new THREE.SpriteMaterial({ map: iconTex, transparent: true, depthTest: false });
+        const iconSprite = new THREE.Sprite(iconMat);
+        iconSprite.scale.set(0.045, 0.045, 1);
+        iconSprite.renderOrder = 999;
+        this.micIndicator.add(iconSprite);
+
+        // --- Pulsing red ring ---
+        const ringGeo = new THREE.RingGeometry(0.024, 0.03, 32);
+        const ringMat = new THREE.MeshBasicMaterial({
+            color: 0xff4444,
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide,
+            depthTest: false,
+        });
+        this._micRing = new THREE.Mesh(ringGeo, ringMat);
+        this._micRing.renderOrder = 998;
+        this.micIndicator.add(this._micRing);
+
+        // --- "REC" label sprite ---
+        const labelCanvas = document.createElement('canvas');
+        labelCanvas.width = 64;
+        labelCanvas.height = 24;
+        const lc = labelCanvas.getContext('2d');
+        lc.fillStyle = 'rgba(20, 22, 28, 0.80)';
+        lc.beginPath();
+        lc.roundRect(0, 0, 64, 24, 6);
+        lc.fill();
+        lc.fillStyle = '#ff4444';
+        lc.font = 'bold 16px sans-serif';
+        lc.textAlign = 'center';
+        lc.textBaseline = 'middle';
+        // Red dot
+        lc.beginPath();
+        lc.arc(14, 12, 4, 0, Math.PI * 2);
+        lc.fill();
+        // Text
+        lc.fillText('REC', 42, 13);
+
+        const labelTex = new THREE.CanvasTexture(labelCanvas);
+        labelTex.needsUpdate = true;
+        const labelMat = new THREE.SpriteMaterial({ map: labelTex, transparent: true, depthTest: false });
+        const labelSprite = new THREE.Sprite(labelMat);
+        labelSprite.scale.set(0.035, 0.014, 1);
+        labelSprite.position.set(0, -0.032, 0);
+        labelSprite.renderOrder = 999;
+        this.micIndicator.add(labelSprite);
+
+        this.scene.add(this.micIndicator);
+    }
+
+    /**
+     * Update mic indicator position — anchor to left controller wrist,
+     * fallback to camera-relative HUD.
+     */
+    _updateMicIndicatorPosition() {
+        if (!this.micIndicator?.visible) return;
+
+        const controller = this.leftController;
+        if (controller && controller.visible) {
+            // Position above + shifted left so it doesn't block the 3D avatar
+            const ctrlRight = new THREE.Vector3(1, 0, 0).applyQuaternion(controller.quaternion);
+            this.micIndicator.position.copy(controller.position);
+            this.micIndicator.position.y += 0.04;
+            this.micIndicator.position.add(ctrlRight.multiplyScalar(-0.06));
+        } else {
+            // Fallback: camera-relative HUD (further left, closer to user)
+            const cam = this.camera;
+            const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
+            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion);
+            this.micIndicator.position
+                .copy(cam.position)
+                .add(dir.multiplyScalar(0.28))
+                .add(right.multiplyScalar(-0.18));
+            this.micIndicator.position.y -= 0.06;
+        }
+
+        // Billboard: always face the camera
+        this.micIndicator.lookAt(this.camera.position);
+    }
+
+    /**
+     * Animate the pulsing ring (~2Hz sine wave).
+     * @param {number} dt - delta time in seconds
+     */
+    _animateMicIndicator(dt) {
+        if (!this.micIndicator?.visible || !this._micRing) return;
+
+        this._micIndicatorTime += dt;
+        const t = this._micIndicatorTime;
+
+        // Pulse scale 1.0 → 1.4 at ~2Hz
+        const pulse = 1.0 + 0.4 * (0.5 + 0.5 * Math.sin(t * Math.PI * 4));
+        this._micRing.scale.set(pulse, pulse, 1);
+
+        // Pulse opacity 0.5 → 1.0
+        this._micRing.material.opacity = 0.5 + 0.5 * (0.5 + 0.5 * Math.sin(t * Math.PI * 4));
+    }
+
+    // =====================================================================
     // UPDATE (required by engine; we keep it minimal)
     // =====================================================================
 
@@ -460,6 +624,14 @@ export class VRChatPanel {
 
     setStatus(status) {
         this.status = status || 'idle';
+
+        // Show/hide floating mic indicator (works even when panel is hidden)
+        if (this.micIndicator) {
+            const listening = this.status === 'listening';
+            this.micIndicator.visible = listening;
+            if (listening) this._micIndicatorTime = 0;
+        }
+
         this.redraw();
     }
 
@@ -1246,5 +1418,21 @@ export class VRChatPanel {
             } catch (_) {}
         });
         this.scene.remove(this.group);
+
+        // Clean up floating mic indicator
+        if (this.micIndicator) {
+            this.micIndicator.traverse((o) => {
+                try {
+                    o.geometry?.dispose?.();
+                } catch (_) {}
+                try {
+                    o.material?.map?.dispose?.();
+                } catch (_) {}
+                try {
+                    o.material?.dispose?.();
+                } catch (_) {}
+            });
+            this.scene.remove(this.micIndicator);
+        }
     }
 }

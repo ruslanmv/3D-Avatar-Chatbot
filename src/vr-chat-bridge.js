@@ -43,11 +43,12 @@
     }
 
     // Setup global bot response handler for VR
-    window.sendBotResponseToVR = function (text) {
+    // Accepts a plain string or structured object { text, attachments, avatar_directives, persona_context }
+    window.sendBotResponseToVR = function (response) {
         try {
             const engine = window.viewerEngine || window.engine;
             if (engine && engine.vrChatIntegration) {
-                engine.vrChatIntegration.handleBotResponse(text);
+                engine.vrChatIntegration.handleBotResponse(response);
             }
         } catch (e) {
             console.error('[VRChatBridge] Failed to send bot response to VR:', e);
