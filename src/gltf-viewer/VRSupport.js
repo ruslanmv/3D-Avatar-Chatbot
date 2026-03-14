@@ -15,12 +15,36 @@ export class VRSupport {
         // Lock to prevent race conditions (double clicking)
         this.isToggling = false;
 
+        this.contextLost = false;
+
         this.init();
     }
 
     init() {
         // Enable WebXR on renderer
         this.renderer.xr.enabled = true;
+
+        // --- WebGL context loss / restore handlers ---
+        const canvas = this.renderer.domElement;
+        canvas.addEventListener('webglcontextlost', (e) => {
+            e.preventDefault(); // allow restore
+            this.contextLost = true;
+            console.warn('[VR] WebGL context lost — VR disabled until restored');
+            if (this.isVRActive) this.forceExit();
+            if (this.vrButton) {
+                this.vrButton.textContent = 'CONTEXT LOST';
+                this.vrButton.style.opacity = '0.5';
+            }
+        });
+
+        canvas.addEventListener('webglcontextrestored', () => {
+            this.contextLost = false;
+            console.log('[VR] WebGL context restored');
+            if (this.vrButton) {
+                this.vrButton.textContent = 'ENTER VR';
+                this.vrButton.style.opacity = '1';
+            }
+        });
 
         // Create VR button
         this.createVRButton();
@@ -113,9 +137,8 @@ export class VRSupport {
         }
 
         // 2. Check if WebGL context is lost (Prevent the crash loop)
-        const gl = this.renderer.getContext();
-        if (gl && gl.isContextLost && gl.isContextLost()) {
-            alert('WebGL Context Lost. Please refresh the page.');
+        if (this.contextLost) {
+            alert('WebGL Context Lost. Please wait for it to restore or refresh the page.');
             return;
         }
 

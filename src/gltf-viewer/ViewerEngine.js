@@ -75,6 +75,20 @@ export class ViewerEngine {
         this.loader.setKTX2Loader(ktx2);
         this.loader.setMeshoptDecoder(MeshoptDecoder);
 
+        // Guard against cancelAnimationFrame crash on WebGL context loss.
+        // Three.js's internal WebXRManager.onSessionEnd calls animation.stop()
+        // which does context.cancelAnimationFrame() — but context is null after
+        // a WebGL loss, causing "Cannot read properties of null".
+        // Stopping the loop first prevents the crash.
+        this.renderer.domElement.addEventListener('webglcontextlost', () => {
+            console.warn('[ViewerEngine] WebGL context lost — stopping animation loop');
+            this.renderer.setAnimationLoop(null);
+        });
+        this.renderer.domElement.addEventListener('webglcontextrestored', () => {
+            console.log('[ViewerEngine] WebGL context restored — restarting animation loop');
+            this.animate();
+        });
+
         // VR Systems
         this.vrSupport = new VRSupport(this.renderer, this.camera, this.scene);
         this.vrControllers = new VRControllers(this.renderer, this.scene, this.camera);
