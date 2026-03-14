@@ -254,6 +254,67 @@
         }
 
         // -----------------------------------------------------------
+        // Phase 7: VR bootstrap metadata helpers
+        // -----------------------------------------------------------
+
+        /**
+         * Get the persona's display name for VR UI.
+         * @returns {string}
+         */
+        getDisplayName() {
+            const vr = this._context?.vr_bootstrap;
+            return vr?.display_name || this._context?.label || '';
+        }
+
+        /**
+         * Get a short biography for pre-chat display.
+         * @returns {string}
+         */
+        getShortBio() {
+            return this._context?.vr_bootstrap?.short_bio || '';
+        }
+
+        /**
+         * Check if the persona supports image attachments.
+         * @returns {boolean}
+         */
+        hasImageSupport() {
+            return this._context?.vr_bootstrap?.image_support ?? false;
+        }
+
+        /**
+         * Get the default avatar mood for initial animation.
+         * @returns {string} e.g. "happy", "calm", "neutral"
+         */
+        getDefaultMood() {
+            return this._context?.vr_bootstrap?.default_avatar_mood || 'neutral';
+        }
+
+        /**
+         * Get supported directives the persona can respond with.
+         * @returns {string[]} e.g. ["emotion", "pose"]
+         */
+        getSupportedDirectives() {
+            return this._context?.vr_bootstrap?.supported_directives || [];
+        }
+
+        /**
+         * Get voice hints for voice selection.
+         * @returns {string} e.g. "female,warm,English"
+         */
+        getVoiceHints() {
+            return this._context?.vr_bootstrap?.voice_hints || '';
+        }
+
+        /**
+         * Get the default appearance/preview image URL.
+         * @returns {string} URL or empty string
+         */
+        getDefaultAppearanceUrl() {
+            return this._context?.vr_bootstrap?.default_appearance_url || '';
+        }
+
+        // -----------------------------------------------------------
         // Internals
         // -----------------------------------------------------------
 

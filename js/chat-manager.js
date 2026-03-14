@@ -86,11 +86,72 @@ class ChatManager {
             contentDiv.appendChild(timeDiv);
         }
 
+        // Phase 5.6: Render image attachments
+        if (message.attachments && message.attachments.length > 0) {
+            message.attachments.forEach((att) => {
+                if (att.type === 'image' && att.url) {
+                    const imgContainer = document.createElement('div');
+                    imgContainer.className = 'message-attachment';
+                    imgContainer.style.cssText = 'margin-top: 8px; max-width: 300px;';
+
+                    const img = document.createElement('img');
+                    img.src = att.url;
+                    img.alt = att.name || 'Attachment';
+                    img.style.cssText = 'max-width: 100%; border-radius: 8px; cursor: pointer;';
+                    img.loading = 'lazy';
+                    img.onerror = () => {
+                        img.style.display = 'none';
+                        const fallback = document.createElement('div');
+                        fallback.textContent = `[Image: ${att.name || 'unavailable'}]`;
+                        fallback.style.cssText = 'color: rgba(255,255,255,0.5); font-size: 12px; padding: 4px;';
+                        imgContainer.appendChild(fallback);
+                    };
+                    imgContainer.appendChild(img);
+
+                    if (att.name) {
+                        const label = document.createElement('div');
+                        label.textContent = att.name;
+                        label.style.cssText = 'font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 4px;';
+                        imgContainer.appendChild(label);
+                    }
+
+                    contentDiv.appendChild(imgContainer);
+                }
+            });
+        }
+
         // Assemble message
         messageDiv.appendChild(avatarDiv);
         messageDiv.appendChild(contentDiv);
 
         return messageDiv;
+    }
+
+    /**
+     * Phase 5.6: Add a rich message with attachments.
+     * @param {string} content - Message text
+     * @param {string} sender - 'user' or 'bot'
+     * @param {Array} attachments - Array of attachment objects
+     */
+    addRichMessage(content, sender = 'bot', attachments = []) {
+        const message = {
+            id: Date.now(),
+            content,
+            sender,
+            attachments,
+            timestamp: new Date().toISOString(),
+        };
+
+        this.removeWelcomeMessage();
+
+        const messageElement = this.createMessageElement(message);
+        this.messageContainer.appendChild(messageElement);
+        this.scrollToBottom();
+
+        this.messageHistory.push(message);
+        this.saveChatHistory();
+
+        return message;
     }
 
     /**

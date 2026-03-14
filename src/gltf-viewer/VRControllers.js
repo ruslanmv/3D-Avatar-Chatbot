@@ -245,7 +245,7 @@ export class VRControllers {
             }
 
             // Otherwise handle as normal UI click
-            this._handleUIClick(uiTarget);
+            this._handleUIClick(uiTarget, hit.point);
             return;
         }
 
@@ -284,7 +284,7 @@ export class VRControllers {
         }
     }
 
-    _handleUIClick(mesh) {
+    _handleUIClick(mesh, hitPoint) {
         if (!mesh || !mesh.name) {
             return;
         }
@@ -292,7 +292,7 @@ export class VRControllers {
         console.log(`[VRControllers] 👆 UI Click: ${mesh.name}`);
 
         if (this.onUIButtonClick) {
-            this.onUIButtonClick(mesh.name, mesh.userData);
+            this.onUIButtonClick(mesh.name, mesh.userData, hitPoint);
         }
     }
 
