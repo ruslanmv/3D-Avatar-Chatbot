@@ -536,6 +536,34 @@
                                 </button>
                             </div>
                         </div>
+
+                        <!-- Use remote persona prompt (OllaBridge only) -->
+                        <div class="input-group" id="ollabridge-remote-prompt-row" style="display: none">
+                            <label
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 8px;
+                                    cursor: pointer;
+                                    font-size: 0.8rem;
+                                    color: rgba(255, 255, 255, 0.8);
+                                "
+                            >
+                                <input type="checkbox" id="ollabridge-use-remote-prompt" checked />
+                                Use remote persona prompt
+                            </label>
+                            <div
+                                style="
+                                    font-size: 0.7rem;
+                                    color: rgba(255, 255, 255, 0.45);
+                                    margin-top: 2px;
+                                    padding-left: 24px;
+                                "
+                            >
+                                When checked, the persona's own prompt from HomePilot is used instead of the local
+                                system prompt below. Uncheck to override with your own Nexus prompt.
+                            </div>
+                        </div>
                     </div>
 
                     <div class="config-section">
@@ -808,6 +836,7 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <script defer src="src/LLMManager.js"></script>
 
         <script defer src="src/ProceduralAnimator.js"></script>
+        <script defer src="src/PersonaContextBridge.js"></script>
         <script defer src="src/main.js"></script>
     </body>
 </html>
