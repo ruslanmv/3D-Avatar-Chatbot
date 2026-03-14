@@ -1505,6 +1505,12 @@ function openSettings() {
     loadSTTSettingsIntoUI();
     refreshVoiceList();
 
+    // Auto-refresh model list if stale (e.g. persona was unpublished)
+    if (window._nexusLLM && window._nexusLLM.modelsStale) {
+        const fetchBtn = document.getElementById('fetch-models-btn');
+        if (fetchBtn) setTimeout(() => fetchBtn.click(), 300);
+    }
+
     modal.classList.add('active');
     modal.hidden = false;
 }
@@ -1583,10 +1589,11 @@ async function fetchAndPopulateModels(provider, selectElement) {
         selectElement.innerHTML = '<option value="">Select a model...</option>';
 
         if (result.models && result.models.length > 0) {
+            const nameMap = result.modelNames || {};
             result.models.forEach((m) => {
                 const opt = document.createElement('option');
                 opt.value = m;
-                opt.textContent = m.toUpperCase().replace(/-/g, ' ');
+                opt.textContent = nameMap[m] || m.toUpperCase().replace(/-/g, ' ');
                 selectElement.appendChild(opt);
             });
 
@@ -1689,6 +1696,8 @@ function updateProviderFields() {
     if (pairRowHide) pairRowHide.style.display = 'none';
     const authRowHide = $('ollabridge-auth-row');
     if (authRowHide) authRowHide.style.display = 'none';
+    const remotePromptRow = $('ollabridge-remote-prompt-row');
+    if (remotePromptRow) remotePromptRow.style.display = 'none';
 
     // Only fetch models if valid API key is present
     const currentKey = apiKeyInput ? apiKeyInput.value.trim() : '';
@@ -1715,6 +1724,17 @@ function updateProviderFields() {
         // Show auth mode dropdown for OllaBridge
         const authRow = $('ollabridge-auth-row');
         if (authRow) authRow.style.display = 'block';
+
+        // Show remote prompt checkbox
+        if (remotePromptRow) {
+            remotePromptRow.style.display = 'block';
+            // Load saved value
+            try {
+                const unified = JSON.parse(localStorage.getItem('nexus_llm_settings') || '{}');
+                const cb = $('ollabridge-use-remote-prompt');
+                if (cb) cb.checked = unified.ollabridge?.use_remote_prompt !== false;
+            } catch (_) {}
+        }
 
         // Show/hide correct fields based on current auth mode selection
         _updateOllaBridgeAuthUI();
@@ -1908,11 +1928,13 @@ function saveSettings() {
             } else if (provider === 'ollabridge') {
                 const authModeSelect = $('ollabridge-auth-mode');
                 const authMode = authModeSelect ? authModeSelect.value : 'pairing';
+                const remotePromptCb = $('ollabridge-use-remote-prompt');
                 patch.ollabridge = {
                     api_key: authMode === 'apikey' ? apiKey : '',
                     base_url: baseUrl || 'http://localhost:11435',
                     model: model || 'default',
                     auth_mode: authMode,
+                    use_remote_prompt: remotePromptCb ? remotePromptCb.checked : true,
                 };
             }
 
@@ -1961,11 +1983,23 @@ async function handleUserMessage(text) {
         speakText(response);
     } catch (error) {
         logError('Error processing message', error);
-        const errorMsg = 'Sorry, I encountered an error. Please check your settings.';
-        addMessageToHistory('avatar', errorMsg);
-        chatHistory.addMessage('assistant', errorMsg);
-        setStatus('idle', 'ERROR');
-        setTimeout(() => setStatus('idle', 'READY'), 2000);
+
+        if (error.name === 'PersonaUnavailableError') {
+            // Friendly avatar message explaining what happened
+            const friendlyMsg =
+                `The persona "${error.modelName}" is no longer available. ` +
+                `You can select a different model in Settings, or refresh the model list.`;
+            addMessageToHistory('avatar', friendlyMsg);
+            chatHistory.addMessage('assistant', friendlyMsg);
+            showMessage('Persona unavailable \u2014 open Settings to choose another model', 'warning');
+            setStatus('idle', 'READY');
+        } else {
+            const errorMsg = 'Sorry, I encountered an error. Please check your settings.';
+            addMessageToHistory('avatar', errorMsg);
+            chatHistory.addMessage('assistant', errorMsg);
+            setStatus('idle', 'ERROR');
+            setTimeout(() => setStatus('idle', 'READY'), 2000);
+        }
     }
 }
 
@@ -2019,10 +2053,22 @@ function speakText(text) {
 
     const utterance = new SpeechSynthesisUtterance(text);
 
-    // ✅ Apply settings
+    // ✅ Apply settings (with optional persona voice overrides)
     utterance.lang = SpeechSettings.lang;
     utterance.rate = SpeechSettings.rate;
     utterance.pitch = SpeechSettings.pitch;
+
+    // Apply persona voice_style overrides from HomePilot (additive)
+    if (typeof window.PersonaContextBridge !== 'undefined') {
+        const voiceOverrides = window.PersonaContextBridge.getVoiceOverrides({
+            rate: SpeechSettings.rate,
+            pitch: SpeechSettings.pitch,
+        });
+        if (voiceOverrides) {
+            utterance.rate = voiceOverrides.rate;
+            utterance.pitch = voiceOverrides.pitch;
+        }
+    }
 
     // Use smart voice picker (handles specific selection or auto-best-match)
     const v = pickBestVoice();
@@ -2030,12 +2076,18 @@ function speakText(text) {
 
     utterance.onend = () => {
         /* NEXUS_PATCH_LIFE_ENGINE_TALK_END */
+        // After speaking, apply persona's emotional baseline instead of plain idle
+        const personaMode =
+            typeof window.PersonaContextBridge !== 'undefined'
+                ? window.PersonaContextBridge.getDefaultAvatarMode()
+                : 'idle';
         try {
-            window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.('idle', 1);
+            window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.(personaMode, personaMode === 'idle' ? 1 : 5000);
         } catch (_) {}
         setStatus('idle', 'READY');
         try {
-            window.NEXUS_VIEWER?.playAnimationByName?.('Idle');
+            const clipName = personaMode === 'happy' ? 'Happy' : 'Idle';
+            window.NEXUS_VIEWER?.playAnimationByName?.(clipName);
         } catch (_) {}
     };
 
@@ -2288,7 +2340,8 @@ function showMessage(text, type) {
     const notification = document.createElement('div');
     notification.textContent = text;
 
-    const bg = type === 'error' ? '#ff5252' : type === 'success' ? '#00ff88' : '#00e5ff';
+    const bg =
+        type === 'error' ? '#ff5252' : type === 'success' ? '#00ff88' : type === 'warning' ? '#f59e0b' : '#00e5ff';
     notification.style.cssText = `
     position: fixed;
     top: 20px;
