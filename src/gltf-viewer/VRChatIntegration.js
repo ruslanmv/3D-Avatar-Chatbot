@@ -259,7 +259,7 @@ export class VRChatIntegration {
      * @param {string} name - Button mesh name
      * @param {Object} userData - Button user data
      */
-    handleUIClick(name, userData) {
+    handleUIClick(name, userData, hitPoint) {
         console.log(`[VRChatIntegration] Button clicked: ${name}`);
 
         // Let panel handle its own built-in actions (STT/TTS toggles with desktop settings sync)
@@ -295,6 +295,35 @@ export class VRChatIntegration {
         // Avatar cards
         else if (name.startsWith('AvatarCard:')) {
             this.handleAvatarSwitch(userData.avatarIndex);
+        }
+        // Chat area tap — check for attachment card hits
+        else if (name === 'ChatArea:tap' && hitPoint) {
+            this._handleChatAreaTap(hitPoint);
+        }
+    }
+
+    /**
+     * Convert a 3D hit point on the chat panel to canvas coordinates
+     * and check if an attachment card was tapped.
+     */
+    _handleChatAreaTap(hitPoint) {
+        const panel = this.vrChatPanel;
+        if (!panel || !panel.handleAttachmentTap) return;
+
+        // Convert world hit point to panel-local coordinates
+        const localPoint = panel.group.worldToLocal(hitPoint.clone());
+
+        // Panel-local → canvas pixel coordinates
+        // Panel origin is center; canvas origin is top-left
+        const canvasX = (localPoint.x / panel.panelWidth + 0.5) * panel.canvasW;
+        const canvasY = (0.5 - localPoint.y / panel.panelHeight) * panel.canvasH;
+
+        const attachment = panel.handleAttachmentTap(canvasX, canvasY);
+        if (attachment) {
+            console.log('[VRChatIntegration] Attachment card tapped:', attachment.name);
+            if (window.VRMediaPanel) {
+                window.VRMediaPanel.show(attachment);
+            }
         }
     }
 
@@ -560,7 +589,20 @@ export class VRChatIntegration {
                 historyMessages: history.length,
             });
 
-            const reply = await window._nexusLLM.sendMessage(text, systemPrompt, history);
+            // Phase 5: Try structured response first (includes attachments, directives)
+            let reply;
+            if (typeof window._nexusLLM.sendMessageStructured === 'function') {
+                const rawResponse = await window._nexusLLM.sendMessageStructured(text, systemPrompt, history);
+
+                // Use BridgeResponseAdapter if available, otherwise extract text
+                if (window.BridgeResponseAdapter) {
+                    reply = window.BridgeResponseAdapter.normalizeResponse(rawResponse);
+                } else {
+                    reply = rawResponse?.choices?.[0]?.message?.content || rawResponse?.text || 'No response';
+                }
+            } else {
+                reply = await window._nexusLLM.sendMessage(text, systemPrompt, history);
+            }
 
             // 3) Show + speak AI response
             this.handleBotResponse(reply);
@@ -572,29 +614,76 @@ export class VRChatIntegration {
     }
 
     /**
-     * Handle bot response
-     * @param {string} text - Bot response text
+     * Handle bot response — accepts either plain string or normalized response object.
+     *
+     * @param {string|Object} response - plain text or { text, attachments, avatar_directives, persona_context }
      */
-    handleBotResponse(text) {
-        console.log(`[VRChatIntegration] Bot: ${text}`);
-
-        // Add to VR panel
-        this.vrChatPanel.appendMessage('bot', text);
-
-        // Add to desktop chat manager (if available)
-        if (this.chatManager) {
-            this.chatManager.addMessage(text, 'bot');
+    handleBotResponse(response) {
+        // Normalise input: accept string or structured object
+        let text, attachments, directives;
+        if (typeof response === 'string') {
+            text = response;
+            attachments = [];
+            directives = {};
+        } else {
+            text = response.text || '';
+            attachments = response.attachments || [];
+            directives = response.avatar_directives || {};
         }
 
-        // ✅ Add bot response to chat session history
+        console.log(`[VRChatIntegration] Bot: ${text}`, {
+            attachments: attachments.length,
+            directives: Object.keys(directives).length,
+        });
+
+        // --- Text rendering ---
+        if (attachments.length > 0) {
+            // Use rich message if panel supports it
+            if (typeof this.vrChatPanel.appendRichMessage === 'function') {
+                this.vrChatPanel.appendRichMessage({
+                    role: 'bot',
+                    text,
+                    attachments,
+                    directives,
+                });
+            } else {
+                this.vrChatPanel.appendMessage('bot', text);
+            }
+        } else {
+            this.vrChatPanel.appendMessage('bot', text);
+        }
+
+        // --- Desktop chat manager ---
+        if (this.chatManager) {
+            if (attachments.length > 0 && typeof this.chatManager.addRichMessage === 'function') {
+                this.chatManager.addRichMessage(text, 'bot', attachments);
+            } else {
+                this.chatManager.addMessage(text, 'bot');
+            }
+        }
+
+        // --- Chat history ---
         if (window.chatHistory) {
             window.chatHistory.addMessage('assistant', text);
         }
 
-        // Speak response if TTS enabled (non-fatal)
+        // --- Phase 6: Apply avatar directives ---
+        if (directives.emotion || directives.pose) {
+            this._applyAvatarDirectives(directives);
+        }
+
+        // --- VR Media Panel ---
+        if (attachments.length > 0 && window.VRMediaPanel) {
+            const imgAttachment = attachments.find((a) => a.type === 'image');
+            if (imgAttachment) {
+                window.VRMediaPanel.show(imgAttachment);
+            }
+        }
+
+        // --- TTS (use text only, never speak attachment metadata) ---
         try {
             if (this.vrChatPanel.ttsEnabled && this.speechService && this.speechService.isSynthesisAvailable()) {
-                console.log('[VRChatIntegration] 🗣️ TTS enabled, speaking response');
+                console.log('[VRChatIntegration] TTS enabled, speaking response');
                 this.vrChatPanel.setStatus('speaking');
                 this.speechService.speak(text, {
                     onStart: () => this.vrChatPanel.setStatus('speaking'),
@@ -602,12 +691,41 @@ export class VRChatIntegration {
                     onError: () => this.vrChatPanel.setStatus('idle'),
                 });
             } else {
-                console.log('[VRChatIntegration] 🔇 TTS disabled, not speaking');
                 this.vrChatPanel.setStatus('idle');
             }
         } catch (e) {
-            console.error('[VRChatIntegration] ⚠️ TTS error (non-fatal):', e);
+            console.error('[VRChatIntegration] TTS error (non-fatal):', e);
             this.vrChatPanel.setStatus('idle');
+        }
+    }
+
+    /**
+     * Apply per-message avatar directives (Phase 6).
+     * @param {Object} directives - { emotion, pose, gesture }
+     * @private
+     */
+    _applyAvatarDirectives(directives) {
+        const animator = window.NEXUS_PROCEDURAL_ANIMATOR;
+        if (!animator || typeof animator.setMode !== 'function') return;
+
+        // Map emotion to animation mode
+        const EMOTION_MODE = {
+            happy: 'happy',
+            excited: 'dance',
+            energetic: 'dance',
+            sad: 'idle',
+            thinking: 'thinking',
+            curious: 'thinking',
+            calm: 'idle',
+            neutral: 'idle',
+            presenting: 'happy',
+        };
+
+        const emotion = (directives.emotion || '').toLowerCase();
+        const mode = EMOTION_MODE[emotion];
+        if (mode) {
+            animator.setMode(mode, 5000); // 5 second duration for per-message override
+            console.log(`[VRChatIntegration] Avatar directive: emotion=${emotion} → mode=${mode}`);
         }
     }
 
