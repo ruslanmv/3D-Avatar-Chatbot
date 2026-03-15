@@ -24,8 +24,17 @@ export class ViewerEngine {
         this.scene = new THREE.Scene();
         this.clock = new THREE.Clock();
 
-        const w = containerEl.clientWidth || window.innerWidth;
-        const h = containerEl.clientHeight || window.innerHeight;
+        // Stable framing state — stores avatar bounds for resize reframing
+        this.framingState = {
+            bounds: null,
+            center: null,
+            size: null,
+            baseFitOffset: 1.35,
+            portraitFitOffset: 2.0,
+            lastAspect: 1,
+        };
+
+        const { w, h } = this._getViewportSize();
 
         // Camera
         this.camera = new THREE.PerspectiveCamera(35, w / h, 0.01, 100);
@@ -154,13 +163,15 @@ export class ViewerEngine {
         // Create centered XR launch bar inside the avatar viewport
         this._createXRLaunchBar(containerEl);
 
-        // Model-Viewer AR fallback (iOS Quick Look / Android Scene Viewer)
+        // Model-Viewer AR (Sketchfab-style: QR on desktop, native AR on mobile)
         this.modelViewerAR = new ModelViewerAR();
-        // Enhance AR button for devices without WebXR AR
+        // Enhance AR button for all platforms (desktop QR + mobile fallback)
         setTimeout(() => {
             if (this.arSupport?.arButton) {
                 this.modelViewerAR.enhanceARButton(this.arSupport.arButton, this.arSupport);
             }
+            // Check if page was opened from QR code scan → auto-launch AR
+            this.modelViewerAR.checkAutoLaunchAR();
         }, 1000); // Wait for async AR support checks
 
         // Mobile Support (auto-detects and applies optimizations)
@@ -277,6 +288,16 @@ export class ViewerEngine {
                 }
             } catch (e) {
                 console.warn('[ViewerEngine] Could not offset VR reference space:', e);
+            }
+
+            // Ensure avatar is visible in VR (safe position/scale)
+            if (this.avatarManager?.currentRoot) {
+                const root = this.avatarManager.currentRoot;
+                root.position.x = 0;
+                root.position.z = -1.2;
+                if (root.position.y < -0.25 || root.position.y > 0.25) {
+                    root.position.y = 0;
+                }
             }
 
             // Refresh controller reference after VR session starts
@@ -454,8 +475,21 @@ export class ViewerEngine {
             this.controls.update();
         });
 
-        this._onResize = () => this.resize();
+        this._resizeTimer = null;
+        this._onResize = () => {
+            clearTimeout(this._resizeTimer);
+            this._resizeTimer = setTimeout(() => this.resize(), 100);
+        };
         window.addEventListener('resize', this._onResize);
+
+        if (window.visualViewport) {
+            this._onVisualViewportResize = () => {
+                clearTimeout(this._resizeTimer);
+                this._resizeTimer = setTimeout(() => this.resize(), 100);
+            };
+            window.visualViewport.addEventListener('resize', this._onVisualViewportResize);
+            window.visualViewport.addEventListener('scroll', this._onVisualViewportResize);
+        }
 
         this.animate();
         console.log('[ViewerEngine] Ready.');
@@ -496,23 +530,80 @@ export class ViewerEngine {
         }
     }
 
-    resize() {
-        const w = this.containerEl.clientWidth || window.innerWidth;
-        const h = this.containerEl.clientHeight || window.innerHeight;
-        this.camera.aspect = w / h;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(w, h);
+    _getViewportSize() {
+        const vv = window.visualViewport;
+        const w = Math.max(1, Math.round(this.containerEl.clientWidth || vv?.width || window.innerWidth));
+        const h = Math.max(1, Math.round(this.containerEl.clientHeight || vv?.height || window.innerHeight));
+        return { w, h };
+    }
 
-        // Update post-processing pipeline sizes
+    resize() {
+        const { w, h } = this._getViewportSize();
+
+        // Clamp aspect to prevent extreme distortion on very narrow/wide windows
+        this.camera.aspect = Math.max(0.4, Math.min(w / h, 3.0));
+        this.camera.updateProjectionMatrix();
+
+        this.renderer.setSize(w, h, false);
+
+        const dprCap = this.mobileSupport?.isMobileOrTablet() ? 1.5 : 2.0;
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, dprCap));
+
         this.postProcessing?.setSize(w, h);
 
-        // Re-frame avatar on mobile after resize/orientation change
-        if (this.mobileSupport?.isMobileOrTablet() && !this.renderer.xr.isPresenting) {
-            if (this.avatarManager?.currentRoot) {
-                const fitOffset = this.mobileSupport.getFitOffset();
-                this.frameObject(this.avatarManager.currentRoot, fitOffset);
-            }
+        // Only reframe on mobile orientation/viewport changes — not on desktop resize
+        if (!this.renderer.xr.isPresenting && this.mobileSupport?.isMobileOrTablet()) {
+            this._reframeAvatarPreserveAppearance();
         }
+    }
+
+    _storeFramingState(object) {
+        if (!object) return;
+
+        const box = new THREE.Box3().setFromObject(object);
+        if (box.isEmpty()) return;
+
+        const size = new THREE.Vector3();
+        const center = new THREE.Vector3();
+
+        box.getSize(size);
+        box.getCenter(center);
+
+        this.framingState.bounds = box.clone();
+        this.framingState.size = size.clone();
+        this.framingState.center = center.clone();
+        this.framingState.lastAspect = this.camera.aspect || 1;
+    }
+
+    _reframeAvatarPreserveAppearance() {
+        if (!this.avatarManager?.currentRoot || !this.framingState?.size || !this.framingState?.center) {
+            return;
+        }
+
+        const size = this.framingState.size.clone();
+        const center = this.framingState.center.clone();
+
+        const aspect = this.camera.aspect || 1;
+        const isPortrait = aspect < 1;
+
+        const fitOffset = isPortrait ? (this.mobileSupport?.getFitOffset?.() ?? 2.0) : 1.35;
+
+        const verticalFov = THREE.MathUtils.degToRad(this.camera.fov);
+        const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
+
+        const fitHeightDistance = (size.y * fitOffset) / (2 * Math.tan(verticalFov / 2));
+        const fitWidthDistance = (size.x * fitOffset) / (2 * Math.tan(horizontalFov / 2));
+
+        const distance = Math.max(fitHeightDistance, fitWidthDistance);
+
+        const targetY = center.y + size.y * (isPortrait ? 0.12 : 0.08);
+
+        this.controls.target.set(center.x, targetY, center.z);
+
+        this.camera.position.set(center.x, targetY + size.y * 0.02, center.z + distance);
+
+        this.camera.lookAt(this.controls.target);
+        this.controls.update();
     }
 
     /**
@@ -621,6 +712,7 @@ export class ViewerEngine {
             // Mobile-aware auto-frame (wider offset on phones)
             const fitOffset = this.mobileSupport?.getFitOffset() || 1.35;
             this.frameObject(this.avatarManager.currentRoot, fitOffset);
+            this._storeFramingState(this.avatarManager.currentRoot);
         }
 
         return info;

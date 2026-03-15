@@ -19,7 +19,7 @@ export class MobileSupport {
         this._isPortrait = null;
 
         // Mobile-specific settings
-        this.mobileFOV = 50; // wider FOV for phone screens
+        this.mobileFOV = 58; // wider FOV for phone screens
         this.desktopFOV = 35; // original FOV
         this.mobilePixelRatioCap = 1.5; // limit GPU load on phones
         this.desktopPixelRatioCap = 2.0;
@@ -163,6 +163,18 @@ export class MobileSupport {
         // Debounce resize events (orientation change fires multiple)
         if (this._resizeTimer) clearTimeout(this._resizeTimer);
         this._resizeTimer = setTimeout(() => {
+            const w = this.containerEl.clientWidth || window.innerWidth;
+            const h = this.containerEl.clientHeight || window.innerHeight;
+
+            // Skip reframe if size change is trivial (< 5%) — prevents jitter
+            if (this._lastW && this._lastH) {
+                const wPct = Math.abs(w - this._lastW) / this._lastW;
+                const hPct = Math.abs(h - this._lastH) / this._lastH;
+                if (wPct < 0.05 && hPct < 0.05) return;
+            }
+            this._lastW = w;
+            this._lastH = h;
+
             this._isPortrait = window.innerHeight > window.innerWidth;
             document.body.classList.toggle('nexus-portrait', this._isPortrait);
             this._updateFOV();
@@ -189,13 +201,13 @@ export class MobileSupport {
      */
     getFitOffset() {
         if (this._isMobile && this._isPortrait) {
-            return 1.8; // further back in portrait to show full avatar
+            return 2.2; // further back in portrait to show full avatar
         }
         if (this._isMobile) {
-            return 1.5; // landscape phone: moderate distance
+            return 1.65; // landscape phone: moderate distance
         }
         if (this._isTablet) {
-            return 1.4;
+            return 1.5;
         }
         return 1.35; // desktop default
     }
