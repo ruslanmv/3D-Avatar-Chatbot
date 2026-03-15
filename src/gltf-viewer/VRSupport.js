@@ -5,10 +5,11 @@
  */
 
 export class VRSupport {
-    constructor(renderer, camera, scene) {
+    constructor(renderer, camera, scene, containerEl) {
         this.renderer = renderer;
         this.camera = camera;
         this.scene = scene;
+        this.containerEl = containerEl || null;
         this.vrButton = null;
         this.isVRActive = false;
 
@@ -33,7 +34,7 @@ export class VRSupport {
             if (this.isVRActive) this.forceExit();
             if (this.vrButton) {
                 this.vrButton.textContent = 'CONTEXT LOST';
-                this.vrButton.style.opacity = '0.5';
+                this.vrButton.classList.add('xr-btn--disabled');
             }
         });
 
@@ -41,8 +42,8 @@ export class VRSupport {
             this.contextLost = false;
             console.log('[VR] WebGL context restored');
             if (this.vrButton) {
-                this.vrButton.textContent = 'ENTER VR';
-                this.vrButton.style.opacity = '1';
+                this.vrButton.innerHTML = '<span class="xr-btn__icon">&#x1F576;</span> ENTER VR';
+                this.vrButton.classList.remove('xr-btn--disabled');
             }
         });
 
@@ -71,61 +72,26 @@ export class VRSupport {
             return;
         }
 
-        // Create VR button
+        // Create VR button — styled via CSS class .xr-btn
         this.vrButton = document.createElement('button');
         this.vrButton.id = 'vr-button';
-        this.vrButton.textContent = 'ENTER VR';
-
-        // Style the button
-        Object.assign(this.vrButton.style, {
-            position: 'absolute',
-            bottom: '20px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            padding: '12px 24px',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            color: '#000',
-            background: 'linear-gradient(135deg, #00e5ff 0%, #00b8d4 100%)',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            zIndex: '999',
-            fontFamily: 'Orbitron, sans-serif',
-            boxShadow: '0 4px 12px rgba(0, 229, 255, 0.4)',
-            transition: 'all 0.3s',
-        });
-
-        // Hover effect
-        this.vrButton.onmouseenter = () => {
-            if (!this.isToggling) {
-                this.vrButton.style.transform = 'translateX(-50%) translateY(-2px)';
-                this.vrButton.style.boxShadow = '0 6px 16px rgba(0, 229, 255, 0.6)';
-            }
-        };
-
-        this.vrButton.onmouseleave = () => {
-            this.vrButton.style.transform = 'translateX(-50%) translateY(0)';
-            this.vrButton.style.boxShadow = '0 4px 12px rgba(0, 229, 255, 0.4)';
-        };
+        this.vrButton.className = 'xr-btn xr-btn--vr';
+        this.vrButton.innerHTML = '<span class="xr-btn__icon">&#x1F576;</span> ENTER VR';
 
         // Check VR support and setup button
         navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
             if (supported) {
                 this.vrButton.onclick = () => this.toggleVR();
-                document.body.appendChild(this.vrButton);
                 console.log('[VR] Button added - WebXR supported');
             } else {
                 console.warn('[VR] immersive-vr not supported');
-                // Show button but disabled
-                this.vrButton.textContent = 'VR NOT AVAILABLE';
-                this.vrButton.style.opacity = '0.5';
-                this.vrButton.style.cursor = 'not-allowed';
+                this.vrButton.innerHTML = '<span class="xr-btn__icon">&#x1F576;</span> VR N/A';
+                this.vrButton.classList.add('xr-btn--disabled');
                 this.vrButton.onclick = () => {
                     alert('WebXR not available. Use HTTPS or Meta Quest Browser.');
                 };
-                document.body.appendChild(this.vrButton);
             }
+            // Button is appended to the XR launch bar by ViewerEngine
         });
     }
 
@@ -145,8 +111,7 @@ export class VRSupport {
         this.isToggling = true;
 
         // Update button to show loading state
-        const originalText = this.vrButton.textContent;
-        this.vrButton.textContent = '...';
+        this.vrButton.innerHTML = '<span class="xr-btn__icon">&#x23F3;</span> ...';
         this.vrButton.style.cursor = 'wait';
 
         try {
@@ -163,39 +128,44 @@ export class VRSupport {
             } else {
                 // Enter VR
                 const sessionInit = {
-                    optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking'],
+                    optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking', 'layers'],
                 };
 
                 const session = await navigator.xr.requestSession('immersive-vr', sessionInit);
 
+                // Configure XRWebGLLayer with alpha:false for opaque VR rendering
+                try {
+                    const gl = this.renderer.getContext();
+                    const xrLayer = new XRWebGLLayer(session, gl, { alpha: false });
+                    session.updateRenderState({ baseLayer: xrLayer });
+                } catch (e) {
+                    console.warn('[VR] Could not set custom XRWebGLLayer, using default:', e);
+                }
+
                 // Set session on renderer
                 await this.renderer.xr.setSession(session);
 
-                this.vrButton.textContent = 'EXIT VR';
+                this.vrButton.innerHTML = '<span class="xr-btn__icon">&#x23F9;</span> EXIT VR';
             }
         } catch (error) {
             console.error('[VR] Error during toggle:', error);
 
-            // Provide user-friendly error messages
             let msg = 'Failed to ' + (this.renderer.xr.isPresenting ? 'exit' : 'enter') + ' VR.\n\n';
 
             if (error.name === 'InvalidStateError') {
                 msg += 'The device or session is not in a valid state.\nPlease try refreshing the page.';
             } else if (error.name === 'NotAllowedError') {
                 msg += 'VR access was denied.\nPlease grant permissions and try again.';
-            } else if (error.message.includes('context')) {
+            } else if (error.message && error.message.includes('context')) {
                 msg += 'WebGL context issue detected.\nPlease refresh the page.';
             } else {
-                msg += error.message;
+                msg += error.message || error.toString();
             }
 
             alert(msg);
 
-            // Force cleanup
             this.forceExit();
-
-            // Restore button
-            this.vrButton.textContent = originalText;
+            this.vrButton.innerHTML = '<span class="xr-btn__icon">&#x1F576;</span> ENTER VR';
             this.vrButton.style.cursor = 'pointer';
         } finally {
             this.isToggling = false;
@@ -207,33 +177,23 @@ export class VRSupport {
         console.log('[VR] Force exiting VR session');
         this.isVRActive = false;
         this.isToggling = false;
-        if (this.vrButton) this.vrButton.textContent = 'ENTER VR';
+        if (this.vrButton) this.vrButton.innerHTML = '<span class="xr-btn__icon">&#x1F576;</span> ENTER VR';
         window.dispatchEvent(new CustomEvent('vr-session-end'));
     }
 
     onSessionStart() {
-        // Update button text
         if (this.vrButton) {
-            this.vrButton.textContent = 'EXIT VR';
+            this.vrButton.innerHTML = '<span class="xr-btn__icon">&#x23F9;</span> EXIT VR';
         }
-
-        // Dispatch custom event
         window.dispatchEvent(new CustomEvent('vr-session-start'));
-
-        // Release lock
         this.isToggling = false;
     }
 
     onSessionEnd() {
-        // Update button text
         if (this.vrButton) {
-            this.vrButton.textContent = 'ENTER VR';
+            this.vrButton.innerHTML = '<span class="xr-btn__icon">&#x1F576;</span> ENTER VR';
         }
-
-        // Dispatch custom event
         window.dispatchEvent(new CustomEvent('vr-session-end'));
-
-        // Release lock
         this.isToggling = false;
     }
 

@@ -488,8 +488,15 @@ class SpeechService {
         const langVoices = this.voices.filter((v) => (v.lang || '').toLowerCase().startsWith(base));
         const pool = langVoices.length ? langVoices : this.voices;
 
-        // 4) Friendly heuristic fallback
-        const preferred = pool.find((v) => /female|samantha|victoria|zira|google/i.test(v.name)) || pool[0] || null;
+        // 4) Prefer "Google US English" female voice as default
+        const googleUSEnglish = pool.find((v) => v.name === 'Google US English');
+        if (googleUSEnglish) {
+            return googleUSEnglish;
+        }
+
+        // 5) Friendly heuristic fallback — prefer female voices
+        const preferred =
+            pool.find((v) => /female|samantha|victoria|zira|google.*english/i.test(v.name)) || pool[0] || null;
 
         return preferred;
     }
