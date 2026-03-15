@@ -67,6 +67,8 @@ global.speechSynthesis = { speaking: false };
 
 // ── Load Phase 3 engines (order matters) ──
 beforeAll(() => {
+    // PoseNormalizer (must load before ProceduralAnimator)
+    require('../src/PoseNormalizer.js');
     // EmotionEngine
     require('../src/EmotionEngine.js');
     // LipSyncEngine
@@ -297,6 +299,188 @@ describe('MorphTargetAdapter', () => {
 
         const adapter = new window.MorphTargetAdapter(mockRoot);
         expect(adapter.hasBindings).toBe(false);
+    });
+});
+
+// =========================================================================
+// 3.5 POSE NORMALIZER TESTS
+// =========================================================================
+
+describe('PoseNormalizer', () => {
+    test('should be exposed on window', () => {
+        expect(window.NEXUS_POSE_NORMALIZER).toBeDefined();
+        expect(typeof window.NEXUS_POSE_NORMALIZER.normalizeAvatarPose).toBe('function');
+        expect(typeof window.NEXUS_POSE_NORMALIZER.applyRelaxedStandingPose).toBe('function');
+        expect(typeof window.NEXUS_POSE_NORMALIZER.applyPortraitPose).toBe('function');
+        expect(typeof window.NEXUS_POSE_NORMALIZER.applyThumbnailPose).toBe('function');
+        expect(typeof window.NEXUS_POSE_NORMALIZER.applyPresentationPose).toBe('function');
+        expect(typeof window.NEXUS_POSE_NORMALIZER.restoreNeutralPose).toBe('function');
+        expect(typeof window.NEXUS_POSE_NORMALIZER.snapshotOriginalPose).toBe('function');
+        expect(typeof window.NEXUS_POSE_NORMALIZER.buildRigMap).toBe('function');
+    });
+
+    test('should expose settings API', () => {
+        expect(typeof window.NEXUS_POSE_NORMALIZER.getSettings).toBe('function');
+        expect(typeof window.NEXUS_POSE_NORMALIZER.updateSettings).toBe('function');
+        expect(typeof window.NEXUS_POSE_NORMALIZER.resetSettings).toBe('function');
+        expect(typeof window.NEXUS_POSE_NORMALIZER.getDefaultSettings).toBe('function');
+    });
+
+    test('should expose presets', () => {
+        const presets = window.NEXUS_POSE_NORMALIZER.PRESETS;
+        expect(presets).toBeDefined();
+        expect(presets.relaxedStanding).toBeDefined();
+        expect(presets.portrait).toBeDefined();
+        expect(presets.presentation).toBeDefined();
+        expect(presets.relaxedStanding.label).toBe('Relaxed Standing');
+        expect(presets.relaxedStanding.targets.leftUpperArm).toBeDefined();
+        expect(presets.relaxedStanding.targets.rightUpperArm).toBeDefined();
+    });
+
+    test('getSettings should return default settings', () => {
+        const s = window.NEXUS_POSE_NORMALIZER.getSettings();
+        expect(s.intensity).toBeGreaterThan(0);
+        expect(s.intensity).toBeLessThanOrEqual(1);
+        expect(s.bones).toBeDefined();
+        expect(s.bones.leftUpperArm).toBeDefined();
+        expect(s.maxCorrection).toBeDefined();
+        expect(s.preset).toBe('relaxedStanding');
+    });
+
+    test('updateSettings should merge patch and return updated settings', () => {
+        const updated = window.NEXUS_POSE_NORMALIZER.updateSettings({ intensity: 0.5 });
+        expect(updated.intensity).toBe(0.5);
+        // Bones should still be intact
+        expect(updated.bones.leftUpperArm).toBeDefined();
+    });
+
+    test('updateSettings should update per-bone intensity', () => {
+        const updated = window.NEXUS_POSE_NORMALIZER.updateSettings({
+            bones: { leftUpperArm: 0.3 },
+        });
+        expect(updated.bones.leftUpperArm).toBe(0.3);
+        // Other bones should remain unchanged
+        expect(updated.bones.rightUpperArm).toBeDefined();
+    });
+
+    test('resetSettings should restore defaults', () => {
+        window.NEXUS_POSE_NORMALIZER.updateSettings({ intensity: 0.1 });
+        const reset = window.NEXUS_POSE_NORMALIZER.resetSettings();
+        const defaults = window.NEXUS_POSE_NORMALIZER.getDefaultSettings();
+        expect(reset.intensity).toBe(defaults.intensity);
+        expect(reset.preset).toBe(defaults.preset);
+    });
+
+    test('buildRigMap should detect VRM humanoid bones (Tier 1)', () => {
+        const mockBones = {
+            leftUpperArm: { isBone: true, name: 'leftUpperArm', children: [] },
+            rightUpperArm: { isBone: true, name: 'rightUpperArm', children: [] },
+            leftLowerArm: { isBone: true, name: 'leftLowerArm', children: [] },
+            rightLowerArm: { isBone: true, name: 'rightLowerArm', children: [] },
+            head: { isBone: true, name: 'head', children: [] },
+        };
+
+        const mockRig = {
+            getNormalizedBoneNode: jest.fn((name) => mockBones[name] || null),
+        };
+
+        const mockRoot = { traverse: jest.fn() };
+        const rigMap = window.NEXUS_POSE_NORMALIZER.buildRigMap(mockRoot, mockRig);
+        expect(rigMap.leftUpperArm).toBe(mockBones.leftUpperArm);
+        expect(rigMap.rightUpperArm).toBe(mockBones.rightUpperArm);
+        expect(rigMap.head).toBe(mockBones.head);
+    });
+
+    test('buildRigMap should detect bones by name (Tier 2)', () => {
+        const bones = [
+            { isBone: true, name: 'LeftUpperArm', children: [{ isBone: true, name: 'LeftLowerArm', children: [] }] },
+            { isBone: true, name: 'RightUpperArm', children: [{ isBone: true, name: 'RightLowerArm', children: [] }] },
+            { isBone: true, name: 'Hips', children: [] },
+            { isBone: true, name: 'Head', children: [] },
+        ];
+
+        const mockRoot = {
+            traverse: jest.fn((fn) => {
+                for (const b of bones) {
+                    fn(b);
+                    for (const c of b.children) fn(c);
+                }
+            }),
+        };
+
+        const rigMap = window.NEXUS_POSE_NORMALIZER.buildRigMap(mockRoot, null);
+        expect(rigMap.leftUpperArm).toBe(bones[0]);
+        expect(rigMap.rightUpperArm).toBe(bones[1]);
+        expect(rigMap.hips).toBe(bones[2]);
+        expect(rigMap.head).toBe(bones[3]);
+    });
+
+    test('normalizeAvatarPose should handle null root gracefully', () => {
+        expect(() => {
+            window.NEXUS_POSE_NORMALIZER.normalizeAvatarPose(null);
+        }).not.toThrow();
+        const result = window.NEXUS_POSE_NORMALIZER.normalizeAvatarPose(null);
+        expect(result).toBeNull();
+    });
+
+    test('normalizeAvatarPose should accept intensity override', () => {
+        const mockRoot = {
+            traverse: jest.fn(),
+            updateWorldMatrix: jest.fn(),
+        };
+        expect(() => {
+            window.NEXUS_POSE_NORMALIZER.normalizeAvatarPose(mockRoot, {
+                intensity: 0.5,
+                preset: 'portrait',
+            });
+        }).not.toThrow();
+    });
+
+    test('snapshotOriginalPose and restoreNeutralPose should work together', () => {
+        const bones = [];
+        const mockRoot = {
+            traverse: jest.fn((fn) => {
+                const bone = {
+                    isBone: true,
+                    name: 'TestBone',
+                    quaternion: { clone: jest.fn(() => ({ ...mockQuaternion })), copy: jest.fn() },
+                    userData: {},
+                };
+                bones.push(bone);
+                fn(bone);
+            }),
+            updateWorldMatrix: jest.fn(),
+        };
+
+        expect(() => {
+            window.NEXUS_POSE_NORMALIZER.snapshotOriginalPose(mockRoot);
+        }).not.toThrow();
+
+        // After snapshot, bone should have stored original quat
+        expect(bones[0].userData.__poseNormalizerOrigQuat).toBeDefined();
+
+        expect(() => {
+            window.NEXUS_POSE_NORMALIZER.restoreNeutralPose(mockRoot);
+        }).not.toThrow();
+    });
+
+    test('should support all three preset names', () => {
+        const mockRoot = {
+            traverse: jest.fn(),
+            updateWorldMatrix: jest.fn(),
+        };
+
+        expect(() => {
+            window.NEXUS_POSE_NORMALIZER.applyRelaxedStandingPose(mockRoot, {});
+        }).not.toThrow();
+
+        expect(() => {
+            window.NEXUS_POSE_NORMALIZER.applyPortraitPose(mockRoot, {});
+        }).not.toThrow();
+
+        expect(() => {
+            window.NEXUS_POSE_NORMALIZER.applyPresentationPose(mockRoot, {});
+        }).not.toThrow();
     });
 });
 

@@ -2631,46 +2631,48 @@ async function generateAvatarThumbnail(item, pose) {
         const isVRM = item.format === 'vrm' || (item.url && item.url.toLowerCase().endsWith('.vrm'));
         root.rotation.y = (isVRM ? Math.PI : 0) + preset.rotY;
 
-        // Relax T-pose arms for more natural look
-        root.traverse((bone) => {
-            if (!bone.isBone) return;
-            const n = (bone.name || '').toLowerCase();
-            // Left upper arm — rotate down ~40 degrees
-            if (
-                n.includes('leftupperarm') ||
-                n.includes('left_upper_arm') ||
-                n === 'j_buki_l' ||
-                n.includes('upperarm_l')
-            ) {
-                bone.rotation.z += 0.7;
-            }
-            // Right upper arm — rotate down ~40 degrees (opposite direction)
-            if (
-                n.includes('rightupperarm') ||
-                n.includes('right_upper_arm') ||
-                n === 'j_buki_r' ||
-                n.includes('upperarm_r')
-            ) {
-                bone.rotation.z -= 0.7;
-            }
-            // Slight elbow bend for natural look
-            if (
-                n.includes('leftlowerarm') ||
-                n.includes('left_lower_arm') ||
-                n === 'j_ude_l' ||
-                n.includes('lowerarm_l')
-            ) {
-                bone.rotation.z += 0.15;
-            }
-            if (
-                n.includes('rightlowerarm') ||
-                n.includes('right_lower_arm') ||
-                n === 'j_ude_r' ||
-                n.includes('lowerarm_r')
-            ) {
-                bone.rotation.z -= 0.15;
-            }
-        });
+        // Relax T-pose arms for more natural thumbnail look
+        if (window.NEXUS_POSE_NORMALIZER) {
+            window.NEXUS_POSE_NORMALIZER.applyThumbnailPose(root, {});
+        } else {
+            // Legacy fallback: fixed Euler rotation by bone name
+            root.traverse((bone) => {
+                if (!bone.isBone) return;
+                const n = (bone.name || '').toLowerCase();
+                if (
+                    n.includes('leftupperarm') ||
+                    n.includes('left_upper_arm') ||
+                    n === 'j_buki_l' ||
+                    n.includes('upperarm_l')
+                ) {
+                    bone.rotation.z += 0.7;
+                }
+                if (
+                    n.includes('rightupperarm') ||
+                    n.includes('right_upper_arm') ||
+                    n === 'j_buki_r' ||
+                    n.includes('upperarm_r')
+                ) {
+                    bone.rotation.z -= 0.7;
+                }
+                if (
+                    n.includes('leftlowerarm') ||
+                    n.includes('left_lower_arm') ||
+                    n === 'j_ude_l' ||
+                    n.includes('lowerarm_l')
+                ) {
+                    bone.rotation.z += 0.15;
+                }
+                if (
+                    n.includes('rightlowerarm') ||
+                    n.includes('right_lower_arm') ||
+                    n === 'j_ude_r' ||
+                    n.includes('lowerarm_r')
+                ) {
+                    bone.rotation.z -= 0.15;
+                }
+            });
+        }
 
         // Auto-frame: full body with face visible
         const box = new THREE.Box3().setFromObject(root);

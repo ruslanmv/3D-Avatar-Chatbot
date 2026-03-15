@@ -142,16 +142,27 @@ export class VRSupport {
             } else {
                 // Enter VR
                 const sessionInit = {
-                    optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking', 'layers'],
+                    optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking'],
                 };
+
+                // Ensure WebGL context is XR-compatible before requesting session
+                const gl = this.renderer.getContext();
+                if (gl.makeXRCompatible) {
+                    try {
+                        await gl.makeXRCompatible();
+                        console.log('[VR] WebGL context marked as XR compatible');
+                    } catch (e) {
+                        console.warn('[VR] makeXRCompatible failed, continuing anyway:', e);
+                    }
+                }
 
                 const session = await navigator.xr.requestSession('immersive-vr', sessionInit);
 
                 // Configure XRWebGLLayer with alpha:false for opaque VR rendering
                 try {
-                    const gl = this.renderer.getContext();
                     const xrLayer = new XRWebGLLayer(session, gl, { alpha: false });
                     session.updateRenderState({ baseLayer: xrLayer });
+                    console.log('[VR] Custom XRWebGLLayer created successfully');
                 } catch (e) {
                     console.warn('[VR] Could not set custom XRWebGLLayer, using default:', e);
                 }
