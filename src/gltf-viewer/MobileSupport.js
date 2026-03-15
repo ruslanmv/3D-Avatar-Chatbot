@@ -52,6 +52,11 @@ export class MobileSupport {
 
             // Resize debounce for orientation transitions
             window.addEventListener('resize', this._onResize);
+
+            // visualViewport resize (handles soft keyboard on mobile)
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', this._onResize);
+            }
         } else {
             console.log('[MobileSupport] Desktop detected — no mobile optimizations applied');
         }
@@ -129,8 +134,9 @@ export class MobileSupport {
         document.body.style.overscrollBehavior = 'none';
         document.documentElement.style.overscrollBehavior = 'none';
 
-        // 4. Add mobile class to body for CSS targeting
+        // 4. Add mobile class to body and html for CSS targeting
         document.body.classList.add('nexus-mobile');
+        document.documentElement.classList.add('is-mobile');
         if (this._isPortrait) {
             document.body.classList.add('nexus-portrait');
         }

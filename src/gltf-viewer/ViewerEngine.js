@@ -13,6 +13,7 @@ import { VRChatIntegration } from './VRChatIntegration.js';
 import { ARSupport } from './ARSupport.js';
 import { MobileSupport } from './MobileSupport.js';
 import { PostProcessing } from './PostProcessing.js';
+import { VRMediaPanel } from './VRMediaPanel.js';
 import { ModelViewerAR } from './ModelViewerAR.js';
 import { PerformanceMonitor } from './PerformanceMonitor.js';
 
@@ -56,9 +57,10 @@ export class ViewerEngine {
         this.renderer.toneMappingExposure = 1.4;
         this.renderer.physicallyCorrectLights = true;
 
-        // Shadow configuration — enterprise-grade soft shadows
-        this.renderer.shadowMap.enabled = true;
+        // Shadow configuration — off by default, togglable via settings
+        this.renderer.shadowMap.enabled = false;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this._shadowsEnabled = false;
 
         containerEl.innerHTML = '';
         containerEl.appendChild(this.renderer.domElement);
@@ -87,7 +89,7 @@ export class ViewerEngine {
         // Key light — main directional light with optimized shadows
         this.directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
         this.directionalLight.position.set(1, 2.5, 1.5);
-        this.directionalLight.castShadow = true;
+        this.directionalLight.castShadow = false; // toggled via setShadows()
         this.directionalLight.shadow.mapSize.width = 2048;
         this.directionalLight.shadow.mapSize.height = 2048;
         this.directionalLight.shadow.camera.near = 0.1;
@@ -124,6 +126,7 @@ export class ViewerEngine {
         this._desktopShadowPlane.receiveShadow = true;
         this._desktopShadowPlane.position.y = 0;
         this._desktopShadowPlane.name = 'DesktopShadowPlane';
+        this._desktopShadowPlane.visible = false; // toggled via setShadows()
         this.scene.add(this._desktopShadowPlane);
 
         // Loaders
@@ -225,6 +228,10 @@ export class ViewerEngine {
         // Wire chat panel to VR controllers for dragging support
         this.vrControllers.setChatPanel(this.vrChatPanel);
 
+        // VR Media Panel (floating image display in VR)
+        this.vrMediaPanel = new VRMediaPanel(this.scene);
+        window.VRMediaPanel = this.vrMediaPanel;
+
         // Integration
         this.vrChatIntegration = new VRChatIntegration({
             avatarManager: this.avatarManager,
@@ -304,9 +311,16 @@ export class ViewerEngine {
             this.vrChatPanel.setLeftController(this.vrControllers.controller1);
             console.log('[ViewerEngine] 🎮 Controller reference refreshed for VR session');
 
+            // Sync desktop settings (LLM provider, model, etc.) into VR chat panel
+            this.vrChatPanel.syncFromDesktopSettings();
+
             if (!this.vrChatIntegration.isInitialized) {
                 console.log('[ViewerEngine] Initializing VR Chat System...');
-                await this.vrChatIntegration.initialize('/vendor/avatars/avatars.json');
+                try {
+                    await this.vrChatIntegration.initialize('/vendor/avatars/avatars.json');
+                } catch (e) {
+                    console.error('[ViewerEngine] VR Chat initialization failed:', e);
+                }
             }
 
             this.vrControllers.setMenuButtonCallback(() => {
@@ -811,6 +825,40 @@ export class ViewerEngine {
             this.scene.background = new THREE.Color(color);
         }
         console.log(`[ViewerEngine] Desktop background → ${key}`);
+    }
+
+    /**
+     * Enable or disable shadows (self-shadow on model + ground shadow plane).
+     * @param {boolean} enabled
+     */
+    setShadows(enabled) {
+        this._shadowsEnabled = enabled;
+        this.renderer.shadowMap.enabled = enabled;
+
+        // Toggle shadow casting on the key light
+        if (this.directionalLight) {
+            this.directionalLight.castShadow = enabled;
+        }
+
+        // Toggle ground shadow plane visibility
+        if (this._desktopShadowPlane) {
+            this._desktopShadowPlane.visible = enabled;
+        }
+
+        // Toggle castShadow / receiveShadow on all avatar meshes
+        if (this.avatarManager && this.avatarManager.currentRoot) {
+            this.avatarManager.currentRoot.traverse((node) => {
+                if (node.isMesh) {
+                    node.castShadow = enabled;
+                    node.receiveShadow = enabled;
+                }
+            });
+        }
+
+        // Force shadow map recompilation
+        this.renderer.shadowMap.needsUpdate = true;
+
+        console.log(`[ViewerEngine] Shadows → ${enabled ? 'on' : 'off'}`);
     }
 
     // =========================================================================

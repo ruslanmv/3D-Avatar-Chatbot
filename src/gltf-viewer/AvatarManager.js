@@ -20,10 +20,52 @@ export class AvatarManager {
         this.currentMixer = null;
         this.currentClips = [];
 
+        /**
+         * vrmLoader — unified expression API for Phase 3 engines.
+         * Works for both VRM (expressionManager) and GLB (MorphTargetAdapter).
+         * BehaviorEngine reads this via window.NEXUS_VIEWER.avatarManager.vrmLoader
+         */
+        this.vrmLoader = null;
+
+        // Track VRM instance for update()
+        this._currentVRM = null;
+
+        // Register VRMLoaderPlugin if @pixiv/three-vrm is available
+        this._registerVRMPlugin();
+
         // Callbacks
         this.onAvatarChanged = null;
         this.onAvatarLoading = null;
         this.onAvatarError = null;
+    }
+
+    /**
+     * Register VRMLoaderPlugin with the GLTFLoader if the library is available.
+     * This makes the loader automatically extract VRM data from .vrm files.
+     */
+    _registerVRMPlugin() {
+        if (this._vrmPluginRegistered) return true;
+        try {
+            // Check for the ES module import (loaded via importmap)
+            if (typeof window !== 'undefined' && window.__THREE_VRM_PLUGIN__) {
+                this.loader.register((parser) => new window.__THREE_VRM_PLUGIN__(parser));
+                this._vrmPluginRegistered = true;
+                console.log('[AvatarManager] VRMLoaderPlugin registered (ES module)');
+                return true;
+            }
+            // Check for the global THREE_VRM (CDN/legacy)
+            if (typeof window !== 'undefined' && window.THREE_VRM?.VRMLoaderPlugin) {
+                this.loader.register((parser) => new window.THREE_VRM.VRMLoaderPlugin(parser));
+                this._vrmPluginRegistered = true;
+                console.log('[AvatarManager] VRMLoaderPlugin registered (global)');
+                return true;
+            }
+            console.log('[AvatarManager] @pixiv/three-vrm not yet available — will retry before loading VRM files');
+            return false;
+        } catch (e) {
+            console.warn('[AvatarManager] VRMLoaderPlugin registration failed:', e);
+            return false;
+        }
     }
 
     /**
@@ -114,6 +156,12 @@ export class AvatarManager {
         }
 
         try {
+            // Retry VRM plugin registration if it wasn't available at construction time
+            // (async CDN import may have completed by now)
+            if (!this._vrmPluginRegistered) {
+                this._registerVRMPlugin();
+            }
+
             // Remove old avatar
             if (this.currentRoot) {
                 // [FIX] Unregister from Procedural Animator before removal
@@ -131,12 +179,18 @@ export class AvatarManager {
                 this.currentRoot = null;
             }
 
-            // Stop animations
+            // Stop animations and dispose previous vrmLoader
             if (this.currentMixer) {
                 this.currentMixer.stopAllAction();
                 this.currentMixer = null;
             }
             this.currentClips = [];
+            this._currentVRM = null;
+            if (this.vrmLoader) {
+                this.vrmLoader.stopAutoBlink?.();
+                this.vrmLoader.stopLipSync?.();
+                this.vrmLoader = null;
+            }
 
             // Load new avatar
             const gltf = await new Promise((resolve, reject) => {
@@ -151,13 +205,29 @@ export class AvatarManager {
             // Setup avatar
             root.name = `AvatarRoot:${name || url}`;
             root.position.set(0, 0, 0);
-            root.rotation.set(0, 0, 0);
 
-            // Enable shadows on all meshes for enterprise-grade rendering
+            // Check for VRM data (extracted by VRMLoaderPlugin)
+            const vrm = gltf.userData?.vrm;
+            const isVRM = !!vrm || url.toLowerCase().endsWith('.vrm');
+
+            // VRM models face -Z (VRM spec: forward = -Z). Camera is at +Z,
+            // so rotate VRM models Math.PI to face the camera.
+            root.rotation.set(0, isVRM ? Math.PI : 0, 0);
+
+            // Optimize VRM if utilities available
+            if (vrm && window.THREE_VRM?.VRMUtils) {
+                try {
+                    window.THREE_VRM.VRMUtils.removeUnnecessaryVertices(vrm.scene);
+                    window.THREE_VRM.VRMUtils.removeUnnecessaryJoints(vrm.scene);
+                } catch (_) {}
+            }
+
+            // Enable shadows on meshes only when shadow map is active
+            const shadowsOn = this.renderer.shadowMap.enabled;
             root.traverse((node) => {
                 if (node.isMesh) {
-                    node.castShadow = true;
-                    node.receiveShadow = true;
+                    node.castShadow = shadowsOn;
+                    node.receiveShadow = shadowsOn;
                 }
             });
 
@@ -171,9 +241,23 @@ export class AvatarManager {
                 console.log(`[AvatarManager] Loaded ${this.currentClips.length} animations`);
             }
 
+            // ── Build vrmLoader bridge for Phase 3 engines ──
+            this._buildVRMLoaderBridge(vrm, root);
+
             // Store current state
             this.current = { url, name, index };
             this.currentRoot = root;
+
+            // Register with ProceduralAnimator for breathing, head movement, etc.
+            try {
+                const hasClips = this.currentClips.length > 0;
+                if (window.NEXUS_PROCEDURAL_ANIMATOR?.registerAvatar) {
+                    window.NEXUS_PROCEDURAL_ANIMATOR.registerAvatar(root, hasClips);
+                    console.log('[AvatarManager] Registered with ProceduralAnimator', { hasClips });
+                }
+            } catch (e) {
+                console.warn('[AvatarManager] ProceduralAnimator registration failed:', e);
+            }
 
             console.log(`[AvatarManager] Avatar loaded successfully: ${name}`);
 
@@ -261,12 +345,16 @@ export class AvatarManager {
     }
 
     /**
-     * Update animation mixer (call in render loop)
+     * Update animation mixer and VRM (call in render loop)
      * @param {number} delta - Time delta
      */
     update(delta) {
         if (this.currentMixer) {
             this.currentMixer.update(delta);
+        }
+        // VRM needs per-frame update for spring bones, expression smoothing, etc.
+        if (this._currentVRM?.update) {
+            this._currentVRM.update(delta);
         }
     }
 
@@ -304,10 +392,129 @@ export class AvatarManager {
         });
     }
 
+    // =========================================================================
+    // VRM LOADER BRIDGE — unified expression API for Phase 3 engines
+    // =========================================================================
+
+    /**
+     * Build a vrmLoader-compatible object that works for both VRM and GLB.
+     * Phase 3 engines (BehaviorEngine, LipSyncEngine) access this via:
+     *   window.NEXUS_VIEWER.avatarManager.vrmLoader
+     *
+     * The bridge exposes: setExpression(), setEmotion(), blink(),
+     * startAutoBlink(), stopAutoBlink(), startLipSync(), stopLipSync(),
+     * currentVRM (with .expressionManager).
+     */
+    _buildVRMLoaderBridge(vrm, root) {
+        const self = this;
+
+        if (vrm && vrm.expressionManager) {
+            // ── VRM model: use native expressionManager ──
+            this._currentVRM = vrm;
+
+            this.vrmLoader = {
+                currentVRM: vrm,
+                setExpression(name, value) {
+                    try {
+                        vrm.expressionManager.setValue(name, value);
+                    } catch (_) {}
+                },
+                setEmotion(emotion, intensity) {
+                    const emotions = ['happy', 'sad', 'angry', 'surprised', 'neutral'];
+                    for (const e of emotions) {
+                        try {
+                            vrm.expressionManager.setValue(e, 0);
+                        } catch (_) {}
+                    }
+                    if (emotion !== 'neutral') {
+                        try {
+                            vrm.expressionManager.setValue(emotion, intensity);
+                        } catch (_) {}
+                    }
+                },
+                blink() {
+                    try {
+                        vrm.expressionManager.setValue('blink', 1.0);
+                        setTimeout(() => {
+                            try {
+                                vrm.expressionManager.setValue('blink', 0);
+                            } catch (_) {}
+                        }, 150);
+                    } catch (_) {}
+                },
+                startAutoBlink() {
+                    _startAutoBlink(this);
+                },
+                stopAutoBlink() {
+                    _stopAutoBlink(this);
+                },
+                startLipSync() {},
+                stopLipSync() {},
+                _blinkTimer: null,
+            };
+
+            console.log('[AvatarManager] VRM bridge active — full expression support');
+        } else if (typeof window.MorphTargetAdapter === 'function') {
+            // ── GLB model: use MorphTargetAdapter ──
+            const adapter = new window.MorphTargetAdapter(root);
+
+            if (adapter.hasBindings) {
+                // Create a fake expressionManager so Phase 3 engines detect support
+                const fakeExprMgr = { setValue: (n, v) => adapter.setValue(n, v) };
+
+                this.vrmLoader = {
+                    currentVRM: { expressionManager: fakeExprMgr },
+                    setExpression(name, value) {
+                        adapter.setValue(name, value);
+                    },
+                    setEmotion(emotion, intensity) {
+                        const emotions = ['happy', 'sad', 'angry', 'surprised'];
+                        for (const e of emotions) {
+                            adapter.setValue(e, 0);
+                        }
+                        if (emotion !== 'neutral') {
+                            adapter.setValue(emotion, intensity);
+                        }
+                    },
+                    blink() {
+                        adapter.setValue('blink', 1.0);
+                        setTimeout(() => adapter.setValue('blink', 0), 150);
+                    },
+                    startAutoBlink() {
+                        _startAutoBlink(this);
+                    },
+                    stopAutoBlink() {
+                        _stopAutoBlink(this);
+                    },
+                    startLipSync() {},
+                    stopLipSync() {},
+                    _blinkTimer: null,
+                    _adapter: adapter,
+                };
+
+                console.log('[AvatarManager] MorphTargetAdapter bridge active —', adapter.capabilities);
+            } else {
+                console.log('[AvatarManager] GLB has no morph targets or jaw bone — body animation only');
+            }
+        }
+
+        // Start auto-blink if we have a bridge
+        if (this.vrmLoader) {
+            this.vrmLoader.startAutoBlink();
+        }
+    }
+
     /**
      * Cleanup all resources
      */
     dispose() {
+        if (this.vrmLoader) {
+            this.vrmLoader.stopAutoBlink?.();
+            this.vrmLoader.stopLipSync?.();
+            this.vrmLoader = null;
+        }
+        this._currentVRM = null;
+
         if (this.currentRoot) {
             this.scene.remove(this.currentRoot);
             this.disposeObject(this.currentRoot);
@@ -321,5 +528,25 @@ export class AvatarManager {
 
         this.current = null;
         this.currentClips = [];
+    }
+}
+
+// ── Auto-blink helpers (shared by VRM and GLB bridges) ──
+function _startAutoBlink(loader) {
+    if (loader._blinkTimer) return;
+    const schedule = () => {
+        const delay = 2500 + Math.random() * 4000;
+        loader._blinkTimer = setTimeout(() => {
+            loader.blink();
+            schedule();
+        }, delay);
+    };
+    schedule();
+}
+
+function _stopAutoBlink(loader) {
+    if (loader._blinkTimer) {
+        clearTimeout(loader._blinkTimer);
+        loader._blinkTimer = null;
     }
 }
