@@ -332,12 +332,15 @@ body {
 
 .avatar-section {
     min-height: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .viewport-container {
-    height: 100%;
+    flex: 1;
+    min-height: 0;
     position: relative;
-    overflow: hidden;
+    overflow: visible;
 }
 
 .avatar-viewport {
@@ -822,12 +825,20 @@ body {
 
 .chat-history {
     flex: 1;
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.35);
     border: 1px solid var(--glass-border);
     border-radius: var(--border-radius-sm);
-    padding: var(--spacing-sm);
+    padding: 0.75rem;
     overflow-y: auto;
+    overflow-x: hidden;
     min-height: 0;
+}
+
+/* Clearfix for floated chat bubbles */
+.chat-history::after {
+    content: '';
+    display: table;
+    clear: both;
 }
 
 .chat-history::-webkit-scrollbar {
@@ -851,50 +862,79 @@ body {
     opacity: 0.5;
 }
 
-.chat-message {
-    padding: 0.75rem;
-    margin-bottom: 0.75rem;
-    border-radius: var(--border-radius-sm);
-    font-size: 0.9rem;
-    animation: messageSlide 0.3s ease-out;
+/* Clearfix row for each floated message bubble */
+.chat-row::after {
+    content: '';
+    display: table;
+    clear: both;
 }
 
-@keyframes messageSlide {
+/* --- Chat Bubbles: Left/Right Messaging Layout --- */
+.chat-message {
+    padding: 0.65rem 0.85rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    max-width: 85%;
+    line-height: 1.55;
+    position: relative;
+    clear: both;
+}
+
+/* Avatar (NEXUS) → Left-aligned */
+.chat-message.avatar {
+    float: left;
+    background: rgba(0, 255, 136, 0.12);
+    border: 1px solid rgba(0, 255, 136, 0.2);
+    border-radius: 2px 12px 12px 12px;
+    animation: msgSlideLeft 0.3s ease-out;
+}
+
+/* User (YOU) → Right-aligned */
+.chat-message.user {
+    float: right;
+    background: rgba(0, 229, 255, 0.15);
+    border: 1px solid rgba(0, 229, 255, 0.25);
+    border-radius: 12px 2px 12px 12px;
+    text-align: right;
+    animation: msgSlideRight 0.3s ease-out;
+}
+
+@keyframes msgSlideLeft {
     from {
         opacity: 0;
-        transform: translateX(-10px);
+        transform: translateX(-12px);
     }
 }
 
-.chat-message.user {
-    background: rgba(0, 229, 255, 0.1);
-    border-left: 3px solid var(--primary);
-}
-
-.chat-message.avatar {
-    background: rgba(0, 255, 136, 0.1);
-    border-left: 3px solid var(--accent-green);
+@keyframes msgSlideRight {
+    from {
+        opacity: 0;
+        transform: translateX(12px);
+    }
 }
 
 .message-sender {
     font-family: var(--font-display);
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     font-weight: 700;
-    letter-spacing: 0.05em;
-    margin-bottom: 0.25rem;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.3rem;
+    text-transform: uppercase;
 }
 
 .message-sender.user {
-    color: var(--primary);
+    color: #4dd9ff;
 }
 
 .message-sender.avatar {
-    color: var(--accent-green);
+    color: #55ffaa;
 }
 
 .message-text {
-    color: var(--text-primary);
-    line-height: 1.5;
+    color: #f0f6f8;
+    line-height: 1.6;
+    font-size: 0.88rem;
+    word-wrap: break-word;
 }
 
 /* ============================================
@@ -1105,6 +1145,17 @@ body {
         grid-template-rows: 1fr auto;
     }
 
+    .avatar-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .viewport-container {
+        width: 100%;
+        max-width: 100%;
+    }
+
     .control-panel {
         max-height: 50vh;
     }
@@ -1133,6 +1184,60 @@ body {
 }
 
 /* ============================================
+   Collapsible Sections
+   ============================================ */
+
+.collapsible {
+    overflow: hidden;
+}
+
+.collapse-toggle {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: none;
+    border: none;
+    padding: var(--spacing-sm);
+    cursor: pointer;
+    color: inherit;
+    transition: background 0.2s;
+}
+
+.collapse-toggle:hover {
+    background: rgba(0, 229, 255, 0.05);
+}
+
+.collapse-toggle .chevron {
+    color: var(--text-muted);
+    font-size: 1.2rem;
+    transition: transform 0.3s ease;
+}
+
+.collapsible.is-open .chevron,
+.collapsible[data-expanded='true'] .chevron {
+    transform: rotate(180deg);
+}
+
+.collapse-panel,
+[data-collapse-panel] {
+    max-height: 0;
+    overflow: hidden;
+    transition:
+        max-height 0.35s ease,
+        padding 0.35s ease;
+    padding: 0 var(--spacing-sm);
+}
+
+.collapsible.is-open .collapse-panel,
+.collapsible.is-open [data-collapse-panel],
+.collapsible[data-expanded='true'] .collapse-panel,
+.collapsible[data-expanded='true'] [data-collapse-panel] {
+    max-height: 500px;
+    padding: 0 var(--spacing-sm) var(--spacing-sm);
+}
+
+/* ============================================
    Utility Classes
    ============================================ */
 
@@ -1149,4 +1254,247 @@ body {
         opacity: 0;
         pointer-events: none;
     }
+}
+
+/* ============================================
+   Mobile & Portrait Responsive Fixes
+   ============================================ */
+
+@media (max-width: 480px) {
+    .main-container {
+        padding: var(--spacing-xs);
+        gap: var(--spacing-xs);
+    }
+
+    .header-content {
+        padding: var(--spacing-xs);
+    }
+
+    .logo h1 {
+        font-size: 0.95rem;
+    }
+
+    .content-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: 55vh auto;
+        gap: var(--spacing-xs);
+    }
+
+    .control-panel {
+        max-height: 40vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .control-section {
+        padding: var(--spacing-xs);
+    }
+
+    .section-title {
+        font-size: 0.75rem;
+    }
+
+    .text-input,
+    .select-input {
+        font-size: 16px; /* prevents iOS zoom on focus */
+    }
+
+    .emotion-btn {
+        padding: 8px 6px;
+        font-size: 0.7rem;
+    }
+
+    .modal {
+        max-width: 100%;
+        margin: var(--spacing-xs);
+        max-height: 90vh;
+    }
+
+    .modal-content {
+        max-height: 80vh;
+        overflow-y: auto;
+    }
+
+    .provider-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: var(--spacing-xs);
+    }
+}
+
+/* Portrait-specific: ensure avatar takes priority */
+@media (orientation: portrait) and (max-width: 768px) {
+    .content-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: 60vh 1fr;
+    }
+
+    .avatar-section {
+        min-height: 50vh;
+    }
+
+    .viewport-container {
+        min-height: 50vh;
+    }
+}
+
+/* Safe area insets for notched phones */
+@supports (padding-top: env(safe-area-inset-top)) {
+    .main-container {
+        padding-top: calc(var(--spacing-sm) + env(safe-area-inset-top));
+        padding-bottom: calc(var(--spacing-sm) + env(safe-area-inset-bottom));
+        padding-left: calc(var(--spacing-sm) + env(safe-area-inset-left));
+        padding-right: calc(var(--spacing-sm) + env(safe-area-inset-right));
+    }
+}
+
+/* Mobile body class (set by MobileSupport.js) */
+body.nexus-mobile .hud-overlay {
+    display: none; /* hide HUD corners on tiny screens */
+}
+
+body.nexus-mobile .status-badge {
+    font-size: 0.65rem;
+    padding: 4px 8px;
+}
+
+/* ============================================
+   XR Launch Bar & Buttons (VR / AR)
+   ============================================ */
+
+.xr-launch-bar {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 0 4px;
+    flex-shrink: 0;
+}
+
+.xr-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 52px;
+    min-width: 140px;
+    padding: 10px 24px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+    border: 2px solid;
+    border-radius: 14px;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    white-space: nowrap;
+}
+
+.xr-btn__icon {
+    font-size: 1.2em;
+    line-height: 1;
+}
+
+/* VR button: cyan primary */
+.xr-btn--vr {
+    background: linear-gradient(135deg, rgba(0, 229, 255, 0.25), rgba(0, 184, 212, 0.15));
+    border-color: rgba(0, 229, 255, 0.5);
+    color: #e0f7fa;
+    box-shadow: 0 4px 20px rgba(0, 229, 255, 0.25);
+}
+
+.xr-btn--vr:hover {
+    background: linear-gradient(135deg, rgba(0, 229, 255, 0.4), rgba(0, 184, 212, 0.25));
+    border-color: var(--primary);
+    box-shadow: 0 4px 30px rgba(0, 229, 255, 0.45);
+    transform: translateY(-2px);
+}
+
+.xr-btn--vr:active {
+    transform: translateY(0);
+}
+
+/* AR button: green secondary */
+.xr-btn--ar {
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(118, 255, 3, 0.1));
+    border-color: rgba(0, 255, 136, 0.4);
+    color: #e0f7fa;
+    box-shadow: 0 4px 20px rgba(0, 255, 136, 0.2);
+}
+
+.xr-btn--ar:hover {
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.35), rgba(118, 255, 3, 0.2));
+    border-color: var(--accent-green);
+    box-shadow: 0 4px 30px rgba(0, 255, 136, 0.4);
+    transform: translateY(-2px);
+}
+
+.xr-btn--ar:active {
+    transform: translateY(0);
+}
+
+/* Disabled state */
+.xr-btn--disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.xr-btn--disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* Responsive: smaller on mobile */
+@media (max-width: 480px) {
+    .xr-launch-bar {
+        gap: 8px;
+        padding: 8px 0 2px;
+    }
+
+    .xr-btn {
+        min-height: 44px;
+        min-width: 110px;
+        padding: 8px 16px;
+        font-size: 0.8rem;
+    }
+}
+
+/* Touch-friendly fullscreen button */
+#fullscreen-btn {
+    min-height: 48px;
+    min-width: 48px;
+    touch-action: manipulation;
+}
+
+/* AR DOM overlay (shown over camera feed on mobile AR) */
+#ar-dom-overlay {
+    display: none;
+}
+
+#ar-dom-overlay.ar-active {
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 20px;
+    pointer-events: none;
+    z-index: 1000;
+}
+
+#ar-dom-overlay .ar-controls {
+    pointer-events: auto;
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 16px;
+    backdrop-filter: blur(10px);
 }

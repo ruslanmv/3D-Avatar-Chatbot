@@ -57,6 +57,31 @@ export class VRChatPanel {
         this.ttsEnabled = true;
 
         // -----------------------
+        // XR Settings (additive — VR/AR/mobile features)
+        // -----------------------
+        this.xrSettings = {
+            avatarScale: 1.0, // 0.5, 1.0, 1.5
+            showEnvironment: true, // toggle env visibility in VR
+            moveSpeed: 'normal', // 'slow', 'normal', 'fast'
+            panelDistance: 'medium', // 'near', 'medium', 'far'
+            sessionMode: 'vr', // 'vr' | 'ar'
+            arSupported: false, // set async after checking navigator.xr
+            vrBackground: 'black', // 'black' | 'blue' | 'void'
+        };
+
+        // Check AR support asynchronously
+        if (navigator.xr) {
+            navigator.xr
+                .isSessionSupported('immersive-ar')
+                .then((supported) => {
+                    this.xrSettings.arSupported = supported;
+                    console.log(`[VRChatPanel] AR supported: ${supported}`);
+                    if (this.mode === 'settings') this.redraw();
+                })
+                .catch(() => {});
+        }
+
+        // -----------------------
         // Drag & Position Logic (Quest-like)
         // -----------------------
         this._isDragging = false;
@@ -437,29 +462,32 @@ export class VRChatPanel {
     }
 
     /**
-     * Update mic indicator position — anchor to left controller wrist,
-     * fallback to camera-relative HUD.
+     * Update mic indicator position — anchor to left controller wrist
+     * (near the joystick, not blocking avatar view), fallback to camera HUD.
      */
     _updateMicIndicatorPosition() {
         if (!this.micIndicator?.visible) return;
 
         const controller = this.leftController;
         if (controller && controller.visible) {
-            // Position above + shifted left so it doesn't block the 3D avatar
+            // Position on inner wrist of left hand, near the joystick area
+            // - Slightly above controller (+0.02 Y) so it doesn't clip into hand
+            // - Shifted inward toward body (+right axis from controller perspective)
+            // - Forward toward user slightly (-Z in controller space)
             const ctrlRight = new THREE.Vector3(1, 0, 0).applyQuaternion(controller.quaternion);
+            const ctrlForward = new THREE.Vector3(0, 0, -1).applyQuaternion(controller.quaternion);
+
             this.micIndicator.position.copy(controller.position);
-            this.micIndicator.position.y += 0.04;
-            this.micIndicator.position.add(ctrlRight.multiplyScalar(-0.06));
+            this.micIndicator.position.y += 0.02; // just above wrist
+            this.micIndicator.position.add(ctrlRight.multiplyScalar(0.04)); // inward (right = toward body on left hand)
+            this.micIndicator.position.add(ctrlForward.multiplyScalar(0.03)); // slightly forward toward user
         } else {
-            // Fallback: camera-relative HUD (further left, closer to user)
+            // Fallback: camera-relative HUD — bottom-left of view
             const cam = this.camera;
             const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
             const right = new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion);
-            this.micIndicator.position
-                .copy(cam.position)
-                .add(dir.multiplyScalar(0.28))
-                .add(right.multiplyScalar(-0.18));
-            this.micIndicator.position.y -= 0.06;
+            this.micIndicator.position.copy(cam.position).add(dir.multiplyScalar(0.3)).add(right.multiplyScalar(-0.2));
+            this.micIndicator.position.y -= 0.1;
         }
 
         // Billboard: always face the camera
@@ -784,14 +812,27 @@ export class VRChatPanel {
             tts: { x: W - P - 250, y: setTopY, w: 250, h: 92 },
         };
 
-        const avatarRect = { x: P, y: setTopY + 120, w: W - P * 2, h: 320 };
+        const avatarRect = { x: P, y: setTopY + 120, w: W - P * 2, h: 280 };
         const navY = avatarRect.y + 112;
         const settingsNav = {
             prev: { x: P + 26, y: navY, w: 110, h: 110 },
             next: { x: W - P - 136, y: navY, w: 110, h: 110 },
         };
 
-        return { W, H, handle, btnRow, chatArea, chips, settingsTop, avatarRect, settingsNav };
+        // XR Settings row (below avatar card)
+        const xrY = avatarRect.y + avatarRect.h + 16;
+        const xrBtnW = (W - P * 2 - 14 * 5) / 6; // 6 buttons with gaps
+        const xrH = 80;
+        const xrSettingsRow = {
+            scale: { x: P, y: xrY, w: xrBtnW, h: xrH },
+            env: { x: P + (xrBtnW + 14), y: xrY, w: xrBtnW, h: xrH },
+            speed: { x: P + (xrBtnW + 14) * 2, y: xrY, w: xrBtnW, h: xrH },
+            distance: { x: P + (xrBtnW + 14) * 3, y: xrY, w: xrBtnW, h: xrH },
+            bg: { x: P + (xrBtnW + 14) * 4, y: xrY, w: xrBtnW, h: xrH },
+            mode: { x: P + (xrBtnW + 14) * 5, y: xrY, w: xrBtnW, h: xrH },
+        };
+
+        return { W, H, handle, btnRow, chatArea, chips, settingsTop, avatarRect, settingsNav, xrSettingsRow };
     }
 
     _createHitboxes() {
@@ -839,6 +880,27 @@ export class VRChatPanel {
         this.buttons.tts = tts;
         this.buttons.avatar_prev = prev;
         this.buttons.avatar_next = next;
+
+        // XR Settings hitboxes
+        const xr = L.xrSettingsRow;
+        const xrScale = this._makeHitbox('Btn:xr_scale', xr.scale, 'button', { key: 'xr_scale' });
+        const xrEnv = this._makeHitbox('Btn:xr_env', xr.env, 'button', { key: 'xr_env' });
+        const xrSpeed = this._makeHitbox('Btn:xr_speed', xr.speed, 'button', { key: 'xr_speed' });
+        const xrDist = this._makeHitbox('Btn:xr_distance', xr.distance, 'button', { key: 'xr_distance' });
+        const xrBg = this._makeHitbox('Btn:xr_bg', xr.bg, 'button', { key: 'xr_bg' });
+        const xrMode = this._makeHitbox('Btn:xr_mode', xr.mode, 'button', { key: 'xr_mode' });
+
+        [xrScale, xrEnv, xrSpeed, xrDist, xrBg, xrMode].forEach((m) => {
+            this.group.remove(m);
+            this.settingsGroup.add(m);
+        });
+
+        this.buttons.xr_scale = xrScale;
+        this.buttons.xr_env = xrEnv;
+        this.buttons.xr_speed = xrSpeed;
+        this.buttons.xr_distance = xrDist;
+        this.buttons.xr_bg = xrBg;
+        this.buttons.xr_mode = xrMode;
     }
 
     _makeHitbox(name, rect, type, userData = {}) {
@@ -897,7 +959,7 @@ export class VRChatPanel {
         // Title
         ctx.fillStyle = T.text;
         ctx.font = '800 44px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        ctx.fillText('VR NEXUS AVATAR', h.x + 22, h.y + 66);
+        ctx.fillText('HomePilot Avatar VR', h.x + 22, h.y + 66);
 
         // Status (right)
         ctx.textAlign = 'right';
@@ -1239,8 +1301,77 @@ export class VRChatPanel {
 
         // Hint
         ctx.fillStyle = T.textDim;
-        ctx.font = '500 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        ctx.fillText('Desktop settings are shared automatically.', rect.x + 22, rect.y + rect.h - 24);
+        ctx.font = '500 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillText('Desktop settings are shared automatically.', rect.x + 22, rect.y + rect.h - 16);
+
+        // XR Settings Row
+        const xr = L.xrSettingsRow;
+        const xs = this.xrSettings;
+
+        // Scale button
+        const scaleLabel = xs.avatarScale === 0.5 ? 'S' : xs.avatarScale === 1.5 ? 'L' : 'M';
+        this._drawXRSettingBtn(ctx, xr.scale, 'SCALE', scaleLabel);
+
+        // Environment toggle
+        this._drawXRSettingBtn(ctx, xr.env, 'ENV', xs.showEnvironment ? 'ON' : 'OFF', xs.showEnvironment);
+
+        // Speed button
+        const speedLabel = xs.moveSpeed === 'slow' ? 'SLOW' : xs.moveSpeed === 'fast' ? 'FAST' : 'MED';
+        this._drawXRSettingBtn(ctx, xr.speed, 'SPEED', speedLabel);
+
+        // Panel distance button
+        const distLabel = xs.panelDistance === 'near' ? 'NEAR' : xs.panelDistance === 'far' ? 'FAR' : 'MED';
+        this._drawXRSettingBtn(ctx, xr.distance, 'PANEL', distLabel);
+
+        // Background color button (black → blue → void)
+        const bgLabel = xs.vrBackground === 'blue' ? 'BLUE' : xs.vrBackground === 'void' ? 'VOID' : 'BLK';
+        this._drawXRSettingBtn(ctx, xr.bg, 'BG', bgLabel);
+
+        // Mode button (VR ↔ AR toggle)
+        if (xs.arSupported) {
+            const modeLabel = xs.sessionMode === 'ar' ? 'AR' : 'VR';
+            const modeActive = xs.sessionMode === 'ar';
+            this._drawXRSettingBtn(ctx, xr.mode, 'MODE', modeLabel, true);
+            // Green tint for AR mode
+            if (modeActive) {
+                const T = this.theme;
+                const r = xr.mode;
+                ctx.save();
+                this._roundRect(ctx, r.x, r.y, r.w, r.h, 14);
+                ctx.fillStyle = 'rgba(118, 255, 3, 0.12)';
+                ctx.fill();
+                // Redraw labels in green
+                ctx.fillStyle = 'rgba(118, 255, 3, 0.7)';
+                ctx.font = '700 18px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('MODE', r.x + r.w / 2, r.y + 30);
+                ctx.fillStyle = 'rgba(118, 255, 3, 0.95)';
+                ctx.font = '900 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+                ctx.fillText('AR', r.x + r.w / 2, r.y + 60);
+                ctx.textAlign = 'left';
+                ctx.restore();
+            }
+        } else {
+            // AR not supported — show disabled
+            this._drawXRSettingBtn(ctx, xr.mode, 'MODE', 'VR', false);
+        }
+    }
+
+    _drawXRSettingBtn(ctx, rect, label, value, isActive = true) {
+        const T = this.theme;
+        this._roundRect(ctx, rect.x, rect.y, rect.w, rect.h, 14);
+        ctx.fillStyle = isActive ? 'rgba(120, 220, 255, 0.10)' : 'rgba(255,255,255,0.04)';
+        ctx.fill();
+
+        ctx.fillStyle = T.textDim;
+        ctx.font = '700 18px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, rect.x + rect.w / 2, rect.y + 30);
+
+        ctx.fillStyle = isActive ? T.accent : T.textDim;
+        ctx.font = '900 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillText(value, rect.x + rect.w / 2, rect.y + 60);
+        ctx.textAlign = 'left';
     }
 
     _drawFooter(ctx) {
@@ -1394,6 +1525,93 @@ export class VRChatPanel {
             this.ttsEnabled = !this.ttsEnabled;
             this.settings.ttsEnabled = this.ttsEnabled;
             this._writeSpeechTogglesToDesktop();
+            this.redraw();
+            return true;
+        }
+
+        // XR Settings: Avatar Scale (cycles 0.5 → 1.0 → 1.5)
+        if (key === 'xr_scale') {
+            const scales = [0.5, 1.0, 1.5];
+            const idx = scales.indexOf(this.xrSettings.avatarScale);
+            this.xrSettings.avatarScale = scales[(idx + 1) % scales.length];
+            console.log(`[VRChatPanel] Avatar scale → ${this.xrSettings.avatarScale}`);
+            window.dispatchEvent(
+                new CustomEvent('vr-setting-changed', {
+                    detail: { key: 'avatarScale', value: this.xrSettings.avatarScale },
+                })
+            );
+            this.redraw();
+            return true;
+        }
+
+        // XR Settings: Environment toggle
+        if (key === 'xr_env') {
+            this.xrSettings.showEnvironment = !this.xrSettings.showEnvironment;
+            console.log(`[VRChatPanel] Environment → ${this.xrSettings.showEnvironment}`);
+            window.dispatchEvent(
+                new CustomEvent('vr-setting-changed', {
+                    detail: { key: 'showEnvironment', value: this.xrSettings.showEnvironment },
+                })
+            );
+            this.redraw();
+            return true;
+        }
+
+        // XR Settings: Movement Speed (cycles slow → normal → fast)
+        if (key === 'xr_speed') {
+            const speeds = ['slow', 'normal', 'fast'];
+            const idx = speeds.indexOf(this.xrSettings.moveSpeed);
+            this.xrSettings.moveSpeed = speeds[(idx + 1) % speeds.length];
+            console.log(`[VRChatPanel] Move speed → ${this.xrSettings.moveSpeed}`);
+            window.dispatchEvent(
+                new CustomEvent('vr-setting-changed', {
+                    detail: { key: 'moveSpeed', value: this.xrSettings.moveSpeed },
+                })
+            );
+            this.redraw();
+            return true;
+        }
+
+        // XR Settings: Background Color (cycles black → blue → void)
+        if (key === 'xr_bg') {
+            const cycle = { black: 'blue', blue: 'void', void: 'black' };
+            this.xrSettings.vrBackground = cycle[this.xrSettings.vrBackground] || 'black';
+            console.log(`[VRChatPanel] VR Background → ${this.xrSettings.vrBackground}`);
+            window.dispatchEvent(
+                new CustomEvent('vr-setting-changed', {
+                    detail: { key: 'vrBackground', value: this.xrSettings.vrBackground },
+                })
+            );
+            this.redraw();
+            return true;
+        }
+
+        // XR Settings: Mode toggle (VR ↔ AR)
+        if (key === 'xr_mode') {
+            if (!this.xrSettings.arSupported) {
+                console.log('[VRChatPanel] AR not supported on this device');
+                return true;
+            }
+            const newMode = this.xrSettings.sessionMode === 'vr' ? 'ar' : 'vr';
+            this.xrSettings.sessionMode = newMode;
+            console.log(`[VRChatPanel] Session mode → ${newMode}`);
+            window.dispatchEvent(
+                new CustomEvent('vr-setting-changed', {
+                    detail: { key: 'sessionMode', value: newMode },
+                })
+            );
+            this.redraw();
+            return true;
+        }
+
+        // XR Settings: Panel Distance (cycles near → medium → far)
+        if (key === 'xr_distance') {
+            const dists = ['near', 'medium', 'far'];
+            const idx = dists.indexOf(this.xrSettings.panelDistance);
+            this.xrSettings.panelDistance = dists[(idx + 1) % dists.length];
+            const distMap = { near: 0.35, medium: 0.55, far: 0.85 };
+            this._spawnDistance = distMap[this.xrSettings.panelDistance] || 0.55;
+            console.log(`[VRChatPanel] Panel distance → ${this.xrSettings.panelDistance} (${this._spawnDistance}m)`);
             this.redraw();
             return true;
         }

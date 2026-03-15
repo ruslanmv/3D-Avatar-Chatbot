@@ -153,6 +153,14 @@ export class AvatarManager {
             root.position.set(0, 0, 0);
             root.rotation.set(0, 0, 0);
 
+            // Enable shadows on all meshes for enterprise-grade rendering
+            root.traverse((node) => {
+                if (node.isMesh) {
+                    node.castShadow = true;
+                    node.receiveShadow = true;
+                }
+            });
+
             // Add to scene
             this.scene.add(root);
 

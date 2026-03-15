@@ -56,7 +56,7 @@ function _unwrapLegacyJson(text) {
  * @param {string|Object} raw - raw response from sendMessage or sendMessageStructured
  * @returns {NormalizedResponse}
  */
-export function normalizeResponse(raw) {
+function normalizeResponse(raw) {
     // Plain string
     if (typeof raw === 'string') {
         let text = _unwrapLegacyJson(raw);

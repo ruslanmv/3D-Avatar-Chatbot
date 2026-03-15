@@ -1483,6 +1483,13 @@ function setupModals() {
         radio.addEventListener('change', updateProviderFields);
     });
 
+    // Live preview: change desktop background immediately when radio is selected
+    document.querySelectorAll('input[name="desktop-bg"]').forEach((radio) => {
+        radio.addEventListener('change', () => {
+            window.NEXUS_VIEWER?.setDesktopBackground(radio.value);
+        });
+    });
+
     if (settingsModal) {
         settingsModal.addEventListener('click', (e) => {
             if (e.target === settingsModal) hideModal(settingsModal);
@@ -1502,6 +1509,11 @@ function openSettings() {
     // Load config + speech settings into UI whenever settings opens
     loadConfigIntoUI();
     loadSpeechSettingsIntoUI();
+
+    // Pre-select saved desktop background
+    const savedBg = localStorage.getItem('desktop_bg') || 'black';
+    const bgRadio = document.querySelector(`input[name="desktop-bg"][value="${savedBg}"]`);
+    if (bgRadio) bgRadio.checked = true;
     loadSTTSettingsIntoUI();
     refreshVoiceList();
 
@@ -1883,6 +1895,12 @@ function saveSettings() {
             );
         }
     }
+
+    // Persist viewport background
+    const bgRadio = document.querySelector('input[name="desktop-bg"]:checked');
+    const desktopBg = bgRadio ? bgRadio.value : 'black';
+    localStorage.setItem('desktop_bg', desktopBg);
+    window.viewerEngine?.setDesktopBackground(desktopBg);
 
     // ✅ Persist provider settings
     localStorage.setItem('ai_provider', provider);
@@ -2405,7 +2423,11 @@ function addMessageToHistory(sender, text, attachments) {
         });
     }
 
-    chatHistory.appendChild(messageDiv);
+    // Wrap in a clearfix row so floated bubbles stack properly
+    const row = document.createElement('div');
+    row.className = 'chat-row';
+    row.appendChild(messageDiv);
+    chatHistory.appendChild(row);
     chatHistory.scrollTop = chatHistory.scrollHeight;
 }
 
@@ -2525,6 +2547,29 @@ class ChatSessionHistory {
 
 // ✅ Global chat session instance (accessible via window for VR integration)
 window.chatHistory = new ChatSessionHistory(500);
+
+/* ============================
+   Collapsible Panels
+   ============================ */
+function initCollapsiblePanels() {
+    document.querySelectorAll('[data-collapsible]').forEach((panel) => {
+        const toggle = panel.querySelector('.collapse-toggle');
+        if (!toggle) return;
+
+        // Set initial state
+        const defaultState = panel.dataset.default;
+        const isExpanded = defaultState !== 'collapsed';
+        panel.dataset.expanded = isExpanded ? 'true' : 'false';
+        toggle.setAttribute('aria-expanded', isExpanded ? 'true' : 'false');
+
+        // Toggle on click
+        toggle.addEventListener('click', () => {
+            const expanded = panel.dataset.expanded === 'true';
+            panel.dataset.expanded = expanded ? 'false' : 'true';
+            toggle.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+        });
+    });
+}
 
 /* ============================
    Init

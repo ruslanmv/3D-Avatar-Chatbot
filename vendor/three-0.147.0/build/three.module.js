@@ -12574,7 +12574,7 @@ function WebGLAnimation() {
 
 		stop: function () {
 
-			context.cancelAnimationFrame( requestId );
+			if ( context ) context.cancelAnimationFrame( requestId );
 
 			isAnimating = false;
 
