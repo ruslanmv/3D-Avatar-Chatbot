@@ -65,10 +65,33 @@ export class VRSupport {
         });
     }
 
+    _isHeadsetBrowser() {
+        const ua = navigator.userAgent || '';
+        return /OculusBrowser|Quest|Vive|Pico|Wolvic/i.test(ua);
+    }
+
     createVRButton() {
         // Check if WebXR is supported
         if (!navigator.xr) {
             console.warn('[VR] WebXR not supported in this browser');
+            return;
+        }
+
+        // Block immersive VR on normal Android phones (not headsets)
+        // Show an informational disabled button instead of hiding it
+        const isAndroidPhone = /Android/i.test(navigator.userAgent || '') && !this._isHeadsetBrowser();
+        if (isAndroidPhone) {
+            console.log('[VR] Android phone detected — VR unavailable, showing info button');
+            this.vrButton = document.createElement('button');
+            this.vrButton.id = 'vr-button';
+            this.vrButton.className = 'xr-btn xr-btn--vr xr-btn--disabled';
+            this.vrButton.innerHTML = '<span class="xr-btn__icon">&#x1F576;</span> VR N/A';
+            this.vrButton.title = 'VR requires a headset. Try AR or fullscreen mode.';
+            this.vrButton.onclick = () => {
+                alert(
+                    'Immersive VR requires a headset (Meta Quest, etc.).\n\nTry AR mode or fullscreen for the best experience on your phone.'
+                );
+            };
             return;
         }
 
