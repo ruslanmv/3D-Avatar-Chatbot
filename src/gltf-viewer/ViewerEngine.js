@@ -10,6 +10,11 @@ import { VRControllers } from './VRControllers.js';
 import { AvatarManager } from './AvatarManager.js';
 import { VRChatPanel } from './VRChatPanel.js';
 import { VRChatIntegration } from './VRChatIntegration.js';
+import { ARSupport } from './ARSupport.js';
+import { MobileSupport } from './MobileSupport.js';
+import { PostProcessing } from './PostProcessing.js';
+import { ModelViewerAR } from './ModelViewerAR.js';
+import { PerformanceMonitor } from './PerformanceMonitor.js';
 
 export class ViewerEngine {
     constructor(containerEl) {
@@ -39,8 +44,12 @@ export class ViewerEngine {
         this.renderer.setSize(w, h);
         this.renderer.outputEncoding = THREE.sRGBEncoding;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.0;
+        this.renderer.toneMappingExposure = 1.4;
         this.renderer.physicallyCorrectLights = true;
+
+        // Shadow configuration — enterprise-grade soft shadows
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
         containerEl.innerHTML = '';
         containerEl.appendChild(this.renderer.domElement);
@@ -59,7 +68,54 @@ export class ViewerEngine {
         // Environment
         const pmrem = new THREE.PMREMGenerator(this.renderer);
         this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-        this.scene.add(new THREE.HemisphereLight(0xffffff, 0x222233, 0.25));
+
+        // Desktop background (default: black — can be changed via settings)
+        this._desktopBgKey = 'black';
+        this.scene.background = new THREE.Color(0x000000);
+
+        this.scene.add(new THREE.HemisphereLight(0xffffff, 0x888899, 0.9));
+
+        // Key light — main directional light with optimized shadows
+        this.directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        this.directionalLight.position.set(1, 2.5, 1.5);
+        this.directionalLight.castShadow = true;
+        this.directionalLight.shadow.mapSize.width = 2048;
+        this.directionalLight.shadow.mapSize.height = 2048;
+        this.directionalLight.shadow.camera.near = 0.1;
+        this.directionalLight.shadow.camera.far = 10;
+        this.directionalLight.shadow.camera.left = -2;
+        this.directionalLight.shadow.camera.right = 2;
+        this.directionalLight.shadow.camera.top = 3;
+        this.directionalLight.shadow.camera.bottom = -0.5;
+        this.directionalLight.shadow.bias = -0.0005;
+        this.directionalLight.shadow.normalBias = 0.02;
+        this.directionalLight.shadow.radius = 3; // Soft shadow edge (PCFSoft)
+        this.scene.add(this.directionalLight);
+
+        // Fill light — bright opposite side for even illumination (Sketchfab-style)
+        const fillLight = new THREE.DirectionalLight(0xffffff, 0.85);
+        fillLight.position.set(-1, 1.5, -0.5);
+        this.scene.add(fillLight);
+
+        // Rim light — subtle backlight for depth separation from background
+        const rimLight = new THREE.DirectionalLight(0xeeeeff, 0.4);
+        rimLight.position.set(0, 1.5, -2);
+        this.scene.add(rimLight);
+
+        // Bottom fill — prevents dark legs/lower body (Sketchfab uses env map for this)
+        const bottomFill = new THREE.DirectionalLight(0xffffff, 0.35);
+        bottomFill.position.set(0, -0.5, 1);
+        this.scene.add(bottomFill);
+
+        // Ground shadow plane (desktop — makes avatar look grounded)
+        this._desktopShadowPlane = new THREE.Mesh(
+            new THREE.PlaneGeometry(10, 10).rotateX(-Math.PI / 2),
+            new THREE.ShadowMaterial({ opacity: 0.08, transparent: true })
+        );
+        this._desktopShadowPlane.receiveShadow = true;
+        this._desktopShadowPlane.position.y = 0;
+        this._desktopShadowPlane.name = 'DesktopShadowPlane';
+        this.scene.add(this._desktopShadowPlane);
 
         // Loaders
         this.loader = new GLTFLoader();
@@ -75,12 +131,11 @@ export class ViewerEngine {
         this.loader.setKTX2Loader(ktx2);
         this.loader.setMeshoptDecoder(MeshoptDecoder);
 
-        // Guard against cancelAnimationFrame crash on WebGL context loss.
-        // Three.js's internal WebXRManager.onSessionEnd calls animation.stop()
-        // which does context.cancelAnimationFrame() — but context is null after
-        // a WebGL loss, causing "Cannot read properties of null".
-        // Stopping the loop first prevents the crash.
-        this.renderer.domElement.addEventListener('webglcontextlost', () => {
+        // Guard against WebGL context loss — stop animation loop so Three.js
+        // doesn't try to render with a dead context. The cancelAnimationFrame
+        // crash is fixed directly in three.module.js (null guard on context).
+        this.renderer.domElement.addEventListener('webglcontextlost', (e) => {
+            e.preventDefault(); // allow WebGL context to be restored
             console.warn('[ViewerEngine] WebGL context lost — stopping animation loop');
             this.renderer.setAnimationLoop(null);
         });
@@ -90,8 +145,55 @@ export class ViewerEngine {
         });
 
         // VR Systems
-        this.vrSupport = new VRSupport(this.renderer, this.camera, this.scene);
+        this.vrSupport = new VRSupport(this.renderer, this.camera, this.scene, containerEl);
         this.vrControllers = new VRControllers(this.renderer, this.scene, this.camera);
+
+        // AR Support
+        this.arSupport = new ARSupport(this.renderer, this.camera, this.scene, containerEl);
+
+        // Create centered XR launch bar inside the avatar viewport
+        this._createXRLaunchBar(containerEl);
+
+        // Model-Viewer AR fallback (iOS Quick Look / Android Scene Viewer)
+        this.modelViewerAR = new ModelViewerAR();
+        // Enhance AR button for devices without WebXR AR
+        setTimeout(() => {
+            if (this.arSupport?.arButton) {
+                this.modelViewerAR.enhanceARButton(this.arSupport.arButton, this.arSupport);
+            }
+        }, 1000); // Wait for async AR support checks
+
+        // Mobile Support (auto-detects and applies optimizations)
+        this.mobileSupport = new MobileSupport(this.renderer, this.camera, containerEl);
+
+        // Post-Processing Pipeline (SSAO + Bloom + FXAA)
+        this.postProcessing = new PostProcessing(this.renderer, this.scene, this.camera, {
+            ssao: !this.mobileSupport.isMobileOrTablet(), // SSAO too expensive for mobile
+            bloom: true,
+            fxaa: true,
+            isMobile: this.mobileSupport.isMobileOrTablet(),
+        });
+
+        // Adaptive Performance Monitor — auto-adjusts quality to maintain FPS
+        this.perfMonitor = new PerformanceMonitor({
+            initialLevel: this.mobileSupport.isMobileOrTablet() ? 1 : 0,
+        });
+        this.perfMonitor.onQualityChange((level, fps) => {
+            this.postProcessing?.setQualityLevel(level);
+
+            // At level 3 (lowest), also reduce shadow quality
+            if (level >= 3) {
+                this.directionalLight.shadow.mapSize.width = 1024;
+                this.directionalLight.shadow.mapSize.height = 1024;
+                this.directionalLight.shadow.map?.dispose();
+                this.directionalLight.shadow.map = null;
+            } else if (level < 3 && this.directionalLight.shadow.mapSize.width < 2048) {
+                this.directionalLight.shadow.mapSize.width = 2048;
+                this.directionalLight.shadow.mapSize.height = 2048;
+                this.directionalLight.shadow.map?.dispose();
+                this.directionalLight.shadow.map = null;
+            }
+        });
 
         // Avatar Manager (Single Source of Truth)
         this.avatarManager = new AvatarManager({
@@ -121,12 +223,61 @@ export class ViewerEngine {
             chatManager: window.ChatManager || null,
         });
 
+        // VR ground grid (spatial reference) — created once, shown only during VR
+        this.vrGroundGrid = null;
+        this._vrSavedBackground = null;
+        this._vrSavedHemiIntensity = null;
+        this._hemiLight = this.scene.children.find((c) => c.isHemisphereLight);
+
         // --- Event Listeners ---
         window.addEventListener('vr-session-start', async () => {
             console.log('[ViewerEngine] VR Session Starting...');
 
+            // Disable post-processing in XR (direct framebuffer rendering required)
+            this.postProcessing?.onXRSessionStart();
+
+            // Set VR background (default: black; can be changed via VR settings panel)
+            this._vrSavedBackground = this.scene.background;
+            this._vrBackgroundColor = this._vrBackgroundColor || 'black';
+            this.scene.background = new THREE.Color(this._vrBackgroundColor === 'blue' ? 0x1a1a2e : 0x000000);
+
+            // Adjust lighting for VR (different balance than desktop studio lighting)
+            if (this._hemiLight) {
+                this._vrSavedHemiIntensity = this._hemiLight.intensity;
+                this._hemiLight.intensity = 0.6;
+            }
+            // Lower exposure for VR (desktop uses brighter studio exposure)
+            this._vrSavedExposure = this.renderer.toneMappingExposure;
+            this.renderer.toneMappingExposure = 1.0;
+
+            // Show VR ground grid (hidden in 'void' mode — character only)
+            if (this._vrBackgroundColor !== 'void') {
+                this._showVRGround();
+            }
+
+            // Apply mobile VR performance optimizations
+            this.mobileSupport?.applyVROptimizations();
+
             this.controls.enabled = false;
             this.vrControllers.setEnabled(true);
+
+            // Position user closer to avatar and facing front
+            // Offset the XR reference space so user spawns at z=1.2 instead of z=2.2
+            try {
+                const baseRefSpace = this.renderer.xr.getReferenceSpace();
+                if (baseRefSpace && baseRefSpace.getOffsetReferenceSpace) {
+                    // Move user forward (negative Z) and ensure eye-level height
+                    const offset = new XRRigidTransform(
+                        { x: 0, y: 0, z: 0.8, w: 1 }, // shift 0.8m forward toward avatar
+                        { x: 0, y: 0, z: 0, w: 1 }
+                    );
+                    const newRefSpace = baseRefSpace.getOffsetReferenceSpace(offset);
+                    this.renderer.xr.setReferenceSpace(newRefSpace);
+                    console.log('[ViewerEngine] VR reference space offset applied — user positioned closer to avatar');
+                }
+            } catch (e) {
+                console.warn('[ViewerEngine] Could not offset VR reference space:', e);
+            }
 
             // Refresh controller reference after VR session starts
             this.vrChatPanel.setLeftController(this.vrControllers.controller1);
@@ -162,6 +313,26 @@ export class ViewerEngine {
         window.addEventListener('vr-session-end', () => {
             console.log('[ViewerEngine] VR Session Ending...');
 
+            // Re-enable post-processing for desktop
+            this.postProcessing?.onXRSessionEnd();
+
+            // Restore desktop background from current setting
+            const bgColor = ViewerEngine.BG_COLORS[this._desktopBgKey] ?? 0x000000;
+            this.scene.background = new THREE.Color(bgColor);
+
+            // Restore desktop hemisphere light intensity
+            if (this._hemiLight && this._vrSavedHemiIntensity != null) {
+                this._hemiLight.intensity = this._vrSavedHemiIntensity;
+            }
+
+            // Restore desktop exposure
+            if (this._vrSavedExposure != null) {
+                this.renderer.toneMappingExposure = this._vrSavedExposure;
+            }
+
+            // Hide VR ground grid
+            this._hideVRGround();
+
             this.controls.enabled = true;
 
             // Reset, then re-frame if an avatar exists
@@ -178,7 +349,109 @@ export class ViewerEngine {
             this.vrControllers.resetPosition();
             this.vrChatIntegration.disable();
 
+            // Restore mobile rendering settings
+            this.mobileSupport?.restoreFromVR();
+
             console.log('[ViewerEngine] VR Ended. Controls Enabled.');
+        });
+
+        // --- VR Settings Change Listener ---
+        window.addEventListener('vr-setting-changed', (e) => {
+            const { key, value } = e.detail || {};
+            console.log(`[ViewerEngine] VR setting changed: ${key} = ${value}`);
+
+            if (key === 'avatarScale' && this.avatarManager?.currentRoot) {
+                this.avatarManager.currentRoot.scale.setScalar(value);
+            }
+
+            if (key === 'showEnvironment') {
+                if (value) {
+                    // Restore environment
+                    if (this._savedEnvironment) {
+                        this.scene.environment = this._savedEnvironment;
+                    }
+                } else {
+                    // Hide environment (save first)
+                    this._savedEnvironment = this.scene.environment;
+                    this.scene.environment = null;
+                }
+            }
+
+            if (key === 'moveSpeed') {
+                const speedMap = { slow: 0.8, normal: 1.8, fast: 3.5 };
+                this.vrControllers.options.moveSpeed = speedMap[value] || 1.8;
+            }
+
+            // VR background color (black → blue → void)
+            if (key === 'vrBackground') {
+                this._vrBackgroundColor = value;
+                if (this.vrSupport?.isVRActive) {
+                    this.scene.background = new THREE.Color(value === 'blue' ? 0x1a1a2e : 0x000000);
+                    // Show/hide floor grid based on mode
+                    if (value === 'void') {
+                        this._hideVRGround();
+                    } else {
+                        this._showVRGround();
+                    }
+                }
+            }
+
+            // Session mode switch (VR ↔ AR)
+            if (key === 'sessionMode') {
+                this._switchXRMode(value);
+            }
+        });
+
+        // --- AR Event Listeners ---
+        window.addEventListener('ar-session-start', () => {
+            console.log('[ViewerEngine] AR Session Starting...');
+            this.postProcessing?.onXRSessionStart();
+            this.controls.enabled = false;
+
+            // Update panel state to reflect AR mode
+            if (this.vrChatPanel) {
+                this.vrChatPanel.xrSettings.sessionMode = 'ar';
+                this.vrChatPanel.redraw();
+            }
+
+            // Position avatar at floor level for AR
+            if (this.avatarManager?.currentRoot) {
+                this.avatarManager.currentRoot.position.y = 0;
+            }
+        });
+
+        // Auto-place avatar on detected floor in AR
+        window.addEventListener('ar-floor-detected', (e) => {
+            const { y, position } = e.detail || {};
+            console.log(`[ViewerEngine] AR floor detected at Y=${y?.toFixed(3)}`);
+
+            if (this.avatarManager?.currentRoot) {
+                // Place avatar at the detected floor position, facing user
+                this.avatarManager.currentRoot.position.set(
+                    position?.x || 0,
+                    y || 0,
+                    (position?.z || 0) - 1.0 // 1m in front of detected point
+                );
+                console.log('[ViewerEngine] Avatar auto-placed on detected floor');
+            }
+        });
+
+        window.addEventListener('ar-session-end', () => {
+            console.log('[ViewerEngine] AR Session Ending...');
+            this.postProcessing?.onXRSessionEnd();
+            this.controls.enabled = true;
+
+            // Reset panel state to VR
+            if (this.vrChatPanel) {
+                this.vrChatPanel.xrSettings.sessionMode = 'vr';
+                this.vrChatPanel.redraw();
+            }
+
+            // Re-frame avatar for desktop view
+            if (this.avatarManager?.currentRoot) {
+                this.frameObject(this.avatarManager.currentRoot, 1.35);
+            }
+            this.controls.update();
         });
 
         this._onResize = () => this.resize();
@@ -188,6 +461,41 @@ export class ViewerEngine {
         console.log('[ViewerEngine] Ready.');
     }
 
+    /**
+     * Switch between VR and AR sessions.
+     * WebXR only allows one active session, so we end the current one first.
+     * @param {'vr'|'ar'} targetMode
+     */
+    async _switchXRMode(targetMode) {
+        console.log(`[ViewerEngine] Switching XR mode to: ${targetMode}`);
+
+        try {
+            // End current XR session (VR or AR)
+            const session = this.renderer.xr.getSession();
+            if (session) {
+                await session.end();
+            }
+
+            if (targetMode === 'ar') {
+                // Wait for VR cleanup, then start AR
+                setTimeout(() => {
+                    if (this.arSupport) {
+                        this.arSupport.startAR();
+                    }
+                }, 400);
+            } else {
+                // Wait for AR cleanup, then start VR
+                setTimeout(() => {
+                    if (this.vrSupport) {
+                        this.vrSupport.toggleVR();
+                    }
+                }, 400);
+            }
+        } catch (e) {
+            console.error('[ViewerEngine] XR mode switch error:', e);
+        }
+    }
+
     resize() {
         const w = this.containerEl.clientWidth || window.innerWidth;
         const h = this.containerEl.clientHeight || window.innerHeight;
@@ -195,10 +503,16 @@ export class ViewerEngine {
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(w, h);
 
-        // Optional: if you want perfect reframing after resize, uncomment:
-        // if (!this.renderer.xr.isPresenting && this.avatarManager?.currentRoot) {
-        //   this.frameObject(this.avatarManager.currentRoot, 1.35);
-        // }
+        // Update post-processing pipeline sizes
+        this.postProcessing?.setSize(w, h);
+
+        // Re-frame avatar on mobile after resize/orientation change
+        if (this.mobileSupport?.isMobileOrTablet() && !this.renderer.xr.isPresenting) {
+            if (this.avatarManager?.currentRoot) {
+                const fitOffset = this.mobileSupport.getFitOffset();
+                this.frameObject(this.avatarManager.currentRoot, fitOffset);
+            }
+        }
     }
 
     /**
@@ -256,6 +570,36 @@ export class ViewerEngine {
 
         this.controls.update();
         this.camera.updateProjectionMatrix();
+
+        // Fit shadow camera frustum to avatar bounding box
+        this._fitShadowCamera(box, center, size);
+    }
+
+    /**
+     * Dynamically fit the directional light shadow camera to the avatar's bounding box.
+     * Ensures crisp shadows without wasted shadow map resolution.
+     */
+    _fitShadowCamera(box, center, size) {
+        if (!this.directionalLight) return;
+        const cam = this.directionalLight.shadow.camera;
+        const padding = 0.5;
+        cam.left = -(size.x / 2 + padding);
+        cam.right = size.x / 2 + padding;
+        cam.top = size.y + padding;
+        cam.bottom = -padding;
+        cam.near = 0.1;
+        cam.far = size.y + size.z + 5;
+        cam.updateProjectionMatrix();
+
+        // Position light relative to avatar center for optimal shadow angle
+        this.directionalLight.position.set(center.x + 1, center.y + size.y * 0.8, center.z + 1.5);
+        this.directionalLight.target.position.copy(center);
+        this.directionalLight.target.updateMatrixWorld();
+
+        // Position desktop shadow plane at avatar's feet
+        if (this._desktopShadowPlane) {
+            this._desktopShadowPlane.position.y = box.min.y;
+        }
     }
 
     // Forward load calls to AvatarManager
@@ -268,11 +612,15 @@ export class ViewerEngine {
         console.log(`[ViewerEngine] Loading desktop avatar: ${url}`);
         const info = await this.avatarManager.setAvatarByUrl(url, name);
 
+        // Update model-viewer AR with current model URL
+        this.modelViewerAR?.setModel(url);
+
         if (this.avatarManager.currentRoot) {
             this.vrControllers.registerAvatar(this.avatarManager.currentRoot);
 
-            // ✅ Improved auto-frame (balanced distance + supports huge models)
-            this.frameObject(this.avatarManager.currentRoot, 1.35);
+            // Mobile-aware auto-frame (wider offset on phones)
+            const fitOffset = this.mobileSupport?.getFitOffset() || 1.35;
+            this.frameObject(this.avatarManager.currentRoot, fitOffset);
         }
 
         return info;
@@ -291,15 +639,101 @@ export class ViewerEngine {
             this.vrControllers.update(dt);
 
             if (this.renderer.xr.isPresenting) {
-                this.vrChatPanel?.update();
-                // Animate floating mic recording indicator
-                this.vrChatPanel?._animateMicIndicator(dt);
-                this.vrChatPanel?._updateMicIndicatorPosition();
+                if (this.arSupport?.isARActive) {
+                    // AR mode: update hit-test for surface placement
+                    const frame = this.renderer.xr.getFrame?.();
+                    this.arSupport.updateHitTest(this.renderer, frame);
+                } else {
+                    // VR mode: update chat panel and mic indicator
+                    this.vrChatPanel?.update();
+                    this.vrChatPanel?._animateMicIndicator(dt);
+                    this.vrChatPanel?._updateMicIndicatorPosition();
+                }
             } else {
                 this.controls.update();
+                // Adaptive quality only outside XR
+                this.perfMonitor?.update(dt);
             }
 
-            this.renderer.render(this.scene, this.camera);
+            // Render through post-processing pipeline (falls back to direct render during XR)
+            this.postProcessing.render();
         });
+    }
+
+    // =========================================================================
+    // XR LAUNCH BAR (below avatar viewport — no overlap with character)
+    // =========================================================================
+
+    _createXRLaunchBar(containerEl) {
+        // Create the launch bar container
+        this.xrLaunchBar = document.createElement('div');
+        this.xrLaunchBar.id = 'xr-launch-bar';
+        this.xrLaunchBar.className = 'xr-launch-bar';
+
+        // Append VR button
+        if (this.vrSupport.vrButton) {
+            this.xrLaunchBar.appendChild(this.vrSupport.vrButton);
+        }
+
+        // Append AR button
+        if (this.arSupport.arButton) {
+            this.xrLaunchBar.appendChild(this.arSupport.arButton);
+        }
+
+        // Place OUTSIDE the viewport — after it in the avatar-section
+        // This prevents buttons from overlapping the character
+        const avatarSection = containerEl.closest('.avatar-section') || containerEl.parentElement;
+        if (avatarSection) {
+            avatarSection.appendChild(this.xrLaunchBar);
+        } else {
+            // Fallback: append after the container
+            containerEl.parentElement?.insertBefore(this.xrLaunchBar, containerEl.nextSibling);
+        }
+    }
+
+    // =========================================================================
+    // DESKTOP BACKGROUND
+    // =========================================================================
+
+    static BG_COLORS = {
+        black: 0x000000,
+        dark: 0x1a1a2e,
+        gray: 0x808080,
+        light: 0xb0b0b0,
+    };
+
+    /**
+     * Change the desktop viewport background color.
+     * @param {'black'|'dark'|'gray'|'light'|'white'} key
+     */
+    setDesktopBackground(key) {
+        const color = ViewerEngine.BG_COLORS[key];
+        if (color === undefined) return;
+        this._desktopBgKey = key;
+        if (!this.renderer.xr.isPresenting) {
+            this.scene.background = new THREE.Color(color);
+        }
+        console.log(`[ViewerEngine] Desktop background → ${key}`);
+    }
+
+    // =========================================================================
+    // VR GROUND GRID (spatial reference in VR mode)
+    // =========================================================================
+
+    _showVRGround() {
+        if (!this.vrGroundGrid) {
+            // Create a grid helper at floor level
+            this.vrGroundGrid = new THREE.GridHelper(20, 40, 0x00e5ff, 0x0a1628);
+            this.vrGroundGrid.material.transparent = true;
+            this.vrGroundGrid.material.opacity = 0.3;
+            this.vrGroundGrid.name = 'VRGroundGrid';
+        }
+        this.scene.add(this.vrGroundGrid);
+    }
+
+    _hideVRGround() {
+        if (this.vrGroundGrid) {
+            this.scene.remove(this.vrGroundGrid);
+        }
     }
 }
