@@ -1110,6 +1110,246 @@
                         </div>
                     </div>
 
+                    <div class="config-section" id="pose-normalizer-section">
+                        <h3 class="config-title">AVATAR POSE &amp; ANIMATION</h3>
+                        <p style="font-size: 0.72rem; color: rgba(255, 255, 255, 0.5); margin-bottom: 12px">
+                            Fine-tune how T-pose correction is applied to your avatar. Adjust intensity per bone to get
+                            the best result for each model.
+                        </p>
+
+                        <div class="input-group">
+                            <label class="input-label" for="pose-preset">POSE PRESET</label>
+                            <select id="pose-preset" class="select-input">
+                                <option value="relaxedStanding">Relaxed Standing</option>
+                                <option value="portrait">Portrait / Thumbnail</option>
+                                <option value="presentation">Presentation</option>
+                            </select>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="input-label" for="pose-intensity"
+                                >GLOBAL INTENSITY
+                                <span id="pose-intensity-val" style="float: right; opacity: 0.7">0.85</span>
+                            </label>
+                            <input
+                                type="range"
+                                id="pose-intensity"
+                                min="0"
+                                max="1"
+                                step="0.05"
+                                value="0.85"
+                                style="width: 100%; accent-color: var(--primary, #00e5ff)"
+                            />
+                            <p style="font-size: 0.65rem; color: rgba(255, 255, 255, 0.4); margin-top: 4px">
+                                0 = raw T-pose (no correction) &mdash; 1 = full relaxed standing correction
+                            </p>
+                        </div>
+
+                        <details style="margin-top: 8px">
+                            <summary
+                                style="
+                                    cursor: pointer;
+                                    font-size: 0.78rem;
+                                    color: rgba(255, 255, 255, 0.7);
+                                    user-select: none;
+                                "
+                            >
+                                Per-Bone Intensity Overrides
+                            </summary>
+                            <div style="margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px">
+                                <div class="input-group" style="margin: 0">
+                                    <label class="input-label" style="font-size: 0.7rem"
+                                        >L Shoulder
+                                        <span id="pose-bone-leftShoulder-val" style="float: right; opacity: 0.6"
+                                            >1.0</span
+                                        ></label
+                                    >
+                                    <input
+                                        type="range"
+                                        class="pose-bone-slider"
+                                        data-bone="leftShoulder"
+                                        min="0"
+                                        max="1.5"
+                                        step="0.05"
+                                        value="1.0"
+                                        style="width: 100%; accent-color: #00e5ff"
+                                    />
+                                </div>
+                                <div class="input-group" style="margin: 0">
+                                    <label class="input-label" style="font-size: 0.7rem"
+                                        >R Shoulder
+                                        <span id="pose-bone-rightShoulder-val" style="float: right; opacity: 0.6"
+                                            >1.0</span
+                                        ></label
+                                    >
+                                    <input
+                                        type="range"
+                                        class="pose-bone-slider"
+                                        data-bone="rightShoulder"
+                                        min="0"
+                                        max="1.5"
+                                        step="0.05"
+                                        value="1.0"
+                                        style="width: 100%; accent-color: #00e5ff"
+                                    />
+                                </div>
+                                <div class="input-group" style="margin: 0">
+                                    <label class="input-label" style="font-size: 0.7rem"
+                                        >L Upper Arm
+                                        <span id="pose-bone-leftUpperArm-val" style="float: right; opacity: 0.6"
+                                            >1.0</span
+                                        ></label
+                                    >
+                                    <input
+                                        type="range"
+                                        class="pose-bone-slider"
+                                        data-bone="leftUpperArm"
+                                        min="0"
+                                        max="1.5"
+                                        step="0.05"
+                                        value="1.0"
+                                        style="width: 100%; accent-color: #00e5ff"
+                                    />
+                                </div>
+                                <div class="input-group" style="margin: 0">
+                                    <label class="input-label" style="font-size: 0.7rem"
+                                        >R Upper Arm
+                                        <span id="pose-bone-rightUpperArm-val" style="float: right; opacity: 0.6"
+                                            >1.0</span
+                                        ></label
+                                    >
+                                    <input
+                                        type="range"
+                                        class="pose-bone-slider"
+                                        data-bone="rightUpperArm"
+                                        min="0"
+                                        max="1.5"
+                                        step="0.05"
+                                        value="1.0"
+                                        style="width: 100%; accent-color: #00e5ff"
+                                    />
+                                </div>
+                                <div class="input-group" style="margin: 0">
+                                    <label class="input-label" style="font-size: 0.7rem"
+                                        >L Lower Arm
+                                        <span id="pose-bone-leftLowerArm-val" style="float: right; opacity: 0.6"
+                                            >1.0</span
+                                        ></label
+                                    >
+                                    <input
+                                        type="range"
+                                        class="pose-bone-slider"
+                                        data-bone="leftLowerArm"
+                                        min="0"
+                                        max="1.5"
+                                        step="0.05"
+                                        value="1.0"
+                                        style="width: 100%; accent-color: #00e5ff"
+                                    />
+                                </div>
+                                <div class="input-group" style="margin: 0">
+                                    <label class="input-label" style="font-size: 0.7rem"
+                                        >R Lower Arm
+                                        <span id="pose-bone-rightLowerArm-val" style="float: right; opacity: 0.6"
+                                            >1.0</span
+                                        ></label
+                                    >
+                                    <input
+                                        type="range"
+                                        class="pose-bone-slider"
+                                        data-bone="rightLowerArm"
+                                        min="0"
+                                        max="1.5"
+                                        step="0.05"
+                                        value="1.0"
+                                        style="width: 100%; accent-color: #00e5ff"
+                                    />
+                                </div>
+                                <div class="input-group" style="margin: 0">
+                                    <label class="input-label" style="font-size: 0.7rem"
+                                        >L Hand
+                                        <span id="pose-bone-leftHand-val" style="float: right; opacity: 0.6"
+                                            >1.0</span
+                                        ></label
+                                    >
+                                    <input
+                                        type="range"
+                                        class="pose-bone-slider"
+                                        data-bone="leftHand"
+                                        min="0"
+                                        max="1.5"
+                                        step="0.05"
+                                        value="1.0"
+                                        style="width: 100%; accent-color: #00e5ff"
+                                    />
+                                </div>
+                                <div class="input-group" style="margin: 0">
+                                    <label class="input-label" style="font-size: 0.7rem"
+                                        >R Hand
+                                        <span id="pose-bone-rightHand-val" style="float: right; opacity: 0.6"
+                                            >1.0</span
+                                        ></label
+                                    >
+                                    <input
+                                        type="range"
+                                        class="pose-bone-slider"
+                                        data-bone="rightHand"
+                                        min="0"
+                                        max="1.5"
+                                        step="0.05"
+                                        value="1.0"
+                                        style="width: 100%; accent-color: #00e5ff"
+                                    />
+                                </div>
+                                <div class="input-group" style="margin: 0">
+                                    <label class="input-label" style="font-size: 0.7rem"
+                                        >Chest
+                                        <span id="pose-bone-chest-val" style="float: right; opacity: 0.6"
+                                            >1.0</span
+                                        ></label
+                                    >
+                                    <input
+                                        type="range"
+                                        class="pose-bone-slider"
+                                        data-bone="chest"
+                                        min="0"
+                                        max="1.5"
+                                        step="0.05"
+                                        value="1.0"
+                                        style="width: 100%; accent-color: #00e5ff"
+                                    />
+                                </div>
+                                <div class="input-group" style="margin: 0">
+                                    <label class="input-label" style="font-size: 0.7rem"
+                                        >Upper Chest
+                                        <span id="pose-bone-upperChest-val" style="float: right; opacity: 0.6"
+                                            >1.0</span
+                                        ></label
+                                    >
+                                    <input
+                                        type="range"
+                                        class="pose-bone-slider"
+                                        data-bone="upperChest"
+                                        min="0"
+                                        max="1.5"
+                                        step="0.05"
+                                        value="1.0"
+                                        style="width: 100%; accent-color: #00e5ff"
+                                    />
+                                </div>
+                            </div>
+                        </details>
+
+                        <div style="margin-top: 10px; display: flex; gap: 8px">
+                            <button class="secondary-btn" id="pose-apply-btn" type="button" style="font-size: 0.75rem">
+                                APPLY LIVE
+                            </button>
+                            <button class="secondary-btn" id="pose-reset-btn" type="button" style="font-size: 0.75rem">
+                                RESET DEFAULTS
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="config-section">
                         <h3 class="config-title">SYSTEM PROMPT</h3>
                         <textarea
@@ -1565,6 +1805,8 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <!-- LLM Manager (must load before VR integration) -->
         <script defer src="src/LLMManager.js"></script>
 
+        <!-- PoseNormalizer: unified T-pose correction (must load before ProceduralAnimator) -->
+        <script defer src="src/PoseNormalizer.js"></script>
         <script defer src="src/ProceduralAnimator.js"></script>
         <script defer src="src/BridgeResponseAdapter.js"></script>
         <script defer src="src/PersonaContextBridge.js"></script>

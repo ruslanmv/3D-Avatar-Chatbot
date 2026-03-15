@@ -55,6 +55,14 @@ export class PostProcessing {
 
         this._init();
 
+        // Re-initialize after WebGL context restore (old render targets are invalid)
+        this.renderer.domElement.addEventListener('webglcontextrestored', () => {
+            console.log('[PostProcessing] WebGL context restored — reinitializing pipeline');
+            // Nullify old composer to avoid disposing invalid GL objects
+            this.composer = null;
+            this._init();
+        });
+
         console.log(
             `[PostProcessing] Initialized | SSAO: ${this._ssaoEnabled} | Bloom: ${this._bloomEnabled} | FXAA: ${this._fxaaEnabled} | Mobile: ${this._isMobile}`
         );
@@ -97,9 +105,9 @@ export class PostProcessing {
 
         this.bloomPass = new UnrealBloomPass(
             bloomRes,
-            0.15, // strength — very subtle on light background
-            0.3, // radius  — tight spread
-            0.9 // threshold — only very bright areas bloom
+            0.08, // strength — minimal to avoid edge glow on dark materials
+            0.2, // radius  — tight spread
+            0.95 // threshold — only truly emissive areas bloom (avoids rim-light edge glow)
         );
         this.bloomPass.enabled = this._bloomEnabled;
         this.composer.addPass(this.bloomPass);
@@ -126,7 +134,13 @@ export class PostProcessing {
             return false;
         }
 
-        this.composer.render();
+        try {
+            this.composer.render();
+        } catch (e) {
+            // Context may have been lost mid-frame — fall back to direct render
+            this.renderer.render(this.scene, this.camera);
+            return false;
+        }
         return true;
     }
 
@@ -162,7 +176,13 @@ export class PostProcessing {
         if (!this.composer) return;
 
         const pixelRatio = this.renderer.getPixelRatio();
-        this.composer.setSize(width, height);
+
+        try {
+            this.composer.setSize(width, height);
+        } catch (e) {
+            console.warn('[PostProcessing] setSize failed (context may be lost):', e.message);
+            return;
+        }
 
         if (this.ssaoPass) {
             this.ssaoPass.setSize(width, height);
