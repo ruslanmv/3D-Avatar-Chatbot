@@ -105,9 +105,10 @@ class VRMLoader {
             THREE_VRM.VRMUtils.removeUnnecessaryJoints(vrm.scene);
         }
 
-        // Position avatar
-        vrm.scene.rotation.y = Math.PI; // Face camera
+        // Position avatar — VRM models (VRoid) are typically authored facing +Z,
+        // so rotate 180° to face the camera at +Z
         vrm.scene.position.set(0, 0, 0);
+        this.applyFacing(vrm.scene, Math.PI);
 
         // Fix T-pose to A-pose
         this.fixTPose(vrm);
@@ -130,8 +131,8 @@ class VRMLoader {
         this.currentVRM = { scene: model, isGLB: true };
 
         // Position model
-        model.rotation.y = Math.PI;
         model.position.set(0, 0, 0);
+        this.applyFacing(model, 0);
 
         // Setup animation mixer if animations exist
         const gltf = model.userData.gltf;
@@ -261,9 +262,151 @@ class VRMLoader {
     }
 
     /**
+     * Apply facing rotation to an avatar root.
+     * Default is 0 (forward-facing). Use Math.PI for assets authored back-to-camera.
+     * @param {THREE.Object3D} root
+     * @param {number} facing - rotation in radians (0 or Math.PI typically)
+     */
+    applyFacing(root, facing = 0) {
+        if (!root) return;
+        root.rotation.y = facing;
+    }
+
+    /**
+     * Flip the current avatar 180° (toggle front/back).
+     * Useful for imported models whose forward direction is unknown.
+     */
+    flipFacing() {
+        const root = this.currentVRM?.scene;
+        if (!root) return;
+        root.rotation.y = (root.rotation.y + Math.PI) % (Math.PI * 2);
+    }
+
+    // =========================================================================
+    // AUTO-BLINK — natural random blinking (3-6 second intervals)
+    // =========================================================================
+
+    startAutoBlink() {
+        if (this._blinkTimer) return; // already running
+        const scheduleBlink = () => {
+            const delay = 2500 + Math.random() * 4000; // 2.5-6.5s
+            this._blinkTimer = setTimeout(() => {
+                this.blink();
+                scheduleBlink();
+            }, delay);
+        };
+        scheduleBlink();
+        console.log('[VRMLoader] Auto-blink started');
+    }
+
+    stopAutoBlink() {
+        if (this._blinkTimer) {
+            clearTimeout(this._blinkTimer);
+            this._blinkTimer = null;
+        }
+    }
+
+    // =========================================================================
+    // LIP-SYNC ENGINE — speech-driven mouth animation
+    // =========================================================================
+
+    /**
+     * Start lip-sync: oscillates mouth visemes while speech is playing.
+     * Call when TTS starts speaking. Stops automatically or via stopLipSync().
+     */
+    startLipSync() {
+        if (this._lipSyncRAF) return;
+
+        const visemes = ['aa', 'ee', 'oh'];
+        let phase = 0;
+
+        const animate = () => {
+            if (!this.currentVRM?.expressionManager) {
+                this.stopLipSync();
+                return;
+            }
+
+            phase += 0.15; // speed of mouth movement
+            const t = (Math.sin(phase) + 1) / 2; // 0..1 oscillation
+
+            // Cycle through viseme shapes for natural movement
+            const idx = Math.floor(phase * 0.7) % visemes.length;
+            const intensity = 0.2 + t * 0.5; // 0.2..0.7 range — not too exaggerated
+
+            // Reset all mouth visemes, then set active one
+            for (const v of visemes) {
+                try {
+                    this.setExpression(v, 0);
+                } catch (_) {}
+            }
+            try {
+                this.setExpression(visemes[idx], intensity);
+            } catch (_) {}
+
+            this._lipSyncRAF = requestAnimationFrame(animate);
+        };
+
+        this._lipSyncRAF = requestAnimationFrame(animate);
+    }
+
+    /**
+     * Stop lip-sync and close mouth.
+     */
+    stopLipSync() {
+        if (this._lipSyncRAF) {
+            cancelAnimationFrame(this._lipSyncRAF);
+            this._lipSyncRAF = null;
+        }
+        // Close mouth
+        try {
+            this.setExpression('aa', 0);
+            this.setExpression('ee', 0);
+            this.setExpression('oh', 0);
+        } catch (_) {}
+    }
+
+    // =========================================================================
+    // EMOTION EXPRESSIONS — set avatar emotion from LLM response analysis
+    // =========================================================================
+
+    /**
+     * Set avatar emotion expression.
+     * @param {string} emotion - 'happy'|'sad'|'angry'|'surprised'|'neutral'
+     * @param {number} intensity - 0..1
+     */
+    setEmotion(emotion, intensity = 0.6) {
+        if (!this.currentVRM?.expressionManager) return;
+
+        // Clear previous emotions
+        const emotionMap = {
+            happy: 'happy',
+            sad: 'sad',
+            angry: 'angry',
+            surprised: 'surprised',
+            neutral: 'neutral',
+        };
+
+        for (const expr of Object.values(emotionMap)) {
+            try {
+                this.setExpression(expr, 0);
+            } catch (_) {}
+        }
+
+        const target = emotionMap[emotion] || 'neutral';
+        if (target !== 'neutral') {
+            try {
+                this.setExpression(target, intensity);
+            } catch (_) {}
+        }
+    }
+
+    /**
      * Dispose of current avatar
      */
     dispose() {
+        this.stopAutoBlink();
+        this.stopLipSync();
+
         if (this.currentVRM && this.currentVRM.scene) {
             this.scene.remove(this.currentVRM.scene);
             this.currentVRM = null;

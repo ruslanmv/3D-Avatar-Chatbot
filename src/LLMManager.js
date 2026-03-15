@@ -127,6 +127,197 @@
         }
 
         /**
+         * Streaming API Router: Send message and stream tokens back via callback.
+         * Falls back to non-streaming sendMessage for unsupported providers.
+         * @param {string} userMessage
+         * @param {string} systemPrompt
+         * @param {Array} conversationHistory
+         * @param {function(string)} onToken - Called with each new token/chunk
+         * @returns {Promise<string>} Full accumulated response text
+         */
+        async sendMessageStream(userMessage, systemPrompt, conversationHistory = [], onToken) {
+            const cfg = this._settings;
+            const provider = cfg.provider;
+
+            // Providers that support streaming
+            if (provider === LLMProvider.OPENAI) {
+                return this._streamOpenAI(userMessage, systemPrompt, conversationHistory, onToken);
+            }
+            if (provider === LLMProvider.CLAUDE) {
+                return this._streamClaude(userMessage, systemPrompt, conversationHistory, onToken);
+            }
+            if (provider === LLMProvider.OLLAMA) {
+                return this._streamOllama(userMessage, systemPrompt, conversationHistory, onToken);
+            }
+
+            // Fallback: non-streaming for providers that don't support it
+            const result = await this.sendMessage(userMessage, systemPrompt, conversationHistory);
+            if (onToken) onToken(result);
+            return result;
+        }
+
+        // ----- Streaming Implementations -----
+
+        async _streamOpenAI(userMessage, systemPrompt, conversationHistory, onToken) {
+            const { api_key: rawKey, model, base_url } = this._settings.openai;
+            const api_key = (rawKey || '').trim();
+            if (!api_key) throw new Error('OpenAI API Key missing.');
+
+            const url = `${(base_url || 'https://api.openai.com').replace(/\/$/, '')}/v1/chat/completions`;
+            const headers = {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${api_key}`,
+            };
+            const messages = [
+                { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
+                ...conversationHistory,
+                { role: 'user', content: userMessage },
+            ];
+            const body = { model, messages, max_tokens: 500, stream: true };
+
+            const res = this._hasProxy()
+                ? await this._fetchViaProxy(url, 'POST', headers, body)
+                : await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+
+            if (!res.ok) {
+                const err = await res.text();
+                throw new Error(`OpenAI Error: ${res.status} - ${err}`);
+            }
+
+            return this._readSSE(res, (json) => {
+                const token = json.choices?.[0]?.delta?.content;
+                if (token && onToken) onToken(token);
+                return token || '';
+            });
+        }
+
+        async _streamClaude(userMessage, systemPrompt, conversationHistory, onToken) {
+            const { api_key: rawKey, model, base_url } = this._settings.claude;
+            const api_key = (rawKey || '').trim();
+            if (!api_key) throw new Error('Claude API Key missing.');
+
+            const url = `${(base_url || 'https://api.anthropic.com').replace(/\/$/, '')}/v1/messages`;
+            const headers = {
+                'Content-Type': 'application/json',
+                'x-api-key': api_key,
+                'anthropic-version': '2023-06-01',
+            };
+            const messages = [...conversationHistory, { role: 'user', content: userMessage }];
+            const body = {
+                model,
+                system: systemPrompt || 'You are a helpful assistant.',
+                messages,
+                max_tokens: 1024,
+                stream: true,
+            };
+
+            const res = this._hasProxy()
+                ? await this._fetchViaProxy(url, 'POST', headers, body)
+                : await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+
+            if (!res.ok) {
+                const err = await res.text();
+                throw new Error(`Claude Error: ${res.status} - ${err}`);
+            }
+
+            return this._readSSE(res, (json) => {
+                // Claude SSE: content_block_delta has delta.text
+                if (json.type === 'content_block_delta') {
+                    const token = json.delta?.text || '';
+                    if (token && onToken) onToken(token);
+                    return token;
+                }
+                return '';
+            });
+        }
+
+        async _streamOllama(userMessage, systemPrompt, conversationHistory, onToken) {
+            const { base_url, model } = this._settings.ollama;
+            const url = `${(base_url || 'http://localhost:11434').replace(/\/$/, '')}/api/chat`;
+            const headers = { 'Content-Type': 'application/json' };
+            const messages = [
+                { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
+                ...conversationHistory,
+                { role: 'user', content: userMessage },
+            ];
+            const body = { model, messages, stream: true };
+
+            const res = this._hasProxy()
+                ? await this._fetchViaProxy(url, 'POST', headers, body)
+                : await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+
+            if (!res.ok) {
+                const err = await res.text();
+                throw new Error(`Ollama Error: ${res.status} - ${err}`);
+            }
+
+            // Ollama streams NDJSON (one JSON object per line), not SSE
+            let full = '';
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+
+                const lines = buffer.split('\n');
+                buffer = lines.pop(); // keep incomplete line
+
+                for (const line of lines) {
+                    if (!line.trim()) continue;
+                    try {
+                        const json = JSON.parse(line);
+                        const token = json.message?.content || '';
+                        if (token) {
+                            full += token;
+                            if (onToken) onToken(token);
+                        }
+                    } catch (_) {
+                        /* skip malformed line */
+                    }
+                }
+            }
+            return full;
+        }
+
+        /**
+         * Generic SSE reader for OpenAI/Claude-style server-sent events.
+         * @param {Response} res - Fetch response with streaming body
+         * @param {function(object): string} extractToken - Parses JSON chunk, returns token text
+         * @returns {Promise<string>} Full accumulated text
+         */
+        async _readSSE(res, extractToken) {
+            let full = '';
+            const reader = res.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+
+                const lines = buffer.split('\n');
+                buffer = lines.pop();
+
+                for (const line of lines) {
+                    if (!line.startsWith('data: ')) continue;
+                    const data = line.slice(6).trim();
+                    if (data === '[DONE]') return full;
+                    try {
+                        const json = JSON.parse(data);
+                        full += extractToken(json);
+                    } catch (_) {
+                        /* skip malformed */
+                    }
+                }
+            }
+            return full;
+        }
+
+        /**
          * Whether the model list is stale (e.g. a persona was unpublished).
          * @returns {boolean}
          */

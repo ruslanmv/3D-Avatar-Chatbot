@@ -33,8 +33,9 @@
     let hasBakedAnimations = false;
 
     // If true, we still allow subtle head look/breath even with mixer.
-    // Default false for safety.
-    let allowWithMixer = false;
+    // Default true — procedural animations (breathing, head look) always active
+    // as a safe fallback for avatars without designed animations.
+    let allowWithMixer = true;
 
     // Force mode: when true, procedural animations ALWAYS run (used for quick actions)
     let forceMode = false;
@@ -79,6 +80,7 @@
             spine: null,
             chest: null,
             hips: null,
+            jaw: null,
             leftUpperArm: null,
             rightUpperArm: null,
             leftLowerArm: null,
@@ -88,6 +90,15 @@
         root.traverse((o) => {
             if (!o || !o.isBone) return;
             const n = (o.name || '').toLowerCase();
+
+            // jaw (for Tier C talk fallback)
+            if (
+                !map.jaw &&
+                (n === 'jaw' || n === 'jawbone' || n === 'jaw_bone' || (n.includes('jaw') && !n.includes('upper')))
+            ) {
+                map.jaw = o;
+                return;
+            }
 
             // core
             if (!map.head && n.includes('head')) map.head = o;
@@ -159,81 +170,48 @@
     }
 
     // ---------------------------
-    // Improved T-Pose Fix (geometry-based)
+    // T-Pose Fix — lower arms to natural resting pose
     // ---------------------------
     function fixTPose() {
         if (!bones) return;
 
-        // Update world matrices to ensure accurate position data
-        if (avatarRoot) avatarRoot.updateWorldMatrix(true, true);
+        // Apply simple Z-axis rotation to lower arms from T-pose
+        // Works for VRM (model faces -Z, rotated π) and standard GLB rigs
+        // ~65° rotation brings arms to a natural standing pose
+        const angle = Math.PI / 2.8; // ~65 degrees
 
-        // Fix left arm
-        if (bones.leftUpperArm && bones.leftLowerArm) {
-            applyNaturalArmPose(bones.leftUpperArm, bones.leftLowerArm, 'left');
+        if (bones.leftUpperArm) {
+            const r = rest.get(bones.leftUpperArm.uuid);
+            if (r) {
+                const offset = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, angle));
+                bones.leftUpperArm.quaternion.copy(r.quat).multiply(offset);
+                console.log('[ProceduralAnimator] T-pose fix: left arm lowered');
+            }
         }
 
-        // Fix right arm
-        if (bones.rightUpperArm && bones.rightLowerArm) {
-            applyNaturalArmPose(bones.rightUpperArm, bones.rightLowerArm, 'right');
-        }
-    }
-
-    function applyNaturalArmPose(upperArm, lowerArm, side) {
-        // Get current arm direction in world space
-        const upperPos = new THREE.Vector3();
-        const lowerPos = new THREE.Vector3();
-
-        upperArm.getWorldPosition(upperPos);
-        lowerArm.getWorldPosition(lowerPos);
-
-        const currentDir = new THREE.Vector3().subVectors(lowerPos, upperPos).normalize();
-
-        // Define natural standing pose target direction (in world space)
-        // Arms should point: mostly down, slightly forward, slightly outward
-        const down = new THREE.Vector3(0, -1, 0);
-        const forward = new THREE.Vector3(0, 0, 1);
-        const outward = new THREE.Vector3(side === 'left' ? -1 : 1, 0, 0);
-
-        // Blend vectors for natural pose
-        const targetDir = new THREE.Vector3()
-            .addScaledVector(down, 1.0) // Primary: down
-            .addScaledVector(forward, 0.2) // Slight forward lean
-            .addScaledVector(outward, 0.15) // Slight outward angle
-            .normalize();
-
-        // Calculate rotation quaternion from current to target
-        const rotQuat = new THREE.Quaternion().setFromUnitVectors(currentDir, targetDir);
-
-        // Apply rotation in parent space (convert from world to local)
-        const parentQuat = new THREE.Quaternion();
-        if (upperArm.parent) {
-            upperArm.parent.getWorldQuaternion(parentQuat);
-            parentQuat.invert();
-            rotQuat.premultiply(parentQuat);
+        if (bones.rightUpperArm) {
+            const r = rest.get(bones.rightUpperArm.uuid);
+            if (r) {
+                const offset = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, -angle));
+                bones.rightUpperArm.quaternion.copy(r.quat).multiply(offset);
+                console.log('[ProceduralAnimator] T-pose fix: right arm lowered');
+            }
         }
 
-        // Apply the rotation to current quaternion
-        upperArm.quaternion.multiply(rotQuat);
-
-        // Limit rotation to avoid extreme poses (clamp to ~70° max rotation)
-        const maxAngle = Math.PI * 0.4; // ~72 degrees
-        const angle = upperArm.quaternion.angleTo(new THREE.Quaternion()); // Angle from identity
-        if (angle > maxAngle) {
-            // Scale down to max allowed angle
-            const axis = new THREE.Vector3();
-            upperArm.quaternion.normalize();
-            const currentAngle = 2 * Math.acos(THREE.MathUtils.clamp(upperArm.quaternion.w, -1, 1));
-            if (currentAngle > maxAngle) {
-                // Extract axis and reduce angle
-                const sinHalfAngle = Math.sqrt(1 - upperArm.quaternion.w * upperArm.quaternion.w);
-                if (sinHalfAngle > 0.001) {
-                    axis.set(
-                        upperArm.quaternion.x / sinHalfAngle,
-                        upperArm.quaternion.y / sinHalfAngle,
-                        upperArm.quaternion.z / sinHalfAngle
-                    );
-                    upperArm.quaternion.setFromAxisAngle(axis, maxAngle);
-                }
+        // Slight elbow bend for natural look
+        const elbowBend = Math.PI / 12; // ~15 degrees
+        if (bones.leftLowerArm) {
+            const r = rest.get(bones.leftLowerArm.uuid);
+            if (r) {
+                const offset = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -elbowBend, 0));
+                bones.leftLowerArm.quaternion.copy(r.quat).multiply(offset);
+            }
+        }
+        if (bones.rightLowerArm) {
+            const r = rest.get(bones.rightLowerArm.uuid);
+            if (r) {
+                const offset = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, elbowBend, 0));
+                bones.rightLowerArm.quaternion.copy(r.quat).multiply(offset);
             }
         }
     }
@@ -406,19 +384,38 @@
         } else if (mode === 'talk') {
             // Visible nodding
             if (bones.head) {
-                const nod = Math.sin(timeSec * 10.0) * 0.12; // Doubled from 0.06
+                const nod = Math.sin(timeSec * 10.0) * 0.12;
                 applyOffsetEuler(bones.head, new THREE.Euler(nod, 0, 0));
             }
             if (bones.chest) {
-                const breathTalk = Math.sin(timeSec * 6.0) * 0.06; // Doubled from 0.03
+                const breathTalk = Math.sin(timeSec * 6.0) * 0.06;
                 applyOffsetEuler(bones.chest, new THREE.Euler(breathTalk, 0, 0));
             }
+            // Jaw bone fallback for Tier C models (no morph targets)
+            if (bones.jaw) {
+                const jawOpen = (Math.sin(timeSec * 12.0) + 1) * 0.5 * 0.25; // 0..0.25 rad
+                applyOffsetEuler(bones.jaw, new THREE.Euler(jawOpen, 0, 0));
+            }
+        }
+    }
+
+    function unregisterAvatar(root) {
+        if (avatarRoot === root || !root) {
+            avatarRoot = null;
+            bones = null;
+            rest.clear();
+            hasBakedAnimations = false;
+            mode = 'idle';
+            modeUntilMs = 0;
+            forceMode = false;
+            console.log('[ProceduralAnimator] Unregistered avatar');
         }
     }
 
     // expose
     window.NEXUS_PROCEDURAL_ANIMATOR = {
         registerAvatar,
+        unregisterAvatar,
         update,
         setMode,
         setAllowWithMixer,

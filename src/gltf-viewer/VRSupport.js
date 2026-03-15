@@ -77,22 +77,13 @@ export class VRSupport {
             return;
         }
 
-        // Block immersive VR on normal Android phones (not headsets)
-        // Show an informational disabled button instead of hiding it
-        const isAndroidPhone = /Android/i.test(navigator.userAgent || '') && !this._isHeadsetBrowser();
-        if (isAndroidPhone) {
-            console.log('[VR] Android phone detected — VR unavailable, showing info button');
-            this.vrButton = document.createElement('button');
-            this.vrButton.id = 'vr-button';
-            this.vrButton.className = 'xr-btn xr-btn--vr xr-btn--disabled';
-            this.vrButton.innerHTML = '<span class="xr-btn__icon">&#x1F576;</span> VR N/A';
-            this.vrButton.title = 'VR requires a headset. Try AR or fullscreen mode.';
-            this.vrButton.onclick = () => {
-                alert(
-                    'Immersive VR requires a headset (Meta Quest, etc.).\n\nTry AR mode or fullscreen for the best experience on your phone.'
-                );
-            };
-            return;
+        // On normal phones (Android / iOS, not headsets), skip VR button entirely.
+        // VR requires a headset — showing a disabled button wastes precious mobile space.
+        const ua = navigator.userAgent || '';
+        const isPhone = (/Android/i.test(ua) || /iPhone|iPod/.test(ua)) && !this._isHeadsetBrowser();
+        if (isPhone) {
+            console.log('[VR] Phone detected — skipping VR button (no headset)');
+            return; // vrButton stays null → XR launch bar won't add it
         }
 
         // Create VR button — styled via CSS class .xr-btn

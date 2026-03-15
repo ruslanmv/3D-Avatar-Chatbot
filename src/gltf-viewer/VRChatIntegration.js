@@ -102,10 +102,12 @@ export class VRChatIntegration {
             this.speechService.setRecognitionCallbacks({
                 onStart: () => {
                     this.vrChatPanel.setStatus('listening');
+                    if (window.NEXUS_BEHAVIOR) window.NEXUS_BEHAVIOR.onListeningStart();
                     console.log('[VRChatIntegration] 🎤 Listening...');
                 },
                 onEnd: () => {
                     this.vrChatPanel.setStatus('idle');
+                    if (window.NEXUS_BEHAVIOR) window.NEXUS_BEHAVIOR.onListeningEnd();
                     console.log('[VRChatIntegration] Listening ended');
                 },
                 onResult: (transcript, confidence) => {
@@ -473,6 +475,12 @@ export class VRChatIntegration {
             this.vrChatPanel.setStatus('thinking');
             await this.avatarManager.setAvatarByIndex(index);
             this.currentAvatarIndex = index;
+
+            // Phase 3: Register avatar with ProceduralAnimator
+            if (this.avatarManager.currentRoot && window.NEXUS_PROCEDURAL_ANIMATOR) {
+                window.NEXUS_PROCEDURAL_ANIMATOR.registerAvatar(this.avatarManager.currentRoot);
+            }
+
             this.vrChatPanel.setStatus('idle');
         } catch (error) {
             console.error('[VRChatIntegration] Avatar switch failed:', error);
@@ -515,6 +523,10 @@ export class VRChatIntegration {
             if (this.vrControllers && this.vrControllers.registerAvatar) {
                 this.vrControllers.registerAvatar(this.avatarManager.currentRoot);
             }
+            // Phase 3: Register with ProceduralAnimator
+            if (window.NEXUS_PROCEDURAL_ANIMATOR) {
+                window.NEXUS_PROCEDURAL_ANIMATOR.registerAvatar(this.avatarManager.currentRoot);
+            }
             return;
         }
 
@@ -526,6 +538,10 @@ export class VRChatIntegration {
         if (this.avatarManager.currentRoot && this.vrControllers && this.vrControllers.registerAvatar) {
             this.vrControllers.registerAvatar(this.avatarManager.currentRoot);
         }
+        // Phase 3: Register with ProceduralAnimator
+        if (this.avatarManager.currentRoot && window.NEXUS_PROCEDURAL_ANIMATOR) {
+            window.NEXUS_PROCEDURAL_ANIMATOR.registerAvatar(this.avatarManager.currentRoot);
+        }
     }
 
     /**
@@ -536,6 +552,11 @@ export class VRChatIntegration {
         if (!text || text.trim().length === 0) return;
 
         console.log(`[VRChatIntegration] User: ${text}`);
+
+        // Phase 3: Notify BehaviorEngine of user message
+        if (window.NEXUS_BEHAVIOR) {
+            window.NEXUS_BEHAVIOR.onUserMessage(text);
+        }
 
         // Add to VR panel
         this.vrChatPanel.appendMessage('user', text);
@@ -680,15 +701,50 @@ export class VRChatIntegration {
             }
         }
 
+        // --- Phase 3: Notify BehaviorEngine of bot response ---
+        if (window.NEXUS_BEHAVIOR) {
+            window.NEXUS_BEHAVIOR.onBotResponse(text, directives);
+        }
+
         // --- TTS (use text only, never speak attachment metadata) ---
         try {
             if (this.vrChatPanel.ttsEnabled && this.speechService && this.speechService.isSynthesisAvailable()) {
                 console.log('[VRChatIntegration] TTS enabled, speaking response');
                 this.vrChatPanel.setStatus('speaking');
+
+                // Get speech rate from settings
+                const rate = window.SpeechSettings?.rate || 1.0;
+
                 this.speechService.speak(text, {
-                    onStart: () => this.vrChatPanel.setStatus('speaking'),
-                    onEnd: () => this.vrChatPanel.setStatus('idle'),
-                    onError: () => this.vrChatPanel.setStatus('idle'),
+                    onStart: () => {
+                        this.vrChatPanel.setStatus('speaking');
+                        // Phase 3: Start lip-sync and notify behavior engine
+                        if (window.NEXUS_LIP_SYNC) {
+                            window.NEXUS_LIP_SYNC.start(text, rate);
+                        }
+                        if (window.NEXUS_BEHAVIOR) {
+                            window.NEXUS_BEHAVIOR.onSpeechStart();
+                        }
+                    },
+                    onEnd: () => {
+                        this.vrChatPanel.setStatus('idle');
+                        // Phase 3: Stop lip-sync and notify behavior engine
+                        if (window.NEXUS_LIP_SYNC) {
+                            window.NEXUS_LIP_SYNC.stop();
+                        }
+                        if (window.NEXUS_BEHAVIOR) {
+                            window.NEXUS_BEHAVIOR.onSpeechEnd();
+                        }
+                    },
+                    onError: () => {
+                        this.vrChatPanel.setStatus('idle');
+                        if (window.NEXUS_LIP_SYNC) {
+                            window.NEXUS_LIP_SYNC.stop();
+                        }
+                        if (window.NEXUS_BEHAVIOR) {
+                            window.NEXUS_BEHAVIOR.onSpeechEnd();
+                        }
+                    },
                 });
             } else {
                 this.vrChatPanel.setStatus('idle');

@@ -89,19 +89,85 @@ pretty_name() {
 # Model sources (PRIMARY → FALLBACK)
 # ------------------------------------------------------------
 
-download_with_fallback "${AVATAR_DIR}/RobotExpressive.glb" \
-  "https://raw.githubusercontent.com/mrdoob/three.js/r147/examples/models/gltf/RobotExpressive/RobotExpressive.glb" \
-  "https://raw.githubusercontent.com/mrdoob/three.js/r146/examples/models/gltf/RobotExpressive/RobotExpressive.glb"
+# ── VRM Tier 1: CC0 VRoid samples ──
+download_with_fallback "${AVATAR_DIR}/AvatarSample_A.vrm" \
+  "https://raw.githubusercontent.com/madjin/vrm-samples/master/vroid/stable/AvatarSample_A.vrm"
 
-download_with_fallback "${AVATAR_DIR}/Soldier.glb" \
-  "https://raw.githubusercontent.com/mrdoob/three.js/r147/examples/models/gltf/Soldier.glb" \
-  "https://raw.githubusercontent.com/mrdoob/three.js/r146/examples/models/gltf/Soldier.glb"
+download_with_fallback "${AVATAR_DIR}/AvatarSample_B.vrm" \
+  "https://raw.githubusercontent.com/madjin/vrm-samples/master/vroid/stable/AvatarSample_B.vrm"
 
+download_with_fallback "${AVATAR_DIR}/AvatarSample_C.vrm" \
+  "https://raw.githubusercontent.com/madjin/vrm-samples/master/vroid/stable/AvatarSample_C.vrm"
+
+download_with_fallback "${AVATAR_DIR}/fem_vroid.vrm" \
+  "https://raw.githubusercontent.com/madjin/vrm-samples/master/vroid/fem_vroid.vrm"
+
+download_with_fallback "${AVATAR_DIR}/masc_vroid.vrm" \
+  "https://raw.githubusercontent.com/madjin/vrm-samples/master/vroid/masc_vroid.vrm"
+
+download_with_fallback "${AVATAR_DIR}/Sendagaya_Shibu.vrm" \
+  "https://raw.githubusercontent.com/madjin/vrm-samples/master/vroid/beta/Sendagaya_Shibu.vrm"
+
+download_with_fallback "${AVATAR_DIR}/Sendagaya_Shino.vrm" \
+  "https://raw.githubusercontent.com/madjin/vrm-samples/master/vroid/beta/Sendagaya_Shino.vrm"
+
+download_with_fallback "${AVATAR_DIR}/Victoria_Rubin.vrm" \
+  "https://raw.githubusercontent.com/madjin/vrm-samples/master/vroid/beta/Victoria_Rubin.vrm"
+
+download_with_fallback "${AVATAR_DIR}/Vita.vrm" \
+  "https://raw.githubusercontent.com/madjin/vrm-samples/master/vroid/beta/Vita.vrm"
+
+download_with_fallback "${AVATAR_DIR}/Vivi.vrm" \
+  "https://raw.githubusercontent.com/madjin/vrm-samples/master/vroid/beta/Vivi.vrm"
+
+download_with_fallback "${AVATAR_DIR}/Darkness_Shibu.vrm" \
+  "https://raw.githubusercontent.com/madjin/vrm-samples/master/vroid/beta/Darkness_Shibu.vrm"
+
+download_with_fallback "${AVATAR_DIR}/HairSample_Female.vrm" \
+  "https://raw.githubusercontent.com/madjin/vrm-samples/master/vroid/beta/HairSample_Female.vrm"
+
+download_with_fallback "${AVATAR_DIR}/HairSample_Male.vrm" \
+  "https://raw.githubusercontent.com/madjin/vrm-samples/master/vroid/beta/HairSample_Male.vrm"
+
+download_with_fallback "${AVATAR_DIR}/Sakurada_Fumiriya.vrm" \
+  "https://raw.githubusercontent.com/madjin/vrm-samples/master/vroid/beta/Sakurada_Fumiriya.vrm"
+
+download_with_fallback "${AVATAR_DIR}/Avatar_Orion.vrm" \
+  "https://raw.githubusercontent.com/madjin/vrm-samples/master/Avatar_Orion.vrm"
+
+download_with_fallback "${AVATAR_DIR}/cryptovoxels.vrm" \
+  "https://raw.githubusercontent.com/madjin/vrm-samples/master/cryptovoxels.vrm"
+
+download_with_fallback "${AVATAR_DIR}/Seed-san.vrm" \
+  "https://raw.githubusercontent.com/vrm-c/vrm-specification/master/samples/Seed-san/vrm/Seed-san.vrm"
+
+download_with_fallback "${AVATAR_DIR}/VRM1_Constraint_Twist_Sample.vrm" \
+  "https://raw.githubusercontent.com/pixiv/three-vrm/dev/packages/three-vrm/examples/models/VRM1_Constraint_Twist_Sample.vrm"
+
+# ── GLB Tier 2: Models with morph targets (TalkingHead) ──
+download_with_fallback "${AVATAR_DIR}/brunette.glb" \
+  "https://raw.githubusercontent.com/met4citizen/TalkingHead/main/avatars/brunette.glb"
+
+download_with_fallback "${AVATAR_DIR}/brunette-t.glb" \
+  "https://raw.githubusercontent.com/met4citizen/TalkingHead/main/avatars/brunette-t.glb"
+
+download_with_fallback "${AVATAR_DIR}/avaturn.glb" \
+  "https://raw.githubusercontent.com/met4citizen/TalkingHead/main/avatars/avaturn.glb"
+
+download_with_fallback "${AVATAR_DIR}/avatarsdk.glb" \
+  "https://raw.githubusercontent.com/met4citizen/TalkingHead/main/avatars/avatarsdk.glb"
+
+download_with_fallback "${AVATAR_DIR}/mpfb.glb" \
+  "https://raw.githubusercontent.com/met4citizen/TalkingHead/main/avatars/mpfb.glb"
+
+# ── GLB Tier 3: Models without morph targets ──
+download_with_fallback "${AVATAR_DIR}/Xbot.glb" \
+  "https://raw.githubusercontent.com/mrdoob/three.js/r147/examples/models/gltf/Xbot.glb"
 
 
 # ------------------------------------------------------------
-# Generate vendor/avatars/avatars.json from downloaded GLBs
-# (only includes valid GLB files)
+# Generate vendor/avatars/avatars.json from downloaded GLBs and VRMs
+# (only includes valid model files)
 # ------------------------------------------------------------
 echo "==> Writing: ${AVATARS_JSON#${ROOT_DIR}/}"
 
@@ -112,20 +178,27 @@ echo "==> Writing: ${AVATARS_JSON#${ROOT_DIR}/}"
 
   first=1
   shopt -s nullglob
-  for f in "${AVATAR_DIR}"/*.glb; do
-    if is_valid_glb "$f"; then
-      file="$(basename "$f")"
-      name="$(pretty_name "$file")"
+  for f in "${AVATAR_DIR}"/*.vrm "${AVATAR_DIR}"/*.glb; do
+    file="$(basename "$f")"
+    name="$(pretty_name "$file")"
+    ext="${file##*.}"
 
-      if [ "$first" -eq 1 ]; then
-        first=0
-      else
-        echo "    ,"
-      fi
-
-      printf "    { \"name\": \"%s\", \"file\": \"%s\" }" "$name" "$file"
-      echo ""
+    # Determine format
+    format="glb"
+    features="[]"
+    if [ "$ext" = "vrm" ]; then
+      format="vrm"
+      features='["lipsync", "emotions", "gaze", "blink"]'
     fi
+
+    if [ "$first" -eq 1 ]; then
+      first=0
+    else
+      echo "    ,"
+    fi
+
+    printf "    { \"name\": \"%s\", \"file\": \"%s\", \"format\": \"%s\", \"features\": %s }" "$name" "$file" "$format" "$features"
+    echo ""
   done
   shopt -u nullglob
 

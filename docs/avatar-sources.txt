@@ -1,0 +1,182 @@
+Avatar Sources — External Catalogs & APIs
+==========================================
+
+Reference list of sources for downloading free and premium 3D avatars
+(VRM / GLB) to expand the built-in catalog.
+
+Last updated: 2026-03-15
+
+
+─────────────────────────────────────────
+TIER 1 — Easy Integration (no auth / free API)
+─────────────────────────────────────────
+
+1. Open Source Avatars (CC0)
+   Website : https://www.opensourceavatars.com/en/gallery
+   GitHub  : https://github.com/ToxSam/open-source-avatars
+   Format  : VRM
+   Avatars : 300+
+   License : CC0 (no attribution required)
+   API     : Raw JSON on GitHub — no auth needed
+     - Projects list : https://raw.githubusercontent.com/ToxSam/open-source-avatars/main/data/projects.json
+     - Avatar data   : https://raw.githubusercontent.com/ToxSam/open-source-avatars/main/data/avatars/<collection>.json
+   Notes   : Best quick-win source. Direct VRM download links in JSON.
+
+2. Ready Player Me
+   Website : https://readyplayer.me
+   API docs: https://docs.readyplayer.me/ready-player-me/api-reference/rest-api/avatars/get-3d-avatars
+   Format  : GLB
+   Avatars : Unlimited (user-created)
+   License : CC BY-NC-SA 4.0
+   API     : REST — no auth needed for GLB downloads
+     - Avatar URL pattern: https://models.readyplayer.me/{avatarId}.glb
+     - iFrame creator    : https://docs.readyplayer.me/ready-player-me/integration-guides/api-integration/custom-avatar-creator
+   Notes   : Embed their avatar creator via iFrame. User builds avatar, you get GLB URL.
+
+3. VIVERSE Avatar Maker
+   Website : https://avatar.viverse.com
+   Format  : VRM
+   License : Free to create and export
+   API     : None (web-based maker)
+   Notes   : Users create VRM in browser, download, then upload to our app.
+
+
+─────────────────────────────────────────
+TIER 2 — Medium Effort (API key or OAuth required)
+─────────────────────────────────────────
+
+4. Sketchfab
+   Website     : https://sketchfab.com
+   API docs    : https://sketchfab.com/developers/download-api
+   Download API: https://sketchfab.com/developers/download-api/downloading-models
+   Format      : glTF/GLB (delivered as ZIP archive)
+   Avatars     : 500,000+ free models (not all avatars)
+   License     : Per-model (CC0, CC-BY, etc.)
+   API         : OAuth 2.0 required
+     - Search endpoint : https://api.sketchfab.com/v3/search?type=models&q=avatar
+     - Download endpoint: https://api.sketchfab.com/v3/models/{uid}/download
+   Notes   : Already partially wired in vrm-manager.js. Needs OAuth flow + unzip.
+
+5. VRoid Hub (pixiv)
+   Website     : https://hub.vroid.com/en/models
+   API docs    : https://developer.vroid.com/en/api/
+   Quick start : https://developer.vroid.com/en/api/quick-start.html
+   Example app : https://github.com/pixiv/VRoidHub-API-Example
+   Format      : VRM
+   Avatars     : 100,000+
+   License     : Per-model (creator sets terms)
+   API         : OAuth 2.0 (needs server-side proxy for token exchange)
+   Notes   : Large anime-style VRM catalog. Needs CLIENT_ID + CLIENT_SECRET.
+
+
+─────────────────────────────────────────
+TIER 3 — Manual Download / Format Conversion Needed
+─────────────────────────────────────────
+
+6. Mixamo (Adobe)
+   Website : https://www.mixamo.com
+   Format  : FBX (needs conversion to GLB via Blender)
+   Avatars : 100+ characters, 2500+ animations
+   License : Free (Adobe account required)
+   API     : None
+   Notes   : Great for animations. FBX must be converted to GLB/VRM.
+
+7. TurboSquid
+   Website (free humanoids) : https://www.turbosquid.com/Search/3D-Models/free/humanoid
+   Website (free avatars)   : https://www.turbosquid.com/Search/3D-Models/free/avatar
+   Website (free rigged)    : https://www.turbosquid.com/Search/3D-Models/free/rigged/humanoid
+   Website (VRChat avatars) : https://www.turbosquid.com/Search/3D-Models/free/vrchat-avatar
+   Format  : FBX, OBJ, Blend (various)
+   Avatars : 90+ free humanoids
+   License : Royalty-free
+   API     : None
+   Notes   : Manual download only. Conversion to GLB needed.
+
+8. CGTrader
+   Website : https://www.cgtrader.com/3d-models/vtuber
+   Format  : Various (FBX, OBJ, Blend)
+   Avatars : 1,000+ VTuber models (free and paid)
+   License : Per-model
+   API     : None
+   Notes   : Mix of free and premium. No programmatic access.
+
+9. RigModels
+   Website : https://rigmodels.com/index.php?searchkeyword=vrm
+   Format  : VRM, GLB, FBX, OBJ
+   Avatars : Various
+   License : Per-model
+   API     : None
+   Notes   : Direct download. Some models already in VRM/GLB format.
+
+10. Live3D
+    Website : https://live3d.io/vtuber-model
+    Format  : Proprietary + VRM
+    Avatars : 100+ VTuber models
+    License : Some free, some paid
+    API     : None
+    Notes   : Some models require their VTuber Maker app.
+
+11. itch.io
+    Website : https://itch.io (search "VRM avatar")
+    Format  : VRM, FBX (varies by creator)
+    Avatars : Indie creators, varies
+    License : Per-creator
+    API     : None
+    Notes   : Good for unique indie avatars. Manual browse and download.
+
+12. VRCMods
+    Website : https://vrcmods.com
+    Format  : Various (VRChat-focused, some convertible to VRM)
+    Avatars : Large community catalog
+    License : Per-model
+    API     : None
+    Notes   : Primarily VRChat. May need conversion for VRM/GLB use.
+
+13. VStreamer Live
+    Website : https://vstreamer.live/vrm_avatars/
+    Format  : VRM
+    Avatars : Curated VRM collection
+    License : Per-model
+    API     : None
+
+
+─────────────────────────────────────────
+AVATAR CREATION TOOLS (generate your own)
+─────────────────────────────────────────
+
+14. VRoid Studio
+    Website : https://vroid.com/en/studio
+    Format  : VRM (export)
+    License : Free
+    Notes   : Desktop app. Create anime-style VRM avatars from scratch.
+
+15. M3-org Character Studio
+    GitHub  : https://github.com/M3-org/CharacterStudio
+    Format  : VRM / glTF
+    License : Open source
+    Notes   : Web-based VRM avatar creation platform.
+
+16. 3D-GLB (Selfie to Avatar)
+    GitHub  : https://github.com/aXtr1o1/3D-GLB
+    Format  : GLB (low-poly)
+    License : Open source
+    Notes   : FastAPI backend. Generates GLB avatar from a selfie photo.
+              Self-hosted. GPU recommended.
+
+
+─────────────────────────────────────────
+IMPLEMENTATION PRIORITY
+─────────────────────────────────────────
+
+Phase 1 (quick wins, no auth):
+  - Open Source Avatars JSON catalog (#1)
+  - Ready Player Me iFrame + GLB download (#2)
+  - Direct URL input (user pastes any .vrm/.glb link)
+
+Phase 2 (API key integrations):
+  - Sketchfab search + download (#4) — skeleton already in vrm-manager.js
+  - VRoid Hub OAuth (#5) — needs server proxy
+
+Phase 3 (advanced):
+  - Selfie-to-avatar via Ready Player Me or 3D-GLB (#16)
+  - Mixamo animation library (#6) — for animation, not avatars

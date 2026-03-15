@@ -13,6 +13,40 @@
 'use strict';
 
 /* =========================================================
+   Device Detection — early, before any DOM mutation
+   Adds classes to <html> so CSS can adapt immediately.
+   ========================================================= */
+(function applyDeviceMode() {
+    const isMobile = window.matchMedia('(max-width: 767px)').matches;
+    const isTablet = window.matchMedia('(min-width: 768px) and (max-width: 1024px)').matches;
+    const ua = navigator.userAgent || '';
+    const isAndroid = /Android/i.test(ua);
+    const isIOS = /iPad|iPhone|iPod/.test(ua);
+    const isHeadset = /OculusBrowser|Quest|Vive|Pico|Wolvic/i.test(ua);
+
+    const cl = document.documentElement.classList;
+    cl.toggle('is-mobile', isMobile);
+    cl.toggle('is-tablet', isTablet);
+    cl.toggle('is-desktop', !isMobile && !isTablet);
+    cl.toggle('is-android-phone', isAndroid && !isHeadset);
+    cl.toggle('is-ios', isIOS);
+    cl.toggle('is-headset', isHeadset);
+
+    // Re-evaluate on resize (orientation changes)
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            const mob = window.matchMedia('(max-width: 767px)').matches;
+            const tab = window.matchMedia('(min-width: 768px) and (max-width: 1024px)').matches;
+            cl.toggle('is-mobile', mob);
+            cl.toggle('is-tablet', tab);
+            cl.toggle('is-desktop', !mob && !tab);
+        }, 150);
+    });
+})();
+
+/* =========================================================
    Speech Settings (persisted)
    ========================================================= */
 const SpeechSettings = {
@@ -21,6 +55,7 @@ const SpeechSettings = {
     voicePref: localStorage.getItem('speech_voice_pref') || 'any', // any|female|male
     rate: parseFloat(localStorage.getItem('speech_rate') || '0.9'),
     pitch: parseFloat(localStorage.getItem('speech_pitch') || '1.0'),
+    autoSend: localStorage.getItem('stt_auto_send') === 'true',
 };
 
 /* =========================================================
@@ -383,18 +418,73 @@ function vendorAssertOrAbort() {
 }
 
 /* =========================================================
+   VRM Manager IndexedDB Blob Restore
+   ========================================================= */
+function loadBlobFromVRMCache(fileKey) {
+    return new Promise((resolve) => {
+        try {
+            const req = indexedDB.open('vrm_avatar_cache', 1);
+            req.onerror = () => resolve(null);
+            req.onsuccess = () => {
+                try {
+                    const db = req.result;
+                    const tx = db.transaction('avatars', 'readonly');
+                    const get = tx.objectStore('avatars').get(fileKey);
+                    get.onsuccess = () => {
+                        if (get.result && get.result.blob) {
+                            const url = URL.createObjectURL(get.result.blob);
+                            resolve(url);
+                        } else {
+                            resolve(null);
+                        }
+                    };
+                    get.onerror = () => resolve(null);
+                } catch (_) {
+                    resolve(null);
+                }
+            };
+            req.onupgradeneeded = (e) => {
+                // DB doesn't exist yet — nothing cached
+                e.target.transaction.abort();
+                resolve(null);
+            };
+        } catch (_) {
+            resolve(null);
+        }
+    });
+}
+
+/* =========================================================
    Avatar Manifest Loader
    ========================================================= */
 async function loadAvatarManifest() {
     try {
-        const res = await fetch(AVATAR_MANIFEST_URL, { cache: 'no-store' });
-        if (!res.ok) throw new Error(`Manifest fetch failed: ${res.status} ${res.statusText}`);
+        // Check for VRM Manager manifest override (includes downloaded VRM avatars)
+        const override = localStorage.getItem('vrm_manager_manifest_override');
+        let data;
 
-        const data = await res.json();
+        if (override) {
+            try {
+                data = JSON.parse(override);
+                console.log('[Main] Using VRM Manager manifest override with', (data.items || []).length, 'avatars');
+            } catch (_) {
+                data = null;
+            }
+        }
+
+        if (!data) {
+            const res = await fetch(AVATAR_MANIFEST_URL, { cache: 'no-store' });
+            if (!res.ok) throw new Error(`Manifest fetch failed: ${res.status} ${res.statusText}`);
+            data = await res.json();
+        }
+
         const basePath = (data && data.basePath) || '/vendor/avatars';
         const items = (data && data.items) || [];
 
         if (!Array.isArray(items)) throw new Error('Manifest format invalid: items must be an array');
+
+        // Collect blob URLs from VRM Manager downloads
+        const blobMap = JSON.parse(localStorage.getItem('vrm_manager_blob_urls') || '{}');
 
         avatarBasePath = basePath.replace(/\/$/, '');
         avatarItems = items
@@ -402,11 +492,65 @@ async function loadAvatarManifest() {
             .map((x) => ({
                 name: x.name || x.file,
                 file: x.file,
-                url: `${avatarBasePath}/${x.file}`,
+                url: blobMap[x.file] || `${avatarBasePath}/${x.file}`,
+                format: x.format || (x.file.endsWith('.vrm') ? 'vrm' : 'glb'),
             }));
 
         populateAvatarSelect(avatarItems);
         window.__AVATAR_ITEMS__ = avatarItems; // expose to module bridge
+
+        // Check if VRM Manager directed us to load a specific avatar
+        const useAvatar = localStorage.getItem('vrm_manager_use_avatar');
+        if (useAvatar) {
+            try {
+                const selection = JSON.parse(useAvatar);
+                localStorage.removeItem('vrm_manager_use_avatar');
+
+                // Try to find in manifest items by file or name
+                let idx = avatarItems.findIndex((x) => x.file === selection.file || x.name === selection.name);
+
+                // If not found in manifest, add it dynamically (e.g. downloaded via VRM Manager)
+                if (idx < 0 && selection.url) {
+                    // For downloaded avatars, blob URLs expire on page reload.
+                    // Try to restore from VRM Manager's IndexedDB cache.
+                    let resolvedUrl = selection.url;
+                    if (resolvedUrl.startsWith('blob:')) {
+                        const fileKey = 'file:' + (selection.file || selection.id);
+                        const cached = await loadBlobFromVRMCache(fileKey);
+                        if (cached) resolvedUrl = cached;
+                    }
+
+                    avatarItems.push({
+                        name: selection.name || selection.file || 'VRM Avatar',
+                        file: selection.file || selection.id,
+                        url: resolvedUrl,
+                        format: selection.format || 'vrm',
+                    });
+                    idx = avatarItems.length - 1;
+                    populateAvatarSelect(avatarItems);
+                    window.__AVATAR_ITEMS__ = avatarItems;
+                }
+
+                if (idx >= 0) {
+                    // For existing manifest items with stale blob URLs, try IndexedDB restore
+                    const item = avatarItems[idx];
+                    if (item.url && item.url.startsWith('blob:')) {
+                        const fileKey = 'file:' + item.file;
+                        const cached = await loadBlobFromVRMCache(fileKey);
+                        if (cached) item.url = cached;
+                    }
+
+                    const select = $('avatar-select');
+                    if (select) select.value = String(idx);
+                    // Store the index so loadDefaultAvatarFromManifest loads it
+                    window.__vrm_manager_avatar_idx = idx;
+                    console.log('[Main] VRM Manager selected avatar:', selection.name, 'at index', idx);
+                }
+            } catch (e) {
+                console.warn('[Main] VRM Manager avatar selection error:', e);
+            }
+        }
+
         return avatarItems;
     } catch (e) {
         logError('Avatar manifest load failed', e);
@@ -478,7 +622,7 @@ function frameObjectToCamera(object, fitOffset = 1.35) {
     const fitWidthDistance = fitHeightDistance / camera.aspect;
     const distance = fitOffset * Math.max(fitHeightDistance, fitWidthDistance);
 
-    const direction = new THREE.Vector3(1, 0.6, 1).normalize();
+    const direction = new THREE.Vector3(0, 0.5, 1).normalize();
     camera.position.copy(direction.multiplyScalar(distance));
 
     camera.near = Math.max(0.01, distance / 100);
@@ -639,19 +783,42 @@ function disposeObject3D(obj) {
 /* ============================
    Avatar Loading
    ============================ */
-function waitForViewerEngineReady(timeoutMs = 8000) {
-    if (window.__NEXUS_VIEWER_READY__) {
-        const p = window.__NEXUS_VIEWER_READY__;
-        const t = new Promise((_, reject) => setTimeout(() => reject(new Error('ViewerEngine not ready')), timeoutMs));
-        return Promise.race([p, t]).then(() => true);
+function waitForViewerEngineReady(timeoutMs = 30000) {
+    // If already ready, resolve immediately
+    if (window.NEXUS_VIEWER && typeof window.NEXUS_VIEWER.loadAvatar === 'function') {
+        console.log('[Main] ViewerEngine already ready');
+        return Promise.resolve(true);
     }
 
+    console.log('[Main] Waiting for ViewerEngine...', {
+        hasReadyPromise: !!window.__NEXUS_VIEWER_READY__,
+        hasNexusViewer: !!window.NEXUS_VIEWER,
+    });
+
+    // Hybrid: poll for NEXUS_VIEWER (handles any load path) with timeout
     const start = Date.now();
     return new Promise((resolve, reject) => {
+        // Also listen to the ready promise if available
+        if (window.__NEXUS_VIEWER_READY__) {
+            window.__NEXUS_VIEWER_READY__.then(() => {
+                console.log('[Main] ViewerEngine ready via promise');
+                resolve(true);
+            });
+        }
+
         (function tick() {
-            if (window.NEXUS_VIEWER && typeof window.NEXUS_VIEWER.loadAvatar === 'function') return resolve(true);
-            if (Date.now() - start > timeoutMs) return reject(new Error('ViewerEngine not ready'));
-            setTimeout(tick, 50);
+            if (window.NEXUS_VIEWER && typeof window.NEXUS_VIEWER.loadAvatar === 'function') {
+                console.log('[Main] ViewerEngine ready via polling after', Date.now() - start, 'ms');
+                return resolve(true);
+            }
+            if (Date.now() - start > timeoutMs) {
+                console.error('[Main] ViewerEngine not ready after', timeoutMs, 'ms', {
+                    hasNexusViewer: !!window.NEXUS_VIEWER,
+                    docReadyState: document.readyState,
+                });
+                return reject(new Error('ViewerEngine not ready (timeout)'));
+            }
+            setTimeout(tick, 100);
         })();
     });
 }
@@ -665,15 +832,18 @@ function loadAvatar(url, source) {
 
         (async () => {
             try {
-                await waitForViewerEngineReady(8000);
+                await waitForViewerEngineReady(15000);
                 await window.NEXUS_VIEWER.loadAvatar(url);
 
                 /* NEXUS_PATCH_LIFE_ENGINE_REGISTER_VIEWER */
-                try {
-                    const root = window.NEXUS_VIEWER?.currentRoot || null;
-                    const hasClips = Array.isArray(window.NEXUS_VIEWER?.clips) && window.NEXUS_VIEWER.clips.length > 0;
-                    window.NEXUS_PROCEDURAL_ANIMATOR?.registerAvatar?.(root, hasClips);
-                } catch (_) {}
+                // Note: ProceduralAnimator registration now handled inside AvatarManager.setAvatarByUrl()
+                // Auto-blink also starts automatically via AvatarManager._buildVRMLoaderBridge()
+                console.log('[Main] Avatar loaded via ViewerEngine', {
+                    root: !!window.NEXUS_VIEWER?.avatarManager?.currentRoot,
+                    vrmLoader: !!window.NEXUS_VIEWER?.avatarManager?.vrmLoader,
+                    clips: window.NEXUS_VIEWER?.avatarManager?.currentClips?.length || 0,
+                    proceduralAnimator: !!window.NEXUS_PROCEDURAL_ANIMATOR,
+                });
                 stopLoaderWatchdog();
                 hideLoading();
                 setStatus('idle', 'READY');
@@ -682,8 +852,20 @@ function loadAvatar(url, source) {
                 console.log(`[Nexus] Avatar loaded (viewer-engine):`, url);
             } catch (e) {
                 stopLoaderWatchdog();
-                console.error(e);
-                showLoading('Viewer engine not ready / failed to load avatar. See console.');
+                console.error('[Main] loadAvatar failed:', e.message, {
+                    url,
+                    source,
+                    hasNexusViewer: !!window.NEXUS_VIEWER,
+                    hasLoadAvatar: typeof window.NEXUS_VIEWER?.loadAvatar,
+                    useGltfEngine: !!window.__USE_GLTF_VIEWER_ENGINE__,
+                    hasReadyPromise: !!window.__NEXUS_VIEWER_READY__,
+                    docReadyState: document.readyState,
+                    containerExists: !!(
+                        document.getElementById('avatar-viewport') || document.getElementById('avatar-container')
+                    ),
+                });
+                const detail = e.message || String(e);
+                showLoading(`Failed to load avatar: ${detail}`);
                 setStatus('idle', 'ERROR');
             }
         })();
@@ -802,12 +984,21 @@ function loadAvatar(url, source) {
 }
 
 function loadDefaultAvatarFromManifest() {
-    if (avatarItems && avatarItems.length > 0) {
-        loadAvatar(avatarItems[0].url, 'manifest(default)');
-    } else {
+    if (!avatarItems || avatarItems.length === 0) {
         showLoading('No avatars found in manifest. Upload a .glb/.gltf to test.');
         setStatus('idle', 'READY');
+        return;
     }
+
+    // If VRM Manager selected a specific avatar, load that one
+    const vmIdx = window.__vrm_manager_avatar_idx;
+    if (vmIdx != null && avatarItems[vmIdx]) {
+        delete window.__vrm_manager_avatar_idx;
+        loadAvatar(avatarItems[vmIdx].url, 'vrm-manager');
+        return;
+    }
+
+    loadAvatar(avatarItems[0].url, 'manifest(default)');
 }
 
 /* ============================
@@ -1048,6 +1239,17 @@ function loadSTTSettingsIntoUI() {
     if (sttInterimResults) sttInterimResults.checked = sttConfig.interimResults;
     if (sttMicrophone && sttConfig.microphoneDeviceId) sttMicrophone.value = sttConfig.microphoneDeviceId;
 
+    // Auto-send setting
+    const sttAutoSend = $('stt-auto-send');
+    if (sttAutoSend) {
+        sttAutoSend.checked = SpeechSettings.autoSend;
+        sttAutoSend.addEventListener('change', () => {
+            SpeechSettings.autoSend = sttAutoSend.checked;
+            localStorage.setItem('stt_auto_send', sttAutoSend.checked ? 'true' : 'false');
+            console.log('[Main] Auto-send', sttAutoSend.checked ? 'enabled' : 'disabled');
+        });
+    }
+
     // Update provider-specific UI
     updateSTTProviderUI(sttConfig.provider);
 }
@@ -1255,6 +1457,10 @@ function setEmotionPressed(btn) {
 }
 
 function setupEventListeners() {
+    // Clear chat input on load (prevents browser autocomplete filling stale text)
+    const chatInput = $('speech-text');
+    if (chatInput) chatInput.value = '';
+
     const avatarSelect = $('avatar-select');
     if (avatarSelect) {
         avatarSelect.addEventListener('change', (e) => {
@@ -1274,8 +1480,8 @@ function setupEventListeners() {
             const fileName = file.name.toLowerCase();
             const ext = fileName.split('.').pop();
 
-            if (ext !== 'glb' && ext !== 'gltf') {
-                showMessage('Please upload a .glb or .gltf file', 'error');
+            if (ext !== 'glb' && ext !== 'gltf' && ext !== 'vrm') {
+                showMessage('Please upload a .glb, .gltf, or .vrm file', 'error');
                 e.target.value = '';
                 return;
             }
@@ -1285,6 +1491,10 @@ function setupEventListeners() {
                     'Warning: .gltf files with external assets may not load correctly. .glb is recommended.',
                     'warning'
                 );
+            }
+
+            if (ext === 'vrm') {
+                console.log('[Main] VRM file detected — loading via VRMLoader path');
             }
 
             const blobURL = URL.createObjectURL(file);
@@ -1342,6 +1552,20 @@ function setupEventListeners() {
             const emotion = (btn.dataset.emotion || '').toLowerCase();
             try {
                 window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.(emotion, 1600);
+            } catch (_) {}
+            // Set VRM/MorphTarget expression via Phase 3 bridge
+            try {
+                const vrmLoader = window.NEXUS_VIEWER?.avatarManager?.vrmLoader;
+                if (vrmLoader) {
+                    const vrmEmotion = emotion === 'dance' ? 'happy' : emotion;
+                    vrmLoader.setEmotion(vrmEmotion, 0.7);
+                    // Auto-clear emotion after 2s
+                    setTimeout(() => {
+                        try {
+                            vrmLoader.setEmotion('neutral', 0);
+                        } catch (_) {}
+                    }, 2000);
+                }
             } catch (_) {}
             const mapped = Object.keys(animations).find((k) => k.includes(emotion)) || findIdleAnimation();
             if (mapped) playAnimation(mapped, false);
@@ -1505,6 +1729,13 @@ function setupModals() {
         });
     });
 
+    // Live preview: toggle shadows immediately when radio is selected
+    document.querySelectorAll('input[name="desktop-shadow"]').forEach((radio) => {
+        radio.addEventListener('change', () => {
+            window.NEXUS_VIEWER?.setShadows(radio.value === 'on');
+        });
+    });
+
     if (settingsModal) {
         settingsModal.addEventListener('click', (e) => {
             if (e.target === settingsModal) hideModal(settingsModal);
@@ -1529,6 +1760,12 @@ function openSettings() {
     const savedBg = localStorage.getItem('desktop_bg') || 'black';
     const bgRadio = document.querySelector(`input[name="desktop-bg"][value="${savedBg}"]`);
     if (bgRadio) bgRadio.checked = true;
+
+    // Pre-select saved shadow setting
+    const savedShadow = localStorage.getItem('desktop_shadow') || 'off';
+    const shadowRadio = document.querySelector(`input[name="desktop-shadow"][value="${savedShadow}"]`);
+    if (shadowRadio) shadowRadio.checked = true;
+
     loadSTTSettingsIntoUI();
     refreshVoiceList();
 
@@ -1917,6 +2154,12 @@ function saveSettings() {
     localStorage.setItem('desktop_bg', desktopBg);
     window.viewerEngine?.setDesktopBackground(desktopBg);
 
+    // Persist shadow setting
+    const shadowRadio = document.querySelector('input[name="desktop-shadow"]:checked');
+    const desktopShadow = shadowRadio ? shadowRadio.value : 'off';
+    localStorage.setItem('desktop_shadow', desktopShadow);
+    window.NEXUS_VIEWER?.setShadows(desktopShadow === 'on');
+
     // ✅ Persist provider settings
     localStorage.setItem('ai_provider', provider);
     localStorage.setItem('ai_api_key', apiKey);
@@ -2017,21 +2260,95 @@ function saveSettings() {
 async function handleUserMessage(text) {
     addMessageToHistory('user', text);
 
-    // ✅ Add user message to chat session history
+    // Add user message to chat session history
     chatHistory.addMessage('user', text);
+
+    // Persist chat
+    _persistChat();
 
     setStatus('listening', 'THINKING...');
 
-    // Show typing indicator while waiting for response
+    // Try streaming first, fallback to non-streaming
+    const canStream =
+        window._nexusLLM &&
+        typeof window._nexusLLM.sendMessageStream === 'function' &&
+        config.provider !== 'none' &&
+        config.provider !== 'ollabridge' &&
+        config.provider !== 'watsonx';
+
+    if (canStream) {
+        await _handleStreamingResponse(text);
+    } else {
+        await _handleNonStreamingResponse(text);
+    }
+}
+
+// Streaming response: tokens appear word-by-word in the chat
+async function _handleStreamingResponse(text) {
+    // Create an empty bot message element that we'll fill progressively
+    const { textDiv, row } = _createStreamingBotMessage();
+
+    if (window.setTypingIndicator) window.setTypingIndicator(true);
+
+    try {
+        const history = window.chatHistory.getHistory();
+        const systemPrompt = config.systemPrompt || 'You are a helpful AI assistant named Nexus.';
+        let accumulated = '';
+
+        const fullText = await window._nexusLLM.sendMessageStream(text, systemPrompt, history, (token) => {
+            // Hide typing indicator on first token
+            if (!accumulated && window.setTypingIndicator) window.setTypingIndicator(false);
+            accumulated += token;
+            textDiv.textContent = accumulated;
+            // Scroll chat
+            const chatEl = $('chat-history');
+            if (chatEl) chatEl.scrollTop = chatEl.scrollHeight;
+        });
+
+        if (window.setTypingIndicator) window.setTypingIndicator(false);
+
+        const displayText = fullText || accumulated || 'No response';
+        textDiv.textContent = displayText;
+
+        // Mirror to AR overlay
+        if (window._arAppendBubble) window._arAppendBubble('bot', displayText);
+
+        // Forward to VR
+        if (window.sendBotResponseToVR) {
+            window.sendBotResponseToVR({
+                text: displayText,
+                attachments: [],
+                avatar_directives: {},
+                persona_context: null,
+            });
+        }
+
+        chatHistory.addMessage('assistant', displayText);
+        _persistChat();
+        _applyEmotionFromText(displayText);
+        speakText(displayText);
+        setStatus('idle', 'READY');
+    } catch (error) {
+        if (window.setTypingIndicator) window.setTypingIndicator(false);
+        logError('Streaming error, falling back', error);
+
+        // Remove the empty streaming message
+        if (row.parentElement) row.parentElement.removeChild(row);
+
+        // Fallback to non-streaming
+        await _handleNonStreamingResponse(text);
+    }
+}
+
+// Non-streaming response (original behavior + retry button)
+async function _handleNonStreamingResponse(text) {
     if (window.setTypingIndicator) window.setTypingIndicator(true);
 
     try {
         const response = config.provider === 'none' ? getSimpleResponse(text) : await callLLM(text);
 
-        // Hide typing indicator
         if (window.setTypingIndicator) window.setTypingIndicator(false);
 
-        // Handle structured response (object with text + attachments) or plain string
         let displayText;
         let attachments = [];
         if (response && typeof response === 'object' && typeof response.text === 'string') {
@@ -2043,7 +2360,6 @@ async function handleUserMessage(text) {
 
         addMessageToHistory('avatar', displayText, attachments);
 
-        // ✅ Forward rich response (with attachments) to VR panel
         if (window.sendBotResponseToVR) {
             window.sendBotResponseToVR({
                 text: displayText,
@@ -2053,16 +2369,16 @@ async function handleUserMessage(text) {
             });
         }
 
-        // ✅ Add assistant response to chat session history
         chatHistory.addMessage('assistant', displayText);
-
+        _persistChat();
+        _applyEmotionFromText(displayText);
         speakText(displayText);
+        setStatus('idle', 'READY');
     } catch (error) {
         if (window.setTypingIndicator) window.setTypingIndicator(false);
         logError('Error processing message', error);
 
         if (error.name === 'PersonaUnavailableError') {
-            // Friendly avatar message explaining what happened
             const friendlyMsg =
                 `The persona "${error.modelName}" is no longer available. ` +
                 `You can select a different model in Settings, or refresh the model list.`;
@@ -2071,13 +2387,80 @@ async function handleUserMessage(text) {
             showMessage('Persona unavailable \u2014 open Settings to choose another model', 'warning');
             setStatus('idle', 'READY');
         } else {
-            const errorMsg = 'Sorry, I encountered an error. Please check your settings.';
-            addMessageToHistory('avatar', errorMsg);
-            chatHistory.addMessage('assistant', errorMsg);
+            // Show error with retry button
+            _addErrorWithRetry(text, error);
             setStatus('idle', 'ERROR');
             setTimeout(() => setStatus('idle', 'READY'), 2000);
         }
     }
+}
+
+// Creates an empty bot message div for streaming token-by-token
+function _createStreamingBotMessage() {
+    const chatEl = $('chat-history');
+    if (!chatEl) return { textDiv: document.createElement('div'), row: document.createElement('div') };
+
+    const emptyState = chatEl.querySelector('.empty-state');
+    if (emptyState) emptyState.remove();
+
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'chat-message avatar';
+
+    const senderDiv = document.createElement('div');
+    senderDiv.className = 'message-sender avatar';
+    senderDiv.textContent = 'NEXUS';
+
+    const textDiv = document.createElement('div');
+    textDiv.className = 'message-text';
+    textDiv.textContent = '';
+
+    messageDiv.appendChild(senderDiv);
+    messageDiv.appendChild(textDiv);
+
+    const row = document.createElement('div');
+    row.className = 'chat-row';
+    row.appendChild(messageDiv);
+    chatEl.appendChild(row);
+    chatEl.scrollTop = chatEl.scrollHeight;
+
+    return { textDiv, row };
+}
+
+// Show error message with a retry button
+function _addErrorWithRetry(originalText, error) {
+    const chatEl = $('chat-history');
+    if (!chatEl) return;
+
+    const row = document.createElement('div');
+    row.className = 'chat-row';
+
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'chat-message avatar';
+
+    const senderDiv = document.createElement('div');
+    senderDiv.className = 'message-sender avatar';
+    senderDiv.textContent = 'NEXUS';
+
+    const textDiv = document.createElement('div');
+    textDiv.className = 'message-text';
+    textDiv.textContent = 'Sorry, I encountered an error. ';
+
+    const retryBtn = document.createElement('button');
+    retryBtn.className = 'retry-btn';
+    retryBtn.textContent = 'Retry';
+    retryBtn.addEventListener('click', () => {
+        // Remove this error message
+        if (row.parentElement) row.parentElement.removeChild(row);
+        // Retry the message (don't re-add to user history)
+        _handleNonStreamingResponse(originalText);
+    });
+
+    textDiv.appendChild(retryBtn);
+    msgDiv.appendChild(senderDiv);
+    msgDiv.appendChild(textDiv);
+    row.appendChild(msgDiv);
+    chatEl.appendChild(row);
+    chatEl.scrollTop = chatEl.scrollHeight;
 }
 
 function getSimpleResponse(text) {
@@ -2126,6 +2509,39 @@ async function callLLM(userMessage) {
 /* ============================
    Speech
    ============================ */
+/**
+ * Detect emotion from response text and apply to avatar expression.
+ * Uses simple keyword heuristics — lightweight and instant.
+ */
+function _applyEmotionFromText(text) {
+    const t = (text || '').toLowerCase();
+    let emotion = 'neutral';
+    let mode = 'idle';
+
+    if (/\b(haha|lol|😂|😄|great|awesome|wonderful|fantastic|love|exciting|glad|happy)\b/.test(t)) {
+        emotion = 'happy';
+        mode = 'happy';
+    } else if (/\b(sorry|unfortunately|sad|miss|regret|disappointed|😢)\b/.test(t)) {
+        emotion = 'sad';
+        mode = 'idle';
+    } else if (/\b(think|hmm|consider|perhaps|interesting|curious|wonder)\b/.test(t)) {
+        emotion = 'neutral';
+        mode = 'thinking';
+    } else if (/\b(wow|amazing|incredible|surprise|shocked|😮|😲)\b/.test(t)) {
+        emotion = 'surprised';
+        mode = 'idle';
+    }
+
+    try {
+        window.NEXUS_VIEWER?.avatarManager?.vrmLoader?.setEmotion?.(emotion, 0.5);
+    } catch (_) {}
+    if (mode !== 'idle') {
+        try {
+            window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.(mode, 4000);
+        } catch (_) {}
+    }
+}
+
 function speakText(text) {
     setStatus('speaking', 'SPEAKING...');
 
@@ -2135,6 +2551,14 @@ function speakText(text) {
     } catch (_) {}
     try {
         window.NEXUS_VIEWER?.playAnimationByName?.('Talk');
+    } catch (_) {}
+    // Start lip-sync while speaking (Phase 3 engine + legacy oscillator fallback)
+    try {
+        const rate = window.SpeechSettings?.rate || 1.0;
+        window.NEXUS_LIP_SYNC?.start?.(text, rate);
+    } catch (_) {}
+    try {
+        window.NEXUS_VIEWER?.avatarManager?.vrmLoader?.startLipSync?.();
     } catch (_) {}
 
     if (!('speechSynthesis' in window)) {
@@ -2172,7 +2596,15 @@ function speakText(text) {
 
     utterance.onend = () => {
         /* NEXUS_PATCH_LIFE_ENGINE_TALK_END */
-        // After speaking, apply persona's emotional baseline instead of plain idle
+        try {
+            window.NEXUS_LIP_SYNC?.stop?.();
+        } catch (_) {}
+        try {
+            window.NEXUS_BEHAVIOR?.onSpeechEnd?.();
+        } catch (_) {}
+        try {
+            window.NEXUS_VIEWER?.avatarManager?.vrmLoader?.stopLipSync?.();
+        } catch (_) {}
         const personaMode =
             typeof window.PersonaContextBridge !== 'undefined'
                 ? window.PersonaContextBridge.getDefaultAvatarMode()
@@ -2189,6 +2621,15 @@ function speakText(text) {
 
     utterance.onerror = () => {
         /* NEXUS_PATCH_LIFE_ENGINE_TALK_ERR */
+        try {
+            window.NEXUS_LIP_SYNC?.stop?.();
+        } catch (_) {}
+        try {
+            window.NEXUS_BEHAVIOR?.onSpeechEnd?.();
+        } catch (_) {}
+        try {
+            window.NEXUS_VIEWER?.avatarManager?.vrmLoader?.stopLipSync?.();
+        } catch (_) {}
         try {
             window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.('idle', 1);
         } catch (_) {}
@@ -2290,18 +2731,24 @@ function initSpeechRecognition() {
 
             console.log('[Desktop STT] 📤 Populated input field with:', transcript);
 
-            // Show confidence feedback
-            showMessage(
-                `🎤 Transcribed (${confidencePercent}% confidence): "${transcript}"\nReview and press SEND, or click ACTIVATE VOICE to record again.`,
-                'info'
-            );
-
-            // Focus and select for easy review
-            inputField.focus();
-            inputField.select();
-
             // Stop listening after final result
             stopVoiceInput();
+
+            // Auto-send if enabled and confidence > 80%
+            if (SpeechSettings.autoSend && confidence >= 0.8 && transcript.trim().length > 0) {
+                console.log(`[Desktop STT] Auto-sending (${confidencePercent}% confidence)`);
+                showMessage(`🎤 Auto-sent (${confidencePercent}% confidence): "${transcript}"`, 'info');
+                handleUserMessage(transcript.trim());
+                inputField.value = '';
+            } else {
+                // Show confidence feedback and let user review
+                showMessage(
+                    `🎤 Transcribed (${confidencePercent}% confidence): "${transcript}"\nReview and press SEND, or click ACTIVATE VOICE to record again.`,
+                    'info'
+                );
+                inputField.focus();
+                inputField.select();
+            }
         } else {
             // Interim result - show in italic
             console.log(`[Desktop STT] 📝 INTERIM: "${transcript}"`);
@@ -2451,6 +2898,11 @@ function addMessageToHistory(sender, text, attachments) {
     row.appendChild(messageDiv);
     chatHistory.appendChild(row);
     chatHistory.scrollTop = chatHistory.scrollHeight;
+
+    // Mirror message to AR overlay (if active)
+    if (window._arAppendBubble) {
+        window._arAppendBubble(sender === 'user' ? 'user' : 'bot', text);
+    }
 }
 
 function clearHistory() {
@@ -2567,8 +3019,62 @@ class ChatSessionHistory {
     }
 }
 
-// ✅ Global chat session instance (accessible via window for VR integration)
+// Global chat session instance (accessible via window for VR integration)
 window.chatHistory = new ChatSessionHistory(500);
+
+/* ============================
+   Chat Persistence (localStorage)
+   ============================ */
+const CHAT_STORAGE_KEY = 'nexus_chat_messages';
+const CHAT_DISPLAY_KEY = 'nexus_chat_display';
+
+function _persistChat() {
+    try {
+        // Save LLM history (for context)
+        localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(window.chatHistory.getHistory()));
+        // Save display messages (user-facing, with sender labels)
+        const chatEl = document.getElementById('chat-history');
+        if (chatEl) {
+            const rows = chatEl.querySelectorAll('.chat-row');
+            const display = [];
+            rows.forEach((row) => {
+                const msg = row.querySelector('.chat-message');
+                if (!msg) return;
+                const sender = msg.classList.contains('user') ? 'user' : 'avatar';
+                const text = msg.querySelector('.message-text')?.textContent || '';
+                if (text) display.push({ sender, text });
+            });
+            localStorage.setItem(CHAT_DISPLAY_KEY, JSON.stringify(display));
+        }
+    } catch (_) {
+        /* storage full or unavailable */
+    }
+}
+
+function _restoreChat() {
+    try {
+        // Restore LLM context history
+        const saved = localStorage.getItem(CHAT_STORAGE_KEY);
+        if (saved) {
+            const msgs = JSON.parse(saved);
+            if (Array.isArray(msgs) && msgs.length > 0) {
+                window.chatHistory.messages = msgs;
+                console.log(`[ChatPersist] Restored ${msgs.length} context messages`);
+            }
+        }
+        // Restore display messages
+        const display = localStorage.getItem(CHAT_DISPLAY_KEY);
+        if (display) {
+            const items = JSON.parse(display);
+            if (Array.isArray(items) && items.length > 0) {
+                items.forEach((m) => addMessageToHistory(m.sender, m.text));
+                console.log(`[ChatPersist] Restored ${items.length} display messages`);
+            }
+        }
+    } catch (e) {
+        console.warn('[ChatPersist] Restore failed:', e);
+    }
+}
 
 /* ============================
    Collapsible Panels
@@ -2597,6 +3103,12 @@ function initCollapsiblePanels() {
    Init
    ============================ */
 async function init() {
+    console.log('[Main] init() called', {
+        readyState: document.readyState,
+        useGltfEngine: !!window.__USE_GLTF_VIEWER_ENGINE__,
+        hasNexusViewer: !!window.NEXUS_VIEWER,
+        hasReadyPromise: !!window.__NEXUS_VIEWER_READY__,
+    });
     showLoading('Loading 3D Avatar...');
     setStatus('idle', 'BOOTING...');
 
@@ -2624,6 +3136,7 @@ async function init() {
         loadConfigIntoUI();
         loadSpeechSettingsIntoUI();
         refreshVoiceList(); // initial attempt
+        _restoreChat(); // restore previous conversation from localStorage
 
         await loadAvatarManifest();
         loadDefaultAvatarFromManifest();
@@ -2639,6 +3152,151 @@ if (document.readyState === 'loading') {
 } else {
     init();
 }
+
+/* =====================================================================
+   AR CHAT OVERLAY — Bridges AR DOM overlay with the main chat system.
+   Activates voice + text input over the camera feed so users can speak
+   with the avatar while in AR mode on mobile.
+   ===================================================================== */
+(function initAROverlay() {
+    const overlay = document.getElementById('ar-dom-overlay');
+    if (!overlay) return;
+
+    const arChat = document.getElementById('ar-chat');
+    const arInput = document.getElementById('ar-chat-input');
+    const arSendBtn = document.getElementById('ar-send-btn');
+    const arVoiceBtn = document.getElementById('ar-voice-btn');
+    const arExitBtn = document.getElementById('ar-exit-btn');
+    const arPlaceBtn = document.getElementById('ar-place-btn');
+    const arScaleBtn = document.getElementById('ar-scale-btn');
+    const arStatus = document.getElementById('ar-status');
+
+    let arVoiceActive = false;
+
+    // --- Overlay activation via AR session events ---
+    window.addEventListener('ar-session-start', () => {
+        overlay.classList.add('ar-active');
+        if (arStatus) arStatus.textContent = 'Point at a surface';
+    });
+
+    window.addEventListener('ar-session-end', () => {
+        overlay.classList.remove('ar-active');
+        stopARVoice();
+    });
+
+    window.addEventListener('ar-floor-detected', () => {
+        if (arStatus) arStatus.textContent = 'Avatar placed — talk to me!';
+    });
+
+    // --- Send text message from AR input ---
+    function arSendMessage() {
+        if (!arInput) return;
+        const text = arInput.value.trim();
+        if (!text) return;
+        arInput.value = '';
+        appendARBubble('user', text);
+        // Reuse the main chat pipeline
+        if (typeof handleUserMessage === 'function') {
+            handleUserMessage(text);
+        }
+    }
+
+    if (arSendBtn) arSendBtn.addEventListener('click', arSendMessage);
+    if (arInput) {
+        arInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') arSendMessage();
+        });
+    }
+
+    // --- Voice input in AR ---
+    function startARVoice() {
+        arVoiceActive = true;
+        if (arVoiceBtn) arVoiceBtn.classList.add('ar-listening');
+        // Use the existing speech recognition system
+        if (typeof startVoiceInput === 'function') {
+            startVoiceInput();
+        }
+    }
+
+    function stopARVoice() {
+        arVoiceActive = false;
+        if (arVoiceBtn) arVoiceBtn.classList.remove('ar-listening');
+        if (typeof stopVoiceInput === 'function') {
+            stopVoiceInput();
+        }
+    }
+
+    if (arVoiceBtn) {
+        arVoiceBtn.addEventListener('click', () => {
+            if (arVoiceActive) stopARVoice();
+            else startARVoice();
+        });
+    }
+
+    // --- Exit AR ---
+    if (arExitBtn) {
+        arExitBtn.addEventListener('click', () => {
+            try {
+                const engine = window.NEXUS_VIEWER;
+                if (engine?.arSupport?.isARActive) {
+                    engine.arSupport.toggleAR();
+                }
+            } catch (e) {
+                console.warn('[AR Overlay] Exit error:', e);
+            }
+        });
+    }
+
+    // --- Place avatar ---
+    if (arPlaceBtn) {
+        arPlaceBtn.addEventListener('click', () => {
+            try {
+                const engine = window.NEXUS_VIEWER;
+                if (engine?.arSupport && engine?.avatarManager?.currentRoot) {
+                    engine.arSupport.placeAvatarAtReticle(engine.avatarManager.currentRoot);
+                    if (arStatus) arStatus.textContent = 'Avatar placed — talk to me!';
+                }
+            } catch (e) {
+                console.warn('[AR Overlay] Place error:', e);
+            }
+        });
+    }
+
+    // --- Scale toggle ---
+    let arScaleLevel = 1;
+    const SCALE_LEVELS = [1, 0.5, 0.25, 1.5];
+    if (arScaleBtn) {
+        arScaleBtn.addEventListener('click', () => {
+            try {
+                arScaleLevel = (arScaleLevel + 1) % SCALE_LEVELS.length;
+                const engine = window.NEXUS_VIEWER;
+                if (engine?.arSupport && engine?.avatarManager?.currentRoot) {
+                    engine.arSupport.setAvatarScale(engine.avatarManager.currentRoot, SCALE_LEVELS[arScaleLevel]);
+                    if (arScaleBtn) arScaleBtn.textContent = `SIZE ${SCALE_LEVELS[arScaleLevel]}x`;
+                }
+            } catch (e) {
+                console.warn('[AR Overlay] Scale error:', e);
+            }
+        });
+    }
+
+    // --- Mirror chat messages into the AR overlay ---
+    function appendARBubble(role, text) {
+        if (!arChat) return;
+        const bubble = document.createElement('div');
+        bubble.className = `ar-chat-bubble ar-chat-bubble--${role === 'user' ? 'user' : 'bot'}`;
+        bubble.textContent = text;
+        arChat.appendChild(bubble);
+        // Keep only last 8 messages visible to avoid clutter over camera
+        while (arChat.children.length > 8) {
+            arChat.removeChild(arChat.firstChild);
+        }
+        arChat.scrollTop = arChat.scrollHeight;
+    }
+
+    // Expose so the main addMessageToHistory can mirror to AR
+    window._arAppendBubble = appendARBubble;
+})();
 
 /* =====================================================================
    PATCH_LLM_PROXY_TEST_CONNECTION_V1
