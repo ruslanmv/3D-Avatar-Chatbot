@@ -2,9 +2,12 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+        <meta
+            name="viewport"
+            content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover"
+        />
         <!-- ✅ Updated name -->
-        <title>VR NEXUS Avatar - AI-Powered 3D Interface</title>
+        <title>HomePilot Avatar VR - AI-Powered 3D Interface</title>
 
         <meta
             name="description"
@@ -209,7 +212,7 @@
                         <div class="logo-icon" aria-hidden="true">⬢</div>
 
                         <!-- ✅ Updated visible name -->
-                        <h1>VR NEXUS AVATAR</h1>
+                        <h1>HomePilot Avatar VR</h1>
                     </div>
                     <div class="header-controls">
                         <button class="icon-btn" id="settings-btn" title="Settings" aria-label="Settings" type="button">
@@ -588,7 +591,7 @@
                             <label class="input-label" for="speech-voice-pref">VOICE PREFERENCE</label>
                             <select id="speech-voice-pref" class="select-input">
                                 <option value="any">Any</option>
-                                <option value="female">Prefer Female</option>
+                                <option value="female" selected>Prefer Female</option>
                                 <option value="male">Prefer Male</option>
                             </select>
                             <p class="voice-status" style="margin-top: 8px; opacity: 0.8">
@@ -756,6 +759,80 @@
                     </div>
 
                     <div class="config-section">
+                        <h3 class="config-title">VIEWPORT BACKGROUND</h3>
+                        <div class="provider-grid" id="bg-selector">
+                            <label class="provider-card">
+                                <input type="radio" name="desktop-bg" value="black" class="provider-radio" checked />
+                                <div class="provider-content">
+                                    <div
+                                        class="provider-icon"
+                                        style="
+                                            width: 28px;
+                                            height: 28px;
+                                            border-radius: 50%;
+                                            background: #000;
+                                            border: 2px solid #444;
+                                            margin: 0 auto;
+                                        "
+                                    ></div>
+                                    <div class="provider-name">Black</div>
+                                </div>
+                            </label>
+                            <label class="provider-card">
+                                <input type="radio" name="desktop-bg" value="dark" class="provider-radio" />
+                                <div class="provider-content">
+                                    <div
+                                        class="provider-icon"
+                                        style="
+                                            width: 28px;
+                                            height: 28px;
+                                            border-radius: 50%;
+                                            background: #1a1a2e;
+                                            border: 2px solid #444;
+                                            margin: 0 auto;
+                                        "
+                                    ></div>
+                                    <div class="provider-name">Dark Blue</div>
+                                </div>
+                            </label>
+                            <label class="provider-card">
+                                <input type="radio" name="desktop-bg" value="gray" class="provider-radio" />
+                                <div class="provider-content">
+                                    <div
+                                        class="provider-icon"
+                                        style="
+                                            width: 28px;
+                                            height: 28px;
+                                            border-radius: 50%;
+                                            background: #808080;
+                                            border: 2px solid #444;
+                                            margin: 0 auto;
+                                        "
+                                    ></div>
+                                    <div class="provider-name">Gray</div>
+                                </div>
+                            </label>
+                            <label class="provider-card">
+                                <input type="radio" name="desktop-bg" value="light" class="provider-radio" />
+                                <div class="provider-content">
+                                    <div
+                                        class="provider-icon"
+                                        style="
+                                            width: 28px;
+                                            height: 28px;
+                                            border-radius: 50%;
+                                            background: #b0b0b0;
+                                            border: 2px solid #444;
+                                            margin: 0 auto;
+                                        "
+                                    ></div>
+                                    <div class="provider-name">Light</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="config-section">
                         <h3 class="config-title">SYSTEM PROMPT</h3>
                         <textarea
                             id="system-prompt"
@@ -784,21 +861,74 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <div class="modal-overlay" id="info-modal">
             <div class="modal glass-panel">
                 <div class="modal-header">
-                    <h2 class="modal-title"><span class="title-icon">ℹ</span> SYSTEM INFORMATION</h2>
+                    <h2 class="modal-title"><span class="title-icon">ℹ</span> ABOUT</h2>
                     <button class="close-btn" id="close-info" type="button" aria-label="Close info">✕</button>
                 </div>
                 <div class="modal-content">
+                    <div class="info-section" style="text-align: center; padding: 1rem 0 0.5rem">
+                        <p
+                            style="
+                                font-family: var(--font-display);
+                                font-size: 1.4rem;
+                                font-weight: 900;
+                                letter-spacing: 0.15em;
+                                background: linear-gradient(135deg, var(--primary), var(--secondary));
+                                -webkit-background-clip: text;
+                                -webkit-text-fill-color: transparent;
+                                background-clip: text;
+                                margin-bottom: 0.5rem;
+                            "
+                        >
+                            NEXUS AVATAR
+                        </p>
+                        <p style="color: var(--text-muted); font-size: 0.85rem; letter-spacing: 0.05em">
+                            v2.0 &mdash; Enterprise 3D Avatar Chatbot
+                        </p>
+                    </div>
                     <div class="info-section">
-                        <h3 class="config-title">FEATURES</h3>
-                        <ul class="info-list">
-                            <li>🎭 <strong>Real-time 3D avatar</strong> with emotions and animations</li>
-                            <li>🗣️ <strong>Text-to-speech synthesis</strong></li>
-                            <li>🎤 <strong>Voice recognition</strong> (Chrome/Edge)</li>
-                            <li>🤖 <strong>Multi-provider AI</strong> (OpenAI, Claude, WatsonX)</li>
-                            <li>💾 <strong>Client-side storage</strong> for API keys</li>
-                            <li>🎨 <strong>Professional UI</strong> with glassmorphism</li>
-                            <li>🌐 <strong>Language selector</strong> for speech input/output</li>
-                        </ul>
+                        <p
+                            style="
+                                color: var(--text-secondary);
+                                font-size: 0.9rem;
+                                line-height: 1.7;
+                                margin-bottom: 1rem;
+                            "
+                        >
+                            Interactive 3D avatar with real-time AI chat, voice recognition, text-to-speech, WebXR VR/AR
+                            support, and multi-provider AI integration.
+                        </p>
+                        <div style="text-align: center; margin: 1.2rem 0">
+                            <a
+                                href="https://github.com/ruslanmv/3D-Avatar-Chatbot"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style="
+                                    display: inline-flex;
+                                    align-items: center;
+                                    gap: 8px;
+                                    color: var(--primary);
+                                    text-decoration: none;
+                                    font-family: var(--font-display);
+                                    font-weight: 600;
+                                    font-size: 0.85rem;
+                                    letter-spacing: 0.05em;
+                                    padding: 10px 20px;
+                                    border: 1px solid var(--glass-border);
+                                    border-radius: var(--border-radius-sm);
+                                    transition: all 0.3s;
+                                "
+                                onmouseover="
+                                    this.style.borderColor = 'var(--primary)';
+                                    this.style.boxShadow = 'var(--shadow-glow)';
+                                "
+                                onmouseout="
+                                    this.style.borderColor = '';
+                                    this.style.boxShadow = '';
+                                "
+                            >
+                                <span style="font-size: 1.1rem">&#9733;</span> Star on GitHub
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -827,6 +957,26 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
                 });
             });
         </script>
+
+        <!-- AR DOM Overlay (shown over camera feed in mobile AR mode) -->
+        <div id="ar-dom-overlay">
+            <div class="ar-controls">
+                <button
+                    id="ar-place-btn"
+                    class="primary-btn"
+                    style="padding: 12px 24px; font-size: 14px; border-radius: 12px; min-height: 48px"
+                >
+                    TAP TO PLACE
+                </button>
+                <button
+                    id="ar-scale-btn"
+                    class="secondary-btn"
+                    style="padding: 12px 16px; font-size: 14px; border-radius: 12px; min-height: 48px"
+                >
+                    RESIZE
+                </button>
+            </div>
+        </div>
 
         <!-- Speech and logging utilities (must load before main.js) -->
         <script defer src="js/nexus-logger.js"></script>

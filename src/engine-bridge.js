@@ -36,6 +36,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     const engine = new ViewerEngine(container);
     window.NEXUS_VIEWER = engine;
 
+    // Apply saved desktop background from settings
+    const savedBg = localStorage.getItem('desktop_bg');
+    if (savedBg) engine.setDesktopBackground(savedBg);
+
     // Resolve ready promise (for src/main.js)
     try {
         window.__resolveNexusViewerReady__?.(engine);
