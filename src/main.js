@@ -1844,10 +1844,22 @@ function applyPoseSettingsLive() {
     const vrm = window.vrmLoader?.currentVRM || window.NEXUS_VIEWER?.getCurrentVRM?.();
     if (vrm) {
         const root = vrm.scene || vrm;
-        pn.restoreNeutralPose(root);
-        pn.normalizeAvatarPose(root, {
-            rig: vrm.humanoid || null,
-        });
+        const np = window.NEXUS_NATURAL_POSE;
+        const humanoid = vrm.humanoid || root.userData?.vrmHumanoid || null;
+
+        // ── VRM path: use NaturalPosePlugin (industry-standard normalized bones)
+        // This matches how VRoid Hub displays models in natural poses.
+        if (np && humanoid && typeof humanoid.getNormalizedBoneNode === 'function') {
+            np.reset();
+            np.setPreset(patch.preset || 'relaxedStanding');
+            np.apply(root, { humanoid, preset: patch.preset });
+        } else {
+            // ── GLB fallback: world-space alignment via PoseNormalizer
+            pn.restoreNeutralPose(root);
+            pn.normalizeAvatarPose(root, {
+                rig: humanoid,
+            });
+        }
 
         // Re-capture rest pose for ProceduralAnimator
         if (window.NEXUS_PROCEDURAL_ANIMATOR) {
