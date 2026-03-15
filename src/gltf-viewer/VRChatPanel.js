@@ -832,7 +832,27 @@ export class VRChatPanel {
             mode: { x: P + (xrBtnW + 14) * 5, y: xrY, w: xrBtnW, h: xrH },
         };
 
-        return { W, H, handle, btnRow, chatArea, chips, settingsTop, avatarRect, settingsNav, xrSettingsRow };
+        // Avatar Pose row (below XR settings)
+        const poseY = xrY + xrH + 10;
+        const poseBtnW = (W - P * 2 - 14) / 2;
+        const poseSettingsRow = {
+            preset: { x: P, y: poseY, w: poseBtnW, h: xrH },
+            intensity: { x: P + poseBtnW + 14, y: poseY, w: poseBtnW, h: xrH },
+        };
+
+        return {
+            W,
+            H,
+            handle,
+            btnRow,
+            chatArea,
+            chips,
+            settingsTop,
+            avatarRect,
+            settingsNav,
+            xrSettingsRow,
+            poseSettingsRow,
+        };
     }
 
     _createHitboxes() {
@@ -901,6 +921,21 @@ export class VRChatPanel {
         this.buttons.xr_distance = xrDist;
         this.buttons.xr_bg = xrBg;
         this.buttons.xr_mode = xrMode;
+
+        // Pose settings hitboxes
+        const pose = L.poseSettingsRow;
+        const posePreset = this._makeHitbox('Btn:xr_pose_preset', pose.preset, 'button', { key: 'xr_pose_preset' });
+        const poseIntensity = this._makeHitbox('Btn:xr_pose_intensity', pose.intensity, 'button', {
+            key: 'xr_pose_intensity',
+        });
+
+        [posePreset, poseIntensity].forEach((m) => {
+            this.group.remove(m);
+            this.settingsGroup.add(m);
+        });
+
+        this.buttons.xr_pose_preset = posePreset;
+        this.buttons.xr_pose_intensity = poseIntensity;
     }
 
     _makeHitbox(name, rect, type, userData = {}) {
@@ -1355,6 +1390,17 @@ export class VRChatPanel {
             // AR not supported — show disabled
             this._drawXRSettingBtn(ctx, xr.mode, 'MODE', 'VR', false);
         }
+
+        // Pose Settings Row
+        const poseRow = L.poseSettingsRow;
+        const pn = window.NEXUS_POSE_NORMALIZER;
+        const pnSettings = pn ? pn.getSettings() : { preset: 'relaxedStanding', intensity: 0.35 };
+        const presetLabels = { relaxedStanding: 'RELAX', naturalIdle: 'IDLE', portrait: 'PORT', presentation: 'PRES' };
+        const presetLabel = presetLabels[pnSettings.preset] || 'RELAX';
+        this._drawXRSettingBtn(ctx, poseRow.preset, 'POSE', presetLabel);
+
+        const intLabel = (pnSettings.intensity * 100).toFixed(0) + '%';
+        this._drawXRSettingBtn(ctx, poseRow.intensity, 'STRENGTH', intLabel);
     }
 
     _drawXRSettingBtn(ctx, rect, label, value, isActive = true) {
@@ -1756,6 +1802,39 @@ export class VRChatPanel {
             const distMap = { near: 0.35, medium: 0.55, far: 0.85 };
             this._spawnDistance = distMap[this.xrSettings.panelDistance] || 0.55;
             console.log(`[VRChatPanel] Panel distance → ${this.xrSettings.panelDistance} (${this._spawnDistance}m)`);
+            this.redraw();
+            return true;
+        }
+
+        // Pose Preset cycle (relaxedStanding → naturalIdle → portrait → presentation)
+        if (key === 'xr_pose_preset') {
+            const pn = window.NEXUS_POSE_NORMALIZER;
+            if (pn) {
+                const presets = ['relaxedStanding', 'naturalIdle', 'portrait', 'presentation'];
+                const s = pn.getSettings();
+                const idx = presets.indexOf(s.preset);
+                const next = presets[(idx + 1) % presets.length];
+                pn.updateSettings({ preset: next });
+                console.log(`[VRChatPanel] Pose preset → ${next}`);
+            }
+            this.redraw();
+            return true;
+        }
+
+        // Pose Intensity cycle (0.2 → 0.35 → 0.55 → 0.75 → 1.0)
+        if (key === 'xr_pose_intensity') {
+            const pn = window.NEXUS_POSE_NORMALIZER;
+            if (pn) {
+                const levels = [0.2, 0.35, 0.55, 0.75, 1.0];
+                const s = pn.getSettings();
+                const closest = levels.reduce((a, b) =>
+                    Math.abs(b - s.intensity) < Math.abs(a - s.intensity) ? b : a
+                );
+                const idx = levels.indexOf(closest);
+                const next = levels[(idx + 1) % levels.length];
+                pn.updateSettings({ intensity: next });
+                console.log(`[VRChatPanel] Pose intensity → ${next}`);
+            }
             this.redraw();
             return true;
         }
