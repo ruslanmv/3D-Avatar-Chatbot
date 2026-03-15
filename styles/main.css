@@ -757,10 +757,9 @@ body {
 }
 
 .mobile-drawer-content {
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
+    padding: 0;
+    flex: 1;
+    overflow-y: auto;
 }
 
 .drawer-section {
@@ -1102,6 +1101,21 @@ body {
 .select-input:focus {
     border-color: var(--primary);
     box-shadow: 0 0 0 3px rgba(0, 229, 255, 0.1);
+}
+
+.select-input option {
+    background: #0b1724;
+    color: #ecf6ff;
+}
+
+.select-input option:checked {
+    background: #12314a;
+    color: #ffffff;
+}
+
+.select-input optgroup {
+    background: #08131d;
+    color: #7fdfff;
 }
 
 .textarea-input {
@@ -1633,18 +1647,25 @@ body {
 
     .content-layout {
         padding: 8px;
-        gap: 8px;
+        gap: 6px;
         grid-template-columns: 1fr;
+        /* Avatar gets a fixed compact height; chat fills the rest */
         grid-template-rows: auto minmax(0, 1fr);
+        overflow: hidden;
     }
 
     .avatar-panel {
         order: 1;
+        /* Prevent avatar from growing beyond its content */
+        max-height: 230px;
+        overflow: hidden;
     }
 
     .chat-panel {
         order: 2;
         min-height: 0;
+        /* Ensure the chat panel is visible and fills remaining space */
+        overflow: hidden;
     }
 
     .avatar-card {
@@ -1652,20 +1673,51 @@ body {
     }
 
     .avatar-preview-wrap {
-        min-height: 160px;
+        /* Compact avatar on phones — gives maximum room to chat */
+        min-height: 140px;
         height: 160px;
+        max-height: 160px;
+    }
+
+    .avatar-viewport {
+        /* Override desktop min-height that forces avatar too tall */
+        min-height: 0;
+    }
+
+    /* Hide HUD corner brackets on mobile */
+    .hud-overlay {
+        display: none;
     }
 
     .chat-card {
         min-height: 0;
         height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chat-card-header {
+        flex-shrink: 0;
+        padding: 8px 12px;
+    }
+
+    .chat-main {
+        flex: 1 1 0;
+        min-height: 0;
+        overflow-y: auto;
     }
 
     .chat-history {
         padding: 10px 12px;
+        overflow-y: auto;
     }
 
+    /* Sticky input — always visible above the keyboard */
     .chat-input-shell {
+        flex-shrink: 0;
+        position: sticky;
+        bottom: 0;
+        z-index: 10;
         padding: 8px 10px calc(env(safe-area-inset-bottom, 0px) + 8px);
     }
 
@@ -1708,6 +1760,12 @@ body {
     }
 }
 
+/* Hide VR button on normal phones via device detection classes */
+html.is-mobile .xr-btn--vr,
+html.is-android-phone .xr-btn--vr {
+    display: none !important;
+}
+
 /* Small phones */
 @media (max-width: 480px) {
     .topbar {
@@ -1719,16 +1777,22 @@ body {
     }
 
     .content-layout {
-        padding: 6px;
+        padding: 4px;
+        gap: 4px;
+    }
+
+    .avatar-panel {
+        max-height: 200px;
     }
 
     .avatar-preview-wrap {
-        min-height: 140px;
-        height: 140px;
+        min-height: 120px;
+        height: 120px;
+        max-height: 120px;
     }
 
     .avatar-footer {
-        padding: 6px 8px;
+        padding: 4px 8px;
     }
 
     .emotion-trigger {
@@ -1867,12 +1931,14 @@ body {
     }
 }
 
-/* Mobile body class (set by MobileSupport.js) */
-body.nexus-mobile .hud-overlay {
+/* Mobile body class (set by MobileSupport.js or device detection) */
+body.nexus-mobile .hud-overlay,
+html.is-mobile .hud-overlay {
     display: none; /* hide HUD corners on tiny screens */
 }
 
-body.nexus-mobile .status-badge {
+body.nexus-mobile .status-badge,
+html.is-mobile .status-badge {
     font-size: 0.65rem;
     padding: 4px 8px;
 }
@@ -1973,6 +2039,34 @@ body.nexus-mobile .status-badge {
 }
 
 /* AR DOM overlay (shown over camera feed on mobile AR) */
+/* ============================================
+   Retry Button (inline in error messages)
+   ============================================ */
+.retry-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 8px;
+    padding: 4px 14px;
+    font-family: var(--font-display, 'Orbitron', monospace);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: #fff;
+    background: rgba(0, 229, 255, 0.25);
+    border: 1px solid rgba(0, 229, 255, 0.4);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.retry-btn:hover {
+    background: rgba(0, 229, 255, 0.45);
+}
+
+/* ============================================
+   AR DOM Overlay — Full-screen chat-enabled AR UI
+   ============================================ */
 #ar-dom-overlay {
     display: none;
 }
@@ -1985,21 +2079,177 @@ body.nexus-mobile .status-badge {
     width: 100%;
     height: 100%;
     flex-direction: column;
-    justify-content: flex-end;
-    align-items: center;
-    padding: 20px;
+    justify-content: space-between;
+    padding: env(safe-area-inset-top, 12px) 12px env(safe-area-inset-bottom, 12px);
     pointer-events: none;
     z-index: 1000;
 }
 
-#ar-dom-overlay .ar-controls {
+/* Top bar: exit button + status */
+.ar-overlay-top {
     pointer-events: auto;
     display: flex;
-    gap: 12px;
-    padding: 12px;
-    background: rgba(0, 0, 0, 0.5);
-    border-radius: 16px;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+}
+
+.ar-status {
+    font-family: var(--font-display, 'Orbitron', monospace);
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.85);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
+/* AR pill buttons (shared style) */
+.ar-pill-btn {
+    pointer-events: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 18px;
+    font-family: var(--font-display, 'Orbitron', monospace);
+    font-weight: 700;
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    color: #fff;
+    background: rgba(0, 229, 255, 0.35);
+    border: 1px solid rgba(0, 229, 255, 0.5);
+    border-radius: 24px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    cursor: pointer;
+    touch-action: manipulation;
+    min-height: 44px;
+    white-space: nowrap;
+    transition: background 0.2s;
+}
+
+.ar-pill-btn:active {
+    background: rgba(0, 229, 255, 0.55);
+}
+
+.ar-pill-btn--secondary {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.ar-pill-btn--secondary:active {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* AR chat transcript */
+.ar-chat {
+    pointer-events: auto;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 6px;
+    padding: 8px 4px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.ar-chat-bubble {
+    max-width: 80%;
+    padding: 8px 12px;
+    border-radius: 14px;
+    font-family: var(--font-body, 'Rajdhani', sans-serif);
+    font-size: 0.85rem;
+    line-height: 1.35;
     backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    word-break: break-word;
+}
+
+.ar-chat-bubble--user {
+    align-self: flex-end;
+    background: rgba(0, 229, 255, 0.3);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+}
+
+.ar-chat-bubble--bot {
+    align-self: flex-start;
+    background: rgba(0, 0, 0, 0.5);
+    color: rgba(255, 255, 255, 0.95);
+    border-bottom-left-radius: 4px;
+}
+
+/* Bottom bar: controls + chat input */
+.ar-overlay-bottom {
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#ar-dom-overlay .ar-controls {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.ar-chat-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.55);
+    border-radius: 24px;
+    padding: 4px 4px 4px 8px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.ar-voice-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0, 229, 255, 0.3);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    touch-action: manipulation;
+    flex-shrink: 0;
+    transition: background 0.2s;
+}
+
+.ar-voice-btn.ar-listening {
+    background: rgba(255, 61, 61, 0.6);
+    animation: ar-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes ar-pulse {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 61, 61, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 10px rgba(255, 61, 61, 0);
+    }
+}
+
+.ar-chat-input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    color: #fff;
+    font-family: var(--font-body, 'Rajdhani', sans-serif);
+    font-size: 16px; /* prevents iOS zoom */
+    padding: 8px 4px;
+    outline: none;
+}
+
+.ar-chat-input::placeholder {
+    color: rgba(255, 255, 255, 0.45);
 }
 
 /* ============================================

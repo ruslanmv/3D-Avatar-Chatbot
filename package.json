@@ -93,7 +93,13 @@
     ],
     "coverageDirectory": "coverage",
     "collectCoverageFrom": [
-      "js/**/*.js"
+      "js/**/*.js",
+      "src/EmotionEngine.js",
+      "src/LipSyncEngine.js",
+      "src/BehaviorEngine.js",
+      "src/MorphTargetAdapter.js",
+      "src/ProceduralAnimator.js",
+      "src/AvatarAliveness.js"
     ],
     "coverageThreshold": {
       "global": {

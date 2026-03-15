@@ -40,13 +40,20 @@
         <script>
             // Single source of truth for enabling the high-quality engine:
             window.__USE_GLTF_VIEWER_ENGINE__ = true;
+
+            // Create the ready promise early so defer scripts (main.js) can await it.
+            // engine-bridge.js (module, runs after defer) will resolve it.
+            window.__NEXUS_VIEWER_READY__ = new Promise(function (resolve) {
+                window.__resolveNexusViewerReady__ = resolve;
+            });
         </script>
 
         <script type="importmap">
             {
                 "imports": {
                     "three": "/vendor/three-0.147.0/build/three.module.js",
-                    "three/addons/": "/vendor/three-0.147.0/examples/jsm/"
+                    "three/addons/": "/vendor/three-0.147.0/examples/jsm/",
+                    "@pixiv/three-vrm": "https://unpkg.com/@pixiv/three-vrm@2.1.0/lib/three-vrm.module.js"
                 }
             }
         </script>
@@ -70,20 +77,9 @@
         </script>
 
         <style>
-            /* Quick actions grid */
-            .quick-actions {
-                display: grid;
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-                gap: 10px;
-            }
-            .quick-actions .emotion-btn {
-                padding: 10px 12px;
-            }
-
             .select-input {
                 width: 100%;
             }
-
             .hint-mini {
                 font-size: 12px;
                 opacity: 0.85;
@@ -92,6 +88,114 @@
             }
             .hint-mini code {
                 opacity: 0.95;
+            }
+
+            /* ── Enterprise Drawer ── */
+            .drawer-brand {
+                display: flex;
+                align-items: baseline;
+                gap: 8px;
+            }
+            .drawer-brand-title {
+                font-family: var(--font-display);
+                font-weight: 900;
+                font-size: 1.1rem;
+                letter-spacing: 0.12em;
+                background: linear-gradient(135deg, var(--primary), var(--secondary));
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }
+            .drawer-brand-version {
+                font-size: 0.65rem;
+                color: var(--text-muted);
+                letter-spacing: 0.08em;
+                font-family: var(--font-body);
+            }
+            .mobile-drawer-content {
+                padding: 0;
+            }
+            .drawer-nav-group {
+                padding: 12px 16px 8px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            }
+            .drawer-nav-group:last-child {
+                border-bottom: none;
+            }
+            .drawer-nav-label {
+                display: block;
+                font-family: var(--font-display);
+                font-size: 0.6rem;
+                font-weight: 700;
+                letter-spacing: 0.18em;
+                color: var(--text-muted);
+                margin-bottom: 8px;
+                opacity: 0.7;
+            }
+            .drawer-nav-item {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                width: 100%;
+                padding: 10px 12px;
+                margin-bottom: 2px;
+                background: none;
+                border: none;
+                border-radius: var(--border-radius-sm);
+                color: var(--text-primary);
+                font-family: var(--font-body);
+                font-size: 0.9rem;
+                font-weight: 500;
+                letter-spacing: 0.02em;
+                cursor: pointer;
+                text-decoration: none;
+                transition:
+                    background 0.2s,
+                    color 0.2s;
+            }
+            .drawer-nav-item:hover {
+                background: rgba(0, 229, 255, 0.08);
+                color: var(--primary);
+            }
+            .drawer-nav-item:hover svg {
+                stroke: var(--primary);
+            }
+            .drawer-nav-item svg {
+                flex-shrink: 0;
+                stroke: var(--text-secondary);
+                transition: stroke 0.2s;
+            }
+            .drawer-nav-badge {
+                margin-left: auto;
+                font-size: 0.65rem;
+                font-weight: 700;
+                padding: 2px 7px;
+                border-radius: 10px;
+                background: rgba(0, 229, 255, 0.15);
+                color: var(--primary);
+                font-family: var(--font-display);
+                letter-spacing: 0.05em;
+            }
+            .drawer-footer {
+                margin-top: auto;
+                padding: 14px 20px;
+                border-top: 1px solid rgba(255, 255, 255, 0.06);
+            }
+            .drawer-footer-status {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 0.72rem;
+                color: var(--text-muted);
+                font-family: var(--font-body);
+                letter-spacing: 0.04em;
+            }
+            .drawer-footer-status .status-indicator {
+                width: 6px;
+                height: 6px;
+                border-radius: 50%;
+                background: var(--accent-green);
+                box-shadow: 0 0 6px var(--accent-green);
             }
         </style>
 
@@ -147,6 +251,25 @@
                     </div>
                 </div>
                 <div class="topbar-right">
+                    <a
+                        class="icon-btn mobile-hide-label"
+                        href="vrm-manager.html"
+                        title="VRM Avatar Manager"
+                        aria-label="VRM Avatar Manager"
+                    >
+                        <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            aria-hidden="true"
+                        >
+                            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+                            <circle cx="12" cy="7" r="4" />
+                        </svg>
+                    </a>
                     <button
                         class="icon-btn mobile-hide-label"
                         id="settings-btn"
@@ -253,7 +376,7 @@
                                     <select id="avatar-select" class="select-input avatar-select-compact">
                                         <option value="" selected>Loading avatars...</option>
                                     </select>
-                                    <input id="avatar-upload" class="hidden" type="file" accept=".glb,.gltf" />
+                                    <input id="avatar-upload" class="hidden" type="file" accept=".glb,.gltf,.vrm" />
                                 </div>
                             </div>
                         </div>
@@ -317,6 +440,8 @@
                                     autocomplete="off"
                                     enterkeyhint="send"
                                     aria-label="Type a message"
+                                    value=""
+                                    name="nexus-chat-input"
                                 />
                                 <button class="send-btn" id="speak-btn" type="button" aria-label="Send message">
                                     <svg
@@ -342,39 +467,184 @@
             <div class="mobile-drawer-overlay hidden" id="mobile-drawer-overlay"></div>
             <aside class="mobile-drawer" id="mobile-drawer">
                 <div class="mobile-drawer-header">
-                    <h2 class="section-title">Menu</h2>
-                    <button class="icon-btn" id="mobile-drawer-close" type="button" aria-label="Close menu">✕</button>
+                    <div class="drawer-brand">
+                        <span class="drawer-brand-title">HomePilot</span>
+                        <span class="drawer-brand-version">v2.0</span>
+                    </div>
+                    <button class="icon-btn" id="mobile-drawer-close" type="button" aria-label="Close menu">
+                        <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                    </button>
                 </div>
-                <div class="mobile-drawer-content">
-                    <div class="drawer-section">
-                        <h3 class="config-title">QUICK ACTIONS</h3>
-                        <div class="quick-actions">
-                            <button class="emotion-btn" data-emotion="idle" data-color="blue" type="button">
-                                <span class="emotion-icon">🧘</span><span class="emotion-label">IDLE</span>
-                            </button>
-                            <button class="emotion-btn" data-emotion="happy" data-color="green" type="button">
-                                <span class="emotion-icon">😊</span><span class="emotion-label">HAPPY</span>
-                            </button>
-                            <button class="emotion-btn" data-emotion="thinking" data-color="purple" type="button">
-                                <span class="emotion-icon">🤔</span><span class="emotion-label">THINKING</span>
-                            </button>
-                            <button class="emotion-btn" data-emotion="dance" data-color="orange" type="button">
-                                <span class="emotion-icon">🕺</span><span class="emotion-label">DANCE</span>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="drawer-section">
-                        <h3 class="config-title">AVATAR</h3>
-                        <label class="input-label" for="avatar-upload-drawer">Upload .glb / .gltf</label>
-                        <label class="secondary-btn upload-label" for="avatar-upload"> Choose File </label>
-                    </div>
-                    <div class="drawer-section">
-                        <button class="secondary-btn drawer-action-btn" id="drawer-settings-btn" type="button">
-                            Settings
+                <nav class="mobile-drawer-content">
+                    <div class="drawer-nav-group">
+                        <span class="drawer-nav-label">AVATAR</span>
+                        <a class="drawer-nav-item" href="vrm-manager.html">
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+                            </svg>
+                            <span>Avatar Manager</span>
+                            <span class="drawer-nav-badge" id="drawer-avatar-count"></span>
+                        </a>
+                        <button class="drawer-nav-item" id="drawer-upload-btn" type="button">
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                                <polyline points="17 8 12 3 7 8" />
+                                <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                            <span>Upload Custom Avatar</span>
                         </button>
-                        <button class="secondary-btn drawer-action-btn" id="drawer-info-btn" type="button">
-                            About
+                    </div>
+                    <div class="drawer-nav-group">
+                        <span class="drawer-nav-label">CONFIGURATION</span>
+                        <button class="drawer-nav-item" id="drawer-settings-btn" type="button">
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <circle cx="12" cy="12" r="3" />
+                                <path
+                                    d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"
+                                />
+                            </svg>
+                            <span>Settings</span>
                         </button>
+                        <button class="drawer-nav-item" id="drawer-voice-btn" type="button">
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+                                <path d="M19 10v2a7 7 0 01-14 0v-2" />
+                                <line x1="12" y1="19" x2="12" y2="23" />
+                                <line x1="8" y1="23" x2="16" y2="23" />
+                            </svg>
+                            <span>Voice &amp; Speech</span>
+                        </button>
+                    </div>
+                    <div class="drawer-nav-group">
+                        <span class="drawer-nav-label">EXPERIENCE</span>
+                        <button class="drawer-nav-item" id="drawer-vr-btn" type="button">
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <rect x="2" y="7" width="20" height="10" rx="3" />
+                                <circle cx="8" cy="12" r="2" />
+                                <circle cx="16" cy="12" r="2" />
+                                <path d="M10 12h4" />
+                            </svg>
+                            <span>VR / AR Mode</span>
+                        </button>
+                        <button class="drawer-nav-item" id="drawer-fullscreen-btn" type="button">
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <polyline points="15 3 21 3 21 9" />
+                                <polyline points="9 21 3 21 3 15" />
+                                <line x1="21" y1="3" x2="14" y2="10" />
+                                <line x1="3" y1="21" x2="10" y2="14" />
+                            </svg>
+                            <span>Fullscreen</span>
+                        </button>
+                    </div>
+                    <div class="drawer-nav-group">
+                        <span class="drawer-nav-label">HELP</span>
+                        <button class="drawer-nav-item" id="drawer-info-btn" type="button">
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <circle cx="12" cy="12" r="10" />
+                                <line x1="12" y1="16" x2="12" y2="12" />
+                                <line x1="12" y1="8" x2="12.01" y2="8" />
+                            </svg>
+                            <span>About</span>
+                        </button>
+                        <a
+                            class="drawer-nav-item"
+                            href="https://github.com/ruslanmv/3D-Avatar-Chatbot"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <path
+                                    d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"
+                                />
+                            </svg>
+                            <span>GitHub</span>
+                            <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                style="margin-left: auto; opacity: 0.5"
+                            >
+                                <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
+                                <polyline points="15 3 21 3 21 9" />
+                                <line x1="10" y1="14" x2="21" y2="3" />
+                            </svg>
+                        </a>
+                    </div>
+                </nav>
+                <div class="drawer-footer">
+                    <div class="drawer-footer-status">
+                        <div class="status-indicator" id="drawer-status-dot"></div>
+                        <span id="drawer-status-label">System Online</span>
                     </div>
                 </div>
             </aside>
@@ -383,8 +653,20 @@
         <div class="modal-overlay" id="settings-modal">
             <div class="modal glass-panel">
                 <div class="modal-header">
-                    <h2 class="modal-title"><span class="title-icon">⚙</span> SYSTEM CONFIGURATION</h2>
-                    <button class="close-btn" id="close-settings" type="button" aria-label="Close settings">✕</button>
+                    <h2 class="modal-title">SYSTEM CONFIGURATION</h2>
+                    <button class="close-btn" id="close-settings" type="button" aria-label="Close settings">
+                        <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                    </button>
                 </div>
 
                 <div class="modal-content">
@@ -718,6 +1000,16 @@
                             </label>
                         </div>
 
+                        <div class="input-group">
+                            <label class="input-label">
+                                <input type="checkbox" id="stt-auto-send" />
+                                <span style="margin-left: 8px">Auto-send when confidence &gt; 80%</span>
+                            </label>
+                            <p class="voice-status" style="margin-top: 8px; opacity: 0.8">
+                                Automatically sends the transcribed message without clicking SEND
+                            </p>
+                        </div>
+
                         <div class="modal-footer" style="justify-content: flex-start; gap: 10px; padding: 0">
                             <button class="secondary-btn" id="test-stt" type="button">
                                 🎤 TEST SPEECH RECOGNITION
@@ -801,6 +1093,24 @@
                     </div>
 
                     <div class="config-section">
+                        <h3 class="config-title">SHADOWS</h3>
+                        <div class="provider-grid" id="shadow-selector">
+                            <label class="provider-card">
+                                <input type="radio" name="desktop-shadow" value="off" class="provider-radio" checked />
+                                <div class="provider-content">
+                                    <div class="provider-name">Off</div>
+                                </div>
+                            </label>
+                            <label class="provider-card">
+                                <input type="radio" name="desktop-shadow" value="on" class="provider-radio" />
+                                <div class="provider-content">
+                                    <div class="provider-name">On</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="config-section">
                         <h3 class="config-title">SYSTEM PROMPT</h3>
                         <textarea
                             id="system-prompt"
@@ -827,76 +1137,244 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         </div>
 
         <div class="modal-overlay" id="info-modal">
-            <div class="modal glass-panel">
+            <div class="modal glass-panel" style="max-width: 480px">
                 <div class="modal-header">
-                    <h2 class="modal-title"><span class="title-icon">ℹ</span> ABOUT</h2>
-                    <button class="close-btn" id="close-info" type="button" aria-label="Close info">✕</button>
+                    <h2 class="modal-title">ABOUT</h2>
+                    <button class="close-btn" id="close-info" type="button" aria-label="Close info">
+                        <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                    </button>
                 </div>
                 <div class="modal-content">
-                    <div class="info-section" style="text-align: center; padding: 1rem 0 0.5rem">
+                    <div style="text-align: center; padding: 1.5rem 0 1rem">
                         <p
                             style="
                                 font-family: var(--font-display);
-                                font-size: 1.4rem;
+                                font-size: 1.6rem;
                                 font-weight: 900;
                                 letter-spacing: 0.15em;
                                 background: linear-gradient(135deg, var(--primary), var(--secondary));
                                 -webkit-background-clip: text;
                                 -webkit-text-fill-color: transparent;
                                 background-clip: text;
-                                margin-bottom: 0.5rem;
+                                margin-bottom: 0.35rem;
                             "
                         >
-                            NEXUS AVATAR
+                            HOMEPILOT
                         </p>
-                        <p style="color: var(--text-muted); font-size: 0.85rem; letter-spacing: 0.05em">
-                            v2.0 &mdash; Enterprise 3D Avatar Chatbot
-                        </p>
-                    </div>
-                    <div class="info-section">
                         <p
                             style="
-                                color: var(--text-secondary);
-                                font-size: 0.9rem;
-                                line-height: 1.7;
-                                margin-bottom: 1rem;
+                                color: var(--text-muted);
+                                font-size: 0.78rem;
+                                letter-spacing: 0.12em;
+                                font-family: var(--font-display);
                             "
                         >
-                            Interactive 3D avatar with real-time AI chat, voice recognition, text-to-speech, WebXR VR/AR
-                            support, and multi-provider AI integration.
+                            ENTERPRISE 3D AVATAR PLATFORM
                         </p>
-                        <div style="text-align: center; margin: 1.2rem 0">
-                            <a
-                                href="https://github.com/ruslanmv/3D-Avatar-Chatbot"
-                                target="_blank"
-                                rel="noopener noreferrer"
+                        <p style="color: var(--text-muted); font-size: 0.7rem; margin-top: 4px; opacity: 0.6">v2.0.0</p>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1.2rem">
+                        <div
+                            style="
+                                background: rgba(0, 229, 255, 0.05);
+                                border: 1px solid rgba(0, 229, 255, 0.12);
+                                border-radius: var(--border-radius-sm);
+                                padding: 12px;
+                                text-align: center;
+                            "
+                        >
+                            <div
                                 style="
-                                    display: inline-flex;
-                                    align-items: center;
-                                    gap: 8px;
-                                    color: var(--primary);
-                                    text-decoration: none;
                                     font-family: var(--font-display);
-                                    font-weight: 600;
-                                    font-size: 0.85rem;
-                                    letter-spacing: 0.05em;
-                                    padding: 10px 20px;
-                                    border: 1px solid var(--glass-border);
-                                    border-radius: var(--border-radius-sm);
-                                    transition: all 0.3s;
+                                    font-size: 1.1rem;
+                                    font-weight: 700;
+                                    color: var(--primary);
                                 "
-                                onmouseover="
-                                    this.style.borderColor = 'var(--primary)';
-                                    this.style.boxShadow = 'var(--shadow-glow)';
-                                "
-                                onmouseout="
-                                    this.style.borderColor = '';
-                                    this.style.boxShadow = '';
+                                id="about-avatar-count"
+                            >
+                                31
+                            </div>
+                            <div
+                                style="
+                                    font-size: 0.65rem;
+                                    color: var(--text-muted);
+                                    letter-spacing: 0.1em;
+                                    margin-top: 2px;
                                 "
                             >
-                                <span style="font-size: 1.1rem">&#9733;</span> Star on GitHub
-                            </a>
+                                AVATARS
+                            </div>
                         </div>
+                        <div
+                            style="
+                                background: rgba(124, 77, 255, 0.05);
+                                border: 1px solid rgba(124, 77, 255, 0.12);
+                                border-radius: var(--border-radius-sm);
+                                padding: 12px;
+                                text-align: center;
+                            "
+                        >
+                            <div
+                                style="
+                                    font-family: var(--font-display);
+                                    font-size: 1.1rem;
+                                    font-weight: 700;
+                                    color: var(--secondary);
+                                "
+                            >
+                                5
+                            </div>
+                            <div
+                                style="
+                                    font-size: 0.65rem;
+                                    color: var(--text-muted);
+                                    letter-spacing: 0.1em;
+                                    margin-top: 2px;
+                                "
+                            >
+                                AI PROVIDERS
+                            </div>
+                        </div>
+                        <div
+                            style="
+                                background: rgba(0, 255, 136, 0.05);
+                                border: 1px solid rgba(0, 255, 136, 0.12);
+                                border-radius: var(--border-radius-sm);
+                                padding: 12px;
+                                text-align: center;
+                            "
+                        >
+                            <div
+                                style="
+                                    font-family: var(--font-display);
+                                    font-size: 1.1rem;
+                                    font-weight: 700;
+                                    color: var(--accent-green);
+                                "
+                            >
+                                VR/AR
+                            </div>
+                            <div
+                                style="
+                                    font-size: 0.65rem;
+                                    color: var(--text-muted);
+                                    letter-spacing: 0.1em;
+                                    margin-top: 2px;
+                                "
+                            >
+                                WEBXR READY
+                            </div>
+                        </div>
+                        <div
+                            style="
+                                background: rgba(255, 145, 0, 0.05);
+                                border: 1px solid rgba(255, 145, 0, 0.12);
+                                border-radius: var(--border-radius-sm);
+                                padding: 12px;
+                                text-align: center;
+                            "
+                        >
+                            <div
+                                style="
+                                    font-family: var(--font-display);
+                                    font-size: 1.1rem;
+                                    font-weight: 700;
+                                    color: var(--accent-orange);
+                                "
+                            >
+                                TTS
+                            </div>
+                            <div
+                                style="
+                                    font-size: 0.65rem;
+                                    color: var(--text-muted);
+                                    letter-spacing: 0.1em;
+                                    margin-top: 2px;
+                                "
+                            >
+                                VOICE ENGINE
+                            </div>
+                        </div>
+                    </div>
+
+                    <div
+                        style="
+                            color: var(--text-secondary);
+                            font-size: 0.82rem;
+                            line-height: 1.7;
+                            margin-bottom: 1rem;
+                            text-align: center;
+                        "
+                    >
+                        Enterprise-grade 3D avatar platform with real-time AI conversations, multi-provider LLM
+                        integration, lip-sync animations, and immersive WebXR experiences.
+                    </div>
+
+                    <div style="display: flex; gap: 10px; justify-content: center; margin: 1rem 0">
+                        <a
+                            href="https://github.com/ruslanmv/3D-Avatar-Chatbot"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="secondary-btn"
+                            style="
+                                display: inline-flex;
+                                align-items: center;
+                                gap: 6px;
+                                text-decoration: none;
+                                font-size: 0.8rem;
+                                padding: 8px 16px;
+                            "
+                        >
+                            <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <path
+                                    d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 00-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0020 4.77 5.07 5.07 0 0019.91 1S18.73.65 16 2.48a13.38 13.38 0 00-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 005 4.77a5.44 5.44 0 00-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 009 18.13V22"
+                                />
+                            </svg>
+                            GitHub
+                        </a>
+                        <a
+                            href="vrm-manager.html"
+                            class="secondary-btn"
+                            style="
+                                display: inline-flex;
+                                align-items: center;
+                                gap: 6px;
+                                text-decoration: none;
+                                font-size: 0.8rem;
+                                padding: 8px 16px;
+                            "
+                        >
+                            <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+                            </svg>
+                            Avatar Manager
+                        </a>
                     </div>
                 </div>
             </div>
@@ -944,7 +1422,7 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
                 closeBtn?.addEventListener('click', closeDrawer);
                 overlay?.addEventListener('click', closeDrawer);
 
-                // Forward drawer buttons to existing settings/info handlers
+                // Forward drawer buttons to existing handlers
                 drawerSettingsBtn?.addEventListener('click', () => {
                     closeDrawer();
                     document.getElementById('settings-btn')?.click();
@@ -953,6 +1431,50 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
                     closeDrawer();
                     document.getElementById('info-btn')?.click();
                 });
+
+                // Upload button triggers the hidden file input
+                const drawerUploadBtn = document.getElementById('drawer-upload-btn');
+                drawerUploadBtn?.addEventListener('click', () => {
+                    closeDrawer();
+                    document.getElementById('avatar-upload')?.click();
+                });
+
+                // Voice & Speech opens settings (speech section)
+                const drawerVoiceBtn = document.getElementById('drawer-voice-btn');
+                drawerVoiceBtn?.addEventListener('click', () => {
+                    closeDrawer();
+                    document.getElementById('settings-btn')?.click();
+                });
+
+                // VR/AR mode
+                const drawerVrBtn = document.getElementById('drawer-vr-btn');
+                drawerVrBtn?.addEventListener('click', () => {
+                    closeDrawer();
+                    const vrBtn =
+                        document.getElementById('vr-button') ||
+                        document.getElementById('ar-button') ||
+                        document.getElementById('enter-vr-btn');
+                    if (vrBtn) vrBtn.click();
+                });
+
+                // Fullscreen
+                const drawerFsBtn = document.getElementById('drawer-fullscreen-btn');
+                drawerFsBtn?.addEventListener('click', () => {
+                    closeDrawer();
+                    if (!document.fullscreenElement) {
+                        document.documentElement.requestFullscreen?.();
+                    } else {
+                        document.exitFullscreen?.();
+                    }
+                });
+
+                // Show avatar count badge
+                try {
+                    const manifestData = JSON.parse(localStorage.getItem('avatar_manifest_cache') || '{}');
+                    const count = (manifestData.items || []).length || window.__AVATAR_ITEMS__?.length || 0;
+                    const badge = document.getElementById('drawer-avatar-count');
+                    if (badge && count > 0) badge.textContent = count;
+                } catch (_) {}
 
                 // Emotion dropdown toggle
                 const emotionTrigger = document.getElementById('emotion-trigger');
@@ -997,21 +1519,42 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
 
         <!-- AR DOM Overlay (shown over camera feed in mobile AR mode) -->
         <div id="ar-dom-overlay">
-            <div class="ar-controls">
-                <button
-                    id="ar-place-btn"
-                    class="primary-btn"
-                    style="padding: 12px 24px; font-size: 14px; border-radius: 12px; min-height: 48px"
-                >
-                    TAP TO PLACE
-                </button>
-                <button
-                    id="ar-scale-btn"
-                    class="secondary-btn"
-                    style="padding: 12px 16px; font-size: 14px; border-radius: 12px; min-height: 48px"
-                >
-                    RESIZE
-                </button>
+            <!-- Top bar: exit + status -->
+            <div class="ar-overlay-top">
+                <button id="ar-exit-btn" class="ar-pill-btn" type="button">EXIT AR</button>
+                <span class="ar-status" id="ar-status">Point at a surface</span>
+            </div>
+
+            <!-- Chat transcript (scrollable, semi-transparent) -->
+            <div class="ar-chat" id="ar-chat">
+                <!-- Messages injected dynamically -->
+            </div>
+
+            <!-- Bottom bar: placement + voice/chat controls -->
+            <div class="ar-overlay-bottom">
+                <div class="ar-controls">
+                    <button id="ar-place-btn" class="ar-pill-btn" type="button">TAP TO PLACE</button>
+                    <button id="ar-scale-btn" class="ar-pill-btn ar-pill-btn--secondary" type="button">RESIZE</button>
+                </div>
+                <div class="ar-chat-bar">
+                    <button id="ar-voice-btn" class="ar-voice-btn" type="button" aria-label="Voice input">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
+                            <path
+                                d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"
+                            />
+                        </svg>
+                    </button>
+                    <input
+                        type="text"
+                        id="ar-chat-input"
+                        class="ar-chat-input"
+                        placeholder="Ask something..."
+                        autocomplete="off"
+                        enterkeyhint="send"
+                    />
+                    <button id="ar-send-btn" class="ar-pill-btn" type="button">SEND</button>
+                </div>
             </div>
         </div>
 
@@ -1025,6 +1568,16 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <script defer src="src/ProceduralAnimator.js"></script>
         <script defer src="src/BridgeResponseAdapter.js"></script>
         <script defer src="src/PersonaContextBridge.js"></script>
+
+        <!-- MorphTargetAdapter: GLB morph target → VRM expression bridge -->
+        <script defer src="src/MorphTargetAdapter.js"></script>
+
+        <!-- Phase 3: Avatar Aliveness engines (load order matters) -->
+        <script defer src="src/EmotionEngine.js"></script>
+        <script defer src="src/LipSyncEngine.js"></script>
+        <script defer src="src/BehaviorEngine.js"></script>
+        <script defer src="src/AvatarAliveness.js"></script>
+
         <script defer src="src/main.js"></script>
     </body>
 </html>

@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Avatar Library — HomePilot</title>
+        <meta name="description" content="Browse, install, and manage VRM and GLB avatars for HomePilot Avatar." />
+
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
+
+        <link rel="stylesheet" href="vrm-manager.css" />
+        <link rel="icon" href="favicon.ico" />
+    </head>
+    <body>
+        <!-- ====== DRAG & DROP OVERLAY ====== -->
+        <div id="vm-drop-overlay" class="vm-drop-overlay vm-hidden">
+            <div class="vm-drop-content">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                <div class="vm-drop-text">Drop your .vrm or .glb file here</div>
+            </div>
+        </div>
+
+        <!-- ====== TOP BAR (Clean) ====== -->
+        <header class="vm-bar">
+            <div class="vm-bar-left">
+                <a href="index.html" class="vm-back-btn" title="Back to Avatar Chat">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 12H5m7-7l-7 7 7 7" />
+                    </svg>
+                </a>
+                <div class="vm-brand">
+                    <div class="vm-brand-title">Avatar Library</div>
+                </div>
+            </div>
+            <div class="vm-bar-center">
+                <input id="vm-search" type="search" placeholder="Search avatars..." autocomplete="off" />
+            </div>
+            <div class="vm-bar-right">
+                <button id="vm-settings-btn" class="vm-icon-btn" title="Settings">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3" />
+                        <path
+                            d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"
+                        />
+                    </svg>
+                </button>
+                <button id="vm-add-avatar-btn" class="vm-primary-btn">
+                    <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.5"
+                    >
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    Add Avatar
+                </button>
+            </div>
+        </header>
+
+        <!-- ====== MAIN CONTENT ====== -->
+        <main class="vm-main">
+            <div id="vm-status" class="vm-status"></div>
+            <div id="vm-stats" class="vm-stats"></div>
+
+            <!-- Tab Navigation -->
+            <div class="vm-tabs">
+                <button class="vm-tab active" data-tab="installed">My Avatars</button>
+                <button class="vm-tab" data-tab="catalog">Browse Catalog</button>
+                <button class="vm-tab" data-tab="sources">Sources</button>
+            </div>
+
+            <!-- My Avatars Tab (default) -->
+            <div id="vm-tab-installed" class="vm-tab-content active">
+                <div id="vm-installed-grid" class="vm-grid"></div>
+                <div class="vm-empty" id="vm-installed-empty" style="display: none">
+                    <div class="vm-empty-icon">
+                        <svg
+                            width="64"
+                            height="64"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="1.5"
+                            style="opacity: 0.3"
+                        >
+                            <circle cx="12" cy="8" r="5" />
+                            <path d="M20 21a8 8 0 10-16 0" />
+                        </svg>
+                    </div>
+                    <div class="vm-empty-title">No avatars yet</div>
+                    <p>Add your first avatar to get started.</p>
+                    <button class="vm-primary-btn vm-empty-cta" onclick="VRMManager.openAddWizard()">
+                        <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2.5"
+                        >
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        Add Avatar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Browse Catalog Tab -->
+            <div id="vm-tab-catalog" class="vm-tab-content">
+                <!-- Inline filters (only visible in catalog) -->
+                <div class="vm-catalog-filters">
+                    <select id="vm-filter-source" title="Filter by source">
+                        <option value="">All Sources</option>
+                    </select>
+                    <select id="vm-filter-format" title="Filter by format">
+                        <option value="">All Formats</option>
+                        <option value="vrm">VRM (Full Face)</option>
+                        <option value="glb-morph">GLB + Morph Targets</option>
+                        <option value="glb">GLB (Body Only)</option>
+                    </select>
+                    <select id="vm-filter-license" title="Filter by license">
+                        <option value="">All Licenses</option>
+                        <option value="cc0">CC0 (Public Domain)</option>
+                        <option value="cc-by">CC-BY (Attribution)</option>
+                        <option value="free">Free (Check Terms)</option>
+                    </select>
+                    <button id="vm-refresh-btn" class="vm-icon-btn vm-icon-btn-sm" title="Refresh catalog">
+                        <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <polyline points="23 4 23 10 17 10" />
+                            <polyline points="1 20 1 14 7 14" />
+                            <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
+                        </svg>
+                    </button>
+                </div>
+                <!-- Format legend (subtle, inline) -->
+                <div class="vm-legend-bar">
+                    <div class="vm-legend-item"><span class="vm-badge vm-badge-vrm">VRM</span> Full Face</div>
+                    <div class="vm-legend-item">
+                        <span class="vm-badge vm-badge-glb-morph">GLB+Morph</span> Morph Targets
+                    </div>
+                    <div class="vm-legend-item"><span class="vm-badge vm-badge-glb">GLB</span> Body Only</div>
+                </div>
+                <div id="vm-grid" class="vm-grid"></div>
+                <div id="vm-load-more" class="vm-load-more-wrap">
+                    <button class="vm-load-more-btn">Load more</button>
+                </div>
+            </div>
+
+            <!-- Sources Tab -->
+            <div id="vm-tab-sources" class="vm-tab-content">
+                <div id="vm-sources-grid" class="vm-sources-grid"></div>
+            </div>
+        </main>
+
+        <!-- ====== ADD AVATAR WIZARD MODAL ====== -->
+        <div id="vm-add-modal" class="vm-modal-overlay vm-hidden">
+            <div class="vm-modal vm-modal-add">
+                <div class="vm-modal-header">
+                    <h2>Add Avatar</h2>
+                    <button id="vm-add-close" class="vm-modal-close">&times;</button>
+                </div>
+                <div class="vm-modal-body">
+                    <!-- Step 1: Choose method (default view) -->
+                    <div id="vm-add-step-choose" class="vm-add-step">
+                        <p class="vm-add-hint">Choose how you'd like to add an avatar</p>
+                        <div class="vm-add-options">
+                            <button class="vm-add-option" id="vm-add-opt-upload">
+                                <div class="vm-add-option-icon">
+                                    <svg
+                                        width="32"
+                                        height="32"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.5"
+                                    >
+                                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                                        <polyline points="17 8 12 3 7 8" />
+                                        <line x1="12" y1="3" x2="12" y2="15" />
+                                    </svg>
+                                </div>
+                                <div class="vm-add-option-text">
+                                    <div class="vm-add-option-title">Upload from device</div>
+                                    <div class="vm-add-option-desc">Import a .vrm or .glb file from your computer</div>
+                                </div>
+                            </button>
+                            <button class="vm-add-option" id="vm-add-opt-url">
+                                <div class="vm-add-option-icon">
+                                    <svg
+                                        width="32"
+                                        height="32"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.5"
+                                    >
+                                        <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" />
+                                        <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71" />
+                                    </svg>
+                                </div>
+                                <div class="vm-add-option-text">
+                                    <div class="vm-add-option-title">From URL</div>
+                                    <div class="vm-add-option-desc">Install from a web link</div>
+                                </div>
+                            </button>
+                            <button class="vm-add-option" id="vm-add-opt-catalog">
+                                <div class="vm-add-option-icon">
+                                    <svg
+                                        width="32"
+                                        height="32"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.5"
+                                    >
+                                        <rect x="3" y="3" width="7" height="7" rx="1" />
+                                        <rect x="14" y="3" width="7" height="7" rx="1" />
+                                        <rect x="3" y="14" width="7" height="7" rx="1" />
+                                        <rect x="14" y="14" width="7" height="7" rx="1" />
+                                    </svg>
+                                </div>
+                                <div class="vm-add-option-text">
+                                    <div class="vm-add-option-title">Browse catalog</div>
+                                    <div class="vm-add-option-desc">Choose from built-in and community avatars</div>
+                                </div>
+                            </button>
+                            <button class="vm-add-option" id="vm-add-opt-create">
+                                <div class="vm-add-option-icon">
+                                    <svg
+                                        width="32"
+                                        height="32"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.5"
+                                    >
+                                        <circle cx="12" cy="8" r="5" />
+                                        <path d="M20 21a8 8 0 10-16 0" />
+                                        <line x1="20" y1="8" x2="20" y2="14" />
+                                        <line x1="17" y1="11" x2="23" y2="11" />
+                                    </svg>
+                                </div>
+                                <div class="vm-add-option-text">
+                                    <div class="vm-add-option-title">Create avatar</div>
+                                    <div class="vm-add-option-desc">Design a custom avatar with Ready Player Me</div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Step 2a: URL input -->
+                    <div id="vm-add-step-url" class="vm-add-step vm-hidden">
+                        <button class="vm-add-back" id="vm-add-url-back">
+                            <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <path d="M19 12H5m7-7l-7 7 7 7" />
+                            </svg>
+                            Back
+                        </button>
+                        <div class="vm-add-step-title">Install from URL</div>
+                        <p class="vm-add-hint">Paste a direct link to a .vrm or .glb avatar file</p>
+                        <div class="vm-add-url-form">
+                            <input
+                                id="vm-url-input"
+                                type="url"
+                                placeholder="https://example.com/avatar.vrm"
+                                autocomplete="off"
+                            />
+                            <button id="vm-url-install-btn" class="vm-primary-btn">Install</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== SETTINGS MODAL ====== -->
+        <div id="vm-settings-modal" class="vm-modal-overlay vm-hidden">
+            <div class="vm-modal">
+                <div class="vm-modal-header">
+                    <h2>API Credentials &amp; Settings</h2>
+                    <button id="vm-settings-close" class="vm-modal-close">&times;</button>
+                </div>
+                <div class="vm-modal-body">
+                    <p class="vm-modal-hint">
+                        Configure API keys for premium avatar sources. Credentials are stored locally in your browser.
+                    </p>
+
+                    <div class="vm-cred-section">
+                        <h3>
+                            <span class="vm-cred-icon">🌐</span>
+                            VRoid Hub
+                            <span class="vm-cred-status" id="vm-vroid-status">Not configured</span>
+                        </h3>
+                        <p class="vm-cred-desc">
+                            Access thousands of community VRM avatars. Requires VRoid Hub Developer account.
+                        </p>
+                        <div class="vm-cred-fields">
+                            <label
+                                >Application ID
+                                <input id="vm-vroid-app-id" type="text" placeholder="Your VRoid Hub App ID" />
+                            </label>
+                            <label
+                                >Application Secret
+                                <input id="vm-vroid-app-secret" type="password" placeholder="Your App Secret" />
+                            </label>
+                            <div class="vm-cred-actions">
+                                <button class="vm-btn vm-btn-sm" onclick="VRMManager.testCredential('vroid')">
+                                    Test Connection
+                                </button>
+                                <a
+                                    href="https://hub.vroid.com/en/developers"
+                                    target="_blank"
+                                    rel="noopener"
+                                    class="vm-link"
+                                    >Get API Key</a
+                                >
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="vm-cred-section">
+                        <h3>
+                            <span class="vm-cred-icon">🧑</span>
+                            Ready Player Me
+                            <span class="vm-cred-status" id="vm-rpm-status">Not configured</span>
+                        </h3>
+                        <p class="vm-cred-desc">
+                            Create custom avatars with 52 ARKit + 15 Oculus Viseme morph targets.
+                        </p>
+                        <div class="vm-cred-fields">
+                            <label
+                                >Subdomain
+                                <input id="vm-rpm-subdomain" type="text" placeholder="your-app.readyplayer.me" />
+                            </label>
+                            <label
+                                >API Key (optional)
+                                <input id="vm-rpm-api-key" type="password" placeholder="For advanced API access" />
+                            </label>
+                            <div class="vm-cred-actions">
+                                <button class="vm-btn vm-btn-sm" onclick="VRMManager.testCredential('rpm')">
+                                    Test Connection
+                                </button>
+                                <a href="https://studio.readyplayer.me/" target="_blank" rel="noopener" class="vm-link"
+                                    >Get API Key</a
+                                >
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="vm-cred-section">
+                        <h3>
+                            <span class="vm-cred-icon">🎨</span>
+                            Sketchfab
+                            <span class="vm-cred-status" id="vm-sketchfab-status">Not configured</span>
+                        </h3>
+                        <p class="vm-cred-desc">
+                            Download VRM/GLB models from Sketchfab's massive library. Free tier available.
+                        </p>
+                        <div class="vm-cred-fields">
+                            <label
+                                >API Token
+                                <input id="vm-sketchfab-token" type="password" placeholder="Your Sketchfab API Token" />
+                            </label>
+                            <div class="vm-cred-actions">
+                                <button class="vm-btn vm-btn-sm" onclick="VRMManager.testCredential('sketchfab')">
+                                    Test Connection
+                                </button>
+                                <a
+                                    href="https://sketchfab.com/settings/password"
+                                    target="_blank"
+                                    rel="noopener"
+                                    class="vm-link"
+                                    >Get API Token</a
+                                >
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="vm-cred-section">
+                        <h3>
+                            <span class="vm-cred-icon">🏪</span>
+                            Booth.pm
+                            <span class="vm-cred-status" id="vm-booth-status">No API (manual)</span>
+                        </h3>
+                        <p class="vm-cred-desc">
+                            Japanese marketplace with many free VRM models. No public API — browse and download
+                            manually, then upload here.
+                        </p>
+                    </div>
+
+                    <hr class="vm-divider" />
+
+                    <div class="vm-cred-section">
+                        <h3><span class="vm-cred-icon">📁</span> Storage Settings</h3>
+                        <div class="vm-cred-fields">
+                            <label
+                                >Max local cache size
+                                <select id="vm-cache-size">
+                                    <option value="50">50 MB</option>
+                                    <option value="100" selected>100 MB</option>
+                                    <option value="250">250 MB</option>
+                                    <option value="500">500 MB</option>
+                                </select>
+                            </label>
+                            <label class="vm-checkbox-label">
+                                <input type="checkbox" id="vm-auto-install" checked />
+                                Auto-install downloaded avatars to manifest
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="vm-modal-footer">
+                    <button class="vm-btn" id="vm-settings-save">Save Settings</button>
+                    <button class="vm-btn vm-btn-danger" id="vm-settings-clear">Clear All Data</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== PREVIEW MODAL ====== -->
+        <div id="vm-preview-modal" class="vm-modal-overlay vm-hidden">
+            <div class="vm-modal vm-modal-wide">
+                <div class="vm-modal-header">
+                    <h2 id="vm-preview-title">Avatar Preview</h2>
+                    <button id="vm-preview-close" class="vm-modal-close">&times;</button>
+                </div>
+                <div class="vm-modal-body vm-preview-body">
+                    <div class="vm-preview-left">
+                        <div id="vm-preview-viewport" class="vm-preview-viewport">
+                            <div class="vm-preview-placeholder">3D Preview</div>
+                        </div>
+                    </div>
+                    <div class="vm-preview-right">
+                        <div id="vm-preview-details" class="vm-preview-details"></div>
+                        <div class="vm-preview-actions" id="vm-preview-actions"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== READY PLAYER ME CREATOR MODAL ====== -->
+        <div id="vm-rpm-modal" class="vm-modal-overlay vm-hidden">
+            <div class="vm-modal vm-modal-fullscreen">
+                <div class="vm-modal-header">
+                    <h2>Create Avatar — Ready Player Me</h2>
+                    <button id="vm-rpm-close" class="vm-modal-close">&times;</button>
+                </div>
+                <div class="vm-modal-body vm-rpm-body">
+                    <!-- Loading spinner (shown while iframe loads) -->
+                    <div id="vm-rpm-loader" class="vm-rpm-loader vm-hidden">
+                        <div class="vm-rpm-spinner"></div>
+                        <p>Loading avatar creator...</p>
+                    </div>
+
+                    <!-- Iframe mode (primary — uses demo.readyplayer.me with frameApi) -->
+                    <iframe
+                        id="vm-rpm-iframe"
+                        class="vm-rpm-iframe"
+                        allow="camera *; microphone *"
+                        src="about:blank"
+                    ></iframe>
+
+                    <!-- Fallback mode (shown only if iframe fails to load) -->
+                    <div id="vm-rpm-fallback" class="vm-rpm-fallback vm-hidden">
+                        <div class="vm-rpm-fallback-content">
+                            <div class="vm-rpm-fallback-icon">
+                                <svg
+                                    width="64"
+                                    height="64"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.5"
+                                    style="opacity: 0.5"
+                                >
+                                    <circle cx="12" cy="8" r="5" />
+                                    <path d="M20 21a8 8 0 10-16 0" />
+                                    <line x1="20" y1="8" x2="20" y2="14" />
+                                    <line x1="17" y1="11" x2="23" y2="11" />
+                                </svg>
+                            </div>
+                            <h3>Embedded creator unavailable</h3>
+                            <p class="vm-rpm-fallback-desc">
+                                The embedded creator couldn't load. You can still create your avatar in a new tab and
+                                paste the URL below.
+                            </p>
+                            <div class="vm-rpm-fallback-steps">
+                                <div class="vm-rpm-step">
+                                    <span class="vm-rpm-step-num">1</span>
+                                    <span
+                                        >Open
+                                        <a
+                                            id="vm-rpm-external-link"
+                                            href="https://demo.readyplayer.me/avatar?id=new"
+                                            target="_blank"
+                                            rel="noopener"
+                                            class="vm-link"
+                                            >Ready Player Me Creator</a
+                                        >
+                                        in a new tab</span
+                                    >
+                                </div>
+                                <div class="vm-rpm-step">
+                                    <span class="vm-rpm-step-num">2</span>
+                                    <span>Design your avatar and click "Next" until complete</span>
+                                </div>
+                                <div class="vm-rpm-step">
+                                    <span class="vm-rpm-step-num">3</span>
+                                    <span>Copy the page URL or model link and paste it below</span>
+                                </div>
+                            </div>
+                            <div class="vm-rpm-url-form">
+                                <input
+                                    id="vm-rpm-url-input"
+                                    type="url"
+                                    placeholder="https://demo.readyplayer.me/avatar?id=69b6ec6a... or .glb URL"
+                                    autocomplete="off"
+                                />
+                                <button id="vm-rpm-url-install" class="vm-primary-btn">Install Avatar</button>
+                            </div>
+                            <p class="vm-rpm-fallback-hint">
+                                Accepts both page URLs (<code>demo.readyplayer.me/avatar?id=...</code>) and model URLs
+                                (<code>models.readyplayer.me/&lt;id&gt;.glb</code>).
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====== TOAST CONTAINER ====== -->
+        <div id="vm-toast-container" class="vm-toast-container"></div>
+
+        <!-- Hidden file input for uploads -->
+        <input id="vm-file-upload" type="file" accept=".vrm,.glb,.gltf" class="vm-hidden" />
+
+        <footer class="vm-footer">
+            <p>
+                Avatar Library for <a href="index.html">HomePilot Avatar</a>. Check individual licenses before
+                commercial use.
+            </p>
+        </footer>
+
+        <script defer src="vendor/three-0.147.0/build/three.min.js"></script>
+        <script defer src="vendor/three-0.147.0/examples/js/loaders/GLTFLoader.js"></script>
+        <script src="vrm-manager.js"></script>
+    </body>
+</html>
