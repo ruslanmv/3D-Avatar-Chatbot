@@ -171,21 +171,32 @@
 
     // ---------------------------
     // T-Pose Fix — lower arms to natural resting pose
+    // Uses unified PoseNormalizer when available, falls back to legacy Euler offsets.
     // ---------------------------
     function fixTPose() {
         if (!bones) return;
 
-        // Apply simple Z-axis rotation to lower arms from T-pose
-        // Works for VRM (model faces -Z, rotated π) and standard GLB rigs
-        // ~65° rotation brings arms to a natural standing pose
-        const angle = Math.PI / 2.8; // ~65 degrees
+        // Prefer unified PoseNormalizer (world-space alignment)
+        if (window.NEXUS_POSE_NORMALIZER && avatarRoot) {
+            const opts = {};
+            // Pass VRM humanoid rig for Tier 1 bone detection (stored by AvatarManager)
+            if (avatarRoot.userData?.vrmHumanoid) {
+                opts.rig = avatarRoot.userData.vrmHumanoid;
+            }
+            window.NEXUS_POSE_NORMALIZER.applyRelaxedStandingPose(avatarRoot, opts);
+            console.log('[ProceduralAnimator] T-pose fix: delegated to PoseNormalizer');
+            return;
+        }
+
+        // Legacy fallback: fixed Euler offsets
+        console.warn('[ProceduralAnimator] PoseNormalizer not available, using legacy T-pose fix');
+        const angle = Math.PI / 4.5;
 
         if (bones.leftUpperArm) {
             const r = rest.get(bones.leftUpperArm.uuid);
             if (r) {
                 const offset = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, angle));
                 bones.leftUpperArm.quaternion.copy(r.quat).multiply(offset);
-                console.log('[ProceduralAnimator] T-pose fix: left arm lowered');
             }
         }
 
@@ -194,12 +205,10 @@
             if (r) {
                 const offset = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, -angle));
                 bones.rightUpperArm.quaternion.copy(r.quat).multiply(offset);
-                console.log('[ProceduralAnimator] T-pose fix: right arm lowered');
             }
         }
 
-        // Slight elbow bend for natural look
-        const elbowBend = Math.PI / 12; // ~15 degrees
+        const elbowBend = Math.PI / 12;
         if (bones.leftLowerArm) {
             const r = rest.get(bones.leftLowerArm.uuid);
             if (r) {
@@ -233,6 +242,11 @@
 
         bones = findBones(avatarRoot);
         captureRestPose(avatarRoot);
+
+        // Snapshot original bind pose for PoseNormalizer's restoreNeutralPose
+        if (window.NEXUS_POSE_NORMALIZER?.snapshotOriginalPose) {
+            window.NEXUS_POSE_NORMALIZER.snapshotOriginalPose(avatarRoot);
+        }
 
         // ALWAYS apply natural standing pose fix (geometry-based T-pose correction)
         // Some models have baked animations but still start in T-pose
@@ -411,6 +425,25 @@
             console.log('[ProceduralAnimator] Unregistered avatar');
         }
     }
+
+    // ---------------------------
+    // Listen for pose settings changes — re-apply pose in real-time
+    // ---------------------------
+    window.addEventListener('pose-settings-changed', () => {
+        if (!avatarRoot || !bones) return;
+        console.log('[ProceduralAnimator] Pose settings changed — re-applying T-pose fix');
+
+        // Restore original bind pose before re-applying correction
+        if (window.NEXUS_POSE_NORMALIZER?.restoreNeutralPose) {
+            window.NEXUS_POSE_NORMALIZER.restoreNeutralPose(avatarRoot);
+        }
+
+        // Re-apply the T-pose fix with updated settings
+        fixTPose();
+
+        // Re-capture rest pose so breathing/head-look animate from the new base
+        captureRestPose(avatarRoot);
+    });
 
     // expose
     window.NEXUS_PROCEDURAL_ANIMATOR = {

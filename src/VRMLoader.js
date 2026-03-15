@@ -150,20 +150,32 @@ class VRMLoader {
     }
 
     /**
-     * Fix T-pose to natural A-pose
+     * Fix T-pose to natural A-pose using unified PoseNormalizer.
+     * Falls back to simple Euler rotation if PoseNormalizer is not loaded.
      */
     fixTPose(vrm) {
         if (!vrm.humanoid) return;
 
         try {
+            // Use unified PoseNormalizer (world-space alignment)
+            if (window.NEXUS_POSE_NORMALIZER) {
+                window.NEXUS_POSE_NORMALIZER.snapshotOriginalPose(vrm.scene);
+                window.NEXUS_POSE_NORMALIZER.applyRelaxedStandingPose(vrm.scene, {
+                    rig: vrm.humanoid,
+                });
+                return;
+            }
+
+            // Fallback: simple Euler rotation (legacy behavior)
+            console.warn('[VRMLoader] PoseNormalizer not loaded, using legacy T-pose fix');
             const leftUpperArm = vrm.humanoid.getNormalizedBoneNode('leftUpperArm');
             const rightUpperArm = vrm.humanoid.getNormalizedBoneNode('rightUpperArm');
 
             if (leftUpperArm) {
-                leftUpperArm.rotation.z = Math.PI / 3; // ~60 degrees
+                leftUpperArm.rotation.z = Math.PI / 5;
             }
             if (rightUpperArm) {
-                rightUpperArm.rotation.z = -Math.PI / 3;
+                rightUpperArm.rotation.z = -Math.PI / 5;
             }
         } catch (error) {
             console.warn('[VRMLoader] Could not fix T-pose:', error);

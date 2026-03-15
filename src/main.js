@@ -1748,6 +1748,139 @@ function setupModals() {
     }
 }
 
+// =========================================================================
+// Pose Normalizer Settings UI
+// =========================================================================
+function setupPoseNormalizerUI() {
+    const pn = window.NEXUS_POSE_NORMALIZER;
+    if (!pn) return;
+
+    const s = pn.getSettings();
+
+    // Global intensity slider
+    const intensitySlider = document.getElementById('pose-intensity');
+    const intensityVal = document.getElementById('pose-intensity-val');
+    if (intensitySlider) {
+        intensitySlider.value = s.intensity;
+        if (intensityVal) intensityVal.textContent = s.intensity.toFixed(2);
+        intensitySlider.addEventListener('input', () => {
+            const v = parseFloat(intensitySlider.value);
+            if (intensityVal) intensityVal.textContent = v.toFixed(2);
+        });
+    }
+
+    // Preset selector
+    const presetSelect = document.getElementById('pose-preset');
+    if (presetSelect) presetSelect.value = s.preset || 'relaxedStanding';
+
+    // Per-bone sliders
+    document.querySelectorAll('.pose-bone-slider').forEach((slider) => {
+        const bone = slider.dataset.bone;
+        if (bone && s.bones[bone] != null) {
+            slider.value = s.bones[bone];
+        }
+        const valSpan = document.getElementById('pose-bone-' + bone + '-val');
+        if (valSpan) valSpan.textContent = parseFloat(slider.value).toFixed(2);
+        slider.addEventListener('input', () => {
+            if (valSpan) valSpan.textContent = parseFloat(slider.value).toFixed(2);
+        });
+    });
+
+    // Apply Live button
+    const applyBtn = document.getElementById('pose-apply-btn');
+    if (applyBtn) {
+        applyBtn.addEventListener('click', () => {
+            applyPoseSettingsLive();
+        });
+    }
+
+    // Reset Defaults button
+    const resetBtn = document.getElementById('pose-reset-btn');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            const defaults = pn.resetSettings();
+            // Update UI to defaults
+            if (intensitySlider) {
+                intensitySlider.value = defaults.intensity;
+                if (intensityVal) intensityVal.textContent = defaults.intensity.toFixed(2);
+            }
+            if (presetSelect) presetSelect.value = defaults.preset;
+            document.querySelectorAll('.pose-bone-slider').forEach((sl) => {
+                const bone = sl.dataset.bone;
+                if (bone && defaults.bones[bone] != null) {
+                    sl.value = defaults.bones[bone];
+                    const vs = document.getElementById('pose-bone-' + bone + '-val');
+                    if (vs) vs.textContent = defaults.bones[bone].toFixed(2);
+                }
+            });
+            applyPoseSettingsLive();
+        });
+    }
+}
+
+function collectPoseSettingsFromUI() {
+    const patch = { bones: {} };
+    const intensitySlider = document.getElementById('pose-intensity');
+    if (intensitySlider) patch.intensity = parseFloat(intensitySlider.value);
+
+    const presetSelect = document.getElementById('pose-preset');
+    if (presetSelect) patch.preset = presetSelect.value;
+
+    document.querySelectorAll('.pose-bone-slider').forEach((slider) => {
+        const bone = slider.dataset.bone;
+        if (bone) patch.bones[bone] = parseFloat(slider.value);
+    });
+    return patch;
+}
+
+function applyPoseSettingsLive() {
+    const pn = window.NEXUS_POSE_NORMALIZER;
+    if (!pn) return;
+
+    const patch = collectPoseSettingsFromUI();
+    pn.updateSettings(patch);
+
+    // Re-apply pose to current avatar if loaded
+    const vrm = window.vrmLoader?.currentVRM || window.NEXUS_VIEWER?.getCurrentVRM?.();
+    if (vrm) {
+        const root = vrm.scene || vrm;
+        pn.restoreNeutralPose(root);
+        pn.normalizeAvatarPose(root, {
+            rig: vrm.humanoid || null,
+        });
+
+        // Re-capture rest pose for ProceduralAnimator
+        if (window.NEXUS_PROCEDURAL_ANIMATOR) {
+            window.NEXUS_PROCEDURAL_ANIMATOR.registerAvatar(root, false);
+        }
+    }
+}
+
+function loadPoseSettingsIntoUI() {
+    const pn = window.NEXUS_POSE_NORMALIZER;
+    if (!pn) return;
+
+    const s = pn.getSettings();
+    const intensitySlider = document.getElementById('pose-intensity');
+    const intensityVal = document.getElementById('pose-intensity-val');
+    if (intensitySlider) {
+        intensitySlider.value = s.intensity;
+        if (intensityVal) intensityVal.textContent = s.intensity.toFixed(2);
+    }
+
+    const presetSelect = document.getElementById('pose-preset');
+    if (presetSelect) presetSelect.value = s.preset || 'relaxedStanding';
+
+    document.querySelectorAll('.pose-bone-slider').forEach((slider) => {
+        const bone = slider.dataset.bone;
+        if (bone && s.bones[bone] != null) {
+            slider.value = s.bones[bone];
+            const valSpan = document.getElementById('pose-bone-' + bone + '-val');
+            if (valSpan) valSpan.textContent = s.bones[bone].toFixed(2);
+        }
+    });
+}
+
 function openSettings() {
     const modal = $('settings-modal');
     if (!modal) return;
@@ -1768,6 +1901,9 @@ function openSettings() {
 
     loadSTTSettingsIntoUI();
     refreshVoiceList();
+
+    // Load pose normalizer settings into UI
+    loadPoseSettingsIntoUI();
 
     // Auto-refresh model list if stale (e.g. persona was unpublished)
     if (window._nexusLLM && window._nexusLLM.modelsStale) {
@@ -2159,6 +2295,13 @@ function saveSettings() {
     const desktopShadow = shadowRadio ? shadowRadio.value : 'off';
     localStorage.setItem('desktop_shadow', desktopShadow);
     window.NEXUS_VIEWER?.setShadows(desktopShadow === 'on');
+
+    // Persist pose normalizer settings and apply live
+    if (window.NEXUS_POSE_NORMALIZER) {
+        const posePatch = collectPoseSettingsFromUI();
+        window.NEXUS_POSE_NORMALIZER.updateSettings(posePatch);
+        applyPoseSettingsLive();
+    }
 
     // ✅ Persist provider settings
     localStorage.setItem('ai_provider', provider);
@@ -3132,6 +3275,7 @@ async function init() {
 
         setupEventListeners();
         setupModals();
+        setupPoseNormalizerUI();
         initSpeechRecognition();
         loadConfigIntoUI();
         loadSpeechSettingsIntoUI();
