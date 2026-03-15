@@ -176,20 +176,31 @@
     function fixTPose() {
         if (!bones) return;
 
-        // Prefer unified PoseNormalizer (world-space alignment)
+        // ── PRIMARY: NaturalPosePlugin (VRM normalized bone API — industry standard) ──
+        // Uses the same technique as VRoid Hub: sets quaternion rotations on
+        // normalized proxy bones relative to T-pose.  vrm.update() syncs them
+        // to raw bones automatically each frame.
+        if (window.NEXUS_NATURAL_POSE && avatarRoot) {
+            const applied = window.NEXUS_NATURAL_POSE.apply(avatarRoot);
+            if (applied) {
+                console.log('[ProceduralAnimator] T-pose fix: NaturalPosePlugin (VRM normalized bones)');
+                return;
+            }
+        }
+
+        // ── FALLBACK: PoseNormalizer (world-space alignment — legacy) ──
         if (window.NEXUS_POSE_NORMALIZER && avatarRoot) {
             const opts = {};
-            // Pass VRM humanoid rig for Tier 1 bone detection (stored by AvatarManager)
             if (avatarRoot.userData?.vrmHumanoid) {
                 opts.rig = avatarRoot.userData.vrmHumanoid;
             }
             window.NEXUS_POSE_NORMALIZER.applyRelaxedStandingPose(avatarRoot, opts);
-            console.log('[ProceduralAnimator] T-pose fix: delegated to PoseNormalizer');
+            console.log('[ProceduralAnimator] T-pose fix: PoseNormalizer (world-space fallback)');
             return;
         }
 
-        // Legacy fallback: fixed Euler offsets
-        console.warn('[ProceduralAnimator] PoseNormalizer not available, using legacy T-pose fix');
+        // ── LAST RESORT: fixed Euler offsets ──
+        console.warn('[ProceduralAnimator] No pose plugins available, using legacy Euler fix');
         const angle = Math.PI / 4.5;
 
         if (bones.leftUpperArm) {
@@ -431,17 +442,21 @@
     // ---------------------------
     window.addEventListener('pose-settings-changed', () => {
         if (!avatarRoot || !bones) return;
-        console.log('[ProceduralAnimator] Pose settings changed — re-applying T-pose fix');
+        console.log('[ProceduralAnimator] Pose settings changed — re-applying pose');
 
-        // Restore original bind pose before re-applying correction
+        // For VRM models using NaturalPosePlugin, just re-apply (it reads settings internally)
+        if (window.NEXUS_NATURAL_POSE?.isActive() && window.NEXUS_NATURAL_POSE.isVRM()) {
+            window.NEXUS_NATURAL_POSE.apply(avatarRoot);
+            // VRM normalized bones don't need rest pose re-capture —
+            // vrm.update() syncs them each frame automatically
+            return;
+        }
+
+        // For GLB models: restore bind pose, re-apply, re-capture rest
         if (window.NEXUS_POSE_NORMALIZER?.restoreNeutralPose) {
             window.NEXUS_POSE_NORMALIZER.restoreNeutralPose(avatarRoot);
         }
-
-        // Re-apply the T-pose fix with updated settings
         fixTPose();
-
-        // Re-capture rest pose so breathing/head-look animate from the new base
         captureRestPose(avatarRoot);
     });
 
