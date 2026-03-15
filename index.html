@@ -70,75 +70,6 @@
         </script>
 
         <style>
-            /* Chatbot flow */
-            .control-panel {
-                display: flex;
-                flex-direction: column;
-                gap: 14px;
-            }
-            .control-panel .panel-input {
-                order: 1;
-            }
-            .control-panel .panel-chat {
-                order: 2;
-            }
-            .control-panel .panel-actions {
-                order: 3;
-            }
-            .control-panel .panel-avatar {
-                order: 4;
-            }
-
-            /* Ensure chat log can scroll */
-            .history-section .chat-history {
-                min-height: 360px;
-                max-height: 520px;
-                overflow-y: auto !important;
-                overscroll-behavior: contain;
-                -webkit-overflow-scrolling: touch;
-                padding-right: 6px;
-            }
-
-            /* Collapsible */
-            .collapsible .collapse-toggle {
-                width: 100%;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                gap: 12px;
-                background: transparent;
-                border: 0;
-                padding: 0;
-                color: inherit;
-                cursor: pointer;
-            }
-            .collapsible .collapse-toggle:focus-visible {
-                outline: 2px solid rgba(0, 229, 255, 0.7);
-                outline-offset: 6px;
-                border-radius: 10px;
-            }
-
-            .collapsible .chevron {
-                display: inline-flex;
-                font-size: 18px;
-                line-height: 1;
-                transform: rotate(-90deg);
-                transition: transform 200ms ease;
-                opacity: 0.9;
-                user-select: none;
-            }
-            .collapsible.is-open .chevron {
-                transform: rotate(0deg);
-            }
-
-            .collapsible .collapse-panel {
-                display: none;
-                margin-top: 12px;
-            }
-            .collapsible.is-open .collapse-panel {
-                display: block;
-            }
-
             /* Quick actions grid */
             .quick-actions {
                 display: grid;
@@ -147,23 +78,6 @@
             }
             .quick-actions .emotion-btn {
                 padding: 10px 12px;
-            }
-
-            .panel-input .input-wrapper .text-input {
-                width: 100%;
-            }
-
-            @media (prefers-reduced-motion: reduce) {
-                .collapsible .chevron {
-                    transition: none !important;
-                }
-            }
-
-            /* Small layout improvement for settings rows */
-            .inline-row {
-                display: grid;
-                grid-template-columns: 1fr;
-                gap: 10px;
             }
 
             .select-input {
@@ -205,96 +119,206 @@
         <div class="background-grid" aria-hidden="true"></div>
         <div class="background-gradient" aria-hidden="true"></div>
 
-        <div class="main-container">
-            <header class="header glass-panel">
-                <div class="header-content">
-                    <div class="logo">
-                        <div class="logo-icon" aria-hidden="true">⬢</div>
-
-                        <!-- ✅ Updated visible name -->
-                        <h1>HomePilot Avatar VR</h1>
+        <div class="app-shell">
+            <!-- ====== TOP BAR ====== -->
+            <header class="topbar glass-panel">
+                <div class="topbar-left">
+                    <button class="icon-btn mobile-only" id="mobile-menu-btn" type="button" aria-label="Open menu">
+                        <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            aria-hidden="true"
+                        >
+                            <line x1="3" y1="6" x2="21" y2="6" />
+                            <line x1="3" y1="12" x2="21" y2="12" />
+                            <line x1="3" y1="18" x2="21" y2="18" />
+                        </svg>
+                    </button>
+                    <div class="brand-inline">
+                        <div class="brand-inline-title">HomePilot Avatar</div>
+                        <div class="brand-inline-sub">
+                            <div class="status-indicator" id="status-indicator"></div>
+                            <span class="status-text" id="status-text">BOOTING...</span>
+                        </div>
                     </div>
-                    <div class="header-controls">
-                        <button class="icon-btn" id="settings-btn" title="Settings" aria-label="Settings" type="button">
-                            <svg
-                                width="20"
-                                height="20"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"
-                                aria-hidden="true"
-                            >
-                                <circle cx="12" cy="12" r="3" />
-                                <path
-                                    d="M12 1v6m0 6v6m5.66-13l-3 3m-3.46 3.46l-3 3m13.96-.66l-6 6m-6-6l-6 6M23 12h-6m-6 0H1"
-                                />
-                            </svg>
-                        </button>
-
-                        <button class="icon-btn" id="info-btn" title="Info" aria-label="Info" type="button">
-                            <svg
-                                width="20"
-                                height="20"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"
-                                aria-hidden="true"
-                            >
-                                <circle cx="12" cy="12" r="10" />
-                                <line x1="12" y1="16" x2="12" y2="12" />
-                                <line x1="12" y1="8" x2="12.01" y2="8" />
-                            </svg>
-                        </button>
-                    </div>
+                </div>
+                <div class="topbar-right">
+                    <button
+                        class="icon-btn mobile-hide-label"
+                        id="settings-btn"
+                        title="Settings"
+                        aria-label="Settings"
+                        type="button"
+                    >
+                        <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            aria-hidden="true"
+                        >
+                            <circle cx="12" cy="12" r="3" />
+                            <path
+                                d="M12 1v6m0 6v6m5.66-13l-3 3m-3.46 3.46l-3 3m13.96-.66l-6 6m-6-6l-6 6M23 12h-6m-6 0H1"
+                            />
+                        </svg>
+                    </button>
+                    <button
+                        class="icon-btn mobile-hide-label"
+                        id="info-btn"
+                        title="Info"
+                        aria-label="Info"
+                        type="button"
+                    >
+                        <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            aria-hidden="true"
+                        >
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="16" x2="12" y2="12" />
+                            <line x1="12" y1="8" x2="12.01" y2="8" />
+                        </svg>
+                    </button>
                 </div>
             </header>
 
-            <div class="content-grid">
-                <section class="avatar-section">
-                    <div class="glass-panel viewport-container">
-                        <div id="avatar-viewport" class="avatar-viewport" aria-label="3D Avatar Viewport">
-                            <div id="loading-overlay" class="loading-overlay" role="status" aria-live="polite">
-                                <div class="loading-content">
-                                    <div class="loader" aria-hidden="true"></div>
-                                    <p id="loading-text" class="loading-text">Loading 3D Avatar...</p>
-                                    <div class="loading-bar" aria-hidden="true">
-                                        <div class="loading-progress"></div>
+            <!-- ====== MAIN CONTENT (Avatar + Chat side by side) ====== -->
+            <div class="content-layout">
+                <!-- LEFT: 3D Avatar Panel -->
+                <section class="avatar-panel">
+                    <div class="avatar-card glass-panel">
+                        <div class="avatar-preview-wrap">
+                            <div id="avatar-viewport" class="avatar-viewport" aria-label="3D Avatar Viewport">
+                                <div id="loading-overlay" class="loading-overlay" role="status" aria-live="polite">
+                                    <div class="loading-content">
+                                        <div class="loader" aria-hidden="true"></div>
+                                        <p id="loading-text" class="loading-text">Loading 3D Avatar...</p>
+                                        <div class="loading-bar" aria-hidden="true">
+                                            <div class="loading-progress"></div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                            <div class="hud-overlay" aria-hidden="true">
+                                <div class="hud-corner hud-tl"></div>
+                                <div class="hud-corner hud-tr"></div>
+                                <div class="hud-corner hud-bl"></div>
+                                <div class="hud-corner hud-br"></div>
+                                <div class="status-badge" id="status-badge" aria-hidden="false">
+                                    <div class="status-indicator"></div>
+                                    <span class="status-text">READY</span>
+                                </div>
+                            </div>
                         </div>
-
-                        <div class="hud-overlay" aria-hidden="true">
-                            <div class="hud-corner hud-tl"></div>
-                            <div class="hud-corner hud-tr"></div>
-                            <div class="hud-corner hud-bl"></div>
-                            <div class="hud-corner hud-br"></div>
-
-                            <div class="status-badge" id="status-badge" aria-hidden="false">
-                                <div class="status-indicator" id="status-indicator"></div>
-                                <span class="status-text" id="status-text">BOOTING...</span>
+                        <div class="avatar-footer">
+                            <div class="avatar-footer-actions">
+                                <div class="emotion-dropdown" id="emotion-dropdown">
+                                    <button
+                                        class="emotion-trigger"
+                                        id="emotion-trigger"
+                                        type="button"
+                                        title="Change emotion"
+                                        aria-haspopup="true"
+                                        aria-expanded="false"
+                                    >
+                                        <span class="emotion-trigger-icon" id="emotion-trigger-icon">🧘</span>
+                                    </button>
+                                    <div class="emotion-menu" id="emotion-menu">
+                                        <button class="emotion-menu-item" data-emotion="idle" type="button">
+                                            <span>🧘</span> Idle
+                                        </button>
+                                        <button class="emotion-menu-item" data-emotion="happy" type="button">
+                                            <span>😊</span> Happy
+                                        </button>
+                                        <button class="emotion-menu-item" data-emotion="thinking" type="button">
+                                            <span>🤔</span> Thinking
+                                        </button>
+                                        <button class="emotion-menu-item" data-emotion="dance" type="button">
+                                            <span>🕺</span> Dance
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="avatar-footer-right">
+                                    <select id="avatar-select" class="select-input avatar-select-compact">
+                                        <option value="" selected>Loading avatars...</option>
+                                    </select>
+                                    <input id="avatar-upload" class="hidden" type="file" accept=".glb,.gltf" />
+                                </div>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                <aside class="control-panel">
-                    <div class="glass-panel control-section panel-input">
-                        <h2 class="section-title"><span class="title-icon">▶</span> CHAT</h2>
+                <!-- RIGHT: Chat Panel -->
+                <section class="chat-panel">
+                    <div class="chat-card glass-panel">
+                        <div class="chat-card-header">
+                            <div>
+                                <h2 class="section-title"><span class="title-icon">◇</span> CONVERSATION</h2>
+                            </div>
+                            <button class="clear-btn" id="clear-history" type="button">CLEAR</button>
+                        </div>
 
-                        <div class="input-group">
-                            <label class="input-label" for="speech-text">MESSAGE</label>
-                            <div class="input-wrapper">
+                        <div class="chat-main">
+                            <div class="chat-history" id="chat-history" aria-live="polite" aria-label="Conversation">
+                                <div class="empty-state">No transmissions recorded</div>
+                            </div>
+                        </div>
+
+                        <div id="typing-indicator" class="typing-row hidden" aria-hidden="true">
+                            <div class="chat-message avatar">
+                                <div class="message-sender avatar">NEXUS</div>
+                                <div class="message-text typing-bubble"><span></span><span></span><span></span></div>
+                            </div>
+                        </div>
+
+                        <footer class="chat-input-shell">
+                            <div class="chat-input-bar">
+                                <button
+                                    class="voice-btn-compact"
+                                    id="listen-btn"
+                                    type="button"
+                                    aria-pressed="false"
+                                    aria-label="Voice input"
+                                    title="Voice input"
+                                >
+                                    <svg
+                                        class="mic-icon"
+                                        width="20"
+                                        height="20"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        aria-hidden="true"
+                                    >
+                                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                                        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                                        <line x1="12" y1="19" x2="12" y2="23" />
+                                        <line x1="8" y1="23" x2="16" y2="23" />
+                                    </svg>
+                                </button>
                                 <input
                                     type="text"
                                     id="speech-text"
-                                    class="text-input"
-                                    placeholder="Type your message…"
+                                    class="chat-input"
+                                    placeholder="Type your message..."
                                     autocomplete="off"
+                                    enterkeyhint="send"
+                                    aria-label="Type a message"
                                 />
-                                <button class="primary-btn" id="speak-btn" aria-label="Send" type="button">
+                                <button class="send-btn" id="speak-btn" type="button" aria-label="Send message">
                                     <svg
                                         width="16"
                                         height="16"
@@ -304,112 +328,56 @@
                                     >
                                         <polygon points="5 3 19 12 5 21 5 3" />
                                     </svg>
+                                    <span class="send-btn-label">Send</span>
                                 </button>
                             </div>
-                        </div>
-
-                        <div class="input-group">
-                            <label class="input-label">VOICE</label>
-                            <button class="voice-btn" id="listen-btn" type="button" aria-pressed="false">
-                                <svg
-                                    class="mic-icon"
-                                    width="20"
-                                    height="20"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    aria-hidden="true"
-                                >
-                                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                                    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                                    <line x1="12" y1="19" x2="12" y2="23" />
-                                    <line x1="8" y1="23" x2="16" y2="23" />
-                                </svg>
-                                <span id="voice-btn-text">ACTIVATE VOICE</span>
-                            </button>
-                            <p class="voice-status" id="recognition-status">Voice system standby</p>
-                        </div>
+                            <p class="voice-status-inline" id="recognition-status">Voice system standby</p>
+                            <span id="voice-btn-text" class="hidden">ACTIVATE VOICE</span>
+                        </footer>
                     </div>
-
-                    <div class="glass-panel control-section history-section panel-chat">
-                        <div class="section-header">
-                            <h2 class="section-title"><span class="title-icon">◇</span> CONVERSATION</h2>
-                            <button class="clear-btn" id="clear-history" type="button">CLEAR</button>
-                        </div>
-                        <div class="chat-history" id="chat-history">
-                            <div class="empty-state">No transmissions recorded</div>
-                        </div>
-                    </div>
-
-                    <div
-                        class="glass-panel control-section panel-actions collapsible"
-                        data-collapsible
-                        data-default="collapsed"
-                    >
-                        <button class="collapse-toggle" type="button" aria-expanded="false">
-                            <h2 class="section-title" style="margin: 0">
-                                <span class="title-icon">◆</span>
-                                <span class="collapse-title">QUICK ACTIONS</span>
-                            </h2>
-                            <span class="chevron" aria-hidden="true">▾</span>
-                        </button>
-
-                        <div class="collapse-panel" data-collapse-panel>
-                            <div class="quick-actions">
-                                <button class="emotion-btn" data-emotion="idle" data-color="blue" type="button">
-                                    <span class="emotion-icon">🧘</span>
-                                    <span class="emotion-label">IDLE</span>
-                                </button>
-                                <button class="emotion-btn" data-emotion="happy" data-color="green" type="button">
-                                    <span class="emotion-icon">😊</span>
-                                    <span class="emotion-label">HAPPY</span>
-                                </button>
-                                <button class="emotion-btn" data-emotion="thinking" data-color="purple" type="button">
-                                    <span class="emotion-icon">🤔</span>
-                                    <span class="emotion-label">THINKING</span>
-                                </button>
-                                <button class="emotion-btn" data-emotion="dance" data-color="orange" type="button">
-                                    <span class="emotion-icon">🕺</span>
-                                    <span class="emotion-label">DANCE</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div
-                        class="glass-panel control-section panel-avatar collapsible"
-                        data-collapsible
-                        data-default="collapsed"
-                    >
-                        <button class="collapse-toggle" type="button" aria-expanded="false">
-                            <h2 class="section-title" style="margin: 0">
-                                <span class="title-icon">⬡</span>
-                                <span class="collapse-title">AVATAR</span>
-                            </h2>
-                            <span class="chevron" aria-hidden="true">▾</span>
-                        </button>
-
-                        <div class="collapse-panel" data-collapse-panel>
-                            <div class="input-group">
-                                <label class="input-label" for="avatar-select">PRESET</label>
-                                <select id="avatar-select" class="select-input">
-                                    <option value="" selected>Loading avatars...</option>
-                                </select>
-
-                                <p class="voice-status" style="margin-top: 8px; opacity: 0.8">
-                                    Loaded from <code>/vendor/avatars/avatars.json</code>
-                                </p>
-                            </div>
-
-                            <div class="input-group">
-                                <label class="input-label" for="avatar-upload">UPLOAD (.glb / .gltf)</label>
-                                <input id="avatar-upload" class="text-input" type="file" accept=".glb,.gltf" />
-                            </div>
-                        </div>
-                    </div>
-                </aside>
+                </section>
             </div>
+
+            <!-- ====== MOBILE DRAWER (slides in from left) ====== -->
+            <div class="mobile-drawer-overlay hidden" id="mobile-drawer-overlay"></div>
+            <aside class="mobile-drawer" id="mobile-drawer">
+                <div class="mobile-drawer-header">
+                    <h2 class="section-title">Menu</h2>
+                    <button class="icon-btn" id="mobile-drawer-close" type="button" aria-label="Close menu">✕</button>
+                </div>
+                <div class="mobile-drawer-content">
+                    <div class="drawer-section">
+                        <h3 class="config-title">QUICK ACTIONS</h3>
+                        <div class="quick-actions">
+                            <button class="emotion-btn" data-emotion="idle" data-color="blue" type="button">
+                                <span class="emotion-icon">🧘</span><span class="emotion-label">IDLE</span>
+                            </button>
+                            <button class="emotion-btn" data-emotion="happy" data-color="green" type="button">
+                                <span class="emotion-icon">😊</span><span class="emotion-label">HAPPY</span>
+                            </button>
+                            <button class="emotion-btn" data-emotion="thinking" data-color="purple" type="button">
+                                <span class="emotion-icon">🤔</span><span class="emotion-label">THINKING</span>
+                            </button>
+                            <button class="emotion-btn" data-emotion="dance" data-color="orange" type="button">
+                                <span class="emotion-icon">🕺</span><span class="emotion-label">DANCE</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="drawer-section">
+                        <h3 class="config-title">AVATAR</h3>
+                        <label class="input-label" for="avatar-upload-drawer">Upload .glb / .gltf</label>
+                        <label class="secondary-btn upload-label" for="avatar-upload"> Choose File </label>
+                    </div>
+                    <div class="drawer-section">
+                        <button class="secondary-btn drawer-action-btn" id="drawer-settings-btn" type="button">
+                            Settings
+                        </button>
+                        <button class="secondary-btn drawer-action-btn" id="drawer-info-btn" type="button">
+                            About
+                        </button>
+                    </div>
+                </div>
+            </aside>
         </div>
 
         <div class="modal-overlay" id="settings-modal">
@@ -936,11 +904,11 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
 
         <script defer>
             window.addEventListener('DOMContentLoaded', () => {
+                // Collapsible panels (if any remain)
                 document.querySelectorAll('[data-collapsible]').forEach((root) => {
                     const toggle = root.querySelector('.collapse-toggle');
                     const panel = root.querySelector('[data-collapse-panel]');
                     if (!toggle || !panel) return;
-
                     const shouldCollapse = (root.getAttribute('data-default') || 'collapsed') === 'collapsed';
                     if (shouldCollapse) {
                         root.classList.remove('is-open');
@@ -949,12 +917,81 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
                         root.classList.add('is-open');
                         toggle.setAttribute('aria-expanded', 'true');
                     }
-
                     toggle.addEventListener('click', () => {
                         const isOpen = root.classList.toggle('is-open');
                         toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
                     });
                 });
+
+                // Mobile drawer toggle
+                const menuBtn = document.getElementById('mobile-menu-btn');
+                const drawer = document.getElementById('mobile-drawer');
+                const overlay = document.getElementById('mobile-drawer-overlay');
+                const closeBtn = document.getElementById('mobile-drawer-close');
+                const drawerSettingsBtn = document.getElementById('drawer-settings-btn');
+                const drawerInfoBtn = document.getElementById('drawer-info-btn');
+
+                function openDrawer() {
+                    drawer?.classList.add('open');
+                    overlay?.classList.remove('hidden');
+                }
+                function closeDrawer() {
+                    drawer?.classList.remove('open');
+                    overlay?.classList.add('hidden');
+                }
+
+                menuBtn?.addEventListener('click', openDrawer);
+                closeBtn?.addEventListener('click', closeDrawer);
+                overlay?.addEventListener('click', closeDrawer);
+
+                // Forward drawer buttons to existing settings/info handlers
+                drawerSettingsBtn?.addEventListener('click', () => {
+                    closeDrawer();
+                    document.getElementById('settings-btn')?.click();
+                });
+                drawerInfoBtn?.addEventListener('click', () => {
+                    closeDrawer();
+                    document.getElementById('info-btn')?.click();
+                });
+
+                // Emotion dropdown toggle
+                const emotionTrigger = document.getElementById('emotion-trigger');
+                const emotionMenu = document.getElementById('emotion-menu');
+                if (emotionTrigger && emotionMenu) {
+                    emotionTrigger.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const open = emotionMenu.classList.toggle('open');
+                        emotionTrigger.setAttribute('aria-expanded', open ? 'true' : 'false');
+                    });
+                    document.addEventListener('click', () => {
+                        emotionMenu.classList.remove('open');
+                        emotionTrigger.setAttribute('aria-expanded', 'false');
+                    });
+                }
+
+                // Global helper to update emotion icon from main.js
+                window.setEmotionIcon = function (emotion) {
+                    const iconMap = {
+                        idle: '\u{1F9D8}',
+                        happy: '\u{1F60A}',
+                        thinking: '\u{1F914}',
+                        dance: '\u{1F57A}',
+                    };
+                    const el = document.getElementById('emotion-trigger-icon');
+                    if (el) el.textContent = iconMap[emotion] || iconMap.idle;
+                };
+
+                // Typing indicator helper (global for main.js)
+                window.setTypingIndicator = function (show) {
+                    const el = document.getElementById('typing-indicator');
+                    if (!el) return;
+                    el.classList.toggle('hidden', !show);
+                    const chat = document.getElementById('chat-history');
+                    if (chat)
+                        requestAnimationFrame(() => {
+                            chat.scrollTop = chat.scrollHeight;
+                        });
+                };
             });
         </script>
 

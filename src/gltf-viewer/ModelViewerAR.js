@@ -10,6 +10,7 @@
  * Uses Google's <model-viewer> web component for maximum compatibility.
  * @see https://modelviewer.dev/
  */
+import QrCreator from '../../vendor/qr-creator/qr-creator.es6.min.js';
 
 export class ModelViewerAR {
     constructor() {
@@ -23,6 +24,9 @@ export class ModelViewerAR {
         this._isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
         this._isAndroid = /Android/i.test(navigator.userAgent);
         this._isDesktop = !this._isIOS && !this._isAndroid;
+
+        // Pre-detect LAN IP for QR codes (async, cached for later)
+        if (this._isDesktop) this._asyncDetectLanIp();
 
         this._checkSupport();
     }
@@ -251,15 +255,62 @@ export class ModelViewerAR {
     /**
      * Build an AR launch URL that works on mobile devices.
      * When scanned via QR code, this URL opens the model directly in AR.
+     * Replaces localhost/127.0.0.1 with the machine's LAN IP so phones
+     * on the same network can reach the server.
      */
     _buildMobileARUrl() {
-        const modelUrl = this._getAbsoluteModelUrl();
-        // Link to the current page with an ar=1 query param
-        // The page will auto-launch AR on mobile when this param is present
         const pageUrl = new URL(window.location.href);
         pageUrl.searchParams.set('ar', '1');
         pageUrl.searchParams.set('model', this._currentModelUrl);
+
+        // localhost is unreachable from a phone — try to get LAN IP
+        if (pageUrl.hostname === 'localhost' || pageUrl.hostname === '127.0.0.1' || pageUrl.hostname === '0.0.0.0') {
+            const lanIp = this._detectLanIp();
+            if (lanIp) {
+                pageUrl.hostname = lanIp;
+            }
+        }
         return pageUrl.href;
+    }
+
+    /**
+     * Attempt to detect the machine's LAN IP via WebRTC.
+     * Falls back to null (keeps current hostname).
+     */
+    _detectLanIp() {
+        // If we already resolved it, reuse
+        if (ModelViewerAR._cachedLanIp !== undefined) {
+            return ModelViewerAR._cachedLanIp;
+        }
+        // Kick off async detection for next time
+        this._asyncDetectLanIp();
+        return null;
+    }
+
+    async _asyncDetectLanIp() {
+        if (ModelViewerAR._cachedLanIp !== undefined) return;
+        try {
+            const pc = new RTCPeerConnection({ iceServers: [] });
+            pc.createDataChannel('');
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            const ip = await new Promise((resolve) => {
+                const timeout = setTimeout(() => resolve(null), 3000);
+                pc.onicecandidate = (e) => {
+                    if (!e || !e.candidate || !e.candidate.candidate) return;
+                    const match = e.candidate.candidate.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/);
+                    if (match && match[1] !== '0.0.0.0' && !match[1].startsWith('127.')) {
+                        clearTimeout(timeout);
+                        resolve(match[1]);
+                    }
+                };
+            });
+            pc.close();
+            ModelViewerAR._cachedLanIp = ip;
+            console.log('[ModelViewerAR] Detected LAN IP:', ip);
+        } catch (_) {
+            ModelViewerAR._cachedLanIp = null;
+        }
     }
 
     /**
@@ -284,6 +335,7 @@ export class ModelViewerAR {
                 <div class="ar-qr-modal__qr-container">
                     <canvas class="ar-qr-modal__canvas"></canvas>
                 </div>
+                <p class="ar-qr-modal__url"></p>
                 <p class="ar-qr-modal__hint">Works with iOS (AR Quick Look) and Android (Scene Viewer)</p>
             </div>
         `;
@@ -305,6 +357,21 @@ export class ModelViewerAR {
         // Generate QR code on canvas
         const canvas = this._qrModal.querySelector('.ar-qr-modal__canvas');
         this._renderQRCode(canvas, arUrl);
+
+        // Show the encoded URL for manual copy
+        const urlEl = this._qrModal.querySelector('.ar-qr-modal__url');
+        if (urlEl) {
+            const parsed = new URL(arUrl);
+            const isLocal = ['localhost', '127.0.0.1', '0.0.0.0'].includes(parsed.hostname);
+            urlEl.textContent = isLocal ? `${arUrl}\n(phone must be on same network — open in browser by IP)` : arUrl;
+            urlEl.style.cursor = 'pointer';
+            urlEl.title = 'Click to copy';
+            urlEl.addEventListener('click', () => {
+                navigator.clipboard?.writeText(arUrl);
+                urlEl.textContent = 'Copied!';
+                setTimeout(() => (urlEl.textContent = arUrl), 1500);
+            });
+        }
 
         console.log('[ModelViewerAR] QR code modal shown for desktop AR handoff');
     }
@@ -330,35 +397,17 @@ export class ModelViewerAR {
      * @param {string} text - The data to encode
      */
     _renderQRCode(canvas, text) {
-        // Use the QR code generator library if available, otherwise use a
-        // simple SVG-based approach via an image from a public QR API
-        const size = 200;
-        canvas.width = size;
-        canvas.height = size;
-        const ctx = canvas.getContext('2d');
-
-        // Use Google Charts QR API as a reliable QR generator
-        const qrImg = new Image();
-        qrImg.crossOrigin = 'anonymous';
-        qrImg.onload = () => {
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, size, size);
-            ctx.drawImage(qrImg, 0, 0, size, size);
-        };
-        qrImg.onerror = () => {
-            // Fallback: show the URL as text if QR generation fails
-            ctx.fillStyle = '#0a0e1a';
-            ctx.fillRect(0, 0, size, size);
-            ctx.fillStyle = '#00e5ff';
-            ctx.font = '12px monospace';
-            ctx.textAlign = 'center';
-            const words = text.split('/');
-            words.forEach((w, i) => {
-                ctx.fillText(w, size / 2, 40 + i * 18);
-            });
-            ctx.fillText('(Copy URL manually)', size / 2, size - 20);
-        };
-        qrImg.src = `https://chart.googleapis.com/chart?cht=qr&chs=${size}x${size}&chl=${encodeURIComponent(text)}&choe=UTF-8`;
+        QrCreator.render(
+            {
+                text,
+                radius: 0.0,
+                ecLevel: 'M',
+                fill: '#0a0e1a',
+                background: '#ffffff',
+                size: 200,
+            },
+            canvas
+        );
     }
 
     // =========================================================================
@@ -468,3 +517,6 @@ export class ModelViewerAR {
         this._modelViewerEl = null;
     }
 }
+
+// Static cache — shared across instances, survives re-creation
+ModelViewerAR._cachedLanIp = undefined;
