@@ -142,6 +142,60 @@ app.get('/health', (req, res) => {
 });
 
 // -----------------------------
+// Avatar Proxy (binary passthrough for CORS-blocked avatar CDNs)
+// GET /api/avatar-proxy?url=https://models.readyplayer.me/...
+// -----------------------------
+const AVATAR_PROXY_HOSTS = [
+    'models.readyplayer.me',
+    'api.readyplayer.me',
+    'raw.githubusercontent.com',
+    'github.com',
+    'hub.vroid.com',
+    'api.sketchfab.com',
+    'media.sketchfab.com',
+];
+
+function isAllowedAvatarHost(urlStr) {
+    try {
+        const u = new URL(urlStr);
+        return (
+            u.protocol === 'https:' && AVATAR_PROXY_HOSTS.some((h) => u.hostname === h || u.hostname.endsWith('.' + h))
+        );
+    } catch {
+        return false;
+    }
+}
+
+app.get('/api/avatar-proxy', async (req, res) => {
+    const targetUrl = req.query.url;
+    if (!targetUrl) return res.status(400).json({ error: 'Missing "url" query parameter.' });
+    if (!isAllowedAvatarHost(targetUrl)) {
+        return res.status(403).json({ error: 'Host not in avatar proxy allowlist.' });
+    }
+
+    try {
+        console.log(`[Avatar Proxy] GET -> ${targetUrl}`);
+        const upstream = await fetch(targetUrl);
+        if (!upstream.ok) {
+            return res.status(upstream.status).json({ error: `Upstream: ${upstream.status} ${upstream.statusText}` });
+        }
+
+        const ct = upstream.headers.get('content-type') || 'application/octet-stream';
+        const cl = upstream.headers.get('content-length');
+
+        res.setHeader('Content-Type', ct);
+        if (cl) res.setHeader('Content-Length', cl);
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+
+        const buf = Buffer.from(await upstream.arrayBuffer());
+        return res.status(200).send(buf);
+    } catch (err) {
+        console.error('[Avatar Proxy Error]', err);
+        return res.status(500).json({ error: err?.message || String(err) });
+    }
+});
+
+// -----------------------------
 // Proxy route
 // Body: { url, method, headers, body }
 // -----------------------------
@@ -195,6 +249,47 @@ async function handleProxy(req, res) {
 
 app.post('/proxy', handleProxy);
 app.post('/api/proxy', handleProxy); // alias for old frontends
+
+// -----------------------------
+// RPM Guest Token (mirrors api/rpm-guest.js for local dev)
+// POST /api/rpm-guest  { apiKey?: string, subdomain?: string }
+// -----------------------------
+app.post('/api/rpm-guest', async (req, res) => {
+    const apiKey = req.headers['x-rpm-api-key'] || req.body?.apiKey;
+    if (!apiKey) {
+        return res.status(400).json({ error: 'Missing RPM API key. Configure it in Avatar Library settings.' });
+    }
+
+    try {
+        const userRes = await fetch('https://api.readyplayer.me/v1/users', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': apiKey,
+            },
+            body: JSON.stringify({ data: { applicationId: apiKey } }),
+        });
+
+        if (!userRes.ok) {
+            const errText = await userRes.text();
+            console.error('[rpm-guest] user creation failed:', userRes.status, errText);
+            return res.status(userRes.status).json({ error: `RPM API error: ${userRes.status}` });
+        }
+
+        const userData = await userRes.json();
+        const token = userData.data?.token;
+        const userId = userData.data?.id;
+
+        if (!token) {
+            return res.status(502).json({ error: 'RPM returned no token.' });
+        }
+
+        return res.status(200).json({ token, userId });
+    } catch (err) {
+        console.error('[rpm-guest] error:', err);
+        return res.status(500).json({ error: err?.message || String(err) });
+    }
+});
 
 // SPA fallback: serve index.html for unknown GET routes
 app.get('*', (req, res) => {

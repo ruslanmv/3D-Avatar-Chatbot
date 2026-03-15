@@ -5,7 +5,14 @@
   "outputDirectory": ".",
 
   "functions": {
-    "api/*.js": {
+    "api/proxy.js": {
+      "maxDuration": 10
+    },
+    "api/avatar-proxy.js": {
+      "maxDuration": 30,
+      "memory": 256
+    },
+    "api/rpm-guest.js": {
       "maxDuration": 10
     }
   },
@@ -33,7 +40,7 @@
       ]
     },
     {
-      "source": "/(.*)\\.(glb|gltf)",
+      "source": "/(.*)\\.(glb|gltf|vrm)",
       "headers": [
         { "key": "Content-Type", "value": "model/gltf-binary" },
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" },
@@ -41,7 +48,11 @@
       ]
     },
     {
-      "source": "/(.*)\\.(js|css|png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|eot|bin|json)",
+      "source": "/styles/(.*)\\.css",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+    },
+    {
+      "source": "/(.*)\\.(png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|eot|bin|json)",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
     },
     {
@@ -54,7 +65,10 @@
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "X-Frame-Options", "value": "DENY" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Permissions-Policy", "value": "microphone=(self), camera=(), geolocation=()" }
+        {
+          "key": "Permissions-Policy",
+          "value": "microphone=(self), camera=(self), xr-spatial-tracking=(self), geolocation=()"
+        }
       ]
     }
   ],
@@ -62,6 +76,7 @@
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/demo", "destination": "/demo.html" },
+    { "source": "/vrm-manager", "destination": "/vrm-manager.html" },
     { "source": "/vendor/(.*)", "destination": "/vendor/$1" },
     { "source": "/src/(.*)", "destination": "/src/$1" },
     { "source": "/css/(.*)", "destination": "/css/$1" },
