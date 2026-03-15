@@ -248,6 +248,11 @@ export class AvatarManager {
             this.current = { url, name, index };
             this.currentRoot = root;
 
+            // Store VRM humanoid on root so PoseNormalizer/ProceduralAnimator can use Tier 1 detection
+            if (vrm && vrm.humanoid) {
+                root.userData.vrmHumanoid = vrm.humanoid;
+            }
+
             // Register with ProceduralAnimator for breathing, head movement, etc.
             try {
                 const hasClips = this.currentClips.length > 0;

@@ -9,7 +9,7 @@ export class VRChatIntegration {
         this.avatarManager = avatarManager;
         this.vrChatPanel = vrChatPanel;
         this.vrControllers = vrControllers;
-        this.speechService = speechService;
+        this._speechService = speechService;
         this.chatManager = chatManager;
 
         this.isInitialized = false;
@@ -17,6 +17,18 @@ export class VRChatIntegration {
         this.currentAvatarIndex = 0;
 
         console.log('[VRChatIntegration] Initializing VR chatbot system...');
+    }
+
+    /**
+     * Lazy getter for speechService — resolves from window.SpeechService if the
+     * initial reference was null (script load order race condition).
+     */
+    get speechService() {
+        if (!this._speechService && window.SpeechService) {
+            this._speechService = window.SpeechService;
+            console.log('[VRChatIntegration] Late-bound speechService from window.SpeechService');
+        }
+        return this._speechService;
     }
 
     /**
@@ -331,10 +343,14 @@ export class VRChatIntegration {
 
     /**
      * Handle microphone button (improved with permission handling for VR)
+     * Uses the unified startSTT() API with automatic fallback chain:
+     *   Web Speech → WASM Whisper → OpenAI → Google
+     * Falls back to VR MediaRecorder if no STT provider is available.
      */
     async handleMicButton() {
-        if (!this.speechService || !this.speechService.isRecognitionAvailable()) {
-            this.vrChatPanel.appendMessage('bot', 'Speech recognition not available in your browser.');
+        if (!this.speechService) {
+            console.error('[VRChatIntegration] SpeechService not available');
+            this.vrChatPanel.appendMessage('bot', 'Speech service not loaded. Please reload the page.');
             return;
         }
 
@@ -343,64 +359,105 @@ export class VRChatIntegration {
             return;
         }
 
+        // Toggle off if already listening
         if (this.speechService.isRecognizing) {
-            this.speechService.stopRecognition();
+            // Stop either standard STT or VR fallback
+            if (typeof this.speechService.stopSTT === 'function') {
+                this.speechService.stopSTT();
+            } else if (
+                typeof this.speechService.stopVRFallbackRecording === 'function' &&
+                !this.speechService.isRecognitionAvailable()
+            ) {
+                this.speechService.stopVRFallbackRecording();
+            } else {
+                this.speechService.stopRecognition();
+            }
             this.vrChatPanel.setStatus('idle');
-        } else {
-            // Request microphone permission first (critical for VR)
-            if (!this.speechService.hasMicrophonePermission()) {
-                this.vrChatPanel.setStatus('thinking');
-                this.vrChatPanel.appendMessage('bot', 'Requesting microphone permission...');
+            return;
+        }
 
-                const granted = await this.speechService.requestMicrophonePermission();
-                if (!granted) {
-                    this.vrChatPanel.setStatus('idle');
-                    this.vrChatPanel.appendMessage(
-                        'bot',
-                        'Microphone permission denied. Please allow mic access in browser settings.'
-                    );
-                    return;
-                }
-                this.vrChatPanel.appendMessage('bot', '✅ Microphone ready! Tap mic button to speak.');
+        // Request microphone permission first (critical for VR)
+        if (
+            typeof this.speechService.hasMicrophonePermission === 'function' &&
+            !this.speechService.hasMicrophonePermission()
+        ) {
+            this.vrChatPanel.setStatus('thinking');
+            this.vrChatPanel.appendMessage('bot', 'Requesting microphone permission...');
+
+            const granted = await this.speechService.requestMicrophonePermission();
+            if (!granted) {
                 this.vrChatPanel.setStatus('idle');
+                this.vrChatPanel.appendMessage(
+                    'bot',
+                    'Microphone permission denied. Please allow mic access in browser settings.'
+                );
                 return;
             }
-
-            // Start speech recognition with interim results
-            await this.speechService.startRecognition({
-                onStart: () => {
-                    this.vrChatPanel.setStatus('listening');
-                    console.log('[VRChatIntegration] 🎤 Listening...');
-                },
-                onInterim: (interimText) => {
-                    // Show interim results in VR (could update a status text in future)
-                    console.log('[VRChatIntegration] Interim:', interimText);
-                },
-                onEnd: () => {
-                    this.vrChatPanel.setStatus('idle');
-                    console.log('[VRChatIntegration] Listening ended');
-                },
-                onResult: (text, confidence) => {
-                    const confidencePercent = Math.round(confidence * 100);
-                    console.log(`[VRChatIntegration] 🎤 Transcribed: "${text}" (${confidencePercent}% confidence)`);
-
-                    // Show what was transcribed in VR panel
-                    this.vrChatPanel.appendMessage('bot', `🎤 Heard: "${text}" (${confidencePercent}% confidence)`);
-
-                    // Send to chatbot
-                    console.log(`[VRChatIntegration] 📤 Sending to chatbot: "${text}"`);
-                    this.handleUserMessage(text);
-                },
-                onError: (error, context) => {
-                    console.error('[VRChatIntegration] Speech error:', error);
-                    this.vrChatPanel.setStatus('idle');
-
-                    // Show detailed error in VR
-                    const errorMsg = context ? `${error}\n${context}` : error;
-                    this.vrChatPanel.appendMessage('bot', `Speech error: ${errorMsg}`);
-                },
-            });
+            this.vrChatPanel.appendMessage('bot', 'Microphone ready! Tap mic again to speak.');
+            this.vrChatPanel.setStatus('idle');
+            return;
         }
+
+        // Shared callbacks for all STT paths
+        const sttCallbacks = {
+            onStart: () => {
+                this.vrChatPanel.setStatus('listening');
+                this.vrChatPanel.setTranscript('Listening...', 'interim');
+                console.log('[VRChatIntegration] 🎤 Listening...');
+            },
+            onInterim: (interimText) => {
+                console.log('[VRChatIntegration] Interim:', interimText);
+                this.vrChatPanel.setTranscript(interimText, 'interim');
+            },
+            onEnd: () => {
+                this.vrChatPanel.setStatus('idle');
+                console.log('[VRChatIntegration] Listening ended');
+            },
+            onResult: (text, confidence) => {
+                const pct = Math.round((confidence || 0) * 100);
+                console.log(`[VRChatIntegration] 🎤 Transcribed: "${text}" (${pct}%)`);
+                this.vrChatPanel.setTranscript(text, 'final');
+                this.vrChatPanel.appendMessage('bot', `🎤 Heard: "${text}" (${pct}% confidence)`);
+                setTimeout(() => {
+                    this.vrChatPanel.clearTranscript();
+                    this.handleUserMessage(text);
+                }, 1500);
+            },
+            onError: (error, context) => {
+                console.error('[VRChatIntegration] Speech error:', error);
+                this.vrChatPanel.setStatus('idle');
+                this.vrChatPanel.clearTranscript();
+                const errorMsg = context ? `${error}\n${context}` : error;
+                this.vrChatPanel.appendMessage('bot', `Speech error: ${errorMsg}`);
+            },
+        };
+
+        // Try unified startSTT (auto-fallback chain) if available
+        if (typeof this.speechService.startSTT === 'function') {
+            console.log('[VRChatIntegration] Using unified startSTT() with auto-fallback');
+            const started = await this.speechService.startSTT(sttCallbacks);
+            if (started) return;
+            console.warn('[VRChatIntegration] startSTT returned false, trying VR fallback');
+        }
+
+        // Try VR MediaRecorder fallback
+        if (typeof this.speechService.startVRFallbackRecording === 'function') {
+            console.log('[VRChatIntegration] Using VR fallback recording (MediaRecorder)');
+            await this.speechService.startVRFallbackRecording(sttCallbacks);
+            return;
+        }
+
+        // Last resort: try legacy startRecognition
+        if (this.speechService.isRecognitionAvailable?.()) {
+            console.log('[VRChatIntegration] Using legacy startRecognition');
+            await this.speechService.startRecognition(sttCallbacks);
+            return;
+        }
+
+        this.vrChatPanel.appendMessage(
+            'bot',
+            'No speech recognition available. Check browser settings or configure an API key in Settings.'
+        );
     }
 
     /**

@@ -42,19 +42,20 @@ export class ViewerEngine {
         // Initial desktop pose (auto-framed after avatar loads)
         this.camera.position.set(0, 1.4, 2.2);
 
-        // Renderer
+        // Renderer — xrCompatible is required for WebXR immersive sessions
         this.renderer = new THREE.WebGLRenderer({
             antialias: true,
             alpha: true,
             powerPreference: 'high-performance',
             preserveDrawingBuffer: false,
+            xrCompatible: true,
         });
 
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
         this.renderer.setSize(w, h);
         this.renderer.outputEncoding = THREE.sRGBEncoding;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.4;
+        this.renderer.toneMappingExposure = 1.2;
         this.renderer.physicallyCorrectLights = true;
 
         // Shadow configuration — off by default, togglable via settings
@@ -108,13 +109,15 @@ export class ViewerEngine {
         fillLight.position.set(-1, 1.5, -0.5);
         this.scene.add(fillLight);
 
-        // Rim light — subtle backlight for depth separation from background
-        const rimLight = new THREE.DirectionalLight(0xeeeeff, 0.4);
+        // Rim light — very subtle backlight for depth separation from background
+        // Kept low to avoid bright edge outlines on dark VRM materials
+        const rimLight = new THREE.DirectionalLight(0xeeeeff, 0.15);
         rimLight.position.set(0, 1.5, -2);
         this.scene.add(rimLight);
 
         // Bottom fill — prevents dark legs/lower body (Sketchfab uses env map for this)
-        const bottomFill = new THREE.DirectionalLight(0xffffff, 0.35);
+        // Kept low to avoid bright edge outlines on trouser/leg seams
+        const bottomFill = new THREE.DirectionalLight(0xffffff, 0.18);
         bottomFill.position.set(0, -0.5, 1);
         this.scene.add(bottomFill);
 

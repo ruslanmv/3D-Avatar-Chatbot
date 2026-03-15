@@ -1381,23 +1381,167 @@ export class VRChatPanel {
         row.items.forEach((b) => {
             const isHot = b.key === 'mic' && this.status === 'listening';
 
+            // Button background with subtle glow when active
             this._roundRect(ctx, b.x, b.y, b.w, b.h, 20);
-            ctx.fillStyle = isHot ? T.dangerBg : T.btnBg;
+            ctx.fillStyle = isHot ? 'rgba(255, 60, 60, 0.28)' : T.btnBg;
             ctx.fill();
 
-            // Icon
-            ctx.fillStyle = T.text;
-            ctx.textAlign = 'center';
-            ctx.font = '36px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-            ctx.fillText(b.icon, b.x + b.w / 2, b.y + 52);
+            if (isHot) {
+                // Pulsing border glow for active mic
+                ctx.strokeStyle = 'rgba(255, 80, 80, 0.6)';
+                ctx.lineWidth = 2;
+                this._roundRect(ctx, b.x, b.y, b.w, b.h, 20);
+                ctx.stroke();
+            }
+
+            // Draw vector icon (no emoji)
+            const cx = b.x + b.w / 2;
+            const cy = b.y + 42;
+            ctx.save();
+            this._drawVectorIcon(ctx, b.key, cx, cy, isHot);
+            ctx.restore();
 
             // Label
-            ctx.fillStyle = T.textDim;
+            ctx.fillStyle = isHot ? 'rgba(255, 120, 120, 0.95)' : T.textDim;
             ctx.font = '800 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-            ctx.fillText(b.label, b.x + b.w / 2, b.y + 92);
-
+            ctx.textAlign = 'center';
+            ctx.fillText(b.label, cx, b.y + 92);
             ctx.textAlign = 'left';
         });
+    }
+
+    /**
+     * Draw crisp vector icons for footer buttons (gaming-industry style).
+     * All icons drawn with canvas path API — no emoji dependency.
+     */
+    _drawVectorIcon(ctx, key, cx, cy, isHot) {
+        const color = isHot ? 'rgba(255, 120, 120, 0.95)' : 'rgba(255, 255, 255, 0.92)';
+        const accent = isHot ? 'rgba(255, 80, 80, 0.7)' : 'rgba(120, 220, 255, 0.6)';
+
+        ctx.fillStyle = color;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        switch (key) {
+            case 'mic': {
+                // Microphone body (rounded capsule)
+                const mw = 10,
+                    mh = 18;
+                ctx.beginPath();
+                ctx.moveTo(cx - mw, cy - mh + mw);
+                ctx.arc(cx, cy - mh + mw, mw, Math.PI, 0); // top cap
+                ctx.lineTo(cx + mw, cy + 2);
+                ctx.arc(cx, cy + 2, mw, 0, Math.PI); // bottom cap
+                ctx.closePath();
+                ctx.fillStyle = isHot ? 'rgba(255, 100, 100, 0.85)' : 'rgba(120, 220, 255, 0.75)';
+                ctx.fill();
+
+                // Mic grille lines
+                ctx.strokeStyle = isHot ? 'rgba(255, 180, 180, 0.4)' : 'rgba(180, 240, 255, 0.35)';
+                ctx.lineWidth = 1.5;
+                for (let i = -2; i <= 2; i++) {
+                    const ly = cy - 8 + i * 6;
+                    ctx.beginPath();
+                    ctx.moveTo(cx - 6, ly);
+                    ctx.lineTo(cx + 6, ly);
+                    ctx.stroke();
+                }
+
+                // Cradle arc
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.arc(cx, cy + 2, 16, Math.PI * 0.15, Math.PI * 0.85);
+                ctx.stroke();
+
+                // Stem
+                ctx.beginPath();
+                ctx.moveTo(cx, cy + 17);
+                ctx.lineTo(cx, cy + 24);
+                ctx.stroke();
+
+                // Base
+                ctx.beginPath();
+                ctx.moveTo(cx - 8, cy + 24);
+                ctx.lineTo(cx + 8, cy + 24);
+                ctx.stroke();
+
+                // Pulsing ring when active
+                if (isHot) {
+                    ctx.strokeStyle = 'rgba(255, 80, 80, 0.3)';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, 26, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                break;
+            }
+            case 'send': {
+                // Paper plane / send arrow
+                ctx.fillStyle = accent;
+                ctx.beginPath();
+                ctx.moveTo(cx - 14, cy - 14);
+                ctx.lineTo(cx + 16, cy);
+                ctx.lineTo(cx - 14, cy + 14);
+                ctx.lineTo(cx - 6, cy);
+                ctx.closePath();
+                ctx.fill();
+
+                // Inner line
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(cx - 6, cy);
+                ctx.lineTo(cx + 10, cy);
+                ctx.stroke();
+                break;
+            }
+            case 'clear': {
+                // Circular refresh arrow
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.arc(cx, cy, 13, -Math.PI * 0.5, Math.PI * 1.2);
+                ctx.stroke();
+
+                // Arrow head
+                const ax = cx + 13 * Math.cos(Math.PI * 1.2);
+                const ay = cy + 13 * Math.sin(Math.PI * 1.2);
+                ctx.beginPath();
+                ctx.moveTo(ax - 6, ay - 4);
+                ctx.lineTo(ax, ay);
+                ctx.lineTo(ax + 2, ay - 7);
+                ctx.stroke();
+                break;
+            }
+            case 'settings': {
+                // Gear icon
+                const r = 12,
+                    teeth = 6;
+                ctx.beginPath();
+                for (let i = 0; i < teeth * 2; i++) {
+                    const angle = (i * Math.PI) / teeth - Math.PI / 2;
+                    const rad = i % 2 === 0 ? r + 4 : r - 2;
+                    const px = cx + rad * Math.cos(angle);
+                    const py = cy + rad * Math.sin(angle);
+                    if (i === 0) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                }
+                ctx.closePath();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Center dot
+                ctx.beginPath();
+                ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+                ctx.fillStyle = color;
+                ctx.fill();
+                break;
+            }
+        }
     }
 
     _drawSoftBtn(ctx, rect, label, hot) {
