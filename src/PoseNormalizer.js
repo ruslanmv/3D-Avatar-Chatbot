@@ -51,7 +51,7 @@
 
     const DEFAULT_SETTINGS = {
         // Global intensity: 0 = no correction, 1 = full correction
-        intensity: 0.55,
+        intensity: 0.35,
 
         // Per-bone intensity overrides (multiplied with global intensity)
         bones: {
@@ -97,6 +97,19 @@
                 rightHand: new THREE.Vector3(0.3, -0.92, 0.1),
                 leftShoulder: new THREE.Vector3(-0.98, -0.1, 0.0),
                 rightShoulder: new THREE.Vector3(0.98, -0.1, 0.0),
+            },
+        },
+        naturalIdle: {
+            label: 'Natural Idle',
+            targets: {
+                leftUpperArm: new THREE.Vector3(-0.35, -0.9, 0.1),
+                rightUpperArm: new THREE.Vector3(0.35, -0.9, 0.1),
+                leftLowerArm: new THREE.Vector3(-0.2, -0.95, 0.15),
+                rightLowerArm: new THREE.Vector3(0.2, -0.95, 0.15),
+                leftHand: new THREE.Vector3(-0.15, -0.96, 0.12),
+                rightHand: new THREE.Vector3(0.15, -0.96, 0.12),
+                leftShoulder: new THREE.Vector3(-0.97, -0.15, 0.0),
+                rightShoulder: new THREE.Vector3(0.97, -0.15, 0.0),
             },
         },
         portrait: {
