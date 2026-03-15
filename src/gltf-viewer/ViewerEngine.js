@@ -772,14 +772,19 @@ export class ViewerEngine {
             this.xrLaunchBar.appendChild(this.arSupport.arButton);
         }
 
-        // Place OUTSIDE the viewport — after it in the avatar-section
-        // This prevents buttons from overlapping the character
-        const avatarSection = containerEl.closest('.avatar-section') || containerEl.parentElement;
-        if (avatarSection) {
-            avatarSection.appendChild(this.xrLaunchBar);
+        // Place inside the avatar footer actions bar (next to emotion/avatar controls)
+        const footerActions =
+            containerEl.closest('.avatar-card')?.querySelector('.avatar-footer-actions') ||
+            containerEl.closest('.avatar-section')?.querySelector('.avatar-footer-actions');
+        if (footerActions) {
+            footerActions.appendChild(this.xrLaunchBar);
         } else {
-            // Fallback: append after the container
-            containerEl.parentElement?.insertBefore(this.xrLaunchBar, containerEl.nextSibling);
+            // Fallback: after the viewport's parent
+            const parent =
+                containerEl.closest('.avatar-panel') ||
+                containerEl.closest('.avatar-section') ||
+                containerEl.parentElement;
+            parent.appendChild(this.xrLaunchBar);
         }
     }
 

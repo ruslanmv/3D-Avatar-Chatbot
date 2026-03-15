@@ -1336,6 +1336,21 @@ function setupEventListeners() {
         });
     });
 
+    // Emotion dropdown menu items in avatar footer
+    document.querySelectorAll('.emotion-menu-item').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const emotion = (btn.dataset.emotion || '').toLowerCase();
+            try {
+                window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.(emotion, 1600);
+            } catch (_) {}
+            const mapped = Object.keys(animations).find((k) => k.includes(emotion)) || findIdleAnimation();
+            if (mapped) playAnimation(mapped, false);
+            if (window.setEmotionIcon) window.setEmotionIcon(emotion);
+            setStatus('idle', `FEELING ${emotion.toUpperCase()}`);
+            setTimeout(() => setStatus('idle', 'READY'), 1500);
+        });
+    });
+
     const clearBtn = $('clear-history');
     if (clearBtn) clearBtn.addEventListener('click', clearHistory);
 
@@ -2007,8 +2022,14 @@ async function handleUserMessage(text) {
 
     setStatus('listening', 'THINKING...');
 
+    // Show typing indicator while waiting for response
+    if (window.setTypingIndicator) window.setTypingIndicator(true);
+
     try {
         const response = config.provider === 'none' ? getSimpleResponse(text) : await callLLM(text);
+
+        // Hide typing indicator
+        if (window.setTypingIndicator) window.setTypingIndicator(false);
 
         // Handle structured response (object with text + attachments) or plain string
         let displayText;
@@ -2037,6 +2058,7 @@ async function handleUserMessage(text) {
 
         speakText(displayText);
     } catch (error) {
+        if (window.setTypingIndicator) window.setTypingIndicator(false);
         logError('Error processing message', error);
 
         if (error.name === 'PersonaUnavailableError') {
