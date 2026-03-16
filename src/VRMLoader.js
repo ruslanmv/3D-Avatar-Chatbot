@@ -9,6 +9,7 @@ class VRMLoader {
         this.camera = camera;
         this.renderer = renderer;
         this.currentVRM = null;
+        this.currentHumanoid = null;
         this.clock = new THREE.Clock();
         this.mixer = null;
         this.animations = {};
@@ -98,6 +99,7 @@ class VRMLoader {
         }
 
         this.currentVRM = vrm;
+        this.currentHumanoid = vrm.humanoid || null;
 
         // Fix common VRM issues
         if (window.THREE_VRM && window.THREE_VRM.VRMUtils) {
@@ -129,6 +131,7 @@ class VRMLoader {
         }
 
         this.currentVRM = { scene: model, isGLB: true };
+        this.currentHumanoid = null;
 
         // Position model
         model.position.set(0, 0, 0);
@@ -410,6 +413,20 @@ class VRMLoader {
                 this.setExpression(target, intensity);
             } catch (_) {}
         }
+    }
+
+    /**
+     * Get current avatar scene root (for Pose Studio integration)
+     */
+    getCurrentAvatarRoot() {
+        return this.currentVRM?.scene || null;
+    }
+
+    /**
+     * Get current VRM humanoid (for Pose Studio rig mapping)
+     */
+    getCurrentHumanoid() {
+        return this.currentHumanoid || null;
     }
 
     /**

@@ -87,6 +87,12 @@ framework dependencies — runs on vanilla JavaScript, Three.js, and WebXR.
   selection
 - **WebXR immersion** — VR mode (Quest 2/3, Pico) and AR mode (hit-test surface
   placement)
+- **Passthrough AR** — See your real room with the avatar standing in it
+  (contact shadows, light estimation, depth occlusion on Quest 3)
+- **Pose Studio** — Interactive bone-level pose editing with presets, save/load,
+  undo/redo, and mirroring
+- **Mobile-first** — Enterprise mobile layout with drawer navigation, responsive
+  panels, and AR access
 - **Privacy-first** — API keys stored in browser localStorage, zero server-side
   data collection
 
@@ -156,20 +162,24 @@ Browser
 
 ### Core modules
 
-| Module            | Location                               | Purpose                           |
-| ----------------- | -------------------------------------- | --------------------------------- |
-| ViewerEngine      | `src/gltf-viewer/ViewerEngine.js`      | 3D scene, camera, lighting, XR    |
-| AvatarManager     | `src/gltf-viewer/AvatarManager.js`     | Model loading, animation mixer    |
-| LLMManager        | `src/LLMManager.js`                    | Multi-provider AI orchestration   |
-| VRSupport         | `src/gltf-viewer/VRSupport.js`         | WebXR VR session management       |
-| ARSupport         | `src/gltf-viewer/ARSupport.js`         | WebXR AR with hit-test placement  |
-| VRControllers     | `src/gltf-viewer/VRControllers.js`     | 6DOF input, locomotion, grab-spin |
-| VRChatPanel       | `src/gltf-viewer/VRChatPanel.js`       | 3D canvas UI for VR chat          |
-| VRChatIntegration | `src/gltf-viewer/VRChatIntegration.js` | Wires VR chat + speech + AI       |
-| ModelViewerAR     | `src/gltf-viewer/ModelViewerAR.js`     | Cross-platform AR fallbacks       |
-| MobileSupport     | `src/gltf-viewer/MobileSupport.js`     | Device detection, perf tuning     |
-| SpeechService     | `js/speech-service.js`                 | STT/TTS with mic/voice selection  |
-| main.js           | `src/main.js`                          | App init, settings, UI wiring     |
+| Module              | Location                                 | Purpose                                   |
+| ------------------- | ---------------------------------------- | ----------------------------------------- |
+| ViewerEngine        | `src/gltf-viewer/ViewerEngine.js`        | 3D scene, camera, lighting, XR            |
+| AvatarManager       | `src/gltf-viewer/AvatarManager.js`       | Model loading, animation mixer            |
+| LLMManager          | `src/LLMManager.js`                      | Multi-provider AI orchestration           |
+| VRSupport           | `src/gltf-viewer/VRSupport.js`           | WebXR VR session management               |
+| ARSupport           | `src/gltf-viewer/ARSupport.js`           | WebXR AR with hit-test placement          |
+| PassthroughEnhancer | `src/gltf-viewer/PassthroughEnhancer.js` | AR passthrough grounding and lighting     |
+| VRControllers       | `src/gltf-viewer/VRControllers.js`       | 6DOF input, locomotion, grab-spin         |
+| VRChatPanel         | `src/gltf-viewer/VRChatPanel.js`         | 3D canvas UI for VR chat                  |
+| VRChatIntegration   | `src/gltf-viewer/VRChatIntegration.js`   | Wires VR chat + speech + AI               |
+| ModelViewerAR       | `src/gltf-viewer/ModelViewerAR.js`       | Cross-platform AR fallbacks               |
+| MobileSupport       | `src/gltf-viewer/MobileSupport.js`       | Device detection, perf tuning             |
+| PoseEditor          | `src/PoseEditor.js`                      | Pose Studio orchestrator (undo/redo)      |
+| PoseStudioPanel     | `src/PoseStudioPanel.js`                 | Pose Studio UI (bone selectors, controls) |
+| MobileDrawerWiring  | `src/MobileDrawerWiring.js`              | Mobile drawer navigation wiring           |
+| SpeechService       | `js/speech-service.js`                   | STT/TTS with mic/voice selection          |
+| main.js             | `src/main.js`                            | App init, settings, UI wiring             |
 
 ---
 
@@ -179,18 +189,41 @@ Browser
 
 1. Open the app in **Meta Quest Browser** (HTTPS or localhost required)
 2. Click **Enter VR** in the avatar footer
-3. Controls:
+3. Controls (industry-standard Meta Quest mapping):
     - **Left stick** — walk/strafe
-    - **Right stick** — snap turn
-    - **X button** — toggle chat panel
-    - **Y button** — push-to-talk
-    - **Trigger hold** — grab and spin avatar
+    - **Right stick** — snap turn / fly up-down
+    - **Grip (squeeze)** — grab & spin avatar / drag panel
+    - **Trigger** — select / click UI
+    - **X / A button** — toggle chat panel
+    - **Y / B button** — push-to-talk (hold to record)
+
+### Passthrough Mode (Quest 3)
+
+See your real room with the avatar standing in it:
+
+1. Enter VR mode on Quest 3
+2. Open the chat panel (X button) → cycle BG to **PASS**
+3. The headset camera feed appears as background with the avatar grounded via
+   contact shadows
+
+Features: real-world light estimation, contact shadow under avatar feet, depth
+occlusion (real objects appear in front of virtual ones on Quest 3).
 
 ### AR Mode
 
-- **Mobile** — Uses native AR (iOS Quick Look, Android Scene Viewer)
+- **Mobile** — Uses native AR (iOS Quick Look, Android Scene Viewer) or WebXR AR
+  via the mobile drawer
 - **Headset** — WebXR hit-test for surface placement with shadow plane
 - **Desktop** — QR code to launch AR on your phone
+
+### Pose Studio
+
+Interactive pose editing for humanoid avatars:
+
+1. Click the **Pose Studio** button in the avatar footer (or mobile drawer)
+2. Select a bone (head, arms, hands, spine, legs)
+3. Rotate on X/Y/Z axes, apply presets, mirror arm poses
+4. Save/load custom poses, undo/redo up to 50 steps
 
 See [docs/vr-setup.md](docs/vr-setup.md) for detailed VR/AR documentation.
 
@@ -271,10 +304,18 @@ personas:
 ├── src/
 │   ├── main.js             # App initialization and settings
 │   ├── LLMManager.js       # Multi-provider AI manager
+│   ├── PoseEditor.js       # Pose Studio orchestrator (undo/redo, bone selection)
+│   ├── PoseStudioPanel.js  # Pose Studio UI panel
+│   ├── PoseRigMap.js       # Unified humanoid bone mapping
+│   ├── PoseState.js        # Skeleton pose capture/apply via delta quaternions
+│   ├── PoseLibrary.js      # Built-in presets + localStorage persistence
+│   ├── PoseApplier.js      # High-level bone manipulation and mirroring
+│   ├── MobileDrawerWiring.js # Mobile drawer navigation wiring
 │   └── gltf-viewer/        # 3D engine modules
 │       ├── ViewerEngine.js
 │       ├── AvatarManager.js
 │       ├── VRSupport.js / ARSupport.js
+│       ├── PassthroughEnhancer.js  # AR passthrough grounding + lighting
 │       ├── VRControllers.js
 │       ├── VRChatPanel.js / VRChatIntegration.js
 │       ├── VRMediaPanel.js
@@ -355,13 +396,16 @@ See [docs/deployment.md](docs/deployment.md) for detailed deployment guides.
 
 ## Troubleshooting
 
-| Problem                          | Solution                                               |
-| -------------------------------- | ------------------------------------------------------ |
-| Models not loading after API key | Click **Fetch Models** button                          |
-| 401 authentication error         | Run `window.debugAPIKeys()` in console                 |
-| VR button not appearing          | Use HTTPS or localhost (WebXR requires secure context) |
-| Avatar not showing in VR         | Check console for GLTF load errors                     |
-| Voice input not working          | Grant microphone permissions, select correct device    |
+| Problem                          | Solution                                                   |
+| -------------------------------- | ---------------------------------------------------------- |
+| Models not loading after API key | Click **Fetch Models** button                              |
+| 401 authentication error         | Run `window.debugAPIKeys()` in console                     |
+| VR button not appearing          | Use HTTPS or localhost (WebXR requires secure context)     |
+| Avatar not showing in VR         | Check console for GLTF load errors                         |
+| Voice input not working          | Grant microphone permissions, select correct device        |
+| Passthrough not working          | Requires Quest 3. Cycle BG to PASS in VR settings          |
+| AR button disabled on mobile     | Use the mobile drawer menu (hamburger icon) → VR/AR        |
+| Pose Studio bones not detected   | Works best with VRM models; GLB uses name-based heuristics |
 
 ---
 

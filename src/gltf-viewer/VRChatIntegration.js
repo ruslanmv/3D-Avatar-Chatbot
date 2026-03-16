@@ -54,6 +54,9 @@ export class VRChatIntegration {
                 this.currentAvatarIndex = 0;
             }
 
+            // Sync panel counter to match initial index
+            this.vrChatPanel.currentAvatarIndex = this.currentAvatarIndex;
+            this.vrChatPanel.redraw();
             console.log(`[VRChatIntegration] Will load avatar index ${this.currentAvatarIndex} when menu opens`);
 
             // Wire up callbacks
@@ -114,12 +117,16 @@ export class VRChatIntegration {
             this.speechService.setRecognitionCallbacks({
                 onStart: () => {
                     this.vrChatPanel.setStatus('listening');
-                    if (window.NEXUS_BEHAVIOR) window.NEXUS_BEHAVIOR.onListeningStart();
+                    if (window.NEXUS_BEHAVIOR) {
+                        window.NEXUS_BEHAVIOR.onListeningStart();
+                    }
                     console.log('[VRChatIntegration] 🎤 Listening...');
                 },
                 onEnd: () => {
                     this.vrChatPanel.setStatus('idle');
-                    if (window.NEXUS_BEHAVIOR) window.NEXUS_BEHAVIOR.onListeningEnd();
+                    if (window.NEXUS_BEHAVIOR) {
+                        window.NEXUS_BEHAVIOR.onListeningEnd();
+                    }
                     console.log('[VRChatIntegration] Listening ended');
                 },
                 onResult: (transcript, confidence) => {
@@ -271,7 +278,7 @@ export class VRChatIntegration {
     /**
      * Handle UI button clicks
      * @param {string} name - Button mesh name
-     * @param {Object} userData - Button user data
+     * @param {object} userData - Button user data
      */
     handleUIClick(name, userData, hitPoint) {
         console.log(`[VRChatIntegration] Button clicked: ${name}`);
@@ -322,7 +329,9 @@ export class VRChatIntegration {
      */
     _handleChatAreaTap(hitPoint) {
         const panel = this.vrChatPanel;
-        if (!panel || !panel.handleAttachmentTap) return;
+        if (!panel || !panel.handleAttachmentTap) {
+            return;
+        }
 
         // Convert world hit point to panel-local coordinates
         const localPoint = panel.group.worldToLocal(hitPoint.clone());
@@ -436,7 +445,9 @@ export class VRChatIntegration {
         if (typeof this.speechService.startSTT === 'function') {
             console.log('[VRChatIntegration] Using unified startSTT() with auto-fallback');
             const started = await this.speechService.startSTT(sttCallbacks);
-            if (started) return;
+            if (started) {
+                return;
+            }
             console.warn('[VRChatIntegration] startSTT returned false, trying VR fallback');
         }
 
@@ -533,11 +544,60 @@ export class VRChatIntegration {
             await this.avatarManager.setAvatarByIndex(index);
             this.currentAvatarIndex = index;
 
-            // Phase 3: Register avatar with ProceduralAnimator
-            if (this.avatarManager.currentRoot && window.NEXUS_PROCEDURAL_ANIMATOR) {
-                window.NEXUS_PROCEDURAL_ANIMATOR.registerAvatar(this.avatarManager.currentRoot);
+            // Sync panel counter so the displayed index matches
+            this.vrChatPanel.currentAvatarIndex = index;
+            this.vrChatPanel.redraw();
+
+            const newRoot = this.avatarManager.currentRoot;
+            if (!newRoot) {
+                console.warn('[VRChatIntegration] Avatar switch: no currentRoot after load');
+                this.vrChatPanel.setStatus('idle');
+                return;
             }
 
+            console.log('[VRChatIntegration] Avatar switched — re-registering with all VR systems...');
+
+            // Register with ProceduralAnimator
+            if (window.NEXUS_PROCEDURAL_ANIMATOR) {
+                window.NEXUS_PROCEDURAL_ANIMATOR.registerAvatar(newRoot);
+            }
+
+            // Re-register with VR controllers (for grab/turntable)
+            if (this.vrControllers) {
+                this.vrControllers.registerAvatar(newRoot);
+            }
+
+            // Re-register with VR bone grabber (for direct bone manipulation)
+            const viewer = window.NEXUS_VIEWER;
+            if (viewer) {
+                if (viewer.vrBoneGrabber) {
+                    viewer.vrBoneGrabber.setAvatar(newRoot);
+                    if (window.poseEditor) {
+                        viewer.vrBoneGrabber.setPoseEditor(window.poseEditor);
+                    }
+                    console.log('[VRChatIntegration] VRBoneGrabber re-registered with new avatar');
+                }
+
+                // Re-register with VR pose system (for IK + presets)
+                if (viewer.vrPoseSystem) {
+                    viewer.vrPoseSystem.setAvatar(newRoot);
+                    viewer.vrPoseSystem.setEnabled(true);
+                    console.log('[VRChatIntegration] VRPoseSystem re-registered with new avatar');
+                }
+
+                // Re-register with VR puppet interaction (for handles + two-hand transform)
+                if (viewer.vrPuppetInteraction) {
+                    viewer.vrPuppetInteraction.setAvatar(newRoot);
+                    console.log('[VRChatIntegration] VRPuppetInteraction re-registered with new avatar');
+                }
+
+                // Re-register with passthrough enhancer
+                if (viewer.passthroughEnhancer) {
+                    viewer.passthroughEnhancer.setAvatarRoot(newRoot);
+                }
+            }
+
+            console.log('[VRChatIntegration] All VR systems re-registered after avatar switch');
             this.vrChatPanel.setStatus('idle');
         } catch (error) {
             console.error('[VRChatIntegration] Avatar switch failed:', error);
@@ -551,7 +611,9 @@ export class VRChatIntegration {
      */
     async handleAvatarPrev() {
         const avatars = this.avatarManager.getAvatars();
-        if (!avatars || avatars.length === 0) return;
+        if (!avatars || avatars.length === 0) {
+            return;
+        }
 
         const newIndex = (this.currentAvatarIndex - 1 + avatars.length) % avatars.length;
         await this.handleAvatarSwitch(newIndex);
@@ -562,7 +624,9 @@ export class VRChatIntegration {
      */
     async handleAvatarNext() {
         const avatars = this.avatarManager.getAvatars();
-        if (!avatars || avatars.length === 0) return;
+        if (!avatars || avatars.length === 0) {
+            return;
+        }
 
         const newIndex = (this.currentAvatarIndex + 1) % avatars.length;
         await this.handleAvatarSwitch(newIndex);
@@ -606,7 +670,9 @@ export class VRChatIntegration {
      * @param {string} text - User message text
      */
     handleUserMessage(text) {
-        if (!text || text.trim().length === 0) return;
+        if (!text || text.trim().length === 0) {
+            return;
+        }
 
         console.log(`[VRChatIntegration] User: ${text}`);
 
@@ -694,7 +760,7 @@ export class VRChatIntegration {
     /**
      * Handle bot response — accepts either plain string or normalized response object.
      *
-     * @param {string|Object} response - plain text or { text, attachments, avatar_directives, persona_context }
+     * @param {string | object} response - plain text or { text, attachments, avatar_directives, persona_context }
      */
     handleBotResponse(response) {
         // Normalise input: accept string or structured object
@@ -814,12 +880,14 @@ export class VRChatIntegration {
 
     /**
      * Apply per-message avatar directives (Phase 6).
-     * @param {Object} directives - { emotion, pose, gesture }
+     * @param {object} directives - { emotion, pose, gesture }
      * @private
      */
     _applyAvatarDirectives(directives) {
         const animator = window.NEXUS_PROCEDURAL_ANIMATOR;
-        if (!animator || typeof animator.setMode !== 'function') return;
+        if (!animator || typeof animator.setMode !== 'function') {
+            return;
+        }
 
         // Map emotion to animation mode
         const EMOTION_MODE = {
