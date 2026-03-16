@@ -372,6 +372,14 @@
                                         </button>
                                     </div>
                                 </div>
+                                <button
+                                    id="openPoseStudioBtn"
+                                    class="secondary-btn small-btn"
+                                    type="button"
+                                    title="Open Pose Studio"
+                                >
+                                    Pose Studio
+                                </button>
                                 <div class="avatar-footer-right">
                                     <select id="avatar-select" class="select-input avatar-select-compact">
                                         <option value="" selected>Loading avatars...</option>
@@ -464,7 +472,7 @@
             </div>
 
             <!-- ====== MOBILE DRAWER (slides in from left) ====== -->
-            <div class="mobile-drawer-overlay hidden" id="mobile-drawer-overlay"></div>
+            <div class="mobile-drawer-overlay" id="mobile-drawer-overlay"></div>
             <aside class="mobile-drawer" id="mobile-drawer">
                 <div class="mobile-drawer-header">
                     <div class="drawer-brand">
@@ -571,6 +579,23 @@
                                 <path d="M10 12h4" />
                             </svg>
                             <span>VR / AR Mode</span>
+                        </button>
+                        <button class="drawer-nav-item" id="drawer-pose-studio-btn" type="button">
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <circle cx="12" cy="5" r="2" />
+                                <line x1="12" y1="7" x2="12" y2="15" />
+                                <line x1="8" y1="10" x2="16" y2="10" />
+                                <line x1="9" y1="15" x2="12" y2="21" />
+                                <line x1="15" y1="15" x2="12" y2="21" />
+                            </svg>
+                            <span>Pose Studio</span>
                         </button>
                         <button class="drawer-nav-item" id="drawer-fullscreen-btn" type="button">
                             <svg
@@ -1125,6 +1150,44 @@
                                 <option value="portrait">Portrait / Thumbnail</option>
                                 <option value="presentation">Presentation</option>
                             </select>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="input-label" for="vr-pose-preset">AVATAR POSE (VR Sync)</label>
+                            <select id="vr-pose-preset" class="select-input">
+                                <optgroup label="Chat / Everyday">
+                                    <option value="standingRelaxed" selected>Standing (Relaxed)</option>
+                                    <option value="standingFriendly">Standing (Friendly)</option>
+                                    <option value="standingHandsClasped">Standing (Hands Clasped)</option>
+                                    <option value="sitting">Sitting</option>
+                                    <option value="sittingCrossed">Sitting (Crossed)</option>
+                                    <option value="sittingDesk">Sitting (Desk)</option>
+                                    <option value="sittingLegsUp">Sitting (Lounging)</option>
+                                    <option value="kneelingUp">Kneeling (Up)</option>
+                                </optgroup>
+                                <optgroup label="Rest / Lounge">
+                                    <option value="lyingBackRelaxed">Lying (Relaxed)</option>
+                                    <option value="lyingBack">Lying (Back)</option>
+                                    <option value="lyingSide">Lying (Side)</option>
+                                    <option value="lyingFront">Lying (Front)</option>
+                                    <option value="allFours">All Fours</option>
+                                    <option value="kneeling">Kneeling</option>
+                                </optgroup>
+                                <optgroup label="Adult (18+)">
+                                    <option value="lyingBackOpen">Lying (Open)</option>
+                                    <option value="lyingFrontArched">Lying (Arched)</option>
+                                    <option value="kneelingPresent">Kneeling (Present)</option>
+                                    <option value="allFoursArched">All Fours (Arched)</option>
+                                    <option value="standingBendForward">Standing (Bent Over)</option>
+                                    <option value="lyingSideSeductive">Lying (Side Pose)</option>
+                                </optgroup>
+                                <optgroup label="Technical">
+                                    <option value="standing">Standing (Rest / T-Pose)</option>
+                                </optgroup>
+                            </select>
+                            <p style="font-size: 0.65rem; color: rgba(255, 255, 255, 0.4); margin-top: 4px">
+                                Same poses as VR chat panel. Changes here sync to VR.
+                            </p>
                         </div>
 
                         <div class="input-group">
@@ -1803,6 +1866,9 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <script defer src="js/nexus-logger.js"></script>
         <script defer src="js/speech-service.js"></script>
 
+        <!-- Mobile drawer navigation wiring -->
+        <script defer src="src/MobileDrawerWiring.js"></script>
+
         <!-- LLM Manager (must load before VR integration) -->
         <script defer src="src/LLMManager.js"></script>
 
@@ -1810,6 +1876,17 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <script defer src="src/PoseNormalizer.js"></script>
         <script defer src="src/NaturalPosePlugin.js"></script>
         <script defer src="src/ProceduralAnimator.js"></script>
+
+        <!-- Pose Studio (load order: RigMap → State → Library → Applier → Normalizer → Editor → Panel → Init) -->
+        <script defer src="src/PoseRigMap.js"></script>
+        <script defer src="src/PoseState.js"></script>
+        <script defer src="src/PoseLibrary.js"></script>
+        <script defer src="src/PoseApplier.js"></script>
+        <script defer src="src/PoseStudioNormalizer.js"></script>
+        <script defer src="src/PoseEditor.js"></script>
+        <script defer src="src/PoseStudioPanel.js"></script>
+        <script defer src="src/PoseGizmoOverlay.js"></script>
+        <script defer src="src/PoseHandleIK.js"></script>
         <script defer src="src/BridgeResponseAdapter.js"></script>
         <script defer src="src/PersonaContextBridge.js"></script>
 
@@ -1823,5 +1900,11 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <script defer src="src/AvatarAliveness.js"></script>
 
         <script defer src="src/main.js"></script>
+
+        <!-- Pose Studio init (must load after main.js and all Pose modules) -->
+        <script defer src="src/PoseStudioInit.js"></script>
+
+        <!-- Pose Studio floating panel root -->
+        <div id="poseStudioRoot" class="pose-studio-root hidden"></div>
     </body>
 </html>

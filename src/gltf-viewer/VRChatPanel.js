@@ -26,7 +26,9 @@ import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
 
 export class VRChatPanel {
     constructor({ scene, camera, controller }) {
-        if (!scene || !camera) throw new Error('[VRChatPanel] scene and camera are required');
+        if (!scene || !camera) {
+            throw new Error('[VRChatPanel] scene and camera are required');
+        }
 
         this.scene = scene;
         this.camera = camera;
@@ -67,6 +69,7 @@ export class VRChatPanel {
             sessionMode: 'vr', // 'vr' | 'ar'
             arSupported: false, // set async after checking navigator.xr
             vrBackground: 'black', // 'black' | 'blue' | 'void'
+            puppetMode: false, // When true, grip translates avatar freely in 3D space
         };
 
         // Check AR support asynchronously
@@ -76,9 +79,28 @@ export class VRChatPanel {
                 .then((supported) => {
                     this.xrSettings.arSupported = supported;
                     console.log(`[VRChatPanel] AR supported: ${supported}`);
-                    if (this.mode === 'settings') this.redraw();
+                    if (this.mode === 'settings') {
+                        this.redraw();
+                    }
                 })
-                .catch(() => {});
+                .catch(() => {
+                    // Quest browsers may reject the check during an active VR session.
+                    // If user agent indicates Quest/Oculus, assume AR (passthrough) is supported.
+                    const ua = navigator.userAgent || '';
+                    if (/OculusBrowser|Quest/i.test(ua)) {
+                        this.xrSettings.arSupported = true;
+                        console.log('[VRChatPanel] Quest detected — assuming AR passthrough supported');
+                        if (this.mode === 'settings') {
+                            this.redraw();
+                        }
+                    }
+                });
+        } else {
+            // No WebXR at all — check if Quest user agent (Meta browser may load XR late)
+            const ua = navigator.userAgent || '';
+            if (/OculusBrowser|Quest/i.test(ua)) {
+                this.xrSettings.arSupported = true;
+            }
         }
 
         // -----------------------
@@ -194,7 +216,9 @@ export class VRChatPanel {
      */
     syncFromDesktopSettings() {
         const s = this._loadDesktopSettings();
-        if (s) this.settings = { ...this.settings, ...s };
+        if (s) {
+            this.settings = { ...this.settings, ...s };
+        }
 
         // Mirror common toggles (speech)
         this.sttEnabled = !!this.settings.sttEnabled;
@@ -295,16 +319,16 @@ export class VRChatPanel {
 
                 console.log('[VRChatPanel] Loaded unified settings:', {
                     provider: unified.provider,
-                    model: model,
+                    model,
                     speech: speechSettings.speechVoice || 'auto',
                 });
 
                 return {
                     provider: unified.provider || 'none',
-                    apiKey: apiKey,
-                    model: model,
-                    baseUrl: baseUrl,
-                    watsonxProjectId: watsonxProjectId,
+                    apiKey,
+                    model,
+                    baseUrl,
+                    watsonxProjectId,
                     systemPrompt: unified.system_prompt || this._defaultSettings().systemPrompt,
                     ...speechSettings,
                 };
@@ -466,7 +490,9 @@ export class VRChatPanel {
      * (near the joystick, not blocking avatar view), fallback to camera HUD.
      */
     _updateMicIndicatorPosition() {
-        if (!this.micIndicator?.visible) return;
+        if (!this.micIndicator?.visible) {
+            return;
+        }
 
         const controller = this.leftController;
         if (controller && controller.visible) {
@@ -499,7 +525,9 @@ export class VRChatPanel {
      * @param {number} dt - delta time in seconds
      */
     _animateMicIndicator(dt) {
-        if (!this.micIndicator?.visible || !this._micRing) return;
+        if (!this.micIndicator?.visible || !this._micRing) {
+            return;
+        }
 
         this._micIndicatorTime += dt;
         const t = this._micIndicatorTime;
@@ -525,14 +553,18 @@ export class VRChatPanel {
     // =====================================================================
 
     beginDrag(hitPointWorld) {
-        if (!hitPointWorld) return false;
+        if (!hitPointWorld) {
+            return false;
+        }
         this._isDragging = true;
         this._dragOffset.copy(this.group.position).sub(hitPointWorld);
         return true;
     }
 
     dragTo(hitPointWorld) {
-        if (!this._isDragging || !hitPointWorld) return;
+        if (!this._isDragging || !hitPointWorld) {
+            return;
+        }
 
         const targetPos = this._tmpVec3.copy(hitPointWorld).add(this._dragOffset);
 
@@ -657,7 +689,9 @@ export class VRChatPanel {
         if (this.micIndicator) {
             const listening = this.status === 'listening';
             this.micIndicator.visible = listening;
-            if (listening) this._micIndicatorTime = 0;
+            if (listening) {
+                this._micIndicatorTime = 0;
+            }
         }
 
         this.redraw();
@@ -691,14 +725,18 @@ export class VRChatPanel {
     }
 
     nextAvatar() {
-        if (!this.avatars.length) return 0;
+        if (!this.avatars.length) {
+            return 0;
+        }
         this.currentAvatarIndex = (this.currentAvatarIndex + 1) % this.avatars.length;
         this.redraw();
         return this.currentAvatarIndex;
     }
 
     prevAvatar() {
-        if (!this.avatars.length) return 0;
+        if (!this.avatars.length) {
+            return 0;
+        }
         this.currentAvatarIndex = (this.currentAvatarIndex - 1 + this.avatars.length) % this.avatars.length;
         this.redraw();
         return this.currentAvatarIndex;
@@ -706,13 +744,15 @@ export class VRChatPanel {
 
     appendMessage(role, text) {
         this.messages.push({ role, text: String(text ?? '').trim() });
-        if (this.messages.length > 10) this.messages.shift();
+        if (this.messages.length > 10) {
+            this.messages.shift();
+        }
         this.redraw();
     }
 
     /**
      * Phase 5: Append a rich message with text + attachments + directives.
-     * @param {Object} message - { role, text, attachments, directives }
+     * @param {object} message - { role, text, attachments, directives }
      */
     appendRichMessage(message) {
         const entry = {
@@ -722,7 +762,9 @@ export class VRChatPanel {
             directives: message.directives || {},
         };
         this.messages.push(entry);
-        if (this.messages.length > 10) this.messages.shift();
+        if (this.messages.length > 10) {
+            this.messages.shift();
+        }
         this.redraw();
     }
 
@@ -812,11 +854,12 @@ export class VRChatPanel {
             tts: { x: W - P - 250, y: setTopY, w: 250, h: 92 },
         };
 
-        const avatarRect = { x: P, y: setTopY + 120, w: W - P * 2, h: 280 };
-        const navY = avatarRect.y + 112;
+        const avatarRect = { x: P, y: setTopY + 120, w: W - P * 2, h: 310 };
+        const navY = avatarRect.y + avatarRect.h - 70;
+        const navSize = 56;
         const settingsNav = {
-            prev: { x: P + 26, y: navY, w: 110, h: 110 },
-            next: { x: W - P - 136, y: navY, w: 110, h: 110 },
+            prev: { x: P + 26, y: navY, w: navSize * 2, h: navSize },
+            next: { x: W - P - navSize * 2 - 26, y: navY, w: navSize * 2, h: navSize },
         };
 
         // XR Settings row (below avatar card)
@@ -832,12 +875,14 @@ export class VRChatPanel {
             mode: { x: P + (xrBtnW + 14) * 5, y: xrY, w: xrBtnW, h: xrH },
         };
 
-        // Avatar Pose row (below XR settings)
+        // Avatar Pose row (below XR settings) — 4 buttons: Pose, Interact, Puppet, Place
         const poseY = xrY + xrH + 10;
-        const poseBtnW = (W - P * 2 - 14) / 2;
+        const poseBtnW = (W - P * 2 - 14 * 3) / 4;
         const poseSettingsRow = {
             preset: { x: P, y: poseY, w: poseBtnW, h: xrH },
-            intensity: { x: P + poseBtnW + 14, y: poseY, w: poseBtnW, h: xrH },
+            intensity: { x: P + (poseBtnW + 14), y: poseY, w: poseBtnW, h: xrH },
+            puppet: { x: P + (poseBtnW + 14) * 2, y: poseY, w: poseBtnW, h: xrH },
+            place: { x: P + (poseBtnW + 14) * 3, y: poseY, w: poseBtnW, h: xrH },
         };
 
         return {
@@ -928,14 +973,18 @@ export class VRChatPanel {
         const poseIntensity = this._makeHitbox('Btn:xr_pose_intensity', pose.intensity, 'button', {
             key: 'xr_pose_intensity',
         });
+        const posePuppet = this._makeHitbox('Btn:xr_puppet', pose.puppet, 'button', { key: 'xr_puppet' });
+        const posePlace = this._makeHitbox('Btn:xr_place', pose.place, 'button', { key: 'xr_place' });
 
-        [posePreset, poseIntensity].forEach((m) => {
+        [posePreset, poseIntensity, posePuppet, posePlace].forEach((m) => {
             this.group.remove(m);
             this.settingsGroup.add(m);
         });
 
         this.buttons.xr_pose_preset = posePreset;
         this.buttons.xr_pose_intensity = poseIntensity;
+        this.buttons.xr_puppet = posePuppet;
+        this.buttons.xr_place = posePlace;
     }
 
     _makeHitbox(name, rect, type, userData = {}) {
@@ -1004,8 +1053,11 @@ export class VRChatPanel {
         ctx.textAlign = 'left';
 
         // Content
-        if (this.mode === 'settings') this._drawSettings(ctx);
-        else this._drawChat(ctx);
+        if (this.mode === 'settings') {
+            this._drawSettings(ctx);
+        } else {
+            this._drawChat(ctx);
+        }
 
         // Footer
         this._drawFooter(ctx);
@@ -1055,7 +1107,9 @@ export class VRChatPanel {
             }
 
             y += 18;
-            if (y > area.y + area.h - 120) return;
+            if (y > area.y + area.h - 120) {
+                return;
+            }
         });
 
         // Transcript display (show interim/final transcript during STT)
@@ -1218,7 +1272,9 @@ export class VRChatPanel {
      * Phase B: Load a thumbnail image asynchronously. Triggers redraw on completion.
      */
     _loadThumbnail(url) {
-        if (this._thumbnailCache.has(url)) return;
+        if (this._thumbnailCache.has(url)) {
+            return;
+        }
 
         // Sentinel to prevent duplicate loads
         this._thumbnailCache.set(url, 'loading');
@@ -1244,7 +1300,7 @@ export class VRChatPanel {
      * Check if a canvas-coordinate tap hit an attachment card.
      * @param {number} canvasX - X in canvas pixels
      * @param {number} canvasY - Y in canvas pixels
-     * @returns {Object|null} The attachment object if hit, null otherwise
+     * @returns {object | null} The attachment object if hit, null otherwise
      */
     handleAttachmentTap(canvasX, canvasY) {
         for (const area of this._attachmentHitAreas) {
@@ -1295,7 +1351,7 @@ export class VRChatPanel {
         // Provider/Model settings (ABOVE nav arrows to prevent overlap)
         const providerText = this.settings.provider || 'none';
         const modelText = this.settings.model || '(auto)';
-        const truncatedModel = modelText.length > 30 ? modelText.slice(0, 27) + '...' : modelText;
+        const truncatedModel = modelText.length > 30 ? `${modelText.slice(0, 27)}...` : modelText;
 
         ctx.fillStyle = providerText !== 'none' ? T.accent : T.textDim;
         ctx.font = '600 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
@@ -1324,15 +1380,15 @@ export class VRChatPanel {
         }
 
         const displayVoice = voiceName || 'Auto';
-        const truncatedVoice = displayVoice.length > 30 ? displayVoice.slice(0, 27) + '...' : displayVoice;
+        const truncatedVoice = displayVoice.length > 30 ? `${displayVoice.slice(0, 27)}...` : displayVoice;
 
         ctx.fillStyle = T.textDim;
         ctx.font = '500 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
         ctx.fillText(`Voice: ${truncatedVoice} [${voicePref}]`, rect.x + 22, rect.y + 234);
 
-        // Nav arrows (positioned below provider/model/voice text)
-        this._drawSoftIcon(ctx, L.settingsNav.prev, '◀');
-        this._drawSoftIcon(ctx, L.settingsNav.next, '▶');
+        // Nav arrows (compact, below provider/model/voice text)
+        this._drawNavArrow(ctx, L.settingsNav.prev, '◀');
+        this._drawNavArrow(ctx, L.settingsNav.next, '▶');
 
         // Hint
         ctx.fillStyle = T.textDim;
@@ -1358,18 +1414,42 @@ export class VRChatPanel {
         const distLabel = xs.panelDistance === 'near' ? 'NEAR' : xs.panelDistance === 'far' ? 'FAR' : 'MED';
         this._drawXRSettingBtn(ctx, xr.distance, 'PANEL', distLabel);
 
-        // Background color button (black → blue → void)
-        const bgLabel = xs.vrBackground === 'blue' ? 'BLUE' : xs.vrBackground === 'void' ? 'VOID' : 'BLK';
+        // Background color button (black → blue → void → passthrough)
+        const bgLabel =
+            xs.vrBackground === 'blue'
+                ? 'BLUE'
+                : xs.vrBackground === 'void'
+                  ? 'VOID'
+                  : xs.vrBackground === 'passthrough'
+                    ? 'PASS'
+                    : 'BLK';
         this._drawXRSettingBtn(ctx, xr.bg, 'BG', bgLabel);
 
-        // Mode button (VR ↔ AR toggle)
+        // Green tint when passthrough background is active
+        if (xs.vrBackground === 'passthrough') {
+            const r = xr.bg;
+            ctx.save();
+            this._roundRect(ctx, r.x, r.y, r.w, r.h, 14);
+            ctx.fillStyle = 'rgba(118, 255, 3, 0.12)';
+            ctx.fill();
+            ctx.fillStyle = 'rgba(118, 255, 3, 0.7)';
+            ctx.font = '700 18px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('BG', r.x + r.w / 2, r.y + 30);
+            ctx.fillStyle = 'rgba(118, 255, 3, 0.95)';
+            ctx.font = '900 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+            ctx.fillText('PASS', r.x + r.w / 2, r.y + 60);
+            ctx.textAlign = 'left';
+            ctx.restore();
+        }
+
+        // Mode button (VR ↔ AR/Passthrough toggle)
         if (xs.arSupported) {
-            const modeLabel = xs.sessionMode === 'ar' ? 'AR' : 'VR';
             const modeActive = xs.sessionMode === 'ar';
-            this._drawXRSettingBtn(ctx, xr.mode, 'MODE', modeLabel, true);
-            // Green tint for AR mode
+            const modeLabel = modeActive ? 'PASS' : 'VR';
+            this._drawXRSettingBtn(ctx, xr.mode, 'VIEW', modeLabel, true);
+            // Green tint + passthrough label for AR mode
             if (modeActive) {
-                const T = this.theme;
                 const r = xr.mode;
                 ctx.save();
                 this._roundRect(ctx, r.x, r.y, r.w, r.h, 14);
@@ -1379,28 +1459,102 @@ export class VRChatPanel {
                 ctx.fillStyle = 'rgba(118, 255, 3, 0.7)';
                 ctx.font = '700 18px system-ui, -apple-system, Segoe UI, Roboto, Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText('MODE', r.x + r.w / 2, r.y + 30);
+                ctx.fillText('VIEW', r.x + r.w / 2, r.y + 30);
                 ctx.fillStyle = 'rgba(118, 255, 3, 0.95)';
-                ctx.font = '900 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-                ctx.fillText('AR', r.x + r.w / 2, r.y + 60);
+                ctx.font = '900 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+                ctx.fillText('PASS', r.x + r.w / 2, r.y + 60);
                 ctx.textAlign = 'left';
                 ctx.restore();
             }
         } else {
             // AR not supported — show disabled
-            this._drawXRSettingBtn(ctx, xr.mode, 'MODE', 'VR', false);
+            this._drawXRSettingBtn(ctx, xr.mode, 'VIEW', 'VR', false);
         }
 
         // Pose Settings Row
         const poseRow = L.poseSettingsRow;
+
+        // Use VRPoseSystem if available, fallback to PoseNormalizer
+        const vps = window.vrPoseSystem;
         const pn = window.NEXUS_POSE_NORMALIZER;
-        const pnSettings = pn ? pn.getSettings() : { preset: 'relaxedStanding', intensity: 0.35 };
-        const presetLabels = { relaxedStanding: 'RELAX', naturalIdle: 'IDLE', portrait: 'PORT', presentation: 'PRES' };
-        const presetLabel = presetLabels[pnSettings.preset] || 'RELAX';
+
+        let presetLabel = 'STAND';
+        if (vps) {
+            const vrpPresetLabels = {
+                standing: 'STAND',
+                sitting: 'SIT',
+                sittingCrossed: 'CROSS',
+                kneeling: 'KNEEL',
+                lyingBack: 'LIE-B',
+                lyingFront: 'LIE-F',
+                lyingSide: 'LIE-S',
+                allFours: 'FOURS',
+            };
+            presetLabel = vrpPresetLabels[vps.getCurrentPreset()] || 'STAND';
+        } else if (pn) {
+            const pnSettings = pn.getSettings();
+            const pnLabels = { relaxedStanding: 'RELAX', naturalIdle: 'IDLE', portrait: 'PORT', presentation: 'PRES' };
+            presetLabel = pnLabels[pnSettings.preset] || 'RELAX';
+        }
         this._drawXRSettingBtn(ctx, poseRow.preset, 'POSE', presetLabel);
 
-        const intLabel = (pnSettings.intensity * 100).toFixed(0) + '%';
-        this._drawXRSettingBtn(ctx, poseRow.intensity, 'STRENGTH', intLabel);
+        // IK toggle (replaces old intensity control)
+        const ikLabel = vps && vps.ikEnabled ? 'IK ON' : 'IK OFF';
+        this._drawXRSettingBtn(ctx, poseRow.intensity, 'INTERACT', ikLabel);
+
+        // Puppet mode button (toggle free 3D placement of avatar)
+        const puppetActive = xs.puppetMode;
+        const puppetLabel = puppetActive ? 'ON' : 'OFF';
+        this._drawXRSettingBtn(ctx, poseRow.puppet, 'PUPPET', puppetLabel);
+
+        // Green tint when puppet mode is active
+        if (puppetActive) {
+            const r = poseRow.puppet;
+            ctx.save();
+            this._roundRect(ctx, r.x, r.y, r.w, r.h, 14);
+            ctx.fillStyle = 'rgba(118, 255, 3, 0.12)';
+            ctx.fill();
+            ctx.fillStyle = 'rgba(118, 255, 3, 0.7)';
+            ctx.font = '700 18px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('PUPPET', r.x + r.w / 2, r.y + 30);
+            ctx.fillStyle = 'rgba(118, 255, 3, 0.95)';
+            ctx.font = '900 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+            ctx.fillText('ON', r.x + r.w / 2, r.y + 60);
+            ctx.textAlign = 'left';
+            ctx.restore();
+
+            // Puppet mode hint text below the buttons
+            const hintY = r.y + r.h + 12;
+            ctx.save();
+            ctx.fillStyle = 'rgba(200, 255, 200, 0.55)';
+            ctx.font = '500 15px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText('Grip hand/head orb to move. Both hands on hips to rotate.', P, hintY);
+            ctx.restore();
+        }
+
+        // PLACE button — one-tap: passthrough + sit + puppet for furniture placement
+        const placeActive = xs.puppetMode && xs.vrBackground === 'passthrough';
+        this._drawXRSettingBtn(ctx, poseRow.place, 'PLACE', placeActive ? 'ACTIVE' : 'SIT', placeActive);
+
+        // Highlight when place mode is active
+        if (placeActive) {
+            const r = poseRow.place;
+            ctx.save();
+            this._roundRect(ctx, r.x, r.y, r.w, r.h, 14);
+            ctx.fillStyle = 'rgba(255, 180, 50, 0.15)';
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255, 200, 80, 0.8)';
+            ctx.font = '700 18px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('PLACE', r.x + r.w / 2, r.y + 30);
+            ctx.fillStyle = 'rgba(255, 220, 100, 0.95)';
+            ctx.font = '900 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+            ctx.fillText('ACTIVE', r.x + r.w / 2, r.y + 60);
+            ctx.textAlign = 'left';
+            ctx.restore();
+        }
     }
 
     _drawXRSettingBtn(ctx, rect, label, value, isActive = true) {
@@ -1572,8 +1726,11 @@ export class VRChatPanel {
                     const rad = i % 2 === 0 ? r + 4 : r - 2;
                     const px = cx + rad * Math.cos(angle);
                     const py = cy + rad * Math.sin(angle);
-                    if (i === 0) ctx.moveTo(px, py);
-                    else ctx.lineTo(px, py);
+                    if (i === 0) {
+                        ctx.moveTo(px, py);
+                    } else {
+                        ctx.lineTo(px, py);
+                    }
                 }
                 ctx.closePath();
                 ctx.strokeStyle = color;
@@ -1613,6 +1770,23 @@ export class VRChatPanel {
         ctx.font = '800 46px system-ui, -apple-system, Segoe UI, Roboto, Arial';
         ctx.textAlign = 'center';
         ctx.fillText(icon, rect.x + rect.w / 2, rect.y + 70);
+        ctx.textAlign = 'left';
+    }
+
+    /** Compact nav arrow button (smaller than full icon button) */
+    _drawNavArrow(ctx, rect, icon) {
+        const T = this.theme;
+        this._roundRect(ctx, rect.x, rect.y, rect.w, rect.h, 14);
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.fillStyle = T.text;
+        ctx.font = '700 28px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(icon, rect.x + rect.w / 2, rect.y + rect.h / 2 + 10);
         ctx.textAlign = 'left';
     }
 
@@ -1677,10 +1851,10 @@ export class VRChatPanel {
         let yy = y;
 
         for (let i = 0; i < words.length; i++) {
-            const test = line + words[i] + ' ';
+            const test = `${line + words[i]} `;
             if (ctx.measureText(test).width > maxX - x && i > 0) {
                 ctx.fillText(line, x, yy);
-                line = words[i] + ' ';
+                line = `${words[i]} `;
                 yy += lineHeight;
             } else {
                 line = test;
@@ -1762,9 +1936,9 @@ export class VRChatPanel {
             return true;
         }
 
-        // XR Settings: Background Color (cycles black → blue → void)
+        // XR Settings: Background Color (cycles black → blue → void → passthrough)
         if (key === 'xr_bg') {
-            const cycle = { black: 'blue', blue: 'void', void: 'black' };
+            const cycle = { black: 'blue', blue: 'void', void: 'passthrough', passthrough: 'black' };
             this.xrSettings.vrBackground = cycle[this.xrSettings.vrBackground] || 'black';
             console.log(`[VRChatPanel] VR Background → ${this.xrSettings.vrBackground}`);
             window.dispatchEvent(
@@ -1776,15 +1950,15 @@ export class VRChatPanel {
             return true;
         }
 
-        // XR Settings: Mode toggle (VR ↔ AR)
+        // XR Settings: Mode toggle (VR ↔ AR/Passthrough)
         if (key === 'xr_mode') {
             if (!this.xrSettings.arSupported) {
-                console.log('[VRChatPanel] AR not supported on this device');
+                console.log('[VRChatPanel] AR/Passthrough not supported on this device');
                 return true;
             }
             const newMode = this.xrSettings.sessionMode === 'vr' ? 'ar' : 'vr';
             this.xrSettings.sessionMode = newMode;
-            console.log(`[VRChatPanel] Session mode → ${newMode}`);
+            console.log(`[VRChatPanel] View mode → ${newMode === 'ar' ? 'Passthrough (AR)' : 'VR'}`);
             window.dispatchEvent(
                 new CustomEvent('vr-setting-changed', {
                     detail: { key: 'sessionMode', value: newMode },
@@ -1806,34 +1980,122 @@ export class VRChatPanel {
             return true;
         }
 
-        // Pose Preset cycle (relaxedStanding → naturalIdle → portrait → presentation)
+        // Pose Preset cycle — uses VRPoseSystem (IK-grade) or fallback to PoseNormalizer
         if (key === 'xr_pose_preset') {
-            const pn = window.NEXUS_POSE_NORMALIZER;
-            if (pn) {
-                const presets = ['relaxedStanding', 'naturalIdle', 'portrait', 'presentation'];
-                const s = pn.getSettings();
-                const idx = presets.indexOf(s.preset);
-                const next = presets[(idx + 1) % presets.length];
-                pn.updateSettings({ preset: next });
+            const vps = window.vrPoseSystem;
+            if (vps && vps.enabled) {
+                const next = vps.cyclePreset();
                 console.log(`[VRChatPanel] Pose preset → ${next}`);
+            } else {
+                const pn = window.NEXUS_POSE_NORMALIZER;
+                if (pn) {
+                    const presets = ['relaxedStanding', 'naturalIdle', 'portrait', 'presentation'];
+                    const s = pn.getSettings();
+                    const idx = presets.indexOf(s.preset);
+                    const next = presets[(idx + 1) % presets.length];
+                    pn.updateSettings({ preset: next });
+                    console.log(`[VRChatPanel] Pose preset (legacy) → ${next}`);
+                }
             }
             this.redraw();
             return true;
         }
 
-        // Pose Intensity cycle (0.2 → 0.35 → 0.55 → 0.75 → 1.0)
-        if (key === 'xr_pose_intensity') {
-            const pn = window.NEXUS_POSE_NORMALIZER;
-            if (pn) {
-                const levels = [0.2, 0.35, 0.55, 0.75, 1.0];
-                const s = pn.getSettings();
-                const closest = levels.reduce((a, b) =>
-                    Math.abs(b - s.intensity) < Math.abs(a - s.intensity) ? b : a
+        // Puppet Mode toggle (free 3D avatar placement)
+        if (key === 'xr_puppet') {
+            this.xrSettings.puppetMode = !this.xrSettings.puppetMode;
+            console.log(`[VRChatPanel] Puppet mode → ${this.xrSettings.puppetMode ? 'ON' : 'OFF'}`);
+            window.dispatchEvent(
+                new CustomEvent('vr-setting-changed', {
+                    detail: { key: 'puppetMode', value: this.xrSettings.puppetMode },
+                })
+            );
+            this.redraw();
+            return true;
+        }
+
+        // PLACE button — one-tap combo: passthrough + sitting pose + puppet mode
+        // Tap again to deactivate (restore VR background + standing + puppet off)
+        if (key === 'xr_place') {
+            const isActive = this.xrSettings.puppetMode && this.xrSettings.vrBackground === 'passthrough';
+
+            if (isActive) {
+                // Deactivate: restore normal VR mode
+                // 1. Disable puppet mode
+                this.xrSettings.puppetMode = false;
+                window.dispatchEvent(
+                    new CustomEvent('vr-setting-changed', {
+                        detail: { key: 'puppetMode', value: false },
+                    })
                 );
-                const idx = levels.indexOf(closest);
-                const next = levels[(idx + 1) % levels.length];
-                pn.updateSettings({ intensity: next });
-                console.log(`[VRChatPanel] Pose intensity → ${next}`);
+
+                // 2. Restore VR background (black)
+                this.xrSettings.vrBackground = 'black';
+                window.dispatchEvent(
+                    new CustomEvent('vr-setting-changed', {
+                        detail: { key: 'vrBackground', value: 'black' },
+                    })
+                );
+
+                // 3. Reset pose to relaxed standing
+                const vps = window.vrPoseSystem;
+                if (vps && vps.enabled) {
+                    vps.applyPreset('standingRelaxed', 0.5);
+                }
+
+                console.log('[VRChatPanel] Place mode OFF — restored VR defaults');
+            } else {
+                // Activate: passthrough + sit + puppet
+
+                // 1. Enable passthrough
+                this.xrSettings.vrBackground = 'passthrough';
+                window.dispatchEvent(
+                    new CustomEvent('vr-setting-changed', {
+                        detail: { key: 'vrBackground', value: 'passthrough' },
+                    })
+                );
+
+                // 2. Apply sitting pose
+                const vps = window.vrPoseSystem;
+                if (vps && vps.enabled) {
+                    vps.applyPreset('sitting', 0.6);
+                }
+
+                // 3. Enable puppet mode (grab to position on real furniture)
+                this.xrSettings.puppetMode = true;
+                window.dispatchEvent(
+                    new CustomEvent('vr-setting-changed', {
+                        detail: { key: 'puppetMode', value: true },
+                    })
+                );
+
+                console.log('[VRChatPanel] Place mode ON — passthrough + sitting + puppet');
+            }
+
+            this.redraw();
+            return true;
+        }
+
+        // IK toggle (enables/disables inverse kinematics for natural chain posing)
+        if (key === 'xr_pose_intensity') {
+            const vps = window.vrPoseSystem;
+            if (vps) {
+                vps.ikEnabled = !vps.ikEnabled;
+                console.log(`[VRChatPanel] IK → ${vps.ikEnabled ? 'ON' : 'OFF'}`);
+            } else {
+                // Fallback: old intensity cycle for PoseNormalizer
+                const pn = window.NEXUS_POSE_NORMALIZER;
+                if (pn) {
+                    const levels = [0.2, 0.35, 0.55, 0.75, 1.0];
+                    const s = pn.getSettings();
+                    const closest = levels.reduce((a, b) =>
+                        Math.abs(b - s.intensity) < Math.abs(a - s.intensity) ? b : a
+                    );
+                    const idx = levels.indexOf(closest);
+                    const next = levels[(idx + 1) % levels.length];
+                    pn.updateSettings({ intensity: next });
+                    console.log(`[VRChatPanel] Pose intensity → ${next}`);
+                }
             }
             this.redraw();
             return true;
