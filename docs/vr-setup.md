@@ -44,6 +44,42 @@ For local development without HTTPS, use `localhost` or set up a self-signed cer
 - **WebXR headset** — Hit-test surface detection with shadow plane
 
 The AR button auto-detects your platform and uses the best available method.
+On mobile, AR is also accessible from the hamburger menu drawer → VR/AR button.
+
+## Passthrough Mode (Quest 3)
+
+Passthrough lets you see your real room through the headset cameras while
+the 3D avatar stands in front of you with realistic grounding.
+
+### How to enable
+
+1. Enter VR mode on Quest 3
+2. Open the chat panel (X button)
+3. Cycle the **BG** button to **PASS** (Black → Blue → Void → Passthrough)
+4. Your room appears as background with the avatar grounded via contact shadow
+
+### How it works
+
+The `PassthroughEnhancer` module activates automatically and provides:
+
+- **Contact shadow** — Soft radial gradient under the avatar's feet for
+  believable grounding in your real environment
+- **Light estimation** — Uses the WebXR Light Estimation API to match virtual
+  lighting to your room's real-world conditions (direction, intensity, color)
+- **Depth occlusion** — On Quest 3, real objects can appear in front of virtual
+  ones using the depth sensing API
+- **Warm indoor lighting** — Default passthrough lighting tuned for typical
+  indoor environments with soft shadows
+
+When you switch away from passthrough (cycle BG back to Black/Blue/Void),
+all lighting and shadow settings are restored to their previous state.
+
+### Passthrough via AR mode
+
+You can also switch to full AR mode from the VR settings panel by cycling
+the **VIEW** button to **PASS**. This ends the VR session and starts an
+immersive-ar session with hit-test placement. The passthrough enhancements
+(contact shadow, light estimation) activate automatically in AR mode.
 
 ## Meta Quest Troubleshooting
 

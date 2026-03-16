@@ -1816,6 +1816,27 @@ function setupPoseNormalizerUI() {
             applyPoseSettingsLive();
         });
     }
+
+    // VR Pose Preset dropdown — uses VRPoseSystem (same as VR chat panel)
+    const vrPoseSelect = document.getElementById('vr-pose-preset');
+    if (vrPoseSelect) {
+        vrPoseSelect.addEventListener('change', () => {
+            const vps = window.vrPoseSystem;
+            if (vps && vps.enabled) {
+                vps.applyPreset(vrPoseSelect.value, 0.6);
+                console.log(`[Desktop] VR pose preset → ${vrPoseSelect.value}`);
+            } else {
+                console.warn('[Desktop] VRPoseSystem not available — load an avatar first');
+            }
+        });
+
+        // Listen for VR-side pose changes to sync dropdown back
+        window.addEventListener('vr-pose-changed', (e) => {
+            if (e.detail && e.detail.preset) {
+                vrPoseSelect.value = e.detail.preset;
+            }
+        });
+    }
 }
 
 function collectPoseSettingsFromUI() {

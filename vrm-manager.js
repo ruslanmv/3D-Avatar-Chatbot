@@ -930,13 +930,41 @@ const VRMManager = {
 
     /* ── Catalog Loading ───────────────────────────────── */
 
+    resetCatalogControls() {
+        const searchEl = el('vm-search');
+        const sourceEl = el('vm-filter-source');
+        const formatEl = el('vm-filter-format');
+        const licenseEl = el('vm-filter-license');
+        if (searchEl) {
+            searchEl.value = '';
+        }
+        if (sourceEl) {
+            sourceEl.value = '';
+        }
+        if (formatEl) {
+            formatEl.value = '';
+        }
+        if (licenseEl) {
+            licenseEl.value = '';
+        }
+    },
+
     async loadCatalog() {
         setStatus('Loading avatar catalog...');
 
         // Start with built-in catalog
         allItems = [...BUILTIN_CATALOG];
 
-        // Try fetching from connected APIs in parallel
+        // Reset filter controls so catalog always opens showing everything
+        this.resetCatalogControls();
+
+        // Build source filter immediately from built-ins
+        this.populateSourceFilter();
+
+        // Render immediately so catalog is never blank on first open
+        this.applyFilters();
+
+        // Fetch remote sources in parallel and merge in later
         const fetchers = [];
 
         // Open Source Avatars — always fetch (no auth, CC0)
@@ -958,9 +986,8 @@ const VRMManager = {
             console.warn('[VRM-Manager] API fetch error:', e);
         }
 
-        // Build source filter options
+        // Rebuild filters and re-render with full merged catalog
         this.populateSourceFilter();
-
         setStatus('');
         this.applyFilters();
     },
@@ -1363,10 +1390,17 @@ const VRMManager = {
     },
 
     applyFilters() {
-        const search = (el('vm-search').value || '').trim().toLowerCase();
-        const source = el('vm-filter-source').value;
-        const format = el('vm-filter-format').value;
-        const license = el('vm-filter-license').value;
+        const searchEl = el('vm-search');
+        const sourceEl = el('vm-filter-source');
+        const formatEl = el('vm-filter-format');
+        const licenseEl = el('vm-filter-license');
+
+        const search = ((searchEl && searchEl.value) || '').trim().toLowerCase();
+        const source = (sourceEl && sourceEl.value) || '';
+        const format = (formatEl && formatEl.value) || '';
+        const license = (licenseEl && licenseEl.value) || '';
+
+        const hasActiveFilter = !!(search || source || format || license);
 
         currentFiltered = allItems.filter((item) => {
             if (source && item.source !== source) return false;
@@ -1379,6 +1413,11 @@ const VRMManager = {
             return true;
         });
 
+        // Defensive: if no filters are active, always show all available items
+        if (!hasActiveFilter && currentFiltered.length === 0 && allItems.length > 0) {
+            currentFiltered = [...allItems];
+        }
+
         // Sort: VRM first, then GLB+morph, then GLB. Installed last.
         const formatOrder = { vrm: 0, 'glb-morph': 1, glb: 2 };
         currentFiltered.sort((a, b) => {
@@ -1389,20 +1428,20 @@ const VRMManager = {
         });
 
         visibleCount = VM_CONFIG.PAGE_SIZE;
-        this.renderGrid(currentFiltered);
+        this.renderGrid(currentFiltered, { hasActiveFilter });
         this.updateStats();
     },
 
-    renderGrid(items) {
+    renderGrid(items, { hasActiveFilter = false } = {}) {
         const grid = el('vm-grid');
         grid.innerHTML = '';
 
         if (!items.length) {
             grid.innerHTML = `
         <div class="vm-empty" style="grid-column:1/-1">
-          <div class="vm-empty-icon">🔍</div>
-          <div class="vm-empty-title">No avatars found</div>
-          <p>Try a different search, adjust filters, or connect more sources in Settings.</p>
+          <div class="vm-empty-icon">${hasActiveFilter ? '🔍' : '📦'}</div>
+          <div class="vm-empty-title">${hasActiveFilter ? 'No avatars found' : 'Catalog is empty'}</div>
+          <p>${hasActiveFilter ? 'Try a different search, adjust filters, or connect more sources in Settings.' : 'No catalog items are available yet.'}</p>
         </div>`;
             updateLoadMore(0, 0);
             return;
@@ -2326,7 +2365,13 @@ const VRMManager = {
         const content = el(`vm-tab-${tabName}`);
         if (content) content.classList.add('active');
         if (tabName === 'installed') this.renderInstalledGrid();
-        if (tabName === 'catalog') this.applyFilters();
+        if (tabName === 'catalog') {
+            // If controls got into a stale state, reset them when opening catalog
+            if (allItems.length && (!currentFiltered || !currentFiltered.length)) {
+                this.resetCatalogControls();
+            }
+            this.applyFilters();
+        }
     },
 
     /* ── Thumbnail Recapture ──────────────────────────── */

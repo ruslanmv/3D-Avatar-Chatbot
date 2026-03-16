@@ -1,14 +1,52 @@
 /**
- * VR Controllers Module (Production Ready - Standard Exploration)
- * --------------------------------------------------------
- * CONTROLS:
- * - Left Stick:  Move Walk / Strafe
- * - Right Stick: Turn (X-axis) / Fly Up & Down (Y-axis)
- * - Triggers:    "Grab and Spin" the Avatar OR "Drag" the UI Panel
- * --------------------------------------------------------
+ * VR Controllers Module — Industry-Standard Meta Quest Mapping
+ * =============================================================
+ * WebXR xr-standard gamepad button indices (W3C spec):
+ *   buttons[0] = Trigger (index finger)        — fires selectstart/selectend
+ *   buttons[1] = Grip / Squeeze (middle finger)
+ *   buttons[2] = (placeholder / unused on Quest Touch)
+ *   buttons[3] = Thumbstick press (click stick)
+ *   buttons[4] = X (left) / A (right) — lower face button
+ *   buttons[5] = Y (left) / B (right) — upper face button
+ *
+ *   axes[2] = Thumbstick X,  axes[3] = Thumbstick Y
+ *
+ * Industry-standard control scheme (Meta guidelines + VRChat/Alyx/Horizon):
+ * ────────────────────────────────────────────────────────────────────────
+ * LEFT CONTROLLER:
+ *   Trigger  → Select / UI click (ray pointer)
+ *   Grip     → Grab & hold objects (avatar turntable spin, panel drag)
+ *   Stick    → Walk / Strafe
+ *   X btn    → Toggle chat panel (menu)
+ *   Y btn    → Push-to-talk (hold to record, release to send)
+ *
+ * RIGHT CONTROLLER:
+ *   Trigger  → Select / UI click (ray pointer)
+ *   Grip     → Grab & hold objects (avatar turntable spin, panel drag)
+ *   Stick    → Snap Turn (X) / Fly Up & Down (Y)
+ *   A btn    → Toggle chat panel (alternative)
+ *   B btn    → Push-to-talk  (alternative, hold to record)
+ *
+ * References:
+ *   https://www.w3.org/TR/webxr-gamepads-module-1/
+ *   https://developers.meta.com/horizon/design/controllers/
+ *   https://developers.meta.com/horizon/blog/button-action-mapping-user-inputs-controller-meta-quest-horizon-developers-vr-mr
+ * ────────────────────────────────────────────────────────────────────────
  */
 
 import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
+
+// =========================================================================
+// xr-standard button index constants (W3C WebXR Gamepads Module spec)
+// =========================================================================
+const BTN = {
+    TRIGGER: 0, // Index finger trigger — primary select
+    GRIP: 1, // Middle finger squeeze — grab/hold
+    // 2 = touchpad (placeholder on Quest Touch)
+    THUMBSTICK: 3, // Thumbstick click
+    X_OR_A: 4, // X on left, A on right — lower face button
+    Y_OR_B: 5, // Y on left, B on right — upper face button
+};
 
 export class VRControllers {
     constructor(renderer, scene, camera, options = {}) {
@@ -25,7 +63,7 @@ export class VRControllers {
             moveSpeed: 1.8, // Horizontal speed
             verticalSpeed: 1.2, // Vertical fly speed
             turnSpeed: 2.0, // Turning speed
-            rotationSensitivity: 3.5, // Used for yaw-based spin responsiveness if you later add smoothing
+            rotationSensitivity: 3.5,
             deadzone: 0.15, // Stick deadzone
             rayLength: 5,
             rayColor: 0x00e5ff,
@@ -57,9 +95,8 @@ export class VRControllers {
         this._tmpV1 = new THREE.Vector3();
         this._tmpV2 = new THREE.Vector3();
 
-        // Dragging State (Avatar rotation)
-        // FIX: switch from previousX to turntable angle tracking
-        this.dragState = {
+        // Grab State — grip-based (avatar rotation turntable)
+        this.grabState = {
             active: false,
             hand: null,
             object: null,
@@ -67,33 +104,58 @@ export class VRControllers {
             startObjectRotation: 0,
         };
 
-        // UI Drag State (for dragging chat panel)
+        // UI Drag State — grip-based (chat panel drag)
         this.uiDragState = {
             active: false,
             hand: null,
         };
 
+        // Grip button edge tracking (per hand)
+        this._gripWasPressed = { left: false, right: false };
+
         // UI Callbacks
         this.onUIButtonClick = null;
-        this.onMenuButtonPress = null; // Menu toggle callback
-        this.menuButtonWasPressed = false; // Track button state
-        this.onPushToTalkStart = null; // Push-to-talk start callback
-        this.onPushToTalkEnd = null; // Push-to-talk end callback
-        this.pushToTalkButtonWasPressed = false; // Track PTT button state
+        this.onMenuButtonPress = null; // Menu toggle callback (X / A)
+        this.onPushToTalkStart = null; // PTT start callback (Y / B)
+        this.onPushToTalkEnd = null; // PTT end callback (Y / B)
+
+        // Edge-detection state for face buttons
+        this._leftXWasPressed = false; // X button (left, menu)
+        this._leftYWasPressed = false; // Y button (left, PTT)
+        this._rightAWasPressed = false; // A button (right, menu)
+        this._rightBWasPressed = false; // B button (right, PTT)
+
+        // VR Bone Grabber (direct bone manipulation)
+        this.boneGrabber = null; // Set via setBoneGrabber()
+        this._boneGrabHand = null; // Which hand is doing a bone grab
+        this._boneGrabController = null; // Controller ref for bone grab updates
+
+        // Puppet Mode — free 3D avatar placement (translate instead of turntable)
+        this.puppetMode = false;
+        this._puppetState = {
+            active: false,
+            hand: null,
+            object: null,
+            startControllerPos: new THREE.Vector3(),
+            startObjectPos: new THREE.Vector3(),
+        };
+
+        // VRPuppetInteraction — unified puppet interaction layer (set via setPuppetInteraction)
+        this.puppetInteraction = null;
+        this._puppetGripHands = new Set();
 
         // Hover state for UI
         this.hoveredUI = null;
 
         // Debug tracking for button/axes changes (edge-triggered logging)
         this._debugLastButtons = { left: [], right: [] };
-        this._debugLastAxes = { left: [], right: [] };
         this.debugInput = true; // Set to false to disable detailed input logging
 
         this.init();
     }
 
     init() {
-        console.log('[VRControllers] Initializing...');
+        console.log('[VRControllers] Initializing (xr-standard mapping)...');
 
         // 1. Setup Player Rig
         this.playerRig.add(this.camera);
@@ -102,7 +164,7 @@ export class VRControllers {
         // 2. Setup Controllers
         this.setupControllers();
 
-        console.log('[VRControllers] Ready. Standard Exploration + Grab Spin.');
+        console.log('[VRControllers] Ready. Grip=Grab, Trigger=Select, X/A=Menu, Y/B=PTT.');
     }
 
     // =========================================================================
@@ -142,31 +204,23 @@ export class VRControllers {
             this.controllers[hand] = e.data;
             console.log(`[VRControllers] Connected: ${hand}`);
 
-            // Log detailed gamepad info for debugging button mapping
+            // Log gamepad info for debugging button mapping
             if (e.data?.gamepad) {
                 const gp = e.data.gamepad;
-                console.log(`[VRControllers] 🎮 ${hand} gamepad:`, {
+                console.log(`[VRControllers] ${hand} gamepad:`, {
                     id: gp.id,
                     buttons: gp.buttons.length,
                     axes: gp.axes.length,
                     mapping: gp.mapping,
                 });
-                console.log(
-                    `[VRControllers] 🎮 ${hand} button snapshot:`,
-                    gp.buttons.map((b, i) => ({ index: i, pressed: b.pressed, value: b.value.toFixed(2) }))
-                );
-                console.log(
-                    `[VRControllers] 🎮 ${hand} axes snapshot:`,
-                    gp.axes.map((v, i) => ({ index: i, value: v.toFixed(2) }))
-                );
             }
         });
 
         controller.addEventListener('disconnected', (e) => {
             const hand = getHand(e.data);
             this.controllers[hand] = null;
-            if (this.dragState.active && this.dragState.hand === hand) {
-                this._endDrag(hand);
+            if (this.grabState.active && this.grabState.hand === hand) {
+                this._endGrab(hand);
             }
             if (this.uiDragState.active && this.uiDragState.hand === hand) {
                 this._endUIDrag(hand);
@@ -174,15 +228,28 @@ export class VRControllers {
             console.log(`[VRControllers] Disconnected: ${hand}`);
         });
 
+        // selectstart/selectend fires on TRIGGER press (buttons[0])
+        // Used for UI click / ray-based selection (NOT grab)
         controller.addEventListener('selectstart', (e) => {
             const hand = getHand(e.data);
-            this._startDrag(controller, hand);
+            this._onTriggerDown(controller, hand);
         });
 
         controller.addEventListener('selectend', (e) => {
             const hand = getHand(e.data);
-            this._endDrag(hand);
-            this._endUIDrag(hand);
+            this._onTriggerUp(controller, hand);
+        });
+
+        // squeezestart/squeezeend fires on GRIP press (buttons[1])
+        // Used for grab (industry standard: grip = grab/hold)
+        controller.addEventListener('squeezestart', (e) => {
+            const hand = getHand(e.data);
+            this._onGripDown(controller, hand);
+        });
+
+        controller.addEventListener('squeezeend', (e) => {
+            const hand = getHand(e.data);
+            this._onGripUp(hand);
         });
     }
 
@@ -211,11 +278,61 @@ export class VRControllers {
     }
 
     // =========================================================================
-    // INTERACTION LOGIC (GRAB & SPIN)
+    // TRIGGER — Select / UI Click (industry standard: trigger = point & click)
     // =========================================================================
 
-    _startDrag(controller, hand) {
-        if (this.dragState.active || this.uiDragState.active) {
+    _onTriggerDown(controller, _hand) {
+        this.tempMatrix.identity().extractRotation(controller.matrixWorld);
+        this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+        this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
+
+        // Check UI interactions (trigger = click on UI)
+        const uiIntersects = this.raycaster.intersectObjects(this.uiInteractables, false);
+        if (uiIntersects.length > 0) {
+            const uiTarget = uiIntersects[0].object;
+            const hit = uiIntersects[0];
+            this._handleUIClick(uiTarget, hit.point);
+            return;
+        }
+    }
+
+    _onTriggerUp(_controller, _hand) {
+        // Trigger release — no action needed for click-based UI
+    }
+
+    // =========================================================================
+    // GRIP — Grab & Hold (industry standard: grip = grab objects, drag panels)
+    // =========================================================================
+
+    _onGripDown(controller, hand) {
+        console.log(
+            `[VRControllers] Grip DOWN (${hand}) — puppetMode=${this.puppetMode}, boneGrabber=${!!this.boneGrabber}, active=${this.grabState.active}`
+        );
+
+        // PRIORITY -1: VRPuppetInteraction handles all puppet mode grips
+        // This must run BEFORE the blocker below so the second hand can join
+        if (this.puppetInteraction?.enabled && this.puppetInteraction.beginGrip(hand, controller)) {
+            this._puppetGripHands.add(hand);
+            return;
+        }
+
+        if (this.grabState.active || this.uiDragState.active || this._boneGrabHand) {
+            console.log(
+                `[VRControllers] Grip BLOCKED: already active (grab=${this.grabState.active}, uiDrag=${this.uiDragState.active}, boneGrab=${this._boneGrabHand})`
+            );
+            return;
+        }
+
+        // PRIORITY 0: Direct bone manipulation (grip to grab & pose avatar bones)
+        // BUT: skip bone grab when puppet mode is active (puppet = whole body translate)
+        if (!this.puppetMode && this.boneGrabber && this.boneGrabber.tryGrab(controller)) {
+            this._boneGrabHand = hand;
+            this._boneGrabController = controller;
+            const line = controller.getObjectByName('ray');
+            if (line) {
+                line.material.color.setHex(0xff8800); // Orange ray for bone grab
+            }
+            console.log(`[VRControllers] Grip grab: Bone (${hand})`);
             return;
         }
 
@@ -223,13 +340,12 @@ export class VRControllers {
         this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
         this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
 
-        // PRIORITY 1: Check UI interactions first
+        // PRIORITY 1: Check UI panel drag (grip to grab panel handle)
         const uiIntersects = this.raycaster.intersectObjects(this.uiInteractables, false);
         if (uiIntersects.length > 0) {
             const uiTarget = uiIntersects[0].object;
             const hit = uiIntersects[0];
 
-            // Quest 3 panel is always draggable (no pin concept)
             if (this.chatPanel && uiTarget.userData && uiTarget.userData.type === 'handle') {
                 const dragStarted = this.chatPanel.beginDrag ? this.chatPanel.beginDrag(hit.point) : false;
                 if (dragStarted) {
@@ -239,14 +355,10 @@ export class VRControllers {
                     if (line) {
                         line.material.color.setHex(this.options.rayGrabColor);
                     }
-                    console.log(`[VRControllers] 🖐️ Started dragging UI panel (${hand})`);
+                    console.log(`[VRControllers] Grip grab: UI panel (${hand})`);
                     return;
                 }
             }
-
-            // Otherwise handle as normal UI click
-            this._handleUIClick(uiTarget, hit.point);
-            return;
         }
 
         // PRIORITY 2: Check avatar grab interactions
@@ -256,27 +368,45 @@ export class VRControllers {
             let target = intersects[0].object;
             while (target) {
                 if (target.userData && target.userData.isRotatable) {
-                    this.dragState.active = true;
-                    this.dragState.hand = hand;
-                    this.dragState.object = target;
+                    // PUPPET MODE: free 3D translation (place avatar on real furniture)
+                    if (this.puppetMode) {
+                        this._puppetState.active = true;
+                        this._puppetState.hand = hand;
+                        this._puppetState.object = target;
+                        controller.getWorldPosition(this._puppetState.startControllerPos);
+                        this._puppetState.startObjectPos.copy(target.position);
 
-                    // ✅ FIX: turntable mode using WORLD positions (stable on Quest)
+                        const line = controller.getObjectByName('ray');
+                        if (line) {
+                            line.material.color.setHex(0xff00ff); // Magenta ray for puppet mode
+                        }
+
+                        console.log(`[VRControllers] Grip grab: Puppet (${hand}) — free 3D placement`);
+                        return;
+                    }
+
+                    // NORMAL MODE: turntable rotation
+                    this.grabState.active = true;
+                    this.grabState.hand = hand;
+                    this.grabState.object = target;
+
+                    // Turntable mode using WORLD positions (stable on Quest)
                     controller.getWorldPosition(this._tmpV1);
                     target.getWorldPosition(this._tmpV2);
 
-                    this.dragState.startHandAngle = Math.atan2(
+                    this.grabState.startHandAngle = Math.atan2(
                         this._tmpV1.x - this._tmpV2.x,
                         this._tmpV1.z - this._tmpV2.z
                     );
 
-                    this.dragState.startObjectRotation = target.rotation.y;
+                    this.grabState.startObjectRotation = target.rotation.y;
 
                     const line = controller.getObjectByName('ray');
                     if (line) {
                         line.material.color.setHex(this.options.rayGrabColor);
                     }
 
-                    console.log(`[VRControllers] ✊ Grabbed Avatar (${hand}) - Turntable mode (world-space)`);
+                    console.log(`[VRControllers] Grip grab: Avatar (${hand}) — turntable mode`);
                     return;
                 }
                 target = target.parent;
@@ -284,12 +414,62 @@ export class VRControllers {
         }
     }
 
+    _onGripUp(hand) {
+        // Release puppet interaction if this hand was doing one
+        if (this._puppetGripHands.has(hand)) {
+            this.puppetInteraction?.endGrip(hand);
+            this._puppetGripHands.delete(hand);
+            return;
+        }
+
+        // Release bone grab if this hand was doing one
+        if (this._boneGrabHand === hand) {
+            if (this.boneGrabber) {
+                this.boneGrabber.endGrab();
+            }
+            const controller = hand === 'left' ? this.controller1 : this.controller2;
+            if (controller) {
+                const line = controller.getObjectByName('ray');
+                if (line) {
+                    line.material.color.setHex(this.options.rayColor);
+                }
+            }
+            this._boneGrabHand = null;
+            this._boneGrabController = null;
+            console.log(`[VRControllers] Grip release: Bone (${hand})`);
+            return;
+        }
+
+        // Release puppet grab if this hand was doing one
+        if (this._puppetState.active && this._puppetState.hand === hand) {
+            const controller = hand === 'left' ? this.controller1 : this.controller2;
+            if (controller) {
+                const line = controller.getObjectByName('ray');
+                if (line) {
+                    line.material.color.setHex(this.options.rayColor);
+                }
+            }
+            this._puppetState.active = false;
+            this._puppetState.object = null;
+            this._puppetState.hand = null;
+            console.log(`[VRControllers] Grip release: Puppet (${hand})`);
+            return;
+        }
+
+        this._endGrab(hand);
+        this._endUIDrag(hand);
+    }
+
+    // =========================================================================
+    // UI INTERACTION
+    // =========================================================================
+
     _handleUIClick(mesh, hitPoint) {
         if (!mesh || !mesh.name) {
             return;
         }
 
-        console.log(`[VRControllers] 👆 UI Click: ${mesh.name}`);
+        console.log(`[VRControllers] Trigger click: ${mesh.name}`);
 
         if (this.onUIButtonClick) {
             this.onUIButtonClick(mesh.name, mesh.userData, hitPoint);
@@ -301,7 +481,7 @@ export class VRControllers {
             return;
         }
 
-        if (this.uiDragState.active || this.dragState.active) {
+        if (this.uiDragState.active || this.grabState.active) {
             return;
         }
 
@@ -331,8 +511,12 @@ export class VRControllers {
         }
     }
 
-    _endDrag(hand) {
-        if (this.dragState.active && this.dragState.hand === hand) {
+    // =========================================================================
+    // GRAB / DRAG STATE MANAGEMENT
+    // =========================================================================
+
+    _endGrab(hand) {
+        if (this.grabState.active && this.grabState.hand === hand) {
             const controller = hand === 'left' ? this.controller1 : this.controller2;
             if (controller) {
                 const line = controller.getObjectByName('ray');
@@ -340,10 +524,10 @@ export class VRControllers {
                     line.material.color.setHex(this.options.rayColor);
                 }
             }
-            this.dragState.active = false;
-            this.dragState.object = null;
-            this.dragState.hand = null;
-            console.log('[VRControllers] ✋ Released Avatar');
+            this.grabState.active = false;
+            this.grabState.object = null;
+            this.grabState.hand = null;
+            console.log('[VRControllers] Grip release: Avatar');
         }
     }
 
@@ -363,32 +547,32 @@ export class VRControllers {
 
             this.uiDragState.active = false;
             this.uiDragState.hand = null;
-            console.log('[VRControllers] ✋ Released UI panel');
+            console.log('[VRControllers] Grip release: UI panel');
         }
     }
 
-    _updateDragging() {
-        if (!this.dragState.active || !this.dragState.object) {
+    _updateGrabbing() {
+        if (!this.grabState.active || !this.grabState.object) {
             return;
         }
 
-        const controller = this.dragState.hand === 'left' ? this.controller1 : this.controller2;
+        const controller = this.grabState.hand === 'left' ? this.controller1 : this.controller2;
         if (!controller) {
             return;
         }
 
-        // ✅ FIX: compute hand angle around object using WORLD positions
+        // Compute hand angle around object using WORLD positions
         controller.getWorldPosition(this._tmpV1);
-        this.dragState.object.getWorldPosition(this._tmpV2);
+        this.grabState.object.getWorldPosition(this._tmpV2);
 
         const currentHandAngle = Math.atan2(this._tmpV1.x - this._tmpV2.x, this._tmpV1.z - this._tmpV2.z);
 
-        // ✅ FIX: wrap delta to avoid jumps at PI / -PI boundary
-        let delta = currentHandAngle - this.dragState.startHandAngle;
+        // Wrap delta to avoid jumps at PI / -PI boundary
+        let delta = currentHandAngle - this.grabState.startHandAngle;
         delta = ((delta + Math.PI) % (2 * Math.PI)) - Math.PI;
 
-        // Apply 1:1 turntable rotation (no stepping)
-        this.dragState.object.rotation.y = this.dragState.startObjectRotation + delta;
+        // Apply 1:1 turntable rotation
+        this.grabState.object.rotation.y = this.grabState.startObjectRotation + delta;
     }
 
     _updateUIDragging() {
@@ -419,102 +603,171 @@ export class VRControllers {
     }
 
     // =========================================================================
-    // LOCOMOTION (STANDARD VR EXPLORATION)
+    // BONE GRAB (per-frame update for direct bone manipulation)
+    // =========================================================================
+
+    _updateBoneGrab() {
+        if (!this._boneGrabHand || !this._boneGrabController || !this.boneGrabber) {
+            return;
+        }
+        this.boneGrabber.updateGrab(this._boneGrabController);
+    }
+
+    // =========================================================================
+    // PUPPET MODE (per-frame update for free 3D avatar placement)
+    // =========================================================================
+
+    _updatePuppet() {
+        if (!this._puppetState.active || !this._puppetState.object) {
+            return;
+        }
+
+        const controller = this._puppetState.hand === 'left' ? this.controller1 : this.controller2;
+        if (!controller) {
+            return;
+        }
+
+        // Get current controller world position
+        const currentPos = this._tmpV1;
+        controller.getWorldPosition(currentPos);
+
+        // Compute delta from grab start
+        const dx = currentPos.x - this._puppetState.startControllerPos.x;
+        const dy = currentPos.y - this._puppetState.startControllerPos.y;
+        const dz = currentPos.z - this._puppetState.startControllerPos.z;
+
+        // Apply delta to avatar's original position (1:1 movement)
+        this._puppetState.object.position.set(
+            this._puppetState.startObjectPos.x + dx,
+            this._puppetState.startObjectPos.y + dy,
+            this._puppetState.startObjectPos.z + dz
+        );
+    }
+
+    // =========================================================================
+    // FACE BUTTONS & LOCOMOTION (polled each frame)
     // =========================================================================
 
     pollGamepadInput(dt) {
-        // Menu button check on left controller
+        // --- LEFT CONTROLLER ---
         const left = this.controllers.left;
         if (left && left.gamepad) {
-            // Debug: Log all button changes (edge-triggered, only on state change)
+            const gp = left.gamepad;
+
+            // Debug: edge-triggered button logging
             if (this.debugInput) {
-                const gp = left.gamepad;
                 const last = this._debugLastButtons.left;
                 gp.buttons.forEach((b, i) => {
                     const prevPressed = last[i]?.pressed ?? false;
                     if (b.pressed !== prevPressed) {
                         const action = b.pressed ? 'PRESSED' : 'RELEASED';
-                        console.log(`[VRControllers] 🎮 LEFT button[${i}] ${action} (value=${b.value.toFixed(2)})`);
+                        console.log(`[VRControllers] LEFT button[${i}] ${action} (value=${b.value.toFixed(2)})`);
                     }
                     last[i] = { pressed: b.pressed, value: b.value };
                 });
             }
 
-            // Button index 0 is X button on Quest left controller
-            const menuButton = left.gamepad.buttons[0];
-            if (menuButton && menuButton.pressed && !this.menuButtonWasPressed) {
-                this.menuButtonWasPressed = true;
-                console.log('[VRControllers] ✅ X button (button[0]) pressed - toggling chat panel');
+            // X button (buttons[4]) → Toggle chat panel (menu)
+            const xBtn = gp.buttons[BTN.X_OR_A];
+            if (xBtn && xBtn.pressed && !this._leftXWasPressed) {
+                this._leftXWasPressed = true;
+                console.log('[VRControllers] X button pressed — toggling chat panel');
                 if (this.onMenuButtonPress) {
                     this.onMenuButtonPress();
                 }
-            } else if (!menuButton || !menuButton.pressed) {
-                this.menuButtonWasPressed = false;
+            } else if (!xBtn || !xBtn.pressed) {
+                this._leftXWasPressed = false;
             }
 
-            // Push-to-talk button check on left controller
-            // Button index 1 is Y button on Quest left controller
-            const pttButton = left.gamepad.buttons[1];
-            if (pttButton && pttButton.pressed && !this.pushToTalkButtonWasPressed) {
-                this.pushToTalkButtonWasPressed = true;
+            // Y button (buttons[5]) → Push-to-talk (hold to record)
+            const yBtn = gp.buttons[BTN.Y_OR_B];
+            if (yBtn && yBtn.pressed && !this._leftYWasPressed) {
+                this._leftYWasPressed = true;
                 if (this.onPushToTalkStart) {
-                    console.log('[VRControllers] 🎤 Push-to-talk Y button: START');
+                    console.log('[VRControllers] Y button (PTT): START');
                     this.onPushToTalkStart();
                 }
-            } else if ((!pttButton || !pttButton.pressed) && this.pushToTalkButtonWasPressed) {
-                this.pushToTalkButtonWasPressed = false;
+            } else if ((!yBtn || !yBtn.pressed) && this._leftYWasPressed) {
+                this._leftYWasPressed = false;
                 if (this.onPushToTalkEnd) {
-                    console.log('[VRControllers] 🎤 Push-to-talk Y button: END');
+                    console.log('[VRControllers] Y button (PTT): END');
                     this.onPushToTalkEnd();
                 }
             }
 
-            // 1. Left Hand -> Walk / Strafe
-            const axes = left.gamepad.axes;
-            let x = 0;
-            let y = 0;
+            // Left stick → Walk / Strafe
+            const axes = gp.axes;
+            let lx = 0;
+            let ly = 0;
             if (axes.length >= 4) {
-                x = axes[2];
-                y = axes[3];
+                lx = axes[2];
+                ly = axes[3];
             } else if (axes.length >= 2) {
-                x = axes[0];
-                y = axes[1];
+                lx = axes[0];
+                ly = axes[1];
             }
-
-            this._applyMove(x, y, dt);
+            this._applyMove(lx, ly, dt);
         }
 
-        // 2. Right Hand -> Turn (X) + Fly Up/Down (Y)
+        // --- RIGHT CONTROLLER ---
         const right = this.controllers.right;
         if (right && right.gamepad) {
-            // Debug: Log all button changes (edge-triggered, only on state change)
+            const gp = right.gamepad;
+
+            // Debug: edge-triggered button logging
             if (this.debugInput) {
-                const gp = right.gamepad;
                 const last = this._debugLastButtons.right;
                 gp.buttons.forEach((b, i) => {
                     const prevPressed = last[i]?.pressed ?? false;
                     if (b.pressed !== prevPressed) {
                         const action = b.pressed ? 'PRESSED' : 'RELEASED';
-                        console.log(`[VRControllers] 🎮 RIGHT button[${i}] ${action} (value=${b.value.toFixed(2)})`);
+                        console.log(`[VRControllers] RIGHT button[${i}] ${action} (value=${b.value.toFixed(2)})`);
                     }
                     last[i] = { pressed: b.pressed, value: b.value };
                 });
             }
 
-            const axes = right.gamepad.axes;
-            let x = 0;
-            let y = 0;
-            // Standard WebXR often maps stick to 2,3
-            if (axes.length >= 4) {
-                x = axes[2];
-                y = axes[3];
-            } else if (axes.length >= 2) {
-                x = axes[0];
-                y = axes[1];
+            // A button (buttons[4]) → Toggle chat panel (alternative)
+            const aBtn = gp.buttons[BTN.X_OR_A];
+            if (aBtn && aBtn.pressed && !this._rightAWasPressed) {
+                this._rightAWasPressed = true;
+                console.log('[VRControllers] A button pressed — toggling chat panel');
+                if (this.onMenuButtonPress) {
+                    this.onMenuButtonPress();
+                }
+            } else if (!aBtn || !aBtn.pressed) {
+                this._rightAWasPressed = false;
             }
 
-            this._applyTurn(x, dt);
-            this._applyVertical(y, dt);
+            // B button (buttons[5]) → Push-to-talk (alternative, hold to record)
+            const bBtn = gp.buttons[BTN.Y_OR_B];
+            if (bBtn && bBtn.pressed && !this._rightBWasPressed) {
+                this._rightBWasPressed = true;
+                if (this.onPushToTalkStart) {
+                    console.log('[VRControllers] B button (PTT): START');
+                    this.onPushToTalkStart();
+                }
+            } else if ((!bBtn || !bBtn.pressed) && this._rightBWasPressed) {
+                this._rightBWasPressed = false;
+                if (this.onPushToTalkEnd) {
+                    console.log('[VRControllers] B button (PTT): END');
+                    this.onPushToTalkEnd();
+                }
+            }
+
+            // Right stick → Snap Turn (X) / Fly Up-Down (Y)
+            const axes = gp.axes;
+            let rx = 0;
+            let ry = 0;
+            if (axes.length >= 4) {
+                rx = axes[2];
+                ry = axes[3];
+            } else if (axes.length >= 2) {
+                rx = axes[0];
+                ry = axes[1];
+            }
+            this._applyTurn(rx, dt);
+            this._applyVertical(ry, dt);
         }
     }
 
@@ -567,7 +820,9 @@ export class VRControllers {
             return;
         }
         this.pollGamepadInput(dt);
-        this._updateDragging(); // rotation fix lives here
+        this._updateBoneGrab();
+        this._updatePuppet();
+        this._updateGrabbing();
         this._updateUIDragging();
         this._updateUIHover();
     }
@@ -578,7 +833,7 @@ export class VRControllers {
         }
         avatarRoot.userData.isRotatable = true;
         this.interactables = [avatarRoot];
-        console.log('[VRControllers] Avatar registered. Hold trigger to spin.');
+        console.log('[VRControllers] Avatar registered. Grip to grab & spin.');
     }
 
     registerUIInteractables(interactables) {
@@ -595,23 +850,65 @@ export class VRControllers {
 
     setMenuButtonCallback(callback) {
         this.onMenuButtonPress = callback;
-        console.log('[VRControllers] Menu button callback registered');
+        console.log('[VRControllers] Menu button callback registered (X / A)');
     }
 
     /**
-     * Set push-to-talk callbacks for VR voice input
+     * Set push-to-talk callbacks for VR voice input.
+     * Y button (left) and B button (right) both trigger PTT.
      * @param {Function} onStart - Called when PTT button is pressed
      * @param {Function} onEnd - Called when PTT button is released
      */
     setPushToTalkCallbacks(onStart, onEnd) {
         this.onPushToTalkStart = onStart;
         this.onPushToTalkEnd = onEnd;
-        console.log('[VRControllers] 🎤 Push-to-talk callbacks registered (Y button or grip)');
+        console.log('[VRControllers] Push-to-talk callbacks registered (Y / B buttons)');
+    }
+
+    /**
+     * Set the VRPuppetInteraction instance for unified puppet mode.
+     * @param {import('./VRPuppetInteraction.js').VRPuppetInteraction} system
+     */
+    setPuppetInteraction(system) {
+        this.puppetInteraction = system || null;
+        console.log('[VRControllers] Puppet interaction system set');
+    }
+
+    /**
+     * Set the VRBoneGrabber instance for direct bone manipulation.
+     * @param {import('./VRBoneGrabber.js').VRBoneGrabber} grabber
+     */
+    setBoneGrabber(grabber) {
+        this.boneGrabber = grabber || null;
+        console.log('[VRControllers] Bone grabber set for direct bone manipulation');
+    }
+
+    /**
+     * Enable/disable puppet mode (free 3D avatar placement).
+     * When ON, grip on avatar translates it freely instead of turntable rotation.
+     * @param {boolean} enabled
+     */
+    setPuppetMode(enabled) {
+        this.puppetMode = enabled;
+        // End any active puppet grab when mode is toggled off
+        if (!enabled && this._puppetState.active) {
+            const controller = this._puppetState.hand === 'left' ? this.controller1 : this.controller2;
+            if (controller) {
+                const line = controller.getObjectByName('ray');
+                if (line) {
+                    line.material.color.setHex(this.options.rayColor);
+                }
+            }
+            this._puppetState.active = false;
+            this._puppetState.object = null;
+            this._puppetState.hand = null;
+        }
+        console.log(`[VRControllers] Puppet mode ${enabled ? 'ON' : 'OFF'}`);
     }
 
     setChatPanel(panel) {
         this.chatPanel = panel || null;
-        console.log('[VRControllers] Chat panel reference set for dragging support');
+        console.log('[VRControllers] Chat panel reference set for grip-drag support');
     }
 
     setEnabled(enabled) {

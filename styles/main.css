@@ -370,6 +370,12 @@ body {
     box-shadow: var(--shadow-glow);
 }
 
+.small-btn {
+    font-size: 0.75rem;
+    padding: 6px 12px;
+    letter-spacing: 0.03em;
+}
+
 /* ============================================
    Content Layout (two-column: avatar | chat)
    ============================================ */
@@ -440,7 +446,8 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
 /* Emotion dropdown — single icon trigger + popup menu */
@@ -722,6 +729,14 @@ body {
     inset: 0;
     background: rgba(0, 0, 0, 0.6);
     z-index: 999;
+    transition: opacity 0.3s ease;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.mobile-drawer-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .mobile-drawer {
@@ -1656,8 +1671,8 @@ body {
 
     .avatar-panel {
         order: 1;
-        /* Prevent avatar from growing beyond its content */
-        max-height: 230px;
+        /* Allow avatar panel to size naturally — footer + preview */
+        max-height: 260px;
         overflow: hidden;
     }
 
@@ -1674,9 +1689,9 @@ body {
 
     .avatar-preview-wrap {
         /* Compact avatar on phones — gives maximum room to chat */
-        min-height: 140px;
-        height: 160px;
-        max-height: 160px;
+        min-height: 130px;
+        height: 150px;
+        max-height: 150px;
     }
 
     .avatar-viewport {
@@ -1687,6 +1702,27 @@ body {
     /* Hide HUD corner brackets on mobile */
     .hud-overlay {
         display: none;
+    }
+
+    /* Avatar footer compact on mobile */
+    .avatar-footer {
+        padding: 6px 10px;
+    }
+
+    .avatar-footer-actions {
+        gap: 6px;
+    }
+
+    /* Pose Studio button compact on mobile */
+    #openPoseStudioBtn {
+        font-size: 0.7rem;
+        padding: 4px 8px;
+        white-space: nowrap;
+    }
+
+    .avatar-select-compact {
+        max-width: 110px;
+        font-size: 0.78rem;
     }
 
     .chat-card {
@@ -1760,10 +1796,24 @@ body {
     }
 }
 
-/* Hide VR button on normal phones via device detection classes */
+/* Hide VR button on normal phones (AR stays visible) */
 html.is-mobile .xr-btn--vr,
 html.is-android-phone .xr-btn--vr {
     display: none !important;
+}
+
+/* Ensure AR button is visible and compact on mobile */
+@media (max-width: 767px) {
+    .xr-btn--ar {
+        min-height: 32px;
+        padding: 4px 10px;
+        font-size: 0.72rem;
+    }
+
+    .xr-launch-bar {
+        gap: 4px;
+        margin-left: 0;
+    }
 }
 
 /* Small phones */
@@ -1782,17 +1832,21 @@ html.is-android-phone .xr-btn--vr {
     }
 
     .avatar-panel {
-        max-height: 200px;
+        max-height: 240px;
     }
 
     .avatar-preview-wrap {
-        min-height: 120px;
-        height: 120px;
-        max-height: 120px;
+        min-height: 100px;
+        height: 110px;
+        max-height: 110px;
     }
 
     .avatar-footer {
-        padding: 4px 8px;
+        padding: 4px 6px;
+    }
+
+    .avatar-footer-actions {
+        gap: 4px;
     }
 
     .emotion-trigger {
@@ -1811,8 +1865,18 @@ html.is-android-phone .xr-btn--vr {
     }
 
     .avatar-select-compact {
-        max-width: 120px;
-        font-size: 0.75rem;
+        max-width: 100px;
+        font-size: 0.72rem;
+    }
+
+    #openPoseStudioBtn {
+        font-size: 0.65rem;
+        padding: 3px 6px;
+    }
+
+    .small-btn {
+        font-size: 0.68rem;
+        padding: 4px 8px;
     }
 }
 
@@ -2375,4 +2439,416 @@ html.is-mobile .status-badge {
     font-size: 0.75rem;
     color: var(--text-muted);
     opacity: 0.7;
+}
+
+/* ============================================
+   POSE STUDIO — Floating panel
+   ============================================ */
+
+.pose-studio-root {
+    position: fixed;
+    top: 88px;
+    right: 18px;
+    width: 340px;
+    max-width: calc(100vw - 24px);
+    z-index: 120;
+}
+
+.pose-studio-card {
+    border-radius: 18px;
+    border: 1px solid rgba(74, 210, 255, 0.18);
+    background: rgba(9, 18, 28, 0.96);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(12px);
+    padding: 16px;
+    color: #edf7ff;
+}
+
+.pose-studio-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.pose-studio-title {
+    font-family: var(--font-display, 'Orbitron', sans-serif);
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.pose-studio-subtitle {
+    margin-top: 4px;
+    color: #8ea9bd;
+    font-size: 0.84rem;
+}
+
+.pose-studio-section {
+    padding-top: 12px;
+    margin-top: 12px;
+    border-top: 1px solid rgba(74, 210, 255, 0.12);
+}
+
+.pose-studio-label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.88rem;
+    color: #8ea9bd;
+    font-family: var(--font-body, 'Rajdhani', sans-serif);
+    font-weight: 500;
+    letter-spacing: 0.03em;
+}
+
+.pose-studio-select,
+.pose-studio-input {
+    width: 100%;
+    height: 42px;
+    border-radius: 12px;
+    border: 1px solid rgba(74, 210, 255, 0.18);
+    background: rgba(16, 31, 45, 0.98);
+    color: #edf7ff;
+    padding: 0 12px;
+    outline: none;
+    font-family: var(--font-body, 'Rajdhani', sans-serif);
+    font-size: 0.9rem;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+
+.pose-studio-select:focus,
+.pose-studio-input:focus {
+    border-color: rgba(74, 210, 255, 0.38);
+}
+
+.pose-studio-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+.pose-axis-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+/* =========================================================================
+   Pose Studio — Bipolar Rotation Sliders (Pitch/Yaw/Roll)
+   ========================================================================= */
+
+.pose-slider-group {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.pose-slider-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.pose-slider-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.pose-slider-label {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: #edf7ff;
+    font-family: var(--font-body, 'Rajdhani', sans-serif);
+}
+
+.pose-axis-tag {
+    color: #8ea9bd;
+    font-weight: 500;
+    font-size: 0.82rem;
+    margin-left: 4px;
+}
+
+.pose-slider-value {
+    min-width: 44px;
+    text-align: right;
+    color: #2ad8ff;
+    font-size: 0.88rem;
+    font-weight: 700;
+    font-family: var(--font-body, 'Rajdhani', sans-serif);
+}
+
+.pose-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 8px;
+    border-radius: 999px;
+    background: linear-gradient(
+        90deg,
+        rgba(255, 95, 123, 0.45) 0%,
+        rgba(74, 210, 255, 0.14) 50%,
+        rgba(46, 242, 162, 0.4) 100%
+    );
+    outline: none;
+    border: 1px solid rgba(74, 210, 255, 0.14);
+    cursor: pointer;
+}
+
+.pose-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2ad8ff, #19a7ff);
+    border: 2px solid #04111a;
+    box-shadow: 0 0 0 3px rgba(42, 216, 255, 0.15);
+    cursor: pointer;
+}
+
+.pose-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2ad8ff, #19a7ff);
+    border: 2px solid #04111a;
+    box-shadow: 0 0 0 3px rgba(42, 216, 255, 0.15);
+    cursor: pointer;
+}
+
+.pose-slider:active::-webkit-slider-thumb {
+    box-shadow: 0 0 0 5px rgba(42, 216, 255, 0.3);
+}
+
+.pose-slider:active::-moz-range-thumb {
+    box-shadow: 0 0 0 5px rgba(42, 216, 255, 0.3);
+}
+
+.pose-slider-scale {
+    display: flex;
+    justify-content: space-between;
+    color: #8ea9bd;
+    font-size: 0.72rem;
+    padding: 0 2px;
+    font-family: var(--font-body, 'Rajdhani', sans-serif);
+}
+
+/* =========================================================================
+   Pose Navigator — Next / Back browsing for VR pose presets
+   ========================================================================= */
+
+.pose-nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 0;
+}
+
+.pose-nav-btn {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    border: 1px solid rgba(74, 210, 255, 0.22);
+    background: rgba(16, 31, 45, 0.85);
+    color: #2ad8ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition:
+        background 0.18s,
+        border-color 0.18s,
+        transform 0.12s;
+}
+
+.pose-nav-btn:hover {
+    background: rgba(42, 216, 255, 0.12);
+    border-color: rgba(42, 216, 255, 0.45);
+}
+
+.pose-nav-btn:active {
+    transform: scale(0.92);
+    background: rgba(42, 216, 255, 0.2);
+}
+
+.pose-nav-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+}
+
+.pose-nav-category {
+    font-family: var(--font-body, 'Rajdhani', sans-serif);
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #09121c;
+    background: linear-gradient(135deg, #2ad8ff, #7c4dff);
+    padding: 1px 10px;
+    border-radius: 99px;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+.pose-nav-label {
+    font-family: var(--font-display, 'Orbitron', sans-serif);
+    font-size: 0.96rem;
+    font-weight: 700;
+    color: #edf7ff;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+.pose-nav-counter {
+    font-family: var(--font-body, 'Rajdhani', sans-serif);
+    font-size: 0.76rem;
+    font-weight: 500;
+    color: #8ea9bd;
+    letter-spacing: 0.05em;
+}
+
+/* Tablet */
+@media (max-width: 1024px) {
+    .pose-studio-root {
+        width: 300px;
+    }
+}
+
+/* Phone — full-width bottom sheet style */
+@media (max-width: 767px) {
+    .pose-studio-root {
+        top: auto;
+        right: 0;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        max-width: 100%;
+        max-height: 65vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 0;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    .pose-studio-card {
+        border-radius: 18px 18px 0 0;
+        padding: 14px 12px calc(14px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .pose-studio-header {
+        margin-bottom: 10px;
+    }
+
+    .pose-studio-title {
+        font-size: 0.95rem;
+    }
+
+    .pose-studio-subtitle {
+        font-size: 0.78rem;
+    }
+
+    .pose-studio-section {
+        padding-top: 10px;
+        margin-top: 10px;
+    }
+
+    .pose-studio-label {
+        font-size: 0.82rem;
+        margin-bottom: 6px;
+    }
+
+    .pose-studio-select,
+    .pose-studio-input {
+        height: 38px;
+        font-size: 16px; /* prevents iOS zoom */
+        border-radius: 10px;
+    }
+
+    .pose-studio-actions {
+        gap: 6px;
+        margin-top: 8px;
+    }
+
+    .pose-studio-card .small-btn {
+        font-size: 0.7rem;
+        padding: 5px 10px;
+        min-height: 34px;
+    }
+
+    .pose-axis-grid {
+        grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    .pose-nav-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+    }
+
+    .pose-nav-label {
+        font-size: 0.88rem;
+    }
+
+    .pose-nav-category {
+        font-size: 0.62rem;
+    }
+
+    .pose-slider-group {
+        gap: 10px;
+    }
+
+    .pose-slider-label {
+        font-size: 0.84rem;
+    }
+
+    .pose-slider-value {
+        font-size: 0.82rem;
+    }
+
+    .pose-slider {
+        height: 10px; /* larger touch target on mobile */
+    }
+
+    .pose-slider::-webkit-slider-thumb {
+        width: 24px;
+        height: 24px;
+    }
+
+    .pose-slider::-moz-range-thumb {
+        width: 24px;
+        height: 24px;
+    }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+    .pose-studio-root {
+        max-height: 60vh;
+    }
+
+    .pose-studio-card {
+        padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .pose-studio-card .small-btn {
+        font-size: 0.65rem;
+        padding: 4px 8px;
+        min-height: 30px;
+    }
 }
