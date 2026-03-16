@@ -40,6 +40,9 @@
     // Force mode: when true, procedural animations ALWAYS run (used for quick actions)
     let forceMode = false;
 
+    // Edit mode: when true, Pose Studio is active — skip all procedural bone updates
+    let editMode = false;
+
     // Mouse input (normalized -1..1)
     const mouse = { x: 0, y: 0 };
     let inputInit = false;
@@ -298,6 +301,9 @@
     function update(timeSec, dtSec) {
         if (!avatarRoot || !bones) return;
 
+        // Pose Studio is active — do not fight the editor
+        if (editMode) return;
+
         // expire mode
         if (mode !== 'idle' && performance.now() > modeUntilMs) {
             mode = 'idle';
@@ -460,6 +466,10 @@
         captureRestPose(avatarRoot);
     });
 
+    function setEditMode(enabled) {
+        editMode = !!enabled;
+    }
+
     // expose
     window.NEXUS_PROCEDURAL_ANIMATOR = {
         registerAvatar,
@@ -467,5 +477,6 @@
         update,
         setMode,
         setAllowWithMixer,
+        setEditMode,
     };
 })();

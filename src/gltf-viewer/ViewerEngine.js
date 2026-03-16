@@ -16,6 +16,10 @@ import { PostProcessing } from './PostProcessing.js';
 import { VRMediaPanel } from './VRMediaPanel.js';
 import { ModelViewerAR } from './ModelViewerAR.js';
 import { PerformanceMonitor } from './PerformanceMonitor.js';
+import { PassthroughEnhancer } from './PassthroughEnhancer.js';
+import { VRBoneGrabber } from './VRBoneGrabber.js';
+import { VRPoseSystem } from './VRPoseSystem.js';
+import { VRPuppetInteraction } from './VRPuppetInteraction.js';
 
 export class ViewerEngine {
     constructor(containerEl) {
@@ -166,6 +170,38 @@ export class ViewerEngine {
         // AR Support
         this.arSupport = new ARSupport(this.renderer, this.camera, this.scene, containerEl);
 
+        // Passthrough Enhancer (industry-grade AR grounding, lighting, shadows)
+        this.passthroughEnhancer = new PassthroughEnhancer({
+            scene: this.scene,
+            renderer: this.renderer,
+            camera: this.camera,
+            directionalLight: this.directionalLight,
+        });
+
+        // VR Pose System (IK + presets + snap + smoothing)
+        this.vrPoseSystem = new VRPoseSystem({ scene: this.scene });
+        // Expose globally for VRChatPanel preset cycling
+        window.vrPoseSystem = this.vrPoseSystem;
+
+        // VR Bone Grabber (direct bone manipulation via controller grip)
+        this.vrBoneGrabber = new VRBoneGrabber({
+            scene: this.scene,
+            renderer: this.renderer,
+        });
+        this.vrBoneGrabber.setPoseSystem(this.vrPoseSystem);
+        this.vrControllers.setBoneGrabber(this.vrBoneGrabber);
+
+        // VR Puppet Interaction (unified puppet mode: handles + IK + two-hand transform)
+        this.vrPuppetInteraction = new VRPuppetInteraction({
+            scene: this.scene,
+            renderer: this.renderer,
+            camera: this.camera,
+            controllers: this.vrControllers,
+            poseSystem: this.vrPoseSystem,
+            boneGrabber: this.vrBoneGrabber,
+        });
+        this.vrControllers.setPuppetInteraction(this.vrPuppetInteraction);
+
         // Create centered XR launch bar inside the avatar viewport
         this._createXRLaunchBar(containerEl);
 
@@ -195,7 +231,7 @@ export class ViewerEngine {
         this.perfMonitor = new PerformanceMonitor({
             initialLevel: this.mobileSupport.isMobileOrTablet() ? 1 : 0,
         });
-        this.perfMonitor.onQualityChange((level, fps) => {
+        this.perfMonitor.onQualityChange((level, _fps) => {
             this.postProcessing?.setQualityLevel(level);
 
             // At level 3 (lowest), also reduce shadow quality
@@ -282,6 +318,35 @@ export class ViewerEngine {
             this.controls.enabled = false;
             this.vrControllers.setEnabled(true);
 
+            // Enable bone grabber, pose system, and puppet interaction for VR session
+            this.vrBoneGrabber?.setEnabled(true);
+            this.vrPoseSystem?.setEnabled(true);
+            // Set puppet interaction avatar (may have been loaded before VR started)
+            if (this.avatarManager?.currentRoot) {
+                this.vrPuppetInteraction?.setAvatar(this.avatarManager.currentRoot);
+            }
+            if (window.poseEditor && this.vrBoneGrabber) {
+                this.vrBoneGrabber.setPoseEditor(window.poseEditor);
+            }
+
+            // Diagnostic: log state of all VR pose/bone systems
+            console.log('[ViewerEngine] VR Pose Systems State:', {
+                boneGrabber: {
+                    enabled: this.vrBoneGrabber?.enabled,
+                    hasAvatar: !!this.vrBoneGrabber?.avatarRoot,
+                    meshCount: this.vrBoneGrabber?.avatarMeshes?.length,
+                    boneMapSize: this.vrBoneGrabber?._boneNameToKey?.size,
+                    hasPoseSystem: !!this.vrBoneGrabber?.poseSystem,
+                    hasPoseEditor: !!this.vrBoneGrabber?.poseEditor,
+                },
+                poseSystem: {
+                    enabled: this.vrPoseSystem?.enabled,
+                    hasAvatar: !!this.vrPoseSystem?.avatarRoot,
+                    boneCount: this.vrPoseSystem?._bones?.size,
+                    ikEnabled: this.vrPoseSystem?.ikEnabled,
+                },
+            });
+
             // Position user closer to avatar and facing front
             // Offset the XR reference space so user spawns at z=1.2 instead of z=2.2
             try {
@@ -334,8 +399,11 @@ export class ViewerEngine {
 
                 if (this.vrChatIntegration.isInitialized) {
                     // Normal path: use integration (handles speech, avatar, etc.)
-                    if (isVisible) this.vrChatIntegration.disable();
-                    else this.vrChatIntegration.enable();
+                    if (isVisible) {
+                        this.vrChatIntegration.disable();
+                    } else {
+                        this.vrChatIntegration.enable();
+                    }
                 } else {
                     // Fallback: show panel even if integration failed (for debugging)
                     this.vrChatPanel.setVisible(!isVisible);
@@ -351,6 +419,9 @@ export class ViewerEngine {
         window.addEventListener('vr-session-end', () => {
             console.log('[ViewerEngine] VR Session Ending...');
 
+            // Deactivate passthrough if it was enabled in VR
+            this.passthroughEnhancer?.deactivate();
+
             // Re-enable post-processing for desktop
             this.postProcessing?.onXRSessionEnd();
 
@@ -359,12 +430,12 @@ export class ViewerEngine {
             this.scene.background = new THREE.Color(bgColor);
 
             // Restore desktop hemisphere light intensity
-            if (this._hemiLight && this._vrSavedHemiIntensity != null) {
+            if (this._hemiLight && this._vrSavedHemiIntensity !== null) {
                 this._hemiLight.intensity = this._vrSavedHemiIntensity;
             }
 
             // Restore desktop exposure
-            if (this._vrSavedExposure != null) {
+            if (this._vrSavedExposure !== null) {
                 this.renderer.toneMappingExposure = this._vrSavedExposure;
             }
 
@@ -385,6 +456,9 @@ export class ViewerEngine {
 
             this.vrControllers.setEnabled(false);
             this.vrControllers.resetPosition();
+            this.vrBoneGrabber?.setEnabled(false);
+            this.vrPoseSystem?.setEnabled(false);
+            this.vrPuppetInteraction?.endAll();
             this.vrChatIntegration.disable();
 
             // Restore mobile rendering settings
@@ -420,18 +494,35 @@ export class ViewerEngine {
                 this.vrControllers.options.moveSpeed = speedMap[value] || 1.8;
             }
 
-            // VR background color (black → blue → void)
+            // VR background color (black → blue → void → passthrough)
             if (key === 'vrBackground') {
                 this._vrBackgroundColor = value;
                 if (this.vrSupport?.isVRActive) {
-                    this.scene.background = new THREE.Color(value === 'blue' ? 0x1a1a2e : 0x000000);
-                    // Show/hide floor grid based on mode
-                    if (value === 'void') {
+                    if (value === 'passthrough') {
+                        // Enable passthrough: transparent background shows camera feed
+                        this.scene.background = null;
                         this._hideVRGround();
+                        this.passthroughEnhancer?.activate(this.avatarManager?.currentRoot || null);
                     } else {
-                        this._showVRGround();
+                        // Deactivate passthrough if it was on
+                        if (this.passthroughEnhancer?.active) {
+                            this.passthroughEnhancer.deactivate();
+                        }
+                        this.scene.background = new THREE.Color(value === 'blue' ? 0x1a1a2e : 0x000000);
+                        // Show/hide floor grid based on mode
+                        if (value === 'void') {
+                            this._hideVRGround();
+                        } else {
+                            this._showVRGround();
+                        }
                     }
                 }
+            }
+
+            // Puppet mode toggle (free 3D avatar placement + puppet interaction)
+            if (key === 'puppetMode') {
+                this.vrControllers.setPuppetMode(value);
+                this.vrPuppetInteraction?.setEnabled(!!value);
             }
 
             // Session mode switch (VR ↔ AR)
@@ -456,6 +547,9 @@ export class ViewerEngine {
             if (this.avatarManager?.currentRoot) {
                 this.avatarManager.currentRoot.position.y = 0;
             }
+
+            // Activate passthrough enhancements (contact shadow, light estimation, depth)
+            this.passthroughEnhancer?.activate(this.avatarManager?.currentRoot || null);
         });
 
         // Auto-place avatar on detected floor in AR
@@ -478,6 +572,9 @@ export class ViewerEngine {
             console.log('[ViewerEngine] AR Session Ending...');
             this.postProcessing?.onXRSessionEnd();
             this.controls.enabled = true;
+
+            // Deactivate passthrough enhancements (restore desktop lighting)
+            this.passthroughEnhancer?.deactivate();
 
             // Reset panel state to VR
             if (this.vrChatPanel) {
@@ -515,6 +612,7 @@ export class ViewerEngine {
     /**
      * Switch between VR and AR sessions.
      * WebXR only allows one active session, so we end the current one first.
+     * Waits for isPresenting to clear before starting the new session.
      * @param {'vr'|'ar'} targetMode
      */
     async _switchXRMode(targetMode) {
@@ -527,24 +625,44 @@ export class ViewerEngine {
                 await session.end();
             }
 
+            // Wait for renderer.xr.isPresenting to clear (poll up to 2s)
+            await this._waitForXRCleanup(2000);
+
             if (targetMode === 'ar') {
-                // Wait for VR cleanup, then start AR
-                setTimeout(() => {
-                    if (this.arSupport) {
-                        this.arSupport.startAR();
+                if (this.arSupport) {
+                    const started = await this.arSupport.startAR();
+                    if (!started) {
+                        console.warn('[ViewerEngine] AR start failed — retrying after 500ms');
+                        setTimeout(() => this.arSupport?.startAR(), 500);
                     }
-                }, 400);
+                }
             } else {
-                // Wait for AR cleanup, then start VR
-                setTimeout(() => {
-                    if (this.vrSupport) {
-                        this.vrSupport.toggleVR();
-                    }
-                }, 400);
+                if (this.vrSupport) {
+                    this.vrSupport.toggleVR();
+                }
             }
         } catch (e) {
             console.error('[ViewerEngine] XR mode switch error:', e);
         }
+    }
+
+    /**
+     * Wait for renderer.xr.isPresenting to become false.
+     * @param {number} timeoutMs - max wait time in ms
+     */
+    _waitForXRCleanup(timeoutMs = 2000) {
+        return new Promise((resolve) => {
+            const start = performance.now();
+            const check = () => {
+                if (!this.renderer.xr.isPresenting || performance.now() - start > timeoutMs) {
+                    resolve();
+                    return;
+                }
+                setTimeout(check, 50);
+            };
+            // Give at least 100ms for session end event to propagate
+            setTimeout(check, 100);
+        });
     }
 
     _getViewportSize() {
@@ -575,10 +693,14 @@ export class ViewerEngine {
     }
 
     _storeFramingState(object) {
-        if (!object) return;
+        if (!object) {
+            return;
+        }
 
         const box = new THREE.Box3().setFromObject(object);
-        if (box.isEmpty()) return;
+        if (box.isEmpty()) {
+            return;
+        }
 
         const size = new THREE.Vector3();
         const center = new THREE.Vector3();
@@ -630,12 +752,16 @@ export class ViewerEngine {
      * - Updates OrbitControls min/maxDistance so user can zoom far enough.
      */
     frameObject(root, fitOffset = 1.35) {
-        if (!root) return;
+        if (!root) {
+            return;
+        }
 
         root.updateWorldMatrix(true, true);
 
         const box = new THREE.Box3().setFromObject(root);
-        if (!isFinite(box.min.x) || !isFinite(box.max.x)) return;
+        if (!isFinite(box.min.x) || !isFinite(box.max.x)) {
+            return;
+        }
 
         const size = box.getSize(new THREE.Vector3());
         const center = box.getCenter(new THREE.Vector3());
@@ -688,7 +814,9 @@ export class ViewerEngine {
      * Ensures crisp shadows without wasted shadow map resolution.
      */
     _fitShadowCamera(box, center, size) {
-        if (!this.directionalLight) return;
+        if (!this.directionalLight) {
+            return;
+        }
         const cam = this.directionalLight.shadow.camera;
         const padding = 0.5;
         cam.left = -(size.x / 2 + padding);
@@ -726,6 +854,21 @@ export class ViewerEngine {
         if (this.avatarManager.currentRoot) {
             this.vrControllers.registerAvatar(this.avatarManager.currentRoot);
 
+            // Update passthrough enhancer with new avatar root
+            this.passthroughEnhancer?.setAvatarRoot(this.avatarManager.currentRoot);
+
+            // Update bone grabber, pose system, and puppet interaction with new avatar
+            this.vrBoneGrabber?.setAvatar(this.avatarManager.currentRoot);
+            this.vrPoseSystem?.setAvatar(this.avatarManager.currentRoot);
+            // Enable pose system on desktop too (blending, presets)
+            if (this.vrPoseSystem && !this.vrPoseSystem.enabled) {
+                this.vrPoseSystem.setEnabled(true);
+            }
+            this.vrPuppetInteraction?.setAvatar(this.avatarManager.currentRoot);
+            if (window.poseEditor) {
+                this.vrBoneGrabber?.setPoseEditor(window.poseEditor);
+            }
+
             // Mobile-aware auto-frame (wider offset on phones)
             const fitOffset = this.mobileSupport?.getFitOffset() || 1.35;
             this.frameObject(this.avatarManager.currentRoot, fitOffset);
@@ -742,21 +885,36 @@ export class ViewerEngine {
             try {
                 const t = this.clock.getElapsedTime();
                 window.NEXUS_PROCEDURAL_ANIMATOR?.update?.(t, dt);
-            } catch (_) {}
+            } catch (_e) {
+                // Procedural animator may not be loaded
+            }
 
             this.avatarManager?.update(dt);
             this.vrControllers.update(dt);
+            this.vrPoseSystem?.update(dt);
+            this.vrPuppetInteraction?.update(dt);
 
             if (this.renderer.xr.isPresenting) {
                 if (this.arSupport?.isARActive) {
                     // AR mode: update hit-test for surface placement
                     const frame = this.renderer.xr.getFrame?.();
                     this.arSupport.updateHitTest(this.renderer, frame);
+
+                    // Update passthrough enhancements (contact shadow tracking, light estimation)
+                    const refSpace = this.renderer.xr.getReferenceSpace?.();
+                    this.passthroughEnhancer?.update(dt, frame, refSpace);
                 } else {
                     // VR mode: update chat panel and mic indicator
                     this.vrChatPanel?.update();
                     this.vrChatPanel?._animateMicIndicator(dt);
                     this.vrChatPanel?._updateMicIndicatorPosition();
+
+                    // Update passthrough enhancements in VR passthrough mode
+                    if (this.passthroughEnhancer?.active) {
+                        const frame = this.renderer.xr.getFrame?.();
+                        const refSpace = this.renderer.xr.getReferenceSpace?.();
+                        this.passthroughEnhancer.update(dt, frame, refSpace);
+                    }
                 }
             } else {
                 this.controls.update();
@@ -822,7 +980,9 @@ export class ViewerEngine {
      */
     setDesktopBackground(key) {
         const color = ViewerEngine.BG_COLORS[key];
-        if (color === undefined) return;
+        if (color === undefined) {
+            return;
+        }
         this._desktopBgKey = key;
         if (!this.renderer.xr.isPresenting) {
             this.scene.background = new THREE.Color(color);
