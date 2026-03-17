@@ -21,6 +21,9 @@ const ALLOWED_HOSTS = [
     'hub.vroid.com',
     'api.sketchfab.com',
     'media.sketchfab.com',
+    'arweave.net',
+    'gateway.irys.xyz',
+    'cdn.discordapp.com',
 ];
 
 function isAllowedHost(urlStr) {

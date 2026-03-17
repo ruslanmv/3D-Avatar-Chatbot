@@ -134,6 +134,7 @@ body {
     width: 100%;
     height: 100vh;
     height: 100dvh;
+    height: -webkit-fill-available; /* iOS Safari fallback */
     display: grid;
     grid-template-rows: auto 1fr;
     z-index: 1;
@@ -2451,7 +2452,10 @@ html.is-mobile .status-badge {
     right: 18px;
     width: 340px;
     max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 100px);
     z-index: 120;
+    display: flex;
+    flex-direction: column;
 }
 
 .pose-studio-card {
@@ -2462,6 +2466,28 @@ html.is-mobile .status-badge {
     backdrop-filter: blur(12px);
     padding: 16px;
     color: #edf7ff;
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: calc(100vh - 110px);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(74, 210, 255, 0.3) transparent;
+}
+
+.pose-studio-card::-webkit-scrollbar {
+    width: 5px;
+}
+
+.pose-studio-card::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.pose-studio-card::-webkit-scrollbar-thumb {
+    background: rgba(74, 210, 255, 0.25);
+    border-radius: 4px;
+}
+
+.pose-studio-card::-webkit-scrollbar-thumb:hover {
+    background: rgba(74, 210, 255, 0.45);
 }
 
 .pose-studio-header {
@@ -2487,6 +2513,40 @@ html.is-mobile .status-badge {
     margin-top: 4px;
     color: #8ea9bd;
     font-size: 0.84rem;
+}
+
+/* Pose Studio header icon buttons (skeleton toggle, joint visibility) */
+.pose-header-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.06);
+    color: #8ea9bd;
+    cursor: pointer;
+    transition:
+        background 0.18s,
+        color 0.18s,
+        border-color 0.18s;
+    padding: 0;
+    flex-shrink: 0;
+}
+.pose-header-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #c0d8ee;
+    border-color: rgba(255, 255, 255, 0.22);
+}
+.pose-header-icon-btn--active {
+    background: rgba(0, 229, 255, 0.18);
+    color: var(--primary, #00e5ff);
+    border-color: rgba(0, 229, 255, 0.4);
+}
+.pose-header-icon-btn--active:hover {
+    background: rgba(0, 229, 255, 0.28);
+    color: var(--primary, #00e5ff);
 }
 
 .pose-studio-section {
@@ -2639,6 +2699,282 @@ html.is-mobile .status-badge {
     font-size: 0.72rem;
     padding: 0 2px;
     font-family: var(--font-body, 'Rajdhani', sans-serif);
+}
+
+/* =========================================================================
+   Pose Studio — Mouse Edit Toggle
+   ========================================================================= */
+
+.pose-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.pose-toggle {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+}
+
+.pose-toggle input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.pose-toggle-track {
+    display: block;
+    width: 42px;
+    height: 24px;
+    border-radius: 99px;
+    background: rgba(74, 210, 255, 0.12);
+    border: 1px solid rgba(74, 210, 255, 0.2);
+    transition:
+        background 0.2s,
+        border-color 0.2s;
+    position: relative;
+}
+
+.pose-toggle-thumb {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #8ea9bd;
+    transition:
+        transform 0.2s,
+        background 0.2s;
+}
+
+.pose-toggle input:checked + .pose-toggle-track {
+    background: rgba(42, 216, 255, 0.25);
+    border-color: rgba(42, 216, 255, 0.5);
+}
+
+.pose-toggle input:checked + .pose-toggle-track .pose-toggle-thumb {
+    transform: translateX(18px);
+    background: #2ad8ff;
+}
+
+.pose-toggle-hint {
+    font-size: 0.72rem;
+    color: #6b8a9e;
+    margin-top: 4px;
+}
+
+/* =========================================================================
+   Pose Studio — Animation Grid (Emotes, Clips)
+   ========================================================================= */
+
+.pose-anim-hint {
+    font-size: 0.72rem;
+    color: #6b8a9e;
+    margin-bottom: 8px;
+    font-style: italic;
+}
+
+@keyframes pose-anim-pulse {
+    0%,
+    100% {
+        box-shadow: 0 0 8px rgba(42, 216, 255, 0.15);
+    }
+    50% {
+        box-shadow: 0 0 14px rgba(42, 216, 255, 0.35);
+    }
+}
+
+.pose-anim-chip--active {
+    animation: pose-anim-pulse 1.5s ease-in-out infinite;
+}
+
+.pose-anim-category {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #8ea9bd;
+    margin-bottom: 6px;
+    margin-top: 8px;
+    font-family: var(--font-body, 'Rajdhani', sans-serif);
+}
+
+.pose-anim-category--spicy {
+    color: rgba(255, 100, 60, 0.7);
+}
+
+.pose-anim-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 6px;
+}
+
+.pose-anim-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 4px;
+    border-radius: 10px;
+    border: 1px solid rgba(74, 210, 255, 0.14);
+    background: rgba(16, 31, 45, 0.7);
+    color: #edf7ff;
+    cursor: pointer;
+    transition:
+        background 0.15s,
+        border-color 0.15s,
+        transform 0.1s;
+    font-family: var(--font-body, 'Rajdhani', sans-serif);
+}
+
+.pose-anim-chip:hover {
+    background: rgba(42, 216, 255, 0.1);
+    border-color: rgba(42, 216, 255, 0.35);
+}
+
+.pose-anim-chip:active {
+    transform: scale(0.95);
+}
+
+.pose-anim-chip--active {
+    background: rgba(42, 216, 255, 0.18);
+    border-color: rgba(42, 216, 255, 0.5);
+    box-shadow: 0 0 8px rgba(42, 216, 255, 0.15);
+}
+
+.pose-anim-chip--spicy {
+    border-color: rgba(255, 100, 60, 0.2);
+}
+
+.pose-anim-chip--spicy:hover {
+    border-color: rgba(255, 100, 60, 0.45);
+    background: rgba(255, 100, 60, 0.1);
+}
+
+.pose-anim-chip--spicy.pose-anim-chip--active {
+    border-color: rgba(255, 100, 60, 0.5);
+    background: rgba(255, 100, 60, 0.15);
+    box-shadow: 0 0 8px rgba(255, 100, 60, 0.15);
+}
+
+.pose-anim-chip-icon {
+    font-size: 1.3rem;
+    line-height: 1;
+}
+
+.pose-anim-chip-label {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: #8ea9bd;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+/* =========================================================================
+   Pose Studio — Playback Controls
+   ========================================================================= */
+
+.pose-playback {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 12px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: rgba(16, 31, 45, 0.6);
+    border: 1px solid rgba(74, 210, 255, 0.1);
+}
+
+.pose-playback-btn {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid rgba(42, 216, 255, 0.3);
+    background: rgba(42, 216, 255, 0.08);
+    color: #2ad8ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition:
+        background 0.15s,
+        border-color 0.15s,
+        transform 0.1s;
+}
+
+.pose-playback-btn:hover {
+    background: rgba(42, 216, 255, 0.18);
+    border-color: rgba(42, 216, 255, 0.5);
+}
+
+.pose-playback-btn:active {
+    transform: scale(0.92);
+}
+
+.pose-playback-btn--playing {
+    border-color: rgba(255, 95, 123, 0.5);
+    background: rgba(255, 95, 123, 0.12);
+    color: #ff5f7b;
+}
+
+.pose-playback-btn--playing:hover {
+    background: rgba(255, 95, 123, 0.22);
+    border-color: rgba(255, 95, 123, 0.65);
+}
+
+.pose-playback-speed {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.pose-playback-speed-label {
+    font-size: 0.68rem;
+    font-weight: 500;
+    color: #6b8a9e;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.pose-playback-speed-btns {
+    display: flex;
+    gap: 4px;
+}
+
+.pose-speed-btn {
+    flex: 1;
+    padding: 4px 8px;
+    border-radius: 8px;
+    border: 1px solid rgba(74, 210, 255, 0.14);
+    background: rgba(16, 31, 45, 0.7);
+    color: #8ea9bd;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+        background 0.15s,
+        color 0.15s,
+        border-color 0.15s;
+    font-family: var(--font-body, 'Rajdhani', sans-serif);
+}
+
+.pose-speed-btn:hover {
+    background: rgba(42, 216, 255, 0.08);
+    color: #edf7ff;
+}
+
+.pose-speed-btn--active {
+    background: rgba(42, 216, 255, 0.15);
+    border-color: rgba(42, 216, 255, 0.4);
+    color: #2ad8ff;
 }
 
 /* =========================================================================
@@ -2834,6 +3170,34 @@ html.is-mobile .status-badge {
         width: 24px;
         height: 24px;
     }
+
+    .pose-anim-grid {
+        grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+        gap: 5px;
+    }
+
+    .pose-anim-chip {
+        padding: 6px 3px;
+        border-radius: 8px;
+    }
+
+    .pose-anim-chip-icon {
+        font-size: 1.1rem;
+    }
+
+    .pose-anim-chip-label {
+        font-size: 0.64rem;
+    }
+
+    .pose-playback {
+        padding: 6px 8px;
+        gap: 8px;
+    }
+
+    .pose-playback-btn {
+        width: 36px;
+        height: 36px;
+    }
 }
 
 /* Small phones */
@@ -2851,4 +3215,420 @@ html.is-mobile .status-badge {
         padding: 4px 8px;
         min-height: 30px;
     }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SPICY MODE — Toggle, Age Gate
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Settings toggle row */
+.spicy-toggle-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.85);
+    cursor: pointer;
+    padding: 4px 0;
+}
+
+/* Toggle switch */
+.spicy-toggle-switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.spicy-toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.spicy-toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.12);
+    border-radius: 24px;
+    transition: background 0.25s;
+    cursor: pointer;
+}
+
+.spicy-toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    left: 3px;
+    top: 3px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.25s;
+}
+
+.spicy-toggle-switch input:checked + .spicy-toggle-slider {
+    background: linear-gradient(135deg, #ff4444 0%, #ff8800 100%);
+}
+
+.spicy-toggle-switch input:checked + .spicy-toggle-slider::before {
+    transform: translateX(20px);
+}
+
+/* Status label */
+.spicy-status-label {
+    font-weight: 600;
+    letter-spacing: 0.05em;
+}
+
+.spicy-status-off {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.spicy-status-on {
+    color: #ff6644;
+}
+
+/* ─── Age Verification Modal ─── */
+.spicy-age-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(6px);
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.spicy-age-modal {
+    background: linear-gradient(160deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%);
+    border: 1px solid rgba(255, 80, 60, 0.3);
+    border-radius: 16px;
+    max-width: 440px;
+    width: 100%;
+    padding: 28px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.spicy-age-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.spicy-age-icon {
+    font-size: 28px;
+}
+
+.spicy-age-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: #ff6644;
+}
+
+.spicy-age-body {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.82rem;
+    line-height: 1.5;
+}
+
+.spicy-age-body p {
+    margin: 0 0 14px;
+}
+
+.spicy-age-allowed,
+.spicy-age-blocked {
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 0.78rem;
+}
+
+.spicy-age-allowed {
+    background: rgba(255, 100, 60, 0.1);
+    border: 1px solid rgba(255, 100, 60, 0.2);
+}
+
+.spicy-age-blocked {
+    background: rgba(255, 40, 40, 0.1);
+    border: 1px solid rgba(255, 40, 40, 0.25);
+}
+
+.spicy-age-allowed strong,
+.spicy-age-blocked strong {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.spicy-age-allowed ul,
+.spicy-age-blocked ul {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.spicy-age-allowed li,
+.spicy-age-blocked li {
+    margin-bottom: 2px;
+}
+
+.spicy-age-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin: 16px 0;
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.spicy-age-checkbox input[type='checkbox'] {
+    margin-top: 2px;
+    accent-color: #ff6644;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.spicy-age-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 18px;
+}
+
+.spicy-age-actions .primary-btn {
+    background: linear-gradient(135deg, #ff4444 0%, #ff8800 100%);
+    border: none;
+    color: #fff;
+    font-weight: 600;
+}
+
+.spicy-age-actions .primary-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* ─── Spicy Emote Buttons (in Pose Studio) ─── */
+.spicy-emote-btn {
+    background: rgba(255, 80, 60, 0.15) !important;
+    border-color: rgba(255, 80, 60, 0.3) !important;
+    color: rgba(255, 200, 180, 0.9) !important;
+}
+
+.spicy-emote-btn:hover {
+    background: rgba(255, 80, 60, 0.3) !important;
+}
+
+/* ============================================
+   ENHANCED MOBILE / VR / AR COMPATIBILITY
+   Device-aware UI — works with DeviceDetector.js
+   ============================================ */
+
+/* ── Touch optimizations ── */
+html.has-touch * {
+    -webkit-tap-highlight-color: transparent;
+}
+
+html.has-touch button,
+html.has-touch a,
+html.has-touch input,
+html.has-touch select {
+    touch-action: manipulation; /* removes 300ms click delay */
+}
+
+/* ── iOS Safari fixes ── */
+html.os-ios .app-shell {
+    /* iOS Safari 100vh includes address bar — use -webkit-fill-available */
+    height: 100vh;
+    height: -webkit-fill-available;
+}
+
+html.os-ios .chat-input {
+    font-size: 16px !important; /* prevents zoom on focus */
+    -webkit-appearance: none;
+    border-radius: 8px;
+}
+
+html.os-ios .chat-input-shell {
+    /* Account for iOS home indicator */
+    padding-bottom: calc(env(safe-area-inset-bottom, 8px) + 8px);
+}
+
+/* ── Android-specific fixes ── */
+html.os-android .app-shell {
+    height: 100vh;
+    height: 100dvh;
+}
+
+/* ── Virtual keyboard handling ── */
+@media (max-height: 450px) and (max-width: 767px) {
+    /* Keyboard is likely open on phone */
+    .avatar-panel {
+        display: none !important;
+    }
+    .chat-panel {
+        max-height: 100% !important;
+    }
+    .content-layout {
+        grid-template-rows: 1fr !important;
+    }
+}
+
+/* ── Headset / VR UI mode ── */
+html.is-headset .topbar {
+    padding: 12px 20px;
+    min-height: 56px;
+}
+
+html.is-headset .mobile-only {
+    display: none !important;
+}
+
+html.is-headset .content-layout {
+    grid-template-columns: minmax(300px, 45%) minmax(0, 1fr);
+    gap: 20px;
+    padding: 20px;
+}
+
+html.is-headset .chat-input {
+    font-size: 18px;
+    height: 52px;
+}
+
+html.is-headset .chat-message {
+    font-size: 1.05rem;
+    line-height: 1.5;
+}
+
+html.is-headset .send-btn {
+    height: 52px;
+    min-width: 64px;
+}
+
+html.is-headset .voice-btn-compact {
+    width: 52px;
+    height: 52px;
+}
+
+/* Quest-specific: larger touch targets for controller pointing */
+html.is-quest .icon-btn,
+html.is-quest .xr-btn {
+    min-height: 48px;
+    min-width: 48px;
+}
+
+html.is-quest .xr-btn {
+    font-size: 0.9rem;
+    padding: 8px 18px;
+}
+
+/* ── XR buttons: show/hide based on capability ── */
+html:not(.can-vr) .xr-btn--vr {
+    display: none !important;
+}
+
+html:not(.can-ar) .xr-btn--ar {
+    display: none !important;
+}
+
+/* Show VR on headsets, hide on regular phones */
+html.is-headset .xr-btn--vr {
+    display: inline-flex !important;
+}
+
+html.is-phone:not(.can-vr) .xr-btn--vr {
+    display: none !important;
+}
+
+/* ── Quest 3 passthrough AR enhancements ── */
+html.quest-3 .xr-btn--ar {
+    background: linear-gradient(135deg, rgba(0, 229, 255, 0.2), rgba(124, 77, 255, 0.2));
+    border-color: rgba(0, 229, 255, 0.5);
+}
+
+/* ── Mobile portrait: improved layout ── */
+@media (max-width: 767px) and (orientation: portrait) {
+    .content-layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(120px, 35vh) minmax(0, 1fr);
+    }
+
+    .avatar-panel {
+        max-height: 35vh;
+    }
+
+    .avatar-preview-wrap {
+        min-height: 100px;
+        height: 100%;
+        max-height: none;
+    }
+}
+
+/* ── Mobile landscape: side-by-side ── */
+@media (max-width: 900px) and (orientation: landscape) {
+    .content-layout {
+        grid-template-columns: 40% 1fr;
+        grid-template-rows: 1fr;
+    }
+
+    .avatar-panel {
+        max-height: none;
+        order: 1;
+    }
+
+    .chat-panel {
+        order: 2;
+    }
+
+    .avatar-preview-wrap {
+        min-height: 0;
+        height: 100%;
+        max-height: none;
+    }
+}
+
+/* ── Tablet optimizations ── */
+html.is-tablet .content-layout {
+    grid-template-columns: minmax(250px, 40%) minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px;
+}
+
+html.is-tablet .chat-input {
+    font-size: 16px;
+    height: 48px;
+}
+
+/* ── WebGL fallback message ── */
+.webgl-fallback {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: var(--text-muted);
+    font-family: var(--font-body);
+    padding: 20px;
+    max-width: 280px;
+}
+
+.webgl-fallback h3 {
+    color: var(--accent-orange);
+    margin-bottom: 8px;
+}
+
+.no-webgl .avatar-viewport .webgl-fallback {
+    display: block;
+}
+
+.no-webgl .loading-overlay {
+    display: none !important;
 }
