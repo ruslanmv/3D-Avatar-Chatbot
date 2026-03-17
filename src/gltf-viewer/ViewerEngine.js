@@ -20,6 +20,7 @@ import { PassthroughEnhancer } from './PassthroughEnhancer.js';
 import { VRBoneGrabber } from './VRBoneGrabber.js';
 import { VRPoseSystem } from './VRPoseSystem.js';
 import { VRPuppetInteraction } from './VRPuppetInteraction.js';
+import { VRIntimacySystem } from './VRIntimacySystem.js';
 
 export class ViewerEngine {
     constructor(containerEl) {
@@ -202,6 +203,16 @@ export class ViewerEngine {
         });
         this.vrControllers.setPuppetInteraction(this.vrPuppetInteraction);
 
+        // VR Intimacy / Close Presence System (non-destructive overlay on VR pose + puppet)
+        this.vrIntimacySystem = new VRIntimacySystem({
+            scene: this.scene,
+            camera: this.camera,
+            renderer: this.renderer,
+            controllers: this.vrControllers,
+            poseSystem: this.vrPoseSystem,
+            puppetInteraction: this.vrPuppetInteraction,
+        });
+
         // Create centered XR launch bar inside the avatar viewport
         this._createXRLaunchBar(containerEl);
 
@@ -325,9 +336,19 @@ export class ViewerEngine {
             if (this.avatarManager?.currentRoot) {
                 this.vrPuppetInteraction?.setAvatar(this.avatarManager.currentRoot);
             }
+            // Auto-enable puppet mode so user can touch and move the character immediately
+            this.vrPuppetInteraction?.setEnabled(true);
+            this.vrControllers.setPuppetMode(true);
+            if (this.vrChatPanel) {
+                this.vrChatPanel.xrSettings.puppetMode = true;
+            }
             if (window.poseEditor && this.vrBoneGrabber) {
                 this.vrBoneGrabber.setPoseEditor(window.poseEditor);
             }
+
+            // Enable intimacy system if toggled on
+            this.vrIntimacySystem?.setAvatar(this.avatarManager?.currentRoot || null);
+            this.vrIntimacySystem?.setEnabled(!!this.vrChatPanel?.xrSettings?.intimacyMode);
 
             // Diagnostic: log state of all VR pose/bone systems
             console.log('[ViewerEngine] VR Pose Systems State:', {
@@ -459,6 +480,7 @@ export class ViewerEngine {
             this.vrBoneGrabber?.setEnabled(false);
             this.vrPoseSystem?.setEnabled(false);
             this.vrPuppetInteraction?.endAll();
+            this.vrIntimacySystem?.setEnabled(false);
             this.vrChatIntegration.disable();
 
             // Restore mobile rendering settings
@@ -525,10 +547,21 @@ export class ViewerEngine {
                 this.vrPuppetInteraction?.setEnabled(!!value);
             }
 
+            // Intimacy / close-presence mode toggle
+            if (key === 'intimacyMode') {
+                this.vrIntimacySystem?.setEnabled(!!value);
+                console.log(`[ViewerEngine] Intimacy mode -> ${value ? 'ON' : 'OFF'}`);
+            }
+
             // Session mode switch (VR ↔ AR)
             if (key === 'sessionMode') {
                 this._switchXRMode(value);
             }
+        });
+
+        // --- Emotion bridge for VR Intimacy System ---
+        window.addEventListener('avatar-emotion-changed', (e) => {
+            this.vrIntimacySystem?.setEmotion?.(e.detail?.emotion || 'neutral');
         });
 
         // --- AR Event Listeners ---
@@ -865,6 +898,7 @@ export class ViewerEngine {
                 this.vrPoseSystem.setEnabled(true);
             }
             this.vrPuppetInteraction?.setAvatar(this.avatarManager.currentRoot);
+            this.vrIntimacySystem?.setAvatar(this.avatarManager.currentRoot);
             if (window.poseEditor) {
                 this.vrBoneGrabber?.setPoseEditor(window.poseEditor);
             }
@@ -893,6 +927,7 @@ export class ViewerEngine {
             this.vrControllers.update(dt);
             this.vrPoseSystem?.update(dt);
             this.vrPuppetInteraction?.update(dt);
+            this.vrIntimacySystem?.update(dt);
 
             if (this.renderer.xr.isPresenting) {
                 if (this.arSupport?.isARActive) {

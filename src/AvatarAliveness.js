@@ -92,6 +92,15 @@
                     console.warn('[AvatarAliveness] BehaviorEngine update error:', e);
                 }
             }
+
+            // Update ClipAnimationLoader mixer (BVH/VRMA playback)
+            if (global.NEXUS_CLIP_LOADER && global.NEXUS_CLIP_LOADER.update) {
+                try {
+                    global.NEXUS_CLIP_LOADER.update(dt || 0.016);
+                } catch (e) {
+                    // Silent — clip loader is optional
+                }
+            }
         };
 
         console.log('[AvatarAliveness] Hooked into render loop');

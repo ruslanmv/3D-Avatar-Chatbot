@@ -296,8 +296,8 @@ export class VRChatIntegration {
             this.handleSendButton();
         } else if (name === 'Btn:clear') {
             this.handleClearButton();
-        } else if (name === 'Btn:settings') {
-            this.handleSettingsButton();
+        } else if (name === 'Btn:open_controls' || name === 'Btn:open_settings') {
+            // Handled by panel.handleUIAction above
         } else if (name === 'Btn:pin') {
             this.handlePinButton();
         } else if (name === 'Btn:avatar_prev') {
@@ -305,9 +305,9 @@ export class VRChatIntegration {
         } else if (name === 'Btn:avatar_next') {
             this.handleAvatarNext();
         }
-        // Settings buttons
-        else if (name === 'Btn:back') {
-            this.vrChatPanel.setMode('chat');
+        // Back buttons (ctrl_back, set_back) — handled by panel.handleUIAction
+        else if (name === 'Btn:ctrl_back' || name === 'Btn:set_back') {
+            // Already handled above
         }
         // Quick prompts
         else if (name.startsWith('Chip:')) {
@@ -492,11 +492,14 @@ export class VRChatIntegration {
     }
 
     /**
-     * Handle settings button
+     * Handle settings button — now opens controls panel (Layer 2)
      */
     handleSettingsButton() {
-        const newMode = this.vrChatPanel.mode === 'settings' ? 'chat' : 'settings';
-        this.vrChatPanel.setMode(newMode);
+        if (this.vrChatPanel.mode === 'chat') {
+            this.vrChatPanel.setMode('controls');
+        } else {
+            this.vrChatPanel.setMode('chat');
+        }
     }
 
     /**

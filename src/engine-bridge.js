@@ -12,12 +12,17 @@ if (!window.__NEXUS_VIEWER_READY__) {
     });
 }
 
-// Import @pixiv/three-vrm in the background — do NOT block module execution.
+// Import @pixiv/three-vrm in the background with timeout — do NOT block module execution.
 // If the CDN is slow or unreachable, the ViewerEngine still initializes without VRM support.
 (async () => {
     try {
         console.log('[ViewerBridge] Loading @pixiv/three-vrm from CDN...');
-        const vrmModule = await import('@pixiv/three-vrm');
+
+        // Timeout after 8s — mobile connections can be slow but we can't wait forever
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('CDN timeout (8s)')), 8000));
+
+        const vrmModule = await Promise.race([import('@pixiv/three-vrm'), timeout]);
+
         if (vrmModule.VRMLoaderPlugin) {
             window.__THREE_VRM_PLUGIN__ = vrmModule.VRMLoaderPlugin;
             if (vrmModule.VRMUtils) {
@@ -61,6 +66,26 @@ const initEngine = async () => {
     const overlay = $('loading-overlay');
     if (overlay && overlay.parentElement === container) overlay.remove();
 
+    // Check WebGL availability before attempting 3D init
+    const testCanvas = document.createElement('canvas');
+    const gl =
+        testCanvas.getContext('webgl2') ||
+        testCanvas.getContext('webgl') ||
+        testCanvas.getContext('experimental-webgl');
+    if (!gl) {
+        console.error('[ViewerBridge] WebGL not available — showing fallback');
+        document.documentElement.classList.add('no-webgl');
+        const fallback = document.getElementById('webgl-fallback');
+        if (fallback) fallback.style.display = 'block';
+        const loadingOverlay = document.getElementById('loading-overlay');
+        if (loadingOverlay) loadingOverlay.classList.add('hidden');
+        // Still resolve the promise so main.js can run chat-only mode
+        try {
+            window.__resolveNexusViewerReady__?.(null);
+        } catch (_) {}
+        return;
+    }
+
     try {
         const engine = new ViewerEngine(container);
         window.NEXUS_VIEWER = engine;
@@ -73,6 +98,15 @@ const initEngine = async () => {
         // Apply saved shadow setting (default: off)
         const savedShadow = localStorage.getItem('desktop_shadow');
         engine.setShadows(savedShadow === 'on');
+
+        // Apply device-specific renderer optimizations
+        if (window.NEXUS_DEVICE) {
+            const settings = window.NEXUS_DEVICE.getRendererSettings();
+            engine.renderer.setPixelRatio(settings.pixelRatio);
+            if (settings.shadowMapEnabled !== undefined) {
+                engine.setShadows(settings.shadowMapEnabled);
+            }
+        }
 
         // Resolve ready promise (for src/main.js)
         try {
@@ -89,6 +123,18 @@ const initEngine = async () => {
     } catch (err) {
         console.error('[ViewerBridge] Failed to create ViewerEngine:', err);
         console.error('[ViewerBridge] Container dimensions:', container.offsetWidth, 'x', container.offsetHeight);
+
+        // Show fallback on failure (e.g. WebGL context creation failed on low-memory mobile)
+        document.documentElement.classList.add('no-webgl');
+        const fallback = document.getElementById('webgl-fallback');
+        if (fallback) fallback.style.display = 'block';
+        const loadingOverlay = document.getElementById('loading-overlay');
+        if (loadingOverlay) loadingOverlay.classList.add('hidden');
+
+        // Resolve promise so chat still works
+        try {
+            window.__resolveNexusViewerReady__?.(null);
+        } catch (_) {}
     }
 };
 

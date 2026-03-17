@@ -15,6 +15,22 @@
 
         <link rel="stylesheet" href="vrm-manager.css" />
         <link rel="icon" href="favicon.ico" />
+
+        <!-- Import Map polyfill for Safari < 16.4 and older mobile browsers -->
+        <script
+            async
+            src="https://ga.jspm.io/npm:es-module-shims@1.10.1/dist/es-module-shims.js"
+            crossorigin="anonymous"
+        ></script>
+
+        <script type="importmap">
+            {
+                "imports": {
+                    "three": "/vendor/three-0.147.0/build/three.module.js",
+                    "three/addons/": "/vendor/three-0.147.0/examples/jsm/"
+                }
+            }
+        </script>
     </head>
     <body>
         <!-- ====== DRAG & DROP OVERLAY ====== -->
@@ -569,6 +585,16 @@
 
         <script defer src="vendor/three-0.147.0/build/three.min.js"></script>
         <script defer src="vendor/three-0.147.0/examples/js/loaders/GLTFLoader.js"></script>
+        <!-- KTX2Loader for models with BasisU/KTX2 textures -->
+        <script type="module">
+            import { KTX2Loader } from './vendor/three-0.147.0/examples/jsm/loaders/KTX2Loader.js';
+            if (window.THREE) window.THREE.KTX2Loader = KTX2Loader;
+        </script>
+        <!-- MeshoptDecoder for models with meshopt compression -->
+        <script type="module">
+            import { MeshoptDecoder } from './vendor/three-0.147.0/examples/jsm/libs/meshopt_decoder.module.js';
+            if (window.THREE) window.THREE.MeshoptDecoder = MeshoptDecoder;
+        </script>
         <script src="vrm-manager.js"></script>
     </body>
 </html>

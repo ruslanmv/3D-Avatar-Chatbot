@@ -67,7 +67,7 @@
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         {
           "key": "Permissions-Policy",
-          "value": "microphone=(self), camera=(self), xr-spatial-tracking=(self), geolocation=()"
+          "value": "microphone=(self), camera=(self), xr-spatial-tracking=(self), geolocation=(), fullscreen=(self), display-capture=(self)"
         }
       ]
     }
