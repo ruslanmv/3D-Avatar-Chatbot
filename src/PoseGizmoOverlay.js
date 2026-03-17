@@ -2,16 +2,12 @@
 
 /**
  * PoseGizmoOverlay — Desktop mouse-based pose editing.
- * Click on avatar body part in viewport → selects that bone in Pose Studio.
- * Drag (mouse down + move) → rotates the selected bone.
+ * Shows visible bone handle spheres on the avatar when enabled.
+ * Click a sphere → selects that bone in Pose Studio.
+ * Drag a sphere → rotates the selected bone.
+ * OrbitControls remain active — only bone sphere interactions are intercepted.
  *
  * Works with PoseEditor and PoseRigMap through window globals.
- *
- * Industry approach (same as Blender's pose mode):
- *   1) Raycast from mouse → SkinnedMesh → skin weights → find dominant bone
- *   2) Map to humanoid key via PoseRigMap
- *   3) On click: select bone (updates Pose Studio panel)
- *   4) On drag: rotate bone (X-axis = vertical drag, Y-axis = horizontal drag)
  *
  * Exposes: window.NEXUS_POSE_GIZMO_OVERLAY
  */
@@ -24,22 +20,30 @@
     }
 
     // =========================================================================
-    // BONE HIGHLIGHT (visual feedback sphere on hovered/selected bone)
+    // BONE HANDLE DEFINITIONS
     // =========================================================================
 
-    function createHighlight(color, size) {
-        const geo = new THREE.SphereGeometry(size || 0.04, 12, 12);
-        const mat = new THREE.MeshBasicMaterial({
-            color: color || 0x00ff88,
-            transparent: true,
-            opacity: 0.5,
-            depthTest: false,
-        });
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.visible = false;
-        mesh.renderOrder = 999;
-        return mesh;
-    }
+    const BONE_HANDLE_DEFS = [
+        { key: 'head', color: 0xff66cc, radius: 0.045 },
+        { key: 'neck', color: 0xff88aa, radius: 0.025 },
+        { key: 'chest', color: 0x66ccff, radius: 0.04 },
+        { key: 'spine', color: 0x66aaff, radius: 0.035 },
+        { key: 'hips', color: 0x88ff88, radius: 0.04 },
+        { key: 'leftShoulder', color: 0xffcc66, radius: 0.025 },
+        { key: 'rightShoulder', color: 0xffcc66, radius: 0.025 },
+        { key: 'leftUpperArm', color: 0x40e0ff, radius: 0.03 },
+        { key: 'rightUpperArm', color: 0x40e0ff, radius: 0.03 },
+        { key: 'leftLowerArm', color: 0x40c0ff, radius: 0.025 },
+        { key: 'rightLowerArm', color: 0x40c0ff, radius: 0.025 },
+        { key: 'leftHand', color: 0x80ffff, radius: 0.025 },
+        { key: 'rightHand', color: 0x80ffff, radius: 0.025 },
+        { key: 'leftUpperLeg', color: 0x66ffaa, radius: 0.035 },
+        { key: 'rightUpperLeg', color: 0x66ffaa, radius: 0.035 },
+        { key: 'leftLowerLeg', color: 0x44dd88, radius: 0.028 },
+        { key: 'rightLowerLeg', color: 0x44dd88, radius: 0.028 },
+        { key: 'leftFoot', color: 0x88ff66, radius: 0.025 },
+        { key: 'rightFoot', color: 0x88ff66, radius: 0.025 },
+    ];
 
     // =========================================================================
     // POSE GIZMO OVERLAY
@@ -55,23 +59,32 @@
         _avatarMeshes: [],
         _boneNameToKey: null,
 
+        // Bone handle spheres (boneKey → THREE.Mesh)
+        _boneHandles: new Map(),
+
         // Drag state
         _dragging: false,
         _dragStartX: 0,
         _dragStartY: 0,
+        _dragPrevX: 0,
+        _dragPrevY: 0,
         _dragBoneKey: null,
         _dragBoneStartQuat: null,
-        _dragSensitivity: 0.008, // Radians per pixel of drag
+        _dragSensitivity: 0.006, // Radians per pixel of drag
+        _dragDeadzone: 3, // Pixels before drag begins (prevents accidental rotation on click)
+        _dragStarted: false, // True once past deadzone
 
         // Visual feedback
         _hoverHighlight: null,
         _selectHighlight: null,
 
         // Bound event handlers (for cleanup)
-        _onMouseDown: null,
-        _onMouseMove: null,
-        _onMouseUp: null,
-        _onContextMenu: null,
+        _onPointerDown: null,
+        _onPointerMove: null,
+        _onPointerUp: null,
+
+        // Animation frame for handle position updates
+        _animFrameId: null,
 
         init() {
             const viewer = window.NEXUS_VIEWER;
@@ -88,34 +101,26 @@
             this._mouse = new THREE.Vector2();
             this._boneNameToKey = new Map();
 
-            // Create highlights
-            this._hoverHighlight = createHighlight(0x00e5ff, 0.035);
-            this._selectHighlight = createHighlight(0xff8800, 0.045);
-            this._scene.add(this._hoverHighlight);
+            // Create selection highlight (brighter ring on active bone)
+            this._selectHighlight = this._createHighlight(0xff8800, 0.055);
             this._scene.add(this._selectHighlight);
 
             // Bind events
             const self = this;
-            this._onMouseDown = function (e) {
-                self._handleMouseDown(e);
+            this._onPointerDown = function (e) {
+                self._handlePointerDown(e);
             };
-            this._onMouseMove = function (e) {
-                self._handleMouseMove(e);
+            this._onPointerMove = function (e) {
+                self._handlePointerMove(e);
             };
-            this._onMouseUp = function (e) {
-                self._handleMouseUp(e);
-            };
-            this._onContextMenu = function (_e) {
-                // Prevent context menu during pose editing (right-click reserved for orbit)
-                if (self._enabled) {
-                    // Don't prevent — let orbit controls work
-                }
+            this._onPointerUp = function (e) {
+                self._handlePointerUp(e);
             };
 
             const canvas = this._renderer.domElement;
-            canvas.addEventListener('mousedown', this._onMouseDown);
-            canvas.addEventListener('mousemove', this._onMouseMove);
-            canvas.addEventListener('mouseup', this._onMouseUp);
+            canvas.addEventListener('pointerdown', this._onPointerDown);
+            canvas.addEventListener('pointermove', this._onPointerMove);
+            canvas.addEventListener('pointerup', this._onPointerUp);
 
             console.log('[PoseGizmoOverlay] Desktop mouse pose editing initialized.');
         },
@@ -123,18 +128,20 @@
         enable() {
             this._enabled = true;
             this._refreshAvatarMeshes();
-            console.log('[PoseGizmoOverlay] Enabled — click avatar to select bones, drag to rotate.');
+            this._createBoneHandles();
+            this._startHandleUpdater();
+            console.log('[PoseGizmoOverlay] Enabled — bone spheres visible. Click & drag to edit.');
         },
 
         disable() {
             this._enabled = false;
             this._dragging = false;
-            if (this._hoverHighlight) {
-                this._hoverHighlight.visible = false;
-            }
+            this._stopHandleUpdater();
+            this._removeBoneHandles();
             if (this._selectHighlight) {
                 this._selectHighlight.visible = false;
             }
+            this._renderer.domElement.style.cursor = '';
             console.log('[PoseGizmoOverlay] Disabled.');
         },
 
@@ -143,26 +150,125 @@
         },
 
         // =========================================================================
+        // BONE HANDLE SPHERES
+        // =========================================================================
+
+        _createBoneHandles() {
+            this._removeBoneHandles();
+
+            const editor = window.poseEditor;
+            if (!editor || !editor.rigMap) return;
+
+            for (const def of BONE_HANDLE_DEFS) {
+                const bone = editor.rigMap.getBone(def.key);
+                if (!bone) continue;
+
+                const geo = new THREE.SphereGeometry(def.radius, 14, 14);
+                const mat = new THREE.MeshBasicMaterial({
+                    color: def.color,
+                    transparent: true,
+                    opacity: 0.55,
+                    depthTest: false,
+                });
+                const mesh = new THREE.Mesh(geo, mat);
+                mesh.renderOrder = 999;
+                mesh.userData._boneHandleKey = def.key;
+
+                // Position at bone
+                const pos = new THREE.Vector3();
+                bone.getWorldPosition(pos);
+                mesh.position.copy(pos);
+
+                this._scene.add(mesh);
+                this._boneHandles.set(def.key, { mesh, bone, def });
+            }
+        },
+
+        _removeBoneHandles() {
+            for (const entry of this._boneHandles.values()) {
+                entry.mesh.geometry?.dispose();
+                entry.mesh.material?.dispose();
+                entry.mesh.parent?.remove(entry.mesh);
+            }
+            this._boneHandles.clear();
+        },
+
+        _updateBoneHandlePositions() {
+            for (const entry of this._boneHandles.values()) {
+                if (!entry.bone) continue;
+                const pos = new THREE.Vector3();
+                entry.bone.getWorldPosition(pos);
+                entry.mesh.position.copy(pos);
+            }
+        },
+
+        _startHandleUpdater() {
+            this._stopHandleUpdater();
+            const self = this;
+            function tick() {
+                if (!self._enabled) return;
+                self._updateBoneHandlePositions();
+                self._animFrameId = requestAnimationFrame(tick);
+            }
+            self._animFrameId = requestAnimationFrame(tick);
+        },
+
+        _stopHandleUpdater() {
+            if (this._animFrameId) {
+                cancelAnimationFrame(this._animFrameId);
+                this._animFrameId = null;
+            }
+        },
+
+        // =========================================================================
+        // HIGHLIGHT HELPER
+        // =========================================================================
+
+        _createHighlight(color, size) {
+            const geo = new THREE.SphereGeometry(size || 0.04, 12, 12);
+            const mat = new THREE.MeshBasicMaterial({
+                color: color || 0x00ff88,
+                transparent: true,
+                opacity: 0.5,
+                depthTest: false,
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.visible = false;
+            mesh.renderOrder = 1000;
+            return mesh;
+        },
+
+        _showHighlightOnBone(highlight, boneKey) {
+            if (!highlight) return;
+            const editor = window.poseEditor;
+            const bone = editor && editor.rigMap ? editor.rigMap.getBone(boneKey) : null;
+            if (!bone) {
+                highlight.visible = false;
+                return;
+            }
+            const pos = new THREE.Vector3();
+            bone.getWorldPosition(pos);
+            highlight.position.copy(pos);
+            highlight.visible = true;
+        },
+
+        // =========================================================================
         // AVATAR MESH + BONE LOOKUPS
         // =========================================================================
 
         _refreshAvatarMeshes() {
             this._avatarMeshes = [];
-            this._boneNameToKey.clear();
+            if (this._boneNameToKey) this._boneNameToKey.clear();
 
             const root = this._getAvatarRoot();
-            if (!root) {
-                return;
-            }
+            if (!root) return;
 
-            // Collect skinned meshes
             root.traverse((child) => {
                 if (child.isSkinnedMesh) {
                     this._avatarMeshes.push(child);
                 }
             });
 
-            // Build bone name → key mapping
             this._buildBoneLookup();
         },
 
@@ -175,7 +281,6 @@
         },
 
         _buildBoneLookup() {
-            // Use PoseRigMap from the active PoseEditor if available
             const editor = window.poseEditor;
             if (editor && editor.rigMap) {
                 const keys = Object.keys(editor.rigMap.bones);
@@ -211,15 +316,11 @@
             };
 
             const root = this._getAvatarRoot();
-            if (!root) {
-                return;
-            }
+            if (!root) return;
 
             const self = this;
             root.traverse((obj) => {
-                if (!obj.isBone) {
-                    return;
-                }
+                if (!obj.isBone) return;
                 const entries = Object.entries(patterns);
                 for (let i = 0; i < entries.length; i++) {
                     const key = entries[i][0];
@@ -233,7 +334,7 @@
         },
 
         // =========================================================================
-        // RAYCAST → FIND BONE
+        // RAYCAST BONE HANDLES
         // =========================================================================
 
         _updateMouseFromEvent(e) {
@@ -243,120 +344,96 @@
             this._mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
         },
 
-        _raycastToBone() {
-            if (this._avatarMeshes.length === 0) {
-                return null;
-            }
+        _raycastBoneHandles() {
+            if (this._boneHandles.size === 0) return null;
 
             this._raycaster.setFromCamera(this._mouse, this._camera);
-            const hits = this._raycaster.intersectObjects(this._avatarMeshes, false);
-            if (hits.length === 0) {
-                return null;
+            const handleMeshes = [];
+            for (const entry of this._boneHandles.values()) {
+                handleMeshes.push(entry.mesh);
             }
+            const hits = this._raycaster.intersectObjects(handleMeshes, false);
+            if (hits.length === 0) return null;
 
-            return this._findBoneKeyFromHit(hits[0]);
+            return hits[0].object.userData._boneHandleKey || null;
         },
+
+        // =========================================================================
+        // POINTER EVENT HANDLERS
+        // =========================================================================
+
+        // =====================================================================
+        // OrbitControls coordination — disable during bone drag
+        // =====================================================================
+
+        _getOrbitControls() {
+            const viewer = window.NEXUS_VIEWER;
+            return viewer && viewer.controls ? viewer.controls : null;
+        },
+
+        _disableOrbitControls() {
+            const controls = this._getOrbitControls();
+            if (controls) controls.enabled = false;
+        },
+
+        _enableOrbitControls() {
+            const controls = this._getOrbitControls();
+            if (controls) controls.enabled = true;
+        },
+
+        // =====================================================================
+        // Camera-relative rotation — project screen drag into bone-local space
+        // =====================================================================
 
         /**
-         * Given a raycast hit, find the humanoid bone key via skin weights.
-         * Same algorithm as VRBoneGrabber (walk skin weights → find dominant bone → map to key).
+         * Compute a rotation quaternion in bone-local space from screen-space
+         * drag deltas (dx, dy in pixels).
+         *
+         * Industry-standard approach (Blender / Unity style):
+         *   1. Get camera right & up vectors (world space)
+         *   2. Build a world-space rotation from screen drag mapped to those axes
+         *   3. Transform into bone-local space via inverse parent world matrix
          */
-        _findBoneKeyFromHit(hit) {
-            const mesh = hit.object;
-            if (!mesh.isSkinnedMesh || !mesh.skeleton) {
-                return null;
+        _screenDragToLocalRotation(bone, dx, dy) {
+            const camRight = new THREE.Vector3();
+            const camUp = new THREE.Vector3();
+            this._camera.matrixWorld.extractBasis(camRight, camUp, new THREE.Vector3());
+
+            // World-space rotation: horizontal drag → rotate around camera up,
+            //                       vertical drag   → rotate around camera right
+            const angle = Math.sqrt(dx * dx + dy * dy) * this._dragSensitivity;
+            if (angle < 1e-6) return new THREE.Quaternion();
+
+            // Rotation axis in world space (perpendicular to drag direction)
+            const worldAxis = new THREE.Vector3().addScaledVector(camUp, dx).addScaledVector(camRight, -dy).normalize();
+
+            const worldRot = new THREE.Quaternion().setFromAxisAngle(worldAxis, angle);
+
+            // Transform rotation axis into bone-local space
+            const parentInv = new THREE.Matrix4();
+            if (bone.parent) {
+                bone.parent.updateWorldMatrix(true, false);
+                parentInv.copy(bone.parent.matrixWorld).invert();
             }
-
-            const face = hit.face;
-            if (!face) {
-                return null;
-            }
-
-            const geometry = mesh.geometry;
-            const skinIndex = geometry.getAttribute('skinIndex');
-            const skinWeight = geometry.getAttribute('skinWeight');
-            if (!skinIndex || !skinWeight) {
-                return null;
-            }
-
-            let bestBoneIndex = -1;
-            let bestWeight = -1;
-
-            const verts = [face.a, face.b, face.c];
-            for (let v = 0; v < verts.length; v++) {
-                const vertIdx = verts[v];
-                for (let i = 0; i < 4; i++) {
-                    const w = skinWeight.getComponent(vertIdx, i);
-                    if (w > bestWeight) {
-                        bestWeight = w;
-                        bestBoneIndex = skinIndex.getComponent(vertIdx, i);
-                    }
-                }
-            }
-
-            if (bestBoneIndex < 0 || !mesh.skeleton.bones[bestBoneIndex]) {
-                return null;
-            }
-
-            // Walk up bone hierarchy to find a mapped key
-            let bone = mesh.skeleton.bones[bestBoneIndex];
-            let depth = 0;
-            while (bone && depth < 6) {
-                const key = this._boneNameToKey.get(bone.name);
-                if (key) {
-                    return key;
-                }
-                bone = bone.parent;
-                depth++;
-            }
-
-            return null;
+            const localAxis = worldAxis.clone().transformDirection(parentInv);
+            return new THREE.Quaternion().setFromAxisAngle(localAxis, angle);
         },
 
-        // =========================================================================
-        // VISUAL FEEDBACK
-        // =========================================================================
+        // =====================================================================
+        // POINTER EVENT HANDLERS
+        // =====================================================================
 
-        _showHighlightOnBone(highlight, boneKey) {
-            if (!highlight) {
-                return;
-            }
-            const editor = window.poseEditor;
-            const bone = editor && editor.rigMap ? editor.rigMap.getBone(boneKey) : null;
-            if (!bone) {
-                highlight.visible = false;
-                return;
-            }
-            const pos = new THREE.Vector3();
-            bone.getWorldPosition(pos);
-            highlight.position.copy(pos);
-            highlight.visible = true;
-        },
-
-        // =========================================================================
-        // MOUSE EVENT HANDLERS
-        // =========================================================================
-
-        _handleMouseDown(e) {
-            if (!this._enabled) {
-                return;
-            }
-            // Only handle left mouse button (0)
-            if (e.button !== 0) {
-                return;
-            }
+        _handlePointerDown(e) {
+            if (!this._enabled) return;
+            if (e.button !== 0) return;
 
             const editor = window.poseEditor;
-            if (!editor || !editor.isActive()) {
-                return;
-            }
+            if (!editor || !editor.isActive()) return;
 
             this._updateMouseFromEvent(e);
-            const boneKey = this._raycastToBone();
+            const boneKey = this._raycastBoneHandles();
 
-            if (!boneKey) {
-                return;
-            }
+            if (!boneKey) return; // Not on a bone sphere — let OrbitControls handle it
 
             // Select the bone
             editor.selectBone(boneKey);
@@ -371,94 +448,206 @@
             // Start drag (for rotation)
             const bone = editor.rigMap ? editor.rigMap.getBone(boneKey) : null;
             if (bone) {
-                // Push undo before we start modifying
                 if (editor._pushUndoSnapshot) {
                     editor._pushUndoSnapshot();
                 }
 
                 this._dragging = true;
+                this._dragStarted = false;
                 this._dragStartX = e.clientX;
                 this._dragStartY = e.clientY;
+                this._dragPrevX = e.clientX;
+                this._dragPrevY = e.clientY;
                 this._dragBoneKey = boneKey;
                 this._dragBoneStartQuat = bone.quaternion.clone();
 
-                // Prevent orbit controls from interfering during bone drag
+                // Capture pointer for reliable drag tracking outside canvas
+                this._renderer.domElement.setPointerCapture(e.pointerId);
+
+                // Disable OrbitControls so camera doesn't orbit during bone edit
+                this._disableOrbitControls();
+
+                // Set the handle to active color
+                const entry = this._boneHandles.get(boneKey);
+                if (entry && entry.mesh.material) {
+                    entry.mesh.material.opacity = 0.9;
+                    entry.mesh.material.color.setHex(0xffaa00);
+                }
+
+                this._renderer.domElement.style.cursor = 'grabbing';
+
                 e.stopPropagation();
+                e.preventDefault();
             }
         },
 
-        _handleMouseMove(e) {
-            if (!this._enabled) {
-                return;
-            }
+        _handlePointerMove(e) {
+            if (!this._enabled) return;
 
             const editor = window.poseEditor;
-            if (!editor || !editor.isActive()) {
-                return;
-            }
+            if (!editor || !editor.isActive()) return;
 
-            // DRAG: rotate the bone while mouse is held
+            // DRAG: rotate the bone while pointer is held
             if (this._dragging && this._dragBoneKey) {
                 const bone = editor.rigMap ? editor.rigMap.getBone(this._dragBoneKey) : null;
-                if (!bone) {
+                if (!bone) return;
+
+                const totalDx = e.clientX - this._dragStartX;
+                const totalDy = e.clientY - this._dragStartY;
+
+                // Deadzone: don't rotate until the user has dragged past threshold
+                if (!this._dragStarted) {
+                    const dist = Math.sqrt(totalDx * totalDx + totalDy * totalDy);
+                    if (dist < this._dragDeadzone) return;
+                    this._dragStarted = true;
+                    // Reset prev to current so first real delta is small
+                    this._dragPrevX = e.clientX;
+                    this._dragPrevY = e.clientY;
                     return;
                 }
 
-                const dx = e.clientX - this._dragStartX;
-                const dy = e.clientY - this._dragStartY;
+                // Incremental delta (from previous frame, not from start)
+                // gives smoother, more predictable rotation
+                const dx = e.clientX - this._dragPrevX;
+                const dy = e.clientY - this._dragPrevY;
+                this._dragPrevX = e.clientX;
+                this._dragPrevY = e.clientY;
 
-                // Horizontal drag → Y-axis rotation, Vertical drag → X-axis rotation
-                const rotX = new THREE.Quaternion().setFromAxisAngle(
-                    new THREE.Vector3(1, 0, 0),
-                    dy * this._dragSensitivity
-                );
-                const rotY = new THREE.Quaternion().setFromAxisAngle(
-                    new THREE.Vector3(0, 1, 0),
-                    dx * this._dragSensitivity
-                );
+                if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
 
-                // Apply: startQuat * rotY * rotX (Y first so horizontal feels natural)
-                bone.quaternion.copy(this._dragBoneStartQuat).multiply(rotY).multiply(rotX);
+                // Camera-relative rotation projected into bone-local space
+                const localRot = this._screenDragToLocalRotation(bone, dx, dy);
+                bone.quaternion.multiply(localRot);
+                bone.quaternion.normalize();
                 bone.updateMatrixWorld(true);
 
-                // Update highlight position
                 this._showHighlightOnBone(this._selectHighlight, this._dragBoneKey);
-
                 return;
             }
 
-            // HOVER: show hover highlight on bone under mouse
+            // HOVER: highlight bone handle under mouse
             this._updateMouseFromEvent(e);
-            const boneKey = this._raycastToBone();
+            const boneKey = this._raycastBoneHandles();
+
+            // Reset all handles to default appearance
+            for (const entry of this._boneHandles.values()) {
+                if (entry.mesh.material) {
+                    entry.mesh.material.opacity = 0.55;
+                    entry.mesh.material.color.setHex(entry.def.color);
+                }
+            }
 
             if (boneKey) {
-                this._showHighlightOnBone(this._hoverHighlight, boneKey);
-                this._renderer.domElement.style.cursor = 'pointer';
-            } else {
-                if (this._hoverHighlight) {
-                    this._hoverHighlight.visible = false;
+                const entry = this._boneHandles.get(boneKey);
+                if (entry && entry.mesh.material) {
+                    entry.mesh.material.opacity = 0.85;
+                    entry.mesh.material.color.setHex(0xffff66);
                 }
+                this._renderer.domElement.style.cursor = 'grab';
+            } else {
                 this._renderer.domElement.style.cursor = '';
             }
         },
 
-        _handleMouseUp(e) {
-            if (!this._enabled) {
-                return;
-            }
-            if (e.button !== 0) {
-                return;
-            }
+        _handlePointerUp(e) {
+            if (!this._enabled) return;
+            if (e.button !== 0) return;
 
             if (this._dragging) {
+                // Release pointer capture
+                try {
+                    this._renderer.domElement.releasePointerCapture(e.pointerId);
+                } catch (_) {}
+
+                // Re-enable OrbitControls
+                this._enableOrbitControls();
+
+                // Sync PoseApplier axis state from final bone quaternion
+                this._syncAxisStateAfterDrag(this._dragBoneKey);
+
+                // Reset the handle color
+                const entry = this._boneHandles.get(this._dragBoneKey);
+                if (entry && entry.mesh.material) {
+                    entry.mesh.material.opacity = 0.55;
+                    entry.mesh.material.color.setHex(entry.def.color);
+                }
+
+                this._renderer.domElement.style.cursor = 'grab';
                 this._dragging = false;
+                this._dragStarted = false;
                 this._dragBoneKey = null;
                 this._dragBoneStartQuat = null;
 
-                // Emit change so panel refreshes
+                // Emit change so panel/sliders refresh
                 const editor = window.poseEditor;
                 if (editor && editor._emitChange) {
                     editor._emitChange();
+                }
+
+                // Refresh panel sliders to match new bone orientation
+                const panel = window.poseStudioPanel;
+                if (panel && panel.refresh) {
+                    panel.refresh();
+                }
+            }
+        },
+
+        /**
+         * After a mouse drag, compute the Euler decomposition of the bone's
+         * current quaternion relative to its neutral pose and write it back
+         * into PoseApplier.axisState so the sliders stay in sync.
+         */
+        _syncAxisStateAfterDrag(boneKey) {
+            const editor = window.poseEditor;
+            if (!editor || !editor.applier || !boneKey) return;
+
+            const bone = editor.rigMap ? editor.rigMap.getBone(boneKey) : null;
+            if (!bone) return;
+
+            // Compute offset from neutral
+            const neutralQ = new THREE.Quaternion();
+            if (editor.neutralPose && editor.neutralPose[boneKey] && editor.neutralPose[boneKey].q) {
+                const nq = editor.neutralPose[boneKey].q;
+                neutralQ.set(nq[0], nq[1], nq[2], nq[3]);
+            }
+
+            const offsetQ = neutralQ.clone().invert().multiply(bone.quaternion.clone());
+            const euler = new THREE.Euler().setFromQuaternion(offsetQ, 'XYZ');
+
+            if (!editor.applier.axisState) {
+                editor.applier.axisState = {};
+            }
+            editor.applier.axisState[boneKey] = {
+                x: euler.x,
+                y: euler.y,
+                z: euler.z,
+            };
+        },
+
+        // =========================================================================
+        // SKELETON LINE OVERLAY COORDINATION
+        // =========================================================================
+
+        /**
+         * When SkeletonLineOverlay is active, hide our own bone handle spheres
+         * to avoid double handles. Pointer events stay wired for fallback.
+         *
+         * @param {boolean} active - true = external handles are active, hide ours
+         */
+        setExternalHandlesActive(active) {
+            this._externalHandlesActive = !!active;
+            if (this._externalHandlesActive) {
+                // Hide our spheres but keep update loop for highlight
+                for (const entry of this._boneHandles.values()) {
+                    entry.mesh.visible = false;
+                }
+                if (this._selectHighlight) {
+                    this._selectHighlight.visible = false;
+                }
+            } else {
+                // Restore sphere visibility
+                for (const entry of this._boneHandles.values()) {
+                    entry.mesh.visible = true;
                 }
             }
         },
@@ -470,25 +659,22 @@
         dispose() {
             this._enabled = false;
             this._dragging = false;
+            this._stopHandleUpdater();
+            this._removeBoneHandles();
 
             if (this._renderer) {
                 const canvas = this._renderer.domElement;
-                if (this._onMouseDown) {
-                    canvas.removeEventListener('mousedown', this._onMouseDown);
+                if (this._onPointerDown) {
+                    canvas.removeEventListener('pointerdown', this._onPointerDown);
                 }
-                if (this._onMouseMove) {
-                    canvas.removeEventListener('mousemove', this._onMouseMove);
+                if (this._onPointerMove) {
+                    canvas.removeEventListener('pointermove', this._onPointerMove);
                 }
-                if (this._onMouseUp) {
-                    canvas.removeEventListener('mouseup', this._onMouseUp);
+                if (this._onPointerUp) {
+                    canvas.removeEventListener('pointerup', this._onPointerUp);
                 }
             }
 
-            if (this._hoverHighlight && this._hoverHighlight.parent) {
-                this._hoverHighlight.parent.remove(this._hoverHighlight);
-                this._hoverHighlight.geometry.dispose();
-                this._hoverHighlight.material.dispose();
-            }
             if (this._selectHighlight && this._selectHighlight.parent) {
                 this._selectHighlight.parent.remove(this._selectHighlight);
                 this._selectHighlight.geometry.dispose();

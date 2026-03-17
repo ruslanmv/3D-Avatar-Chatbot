@@ -110,6 +110,13 @@ export class VRControllers {
             hand: null,
         };
 
+        // Two-hand panel scale state (Oculus Quest-style pinch-to-zoom)
+        this._panelScaleState = {
+            active: false,
+            startDistance: 0,
+            startScale: 1.0,
+        };
+
         // Grip button edge tracking (per hand)
         this._gripWasPressed = { left: false, right: false };
 
@@ -347,7 +354,15 @@ export class VRControllers {
             const hit = uiIntersects[0];
 
             if (this.chatPanel && uiTarget.userData && uiTarget.userData.type === 'handle') {
-                const dragStarted = this.chatPanel.beginDrag ? this.chatPanel.beginDrag(hit.point) : false;
+                // Pass controller ray origin + direction + hit point for
+                // controller-projection drag (Quest-style, no per-frame raycasting)
+                const dragStarted = this.chatPanel.beginDrag
+                    ? this.chatPanel.beginDrag(
+                          this.raycaster.ray.origin.clone(),
+                          this.raycaster.ray.direction.clone(),
+                          hit.point
+                      )
+                    : false;
                 if (dragStarted) {
                     this.uiDragState.active = true;
                     this.uiDragState.hand = hand;
@@ -585,20 +600,62 @@ export class VRControllers {
             return;
         }
 
+        // Extract controller ray (origin + direction) — NO raycasting against
+        // the moving panel. This is the Quest-native approach: project the
+        // controller ray forward at the stored grab distance each frame.
         this.tempMatrix.identity().extractRotation(controller.matrixWorld);
         this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
         this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
 
-        const hits = this.raycaster.intersectObjects(this.chatPanel.getInteractables(), false);
+        this.chatPanel.dragTo(this.raycaster.ray.origin, this.raycaster.ray.direction);
 
-        if (hits.length > 0) {
-            this.chatPanel.dragTo(hits[0].point);
+        // Thumbstick Y on the OTHER hand = zoom panel while dragging (Quest-style)
+        const otherHand = this.uiDragState.hand === 'left' ? 'right' : 'left';
+        const otherInput = this.controllers[otherHand];
+        if (otherInput?.gamepad) {
+            const axes = otherInput.gamepad.axes;
+            let stickY = 0;
+            if (axes.length >= 4) stickY = axes[3];
+            else if (axes.length >= 2) stickY = axes[1];
+
+            if (Math.abs(stickY) > this.options.deadzone && this.chatPanel.scaleBy) {
+                // Push stick forward = zoom in (grow), pull back = zoom out (shrink)
+                this.chatPanel.scaleBy(-stickY * 0.02);
+            }
+        }
+    }
+
+    /**
+     * Two-hand pinch-to-scale: when both grips are held on the panel,
+     * use the distance between controllers to scale the panel.
+     */
+    _updateTwoHandPanelScale() {
+        if (!this.chatPanel || !this.chatPanel.setScale) return;
+
+        // Check if both controllers are gripping
+        const leftGrip = this.controllers.left?.gamepad?.buttons?.[BTN.GRIP];
+        const rightGrip = this.controllers.right?.gamepad?.buttons?.[BTN.GRIP];
+        const bothGripping = leftGrip?.pressed && rightGrip?.pressed;
+
+        if (bothGripping && this.uiDragState.active) {
+            // Measure distance between two controllers
+            this.controller1.getWorldPosition(this._tmpV1);
+            this.controller2.getWorldPosition(this._tmpV2);
+            const dist = this._tmpV1.distanceTo(this._tmpV2);
+
+            if (!this._panelScaleState.active) {
+                // Start two-hand scale
+                this._panelScaleState.active = true;
+                this._panelScaleState.startDistance = dist;
+                this._panelScaleState.startScale = this.chatPanel.getScale ? this.chatPanel.getScale() : 1.0;
+            } else {
+                // Update scale based on distance ratio
+                const ratio = dist / this._panelScaleState.startDistance;
+                const newScale = this._panelScaleState.startScale * ratio;
+                this.chatPanel.setScale(newScale);
+            }
         } else {
-            const fallbackDist = 1.0;
-            const fallbackPoint = this.raycaster.ray.origin
-                .clone()
-                .add(this.raycaster.ray.direction.clone().multiplyScalar(fallbackDist));
-            this.chatPanel.dragTo(fallbackPoint);
+            this._panelScaleState.active = false;
         }
     }
 
@@ -824,6 +881,7 @@ export class VRControllers {
         this._updatePuppet();
         this._updateGrabbing();
         this._updateUIDragging();
+        this._updateTwoHandPanelScale();
         this._updateUIHover();
     }
 

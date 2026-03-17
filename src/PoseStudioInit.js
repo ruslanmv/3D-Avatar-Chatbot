@@ -76,6 +76,12 @@
             gizmo.init();
         }
 
+        // Initialize skeleton line overlay
+        const skeletonOverlay = window.NEXUS_SKELETON_LINE_OVERLAY;
+        if (skeletonOverlay && skeletonOverlay.init) {
+            skeletonOverlay.init();
+        }
+
         // Wire up the open button
         const openBtn = document.getElementById('openPoseStudioBtn');
         if (openBtn) {
@@ -87,19 +93,20 @@
                 }
                 poseStudioPanel.show();
 
-                // Enable desktop mouse pose editing
-                if (gizmo && gizmo.enable) {
-                    gizmo.enable();
-                }
+                // Mouse bone editing is OFF by default — user enables via toggle
+                // Gizmo is initialized but only enabled when the toggle is checked
             });
         }
 
-        // Wire close button to also disable gizmo
+        // Wire close button to also disable gizmo and skeleton overlay
         const origExit = PoseEditor.prototype.exit;
         PoseEditor.prototype.exit = function () {
             origExit.call(this);
             if (gizmo && gizmo.disable) {
                 gizmo.disable();
+            }
+            if (skeletonOverlay && skeletonOverlay.disable) {
+                skeletonOverlay.disable();
             }
         };
 
@@ -107,7 +114,7 @@
         window.poseEditor = poseEditor;
         window.poseStudioPanel = poseStudioPanel;
 
-        console.log('[PoseStudioInit] Pose Studio initialized (with desktop mouse editing)');
+        console.log('[PoseStudioInit] Pose Studio initialized (mouse bone editing off by default)');
     }
 
     // Wait for DOM + other scripts to be ready

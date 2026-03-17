@@ -5,16 +5,21 @@
  * ---------------------------------------
  * Purpose: add "life" to static/idle rigs:
  * - Fixes T-pose-ish rest by applying a gentle arm-down rest offset (only when no baked clips)
+ * - Base standing poses (lecturerNeutral, presenterOpen, anchorGrounded, + mature poses)
  * - Breathing sway (spine/chest)
  * - Subtle head look to mouse (idle)
  * - Simple "modes" for UI quick actions: idle | happy | thinking | dance | talk
+ * - Speaking gesture styles (explainCalm, explainEmphasis, broadcastAnchor)
  *
  * Safe-by-default:
  * - Does NOT fight baked animations unless you explicitly call setAllowWithMixer(true)
  * - Stores rest pose and applies offsets relative to rest
  *
  * Exposes:
- *   window.NEXUS_PROCEDURAL_ANIMATOR = { registerAvatar, update, setMode, setAllowWithMixer }
+ *   window.NEXUS_PROCEDURAL_ANIMATOR = {
+ *     registerAvatar, update, setMode, setAllowWithMixer,
+ *     setBasePose, setTalkStyle, setEditMode, unregisterAvatar
+ *   }
  */
 (function () {
     const THREE = window.THREE;
@@ -43,6 +48,10 @@
     // Edit mode: when true, Pose Studio is active — skip all procedural bone updates
     let editMode = false;
 
+    // Animation override: when true, animations play even during editMode
+    // Used when user explicitly triggers an animation from the Pose Studio panel
+    let animOverride = false;
+
     // Mouse input (normalized -1..1)
     const mouse = { x: 0, y: 0 };
     let inputInit = false;
@@ -53,6 +62,10 @@
     // Mode system
     let mode = 'idle';
     let modeUntilMs = 0;
+
+    // Base standing pose and talk gesture style
+    let basePose = 'lecturerNeutral';
+    let talkStyle = 'explainCalm';
 
     // Small per-bone smoothed targets stored in userData
     function damp(current, target, lambda, dt) {
@@ -88,6 +101,14 @@
             rightUpperArm: null,
             leftLowerArm: null,
             rightLowerArm: null,
+            leftHand: null,
+            rightHand: null,
+            leftUpperLeg: null,
+            rightUpperLeg: null,
+            leftLowerLeg: null,
+            rightLowerLeg: null,
+            leftFoot: null,
+            rightFoot: null,
         };
 
         root.traverse((o) => {
@@ -131,6 +152,38 @@
             } else if (!map.rightLowerArm && n.includes('right') && (n.includes('lowerarm') || n.includes('forearm'))) {
                 map.rightLowerArm = o;
             }
+            // hands
+            else if (!map.leftHand && n.includes('left') && n.includes('hand') && !n.includes('arm')) {
+                map.leftHand = o;
+            } else if (!map.rightHand && n.includes('right') && n.includes('hand') && !n.includes('arm')) {
+                map.rightHand = o;
+            }
+            // legs (upper)
+            else if (!map.leftUpperLeg && n.includes('left') && (n.includes('upperleg') || n.includes('thigh'))) {
+                map.leftUpperLeg = o;
+            } else if (!map.rightUpperLeg && n.includes('right') && (n.includes('upperleg') || n.includes('thigh'))) {
+                map.rightUpperLeg = o;
+            }
+            // legs (lower)
+            else if (
+                !map.leftLowerLeg &&
+                n.includes('left') &&
+                (n.includes('lowerleg') || n.includes('shin') || n.includes('calf'))
+            ) {
+                map.leftLowerLeg = o;
+            } else if (
+                !map.rightLowerLeg &&
+                n.includes('right') &&
+                (n.includes('lowerleg') || n.includes('shin') || n.includes('calf'))
+            ) {
+                map.rightLowerLeg = o;
+            }
+            // feet
+            else if (!map.leftFoot && n.includes('left') && n.includes('foot')) {
+                map.leftFoot = o;
+            } else if (!map.rightFoot && n.includes('right') && n.includes('foot')) {
+                map.rightFoot = o;
+            }
         });
 
         // fallback preference
@@ -170,6 +223,80 @@
         if (!r) return;
         const qOff = new THREE.Quaternion().setFromEuler(euler);
         bone.quaternion.copy(r.quat).multiply(qOff);
+    }
+
+    // ---------------------------
+    // Helper: degrees to radians shorthand
+    // ---------------------------
+    function deg(x) {
+        return THREE.MathUtils.degToRad(x);
+    }
+
+    // ---------------------------
+    // Base standing pose system (reads from AnimationPresets)
+    // ---------------------------
+    const AP = window.NEXUS_ANIMATION_PRESETS;
+
+    function applyPoseOffsetMap(map) {
+        if (!map) return;
+        Object.entries(map).forEach(([boneKey, euler]) => {
+            const bone = bones?.[boneKey];
+            if (!bone) return;
+            applyOffsetEuler(bone, euler);
+        });
+    }
+
+    function getBasePoseMap(name) {
+        // Use centralized presets if available
+        if (AP && AP.getBasePoseEulerMap) {
+            return AP.getBasePoseEulerMap(THREE, name);
+        }
+        return null;
+    }
+
+    function applyBasePose() {
+        applyPoseOffsetMap(getBasePoseMap(basePose));
+    }
+
+    // ---------------------------
+    // Speaking gesture styles — data-driven from AnimationPresets
+    // ---------------------------
+
+    /**
+     * Apply a data-driven animation definition (talk style or mode anim).
+     * Reads oscillation channels from AnimationPresets and applies them to bones.
+     */
+    function applyAnimDef(animDef, timeSec) {
+        if (!animDef || !AP) return;
+        var boneKeys = Object.keys(animDef);
+        for (var i = 0; i < boneKeys.length; i++) {
+            var boneKey = boneKeys[i];
+            var bone = bones?.[boneKey];
+            if (!bone) continue;
+            var channels = animDef[boneKey];
+            if (!channels) continue;
+            var euler = AP.evalAnimChannels(THREE, channels, timeSec);
+            applyOffsetEuler(bone, euler);
+        }
+    }
+
+    /**
+     * Find a talk style definition from presets and apply it.
+     */
+    function applyTalkStyle(timeSec) {
+        if (!AP) return;
+        var styleId = (talkStyle || 'explainCalm').toLowerCase();
+        var allStyles = (AP.TALK_STYLES || []).concat(AP.ADULT_TALK_STYLES || []);
+        for (var i = 0; i < allStyles.length; i++) {
+            if (allStyles[i].id.toLowerCase() === styleId) {
+                applyAnimDef(allStyles[i].anim, timeSec);
+                return;
+            }
+        }
+        // Fallback: first style
+        if (allStyles.length > 0 && allStyles[0].anim) {
+            applyAnimDef(allStyles[0].anim, timeSec);
+        }
     }
 
     // ---------------------------
@@ -265,7 +392,6 @@
         // ALWAYS apply natural standing pose fix (geometry-based T-pose correction)
         // Some models have baked animations but still start in T-pose
         // Use geometry-aware quaternion rotation for reliable arm positioning
-        // Works across different rig conventions (Mixamo, VRM, custom)
         fixTPose();
         // Re-capture to treat this as new rest pose:
         captureRestPose(avatarRoot);
@@ -296,18 +422,37 @@
         // Enable force mode for non-idle modes (quick actions)
         // This makes procedural animations visible even with baked animations
         forceMode = mode !== 'idle';
+
+        // Enable animation override so animations play even during Pose Studio editMode
+        // When returning to idle, disable the override so the editor regains control
+        animOverride = mode !== 'idle';
+    }
+
+    function setBasePose(nextPose) {
+        basePose = (nextPose || 'lecturerNeutral').trim();
+        console.log('[ProceduralAnimator] Base pose set:', basePose);
+    }
+
+    function setTalkStyle(nextStyle) {
+        talkStyle = (nextStyle || 'explainCalm').trim();
+        console.log('[ProceduralAnimator] Talk style set:', talkStyle);
     }
 
     function update(timeSec, dtSec) {
         if (!avatarRoot || !bones) return;
 
         // Pose Studio is active — do not fight the editor
-        if (editMode) return;
+        // UNLESS user explicitly triggered an animation from the panel (animOverride)
+        if (editMode && !animOverride) return;
+
+        // Apply speed multiplier to animation time
+        timeSec = timeSec * speedMultiplier;
 
         // expire mode
         if (mode !== 'idle' && performance.now() > modeUntilMs) {
             mode = 'idle';
             forceMode = false; // Disable force mode when returning to idle
+            animOverride = false; // Re-enable editMode protection
         }
 
         // If mixer is active and we are not allowed, bail (do not fight baked clips)
@@ -326,107 +471,67 @@
             bones.rightUpperArm,
             bones.leftLowerArm,
             bones.rightLowerArm,
+            bones.leftHand,
+            bones.rightHand,
         ];
         touched.forEach((b) => b && restoreToRest(b));
 
         // ---------------------------
-        // Base idle life
+        // Base standing pose (replaces T-pose as visual default)
         // ---------------------------
+        applyBasePose();
+
+        // ---------------------------
+        // Base idle life (params from AnimationPresets)
+        // ---------------------------
+        var idleP =
+            AP && AP.IDLE_PARAMS
+                ? AP.IDLE_PARAMS
+                : {
+                      breathing: { spine: { freq: 2.0, amp: 0.04 }, chest: { freq: 2.0, phase: 0.7, amp: 0.03 } },
+                      headLook: { yawScale: 0.55, pitchScale: 0.25, yawClamp: 0.7, pitchClamp: 0.45, dampLambda: 10 },
+                  };
+
         // Breathing
         if (bones.spine) {
-            const breath = Math.sin(timeSec * 2.0) * 0.04;
+            var bp = idleP.breathing.spine;
+            var breath = Math.sin(timeSec * bp.freq) * bp.amp;
             applyOffsetEuler(bones.spine, new THREE.Euler(breath, 0, 0));
         }
         if (bones.chest && bones.chest !== bones.spine) {
-            const breath2 = Math.sin(timeSec * 2.0 + 0.7) * 0.03;
+            var cp = idleP.breathing.chest;
+            var breath2 = Math.sin(timeSec * cp.freq + (cp.phase || 0)) * cp.amp;
             applyOffsetEuler(bones.chest, new THREE.Euler(breath2, 0, 0));
         }
 
         // Head look (mouse)
         if (bones.head) {
-            const yawT = THREE.MathUtils.clamp(mouse.x * 0.55, -0.7, 0.7);
-            const pitchT = THREE.MathUtils.clamp(mouse.y * 0.25, -0.45, 0.45);
+            var hl = idleP.headLook;
+            var yawT = THREE.MathUtils.clamp(mouse.x * hl.yawScale, -hl.yawClamp, hl.yawClamp);
+            var pitchT = THREE.MathUtils.clamp(mouse.y * hl.pitchScale, -hl.pitchClamp, hl.pitchClamp);
 
-            const ud = (bones.head.userData.__nexus_proc ||= { yaw: 0, pitch: 0 });
-            ud.yaw = damp(ud.yaw, yawT, 10, dtSec || 0.016);
-            ud.pitch = damp(ud.pitch, pitchT, 10, dtSec || 0.016);
+            var ud = (bones.head.userData.__nexus_proc ||= { yaw: 0, pitch: 0 });
+            ud.yaw = damp(ud.yaw, yawT, hl.dampLambda, dtSec || 0.016);
+            ud.pitch = damp(ud.pitch, pitchT, hl.dampLambda, dtSec || 0.016);
 
             applyOffsetEuler(bones.head, new THREE.Euler(ud.pitch, ud.yaw, 0));
         }
 
         // ---------------------------
-        // Mode overlays - EXAGGERATED for visibility
+        // Mode overlays — data-driven from AnimationPresets
         // ---------------------------
-        if (mode === 'thinking') {
-            // More pronounced head tilt + body sway
-            if (bones.head) {
-                const tilt = Math.sin(timeSec * 1.4) * 0.25; // Increased from 0.12
-                applyOffsetEuler(bones.head, new THREE.Euler(0.15, 0.0, tilt));
-            }
-            if (bones.hips) {
-                const sway = Math.sin(timeSec * 1.2) * 0.15; // Increased from 0.08
-                applyOffsetEuler(bones.hips, new THREE.Euler(0, sway, 0));
-            }
-            if (bones.chest) {
-                const twist = Math.sin(timeSec * 1.3) * 0.1;
-                applyOffsetEuler(bones.chest, new THREE.Euler(0, -twist, 0));
-            }
-        } else if (mode === 'happy') {
-            // Energetic bounce + chest up
-            if (bones.chest) {
-                const up = Math.sin(timeSec * 3.2) * 0.12; // Doubled from 0.06
-                applyOffsetEuler(bones.chest, new THREE.Euler(-0.15 + up, 0, 0));
-            }
-            if (bones.hips) {
-                const bounce = Math.sin(timeSec * 3.2) * 0.1; // Increased from 0.04
-                applyOffsetEuler(bones.hips, new THREE.Euler(bounce, 0, 0));
-            }
-            // Add arm waves for happy
-            if (bones.leftUpperArm) {
-                const wave = Math.sin(timeSec * 3.0) * 0.3;
-                applyOffsetEuler(bones.leftUpperArm, new THREE.Euler(wave, 0, 0));
-            }
-            if (bones.rightUpperArm) {
-                const wave = Math.sin(timeSec * 3.0 + Math.PI) * 0.3; // Phase shifted
-                applyOffsetEuler(bones.rightUpperArm, new THREE.Euler(wave, 0, 0));
-            }
-        } else if (mode === 'dance') {
-            // Exaggerated dance motion
-            if (bones.hips) {
-                const sway = Math.sin(timeSec * 5.0) * 0.35; // Increased from 0.18
-                applyOffsetEuler(bones.hips, new THREE.Euler(0, sway, 0));
-            }
-            if (bones.chest) {
-                const twist = Math.sin(timeSec * 6.0) * 0.25; // Increased from 0.12
-                applyOffsetEuler(bones.chest, new THREE.Euler(0, twist, 0));
-            }
-            // Add arm movements for dance
-            if (bones.leftUpperArm) {
-                const armMove = Math.sin(timeSec * 4.0) * 0.4;
-                applyOffsetEuler(bones.leftUpperArm, new THREE.Euler(armMove, 0, Math.sin(timeSec * 3.0) * 0.2));
-            }
-            if (bones.rightUpperArm) {
-                const armMove = Math.sin(timeSec * 4.0 + Math.PI) * 0.4;
-                applyOffsetEuler(
-                    bones.rightUpperArm,
-                    new THREE.Euler(armMove, 0, Math.sin(timeSec * 3.0 + Math.PI) * 0.2)
-                );
-            }
-        } else if (mode === 'talk') {
-            // Visible nodding
-            if (bones.head) {
-                const nod = Math.sin(timeSec * 10.0) * 0.12;
-                applyOffsetEuler(bones.head, new THREE.Euler(nod, 0, 0));
-            }
-            if (bones.chest) {
-                const breathTalk = Math.sin(timeSec * 6.0) * 0.06;
-                applyOffsetEuler(bones.chest, new THREE.Euler(breathTalk, 0, 0));
-            }
+        if (mode === 'talk') {
+            // Speaking gesture animation — dispatches to active talkStyle
+            applyTalkStyle(timeSec);
             // Jaw bone fallback for Tier C models (no morph targets)
-            if (bones.jaw) {
-                const jawOpen = (Math.sin(timeSec * 12.0) + 1) * 0.5 * 0.25; // 0..0.25 rad
+            if (bones.jaw && AP && AP.IDLE_PARAMS) {
+                var jp = AP.IDLE_PARAMS.jawTalk;
+                var jawOpen = (Math.sin(timeSec * jp.freq) + 1) * 0.5 * jp.amp;
                 applyOffsetEuler(bones.jaw, new THREE.Euler(jawOpen, 0, 0));
             }
+        } else if (mode !== 'idle' && AP && AP.MODE_ANIMS && AP.MODE_ANIMS[mode]) {
+            // Data-driven mode animation (happy, thinking, dance, flirt, tease, intimate, etc.)
+            applyAnimDef(AP.MODE_ANIMS[mode], timeSec);
         }
     }
 
@@ -468,6 +573,21 @@
 
     function setEditMode(enabled) {
         editMode = !!enabled;
+        if (enabled) {
+            animOverride = false; // Reset override when entering edit mode
+        }
+    }
+
+    // Animation speed multiplier (affects procedural animation tempo)
+    let speedMultiplier = 1.0;
+
+    function setSpeed(s) {
+        speedMultiplier = Math.max(0.1, Math.min(4.0, Number(s) || 1.0));
+        console.log('[ProceduralAnimator] Speed set:', speedMultiplier + 'x');
+    }
+
+    function getSpeed() {
+        return speedMultiplier;
     }
 
     // expose
@@ -478,5 +598,9 @@
         setMode,
         setAllowWithMixer,
         setEditMode,
+        setBasePose,
+        setTalkStyle,
+        setSpeed,
+        getSpeed,
     };
 })();

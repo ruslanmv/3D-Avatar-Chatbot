@@ -253,51 +253,6 @@ const BUILTIN_CATALOG = [
         installed: true,
     },
     {
-        id: 'vrm-avatar-orion',
-        name: 'Avatar Orion',
-        icon: '🚀',
-        desc: 'Compact VRM avatar — Orion character. Full expressions. CC0.',
-        source: 'VRoid (CC0)',
-        sourceId: 'github-vrm-samples',
-        format: 'vrm',
-        license: 'cc0',
-        url: '/vendor/avatars/Avatar_Orion.vrm',
-        tags: ['vroid', 'cc0', 'compact'],
-        features: ['lipsync', 'emotions', 'gaze', 'blink'],
-        size: 6000000,
-        installed: true,
-    },
-    {
-        id: 'vrm-cryptovoxels',
-        name: 'Cryptovoxels',
-        icon: '🎮',
-        desc: 'Voxel-style VRM avatar. Lightweight with VRM expressions. CC0.',
-        source: 'Madjin (CC0)',
-        sourceId: 'github-vrm-samples',
-        format: 'vrm',
-        license: 'cc0',
-        url: '/vendor/avatars/cryptovoxels.vrm',
-        tags: ['voxel', 'cc0', 'tiny'],
-        features: ['lipsync', 'emotions', 'gaze', 'blink'],
-        size: 232000,
-        installed: true,
-    },
-    {
-        id: 'vrm-seed-san',
-        name: 'Seed-san',
-        icon: '🌱',
-        desc: 'Official VRoid Hub mascot character. VRM with standard blend shapes.',
-        source: 'VRM Consortium (CC-BY)',
-        sourceId: 'vroid-hub',
-        format: 'vrm',
-        license: 'cc-by',
-        url: '/vendor/avatars/Seed-san.vrm',
-        tags: ['mascot', 'vroid', 'official'],
-        features: ['lipsync', 'emotions', 'gaze', 'blink'],
-        size: 10900000,
-        installed: true,
-    },
-    {
         id: 'vrm-vrm1-sample',
         name: 'VRM1 Sample',
         icon: '🤖',
@@ -313,24 +268,8 @@ const BUILTIN_CATALOG = [
         installed: true,
     },
 
-    {
-        id: 'vrm-meebit',
-        name: 'Meebit 09842',
-        icon: '🧊',
-        desc: 'Voxel-style Meebit character converted to VRM. Compact with expressions. CC0.',
-        source: 'Madjin (CC0)',
-        sourceId: 'github-vrm-samples',
-        format: 'vrm',
-        license: 'cc0',
-        url: '/vendor/avatars/meebit_09842.vrm',
-        tags: ['meebit', 'voxel', 'cc0', 'compact'],
-        features: ['lipsync', 'emotions', 'gaze', 'blink'],
-        size: 726000,
-        installed: true,
-    },
-
     // ══════════════════════════════════════════════════════════
-    // Tier 2: GLB with Morph Targets — Beta (7 avatars)
+    // Tier 2: GLB with Morph Targets — Beta
     // ══════════════════════════════════════════════════════════
     {
         id: 'glb-brunette',
@@ -409,21 +348,6 @@ const BUILTIN_CATALOG = [
     },
 
     {
-        id: 'glb-facecap',
-        name: 'FaceCap (ARKit)',
-        icon: '😀',
-        desc: 'Three.js ARKit face capture model with 52 facial blend shapes.',
-        source: 'Three.js',
-        sourceId: 'threejs',
-        format: 'glb-morph',
-        license: 'free',
-        url: '/vendor/avatars/facecap.glb',
-        tags: ['arkit', 'facecap', 'blendshapes'],
-        features: ['lipsync', 'emotions', 'blink'],
-        size: 333000,
-        installed: true,
-    },
-    {
         id: 'glb-readyplayerme',
         name: 'ReadyPlayerMe Sample',
         icon: '🧑',
@@ -440,23 +364,8 @@ const BUILTIN_CATALOG = [
     },
 
     // ══════════════════════════════════════════════════════════
-    // Tier 3: GLB without Morph Targets — Body Only (5 avatars)
+    // Tier 3: GLB without Morph Targets — Body Only
     // ══════════════════════════════════════════════════════════
-    {
-        id: 'glb-xbot',
-        name: 'Xbot',
-        icon: '🤖',
-        desc: 'Three.js Xbot model. Rigged humanoid, no facial morph targets.',
-        source: 'Three.js',
-        sourceId: 'threejs',
-        format: 'glb',
-        license: 'free',
-        url: '/vendor/avatars/Xbot.glb',
-        tags: ['threejs', 'robot'],
-        features: [],
-        size: 2900000,
-        installed: true,
-    },
     {
         id: 'local-woman',
         name: 'Woman',
@@ -503,18 +412,48 @@ const BUILTIN_CATALOG = [
         installed: true,
     },
     {
-        id: 'local-anime',
-        name: 'Anime',
-        icon: '🎌',
-        desc: 'Pre-installed GLB avatar with anime style. Body animation only.',
-        source: 'Local',
-        sourceId: 'local',
-        format: 'glb',
-        license: 'free',
-        url: '/vendor/avatars/anime.glb',
-        tags: ['local', 'pre-installed', 'anime'],
-        features: [],
-        size: 4600000,
+        id: 'vrm-perfectsync-female',
+        name: 'VRoid PerfectSync Female',
+        icon: '\u{1F469}',
+        desc: 'Enhanced VRoid female with 52 ARKit blendshapes for iPhone facial tracking (Perfect Sync). CC0.',
+        source: 'hinzka/52blendshapes (CC0)',
+        sourceId: 'github-52blendshapes',
+        format: 'vrm',
+        license: 'cc0',
+        url: '/vendor/avatars/VRoid_PerfectSync_Female.vrm',
+        tags: ['female', 'vroid', 'cc0', 'perfectsync', '52blendshapes'],
+        features: ['lipsync', 'emotions', 'gaze', 'blink', 'perfectsync'],
+        size: 23000000,
+        installed: true,
+    },
+    {
+        id: 'vrm-perfectsync-male',
+        name: 'VRoid PerfectSync Male',
+        icon: '\u{1F468}',
+        desc: 'Enhanced VRoid male with 52 ARKit blendshapes for iPhone facial tracking (Perfect Sync). CC0.',
+        source: 'hinzka/52blendshapes (CC0)',
+        sourceId: 'github-52blendshapes',
+        format: 'vrm',
+        license: 'cc0',
+        url: '/vendor/avatars/VRoid_PerfectSync_Male.vrm',
+        tags: ['male', 'vroid', 'cc0', 'perfectsync', '52blendshapes'],
+        features: ['lipsync', 'emotions', 'gaze', 'blink', 'perfectsync'],
+        size: 22000000,
+        installed: true,
+    },
+    {
+        id: 'vrm-viewer-sample',
+        name: 'VRM Viewer Sample',
+        icon: '\u{2728}',
+        desc: 'High-quality VRoid-compatible sample model with full expression set. Open source.',
+        source: 'tk256ailab/vrm-viewer (Open Source)',
+        sourceId: 'github-vrm-viewer',
+        format: 'vrm',
+        license: 'open-source',
+        url: '/vendor/avatars/VRM_Viewer_Sample.vrm',
+        tags: ['vroid', 'open-source', 'sample'],
+        features: ['lipsync', 'emotions', 'gaze', 'blink'],
+        size: 18000000,
         installed: true,
     },
 ];
@@ -539,20 +478,20 @@ const SOURCES = [
         name: 'three-vrm Samples',
         icon: '🎮',
         url: 'github.com/pixiv/three-vrm',
-        desc: 'Official Pixiv three-vrm sample models. VRM 1.0 spec compliant.',
+        desc: 'Official Pixiv three-vrm sample model (VRM1_Constraint_Twist_Sample) already included in built-in catalog.',
         auth: 'none',
         formats: ['vrm'],
-        status: 'connected',
+        status: 'included',
     },
     {
         id: 'github-talkinghead',
         name: 'TalkingHead Avatars',
         icon: '🗣️',
         url: 'github.com/met4citizen/TalkingHead',
-        desc: 'Full-body GLB avatars with ARKit + Oculus viseme blend shapes. Three.js native.',
-        auth: 'none',
+        desc: 'Create your own GLB avatar with ARKit + Oculus viseme blend shapes. Avatars not distributed in repo — use external tools.',
+        auth: 'manual',
         formats: ['glb-morph'],
-        status: 'connected',
+        status: 'no-api',
     },
     {
         id: 'vroid-hub',
@@ -970,6 +909,9 @@ const VRMManager = {
         // Open Source Avatars — always fetch (no auth, CC0)
         fetchers.push(this.fetchOpenSourceAvatars());
 
+        // GitHub VRM Samples — always fetch (no auth, CC0)
+        fetchers.push(this.fetchGitHubVRMSamples());
+
         // Sketchfab search (if connected)
         if (this.credentials.sketchfab && this.credentials.sketchfab.token) {
             fetchers.push(this.fetchSketchfabAvatars());
@@ -1029,45 +971,112 @@ const VRMManager = {
         }
     },
 
-    /* ── Open Source Avatars (GitHub JSON) ────────────── */
+    /* ── Open Source Avatars (GitHub JSON — nested format) ── */
 
     async fetchOpenSourceAvatars() {
-        const OSA_PROJECTS_URL = 'https://raw.githubusercontent.com/ToxSam/open-source-avatars/main/data/projects.json';
+        const OSA_BASE = 'https://raw.githubusercontent.com/ToxSam/open-source-avatars/main/data';
         try {
-            const res = await fetch(OSA_PROJECTS_URL, { mode: 'cors' });
+            const res = await fetch(`${OSA_BASE}/projects.json`, { mode: 'cors' });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const projects = await res.json();
 
-            const avatars = [];
-            for (const proj of projects) {
-                // Each project may contain multiple avatars or be a single avatar
-                const name = proj.name || proj.title || 'Unknown';
-                const id = `osa-${(proj.id || proj.slug || name)
-                    .toString()
-                    .replace(/[^a-zA-Z0-9]/g, '-')
-                    .toLowerCase()}`;
-                const downloadUrl = proj.download_url || proj.vrm_url || proj.url || '';
-                if (!downloadUrl) continue;
+            // Each project has avatar_data_file pointing to a nested JSON
+            // that contains the actual avatar entries with model_file_url
+            const dataFetches = projects
+                .filter((p) => p.avatar_data_file)
+                .slice(0, 30) // cap to avoid too many requests
+                .map(async (proj) => {
+                    try {
+                        const dataUrl = `${OSA_BASE}/${proj.avatar_data_file}`;
+                        const r = await fetch(dataUrl, { mode: 'cors' });
+                        if (!r.ok) return [];
+                        const data = await r.json();
 
-                avatars.push({
-                    id,
-                    name,
-                    desc: (proj.description || proj.bio || `CC0 avatar from Open Source Avatars.`).slice(0, 150),
-                    source: 'Open Source Avatars',
-                    sourceId: 'opensourceavatars',
-                    format: 'vrm',
-                    license: 'cc0',
-                    url: downloadUrl,
-                    preview: proj.thumbnail || proj.image || proj.preview_url || '',
-                    icon: '🆓',
-                    tags: ['cc0', 'open-source', ...(proj.tags || []).slice(0, 2)],
-                    features: ['lipsync', 'emotions', 'gaze', 'blink'],
-                    size: proj.file_size || 0,
+                        // data may be an array or have an "avatars" key
+                        const entries = Array.isArray(data) ? data : data.avatars || data.models || [];
+                        return entries
+                            .map((av) => {
+                                const downloadUrl = av.model_file_url || av.download_url || av.vrm_url || '';
+                                if (!downloadUrl) return null;
+                                const name = av.name || av.title || proj.name || 'Unknown';
+                                return {
+                                    id: `osa-${(av.id || av.slug || name)
+                                        .toString()
+                                        .replace(/[^a-zA-Z0-9]/g, '-')
+                                        .toLowerCase()}-${Math.random().toString(36).slice(2, 6)}`,
+                                    name,
+                                    desc: (
+                                        av.description ||
+                                        proj.description ||
+                                        'CC0 avatar from Open Source Avatars.'
+                                    ).slice(0, 150),
+                                    source: 'Open Source Avatars',
+                                    sourceId: 'opensourceavatars',
+                                    format: downloadUrl.endsWith('.glb') ? 'glb' : 'vrm',
+                                    license: (av.license || proj.license || 'cc0').toLowerCase(),
+                                    url: downloadUrl,
+                                    preview: av.thumbnail_url || av.image || proj.thumbnail || '',
+                                    icon: '🆓',
+                                    tags: ['cc0', 'open-source'],
+                                    features: ['lipsync', 'emotions', 'gaze', 'blink'],
+                                    size: av.file_size || 0,
+                                };
+                            })
+                            .filter(Boolean);
+                    } catch (_) {
+                        return [];
+                    }
                 });
+
+            const results = await Promise.allSettled(dataFetches);
+            const avatars = [];
+            for (const r of results) {
+                if (r.status === 'fulfilled') avatars.push(...r.value);
             }
+            console.log(`[VRM-Manager] Open Source Avatars: found ${avatars.length} models`);
             return avatars;
         } catch (e) {
             console.warn('[VRM-Manager] Open Source Avatars fetch error:', e);
+            return [];
+        }
+    },
+
+    /* ── GitHub: madjin/vrm-samples (recursive tree) ──── */
+
+    async fetchGitHubVRMSamples() {
+        // Files are spread across subdirectories, use Git Trees API with recursive flag
+        const API_URL = 'https://api.github.com/repos/madjin/vrm-samples/git/trees/master?recursive=1';
+        const RAW_BASE = 'https://raw.githubusercontent.com/madjin/vrm-samples/master';
+        try {
+            const res = await fetch(API_URL, { mode: 'cors', headers: { Accept: 'application/vnd.github.v3+json' } });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+
+            const avatars = (data.tree || [])
+                .filter((f) => f.path.endsWith('.vrm') && f.type === 'blob')
+                .map((f) => {
+                    const fileName = f.path.split('/').pop();
+                    return {
+                        id: `vrm-samples-${fileName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`,
+                        name: fileName.replace('.vrm', '').replace(/[_-]/g, ' '),
+                        desc: 'CC0 VRM from madjin/vrm-samples repository.',
+                        source: 'VRM Samples (GitHub)',
+                        sourceId: 'github-vrm-samples',
+                        format: 'vrm',
+                        license: 'cc0',
+                        url: `${RAW_BASE}/${f.path}`,
+                        preview: '',
+                        icon: '📦',
+                        tags: ['cc0', 'github', 'vrm-samples'],
+                        features: ['lipsync', 'emotions', 'gaze', 'blink'],
+                        size: f.size || 0,
+                    };
+                });
+
+            console.log(`[VRM-Manager] VRM Samples: found ${avatars.length} models`);
+            return avatars;
+        } catch (e) {
+            console.warn('[VRM-Manager] VRM Samples fetch error:', e);
             return [];
         }
     },
@@ -1614,10 +1623,15 @@ const VRMManager = {
                     if (!downloadUrl) throw new Error('Could not get Sketchfab download URL');
                 }
 
-                // Use avatar proxy for external URLs to bypass CORS
+                // Use avatar proxy for external URLs to bypass CORS, fall back to direct fetch
                 const isExternal = downloadUrl.startsWith('https://') || downloadUrl.startsWith('http://');
-                const fetchUrl = isExternal ? '/api/avatar-proxy?url=' + encodeURIComponent(downloadUrl) : downloadUrl;
-                const res = await fetch(fetchUrl);
+                let fetchUrl = isExternal ? '/api/avatar-proxy?url=' + encodeURIComponent(downloadUrl) : downloadUrl;
+                let res = await fetch(fetchUrl);
+                // If proxy fails (403/502/etc), try direct download as fallback
+                if (!res.ok && isExternal) {
+                    console.warn(`[VRM-Manager] Proxy failed (${res.status}), trying direct download...`);
+                    res = await fetch(downloadUrl, { mode: 'cors' });
+                }
                 if (!res.ok) throw new Error(`Download failed: ${res.status} ${res.statusText}`);
 
                 const contentLength = parseInt(res.headers.get('content-length') || '0', 10);
@@ -1963,6 +1977,17 @@ const VRMManager = {
 
         // Load model
         const loader = new THREE.GLTFLoader();
+        // Set up KTX2 loader for models that use KTX2/BasisU textures
+        if (THREE.KTX2Loader && renderer) {
+            const ktx2 = new THREE.KTX2Loader();
+            ktx2.setTranscoderPath('/vendor/three-0.147.0/examples/jsm/libs/basis/');
+            ktx2.detectSupport(renderer);
+            loader.setKTX2Loader(ktx2);
+        }
+        // Set up meshopt decoder for models with meshopt compression
+        if (THREE.MeshoptDecoder) {
+            loader.setMeshoptDecoder(THREE.MeshoptDecoder);
+        }
         const modelUrl = item.url;
         loader.load(
             modelUrl,
@@ -2371,6 +2396,12 @@ const VRMManager = {
                 this.resetCatalogControls();
             }
             this.applyFilters();
+
+            // Focus search input so users can immediately start browsing/searching
+            const searchInput = el('vm-search');
+            if (searchInput) {
+                setTimeout(() => searchInput.focus(), 100);
+            }
         }
     },
 
@@ -2612,6 +2643,11 @@ async function generateAvatarThumbnail(item, pose) {
         return '';
     }
 
+    // Wait briefly for ESM modules to load (KTX2Loader, MeshoptDecoder from vrm-manager.html)
+    if (!THREE.KTX2Loader || !THREE.MeshoptDecoder) {
+        await new Promise((r) => setTimeout(r, 500));
+    }
+
     const preset = THUMB_POSE_PRESETS[pose] || THUMB_POSE_PRESETS.portrait;
     const size = 512;
     const canvas = document.createElement('canvas');
@@ -2661,6 +2697,17 @@ async function generateAvatarThumbnail(item, pose) {
 
     try {
         const loader = new THREE.GLTFLoader();
+        // Set up KTX2 loader for models that use KTX2/BasisU textures
+        if (THREE.KTX2Loader && renderer) {
+            const ktx2 = new THREE.KTX2Loader();
+            ktx2.setTranscoderPath('/vendor/three-0.147.0/examples/jsm/libs/basis/');
+            ktx2.detectSupport(renderer);
+            loader.setKTX2Loader(ktx2);
+        }
+        // Set up meshopt decoder for models with meshopt compression
+        if (THREE.MeshoptDecoder) {
+            loader.setMeshoptDecoder(THREE.MeshoptDecoder);
+        }
         const gltf = await new Promise((resolve, reject) => {
             loader.load(item.url, resolve, undefined, reject);
         });

@@ -71,6 +71,136 @@ const POSE_PRESETS = {
         bones: {}, // Identity — all bones at VRM rest (T-pose). Debug/reset only.
     },
 
+    // ── Presenter / Professional standing poses ──
+
+    lecturerNeutral: {
+        label: 'Lecturer (Neutral)',
+        bones: {
+            leftUpperArm: eulerDegToQuat(4, 0, 36),
+            rightUpperArm: eulerDegToQuat(4, 0, -36),
+            leftLowerArm: eulerDegToQuat(0, 12, 0),
+            rightLowerArm: eulerDegToQuat(0, -12, 0),
+            hips: eulerDegToQuat(0, 0, -2),
+            spine: eulerDegToQuat(0, 0, 1),
+            chest: eulerDegToQuat(-2, 0, 0),
+            head: eulerDegToQuat(3, -4, 0),
+        },
+    },
+
+    presenterOpen: {
+        label: 'Presenter (Open)',
+        bones: {
+            leftUpperArm: eulerDegToQuat(10, 0, 28),
+            rightUpperArm: eulerDegToQuat(10, 0, -28),
+            leftLowerArm: eulerDegToQuat(0, 22, 0),
+            rightLowerArm: eulerDegToQuat(0, -22, 0),
+            hips: eulerDegToQuat(0, 0, -1),
+            spine: eulerDegToQuat(-2, 0, 1),
+            chest: eulerDegToQuat(-4, 0, 0),
+            head: eulerDegToQuat(4, -5, 0),
+        },
+    },
+
+    anchorGrounded: {
+        label: 'Anchor (Grounded)',
+        bones: {
+            leftUpperArm: eulerDegToQuat(12, 0, 18),
+            rightUpperArm: eulerDegToQuat(12, 0, -18),
+            leftLowerArm: eulerDegToQuat(0, 34, 0),
+            rightLowerArm: eulerDegToQuat(0, -34, 0),
+            hips: eulerDegToQuat(0, 0, -1),
+            spine: eulerDegToQuat(-3, 0, 0),
+            chest: eulerDegToQuat(-2, 0, 0),
+            head: eulerDegToQuat(2, 0, 0),
+        },
+    },
+
+    // ── Mature / Companion standing poses (non-explicit, tasteful) ──
+
+    confident: {
+        label: 'Confident',
+        bones: {
+            leftUpperArm: eulerDegToQuat(6, 0, 32),
+            rightUpperArm: eulerDegToQuat(6, 0, -32),
+            leftLowerArm: eulerDegToQuat(0, 18, 0),
+            rightLowerArm: eulerDegToQuat(0, -18, 0),
+            hips: eulerDegToQuat(0, 3, -3),
+            spine: eulerDegToQuat(-4, 0, 0),
+            chest: eulerDegToQuat(-6, 0, 0),
+            head: eulerDegToQuat(2, -3, -2),
+        },
+    },
+
+    lounge: {
+        label: 'Lounge',
+        bones: {
+            leftUpperArm: eulerDegToQuat(2, 0, 40),
+            rightUpperArm: eulerDegToQuat(8, 0, -30),
+            leftLowerArm: eulerDegToQuat(0, 8, 0),
+            rightLowerArm: eulerDegToQuat(0, -20, 0),
+            hips: eulerDegToQuat(2, 4, -5),
+            spine: eulerDegToQuat(-2, 2, 2),
+            chest: eulerDegToQuat(-3, 1, 0),
+            head: eulerDegToQuat(5, -6, -3),
+        },
+    },
+
+    shy: {
+        label: 'Shy',
+        bones: {
+            leftUpperArm: eulerDegToQuat(8, 0, 24),
+            rightUpperArm: eulerDegToQuat(8, 0, -24),
+            leftLowerArm: eulerDegToQuat(0, 28, 0),
+            rightLowerArm: eulerDegToQuat(0, -28, 0),
+            hips: eulerDegToQuat(0, -2, 0),
+            spine: eulerDegToQuat(2, 0, 0),
+            chest: eulerDegToQuat(3, 0, 0),
+            head: eulerDegToQuat(8, -4, 3),
+        },
+    },
+
+    elegant: {
+        label: 'Elegant',
+        bones: {
+            leftUpperArm: eulerDegToQuat(5, 0, 34),
+            rightUpperArm: eulerDegToQuat(10, 0, -26),
+            leftLowerArm: eulerDegToQuat(0, 14, 0),
+            rightLowerArm: eulerDegToQuat(0, -24, 0),
+            hips: eulerDegToQuat(0, 2, -4),
+            spine: eulerDegToQuat(-3, 1, 2),
+            chest: eulerDegToQuat(-5, 0, -1),
+            head: eulerDegToQuat(3, -5, -2),
+        },
+    },
+
+    intimateSafe: {
+        label: 'Intimate',
+        bones: {
+            leftUpperArm: eulerDegToQuat(6, 0, 30),
+            rightUpperArm: eulerDegToQuat(6, 0, -30),
+            leftLowerArm: eulerDegToQuat(0, 20, 0),
+            rightLowerArm: eulerDegToQuat(0, -20, 0),
+            hips: eulerDegToQuat(2, 0, -3),
+            spine: eulerDegToQuat(-3, 0, 0),
+            chest: eulerDegToQuat(-5, 0, 0),
+            head: eulerDegToQuat(6, -5, -3),
+        },
+    },
+
+    conversational: {
+        label: 'Conversational',
+        bones: {
+            leftUpperArm: eulerDegToQuat(6, 0, 32),
+            rightUpperArm: eulerDegToQuat(8, 0, -28),
+            leftLowerArm: eulerDegToQuat(0, 16, 0),
+            rightLowerArm: eulerDegToQuat(0, -22, 0),
+            hips: eulerDegToQuat(0, 2, -2),
+            spine: eulerDegToQuat(-1, 0, 1),
+            chest: eulerDegToQuat(-3, 0, 0),
+            head: eulerDegToQuat(4, -4, 0),
+        },
+    },
+
     standingRelaxed: {
         label: 'Standing (Relaxed)',
         bones: {
@@ -102,10 +232,12 @@ const POSE_PRESETS = {
     standingHandsClasped: {
         label: 'Standing (Hands Clasped)',
         bones: {
-            leftUpperArm: eulerDegToQuat(15, 0, 55), // Arms forward + down
-            rightUpperArm: eulerDegToQuat(15, 0, -55),
-            leftLowerArm: eulerDegToQuat(0, 60, 0), // Elbows bent, hands meet
-            rightLowerArm: eulerDegToQuat(0, -60, 0),
+            leftUpperArm: eulerDegToQuat(30, 20, 40), // Arms brought forward toward center
+            rightUpperArm: eulerDegToQuat(30, -20, -40),
+            leftLowerArm: eulerDegToQuat(0, 80, 0), // Forearms bent inward, hands meet at waist
+            rightLowerArm: eulerDegToQuat(0, -80, 0),
+            leftHand: eulerDegToQuat(0, 0, 10), // Hands angled to clasp
+            rightHand: eulerDegToQuat(0, 0, -10),
             spine: eulerDegToQuat(-3, 0, 0), // Upright professional posture
             chest: eulerDegToQuat(-2, 0, 0),
             head: eulerDegToQuat(5, 0, 0),
@@ -152,39 +284,40 @@ const POSE_PRESETS = {
     sittingDesk: {
         label: 'Sitting (Desk)',
         bones: {
-            hips: eulerDegToQuat(5, 0, 0),
-            leftUpperLeg: eulerDegToQuat(90, 0, -5),
-            rightUpperLeg: eulerDegToQuat(90, 0, 5),
-            leftLowerLeg: eulerDegToQuat(-90, 0, 0),
-            rightLowerLeg: eulerDegToQuat(-90, 0, 0),
-            leftFoot: eulerDegToQuat(10, 0, 0),
-            rightFoot: eulerDegToQuat(10, 0, 0),
-            spine: eulerDegToQuat(10, 0, 0), // Forward lean — working
+            hips: eulerDegToQuat(-5, 0, 0), // Slight backward tilt (seated on chair)
+            leftUpperLeg: eulerDegToQuat(85, 0, -8), // Thighs forward, slight spread
+            rightUpperLeg: eulerDegToQuat(85, 0, 8),
+            leftLowerLeg: eulerDegToQuat(-85, 0, 0), // Shins mostly vertical
+            rightLowerLeg: eulerDegToQuat(-85, 0, 0),
+            leftFoot: eulerDegToQuat(5, 0, 0), // Feet flat
+            rightFoot: eulerDegToQuat(5, 0, 0),
+            spine: eulerDegToQuat(8, 0, 0), // Slight forward lean — working posture
             chest: eulerDegToQuat(5, 0, 0),
-            leftUpperArm: eulerDegToQuat(40, 0, 35), // Arms on desk
-            rightUpperArm: eulerDegToQuat(40, 0, -35),
-            leftLowerArm: eulerDegToQuat(0, 60, 0),
-            rightLowerArm: eulerDegToQuat(0, -60, 0),
-            head: eulerDegToQuat(-10, 0, 0), // Looking at desk
+            leftUpperArm: eulerDegToQuat(35, 15, 25), // Arms forward on desk, not through body
+            rightUpperArm: eulerDegToQuat(35, -15, -25),
+            leftLowerArm: eulerDegToQuat(0, 70, 0), // Forearms on desk surface
+            rightLowerArm: eulerDegToQuat(0, -70, 0),
+            head: eulerDegToQuat(-8, 0, 0), // Looking down at desk
         },
     },
 
     sittingLegsUp: {
         label: 'Sitting (Lounging)',
         bones: {
-            hips: eulerDegToQuat(15, 0, 0),
-            leftUpperLeg: eulerDegToQuat(70, 0, -20),
-            rightUpperLeg: eulerDegToQuat(70, 0, 20),
-            leftLowerLeg: eulerDegToQuat(-50, 0, 0),
-            rightLowerLeg: eulerDegToQuat(-50, 0, 0),
-            leftFoot: eulerDegToQuat(10, 0, 0),
-            rightFoot: eulerDegToQuat(10, 0, 0),
-            spine: eulerDegToQuat(-15, 0, 0), // Reclined
-            leftUpperArm: eulerDegToQuat(0, 0, 50),
-            rightUpperArm: eulerDegToQuat(0, 0, -50),
-            leftLowerArm: eulerDegToQuat(0, 40, 0),
-            rightLowerArm: eulerDegToQuat(0, -40, 0),
-            head: eulerDegToQuat(-5, 0, 0),
+            hips: eulerDegToQuat(-10, 0, 0), // Tilted back — reclined
+            leftUpperLeg: eulerDegToQuat(75, 0, -12), // Legs extended, relaxed spread
+            rightUpperLeg: eulerDegToQuat(75, 0, 12),
+            leftLowerLeg: eulerDegToQuat(-40, 0, 0), // Relaxed knee bend
+            rightLowerLeg: eulerDegToQuat(-40, 0, 0),
+            leftFoot: eulerDegToQuat(15, 0, -5), // Relaxed dangling feet
+            rightFoot: eulerDegToQuat(15, 0, 5),
+            spine: eulerDegToQuat(-12, 0, 0), // Reclined back
+            chest: eulerDegToQuat(-5, 0, 0),
+            leftUpperArm: eulerDegToQuat(5, 0, 55), // Arms resting at sides, clear of thighs
+            rightUpperArm: eulerDegToQuat(5, 0, -55),
+            leftLowerArm: eulerDegToQuat(0, 25, 0), // Relaxed forearms
+            rightLowerArm: eulerDegToQuat(0, -25, 0),
+            head: eulerDegToQuat(8, 0, 0), // Looking forward (compensate recline)
         },
     },
 
@@ -263,14 +396,21 @@ const POSE_PRESETS = {
     lyingFront: {
         label: 'Lying (Front)',
         bones: {
-            hips: eulerDegToQuat(-90, 0, 0),
-            leftUpperLeg: eulerDegToQuat(0, 0, -5),
-            rightUpperLeg: eulerDegToQuat(0, 0, 5),
-            leftUpperArm: eulerDegToQuat(0, 0, -80),
-            rightUpperArm: eulerDegToQuat(0, 0, 80),
-            leftLowerArm: eulerDegToQuat(0, 90, 0),
-            rightLowerArm: eulerDegToQuat(0, -90, 0),
-            head: eulerDegToQuat(-30, 0, 0),
+            hips: eulerDegToQuat(-85, 0, 0), // Prone — face down (slightly less than 90 to avoid floor clip)
+            leftUpperLeg: eulerDegToQuat(5, 0, -5), // Legs natural, slight splay
+            rightUpperLeg: eulerDegToQuat(5, 0, 5),
+            leftLowerLeg: eulerDegToQuat(-10, 0, 0), // Slight knee relaxation
+            rightLowerLeg: eulerDegToQuat(-10, 0, 0),
+            leftFoot: eulerDegToQuat(-15, 0, 0), // Toes pointed naturally
+            rightFoot: eulerDegToQuat(-15, 0, 0),
+            spine: eulerDegToQuat(10, 0, 0), // Slight back extension (propping up)
+            chest: eulerDegToQuat(8, 0, 0),
+            leftUpperArm: eulerDegToQuat(-30, 0, -50), // Arms forward propping up, clear of body
+            rightUpperArm: eulerDegToQuat(-30, 0, 50),
+            leftLowerArm: eulerDegToQuat(0, 70, 0), // Forearms on ground
+            rightLowerArm: eulerDegToQuat(0, -70, 0),
+            head: eulerDegToQuat(25, 0, 0), // Head lifted, looking forward
+            neck: eulerDegToQuat(10, 0, 0),
         },
     },
 
@@ -296,22 +436,31 @@ const POSE_PRESETS = {
 
     allFours: {
         label: 'All Fours',
+        // Lower hips to floor level — knees and palms on the ground plane
+        hipsPosition: { y: -0.45, z: 0 },
         bones: {
-            hips: eulerDegToQuat(70, 0, 0),
-            spine: eulerDegToQuat(-5, 0, 0),
-            chest: eulerDegToQuat(-5, 0, 0),
-            leftUpperLeg: eulerDegToQuat(-5, 0, -5),
-            rightUpperLeg: eulerDegToQuat(-5, 0, 5),
-            leftLowerLeg: eulerDegToQuat(-80, 0, 0),
-            rightLowerLeg: eulerDegToQuat(-80, 0, 0),
-            leftFoot: eulerDegToQuat(-10, 0, 0),
-            rightFoot: eulerDegToQuat(-10, 0, 0),
-            leftUpperArm: eulerDegToQuat(60, 0, -20),
-            rightUpperArm: eulerDegToQuat(60, 0, 20),
-            leftLowerArm: eulerDegToQuat(0, 40, 0),
-            rightLowerArm: eulerDegToQuat(0, -40, 0),
-            head: eulerDegToQuat(-40, 0, 0),
-            neck: eulerDegToQuat(-15, 0, 0),
+            // ── Pelvis: moderate forward tilt, body horizontal ──
+            hips: eulerDegToQuat(45, 0, 0),
+            // ── Spine: nearly flat back, gentle natural curve ──
+            spine: eulerDegToQuat(-15, 0, 0),
+            chest: eulerDegToQuat(-10, 0, 0),
+            // ── Legs: thighs drop from hips, shins fold back on floor ──
+            leftUpperLeg: eulerDegToQuat(45, 0, -5),
+            rightUpperLeg: eulerDegToQuat(45, 0, 5),
+            leftLowerLeg: eulerDegToQuat(-110, 0, 0),
+            rightLowerLeg: eulerDegToQuat(-110, 0, 0),
+            leftFoot: eulerDegToQuat(-30, 0, 0),
+            rightFoot: eulerDegToQuat(-30, 0, 0),
+            // ── Arms: reaching straight down to floor, palms planted ──
+            leftShoulder: eulerDegToQuat(5, 0, 3),
+            rightShoulder: eulerDegToQuat(5, 0, -3),
+            leftUpperArm: eulerDegToQuat(40, 0, 15),
+            rightUpperArm: eulerDegToQuat(40, 0, -15),
+            leftLowerArm: eulerDegToQuat(0, 30, 0),
+            rightLowerArm: eulerDegToQuat(0, -30, 0),
+            // ── Head: looking forward naturally ──
+            head: eulerDegToQuat(-15, 0, 0),
+            neck: eulerDegToQuat(-8, 0, 0),
         },
     },
 
@@ -321,6 +470,7 @@ const POSE_PRESETS = {
 
     lyingBackOpen: {
         label: 'Lying (Open)',
+        adult: true,
         bones: {
             hips: eulerDegToQuat(90, 0, 0), // Supine
             leftUpperLeg: eulerDegToQuat(35, 0, -30), // Legs bent + spread
@@ -340,6 +490,7 @@ const POSE_PRESETS = {
 
     lyingFrontArched: {
         label: 'Lying (Arched)',
+        adult: true,
         bones: {
             hips: eulerDegToQuat(-90, 0, 0), // Face down
             leftUpperLeg: eulerDegToQuat(0, 0, -10),
@@ -359,6 +510,7 @@ const POSE_PRESETS = {
 
     kneelingPresent: {
         label: 'Kneeling (Present)',
+        adult: true,
         bones: {
             hips: eulerDegToQuat(5, 0, 0),
             leftUpperLeg: eulerDegToQuat(10, 0, -15), // Knees apart
@@ -379,46 +531,81 @@ const POSE_PRESETS = {
 
     allFoursArched: {
         label: 'All Fours (Arched)',
+        adult: true,
+        // Lower hips to floor — knees and forearms on ground, back arched
+        hipsPosition: { y: -0.5, z: 0 },
         bones: {
-            hips: eulerDegToQuat(70, 0, 0),
-            spine: eulerDegToQuat(-10, 0, 0), // Deeper arch
-            chest: eulerDegToQuat(-8, 0, 0),
-            leftUpperLeg: eulerDegToQuat(-5, 0, -10), // Wider stance
-            rightUpperLeg: eulerDegToQuat(-5, 0, 10),
-            leftLowerLeg: eulerDegToQuat(-80, 0, 0),
-            rightLowerLeg: eulerDegToQuat(-80, 0, 0),
-            leftFoot: eulerDegToQuat(-10, 0, 0),
-            rightFoot: eulerDegToQuat(-10, 0, 0),
-            leftUpperArm: eulerDegToQuat(60, 0, -15),
-            rightUpperArm: eulerDegToQuat(60, 0, 15),
-            leftLowerArm: eulerDegToQuat(0, 35, 0),
-            rightLowerArm: eulerDegToQuat(0, -35, 0),
-            head: eulerDegToQuat(-35, 0, 0),
-            neck: eulerDegToQuat(-10, 0, 0),
+            // ── Pelvis: stronger forward tilt, rear elevated ──
+            hips: eulerDegToQuat(55, 0, 0),
+            // ── Spine: lordosis arch — belly drops, back curves down ──
+            spine: eulerDegToQuat(-18, 0, 0),
+            chest: eulerDegToQuat(-12, 0, 0),
+            // ── Legs: wide stable base, knees on floor ──
+            leftUpperLeg: eulerDegToQuat(40, 0, -10),
+            rightUpperLeg: eulerDegToQuat(40, 0, 10),
+            leftLowerLeg: eulerDegToQuat(-110, 0, 0),
+            rightLowerLeg: eulerDegToQuat(-110, 0, 0),
+            leftFoot: eulerDegToQuat(-30, 0, 0),
+            rightFoot: eulerDegToQuat(-30, 0, 0),
+            // ── Arms: forearms resting flat on floor, chest lowered ──
+            leftShoulder: eulerDegToQuat(5, 0, 5),
+            rightShoulder: eulerDegToQuat(5, 0, -5),
+            leftUpperArm: eulerDegToQuat(55, 5, 10),
+            rightUpperArm: eulerDegToQuat(55, -5, -10),
+            leftLowerArm: eulerDegToQuat(0, 50, 0),
+            rightLowerArm: eulerDegToQuat(0, -50, 0),
+            // ── Head: low, relaxed ──
+            head: eulerDegToQuat(-12, 0, 0),
+            neck: eulerDegToQuat(-8, 0, 0),
         },
     },
 
     standingBendForward: {
         label: 'Standing (Bent Over)',
         bones: {
-            hips: eulerDegToQuat(0, 0, 0),
-            spine: eulerDegToQuat(40, 0, 0), // Torso bent forward
-            chest: eulerDegToQuat(25, 0, 0),
-            leftUpperArm: eulerDegToQuat(30, 0, 45), // Arms hanging or resting
-            rightUpperArm: eulerDegToQuat(30, 0, -45),
-            leftLowerArm: eulerDegToQuat(0, 40, 0),
-            rightLowerArm: eulerDegToQuat(0, -40, 0),
-            leftUpperLeg: eulerDegToQuat(5, 0, -5), // Slight knee softness
-            rightUpperLeg: eulerDegToQuat(5, 0, 5),
-            leftLowerLeg: eulerDegToQuat(-10, 0, 0),
-            rightLowerLeg: eulerDegToQuat(-10, 0, 0),
-            head: eulerDegToQuat(-20, 0, 0), // Compensate, look forward
+            hips: eulerDegToQuat(30, 0, 0), // Moderate hip hinge — not extreme, keeps CoG over feet
+            spine: eulerDegToQuat(8, 0, 0), // Gentle forward curve — lumbar follows hips
+            chest: eulerDegToQuat(5, 0, 0), // Minimal thoracic flex — S-curve maintained
+            leftShoulder: eulerDegToQuat(8, 0, 5),
+            rightShoulder: eulerDegToQuat(8, 0, -5),
+            leftUpperArm: eulerDegToQuat(20, 10, 25), // Arms forward/down — counterbalance + gravity
+            rightUpperArm: eulerDegToQuat(20, -10, -25),
+            leftLowerArm: eulerDegToQuat(0, 30, 0), // Relaxed elbow bend
+            rightLowerArm: eulerDegToQuat(0, -30, 0),
+            leftUpperLeg: eulerDegToQuat(-3, 0, -2), // Legs near-vertical — hips shift back to compensate
+            rightUpperLeg: eulerDegToQuat(-3, 0, 2),
+            leftLowerLeg: eulerDegToQuat(-8, 0, 0), // Soft knees (natural micro-bend)
+            rightLowerLeg: eulerDegToQuat(-8, 0, 0),
+            head: eulerDegToQuat(-18, 0, 0), // Look forward — compensates for torso tilt
             neck: eulerDegToQuat(-10, 0, 0),
+        },
+    },
+
+    standingBentBackward: {
+        label: 'Standing (Bent Backward)',
+        bones: {
+            hips: eulerDegToQuat(-5, 0, 0), // Subtle pelvis forward — keeps CoG over wider stance
+            spine: eulerDegToQuat(-12, 0, 0), // Lumbar extension (primary bend point)
+            chest: eulerDegToQuat(-8, 0, 0), // Thoracic continuation — not extreme
+            upperChest: eulerDegToQuat(-5, 0, 0), // Gentle upper curve
+            neck: eulerDegToQuat(-8, 0, 0), // Cervical extension follows spine
+            head: eulerDegToQuat(-5, 0, 0), // Gaze upward
+            leftShoulder: eulerDegToQuat(-3, 0, -8), // Clavicles back — opens chest
+            rightShoulder: eulerDegToQuat(-3, 0, 8),
+            leftUpperArm: eulerDegToQuat(15, -10, 30), // Arms forward/out as counterbalance
+            rightUpperArm: eulerDegToQuat(15, 10, -30),
+            leftLowerArm: eulerDegToQuat(0, 25, 0), // Relaxed bend
+            rightLowerArm: eulerDegToQuat(0, -25, 0),
+            leftUpperLeg: eulerDegToQuat(5, 0, -6), // Wider stance for stability
+            rightUpperLeg: eulerDegToQuat(5, 0, 6),
+            leftLowerLeg: eulerDegToQuat(-10, 0, 0), // Bent knees — absorb backward lean
+            rightLowerLeg: eulerDegToQuat(-10, 0, 0),
         },
     },
 
     lyingSideSeductive: {
         label: 'Lying (Side Pose)',
+        adult: true,
         bones: {
             hips: eulerDegToQuat(90, 0, -90), // Side-lying
             leftUpperLeg: eulerDegToQuat(30, 0, 0), // Top leg forward
@@ -434,20 +621,321 @@ const POSE_PRESETS = {
             head: eulerDegToQuat(5, 25, 0), // Looking toward viewer
         },
     },
+
+    // =====================================================================
+    // NEW ADULT POSES (Spicy Mode only — MMORPG-inspired)
+    // =====================================================================
+
+    lyingKiss: {
+        label: 'Lying (Kiss Me)',
+        adult: true,
+        bones: {
+            // Supine on floor — same as lyingBackRelaxed base
+            hips: eulerDegToQuat(90, 0, 0),
+
+            // ── Both legs bent + knees out (mirrored from the "good" right leg) ──
+            leftUpperLeg: eulerDegToQuat(30, 0, -15), // Bent + spread out (mirrored)
+            rightUpperLeg: eulerDegToQuat(30, 0, 15), // Bent + spread out
+            leftLowerLeg: eulerDegToQuat(-45, 0, 0), // Knees bent
+            rightLowerLeg: eulerDegToQuat(-45, 0, 0),
+            leftFoot: eulerDegToQuat(5, 0, 0), // Relaxed feet on floor
+            rightFoot: eulerDegToQuat(5, 0, 0),
+
+            // ── Both arms up near head (mirrored from the "good" left arm) ──
+            leftUpperArm: eulerDegToQuat(-30, 0, -70), // Arm up beside head
+            rightUpperArm: eulerDegToQuat(-30, 0, 70), // Mirrored — arm up beside head
+            leftLowerArm: eulerDegToQuat(0, 90, 0), // Forearm bent inward
+            rightLowerArm: eulerDegToQuat(0, -90, 0), // Mirrored
+
+            // ── Spine: slight arch (inviting) ──
+            spine: eulerDegToQuat(-3, 0, 0),
+
+            // ── Head: looking straight up (at partner above) ──
+            head: eulerDegToQuat(0, 0, 0),
+        },
+    },
+
+    standingSeductive: {
+        label: 'Standing (Seductive)',
+        adult: true,
+        bones: {
+            hips: eulerDegToQuat(0, 10, 5), // Weight shifted to one hip
+            spine: eulerDegToQuat(-3, -5, 0), // Slight S-curve
+            chest: eulerDegToQuat(-5, 5, 0), // Chest opens
+            leftUpperArm: eulerDegToQuat(5, 10, 30), // Left hand on hip
+            rightUpperArm: eulerDegToQuat(0, 0, -15), // Right arm relaxed
+            leftLowerArm: eulerDegToQuat(0, 70, 0), // Forearm bent to hip
+            rightLowerArm: eulerDegToQuat(0, -20, 0),
+            leftUpperLeg: eulerDegToQuat(0, 0, -5), // Weight-bearing leg
+            leftLowerLeg: eulerDegToQuat(-5, 0, 0), // Grounded — soft knee bend
+            leftFoot: eulerDegToQuat(0, 0, 0), // Flat on floor
+            rightUpperLeg: eulerDegToQuat(5, 0, 3), // Relaxed leg, toe out
+            rightLowerLeg: eulerDegToQuat(-8, 0, 0), // Soft knee
+            rightFoot: eulerDegToQuat(0, 5, 0), // Toe angled slightly out
+            head: eulerDegToQuat(-5, -10, -3), // Chin down, eyes up, slight tilt
+            neck: eulerDegToQuat(-3, -5, 0),
+        },
+    },
+
+    wallLean: {
+        label: 'Wall Lean',
+        adult: true,
+        bones: {
+            hips: eulerDegToQuat(-8, 5, 0), // Leaning back
+            spine: eulerDegToQuat(-5, 0, 0), // Back against wall
+            chest: eulerDegToQuat(-3, 0, 0),
+            leftUpperArm: eulerDegToQuat(-10, 0, 35), // Arms relaxed at sides
+            rightUpperArm: eulerDegToQuat(-10, 0, -35),
+            leftLowerArm: eulerDegToQuat(0, 25, 0),
+            rightLowerArm: eulerDegToQuat(0, -25, 0),
+            leftUpperLeg: eulerDegToQuat(0, 0, -5), // Standing leg — bears all weight
+            leftLowerLeg: eulerDegToQuat(-10, 0, 0), // Grounded — slightly bent for stability
+            leftFoot: eulerDegToQuat(0, 0, 0), // Flat on floor
+            rightUpperLeg: eulerDegToQuat(45, 0, 5), // One knee up (foot on wall)
+            rightLowerLeg: eulerDegToQuat(-80, 0, 0), // Foot tucked back
+            rightFoot: eulerDegToQuat(-20, 0, 0),
+            head: eulerDegToQuat(5, 15, 3), // Relaxed head tilt
+            neck: eulerDegToQuat(0, 5, 0),
+        },
+    },
+
+    lapSitting: {
+        label: 'Lap Sitting',
+        adult: true,
+        bones: {
+            hips: eulerDegToQuat(-5, 15, 0), // Seated, slight twist
+            spine: eulerDegToQuat(-5, -5, 0),
+            chest: eulerDegToQuat(-3, -3, 0),
+            leftUpperLeg: eulerDegToQuat(70, 0, 15), // Legs together, angled to one side
+            rightUpperLeg: eulerDegToQuat(75, 0, 15),
+            leftLowerLeg: eulerDegToQuat(-65, 0, 0), // Knees bent
+            rightLowerLeg: eulerDegToQuat(-70, 0, 0),
+            leftFoot: eulerDegToQuat(-15, 0, 0),
+            rightFoot: eulerDegToQuat(-15, 0, 0),
+            leftUpperArm: eulerDegToQuat(10, 15, 25), // Hands in lap area
+            rightUpperArm: eulerDegToQuat(15, -10, -20),
+            leftLowerArm: eulerDegToQuat(0, 60, 0),
+            rightLowerArm: eulerDegToQuat(0, -55, 0),
+            head: eulerDegToQuat(-5, -10, -3), // Looking slightly aside
+        },
+    },
+
+    embraceStanding: {
+        label: 'Embrace (Standing)',
+        adult: true,
+        bones: {
+            spine: eulerDegToQuat(3, 0, 0), // Slight forward lean
+            chest: eulerDegToQuat(2, 0, 0),
+            leftUpperArm: eulerDegToQuat(35, 25, 20), // Arms forward as if holding someone
+            rightUpperArm: eulerDegToQuat(35, -25, -20),
+            leftLowerArm: eulerDegToQuat(0, 80, 0), // Forearms wrapping
+            rightLowerArm: eulerDegToQuat(0, -80, 0),
+            leftHand: eulerDegToQuat(0, 0, 15), // Hands curved, embracing
+            rightHand: eulerDegToQuat(0, 0, -15),
+            leftUpperLeg: eulerDegToQuat(0, 0, -3),
+            rightUpperLeg: eulerDegToQuat(0, 0, 3),
+            leftLowerLeg: eulerDegToQuat(-5, 0, 0), // Soft knees
+            rightLowerLeg: eulerDegToQuat(-5, 0, 0),
+            head: eulerDegToQuat(8, 0, -5), // Head tilted, looking down at partner
+        },
+    },
+
+    kneelSubmissive: {
+        label: 'Kneeling (Submissive)',
+        adult: true,
+        bones: {
+            hips: eulerDegToQuat(5, 0, 0),
+            leftUpperLeg: eulerDegToQuat(5, 0, -8), // Knees slightly apart
+            rightUpperLeg: eulerDegToQuat(5, 0, 8),
+            leftLowerLeg: eulerDegToQuat(-140, 0, 0), // Sitting on heels
+            rightLowerLeg: eulerDegToQuat(-140, 0, 0),
+            leftFoot: eulerDegToQuat(-45, 0, 0),
+            rightFoot: eulerDegToQuat(-45, 0, 0),
+            spine: eulerDegToQuat(-10, 0, 0), // Bowed forward (flexion)
+            chest: eulerDegToQuat(-8, 0, 0),
+            leftUpperArm: eulerDegToQuat(15, 10, 15), // Hands on thighs, palms down
+            rightUpperArm: eulerDegToQuat(15, -10, -15),
+            leftLowerArm: eulerDegToQuat(0, 35, 0),
+            rightLowerArm: eulerDegToQuat(0, -35, 0),
+            head: eulerDegToQuat(20, 0, 0), // Head down
+            neck: eulerDegToQuat(10, 0, 0),
+        },
+    },
+
+    lyingSprawl: {
+        label: 'Lying (Sprawl)',
+        adult: true,
+        bones: {
+            hips: eulerDegToQuat(85, 0, 0), // Supine
+            spine: eulerDegToQuat(-3, 5, 0), // Relaxed twist
+            leftUpperLeg: eulerDegToQuat(10, 0, -20), // Legs relaxed apart
+            rightUpperLeg: eulerDegToQuat(20, 0, 15),
+            leftLowerLeg: eulerDegToQuat(-18, 0, 0), // Natural bend for supine sprawl
+            rightLowerLeg: eulerDegToQuat(-30, 0, 0), // More bent — asymmetric for relaxed look
+            leftUpperArm: eulerDegToQuat(-30, 0, -70), // One arm above head
+            rightUpperArm: eulerDegToQuat(10, 0, 50), // Other arm relaxed at side
+            leftLowerArm: eulerDegToQuat(0, 50, 0), // Forearm relaxed above head
+            rightLowerArm: eulerDegToQuat(0, -15, 0),
+            head: eulerDegToQuat(0, 15, 5), // Head turned slightly
+        },
+    },
+    // =====================================================================
+    // TOP 5 VR SIMULATION POSES (Steam Adult — Spicy Mode only)
+    // =====================================================================
+
+    missionary: {
+        label: 'Missionary',
+        adult: true,
+        bones: {
+            hips: eulerDegToQuat(80, 0, 0), // Supine, slightly raised
+            spine: eulerDegToQuat(-3, 0, 0), // Natural arch
+            chest: eulerDegToQuat(-2, 0, 0),
+            leftUpperLeg: eulerDegToQuat(30, 0, -20), // Legs apart, knees up
+            rightUpperLeg: eulerDegToQuat(30, 0, 20),
+            leftLowerLeg: eulerDegToQuat(-45, 0, 0), // Knees bent
+            rightLowerLeg: eulerDegToQuat(-45, 0, 0),
+            leftFoot: eulerDegToQuat(10, 0, 0),
+            rightFoot: eulerDegToQuat(10, 0, 0),
+            leftUpperArm: eulerDegToQuat(20, 20, 40), // Arms reaching up (toward partner shoulders)
+            rightUpperArm: eulerDegToQuat(20, -20, -40),
+            leftLowerArm: eulerDegToQuat(0, 65, 0), // Forearms bent (hands on partner)
+            rightLowerArm: eulerDegToQuat(0, -65, 0),
+            head: eulerDegToQuat(-5, 0, 0), // Looking up at partner
+            neck: eulerDegToQuat(-3, 0, 0),
+        },
+    },
+
+    doggyStyle: {
+        label: 'Doggy Style',
+        adult: true,
+        // Lower hips to floor — knees grounded, forearms on floor, rear presented
+        hipsPosition: { y: -0.48, z: 0 },
+        bones: {
+            // ── Pelvis: strong forward tilt, rear elevated and presented ──
+            hips: eulerDegToQuat(60, 0, 0),
+
+            // ── Spine: lordosis arch — belly drops, back curves, accentuates rear ──
+            spine: eulerDegToQuat(-20, 0, 0),
+            chest: eulerDegToQuat(-12, 0, 0),
+
+            // ── Legs: knees on floor, wide spread, thighs angled from hips ──
+            leftUpperLeg: eulerDegToQuat(35, 0, -12),
+            rightUpperLeg: eulerDegToQuat(35, 0, 12),
+            // Lower legs fold back — shins on floor
+            leftLowerLeg: eulerDegToQuat(-115, 0, 0),
+            rightLowerLeg: eulerDegToQuat(-115, 0, 0),
+            // Feet: tops flat on floor
+            leftFoot: eulerDegToQuat(-30, 0, 0),
+            rightFoot: eulerDegToQuat(-30, 0, 0),
+
+            // ── Arms: forearms resting on floor, chest low ──
+            leftShoulder: eulerDegToQuat(5, 0, 5),
+            rightShoulder: eulerDegToQuat(5, 0, -5),
+            // Upper arms reach forward and down
+            leftUpperArm: eulerDegToQuat(55, 8, 10),
+            rightUpperArm: eulerDegToQuat(55, -8, -10),
+            // Forearms flat on ground — weight on forearms
+            leftLowerArm: eulerDegToQuat(0, 50, 0),
+            rightLowerArm: eulerDegToQuat(0, -50, 0),
+
+            // ── Head: low, face down, slight turn ──
+            head: eulerDegToQuat(-10, 8, 0),
+            neck: eulerDegToQuat(-8, 5, 0),
+        },
+    },
+
+    cowgirl: {
+        label: 'Cowgirl (Mounted)',
+        adult: true,
+        bones: {
+            hips: eulerDegToQuat(5, 0, 0), // Pelvis tilted slightly forward — seated on partner
+            spine: eulerDegToQuat(-3, 0, 0), // Upright with very slight arch
+            chest: eulerDegToQuat(3, 0, 0), // Slight forward lean — natural riding position
+            leftUpperLeg: eulerDegToQuat(65, 0, -30), // Wide straddle — thighs angled out
+            rightUpperLeg: eulerDegToQuat(65, 0, 30),
+            leftLowerLeg: eulerDegToQuat(-110, 0, 0), // Deep knee bend — shins tucked back
+            rightLowerLeg: eulerDegToQuat(-110, 0, 0),
+            leftFoot: eulerDegToQuat(-25, 0, -5), // Toes pointed slightly outward
+            rightFoot: eulerDegToQuat(-25, 0, 5),
+            leftUpperArm: eulerDegToQuat(20, 10, 15), // Hands braced on partner's chest/shoulders
+            rightUpperArm: eulerDegToQuat(20, -10, -15),
+            leftLowerArm: eulerDegToQuat(0, 55, 0), // Arms bent — pushing down for support
+            rightLowerArm: eulerDegToQuat(0, -55, 0),
+            head: eulerDegToQuat(-5, 0, -3), // Looking down with slight tilt
+            neck: eulerDegToQuat(-3, 0, 0),
+        },
+    },
+
+    wallPressed: {
+        label: 'Wall Pressed',
+        adult: true,
+        bones: {
+            hips: eulerDegToQuat(-10, 0, 0), // Pressed back against wall
+            spine: eulerDegToQuat(-5, 0, 0),
+            chest: eulerDegToQuat(-3, 0, 0),
+            leftUpperLeg: eulerDegToQuat(40, 0, -20), // Legs spread, one raised
+            rightUpperLeg: eulerDegToQuat(60, 0, 15), // Right leg higher (wrapped)
+            leftLowerLeg: eulerDegToQuat(-25, 0, 0), // Standing leg — deeper bend for single-leg stability
+            rightLowerLeg: eulerDegToQuat(-50, 0, 0), // Raised leg bent
+            leftFoot: eulerDegToQuat(5, 0, 0),
+            rightFoot: eulerDegToQuat(-10, 0, 0),
+            leftUpperArm: eulerDegToQuat(-20, 0, -60), // Arms up against wall / around partner
+            rightUpperArm: eulerDegToQuat(-20, 0, 60),
+            leftLowerArm: eulerDegToQuat(0, 70, 0),
+            rightLowerArm: eulerDegToQuat(0, -70, 0),
+            head: eulerDegToQuat(-10, 0, 5), // Head back, slight tilt
+            neck: eulerDegToQuat(-8, 0, 0),
+        },
+    },
+
+    proneBone: {
+        label: 'Prone Bone',
+        adult: true,
+        bones: {
+            hips: eulerDegToQuat(-80, 0, 0), // Face down (prone)
+            spine: eulerDegToQuat(10, 0, 0), // Slight upward arch
+            chest: eulerDegToQuat(8, 0, 0),
+            leftUpperLeg: eulerDegToQuat(0, 0, -8), // Legs slightly apart
+            rightUpperLeg: eulerDegToQuat(0, 0, 8),
+            leftLowerLeg: eulerDegToQuat(-15, 0, 0), // Relaxed
+            rightLowerLeg: eulerDegToQuat(-15, 0, 0),
+            leftFoot: eulerDegToQuat(-10, 0, 0),
+            rightFoot: eulerDegToQuat(-10, 0, 0),
+            leftShoulder: eulerDegToQuat(10, 0, 5), // Shoulders forward
+            rightShoulder: eulerDegToQuat(10, 0, -5),
+            leftUpperArm: eulerDegToQuat(40, 20, -20), // Arms forward, propping up
+            rightUpperArm: eulerDegToQuat(40, -20, 20),
+            leftLowerArm: eulerDegToQuat(0, 60, 0), // Forearms on surface
+            rightLowerArm: eulerDegToQuat(0, -60, 0),
+            head: eulerDegToQuat(-20, 10, 0), // Head turned slightly, propped up
+            neck: eulerDegToQuat(-10, 5, 0),
+        },
+    },
 };
 
 // Ordered list for cycling in VR panel
 // Chat/everyday first → Rest/lounge → Adult → Technical last
 const PRESET_ORDER = [
+    // Presenter / Professional (best defaults — replaces T-pose)
+    'lecturerNeutral',
+    'presenterOpen',
+    'anchorGrounded',
     // Chat / everyday poses
     'standingRelaxed',
     'standingFriendly',
     'standingHandsClasped',
+    'conversational',
     'sitting',
     'sittingCrossed',
     'sittingDesk',
     'sittingLegsUp',
     'kneelingUp',
+    // Mature / Companion poses
+    'confident',
+    'lounge',
+    'shy',
+    'elegant',
+    'intimateSafe',
     // Rest / lounge poses
     'lyingBackRelaxed',
     'lyingBack',
@@ -461,7 +949,22 @@ const PRESET_ORDER = [
     'kneelingPresent',
     'allFoursArched',
     'standingBendForward',
+    'standingBentBackward',
     'lyingSideSeductive',
+    // Adult — new MMORPG-inspired (Spicy Mode only)
+    'lyingKiss',
+    'standingSeductive',
+    'wallLean',
+    'lapSitting',
+    'embraceStanding',
+    'kneelSubmissive',
+    'lyingSprawl',
+    // Adult — Top 5 VR Simulation (Spicy Mode only)
+    'missionary',
+    'doggyStyle',
+    'cowgirl',
+    'wallPressed',
+    'proneBone',
     // Technical (last)
     'standing',
 ];
@@ -604,6 +1107,11 @@ export class VRPoseSystem {
         this._blendTo = new Map(); // bone key → target quat
         this._isBlending = false;
 
+        // Hips position blending (for ground poses that need to lower the avatar)
+        this._hipsRestPosition = null; // THREE.Vector3 — captured on setAvatar
+        this._hipsPositionFrom = null;
+        this._hipsPositionTo = null;
+
         // Spring dampers (one per bone for smooth movement)
         this._springs = new Map();
 
@@ -739,6 +1247,11 @@ export class VRPoseSystem {
             // Create a spring damper for smooth interpolation
             this._springs.set(key, new SpringDamper(this._springStiffness, this._springDamping));
         }
+        // Capture hips rest position for ground pose offsets
+        const hipsBone = this._bones.get('hips');
+        if (hipsBone) {
+            this._hipsRestPosition = hipsBone.position.clone();
+        }
     }
 
     // =========================================================================
@@ -750,7 +1263,12 @@ export class VRPoseSystem {
      * @returns {string[]}
      */
     static getPresetNames() {
-        return [...PRESET_ORDER];
+        var spicy = typeof window !== 'undefined' && window.NEXUS_SPICY && window.NEXUS_SPICY.isEnabled();
+        if (spicy) return [...PRESET_ORDER];
+        // Filter out adult poses when spicy mode is off
+        return PRESET_ORDER.filter(function (name) {
+            return !POSE_PRESETS[name] || !POSE_PRESETS[name].adult;
+        });
     }
 
     /**
@@ -775,10 +1293,23 @@ export class VRPoseSystem {
      * @returns {string} The new preset name
      */
     cyclePreset() {
-        const idx = PRESET_ORDER.indexOf(this._currentPreset);
-        const next = PRESET_ORDER[(idx + 1) % PRESET_ORDER.length];
+        const order = VRPoseSystem.getPresetNames();
+        const idx = order.indexOf(this._currentPreset);
+        const next = order[(idx + 1) % order.length];
         this.applyPreset(next);
         return next;
+    }
+
+    /**
+     * Cycle to the previous pose preset with smooth blending.
+     * @returns {string} The new preset name
+     */
+    cyclePrevPreset() {
+        const order = VRPoseSystem.getPresetNames();
+        const idx = order.indexOf(this._currentPreset);
+        const prev = order[(idx - 1 + order.length) % order.length];
+        this.applyPreset(prev);
+        return prev;
     }
 
     /**
@@ -813,13 +1344,48 @@ export class VRPoseSystem {
             }
         }
 
-        this._blendTime = 0;
-        this._blendDuration = duration;
-        this._isBlending = true;
+        // Hips position blending for ground poses
+        const hipsBone = this._bones.get('hips');
+        if (hipsBone && this._hipsRestPosition) {
+            this._hipsPositionFrom = hipsBone.position.clone();
+            if (preset.hipsPosition) {
+                // hipsPosition is a Y-offset relative to rest position
+                this._hipsPositionTo = this._hipsRestPosition.clone();
+                this._hipsPositionTo.y += preset.hipsPosition.y;
+                if (preset.hipsPosition.z) this._hipsPositionTo.z += preset.hipsPosition.z;
+                if (preset.hipsPosition.x) this._hipsPositionTo.x += preset.hipsPosition.x;
+            } else {
+                // No position override — return to rest position
+                this._hipsPositionTo = this._hipsRestPosition.clone();
+            }
+        } else {
+            this._hipsPositionFrom = null;
+            this._hipsPositionTo = null;
+        }
+
         this._currentPreset = presetName;
 
         // Notify desktop UI so dropdown stays synced
         window.dispatchEvent(new CustomEvent('vr-pose-changed', { detail: { preset: presetName } }));
+
+        // Instant apply when duration is 0 — avoids 0/0 NaN in blend math
+        if (duration <= 0) {
+            for (const [key, bone] of this._bones) {
+                const to = this._blendTo.get(key);
+                if (to) bone.quaternion.copy(to);
+            }
+            if (this._hipsPositionTo) {
+                const hipsBone = this._bones.get('hips');
+                if (hipsBone) hipsBone.position.copy(this._hipsPositionTo);
+            }
+            this._isBlending = false;
+            console.log(`[VRPoseSystem] Applying preset: ${preset.label} (instant)`);
+            return;
+        }
+
+        this._blendTime = 0;
+        this._blendDuration = duration;
+        this._isBlending = true;
 
         console.log(`[VRPoseSystem] Applying preset: ${preset.label} (${duration}s blend)`);
     }
@@ -1015,6 +1581,14 @@ export class VRPoseSystem {
             }
         }
 
+        // Blend hips position (for ground poses)
+        if (this._hipsPositionFrom && this._hipsPositionTo) {
+            const hipsBone = this._bones.get('hips');
+            if (hipsBone) {
+                hipsBone.position.lerpVectors(this._hipsPositionFrom, this._hipsPositionTo, smooth);
+            }
+        }
+
         if (t >= 1) {
             this._isBlending = false;
             console.log(`[VRPoseSystem] Blend complete: ${this._currentPreset}`);
@@ -1036,7 +1610,7 @@ export class VRPoseSystem {
      * @returns {Array<{ name: string, label: string }>}
      */
     getPresetList() {
-        return PRESET_ORDER.map((name) => ({
+        return VRPoseSystem.getPresetNames().map((name) => ({
             name,
             label: POSE_PRESETS[name]?.label || name,
         }));

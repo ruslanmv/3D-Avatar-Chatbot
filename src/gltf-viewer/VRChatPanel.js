@@ -37,7 +37,7 @@ export class VRChatPanel {
         // -----------------------
         // State
         // -----------------------
-        this.mode = 'chat'; // 'chat' | 'settings' (settings here is just toggles + avatar nav)
+        this.mode = 'chat'; // 'chat' | 'controls' | 'settings' (3-layer: Presence → Controls → Settings)
         this.status = 'idle';
         this.messages = [];
         this.avatars = [];
@@ -70,6 +70,7 @@ export class VRChatPanel {
             arSupported: false, // set async after checking navigator.xr
             vrBackground: 'black', // 'black' | 'blue' | 'void'
             puppetMode: false, // When true, grip translates avatar freely in 3D space
+            intimacyMode: false, // Close-presence / comfort interaction mode in VR
         };
 
         // Check AR support asynchronously
@@ -104,15 +105,25 @@ export class VRChatPanel {
         }
 
         // -----------------------
-        // Drag & Position Logic (Quest-like)
+        // Drag & Position Logic (Quest-like controller-projection)
         // -----------------------
         this._isDragging = false;
-        this._dragOffset = new THREE.Vector3();
+        this._dragOffset = new THREE.Vector3(); // local offset from projected ray point to panel center
+        this._dragDistance = 0; // distance along controller ray at grab start
+        this._smoothPos = new THREE.Vector3(); // smoothed position target
+        this._lerpFactor = 0.45; // position smoothing (0=frozen, 1=instant). 0.45 = Quest-like
         this._tmpCamPos = new THREE.Vector3();
         this._tmpVec3 = new THREE.Vector3();
+        this._tmpVec3b = new THREE.Vector3();
+
+        // Panel scale (Quest-style pinch-to-zoom)
+        this._panelScale = 1.0;
+        this._minScale = 0.5;
+        this._maxScale = 2.5;
 
         // Comfortable range for Quest 3 (meters)
-        this._minDistance = 0.32;
+        // Increased spawn distance so panel doesn't appear too close on open
+        this._minDistance = 0.35;
         this._maxDistance = 1.65;
         this._spawnDistance = 0.55;
 
@@ -552,36 +563,103 @@ export class VRChatPanel {
     // DRAGGING
     // =====================================================================
 
-    beginDrag(hitPointWorld) {
-        if (!hitPointWorld) {
+    /**
+     * Begin drag using controller ray (Quest-style controller-projection).
+     * @param {THREE.Vector3} rayOrigin   — controller world position
+     * @param {THREE.Vector3} rayDirection — controller forward direction (unit)
+     * @param {THREE.Vector3} hitPoint    — initial intersection point on panel
+     */
+    beginDrag(rayOrigin, rayDirection, hitPoint) {
+        if (!rayOrigin || !rayDirection) {
             return false;
         }
         this._isDragging = true;
-        this._dragOffset.copy(this.group.position).sub(hitPointWorld);
+
+        // Record how far along the ray the panel sits at grab time
+        this._dragDistance = hitPoint ? rayOrigin.distanceTo(hitPoint) : rayOrigin.distanceTo(this.group.position);
+
+        // Offset between the projected point and the panel center (keeps grab
+        // anchored where the user grabbed, not snapping to center)
+        const projectedPoint = this._tmpVec3.copy(rayDirection).multiplyScalar(this._dragDistance).add(rayOrigin);
+        this._dragOffset.copy(this.group.position).sub(projectedPoint);
+
+        // Initialise smooth position to current position (no jump on first frame)
+        this._smoothPos.copy(this.group.position);
+
         return true;
     }
 
-    dragTo(hitPointWorld) {
-        if (!this._isDragging || !hitPointWorld) {
+    /**
+     * Move panel along the controller ray each frame (no raycasting needed).
+     * Uses lerp smoothing for Quest-native feel — eliminates jitter/blink.
+     * @param {THREE.Vector3} rayOrigin    — controller world position this frame
+     * @param {THREE.Vector3} rayDirection — controller forward direction (unit)
+     */
+    dragTo(rayOrigin, rayDirection) {
+        if (!this._isDragging || !rayOrigin || !rayDirection) {
             return;
         }
 
-        const targetPos = this._tmpVec3.copy(hitPointWorld).add(this._dragOffset);
+        // Project controller ray forward by the stored grab distance + offset
+        const targetPos = this._tmpVec3
+            .copy(rayDirection)
+            .multiplyScalar(this._dragDistance)
+            .add(rayOrigin)
+            .add(this._dragOffset);
 
-        // Clamp distance
+        // Clamp distance from camera (comfort zone)
         this.camera.getWorldPosition(this._tmpCamPos);
         const dist = targetPos.distanceTo(this._tmpCamPos);
         const clamped = THREE.MathUtils.clamp(dist, this._minDistance, this._maxDistance);
 
-        const dir = targetPos.sub(this._tmpCamPos).normalize();
-        this.group.position.copy(this._tmpCamPos).add(dir.multiplyScalar(clamped));
+        const dir = this._tmpVec3b.copy(targetPos).sub(this._tmpCamPos).normalize();
+        const clampedTarget = this._tmpVec3.copy(this._tmpCamPos).add(dir.multiplyScalar(clamped));
 
-        // Face user while dragging (Quest-like)
+        // Lerp for smooth movement (eliminates micro-jitter from controller tracking)
+        this._smoothPos.lerp(clampedTarget, this._lerpFactor);
+        this.group.position.copy(this._smoothPos);
+
+        // Face user while dragging (Quest-like billboard)
         this.group.lookAt(this._tmpCamPos);
     }
 
     endDrag() {
         this._isDragging = false;
+    }
+
+    // =====================================================================
+    // PANEL SCALE (Oculus Quest-style pinch-to-zoom / thumbstick zoom)
+    // =====================================================================
+
+    /**
+     * Scale the panel by a delta factor (e.g. 0.05 to grow, -0.05 to shrink).
+     * Called from VRControllers thumbstick Y while grip-dragging the panel.
+     */
+    scaleBy(delta) {
+        this._panelScale = THREE.MathUtils.clamp(this._panelScale + delta, this._minScale, this._maxScale);
+        this.group.scale.setScalar(this._panelScale);
+    }
+
+    /**
+     * Set absolute scale for pinch-to-zoom (two-hand grab).
+     */
+    setScale(scale) {
+        this._panelScale = THREE.MathUtils.clamp(scale, this._minScale, this._maxScale);
+        this.group.scale.setScalar(this._panelScale);
+    }
+
+    getScale() {
+        return this._panelScale;
+    }
+
+    /**
+     * Check if a world-space hit point lands on the panel surface (for grab-anywhere).
+     * Returns true if the point is within panel bounds (not just the handle).
+     */
+    isPointOnPanel(hitPoint) {
+        if (!hitPoint || !this.group.visible) return false;
+        // Check if ray hits the main panel mesh (broad area)
+        return true; // If we got a hit on any interactable, it's on the panel
     }
 
     /**
@@ -652,9 +730,9 @@ export class VRChatPanel {
 
                 this.group.position.copy(ctrlWorldPos);
                 this.group.quaternion.copy(ctrlWorldQuat);
-                this.group.translateX(0.14);
-                this.group.translateY(0.05);
-                this.group.translateZ(-0.12);
+                this.group.translateX(0.18);
+                this.group.translateY(0.08);
+                this.group.translateZ(-0.35);
 
                 // Clamp to dist from camera
                 const toCam = this._tmpVec3.copy(this.group.position).sub(camPos);
@@ -678,7 +756,9 @@ export class VRChatPanel {
     // =====================================================================
 
     setMode(mode) {
-        this.mode = mode === 'settings' ? 'settings' : 'chat';
+        if (mode === 'settings') this.mode = 'settings';
+        else if (mode === 'controls') this.mode = 'controls';
+        else this.mode = 'chat';
         this.redraw();
     }
 
@@ -804,187 +884,329 @@ export class VRChatPanel {
             H = this.canvasH,
             P = this.padding;
 
-        // Header handle (big, easy to grab)
-        const handle = { x: P, y: P, w: W - P * 2, h: 96 };
+        // ─── LAYER 1: PRESENCE (Chat) ───────────────────────────────
+        // Minimal header: title + status
+        const handle = { x: P, y: P, w: W - P * 2, h: 80 };
 
-        // Footer
-        const footerH = 150;
-        const footerY = H - footerH - P;
-
-        const btnCount = 4; // VOICE / SEND / CLEAR / SETTINGS
-        const btnGap = 18;
-        const btnW = (W - P * 2 - btnGap * (btnCount - 1)) / btnCount;
-
-        const btnRow = {
-            items: [
-                { key: 'mic', label: 'VOICE', icon: '🎤' },
-                { key: 'send', label: 'SEND', icon: '➤' },
-                { key: 'clear', label: 'CLEAR', icon: '⟳' },
-                { key: 'settings', label: 'SETTINGS', icon: '⚙' },
-            ].map((item, i) => ({
-                ...item,
-                x: P + i * (btnW + btnGap),
-                y: footerY,
-                w: btnW,
-                h: 120,
-            })),
+        // Input bar at bottom (always visible in chat mode)
+        // Increased button width and gap to prevent overlap
+        const inputBarH = 100;
+        const inputBarY = H - inputBarH - P;
+        const inputBtnW = 130;
+        const inputBtnGap = 16;
+        const inputBar = {
+            mic: { x: P, y: inputBarY, w: inputBtnW, h: inputBarH },
+            send: { x: W - P - inputBtnW, y: inputBarY, w: inputBtnW, h: inputBarH },
+            textArea: {
+                x: P + inputBtnW + inputBtnGap,
+                y: inputBarY,
+                w: W - P * 2 - (inputBtnW * 2 + inputBtnGap * 2),
+                h: inputBarH,
+            },
         };
 
-        // Content area
-        const contentY = handle.y + handle.h + 18;
-        const contentH = footerY - contentY - 18;
-        const chatArea = { x: P, y: contentY, w: W - P * 2, h: contentH };
+        // Status bar (just above input: pose name + controls button)
+        // Added extra gap (16px) between buttons to prevent overlap
+        const statusBarH = 64;
+        const statusBarY = inputBarY - statusBarH - 14;
+        const statusBtnW = 140;
+        const statusBtnGap = 16;
+        const statusBar = {
+            poseName: { x: P, y: statusBarY, w: W - P * 2 - (statusBtnW * 2 + statusBtnGap + 20), h: statusBarH },
+            controls: { x: W - P - statusBtnW * 2 - statusBtnGap, y: statusBarY, w: statusBtnW, h: statusBarH },
+            settings: { x: W - P - statusBtnW, y: statusBarY, w: statusBtnW, h: statusBarH },
+        };
 
-        // Chips
-        const chipH = 64;
-        const chipY = chatArea.y + chatArea.h - chipH - 10;
-        const chipGap = 16;
+        // Chat area (between header and status bar)
+        const chatContentY = handle.y + handle.h + 14;
+        const chatContentH = statusBarY - chatContentY - 10;
+        const chatArea = { x: P, y: chatContentY, w: W - P * 2, h: chatContentH };
+
+        // Quick chips (at bottom of chat area)
+        const chipH = 56;
+        const chipY = chatArea.y + chatArea.h - chipH - 8;
+        const chipGap = 14;
         const chipW = (chatArea.w - chipGap * 2) / 3;
         const chips = [
             { key: 'q_sum', label: 'Summarize', x: P, y: chipY, w: chipW, h: chipH },
             { key: 'q_exp', label: 'Explain', x: P + chipW + chipGap, y: chipY, w: chipW, h: chipH },
-            { key: 'q_nxt', label: 'Next', x: P + (chipW + chipGap) * 2, y: chipY, w: chipW, h: chipH },
+            { key: 'q_nxt', label: 'Continue', x: P + (chipW + chipGap) * 2, y: chipY, w: chipW, h: chipH },
         ];
 
-        // Settings (mirrors desktop toggles)
-        const setTopY = contentY + 10;
-        const settingsTop = {
-            back: { x: P, y: setTopY, w: 190, h: 92 },
-            stt: { x: W - P - 520, y: setTopY, w: 250, h: 92 },
-            tts: { x: W - P - 250, y: setTopY, w: 250, h: 92 },
+        // ─── LAYER 2: CONTROLS (Avatar Controls Panel) ──────────────
+        const ctrlTopY = handle.y + handle.h + 14;
+        const ctrlBtnH = 84;
+        const ctrlGap = 16;
+        const ctrlW = W - P * 2;
+
+        // Back button
+        const ctrlBack = { x: P, y: ctrlTopY, w: 180, h: 72 };
+        // Title "Avatar Controls" (drawn, not a hitbox)
+
+        // Section 1: POSE
+        const poseSectionY = ctrlTopY + 90;
+        const poseLabelRect = { x: P, y: poseSectionY, w: ctrlW, h: 48 };
+
+        // Pose navigation: ◀ Prev | Pose Name | Next ▶ | Reset
+        const poseNavY = poseSectionY + 56;
+        const poseNavBtnW = (ctrlW - ctrlGap * 3) / 4;
+        const ctrlPoseNav = {
+            posePrev: { x: P, y: poseNavY, w: poseNavBtnW, h: ctrlBtnH },
+            poseNext: { x: P + poseNavBtnW + ctrlGap, y: poseNavY, w: poseNavBtnW, h: ctrlBtnH },
+            poseReset: { x: P + (poseNavBtnW + ctrlGap) * 2, y: poseNavY, w: poseNavBtnW, h: ctrlBtnH },
+            clear: { x: P + (poseNavBtnW + ctrlGap) * 3, y: poseNavY, w: poseNavBtnW, h: ctrlBtnH },
         };
 
-        const avatarRect = { x: P, y: setTopY + 120, w: W - P * 2, h: 310 };
-        const navY = avatarRect.y + avatarRect.h - 70;
-        const navSize = 56;
-        const settingsNav = {
-            prev: { x: P + 26, y: navY, w: navSize * 2, h: navSize },
-            next: { x: W - P - navSize * 2 - 26, y: navY, w: navSize * 2, h: navSize },
+        // Section 2: INTERACTION
+        const interSectionY = poseNavY + ctrlBtnH + 24;
+        const interLabelRect = { x: P, y: interSectionY, w: ctrlW, h: 48 };
+
+        const interNavY = interSectionY + 56;
+        const interBtnW = (ctrlW - ctrlGap * 2) / 3;
+        const ctrlInteraction = {
+            intensity: { x: P, y: interNavY, w: interBtnW, h: ctrlBtnH },
+            puppet: { x: P + interBtnW + ctrlGap, y: interNavY, w: interBtnW, h: ctrlBtnH },
+            place: { x: P + (interBtnW + ctrlGap) * 2, y: interNavY, w: interBtnW, h: ctrlBtnH },
+            close: { x: P, y: interNavY + ctrlBtnH + ctrlGap, w: interBtnW, h: ctrlBtnH },
         };
 
-        // XR Settings row (below avatar card)
-        const xrY = avatarRect.y + avatarRect.h + 16;
-        const xrBtnW = (W - P * 2 - 14 * 5) / 6; // 6 buttons with gaps
-        const xrH = 80;
+        // Section 3: AVATAR SELECTION
+        const avatarSectionY = interNavY + ctrlBtnH + ctrlBtnH + ctrlGap + 24;
+        const avatarLabelRect = { x: P, y: avatarSectionY, w: ctrlW, h: 48 };
+
+        const avatarNavY = avatarSectionY + 56;
+        const avatarNavBtnW = (ctrlW - ctrlGap) / 2;
+        const ctrlAvatarNav = {
+            prev: { x: P, y: avatarNavY, w: avatarNavBtnW, h: ctrlBtnH },
+            next: { x: P + avatarNavBtnW + ctrlGap, y: avatarNavY, w: avatarNavBtnW, h: ctrlBtnH },
+        };
+
+        // Advanced Settings button at bottom of controls
+        const ctrlAdvancedY = avatarNavY + ctrlBtnH + 20;
+        const ctrlAdvanced = { x: P, y: ctrlAdvancedY, w: ctrlW, h: 72 };
+
+        // ─── LAYER 3: SETTINGS (Advanced / Rarely Used) ──────────────
+        const setTopY = handle.y + handle.h + 14;
+
+        // Back button
+        const settingsBack = { x: P, y: setTopY, w: 180, h: 72 };
+
+        // STT / TTS toggles
+        const toggleY = setTopY + 90;
+        const toggleW = (ctrlW - ctrlGap) / 2;
+        const settingsToggles = {
+            stt: { x: P, y: toggleY, w: toggleW, h: ctrlBtnH },
+            tts: { x: P + toggleW + ctrlGap, y: toggleY, w: toggleW, h: ctrlBtnH },
+        };
+
+        // XR Settings (6 buttons in 2 rows of 3)
+        const xrLabelY = toggleY + ctrlBtnH + 20;
+        const xrLabelRect = { x: P, y: xrLabelY, w: ctrlW, h: 44 };
+
+        const xrY = xrLabelY + 52;
+        const xrBtnW = (ctrlW - ctrlGap * 2) / 3;
+        const xrH = ctrlBtnH;
         const xrSettingsRow = {
             scale: { x: P, y: xrY, w: xrBtnW, h: xrH },
-            env: { x: P + (xrBtnW + 14), y: xrY, w: xrBtnW, h: xrH },
-            speed: { x: P + (xrBtnW + 14) * 2, y: xrY, w: xrBtnW, h: xrH },
-            distance: { x: P + (xrBtnW + 14) * 3, y: xrY, w: xrBtnW, h: xrH },
-            bg: { x: P + (xrBtnW + 14) * 4, y: xrY, w: xrBtnW, h: xrH },
-            mode: { x: P + (xrBtnW + 14) * 5, y: xrY, w: xrBtnW, h: xrH },
+            env: { x: P + (xrBtnW + ctrlGap), y: xrY, w: xrBtnW, h: xrH },
+            speed: { x: P + (xrBtnW + ctrlGap) * 2, y: xrY, w: xrBtnW, h: xrH },
         };
 
-        // Avatar Pose row (below XR settings) — 4 buttons: Pose, Interact, Puppet, Place
-        const poseY = xrY + xrH + 10;
-        const poseBtnW = (W - P * 2 - 14 * 3) / 4;
-        const poseSettingsRow = {
-            preset: { x: P, y: poseY, w: poseBtnW, h: xrH },
-            intensity: { x: P + (poseBtnW + 14), y: poseY, w: poseBtnW, h: xrH },
-            puppet: { x: P + (poseBtnW + 14) * 2, y: poseY, w: poseBtnW, h: xrH },
-            place: { x: P + (poseBtnW + 14) * 3, y: poseY, w: poseBtnW, h: xrH },
+        const xrY2 = xrY + xrH + ctrlGap;
+        const xrSettingsRow2 = {
+            distance: { x: P, y: xrY2, w: xrBtnW, h: xrH },
+            bg: { x: P + (xrBtnW + ctrlGap), y: xrY2, w: xrBtnW, h: xrH },
+            mode: { x: P + (xrBtnW + ctrlGap) * 2, y: xrY2, w: xrBtnW, h: xrH },
         };
+
+        // Provider info (read-only display at bottom)
+        const providerInfoY = xrY2 + xrH + 20;
+        const providerInfoRect = { x: P, y: providerInfoY, w: ctrlW, h: 120 };
 
         return {
             W,
             H,
             handle,
-            btnRow,
+            inputBar,
+            statusBar,
             chatArea,
             chips,
-            settingsTop,
-            avatarRect,
-            settingsNav,
+            // Layer 2: Controls
+            ctrlBack,
+            poseLabelRect,
+            ctrlPoseNav,
+            interLabelRect,
+            ctrlInteraction,
+            avatarLabelRect,
+            ctrlAvatarNav,
+            ctrlAdvanced,
+            // Layer 3: Settings
+            settingsBack,
+            settingsToggles,
+            xrLabelRect,
             xrSettingsRow,
-            poseSettingsRow,
+            xrSettingsRow2,
+            providerInfoRect,
         };
     }
 
     _createHitboxes() {
         const L = this._layout;
 
-        // Handle (movement)
+        // ─── ALWAYS VISIBLE: Handle (drag) ───
         this.buttons.handle = this._makeHitbox('Handle:move', L.handle, 'handle', { key: 'handle' });
 
-        // Footer
-        L.btnRow.items.forEach((b) => {
-            this.buttons[b.key] = this._makeHitbox(`Btn:${b.key}`, b, 'button', { key: b.key, label: b.label });
-        });
+        // Full-panel grab surface — allows Quest-style grip-to-grab from anywhere on the panel
+        // Positioned slightly behind other hitboxes so buttons still work with trigger
+        const panelSurface = { x: 0, y: 0, w: this.canvasW, h: this.canvasH };
+        this.buttons.panelGrab = this._makeHitbox('Handle:panel_grab', panelSurface, 'handle', { key: 'handle' });
+        this.buttons.panelGrab.position.z = -0.005; // Behind button hitboxes
+
+        // ─── LAYER 1: PRESENCE (Chat) ───
+        this.chatGroup = new THREE.Group();
+        this.chatGroup.name = 'ChatGroup';
+        this.group.add(this.chatGroup);
+
+        // Input bar: mic + send
+        const mic = this._makeHitbox('Btn:mic', L.inputBar.mic, 'button', { key: 'mic', label: 'MIC' });
+        const send = this._makeHitbox('Btn:send', L.inputBar.send, 'button', { key: 'send', label: 'SEND' });
+        this.group.remove(mic);
+        this.group.remove(send);
+        this.chatGroup.add(mic);
+        this.chatGroup.add(send);
+        this.buttons.mic = mic;
+        this.buttons.send = send;
+
+        // Status bar: controls + settings buttons
+        const ctrlBtn = this._makeHitbox('Btn:open_controls', L.statusBar.controls, 'button', { key: 'open_controls' });
+        const setBtn = this._makeHitbox('Btn:open_settings', L.statusBar.settings, 'button', { key: 'open_settings' });
+        this.group.remove(ctrlBtn);
+        this.group.remove(setBtn);
+        this.chatGroup.add(ctrlBtn);
+        this.chatGroup.add(setBtn);
+        this.buttons.open_controls = ctrlBtn;
+        this.buttons.open_settings = setBtn;
+
+        // Chat area hitbox (for attachment card tap detection)
+        this.buttons.chatArea = this._makeHitbox('ChatArea:tap', L.chatArea, 'chat-area', { key: 'chat-area' });
+        this.buttons.chatArea.position.z = 0.005;
+        this.group.remove(this.buttons.chatArea);
+        this.chatGroup.add(this.buttons.chatArea);
 
         // Chips
         L.chips.forEach((c) => {
-            this.buttons[c.key] = this._makeHitbox(`Chip:${c.key}`, c, 'chip', { key: c.key, label: c.label });
+            const chip = this._makeHitbox(`Chip:${c.key}`, c, 'chip', { key: c.key, label: c.label });
+            this.group.remove(chip);
+            this.chatGroup.add(chip);
+            this.buttons[c.key] = chip;
         });
 
-        // Chat area hitbox (for attachment card tap detection)
-        // Placed slightly behind other hitboxes (z=0.005 vs 0.01) so chips/buttons take priority
-        this.buttons.chatArea = this._makeHitbox('ChatArea:tap', L.chatArea, 'chat-area', { key: 'chat-area' });
-        this.buttons.chatArea.position.z = 0.005;
+        // ─── LAYER 2: CONTROLS (Avatar Controls Panel) ───
+        this.controlsGroup = new THREE.Group();
+        this.controlsGroup.name = 'ControlsGroup';
+        this.group.add(this.controlsGroup);
 
-        // Settings group
+        // Back button
+        const ctrlBack = this._makeHitbox('Btn:ctrl_back', L.ctrlBack, 'button', { key: 'back' });
+        this.group.remove(ctrlBack);
+        this.controlsGroup.add(ctrlBack);
+        this.buttons.ctrl_back = ctrlBack;
+
+        // Pose navigation
+        const poseNav = L.ctrlPoseNav;
+        const posePrev = this._makeHitbox('Btn:xr_pose_prev', poseNav.posePrev, 'button', { key: 'xr_pose_prev' });
+        const poseNext = this._makeHitbox('Btn:xr_pose_next', poseNav.poseNext, 'button', { key: 'xr_pose_next' });
+        const poseReset = this._makeHitbox('Btn:xr_pose_reset', poseNav.poseReset, 'button', { key: 'xr_pose_reset' });
+        const clearBtn = this._makeHitbox('Btn:clear', poseNav.clear, 'button', { key: 'clear', label: 'CLEAR' });
+
+        [posePrev, poseNext, poseReset, clearBtn].forEach((m) => {
+            this.group.remove(m);
+            this.controlsGroup.add(m);
+        });
+        this.buttons.xr_pose_prev = posePrev;
+        this.buttons.xr_pose_next = poseNext;
+        this.buttons.xr_pose_reset = poseReset;
+        this.buttons.clear = clearBtn;
+
+        // Interaction buttons
+        const inter = L.ctrlInteraction;
+        const ik = this._makeHitbox('Btn:xr_pose_intensity', inter.intensity, 'button', { key: 'xr_pose_intensity' });
+        const puppet = this._makeHitbox('Btn:xr_puppet', inter.puppet, 'button', { key: 'xr_puppet' });
+        const place = this._makeHitbox('Btn:xr_place', inter.place, 'button', { key: 'xr_place' });
+        const closeBtn = this._makeHitbox('Btn:xr_intimacy', inter.close, 'button', { key: 'xr_intimacy' });
+        [ik, puppet, place, closeBtn].forEach((m) => {
+            this.group.remove(m);
+            this.controlsGroup.add(m);
+        });
+        this.buttons.xr_pose_intensity = ik;
+        this.buttons.xr_puppet = puppet;
+        this.buttons.xr_place = place;
+        this.buttons.xr_intimacy = closeBtn;
+
+        // Avatar navigation
+        const avNav = L.ctrlAvatarNav;
+        const avPrev = this._makeHitbox('Btn:avatar_prev', avNav.prev, 'button', { key: 'avatar_prev' });
+        const avNext = this._makeHitbox('Btn:avatar_next', avNav.next, 'button', { key: 'avatar_next' });
+        [avPrev, avNext].forEach((m) => {
+            this.group.remove(m);
+            this.controlsGroup.add(m);
+        });
+        this.buttons.avatar_prev = avPrev;
+        this.buttons.avatar_next = avNext;
+
+        // Advanced settings button
+        const advanced = this._makeHitbox('Btn:open_advanced', L.ctrlAdvanced, 'button', { key: 'open_settings' });
+        this.group.remove(advanced);
+        this.controlsGroup.add(advanced);
+        this.buttons.ctrl_advanced = advanced;
+
+        // ─── LAYER 3: SETTINGS (Advanced) ───
         this.settingsGroup = new THREE.Group();
         this.settingsGroup.name = 'SettingsGroup';
         this.group.add(this.settingsGroup);
 
-        const top = L.settingsTop;
-        const nav = L.settingsNav;
+        // Back button
+        const setBack = this._makeHitbox('Btn:set_back', L.settingsBack, 'button', { key: 'back' });
+        this.group.remove(setBack);
+        this.settingsGroup.add(setBack);
+        this.buttons.set_back = setBack;
 
-        const back = this._makeHitbox('Btn:back', top.back, 'button', { key: 'back' });
-        const stt = this._makeHitbox('Btn:stt', top.stt, 'toggle', { key: 'stt' });
-        const tts = this._makeHitbox('Btn:tts', top.tts, 'toggle', { key: 'tts' });
-        const prev = this._makeHitbox('Btn:avatar_prev', nav.prev, 'button', { key: 'avatar_prev' });
-        const next = this._makeHitbox('Btn:avatar_next', nav.next, 'button', { key: 'avatar_next' });
-
-        [back, stt, tts, prev, next].forEach((m) => {
+        // STT/TTS toggles
+        const toggles = L.settingsToggles;
+        const stt = this._makeHitbox('Btn:stt', toggles.stt, 'toggle', { key: 'stt' });
+        const tts = this._makeHitbox('Btn:tts', toggles.tts, 'toggle', { key: 'tts' });
+        [stt, tts].forEach((m) => {
             this.group.remove(m);
             this.settingsGroup.add(m);
         });
-
-        this.buttons.back = back;
         this.buttons.stt = stt;
         this.buttons.tts = tts;
-        this.buttons.avatar_prev = prev;
-        this.buttons.avatar_next = next;
 
-        // XR Settings hitboxes
+        // XR Settings row 1
         const xr = L.xrSettingsRow;
         const xrScale = this._makeHitbox('Btn:xr_scale', xr.scale, 'button', { key: 'xr_scale' });
         const xrEnv = this._makeHitbox('Btn:xr_env', xr.env, 'button', { key: 'xr_env' });
         const xrSpeed = this._makeHitbox('Btn:xr_speed', xr.speed, 'button', { key: 'xr_speed' });
-        const xrDist = this._makeHitbox('Btn:xr_distance', xr.distance, 'button', { key: 'xr_distance' });
-        const xrBg = this._makeHitbox('Btn:xr_bg', xr.bg, 'button', { key: 'xr_bg' });
-        const xrMode = this._makeHitbox('Btn:xr_mode', xr.mode, 'button', { key: 'xr_mode' });
-
-        [xrScale, xrEnv, xrSpeed, xrDist, xrBg, xrMode].forEach((m) => {
+        [xrScale, xrEnv, xrSpeed].forEach((m) => {
             this.group.remove(m);
             this.settingsGroup.add(m);
         });
-
         this.buttons.xr_scale = xrScale;
         this.buttons.xr_env = xrEnv;
         this.buttons.xr_speed = xrSpeed;
-        this.buttons.xr_distance = xrDist;
-        this.buttons.xr_bg = xrBg;
-        this.buttons.xr_mode = xrMode;
 
-        // Pose settings hitboxes
-        const pose = L.poseSettingsRow;
-        const posePreset = this._makeHitbox('Btn:xr_pose_preset', pose.preset, 'button', { key: 'xr_pose_preset' });
-        const poseIntensity = this._makeHitbox('Btn:xr_pose_intensity', pose.intensity, 'button', {
-            key: 'xr_pose_intensity',
-        });
-        const posePuppet = this._makeHitbox('Btn:xr_puppet', pose.puppet, 'button', { key: 'xr_puppet' });
-        const posePlace = this._makeHitbox('Btn:xr_place', pose.place, 'button', { key: 'xr_place' });
-
-        [posePreset, poseIntensity, posePuppet, posePlace].forEach((m) => {
+        // XR Settings row 2
+        const xr2 = L.xrSettingsRow2;
+        const xrDist = this._makeHitbox('Btn:xr_distance', xr2.distance, 'button', { key: 'xr_distance' });
+        const xrBg = this._makeHitbox('Btn:xr_bg', xr2.bg, 'button', { key: 'xr_bg' });
+        const xrMode = this._makeHitbox('Btn:xr_mode', xr2.mode, 'button', { key: 'xr_mode' });
+        [xrDist, xrBg, xrMode].forEach((m) => {
             this.group.remove(m);
             this.settingsGroup.add(m);
         });
-
-        this.buttons.xr_pose_preset = posePreset;
-        this.buttons.xr_pose_intensity = poseIntensity;
-        this.buttons.xr_puppet = posePuppet;
-        this.buttons.xr_place = posePlace;
+        this.buttons.xr_distance = xrDist;
+        this.buttons.xr_bg = xrBg;
+        this.buttons.xr_mode = xrMode;
     }
 
     _makeHitbox(name, rect, type, userData = {}) {
@@ -1024,45 +1246,50 @@ export class VRChatPanel {
         ctx.fillStyle = g;
         ctx.fill();
 
-        // Subtle shadow strip (fake depth)
-        ctx.fillStyle = T.shadow;
-        this._roundRect(ctx, 12, 16, L.W - 24, 10, 8);
-        ctx.fill();
-
-        // Header (handle)
+        // Header (handle) — always visible
         const h = L.handle;
-        this._roundRect(ctx, h.x, h.y, h.w, h.h, 24);
+        this._roundRect(ctx, h.x, h.y, h.w, h.h, 22);
         ctx.fillStyle = T.header;
         ctx.fill();
 
         // Handle pill (grabbable cue)
-        this._roundRect(ctx, h.x + h.w / 2 - 90, h.y + 30, 180, 16, 999);
+        this._roundRect(ctx, h.x + h.w / 2 - 70, h.y + 10, 140, 10, 999);
         ctx.fillStyle = T.handlePill;
         ctx.fill();
 
-        // Title
+        // Title (left)
         ctx.fillStyle = T.text;
-        ctx.font = '800 44px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        ctx.fillText('HomePilot Avatar VR', h.x + 22, h.y + 66);
+        ctx.font = '800 36px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillText('HomePilot', h.x + 22, h.y + 56);
 
-        // Status (right)
+        // Status indicator (right) — colored dot + label
         ctx.textAlign = 'right';
-        ctx.font = '700 28px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        const statusX = L.W - this.padding - 22;
+        const statusY = h.y + 52;
+
+        // Status dot
+        ctx.beginPath();
+        ctx.arc(statusX - ctx.measureText(this._statusLabel()).width - 20, statusY - 8, 8, 0, Math.PI * 2);
         ctx.fillStyle = this._statusColor();
-        ctx.fillText(this._statusLabel(), L.W - this.padding - 22, h.y + 62);
+        ctx.fill();
+
+        ctx.font = '700 24px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillStyle = this._statusColor();
+        ctx.fillText(this._statusLabel(), statusX, statusY);
         ctx.textAlign = 'left';
 
-        // Content
-        if (this.mode === 'settings') {
+        // Draw the active layer
+        if (this.mode === 'controls') {
+            this._drawControls(ctx);
+        } else if (this.mode === 'settings') {
             this._drawSettings(ctx);
         } else {
             this._drawChat(ctx);
         }
 
-        // Footer
-        this._drawFooter(ctx);
-
-        // Show/hide settings hitboxes
+        // Show/hide layer groups
+        this.chatGroup.visible = this.mode === 'chat';
+        this.controlsGroup.visible = this.mode === 'controls';
         this.settingsGroup.visible = this.mode === 'settings';
 
         this.texture.needsUpdate = true;
@@ -1076,27 +1303,28 @@ export class VRChatPanel {
         // Clear attachment hit areas for this frame
         this._attachmentHitAreas = [];
 
-        // messages region top
-        const pad = 18;
-        let y = area.y + pad + 18;
+        // ─── Messages ───
+        const pad = 16;
+        let y = area.y + pad;
 
         const msgs = this.messages.slice(-6);
 
         msgs.forEach((m) => {
             const isUser = m.role === 'user';
-            const label = isUser ? 'YOU' : 'NEXUS';
+            const label = isUser ? 'You' : 'AI';
 
-            ctx.font = '800 26px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-            ctx.fillStyle = isUser ? T.accent : T.textDim;
-            ctx.fillText(label, area.x + 18, y);
+            // Role label (small, subtle)
+            ctx.font = '700 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+            ctx.fillStyle = isUser ? T.accent : 'rgba(140, 255, 180, 0.85)';
+            ctx.fillText(label, area.x + 18, y + 18);
+            y += 28;
 
-            y += 22;
-
-            ctx.font = '500 32px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+            // Message text
+            ctx.font = '500 30px system-ui, -apple-system, Segoe UI, Roboto, Arial';
             ctx.fillStyle = T.text;
-            y = this._wrapText(ctx, m.text, area.x + 18, y + 18, area.x + area.w - 18, 40) + 18;
+            y = this._wrapText(ctx, m.text, area.x + 18, y + 8, area.x + area.w - 18, 38) + 14;
 
-            // Phase A: Render interactive attachment cards for images
+            // Attachment cards
             if (m.attachments && m.attachments.length > 0) {
                 const images = m.attachments.filter((a) => a.type === 'image');
                 images.forEach((att) => {
@@ -1106,39 +1334,104 @@ export class VRChatPanel {
                 });
             }
 
-            y += 18;
-            if (y > area.y + area.h - 120) {
-                return;
-            }
+            y += 12;
+            if (y > area.y + area.h - 100) return;
         });
 
-        // Transcript display (show interim/final transcript during STT)
+        // Transcript display (STT)
         if (this.transcript && this.transcriptMode !== 'idle') {
-            const transcriptY = area.y + area.h - 160;
-            const transcriptStyle = this.transcriptMode === 'interim' ? 'italic' : 'normal';
+            const transcriptY = area.y + area.h - 120;
+            const isInterim = this.transcriptMode === 'interim';
 
-            ctx.font = '700 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-            ctx.fillStyle = this.transcriptMode === 'interim' ? T.accent : 'rgba(255, 215, 0, 0.95)';
-            const prefix = this.transcriptMode === 'interim' ? '🎤 Listening...' : '🎤 Transcribed:';
-            ctx.fillText(prefix, area.x + 18, transcriptY);
+            ctx.font = '600 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+            ctx.fillStyle = isInterim ? T.accent : 'rgba(255, 215, 0, 0.95)';
+            ctx.fillText(isInterim ? 'Listening...' : 'Heard:', area.x + 18, transcriptY);
 
-            ctx.font = `${transcriptStyle} 30px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+            ctx.font = `${isInterim ? 'italic' : 'normal'} 28px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
             ctx.fillStyle = T.text;
-            this._wrapText(ctx, this.transcript, area.x + 18, transcriptY + 36, area.x + area.w - 18, 38);
+            this._wrapText(ctx, this.transcript, area.x + 18, transcriptY + 30, area.x + area.w - 18, 34);
         }
 
-        // Chips
-        L.chips.forEach((c) => {
-            this._roundRect(ctx, c.x, c.y, c.w, c.h, 18);
-            ctx.fillStyle = T.chipBg;
-            ctx.fill();
+        // Quick chips (only when no messages or idle)
+        if (this.messages.length === 0 || this.status === 'idle') {
+            L.chips.forEach((c) => {
+                this._roundRect(ctx, c.x, c.y, c.w, c.h, 16);
+                ctx.fillStyle = T.chipBg;
+                ctx.fill();
 
-            ctx.fillStyle = T.chipText;
-            ctx.font = '800 26px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText(c.label, c.x + c.w / 2, c.y + 43);
-            ctx.textAlign = 'left';
-        });
+                ctx.fillStyle = T.chipText;
+                ctx.font = '700 24px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(c.label, c.x + c.w / 2, c.y + 38);
+                ctx.textAlign = 'left';
+            });
+        }
+
+        // ─── Status Bar: Pose name + Controls + Settings ───
+        const sb = L.statusBar;
+
+        // Pose name (subtle, informational)
+        const poseName = this._getCurrentPoseName();
+        this._roundRect(ctx, sb.poseName.x, sb.poseName.y, sb.poseName.w, sb.poseName.h, 14);
+        ctx.fillStyle = 'rgba(255,255,255,0.04)';
+        ctx.fill();
+        ctx.fillStyle = T.textDim;
+        ctx.font = '600 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillText(`Pose: ${poseName}`, sb.poseName.x + 14, sb.poseName.y + 40);
+
+        // Controls button
+        this._drawPresenceBtn(ctx, sb.controls, '⚙ Controls');
+
+        // Settings button (gear icon)
+        this._drawPresenceBtn(ctx, sb.settings, '⋯ More');
+
+        // ─── Input Bar: Mic + Text + Send ───
+        const ib = L.inputBar;
+
+        // Mic button
+        const isListening = this.status === 'listening';
+        this._roundRect(ctx, ib.mic.x, ib.mic.y, ib.mic.w, ib.mic.h, 20);
+        ctx.fillStyle = isListening ? 'rgba(255, 60, 60, 0.28)' : T.btnBg;
+        ctx.fill();
+        if (isListening) {
+            ctx.strokeStyle = 'rgba(255, 80, 80, 0.6)';
+            ctx.lineWidth = 2;
+            this._roundRect(ctx, ib.mic.x, ib.mic.y, ib.mic.w, ib.mic.h, 20);
+            ctx.stroke();
+        }
+        ctx.save();
+        this._drawVectorIcon(ctx, 'mic', ib.mic.x + ib.mic.w / 2, ib.mic.y + 38, isListening);
+        ctx.restore();
+        ctx.fillStyle = isListening ? 'rgba(255, 120, 120, 0.95)' : T.textDim;
+        ctx.font = '700 18px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(isListening ? 'STOP' : 'SPEAK', ib.mic.x + ib.mic.w / 2, ib.mic.y + 80);
+        ctx.textAlign = 'left';
+
+        // Text area placeholder
+        this._roundRect(ctx, ib.textArea.x, ib.textArea.y, ib.textArea.w, ib.textArea.h, 18);
+        ctx.fillStyle = 'rgba(255,255,255,0.04)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        ctx.lineWidth = 1;
+        this._roundRect(ctx, ib.textArea.x, ib.textArea.y, ib.textArea.w, ib.textArea.h, 18);
+        ctx.stroke();
+        ctx.fillStyle = T.textDim;
+        ctx.font = '500 26px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillText('Speak or type a message...', ib.textArea.x + 18, ib.textArea.y + 58);
+
+        // Send button
+        this._roundRect(ctx, ib.send.x, ib.send.y, ib.send.w, ib.send.h, 20);
+        ctx.fillStyle = T.btnBg;
+        ctx.fill();
+        ctx.save();
+        this._drawVectorIcon(ctx, 'send', ib.send.x + ib.send.w / 2, ib.send.y + 38, false);
+        ctx.restore();
+        ctx.fillStyle = T.textDim;
+        ctx.font = '700 18px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('SEND', ib.send.x + ib.send.w / 2, ib.send.y + 80);
+        ctx.textAlign = 'left';
     }
 
     // =================================================================
@@ -1311,110 +1604,211 @@ export class VRChatPanel {
         return null;
     }
 
+    // ─── Helper: Get current pose name ───
+    _getCurrentPoseName() {
+        const vps = window.vrPoseSystem;
+        const pn = window.NEXUS_POSE_NORMALIZER;
+
+        if (vps) {
+            const poseShort = vps.getCurrentPreset() || 'standing';
+            return typeof vps.constructor.getPresetLabel === 'function'
+                ? vps.constructor.getPresetLabel(poseShort)
+                : poseShort;
+        } else if (pn) {
+            const pnSettings = pn.getSettings();
+            const poseShort = pnSettings.preset || 'relaxedStanding';
+            const pnNames = {
+                relaxedStanding: 'Relaxed Standing',
+                naturalIdle: 'Natural Idle',
+                portrait: 'Portrait',
+                presentation: 'Presentation',
+            };
+            return pnNames[poseShort] || poseShort;
+        }
+        return 'Standing (Rest)';
+    }
+
+    // ─── Helper: Draw a small presence button ───
+    _drawPresenceBtn(ctx, rect, label) {
+        const T = this.theme;
+        this._roundRect(ctx, rect.x, rect.y, rect.w, rect.h, 14);
+        ctx.fillStyle = 'rgba(255,255,255,0.06)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+        ctx.lineWidth = 1;
+        this._roundRect(ctx, rect.x, rect.y, rect.w, rect.h, 14);
+        ctx.stroke();
+
+        ctx.fillStyle = T.textDim;
+        ctx.font = '700 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, rect.x + rect.w / 2, rect.y + 40);
+        ctx.textAlign = 'left';
+    }
+
+    // ─── LAYER 2: CONTROLS (Avatar Controls Panel) ───
+    _drawControls(ctx) {
+        const L = this._layout;
+        const T = this.theme;
+        const P = this.padding;
+        const xs = this.xrSettings;
+
+        // Back button
+        this._drawSoftBtn(ctx, L.ctrlBack, '← Back', false);
+
+        // Title
+        ctx.fillStyle = T.text;
+        ctx.font = '800 34px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillText('Avatar Controls', P + 200, L.ctrlBack.y + 50);
+
+        // ─── Section 1: POSE ───
+        ctx.fillStyle = T.textDim;
+        ctx.font = '700 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillText('POSE', L.poseLabelRect.x + 14, L.poseLabelRect.y + 34);
+
+        // Current pose name
+        const poseName = this._getCurrentPoseName();
+        ctx.fillStyle = T.accent;
+        ctx.font = '900 24px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillText(poseName, L.poseLabelRect.x + 90, L.poseLabelRect.y + 35);
+
+        // Pose buttons
+        const pn = L.ctrlPoseNav;
+        this._drawControlBtn(ctx, pn.posePrev, '◀ Prev');
+        this._drawControlBtn(ctx, pn.poseNext, 'Next ▶');
+        this._drawControlBtn(ctx, pn.poseReset, 'Reset');
+        this._drawControlBtn(ctx, pn.clear, 'Clear Chat');
+
+        // ─── Section 2: INTERACTION ───
+        ctx.fillStyle = T.textDim;
+        ctx.font = '700 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillText('INTERACTION', L.interLabelRect.x + 14, L.interLabelRect.y + 34);
+
+        const inter = L.ctrlInteraction;
+        const vps = window.vrPoseSystem;
+        const ikLabel = vps && vps.ikEnabled ? 'IK: ON' : 'IK: OFF';
+        this._drawControlBtn(ctx, inter.intensity, ikLabel, vps && vps.ikEnabled);
+
+        const puppetActive = xs.puppetMode;
+        this._drawControlBtn(ctx, inter.puppet, puppetActive ? 'Puppet: ON' : 'Puppet', puppetActive);
+
+        const placeActive = xs.puppetMode && xs.vrBackground === 'passthrough';
+        this._drawControlBtn(ctx, inter.place, placeActive ? 'Place: ON' : 'Place', placeActive);
+
+        const closeActive = xs.intimacyMode;
+        this._drawControlBtn(ctx, inter.close, closeActive ? 'Close: ON' : 'Close', closeActive);
+
+        // Puppet hint
+        if (puppetActive) {
+            ctx.fillStyle = 'rgba(200, 255, 200, 0.5)';
+            ctx.font = '500 18px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+            ctx.fillText(
+                'Grip orbs to move avatar. Both hands on hips to rotate.',
+                P + 14,
+                inter.puppet.y + inter.puppet.h + 22
+            );
+        }
+
+        // ─── Section 3: AVATAR SELECTION ───
+        ctx.fillStyle = T.textDim;
+        ctx.font = '700 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillText('AVATAR', L.avatarLabelRect.x + 14, L.avatarLabelRect.y + 34);
+
+        // Avatar name + counter
+        const total = this.avatars.length;
+        const idx = total ? this.currentAvatarIndex : 0;
+        const avatarName = total ? this.avatars[idx]?.name || `Avatar ${idx + 1}` : 'No avatars';
+        ctx.fillStyle = T.text;
+        ctx.font = '800 26px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillText(
+            `${avatarName}  (${total ? idx + 1 : 0}/${total})`,
+            L.avatarLabelRect.x + 110,
+            L.avatarLabelRect.y + 35
+        );
+
+        const avNav = L.ctrlAvatarNav;
+        this._drawControlBtn(ctx, avNav.prev, '◀ Previous Avatar');
+        this._drawControlBtn(ctx, avNav.next, 'Next Avatar ▶');
+
+        // ─── Advanced Settings Link ───
+        const adv = L.ctrlAdvanced;
+        this._roundRect(ctx, adv.x, adv.y, adv.w, adv.h, 16);
+        ctx.fillStyle = 'rgba(120, 220, 255, 0.08)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(120, 220, 255, 0.2)';
+        ctx.lineWidth = 1;
+        this._roundRect(ctx, adv.x, adv.y, adv.w, adv.h, 16);
+        ctx.stroke();
+
+        ctx.fillStyle = T.accent;
+        ctx.font = '700 24px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('⚙  Advanced Settings  →', adv.x + adv.w / 2, adv.y + 46);
+        ctx.textAlign = 'left';
+    }
+
+    // ─── Helper: Draw a control panel button ───
+    _drawControlBtn(ctx, rect, label, isActive = false) {
+        const T = this.theme;
+        this._roundRect(ctx, rect.x, rect.y, rect.w, rect.h, 16);
+
+        if (isActive) {
+            ctx.fillStyle = 'rgba(118, 255, 3, 0.12)';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(118, 255, 3, 0.3)';
+        } else {
+            ctx.fillStyle = 'rgba(255,255,255,0.06)';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+        }
+        ctx.lineWidth = 1;
+        this._roundRect(ctx, rect.x, rect.y, rect.w, rect.h, 16);
+        ctx.stroke();
+
+        ctx.fillStyle = isActive ? 'rgba(118, 255, 3, 0.95)' : T.text;
+        ctx.font = '800 24px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(label, rect.x + rect.w / 2, rect.y + rect.h / 2 + 9);
+        ctx.textAlign = 'left';
+    }
+
+    // ─── LAYER 3: SETTINGS (Advanced, rarely used) ───
     _drawSettings(ctx) {
         const L = this._layout;
         const T = this.theme;
-
-        // Top controls
-        const top = L.settingsTop;
-
-        this._drawSoftBtn(ctx, top.back, '← Back', false);
-
-        this._drawSoftToggle(ctx, top.stt, 'MIC INPUT', this.sttEnabled);
-        this._drawSoftToggle(ctx, top.tts, 'VOICE OUT', this.ttsEnabled);
-
-        // Avatar card
-        const rect = L.avatarRect;
-        this._roundRect(ctx, rect.x, rect.y, rect.w, rect.h, 26);
-        ctx.fillStyle = 'rgba(255,255,255,0.06)';
-        ctx.fill();
-
-        const total = this.avatars.length;
-        const idx = total ? this.currentAvatarIndex : 0;
-        const name = total ? this.avatars[idx]?.name || `Avatar ${idx + 1}` : 'No avatars loaded';
-
-        // Title
-        ctx.fillStyle = T.textDim;
-        ctx.font = '700 26px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        ctx.fillText('AVATAR', rect.x + 22, rect.y + 52);
-
-        // Avatar name (reduced size to make room)
-        ctx.fillStyle = T.text;
-        ctx.font = '900 38px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        ctx.fillText(name.slice(0, 36), rect.x + 22, rect.y + 100);
-
-        // Counter
-        ctx.fillStyle = T.textDim;
-        ctx.font = '600 24px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        ctx.fillText(total ? `${idx + 1} / ${total}` : '0 / 0', rect.x + 22, rect.y + 136);
-
-        // Provider/Model settings (ABOVE nav arrows to prevent overlap)
-        const providerText = this.settings.provider || 'none';
-        const modelText = this.settings.model || '(auto)';
-        const truncatedModel = modelText.length > 30 ? `${modelText.slice(0, 27)}...` : modelText;
-
-        ctx.fillStyle = providerText !== 'none' ? T.accent : T.textDim;
-        ctx.font = '600 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        ctx.fillText(`AI: ${providerText.toUpperCase()}`, rect.x + 22, rect.y + 174);
-
-        ctx.fillStyle = T.textDim;
-        ctx.font = '500 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        ctx.fillText(`Model: ${truncatedModel}`, rect.x + 22, rect.y + 204);
-
-        // ✅ Voice Settings Display (resolve from URI if name is empty)
-        let voiceName = this.settings.speechVoice || '';
-        const voiceURI = this.settings.speechVoiceURI || '';
-        const voicePref = this.settings.speechVoicePref || 'any';
-
-        // If voice name is empty but URI exists, try to resolve from available voices
-        if (!voiceName && voiceURI && typeof speechSynthesis !== 'undefined') {
-            try {
-                const voices = speechSynthesis.getVoices() || [];
-                const foundVoice = voices.find((v) => v.voiceURI === voiceURI);
-                if (foundVoice) {
-                    voiceName = foundVoice.name;
-                }
-            } catch (e) {
-                console.warn('[VRChatPanel] Failed to resolve voice name:', e);
-            }
-        }
-
-        const displayVoice = voiceName || 'Auto';
-        const truncatedVoice = displayVoice.length > 30 ? `${displayVoice.slice(0, 27)}...` : displayVoice;
-
-        ctx.fillStyle = T.textDim;
-        ctx.font = '500 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        ctx.fillText(`Voice: ${truncatedVoice} [${voicePref}]`, rect.x + 22, rect.y + 234);
-
-        // Nav arrows (compact, below provider/model/voice text)
-        this._drawNavArrow(ctx, L.settingsNav.prev, '◀');
-        this._drawNavArrow(ctx, L.settingsNav.next, '▶');
-
-        // Hint
-        ctx.fillStyle = T.textDim;
-        ctx.font = '500 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-        ctx.fillText('Desktop settings are shared automatically.', rect.x + 22, rect.y + rect.h - 16);
-
-        // XR Settings Row
-        const xr = L.xrSettingsRow;
+        const P = this.padding;
         const xs = this.xrSettings;
 
-        // Scale button
+        // Back button
+        this._drawSoftBtn(ctx, L.settingsBack, '← Back', false);
+
+        // Title
+        ctx.fillStyle = T.text;
+        ctx.font = '800 34px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillText('Settings', P + 200, L.settingsBack.y + 50);
+
+        // STT/TTS Toggles
+        this._drawSoftToggle(ctx, L.settingsToggles.stt, 'MIC INPUT', this.sttEnabled);
+        this._drawSoftToggle(ctx, L.settingsToggles.tts, 'VOICE OUT', this.ttsEnabled);
+
+        // XR Settings label
+        ctx.fillStyle = T.textDim;
+        ctx.font = '700 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillText('XR ENVIRONMENT', L.xrLabelRect.x + 14, L.xrLabelRect.y + 32);
+
+        // Row 1: Scale, Env, Speed
+        const xr = L.xrSettingsRow;
         const scaleLabel = xs.avatarScale === 0.5 ? 'S' : xs.avatarScale === 1.5 ? 'L' : 'M';
         this._drawXRSettingBtn(ctx, xr.scale, 'SCALE', scaleLabel);
-
-        // Environment toggle
         this._drawXRSettingBtn(ctx, xr.env, 'ENV', xs.showEnvironment ? 'ON' : 'OFF', xs.showEnvironment);
-
-        // Speed button
         const speedLabel = xs.moveSpeed === 'slow' ? 'SLOW' : xs.moveSpeed === 'fast' ? 'FAST' : 'MED';
         this._drawXRSettingBtn(ctx, xr.speed, 'SPEED', speedLabel);
 
-        // Panel distance button
+        // Row 2: Distance, BG, Mode
+        const xr2 = L.xrSettingsRow2;
         const distLabel = xs.panelDistance === 'near' ? 'NEAR' : xs.panelDistance === 'far' ? 'FAR' : 'MED';
-        this._drawXRSettingBtn(ctx, xr.distance, 'PANEL', distLabel);
+        this._drawXRSettingBtn(ctx, xr2.distance, 'PANEL', distLabel);
 
-        // Background color button (black → blue → void → passthrough)
         const bgLabel =
             xs.vrBackground === 'blue'
                 ? 'BLUE'
@@ -1423,138 +1817,65 @@ export class VRChatPanel {
                   : xs.vrBackground === 'passthrough'
                     ? 'PASS'
                     : 'BLK';
-        this._drawXRSettingBtn(ctx, xr.bg, 'BG', bgLabel);
+        this._drawXRSettingBtn(ctx, xr2.bg, 'BG', bgLabel);
 
-        // Green tint when passthrough background is active
+        // Green tint for passthrough
         if (xs.vrBackground === 'passthrough') {
-            const r = xr.bg;
-            ctx.save();
-            this._roundRect(ctx, r.x, r.y, r.w, r.h, 14);
-            ctx.fillStyle = 'rgba(118, 255, 3, 0.12)';
-            ctx.fill();
-            ctx.fillStyle = 'rgba(118, 255, 3, 0.7)';
-            ctx.font = '700 18px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('BG', r.x + r.w / 2, r.y + 30);
-            ctx.fillStyle = 'rgba(118, 255, 3, 0.95)';
-            ctx.font = '900 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-            ctx.fillText('PASS', r.x + r.w / 2, r.y + 60);
-            ctx.textAlign = 'left';
-            ctx.restore();
+            this._drawActiveTint(ctx, xr2.bg, 'BG', 'PASS');
         }
 
-        // Mode button (VR ↔ AR/Passthrough toggle)
+        // Mode button
         if (xs.arSupported) {
             const modeActive = xs.sessionMode === 'ar';
-            const modeLabel = modeActive ? 'PASS' : 'VR';
-            this._drawXRSettingBtn(ctx, xr.mode, 'VIEW', modeLabel, true);
-            // Green tint + passthrough label for AR mode
+            this._drawXRSettingBtn(ctx, xr2.mode, 'VIEW', modeActive ? 'PASS' : 'VR', true);
             if (modeActive) {
-                const r = xr.mode;
-                ctx.save();
-                this._roundRect(ctx, r.x, r.y, r.w, r.h, 14);
-                ctx.fillStyle = 'rgba(118, 255, 3, 0.12)';
-                ctx.fill();
-                // Redraw labels in green
-                ctx.fillStyle = 'rgba(118, 255, 3, 0.7)';
-                ctx.font = '700 18px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('VIEW', r.x + r.w / 2, r.y + 30);
-                ctx.fillStyle = 'rgba(118, 255, 3, 0.95)';
-                ctx.font = '900 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-                ctx.fillText('PASS', r.x + r.w / 2, r.y + 60);
-                ctx.textAlign = 'left';
-                ctx.restore();
+                this._drawActiveTint(ctx, xr2.mode, 'VIEW', 'PASS');
             }
         } else {
-            // AR not supported — show disabled
-            this._drawXRSettingBtn(ctx, xr.mode, 'VIEW', 'VR', false);
+            this._drawXRSettingBtn(ctx, xr2.mode, 'VIEW', 'VR', false);
         }
 
-        // Pose Settings Row
-        const poseRow = L.poseSettingsRow;
+        // Provider info (read-only)
+        const pi = L.providerInfoRect;
+        this._roundRect(ctx, pi.x, pi.y, pi.w, pi.h, 16);
+        ctx.fillStyle = 'rgba(255,255,255,0.03)';
+        ctx.fill();
 
-        // Use VRPoseSystem if available, fallback to PoseNormalizer
-        const vps = window.vrPoseSystem;
-        const pn = window.NEXUS_POSE_NORMALIZER;
+        ctx.fillStyle = T.textDim;
+        ctx.font = '600 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillText('AI CONFIGURATION (synced from desktop)', pi.x + 14, pi.y + 30);
 
-        let presetLabel = 'STAND';
-        if (vps) {
-            const vrpPresetLabels = {
-                standing: 'STAND',
-                sitting: 'SIT',
-                sittingCrossed: 'CROSS',
-                kneeling: 'KNEEL',
-                lyingBack: 'LIE-B',
-                lyingFront: 'LIE-F',
-                lyingSide: 'LIE-S',
-                allFours: 'FOURS',
-            };
-            presetLabel = vrpPresetLabels[vps.getCurrentPreset()] || 'STAND';
-        } else if (pn) {
-            const pnSettings = pn.getSettings();
-            const pnLabels = { relaxedStanding: 'RELAX', naturalIdle: 'IDLE', portrait: 'PORT', presentation: 'PRES' };
-            presetLabel = pnLabels[pnSettings.preset] || 'RELAX';
-        }
-        this._drawXRSettingBtn(ctx, poseRow.preset, 'POSE', presetLabel);
+        const providerText = this.settings.provider || 'none';
+        const modelText = this.settings.model || '(auto)';
+        ctx.fillStyle = providerText !== 'none' ? T.accent : T.textDim;
+        ctx.font = '700 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillText(`Provider: ${providerText.toUpperCase()}`, pi.x + 14, pi.y + 62);
 
-        // IK toggle (replaces old intensity control)
-        const ikLabel = vps && vps.ikEnabled ? 'IK ON' : 'IK OFF';
-        this._drawXRSettingBtn(ctx, poseRow.intensity, 'INTERACT', ikLabel);
+        ctx.fillStyle = T.textDim;
+        ctx.font = '500 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        const truncModel = modelText.length > 40 ? `${modelText.slice(0, 37)}...` : modelText;
+        ctx.fillText(`Model: ${truncModel}`, pi.x + 14, pi.y + 90);
 
-        // Puppet mode button (toggle free 3D placement of avatar)
-        const puppetActive = xs.puppetMode;
-        const puppetLabel = puppetActive ? 'ON' : 'OFF';
-        this._drawXRSettingBtn(ctx, poseRow.puppet, 'PUPPET', puppetLabel);
+        ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        ctx.font = '500 18px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillText('Change provider/model in desktop settings.', pi.x + 14, pi.y + 112);
+    }
 
-        // Green tint when puppet mode is active
-        if (puppetActive) {
-            const r = poseRow.puppet;
-            ctx.save();
-            this._roundRect(ctx, r.x, r.y, r.w, r.h, 14);
-            ctx.fillStyle = 'rgba(118, 255, 3, 0.12)';
-            ctx.fill();
-            ctx.fillStyle = 'rgba(118, 255, 3, 0.7)';
-            ctx.font = '700 18px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('PUPPET', r.x + r.w / 2, r.y + 30);
-            ctx.fillStyle = 'rgba(118, 255, 3, 0.95)';
-            ctx.font = '900 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-            ctx.fillText('ON', r.x + r.w / 2, r.y + 60);
-            ctx.textAlign = 'left';
-            ctx.restore();
-
-            // Puppet mode hint text below the buttons
-            const hintY = r.y + r.h + 12;
-            ctx.save();
-            ctx.fillStyle = 'rgba(200, 255, 200, 0.55)';
-            ctx.font = '500 15px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-            ctx.textAlign = 'left';
-            ctx.fillText('Grip hand/head orb to move. Both hands on hips to rotate.', P, hintY);
-            ctx.restore();
-        }
-
-        // PLACE button — one-tap: passthrough + sit + puppet for furniture placement
-        const placeActive = xs.puppetMode && xs.vrBackground === 'passthrough';
-        this._drawXRSettingBtn(ctx, poseRow.place, 'PLACE', placeActive ? 'ACTIVE' : 'SIT', placeActive);
-
-        // Highlight when place mode is active
-        if (placeActive) {
-            const r = poseRow.place;
-            ctx.save();
-            this._roundRect(ctx, r.x, r.y, r.w, r.h, 14);
-            ctx.fillStyle = 'rgba(255, 180, 50, 0.15)';
-            ctx.fill();
-            ctx.fillStyle = 'rgba(255, 200, 80, 0.8)';
-            ctx.font = '700 18px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText('PLACE', r.x + r.w / 2, r.y + 30);
-            ctx.fillStyle = 'rgba(255, 220, 100, 0.95)';
-            ctx.font = '900 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-            ctx.fillText('ACTIVE', r.x + r.w / 2, r.y + 60);
-            ctx.textAlign = 'left';
-            ctx.restore();
-        }
+    // ─── Helper: Green active tint overlay ───
+    _drawActiveTint(ctx, rect, topLabel, bottomLabel) {
+        ctx.save();
+        this._roundRect(ctx, rect.x, rect.y, rect.w, rect.h, 14);
+        ctx.fillStyle = 'rgba(118, 255, 3, 0.12)';
+        ctx.fill();
+        ctx.fillStyle = 'rgba(118, 255, 3, 0.7)';
+        ctx.font = '700 18px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(topLabel, rect.x + rect.w / 2, rect.y + 30);
+        ctx.fillStyle = 'rgba(118, 255, 3, 0.95)';
+        ctx.font = '900 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
+        ctx.fillText(bottomLabel, rect.x + rect.w / 2, rect.y + 60);
+        ctx.textAlign = 'left';
+        ctx.restore();
     }
 
     _drawXRSettingBtn(ctx, rect, label, value, isActive = true) {
@@ -1572,42 +1893,6 @@ export class VRChatPanel {
         ctx.font = '900 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
         ctx.fillText(value, rect.x + rect.w / 2, rect.y + 60);
         ctx.textAlign = 'left';
-    }
-
-    _drawFooter(ctx) {
-        const T = this.theme;
-        const row = this._layout.btnRow;
-
-        row.items.forEach((b) => {
-            const isHot = b.key === 'mic' && this.status === 'listening';
-
-            // Button background with subtle glow when active
-            this._roundRect(ctx, b.x, b.y, b.w, b.h, 20);
-            ctx.fillStyle = isHot ? 'rgba(255, 60, 60, 0.28)' : T.btnBg;
-            ctx.fill();
-
-            if (isHot) {
-                // Pulsing border glow for active mic
-                ctx.strokeStyle = 'rgba(255, 80, 80, 0.6)';
-                ctx.lineWidth = 2;
-                this._roundRect(ctx, b.x, b.y, b.w, b.h, 20);
-                ctx.stroke();
-            }
-
-            // Draw vector icon (no emoji)
-            const cx = b.x + b.w / 2;
-            const cy = b.y + 42;
-            ctx.save();
-            this._drawVectorIcon(ctx, b.key, cx, cy, isHot);
-            ctx.restore();
-
-            // Label
-            ctx.fillStyle = isHot ? 'rgba(255, 120, 120, 0.95)' : T.textDim;
-            ctx.font = '800 20px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText(b.label, cx, b.y + 92);
-            ctx.textAlign = 'left';
-        });
     }
 
     /**
@@ -1876,6 +2161,23 @@ export class VRChatPanel {
     handleUIAction(name, userData = {}) {
         const key = userData?.key;
 
+        // ─── Layer navigation ───
+        if (key === 'open_controls') {
+            this.setMode('controls');
+            return true;
+        }
+        if (key === 'open_settings') {
+            // From chat → settings, or from controls → settings
+            this.setMode('settings');
+            return true;
+        }
+        if (key === 'back') {
+            // Back: settings → controls, controls → chat
+            if (this.mode === 'settings') this.setMode('controls');
+            else this.setMode('chat');
+            return true;
+        }
+
         // Settings toggles should mirror desktop settings
         if (key === 'stt') {
             this.sttEnabled = !this.sttEnabled;
@@ -1973,19 +2275,22 @@ export class VRChatPanel {
             const dists = ['near', 'medium', 'far'];
             const idx = dists.indexOf(this.xrSettings.panelDistance);
             this.xrSettings.panelDistance = dists[(idx + 1) % dists.length];
-            const distMap = { near: 0.35, medium: 0.55, far: 0.85 };
+            const distMap = { near: 0.55, medium: 0.85, far: 1.4 };
             this._spawnDistance = distMap[this.xrSettings.panelDistance] || 0.55;
             console.log(`[VRChatPanel] Panel distance → ${this.xrSettings.panelDistance} (${this._spawnDistance}m)`);
             this.redraw();
             return true;
         }
 
-        // Pose Preset cycle — uses VRPoseSystem (IK-grade) or fallback to PoseNormalizer
-        if (key === 'xr_pose_preset') {
+        // Pose NEXT — cycles forward through presets
+        if (key === 'xr_pose_next') {
             const vps = window.vrPoseSystem;
             if (vps && vps.enabled) {
                 const next = vps.cyclePreset();
-                console.log(`[VRChatPanel] Pose preset → ${next}`);
+                const label =
+                    typeof vps.constructor.getPresetLabel === 'function' ? vps.constructor.getPresetLabel(next) : next;
+                console.log(`[VRChatPanel] Pose → ${label}`);
+                this.appendMessage('bot', `Pose: ${label}`);
             } else {
                 const pn = window.NEXUS_POSE_NORMALIZER;
                 if (pn) {
@@ -2001,6 +2306,48 @@ export class VRChatPanel {
             return true;
         }
 
+        // Pose PREV — cycles backward through presets
+        if (key === 'xr_pose_prev') {
+            const vps = window.vrPoseSystem;
+            if (vps && vps.enabled) {
+                const prev = vps.cyclePrevPreset();
+                const label =
+                    typeof vps.constructor.getPresetLabel === 'function' ? vps.constructor.getPresetLabel(prev) : prev;
+                console.log(`[VRChatPanel] Pose → ${label}`);
+                this.appendMessage('bot', `Pose: ${label}`);
+            } else {
+                const pn = window.NEXUS_POSE_NORMALIZER;
+                if (pn) {
+                    const presets = ['relaxedStanding', 'naturalIdle', 'portrait', 'presentation'];
+                    const s = pn.getSettings();
+                    const idx = presets.indexOf(s.preset);
+                    const prev = presets[(idx - 1 + presets.length) % presets.length];
+                    pn.updateSettings({ preset: prev });
+                    console.log(`[VRChatPanel] Pose preset (legacy) → ${prev}`);
+                }
+            }
+            this.redraw();
+            return true;
+        }
+
+        // Pose RESET — returns to default standing rest pose
+        if (key === 'xr_pose_reset') {
+            const vps = window.vrPoseSystem;
+            if (vps && vps.enabled) {
+                vps.resetToRest();
+                console.log('[VRChatPanel] Pose reset to standing');
+                this.appendMessage('bot', 'Pose: Standing (Rest / T-Pose)');
+            } else {
+                const pn = window.NEXUS_POSE_NORMALIZER;
+                if (pn) {
+                    pn.updateSettings({ preset: 'relaxedStanding' });
+                    console.log('[VRChatPanel] Pose reset (legacy) → relaxedStanding');
+                }
+            }
+            this.redraw();
+            return true;
+        }
+
         // Puppet Mode toggle (free 3D avatar placement)
         if (key === 'xr_puppet') {
             this.xrSettings.puppetMode = !this.xrSettings.puppetMode;
@@ -2008,6 +2355,19 @@ export class VRChatPanel {
             window.dispatchEvent(
                 new CustomEvent('vr-setting-changed', {
                     detail: { key: 'puppetMode', value: this.xrSettings.puppetMode },
+                })
+            );
+            this.redraw();
+            return true;
+        }
+
+        // Intimacy / Close Presence toggle
+        if (key === 'xr_intimacy') {
+            this.xrSettings.intimacyMode = !this.xrSettings.intimacyMode;
+            console.log(`[VRChatPanel] Intimacy mode -> ${this.xrSettings.intimacyMode ? 'ON' : 'OFF'}`);
+            window.dispatchEvent(
+                new CustomEvent('vr-setting-changed', {
+                    detail: { key: 'intimacyMode', value: this.xrSettings.intimacyMode },
                 })
             );
             this.redraw();

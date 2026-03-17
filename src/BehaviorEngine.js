@@ -285,11 +285,14 @@
             return;
         }
 
-        // Pick a random micro-expression
-        const micros = [
-            { expr: 'happy', value: 0.12, duration: 900 }, // slight smile
-            { expr: 'surprised', value: 0.08, duration: 600 }, // subtle brow raise
-        ];
+        // Pick a random micro-expression (from centralized presets)
+        const micros =
+            _AP && _AP.MICRO_EXPRESSIONS
+                ? _AP.MICRO_EXPRESSIONS
+                : [
+                      { expr: 'happy', value: 0.12, duration: 900 },
+                      { expr: 'surprised', value: 0.08, duration: 600 },
+                  ];
 
         const micro = micros[Math.floor(Math.random() * micros.length)];
 
@@ -453,14 +456,19 @@
     /**
      * Map emotion to animation clip names (for GLBs with baked clips).
      * Falls back through multiple possible names.
+     * Reads from centralized AnimationPresets when available.
      */
-    const EMOTION_CLIP_MAP = {
-        happy: ['Happy', 'Dance', 'Yes', 'ThumbsUp', 'Wave'],
-        sad: ['Sad', 'Death', 'No', 'Sitting'],
-        angry: ['Angry', 'Punch', 'No'],
-        surprised: ['Surprised', 'Jump', 'Wave'],
-        thinking: ['Idle', 'Standing'],
-    };
+    const _AP = global.NEXUS_ANIMATION_PRESETS;
+    const EMOTION_CLIP_MAP =
+        _AP && _AP.EMOTION_CLIP_MAP
+            ? _AP.EMOTION_CLIP_MAP
+            : {
+                  happy: ['Happy', 'Dance', 'Yes', 'ThumbsUp', 'Wave'],
+                  sad: ['Sad', 'Death', 'No', 'Sitting'],
+                  angry: ['Angry', 'Punch', 'No'],
+                  surprised: ['Surprised', 'Jump', 'Wave'],
+                  thinking: ['Idle', 'Standing'],
+              };
 
     function _setVRMExpression(name, value) {
         const vrmLoader = _getVRMLoader();
