@@ -15,87 +15,73 @@
     'use strict';
 
     // =========================================================================
-    // EMOJI → EMOTION MAP
+    // ALL DATA FROM CENTRALIZED AnimationPresets (single source of truth)
     // =========================================================================
-    const EMOJI_MAP = {
-        happy: /[\u{1F600}-\u{1F606}\u{1F60A}\u{1F60D}\u{1F60E}\u{1F970}\u{1F973}\u{1F929}\u{2764}\u{1F496}\u{1F4AA}\u{1F389}\u{1F38A}\u{1F44D}]/u,
-        sad: /[\u{1F622}\u{1F625}\u{1F62D}\u{1F614}\u{1F61E}\u{1F62A}\u{1F494}\u{1F615}]/u,
-        angry: /[\u{1F620}\u{1F621}\u{1F624}\u{1F92C}\u{1F4A2}]/u,
-        surprised: /[\u{1F62E}\u{1F62F}\u{1F632}\u{1F631}\u{1F633}\u{1F914}\u{2049}\u{203C}]/u,
-        excited: /[\u{1F525}\u{2B50}\u{1F680}\u{1F4AB}\u{26A1}\u{1F31F}\u{1F60D}]/u,
-    };
+    const _AP = global.NEXUS_ANIMATION_PRESETS;
 
-    // =========================================================================
-    // KEYWORD PATTERN GROUPS (weighted)
-    // =========================================================================
-    const KEYWORD_GROUPS = [
-        {
-            emotion: 'happy',
-            weight: 1.0,
-            patterns: [
-                /\b(glad|happy|delighted|pleased|wonderful|fantastic|great|awesome|love|lovely|excellent|brilliant|perfect|beautiful)\b/i,
-                /\b(glad to help|happy to|my pleasure|you're welcome|of course)\b/i,
-                /\b(congratulations|well done|bravo|cheers)\b/i,
-            ],
-        },
-        {
-            emotion: 'excited',
-            weight: 1.2,
-            patterns: [
-                /\b(amazing|incredible|extraordinary|phenomenal|spectacular|outstanding|magnificent)\b/i,
-                /\b(absolutely|definitely|totally|extremely|super)\b/i,
-                /\b(exciting|thrilling|can't wait|looking forward)\b/i,
-            ],
-        },
-        {
-            emotion: 'sad',
-            weight: 1.0,
-            patterns: [
-                /\b(sorry|unfortunately|sadly|regret|apologize|miss|loss|difficult|tough)\b/i,
-                /\b(I'm sorry to hear|my condolences|that's hard|I understand how)\b/i,
-                /\b(disappointed|heartbreaking|painful|suffering)\b/i,
-            ],
-        },
-        {
-            emotion: 'thinking',
-            weight: 0.8,
-            patterns: [
-                /\b(think|consider|perhaps|maybe|possibly|might|could be|let me)\b/i,
-                /\b(hmm|hmmm|interesting|curious|wonder|ponder|reflect)\b/i,
-                /\b(on one hand|on the other|it depends|that's a good question)\b/i,
-            ],
-        },
-        {
-            emotion: 'surprised',
-            weight: 1.0,
-            patterns: [
-                /\b(wow|whoa|oh my|really|seriously|no way|unbelievable)\b/i,
-                /\b(I didn't expect|surprising|astonishing|remarkable|unexpected)\b/i,
-                /\b(mind-blowing|jaw-dropping|speechless)\b/i,
-            ],
-        },
-        {
-            emotion: 'angry',
-            weight: 0.6, // low weight — rare for assistant responses
-            patterns: [
-                /\b(frustrating|unacceptable|outrageous|terrible|horrible|awful)\b/i,
-                /\b(ridiculous|absurd|inexcusable|disgraceful)\b/i,
-            ],
-        },
-    ];
+    const EMOJI_MAP =
+        _AP && _AP.EMOJI_MAP
+            ? _AP.EMOJI_MAP
+            : {
+                  happy: /[\u{1F600}-\u{1F606}\u{1F60A}\u{1F60D}\u{1F60E}\u{1F970}\u{1F973}\u{1F929}\u{2764}\u{1F496}\u{1F4AA}\u{1F389}\u{1F38A}\u{1F44D}]/u,
+                  sad: /[\u{1F622}\u{1F625}\u{1F62D}\u{1F614}\u{1F61E}\u{1F62A}\u{1F494}\u{1F615}]/u,
+                  angry: /[\u{1F620}\u{1F621}\u{1F624}\u{1F92C}\u{1F4A2}]/u,
+                  surprised: /[\u{1F62E}\u{1F62F}\u{1F632}\u{1F631}\u{1F633}\u{1F914}\u{2049}\u{203C}]/u,
+                  excited: /[\u{1F525}\u{2B50}\u{1F680}\u{1F4AB}\u{26A1}\u{1F31F}\u{1F60D}]/u,
+              };
 
-    // =========================================================================
-    // EMOTION → OUTPUT MAPPING
-    // =========================================================================
-    const EMOTION_OUTPUT = {
-        happy: { emotion: 'happy', mode: 'happy', baseIntensity: 0.5 },
-        excited: { emotion: 'happy', mode: 'happy', baseIntensity: 0.8 },
-        sad: { emotion: 'sad', mode: 'idle', baseIntensity: 0.45 },
-        thinking: { emotion: 'neutral', mode: 'thinking', baseIntensity: 0.5 },
-        surprised: { emotion: 'surprised', mode: 'idle', baseIntensity: 0.6 },
-        angry: { emotion: 'angry', mode: 'idle', baseIntensity: 0.4 },
-        neutral: { emotion: 'neutral', mode: 'idle', baseIntensity: 0.0 },
-    };
+    const KEYWORD_GROUPS =
+        _AP && _AP.KEYWORD_GROUPS
+            ? _AP.KEYWORD_GROUPS
+            : [
+                  {
+                      emotion: 'happy',
+                      weight: 1.0,
+                      patterns: [
+                          /\b(glad|happy|delighted|pleased|wonderful|fantastic|great|awesome|love|lovely|excellent|brilliant|perfect|beautiful)\b/i,
+                      ],
+                  },
+                  {
+                      emotion: 'excited',
+                      weight: 1.2,
+                      patterns: [
+                          /\b(amazing|incredible|extraordinary|phenomenal|spectacular|outstanding|magnificent)\b/i,
+                      ],
+                  },
+                  {
+                      emotion: 'sad',
+                      weight: 1.0,
+                      patterns: [/\b(sorry|unfortunately|sadly|regret|apologize|miss|loss|difficult|tough)\b/i],
+                  },
+                  {
+                      emotion: 'thinking',
+                      weight: 0.8,
+                      patterns: [/\b(think|consider|perhaps|maybe|possibly|might|could be|let me)\b/i],
+                  },
+                  {
+                      emotion: 'surprised',
+                      weight: 1.0,
+                      patterns: [/\b(wow|whoa|oh my|really|seriously|no way|unbelievable)\b/i],
+                  },
+                  {
+                      emotion: 'angry',
+                      weight: 0.6,
+                      patterns: [/\b(frustrating|unacceptable|outrageous|terrible|horrible|awful)\b/i],
+                  },
+              ];
+
+    const EMOTION_OUTPUT =
+        _AP && _AP.EMOTION_OUTPUT_MAP
+            ? _AP.EMOTION_OUTPUT_MAP
+            : {
+                  happy: { emotion: 'happy', mode: 'happy', baseIntensity: 0.5 },
+                  excited: { emotion: 'happy', mode: 'happy', baseIntensity: 0.8 },
+                  sad: { emotion: 'sad', mode: 'idle', baseIntensity: 0.45 },
+                  thinking: { emotion: 'neutral', mode: 'thinking', baseIntensity: 0.5 },
+                  surprised: { emotion: 'surprised', mode: 'idle', baseIntensity: 0.6 },
+                  angry: { emotion: 'angry', mode: 'idle', baseIntensity: 0.4 },
+                  neutral: { emotion: 'neutral', mode: 'idle', baseIntensity: 0.0 },
+              };
 
     // =========================================================================
     // ANALYSIS

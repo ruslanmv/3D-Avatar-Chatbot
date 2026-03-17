@@ -79,6 +79,13 @@
             this.proceduralAnimator.setEditMode(true);
         }
 
+        // Immediately apply the first pose (Lecturer) with NO blend time
+        // to prevent a visible T-pose flash before show() blends in.
+        var vps = window.vrPoseSystem;
+        if (vps) {
+            vps.applyPreset('lecturerNeutral', 0);
+        }
+
         this._emitChange();
         return true;
     };

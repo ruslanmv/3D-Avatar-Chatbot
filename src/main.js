@@ -923,6 +923,9 @@ function loadAvatar(url, source) {
                     currentAvatar,
                     Array.isArray(gltf.animations) && gltf.animations.length > 0
                 );
+                // Set natural standing pose (replaces T-pose) and default talk style
+                window.NEXUS_PROCEDURAL_ANIMATOR?.setBasePose?.('lecturerNeutral');
+                window.NEXUS_PROCEDURAL_ANIMATOR?.setTalkStyle?.('explainCalm');
             } catch (_) {}
             currentAvatar.traverse((child) => {
                 if (child.isMesh) {
@@ -943,6 +946,11 @@ function loadAvatar(url, source) {
                     const key = (clip.name || 'clip').toLowerCase();
                     animations[key] = clip;
                 });
+
+                // Register clips in central AnimationManager
+                try {
+                    window.NEXUS_ANIMATION_MANAGER?.registerClips?.(gltf.animations);
+                } catch (_) {}
 
                 const idleKey = findIdleAnimation();
                 if (idleKey) playAnimation(idleKey, true);
@@ -1529,11 +1537,14 @@ function setupEventListeners() {
         btn.addEventListener('click', () => {
             const emotion = (btn.dataset.emotion || '').toLowerCase();
 
-            /* NEXUS_PATCH_LIFE_ENGINE_EMOTION_MODE */
-            try {
-                // Match your UI labels: IDLE/HAPPY/THINKING/DANCE/TALK
-                window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.(emotion, 1600);
-            } catch (_) {}
+            /* Route through AnimationManager for proper durations */
+            if (window.NEXUS_ANIMATION_MANAGER?.applyEmotion) {
+                window.NEXUS_ANIMATION_MANAGER.applyEmotion(emotion);
+            } else {
+                try {
+                    window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.(emotion, 5000);
+                } catch (_) {}
+            }
             const mapped = Object.keys(animations).find((k) => k.includes(emotion)) || findIdleAnimation();
             if (mapped) playAnimation(mapped, false);
 
@@ -1550,23 +1561,14 @@ function setupEventListeners() {
     document.querySelectorAll('.emotion-menu-item').forEach((btn) => {
         btn.addEventListener('click', () => {
             const emotion = (btn.dataset.emotion || '').toLowerCase();
-            try {
-                window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.(emotion, 1600);
-            } catch (_) {}
-            // Set VRM/MorphTarget expression via Phase 3 bridge
-            try {
-                const vrmLoader = window.NEXUS_VIEWER?.avatarManager?.vrmLoader;
-                if (vrmLoader) {
-                    const vrmEmotion = emotion === 'dance' ? 'happy' : emotion;
-                    vrmLoader.setEmotion(vrmEmotion, 0.7);
-                    // Auto-clear emotion after 2s
-                    setTimeout(() => {
-                        try {
-                            vrmLoader.setEmotion('neutral', 0);
-                        } catch (_) {}
-                    }, 2000);
-                }
-            } catch (_) {}
+            /* Route through AnimationManager for proper durations */
+            if (window.NEXUS_ANIMATION_MANAGER?.applyEmotion) {
+                window.NEXUS_ANIMATION_MANAGER.applyEmotion(emotion);
+            } else {
+                try {
+                    window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.(emotion, 5000);
+                } catch (_) {}
+            }
             const mapped = Object.keys(animations).find((k) => k.includes(emotion)) || findIdleAnimation();
             if (mapped) playAnimation(mapped, false);
             if (window.setEmotionIcon) window.setEmotionIcon(emotion);
@@ -2716,6 +2718,13 @@ function _applyEmotionFromText(text) {
             window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.(mode, 4000);
         } catch (_) {}
     }
+
+    // Bridge emotion to VR Intimacy System
+    window.dispatchEvent(
+        new CustomEvent('avatar-emotion-changed', {
+            detail: { emotion: emotion || 'neutral' },
+        })
+    );
 }
 
 function speakText(text) {
@@ -3284,6 +3293,8 @@ async function init() {
         useGltfEngine: !!window.__USE_GLTF_VIEWER_ENGINE__,
         hasNexusViewer: !!window.NEXUS_VIEWER,
         hasReadyPromise: !!window.__NEXUS_VIEWER_READY__,
+        device: window.NEXUS_DEVICE?.device || 'unknown',
+        os: window.NEXUS_DEVICE?.os || 'unknown',
     });
     showLoading('Loading 3D Avatar...');
     setStatus('idle', 'BOOTING...');
@@ -3295,7 +3306,19 @@ async function init() {
     }
 
     try {
-        if (!useViewerEngine) {
+        // Wait for ViewerEngine with a timeout for mobile reliability
+        if (useViewerEngine && window.__NEXUS_VIEWER_READY__) {
+            const viewerOrNull = await Promise.race([
+                window.__NEXUS_VIEWER_READY__,
+                new Promise((resolve) => setTimeout(() => resolve(null), 15000)),
+            ]);
+
+            if (!viewerOrNull) {
+                console.warn('[Main] ViewerEngine not available (timeout or WebGL failure) — running chat-only mode');
+                hideLoading();
+                setStatus('idle', 'CHAT MODE');
+            }
+        } else if (!useViewerEngine) {
             setupThreeJS();
         }
 
@@ -3316,7 +3339,14 @@ async function init() {
         _restoreChat(); // restore previous conversation from localStorage
 
         await loadAvatarManifest();
-        loadDefaultAvatarFromManifest();
+
+        // Only try to load avatar if 3D engine is available
+        if (window.NEXUS_VIEWER) {
+            loadDefaultAvatarFromManifest();
+        } else {
+            hideLoading();
+            setStatus('idle', 'READY');
+        }
     } catch (err) {
         logError('Initialization failed', err);
         showLoading(`Initialization failed: ${err && err.message ? err.message : err}`);
@@ -3925,3 +3955,33 @@ window.debugAPIKeys = function () {
 };
 
 console.log('💡 Tip: Run window.debugAPIKeys() in console to check your stored API keys');
+
+/* =====================================================================
+   SPICY MODE — Refresh UI when spicy toggle changes
+   ===================================================================== */
+if (window.NEXUS_SPICY) {
+    window.NEXUS_SPICY.onChange(function () {
+        // Refresh Pose Studio panel (re-filters NAV_PRESETS)
+        if (window.poseStudioPanel && typeof window.poseStudioPanel.refresh === 'function') {
+            window.poseStudioPanel.refresh();
+        }
+        // Show/hide adult optgroup in settings VR pose dropdown
+        var adultGroup = document.getElementById('vr-pose-adult-group');
+        if (adultGroup) {
+            adultGroup.style.display = window.NEXUS_SPICY.isEnabled() ? '' : 'none';
+        }
+        // Refresh talk style dropdown if present in Pose Studio
+        var talkSelect = document.getElementById('poseTalkStyleSelect');
+        if (talkSelect && window.NEXUS_ANIMATION_MANAGER) {
+            var styles = window.NEXUS_ANIMATION_MANAGER.getTalkStyles();
+            talkSelect.innerHTML = '';
+            for (var i = 0; i < styles.length; i++) {
+                var opt = document.createElement('option');
+                opt.value = styles[i].id;
+                opt.textContent = styles[i].label;
+                talkSelect.appendChild(opt);
+            }
+        }
+        console.log('[main] Spicy mode changed:', window.NEXUS_SPICY.isEnabled() ? 'ON' : 'OFF');
+    });
+}

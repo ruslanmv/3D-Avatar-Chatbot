@@ -264,6 +264,16 @@ export class AvatarManager {
                 console.warn('[AvatarManager] ProceduralAnimator registration failed:', e);
             }
 
+            // Register with ClipAnimationLoader for BVH/VRMA clip playback
+            try {
+                if (window.NEXUS_CLIP_LOADER?.registerAvatar) {
+                    window.NEXUS_CLIP_LOADER.registerAvatar(root, vrm);
+                    console.log('[AvatarManager] Registered with ClipAnimationLoader');
+                }
+            } catch (e) {
+                // ClipAnimationLoader is optional — silent fail
+            }
+
             console.log(`[AvatarManager] Avatar loaded successfully: ${name}`);
 
             // [FIX] Check renderer XR state correctly - only frame in desktop mode

@@ -6,7 +6,6 @@
     { "name": "AvatarSample C", "file": "AvatarSample_C.vrm", "format": "vrm", "source": "VRoid (CC0)", "features": ["lipsync", "emotions", "gaze", "blink"] },
     { "name": "VRoid Female", "file": "fem_vroid.vrm", "format": "vrm", "source": "VRoid (CC0)", "features": ["lipsync", "emotions", "gaze", "blink"] },
     { "name": "VRoid Male", "file": "masc_vroid.vrm", "format": "vrm", "source": "VRoid (CC0)", "features": ["lipsync", "emotions", "gaze", "blink"] },
-    { "name": "Seed-san", "file": "Seed-san.vrm", "format": "vrm", "source": "VRM Consortium (CC-BY)", "features": ["lipsync", "emotions", "gaze", "blink"] },
     { "name": "Sendagaya Shibu", "file": "Sendagaya_Shibu.vrm", "format": "vrm", "source": "VRoid (CC0)", "features": ["lipsync", "emotions", "gaze", "blink"] },
     { "name": "Sendagaya Shino", "file": "Sendagaya_Shino.vrm", "format": "vrm", "source": "VRoid (CC0)", "features": ["lipsync", "emotions", "gaze", "blink"] },
     { "name": "Victoria Rubin", "file": "Victoria_Rubin.vrm", "format": "vrm", "source": "VRoid (CC0)", "features": ["lipsync", "emotions", "gaze", "blink"] },
@@ -16,21 +15,18 @@
     { "name": "HairSample Female", "file": "HairSample_Female.vrm", "format": "vrm", "source": "VRoid (CC0)", "features": ["lipsync", "emotions", "gaze", "blink"] },
     { "name": "HairSample Male", "file": "HairSample_Male.vrm", "format": "vrm", "source": "VRoid (CC0)", "features": ["lipsync", "emotions", "gaze", "blink"] },
     { "name": "Sakurada Fumiriya", "file": "Sakurada_Fumiriya.vrm", "format": "vrm", "source": "VRoid (CC0)", "features": ["lipsync", "emotions", "gaze", "blink"] },
-    { "name": "Avatar Orion", "file": "Avatar_Orion.vrm", "format": "vrm", "source": "VRoid (CC0)", "features": ["lipsync", "emotions", "gaze", "blink"] },
-    { "name": "Cryptovoxels", "file": "cryptovoxels.vrm", "format": "vrm", "source": "Madjin (CC0)", "features": ["lipsync", "emotions", "gaze", "blink"] },
     { "name": "VRM1 Sample", "file": "VRM1_Constraint_Twist_Sample.vrm", "format": "vrm", "source": "Pixiv (CC0)", "features": ["lipsync", "emotions", "gaze", "blink"] },
     { "name": "Brunette (TalkingHead)", "file": "brunette.glb", "format": "glb-morph", "source": "TalkingHead", "features": ["lipsync", "emotions", "blink"] },
     { "name": "Brunette T-Pose (TalkingHead)", "file": "brunette-t.glb", "format": "glb-morph", "source": "TalkingHead", "features": ["lipsync", "emotions", "blink"] },
     { "name": "Avaturn (TalkingHead)", "file": "avaturn.glb", "format": "glb-morph", "source": "TalkingHead", "features": ["lipsync", "emotions", "blink"] },
     { "name": "AvatarSDK (TalkingHead)", "file": "avatarsdk.glb", "format": "glb-morph", "source": "TalkingHead", "features": ["lipsync", "emotions", "blink"] },
     { "name": "MakeHuman (TalkingHead)", "file": "mpfb.glb", "format": "glb-morph", "source": "TalkingHead", "features": ["lipsync", "emotions", "blink"] },
-    { "name": "Meebit 09842", "file": "meebit_09842.vrm", "format": "vrm", "source": "Madjin (CC0)", "features": ["lipsync", "emotions", "gaze", "blink"] },
-    { "name": "FaceCap (ARKit)", "file": "facecap.glb", "format": "glb-morph", "source": "Three.js", "features": ["lipsync", "emotions", "blink"] },
     { "name": "ReadyPlayerMe Sample", "file": "readyplayerme.glb", "format": "glb-morph", "source": "Ready Player Me", "features": ["lipsync", "emotions", "blink"] },
-    { "name": "Xbot", "file": "Xbot.glb", "format": "glb", "source": "Three.js", "features": [] },
     { "name": "Woman", "file": "woman.glb", "format": "glb", "source": "Local", "features": [] },
     { "name": "Avatar", "file": "girl.glb", "format": "glb", "source": "Local", "features": [] },
     { "name": "Student", "file": "student.glb", "format": "glb", "source": "Local", "features": [] },
-    { "name": "Anime", "file": "anime.glb", "format": "glb", "source": "Local", "features": [] }
+    { "name": "VRoid PerfectSync Female", "file": "VRoid_PerfectSync_Female.vrm", "format": "vrm", "source": "hinzka/52blendshapes (CC0)", "features": ["lipsync", "emotions", "gaze", "blink", "perfectsync"], "notes": "Enhanced VRoid female with 52 ARKit blendshapes for iPhone facial tracking" },
+    { "name": "VRoid PerfectSync Male", "file": "VRoid_PerfectSync_Male.vrm", "format": "vrm", "source": "hinzka/52blendshapes (CC0)", "features": ["lipsync", "emotions", "gaze", "blink", "perfectsync"], "notes": "Enhanced VRoid male with 52 ARKit blendshapes for iPhone facial tracking" },
+    { "name": "VRM Viewer Sample", "file": "VRM_Viewer_Sample.vrm", "format": "vrm", "source": "tk256ailab/vrm-viewer (Open Source)", "features": ["lipsync", "emotions", "gaze", "blink"], "notes": "High-quality VRoid-compatible sample with full expression set" }
   ]
 }

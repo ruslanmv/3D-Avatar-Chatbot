@@ -1,0 +1,197 @@
+{
+  "version": "1.0.0",
+  "description": "Animation library for NEXUS 3D Avatar — BVH clips from SillyTavern VRM Pack, VRMA clips from vrm-viewer",
+  "basePath": "vendor/animations",
+  "categories": {
+    "dance": {
+      "label": "Dance",
+      "icon": "\ud83d\udd7a",
+      "files": [
+        "dance/dance_1.bvh",
+        "dance/dance_2.bvh",
+        "dance/dance_backup.bvh",
+        "dance/dance_dab.bvh",
+        "dance/dance_gangnam_style.bvh",
+        "dance/dance_headdrop.bvh",
+        "dance/dance_marachinostep.bvh",
+        "dance/dance_northern_soul_spin.bvh",
+        "dance/dance_ontop.bvh",
+        "dance/dance_pushback.bvh",
+        "dance/dance_rumba.bvh"
+      ]
+    },
+    "emotion": {
+      "label": "Emotions",
+      "icon": "\ud83d\ude0a",
+      "files": [
+        "emotion/admiration.bvh",
+        "emotion/admiration2.bvh",
+        "emotion/admiration3.bvh",
+        "emotion/amusement.bvh",
+        "emotion/amusement2.bvh",
+        "emotion/amusement3.bvh",
+        "emotion/anger.bvh",
+        "emotion/anger2.bvh",
+        "emotion/anger3.bvh",
+        "emotion/annoyance.bvh",
+        "emotion/annoyance1.bvh",
+        "emotion/approval.bvh",
+        "emotion/approval2.bvh",
+        "emotion/approval3.bvh",
+        "emotion/caring.bvh",
+        "emotion/caring1.bvh",
+        "emotion/confusion.bvh",
+        "emotion/confusion2.bvh",
+        "emotion/confusion3.bvh",
+        "emotion/curiosity.bvh",
+        "emotion/curiosity2.bvh",
+        "emotion/curiosity3.bvh",
+        "emotion/desire.bvh",
+        "emotion/desire1.bvh",
+        "emotion/desire2.bvh",
+        "emotion/disappointment.bvh",
+        "emotion/disappointment2.bvh",
+        "emotion/disapproval.bvh",
+        "emotion/disaproval1.bvh",
+        "emotion/disgust.bvh",
+        "emotion/disgust1.bvh",
+        "emotion/disgust2.bvh",
+        "emotion/embarrassment.bvh",
+        "emotion/excitement.bvh",
+        "emotion/excitement2.bvh",
+        "emotion/excitement3.bvh",
+        "emotion/fear.bvh",
+        "emotion/fear2.bvh",
+        "emotion/fear3.bvh",
+        "emotion/gratitude.bvh",
+        "emotion/grief.bvh",
+        "emotion/joy.bvh",
+        "emotion/joy2.bvh",
+        "emotion/joy3.bvh",
+        "emotion/love.bvh",
+        "emotion/love2.bvh",
+        "emotion/love3.bvh",
+        "emotion/nervousness.bvh",
+        "emotion/nervousness2.bvh",
+        "emotion/nervousnes3.bvh",
+        "emotion/optimism.bvh",
+        "emotion/pride.bvh",
+        "emotion/pride2.bvh",
+        "emotion/realization.bvh",
+        "emotion/relief.bvh",
+        "emotion/relief1.bvh",
+        "emotion/remorse.bvh",
+        "emotion/remorse2.bvh",
+        "emotion/remorse3.bvh",
+        "emotion/sadness.bvh",
+        "emotion/sadness2.bvh",
+        "emotion/surprise.bvh",
+        "emotion/surprise2.bvh"
+      ]
+    },
+    "idle": {
+      "label": "Idle",
+      "icon": "\ud83e\uddd8",
+      "files": [
+        "idle/neutral.bvh",
+        "idle/neutral2.bvh",
+        "idle/neutral3.bvh",
+        "idle/neutral4.bvh",
+        "idle/neutral_idle.bvh",
+        "idle/neutral_idle2.bvh"
+      ]
+    },
+    "sitting": {
+      "label": "Sitting",
+      "icon": "\ud83e\ude91",
+      "files": [
+        "sitting/sit_idle.bvh",
+        "sitting/sit_idle2.bvh",
+        "sitting/sit_idle3.bvh",
+        "sitting/sit_idle4.bvh"
+      ]
+    },
+    "laying": {
+      "label": "Laying",
+      "icon": "\ud83d\udecc",
+      "files": [
+        "laying/laying_idle.bvh",
+        "laying/laying_idle2.bvh",
+        "laying/laying_idle3.bvh"
+      ]
+    },
+    "kneeling": {
+      "label": "Kneeling",
+      "icon": "\ud83e\uddce",
+      "files": [
+        "kneeling/kneel_idle.bvh",
+        "kneeling/kneel_idle2.bvh"
+      ]
+    },
+    "action": {
+      "label": "Actions",
+      "icon": "\ud83c\udfac",
+      "files": [
+        "action/action_attention_seeking.bvh",
+        "action/action_crawling.bvh",
+        "action/action_crouch.bvh",
+        "action/action_gaming.bvh",
+        "action/action_greeting.bvh",
+        "action/action_greeting1.bvh",
+        "action/action_jog.bvh",
+        "action/action_jump.bvh",
+        "action/action_laydown.bvh",
+        "action/action_pat.bvh",
+        "action/action_pickingup.bvh",
+        "action/action_run.bvh",
+        "action/action_standup.bvh",
+        "action/action_walk.bvh"
+      ]
+    },
+    "exercise": {
+      "label": "Exercise",
+      "icon": "\ud83c\udfcb\ufe0f",
+      "files": [
+        "exercise/exercise_crunch.bvh",
+        "exercise/exercise_crunches.bvh",
+        "exercise/exercise_jogging.bvh",
+        "exercise/exercise_jumping_jacks.bvh"
+      ]
+    },
+    "vrma": {
+      "label": "VRM Animations",
+      "icon": "\u2728",
+      "files": [
+        "vrma/Angry.vrma",
+        "vrma/Sad.vrma",
+        "vrma/Thinking.vrma",
+        "vrma/Surprised.vrma",
+        "vrma/Relax.vrma"
+      ]
+    }
+  },
+  "emotionMapping": {
+    "happy": ["emotion/joy.bvh", "emotion/joy2.bvh", "emotion/joy3.bvh", "emotion/amusement.bvh"],
+    "sad": ["emotion/sadness.bvh", "emotion/sadness2.bvh", "emotion/grief.bvh", "vrma/Sad.vrma"],
+    "angry": ["emotion/anger.bvh", "emotion/anger2.bvh", "emotion/anger3.bvh", "vrma/Angry.vrma"],
+    "surprised": ["emotion/surprise.bvh", "emotion/surprise2.bvh", "vrma/Surprised.vrma"],
+    "thinking": ["emotion/confusion.bvh", "emotion/curiosity.bvh", "vrma/Thinking.vrma"],
+    "excited": ["emotion/excitement.bvh", "emotion/excitement2.bvh", "emotion/excitement3.bvh"],
+    "dance": ["dance/dance_1.bvh", "dance/dance_2.bvh", "dance/dance_rumba.bvh", "dance/dance_gangnam_style.bvh"],
+    "love": ["emotion/love.bvh", "emotion/love2.bvh", "emotion/love3.bvh"],
+    "fear": ["emotion/fear.bvh", "emotion/fear2.bvh", "emotion/fear3.bvh"],
+    "disgust": ["emotion/disgust.bvh", "emotion/disgust1.bvh", "emotion/disgust2.bvh"]
+  },
+  "credits": {
+    "bvh_pack": {
+      "source": "SillyTavern VRM Assets Pack",
+      "url": "https://github.com/test157t/VRM-Assets-Pack-For-Silly-Tavern",
+      "license": "Community use"
+    },
+    "vrma_pack": {
+      "source": "tk256ailab vrm-viewer",
+      "url": "https://github.com/tk256ailab/vrm-viewer",
+      "license": "Open source"
+    }
+  }
+}

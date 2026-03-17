@@ -132,15 +132,6 @@ download_with_fallback "${AVATAR_DIR}/HairSample_Male.vrm" \
 download_with_fallback "${AVATAR_DIR}/Sakurada_Fumiriya.vrm" \
   "https://raw.githubusercontent.com/madjin/vrm-samples/master/vroid/beta/Sakurada_Fumiriya.vrm"
 
-download_with_fallback "${AVATAR_DIR}/Avatar_Orion.vrm" \
-  "https://raw.githubusercontent.com/madjin/vrm-samples/master/Avatar_Orion.vrm"
-
-download_with_fallback "${AVATAR_DIR}/cryptovoxels.vrm" \
-  "https://raw.githubusercontent.com/madjin/vrm-samples/master/cryptovoxels.vrm"
-
-download_with_fallback "${AVATAR_DIR}/Seed-san.vrm" \
-  "https://raw.githubusercontent.com/vrm-c/vrm-specification/master/samples/Seed-san/vrm/Seed-san.vrm"
-
 download_with_fallback "${AVATAR_DIR}/VRM1_Constraint_Twist_Sample.vrm" \
   "https://raw.githubusercontent.com/pixiv/three-vrm/dev/packages/three-vrm/examples/models/VRM1_Constraint_Twist_Sample.vrm"
 
@@ -161,9 +152,6 @@ download_with_fallback "${AVATAR_DIR}/mpfb.glb" \
   "https://raw.githubusercontent.com/met4citizen/TalkingHead/main/avatars/mpfb.glb"
 
 # ── GLB Tier 3: Models without morph targets ──
-download_with_fallback "${AVATAR_DIR}/Xbot.glb" \
-  "https://raw.githubusercontent.com/mrdoob/three.js/r147/examples/models/gltf/Xbot.glb"
-
 
 # ------------------------------------------------------------
 # Generate vendor/avatars/avatars.json from downloaded GLBs and VRMs

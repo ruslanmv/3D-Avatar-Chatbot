@@ -34,8 +34,16 @@ export class MobileSupport {
     }
 
     init() {
-        // Cache device detection
-        this._detect();
+        // Use DeviceDetector if available, otherwise fall back to local detection
+        const dd = window.NEXUS_DEVICE;
+        if (dd && dd._detected) {
+            this._isMobile = dd.device === 'phone';
+            this._isTablet = dd.device === 'tablet';
+            this._isQuest = dd.os === 'quest';
+            this._isPortrait = dd.isPortrait;
+        } else {
+            this._detect();
+        }
 
         if (this._isMobile || this._isTablet) {
             console.log(
