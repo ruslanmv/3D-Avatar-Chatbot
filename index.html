@@ -47,6 +47,19 @@
 
         <script defer src="src/vendor-guard.js"></script>
 
+        <!-- Clear the __THREE__ marker set by three.min.js so three.module.js
+             (loaded by ES modules below) doesn't warn about multiple instances.
+             Both share the same Three.js version (0.147.0) — the global one is
+             for legacy defer scripts, the module one for ES imports + three-vrm.
+             MUST be defer (not inline) so it runs AFTER three.min.js sets __THREE__
+             but BEFORE ES module scripts execute. -->
+        <script defer>
+            if (window.__THREE__) {
+                window.__THREE_REVISION_BACKUP__ = window.__THREE__;
+                delete window.__THREE__;
+            }
+        </script>
+
         <script>
             // Single source of truth for enabling the high-quality engine:
             window.__USE_GLTF_VIEWER_ENGINE__ = true;
@@ -56,17 +69,6 @@
             window.__NEXUS_VIEWER_READY__ = new Promise(function (resolve) {
                 window.__resolveNexusViewerReady__ = resolve;
             });
-        </script>
-
-        <!-- Clear the __THREE__ marker set by three.min.js so three.module.js
-             (loaded by ES modules below) doesn't warn about multiple instances.
-             Both share the same Three.js version — the global one is for legacy
-             defer scripts, the module one for ES imports + @pixiv/three-vrm. -->
-        <script>
-            if (window.__THREE__) {
-                window.__THREE_REVISION_BACKUP__ = window.__THREE__;
-                delete window.__THREE__;
-            }
         </script>
 
         <script type="importmap">
@@ -385,12 +387,30 @@
                         <div class="avatar-footer">
                             <div class="avatar-footer-actions">
                                 <button
+                                    id="reset-view-btn"
+                                    class="emotion-trigger"
+                                    type="button"
+                                    title="Reset Camera"
+                                    style="font-size: 1.1rem"
+                                >
+                                    <span>🎯</span>
+                                </button>
+                                <button
                                     id="openPoseStudioBtn"
                                     class="emotion-trigger"
                                     type="button"
                                     title="Pose Studio &amp; Emotions"
                                 >
                                     <span class="emotion-trigger-icon" id="emotion-trigger-icon">🎭</span>
+                                </button>
+                                <button
+                                    id="avatar-picker-btn"
+                                    class="emotion-trigger"
+                                    type="button"
+                                    title="Switch Avatar"
+                                    style="font-size: 1.1rem"
+                                >
+                                    <span>👤</span>
                                 </button>
                                 <div class="avatar-footer-right">
                                     <select id="avatar-select" class="select-input avatar-select-compact">
@@ -1222,6 +1242,87 @@
                         </div>
                     </div>
 
+                    <div class="config-section">
+                        <h3 class="config-title">VISUAL EFFECTS</h3>
+                        <p style="font-size: 0.72rem; color: rgba(255, 255, 255, 0.5); margin-bottom: 12px">
+                            Toggle rendering effects. All effects are additive and non-destructive.
+                        </p>
+                        <div style="display: flex; flex-direction: column; gap: 10px">
+                            <label
+                                class="provider-card"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 10px;
+                                    padding: 8px 12px;
+                                    cursor: pointer;
+                                "
+                            >
+                                <input type="checkbox" id="fx-envmap" checked />
+                                <div>
+                                    <div class="provider-name" style="font-size: 0.82rem">Environment Map</div>
+                                    <div style="font-size: 0.68rem; color: rgba(255, 255, 255, 0.45)">
+                                        PMREM probe reflections (adds subtle material reflections)
+                                    </div>
+                                </div>
+                            </label>
+                            <label
+                                class="provider-card"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 10px;
+                                    padding: 8px 12px;
+                                    cursor: pointer;
+                                "
+                            >
+                                <input type="checkbox" id="fx-bloom" checked />
+                                <div>
+                                    <div class="provider-name" style="font-size: 0.82rem">Bloom</div>
+                                    <div style="font-size: 0.68rem; color: rgba(255, 255, 255, 0.45)">
+                                        Emissive glow on bright areas
+                                    </div>
+                                </div>
+                            </label>
+                            <label
+                                class="provider-card"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 10px;
+                                    padding: 8px 12px;
+                                    cursor: pointer;
+                                "
+                            >
+                                <input type="checkbox" id="fx-ssao" checked />
+                                <div>
+                                    <div class="provider-name" style="font-size: 0.82rem">SSAO</div>
+                                    <div style="font-size: 0.68rem; color: rgba(255, 255, 255, 0.45)">
+                                        Screen-space ambient occlusion (depth shading in creases)
+                                    </div>
+                                </div>
+                            </label>
+                            <label
+                                class="provider-card"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 10px;
+                                    padding: 8px 12px;
+                                    cursor: pointer;
+                                "
+                            >
+                                <input type="checkbox" id="fx-tonemapping" checked />
+                                <div>
+                                    <div class="provider-name" style="font-size: 0.82rem">ACES Tone Mapping</div>
+                                    <div style="font-size: 0.68rem; color: rgba(255, 255, 255, 0.45)">
+                                        Cinematic contrast curve (off = flat Linear for VRoid-style)
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
                     <div class="config-section" id="pose-normalizer-section">
                         <h3 class="config-title">AVATAR POSE &amp; ANIMATION</h3>
                         <p style="font-size: 0.72rem; color: rgba(255, 255, 255, 0.5); margin-bottom: 12px">
@@ -1989,6 +2090,10 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <script defer src="src/LipSyncEngine.js"></script>
         <script defer src="src/BehaviorEngine.js"></script>
         <script defer src="src/AvatarAliveness.js"></script>
+
+        <!-- Avatar Picker (bottom-sheet avatar selection — replaces dropdown).
+             Must load BEFORE main.js so window.AvatarPicker exists when init() runs. -->
+        <script defer src="src/AvatarPicker.js"></script>
 
         <script defer src="src/main.js"></script>
 

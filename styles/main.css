@@ -529,11 +529,206 @@ body {
     gap: 8px;
 }
 
+/* Hidden by default — AvatarPicker bottom-sheet replaces the dropdown.
+   Kept in DOM so existing JS (loadAvatar, persistence) still works. */
 .avatar-select-compact {
-    max-width: 160px;
-    padding: 6px 8px;
-    font-size: 0.8rem;
+    display: none !important;
+}
+
+/* ============================================
+   Avatar Picker (Bottom Sheet)
+   ============================================ */
+
+.avatar-picker-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 900;
+    backdrop-filter: blur(2px);
+}
+
+.avatar-picker-backdrop.open {
+    display: block;
+}
+
+.avatar-picker-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-height: 55vh;
+    background: var(--bg-dark);
+    border-top: 1px solid var(--glass-border);
+    border-radius: 16px 16px 0 0;
+    z-index: 901;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.6);
+}
+
+.avatar-picker-panel.open {
+    transform: translateY(0);
+}
+
+.avatar-picker-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px 10px;
+    border-bottom: 1px solid rgba(0, 229, 255, 0.15);
+    flex-shrink: 0;
+}
+
+.avatar-picker-title {
+    font-family: var(--font-heading);
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--primary);
+    letter-spacing: 0.08em;
+}
+
+.avatar-picker-close {
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--glass-border);
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.3);
+    color: var(--text-primary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    padding: 0;
+    line-height: 1;
+}
+
+.avatar-picker-close:hover {
+    border-color: var(--primary);
+    background: rgba(0, 229, 255, 0.1);
+}
+
+.avatar-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px;
+    padding: 14px 20px;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 229, 255, 0.3) transparent;
+}
+
+.avatar-picker-grid::-webkit-scrollbar {
+    width: 6px;
+}
+
+.avatar-picker-grid::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.avatar-picker-grid::-webkit-scrollbar-thumb {
+    background: rgba(0, 229, 255, 0.3);
+    border-radius: 3px;
+}
+
+.avatar-picker-grid::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 229, 255, 0.5);
+}
+
+.avatar-picker-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--glass-border);
     border-radius: var(--border-radius-sm);
+    background: rgba(0, 0, 0, 0.25);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+    width: 100%;
+}
+
+.avatar-picker-card:hover {
+    border-color: var(--primary);
+    background: rgba(0, 229, 255, 0.08);
+}
+
+.avatar-picker-card.active {
+    border-color: var(--primary);
+    background: rgba(0, 229, 255, 0.15);
+    box-shadow: 0 0 8px rgba(0, 229, 255, 0.2);
+}
+
+.avatar-picker-card-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(0, 229, 255, 0.2), rgba(124, 77, 255, 0.2));
+    border: 1px solid rgba(0, 229, 255, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-heading);
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--primary);
+    flex-shrink: 0;
+}
+
+.avatar-picker-card-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+}
+
+.avatar-picker-upload-row {
+    padding: 10px 20px 16px;
+    border-top: 1px solid rgba(0, 229, 255, 0.1);
+    flex-shrink: 0;
+}
+
+.avatar-picker-upload-btn {
+    width: 100%;
+    padding: 10px;
+    border: 1px dashed var(--glass-border);
+    border-radius: var(--border-radius-sm);
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--text-secondary);
+    font-family: var(--font-body);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.avatar-picker-upload-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: rgba(0, 229, 255, 0.05);
+}
+
+@media (min-width: 768px) {
+    .avatar-picker-panel {
+        max-width: 520px;
+        left: 20px;
+        right: auto;
+        border-radius: 16px 16px 0 0;
+    }
+
+    .avatar-picker-grid {
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    }
 }
 
 /* ============================================
