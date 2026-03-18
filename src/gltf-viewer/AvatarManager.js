@@ -300,6 +300,39 @@ export class AvatarManager {
                 if (node.isMesh) {
                     node.castShadow = shadowsOn;
                     node.receiveShadow = false;
+
+                    // Neutralize VRM/MToon material properties that cause
+                    // unwanted edge glow on a dark background:
+                    // 1. envMap — PMREM probe Fresnel reflections at grazing angles
+                    // 2. Parametric rim — MToon's built-in rim/edge lighting
+                    // 3. Matcap — spherical reflection map (can add edge color)
+                    // MToon is a toon shader — direct lights only, no edge effects.
+                    const mats = Array.isArray(node.material) ? node.material : [node.material];
+                    for (const mat of mats) {
+                        if (mat && isVRM) {
+                            mat.envMap = null;
+                            mat.envMapIntensity = 0;
+
+                            // Disable MToon parametric rim lighting (golden edge glow)
+                            if (mat.parametricRimColorFactor) {
+                                mat.parametricRimColorFactor.setRGB(0, 0, 0);
+                            }
+                            if ('parametricRimFresnelPowerFactor' in mat) {
+                                mat.parametricRimFresnelPowerFactor = 1;
+                            }
+                            if ('parametricRimLiftFactor' in mat) {
+                                mat.parametricRimLiftFactor = 0;
+                            }
+                            // Disable matcap spherical reflections
+                            if (mat.matcapTexture) {
+                                mat.matcapTexture = null;
+                            }
+                            if (mat.matcapFactor) {
+                                mat.matcapFactor.setRGB(0, 0, 0);
+                            }
+                            mat.needsUpdate = true;
+                        }
+                    }
                 }
             });
 

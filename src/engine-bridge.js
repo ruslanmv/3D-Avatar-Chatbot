@@ -112,6 +112,18 @@ const initEngine = async () => {
         const savedShadow = localStorage.getItem('desktop_shadow');
         engine.setShadows(savedShadow === 'on');
 
+        // Apply saved visual effects settings (default: all on)
+        const fxKeys = [
+            { key: 'fx_envmap', apply: (v) => engine.setEnvironmentMap(v) },
+            { key: 'fx_bloom', apply: (v) => engine.postProcessing?.setBloom(v) },
+            { key: 'fx_ssao', apply: (v) => engine.postProcessing?.setSSAO(v) },
+            { key: 'fx_tonemapping', apply: (v) => engine.setToneMapping(v) },
+        ];
+        for (const { key, apply } of fxKeys) {
+            const saved = localStorage.getItem(key);
+            if (saved !== null) apply(saved === 'true');
+        }
+
         // Apply device-specific renderer optimizations
         if (window.NEXUS_DEVICE) {
             const settings = window.NEXUS_DEVICE.getRendererSettings();
