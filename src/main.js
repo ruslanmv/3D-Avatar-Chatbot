@@ -1835,7 +1835,7 @@ function setupPoseNormalizerUI() {
 
     // Preset selector
     const presetSelect = document.getElementById('pose-preset');
-    if (presetSelect) presetSelect.value = s.preset || 'relaxedStanding';
+    if (presetSelect) presetSelect.value = s.preset || 'naturalIdle';
 
     // Per-bone sliders
     document.querySelectorAll('.pose-bone-slider').forEach((slider) => {
@@ -1880,6 +1880,11 @@ function setupPoseNormalizerUI() {
             applyPoseSettingsLive();
         });
     }
+
+    // Cross-sync: when Pose Studio or other systems change settings, update this UI
+    window.addEventListener('pose-settings-changed', () => {
+        loadPoseSettingsIntoUI();
+    });
 
     // VR Pose Preset dropdown — uses VRPoseSystem (same as VR chat panel)
     const vrPoseSelect = document.getElementById('vr-pose-preset');
@@ -1936,7 +1941,7 @@ function applyPoseSettingsLive() {
         // This matches how VRoid Hub displays models in natural poses.
         if (np && humanoid && typeof humanoid.getNormalizedBoneNode === 'function') {
             np.reset();
-            np.setPreset(patch.preset || 'relaxedStanding');
+            np.setPreset(patch.preset || 'naturalIdle');
             np.apply(root, { humanoid, preset: patch.preset });
         } else {
             // ── GLB fallback: world-space alignment via PoseNormalizer
@@ -1966,7 +1971,7 @@ function loadPoseSettingsIntoUI() {
     }
 
     const presetSelect = document.getElementById('pose-preset');
-    if (presetSelect) presetSelect.value = s.preset || 'relaxedStanding';
+    if (presetSelect) presetSelect.value = s.preset || 'naturalIdle';
 
     document.querySelectorAll('.pose-bone-slider').forEach((slider) => {
         const bone = slider.dataset.bone;

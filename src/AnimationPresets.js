@@ -25,9 +25,13 @@
     // All systems (PoseNormalizer, NaturalPosePlugin, PoseStudioNormalizer)
     // read this value. Change it HERE to adjust pose correction strength globally.
     //   0   = no correction (raw T-pose)
-    //   1.0 = full correction (fully relaxed standing)
-    //   0.70 = default — reduced for more subtle correction, avoids body overlap.
-    var DEFAULT_POSE_INTENSITY = 0.7;
+    //   1.0 = full correction (industry standard — arms naturally at sides)
+    //   >1  = over-correction (extrapolates past target — use with caution)
+    //
+    // Production note: 1.0 with 'naturalIdle' preset (55° arm rotation) matches
+    // the natural standing pose used by VRoid Hub, Ready Player Me, and AAA games.
+    // Previous default of 0.7 with 'relaxedStanding' (40°) left arms partially raised.
+    var DEFAULT_POSE_INTENSITY = 1.0;
 
     // =====================================================================
     // EMOTIONS — facial expressions + body animation modes

@@ -344,7 +344,7 @@ describe('PoseNormalizer', () => {
         expect(s.bones).toBeDefined();
         expect(s.bones.leftUpperArm).toBeDefined();
         expect(s.maxCorrection).toBeDefined();
-        expect(s.preset).toBe('relaxedStanding');
+        expect(s.preset).toBe('naturalIdle');
     });
 
     test('updateSettings should merge patch and return updated settings', () => {

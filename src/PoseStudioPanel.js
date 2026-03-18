@@ -171,6 +171,26 @@
             '      </button>' +
             '    </div>' +
             '  </div>' +
+            // Section 1b: T-Pose Correction — intensity slider + natural pose preset
+            '  <div class="pose-studio-section">' +
+            '    <label class="pose-studio-label">T-Pose Correction</label>' +
+            '    <div class="pose-slider-row">' +
+            '      <div class="pose-slider-head">' +
+            '        <span class="pose-slider-label">Intensity</span>' +
+            '        <span id="poseTposeIntensityValue" class="pose-slider-value">1.00</span>' +
+            '      </div>' +
+            '      <input id="poseTposeIntensitySlider" class="pose-slider pose-slider--tpose" type="range" min="0" max="150" value="100" step="1" />' +
+            '      <div class="pose-slider-scale"><span>0</span><span>0.5</span><span>1.0</span><span>1.5</span></div>' +
+            '    </div>' +
+            '    <div class="pose-toggle-hint">0 = raw T-pose, 1.0 = natural standing (recommended), &gt;1 = stronger correction</div>' +
+            '    <label class="pose-studio-label" style="margin-top:8px;">Natural Pose Style</label>' +
+            '    <select id="poseTposePresetSelect" class="pose-studio-select">' +
+            '      <option value="relaxedStanding">Relaxed Standing (40\u00B0 arms)</option>' +
+            '      <option value="naturalIdle" selected>Natural Idle (55\u00B0 arms)</option>' +
+            '      <option value="portrait">Portrait / Thumbnail (65\u00B0 arms)</option>' +
+            '      <option value="presentation">Presentation (30\u00B0 arms)</option>' +
+            '    </select>' +
+            '  </div>' +
             // Section 2: Pose presets dropdown + user saved poses
             '  <div class="pose-studio-section">' +
             '    <label class="pose-studio-label">Poses</label>' +
@@ -634,7 +654,87 @@
             });
         }
 
+        // --- T-Pose Intensity slider ---
+        const tposeSlider = this.rootEl.querySelector('#poseTposeIntensitySlider');
+        const tposeValue = this.rootEl.querySelector('#poseTposeIntensityValue');
+        if (tposeSlider && tposeValue) {
+            // Initialize from current PoseNormalizer settings
+            const pn = window.NEXUS_POSE_NORMALIZER;
+            if (pn && pn.getSettings) {
+                const s = pn.getSettings();
+                if (s.intensity != null) {
+                    tposeSlider.value = String(Math.round(s.intensity * 100));
+                    tposeValue.textContent = s.intensity.toFixed(2);
+                }
+            }
+
+            tposeSlider.addEventListener('input', () => {
+                const val = Number(tposeSlider.value) / 100;
+                tposeValue.textContent = val.toFixed(2);
+
+                // Update PoseNormalizer settings (persists to localStorage)
+                const pnorm = window.NEXUS_POSE_NORMALIZER;
+                if (pnorm && pnorm.updateSettings) {
+                    pnorm.updateSettings({ intensity: val });
+                }
+
+                // Re-apply natural pose with new intensity
+                self._reapplyNaturalPose();
+            });
+        }
+
+        // --- Natural Pose Style selector ---
+        const tposePresetSelect = this.rootEl.querySelector('#poseTposePresetSelect');
+        if (tposePresetSelect) {
+            // Initialize from current NaturalPosePlugin state
+            const np = window.NEXUS_NATURAL_POSE;
+            if (np && np.getActivePreset) {
+                tposePresetSelect.value = np.getActivePreset();
+            }
+
+            tposePresetSelect.addEventListener('change', () => {
+                const presetName = tposePresetSelect.value;
+
+                // Update PoseNormalizer settings
+                const pnorm = window.NEXUS_POSE_NORMALIZER;
+                if (pnorm && pnorm.updateSettings) {
+                    pnorm.updateSettings({ preset: presetName });
+                }
+
+                // Apply via NaturalPosePlugin
+                const np2 = window.NEXUS_NATURAL_POSE;
+                if (np2 && np2.setPreset) {
+                    np2.setPreset(presetName);
+                }
+
+                // Re-apply to update the character
+                self._reapplyNaturalPose();
+            });
+        }
+
         // Animation Library UI removed — only emotes + model clips shown
+
+        // --- Cross-sync: listen for external settings changes (e.g. from Settings panel) ---
+        this._settingsChangedHandler = () => {
+            const pnSync = window.NEXUS_POSE_NORMALIZER;
+            if (!pnSync || !pnSync.getSettings) return;
+            const sSync = pnSync.getSettings();
+
+            // Sync intensity slider
+            const tSlider = self.rootEl.querySelector('#poseTposeIntensitySlider');
+            const tValue = self.rootEl.querySelector('#poseTposeIntensityValue');
+            if (tSlider && sSync.intensity != null) {
+                tSlider.value = String(Math.round(sSync.intensity * 100));
+                if (tValue) tValue.textContent = sSync.intensity.toFixed(2);
+            }
+
+            // Sync preset dropdown
+            const tPreset = self.rootEl.querySelector('#poseTposePresetSelect');
+            if (tPreset && sSync.preset) {
+                tPreset.value = sSync.preset;
+            }
+        };
+        window.addEventListener('pose-settings-changed', this._settingsChangedHandler);
     };
 
     /**
@@ -1042,6 +1142,41 @@
     };
 
     /**
+     * Re-apply the natural pose correction to the current avatar.
+     * Called when intensity or preset changes in real-time.
+     */
+    PoseStudioPanel.prototype._reapplyNaturalPose = function () {
+        // Get the current avatar root
+        var avatarRoot = null;
+        try {
+            avatarRoot =
+                window.NEXUS_VIEWER?.avatarManager?.currentRoot ||
+                (this.editor.getAvatarRoot && this.editor.getAvatarRoot());
+        } catch (_) {}
+
+        if (!avatarRoot) return;
+
+        // Re-apply via NaturalPosePlugin (handles VRM + GLB)
+        var np = window.NEXUS_NATURAL_POSE;
+        if (np && np.apply) {
+            np.apply(avatarRoot);
+        }
+
+        // Force VRM sync so changes are visible immediately
+        var vrm =
+            window.NEXUS_VIEWER?.avatarManager?._currentVRM ||
+            window.NEXUS_VIEWER?.avatarManager?.vrmLoader?.currentVRM;
+        if (vrm && vrm.update) {
+            vrm.update(0);
+        }
+
+        // Re-capture rest pose so ProceduralAnimator uses updated baseline
+        if (window.NEXUS_PROCEDURAL_ANIMATOR?.captureRestPose) {
+            window.NEXUS_PROCEDURAL_ANIMATOR.captureRestPose(avatarRoot);
+        }
+    };
+
+    /**
      * Refresh the dropdown with VRPoseSystem presets + user-saved poses.
      * Single source of truth — no more duplicate built-in poses.
      */
@@ -1135,6 +1270,30 @@
                     '<option value="broadcastAnchor">Broadcast (Anchor)</option>';
             }
             talkSelect.innerHTML = tsHtml;
+        }
+
+        // Sync T-Pose Intensity slider with current settings
+        var tposeSlider = this.rootEl.querySelector('#poseTposeIntensitySlider');
+        var tposeValue = this.rootEl.querySelector('#poseTposeIntensityValue');
+        var tposePresetSel = this.rootEl.querySelector('#poseTposePresetSelect');
+        if (tposeSlider && tposeValue) {
+            var pn = window.NEXUS_POSE_NORMALIZER;
+            if (pn && pn.getSettings) {
+                var s = pn.getSettings();
+                if (s.intensity != null) {
+                    tposeSlider.value = String(Math.round(s.intensity * 100));
+                    tposeValue.textContent = s.intensity.toFixed(2);
+                }
+                if (s.preset && tposePresetSel) {
+                    tposePresetSel.value = s.preset;
+                }
+            }
+        }
+        if (tposePresetSel) {
+            var np = window.NEXUS_NATURAL_POSE;
+            if (np && np.getActivePreset) {
+                tposePresetSel.value = np.getActivePreset();
+            }
         }
 
         // Update nav display for new filtered count
