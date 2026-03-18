@@ -155,12 +155,27 @@ export class ARSupport {
                         'hit-test',
                         'dom-overlay',
                         'hand-tracking',
-                        'camera-access',
+                        'camera-access', // Not available on Quest Browser — silent fallback
                         'anchors',
                         'plane-detection',
+                        'mesh-detection', // Quest 3 Scene Model (3D env mesh for occlusion)
                         'light-estimation',
+                        'layers', // WebXR Layers API (compositor-level performance)
                     ],
                 };
+
+                // Quest 3 depth sensing for real-world occlusion (objects behind
+                // real furniture appear correctly hidden). Uses W3C Depth Sensing Module.
+                // Silent fallback on devices that don't support it.
+                try {
+                    sessionInit.optionalFeatures.push('depth-sensing');
+                    sessionInit.depthSensing = {
+                        usagePreference: ['cpu-optimized', 'gpu-optimized'],
+                        dataFormatPreference: ['luminance-alpha', 'float32'],
+                    };
+                } catch {
+                    // depthSensing config not supported — ignore
+                }
 
                 // Add DOM overlay for mobile (shows 2D UI over camera feed)
                 const overlayEl = document.getElementById('ar-dom-overlay');

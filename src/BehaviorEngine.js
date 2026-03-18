@@ -100,6 +100,7 @@
         switch (state) {
             case State.IDLE:
                 animator?.setMode?.('idle', 1);
+                animator?.setGazeOverride?.(null); // release — resume pointer tracking
                 engine.gazeTargetYaw = 0;
                 engine.gazeTargetPitch = 0;
                 engine._nextMicroExpr = 5 + Math.random() * 4;
@@ -108,6 +109,7 @@
 
             case State.LISTENING:
                 animator?.setMode?.('idle', 1);
+                animator?.setGazeOverride?.({ x: 0, y: 0 }); // lock head to camera
                 engine.gazeTargetYaw = 0;
                 engine.gazeTargetPitch = 0;
                 engine._nodPhase = 0;
@@ -117,6 +119,7 @@
 
             case State.THINKING:
                 animator?.setMode?.('thinking', 30000);
+                animator?.setGazeOverride?.({ x: 0, y: 0 }); // lock head to camera
                 engine._thinkGazePhase = 0;
                 // Look up-left initially
                 engine.gazeTargetYaw = -0.25;
@@ -125,12 +128,14 @@
 
             case State.SPEAKING:
                 animator?.setMode?.('talk', 30000);
+                animator?.setGazeOverride?.({ x: 0, y: 0 }); // lock head to camera
                 engine.gazeTargetYaw = 0;
                 engine.gazeTargetPitch = 0;
                 break;
 
             case State.MICRO_IDLE:
                 animator?.setMode?.('idle', 1);
+                animator?.setGazeOverride?.(null); // release — resume pointer tracking
                 engine._nextMicroExpr = 3 + Math.random() * 3;
                 engine._microExprActive = false;
                 break;

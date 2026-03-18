@@ -14,15 +14,16 @@ if (!window.__NEXUS_VIEWER_READY__) {
 
 // Import @pixiv/three-vrm in the background with timeout — do NOT block module execution.
 // If the CDN is slow or unreachable, the ViewerEngine still initializes without VRM support.
+// Mobile connections can be slow, so we retry once with a longer timeout before giving up.
 (async () => {
-    try {
-        console.log('[ViewerBridge] Loading @pixiv/three-vrm from CDN...');
+    const loadVRM = async (timeoutMs) => {
+        const timeout = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error(`CDN timeout (${timeoutMs / 1000}s)`)), timeoutMs)
+        );
+        return Promise.race([import('@pixiv/three-vrm'), timeout]);
+    };
 
-        // Timeout after 8s — mobile connections can be slow but we can't wait forever
-        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('CDN timeout (8s)')), 8000));
-
-        const vrmModule = await Promise.race([import('@pixiv/three-vrm'), timeout]);
-
+    const registerVRM = (vrmModule) => {
         if (vrmModule.VRMLoaderPlugin) {
             window.__THREE_VRM_PLUGIN__ = vrmModule.VRMLoaderPlugin;
             if (vrmModule.VRMUtils) {
@@ -30,9 +31,21 @@ if (!window.__NEXUS_VIEWER_READY__) {
                 window.THREE_VRM.VRMUtils = vrmModule.VRMUtils;
             }
             console.log('[ViewerBridge] @pixiv/three-vrm loaded successfully');
+            return true;
         }
-    } catch (e) {
-        console.warn('[ViewerBridge] @pixiv/three-vrm not available — VRM support disabled:', e.message);
+        return false;
+    };
+
+    try {
+        console.log('[ViewerBridge] Loading @pixiv/three-vrm from CDN...');
+        registerVRM(await loadVRM(12000));
+    } catch (e1) {
+        console.warn('[ViewerBridge] First VRM load attempt failed:', e1.message, '— retrying with longer timeout...');
+        try {
+            registerVRM(await loadVRM(20000));
+        } catch (e2) {
+            console.warn('[ViewerBridge] @pixiv/three-vrm not available — VRM support disabled:', e2.message);
+        }
     }
 })();
 

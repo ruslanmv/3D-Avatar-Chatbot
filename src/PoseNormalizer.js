@@ -352,8 +352,8 @@
             worldCorrection.slerp(_identity, 1 - scale);
         }
 
-        // Apply intensity blend
-        if (intensity < 1.0) {
+        // Apply intensity blend (slerp factor: 0 = no correction, >1 = amplified)
+        if (intensity !== 1.0) {
             worldCorrection.slerp(_identity, 1 - intensity);
         }
 

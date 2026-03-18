@@ -21,7 +21,7 @@
     "docs": "jsdoc -c jsdoc.json",
     "security:audit": "npm audit --audit-level=moderate",
     "security:fix": "npm audit fix",
-    "prepare": "(command -v git >/dev/null 2>&1 && husky install) || true",
+    "prepare": "[ \"$CI\" = true ] || [ \"$VERCEL\" = 1 ] || (command -v git >/dev/null 2>&1 && [ -d .git ] && husky install) || true",
     "precommit": "lint-staged",
     "deploy": "npm run build && npm run deploy:gh-pages",
     "deploy:gh-pages": "gh-pages -d .",
@@ -70,11 +70,10 @@
     "jsdoc": "^4.0.2",
     "lint-staged": "^15.0.0",
     "prettier": "^3.0.3",
-    "vercel": "^50.0.1",
     "webpack-bundle-analyzer": "^4.9.1"
   },
   "engines": {
-    "node": ">=20.0.0",
+    "node": "20.x",
     "npm": ">=10.0.0"
   },
   "lint-staged": {

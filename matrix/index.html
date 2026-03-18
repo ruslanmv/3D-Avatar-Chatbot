@@ -57,7 +57,18 @@
                     <div id="messages" class="messages" aria-live="polite"></div>
 
                     <div class="composer">
-                        <textarea id="input" class="input" rows="1" placeholder="Type your message..."></textarea>
+                        <textarea
+                            id="input"
+                            class="input"
+                            rows="1"
+                            placeholder="Type your message..."
+                            autocomplete="off"
+                            autocorrect="off"
+                            autocapitalize="sentences"
+                            spellcheck="false"
+                            data-form-type="other"
+                            data-lpignore="true"
+                        ></textarea>
                         <button id="micBtn" class="btn btn--ghost" type="button" title="Voice input">mic</button>
                         <button id="sendBtn" class="btn" type="button">send</button>
                     </div>

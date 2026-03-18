@@ -197,6 +197,17 @@
                 font-family: var(--font-display);
                 letter-spacing: 0.05em;
             }
+            .drawer-clear-chat {
+                color: var(--status-error);
+                opacity: 0.85;
+            }
+            .drawer-clear-chat:hover {
+                background: rgba(255, 82, 82, 0.1) !important;
+                color: var(--status-error) !important;
+            }
+            .drawer-clear-chat svg {
+                stroke: var(--status-error) !important;
+            }
             .drawer-footer {
                 margin-top: auto;
                 padding: 14px 20px;
@@ -395,6 +406,29 @@
                 <!-- RIGHT: Chat Panel -->
                 <section class="chat-panel">
                     <div class="chat-card glass-panel">
+                        <!-- Mobile: overlay drag handle + collapse/expand toggle -->
+                        <div class="chat-overlay-handle mobile-only" id="chat-overlay-handle">
+                            <button
+                                class="chat-overlay-toggle"
+                                id="chat-overlay-toggle"
+                                type="button"
+                                aria-label="Toggle chat overlay size"
+                            >
+                                <svg
+                                    width="20"
+                                    height="20"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2.5"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"
+                                >
+                                    <polyline points="6 9 12 15 18 9" />
+                                </svg>
+                            </button>
+                        </div>
                         <div class="chat-card-header">
                             <div>
                                 <h2 class="section-title"><span class="title-icon">◇</span> CONVERSATION</h2>
@@ -447,10 +481,14 @@
                                     class="chat-input"
                                     placeholder="Type your message..."
                                     autocomplete="off"
+                                    autocorrect="off"
+                                    autocapitalize="sentences"
+                                    spellcheck="false"
                                     enterkeyhint="send"
                                     aria-label="Type a message"
                                     value=""
-                                    name="nexus-chat-input"
+                                    data-form-type="other"
+                                    data-lpignore="true"
                                 />
                                 <button class="send-btn" id="speak-btn" type="button" aria-label="Send message">
                                     <svg
@@ -561,6 +599,20 @@
                                 <line x1="8" y1="23" x2="16" y2="23" />
                             </svg>
                             <span>Voice &amp; Speech</span>
+                        </button>
+                        <button class="drawer-nav-item drawer-clear-chat" id="drawer-clear-btn" type="button">
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                            </svg>
+                            <span>Clear Chat</span>
                         </button>
                     </div>
                     <div class="drawer-nav-group">
@@ -1036,6 +1088,16 @@
                             </p>
                         </div>
 
+                        <div class="input-group">
+                            <label class="input-label">
+                                <input type="checkbox" id="stt-show-confidence" />
+                                <span style="margin-left: 8px">Show confidence notifications</span>
+                            </label>
+                            <p class="voice-status" style="margin-top: 8px; opacity: 0.8">
+                                Display transcription confidence messages after each voice input
+                            </p>
+                        </div>
+
                         <div class="modal-footer" style="justify-content: flex-start; gap: 10px; padding: 0">
                             <button class="secondary-btn" id="test-stt" type="button">
                                 🎤 TEST SPEECH RECOGNITION
@@ -1219,19 +1281,19 @@
                         <div class="input-group">
                             <label class="input-label" for="pose-intensity"
                                 >GLOBAL INTENSITY
-                                <span id="pose-intensity-val" style="float: right; opacity: 0.7">0.80</span>
+                                <span id="pose-intensity-val" style="float: right; opacity: 0.7">0.70</span>
                             </label>
                             <input
                                 type="range"
                                 id="pose-intensity"
                                 min="0"
-                                max="1"
+                                max="1.5"
                                 step="0.05"
-                                value="0.80"
+                                value="0.70"
                                 style="width: 100%; accent-color: var(--primary, #00e5ff)"
                             />
                             <p style="font-size: 0.65rem; color: rgba(255, 255, 255, 0.4); margin-top: 4px">
-                                0 = raw T-pose (no correction) &mdash; 1 = full relaxed standing correction
+                                0 = raw T-pose &mdash; 0.7 = default &mdash; 1.5 = maximum correction
                             </p>
                         </div>
 
@@ -1454,13 +1516,12 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
 
                     <div class="modal-footer">
                         <button class="secondary-btn" id="cancel-settings" type="button">CANCEL</button>
-                        <button class="secondary-btn" id="test-connection-btn" type="button">TEST CONNECTION</button>
+                        <button class="secondary-btn" id="test-connection-btn" type="button">TEST</button>
+                        <button class="primary-btn" id="save-settings" type="button">SAVE</button>
                         <span
                             id="test-connection-status"
-                            style="margin-left: 10px; font-size: 12px; opacity: 0.85"
+                            style="width: 100%; font-size: 12px; opacity: 0.85; text-align: center"
                         ></span>
-
-                        <button class="primary-btn" id="save-settings" type="button">SAVE CONFIGURATION</button>
                     </div>
                 </div>
             </div>
@@ -1873,7 +1934,12 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
                         class="ar-chat-input"
                         placeholder="Ask something..."
                         autocomplete="off"
+                        autocorrect="off"
+                        autocapitalize="sentences"
+                        spellcheck="false"
                         enterkeyhint="send"
+                        data-form-type="other"
+                        data-lpignore="true"
                     />
                     <button id="ar-send-btn" class="ar-pill-btn" type="button">SEND</button>
                 </div>
@@ -1886,6 +1952,9 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
 
         <!-- Mobile drawer navigation wiring -->
         <script defer src="src/MobileDrawerWiring.js"></script>
+
+        <!-- Mobile overlay chat (fullscreen avatar + floating chat panel) -->
+        <script defer src="src/MobileChatOverlay.js"></script>
 
         <!-- LLM Manager (must load before VR integration) -->
         <script defer src="src/LLMManager.js"></script>
