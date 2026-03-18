@@ -46,7 +46,6 @@
         { name: 'lyingFront', label: 'Front', category: 'Lying' },
         { name: 'lyingSide', label: 'Side', category: 'Lying' },
         // Ground
-        { name: 'allFours', label: 'All Fours', category: 'Ground' },
         { name: 'allFoursArched', label: 'All Fours (Arched)', category: 'Ground', adult: true },
         // Adult — MMORPG-inspired (Spicy Mode only)
         { name: 'lyingKiss', label: 'Kiss Me', category: 'Adult', adult: true },

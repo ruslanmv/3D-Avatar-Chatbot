@@ -58,11 +58,9 @@
             }
         }
 
-        // Now apply the relaxed standing pose on a clean slate
-        const normalizer = window.NEXUS_POSE_STUDIO_NORMALIZER;
-        if (normalizer) {
-            normalizer.applyRelaxedStandingPose(this.rigMap);
-        }
+        // Start from clean T-Pose (identity quaternions already set above).
+        // No normalizer pose applied — Pose Studio defaults to the neutral
+        // T-Pose so users start from a known baseline without unexpected shifts.
 
         // Capture the neutral snapshot (now stable regardless of how many times we enter)
         this.neutralPose = PoseState.createNeutralSnapshot(this.rigMap);
@@ -79,11 +77,11 @@
             this.proceduralAnimator.setEditMode(true);
         }
 
-        // Immediately apply the first pose (Lecturer) with NO blend time
-        // to prevent a visible T-pose flash before show() blends in.
+        // Immediately apply the default rest pose (T-Pose) with NO blend time
+        // so Pose Studio always starts from a clean, neutral baseline.
         var vps = window.vrPoseSystem;
         if (vps) {
-            vps.applyPreset('lecturerNeutral', 0);
+            vps.applyPreset('standing', 0);
         }
 
         this._emitChange();
