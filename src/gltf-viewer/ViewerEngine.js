@@ -21,6 +21,7 @@ import { VRBoneGrabber } from './VRBoneGrabber.js';
 import { VRPoseSystem } from './VRPoseSystem.js';
 import { VRPuppetInteraction } from './VRPuppetInteraction.js';
 import { VRIntimacySystem } from './VRIntimacySystem.js';
+import { VRGazeController } from './VRGazeController.js';
 
 export class ViewerEngine {
     constructor(containerEl) {
@@ -213,6 +214,9 @@ export class ViewerEngine {
             puppetInteraction: this.vrPuppetInteraction,
         });
 
+        // VR Gaze Controller — "Follow-Me Eyes" (avatar looks at user's HMD)
+        this.vrGazeController = new VRGazeController(this.renderer, this.camera);
+
         // Create centered XR launch bar inside the avatar viewport
         this._createXRLaunchBar(containerEl);
 
@@ -350,6 +354,10 @@ export class ViewerEngine {
             this.vrIntimacySystem?.setAvatar(this.avatarManager?.currentRoot || null);
             this.vrIntimacySystem?.setEnabled(!!this.vrChatPanel?.xrSettings?.intimacyMode);
 
+            // Follow-me eyes: point avatar gaze at user's HMD
+            this.vrGazeController?.setAvatar(this.avatarManager?.currentRoot || null);
+            this.vrGazeController?.setEnabled(this.vrChatPanel?.xrSettings?.followGaze !== false);
+
             // Diagnostic: log state of all VR pose/bone systems
             console.log('[ViewerEngine] VR Pose Systems State:', {
                 boneGrabber: {
@@ -443,6 +451,9 @@ export class ViewerEngine {
             // Deactivate passthrough if it was enabled in VR
             this.passthroughEnhancer?.deactivate();
 
+            // Restore opaque clear color for desktop rendering
+            this.renderer.setClearColor(0x000000, 1);
+
             // Re-enable post-processing for desktop
             this.postProcessing?.onXRSessionEnd();
 
@@ -481,6 +492,7 @@ export class ViewerEngine {
             this.vrPoseSystem?.setEnabled(false);
             this.vrPuppetInteraction?.endAll();
             this.vrIntimacySystem?.setEnabled(false);
+            this.vrGazeController?.release(); // Release VR gaze override → resume mouse tracking
             this.vrChatIntegration.disable();
 
             // Restore mobile rendering settings
@@ -522,7 +534,12 @@ export class ViewerEngine {
                 if (this.vrSupport?.isVRActive) {
                     if (value === 'passthrough') {
                         // Enable passthrough: transparent background shows camera feed
+                        // Both scene.background=null AND clear color alpha=0 are required
+                        // for Quest 3 passthrough. The XRWebGLLayer alpha:true (set in
+                        // VRSupport.js) makes the framebuffer transparent, but only if
+                        // the renderer doesn't fill it with an opaque clear color.
                         this.scene.background = null;
+                        this.renderer.setClearColor(0x000000, 0); // alpha=0 → transparent
                         this._hideVRGround();
                         this.passthroughEnhancer?.activate(this.avatarManager?.currentRoot || null);
                     } else {
@@ -531,6 +548,7 @@ export class ViewerEngine {
                             this.passthroughEnhancer.deactivate();
                         }
                         this.scene.background = new THREE.Color(value === 'blue' ? 0x1a1a2e : 0x000000);
+                        this.renderer.setClearColor(0x000000, 1); // alpha=1 → opaque
                         // Show/hide floor grid based on mode
                         if (value === 'void') {
                             this._hideVRGround();
@@ -562,6 +580,11 @@ export class ViewerEngine {
             if (key === 'sessionMode') {
                 this._switchXRMode(value);
             }
+
+            // Follow-me gaze toggle
+            if (key === 'followGaze') {
+                this.vrGazeController?.setEnabled(!!value);
+            }
         });
 
         // --- Emotion bridge for VR Intimacy System ---
@@ -574,6 +597,9 @@ export class ViewerEngine {
             console.log('[ViewerEngine] AR Session Starting...');
             this.postProcessing?.onXRSessionStart();
             this.controls.enabled = false;
+
+            // Transparent clear color required for AR passthrough on Quest 3
+            this.renderer.setClearColor(0x000000, 0);
 
             // Update panel state to reflect AR mode
             if (this.vrChatPanel) {
@@ -610,6 +636,9 @@ export class ViewerEngine {
             console.log('[ViewerEngine] AR Session Ending...');
             this.postProcessing?.onXRSessionEnd();
             this.controls.enabled = true;
+
+            // Restore opaque clear color for desktop rendering
+            this.renderer.setClearColor(0x000000, 1);
 
             // Deactivate passthrough enhancements (restore desktop lighting)
             this.passthroughEnhancer?.deactivate();
@@ -763,7 +792,7 @@ export class ViewerEngine {
         const aspect = this.camera.aspect || 1;
         const isPortrait = aspect < 1;
 
-        const fitOffset = isPortrait ? (this.mobileSupport?.getFitOffset?.() ?? 2.0) : 1.35;
+        const fitOffset = isPortrait ? (this.mobileSupport?.getFitOffset?.() ?? 1.4) : 1.35;
 
         const verticalFov = THREE.MathUtils.degToRad(this.camera.fov);
         const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
@@ -820,9 +849,13 @@ export class ViewerEngine {
 
         // Adaptive clamp based on model size
         const maxSize = Math.max(size.x, size.y, size.z);
+        const isMobileDevice = this.mobileSupport?.isMobile?.() || false;
 
-        // Don't allow tiny models to push camera too close
-        const minD = THREE.MathUtils.clamp(maxSize * 0.9, 0.8, 2.0);
+        // Don't allow tiny models to push camera too close.
+        // On mobile the narrower FOV already handles framing, so allow closer.
+        const minDFloor = isMobileDevice ? 0.5 : 0.8;
+        const minDCeil = isMobileDevice ? 1.2 : 2.0;
+        const minD = THREE.MathUtils.clamp(maxSize * 0.9, minDFloor, minDCeil);
 
         // Allow huge models to be framed and allow zooming out
         const maxD = Math.max(6.0, maxSize * 4.0);
@@ -913,6 +946,7 @@ export class ViewerEngine {
             }
             this.vrPuppetInteraction?.setAvatar(this.avatarManager.currentRoot);
             this.vrIntimacySystem?.setAvatar(this.avatarManager.currentRoot);
+            this.vrGazeController?.setAvatar(this.avatarManager.currentRoot);
             if (window.poseEditor) {
                 this.vrBoneGrabber?.setPoseEditor(window.poseEditor);
             }
@@ -936,14 +970,18 @@ export class ViewerEngine {
         this.renderer.setAnimationLoop(() => {
             const dt = this.clock.getDelta();
 
+            // VRM update FIRST — syncs normalized bone proxies → raw skeleton.
+            // This must happen before ProceduralAnimator so that procedural
+            // offsets (breathing, head-look, basePose) are applied ON TOP of
+            // the VRM-normalized rest pose and are not overwritten.
+            this.avatarManager?.update(dt);
+
             try {
                 const t = this.clock.getElapsedTime();
                 window.NEXUS_PROCEDURAL_ANIMATOR?.update?.(t, dt);
             } catch (_e) {
                 // Procedural animator may not be loaded
             }
-
-            this.avatarManager?.update(dt);
             this.vrControllers.update(dt);
             this.vrPoseSystem?.update(dt);
             this.vrPuppetInteraction?.update(dt);
@@ -963,6 +1001,9 @@ export class ViewerEngine {
                     this.vrChatPanel?.update();
                     this.vrChatPanel?._animateMicIndicator(dt);
                     this.vrChatPanel?._updateMicIndicatorPosition();
+
+                    // Follow-me eyes: avatar looks at user's HMD position
+                    this.vrGazeController?.update(dt);
 
                     // Update passthrough enhancements in VR passthrough mode
                     if (this.passthroughEnhancer?.active) {

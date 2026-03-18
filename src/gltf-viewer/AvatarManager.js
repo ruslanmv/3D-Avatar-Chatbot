@@ -206,6 +206,24 @@ export class AvatarManager {
                 this._registerVRMPlugin();
             }
 
+            // If loading a VRM file and the plugin still isn't available,
+            // wait briefly for the CDN import to complete. On slow mobile
+            // connections, the VRM library may still be loading.
+            const isVRMFile = url.toLowerCase().endsWith('.vrm');
+            if (isVRMFile && !this._vrmPluginRegistered) {
+                console.log('[AvatarManager] VRM plugin not ready — waiting up to 15s for CDN load...');
+                const pollStart = Date.now();
+                while (Date.now() - pollStart < 15000) {
+                    await new Promise((r) => setTimeout(r, 500));
+                    if (this._registerVRMPlugin()) break;
+                }
+                if (!this._vrmPluginRegistered) {
+                    console.warn(
+                        '[AvatarManager] VRM plugin unavailable — loading VRM as plain GLTF (materials may be incorrect)'
+                    );
+                }
+            }
+
             // Remove old avatar
             this._removeCurrentAvatar();
 

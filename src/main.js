@@ -56,6 +56,7 @@ const SpeechSettings = {
     rate: parseFloat(localStorage.getItem('speech_rate') || '0.9'),
     pitch: parseFloat(localStorage.getItem('speech_pitch') || '1.0'),
     autoSend: localStorage.getItem('stt_auto_send') === 'true',
+    showConfidence: localStorage.getItem('stt_show_confidence') === 'true',
 };
 
 /* =========================================================
@@ -89,8 +90,8 @@ let loaderWatchdogTimer = null;
 let avatarItems = []; // [{name,file,url}]
 let avatarBasePath = '/vendor/avatars';
 
-/** Framing state */
-let lastFrameFitOffset = 1.35;
+/** Framing state — on mobile use tight fit so full character is visible */
+let lastFrameFitOffset = window.matchMedia('(max-width: 767px)').matches ? 0.9 : 1.35;
 
 /** Scene helpers */
 let floorMesh = null;
@@ -622,7 +623,10 @@ function frameObjectToCamera(object, fitOffset = 1.35) {
     const fitWidthDistance = fitHeightDistance / camera.aspect;
     const distance = fitOffset * Math.max(fitHeightDistance, fitWidthDistance);
 
-    const direction = new THREE.Vector3(0, 0.5, 1).normalize();
+    const isMobileView = window.matchMedia('(max-width: 767px)').matches;
+    // On mobile: lower camera angle (0.15) shows full body head-to-toe
+    // On desktop: slightly elevated (0.5) for upper-body focus
+    const direction = new THREE.Vector3(0, isMobileView ? 0.15 : 0.5, 1).normalize();
     camera.position.copy(direction.multiplyScalar(distance));
 
     camera.near = Math.max(0.01, distance / 100);
@@ -647,8 +651,9 @@ function frameObjectToCamera(object, fitOffset = 1.35) {
 
 function resetView() {
     if (!camera || !controls) return;
-    camera.position.set(0, 1.5, 3);
-    controls.target.set(0, 1, 0);
+    const mob = window.matchMedia('(max-width: 767px)').matches;
+    camera.position.set(0, mob ? 0.9 : 1.5, mob ? 2.5 : 3);
+    controls.target.set(0, mob ? 0.8 : 1, 0);
     controls.update();
 
     if (currentAvatar) frameObjectToCamera(currentAvatar, lastFrameFitOffset);
@@ -670,8 +675,11 @@ function setupThreeJS() {
     scene = new THREE.Scene();
     scene.background = null;
 
-    camera = new THREE.PerspectiveCamera(55, w / h, 0.1, 1000);
-    camera.position.set(0, 1.5, 3);
+    const isMobileInit = window.matchMedia('(max-width: 767px)').matches;
+    // Narrower FOV on mobile (45°) frames the character tighter within tall viewport
+    camera = new THREE.PerspectiveCamera(isMobileInit ? 45 : 55, w / h, 0.1, 1000);
+    // Lower camera Y on mobile to center full-body view
+    camera.position.set(0, isMobileInit ? 0.9 : 1.5, isMobileInit ? 2.5 : 3);
 
     let canvas = viewport.querySelector('canvas');
     if (!canvas) {
@@ -717,7 +725,8 @@ function setupThreeJS() {
     controls.maxDistance = 25;
     controls.enablePan = true;
     controls.maxPolarAngle = Math.PI * 0.49;
-    controls.target.set(0, 1, 0);
+    // Target center-of-body on mobile (lower) vs upper-body on desktop
+    controls.target.set(0, isMobileInit ? 0.8 : 1, 0);
 
     clock = new THREE.Clock();
 
@@ -1289,6 +1298,17 @@ function loadSTTSettingsIntoUI() {
         });
     }
 
+    // Show confidence notifications setting
+    const sttShowConfidence = $('stt-show-confidence');
+    if (sttShowConfidence) {
+        sttShowConfidence.checked = SpeechSettings.showConfidence;
+        sttShowConfidence.addEventListener('change', () => {
+            SpeechSettings.showConfidence = sttShowConfidence.checked;
+            localStorage.setItem('stt_show_confidence', sttShowConfidence.checked ? 'true' : 'false');
+            console.log('[Main] Confidence notifications', sttShowConfidence.checked ? 'enabled' : 'disabled');
+        });
+    }
+
     // Update provider-specific UI
     updateSTTProviderUI(sttConfig.provider);
 }
@@ -1498,7 +1518,13 @@ function setEmotionPressed(btn) {
 function setupEventListeners() {
     // Clear chat input on load (prevents browser autocomplete filling stale text)
     const chatInput = $('speech-text');
-    if (chatInput) chatInput.value = '';
+    if (chatInput) {
+        chatInput.value = '';
+        // Mobile browsers (Chrome Android, Safari iOS) ignore autocomplete="off"
+        // on standard text inputs. Setting a non-standard value forces them to
+        // skip their built-in autofill (address, email, name suggestions).
+        chatInput.setAttribute('autocomplete', 'one-time-code');
+    }
 
     const avatarSelect = $('avatar-select');
     if (avatarSelect) {
@@ -2915,6 +2941,12 @@ function initSpeechRecognition() {
             inputField.placeholder = 'Listening...';
             inputField.style.fontStyle = 'normal';
             inputField.style.opacity = '1';
+            // On mobile, hide the keyboard while the user is speaking.
+            // The keyboard is unnecessary during voice capture and covers
+            // half the screen, degrading the experience.
+            if ('ontouchstart' in window) {
+                inputField.blur();
+            }
         } else {
             console.error('[Desktop STT] ❌ ERROR: speech-text input not found!');
         }
@@ -2956,19 +2988,33 @@ function initSpeechRecognition() {
             stopVoiceInput();
 
             // Auto-send if enabled and confidence > 80%
+            const isMobileTouch = 'ontouchstart' in window;
             if (SpeechSettings.autoSend && confidence >= 0.8 && transcript.trim().length > 0) {
                 console.log(`[Desktop STT] Auto-sending (${confidencePercent}% confidence)`);
-                showMessage(`🎤 Auto-sent (${confidencePercent}% confidence): "${transcript}"`, 'info');
+                if (SpeechSettings.showConfidence) {
+                    showMessage(`🎤 Auto-sent (${confidencePercent}% confidence): "${transcript}"`, 'info');
+                }
                 handleUserMessage(transcript.trim());
                 inputField.value = '';
+                // On mobile, keep keyboard hidden — the message was sent
+                // automatically, so there is nothing for the user to edit.
+                if (isMobileTouch) inputField.blur();
             } else {
-                // Show confidence feedback and let user review
-                showMessage(
-                    `🎤 Transcribed (${confidencePercent}% confidence): "${transcript}"\nReview and press SEND, or click ACTIVATE VOICE to record again.`,
-                    'info'
-                );
-                inputField.focus();
-                inputField.select();
+                // Show confidence feedback only if enabled
+                if (SpeechSettings.showConfidence) {
+                    showMessage(
+                        `🎤 Transcribed (${confidencePercent}% confidence): "${transcript}"\nReview and press SEND, or click ACTIVATE VOICE to record again.`,
+                        'info'
+                    );
+                }
+                // On desktop, focus/select so the user can immediately edit
+                // or press Enter. On mobile, do NOT focus — it would pop up
+                // the keyboard unnecessarily. The user can tap the input to
+                // edit, or tap the mic to re-record, or tap SEND.
+                if (!isMobileTouch) {
+                    inputField.focus();
+                    inputField.select();
+                }
             }
         } else {
             // Interim result - show in italic
@@ -3407,6 +3453,7 @@ if (document.readyState === 'loading') {
 
     const arChat = document.getElementById('ar-chat');
     const arInput = document.getElementById('ar-chat-input');
+    if (arInput) arInput.setAttribute('autocomplete', 'one-time-code');
     const arSendBtn = document.getElementById('ar-send-btn');
     const arVoiceBtn = document.getElementById('ar-voice-btn');
     const arExitBtn = document.getElementById('ar-exit-btn');

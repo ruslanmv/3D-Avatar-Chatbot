@@ -72,6 +72,7 @@ export class VRChatPanel {
             puppetMode: false, // When true, grip translates avatar freely in 3D space
             intimacyMode: false, // Close-presence / comfort interaction mode in VR
             jointVisibility: 'hoverOnly', // 'hoverOnly' | 'alwaysVisible' — puppet handle spheres
+            followGaze: true, // Follow-me eyes: avatar looks at user's HMD in VR
         };
 
         // Check AR support asynchronously
@@ -975,11 +976,13 @@ export class VRChatPanel {
 
         const interNavY = interSectionY + 56;
         const interBtnW = (ctrlW - ctrlGap * 2) / 3;
+        const interBtnW2 = (ctrlW - ctrlGap) / 2; // wider buttons for row 2
         const ctrlInteraction = {
             intensity: { x: P, y: interNavY, w: interBtnW, h: ctrlBtnH },
             puppet: { x: P + interBtnW + ctrlGap, y: interNavY, w: interBtnW, h: ctrlBtnH },
             place: { x: P + (interBtnW + ctrlGap) * 2, y: interNavY, w: interBtnW, h: ctrlBtnH },
-            close: { x: P, y: interNavY + ctrlBtnH + ctrlGap, w: interBtnW, h: ctrlBtnH },
+            close: { x: P, y: interNavY + ctrlBtnH + ctrlGap, w: interBtnW2, h: ctrlBtnH },
+            ar: { x: P + interBtnW2 + ctrlGap, y: interNavY + ctrlBtnH + ctrlGap, w: interBtnW2, h: ctrlBtnH },
         };
 
         // Section 3: AVATAR SELECTION
@@ -1031,10 +1034,11 @@ export class VRChatPanel {
             mode: { x: P + (xrBtnW + ctrlGap) * 2, y: xrY2, w: xrBtnW, h: xrH },
         };
 
-        // Row 3: Joint visibility toggle
+        // Row 3: Joint visibility + Follow-me gaze toggle
         const xrY3 = xrY2 + xrH + ctrlGap;
         const xrSettingsRow3 = {
             joints: { x: P, y: xrY3, w: xrBtnW, h: xrH },
+            gaze: { x: P + (xrBtnW + ctrlGap), y: xrY3, w: xrBtnW, h: xrH },
         };
 
         // Provider info (read-only display at bottom)
@@ -1153,7 +1157,8 @@ export class VRChatPanel {
         const puppet = this._makeHitbox('Btn:xr_puppet', inter.puppet, 'button', { key: 'xr_puppet' });
         const place = this._makeHitbox('Btn:xr_place', inter.place, 'button', { key: 'xr_place' });
         const closeBtn = this._makeHitbox('Btn:xr_intimacy', inter.close, 'button', { key: 'xr_intimacy' });
-        [ik, puppet, place, closeBtn].forEach((m) => {
+        const arBtn = this._makeHitbox('Btn:xr_ar', inter.ar, 'button', { key: 'xr_ar' });
+        [ik, puppet, place, closeBtn, arBtn].forEach((m) => {
             this.group.remove(m);
             this.controlsGroup.add(m);
         });
@@ -1161,6 +1166,7 @@ export class VRChatPanel {
         this.buttons.xr_puppet = puppet;
         this.buttons.xr_place = place;
         this.buttons.xr_intimacy = closeBtn;
+        this.buttons.xr_ar = arBtn;
 
         // Avatar navigation
         const avNav = L.ctrlAvatarNav;
@@ -1230,11 +1236,13 @@ export class VRChatPanel {
         // XR Settings row 3
         const xr3 = L.xrSettingsRow3;
         const xrJoints = this._makeHitbox('Btn:xr_joints', xr3.joints, 'button', { key: 'xr_joints' });
-        [xrJoints].forEach((m) => {
+        const xrGaze = this._makeHitbox('Btn:xr_gaze', xr3.gaze, 'button', { key: 'xr_gaze' });
+        [xrJoints, xrGaze].forEach((m) => {
             this.group.remove(m);
             this.settingsGroup.add(m);
         });
         this.buttons.xr_joints = xrJoints;
+        this.buttons.xr_gaze = xrGaze;
     }
 
     _makeHitbox(name, rect, type, userData = {}) {
@@ -1728,6 +1736,11 @@ export class VRChatPanel {
         const closeActive = xs.intimacyMode;
         this._drawControlBtn(ctx, inter.close, closeActive ? 'Close: ON' : 'Close', closeActive);
 
+        // AR Passthrough toggle button (switches VR ↔ AR session)
+        const arActive = xs.sessionMode === 'ar';
+        const arLabel = arActive ? 'AR: ON' : xs.arSupported ? 'AR' : 'AR N/A';
+        this._drawControlBtn(ctx, inter.ar, arLabel, arActive);
+
         // Puppet hint
         if (puppetActive) {
             ctx.fillStyle = 'rgba(200, 255, 200, 0.5)';
@@ -1865,13 +1878,20 @@ export class VRChatPanel {
             this._drawXRSettingBtn(ctx, xr2.mode, 'VIEW', 'VR', false);
         }
 
-        // Row 3: Joint Visibility
+        // Row 3: Joint Visibility + Follow-me Gaze
         const xr3 = L.xrSettingsRow3;
         const jointLabel = xs.jointVisibility === 'alwaysVisible' ? 'ALL' : 'HOVER';
         const jointActive = xs.jointVisibility === 'alwaysVisible';
         this._drawXRSettingBtn(ctx, xr3.joints, 'JOINTS', jointLabel, true);
         if (jointActive) {
             this._drawActiveTint(ctx, xr3.joints, 'JOINTS', 'ALL');
+        }
+
+        const gazeActive = xs.followGaze !== false;
+        const gazeLabel = gazeActive ? 'ON' : 'OFF';
+        this._drawXRSettingBtn(ctx, xr3.gaze, 'GAZE', gazeLabel, true);
+        if (gazeActive) {
+            this._drawActiveTint(ctx, xr3.gaze, 'GAZE', 'ON');
         }
 
         // Provider info (read-only)
@@ -2431,6 +2451,29 @@ export class VRChatPanel {
             return true;
         }
 
+        // AR Passthrough toggle — switches between VR and AR sessions on Quest 3.
+        // WebXR spec requires ending the current session and starting a new one
+        // with 'immersive-ar' mode — passthrough cannot be toggled mid-session.
+        // This is a dedicated one-tap button on the controls layer (layer 2)
+        // so the user doesn't have to dig into settings (layer 3).
+        if (key === 'xr_ar') {
+            if (!this.xrSettings.arSupported) {
+                console.log('[VRChatPanel] AR passthrough not supported on this device');
+                return true;
+            }
+            const isAR = this.xrSettings.sessionMode === 'ar';
+            const newMode = isAR ? 'vr' : 'ar';
+            this.xrSettings.sessionMode = newMode;
+            console.log(`[VRChatPanel] AR Passthrough → ${isAR ? 'OFF (back to VR)' : 'ON (switching to AR)'}`);
+            window.dispatchEvent(
+                new CustomEvent('vr-setting-changed', {
+                    detail: { key: 'sessionMode', value: newMode },
+                })
+            );
+            this.redraw();
+            return true;
+        }
+
         // PLACE button — one-tap combo: passthrough + sitting pose + puppet mode
         // Tap again to deactivate (restore VR background + standing + puppet off)
         if (key === 'xr_place') {
@@ -2489,6 +2532,19 @@ export class VRChatPanel {
                 console.log('[VRChatPanel] Place mode ON — passthrough + sitting + puppet');
             }
 
+            this.redraw();
+            return true;
+        }
+
+        // Follow-me gaze toggle (avatar eyes track user's HMD)
+        if (key === 'xr_gaze') {
+            this.xrSettings.followGaze = !this.xrSettings.followGaze;
+            console.log(`[VRChatPanel] Follow-me gaze → ${this.xrSettings.followGaze ? 'ON' : 'OFF'}`);
+            window.dispatchEvent(
+                new CustomEvent('vr-setting-changed', {
+                    detail: { key: 'followGaze', value: this.xrSettings.followGaze },
+                })
+            );
             this.redraw();
             return true;
         }

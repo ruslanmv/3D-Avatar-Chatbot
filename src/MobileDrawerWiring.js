@@ -128,6 +128,16 @@
             });
         }
 
+        // ── Clear Chat ──
+        var drawerClear = $('drawer-clear-btn');
+        if (drawerClear) {
+            drawerClear.addEventListener('click', function () {
+                closeDrawer();
+                var clearBtn = $('clear-history');
+                if (clearBtn) clearBtn.click();
+            });
+        }
+
         // ── Pose Studio (add to drawer) ──
         var drawerPoseStudio = $('drawer-pose-studio-btn');
         if (drawerPoseStudio) {
