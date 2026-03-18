@@ -19,7 +19,10 @@ export class MobileSupport {
         this._isPortrait = null;
 
         // Mobile-specific settings
-        this.mobileFOV = 58; // wider FOV for phone screens
+        // Industry standard: narrower FOV on mobile acts like a telephoto lens,
+        // making the avatar fill the frame naturally (Ready Player Me, VRoid Hub).
+        // Wide-angle FOV (58°) made the character appear tiny and far away.
+        this.mobileFOV = 42; // telephoto feel — avatar fills ~60% of screen
         this.desktopFOV = 35; // original FOV
         this.mobilePixelRatioCap = 1.5; // limit GPU load on phones
         this.desktopPixelRatioCap = 2.0;
@@ -214,14 +217,16 @@ export class MobileSupport {
      * @returns {number} fitOffset multiplier
      */
     getFitOffset() {
+        // With the narrower mobile FOV (42°), the camera no longer needs to be
+        // pushed far back. These values match industry 3D avatar viewers.
         if (this._isMobile && this._isPortrait) {
-            return 2.2; // further back in portrait to show full avatar
+            return 1.4; // portrait phone: slight padding around avatar
         }
         if (this._isMobile) {
-            return 1.65; // landscape phone: moderate distance
+            return 1.35; // landscape phone: same as desktop
         }
         if (this._isTablet) {
-            return 1.5;
+            return 1.35;
         }
         return 1.35; // desktop default
     }

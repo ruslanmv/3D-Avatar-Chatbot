@@ -459,7 +459,7 @@ body {
 .emotion-trigger {
     width: 38px;
     height: 38px;
-    border-radius: 10px;
+    border-radius: var(--border-radius-sm);
     border: 1px solid var(--glass-border);
     background: rgba(0, 0, 0, 0.3);
     cursor: pointer;
@@ -488,7 +488,7 @@ body {
     min-width: 140px;
     background: rgba(12, 22, 35, 0.95);
     border: 1px solid var(--glass-border);
-    border-radius: 10px;
+    border-radius: var(--border-radius-sm);
     padding: 4px;
     z-index: 40;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
@@ -510,7 +510,7 @@ body {
     font-family: var(--font-body);
     font-size: 0.85rem;
     cursor: pointer;
-    border-radius: 6px;
+    border-radius: var(--border-radius-sm);
     transition: background 0.15s ease;
     white-space: nowrap;
 }
@@ -579,14 +579,14 @@ body {
 .chat-input-bar {
     display: grid;
     grid-template-columns: 46px 1fr auto;
-    gap: 8px;
+    gap: 10px;
     align-items: center;
 }
 
 .voice-btn-compact {
     width: 46px;
     height: 46px;
-    border-radius: 14px;
+    border-radius: var(--border-radius);
     border: 1px solid var(--glass-border);
     background: rgba(0, 255, 136, 0.1);
     color: var(--accent-green);
@@ -617,7 +617,7 @@ body {
     width: 100%;
     min-width: 0;
     height: 46px;
-    border-radius: 14px;
+    border-radius: var(--border-radius);
     border: 1px solid var(--glass-border);
     background: rgba(0, 0, 0, 0.3);
     color: var(--text-primary);
@@ -629,8 +629,8 @@ body {
 }
 
 .chat-input::placeholder {
-    color: var(--text-muted);
-    opacity: 0.5;
+    color: rgba(224, 247, 250, 0.55);
+    opacity: 1;
 }
 
 .chat-input:focus {
@@ -646,7 +646,7 @@ body {
     gap: 6px;
     min-width: 68px;
     height: 46px;
-    border-radius: 14px;
+    border-radius: var(--border-radius);
     border: none;
     background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     color: var(--bg-darker);
@@ -670,10 +670,12 @@ body {
 }
 
 .voice-status-inline {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: var(--text-muted);
-    margin-top: 6px;
-    padding: 0 4px;
+    margin-top: 4px;
+    padding: 0 58px;
+    opacity: 0.7;
+    letter-spacing: 0.03em;
 }
 
 /* ============================================
@@ -1349,7 +1351,7 @@ body {
 
 /* --- Chat Bubbles: Left/Right Messaging Layout --- */
 .chat-message {
-    padding: 0.65rem 0.85rem;
+    padding: 0.75rem 1rem;
     margin-bottom: 1rem;
     font-size: 0.9rem;
     max-width: 85%;
@@ -1363,7 +1365,7 @@ body {
     float: left;
     background: rgba(0, 255, 136, 0.12);
     border: 1px solid rgba(0, 255, 136, 0.2);
-    border-radius: 2px 12px 12px 12px;
+    border-radius: 4px 18px 18px 18px;
     animation: msgSlideLeft 0.3s ease-out;
 }
 
@@ -1372,7 +1374,7 @@ body {
     float: right;
     background: rgba(0, 229, 255, 0.15);
     border: 1px solid rgba(0, 229, 255, 0.25);
-    border-radius: 12px 2px 12px 12px;
+    border-radius: 18px 4px 18px 18px;
     text-align: right;
     animation: msgSlideRight 0.3s ease-out;
 }
@@ -1409,8 +1411,8 @@ body {
 }
 
 .message-text {
-    color: #f0f6f8;
-    line-height: 1.6;
+    color: #f5fafc;
+    line-height: 1.65;
     font-size: 0.88rem;
     word-wrap: break-word;
 }
@@ -1443,7 +1445,9 @@ body {
     width: 100%;
     max-width: 600px;
     max-height: 90vh;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
     animation: modalSlide 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -1454,17 +1458,17 @@ body {
     }
 }
 
-.modal::-webkit-scrollbar {
-    width: 8px;
+.modal-content::-webkit-scrollbar {
+    width: 6px;
 }
 
-.modal::-webkit-scrollbar-track {
+.modal-content::-webkit-scrollbar-track {
     background: rgba(0, 0, 0, 0.2);
 }
 
-.modal::-webkit-scrollbar-thumb {
+.modal-content::-webkit-scrollbar-thumb {
     background: var(--glass-border);
-    border-radius: 4px;
+    border-radius: 3px;
 }
 
 .modal-header {
@@ -1473,6 +1477,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-shrink: 0;
 }
 
 .modal-title {
@@ -1509,6 +1514,10 @@ body {
 
 .modal-content {
     padding: var(--spacing-md);
+    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
 }
 
 .config-section {
@@ -1582,10 +1591,14 @@ body {
 
 .modal-footer {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--spacing-sm);
     justify-content: flex-end;
-    padding-top: var(--spacing-md);
+    padding: var(--spacing-md);
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--spacing-md));
     border-top: 1px solid var(--glass-border);
+    flex-shrink: 0;
+    background: var(--glass-bg);
 }
 
 /* Info Modal */
@@ -1736,8 +1749,8 @@ body {
     }
 
     .chat-card-header {
-        flex-shrink: 0;
-        padding: 8px 12px;
+        /* Hide redundant CONVERSATION header on mobile to reclaim vertical space */
+        display: none !important;
     }
 
     .chat-main {
@@ -1767,7 +1780,7 @@ body {
 
     .chat-input-bar {
         grid-template-columns: 42px 1fr auto;
-        gap: 6px;
+        gap: 8px;
     }
 
     .voice-btn-compact {
@@ -1811,6 +1824,12 @@ body {
 
     .modal {
         max-width: 100%;
+        max-height: 95vh;
+        max-height: 95dvh;
+    }
+
+    .modal-overlay {
+        padding: var(--spacing-xs);
     }
 }
 
@@ -1989,12 +2008,25 @@ html.is-android-phone .xr-btn--vr {
     .modal {
         max-width: 100%;
         margin: var(--spacing-xs);
-        max-height: 90vh;
+        max-height: 95vh;
+        max-height: 95dvh;
     }
 
-    .modal-content {
-        max-height: 80vh;
-        overflow-y: auto;
+    .modal-footer {
+        padding: var(--spacing-sm);
+        padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--spacing-sm));
+        gap: 8px;
+    }
+
+    /* Stack footer buttons vertically on small screens */
+    .modal-footer .primary-btn,
+    .modal-footer .secondary-btn {
+        flex: 1 1 auto;
+        min-width: 0;
+        font-size: 0.75rem;
+        padding: 8px 10px;
+        text-align: center;
+        white-space: nowrap;
     }
 
     .provider-grid {
@@ -3648,4 +3680,272 @@ html.is-tablet .chat-input {
 
 .no-webgl .loading-overlay {
     display: none !important;
+}
+
+/* ============================================
+   Mobile Overlay Chat — Fullscreen Avatar + Floating Chat
+   Industry-standard pattern (Character.ai, Replika, Soul Machines)
+   ADDITIVE ONLY — does not modify any existing rules above.
+   Activates exclusively on phones in portrait orientation.
+   ============================================ */
+
+/* ── Drag handle (visible only on mobile via .mobile-only) ── */
+.chat-overlay-handle {
+    display: none; /* hidden on desktop — .mobile-only shows it on phones */
+    align-items: center;
+    justify-content: center;
+    padding: 8px 0 4px;
+    cursor: grab;
+    touch-action: none; /* prevent scroll while dragging */
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.chat-overlay-handle::before {
+    content: '';
+    width: 40px;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.3);
+    transition: background 0.2s;
+}
+
+.chat-overlay-handle:active::before {
+    background: var(--primary);
+}
+
+/* ── Toggle chevron ── */
+.chat-overlay-toggle {
+    position: absolute;
+    right: 12px;
+    top: 6px;
+    background: rgba(5, 12, 22, 0.6);
+    border: 1px solid rgba(0, 229, 255, 0.15);
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    transition:
+        transform 0.3s ease,
+        color 0.2s;
+}
+
+.chat-overlay-toggle:hover {
+    color: var(--primary);
+}
+
+/* Chevron rotation per state */
+.chat-overlay--collapsed .chat-overlay-toggle {
+    transform: rotate(180deg); /* points up = "expand" */
+}
+
+.chat-overlay--expanded .chat-overlay-toggle {
+    transform: rotate(0deg); /* points down = "collapse" */
+}
+
+/* ── Mobile Portrait: Overlay Layout ── */
+@media (max-width: 767px) and (orientation: portrait) {
+    /* Override grid to block positioning */
+    html.is-mobile .content-layout {
+        display: block;
+        position: relative;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    /* Avatar fills entire viewport area */
+    html.is-mobile .avatar-panel {
+        position: absolute;
+        inset: 0;
+        max-height: none !important;
+        z-index: 1;
+        order: unset;
+    }
+
+    html.is-mobile .avatar-card {
+        height: 100%;
+        border-radius: 0;
+        border: none;
+    }
+
+    html.is-mobile .avatar-preview-wrap {
+        min-height: 0;
+        height: 100%;
+        max-height: none !important;
+    }
+
+    /* Avatar footer — hide on mobile, controls are in the drawer menu */
+    html.is-mobile .avatar-footer {
+        display: none;
+    }
+
+    /* Chat panel becomes a floating overlay from the bottom */
+    html.is-mobile .chat-panel {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 50vh;
+        max-height: none;
+        z-index: 3;
+        order: unset;
+        transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        will-change: height;
+    }
+
+    /* ── Transparent floating overlay — TikTok Live / YouTube live style ── */
+    html.is-mobile .chat-panel .chat-card {
+        background: transparent;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        border: none;
+        border-radius: var(--border-radius) var(--border-radius) 0 0;
+        height: 100%;
+        box-shadow: none;
+    }
+
+    /* Remove glass-panel inherited styles on mobile chat */
+    html.is-mobile .chat-panel .chat-card.glass-panel {
+        background: transparent;
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        border: none;
+        box-shadow: none;
+    }
+
+    html.is-mobile .chat-panel .chat-card.glass-panel::before {
+        display: none;
+    }
+
+    /* Soft readability gradient behind messages — transparent at top, dark near input */
+    html.is-mobile .chat-main {
+        position: relative;
+    }
+
+    html.is-mobile .chat-main::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+            to top,
+            rgba(2, 8, 20, 0.72) 0%,
+            rgba(2, 8, 20, 0.35) 40%,
+            rgba(2, 8, 20, 0.08) 70%,
+            transparent 100%
+        );
+        pointer-events: none;
+        z-index: 0;
+        border-radius: var(--border-radius) var(--border-radius) 0 0;
+    }
+
+    html.is-mobile .chat-history {
+        position: relative;
+        z-index: 1;
+    }
+
+    /* Stronger bubble fills for floating overlay readability */
+    html.is-mobile .chat-message.avatar {
+        background: rgba(0, 50, 30, 0.88);
+        border: 1px solid rgba(0, 255, 136, 0.25);
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    html.is-mobile .chat-message.user {
+        background: rgba(0, 30, 55, 0.88);
+        border: 1px solid rgba(0, 229, 255, 0.25);
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Glass input bar — anchored, visible, frosted */
+    html.is-mobile .chat-input-shell {
+        background: rgba(5, 12, 22, 0.82);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border-top: 1px solid rgba(0, 229, 255, 0.15);
+    }
+
+    /* Drag handle — make it float cleanly on transparent background */
+    html.is-mobile .chat-overlay-handle {
+        background: transparent;
+    }
+
+    html.is-mobile .chat-overlay-handle::before {
+        background: rgba(255, 255, 255, 0.4);
+    }
+
+    /* Show the drag handle */
+    html.is-mobile .chat-overlay-handle {
+        display: flex;
+        position: relative;
+    }
+
+    /* ── Collapsed state: handle + input bar visible ── */
+    html.is-mobile .chat-overlay--collapsed {
+        height: 88px;
+    }
+
+    html.is-mobile .chat-overlay--collapsed .chat-card-header,
+    html.is-mobile .chat-overlay--collapsed .chat-main,
+    html.is-mobile .chat-overlay--collapsed .typing-row,
+    html.is-mobile .chat-overlay--collapsed .voice-status-inline {
+        display: none !important;
+    }
+
+    /* Keep handle visible in collapsed state so user can tap/drag to expand */
+    html.is-mobile .chat-overlay--collapsed .chat-overlay-handle {
+        display: flex !important;
+        padding: 6px 0 2px;
+    }
+
+    html.is-mobile .chat-overlay--collapsed .chat-input-shell {
+        border-radius: var(--border-radius) var(--border-radius) 0 0;
+        background: rgba(5, 12, 22, 0.85);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(0, 229, 255, 0.12);
+        border-bottom: none;
+    }
+
+    /* ── Expanded state: nearly full screen for reading ── */
+    html.is-mobile .chat-overlay--expanded {
+        height: 85vh;
+    }
+
+    /* ── Dragging state: disable transitions for smooth drag ── */
+    html.is-mobile .chat-overlay--dragging {
+        transition: none !important;
+    }
+
+    /* AR/VR buttons float above the chat overlay */
+    html.is-mobile .xr-launch-bar {
+        z-index: 4;
+    }
+
+    /* Topbar stays on top */
+    html.is-mobile .topbar {
+        z-index: 5;
+    }
+}
+
+/* ── Virtual keyboard open: collapse to input only ── */
+@media (max-width: 767px) and (orientation: portrait) and (max-height: 450px) {
+    html.is-mobile .chat-panel {
+        height: auto !important;
+    }
+
+    html.is-mobile .chat-overlay--collapsed,
+    html.is-mobile .chat-panel {
+        height: auto !important;
+    }
+
+    html.is-mobile .chat-main {
+        max-height: 30vh;
+    }
+}
+
+/* ── Ensure overlay does NOT activate on landscape or tablet ── */
+@media (min-width: 768px), (orientation: landscape) {
+    .chat-overlay-handle {
+        display: none !important;
+    }
 }
