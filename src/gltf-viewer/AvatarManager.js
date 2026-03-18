@@ -291,12 +291,15 @@ export class AvatarManager {
                 } catch (_) {}
             }
 
-            // Enable shadows on meshes only when shadow map is active
+            // Enable shadow casting on meshes only when shadow map is active.
+            // receiveShadow is intentionally false — self-shadowing on thin anime
+            // geometry (stockings, hair, ribbons) causes starburst/fan artifacts.
+            // The ground ShadowMaterial plane handles shadow receiving instead.
             const shadowsOn = this.renderer.shadowMap.enabled;
             root.traverse((node) => {
                 if (node.isMesh) {
                     node.castShadow = shadowsOn;
-                    node.receiveShadow = shadowsOn;
+                    node.receiveShadow = false;
                 }
             });
 

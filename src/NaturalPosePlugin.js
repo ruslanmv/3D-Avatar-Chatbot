@@ -127,7 +127,7 @@
     // STATE
     // =====================================================================
     let _active = false;
-    let _activePreset = 'relaxedStanding';
+    let _activePreset = 'naturalIdle';
     let _currentHumanoid = null; // VRM humanoid reference
     let _currentRoot = null; // avatar scene root
     let _isVRM = false;
@@ -219,7 +219,7 @@
         // Read settings from PoseNormalizer → AnimationPresets (single source of truth)
         const poseNormalizer = window.NEXUS_POSE_NORMALIZER;
         const pnSettings = poseNormalizer?.getSettings() || {};
-        const _apFallback = window.NEXUS_ANIMATION_PRESETS?.DEFAULT_POSE_INTENSITY ?? 0.8;
+        const _apFallback = window.NEXUS_ANIMATION_PRESETS?.DEFAULT_POSE_INTENSITY ?? 1.0;
         const intensity = pnSettings.intensity != null ? pnSettings.intensity : _apFallback;
         const boneWeights = pnSettings.bones || {};
         const presetName = options.preset || pnSettings.preset || _activePreset;

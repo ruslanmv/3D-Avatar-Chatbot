@@ -16,7 +16,8 @@ create your own poses and animations.
 7. [Tutorial: Create a New Pose](#7-tutorial-create-a-new-pose)
 8. [Tutorial: Create a Simple Animation](#8-tutorial-create-a-simple-animation)
 9. [Settings & UI Controls](#9-settings--ui-controls)
-10. [Troubleshooting](#10-troubleshooting)
+10. [Architecture: Data Flow & Sync](#10-architecture-data-flow--sync)
+11. [Troubleshooting](#11-troubleshooting)
 
 ---
 
@@ -27,23 +28,28 @@ stretched out horizontally, legs straight. This is the standard "bind pose" for
 rigging, but it looks robotic.
 
 ```
-     O          ← head
-   ──┼──        ← arms horizontal (T-pose)
-     │
-    / \         ← legs
+     O          <- head
+   --+--        <- arms horizontal (T-pose)
+     |
+    / \         <- legs
 ```
 
 We want the avatar to look like a person standing naturally:
 
 ```
-     O          ← head
-    \│/         ← arms relaxed at sides
-     │
-    / \         ← legs
+     O          <- head
+    \|/         <- arms relaxed at sides
+     |
+    / \         <- legs
 ```
 
 The pose correction system rotates each arm/shoulder/hand bone from the T-pose
 direction toward a natural "relaxed standing" direction.
+
+**Industry context:** VRoid Hub, Ready Player Me, and AAA titles (Genshin
+Impact, Blue Protocol, Tower of Fantasy) all correct T-pose to natural idle with
+arms at approximately 55 degrees from horizontal — the `naturalIdle` preset at
+intensity 1.0.
 
 ---
 
@@ -59,11 +65,11 @@ The system works in 4 steps:
 
 ```
 Step 1: Detect         Step 2: Measure        Step 3: Compare       Step 4: Rotate
-┌──────────┐          ┌──────────┐           ┌──────────┐          ┌──────────┐
-│ Find     │          │ Bone →   │           │ Current  │          │ Apply    │
-│ bones by │  ──►     │ child    │   ──►     │ vs       │   ──►   │ rotation │
-│ name/API │          │ direction│           │ target   │          │ to bone  │
-└──────────┘          └──────────┘           └──────────┘          └──────────┘
++----------+          +----------+           +----------+          +----------+
+| Find     |          | Bone ->  |           | Current  |          | Apply    |
+| bones by |  --->    | child    |   --->    | vs       |   --->   | rotation |
+| name/API |          | direction|           | target   |          | to bone  |
++----------+          +----------+           +----------+          +----------+
 ```
 
 ---
@@ -77,15 +83,15 @@ bone's world position to its child bone's world position:
 
 ```
                     childPos
-                   •
+                   *
                   /
-currentDir  =   /    ← this is the direction vector
+currentDir  =   /    <- this is the direction vector
                /
-              •
+              *
            bonePos
 
 Formula:
-    currentDir = normalize(childPos − bonePos)
+    currentDir = normalize(childPos - bonePos)
 ```
 
 In code (`PoseNormalizer.js`):
@@ -103,11 +109,11 @@ that turns `currentDir` into `targetDir`:
 
 ```
                     targetDir (where we want it)
-                   ↗
+                   /
                   /
-    rotation Q   /  angle θ
-    ──────►     /
-               ↗
+    rotation Q   /  angle theta
+    ------>     /
+               /
               currentDir (where it is now)
 
 Formula:
@@ -120,11 +126,11 @@ The quaternion `Q` encodes:
 - **Angle**: the angle between the two directions
 
 ```
-axis  = normalize(currentDir × targetDir)
-angle = arccos(currentDir · targetDir)
+axis  = normalize(currentDir x targetDir)
+angle = arccos(currentDir . targetDir)
 
-Q = [ axis × sin(angle/2),  cos(angle/2) ]
-        ↑ xyz components      ↑ w component
+Q = [ axis * sin(angle/2),  cos(angle/2) ]
+        ^ xyz components      ^ w component
 ```
 
 In code:
@@ -140,7 +146,7 @@ world space must be converted to the bone's local space:
 
 ```
 Formula:
-    Q_local = Q_parent_inv × Q_world × Q_parent
+    Q_local = Q_parent_inv * Q_world * Q_parent
 
 Where:
     Q_parent     = parent bone's world rotation
@@ -148,10 +154,21 @@ Where:
     Q_world      = the correction we computed
 ```
 
+In code (`PoseNormalizer.js` — `applyWorldCorrectionToBone`):
+
+```javascript
+bone.parent.getWorldQuaternion(_parentWorldQuat);
+_parentWorldQuatInv.copy(_parentWorldQuat).invert();
+_localCorrection
+    .copy(_parentWorldQuatInv)
+    .multiply(worldCorrection)
+    .multiply(_parentWorldQuat);
+```
+
 Then we apply it:
 
 ```
-bone.quaternion = Q_local × bone.quaternion
+bone.quaternion = Q_local * bone.quaternion
 ```
 
 This is a "pre-multiply" — the correction is applied _before_ the existing
@@ -163,17 +180,44 @@ To prevent wild deformations on unusual rigs, each correction is clamped to a
 maximum angle:
 
 ```
-angle = 2 × arccos(|Q.w|)          ← extract angle from quaternion
+angle = 2 * arccos(min(1, |Q.w|))      <- extract angle from quaternion
 
 If angle > maxAngle:
     scale = maxAngle / angle
-    Q = slerp(Q, identity, 1 − scale)   ← scale down the rotation
+    Q = slerp(Q, identity, 1 - scale)   <- scale down the rotation
 ```
 
-Default max angles: | Bone Category | Max Angle | Degrees |
-|---------------|-----------|---------| | Shoulder | 0.35 rad | ~20° | | Upper
-Arm | 1.22 rad | ~70° | | Lower Arm | 0.52 rad | ~30° | | Hand | 0.35 rad | ~20°
-| | Chest | 0.17 rad | ~10° |
+In code:
+
+```javascript
+const angle = 2 * Math.acos(Math.min(1, Math.abs(worldCorrection.w)));
+if (angle > maxAngle) {
+    const scale = maxAngle / angle;
+    worldCorrection.slerp(_identity, 1 - scale);
+}
+```
+
+### 3.5 Intensity Blend
+
+After clamping, intensity is applied via slerp:
+
+```javascript
+if (intensity !== 1.0) {
+    worldCorrection.slerp(_identity, 1 - intensity);
+}
+```
+
+This gives: `blendedCorrection = slerp(identity, correction, intensity)`
+
+Default max angles per bone category:
+
+| Bone Category | Max Angle (rad) | Degrees | Why                                    |
+| ------------- | --------------- | ------- | -------------------------------------- |
+| Shoulder      | 0.35            | ~20     | Shoulders barely move in natural poses |
+| Upper Arm     | 1.22            | ~70     | Arms travel the most from T-pose       |
+| Lower Arm     | 0.52            | ~30     | Elbows bend moderately at rest         |
+| Hand          | 0.35            | ~20     | Hands droop slightly                   |
+| Chest         | 0.17            | ~10     | Chest stays nearly vertical            |
 
 ---
 
@@ -181,10 +225,10 @@ Arm | 1.22 rad | ~70° | | Lower Arm | 0.52 rad | ~30° | | Hand | 0.35 rad | ~2
 
 The **Global Intensity** slider controls how much correction is applied.
 
-### Formula
+### Core Formula
 
 ```
-effectiveIntensity = globalIntensity × perBoneWeight
+effectiveIntensity = globalIntensity * perBoneWeight
 
 blendedRotation = slerp(identity, targetRotation, effectiveIntensity)
 ```
@@ -194,25 +238,24 @@ rotations.
 
 ### What Each Value Means
 
-| Intensity | Effect                                                     |
-| --------- | ---------------------------------------------------------- |
-| 0.0       | No correction at all — raw T-pose                          |
-| 0.5       | Arms halfway between T-pose and target                     |
-| 0.7       | **Default** — subtle, natural-looking correction           |
-| 1.0       | Full correction — arms exactly match the preset target     |
-| 1.5       | **Amplified** — arms go _past_ the target (more tucked in) |
+| Intensity | Effect                                                         |
+| --------- | -------------------------------------------------------------- |
+| 0.0       | No correction at all — raw T-pose                              |
+| 0.5       | Arms halfway between T-pose and target                         |
+| **1.0**   | **Default (industry standard)** — arms match the preset target |
+| 1.5       | **Amplified** — arms go _past_ the target (more tucked in)     |
 
 ### Visual Example
 
 ```
-Intensity 0.0 (T-pose):     Intensity 0.7 (default):     Intensity 1.5 (amplified):
+Intensity 0.0 (T-pose):     Intensity 1.0 (default):     Intensity 1.5 (amplified):
 
        O                            O                            O
-     ──┼──                         \│/                          \│/
-       │                            │                            │
+     --+--                         \|/                          \|/
+       |                            |                            |
       / \                          / \                          / \
 
- Arms fully horizontal      Arms mostly down           Arms tight to body
+ Arms fully horizontal      Arms naturally at sides    Arms tight to body
 ```
 
 ### How slerp Works with Intensity > 1.0
@@ -222,10 +265,10 @@ rotation beyond the target. This is mathematically valid and gives you more
 correction range for models that need it.
 
 ```
-t = 0.0  →  identity (no rotation)
-t = 0.5  →  halfway to target
-t = 1.0  →  exactly at target
-t = 1.5  →  50% past target (extrapolation)
+t = 0.0  ->  identity (no rotation)
+t = 0.5  ->  halfway to target
+t = 1.0  ->  exactly at target
+t = 1.5  ->  50% past target (extrapolation)
 ```
 
 ### Per-Bone Weights
@@ -234,11 +277,22 @@ Each bone has its own weight (0.0 to 1.0) that multiplies with the global
 intensity. This lets you fine-tune individual bones:
 
 ```
-Example: Global = 0.7, Left Upper Arm weight = 0.5
+Example: Global = 1.0, Left Upper Arm weight = 0.5
 
-    effectiveIntensity = 0.7 × 0.5 = 0.35
-    → Left arm only gets 35% correction (barely moves from T-pose)
+    effectiveIntensity = 1.0 * 0.5 = 0.50
+    -> Left arm only gets 50% correction (arms at ~27 degrees from T-pose)
 ```
+
+### Industry Standard: Why 1.0?
+
+The default intensity of **1.0** was chosen to match industry practice:
+
+- **VRoid Hub** displays models with full correction (~55 degrees arms at sides)
+- **Ready Player Me** uses full correction for preview renders
+- **AAA games** (Genshin Impact, Blue Protocol) use 50-65 degree idle arm angles
+
+At intensity 1.0 with the `naturalIdle` preset (55 degree upper arm rotation),
+the avatar matches these industry references exactly.
 
 ---
 
@@ -255,27 +309,59 @@ We simply set the desired rotation relative to T-pose:
 
 ```javascript
 // T-pose identity
-identity = Quaternion(0, 0, 0, 1)
+identity = Quaternion(0, 0, 0, 1);
 
-// Target (e.g., left upper arm rotated 40° around Z-axis)
-target = quatFromAxisAngle(0, 0, 1, 40°)
+// Target (e.g., left upper arm rotated 55 degrees around Z-axis)
+target = quatFromAxisAngle(0, 0, 1, 55);
 
 // Blend with intensity
-result = slerp(identity, target, effectiveIntensity)
+result = slerp(identity, target, effectiveIntensity);
 
 // Apply to normalized bone — vrm.update() syncs to raw skeleton
-boneNode.quaternion = result
+boneNode.quaternion = result;
 ```
 
-The axis-angle → quaternion conversion:
+In code (`NaturalPosePlugin.js` — `applyVRMPose`):
+
+```javascript
+for (const [boneName, quatArray] of Object.entries(preset.bones)) {
+    const boneNode = humanoid.getNormalizedBoneNode(boneName);
+    if (!boneNode) continue;
+
+    const boneWeight =
+        boneWeights[boneName] != null ? boneWeights[boneName] : 1.0;
+    const effectiveIntensity = intensity * boneWeight;
+
+    if (effectiveIntensity <= 0) {
+        boneNode.quaternion.set(0, 0, 0, 1); // Reset to T-pose
+        continue;
+    }
+
+    targetQuat.set(quatArray[0], quatArray[1], quatArray[2], quatArray[3]);
+    blendedQuat.copy(identityQuat).slerp(targetQuat, effectiveIntensity);
+    boneNode.quaternion.copy(blendedQuat);
+}
+```
+
+The axis-angle to quaternion conversion (`_quatFromAxisAngle`):
+
+```javascript
+function _quatFromAxisAngle(ax, ay, az, angleDeg) {
+    const half = (angleDeg * Math.PI) / 180 / 2;
+    const s = Math.sin(half);
+    const c = Math.cos(half);
+    const len = Math.sqrt(ax * ax + ay * ay + az * az) || 1;
+    return [(ax / len) * s, (ay / len) * s, (az / len) * s, c];
+}
+```
 
 ```
-Given: axis (ax, ay, az) and angle θ in degrees
+Given: axis (ax, ay, az) and angle theta in degrees
 
-    halfRad = θ × π / 180 / 2
-    Q = [ ax × sin(halfRad),
-          ay × sin(halfRad),
-          az × sin(halfRad),
+    halfRad = theta * pi / 180 / 2
+    Q = [ ax * sin(halfRad),
+          ay * sin(halfRad),
+          az * sin(halfRad),
           cos(halfRad) ]
 ```
 
@@ -284,12 +370,51 @@ Given: axis (ax, ay, az) and angle θ in degrees
 GLB models don't have a normalized bone layer. The system uses **world-space
 direction alignment**:
 
-1. Compute `currentDir` (bone → child in world space)
-2. Compute `targetDir` (from preset, e.g., `(-0.5, -0.82, 0.08)`)
-3. Find correction quaternion: `currentDir → targetDir`
-4. Convert to local space and apply
+1. Compute `currentDir` (bone to child in world space)
+2. Compute `targetDir` (from preset, e.g., `(-0.35, -0.90, 0.10)`)
+3. Find correction quaternion: `currentDir -> targetDir`
+4. Convert to local space and apply with intensity blend
+
+In code (`PoseNormalizer.js` — `normalizeAvatarPose`):
+
+```javascript
+for (const boneName of targetBones) {
+    const bone = rigMap[boneName];
+    const target = preset.targets[boneName];
+    const childBone = getChildBone(boneName, rigMap);
+
+    const boneIntensity =
+        settings.bones[boneName] != null ? settings.bones[boneName] : 1.0;
+    const effectiveIntensity = globalIntensity * boneIntensity;
+
+    if (effectiveIntensity <= 0) continue;
+
+    const maxAngle = getMaxAngle(boneName);
+    alignBoneToTarget(bone, childBone, target, effectiveIntensity, maxAngle);
+}
+```
 
 This path is more complex but works with any humanoid rig.
+
+### PoseStudioNormalizer (Simplified GLB Path)
+
+`PoseStudioNormalizer.js` provides a simpler rotation-based approach for the
+Pose Studio viewport, using base rotation constants scaled by intensity:
+
+```javascript
+var BASE = {
+    shoulder: 0.087, // 5 degrees  — subtle shoulder drop
+    upperArm: 0.698, // 40 degrees — main arm lowering
+    lowerArmZ: 0.14, // 8 degrees  — slight elbow angle
+    lowerArmX: 0.08, // forearm rotation for natural twist
+    neckX: 0.01, // minimal neck tilt
+    headX: -0.01, // minimal head counter-tilt
+};
+
+// Applied as: effectiveRotation = BASE_ROTATION * globalIntensity
+safeRotateZ(leftUpperArm, -BASE.upperArm * intensity);
+safeRotateZ(rightUpperArm, BASE.upperArm * intensity);
+```
 
 ---
 
@@ -297,28 +422,71 @@ This path is more complex but works with any humanoid rig.
 
 ### VRM Presets (quaternion-based, in NaturalPosePlugin.js)
 
-| Preset          | Upper Arm Angle | Lower Arm Bend | Use Case        |
-| --------------- | --------------- | -------------- | --------------- |
-| relaxedStanding | 40° Z           | 8° elbow       | Default idle    |
-| naturalIdle     | 55° Z           | 15° elbow      | Casual standing |
-| portrait        | 65° Z           | 20° elbow      | Thumbnails      |
-| presentation    | 30° Z           | 10° elbow      | Speaking pose   |
+| Preset          | Upper Arm Angle | Shoulder | Elbow Bend | Hand Droop | Use Case         |
+| --------------- | --------------- | -------- | ---------- | ---------- | ---------------- |
+| naturalIdle     | 55 deg Z        | 8 deg    | 15 deg Y   | 8 deg      | **Default idle** |
+| relaxedStanding | 40 deg Z        | 5 deg    | 8 deg Y    | 5 deg      | Casual standing  |
+| portrait        | 65 deg Z        | 10 deg   | 20 deg Y   | 10 deg     | Thumbnails       |
+| presentation    | 30 deg Z        | 4 deg    | 10 deg Y   | 5 deg      | Speaking pose    |
 
 ### GLB Presets (direction vectors, in PoseNormalizer.js)
 
 Each target is a world-space direction vector `(X, Y, Z)`:
 
-- **+X** = right, **−X** = left
-- **+Y** = up, **−Y** = down
+- **+X** = right, **-X** = left
+- **+Y** = up, **-Y** = down
 - **+Z** = toward camera
 
-Example — `relaxedStanding`:
+#### naturalIdle (default)
 
 ```
-leftUpperArm:  (-0.50, -0.82, 0.08)  → pointing left-and-down
-rightUpperArm: ( 0.50, -0.82, 0.08)  → pointing right-and-down
-leftLowerArm:  (-0.35, -0.90, 0.12)  → more vertical (natural elbow)
-rightLowerArm: ( 0.35, -0.90, 0.12)
+leftUpperArm:   (-0.35, -0.90,  0.10)  -> pointing left-and-down (55 deg)
+rightUpperArm:  ( 0.35, -0.90,  0.10)  -> pointing right-and-down
+leftLowerArm:   (-0.20, -0.95,  0.15)  -> more vertical (natural elbow)
+rightLowerArm:  ( 0.20, -0.95,  0.15)
+leftHand:       (-0.15, -0.96,  0.12)  -> nearly vertical
+rightHand:      ( 0.15, -0.96,  0.12)
+leftShoulder:   (-0.97, -0.15,  0.00)  -> nearly horizontal
+rightShoulder:  ( 0.97, -0.15,  0.00)
+```
+
+#### relaxedStanding
+
+```
+leftUpperArm:   (-0.50, -0.82,  0.08)  -> pointing left-and-down (40 deg)
+rightUpperArm:  ( 0.50, -0.82,  0.08)
+leftLowerArm:   (-0.35, -0.90,  0.12)
+rightLowerArm:  ( 0.35, -0.90,  0.12)
+leftHand:       (-0.30, -0.92,  0.10)
+rightHand:      ( 0.30, -0.92,  0.10)
+leftShoulder:   (-0.98, -0.10,  0.00)
+rightShoulder:  ( 0.98, -0.10,  0.00)
+```
+
+#### portrait
+
+```
+leftUpperArm:   (-0.25, -0.94,  0.10)  -> arms close to body (65 deg)
+rightUpperArm:  ( 0.25, -0.94,  0.10)
+leftLowerArm:   (-0.12, -0.98,  0.14)
+rightLowerArm:  ( 0.12, -0.98,  0.14)
+leftHand:       (-0.10, -0.98,  0.12)
+rightHand:      ( 0.10, -0.98,  0.12)
+leftShoulder:   (-0.97, -0.15,  0.00)
+rightShoulder:  ( 0.97, -0.15,  0.00)
+```
+
+#### presentation
+
+```
+leftUpperArm:   (-0.40, -0.88,  0.06)  -> slightly open arms (30 deg)
+rightUpperArm:  ( 0.40, -0.88,  0.06)
+leftLowerArm:   (-0.25, -0.94,  0.10)
+rightLowerArm:  ( 0.25, -0.94,  0.10)
+leftHand:       (-0.20, -0.95,  0.08)
+rightHand:      ( 0.20, -0.95,  0.08)
+leftShoulder:   (-0.98, -0.08,  0.00)
+rightShoulder:  ( 0.98, -0.08,  0.00)
 ```
 
 ---
@@ -331,8 +499,8 @@ Sketch or describe the arm positions. For example, a **"Crossed Arms"** pose:
 
 ```
      O
-    ╲│╱         ← arms crossed in front of chest
-    ╱╲
+    \|/         <- arms crossed in front of chest
+    /\
    /  \
 ```
 
@@ -348,7 +516,7 @@ For VRM, you define rotations as axis-angle values. The key axes:
 
 For crossed arms:
 
-- Upper arms: lower 50° (Z) + bring forward 30° (Y)
+- Upper arms: lower 50 deg (Z) + bring forward 30 deg (Y)
 - Lower arms: bend elbows significantly (Y)
 
 ### Step 3: Add to NaturalPosePlugin.js
@@ -397,19 +565,20 @@ crossedArms: {
 ### Step 5: Test It
 
 1. Load the app
-2. Open Settings → Pose Correction
+2. Open Settings -> Pose Correction
 3. Select your new preset from the dropdown
 4. Adjust intensity to taste
 
 ### Quick Reference: Common Arm Positions
 
-| Pose           | Upper Arm Z° | Lower Arm Y° | Notes                                 |
-| -------------- | ------------ | ------------ | ------------------------------------- |
-| T-pose (raw)   | 0°           | 0°           | No correction                         |
-| Relaxed        | 40°          | 8°           | Default                               |
-| Arms at sides  | 55°          | 15°          | Casual                                |
-| Hands clasped  | 50°          | 40°          | Needs Y-axis on upper arm too         |
-| One arm raised | L:40° R:−30° | varies       | Asymmetric — use different L/R values |
+| Pose           | Upper Arm Z deg | Lower Arm Y deg | Notes                                 |
+| -------------- | --------------- | --------------- | ------------------------------------- |
+| T-pose (raw)   | 0               | 0               | No correction                         |
+| Presentation   | 30              | 10              | Open, professional                    |
+| Relaxed        | 40              | 8               | Casual                                |
+| Natural Idle   | 55              | 15              | **Industry standard** (default)       |
+| Portrait       | 65              | 20              | Formal, arms close to body            |
+| One arm raised | L:40 R:-30      | varies          | Asymmetric — use different L/R values |
 
 ---
 
@@ -423,7 +592,7 @@ Animations in NEXUS are **procedural** — defined as parameter oscillations in
 Each animated parameter oscillates over time using a sine wave:
 
 ```
-value(t) = baseValue + amplitude × sin(2π × frequency × t + phase)
+value(t) = baseValue + amplitude * sin(2 * pi * frequency * t + phase)
 
 Where:
     t         = time in seconds
@@ -439,13 +608,13 @@ In `src/AnimationPresets.js`, you would add to the `EMOTIONS` or modes section:
 ```javascript
 waving: {
     label: 'Waving',
-    icon: '👋',
+    icon: '...',
     mode: 'waving',
     // Right arm waves, left arm stays at side
     params: {
         rightUpperArm_z: { base: -30, amplitude: 25, frequency: 1.5 },
-        // base: -30° means arm starts raised
-        // amplitude: 25° means it swings ±25° from base
+        // base: -30 degrees means arm starts raised
+        // amplitude: 25 degrees means it swings +/-25 from base
         // frequency: 1.5 Hz = 1.5 waves per second
         rightLowerArm_y: { base: 20, amplitude: 15, frequency: 1.5, phase: 0.5 },
         // phase: 0.5 means this starts half a cycle later (natural elbow delay)
@@ -459,7 +628,7 @@ waving: {
 | ----------- | ------------------------------------------------------ |
 | `frequency` | Speed. 0.5 = slow breathing, 2.0 = fast wave           |
 | `amplitude` | Size of movement in degrees                            |
-| `phase`     | Timing offset (0–1). Use 0.5 for opposite timing       |
+| `phase`     | Timing offset (0-1). Use 0.5 for opposite timing       |
 | `base`      | Center position. The bone oscillates around this angle |
 
 ### Combining Pose + Animation
@@ -467,7 +636,7 @@ waving: {
 The pose system and animation system stack together:
 
 ```
-Final bone rotation = Pose correction × Procedural animation × Breathing
+Final bone rotation = Pose correction * Procedural animation * Breathing
 
 Each is applied as a quaternion multiplication (premultiply).
 ```
@@ -478,11 +647,32 @@ The pose runs once at load time; procedural animations update every frame.
 
 ## 9. Settings & UI Controls
 
+### Single Source of Truth
+
+```
+AnimationPresets.js
+    DEFAULT_POSE_INTENSITY = 1.0      <-- the canonical default
+         |
+         v
+PoseNormalizer.js
+    _DEFAULT_INTENSITY = AnimationPresets value (fallback: 1.0)
+    DEFAULT_SETTINGS.intensity = _DEFAULT_INTENSITY
+    DEFAULT_SETTINGS.preset = 'naturalIdle'
+         |
+         v
+localStorage ('nexus_pose_normalizer')
+    { intensity: 1.0, preset: 'naturalIdle', bones: { ... }, maxCorrection: { ... } }
+         |
+         v
+All UI sliders read from PoseNormalizer.getSettings()
+```
+
 ### Global Intensity Slider
 
-- **Location:** Settings → Pose Correction → GLOBAL INTENSITY
+- **Location:** Settings -> Pose Correction -> GLOBAL INTENSITY
+- **Also in:** Pose Studio -> T-Pose Correction (synced bidirectionally)
 - **Range:** 0 to 1.5
-- **Default:** 0.70
+- **Default:** 1.0 (industry standard — full correction)
 - **Stored in:** `localStorage` key `nexus_pose_normalizer`
 
 ### Per-Bone Sliders
@@ -491,35 +681,130 @@ Each bone has its own weight slider (0 to 1). The effective intensity for any
 bone is:
 
 ```
-effective = globalIntensity × boneWeight
+effective = globalIntensity * boneWeight
 ```
+
+Default per-bone weights (all 1.0):
+
+| Bone          | Default Weight |
+| ------------- | -------------- |
+| leftShoulder  | 1.0            |
+| rightShoulder | 1.0            |
+| leftUpperArm  | 1.0            |
+| rightUpperArm | 1.0            |
+| leftLowerArm  | 1.0            |
+| rightLowerArm | 1.0            |
+| leftHand      | 1.0            |
+| rightHand     | 1.0            |
+| chest         | 1.0            |
+| upperChest    | 1.0            |
 
 ### Preset Selector
 
-Dropdown to switch between poses (relaxedStanding, naturalIdle, portrait,
-presentation, and any custom ones you add).
+Dropdown to switch between poses:
+
+| Preset            | Default | Description                                |
+| ----------------- | ------- | ------------------------------------------ |
+| `naturalIdle`     | Yes     | Arms at sides (55 deg) — industry standard |
+| `relaxedStanding` |         | Casual stance (40 deg arms)                |
+| `portrait`        |         | Formal, arms close to body (65 deg)        |
+| `presentation`    |         | Open professional stance (30 deg)          |
 
 ### Programmatic Access
 
 ```javascript
 // Read current settings
 const settings = window.NEXUS_POSE_NORMALIZER.getSettings();
-console.log(settings.intensity); // 0.7
+console.log(settings.intensity); // 1.0
+console.log(settings.preset); // 'naturalIdle'
 console.log(settings.bones); // { leftUpperArm: 1.0, ... }
 
-// Update settings (triggers live update)
+// Update settings (triggers live update + fires 'pose-settings-changed')
 window.NEXUS_POSE_NORMALIZER.updateSettings({ intensity: 1.2 });
 
-// Reset to defaults
+// Reset to defaults (intensity 1.0, preset 'naturalIdle')
 window.NEXUS_POSE_NORMALIZER.resetSettings();
 
-// Apply a specific preset
+// Apply a specific preset via NaturalPosePlugin
 window.NEXUS_NATURAL_POSE.setPreset('portrait');
+
+// Read the canonical default from AnimationPresets
+const canonical = window.NEXUS_ANIMATION_PRESETS.DEFAULT_POSE_INTENSITY; // 1.0
 ```
 
 ---
 
-## 10. Troubleshooting
+## 10. Architecture: Data Flow & Sync
+
+### Settings Flow Diagram
+
+```
+                    AnimationPresets.js
+                   DEFAULT_POSE_INTENSITY = 1.0
+                            |
+                            v
+                    PoseNormalizer.js
+              (loads from localStorage or defaults)
+              settings = { intensity, preset, bones, maxCorrection }
+                    |                       |
+            getSettings()            updateSettings(patch)
+                    |                       |
+         +----------+-----------+           +---> saveSettings() -> localStorage
+         |          |           |           |
+         v          v           v           +---> dispatch 'pose-settings-changed'
+    NaturalPose  PoseStudio  main.js                    |
+    Plugin       Normalizer  Settings UI         +------+------+
+    (VRM path)   (GLB path)                      |             |
+                                           PoseStudio    main.js
+                                           Panel sync    loadPoseSettingsIntoUI()
+```
+
+### Event System
+
+| Event                   | Dispatched by                   | Listened by                          |
+| ----------------------- | ------------------------------- | ------------------------------------ |
+| `pose-settings-changed` | PoseNormalizer.updateSettings() | PoseStudioPanel, main.js Settings UI |
+| `pose-settings-changed` | PoseNormalizer.resetSettings()  | PoseStudioPanel, main.js Settings UI |
+| `vr-pose-changed`       | VRPoseSystem                    | main.js VR preset dropdown           |
+
+### Cross-Sync: Two UI Panels
+
+The Settings panel (`index.html #pose-intensity`) and Pose Studio panel
+(`#poseTposeIntensitySlider`) stay synchronized:
+
+```
+Settings slider changes:
+    -> user clicks "Apply" -> applyPoseSettingsLive()
+    -> pn.updateSettings(patch)
+    -> fires 'pose-settings-changed'
+    -> PoseStudioPanel._settingsChangedHandler updates its slider
+
+Pose Studio slider changes:
+    -> tposeSlider 'input' event
+    -> pnorm.updateSettings({ intensity: val })
+    -> fires 'pose-settings-changed'
+    -> main.js listener calls loadPoseSettingsIntoUI()
+    -> Settings panel slider updates
+```
+
+No infinite loops: programmatic `.value = x` does not fire `input` events.
+
+### Fallback Chain
+
+When `NEXUS_POSE_NORMALIZER` is not loaded (e.g., script load order issue):
+
+```
+PoseNormalizer:      AnimationPresets.DEFAULT_POSE_INTENSITY -> fallback 1.0
+NaturalPosePlugin:   AnimationPresets.DEFAULT_POSE_INTENSITY -> fallback 1.0
+PoseStudioNormalizer: AnimationPresets.DEFAULT_POSE_INTENSITY -> fallback 1.0
+```
+
+All fallbacks are **1.0** — matching the canonical value in
+`AnimationPresets.js`.
+
+---
+
+## 11. Troubleshooting
 
 | Symptom                           | Cause                                            | Fix                                                                   |
 | --------------------------------- | ------------------------------------------------ | --------------------------------------------------------------------- |
@@ -528,16 +813,35 @@ window.NEXUS_NATURAL_POSE.setPreset('portrait');
 | Pose looks different after reload | Saved settings in localStorage override defaults | Clear localStorage or click Reset in settings                         |
 | Only one arm corrected            | Rig uses non-standard bone names                 | Check console for `Tier 3 (incomplete)` warning                       |
 | VRM looks fine but GLB doesn't    | Different code paths                             | GLB uses direction vectors; VRM uses quaternions — check both presets |
-| Slider stuck at max               | Slider max was 1.0                               | Updated to 1.5 — clear localStorage if old value is cached            |
+| Slider stuck at max               | Old localStorage value cached                    | Clear localStorage key `nexus_pose_normalizer` or click Reset         |
+| Settings/PoseStudio out of sync   | Missing cross-sync listener                      | Both panels listen for `pose-settings-changed` event                  |
 
 ---
 
 ## File Map
 
-| File                       | Role                                                             |
-| -------------------------- | ---------------------------------------------------------------- |
-| `src/AnimationPresets.js`  | Single source of truth for `DEFAULT_POSE_INTENSITY` (0.7)        |
-| `src/PoseNormalizer.js`    | GLB path — world-space direction alignment, settings persistence |
-| `src/NaturalPosePlugin.js` | VRM path — normalized bone quaternion rotations                  |
-| `index.html`               | UI sliders and controls                                          |
-| `src/main.js`              | Wires UI to PoseNormalizer settings                              |
+| File                          | Role                                                               |
+| ----------------------------- | ------------------------------------------------------------------ |
+| `src/AnimationPresets.js`     | Single source of truth for `DEFAULT_POSE_INTENSITY` (1.0)          |
+| `src/PoseNormalizer.js`       | GLB path — world-space direction alignment, settings persistence   |
+| `src/NaturalPosePlugin.js`    | VRM path — normalized bone quaternion rotations                    |
+| `src/PoseStudioNormalizer.js` | Simplified GLB path for Pose Studio viewport                       |
+| `src/PoseStudioPanel.js`      | Pose Studio UI — slider wiring + cross-sync listener               |
+| `src/main.js`                 | Settings UI wiring, `applyPoseSettingsLive()`, cross-sync listener |
+| `index.html`                  | UI sliders and controls (Settings panel)                           |
+
+---
+
+## Quick Reference: All Formulas
+
+| Formula                  | Equation                                              | Where Used                |
+| ------------------------ | ----------------------------------------------------- | ------------------------- |
+| Effective intensity      | `globalIntensity * perBoneWeight`                     | All correction paths      |
+| Slerp blend              | `slerp(identity, target, effectiveIntensity)`         | VRM + GLB intensity       |
+| Direction vector         | `normalize(childPos - bonePos)`                       | GLB world-space alignment |
+| Correction quaternion    | `setFromUnitVectors(currentDir, targetDir)`           | GLB path                  |
+| World to local           | `parentInv * worldCorrection * parent`                | GLB path                  |
+| Premultiply application  | `bone.quaternion = localCorrection * bone.quaternion` | GLB path                  |
+| Angle from quaternion    | `2 * arccos(min(1, abs(Q.w)))`                        | Safety clamp              |
+| Axis-angle to quaternion | `[axis * sin(theta/2), cos(theta/2)]`                 | VRM preset definitions    |
+| PoseStudio rotation      | `BASE_ROTATION * globalIntensity`                     | PoseStudioNormalizer      |
