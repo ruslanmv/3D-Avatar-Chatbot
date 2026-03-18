@@ -52,9 +52,12 @@
     // Used when user explicitly triggers an animation from the Pose Studio panel
     let animOverride = false;
 
-    // Mouse input (normalized -1..1)
+    // Mouse/touch input (normalized -1..1)
     const mouse = { x: 0, y: 0 };
     let inputInit = false;
+
+    // Gaze override: when non-null, head bone ignores mouse/touch and uses these values
+    let gazeOverride = null; // { x: number, y: number } | null
 
     // Rest pose cache
     const rest = new Map(); // bone.uuid -> { pos: Vector3, quat: Quaternion }
@@ -80,10 +83,33 @@
     function ensureInput() {
         if (inputInit) return;
         window.addEventListener('mousemove', (e) => {
+            if (gazeOverride) return; // state override active, ignore pointer
             mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
         });
+        // Touch tracking for mobile — skip touches on UI controls
+        window.addEventListener(
+            'touchmove',
+            (e) => {
+                if (gazeOverride) return;
+                var t = e.touches[0];
+                if (!t) return;
+                var el = document.elementFromPoint(t.clientX, t.clientY);
+                if (el && el.closest('.voice-btn-compact, .chat-input, .send-btn, .chat-input-bar')) return;
+                mouse.x = (t.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(t.clientY / window.innerHeight) * 2 + 1;
+            },
+            { passive: true }
+        );
         inputInit = true;
+    }
+
+    function setGazeOverride(coords) {
+        gazeOverride = coords; // { x, y } or null
+        if (coords) {
+            mouse.x = coords.x;
+            mouse.y = coords.y;
+        }
     }
 
     // ---------------------------
@@ -393,6 +419,18 @@
         // Some models have baked animations but still start in T-pose
         // Use geometry-aware quaternion rotation for reliable arm positioning
         fixTPose();
+
+        // Force VRM to sync normalized bones → raw skeleton NOW so that
+        // captureRestPose() below picks up the corrected arm positions.
+        // Without this, the rest pose would still be T-pose on raw bones and
+        // vrm.update() in the render loop would overwrite procedural offsets.
+        const _vrm =
+            window.NEXUS_VIEWER?.avatarManager?._currentVRM ||
+            window.NEXUS_VIEWER?.avatarManager?.vrmLoader?.currentVRM;
+        if (_vrm?.update) {
+            _vrm.update(0);
+        }
+
         // Re-capture to treat this as new rest pose:
         captureRestPose(avatarRoot);
 
@@ -555,11 +593,15 @@
         if (!avatarRoot || !bones) return;
         console.log('[ProceduralAnimator] Pose settings changed — re-applying pose');
 
-        // For VRM models using NaturalPosePlugin, just re-apply (it reads settings internally)
+        // For VRM models using NaturalPosePlugin, re-apply and re-sync rest pose
         if (window.NEXUS_NATURAL_POSE?.isActive() && window.NEXUS_NATURAL_POSE.isVRM()) {
             window.NEXUS_NATURAL_POSE.apply(avatarRoot);
-            // VRM normalized bones don't need rest pose re-capture —
-            // vrm.update() syncs them each frame automatically
+            // Force VRM sync so rest pose captures corrected raw bones
+            const _v =
+                window.NEXUS_VIEWER?.avatarManager?._currentVRM ||
+                window.NEXUS_VIEWER?.avatarManager?.vrmLoader?.currentVRM;
+            if (_v?.update) _v.update(0);
+            captureRestPose(avatarRoot);
             return;
         }
 
@@ -602,5 +644,6 @@
         setTalkStyle,
         setSpeed,
         getSpeed,
+        setGazeOverride,
     };
 })();

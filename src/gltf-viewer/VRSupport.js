@@ -142,7 +142,14 @@ export class VRSupport {
             } else {
                 // Enter VR
                 const sessionInit = {
-                    optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking'],
+                    optionalFeatures: [
+                        'local-floor',
+                        'bounded-floor',
+                        'hand-tracking',
+                        'layers', // WebXR Layers API (Quest 3 passthrough)
+                        'plane-detection', // Surface detection for AR placement
+                        'light-estimation', // Match real-world lighting in passthrough
+                    ],
                 };
 
                 // Ensure WebGL context is XR-compatible before requesting session
@@ -158,11 +165,14 @@ export class VRSupport {
 
                 const session = await navigator.xr.requestSession('immersive-vr', sessionInit);
 
-                // Configure XRWebGLLayer with alpha:false for opaque VR rendering
+                // Configure XRWebGLLayer with alpha:true to enable Quest 3
+                // passthrough toggle mid-session. When scene.background is null
+                // and clear color alpha is 0, transparent pixels reveal the
+                // camera feed. Opaque scenes are unaffected (black bg renders solid).
                 try {
-                    const xrLayer = new XRWebGLLayer(session, gl, { alpha: false });
+                    const xrLayer = new XRWebGLLayer(session, gl, { alpha: true });
                     session.updateRenderState({ baseLayer: xrLayer });
-                    console.log('[VR] Custom XRWebGLLayer created successfully');
+                    console.log('[VR] Custom XRWebGLLayer created (alpha:true — passthrough-ready)');
                 } catch (e) {
                     console.warn('[VR] Could not set custom XRWebGLLayer, using default:', e);
                 }

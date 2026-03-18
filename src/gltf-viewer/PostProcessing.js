@@ -73,14 +73,18 @@ export class PostProcessing {
         const h = this.renderer.domElement.height;
         const pixelRatio = this.renderer.getPixelRatio();
 
-        // Create composer with HDR render target for proper bloom
+        // Mobile GPUs (Adreno, Mali, PowerVR) often silently fail with
+        // HalfFloatType + MSAA render targets — producing a black screen
+        // with no WebGL error. Use UnsignedByteType + no MSAA on mobile;
+        // FXAA handles anti-aliasing, and bloom still works fine at 8-bit.
+        const useMobileSafe = this._isMobile;
         const renderTarget = new THREE.WebGLRenderTarget(w, h, {
             minFilter: THREE.LinearFilter,
             magFilter: THREE.LinearFilter,
             format: THREE.RGBAFormat,
-            type: THREE.HalfFloatType, // HDR for bloom
+            type: useMobileSafe ? THREE.UnsignedByteType : THREE.HalfFloatType,
         });
-        renderTarget.samples = 4; // MSAA samples
+        renderTarget.samples = useMobileSafe ? 0 : 4;
 
         this.composer = new EffectComposer(this.renderer, renderTarget);
 
@@ -134,10 +138,40 @@ export class PostProcessing {
             return false;
         }
 
+        // First-frame render target validation: some mobile GPUs silently
+        // produce black output with certain texture types. After the first
+        // few frames, check if the framebuffer status is incomplete and
+        // permanently disable post-processing if so.
+        if (this._renderFrameCount === undefined) this._renderFrameCount = 0;
+        this._renderFrameCount++;
+        if (this._renderFrameCount === 3) {
+            try {
+                const gl = this.renderer.getContext();
+                const rt = this.composer.writeBuffer;
+                if (rt?.__webglFramebuffer) {
+                    gl.bindFramebuffer(gl.FRAMEBUFFER, rt.__webglFramebuffer);
+                    const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+                    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                    if (status !== gl.FRAMEBUFFER_COMPLETE) {
+                        console.warn(
+                            '[PostProcessing] Render target incomplete on this GPU — disabling post-processing'
+                        );
+                        this.enabled = false;
+                        this.renderer.render(this.scene, this.camera);
+                        return false;
+                    }
+                }
+            } catch (_) {
+                // Ignore validation errors — direct render is the fallback
+            }
+        }
+
         try {
             this.composer.render();
         } catch (e) {
             // Context may have been lost mid-frame — fall back to direct render
+            console.warn('[PostProcessing] Composer error — falling back to direct render:', e.message);
+            this.enabled = false;
             this.renderer.render(this.scene, this.camera);
             return false;
         }
