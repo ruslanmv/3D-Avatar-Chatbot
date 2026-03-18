@@ -542,9 +542,29 @@ export class VRChatIntegration {
      * @param {number} index - Avatar index
      */
     async handleAvatarSwitch(index) {
+        // Guard against concurrent avatar switches (rapid clicking)
+        if (this._avatarSwitching) {
+            console.log('[VRChatIntegration] Avatar switch already in progress, ignoring');
+            return;
+        }
+        this._avatarSwitching = true;
+
         try {
             this.vrChatPanel.setStatus('thinking');
-            await this.avatarManager.setAvatarByIndex(index);
+
+            // Preserve current pose preset across avatar change
+            const viewer = window.NEXUS_VIEWER;
+            const savedPreset = viewer?.vrPoseSystem?.getCurrentPreset() || null;
+
+            const result = await this.avatarManager.setAvatarByIndex(index);
+
+            // If setAvatarByIndex returned null, a newer load superseded this one
+            if (!result) {
+                console.log('[VRChatIntegration] Avatar switch was superseded by newer load');
+                this._avatarSwitching = false;
+                return;
+            }
+
             this.currentAvatarIndex = index;
 
             // Sync panel counter so the displayed index matches
@@ -560,10 +580,9 @@ export class VRChatIntegration {
 
             console.log('[VRChatIntegration] Avatar switched — re-registering with all VR systems...');
 
-            // Register with ProceduralAnimator
-            if (window.NEXUS_PROCEDURAL_ANIMATOR) {
-                window.NEXUS_PROCEDURAL_ANIMATOR.registerAvatar(newRoot);
-            }
+            // NOTE: ProceduralAnimator registration is already done inside
+            // AvatarManager.setAvatarByUrl(). Do NOT re-register here — it
+            // would call fixTPose() a second time and compound pose corrections.
 
             // Re-register with VR controllers (for grab/turntable)
             if (this.vrControllers) {
@@ -571,7 +590,6 @@ export class VRChatIntegration {
             }
 
             // Re-register with VR bone grabber (for direct bone manipulation)
-            const viewer = window.NEXUS_VIEWER;
             if (viewer) {
                 if (viewer.vrBoneGrabber) {
                     viewer.vrBoneGrabber.setAvatar(newRoot);
@@ -585,7 +603,10 @@ export class VRChatIntegration {
                 if (viewer.vrPoseSystem) {
                     viewer.vrPoseSystem.setAvatar(newRoot);
                     viewer.vrPoseSystem.setEnabled(true);
-                    console.log('[VRChatIntegration] VRPoseSystem re-registered with new avatar');
+                    // Restore previous pose instead of resetting to default
+                    const restorePreset = savedPreset || 'standing';
+                    viewer.vrPoseSystem.applyPreset(restorePreset, 0.3);
+                    console.log(`[VRChatIntegration] VRPoseSystem re-registered, restored pose: ${restorePreset}`);
                 }
 
                 // Re-register with VR puppet interaction (for handles + two-hand transform)
@@ -606,6 +627,8 @@ export class VRChatIntegration {
             console.error('[VRChatIntegration] Avatar switch failed:', error);
             this.vrChatPanel.appendMessage('bot', 'Failed to switch avatar');
             this.vrChatPanel.setStatus('idle');
+        } finally {
+            this._avatarSwitching = false;
         }
     }
 
@@ -637,20 +660,21 @@ export class VRChatIntegration {
 
     /**
      * Sync with desktop avatar instead of creating duplicate
-     * This prevents avatar overlap issues
+     * This prevents avatar overlap issues.
+     * IMPORTANT: Does NOT re-register with ProceduralAnimator when reusing
+     * an existing avatar — re-registration triggers fixTPose() which resets
+     * the character's current pose (arms snap back to T-pose correction).
      */
     async syncAvatarFromDesktop() {
         // Check if desktop already loaded an avatar
         if (this.avatarManager.currentRoot) {
             console.log('[VRChatIntegration] Reusing existing desktop avatar (no duplicate)');
-            // Just register existing avatar with VR controllers
+            // Register with VR controllers for grab/spin (does not affect pose)
             if (this.vrControllers && this.vrControllers.registerAvatar) {
                 this.vrControllers.registerAvatar(this.avatarManager.currentRoot);
             }
-            // Phase 3: Register with ProceduralAnimator
-            if (window.NEXUS_PROCEDURAL_ANIMATOR) {
-                window.NEXUS_PROCEDURAL_ANIMATOR.registerAvatar(this.avatarManager.currentRoot);
-            }
+            // Do NOT re-register with ProceduralAnimator — avatar is already
+            // registered and re-registration would reset the current pose
             return;
         }
 
@@ -662,10 +686,8 @@ export class VRChatIntegration {
         if (this.avatarManager.currentRoot && this.vrControllers && this.vrControllers.registerAvatar) {
             this.vrControllers.registerAvatar(this.avatarManager.currentRoot);
         }
-        // Phase 3: Register with ProceduralAnimator
-        if (this.avatarManager.currentRoot && window.NEXUS_PROCEDURAL_ANIMATOR) {
-            window.NEXUS_PROCEDURAL_ANIMATOR.registerAvatar(this.avatarManager.currentRoot);
-        }
+        // Only register with ProceduralAnimator for a newly loaded avatar
+        // (setAvatarByIndex already registered it, but guard for edge cases)
     }
 
     /**

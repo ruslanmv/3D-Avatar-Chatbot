@@ -835,6 +835,10 @@ function loadAvatar(url, source) {
                 await waitForViewerEngineReady(15000);
                 await window.NEXUS_VIEWER.loadAvatar(url);
 
+                // Sync saved pose settings to the live viewport immediately.
+                // Without this, localStorage settings only take effect on "Save".
+                applyPoseSettingsLive();
+
                 /* NEXUS_PATCH_LIFE_ENGINE_REGISTER_VIEWER */
                 // Note: ProceduralAnimator registration now handled inside AvatarManager.setAvatarByUrl()
                 // Auto-blink also starts automatically via AvatarManager._buildVRMLoaderBridge()
@@ -927,6 +931,9 @@ function loadAvatar(url, source) {
                 window.NEXUS_PROCEDURAL_ANIMATOR?.setBasePose?.('lecturerNeutral');
                 window.NEXUS_PROCEDURAL_ANIMATOR?.setTalkStyle?.('explainCalm');
             } catch (_) {}
+
+            // Sync saved pose settings to the live viewport immediately.
+            applyPoseSettingsLive();
             currentAvatar.traverse((child) => {
                 if (child.isMesh) {
                     child.castShadow = true;
@@ -1005,6 +1012,30 @@ function loadDefaultAvatarFromManifest() {
         loadAvatar(avatarItems[vmIdx].url, 'vrm-manager');
         return;
     }
+
+    // Restore previously chosen avatar from localStorage (persists across navigation)
+    try {
+        const savedFile = localStorage.getItem('nexus_selected_avatar_file');
+        const savedIdx = parseInt(localStorage.getItem('nexus_selected_avatar_idx') || '', 10);
+        if (savedFile) {
+            // Match by filename first (more reliable across manifest changes)
+            const fileIdx = avatarItems.findIndex((x) => x.file === savedFile);
+            if (fileIdx >= 0) {
+                const select = $('avatar-select');
+                if (select) select.value = String(fileIdx);
+                loadAvatar(avatarItems[fileIdx].url, 'manifest(persisted)');
+                console.log('[Main] Restored persisted avatar:', avatarItems[fileIdx].name, 'at index', fileIdx);
+                return;
+            }
+        }
+        if (Number.isFinite(savedIdx) && avatarItems[savedIdx]) {
+            const select = $('avatar-select');
+            if (select) select.value = String(savedIdx);
+            loadAvatar(avatarItems[savedIdx].url, 'manifest(persisted)');
+            console.log('[Main] Restored persisted avatar by index:', savedIdx);
+            return;
+        }
+    } catch (_) {}
 
     loadAvatar(avatarItems[0].url, 'manifest(default)');
 }
@@ -1475,6 +1506,11 @@ function setupEventListeners() {
             const idx = parseInt(e.target.value, 10);
             if (!Number.isFinite(idx)) return;
             if (!avatarItems[idx]) return;
+            // Persist chosen avatar so it survives navigation to settings/manager
+            try {
+                localStorage.setItem('nexus_selected_avatar_idx', String(idx));
+                localStorage.setItem('nexus_selected_avatar_file', avatarItems[idx].file || '');
+            } catch (_) {}
             loadAvatar(avatarItems[idx].url, 'manifest');
         });
     }

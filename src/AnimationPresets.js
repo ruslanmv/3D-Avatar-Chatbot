@@ -20,6 +20,16 @@
     }
 
     // =====================================================================
+    // GLOBAL POSE INTENSITY — single source of truth
+    // =====================================================================
+    // All systems (PoseNormalizer, NaturalPosePlugin, PoseStudioNormalizer)
+    // read this value. Change it HERE to adjust pose correction strength globally.
+    //   0   = no correction (raw T-pose)
+    //   1.0 = full correction (fully relaxed standing)
+    //   0.70 = default — reduced for more subtle correction, avoids body overlap.
+    var DEFAULT_POSE_INTENSITY = 0.7;
+
+    // =====================================================================
     // EMOTIONS — facial expressions + body animation modes
     // =====================================================================
     // Each emotion defines:
@@ -163,6 +173,10 @@
     //   Bone names: head, neck, chest, spine, hips,
     //               leftUpperArm, rightUpperArm, leftLowerArm, rightLowerArm,
     //               leftHand, rightHand
+    //
+    // Lower arm Y convention (matching NaturalPosePlugin):
+    //   leftLowerArm:  NEGATIVE Y = forward elbow bend (anatomical flexion)
+    //   rightLowerArm: POSITIVE Y = forward elbow bend (anatomical flexion)
 
     var BASE_POSES = [
         {
@@ -173,8 +187,8 @@
             bones: {
                 leftUpperArm: [4, 0, 36],
                 rightUpperArm: [4, 0, -36],
-                leftLowerArm: [0, 12, 0],
-                rightLowerArm: [0, -12, 0],
+                leftLowerArm: [0, -12, 0],
+                rightLowerArm: [0, 12, 0],
                 hips: [0, 0, -2],
                 spine: [0, 0, 1],
                 chest: [-2, 0, 0],
@@ -189,8 +203,8 @@
             bones: {
                 leftUpperArm: [10, 0, 28],
                 rightUpperArm: [10, 0, -28],
-                leftLowerArm: [0, 22, 0],
-                rightLowerArm: [0, -22, 0],
+                leftLowerArm: [0, -22, 0],
+                rightLowerArm: [0, 22, 0],
                 hips: [0, 0, -1],
                 spine: [-2, 0, 1],
                 chest: [-4, 0, 0],
@@ -205,8 +219,8 @@
             bones: {
                 leftUpperArm: [12, 0, 18],
                 rightUpperArm: [12, 0, -18],
-                leftLowerArm: [0, 34, 0],
-                rightLowerArm: [0, -34, 0],
+                leftLowerArm: [0, -34, 0],
+                rightLowerArm: [0, 34, 0],
                 hips: [0, 0, -1],
                 spine: [-3, 0, 0],
                 chest: [-2, 0, 0],
@@ -221,8 +235,8 @@
             bones: {
                 leftUpperArm: [6, 0, 32],
                 rightUpperArm: [6, 0, -32],
-                leftLowerArm: [0, 18, 0],
-                rightLowerArm: [0, -18, 0],
+                leftLowerArm: [0, -18, 0],
+                rightLowerArm: [0, 18, 0],
                 hips: [0, 3, -3],
                 spine: [-4, 0, 0],
                 chest: [-6, 0, 0],
@@ -237,8 +251,8 @@
             bones: {
                 leftUpperArm: [2, 0, 40],
                 rightUpperArm: [8, 0, -30],
-                leftLowerArm: [0, 8, 0],
-                rightLowerArm: [0, -20, 0],
+                leftLowerArm: [0, -8, 0],
+                rightLowerArm: [0, 20, 0],
                 hips: [2, 4, -5],
                 spine: [-2, 2, 2],
                 chest: [-3, 1, 0],
@@ -253,8 +267,8 @@
             bones: {
                 leftUpperArm: [8, 0, 24],
                 rightUpperArm: [8, 0, -24],
-                leftLowerArm: [0, 28, 0],
-                rightLowerArm: [0, -28, 0],
+                leftLowerArm: [0, -28, 0],
+                rightLowerArm: [0, 28, 0],
                 hips: [0, -2, 0],
                 spine: [2, 0, 0],
                 chest: [3, 0, 0],
@@ -269,8 +283,8 @@
             bones: {
                 leftUpperArm: [5, 0, 34],
                 rightUpperArm: [10, 0, -26],
-                leftLowerArm: [0, 14, 0],
-                rightLowerArm: [0, -24, 0],
+                leftLowerArm: [0, -14, 0],
+                rightLowerArm: [0, 24, 0],
                 hips: [0, 2, -4],
                 spine: [-3, 1, 2],
                 chest: [-5, 0, -1],
@@ -285,8 +299,8 @@
             bones: {
                 leftUpperArm: [6, 0, 30],
                 rightUpperArm: [6, 0, -30],
-                leftLowerArm: [0, 20, 0],
-                rightLowerArm: [0, -20, 0],
+                leftLowerArm: [0, -20, 0],
+                rightLowerArm: [0, 20, 0],
                 hips: [2, 0, -3],
                 spine: [-3, 0, 0],
                 chest: [-5, 0, 0],
@@ -301,8 +315,8 @@
             bones: {
                 leftUpperArm: [6, 0, 32],
                 rightUpperArm: [8, 0, -28],
-                leftLowerArm: [0, 16, 0],
-                rightLowerArm: [0, -22, 0],
+                leftLowerArm: [0, -16, 0],
+                rightLowerArm: [0, 22, 0],
                 hips: [0, 2, -2],
                 spine: [-1, 0, 1],
                 chest: [-3, 0, 0],
@@ -337,7 +351,7 @@
                     { axis: 'x', freq: 1.8, amp: 0.06, phase: Math.PI * 0.4 },
                     { axis: 'z', freq: 0, amp: 0, offset: deg(-6) },
                 ],
-                rightLowerArm: [{ axis: 'y', freq: 1.8, amp: 0.08, phase: Math.PI * 0.4 }],
+                rightLowerArm: [{ axis: 'y', freq: 1.8, amp: -0.08, phase: Math.PI * 0.4 }],
             },
         },
         {
@@ -356,8 +370,8 @@
                     { axis: 'x', freq: 2.5, amp: 0.08, phase: Math.PI },
                     { axis: 'z', freq: 0, amp: 0, offset: deg(-8) },
                 ],
-                leftLowerArm: [{ axis: 'y', freq: 2.5, amp: 0.12 }],
-                rightLowerArm: [{ axis: 'y', freq: 2.5, amp: 0.12, phase: Math.PI }],
+                leftLowerArm: [{ axis: 'y', freq: 2.5, amp: -0.12 }],
+                rightLowerArm: [{ axis: 'y', freq: 2.5, amp: -0.12, phase: Math.PI }],
             },
         },
         {
@@ -372,7 +386,7 @@
                     { axis: 'x', freq: 1.8, amp: 0.04 },
                     { axis: 'z', freq: 0, amp: 0, offset: deg(-4) },
                 ],
-                rightLowerArm: [{ axis: 'y', freq: 1.8, amp: 0.06 }],
+                rightLowerArm: [{ axis: 'y', freq: 1.8, amp: -0.06 }],
                 leftUpperArm: [
                     { axis: 'x', freq: 1.8, amp: 0.02, phase: Math.PI * 0.7 },
                     { axis: 'z', freq: 0, amp: 0, offset: deg(2) },
@@ -417,7 +431,7 @@
                     { axis: 'x', freq: 2.0, amp: 0.025 },
                     { axis: 'z', freq: 2.0, amp: -0.03 },
                 ],
-                rightLowerArm: [{ axis: 'y', freq: 2.5, amp: 0.03 }],
+                rightLowerArm: [{ axis: 'y', freq: 2.5, amp: -0.03 }],
                 spine: [{ axis: 'y', freq: 1.2, amp: 0.012 }],
             },
         },
@@ -453,13 +467,13 @@
                 { axis: 'x', freq: 0.2, amp: 0.02, offset: -0.22 },
                 { axis: 'z', freq: 0, amp: 0, offset: deg(-16) },
             ],
-            rightLowerArm: [{ axis: 'y', freq: 0.15, amp: 0.015, offset: deg(-48) }],
+            rightLowerArm: [{ axis: 'y', freq: 0.15, amp: -0.015, offset: deg(48) }],
             // Left arm crosses body — self-holding
             leftUpperArm: [
                 { axis: 'x', freq: 0.15, amp: 0.01, offset: 0.06 },
                 { axis: 'z', freq: 0, amp: 0, offset: deg(10) },
             ],
-            leftLowerArm: [{ axis: 'y', freq: 0, amp: 0, offset: deg(32) }],
+            leftLowerArm: [{ axis: 'y', freq: 0, amp: 0, offset: deg(-32) }],
             neck: [{ axis: 'z', freq: 0.3, amp: 0.025 }],
         },
         // ── HAPPY: NPC cheer — upright posture, gentle bounce, open arms ──
@@ -487,8 +501,8 @@
                 { axis: 'x', freq: 1.6, amp: 0.08, phase: Math.PI },
                 { axis: 'z', freq: 0, amp: 0, offset: deg(-8) },
             ],
-            leftLowerArm: [{ axis: 'y', freq: 1.6, amp: 0.06 }],
-            rightLowerArm: [{ axis: 'y', freq: 1.6, amp: -0.06, phase: Math.PI }],
+            leftLowerArm: [{ axis: 'y', freq: 1.6, amp: -0.06 }],
+            rightLowerArm: [{ axis: 'y', freq: 1.6, amp: 0.06, phase: Math.PI }],
         },
         // ── SAD: NPC dejection — drooped head, slumped posture, self-comfort ──
         // Reference: FFXIV /sulk, WoW /cry — minimal motion, heavy weight
@@ -516,8 +530,8 @@
                 { axis: 'z', freq: 0, amp: 0, offset: deg(-10) },
                 { axis: 'x', freq: 0.2, amp: 0.01, offset: 0.06 },
             ],
-            leftLowerArm: [{ axis: 'y', freq: 0, amp: 0, offset: deg(30) }],
-            rightLowerArm: [{ axis: 'y', freq: 0, amp: 0, offset: deg(-30) }],
+            leftLowerArm: [{ axis: 'y', freq: 0, amp: 0, offset: deg(-30) }],
+            rightLowerArm: [{ axis: 'y', freq: 0, amp: 0, offset: deg(30) }],
         },
         // ── ANGRY: NPC aggro stance — rigid, tense, fists ready ──
         // Reference: FFXIV /angry, WoW /threaten — controlled intensity, no flailing
@@ -544,8 +558,8 @@
                 { axis: 'z', freq: 0, amp: 0, offset: deg(-10) },
                 { axis: 'x', freq: 0.8, amp: 0.02, phase: Math.PI },
             ],
-            leftLowerArm: [{ axis: 'y', freq: 0, amp: 0, offset: deg(25) }],
-            rightLowerArm: [{ axis: 'y', freq: 0, amp: 0, offset: deg(-25) }],
+            leftLowerArm: [{ axis: 'y', freq: 0, amp: 0, offset: deg(-25) }],
+            rightLowerArm: [{ axis: 'y', freq: 0, amp: 0, offset: deg(25) }],
             neck: [{ axis: 'x', freq: 0, amp: 0, offset: -0.03 }],
         },
         // ── SURPRISED: NPC startle — step back, hands up, then settle ──
@@ -574,8 +588,8 @@
                 { axis: 'x', freq: 0.4, amp: 0.025, offset: -0.2, phase: Math.PI * 0.3 },
                 { axis: 'z', freq: 0, amp: 0, offset: deg(-15) },
             ],
-            leftLowerArm: [{ axis: 'y', freq: 0.6, amp: 0.03, offset: deg(30) }],
-            rightLowerArm: [{ axis: 'y', freq: 0.6, amp: -0.03, offset: deg(-30) }],
+            leftLowerArm: [{ axis: 'y', freq: 0.6, amp: -0.03, offset: deg(-30) }],
+            rightLowerArm: [{ axis: 'y', freq: 0.6, amp: 0.03, offset: deg(30) }],
         },
         // ── DANCE: MMORPG NPC groove — rhythmic sway, grounded feet ──
         // Reference: FFXIV /dance, GW2 /dance — rhythmic but contained,
@@ -616,9 +630,9 @@
                 { axis: 'z', freq: 1.0, amp: 0.04, phase: Math.PI, offset: deg(-6) },
             ],
             leftLowerArm: [
-                { axis: 'y', freq: 2.0, amp: 0.08 }, // elbow groove
+                { axis: 'y', freq: 2.0, amp: -0.08 }, // elbow groove
             ],
-            rightLowerArm: [{ axis: 'y', freq: 2.0, amp: -0.08, phase: Math.PI }],
+            rightLowerArm: [{ axis: 'y', freq: 2.0, amp: 0.08, phase: Math.PI }],
         },
         // ── FLIRT: NPC charm — coy head tilt, hand on hip, subtle sway ──
         // Reference: FFXIV /wink, GW2 /flirt — confident but controlled
@@ -644,13 +658,13 @@
                 { axis: 'x', freq: 0.3, amp: 0.03, offset: -0.12 },
                 { axis: 'z', freq: 0, amp: 0, offset: deg(-14) },
             ],
-            rightLowerArm: [{ axis: 'y', freq: 0.25, amp: 0.02, offset: deg(-30) }],
+            rightLowerArm: [{ axis: 'y', freq: 0.25, amp: -0.02, offset: deg(30) }],
             // Left arm: hand on hip
             leftUpperArm: [
                 { axis: 'x', freq: 0.2, amp: 0.01, offset: 0.08 },
                 { axis: 'z', freq: 0, amp: 0, offset: deg(18) },
             ],
-            leftLowerArm: [{ axis: 'y', freq: 0, amp: 0, offset: deg(38) }],
+            leftLowerArm: [{ axis: 'y', freq: 0, amp: 0, offset: deg(-38) }],
             neck: [{ axis: 'z', freq: 0.5, amp: 0.025 }],
         },
         // ── TEASE: NPC playful — asymmetric, shoulder pop, wag gesture ──
@@ -675,7 +689,7 @@
                 { axis: 'x', freq: 0.6, amp: 0.04, offset: -0.18 },
                 { axis: 'z', freq: 0, amp: 0, offset: deg(-12) },
             ],
-            rightLowerArm: [{ axis: 'y', freq: 1.5, amp: 0.06, offset: deg(-28) }],
+            rightLowerArm: [{ axis: 'y', freq: 1.5, amp: -0.06, offset: deg(28) }],
             leftUpperArm: [
                 { axis: 'x', freq: 0.4, amp: 0.02 },
                 { axis: 'z', freq: 0, amp: 0, offset: deg(8) },
@@ -708,8 +722,8 @@
                 { axis: 'x', freq: 0.2, amp: 0.015, offset: -0.04 },
                 { axis: 'z', freq: 0, amp: 0, offset: deg(-6) },
             ],
-            leftLowerArm: [{ axis: 'y', freq: 0.2, amp: 0.01, offset: deg(12) }],
-            rightLowerArm: [{ axis: 'y', freq: 0.2, amp: -0.01, offset: deg(-12) }],
+            leftLowerArm: [{ axis: 'y', freq: 0.2, amp: -0.01, offset: deg(-12) }],
+            rightLowerArm: [{ axis: 'y', freq: 0.2, amp: 0.01, offset: deg(12) }],
         },
         // ── SENSUAL SWAY: NPC slow dance — controlled sway, grounded ──
         // Reference: FFXIV /mdance, slow dance — flowing but not spinning
@@ -741,8 +755,8 @@
                 { axis: 'x', freq: 0.4, amp: 0.03, offset: -0.05, phase: Math.PI * 0.5 },
                 { axis: 'z', freq: 0, amp: 0, offset: deg(-8) },
             ],
-            leftLowerArm: [{ axis: 'y', freq: 0.3, amp: 0.02, offset: deg(16) }],
-            rightLowerArm: [{ axis: 'y', freq: 0.3, amp: -0.02, offset: deg(-16) }],
+            leftLowerArm: [{ axis: 'y', freq: 0.3, amp: -0.02, offset: deg(-16) }],
+            rightLowerArm: [{ axis: 'y', freq: 0.3, amp: 0.02, offset: deg(16) }],
         },
         // ── BECKON: NPC "come here" — controlled gesture, hand motion ──
         // Reference: FFXIV /beckon — clear gesture, minimal body movement
@@ -765,14 +779,14 @@
                 { axis: 'z', freq: 0, amp: 0, offset: deg(-12) },
             ],
             rightLowerArm: [
-                { axis: 'y', freq: 1.5, amp: 0.06, offset: deg(-35) }, // beckoning curl
+                { axis: 'y', freq: 1.5, amp: -0.06, offset: deg(35) }, // beckoning curl
             ],
             // Left arm: hand on hip
             leftUpperArm: [
                 { axis: 'x', freq: 0.2, amp: 0.01, offset: 0.1 },
                 { axis: 'z', freq: 0, amp: 0, offset: deg(20) },
             ],
-            leftLowerArm: [{ axis: 'y', freq: 0, amp: 0, offset: deg(45) }],
+            leftLowerArm: [{ axis: 'y', freq: 0, amp: 0, offset: deg(-45) }],
             neck: [{ axis: 'z', freq: 0.4, amp: 0.02 }],
         },
         // ── SLOW BURN: NPC intensity — controlled, magnetic, minimal ──
@@ -797,12 +811,12 @@
                 { axis: 'x', freq: 0.15, amp: 0.015, offset: -0.08 },
                 { axis: 'z', freq: 0, amp: 0, offset: deg(-8) },
             ],
-            rightLowerArm: [{ axis: 'y', freq: 0.2, amp: 0.015, offset: deg(-16) }],
+            rightLowerArm: [{ axis: 'y', freq: 0.2, amp: -0.015, offset: deg(16) }],
             leftUpperArm: [
                 { axis: 'x', freq: 0.15, amp: 0.01, offset: 0.04 },
                 { axis: 'z', freq: 0, amp: 0, offset: deg(6) },
             ],
-            leftLowerArm: [{ axis: 'y', freq: 0, amp: 0, offset: deg(10) }],
+            leftLowerArm: [{ axis: 'y', freq: 0, amp: 0, offset: deg(-10) }],
         },
     };
 
@@ -1050,6 +1064,9 @@
     // EXPOSE
     // =====================================================================
     window.NEXUS_ANIMATION_PRESETS = {
+        // Global defaults
+        DEFAULT_POSE_INTENSITY: DEFAULT_POSE_INTENSITY,
+
         // Data registries
         EMOTIONS: EMOTIONS,
         ADULT_EMOTIONS: ADULT_EMOTIONS,
