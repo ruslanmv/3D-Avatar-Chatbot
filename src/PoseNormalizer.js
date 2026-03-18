@@ -49,9 +49,14 @@
     // =====================================================================
     const STORAGE_KEY = 'nexus_pose_normalizer';
 
+    // Read default intensity from AnimationPresets (single source of truth)
+    const _AP = window.NEXUS_ANIMATION_PRESETS;
+    const _DEFAULT_INTENSITY = _AP && _AP.DEFAULT_POSE_INTENSITY != null ? _AP.DEFAULT_POSE_INTENSITY : 0.8;
+
     const DEFAULT_SETTINGS = {
         // Global intensity: 0 = no correction, 1 = full correction
-        intensity: 0.35,
+        // Reads from AnimationPresets.DEFAULT_POSE_INTENSITY (single source of truth).
+        intensity: _DEFAULT_INTENSITY,
 
         // Per-bone intensity overrides (multiplied with global intensity)
         bones: {

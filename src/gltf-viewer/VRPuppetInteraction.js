@@ -104,6 +104,12 @@ export class VRPuppetInteraction {
 
         // Hover haptic pulse throttle
         this._lastHoverPulse = { left: 0, right: 0 };
+
+        // Joint visibility mode: 'hoverOnly' (default) or 'alwaysVisible'
+        this._jointVisibility = 'hoverOnly';
+
+        // Proximity threshold for hover-only mode (meters)
+        this._proximityThreshold = 0.35;
     }
 
     // =========================================================================
@@ -118,7 +124,9 @@ export class VRPuppetInteraction {
         this.avatarRoot = root;
         this.clearHandles();
 
-        if (!root) return;
+        if (!root) {
+            return;
+        }
 
         for (const def of HANDLE_DEFS) {
             this._createHandle(def.boneKey, def.type, def.radius);
@@ -133,13 +141,37 @@ export class VRPuppetInteraction {
      */
     setEnabled(enabled) {
         this.enabled = !!enabled;
-        this._setHandlesVisible(this.enabled);
+        if (this._jointVisibility === 'alwaysVisible') {
+            this._setHandlesVisible(this.enabled);
+        } else {
+            // Hover-only: handles start hidden, proximity reveals them
+            this._setHandlesVisible(false);
+        }
 
         if (!enabled) {
             this.endAll();
         }
 
         console.log(`[VRPuppetInteraction] ${this.enabled ? 'Enabled' : 'Disabled'}`);
+    }
+
+    /**
+     * Set joint/handle visibility mode.
+     * @param {'hoverOnly'|'alwaysVisible'} mode
+     */
+    setJointVisibility(mode) {
+        this._jointVisibility = mode;
+        if (!this.enabled) {
+            return;
+        }
+
+        if (mode === 'alwaysVisible') {
+            this._setHandlesVisible(true);
+        } else {
+            // Hover-only: hide all, proximity detection will reveal nearby handles
+            this._setHandlesVisible(false);
+        }
+        console.log(`[VRPuppetInteraction] Joint visibility → ${mode}`);
     }
 
     // =========================================================================
@@ -154,7 +186,9 @@ export class VRPuppetInteraction {
      */
     _createHandle(boneKey, type, radius) {
         const bone = this._getBone(boneKey);
-        if (!bone) return;
+        if (!bone) {
+            return;
+        }
 
         const geom = new THREE.SphereGeometry(radius, 20, 20);
         const mat = new THREE.MeshBasicMaterial({
@@ -199,7 +233,9 @@ export class VRPuppetInteraction {
     _updateHandlePositions() {
         for (const [boneKey, handle] of this.handles.entries()) {
             const bone = this._getBone(boneKey);
-            if (!bone) continue;
+            if (!bone) {
+                continue;
+            }
             bone.getWorldPosition(handle.position);
         }
     }
@@ -210,7 +246,9 @@ export class VRPuppetInteraction {
      * @param {'idle'|'hover'|'active'} state
      */
     _setHandleState(handle, state) {
-        if (!handle?.material) return;
+        if (!handle?.material) {
+            return;
+        }
         const type = handle.userData.type;
 
         if (state === 'hover') {
@@ -274,7 +312,9 @@ export class VRPuppetInteraction {
      */
     _pulseHaptics(hand, strength = 0.2, duration = 20) {
         const gp = this._getGamepadByHand(hand);
-        if (!gp?.hapticActuators?.length) return;
+        if (!gp?.hapticActuators?.length) {
+            return;
+        }
         try {
             gp.hapticActuators[0].pulse(strength, duration);
         } catch (_e) {
@@ -288,7 +328,9 @@ export class VRPuppetInteraction {
      * @returns {THREE.Intersection|null}
      */
     _raycastHandles(controller) {
-        if (!controller) return null;
+        if (!controller) {
+            return null;
+        }
 
         this._tempMatrix.identity().extractRotation(controller.matrixWorld);
         this._raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
@@ -310,7 +352,9 @@ export class VRPuppetInteraction {
     _updateHover(dt) {
         for (const hand of ['left', 'right']) {
             // Skip if this hand is actively grabbing
-            if (this.state.primaryHand === hand || this.state.secondaryHand === hand) continue;
+            if (this.state.primaryHand === hand || this.state.secondaryHand === hand) {
+                continue;
+            }
 
             const controller = this._getControllerByHand(hand);
             const hit = this._raycastHandles(controller);
@@ -351,7 +395,9 @@ export class VRPuppetInteraction {
      * @returns {boolean}
      */
     beginGrip(hand, controller) {
-        if (!this.enabled || !this.avatarRoot) return false;
+        if (!this.enabled || !this.avatarRoot) {
+            return false;
+        }
 
         const hit = this._raycastHandles(controller);
 
@@ -375,7 +421,9 @@ export class VRPuppetInteraction {
             this.state.mode = 'rootDualTransform';
 
             const rootHandle = this.handles.get('hips');
-            if (rootHandle) this._setHandleState(rootHandle, 'active');
+            if (rootHandle) {
+                this._setHandleState(rootHandle, 'active');
+            }
 
             this._pulseHaptics(hand, 0.28, 25);
             console.log(`[VRPuppetInteraction] Two-hand root transform activated (${hand} joined)`);
@@ -383,7 +431,9 @@ export class VRPuppetInteraction {
         }
 
         // ─── Only accept new grabs from idle ───
-        if (this.state.mode !== 'idle') return false;
+        if (this.state.mode !== 'idle') {
+            return false;
+        }
 
         // ─── HANDLE HIT: route by handle type ───
         if (hit?.object?.userData?.isPuppetHandle) {
@@ -455,7 +505,7 @@ export class VRPuppetInteraction {
                 this.state.startRootPos.copy(this.avatarRoot.position);
             }
 
-            console.log(`[VRPuppetInteraction] Downgraded to single-hand root translate`);
+            console.log('[VRPuppetInteraction] Downgraded to single-hand root translate');
             return true;
         }
 
@@ -470,7 +520,9 @@ export class VRPuppetInteraction {
 
             // Reset handle visual
             const handle = this.handles.get(this.state.targetKey);
-            if (handle) this._setHandleState(handle, 'idle');
+            if (handle) {
+                this._setHandleState(handle, 'idle');
+            }
 
             const prevMode = this.state.mode;
             this.state.mode = 'idle';
@@ -496,11 +548,51 @@ export class VRPuppetInteraction {
      * @param {number} dt — delta time in seconds
      */
     update(dt) {
-        if (!this.enabled || !this.avatarRoot || !this.renderer.xr.isPresenting) return;
+        if (!this.enabled || !this.avatarRoot || !this.renderer.xr.isPresenting) {
+            return;
+        }
 
         this._updateHandlePositions();
+
+        // Hover-only mode: reveal handles near controller, hide distant ones
+        if (this._jointVisibility === 'hoverOnly') {
+            this._updateProximityVisibility();
+        }
+
         this._updateHover(dt);
         this._updateActiveInteraction(dt);
+    }
+
+    /**
+     * In hover-only mode, show handles only when a controller is within proximity.
+     * Mimics the desktop bone-sphere behavior where spheres appear on approach.
+     */
+    _updateProximityVisibility() {
+        const threshold = this._proximityThreshold;
+        const thresholdSq = threshold * threshold;
+
+        for (const [boneKey, handle] of this.handles.entries()) {
+            // Skip actively grabbed handles — keep them visible
+            if (this.state.targetKey === boneKey && this.state.mode !== 'idle') {
+                handle.visible = true;
+                continue;
+            }
+
+            let near = false;
+            for (const hand of ['left', 'right']) {
+                const controller = this._getControllerByHand(hand);
+                if (!controller) {
+                    continue;
+                }
+                this._tmpV1.setFromMatrixPosition(controller.matrixWorld);
+                const distSq = this._tmpV1.distanceToSquared(handle.position);
+                if (distSq < thresholdSq) {
+                    near = true;
+                    break;
+                }
+            }
+            handle.visible = near;
+        }
     }
 
     /**
@@ -508,7 +600,9 @@ export class VRPuppetInteraction {
      * @param {number} _dt
      */
     _updateActiveInteraction(_dt) {
-        if (this.state.mode === 'idle') return;
+        if (this.state.mode === 'idle') {
+            return;
+        }
 
         // ─── IK DRAG: VRPoseSystem solves the chain ───
         if (this.state.mode === 'ikDrag') {
@@ -528,7 +622,9 @@ export class VRPuppetInteraction {
         // ─── ROOT TRANSLATE: one-hand position delta ───
         if (this.state.mode === 'rootTranslate') {
             const controller = this._getControllerByHand(this.state.primaryHand);
-            if (!controller || !this.state.object) return;
+            if (!controller || !this.state.object) {
+                return;
+            }
 
             controller.getWorldPosition(this._tmpV1);
             this._tmpV2.subVectors(this._tmpV1, this.state.startPrimaryPos);
@@ -540,7 +636,9 @@ export class VRPuppetInteraction {
         if (this.state.mode === 'rootDualTransform') {
             const c1 = this._getControllerByHand(this.state.primaryHand);
             const c2 = this._getControllerByHand(this.state.secondaryHand);
-            if (!c1 || !c2 || !this.state.object) return;
+            if (!c1 || !c2 || !this.state.object) {
+                return;
+            }
 
             c1.getWorldPosition(this._tmpV1);
             c2.getWorldPosition(this._tmpV2);
