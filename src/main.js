@@ -650,6 +650,11 @@ function frameObjectToCamera(object, fitOffset = 1.35) {
 }
 
 function resetView() {
+    // Prefer ViewerEngine camera reset (handles avatar framing automatically)
+    if (window.NEXUS_VIEWER?.resetCamera) {
+        window.NEXUS_VIEWER.resetCamera();
+        return;
+    }
     if (!camera || !controls) return;
     const mob = window.matchMedia('(max-width: 767px)').matches;
     camera.position.set(0, mob ? 0.9 : 1.5, mob ? 2.5 : 3);
@@ -1800,6 +1805,32 @@ function setupModals() {
         });
     });
 
+    // Visual effects toggles — live preview (additive, non-destructive)
+    const fxEnvMap = document.getElementById('fx-envmap');
+    if (fxEnvMap) {
+        fxEnvMap.addEventListener('change', () => {
+            window.NEXUS_VIEWER?.setEnvironmentMap(fxEnvMap.checked);
+        });
+    }
+    const fxBloom = document.getElementById('fx-bloom');
+    if (fxBloom) {
+        fxBloom.addEventListener('change', () => {
+            window.NEXUS_VIEWER?.postProcessing?.setBloom(fxBloom.checked);
+        });
+    }
+    const fxSsao = document.getElementById('fx-ssao');
+    if (fxSsao) {
+        fxSsao.addEventListener('change', () => {
+            window.NEXUS_VIEWER?.postProcessing?.setSSAO(fxSsao.checked);
+        });
+    }
+    const fxToneMapping = document.getElementById('fx-tonemapping');
+    if (fxToneMapping) {
+        fxToneMapping.addEventListener('change', () => {
+            window.NEXUS_VIEWER?.setToneMapping(fxToneMapping.checked);
+        });
+    }
+
     if (settingsModal) {
         settingsModal.addEventListener('click', (e) => {
             if (e.target === settingsModal) hideModal(settingsModal);
@@ -2000,6 +2031,19 @@ function openSettings() {
     const savedShadow = localStorage.getItem('desktop_shadow') || 'off';
     const shadowRadio = document.querySelector(`input[name="desktop-shadow"][value="${savedShadow}"]`);
     if (shadowRadio) shadowRadio.checked = true;
+
+    // Restore visual effects toggles from localStorage
+    const fxFields = [
+        { id: 'fx-envmap', key: 'fx_envmap' },
+        { id: 'fx-bloom', key: 'fx_bloom' },
+        { id: 'fx-ssao', key: 'fx_ssao' },
+        { id: 'fx-tonemapping', key: 'fx_tonemapping' },
+    ];
+    for (const { id, key } of fxFields) {
+        const el = document.getElementById(id);
+        const saved = localStorage.getItem(key);
+        if (el && saved !== null) el.checked = saved === 'true';
+    }
 
     loadSTTSettingsIntoUI();
     refreshVoiceList();
@@ -2390,13 +2434,36 @@ function saveSettings() {
     const bgRadio = document.querySelector('input[name="desktop-bg"]:checked');
     const desktopBg = bgRadio ? bgRadio.value : 'black';
     localStorage.setItem('desktop_bg', desktopBg);
-    window.viewerEngine?.setDesktopBackground(desktopBg);
+    window.NEXUS_VIEWER?.setDesktopBackground(desktopBg);
 
     // Persist shadow setting
     const shadowRadio = document.querySelector('input[name="desktop-shadow"]:checked');
     const desktopShadow = shadowRadio ? shadowRadio.value : 'off';
     localStorage.setItem('desktop_shadow', desktopShadow);
     window.NEXUS_VIEWER?.setShadows(desktopShadow === 'on');
+
+    // Persist visual effects toggles
+    const fxSaveFields = [
+        { id: 'fx-envmap', key: 'fx_envmap', apply: (v) => window.NEXUS_VIEWER?.setEnvironmentMap(v) },
+        {
+            id: 'fx-bloom',
+            key: 'fx_bloom',
+            apply: (v) => window.NEXUS_VIEWER?.postProcessing?.setBloom(v),
+        },
+        {
+            id: 'fx-ssao',
+            key: 'fx_ssao',
+            apply: (v) => window.NEXUS_VIEWER?.postProcessing?.setSSAO(v),
+        },
+        { id: 'fx-tonemapping', key: 'fx_tonemapping', apply: (v) => window.NEXUS_VIEWER?.setToneMapping(v) },
+    ];
+    for (const { id, key, apply } of fxSaveFields) {
+        const el = document.getElementById(id);
+        if (el) {
+            localStorage.setItem(key, String(el.checked));
+            apply(el.checked);
+        }
+    }
 
     // Persist pose normalizer settings and apply live
     if (window.NEXUS_POSE_NORMALIZER) {
@@ -3404,6 +3471,18 @@ async function init() {
                 console.warn('[Main] ViewerEngine not available (timeout or WebGL failure) — running chat-only mode');
                 hideLoading();
                 setStatus('idle', 'CHAT MODE');
+            } else {
+                // Apply saved visual effects settings on startup
+                const fxStartup = [
+                    { key: 'fx_envmap', apply: (v) => window.NEXUS_VIEWER?.setEnvironmentMap(v) },
+                    { key: 'fx_bloom', apply: (v) => window.NEXUS_VIEWER?.postProcessing?.setBloom(v) },
+                    { key: 'fx_ssao', apply: (v) => window.NEXUS_VIEWER?.postProcessing?.setSSAO(v) },
+                    { key: 'fx_tonemapping', apply: (v) => window.NEXUS_VIEWER?.setToneMapping(v) },
+                ];
+                for (const { key, apply } of fxStartup) {
+                    const saved = localStorage.getItem(key);
+                    if (saved !== null) apply(saved === 'true');
+                }
             }
         } else if (!useViewerEngine) {
             setupThreeJS();
@@ -3426,6 +3505,11 @@ async function init() {
         _restoreChat(); // restore previous conversation from localStorage
 
         await loadAvatarManifest();
+
+        // Initialize Avatar Picker (bottom-sheet UI replacing the dropdown)
+        if (window.AvatarPicker) {
+            window._avatarPicker = new window.AvatarPicker();
+        }
 
         // Only try to load avatar if 3D engine is available
         if (window.NEXUS_VIEWER) {

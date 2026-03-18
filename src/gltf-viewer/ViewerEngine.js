@@ -62,7 +62,7 @@ export class ViewerEngine {
         this.renderer.setSize(w, h);
         this.renderer.outputEncoding = THREE.sRGBEncoding;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 1.2;
+        this.renderer.toneMappingExposure = 1.0;
         this.renderer.physicallyCorrectLights = true;
 
         // Shadow configuration — off by default, togglable via settings
@@ -87,6 +87,9 @@ export class ViewerEngine {
         // Environment
         const pmrem = new THREE.PMREMGenerator(this.renderer);
         this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+        this._savedEnvMap = this.scene.environment; // saved for toggle restore
+        this._envMapEnabled = true;
+        this._toneMappingEnabled = true;
 
         // Desktop background (default: black — can be changed via settings)
         this._desktopBgKey = 'black';
@@ -1089,6 +1092,103 @@ export class ViewerEngine {
         gray: 0x808080,
         light: 0xb0b0b0,
     };
+
+    // =========================================================================
+    // CAMERA RESET (VRoid Hub–style "Reset Camera" button)
+    // =========================================================================
+
+    /**
+     * Reset camera to the default framing position for the current avatar.
+     * If no avatar is loaded, resets to the initial default position.
+     */
+    resetCamera() {
+        if (this.avatarManager?.currentRoot) {
+            this.frameObject(this.avatarManager.currentRoot, 1.35);
+        } else {
+            this.camera.position.set(0, 1.4, 2.2);
+            this.controls.target.set(0, 1.0, 0);
+            this.controls.update();
+        }
+        console.log('[ViewerEngine] Camera reset');
+    }
+
+    // =========================================================================
+    // VISUAL EFFECTS TOGGLES (additive, non-destructive — MMO-style FX panel)
+    // =========================================================================
+
+    /**
+     * Toggle the environment map (PMREM probe reflections).
+     * Off = pure direct lighting only (VRoid Hub style, no Fresnel edge glow).
+     * On = physically-based reflections from RoomEnvironment.
+     * @param {boolean} enabled
+     */
+    setEnvironmentMap(enabled) {
+        if (enabled) {
+            // Restore saved environment (or regenerate if needed)
+            if (this._savedEnvMap) {
+                this.scene.environment = this._savedEnvMap;
+            }
+        } else {
+            // Save current environment and disable
+            if (this.scene.environment) {
+                this._savedEnvMap = this.scene.environment;
+            }
+            this.scene.environment = null;
+        }
+        this._envMapEnabled = enabled;
+
+        // Update envMapIntensity on non-VRM materials only.
+        // VRM/MToon materials have envMap permanently disabled (set in AvatarManager)
+        // to prevent golden Fresnel edge glow at grazing angles.
+        if (this.avatarManager?.currentRoot) {
+            this.avatarManager.currentRoot.traverse((node) => {
+                if (node.isMesh) {
+                    const mats = Array.isArray(node.material) ? node.material : [node.material];
+                    for (const mat of mats) {
+                        if (mat && !mat.isMToonMaterial) {
+                            mat.envMapIntensity = enabled ? 1.0 : 0;
+                            mat.needsUpdate = true;
+                        }
+                    }
+                }
+            });
+        }
+
+        console.log(`[ViewerEngine] Environment map → ${enabled ? 'on' : 'off'}`);
+    }
+
+    /**
+     * Toggle ACES Filmic tone mapping vs neutral Linear tone mapping.
+     * ACES = cinematic contrast curve (lifts shadows, compresses highlights).
+     * Linear = flat, faithful color reproduction (VRoid Hub style).
+     * @param {boolean} enabled  true = ACES Filmic, false = Linear
+     */
+    setToneMapping(enabled) {
+        if (enabled) {
+            this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            this.renderer.toneMappingExposure = 1.0;
+        } else {
+            this.renderer.toneMapping = THREE.LinearToneMapping;
+            this.renderer.toneMappingExposure = 1.0;
+        }
+        this._toneMappingEnabled = enabled;
+
+        // Force material recompilation for new tone mapping
+        this.scene.traverse((node) => {
+            if (node.isMesh && node.material) {
+                const mats = Array.isArray(node.material) ? node.material : [node.material];
+                for (const mat of mats) {
+                    mat.needsUpdate = true;
+                }
+            }
+        });
+
+        console.log(`[ViewerEngine] Tone mapping → ${enabled ? 'ACES Filmic' : 'Linear'}`);
+    }
+
+    // =========================================================================
+    // DESKTOP BACKGROUND & SHADOWS
+    // =========================================================================
 
     /**
      * Change the desktop viewport background color.

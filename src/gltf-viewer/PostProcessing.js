@@ -109,9 +109,9 @@ export class PostProcessing {
 
         this.bloomPass = new UnrealBloomPass(
             bloomRes,
-            0.08, // strength — minimal to avoid edge glow on dark materials
-            0.2, // radius  — tight spread
-            0.95 // threshold — only truly emissive areas bloom (avoids rim-light edge glow)
+            0.05, // strength — very subtle, avoids edge glow on dark VRM materials
+            0.15, // radius  — tight spread to prevent halo bleeding
+            0.98 // threshold — only truly bright emissive areas bloom
         );
         this.bloomPass.enabled = this._bloomEnabled;
         this.composer.addPass(this.bloomPass);
