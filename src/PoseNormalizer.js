@@ -51,7 +51,7 @@
 
     // Read default intensity from AnimationPresets (single source of truth)
     const _AP = window.NEXUS_ANIMATION_PRESETS;
-    const _DEFAULT_INTENSITY = _AP && _AP.DEFAULT_POSE_INTENSITY != null ? _AP.DEFAULT_POSE_INTENSITY : 0.8;
+    const _DEFAULT_INTENSITY = _AP && _AP.DEFAULT_POSE_INTENSITY != null ? _AP.DEFAULT_POSE_INTENSITY : 1.0;
 
     const DEFAULT_SETTINGS = {
         // Global intensity: 0 = no correction, 1 = full correction
@@ -82,7 +82,7 @@
         },
 
         // Active preset name
-        preset: 'relaxedStanding',
+        preset: 'naturalIdle',
     };
 
     // =====================================================================

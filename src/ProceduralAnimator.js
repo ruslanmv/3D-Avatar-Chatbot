@@ -645,5 +645,6 @@
         setSpeed,
         getSpeed,
         setGazeOverride,
+        captureRestPose,
     };
 })();
