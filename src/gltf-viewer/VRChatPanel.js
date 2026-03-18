@@ -71,6 +71,7 @@ export class VRChatPanel {
             vrBackground: 'black', // 'black' | 'blue' | 'void'
             puppetMode: false, // When true, grip translates avatar freely in 3D space
             intimacyMode: false, // Close-presence / comfort interaction mode in VR
+            jointVisibility: 'hoverOnly', // 'hoverOnly' | 'alwaysVisible' — puppet handle spheres
         };
 
         // Check AR support asynchronously
@@ -394,65 +395,70 @@ export class VRChatPanel {
         this.micIndicator.visible = false;
         this._micIndicatorTime = 0;
 
-        // --- Mic icon sprite (white mic on dark pill) ---
-        const iconSize = 64;
+        // --- Mic icon sprite (white mic on dark circle, centered in ring) ---
+        const iconSize = 128;
         const iconCanvas = document.createElement('canvas');
         iconCanvas.width = iconSize;
         iconCanvas.height = iconSize;
         const ic = iconCanvas.getContext('2d');
 
-        // Dark pill background
-        ic.fillStyle = 'rgba(20, 22, 28, 0.85)';
+        // Dark circular background (sized to fit inside the pulsing ring)
+        ic.fillStyle = 'rgba(20, 22, 28, 0.9)';
         ic.beginPath();
-        ic.arc(iconSize / 2, iconSize / 2, iconSize / 2 - 2, 0, Math.PI * 2);
+        ic.arc(iconSize / 2, iconSize / 2, iconSize / 2 - 4, 0, Math.PI * 2);
         ic.fill();
 
-        // Mic icon (simple vector: body + base)
-        ic.strokeStyle = '#ffffff';
-        ic.fillStyle = '#ffffff';
-        ic.lineWidth = 3;
+        // Mic icon (crisp vector: body capsule + cradle + stem + base)
         const cx = iconSize / 2;
         const cy = iconSize / 2 - 4;
-        // Mic body (rounded rect)
-        const bw = 10,
-            bh = 18,
-            br = 5;
+
+        // Mic body (rounded capsule)
+        const mw = 14,
+            mh = 28,
+            mr = 7;
+        ic.fillStyle = '#ffffff';
         ic.beginPath();
-        ic.moveTo(cx - bw / 2 + br, cy - bh / 2);
-        ic.lineTo(cx + bw / 2 - br, cy - bh / 2);
-        ic.quadraticCurveTo(cx + bw / 2, cy - bh / 2, cx + bw / 2, cy - bh / 2 + br);
-        ic.lineTo(cx + bw / 2, cy + bh / 2 - br);
-        ic.quadraticCurveTo(cx + bw / 2, cy + bh / 2, cx + bw / 2 - br, cy + bh / 2);
-        ic.lineTo(cx - bw / 2 + br, cy + bh / 2);
-        ic.quadraticCurveTo(cx - bw / 2, cy + bh / 2, cx - bw / 2, cy + bh / 2 - br);
-        ic.lineTo(cx - bw / 2, cy - bh / 2 + br);
-        ic.quadraticCurveTo(cx - bw / 2, cy - bh / 2, cx - bw / 2 + br, cy - bh / 2);
+        ic.moveTo(cx - mw / 2 + mr, cy - mh / 2);
+        ic.lineTo(cx + mw / 2 - mr, cy - mh / 2);
+        ic.quadraticCurveTo(cx + mw / 2, cy - mh / 2, cx + mw / 2, cy - mh / 2 + mr);
+        ic.lineTo(cx + mw / 2, cy + mh / 2 - mr);
+        ic.quadraticCurveTo(cx + mw / 2, cy + mh / 2, cx + mw / 2 - mr, cy + mh / 2);
+        ic.lineTo(cx - mw / 2 + mr, cy + mh / 2);
+        ic.quadraticCurveTo(cx - mw / 2, cy + mh / 2, cx - mw / 2, cy + mh / 2 - mr);
+        ic.lineTo(cx - mw / 2, cy - mh / 2 + mr);
+        ic.quadraticCurveTo(cx - mw / 2, cy - mh / 2, cx - mw / 2 + mr, cy - mh / 2);
         ic.fill();
-        // Arc under mic
+
+        // Cradle arc under mic
+        ic.strokeStyle = '#ffffff';
+        ic.lineWidth = 3.5;
         ic.beginPath();
-        ic.arc(cx, cy + 2, 10, 0, Math.PI, false);
+        ic.arc(cx, cy + 4, 15, 0, Math.PI, false);
         ic.stroke();
+
         // Stem
         ic.beginPath();
-        ic.moveTo(cx, cy + 12);
-        ic.lineTo(cx, cy + 18);
+        ic.moveTo(cx, cy + 19);
+        ic.lineTo(cx, cy + 28);
         ic.stroke();
+
         // Base
+        ic.lineCap = 'round';
         ic.beginPath();
-        ic.moveTo(cx - 6, cy + 18);
-        ic.lineTo(cx + 6, cy + 18);
+        ic.moveTo(cx - 9, cy + 28);
+        ic.lineTo(cx + 9, cy + 28);
         ic.stroke();
 
         const iconTex = new THREE.CanvasTexture(iconCanvas);
         iconTex.needsUpdate = true;
         const iconMat = new THREE.SpriteMaterial({ map: iconTex, transparent: true, depthTest: false });
         const iconSprite = new THREE.Sprite(iconMat);
-        iconSprite.scale.set(0.045, 0.045, 1);
+        iconSprite.scale.set(0.04, 0.04, 1);
         iconSprite.renderOrder = 999;
         this.micIndicator.add(iconSprite);
 
-        // --- Pulsing red ring ---
-        const ringGeo = new THREE.RingGeometry(0.024, 0.03, 32);
+        // --- Pulsing red ring (larger, clearly frames the mic icon) ---
+        const ringGeo = new THREE.RingGeometry(0.028, 0.035, 48);
         const ringMat = new THREE.MeshBasicMaterial({
             color: 0xff4444,
             transparent: true,
@@ -657,7 +663,9 @@ export class VRChatPanel {
      * Returns true if the point is within panel bounds (not just the handle).
      */
     isPointOnPanel(hitPoint) {
-        if (!hitPoint || !this.group.visible) return false;
+        if (!hitPoint || !this.group.visible) {
+            return false;
+        }
         // Check if ray hits the main panel mesh (broad area)
         return true; // If we got a hit on any interactable, it's on the panel
     }
@@ -756,9 +764,13 @@ export class VRChatPanel {
     // =====================================================================
 
     setMode(mode) {
-        if (mode === 'settings') this.mode = 'settings';
-        else if (mode === 'controls') this.mode = 'controls';
-        else this.mode = 'chat';
+        if (mode === 'settings') {
+            this.mode = 'settings';
+        } else if (mode === 'controls') {
+            this.mode = 'controls';
+        } else {
+            this.mode = 'chat';
+        }
         this.redraw();
     }
 
@@ -1019,8 +1031,14 @@ export class VRChatPanel {
             mode: { x: P + (xrBtnW + ctrlGap) * 2, y: xrY2, w: xrBtnW, h: xrH },
         };
 
+        // Row 3: Joint visibility toggle
+        const xrY3 = xrY2 + xrH + ctrlGap;
+        const xrSettingsRow3 = {
+            joints: { x: P, y: xrY3, w: xrBtnW, h: xrH },
+        };
+
         // Provider info (read-only display at bottom)
-        const providerInfoY = xrY2 + xrH + 20;
+        const providerInfoY = xrY3 + xrH + 20;
         const providerInfoRect = { x: P, y: providerInfoY, w: ctrlW, h: 120 };
 
         return {
@@ -1046,6 +1064,7 @@ export class VRChatPanel {
             xrLabelRect,
             xrSettingsRow,
             xrSettingsRow2,
+            xrSettingsRow3,
             providerInfoRect,
         };
     }
@@ -1207,6 +1226,15 @@ export class VRChatPanel {
         this.buttons.xr_distance = xrDist;
         this.buttons.xr_bg = xrBg;
         this.buttons.xr_mode = xrMode;
+
+        // XR Settings row 3
+        const xr3 = L.xrSettingsRow3;
+        const xrJoints = this._makeHitbox('Btn:xr_joints', xr3.joints, 'button', { key: 'xr_joints' });
+        [xrJoints].forEach((m) => {
+            this.group.remove(m);
+            this.settingsGroup.add(m);
+        });
+        this.buttons.xr_joints = xrJoints;
     }
 
     _makeHitbox(name, rect, type, userData = {}) {
@@ -1335,7 +1363,9 @@ export class VRChatPanel {
             }
 
             y += 12;
-            if (y > area.y + area.h - 100) return;
+            if (y > area.y + area.h - 100) {
+                return;
+            }
         });
 
         // Transcript display (STT)
@@ -1835,6 +1865,15 @@ export class VRChatPanel {
             this._drawXRSettingBtn(ctx, xr2.mode, 'VIEW', 'VR', false);
         }
 
+        // Row 3: Joint Visibility
+        const xr3 = L.xrSettingsRow3;
+        const jointLabel = xs.jointVisibility === 'alwaysVisible' ? 'ALL' : 'HOVER';
+        const jointActive = xs.jointVisibility === 'alwaysVisible';
+        this._drawXRSettingBtn(ctx, xr3.joints, 'JOINTS', jointLabel, true);
+        if (jointActive) {
+            this._drawActiveTint(ctx, xr3.joints, 'JOINTS', 'ALL');
+        }
+
         // Provider info (read-only)
         const pi = L.providerInfoRect;
         this._roundRect(ctx, pi.x, pi.y, pi.w, pi.h, 16);
@@ -2173,8 +2212,11 @@ export class VRChatPanel {
         }
         if (key === 'back') {
             // Back: settings → controls, controls → chat
-            if (this.mode === 'settings') this.setMode('controls');
-            else this.setMode('chat');
+            if (this.mode === 'settings') {
+                this.setMode('controls');
+            } else {
+                this.setMode('chat');
+            }
             return true;
         }
 
@@ -2278,6 +2320,21 @@ export class VRChatPanel {
             const distMap = { near: 0.55, medium: 0.85, far: 1.4 };
             this._spawnDistance = distMap[this.xrSettings.panelDistance] || 0.55;
             console.log(`[VRChatPanel] Panel distance → ${this.xrSettings.panelDistance} (${this._spawnDistance}m)`);
+            this.redraw();
+            return true;
+        }
+
+        // XR Settings: Joint Visibility (cycles hoverOnly → alwaysVisible)
+        if (key === 'xr_joints') {
+            const modes = ['hoverOnly', 'alwaysVisible'];
+            const idx = modes.indexOf(this.xrSettings.jointVisibility);
+            this.xrSettings.jointVisibility = modes[(idx + 1) % modes.length];
+            console.log(`[VRChatPanel] Joint visibility → ${this.xrSettings.jointVisibility}`);
+            window.dispatchEvent(
+                new CustomEvent('vr-setting-changed', {
+                    detail: { key: 'jointVisibility', value: this.xrSettings.jointVisibility },
+                })
+            );
             this.redraw();
             return true;
         }
@@ -2446,7 +2503,7 @@ export class VRChatPanel {
                 // Fallback: old intensity cycle for PoseNormalizer
                 const pn = window.NEXUS_POSE_NORMALIZER;
                 if (pn) {
-                    const levels = [0.2, 0.35, 0.55, 0.75, 1.0];
+                    const levels = [0.2, 0.5, 0.65, 0.8, 1.0];
                     const s = pn.getSettings();
                     const closest = levels.reduce((a, b) =>
                         Math.abs(b - s.intensity) < Math.abs(a - s.intensity) ? b : a

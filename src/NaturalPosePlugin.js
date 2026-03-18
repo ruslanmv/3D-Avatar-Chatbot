@@ -216,10 +216,11 @@
         // Resolve VRM humanoid
         const humanoid = options.humanoid || options.vrm?.humanoid || root.userData?.vrmHumanoid || null;
 
-        // Read settings from PoseNormalizer (single source of truth)
+        // Read settings from PoseNormalizer → AnimationPresets (single source of truth)
         const poseNormalizer = window.NEXUS_POSE_NORMALIZER;
         const pnSettings = poseNormalizer?.getSettings() || {};
-        const intensity = pnSettings.intensity != null ? pnSettings.intensity : 0.55;
+        const _apFallback = window.NEXUS_ANIMATION_PRESETS?.DEFAULT_POSE_INTENSITY ?? 0.8;
+        const intensity = pnSettings.intensity != null ? pnSettings.intensity : _apFallback;
         const boneWeights = pnSettings.bones || {};
         const presetName = options.preset || pnSettings.preset || _activePreset;
 

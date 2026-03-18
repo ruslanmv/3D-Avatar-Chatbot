@@ -30,6 +30,10 @@ export class AvatarManager {
         // Track VRM instance for update()
         this._currentVRM = null;
 
+        // Load generation counter — prevents stale async loads from adding
+        // orphaned avatars to the scene when rapid switching occurs
+        this._loadGeneration = 0;
+
         // Register VRMLoaderPlugin if @pixiv/three-vrm is available
         this._registerVRMPlugin();
 
@@ -142,6 +146,42 @@ export class AvatarManager {
     }
 
     /**
+     * Remove current avatar from scene and dispose its resources.
+     * Also removes any orphaned AvatarRoot nodes left by race conditions.
+     */
+    _removeCurrentAvatar() {
+        // Remove tracked current avatar
+        if (this.currentRoot) {
+            try {
+                if (window.NEXUS_PROCEDURAL_ANIMATOR?.unregisterAvatar) {
+                    window.NEXUS_PROCEDURAL_ANIMATOR.unregisterAvatar(this.currentRoot);
+                    console.log('[AvatarManager] Unregistered avatar from procedural animator');
+                }
+            } catch (e) {
+                console.warn('[AvatarManager] Procedural unregister failed:', e);
+            }
+
+            this.scene.remove(this.currentRoot);
+            this.disposeObject(this.currentRoot);
+            this.currentRoot = null;
+        }
+
+        // Defensive sweep: remove any orphaned AvatarRoot nodes that may
+        // have been added by a concurrent load that completed out of order
+        const orphans = [];
+        this.scene.children.forEach((child) => {
+            if (child.name && child.name.startsWith('AvatarRoot:')) {
+                orphans.push(child);
+            }
+        });
+        for (const orphan of orphans) {
+            console.warn(`[AvatarManager] Removing orphaned avatar: ${orphan.name}`);
+            this.scene.remove(orphan);
+            this.disposeObject(orphan);
+        }
+    }
+
+    /**
      * Load and set avatar from URL
      * @param {string} url - Avatar file URL
      * @param {string} name - Avatar name (optional)
@@ -150,6 +190,10 @@ export class AvatarManager {
      */
     async setAvatarByUrl(url, name = '', index = -1) {
         console.log(`[AvatarManager] Loading avatar: ${name || url}`);
+
+        // Increment generation — any in-flight load with an older generation
+        // will discard its result instead of adding an orphaned avatar
+        const thisGeneration = ++this._loadGeneration;
 
         if (this.onAvatarLoading) {
             this.onAvatarLoading(name || url);
@@ -163,21 +207,7 @@ export class AvatarManager {
             }
 
             // Remove old avatar
-            if (this.currentRoot) {
-                // [FIX] Unregister from Procedural Animator before removal
-                try {
-                    if (window.NEXUS_PROCEDURAL_ANIMATOR?.unregisterAvatar) {
-                        window.NEXUS_PROCEDURAL_ANIMATOR.unregisterAvatar(this.currentRoot);
-                        console.log('[AvatarManager] Unregistered avatar from procedural animator');
-                    }
-                } catch (e) {
-                    console.warn('[AvatarManager] Procedural unregister failed:', e);
-                }
-
-                this.scene.remove(this.currentRoot);
-                this.disposeObject(this.currentRoot);
-                this.currentRoot = null;
-            }
+            this._removeCurrentAvatar();
 
             // Stop animations and dispose previous vrmLoader
             if (this.currentMixer) {
@@ -197,9 +227,30 @@ export class AvatarManager {
                 this.loader.load(url, resolve, undefined, reject);
             });
 
+            // ── Stale-load guard ──
+            // A newer setAvatarByUrl() call was made while we were loading.
+            // Discard this result to prevent overlapping avatars.
+            if (thisGeneration !== this._loadGeneration) {
+                console.log(
+                    `[AvatarManager] Discarding stale load: ${name || url} (gen ${thisGeneration} < ${this._loadGeneration})`
+                );
+                const staleRoot = gltf.scene || gltf.scenes?.[0];
+                if (staleRoot) {
+                    this.disposeObject(staleRoot);
+                }
+                return null;
+            }
+
             const root = gltf.scene || gltf.scenes?.[0];
             if (!root) {
                 throw new Error('Loaded avatar has no scene root');
+            }
+
+            // Safety: remove any avatar that was added by a concurrent load
+            // that slipped past the generation check (defensive cleanup)
+            if (this.currentRoot) {
+                console.warn('[AvatarManager] Removing unexpected leftover avatar before adding new one');
+                this._removeCurrentAvatar();
             }
 
             // Setup avatar
@@ -523,6 +574,9 @@ export class AvatarManager {
      * Cleanup all resources
      */
     dispose() {
+        // Cancel any in-flight loads
+        this._loadGeneration++;
+
         if (this.vrmLoader) {
             this.vrmLoader.stopAutoBlink?.();
             this.vrmLoader.stopLipSync?.();
@@ -530,11 +584,7 @@ export class AvatarManager {
         }
         this._currentVRM = null;
 
-        if (this.currentRoot) {
-            this.scene.remove(this.currentRoot);
-            this.disposeObject(this.currentRoot);
-            this.currentRoot = null;
-        }
+        this._removeCurrentAvatar();
 
         if (this.currentMixer) {
             this.currentMixer.stopAllAction();

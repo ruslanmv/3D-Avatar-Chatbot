@@ -553,6 +553,11 @@ export class ViewerEngine {
                 console.log(`[ViewerEngine] Intimacy mode -> ${value ? 'ON' : 'OFF'}`);
             }
 
+            // Joint visibility toggle (hoverOnly → alwaysVisible)
+            if (key === 'jointVisibility') {
+                this.vrPuppetInteraction?.setJointVisibility(value);
+            }
+
             // Session mode switch (VR ↔ AR)
             if (key === 'sessionMode') {
                 this._switchXRMode(value);
@@ -881,6 +886,12 @@ export class ViewerEngine {
         console.log(`[ViewerEngine] Loading desktop avatar: ${url}`);
         const info = await this.avatarManager.setAvatarByUrl(url, name);
 
+        // Stale load was superseded by a newer one — bail out
+        if (!info) {
+            console.log('[ViewerEngine] Desktop avatar load superseded, skipping setup');
+            return null;
+        }
+
         // Update model-viewer AR with current model URL
         this.modelViewerAR?.setModel(url);
 
@@ -889,6 +900,9 @@ export class ViewerEngine {
 
             // Update passthrough enhancer with new avatar root
             this.passthroughEnhancer?.setAvatarRoot(this.avatarManager.currentRoot);
+
+            // Preserve current pose preset across avatar change
+            const savedPreset = this.vrPoseSystem?.getCurrentPreset() || null;
 
             // Update bone grabber, pose system, and puppet interaction with new avatar
             this.vrBoneGrabber?.setAvatar(this.avatarManager.currentRoot);
@@ -901,6 +915,12 @@ export class ViewerEngine {
             this.vrIntimacySystem?.setAvatar(this.avatarManager.currentRoot);
             if (window.poseEditor) {
                 this.vrBoneGrabber?.setPoseEditor(window.poseEditor);
+            }
+
+            // Restore previous pose or fall back to standing (T-Pose reset)
+            if (this.vrPoseSystem?.enabled) {
+                const restorePreset = savedPreset || 'standing';
+                this.vrPoseSystem.applyPreset(restorePreset, 0);
             }
 
             // Mobile-aware auto-frame (wider offset on phones)
