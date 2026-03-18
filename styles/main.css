@@ -2750,6 +2750,11 @@ html.is-mobile .status-badge {
     font-family: var(--font-body, 'Rajdhani', sans-serif);
 }
 
+/* T-Pose Intensity slider — distinct gradient: blue (0) → cyan (0.5) → green (1.0) → orange (1.5) */
+.pose-slider--tpose {
+    background: linear-gradient(90deg, #1a3a5c 0%, #2ad8ff 33%, #00e676 67%, #ff9800 100%) !important;
+}
+
 /* =========================================================================
    Pose Studio — Mouse Edit Toggle
    ========================================================================= */

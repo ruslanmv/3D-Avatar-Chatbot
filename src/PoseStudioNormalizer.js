@@ -42,7 +42,7 @@
             if (s.intensity != null) return s.intensity;
         }
         var ap = window.NEXUS_ANIMATION_PRESETS;
-        return ap && ap.DEFAULT_POSE_INTENSITY != null ? ap.DEFAULT_POSE_INTENSITY : 0.8;
+        return ap && ap.DEFAULT_POSE_INTENSITY != null ? ap.DEFAULT_POSE_INTENSITY : 1.0;
     }
 
     function safeRotateZ(bone, radians) {

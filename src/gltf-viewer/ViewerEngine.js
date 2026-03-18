@@ -22,6 +22,7 @@ import { VRPoseSystem } from './VRPoseSystem.js';
 import { VRPuppetInteraction } from './VRPuppetInteraction.js';
 import { VRIntimacySystem } from './VRIntimacySystem.js';
 import { VRGazeController } from './VRGazeController.js';
+import { DesktopShadowEnhancer } from './DesktopShadowEnhancer.js';
 
 export class ViewerEngine {
     constructor(containerEl) {
@@ -129,14 +130,20 @@ export class ViewerEngine {
 
         // Ground shadow plane (desktop — makes avatar look grounded)
         this._desktopShadowPlane = new THREE.Mesh(
-            new THREE.PlaneGeometry(10, 10).rotateX(-Math.PI / 2),
-            new THREE.ShadowMaterial({ opacity: 0.08, transparent: true })
+            new THREE.PlaneGeometry(4, 4).rotateX(-Math.PI / 2),
+            new THREE.ShadowMaterial({ opacity: 0.06, transparent: true })
         );
         this._desktopShadowPlane.receiveShadow = true;
         this._desktopShadowPlane.position.y = 0;
         this._desktopShadowPlane.name = 'DesktopShadowPlane';
         this._desktopShadowPlane.visible = false; // toggled via setShadows()
         this.scene.add(this._desktopShadowPlane);
+
+        // Desktop shadow enhancer — AAA-quality contact shadow + tuned frustum
+        this.desktopShadowEnhancer = new DesktopShadowEnhancer({
+            scene: this.scene,
+            directionalLight: this.directionalLight,
+        });
 
         // Loaders
         this.loader = new GLTFLoader();
@@ -888,20 +895,31 @@ export class ViewerEngine {
         if (!this.directionalLight) {
             return;
         }
-        const cam = this.directionalLight.shadow.camera;
-        const padding = 0.5;
-        cam.left = -(size.x / 2 + padding);
-        cam.right = size.x / 2 + padding;
-        cam.top = size.y + padding;
-        cam.bottom = -padding;
-        cam.near = 0.1;
-        cam.far = size.y + size.z + 5;
-        cam.updateProjectionMatrix();
 
-        // Position light relative to avatar center for optimal shadow angle
-        this.directionalLight.position.set(center.x + 1, center.y + size.y * 0.8, center.z + 1.5);
-        this.directionalLight.target.position.copy(center);
-        this.directionalLight.target.updateMatrixWorld();
+        // Delegate to DesktopShadowEnhancer for AAA-quality frustum fitting
+        if (this.desktopShadowEnhancer) {
+            this.desktopShadowEnhancer.fitToAvatar(box, center, size);
+        } else {
+            // Fallback: basic frustum fitting
+            const cam = this.directionalLight.shadow.camera;
+            const padX = Math.max(size.x * 0.15, 0.2);
+            const padY = Math.max(size.y * 0.1, 0.2);
+            cam.left = -(size.x / 2 + padX);
+            cam.right = size.x / 2 + padX;
+            cam.top = size.y + padY;
+            cam.bottom = -0.1;
+            cam.near = 0.1;
+            cam.far = Math.max(size.y * 2, size.z + 4);
+            cam.updateProjectionMatrix();
+
+            this.directionalLight.position.set(
+                center.x + size.x * 0.6,
+                center.y + size.y * 0.9,
+                center.z + size.z * 0.8 + 1.0
+            );
+            this.directionalLight.target.position.copy(center);
+            this.directionalLight.target.updateMatrixWorld();
+        }
 
         // Position desktop shadow plane at avatar's feet
         if (this._desktopShadowPlane) {
@@ -1016,6 +1034,8 @@ export class ViewerEngine {
                 this.controls.update();
                 // Adaptive quality only outside XR
                 this.perfMonitor?.update(dt);
+                // Update desktop contact shadow position (follows avatar root)
+                this.desktopShadowEnhancer?.update(this.avatarManager?.currentRoot);
             }
 
             // Render through post-processing pipeline (falls back to direct render during XR)
@@ -1104,14 +1124,27 @@ export class ViewerEngine {
             this._desktopShadowPlane.visible = enabled;
         }
 
-        // Toggle castShadow / receiveShadow on all avatar meshes
-        if (this.avatarManager && this.avatarManager.currentRoot) {
+        // Configure avatar meshes: castShadow=enabled, receiveShadow=false
+        // receiveShadow on thin anime geometry causes starburst/fan shadow artifacts
+        if (this.desktopShadowEnhancer && this.avatarManager?.currentRoot) {
+            this.desktopShadowEnhancer.configureAvatarShadows(this.avatarManager.currentRoot, enabled);
+        } else if (this.avatarManager?.currentRoot) {
+            // Fallback without enhancer
             this.avatarManager.currentRoot.traverse((node) => {
                 if (node.isMesh) {
                     node.castShadow = enabled;
-                    node.receiveShadow = enabled;
+                    node.receiveShadow = false;
                 }
             });
+        }
+
+        // Enable/disable contact shadow enhancer
+        if (this.desktopShadowEnhancer) {
+            if (enabled) {
+                this.desktopShadowEnhancer.enable();
+            } else {
+                this.desktopShadowEnhancer.disable();
+            }
         }
 
         // Force shadow map recompilation
