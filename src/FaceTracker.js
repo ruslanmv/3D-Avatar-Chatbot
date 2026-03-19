@@ -19,7 +19,8 @@
  *
  * Exposes:
  *   window.NEXUS_FACE_TRACKER = {
- *       start, stop, isActive, getBlendShapes, getDebugInfo
+ *       start, stop, isActive, independentEyes, setIndependentEyes,
+ *       getBlendShapes, getDebugInfo
  *   }
  *
  * @module FaceTracker
@@ -47,6 +48,130 @@
 
     /** Smoothing lerp factor for head rotation (lower = smoother). */
     const HEAD_ROTATION_SMOOTHING = 0.3;
+
+    // ── Blink Pipeline (ported from KalidoKit — industry standard) ──────
+    //
+    // KalidoKit (https://github.com/yeemachine/kalidokit) is the open-source
+    // blendshape solver used by VRoid Hub, Kalidoface 3D, and others.
+    //
+    // For MediaPipe runtime it uses blinkSettings = [0.35, 0.5]:
+    //   low  = 0.35 → scores ≤ 0.35 = eyes fully open (1.0 openness)
+    //   high = 0.50 → scores ≥ 0.50 = eyes fully closed (0.0 openness)
+    //
+    // This is then inverted to a *blink closure* weight (0 = open, 1 = shut)
+    // via: blinkWeight = 1 - remap(rawBlink, low, high).
+    //
+    // Additionally, stabilizeBlink lerps L/R eyes together (95/5 weighting)
+    // to smooth asymmetric noise, and mirrors the visible eye when the head
+    // is turned past maxRot to prevent false winks from camera occlusion.
+
+    /** Lower bound — blink scores at or below this are "eyes fully open". */
+    const BLINK_LOW = 0.35;
+
+    /** Upper bound — blink scores at or above this are "eyes fully closed". */
+    const BLINK_HIGH = 0.5;
+
+    /** How much eyeWide counters blink (widens eyes when surprised). */
+    const EYE_WIDE_BLINK_REDUCTION = 0.6;
+
+    /** Head yaw (radians) beyond which the occluded eye mirrors the visible one. */
+    const BLINK_STABILIZE_MAX_ROT = 0.5;
+
+    /**
+     * Clamp a value between min and max.
+     */
+    function _clamp(val, min, max) {
+        return Math.max(Math.min(val, max), min);
+    }
+
+    /**
+     * Remap val from [min, max] → [0, 1], clamped.
+     * Matches KalidoKit's remap() helper.
+     */
+    function _remap(val, min, max) {
+        return (_clamp(val, min, max) - min) / (max - min);
+    }
+
+    /**
+     * Lerp between a and b.  t=0 → a, t=1 → b.
+     */
+    function _lerp(a, b, t) {
+        return a + (b - a) * t;
+    }
+
+    /**
+     * Convert a raw ARKit eyeBlink score (0..1) to a blink *closure* weight
+     * (0 = fully open, 1 = fully closed).
+     *
+     * KalidoKit computes an "eye openness" ratio and remaps it with
+     * [low, high] thresholds, then we invert to get closure.
+     *
+     * With BLINK_LOW=0.35, BLINK_HIGH=0.5:
+     *   raw ≤ 0.35  →  closure = 0.0  (eyes wide open)
+     *   raw = 0.425  →  closure = 0.5  (half closed)
+     *   raw ≥ 0.50  →  closure = 1.0  (fully shut)
+     *
+     * This tight range means only a deliberate blink registers.
+     */
+    function _remapBlink(raw) {
+        // remap into [0,1] where 0 = closed, 1 = open (KalidoKit convention)
+        const openness = _remap(raw, BLINK_LOW, BLINK_HIGH);
+        // Invert: we need blink closure weight (0=open, 1=shut) — opposite
+        // of KalidoKit's openness.  But note: ARKit eyeBlink is already a
+        // "closure" score (high = more closed), so remap gives us:
+        //   raw ≤ LOW  → openness 0 → ... wait, that's backwards.
+        //
+        // ARKit eyeBlink: 0 = open, 1 = closed  (closure score)
+        // KalidoKit remap(closure, low, high):
+        //   closure ≤ low  → 0   (not blinking)
+        //   closure ≥ high → 1   (fully blinking)
+        // So remap gives us a normalized closure directly.
+        return openness;
+    }
+
+    /**
+     * Stabilize left/right blink values.
+     * Port of KalidoKit's stabilizeBlink():
+     *
+     * 1. Head rotation compensation: when head is turned past maxRot,
+     *    the occluded eye mirrors the visible one (prevents false winks).
+     *
+     * 2. L/R synchronization: lerps both eyes together with 95/5 weighting
+     *    so minor L/R differences are smoothed out, but true winks
+     *    (large L/R difference when not both closing/opening) are preserved.
+     *
+     * @param {number} left  - Left eye blink closure (0..1)
+     * @param {number} right - Right eye blink closure (0..1)
+     * @param {number} headYaw - Head yaw in radians
+     * @returns {{left: number, right: number}}
+     */
+    function _stabilizeBlink(left, right, headYaw) {
+        left = _clamp(left, 0, 1);
+        right = _clamp(right, 0, 1);
+
+        const diff = Math.abs(left - right);
+        const blinkThresh = 0.8; // KalidoKit's wink threshold
+        const isClosing = left < 0.3 && right < 0.3;
+        const isOpen = left > 0.6 && right > 0.6;
+
+        // Head rotation compensation
+        if (headYaw > BLINK_STABILIZE_MAX_ROT) {
+            return { left: right, right };
+        }
+        if (headYaw < -BLINK_STABILIZE_MAX_ROT) {
+            return { left, right: left };
+        }
+
+        // L/R synchronization with wink preservation
+        // If large diff AND not both closing AND not both open → true wink, keep as-is
+        // Otherwise lerp together (95% toward the more-open eye)
+        const isWink = diff >= blinkThresh && !isClosing && !isOpen;
+
+        return {
+            left: isWink ? left : right > left ? _lerp(right, left, 0.95) : _lerp(right, left, 0.05),
+            right: isWink ? right : right > left ? _lerp(right, left, 0.95) : _lerp(right, left, 0.05),
+        };
+    }
 
     /** Seconds without face detection before dispatching face-lost event. */
     const FACE_LOST_WARN_SEC = 3;
@@ -88,10 +213,38 @@
 
         const vrm = {};
 
-        // ── Eyes ────────────────────────────────────────────────────
-        vrm.blink = (get('eyeBlinkLeft') + get('eyeBlinkRight')) / 2;
-        vrm.blinkLeft = get('eyeBlinkLeft');
-        vrm.blinkRight = get('eyeBlinkRight');
+        // ── Eyes (exact KalidoKit rigFace pipeline) ─────────────────
+        //
+        // KalidoKit canonical VRM demo does:
+        //   1. Face.solve() → eye.l, eye.r (openness, 0=closed 1=open)
+        //   2. rigFace() inverts to closure: `1 - eye.l`
+        //   3. Temporal lerp: `lerp(newClosure, prevVRMBlink, 0.5)`
+        //   4. stabilizeBlink() syncs L/R
+        //   5. Sets single `blink` expression (NOT blinkLeft/blinkRight)
+        //
+        // Our ARKit eyeBlink is already a closure score, so step 2 is
+        // handled by _remapBlink. We output a single `blink` value.
+        let blinkL = _remapBlink(get('eyeBlinkLeft'));
+        let blinkR = _remapBlink(get('eyeBlinkRight'));
+
+        // eyeWide counters blink (surprised expression opens eyes wider)
+        const wideL = get('eyeWideLeft');
+        const wideR = get('eyeWideRight');
+        blinkL = Math.max(0, blinkL - wideL * EYE_WIDE_BLINK_REDUCTION);
+        blinkR = Math.max(0, blinkR - wideR * EYE_WIDE_BLINK_REDUCTION);
+
+        // Stabilize: L/R sync + head rotation compensation
+        const headYaw = _currentHeadRotation.yaw || 0;
+        const stabilized = _stabilizeBlink(blinkL, blinkR, headYaw);
+
+        // Combined blink (always computed — used in synced mode, or as
+        // fallback in independent mode for models without blinkLeft/Right).
+        vrm.blink = (stabilized.left + stabilized.right) / 2;
+
+        // Independent L/R values — only consumed when _independentEyes is on.
+        // Always emitted so the _applyLoop can switch modes live.
+        vrm.blinkLeft = stabilized.left;
+        vrm.blinkRight = stabilized.right;
 
         // Eye gaze via expression weights
         vrm.lookUp = (get('eyeLookUpLeft') + get('eyeLookUpRight')) / 2;
@@ -153,6 +306,11 @@
     let _faceLostTime = 0; // performance.now() when face was last lost
     let _faceLostWarned = false;
     let _fadeOutRafId = null;
+
+    /** When true, blinkLeft/blinkRight are set independently (winking).
+     *  When false (default), only the combined 'blink' expression is used,
+     *  matching VRoid Hub / KalidoKit canonical behavior. */
+    let _independentEyes = localStorage.getItem('ft_independent_eyes') === 'true';
 
     // ── Helpers ─────────────────────────────────────────────────────────
 
@@ -364,13 +522,45 @@
         if (em && _faceDetected) {
             // Apply smoothed blend shapes
             for (const [name, targetValue] of Object.entries(_currentBlendShapes)) {
-                const prev = _smoothedBlendShapes[name] || 0;
-                const smoothed = prev + (targetValue - prev) * BLEND_SHAPE_SMOOTHING;
+                let smoothed;
+                const isBlink = name === 'blink';
+                const isIndivBlink = name === 'blinkLeft' || name === 'blinkRight';
 
-                _smoothedBlendShapes[name] = smoothed;
+                // ── Blink mode routing ────────────────────────────
+                //
+                // _independentEyes OFF (default, VRoid Hub style):
+                //   → Apply combined 'blink', skip blinkLeft/blinkRight
+                //
+                // _independentEyes ON (winking mode):
+                //   → Apply blinkLeft + blinkRight, skip combined 'blink'
+                if (!_independentEyes && isIndivBlink) continue;
+                if (_independentEyes && isBlink) continue;
+
+                if (isBlink || isIndivBlink) {
+                    // ── KalidoKit rigFace temporal lerp ───────────
+                    //
+                    // lerp(newClosure, currentVRMValue, 0.5)
+                    //
+                    // Each frame the VRM value moves 50% toward target:
+                    //   close: 0→0.5→0.75→0.87→0.94→~1
+                    //   open:  1→0.5→0.25→0.12→0.06→~0
+                    //
+                    // Eyes NEVER stay stuck — they always recover to open.
+                    let currentVRM = 0;
+                    try {
+                        currentVRM = em.getValue(name) || 0;
+                    } catch (_) {}
+                    smoothed = _lerp(targetValue, currentVRM, 0.5);
+                    _smoothedBlendShapes[name] = smoothed;
+                } else {
+                    // Standard smoothing for all other expressions
+                    const prev = _smoothedBlendShapes[name] || 0;
+                    smoothed = prev + (targetValue - prev) * BLEND_SHAPE_SMOOTHING;
+                    _smoothedBlendShapes[name] = smoothed;
+                }
 
                 // Only apply if above noise threshold
-                if (smoothed > BLEND_SHAPE_EPSILON || prev > BLEND_SHAPE_EPSILON) {
+                if (smoothed > BLEND_SHAPE_EPSILON || (_smoothedBlendShapes[name] || 0) > BLEND_SHAPE_EPSILON) {
                     try {
                         em.setValue(name, smoothed);
                     } catch (_) {
@@ -425,6 +615,17 @@
         // LipSyncEngine: pause/resume
         if (global.NEXUS_LIP_SYNC?.setPaused) {
             global.NEXUS_LIP_SYNC.setPaused(active);
+        }
+
+        // Auto-blink: stop during face tracking to prevent overlap with
+        // real-time blink data, restart when tracking stops.
+        const loader = _getVRMLoader();
+        if (loader) {
+            if (active) {
+                loader.stopAutoBlink?.();
+            } else {
+                loader.startAutoBlink?.();
+            }
         }
 
         console.log(`[FaceTracker] Expression override → ${active ? 'ON (face tracking)' : 'OFF (AI-driven)'}`);
@@ -679,11 +880,32 @@
         getBlendShapes() {
             return { ..._smoothedBlendShapes };
         },
+        /** Toggle independent eye blink (true = blinkLeft/blinkRight, false = combined blink). */
+        setIndependentEyes(enabled) {
+            _independentEyes = !!enabled;
+            // When switching modes, clear the now-unused blink expressions
+            // so the model doesn't keep stale values from the previous mode.
+            const em = _getExpressionManager();
+            if (em) {
+                try {
+                    if (_independentEyes) {
+                        em.setValue('blink', 0);
+                    } else {
+                        em.setValue('blinkLeft', 0);
+                        em.setValue('blinkRight', 0);
+                    }
+                } catch (_) {}
+            }
+        },
+        get independentEyes() {
+            return _independentEyes;
+        },
         getDebugInfo() {
             return {
                 active: _active,
                 initializing: _initializing,
                 faceDetected: _faceDetected,
+                independentEyes: _independentEyes,
                 videoSize: _videoEl ? `${_videoEl.videoWidth}x${_videoEl.videoHeight}` : null,
                 blendShapeCount: Object.keys(_smoothedBlendShapes).length,
             };
