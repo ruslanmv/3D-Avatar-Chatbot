@@ -35,6 +35,9 @@ export class PerformanceMonitor {
         this.qualityLevel = options.initialLevel || 0;
         this.maxLevel = 3;
 
+        // Minimum quality level floor (prevents oscillation during heavy workloads)
+        this._minQualityLevel = 0;
+
         // FPS tracking
         this._frameTimes = [];
         this._lastFrameTime = 0;
@@ -131,6 +134,9 @@ export class PerformanceMonitor {
     _upgrade(now) {
         if (this.qualityLevel <= 0) return;
 
+        // Respect minimum quality floor — don't upgrade above it
+        if (this.qualityLevel - 1 < this._minQualityLevel) return;
+
         this.qualityLevel--;
         this._isHighFPS = false;
         this._highFPSSince = 0;
@@ -142,6 +148,28 @@ export class PerformanceMonitor {
 
         if (this._onQualityChange) {
             this._onQualityChange(this.qualityLevel, this._currentFPS);
+        }
+    }
+
+    /**
+     * Set a minimum quality level floor.
+     * When set, the monitor will not upgrade above this level.
+     * Used during heavy workloads (e.g., face tracking) to prevent oscillation.
+     * @param {number} level 0-3 (0 = no floor, allows full quality)
+     */
+    setMinQualityLevel(level) {
+        this._minQualityLevel = Math.max(0, Math.min(this.maxLevel, level));
+
+        // If currently above the floor, downgrade immediately to the floor
+        if (this.qualityLevel < this._minQualityLevel) {
+            this.qualityLevel = this._minQualityLevel;
+            this._frameTimes = [];
+            this._isLowFPS = false;
+            this._isHighFPS = false;
+            console.log(`[PerfMonitor] Quality floor set to level ${this._minQualityLevel} (immediate adjustment)`);
+            if (this._onQualityChange) {
+                this._onQualityChange(this.qualityLevel, this._currentFPS);
+            }
         }
     }
 

@@ -118,6 +118,8 @@
         target: { aa: 0, ee: 0, oh: 0 },
         // Smoothing factor (lower = smoother, 0.08–0.20 range)
         smoothing: 0.14,
+        // Face tracking pause — when true, update() is a no-op
+        paused: false,
     };
 
     /**
@@ -158,6 +160,7 @@
      */
     function update(dt, vrmLoader) {
         if (!vrmLoader) return;
+        if (state.paused) return; // face tracking owns mouth expressions
 
         if (state.active && state.sequence.length > 0) {
             _advanceSequence(dt);
@@ -237,6 +240,10 @@
         update: update,
         get isActive() {
             return state.active;
+        },
+        /** Pause/resume viseme output (face tracking override). */
+        setPaused: function (paused) {
+            state.paused = !!paused;
         },
         // Utility: expose for testing
         buildPhonemeSequence: buildPhonemeSequence,
