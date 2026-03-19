@@ -2045,6 +2045,13 @@ function openSettings() {
         if (el && saved !== null) el.checked = saved === 'true';
     }
 
+    // Restore face tracking settings
+    const ftIndepEyes = document.getElementById('ft-independent-eyes');
+    if (ftIndepEyes) {
+        const saved = localStorage.getItem('ft_independent_eyes');
+        ftIndepEyes.checked = saved === 'true';
+    }
+
     loadSTTSettingsIntoUI();
     refreshVoiceList();
 
@@ -2462,6 +2469,16 @@ function saveSettings() {
         if (el) {
             localStorage.setItem(key, String(el.checked));
             apply(el.checked);
+        }
+    }
+
+    // Persist face tracking settings and apply live
+    const ftIndepEyesSave = document.getElementById('ft-independent-eyes');
+    if (ftIndepEyesSave) {
+        const val = ftIndepEyesSave.checked;
+        localStorage.setItem('ft_independent_eyes', String(val));
+        if (window.NEXUS_FACE_TRACKER?.setIndependentEyes) {
+            window.NEXUS_FACE_TRACKER.setIndependentEyes(val);
         }
     }
 

@@ -1402,6 +1402,33 @@
                         </div>
                     </div>
 
+                    <div class="config-section">
+                        <h3 class="config-title">FACE TRACKING</h3>
+                        <p style="font-size: 0.72rem; color: rgba(255, 255, 255, 0.5); margin-bottom: 12px">
+                            Configure how webcam face tracking drives avatar expressions.
+                        </p>
+                        <div style="display: flex; flex-direction: column; gap: 10px">
+                            <label
+                                class="provider-card"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 10px;
+                                    padding: 8px 12px;
+                                    cursor: pointer;
+                                "
+                            >
+                                <input type="checkbox" id="ft-independent-eyes" />
+                                <div>
+                                    <div class="provider-name" style="font-size: 0.82rem">Independent Eye Blink</div>
+                                    <div style="font-size: 0.68rem; color: rgba(255, 255, 255, 0.45)">
+                                        Track left/right eyes separately (winking). Off = synced blink like VRoid Hub.
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
                     <div class="config-section" id="pose-normalizer-section">
                         <h3 class="config-title">AVATAR POSE &amp; ANIMATION</h3>
                         <p style="font-size: 0.72rem; color: rgba(255, 255, 255, 0.5); margin-bottom: 12px">
