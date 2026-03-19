@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 420" width="900" height="420">
+  <defs>
+    <linearGradient id="hp" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea"/>
+      <stop offset="100%" style="stop-color:#764ba2"/>
+    </linearGradient>
+    <linearGradient id="ob" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8b5cf6"/>
+      <stop offset="100%" style="stop-color:#6d28d9"/>
+    </linearGradient>
+    <linearGradient id="vr" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981"/>
+      <stop offset="100%" style="stop-color:#059669"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#f59e0b;stop-opacity:0.8"/>
+      <stop offset="50%" style="stop-color:#ef4444;stop-opacity:0.9"/>
+      <stop offset="100%" style="stop-color:#f59e0b;stop-opacity:0.8"/>
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000" flood-opacity="0.15"/>
+    </filter>
+    <!-- animated dash for arrows -->
+    <style>
+      @keyframes dash { to { stroke-dashoffset: -20; } }
+      @keyframes pulse { 0%,100% { opacity:0.6; } 50% { opacity:1; } }
+      @keyframes glow-pulse { 0%,100% { opacity:0.3; } 50% { opacity:0.7; } }
+      .flow { stroke-dasharray: 10 5; animation: dash 1.2s linear infinite; }
+      .pulse { animation: pulse 2s ease-in-out infinite; }
+      .glow-ring { animation: glow-pulse 2.5s ease-in-out infinite; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="420" rx="16" fill="#0f172a"/>
+
+  <!-- Title -->
+  <text x="450" y="38" text-anchor="middle" fill="white" font-family="system-ui,sans-serif" font-size="20" font-weight="bold">Superintelligent Personas — How It Works</text>
+  <text x="450" y="58" text-anchor="middle" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="12">HomePilot brain  →  OllaBridge routing  →  3D Avatar VR body</text>
+
+  <!-- ═══ LAYER 1: HomePilot ═══ -->
+  <rect x="30" y="80" width="260" height="310" rx="12" fill="#1e293b" filter="url(#shadow)"/>
+  <rect x="30" y="80" width="260" height="36" rx="12" fill="url(#hp)"/>
+  <text x="160" y="103" text-anchor="middle" fill="white" font-family="system-ui,sans-serif" font-size="14" font-weight="bold">HomePilot</text>
+  <text x="160" y="132" text-anchor="middle" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="10">THE BRAIN</text>
+
+  <!-- Persona boxes inside HP -->
+  <rect x="48" y="148" width="224" height="30" rx="6" fill="#334155"/>
+  <circle cx="66" cy="163" r="8" fill="#f59e0b" class="pulse"/>
+  <text x="82" y="167" fill="white" font-family="system-ui,sans-serif" font-size="11">Identity + System Prompt</text>
+
+  <rect x="48" y="186" width="224" height="30" rx="6" fill="#334155"/>
+  <circle cx="66" cy="201" r="8" fill="#8b5cf6" class="pulse"/>
+  <text x="82" y="205" fill="white" font-family="system-ui,sans-serif" font-size="11">Cognitive Profile  (reasoning)</text>
+
+  <rect x="48" y="224" width="224" height="30" rx="6" fill="#334155"/>
+  <circle cx="66" cy="239" r="8" fill="#10b981" class="pulse"/>
+  <text x="82" y="243" fill="white" font-family="system-ui,sans-serif" font-size="11">Memory  (adaptive / basic)</text>
+
+  <rect x="48" y="262" width="224" height="30" rx="6" fill="#334155"/>
+  <circle cx="66" cy="277" r="8" fill="#3b82f6" class="pulse"/>
+  <text x="82" y="281" fill="white" font-family="system-ui,sans-serif" font-size="11">Tools + Workflows</text>
+
+  <rect x="48" y="300" width="224" height="30" rx="6" fill="#334155"/>
+  <circle cx="66" cy="315" r="8" fill="#ec4899" class="pulse"/>
+  <text x="82" y="319" fill="white" font-family="system-ui,sans-serif" font-size="11">Embodiment + VR Profile</text>
+
+  <rect x="48" y="338" width="224" height="30" rx="6" fill="#334155"/>
+  <circle cx="66" cy="353" r="8" fill="#ef4444" class="pulse"/>
+  <text x="82" y="357" fill="white" font-family="system-ui,sans-serif" font-size="11">Voice + Relationship Model</text>
+
+  <!-- ═══ LAYER 2: OllaBridge ═══ -->
+  <rect x="330" y="80" width="220" height="310" rx="12" fill="#1e293b" filter="url(#shadow)"/>
+  <rect x="330" y="80" width="220" height="36" rx="12" fill="url(#ob)"/>
+  <text x="440" y="103" text-anchor="middle" fill="white" font-family="system-ui,sans-serif" font-size="14" font-weight="bold">OllaBridge</text>
+  <text x="440" y="132" text-anchor="middle" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="10">MODEL ROUTING</text>
+
+  <!-- Model list -->
+  <rect x="348" y="148" width="184" height="26" rx="5" fill="#334155"/>
+  <text x="358" y="165" fill="#f59e0b" font-family="monospace" font-size="10">persona:scarlett-secretary</text>
+  <rect x="348" y="180" width="184" height="26" rx="5" fill="#334155"/>
+  <text x="358" y="197" fill="#10b981" font-family="monospace" font-size="10">persona:milo-friend</text>
+  <rect x="348" y="212" width="184" height="26" rx="5" fill="#334155"/>
+  <text x="358" y="229" fill="#3b82f6" font-family="monospace" font-size="10">persona:nova-collaborator</text>
+  <rect x="348" y="244" width="184" height="26" rx="5" fill="#334155"/>
+  <text x="358" y="261" fill="#ec4899" font-family="monospace" font-size="10">persona:luna-girlfriend</text>
+  <rect x="348" y="276" width="184" height="26" rx="5" fill="#334155"/>
+  <text x="358" y="293" fill="#ef4444" font-family="monospace" font-size="10">persona:velvet-companion</text>
+
+  <!-- API label -->
+  <rect x="365" y="320" width="150" height="44" rx="8" fill="#334155" stroke="#8b5cf6" stroke-width="1"/>
+  <text x="440" y="339" text-anchor="middle" fill="white" font-family="system-ui,sans-serif" font-size="11">/v1/chat/completions</text>
+  <text x="440" y="356" text-anchor="middle" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="10">OpenAI-compatible API</text>
+
+  <!-- ═══ LAYER 3: 3D Avatar VR ═══ -->
+  <rect x="590" y="80" width="280" height="310" rx="12" fill="#1e293b" filter="url(#shadow)"/>
+  <rect x="590" y="80" width="280" height="36" rx="12" fill="url(#vr)"/>
+  <text x="730" y="103" text-anchor="middle" fill="white" font-family="system-ui,sans-serif" font-size="14" font-weight="bold">3D Avatar Chatbot</text>
+  <text x="730" y="132" text-anchor="middle" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="10">THE VR BODY</text>
+
+  <!-- VR components -->
+  <rect x="608" y="148" width="244" height="26" rx="5" fill="#334155"/>
+  <text x="618" y="165" fill="#10b981" font-family="system-ui,sans-serif" font-size="11">VRM Avatar  (3D model + IK)</text>
+
+  <rect x="608" y="180" width="244" height="26" rx="5" fill="#334155"/>
+  <text x="618" y="197" fill="#10b981" font-family="system-ui,sans-serif" font-size="11">Motion DSL  (walk, sit, gesture)</text>
+
+  <rect x="608" y="212" width="244" height="26" rx="5" fill="#334155"/>
+  <text x="618" y="229" fill="#10b981" font-family="system-ui,sans-serif" font-size="11">World State  (positions, anchors)</text>
+
+  <rect x="608" y="244" width="244" height="26" rx="5" fill="#334155"/>
+  <text x="618" y="261" fill="#10b981" font-family="system-ui,sans-serif" font-size="11">Voice + Lip Sync + Emotions</text>
+
+  <rect x="608" y="276" width="244" height="26" rx="5" fill="#334155"/>
+  <text x="618" y="293" fill="#10b981" font-family="system-ui,sans-serif" font-size="11">WebXR  (Quest, Pico, browser)</text>
+
+  <!-- Headset icon -->
+  <rect x="660" y="320" width="140" height="46" rx="10" fill="#334155" stroke="#10b981" stroke-width="1"/>
+  <text x="730" y="340" text-anchor="middle" fill="white" font-family="system-ui,sans-serif" font-size="18">🥽</text>
+  <text x="730" y="358" text-anchor="middle" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="10">Meta Quest / Browser</text>
+
+  <!-- ═══ FLOW ARROWS ═══ -->
+  <!-- HP → OllaBridge -->
+  <line x1="290" y1="200" x2="330" y2="200" stroke="#8b5cf6" stroke-width="2.5" class="flow"/>
+  <polygon points="326,194 336,200 326,206" fill="#8b5cf6"/>
+
+  <line x1="290" y1="280" x2="330" y2="280" stroke="#8b5cf6" stroke-width="2.5" class="flow"/>
+  <polygon points="326,274 336,280 326,286" fill="#8b5cf6"/>
+
+  <!-- OllaBridge → 3D Avatar -->
+  <line x1="550" y1="200" x2="590" y2="200" stroke="#10b981" stroke-width="2.5" class="flow"/>
+  <polygon points="586,194 596,200 586,206" fill="#10b981"/>
+
+  <line x1="550" y1="280" x2="590" y2="280" stroke="#10b981" stroke-width="2.5" class="flow"/>
+  <polygon points="586,274 596,280 586,286" fill="#10b981"/>
+
+  <!-- Superintelligence glow ring around entire diagram -->
+  <rect x="14" y="68" width="872" height="340" rx="20" fill="none" stroke="url(#glow)" stroke-width="2" class="glow-ring"/>
+
+  <!-- Bottom label -->
+  <text x="450" y="408" text-anchor="middle" fill="#64748b" font-family="system-ui,sans-serif" font-size="11">Brain in HomePilot  ·  Routing via OllaBridge  ·  Body in 3D Avatar  ·  All additive, all portable .hpersona v3</text>
+</svg>

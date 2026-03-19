@@ -98,7 +98,10 @@
       "src/BehaviorEngine.js",
       "src/MorphTargetAdapter.js",
       "src/ProceduralAnimator.js",
-      "src/AvatarAliveness.js"
+      "src/AvatarAliveness.js",
+      "src/FaceTracker.js",
+      "src/FaceTrackButton.js",
+      "src/gltf-viewer/CameraPresets.js"
     ],
     "coverageThreshold": {
       "global": {
