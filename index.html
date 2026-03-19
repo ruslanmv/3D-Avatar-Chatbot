@@ -1405,9 +1405,36 @@
                     <div class="config-section">
                         <h3 class="config-title">FACE TRACKING</h3>
                         <p style="font-size: 0.72rem; color: rgba(255, 255, 255, 0.5); margin-bottom: 12px">
-                            Configure how webcam face tracking drives avatar expressions.
+                            Choose how the avatar reacts to your webcam feed.
                         </p>
-                        <div style="display: flex; flex-direction: column; gap: 10px">
+
+                        <!-- Mode selector: Imitate vs Follow -->
+                        <div class="input-group" style="margin-bottom: 14px">
+                            <label class="input-label">TRACKING MODE</label>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px">
+                                <label class="provider-card" style="cursor: pointer">
+                                    <input type="radio" name="ft-mode" value="imitate" class="provider-radio" checked />
+                                    <div class="provider-content" style="text-align: center">
+                                        <div class="provider-name" style="font-size: 0.82rem">Imitate</div>
+                                        <div style="font-size: 0.62rem; color: rgba(255, 255, 255, 0.4)">
+                                            Avatar mirrors your expressions
+                                        </div>
+                                    </div>
+                                </label>
+                                <label class="provider-card" style="cursor: pointer">
+                                    <input type="radio" name="ft-mode" value="follow" class="provider-radio" />
+                                    <div class="provider-content" style="text-align: center">
+                                        <div class="provider-name" style="font-size: 0.82rem">Follow</div>
+                                        <div style="font-size: 0.62rem; color: rgba(255, 255, 255, 0.4)">
+                                            Avatar watches &amp; follows you
+                                        </div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Sub-options (only relevant when Imitate is selected) -->
+                        <div id="ft-imitate-options" style="display: flex; flex-direction: column; gap: 10px">
                             <label
                                 class="provider-card"
                                 style="
