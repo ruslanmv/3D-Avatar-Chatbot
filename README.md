@@ -91,6 +91,8 @@ framework dependencies — runs on vanilla JavaScript, Three.js, and WebXR.
   (contact shadows, light estimation, depth occlusion on Quest 3)
 - **Pose Studio** — Interactive bone-level pose editing with presets, save/load,
   undo/redo, and mirroring
+- **Face Tracking** — Webcam-based expression mirroring via MediaPipe (blinks,
+  gaze, mouth, emotions) with smooth camera zoom to face
 - **Mobile-first** — Enterprise mobile layout with drawer navigation, responsive
   panels, and AR access
 - **Privacy-first** — API keys stored in browser localStorage, zero server-side
@@ -178,6 +180,8 @@ Browser
 | PoseEditor          | `src/PoseEditor.js`                      | Pose Studio orchestrator (undo/redo)      |
 | PoseStudioPanel     | `src/PoseStudioPanel.js`                 | Pose Studio UI (bone selectors, controls) |
 | MobileDrawerWiring  | `src/MobileDrawerWiring.js`              | Mobile drawer navigation wiring           |
+| FaceTracker         | `src/FaceTracker.js`                     | Webcam face tracking via MediaPipe        |
+| CameraPresets       | `src/gltf-viewer/CameraPresets.js`       | Smooth camera zoom transitions            |
 | SpeechService       | `js/speech-service.js`                   | STT/TTS with mic/voice selection          |
 | main.js             | `src/main.js`                            | App init, settings, UI wiring             |
 
@@ -278,14 +282,29 @@ to chat with persistent AI personalities.
 HomePilot ships with **16 built-in personalities** plus unlimited custom
 personas:
 
-| Persona                   | Description                     |
-| ------------------------- | ------------------------------- |
-| `personality:assistant`   | Proactive home AI               |
-| `personality:therapist`   | Empathetic wellness companion   |
-| `personality:storyteller` | Narrative-driven storyteller    |
-| `personality:motivation`  | Encouraging coach               |
-| `personality:kids-trivia` | Educational trivia for children |
-| `persona:<your-project>`  | Any custom persona you create   |
+| Persona                      | Description                                                                        |
+| ---------------------------- | ---------------------------------------------------------------------------------- |
+| `personality:assistant`      | Proactive home AI                                                                  |
+| `personality:therapist`      | Empathetic wellness companion                                                      |
+| `personality:storyteller`    | Narrative-driven storyteller                                                       |
+| `personality:motivation`     | Encouraging coach                                                                  |
+| `personality:kids-trivia`    | Educational trivia for children                                                    |
+| `persona:<your-project>`     | Any custom persona you create                                                      |
+| `persona:scarlett-secretary` | Superintelligent executive secretary with orchestrated workflows and VR embodiment |
+| `persona:milo-friend`        | Superintelligent best friend with adaptive memory and spatial presence             |
+| `persona:nova-collaborator`  | Superintelligent work collaborator with multi-step planning                        |
+| `persona:luna-girlfriend`    | Superintelligent companion with emotional continuity and hand interactions         |
+| `persona:velvet-companion`   | Superintelligent adult companion with gated escalation and VR presence             |
+
+<p align="center">
+  <img src="assets/superintelligent-personas.svg" alt="Superintelligent Personas Architecture" width="820" />
+</p>
+
+Superintelligent personas carry cognitive profiles, spatial awareness, VR
+embodiment, and motion commands — the avatar walks, sits, follows, and gestures
+based on what you say. See the
+[HomePilot PERSONA docs](https://github.com/ruslanmv/HomePilot/blob/master/docs/PERSONA.md)
+for the full specification.
 
 <div align="center">
 
@@ -310,9 +329,11 @@ personas:
 │   ├── PoseState.js        # Skeleton pose capture/apply via delta quaternions
 │   ├── PoseLibrary.js      # Built-in presets + localStorage persistence
 │   ├── PoseApplier.js      # High-level bone manipulation and mirroring
+│   ├── FaceTracker.js       # Webcam face tracking (MediaPipe)
 │   ├── MobileDrawerWiring.js # Mobile drawer navigation wiring
 │   └── gltf-viewer/        # 3D engine modules
 │       ├── ViewerEngine.js
+│       ├── CameraPresets.js
 │       ├── AvatarManager.js
 │       ├── VRSupport.js / ARSupport.js
 │       ├── PassthroughEnhancer.js  # AR passthrough grounding + lighting

@@ -12,6 +12,8 @@
 
 ## Recent additions
 
+- **Face Tracking** — Webcam expression mirroring via MediaPipe FaceLandmarker
+  (52 ARKit blend shapes → VRM) with smooth camera zoom to face
 - **Passthrough AR** — See your real room with the avatar grounded via contact
   shadows, light estimation, and depth occlusion (Quest 3)
 - **Pose Studio** — Interactive bone-level pose editing with presets, save/load,

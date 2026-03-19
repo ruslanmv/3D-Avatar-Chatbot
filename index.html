@@ -328,6 +328,52 @@
                     </button>
                     <button
                         class="icon-btn mobile-hide-label"
+                        id="face-track-btn"
+                        title="Face Tracking"
+                        aria-label="Face Tracking"
+                        type="button"
+                    >
+                        <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            aria-hidden="true"
+                        >
+                            <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+                            <circle cx="12" cy="13" r="4" />
+                        </svg>
+                    </button>
+                    <!-- Trace button: hidden by default, shown only in debug mode -->
+                    <button
+                        class="icon-btn mobile-hide-label"
+                        id="trace-btn"
+                        title="Toggle Trace Recording"
+                        aria-label="Toggle Trace Recording"
+                        type="button"
+                        style="display: none"
+                    >
+                        <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            aria-hidden="true"
+                        >
+                            <circle cx="12" cy="12" r="3" />
+                            <circle cx="12" cy="12" r="9" stroke-dasharray="4 2" />
+                            <line x1="12" y1="1" x2="12" y2="3" />
+                            <line x1="12" y1="21" x2="12" y2="23" />
+                            <line x1="1" y1="12" x2="3" y2="12" />
+                            <line x1="21" y1="12" x2="23" y2="12" />
+                        </svg>
+                    </button>
+                    <button
+                        class="icon-btn mobile-hide-label"
                         id="info-btn"
                         title="Info"
                         aria-label="Info"
@@ -669,6 +715,39 @@
                                 <line x1="15" y1="15" x2="12" y2="21" />
                             </svg>
                             <span>Pose Studio</span>
+                        </button>
+                        <button class="drawer-nav-item" id="drawer-face-track-btn" type="button">
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+                                <circle cx="12" cy="13" r="4" />
+                            </svg>
+                            <span>Face Tracking</span>
+                        </button>
+                        <!-- Trace button: hidden by default, shown only in debug mode -->
+                        <button class="drawer-nav-item" id="drawer-trace-btn" type="button" style="display: none">
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <circle cx="12" cy="12" r="3" />
+                                <circle cx="12" cy="12" r="9" stroke-dasharray="4 2" />
+                                <line x1="12" y1="1" x2="12" y2="3" />
+                                <line x1="12" y1="21" x2="12" y2="23" />
+                                <line x1="1" y1="12" x2="3" y2="12" />
+                                <line x1="21" y1="12" x2="23" y2="12" />
+                            </svg>
+                            <span>Trace Recording</span>
                         </button>
                         <button class="drawer-nav-item" id="drawer-fullscreen-btn" type="button">
                             <svg
@@ -1604,6 +1683,36 @@
                     </div>
 
                     <div class="config-section">
+                        <h3 class="config-title">DEVELOPER</h3>
+                        <div class="input-group">
+                            <label
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 8px;
+                                    cursor: pointer;
+                                    font-size: 0.8rem;
+                                    color: rgba(255, 255, 255, 0.8);
+                                "
+                            >
+                                <input type="checkbox" id="developer-mode-toggle" />
+                                Developer Mode
+                            </label>
+                            <div
+                                style="
+                                    font-size: 0.7rem;
+                                    color: rgba(255, 255, 255, 0.45);
+                                    margin-top: 2px;
+                                    padding-left: 24px;
+                                "
+                            >
+                                Shows trace recording button in the toolbar. Use it to capture and download avatar
+                                session diagnostics for debugging.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="config-section">
                         <h3 class="config-title">SYSTEM PROMPT</h3>
                         <textarea
                             id="system-prompt"
@@ -1872,6 +1981,64 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
             </div>
         </div>
 
+        <!-- ====== TRACE STATUS POPUP (temporary overlay on trace start) ====== -->
+        <div class="modal-overlay" id="trace-status-modal">
+            <div class="modal glass-panel" style="max-width: 420px; padding: 0">
+                <div style="padding: 1.8rem 2rem 0.5rem; text-align: center">
+                    <svg
+                        width="36"
+                        height="36"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="var(--primary, #00e5ff)"
+                        stroke-width="1.5"
+                        style="margin-bottom: 0.5rem"
+                    >
+                        <circle cx="12" cy="12" r="3" />
+                        <circle cx="12" cy="12" r="9" stroke-dasharray="4 2" />
+                        <line x1="12" y1="1" x2="12" y2="3" />
+                        <line x1="12" y1="21" x2="12" y2="23" />
+                        <line x1="1" y1="12" x2="3" y2="12" />
+                        <line x1="21" y1="12" x2="23" y2="12" />
+                    </svg>
+                    <h2
+                        style="
+                            font-family: var(--font-display, 'Orbitron', sans-serif);
+                            font-size: 1.1rem;
+                            font-weight: 700;
+                            letter-spacing: 0.08em;
+                            color: var(--text-primary, #fff);
+                            margin: 0;
+                        "
+                    >
+                        Tracking in progress...
+                    </h2>
+                </div>
+
+                <div style="padding: 1rem 2rem 1.2rem" id="trace-status-checklist">
+                    <!-- Checklist items populated by JS -->
+                </div>
+
+                <!-- Progress bar -->
+                <div style="padding: 0 2rem 1.5rem">
+                    <div
+                        style="height: 4px; background: rgba(255, 255, 255, 0.08); border-radius: 2px; overflow: hidden"
+                    >
+                        <div
+                            id="trace-status-progress"
+                            style="
+                                height: 100%;
+                                width: 0%;
+                                background: linear-gradient(90deg, var(--primary, #00e5ff), var(--secondary, #7b2ff7));
+                                border-radius: 2px;
+                                transition: width 0.4s ease;
+                            "
+                        ></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <script defer>
             window.addEventListener('DOMContentLoaded', () => {
                 // Collapsible panels (if any remain)
@@ -1959,6 +2126,263 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
                         document.exitFullscreen?.();
                     }
                 });
+
+                // ── Developer Mode: Trace Recording ──────────────────────
+                // Enable via: Settings toggle, ?debug=true in URL, or console
+                // When ON: trace button appears in toolbar — click Start / Stop
+                // When OFF: button hidden, zero trace overhead
+                (function _initDeveloperMode() {
+                    const desktopBtn = document.getElementById('trace-btn');
+                    const drawerBtn = document.getElementById('drawer-trace-btn');
+                    const statusModal = document.getElementById('trace-status-modal');
+                    const checklist = document.getElementById('trace-status-checklist');
+                    const progressBar = document.getElementById('trace-status-progress');
+                    const devToggle = document.getElementById('developer-mode-toggle');
+
+                    // Persist ?debug=true from URL into localStorage
+                    if (new URLSearchParams(window.location.search).get('debug') === 'true') {
+                        localStorage.setItem('NEXUS_DEBUG', 'true');
+                    }
+
+                    // ── Sync settings toggle with stored state ──
+                    function _isDebug() {
+                        return localStorage.getItem('NEXUS_DEBUG') === 'true';
+                    }
+                    if (devToggle) devToggle.checked = _isDebug();
+
+                    // ── Show / hide trace buttons ──
+                    function _applyDevMode(on) {
+                        if (desktopBtn) desktopBtn.style.display = on ? '' : 'none';
+                        if (drawerBtn) drawerBtn.style.display = on ? '' : 'none';
+
+                        // If turning off while recording, stop gracefully
+                        if (!on && window.NEXUS_TRACE_RECORDER?.isRecording) {
+                            window.NEXUS_TRACE_RECORDER.stop();
+                            _updateUI(false);
+                        }
+                    }
+                    _applyDevMode(_isDebug());
+
+                    // ── Settings toggle handler (live, no reload needed) ──
+                    if (devToggle) {
+                        devToggle.addEventListener('change', () => {
+                            if (devToggle.checked) {
+                                localStorage.setItem('NEXUS_DEBUG', 'true');
+                                _applyDevMode(true);
+                                console.log(
+                                    '%c[Dev] Developer mode ON — trace button visible',
+                                    'color: #00e5ff; font-weight: bold'
+                                );
+                            } else {
+                                localStorage.removeItem('NEXUS_DEBUG');
+                                _applyDevMode(false);
+                                console.log('[Dev] Developer mode OFF — trace button hidden');
+                            }
+                        });
+                    }
+
+                    // ── Engine checklist for status popup ──
+                    const ENGINE_CHECKS = [
+                        {
+                            id: 'vrm_model',
+                            label: 'Loading 3D model',
+                            check: () => {
+                                const v = window.NEXUS_VIEWER;
+                                return !!v?.avatarManager?.vrmLoader?.currentVRM || !!window.vrmLoader?.currentVRM;
+                            },
+                        },
+                        {
+                            id: 'behavior',
+                            label: 'Behavior engine',
+                            check: () => !!window.NEXUS_BEHAVIOR?.getState,
+                        },
+                        {
+                            id: 'animator',
+                            label: 'Procedural animator',
+                            check: () => !!window.NEXUS_PROCEDURAL_ANIMATOR?.update,
+                        },
+                        {
+                            id: 'lip_sync',
+                            label: 'Lip-sync engine',
+                            check: () => !!window.NEXUS_LIP_SYNC,
+                        },
+                        {
+                            id: 'emotion',
+                            label: 'Emotion engine',
+                            check: () => !!window.NEXUS_EMOTION_ENGINE?.analyze,
+                        },
+                        {
+                            id: 'expressions',
+                            label: 'Expression manager',
+                            check: () => {
+                                const v = window.NEXUS_VIEWER;
+                                return (
+                                    !!v?.avatarManager?.vrmLoader?.currentVRM?.expressionManager ||
+                                    !!window.vrmLoader?.currentVRM?.expressionManager
+                                );
+                            },
+                        },
+                        {
+                            id: 'recorder',
+                            label: 'Trace recorder',
+                            check: () => !!window.NEXUS_TRACE_RECORDER,
+                        },
+                        {
+                            id: 'hooks',
+                            label: 'Trace hooks',
+                            check: () => !!window.NEXUS_TRACE_HOOKS,
+                        },
+                        {
+                            id: 'sync',
+                            label: 'Syncing tracking data',
+                            check: () => !!window.NEXUS_TRACE_RECORDER?.isRecording,
+                        },
+                    ];
+
+                    function _renderChecklist(results) {
+                        checklist.innerHTML = results
+                            .map(
+                                (r) => `
+                            <div style="
+                                display: flex;
+                                align-items: center;
+                                justify-content: space-between;
+                                padding: 6px 0;
+                                border-bottom: 1px solid rgba(255,255,255,0.04);
+                            ">
+                                <span style="
+                                    color: var(--text-secondary, #a0a0a0);
+                                    font-size: 0.82rem;
+                                ">${r.label}</span>
+                                <span style="
+                                    font-size: 0.78rem;
+                                    font-weight: 700;
+                                    letter-spacing: 0.04em;
+                                    color: ${
+                                        r.status === 'complete'
+                                            ? 'var(--accent-green, #22c55e)'
+                                            : r.status === 'in_progress'
+                                              ? 'var(--accent-orange, #ff9100)'
+                                              : r.status === 'missing'
+                                                ? 'var(--text-muted, #666)'
+                                                : 'var(--text-muted, #444)'
+                                    };
+                                ">${
+                                    r.status === 'complete'
+                                        ? 'Complete'
+                                        : r.status === 'in_progress'
+                                          ? 'In progress...'
+                                          : r.status === 'missing'
+                                            ? 'Not loaded'
+                                            : 'Waiting...'
+                                }</span>
+                            </div>
+                        `
+                            )
+                            .join('');
+                    }
+
+                    function _showStatusPopup() {
+                        if (!statusModal) return;
+                        statusModal.classList.add('active');
+                        let stepIndex = 0;
+                        const results = ENGINE_CHECKS.map((c) => ({
+                            label: c.label,
+                            status: 'waiting',
+                        }));
+                        _renderChecklist(results);
+                        progressBar.style.width = '0%';
+
+                        function _runNextCheck() {
+                            if (stepIndex >= ENGINE_CHECKS.length) {
+                                progressBar.style.width = '100%';
+                                setTimeout(() => {
+                                    statusModal.classList.remove('active');
+                                }, 800);
+                                return;
+                            }
+                            results[stepIndex].status = 'in_progress';
+                            _renderChecklist(results);
+                            const delay = stepIndex === 0 ? 300 : 200;
+                            setTimeout(() => {
+                                const ok = ENGINE_CHECKS[stepIndex].check();
+                                results[stepIndex].status = ok ? 'complete' : 'missing';
+                                stepIndex++;
+                                progressBar.style.width = Math.round((stepIndex / ENGINE_CHECKS.length) * 100) + '%';
+                                _renderChecklist(results);
+                                _runNextCheck();
+                            }, delay);
+                        }
+                        _runNextCheck();
+                    }
+
+                    function _updateUI(recording) {
+                        const label = recording ? 'Stop Trace' : 'Start Trace';
+                        const color = recording ? 'var(--primary, #00e5ff)' : '';
+                        [desktopBtn, drawerBtn].forEach((btn) => {
+                            if (!btn) return;
+                            btn.title = label;
+                            btn.setAttribute('aria-label', label);
+                            btn.style.color = color;
+                            btn.style.borderColor = recording ? color : '';
+                            const svg = btn.querySelector('svg');
+                            if (svg) svg.style.animation = recording ? 'trace-pulse 1.5s ease-in-out infinite' : 'none';
+                        });
+                        const drawerSpan = drawerBtn?.querySelector('span');
+                        if (drawerSpan) drawerSpan.textContent = recording ? 'Stop Trace' : 'Trace Recording';
+                    }
+
+                    function _toggle() {
+                        const rec = window.NEXUS_TRACE_RECORDER;
+                        if (!rec) {
+                            console.warn('[TraceUI] NEXUS_TRACE_RECORDER not loaded');
+                            return;
+                        }
+                        if (rec.isRecording) {
+                            rec.stop();
+                            const json = rec.exportJSON();
+                            const blob = new Blob([json], { type: 'application/json' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = 'trace-' + rec.traceId + '.json';
+                            a.click();
+                            URL.revokeObjectURL(url);
+                            _updateUI(false);
+                        } else {
+                            const ollaBase =
+                                localStorage.getItem('ollabridge_base') || window.__OLLABRIDGE_BASE__ || '';
+                            rec.start({
+                                flushEndpoint: ollaBase ? ollaBase.replace(/\/$/, '') + '/v1/traces' : '',
+                            });
+                            _updateUI(true);
+                            _showStatusPopup();
+                        }
+                    }
+
+                    // Wire click handlers
+                    desktopBtn?.addEventListener('click', _toggle);
+                    drawerBtn?.addEventListener('click', () => {
+                        closeDrawer();
+                        _toggle();
+                    });
+                    statusModal?.addEventListener('click', (e) => {
+                        if (e.target === statusModal) statusModal.classList.remove('active');
+                    });
+
+                    // Inject pulse keyframes
+                    if (!document.getElementById('trace-pulse-style')) {
+                        const style = document.createElement('style');
+                        style.id = 'trace-pulse-style';
+                        style.textContent = `
+                            @keyframes trace-pulse {
+                                0%, 100% { opacity: 1; }
+                                50% { opacity: 0.4; }
+                            }
+                        `;
+                        document.head.appendChild(style);
+                    }
+                })();
 
                 // Show avatar count badge
                 try {
@@ -2090,6 +2514,15 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <script defer src="src/LipSyncEngine.js"></script>
         <script defer src="src/BehaviorEngine.js"></script>
         <script defer src="src/AvatarAliveness.js"></script>
+
+        <!-- Phase 3b: Trace Recording (additive — embodiment memory feedback loop) -->
+        <script defer src="src/TraceRecorder.js"></script>
+        <script defer src="src/TraceRecorderHooks.js"></script>
+
+        <!-- Phase 4: Face Tracking (VRoid Hub–style webcam expression mirroring) -->
+        <script defer src="src/gltf-viewer/CameraPresets.js"></script>
+        <script defer src="src/FaceTracker.js"></script>
+        <script defer src="src/FaceTrackButton.js"></script>
 
         <!-- Avatar Picker (bottom-sheet avatar selection — replaces dropdown).
              Must load BEFORE main.js so window.AvatarPicker exists when init() runs. -->
