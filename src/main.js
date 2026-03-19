@@ -2046,6 +2046,21 @@ function openSettings() {
     }
 
     // Restore face tracking settings
+    const ftModeSaved = localStorage.getItem('ft_mode') || 'imitate';
+    const ftModeRadio = document.querySelector(`input[name="ft-mode"][value="${ftModeSaved}"]`);
+    if (ftModeRadio) ftModeRadio.checked = true;
+
+    // Show/hide imitate-only options based on mode
+    const ftImitateOpts = document.getElementById('ft-imitate-options');
+    if (ftImitateOpts) ftImitateOpts.style.display = ftModeSaved === 'imitate' ? '' : 'none';
+
+    // Wire mode radio to show/hide imitate options live
+    document.querySelectorAll('input[name="ft-mode"]').forEach((radio) => {
+        radio.addEventListener('change', () => {
+            if (ftImitateOpts) ftImitateOpts.style.display = radio.value === 'imitate' ? '' : 'none';
+        });
+    });
+
     const ftIndepEyes = document.getElementById('ft-independent-eyes');
     if (ftIndepEyes) {
         const saved = localStorage.getItem('ft_independent_eyes');
@@ -2473,6 +2488,15 @@ function saveSettings() {
     }
 
     // Persist face tracking settings and apply live
+    const ftModeRadioSave = document.querySelector('input[name="ft-mode"]:checked');
+    if (ftModeRadioSave) {
+        const mode = ftModeRadioSave.value;
+        localStorage.setItem('ft_mode', mode);
+        if (window.NEXUS_FACE_TRACKER?.setMode) {
+            window.NEXUS_FACE_TRACKER.setMode(mode);
+        }
+    }
+
     const ftIndepEyesSave = document.getElementById('ft-independent-eyes');
     if (ftIndepEyesSave) {
         const val = ftIndepEyesSave.checked;

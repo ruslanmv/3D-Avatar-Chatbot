@@ -19,7 +19,8 @@
  *
  * Exposes:
  *   window.NEXUS_FACE_TRACKER = {
- *       start, stop, isActive, independentEyes, setIndependentEyes,
+ *       start, stop, isActive, mode, setMode,
+ *       independentEyes, setIndependentEyes,
  *       getBlendShapes, getDebugInfo
  *   }
  *
@@ -312,6 +313,25 @@
      *  matching VRoid Hub / KalidoKit canonical behavior. */
     let _independentEyes = localStorage.getItem('ft_independent_eyes') === 'true';
 
+    /**
+     * Tracking mode:
+     *  'imitate' — avatar mirrors user's expressions (default)
+     *  'follow'  — avatar watches/follows the user's face position
+     */
+    let _mode = localStorage.getItem('ft_mode') || 'imitate';
+
+    // ── Follow-mode gaze state (replicates VRGazeController natural behaviors) ──
+    let _followGazeX = 0;
+    let _followGazeY = 0;
+    let _followSaccadeTimer = 0;
+    let _followSaccadeX = 0;
+    let _followSaccadeY = 0;
+    let _followNextSaccade = 0.3 + Math.random() * 0.5;
+    let _followPrevX = 0;
+    let _followPrevY = 0;
+    /** Normalized face center from MediaPipe landmarks ({x, y} in 0..1 range). */
+    let _faceCenterNorm = { x: 0.5, y: 0.5 };
+
     // ── Helpers ─────────────────────────────────────────────────────────
 
     function _isMobile() {
@@ -466,11 +486,22 @@
                         _dispatchEvent('facetracker-face-found');
                     }
                     _faceDetected = true;
-                    _currentBlendShapes = _mapARKitToVRM(results.faceBlendshapes[0].categories);
+
+                    if (_mode === 'imitate') {
+                        _currentBlendShapes = _mapARKitToVRM(results.faceBlendshapes[0].categories);
+                    }
 
                     // Extract head rotation from transformation matrix
                     if (results.facialTransformationMatrixes && results.facialTransformationMatrixes.length > 0) {
                         _currentHeadRotation = _extractHeadRotation(results.facialTransformationMatrixes[0].data);
+                    }
+
+                    // Extract face center for Follow mode (nose tip = landmark 1)
+                    if (results.faceLandmarks && results.faceLandmarks.length > 0) {
+                        const nose = results.faceLandmarks[0][1]; // nose tip
+                        if (nose) {
+                            _faceCenterNorm = { x: nose.x, y: nose.y };
+                        }
                     }
                 } else {
                     if (_faceDetected) {
@@ -518,75 +549,166 @@
     function _applyLoop() {
         if (!_active) return;
 
-        const em = _getExpressionManager();
-        if (em && _faceDetected) {
-            // Apply smoothed blend shapes
-            for (const [name, targetValue] of Object.entries(_currentBlendShapes)) {
-                let smoothed;
-                const isBlink = name === 'blink';
-                const isIndivBlink = name === 'blinkLeft' || name === 'blinkRight';
-
-                // ── Blink mode routing ────────────────────────────
-                //
-                // _independentEyes OFF (default, VRoid Hub style):
-                //   → Apply combined 'blink', skip blinkLeft/blinkRight
-                //
-                // _independentEyes ON (winking mode):
-                //   → Apply blinkLeft + blinkRight, skip combined 'blink'
-                if (!_independentEyes && isIndivBlink) continue;
-                if (_independentEyes && isBlink) continue;
-
-                if (isBlink || isIndivBlink) {
-                    // ── KalidoKit rigFace temporal lerp ───────────
-                    //
-                    // lerp(newClosure, currentVRMValue, 0.5)
-                    //
-                    // Each frame the VRM value moves 50% toward target:
-                    //   close: 0→0.5→0.75→0.87→0.94→~1
-                    //   open:  1→0.5→0.25→0.12→0.06→~0
-                    //
-                    // Eyes NEVER stay stuck — they always recover to open.
-                    let currentVRM = 0;
-                    try {
-                        currentVRM = em.getValue(name) || 0;
-                    } catch (_) {}
-                    smoothed = _lerp(targetValue, currentVRM, 0.5);
-                    _smoothedBlendShapes[name] = smoothed;
-                } else {
-                    // Standard smoothing for all other expressions
-                    const prev = _smoothedBlendShapes[name] || 0;
-                    smoothed = prev + (targetValue - prev) * BLEND_SHAPE_SMOOTHING;
-                    _smoothedBlendShapes[name] = smoothed;
-                }
-
-                // Only apply if above noise threshold
-                if (smoothed > BLEND_SHAPE_EPSILON || (_smoothedBlendShapes[name] || 0) > BLEND_SHAPE_EPSILON) {
-                    try {
-                        em.setValue(name, smoothed);
-                    } catch (_) {
-                        // Expression may not exist on this model — ignore
-                    }
-                }
-            }
-
-            // Smooth and apply head rotation to ProceduralAnimator
-            _smoothedHeadRotation.yaw +=
-                (_currentHeadRotation.yaw - _smoothedHeadRotation.yaw) * HEAD_ROTATION_SMOOTHING;
-            _smoothedHeadRotation.pitch +=
-                (_currentHeadRotation.pitch - _smoothedHeadRotation.pitch) * HEAD_ROTATION_SMOOTHING;
-            _smoothedHeadRotation.roll +=
-                (_currentHeadRotation.roll - _smoothedHeadRotation.roll) * HEAD_ROTATION_SMOOTHING;
-
-            if (global.NEXUS_PROCEDURAL_ANIMATOR?.setFaceTrackingHead) {
-                global.NEXUS_PROCEDURAL_ANIMATOR.setFaceTrackingHead(
-                    _smoothedHeadRotation.yaw,
-                    _smoothedHeadRotation.pitch,
-                    _smoothedHeadRotation.roll
-                );
-            }
+        if (_mode === 'follow') {
+            _applyFollowMode();
+        } else {
+            _applyImitateMode();
         }
 
         _applyRafId = requestAnimationFrame(_applyLoop);
+    }
+
+    // ── Imitate Mode ─────────────────────────────────────────────────
+    // Avatar mirrors user's facial expressions (default).
+
+    function _applyImitateMode() {
+        const em = _getExpressionManager();
+        if (!em || !_faceDetected) return;
+
+        // Apply smoothed blend shapes
+        for (const [name, targetValue] of Object.entries(_currentBlendShapes)) {
+            let smoothed;
+            const isBlink = name === 'blink';
+            const isIndivBlink = name === 'blinkLeft' || name === 'blinkRight';
+
+            // Blink mode routing: synced vs independent
+            if (!_independentEyes && isIndivBlink) continue;
+            if (_independentEyes && isBlink) continue;
+
+            if (isBlink || isIndivBlink) {
+                // KalidoKit temporal lerp: lerp(target, currentVRM, 0.5)
+                let currentVRM = 0;
+                try {
+                    currentVRM = em.getValue(name) || 0;
+                } catch (_) {}
+                smoothed = _lerp(targetValue, currentVRM, 0.5);
+                _smoothedBlendShapes[name] = smoothed;
+            } else {
+                const prev = _smoothedBlendShapes[name] || 0;
+                smoothed = prev + (targetValue - prev) * BLEND_SHAPE_SMOOTHING;
+                _smoothedBlendShapes[name] = smoothed;
+            }
+
+            if (smoothed > BLEND_SHAPE_EPSILON || (_smoothedBlendShapes[name] || 0) > BLEND_SHAPE_EPSILON) {
+                try {
+                    em.setValue(name, smoothed);
+                } catch (_) {}
+            }
+        }
+
+        // Apply head rotation from face tracking
+        _smoothedHeadRotation.yaw += (_currentHeadRotation.yaw - _smoothedHeadRotation.yaw) * HEAD_ROTATION_SMOOTHING;
+        _smoothedHeadRotation.pitch +=
+            (_currentHeadRotation.pitch - _smoothedHeadRotation.pitch) * HEAD_ROTATION_SMOOTHING;
+        _smoothedHeadRotation.roll +=
+            (_currentHeadRotation.roll - _smoothedHeadRotation.roll) * HEAD_ROTATION_SMOOTHING;
+
+        if (global.NEXUS_PROCEDURAL_ANIMATOR?.setFaceTrackingHead) {
+            global.NEXUS_PROCEDURAL_ANIMATOR.setFaceTrackingHead(
+                _smoothedHeadRotation.yaw,
+                _smoothedHeadRotation.pitch,
+                _smoothedHeadRotation.roll
+            );
+        }
+    }
+
+    // ── Follow Mode ──────────────────────────────────────────────────
+    //
+    // Avatar watches the user.  Natural gaze behaviors ported from
+    // VRGazeController (VR follow-me eyes, AAA NPC gaze patterns):
+    //
+    //   - Face center (nose tip) → normalized screen coords → gaze target
+    //   - Dead-zone: eyes move for small offsets, head only for large
+    //   - Micro-saccades: tiny random eye jitter (avoids dead stare)
+    //   - Blink-on-shift: natural blink when gaze jumps significantly
+    //   - Exponential damping: smooth, natural head inertia
+    //
+    // Additive & non-destructive:
+    //   - BehaviorEngine expressions + auto-blink keep running
+    //   - Only gaze override is set (head direction + eye leading)
+    //   - Webcam is same MediaPipe pipeline, just using face center not expressions
+
+    /** Dead-zone radius in normalized coords.  Eyes handle small offsets;
+     *  head only kicks in beyond this (mimics natural human behavior). */
+    const FOLLOW_DEAD_ZONE = 0.15;
+
+    /** Exponential damping speed for head movement (higher = faster tracking). */
+    const FOLLOW_DAMP_SPEED = 4.0;
+
+    /** Gaze shift magnitude that triggers a natural blink. */
+    const FOLLOW_BLINK_SHIFT = 0.35;
+
+    function _applyFollowMode() {
+        if (!_faceDetected) return;
+
+        const animator = global.NEXUS_PROCEDURAL_ANIMATOR;
+        if (!animator) return;
+
+        // Assume ~16ms per frame; use actual dt when available
+        const dt = 1 / 60;
+
+        // ── 1. Face position → gaze target (normalized -1..1) ─────────
+        //
+        // _faceCenterNorm is the nose tip in webcam UV space (0..1).
+        // Webcam is mirrored: face at left of frame means user is to the RIGHT
+        // of the screen, so avatar should look right (+X).
+        //
+        // Mapping:
+        //   face.x=0 (right of mirrored webcam) → gazeX=+1 (avatar looks right)
+        //   face.x=1 (left of mirrored webcam)  → gazeX=-1 (avatar looks left)
+        //   face.y=0 (top of frame)              → gazeY=+1 (avatar looks up)
+        //   face.y=1 (bottom of frame)           → gazeY=-1 (avatar looks down)
+        const rawX = _clamp(-((_faceCenterNorm.x - 0.5) * 2), -1, 1);
+        const rawY = _clamp(-((_faceCenterNorm.y - 0.5) * 2), -1, 1);
+
+        // ── 2. Dead-zone: eyes first, head for larger offsets ─────────
+        let headX = rawX;
+        let headY = rawY;
+        if (Math.abs(rawX) < FOLLOW_DEAD_ZONE) {
+            headX = 0;
+        } else {
+            headX = (Math.sign(rawX) * (Math.abs(rawX) - FOLLOW_DEAD_ZONE)) / (1 - FOLLOW_DEAD_ZONE);
+        }
+        if (Math.abs(rawY) < FOLLOW_DEAD_ZONE) {
+            headY = 0;
+        } else {
+            headY = (Math.sign(rawY) * (Math.abs(rawY) - FOLLOW_DEAD_ZONE)) / (1 - FOLLOW_DEAD_ZONE);
+        }
+
+        // ── 3. Smooth damping (head has inertia) ─────────────────────
+        const t = 1 - Math.exp(-FOLLOW_DAMP_SPEED * dt);
+        _followGazeX += (headX - _followGazeX) * t;
+        _followGazeY += (headY - _followGazeY) * t;
+
+        // ── 4. Micro-saccades (tiny random eye jitter) ───────────────
+        _followSaccadeTimer += dt;
+        if (_followSaccadeTimer >= _followNextSaccade) {
+            _followSaccadeTimer = 0;
+            _followNextSaccade = 0.2 + Math.random() * 0.6;
+            _followSaccadeX = (Math.random() - 0.5) * 0.03;
+            _followSaccadeY = (Math.random() - 0.5) * 0.02;
+        }
+
+        // ── 5. Blink on large gaze shifts ────────────────────────────
+        const shift = Math.abs(rawX - _followPrevX) + Math.abs(rawY - _followPrevY);
+        if (shift > FOLLOW_BLINK_SHIFT) {
+            const loader = _getVRMLoader();
+            if (loader?.blink) loader.blink();
+        }
+        _followPrevX = rawX;
+        _followPrevY = rawY;
+
+        // ── 6. Feed head direction via gaze override ─────────────────
+        if (animator.setGazeOverride) {
+            animator.setGazeOverride({ x: _followGazeX, y: _followGazeY });
+        }
+
+        // ── 7. Eye leading (eyes track full target, ahead of head) ───
+        const behavior = global.NEXUS_BEHAVIOR;
+        if (behavior) {
+            behavior.gazeTargetYaw = _clamp(rawX + _followSaccadeX, -1, 1);
+            behavior.gazeTargetPitch = _clamp(rawY + _followSaccadeY, -1, 1);
+        }
     }
 
     function _startApplyLoop() {
@@ -710,11 +832,16 @@
             }
             _dispatchEvent('facetracker-model-ready');
 
-            // Step 3: Disable AI expressions + mouse/touch head follow
-            _setExpressionOverride(true);
-            if (global.NEXUS_PROCEDURAL_ANIMATOR?.setFaceTrackingActive) {
-                global.NEXUS_PROCEDURAL_ANIMATOR.setFaceTrackingActive(true);
+            // Step 3: Configure mode-specific overrides
+            if (_mode === 'imitate') {
+                // Imitate: take over expressions + head rotation
+                _setExpressionOverride(true);
+                if (global.NEXUS_PROCEDURAL_ANIMATOR?.setFaceTrackingActive) {
+                    global.NEXUS_PROCEDURAL_ANIMATOR.setFaceTrackingActive(true);
+                }
             }
+            // Follow: BehaviorEngine + auto-blink + LipSync stay active.
+            // We only feed gaze override (additive, non-destructive).
 
             // Step 4: Set quality floor to avoid oscillation during tracking
             if (global.NEXUS_VIEWER?.perfMonitor?.setMinQualityLevel) {
@@ -769,24 +896,34 @@
 
         _cleanup();
 
-        // Release head rotation control + re-enable mouse/touch
-        if (global.NEXUS_PROCEDURAL_ANIMATOR?.setFaceTrackingHead) {
-            global.NEXUS_PROCEDURAL_ANIMATOR.setFaceTrackingHead(null);
-        }
-        if (global.NEXUS_PROCEDURAL_ANIMATOR?.setFaceTrackingActive) {
-            global.NEXUS_PROCEDURAL_ANIMATOR.setFaceTrackingActive(false);
+        if (_mode === 'imitate') {
+            // Imitate: release head rotation + re-enable mouse/touch + fade expressions
+            if (global.NEXUS_PROCEDURAL_ANIMATOR?.setFaceTrackingHead) {
+                global.NEXUS_PROCEDURAL_ANIMATOR.setFaceTrackingHead(null);
+            }
+            if (global.NEXUS_PROCEDURAL_ANIMATOR?.setFaceTrackingActive) {
+                global.NEXUS_PROCEDURAL_ANIMATOR.setFaceTrackingActive(false);
+            }
+
+            _fadeOutExpressions(FADE_OUT_DURATION_MS, () => {
+                _setExpressionOverride(false);
+            });
+        } else {
+            // Follow: release gaze override → mouse/touch takes over again
+            if (global.NEXUS_PROCEDURAL_ANIMATOR?.setGazeOverride) {
+                global.NEXUS_PROCEDURAL_ANIMATOR.setGazeOverride(null);
+            }
+            // Reset follow state
+            _followGazeX = 0;
+            _followGazeY = 0;
+            _followPrevX = 0;
+            _followPrevY = 0;
         }
 
         // Remove quality floor
         if (global.NEXUS_VIEWER?.perfMonitor?.setMinQualityLevel) {
             global.NEXUS_VIEWER.perfMonitor.setMinQualityLevel(0);
         }
-
-        // Smooth fade-out of expressions before handing back to AI
-        _fadeOutExpressions(FADE_OUT_DURATION_MS, () => {
-            // Re-enable AI-driven expressions after fade completes
-            _setExpressionOverride(false);
-        });
 
         // Zoom back to full body
         if (global.NEXUS_CAMERA_PRESETS?.transitionToFullBody) {
@@ -900,11 +1037,33 @@
         get independentEyes() {
             return _independentEyes;
         },
+        /**
+         * Set tracking mode.
+         * @param {'imitate'|'follow'} mode
+         *   'imitate' — avatar mirrors user's expressions (default)
+         *   'follow'  — avatar watches and follows the user
+         *
+         * Can be changed while tracking is stopped. If changed while active,
+         * you must stop() + start() for the new mode to take full effect
+         * (because start/stop configure different override paths).
+         */
+        setMode(mode) {
+            if (mode !== 'imitate' && mode !== 'follow') {
+                console.warn(`[FaceTracker] Unknown mode '${mode}', using 'imitate'`);
+                mode = 'imitate';
+            }
+            _mode = mode;
+            console.log(`[FaceTracker] Mode set to '${mode}'`);
+        },
+        get mode() {
+            return _mode;
+        },
         getDebugInfo() {
             return {
                 active: _active,
                 initializing: _initializing,
                 faceDetected: _faceDetected,
+                mode: _mode,
                 independentEyes: _independentEyes,
                 videoSize: _videoEl ? `${_videoEl.videoWidth}x${_videoEl.videoHeight}` : null,
                 blendShapeCount: Object.keys(_smoothedBlendShapes).length,
