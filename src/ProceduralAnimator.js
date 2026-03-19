@@ -59,6 +59,10 @@
     // Gaze override: when non-null, head bone ignores mouse/touch and uses these values
     let gazeOverride = null; // { x: number, y: number } | null
 
+    // Face tracking: when active, mouse/touch input is ignored and head uses webcam rotation
+    let faceTrackingActive = false;
+    let faceTrackingHead = null; // { yaw, pitch, roll } or null
+
     // Rest pose cache
     const rest = new Map(); // bone.uuid -> { pos: Vector3, quat: Quaternion }
 
@@ -83,7 +87,7 @@
     function ensureInput() {
         if (inputInit) return;
         window.addEventListener('mousemove', (e) => {
-            if (gazeOverride) return; // state override active, ignore pointer
+            if (gazeOverride || faceTrackingActive) return; // skip during gaze override or face tracking
             mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
         });
@@ -91,7 +95,7 @@
         window.addEventListener(
             'touchmove',
             (e) => {
-                if (gazeOverride) return;
+                if (gazeOverride || faceTrackingActive) return;
                 var t = e.touches[0];
                 if (!t) return;
                 var el = document.elementFromPoint(t.clientX, t.clientY);
@@ -109,6 +113,29 @@
         if (coords) {
             mouse.x = coords.x;
             mouse.y = coords.y;
+        }
+    }
+
+    /**
+     * Enable/disable face tracking mode.
+     * When active, mouse/touch input is ignored for head rotation.
+     */
+    function setFaceTrackingActive(active) {
+        faceTrackingActive = !!active;
+    }
+
+    /**
+     * Set head rotation from face tracking webcam data.
+     * Pass null to release head back to mouse follow.
+     * @param {number|null} yaw
+     * @param {number} [pitch]
+     * @param {number} [roll]
+     */
+    function setFaceTrackingHead(yaw, pitch, roll) {
+        if (yaw === null || yaw === undefined) {
+            faceTrackingHead = null;
+        } else {
+            faceTrackingHead = { yaw, pitch: pitch || 0, roll: roll || 0 };
         }
     }
 
@@ -542,17 +569,34 @@
             applyOffsetEuler(bones.chest, new THREE.Euler(breath2, 0, 0));
         }
 
-        // Head look (mouse)
+        // Head look (face tracking OR mouse fallback)
         if (bones.head) {
             var hl = idleP.headLook;
-            var yawT = THREE.MathUtils.clamp(mouse.x * hl.yawScale, -hl.yawClamp, hl.yawClamp);
-            var pitchT = THREE.MathUtils.clamp(mouse.y * hl.pitchScale, -hl.pitchClamp, hl.pitchClamp);
+            var ud = (bones.head.userData.__nexus_proc ||= { yaw: 0, pitch: 0, roll: 0 });
 
-            var ud = (bones.head.userData.__nexus_proc ||= { yaw: 0, pitch: 0 });
-            ud.yaw = damp(ud.yaw, yawT, hl.dampLambda, dtSec || 0.016);
-            ud.pitch = damp(ud.pitch, pitchT, hl.dampLambda, dtSec || 0.016);
+            if (faceTrackingHead) {
+                // Face tracking active — use webcam head rotation directly
+                // Negate yaw for mirror effect (webcam is mirrored)
+                var ftYaw = THREE.MathUtils.clamp(-faceTrackingHead.yaw, -hl.yawClamp, hl.yawClamp);
+                var ftPitch = THREE.MathUtils.clamp(faceTrackingHead.pitch, -hl.pitchClamp, hl.pitchClamp);
+                var ftRoll = THREE.MathUtils.clamp(faceTrackingHead.roll, -0.35, 0.35);
 
-            applyOffsetEuler(bones.head, new THREE.Euler(ud.pitch, ud.yaw, 0));
+                ud.yaw = damp(ud.yaw, ftYaw, hl.dampLambda, dtSec || 0.016);
+                ud.pitch = damp(ud.pitch, ftPitch, hl.dampLambda, dtSec || 0.016);
+                ud.roll = damp(ud.roll || 0, ftRoll, hl.dampLambda, dtSec || 0.016);
+
+                applyOffsetEuler(bones.head, new THREE.Euler(ud.pitch, ud.yaw, ud.roll));
+            } else {
+                // Mouse/touch follow (default behavior)
+                var yawT = THREE.MathUtils.clamp(mouse.x * hl.yawScale, -hl.yawClamp, hl.yawClamp);
+                var pitchT = THREE.MathUtils.clamp(mouse.y * hl.pitchScale, -hl.pitchClamp, hl.pitchClamp);
+
+                ud.yaw = damp(ud.yaw, yawT, hl.dampLambda, dtSec || 0.016);
+                ud.pitch = damp(ud.pitch, pitchT, hl.dampLambda, dtSec || 0.016);
+                ud.roll = damp(ud.roll || 0, 0, hl.dampLambda, dtSec || 0.016);
+
+                applyOffsetEuler(bones.head, new THREE.Euler(ud.pitch, ud.yaw, ud.roll));
+            }
         }
 
         // ---------------------------
@@ -645,6 +689,8 @@
         setSpeed,
         getSpeed,
         setGazeOverride,
+        setFaceTrackingActive,
+        setFaceTrackingHead,
         captureRestPose,
     };
 })();

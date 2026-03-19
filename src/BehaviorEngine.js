@@ -67,6 +67,9 @@
 
         // Initialized flag
         _initialized: false,
+
+        // Face tracking override — when true, skip expression/gaze writes
+        _expressionOverride: false,
     };
 
     // =========================================================================
@@ -178,8 +181,10 @@
                 break;
         }
 
-        // Smooth gaze interpolation (runs in all states)
-        _updateGaze(dt);
+        // Smooth gaze interpolation (skip when face tracking controls expressions)
+        if (!engine._expressionOverride) {
+            _updateGaze(dt);
+        }
 
         // Update LipSyncEngine if available
         if (global.NEXUS_LIP_SYNC) {
@@ -476,6 +481,7 @@
               };
 
     function _setVRMExpression(name, value) {
+        if (engine._expressionOverride) return; // face tracking owns expressions
         const vrmLoader = _getVRMLoader();
         if (!vrmLoader) return;
         try {
@@ -511,6 +517,11 @@
         onSpeechEnd: onSpeechEnd,
         onListeningStart: onListeningStart,
         onListeningEnd: onListeningEnd,
+
+        // Face tracking override — when true, BehaviorEngine skips expression writes
+        setExpressionOverride: function (active) {
+            engine._expressionOverride = !!active;
+        },
     };
 
     console.log('[BehaviorEngine] Initialized');
