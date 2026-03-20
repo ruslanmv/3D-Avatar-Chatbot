@@ -101,7 +101,11 @@
       "src/AvatarAliveness.js",
       "src/FaceTracker.js",
       "src/FaceTrackButton.js",
-      "src/gltf-viewer/CameraPresets.js"
+      "src/gltf-viewer/CameraPresets.js",
+      "src/gltf-viewer/VRIntimacySystem.js",
+      "src/gltf-viewer/VRIntimacyProfiles.js",
+      "src/gltf-viewer/VRProximityTracker.js",
+      "src/gltf-viewer/VRContactAnchors.js"
     ],
     "coverageThreshold": {
       "global": {

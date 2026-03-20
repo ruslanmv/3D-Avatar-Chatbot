@@ -283,6 +283,10 @@ export class AvatarManager {
             // so rotate VRM models Math.PI to face the camera.
             root.rotation.set(0, isVRM ? Math.PI : 0, 0);
 
+            // Store VRM flag on root for downstream systems (VRIntimacySystem
+            // facing calculation needs to know whether to add Math.PI offset).
+            root.userData.isVRM = isVRM;
+
             // Optimize VRM if utilities available
             if (vrm && window.THREE_VRM?.VRMUtils) {
                 try {
