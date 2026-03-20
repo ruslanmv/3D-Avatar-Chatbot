@@ -110,6 +110,14 @@ export class VRIntimacySystem {
         this._updateDistanceBand(snapshot, dt);
         this._updateBehaviorBridge();
         this._updateHandContact(dt);
+
+        // ── LOCOMOTION_HOOK: Feed proximity data to locomotion system ──
+        // Non-destructive: if NEXUS_LOCOMOTION doesn't exist, this is a no-op.
+        // To remove: delete this block (5 lines).
+        if (window.NEXUS_LOCOMOTION?.setProximityData) {
+            const rootPos = this.avatarRoot.getWorldPosition(this._tmpA);
+            window.NEXUS_LOCOMOTION.setProximityData(snapshot.distance, snapshot.userHead, rootPos, true);
+        }
     }
 
     endAllContacts() {
@@ -148,9 +156,17 @@ export class VRIntimacySystem {
 
         // If puppet system is actively moving the avatar root, don't fight it
         const puppetMode = this.puppetInteraction?.state?.mode;
-        if (puppetMode === 'rootTranslate' || puppetMode === 'rootDualTransform') {
+        if (
+            puppetMode === 'rootTranslate' ||
+            puppetMode === 'rootDualTransform' ||
+            puppetMode === 'limbDualTransform'
+        ) {
             return;
         }
+
+        // ── LOCOMOTION_HOOK: Locomotion handles its own facing during walk ──
+        // To remove: delete these 2 lines.
+        if (window.NEXUS_LOCOMOTION?.isWalking?.()) return;
 
         const rootPos = this.avatarRoot.getWorldPosition(this._tmpA);
         const toUser = snapshot.userHead.clone().sub(rootPos);
@@ -169,9 +185,18 @@ export class VRIntimacySystem {
         if (this.currentProfile.rootFollow <= 0) return;
 
         const puppetMode = this.puppetInteraction?.state?.mode;
-        if (puppetMode === 'rootTranslate' || puppetMode === 'rootDualTransform') {
+        if (
+            puppetMode === 'rootTranslate' ||
+            puppetMode === 'rootDualTransform' ||
+            puppetMode === 'limbDualTransform'
+        ) {
             return;
         }
+
+        // ── LOCOMOTION_HOOK: Skip micro-adjustments when locomotion is actively walking ──
+        // The locomotion system handles root movement during walk; avoid fighting it.
+        // To remove: delete these 2 lines.
+        if (window.NEXUS_LOCOMOTION?.isWalking?.()) return;
 
         const rootPos = this.avatarRoot.getWorldPosition(this._tmpA);
         const userPos = snapshot.userHead.clone();

@@ -86,6 +86,35 @@ non-destructive** — all AI-driven behaviors remain active:
 normalization → natural gaze behaviors → `setGazeOverride({x, y})` +
 `BehaviorEngine.gazeTargetYaw/Pitch`.
 
+#### Follow Mode — Conversation Continuity
+
+Follow mode maintains eye contact throughout the entire conversation cycle.
+BehaviorEngine's state machine still runs normally (LISTENING → THINKING →
+SPEAKING → IDLE), but when Follow mode is active, it yields gaze control:
+
+| State     | Without Follow (default)            | With Follow active                     |
+| --------- | ----------------------------------- | -------------------------------------- |
+| LISTENING | Head locked to center, periodic nod | **Keeps watching user**, nod skipped   |
+| THINKING  | Head locked, eyes drift up-left     | **Keeps watching user**, drift skipped |
+| SPEAKING  | Head locked to center               | **Keeps watching user**                |
+| IDLE      | Gaze released, mouse/touch resumes  | FaceTracker continues driving gaze     |
+
+What **still works** during Follow mode conversations:
+
+- Animation modes (`idle`, `thinking`, `talk`) — body animations play normally
+- Emotions (`happy`, `surprised`, etc.) — facial expressions applied as usual
+- Lip-sync — mouth shapes driven by TTS audio
+- Auto-blink — periodic blinking continues
+- Micro-expressions — subtle facial ticks in MICRO_IDLE
+
+What **yields to Follow mode** (via `_isFollowGazeActive()` guard):
+
+- `setGazeOverride()` calls in `_onEnterState()` — not locked to `{0, 0}`
+- `gazeTargetYaw/Pitch` writes — not overwritten by state-specific patterns
+- `_updateGaze()` eye expressions — FaceTracker sets `lookLeft/Right/Up/Down`
+- `_updateThinking()` gaze drift — "look up-left" pattern skipped
+- `_updateListening()` nod animation — gaze pitch nod skipped
+
 #### Follow Mode — Natural Gaze Behaviors
 
 Ported from `VRGazeController.js` (VR follow-me eyes, inspired by AAA NPC gaze
@@ -128,6 +157,55 @@ The Face Tracking section in Settings provides:
 2. **Independent Eye Blink** — checkbox (shown only in Imitate mode)
     - Persisted in `localStorage` key `ft_independent_eyes` (values: `'true'` |
       `'false'`)
+
+---
+
+## VR Conversational Gaze
+
+In VR, `VRGazeController` makes the avatar follow the user's HMD position. The
+VR settings panel (Row 3) provides a 3-state **GAZE** toggle:
+
+| Setting        | `followGaze` value | Head follows HMD? | Eyes lead during conversation? |
+| -------------- | ------------------ | ----------------- | ------------------------------ |
+| **GAZE: OFF**  | `false`            | No                | No                             |
+| **GAZE: ON**   | `true`             | Yes               | No (thinking drift plays)      |
+| **GAZE: LOCK** | `'lock'`           | Yes               | Yes (full conversational gaze) |
+
+Default: **LOCK** (best conversational experience out of the box).
+
+### How LOCK works
+
+When `followGaze === 'lock'`, `VRGazeController.conversationalGaze` is set to
+`true`. BehaviorEngine's `_isFollowGazeActive()` detects this and yields gaze
+control during LISTENING/THINKING/SPEAKING — the same guard mechanism used by
+desktop Follow mode.
+
+```
+Frame execution order in VR:
+
+  1. ProceduralAnimator.update()
+     └── BehaviorEngine.update()
+         ├── _isFollowGazeActive() → true (VR + conversationalGaze)
+         ├── _updateThinking() → early return (gaze drift skipped)
+         └── _updateGaze() → skipped (eye expressions not overwritten)
+
+  2. vrGazeController.update()
+     ├── setGazeOverride({x, y})           ← head follows user ✓
+     └── behavior.gazeTargetYaw/Pitch = …  ← eyes lead toward user ✓
+```
+
+Without LOCK (GAZE: ON), BehaviorEngine's `_updateThinking()` overwrites
+`gazeTargetYaw/Pitch` with its "look up-left" drift every frame, which fights
+VRGazeController's eye-leading values. The head still follows (VRGazeController
+wins the last-write on `setGazeOverride`), but the eyes wander during thinking.
+
+### What still works during LOCK
+
+- Animation modes (`idle`, `thinking`, `talk`) — body animations play normally
+- Emotions — facial expressions applied as usual
+- Lip-sync — mouth shapes driven by TTS audio
+- Auto-blink — periodic blinking continues
+- Micro-expressions — subtle facial ticks in MICRO_IDLE
 
 ---
 

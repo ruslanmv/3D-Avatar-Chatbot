@@ -22,11 +22,12 @@ import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
 // =========================================================================
 
 const HANDLE_COLORS = {
-    hand: 0x40e0ff,
-    head: 0xff66cc,
-    foot: 0x66ffaa,
-    root: 0x7cff7c,
-    hover: 0xffff66,
+    hand: 0x40e0ff, // cyan — primary grab
+    head: 0xff66cc, // pink — head
+    foot: 0x66ffaa, // green — feet
+    root: 0x7cff7c, // bright green — hips/root
+    limb: 0xffaa40, // orange — mid-limb (elbows, knees, shoulders, thighs)
+    hover: 0xffff66, // yellow — hover highlight
     active: 0xffaa00,
 };
 
@@ -34,13 +35,36 @@ const HANDLE_COLORS = {
 // HANDLE DEFINITIONS (bone key → type + radius)
 // =========================================================================
 
+// Industry-standard grab handle set (matches VaM FreeControllerV3 layout).
+// 14 control points covering all major articulable body regions.
+// Types: 'hand'|'head'|'foot' → IK drag, 'limb' → IK drag (intermediate),
+//        'root' → root translate, 'torso' → IK spine drag
+// Visual radius = small & subtle; touchRadius = physical grab zone (larger).
+// This matches VaM's approach: small visual dot, generous touch zone.
 const HANDLE_DEFS = [
-    { boneKey: 'leftHand', type: 'hand', radius: 0.05 },
-    { boneKey: 'rightHand', type: 'hand', radius: 0.05 },
-    { boneKey: 'head', type: 'head', radius: 0.06 },
-    { boneKey: 'leftFoot', type: 'foot', radius: 0.045 },
-    { boneKey: 'rightFoot', type: 'foot', radius: 0.045 },
-    { boneKey: 'hips', type: 'root', radius: 0.085 },
+    // ── Extremities (primary IK targets) ──
+    { boneKey: 'leftHand', type: 'hand', radius: 0.025, touchRadius: 0.06 },
+    { boneKey: 'rightHand', type: 'hand', radius: 0.025, touchRadius: 0.06 },
+    { boneKey: 'head', type: 'head', radius: 0.03, touchRadius: 0.07 },
+    { boneKey: 'leftFoot', type: 'foot', radius: 0.022, touchRadius: 0.055 },
+    { boneKey: 'rightFoot', type: 'foot', radius: 0.022, touchRadius: 0.055 },
+
+    // ── Root ──
+    { boneKey: 'hips', type: 'root', radius: 0.04, touchRadius: 0.09 },
+
+    // ── Mid-limb handles (elbows / knees — pole vector control) ──
+    { boneKey: 'leftLowerArm', type: 'limb', radius: 0.02, touchRadius: 0.05 },
+    { boneKey: 'rightLowerArm', type: 'limb', radius: 0.02, touchRadius: 0.05 },
+    { boneKey: 'leftLowerLeg', type: 'limb', radius: 0.02, touchRadius: 0.05 },
+    { boneKey: 'rightLowerLeg', type: 'limb', radius: 0.02, touchRadius: 0.05 },
+
+    // ── Shoulders (upper body control) ──
+    { boneKey: 'leftUpperArm', type: 'limb', radius: 0.02, touchRadius: 0.05 },
+    { boneKey: 'rightUpperArm', type: 'limb', radius: 0.02, touchRadius: 0.05 },
+
+    // ── Upper legs (hip posing — sitting, spreading, kneeling) ──
+    { boneKey: 'leftUpperLeg', type: 'limb', radius: 0.022, touchRadius: 0.055 },
+    { boneKey: 'rightUpperLeg', type: 'limb', radius: 0.022, touchRadius: 0.055 },
 ];
 
 // =========================================================================
@@ -76,7 +100,7 @@ export class VRPuppetInteraction {
 
         // Interaction state machine
         this.state = {
-            mode: 'idle', // idle | ikDrag | boneRotate | rootTranslate | rootDualTransform
+            mode: 'idle', // idle | ikDrag | boneRotate | rootTranslate | rootDualTransform | limbDualTransform
             primaryHand: null,
             secondaryHand: null,
             targetKey: null,
@@ -110,6 +134,11 @@ export class VRPuppetInteraction {
 
         // Proximity threshold for hover-only mode (meters)
         this._proximityThreshold = 0.35;
+
+        // Grab detection mode: 'touch' (physical proximity) or 'pointer' (raycast)
+        // 'touch' = controller must physically overlap the handle (AAA VR standard)
+        // 'pointer' = aim controller at handle from distance (optional, desktop-like)
+        this._grabMode = 'touch';
     }
 
     // =========================================================================
@@ -129,7 +158,7 @@ export class VRPuppetInteraction {
         }
 
         for (const def of HANDLE_DEFS) {
-            this._createHandle(def.boneKey, def.type, def.radius);
+            this._createHandle(def.boneKey, def.type, def.radius, def.touchRadius);
         }
 
         console.log(`[VRPuppetInteraction] Avatar set, ${this.handles.size} handles created`);
@@ -153,6 +182,17 @@ export class VRPuppetInteraction {
         }
 
         console.log(`[VRPuppetInteraction] ${this.enabled ? 'Enabled' : 'Disabled'}`);
+    }
+
+    /**
+     * Set grab detection mode.
+     * @param {'touch'|'pointer'} mode
+     *   - 'touch'   (default): controller must physically overlap handle (AAA standard)
+     *   - 'pointer': aim controller at handle from distance (optional)
+     */
+    setGrabMode(mode) {
+        this._grabMode = mode === 'pointer' ? 'pointer' : 'touch';
+        console.log(`[VRPuppetInteraction] Grab mode: ${this._grabMode}`);
     }
 
     /**
@@ -184,17 +224,17 @@ export class VRPuppetInteraction {
      * @param {string} type
      * @param {number} radius
      */
-    _createHandle(boneKey, type, radius) {
+    _createHandle(boneKey, type, radius, touchRadius) {
         const bone = this._getBone(boneKey);
         if (!bone) {
             return;
         }
 
-        const geom = new THREE.SphereGeometry(radius, 20, 20);
+        const geom = new THREE.SphereGeometry(radius, 16, 16);
         const mat = new THREE.MeshBasicMaterial({
             color: HANDLE_COLORS[type] || 0xffffff,
             transparent: true,
-            opacity: 0.6,
+            opacity: 0.3, // subtle idle state — less visual noise
             depthWrite: false,
         });
 
@@ -204,6 +244,7 @@ export class VRPuppetInteraction {
             boneKey,
             type,
             radius,
+            touchRadius: touchRadius || radius * 1.5, // grab zone > visual sphere
         };
         mesh.visible = false;
         mesh.renderOrder = 998;
@@ -253,13 +294,13 @@ export class VRPuppetInteraction {
 
         if (state === 'hover') {
             handle.material.color.setHex(HANDLE_COLORS.hover);
-            handle.material.opacity = 0.85;
+            handle.material.opacity = 0.5;
         } else if (state === 'active') {
             handle.material.color.setHex(HANDLE_COLORS.active);
-            handle.material.opacity = 1.0;
+            handle.material.opacity = 0.7;
         } else {
             handle.material.color.setHex(HANDLE_COLORS[type] || 0xffffff);
-            handle.material.opacity = 0.6;
+            handle.material.opacity = 0.3;
         }
     }
 
@@ -323,7 +364,39 @@ export class VRPuppetInteraction {
     }
 
     /**
+     * Find the nearest handle within physical touch distance of the controller.
+     * Uses each handle's touchRadius — the physical grab zone (larger than visual).
+     * AAA VR standard: controller must physically overlap the handle.
+     *
+     * @param {THREE.Object3D} controller
+     * @returns {{ object: THREE.Mesh, distance: number }|null}
+     */
+    _findTouchedHandle(controller) {
+        if (!controller) return null;
+
+        this._tmpV1.setFromMatrixPosition(controller.matrixWorld);
+
+        let closest = null;
+        let closestDistSq = Infinity;
+
+        for (const handle of this.handles.values()) {
+            if (!handle.visible) continue;
+
+            const touchR = handle.userData.touchRadius || 0.06;
+            const distSq = this._tmpV1.distanceToSquared(handle.position);
+
+            if (distSq < touchR * touchR && distSq < closestDistSq) {
+                closestDistSq = distSq;
+                closest = handle;
+            }
+        }
+
+        return closest ? { object: closest, distance: Math.sqrt(closestDistSq) } : null;
+    }
+
+    /**
      * Raycast from a controller into the visible puppet handles.
+     * Used only when grabMode is 'pointer' (optional, disabled by default).
      * @param {THREE.Object3D} controller
      * @returns {THREE.Intersection|null}
      */
@@ -339,6 +412,15 @@ export class VRPuppetInteraction {
         const objs = [...this.handles.values()].filter((h) => h.visible);
         const hits = this._raycaster.intersectObjects(objs, false);
         return hits[0] || null;
+    }
+
+    /**
+     * Detect handle using the active grab mode (touch or pointer).
+     * @param {THREE.Object3D} controller
+     * @returns {{ object: THREE.Mesh }|null}
+     */
+    _detectHandle(controller) {
+        return this._grabMode === 'pointer' ? this._raycastHandles(controller) : this._findTouchedHandle(controller);
     }
 
     // =========================================================================
@@ -357,7 +439,7 @@ export class VRPuppetInteraction {
             }
 
             const controller = this._getControllerByHand(hand);
-            const hit = this._raycastHandles(controller);
+            const hit = this._detectHandle(controller);
             const prev = this.hoveredByHand[hand];
 
             // Unhover previous
@@ -395,18 +477,35 @@ export class VRPuppetInteraction {
      * @returns {boolean}
      */
     beginGrip(hand, controller) {
-        if (!this.enabled || !this.avatarRoot) {
+        if (!this.enabled || !this.avatarRoot || !controller) {
             return false;
         }
 
-        const hit = this._raycastHandles(controller);
+        const hit = this._detectHandle(controller);
 
-        // ─── SECOND HAND JOIN: upgrade rootTranslate → rootDualTransform ───
-        if (this.state.mode === 'rootTranslate' && this.state.targetType === 'root' && !this.state.secondaryHand) {
+        // ─── SECOND HAND JOIN: upgrade any single-hand mode → dual transform ───
+        const isActiveSingleHand =
+            this.state.mode !== 'idle' &&
+            this.state.primaryHand !== null &&
+            this.state.secondaryHand === null &&
+            this.state.primaryHand !== hand;
+
+        if (isActiveSingleHand) {
+            // Stop the first-hand's single-joint interaction before switching
+            if (this.state.mode === 'ikDrag') {
+                this.poseSystem?.endIK?.();
+            }
+            if (this.state.mode === 'boneRotate') {
+                this.boneGrabber?.endGrab?.();
+            }
+
+            const wasRoot = this.state.mode === 'rootTranslate';
+
             this.state.secondaryHand = hand;
             controller.getWorldPosition(this.state.startSecondaryPos);
-            this.state.startRootPos.copy(this.state.object.position);
-            this.state.object.getWorldQuaternion(this.state.startRootQuat);
+            this.state.startRootPos.copy(this.avatarRoot.position);
+            this.avatarRoot.getWorldQuaternion(this.state.startRootQuat);
+            this.state.object = this.avatarRoot;
 
             const primary = this._getControllerByHand(this.state.primaryHand);
             primary?.getWorldPosition(this.state.startPrimaryPos);
@@ -418,7 +517,8 @@ export class VRPuppetInteraction {
 
             this.state.startVector.copy(this.state.startSecondaryPos).sub(this.state.startPrimaryPos).normalize();
 
-            this.state.mode = 'rootDualTransform';
+            // rootDualTransform when both grabbed hips; limbDualTransform otherwise
+            this.state.mode = wasRoot ? 'rootDualTransform' : 'limbDualTransform';
 
             const rootHandle = this.handles.get('hips');
             if (rootHandle) {
@@ -426,7 +526,9 @@ export class VRPuppetInteraction {
             }
 
             this._pulseHaptics(hand, 0.28, 25);
-            console.log(`[VRPuppetInteraction] Two-hand root transform activated (${hand} joined)`);
+            console.log(
+                `[VRPuppetInteraction] Two-hand ${this.state.mode} activated (${hand} joined, was ${wasRoot ? 'rootTranslate' : 'limb grab'})`
+            );
             return true;
         }
 
@@ -448,8 +550,8 @@ export class VRPuppetInteraction {
             this._setHandleState(handle, 'active');
             this._pulseHaptics(hand, 0.28, 25);
 
-            // IK drag for hand/head/foot
-            if (type === 'hand' || type === 'head' || type === 'foot') {
+            // IK drag for hand/head/foot/limb (elbows, knees, shoulders, upper legs)
+            if (type === 'hand' || type === 'head' || type === 'foot' || type === 'limb') {
                 if (this.poseSystem?.startIK?.(boneKey, controller)) {
                     this.state.mode = 'ikDrag';
                     console.log(`[VRPuppetInteraction] IK drag started: ${boneKey} (${hand})`);
@@ -493,19 +595,41 @@ export class VRPuppetInteraction {
      * @returns {boolean}
      */
     endGrip(hand) {
-        // ─── Secondary hand release: downgrade dual → single root translate ───
-        if (this.state.mode === 'rootDualTransform' && this.state.secondaryHand === hand) {
+        // ─── Secondary hand release: downgrade dual → single-hand mode ───
+        if (
+            (this.state.mode === 'rootDualTransform' || this.state.mode === 'limbDualTransform') &&
+            this.state.secondaryHand === hand
+        ) {
+            const wasLimb = this.state.mode === 'limbDualTransform';
             this.state.secondaryHand = null;
-            this.state.mode = 'rootTranslate';
 
-            // Re-anchor single-hand translate from current positions
-            const primary = this._getControllerByHand(this.state.primaryHand);
-            if (primary) {
-                primary.getWorldPosition(this.state.startPrimaryPos);
-                this.state.startRootPos.copy(this.avatarRoot.position);
+            if (wasLimb) {
+                // Limb dual → back to idle (original IK/bone context was ended)
+                const handle = this.handles.get(this.state.targetKey);
+                if (handle) {
+                    this._setHandleState(handle, 'idle');
+                }
+                const rootHandle = this.handles.get('hips');
+                if (rootHandle) {
+                    this._setHandleState(rootHandle, 'idle');
+                }
+
+                this.state.mode = 'idle';
+                this.state.primaryHand = null;
+                this.state.targetKey = null;
+                this.state.targetType = null;
+                this.state.object = null;
+                console.log('[VRPuppetInteraction] Limb dual-transform ended → idle');
+            } else {
+                // Root dual → single root translate
+                this.state.mode = 'rootTranslate';
+                const primary = this._getControllerByHand(this.state.primaryHand);
+                if (primary) {
+                    primary.getWorldPosition(this.state.startPrimaryPos);
+                    this.state.startRootPos.copy(this.avatarRoot.position);
+                }
+                console.log('[VRPuppetInteraction] Downgraded to single-hand root translate');
             }
-
-            console.log('[VRPuppetInteraction] Downgraded to single-hand root translate');
             return true;
         }
 
@@ -632,8 +756,8 @@ export class VRPuppetInteraction {
             return;
         }
 
-        // ─── ROOT DUAL TRANSFORM: two-hand translate + rotate ───
-        if (this.state.mode === 'rootDualTransform') {
+        // ─── DUAL TRANSFORM: two-hand translate + rotate (root or limb) ───
+        if (this.state.mode === 'rootDualTransform' || this.state.mode === 'limbDualTransform') {
             const c1 = this._getControllerByHand(this.state.primaryHand);
             const c2 = this._getControllerByHand(this.state.secondaryHand);
             if (!c1 || !c2 || !this.state.object) {

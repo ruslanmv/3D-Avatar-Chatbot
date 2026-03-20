@@ -752,7 +752,22 @@ export class VRControllers {
                 }
             }
 
-            // Left stick → Walk / Strafe
+            // ── ARC_POINTER_HOOK: Left thumbstick click (L3) activates teleport arc ──
+            // Meta Quest standard: left stick = locomotion/teleport.
+            // Hold L3 to show arc from left controller, release to confirm target.
+            // When arc is active, suppress smooth locomotion so user can aim.
+            // Non-destructive: if NEXUS_ARC_POINTER doesn't exist, normal behaviour.
+            // To remove: delete this block.
+            const arcPointer = window.NEXUS_ARC_POINTER;
+            const l3Btn = gp.buttons[BTN.THUMBSTICK];
+            const l3Pressed = l3Btn && l3Btn.pressed;
+            if (arcPointer) {
+                const t = performance.now() / 1000;
+                arcPointer.update(this.controller1, l3Pressed, t);
+            }
+            const arcActive = arcPointer && arcPointer.isActive();
+
+            // Left stick → Walk / Strafe (suppressed while arc is active)
             const axes = gp.axes;
             let lx = 0;
             let ly = 0;
@@ -763,7 +778,9 @@ export class VRControllers {
                 lx = axes[0];
                 ly = axes[1];
             }
-            this._applyMove(lx, ly, dt);
+            if (!arcActive) {
+                this._applyMove(lx, ly, dt);
+            }
         }
 
         // --- RIGHT CONTROLLER ---
@@ -823,6 +840,7 @@ export class VRControllers {
                 rx = axes[0];
                 ry = axes[1];
             }
+
             this._applyTurn(rx, dt);
             this._applyVertical(ry, dt);
         }
