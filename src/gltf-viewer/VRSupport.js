@@ -141,21 +141,39 @@ export class VRSupport {
                 }
             } else {
                 // Enter VR
+                // Double-check context health — the contextLost flag may not
+                // be set yet if the loss event is still queued.
+                const gl = this.renderer.getContext();
+                if (gl.isContextLost()) {
+                    this.contextLost = true;
+                    console.warn('[VR] WebGL context is lost — aborting VR entry');
+                    alert('WebGL context is lost. Please wait for it to restore or refresh the page.');
+                    return;
+                }
+
                 // Only request features supported for immersive-vr.
                 // 'plane-detection' and 'light-estimation' are AR-only and
                 // cause console warnings when requested in VR mode.
                 // 'layers' is Quest 3+ only — probe before requesting.
                 const optionalFeatures = ['local-floor', 'bounded-floor', 'hand-tracking'];
 
-                // layers API: only request if the browser/device actually advertises it
-                if (typeof XRWebGLLayer !== 'undefined') {
+                // layers API: only request when the browser *actually* supports
+                // XRWebGLBinding.prototype.createQuadLayer (the compositing entry
+                // point). Checking only for XRWebGLBinding is too broad — desktop
+                // Chrome exposes XRWebGLBinding but not the layers feature, which
+                // triggers an "Unsupported feature: layers" console warning.
+                if (
+                    typeof XRWebGLBinding !== 'undefined' &&
+                    typeof XRWebGLBinding.prototype?.createQuadLayer === 'function'
+                ) {
                     optionalFeatures.push('layers');
                 }
 
                 const sessionInit = { optionalFeatures };
 
-                // Ensure WebGL context is XR-compatible before requesting session
-                const gl = this.renderer.getContext();
+                // Ensure WebGL context is XR-compatible before requesting session.
+                // Three.js r147+ handles this internally via setSession(), so
+                // this is a safety net, not strictly required.
                 if (gl.makeXRCompatible) {
                     try {
                         await gl.makeXRCompatible();

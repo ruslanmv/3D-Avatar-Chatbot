@@ -55,10 +55,16 @@ export class PostProcessing {
 
         this._init();
 
-        // Re-initialize after WebGL context restore (old render targets are invalid)
+        // Re-initialize after WebGL context restore (old render targets are invalid).
+        // Nullify old references WITHOUT calling dispose() — the GL objects belong
+        // to the dead context and calling delete on them triggers
+        // "INVALID_OPERATION: delete: object does not belong to this context".
         this.renderer.domElement.addEventListener('webglcontextrestored', () => {
             console.log('[PostProcessing] WebGL context restored — reinitializing pipeline');
-            // Nullify old composer to avoid disposing invalid GL objects
+            this.ssaoPass = null;
+            this.bloomPass = null;
+            this.fxaaPass = null;
+            this.renderPass = null;
             this.composer = null;
             this._init();
         });

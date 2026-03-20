@@ -92,12 +92,12 @@ export class VRIntimacySystem {
         this._profileCooldown = Math.max(0, this._profileCooldown - dt);
 
         this.anchors.update();
-        const snapshot = this.proximity.update();
+        const snapshot = this.proximity.update(dt);
         if (!snapshot) return;
 
         this.anchors.clearVisualState();
 
-        const desiredProfile = resolveVRIntimacyProfile(snapshot);
+        const desiredProfile = resolveVRIntimacyProfile(snapshot, this.currentProfile?.key);
 
         if (desiredProfile.key !== this.currentProfile.key && this._profileCooldown <= 0) {
             this.currentProfile = desiredProfile;
@@ -148,6 +148,24 @@ export class VRIntimacySystem {
         if (this.currentProfile.key === 'comfortEmbrace' || this.currentProfile.key === 'closeConversation') {
             pa.setMode?.('idle');
         }
+
+        // Apply profile-specific facial expressions via VRM expression manager.
+        // These are subtle, additive expressions that increase warmth at closer distances.
+        const overrides = this.currentProfile.expressionOverride;
+        if (overrides) {
+            const viewer = window.NEXUS_VIEWER;
+            const vrm = viewer?.avatarManager?._currentVRM;
+            const em = vrm?.expressionManager;
+            if (em) {
+                try {
+                    for (const [expr, intensity] of Object.entries(overrides)) {
+                        em.setValue(expr, intensity);
+                    }
+                } catch (_) {
+                    /* expression may not exist on this model */
+                }
+            }
+        }
     }
 
     _updateFacing(snapshot, dt) {
@@ -174,7 +192,20 @@ export class VRIntimacySystem {
 
         if (toUser.lengthSq() < 1e-6) return;
 
-        const targetYaw = Math.atan2(toUser.x, toUser.z);
+        // Compute world-space yaw from avatar to user.
+        //
+        // atan2(x, z) gives the world-space angle where 0 = facing +Z.
+        //
+        // VRM avatars have root rotation.y = Math.PI (set in AvatarManager.js)
+        // because VRM spec defines forward as -Z. Without compensating for this,
+        // the slerp drives rotation from Math.PI → 0 = a 180° flip, showing
+        // the avatar's back to the user.
+        //
+        // Fix: add Math.PI for VRM so the avatar's native -Z forward points
+        // toward the user. GLB avatars (native forward = +Z) use raw atan2.
+        const worldYaw = Math.atan2(toUser.x, toUser.z);
+        const isVRM = !!this.avatarRoot.userData?.isVRM;
+        const targetYaw = isVRM ? worldYaw + Math.PI : worldYaw;
         const targetQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), targetYaw);
 
         this.avatarRoot.quaternion.slerp(targetQ, Math.min(1, dt * 2.4));
@@ -243,7 +274,15 @@ export class VRIntimacySystem {
 
         if (nearest) {
             this.anchors.setAnchorHovered(nearest.key, true);
-            this._maybePulseHaptics(hand, 18);
+
+            // Continuous haptic gradient: intensity increases as hand approaches anchor.
+            // Creates a natural "force field" feel that guides the user toward contact.
+            //   16–8cm: intensity 5  (barely perceptible awareness)
+            //    8–4cm: intensity 12 (gentle proximity feedback)
+            //     <4cm: intensity 20 (about to touch)
+            const d = nearest.distance;
+            const gradientStrength = d > 0.08 ? 5 : d > 0.04 ? 12 : 20;
+            this._maybePulseHaptics(hand, gradientStrength);
         }
 
         const gripPressed = this._isGripPressed(hand);
