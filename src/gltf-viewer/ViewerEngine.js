@@ -23,6 +23,7 @@ import { VRPuppetInteraction } from './VRPuppetInteraction.js';
 import { VRIntimacySystem } from './VRIntimacySystem.js';
 import { VRGazeController } from './VRGazeController.js';
 import { DesktopShadowEnhancer } from './DesktopShadowEnhancer.js';
+import { XRModuleRegistry } from './XRModuleRegistry.js';
 
 export class ViewerEngine {
     constructor(containerEl) {
@@ -241,6 +242,10 @@ export class ViewerEngine {
             this.modelViewerAR.checkAutoLaunchAR();
         }, 1000); // Wait for async AR support checks
 
+        // XR Module Registry — lazy-loads AR/MR modules on session start
+        // (zero boot cost, event-driven, non-destructive)
+        this.xrModules = new XRModuleRegistry(this);
+
         // Mobile Support (auto-detects and applies optimizations)
         this.mobileSupport = new MobileSupport(this.renderer, this.camera, containerEl);
 
@@ -390,29 +395,31 @@ export class ViewerEngine {
                 },
             });
 
-            // Position user closer to avatar and facing front
-            // Offset the XR reference space so user spawns at z=1.2 instead of z=2.2
+            // Raise user viewpoint slightly so eye level aligns with avatar face.
+            // VRoid avatars have head bones at ~1.35–1.45m; a +0.15m Y boost
+            // ensures the user looks at the avatar's face rather than chest,
+            // matching the "comfortable standing" offset used in AAA VR titles.
             try {
                 const baseRefSpace = this.renderer.xr.getReferenceSpace();
-                if (baseRefSpace && baseRefSpace.getOffsetReferenceSpace) {
-                    // Move user forward (negative Z) and ensure eye-level height
+                if (baseRefSpace?.getOffsetReferenceSpace) {
                     const offset = new XRRigidTransform(
-                        { x: 0, y: 0, z: 0.8, w: 1 }, // shift 0.8m forward toward avatar
+                        { x: 0, y: -0.15, z: 0, w: 1 }, // negative Y = raise viewpoint
                         { x: 0, y: 0, z: 0, w: 1 }
                     );
                     const newRefSpace = baseRefSpace.getOffsetReferenceSpace(offset);
                     this.renderer.xr.setReferenceSpace(newRefSpace);
-                    console.log('[ViewerEngine] VR reference space offset applied — user positioned closer to avatar');
+                    console.log('[ViewerEngine] VR eye-level boost applied (+0.15m)');
                 }
             } catch (e) {
                 console.warn('[ViewerEngine] Could not offset VR reference space:', e);
             }
 
-            // Ensure avatar is visible in VR (safe position/scale)
+            // Place avatar 1.0m in front of user (z=-1.0) — industry-standard
+            // conversation distance (Half-Life: Alyx, VRChat, Hall's personal zone).
             if (this.avatarManager?.currentRoot) {
                 const root = this.avatarManager.currentRoot;
                 root.position.x = 0;
-                root.position.z = -1.2;
+                root.position.z = -1.0;
                 if (root.position.y < -0.25 || root.position.y > 0.25) {
                     root.position.y = 0;
                 }
@@ -489,6 +496,17 @@ export class ViewerEngine {
             this._hideVRGround();
 
             this.controls.enabled = true;
+
+            // Reset avatar root to desktop defaults (VR places it at z=-1.2
+            // and puppet mode may rotate it — must undo before re-framing)
+            if (this.avatarManager?.currentRoot) {
+                const root = this.avatarManager.currentRoot;
+                root.position.set(0, 0, 0);
+                // VRM avatars need rotation.y = Math.PI (VRM spec: forward = -Z).
+                // Without this, re-entering VR after puppet mode shows the avatar's back.
+                const isVRM = root.userData?.isVRM;
+                root.rotation.set(0, isVRM ? Math.PI : 0, 0);
+            }
 
             // Reset, then re-frame if an avatar exists
             this.camera.position.set(0, 1.4, 2.2);
@@ -1061,6 +1079,9 @@ export class ViewerEngine {
                     // Update passthrough enhancements (contact shadow tracking, light estimation)
                     const refSpace = this.renderer.xr.getReferenceSpace?.();
                     this.passthroughEnhancer?.update(dt, frame, refSpace);
+
+                    // Update lazy-loaded AR/MR modules (RATK planes, avatar grounding)
+                    this.xrModules?.update(dt, frame);
                 } else {
                     // VR mode: update chat panel and mic indicator
                     this.vrChatPanel?.update();

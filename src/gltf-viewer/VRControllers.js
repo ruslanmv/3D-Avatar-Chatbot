@@ -991,9 +991,9 @@ export class VRControllers {
         this.enabled = enabled;
         console.log(`[VRControllers] System ${enabled ? 'Enabled' : 'Disabled'}`);
         if (enabled) {
-            this.playerRig.position.set(0, 0, 2.5);
+            this.playerRig.position.set(0, 0, 0);
             this.playerRig.rotation.set(0, 0, 0);
-            console.log('[VRControllers] Positioned in front of avatar');
+            console.log('[VRControllers] Player rig at origin (avatar positioned in front)');
         }
     }
 

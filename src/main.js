@@ -3408,6 +3408,9 @@ window.chatHistory = new ChatSessionHistory(500);
 const CHAT_STORAGE_KEY = 'nexus_chat_messages';
 const CHAT_DISPLAY_KEY = 'nexus_chat_display';
 
+// Expose for VRChatIntegration to persist after VR messages
+window._persistChat = _persistChat;
+
 function _persistChat() {
     try {
         // Save LLM history (for context)

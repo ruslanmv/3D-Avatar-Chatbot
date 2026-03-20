@@ -488,7 +488,13 @@ export class VRChatIntegration {
         if (this.chatManager) {
             this.chatManager.clearMessages();
         }
-        console.log('[VRChatIntegration] Chat cleared');
+        // Clear persisted history
+        if (window.chatHistory) {
+            window.chatHistory.messages = [];
+        }
+        localStorage.removeItem('nexus_chat_messages');
+        localStorage.removeItem('nexus_chat_display');
+        console.log('[VRChatIntegration] Chat cleared (including persisted history)');
     }
 
     /**
@@ -576,6 +582,13 @@ export class VRChatIntegration {
                 console.warn('[VRChatIntegration] Avatar switch: no currentRoot after load');
                 this.vrChatPanel.setStatus('idle');
                 return;
+            }
+
+            // Reposition new avatar to VR conversation position (same as session start).
+            // AvatarManager loads at (0,0,0) — must restore the VR offset.
+            if (this.avatarManager.renderer?.xr?.isPresenting) {
+                newRoot.position.set(0, 0, -1.0);
+                console.log('[VRChatIntegration] Avatar repositioned to VR conversation distance (z=-1.0)');
             }
 
             console.log('[VRChatIntegration] Avatar switched — re-registering with all VR systems...');
@@ -714,6 +727,11 @@ export class VRChatIntegration {
             this.chatManager.addMessage(text, 'user');
         }
 
+        // Persist to localStorage so conversation survives page reload / VR re-entry
+        if (typeof window._persistChat === 'function') {
+            window._persistChat();
+        }
+
         // Process message (send to AI)
         this.processUserMessage(text);
     }
@@ -836,6 +854,11 @@ export class VRChatIntegration {
             window.chatHistory.addMessage('assistant', text);
         }
 
+        // Persist to localStorage so conversation survives page reload / VR re-entry
+        if (typeof window._persistChat === 'function') {
+            window._persistChat();
+        }
+
         // --- Phase 6: Apply avatar directives ---
         if (directives.emotion || directives.pose) {
             this._applyAvatarDirectives(directives);
@@ -944,6 +967,9 @@ export class VRChatIntegration {
             return;
         }
 
+        // Restore previous conversation into VR panel (localStorage → VR)
+        this._restoreChatToVR();
+
         this.vrChatPanel.setVisible(true);
 
         // [FIX] Sync with desktop avatar to prevent overlap
@@ -971,6 +997,36 @@ export class VRChatIntegration {
             this.speechService.stopRecognition();
         }
         console.log('[VRChatIntegration] VR chat disabled');
+    }
+
+    /**
+     * Restore persisted chat history into the VR panel.
+     * Reads from the same localStorage keys used by the desktop chat system
+     * so conversations survive page reloads and VR re-entry.
+     * @private
+     */
+    _restoreChatToVR() {
+        // Skip if panel already has messages (avoid duplicates on repeated enable)
+        if (this.vrChatPanel.messages.length > 1) {
+            return;
+        }
+
+        try {
+            const raw = localStorage.getItem('nexus_chat_display');
+            if (!raw) return;
+            const items = JSON.parse(raw);
+            if (!Array.isArray(items) || items.length === 0) return;
+
+            // Show last 8 messages (VR panel caps at 10 and we leave room for system msgs)
+            const recent = items.slice(-8);
+            recent.forEach((m) => {
+                const role = m.sender === 'user' ? 'user' : 'bot';
+                this.vrChatPanel.appendMessage(role, m.text);
+            });
+            console.log(`[VRChatIntegration] Restored ${recent.length} messages from previous session`);
+        } catch (e) {
+            console.warn('[VRChatIntegration] Chat restore failed:', e);
+        }
     }
 
     /**
