@@ -526,19 +526,38 @@
 
         // Reset touched bones each frame to avoid drift
         // Include all bones that might be modified by procedural animations
-        const touched = [
-            bones.hips,
-            bones.spine,
-            bones.chest,
-            bones.neck,
-            bones.head,
-            bones.leftUpperArm,
-            bones.rightUpperArm,
-            bones.leftLowerArm,
-            bones.rightLowerArm,
-            bones.leftHand,
-            bones.rightHand,
-        ];
+        //
+        // ── LOCOMOTION_HOOK: When walking, skip lower-body bones so walk clip
+        // drives hips/legs while ProceduralAnimator controls upper body only.
+        // Non-destructive: if _NEXUS_LOCOMOTION_UPPER_BODY_ONLY is undefined/false,
+        // behaviour is unchanged. To remove: delete the locomotionWalking check.
+        const locomotionWalking = !!window._NEXUS_LOCOMOTION_UPPER_BODY_ONLY;
+        const touched = locomotionWalking
+            ? [
+                  // Upper body only — let walk animation control hips/spine
+                  bones.chest,
+                  bones.neck,
+                  bones.head,
+                  bones.leftUpperArm,
+                  bones.rightUpperArm,
+                  bones.leftLowerArm,
+                  bones.rightLowerArm,
+                  bones.leftHand,
+                  bones.rightHand,
+              ]
+            : [
+                  bones.hips,
+                  bones.spine,
+                  bones.chest,
+                  bones.neck,
+                  bones.head,
+                  bones.leftUpperArm,
+                  bones.rightUpperArm,
+                  bones.leftLowerArm,
+                  bones.rightLowerArm,
+                  bones.leftHand,
+                  bones.rightHand,
+              ];
         touched.forEach((b) => b && restoreToRest(b));
 
         // ---------------------------

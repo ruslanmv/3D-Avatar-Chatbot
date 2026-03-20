@@ -331,9 +331,21 @@
         var newTracks = [];
         for (var i = 0; i < clip.tracks.length; i++) {
             var track = clip.tracks[i];
-            var parts = track.name.split('.');
-            var boneName = parts[0];
-            var property = parts.slice(1).join('.');
+
+            // THREE.BVHLoader produces track names in two possible formats:
+            //   Format A: ".bones[BoneName].property"  (three.js standard)
+            //   Format B: "BoneName.property"          (some loaders)
+            // Extract the bone name and property for retargeting.
+            var boneName, property;
+            var bracketMatch = track.name.match(/\.bones\[(.+?)\]\.(.+)/);
+            if (bracketMatch) {
+                boneName = bracketMatch[1];
+                property = bracketMatch[2];
+            } else {
+                var parts = track.name.split('.');
+                boneName = parts[0];
+                property = parts.slice(1).join('.');
+            }
 
             // Map BVH bone name to VRM humanoid name
             var normalized = boneName.toLowerCase().replace(/[^a-z]/g, '');
@@ -360,6 +372,7 @@
 
         if (newTracks.length === 0) {
             console.warn('[ClipAnimationLoader] No tracks could be retargeted for clip:', clip.name);
+            clip._retargetFailed = true;
             return clip;
         }
 

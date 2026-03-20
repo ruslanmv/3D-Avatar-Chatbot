@@ -366,7 +366,11 @@ export class ViewerEngine {
 
             // Follow-me eyes: point avatar gaze at user's HMD
             this.vrGazeController?.setAvatar(this.avatarManager?.currentRoot || null);
-            this.vrGazeController?.setEnabled(this.vrChatPanel?.xrSettings?.followGaze !== false);
+            const gazeVal = this.vrChatPanel?.xrSettings?.followGaze;
+            this.vrGazeController?.setEnabled(gazeVal !== false);
+            if (this.vrGazeController) {
+                this.vrGazeController.conversationalGaze = gazeVal === 'lock';
+            }
 
             // Diagnostic: log state of all VR pose/bone systems
             console.log('[ViewerEngine] VR Pose Systems State:', {
@@ -591,9 +595,17 @@ export class ViewerEngine {
                 this._switchXRMode(value);
             }
 
-            // Follow-me gaze toggle
+            // Follow-me gaze toggle: false | true | 'lock'
+            //   false  → disabled
+            //   true   → enabled, no conversational gaze lock
+            //   'lock' → enabled + conversational gaze (eye contact during AI speech)
             if (key === 'followGaze') {
-                this.vrGazeController?.setEnabled(!!value);
+                const enabled = value !== false;
+                const conversational = value === 'lock';
+                if (this.vrGazeController) {
+                    this.vrGazeController.setEnabled(enabled);
+                    this.vrGazeController.conversationalGaze = conversational;
+                }
             }
         });
 
@@ -968,6 +980,27 @@ export class ViewerEngine {
             this.vrPuppetInteraction?.setAvatar(this.avatarManager.currentRoot);
             this.vrIntimacySystem?.setAvatar(this.avatarManager.currentRoot);
             this.vrGazeController?.setAvatar(this.avatarManager.currentRoot);
+            // Auto-enable gaze follow on avatar load if in VR and setting allows it
+            if (this.renderer.xr.isPresenting && this.vrGazeController) {
+                const gazeVal = this.vrChatPanel?.xrSettings?.followGaze;
+                this.vrGazeController.setEnabled(gazeVal !== false);
+                this.vrGazeController.conversationalGaze = gazeVal === 'lock';
+            }
+
+            // ── LOCOMOTION_HOOK: Initialize locomotion for new avatar ──
+            // Non-destructive: if NEXUS_LOCOMOTION doesn't exist, this is a no-op.
+            // To remove: delete these 4 lines.
+            if (window.NEXUS_LOCOMOTION?.init) {
+                window.NEXUS_LOCOMOTION.init(this.avatarManager.currentRoot, this.avatarManager._currentVRM);
+                window.NEXUS_LOCOMOTION.preload();
+            }
+
+            // ── ARC_POINTER_HOOK: Initialize teleport arc pointer ──
+            // Non-destructive: if NEXUS_ARC_POINTER doesn't exist, this is a no-op.
+            // To remove: delete these 2 lines.
+            if (window.NEXUS_ARC_POINTER?.init) {
+                window.NEXUS_ARC_POINTER.init(this.scene, this.renderer);
+            }
             if (window.poseEditor) {
                 this.vrBoneGrabber?.setPoseEditor(window.poseEditor);
             }
@@ -997,6 +1030,12 @@ export class ViewerEngine {
             // the VRM-normalized rest pose and are not overwritten.
             this.avatarManager?.update(dt);
 
+            // Follow-me eyes: set gaze override BEFORE ProceduralAnimator
+            // so the head rotation uses current HMD position, not stale data.
+            if (this.renderer.xr.isPresenting && !this.arSupport?.isARActive) {
+                this.vrGazeController?.update(dt);
+            }
+
             try {
                 const t = this.clock.getElapsedTime();
                 window.NEXUS_PROCEDURAL_ANIMATOR?.update?.(t, dt);
@@ -1007,6 +1046,11 @@ export class ViewerEngine {
             this.vrPoseSystem?.update(dt);
             this.vrPuppetInteraction?.update(dt);
             this.vrIntimacySystem?.update(dt);
+
+            // ── LOCOMOTION_HOOK: Update avatar locomotion state machine ──
+            // Non-destructive: if NEXUS_LOCOMOTION doesn't exist, this is a no-op.
+            // To remove: delete this line.
+            window.NEXUS_LOCOMOTION?.update?.(dt);
 
             if (this.renderer.xr.isPresenting) {
                 if (this.arSupport?.isARActive) {
@@ -1022,9 +1066,6 @@ export class ViewerEngine {
                     this.vrChatPanel?.update();
                     this.vrChatPanel?._animateMicIndicator(dt);
                     this.vrChatPanel?._updateMicIndicatorPosition();
-
-                    // Follow-me eyes: avatar looks at user's HMD position
-                    this.vrGazeController?.update(dt);
 
                     // Update passthrough enhancements in VR passthrough mode
                     if (this.passthroughEnhancer?.active) {
