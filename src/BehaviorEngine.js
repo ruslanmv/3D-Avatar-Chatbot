@@ -94,27 +94,69 @@
     }
 
     /**
+     * Returns true when an external gaze system owns eye contact and
+     * BehaviorEngine should NOT fight by locking gaze to {0,0} or
+     * overwriting eye targets during state transitions.
+     *
+     * Two sources:
+     *   1. Desktop — FaceTracker Follow mode (webcam tracks face position)
+     *   2. VR     — VRGazeController with conversationalGaze enabled
+     *              (GAZE: LOCK in VR settings — maintains eye contact
+     *               through LISTENING/THINKING/SPEAKING states)
+     *
+     * The avatar still enters states normally (animations, emotions,
+     * lip-sync all keep working), we only skip the gaze-locking calls.
+     */
+    function _isFollowGazeActive() {
+        // Desktop: FaceTracker Follow mode
+        const ft = global.NEXUS_FACE_TRACKER;
+        if (ft && ft.isActive && ft.mode === 'follow') return true;
+
+        // VR: VRGazeController with conversational gaze lock
+        const viewer = global.NEXUS_VIEWER;
+        if (
+            viewer?.vrGazeController?.enabled &&
+            viewer?.vrGazeController?.conversationalGaze &&
+            viewer?.renderer?.xr?.isPresenting
+        ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Called once when entering a new state.
      * Sets up ProceduralAnimator mode and initial gaze targets.
      */
     function _onEnterState(state, prev) {
         const animator = global.NEXUS_PROCEDURAL_ANIMATOR;
 
+        // When Follow mode is active, FaceTracker owns gaze every frame.
+        // We still set animation modes, emotions, and lip-sync, but skip
+        // the gaze locks so the avatar keeps watching the user naturally
+        // throughout LISTENING → THINKING → SPEAKING.
+        const followActive = _isFollowGazeActive();
+
         switch (state) {
             case State.IDLE:
                 animator?.setMode?.('idle', 1);
-                animator?.setGazeOverride?.(null); // release — resume pointer tracking
-                engine.gazeTargetYaw = 0;
-                engine.gazeTargetPitch = 0;
+                if (!followActive) {
+                    animator?.setGazeOverride?.(null); // release — resume pointer tracking
+                    engine.gazeTargetYaw = 0;
+                    engine.gazeTargetPitch = 0;
+                }
                 engine._nextMicroExpr = 5 + Math.random() * 4;
                 _clearEmotion();
                 break;
 
             case State.LISTENING:
                 animator?.setMode?.('idle', 1);
-                animator?.setGazeOverride?.({ x: 0, y: 0 }); // lock head to camera
-                engine.gazeTargetYaw = 0;
-                engine.gazeTargetPitch = 0;
+                if (!followActive) {
+                    animator?.setGazeOverride?.({ x: 0, y: 0 }); // lock head to camera
+                    engine.gazeTargetYaw = 0;
+                    engine.gazeTargetPitch = 0;
+                }
                 engine._nodPhase = 0;
                 // Subtle attentive expression
                 _setVRMExpression('happy', 0.12);
@@ -122,23 +164,29 @@
 
             case State.THINKING:
                 animator?.setMode?.('thinking', 30000);
-                animator?.setGazeOverride?.({ x: 0, y: 0 }); // lock head to camera
-                engine._thinkGazePhase = 0;
-                // Look up-left initially
-                engine.gazeTargetYaw = -0.25;
-                engine.gazeTargetPitch = 0.2;
+                if (!followActive) {
+                    animator?.setGazeOverride?.({ x: 0, y: 0 }); // lock head to camera
+                    engine._thinkGazePhase = 0;
+                    // Look up-left initially
+                    engine.gazeTargetYaw = -0.25;
+                    engine.gazeTargetPitch = 0.2;
+                }
                 break;
 
             case State.SPEAKING:
                 animator?.setMode?.('talk', 30000);
-                animator?.setGazeOverride?.({ x: 0, y: 0 }); // lock head to camera
-                engine.gazeTargetYaw = 0;
-                engine.gazeTargetPitch = 0;
+                if (!followActive) {
+                    animator?.setGazeOverride?.({ x: 0, y: 0 }); // lock head to camera
+                    engine.gazeTargetYaw = 0;
+                    engine.gazeTargetPitch = 0;
+                }
                 break;
 
             case State.MICRO_IDLE:
                 animator?.setMode?.('idle', 1);
-                animator?.setGazeOverride?.(null); // release — resume pointer tracking
+                if (!followActive) {
+                    animator?.setGazeOverride?.(null); // release — resume pointer tracking
+                }
                 engine._nextMicroExpr = 3 + Math.random() * 3;
                 engine._microExprActive = false;
                 break;
@@ -181,8 +229,12 @@
                 break;
         }
 
-        // Smooth gaze interpolation (skip when face tracking controls expressions)
-        if (!engine._expressionOverride) {
+        // Smooth gaze interpolation
+        // Skip when:
+        //   - _expressionOverride: Imitate mode controls all expressions
+        //   - Follow mode active: FaceTracker sets gazeTargetYaw/Pitch + eye
+        //     expressions directly each frame (eye leading ahead of head)
+        if (!engine._expressionOverride && !_isFollowGazeActive()) {
             _updateGaze(dt);
         }
 
@@ -207,6 +259,9 @@
     }
 
     function _updateListening(dt) {
+        // In Follow mode, FaceTracker handles gaze — skip nod animation
+        if (_isFollowGazeActive()) return;
+
         // Periodic subtle nod (attentive listening)
         engine._nodPhase += dt;
         if (engine._nodPhase > 2.5 + Math.random() * 1.5) {
@@ -220,6 +275,9 @@
     }
 
     function _updateThinking(dt) {
+        // In Follow mode, FaceTracker handles gaze — skip thinking gaze drift
+        if (_isFollowGazeActive()) return;
+
         // Animated gaze: look up-left, then slowly drift back to center
         engine._thinkGazePhase += dt;
 

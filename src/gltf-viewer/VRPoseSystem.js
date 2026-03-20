@@ -37,15 +37,102 @@ const IK_CHAINS = {
 
 // Map end-effector bone key → which IK chain to solve
 const EFFECTOR_TO_CHAIN = {
+    // Extremities (primary IK targets)
     leftHand: 'leftArm',
     rightHand: 'rightArm',
     leftFoot: 'leftLeg',
     rightFoot: 'rightLeg',
     head: 'spine',
+    // Mid-limb (elbows, knees)
     leftLowerArm: 'leftArm',
     rightLowerArm: 'rightArm',
     leftLowerLeg: 'leftLeg',
     rightLowerLeg: 'rightLeg',
+    // Upper limb (shoulders, thighs) — IK solves from root of chain
+    leftUpperArm: 'leftArm',
+    rightUpperArm: 'rightArm',
+    leftUpperLeg: 'leftLeg',
+    rightUpperLeg: 'rightLeg',
+};
+
+// =========================================================================
+// ANATOMICAL JOINT CONSTRAINTS (industry-standard angle limits)
+// =========================================================================
+// Per-bone rotation limits in DEGREES. Axes are local: X = twist (flexion),
+// Y = lateral bend, Z = axial rotation.  Based on biomechanical references
+// used by VaM, Honey Select, and AAA character riggers.
+//
+// Format: { minX, maxX, minY, maxY, minZ, maxZ }
+// null = unconstrained on that axis.  Values in degrees.
+
+const JOINT_LIMITS = {
+    // ── Arms ──
+    leftShoulder: { minX: -30, maxX: 30, minY: -15, maxY: 15, minZ: -15, maxZ: 15 },
+    rightShoulder: { minX: -30, maxX: 30, minY: -15, maxY: 15, minZ: -15, maxZ: 15 },
+    leftUpperArm: { minX: -120, maxX: 80, minY: -85, maxY: 130, minZ: -90, maxZ: 30 },
+    rightUpperArm: { minX: -120, maxX: 80, minY: -130, maxY: 85, minZ: -30, maxZ: 90 },
+    leftLowerArm: { minX: -5, maxX: 150, minY: -5, maxY: 5, minZ: -90, maxZ: 80 },
+    rightLowerArm: { minX: -5, maxX: 150, minY: -5, maxY: 5, minZ: -80, maxZ: 90 },
+    leftHand: { minX: -75, maxX: 75, minY: -40, maxY: 30, minZ: -20, maxZ: 20 },
+    rightHand: { minX: -75, maxX: 75, minY: -30, maxY: 40, minZ: -20, maxZ: 20 },
+
+    // ── Legs ──
+    leftUpperLeg: { minX: -130, maxX: 35, minY: -45, maxY: 60, minZ: -30, maxZ: 45 },
+    rightUpperLeg: { minX: -130, maxX: 35, minY: -60, maxY: 45, minZ: -45, maxZ: 30 },
+    leftLowerLeg: { minX: -5, maxX: 155, minY: -5, maxY: 5, minZ: -5, maxZ: 5 },
+    rightLowerLeg: { minX: -5, maxX: 155, minY: -5, maxY: 5, minZ: -5, maxZ: 5 },
+    leftFoot: { minX: -45, maxX: 55, minY: -25, maxY: 25, minZ: -20, maxZ: 20 },
+    rightFoot: { minX: -45, maxX: 55, minY: -25, maxY: 25, minZ: -20, maxZ: 20 },
+
+    // ── Spine ──
+    spine: { minX: -35, maxX: 35, minY: -25, maxY: 25, minZ: -20, maxZ: 20 },
+    chest: { minX: -25, maxX: 25, minY: -20, maxY: 20, minZ: -15, maxZ: 15 },
+    upperChest: { minX: -15, maxX: 15, minY: -15, maxY: 15, minZ: -10, maxZ: 10 },
+    neck: { minX: -40, maxX: 30, minY: -40, maxY: 40, minZ: -30, maxZ: 30 },
+    head: { minX: -35, maxX: 40, minY: -50, maxY: 50, minZ: -20, maxZ: 20 },
+};
+
+/**
+ * Clamp a bone's local quaternion to the anatomical limits defined above.
+ * Converts to Euler, clamps each axis, converts back.
+ */
+const _clampEuler = new THREE.Euler();
+const _clampQuat = new THREE.Quaternion();
+
+function clampBoneRotation(bone, boneKey) {
+    const limits = JOINT_LIMITS[boneKey];
+    if (!limits) return; // no limits defined for this bone
+
+    _clampEuler.setFromQuaternion(bone.quaternion, 'XYZ');
+
+    const deg = THREE.MathUtils.radToDeg;
+    const rad = THREE.MathUtils.degToRad;
+
+    let x = deg(_clampEuler.x);
+    let y = deg(_clampEuler.y);
+    let z = deg(_clampEuler.z);
+
+    x = THREE.MathUtils.clamp(x, limits.minX, limits.maxX);
+    y = THREE.MathUtils.clamp(y, limits.minY, limits.maxY);
+    z = THREE.MathUtils.clamp(z, limits.minZ, limits.maxZ);
+
+    _clampEuler.set(rad(x), rad(y), rad(z), 'XYZ');
+    bone.quaternion.setFromEuler(_clampEuler);
+}
+
+// =========================================================================
+// POLE VECTOR HINTS (prevent elbow/knee flipping — AAA standard)
+// =========================================================================
+// A pole vector is a world-space direction hint that tells the IK solver
+// which way a joint should "point" (e.g. elbows point backward, knees
+// point forward).  Without it, CCD-IK can flip joints to the wrong side.
+
+const POLE_VECTORS = {
+    leftArm: new THREE.Vector3(0, 0, -1), // elbows point backward
+    rightArm: new THREE.Vector3(0, 0, -1), // elbows point backward
+    leftLeg: new THREE.Vector3(0, 0, 1), // knees point forward
+    rightLeg: new THREE.Vector3(0, 0, 1), // knees point forward
+    spine: null, // spine has no pole vector
 };
 
 // =========================================================================
@@ -1167,10 +1254,28 @@ const PRESET_ORDER = [
  * @param {number} iterations - CCD iterations (more = more accurate, 8-12 typical)
  * @param {number} tolerance - Stop early if end-effector is within this distance
  */
-function solveCCDIK(chain, targetWorldPos, iterations = 10, tolerance = 0.01) {
+/**
+ * CCD-IK solver with anatomical joint constraints and pole vector hints.
+ *
+ * @param {THREE.Bone[]} chain      - Ordered array of bones (root → end-effector)
+ * @param {THREE.Vector3} targetWorldPos - World-space target for end-effector
+ * @param {object}  opts
+ * @param {number}  opts.iterations  - Max solver iterations (default 12)
+ * @param {number}  opts.tolerance   - Distance threshold to stop (default 0.01)
+ * @param {string}  opts.chainName   - Chain key for pole vector lookup
+ * @param {string[]} opts.boneKeys   - Parallel array of bone key names for constraint lookup
+ */
+function solveCCDIK(chain, targetWorldPos, opts = {}) {
     if (chain.length < 2) {
         return;
     }
+
+    const {
+        iterations = 12,
+        tolerance = 0.01,
+        chainName = null,
+        boneKeys = null,
+    } = typeof opts === 'number' ? { iterations: opts } : opts; // backward compat: solveCCDIK(c, t, 10)
 
     const endEffector = chain[chain.length - 1];
     const effectorPos = new THREE.Vector3();
@@ -1178,7 +1283,11 @@ function solveCCDIK(chain, targetWorldPos, iterations = 10, tolerance = 0.01) {
     const toEffector = new THREE.Vector3();
     const toTarget = new THREE.Vector3();
     const axis = new THREE.Vector3();
-    const invWorldQuat = new THREE.Quaternion();
+
+    // Pole vector for this chain (prevents elbow/knee flipping)
+    const poleDir = chainName ? POLE_VECTORS[chainName] : null;
+    // Pole is applied to the "mid-joint" of the chain (elbow for arm, knee for leg)
+    const midIdx = chain.length >= 3 ? Math.floor((chain.length - 1) / 2) : -1;
 
     for (let iter = 0; iter < iterations; iter++) {
         // Check if already close enough
@@ -1217,7 +1326,6 @@ function solveCCDIK(chain, targetWorldPos, iterations = 10, tolerance = 0.01) {
             const clampedAngle = Math.min(angle, 0.3); // ~17 degrees max per step
 
             // Convert world-space rotation to bone's local space
-            bone.getWorldQuaternion(invWorldQuat);
             const parentWorldQuat = new THREE.Quaternion();
             if (bone.parent) {
                 bone.parent.getWorldQuaternion(parentWorldQuat);
@@ -1231,8 +1339,57 @@ function solveCCDIK(chain, targetWorldPos, iterations = 10, tolerance = 0.01) {
             const deltaQuat = new THREE.Quaternion().setFromAxisAngle(localAxis, clampedAngle);
             bone.quaternion.premultiply(deltaQuat);
 
+            // ── JOINT CONSTRAINT: clamp to anatomical limits ──
+            if (boneKeys && boneKeys[i]) {
+                clampBoneRotation(bone, boneKeys[i]);
+            }
+
             // Update matrices for next iteration
             bone.updateMatrixWorld(true);
+        }
+
+        // ── POLE VECTOR PASS: nudge mid-joint toward preferred direction ──
+        if (poleDir && midIdx >= 0 && midIdx < chain.length) {
+            const midBone = chain[midIdx];
+            const midPos = new THREE.Vector3();
+            midBone.getWorldPosition(midPos);
+
+            // Compute the plane formed by root → end-effector
+            const rootPos = new THREE.Vector3();
+            chain[0].getWorldPosition(rootPos);
+            endEffector.getWorldPosition(effectorPos);
+
+            const chainDir = new THREE.Vector3().subVectors(effectorPos, rootPos).normalize();
+            // Project mid-joint onto chain axis to find where it "should" be
+            const midOnAxis = new THREE.Vector3()
+                .copy(chainDir)
+                .multiplyScalar(new THREE.Vector3().subVectors(midPos, rootPos).dot(chainDir))
+                .add(rootPos);
+
+            // Current mid-joint offset from axis
+            const currentOffset = new THREE.Vector3().subVectors(midPos, midOnAxis);
+            if (currentOffset.lengthSq() > 0.0001) {
+                // Check if mid-joint is on the wrong side of the pole
+                const poleDotCurrent = currentOffset.normalize().dot(poleDir);
+                if (poleDotCurrent < 0.1) {
+                    // Nudge mid-joint toward pole direction (gentle — 5% per frame)
+                    const nudgeAxis = new THREE.Vector3().crossVectors(currentOffset, poleDir).normalize();
+                    if (nudgeAxis.lengthSq() > 0.001) {
+                        const parentWorldQuat = new THREE.Quaternion();
+                        if (midBone.parent) {
+                            midBone.parent.getWorldQuaternion(parentWorldQuat);
+                        }
+                        const localNudge = nudgeAxis.clone().applyQuaternion(parentWorldQuat.invert());
+                        const nudgeQuat = new THREE.Quaternion().setFromAxisAngle(localNudge, 0.08);
+                        midBone.quaternion.premultiply(nudgeQuat);
+
+                        if (boneKeys && boneKeys[midIdx]) {
+                            clampBoneRotation(midBone, boneKeys[midIdx]);
+                        }
+                        midBone.updateMatrixWorld(true);
+                    }
+                }
+            }
         }
     }
 }
@@ -1631,9 +1788,19 @@ export class VRPoseSystem {
             return false;
         }
 
+        // Build parallel boneKeys array for joint constraint lookup
+        // (only includes keys for bones that were resolved, matching chainBones indices)
+        const resolvedKeys = [];
+        for (const key of chainKeys) {
+            if (this._bones.get(key)) {
+                resolvedKeys.push(key);
+            }
+        }
+
         this._activeIKTarget = {
             chainName,
             chainBones,
+            chainKeys: resolvedKeys,
             controller,
             boneKey,
         };
@@ -1651,11 +1818,15 @@ export class VRPoseSystem {
             return;
         }
 
-        const { chainBones, controller } = this._activeIKTarget;
+        const { chainBones, controller, chainName, chainKeys } = this._activeIKTarget;
         const targetPos = new THREE.Vector3();
         controller.getWorldPosition(targetPos);
 
-        solveCCDIK(chainBones, targetPos);
+        solveCCDIK(chainBones, targetPos, {
+            iterations: 12,
+            chainName,
+            boneKeys: chainKeys,
+        });
     }
 
     /**
@@ -1848,4 +2019,4 @@ export class VRPoseSystem {
 }
 
 // Export for use by VRChatPanel preset cycling
-export { POSE_PRESETS, PRESET_ORDER, IK_CHAINS, EFFECTOR_TO_CHAIN };
+export { POSE_PRESETS, PRESET_ORDER, IK_CHAINS, EFFECTOR_TO_CHAIN, JOINT_LIMITS, clampBoneRotation };
