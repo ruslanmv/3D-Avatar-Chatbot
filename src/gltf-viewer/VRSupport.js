@@ -141,16 +141,18 @@ export class VRSupport {
                 }
             } else {
                 // Enter VR
-                const sessionInit = {
-                    optionalFeatures: [
-                        'local-floor',
-                        'bounded-floor',
-                        'hand-tracking',
-                        'layers', // WebXR Layers API (Quest 3 passthrough)
-                        'plane-detection', // Surface detection for AR placement
-                        'light-estimation', // Match real-world lighting in passthrough
-                    ],
-                };
+                // Only request features supported for immersive-vr.
+                // 'plane-detection' and 'light-estimation' are AR-only and
+                // cause console warnings when requested in VR mode.
+                // 'layers' is Quest 3+ only — probe before requesting.
+                const optionalFeatures = ['local-floor', 'bounded-floor', 'hand-tracking'];
+
+                // layers API: only request if the browser/device actually advertises it
+                if (typeof XRWebGLLayer !== 'undefined') {
+                    optionalFeatures.push('layers');
+                }
+
+                const sessionInit = { optionalFeatures };
 
                 // Ensure WebGL context is XR-compatible before requesting session
                 const gl = this.renderer.getContext();

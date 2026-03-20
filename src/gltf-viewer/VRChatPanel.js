@@ -72,7 +72,8 @@ export class VRChatPanel {
             puppetMode: false, // When true, grip translates avatar freely in 3D space
             intimacyMode: false, // Close-presence / comfort interaction mode in VR
             jointVisibility: 'hoverOnly', // 'hoverOnly' | 'alwaysVisible' — puppet handle spheres
-            followGaze: true, // Follow-me eyes: avatar looks at user's HMD in VR
+            followGaze: 'lock', // Follow-me eyes: false | true | 'lock' (conversational gaze)
+            devMode: false, // Developer-only features (e.g. Walk locomotion)
         };
 
         // Check AR support asynchronously
@@ -983,10 +984,16 @@ export class VRChatPanel {
             place: { x: P + (interBtnW + ctrlGap) * 2, y: interNavY, w: interBtnW, h: ctrlBtnH },
             close: { x: P, y: interNavY + ctrlBtnH + ctrlGap, w: interBtnW2, h: ctrlBtnH },
             ar: { x: P + interBtnW2 + ctrlGap, y: interNavY + ctrlBtnH + ctrlGap, w: interBtnW2, h: ctrlBtnH },
+            // LOCOMOTION_HOOK: Walk toggle button (row 3) — dev-only
+            walk: this.xrSettings.devMode
+                ? { x: P, y: interNavY + (ctrlBtnH + ctrlGap) * 2, w: ctrlW, h: ctrlBtnH }
+                : null,
         };
 
         // Section 3: AVATAR SELECTION
-        const avatarSectionY = interNavY + ctrlBtnH + ctrlBtnH + ctrlGap + 24;
+        // When walk row is hidden (devMode off), reclaim that row's space
+        const interRows = this.xrSettings.devMode ? 3 : 2;
+        const avatarSectionY = interNavY + ctrlBtnH * interRows + ctrlGap * (interRows - 1) + 24;
         const avatarLabelRect = { x: P, y: avatarSectionY, w: ctrlW, h: 48 };
 
         const avatarNavY = avatarSectionY + 56;
@@ -1158,7 +1165,10 @@ export class VRChatPanel {
         const place = this._makeHitbox('Btn:xr_place', inter.place, 'button', { key: 'xr_place' });
         const closeBtn = this._makeHitbox('Btn:xr_intimacy', inter.close, 'button', { key: 'xr_intimacy' });
         const arBtn = this._makeHitbox('Btn:xr_ar', inter.ar, 'button', { key: 'xr_ar' });
-        [ik, puppet, place, closeBtn, arBtn].forEach((m) => {
+        // LOCOMOTION_HOOK: Walk toggle button (dev-only)
+        const walkBtn = inter.walk ? this._makeHitbox('Btn:xr_walk', inter.walk, 'button', { key: 'xr_walk' }) : null;
+        const interBtns = [ik, puppet, place, closeBtn, arBtn, walkBtn].filter(Boolean);
+        interBtns.forEach((m) => {
             this.group.remove(m);
             this.controlsGroup.add(m);
         });
@@ -1167,6 +1177,7 @@ export class VRChatPanel {
         this.buttons.xr_place = place;
         this.buttons.xr_intimacy = closeBtn;
         this.buttons.xr_ar = arBtn;
+        this.buttons.xr_walk = walkBtn; // null when devMode off
 
         // Avatar navigation
         const avNav = L.ctrlAvatarNav;
@@ -1741,15 +1752,26 @@ export class VRChatPanel {
         const arLabel = arActive ? 'AR: ON' : xs.arSupported ? 'AR' : 'AR N/A';
         this._drawControlBtn(ctx, inter.ar, arLabel, arActive);
 
-        // Puppet hint
+        // LOCOMOTION_HOOK: Walk toggle button (dev-only)
+        if (inter.walk) {
+            const walkActive = window.NEXUS_LOCOMOTION_CONFIG?.isEnabled?.() || false;
+            const walkState = window.NEXUS_LOCOMOTION?.getState?.() || 'idle';
+            const walkLabel = walkActive
+                ? walkState === 'walking' || walkState === 'turning'
+                    ? 'Walk: ACTIVE'
+                    : 'Walk: ON'
+                : 'Walk';
+            this._drawControlBtn(ctx, inter.walk, walkLabel, walkActive);
+        }
+
+        // Puppet hint — drawn below the last interaction row to avoid overlap
         if (puppetActive) {
+            // Last row is walk (dev) or close/ar (production)
+            const lastRowBtn = inter.walk || inter.close;
+            const hintY = lastRowBtn.y + lastRowBtn.h + 8;
             ctx.fillStyle = 'rgba(200, 255, 200, 0.5)';
             ctx.font = '500 18px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-            ctx.fillText(
-                'Grip orbs to move avatar. Both hands on hips to rotate.',
-                P + 14,
-                inter.puppet.y + inter.puppet.h + 22
-            );
+            ctx.fillText('Grip orbs to pose. Grab with both hands to rotate.', P + 14, hintY);
         }
 
         // ─── Section 3: AVATAR SELECTION ───
@@ -1888,10 +1910,10 @@ export class VRChatPanel {
         }
 
         const gazeActive = xs.followGaze !== false;
-        const gazeLabel = gazeActive ? 'ON' : 'OFF';
+        const gazeLabel = xs.followGaze === 'lock' ? 'LOCK' : gazeActive ? 'ON' : 'OFF';
         this._drawXRSettingBtn(ctx, xr3.gaze, 'GAZE', gazeLabel, true);
         if (gazeActive) {
-            this._drawActiveTint(ctx, xr3.gaze, 'GAZE', 'ON');
+            this._drawActiveTint(ctx, xr3.gaze, 'GAZE', gazeLabel);
         }
 
         // Provider info (read-only)
@@ -2438,6 +2460,25 @@ export class VRChatPanel {
             return true;
         }
 
+        // LOCOMOTION_HOOK: Walk / Follow toggle (dev-only)
+        if (key === 'xr_walk') {
+            if (!this.xrSettings.devMode) {
+                console.warn('[VRChatPanel] Walk is dev-only — enable devMode first');
+                return true;
+            }
+            const cfg = window.NEXUS_LOCOMOTION_CONFIG;
+            if (cfg) {
+                const nowEnabled = cfg.toggle();
+                console.log(`[VRChatPanel] Avatar Walk → ${nowEnabled ? 'ON' : 'OFF'}`);
+                // If disabling, force stop any active walk
+                if (!nowEnabled && window.NEXUS_LOCOMOTION?.forceStop) {
+                    window.NEXUS_LOCOMOTION.forceStop();
+                }
+            }
+            this.redraw();
+            return true;
+        }
+
         // Intimacy / Close Presence toggle
         if (key === 'xr_intimacy') {
             this.xrSettings.intimacyMode = !this.xrSettings.intimacyMode;
@@ -2536,10 +2577,22 @@ export class VRChatPanel {
             return true;
         }
 
-        // Follow-me gaze toggle (avatar eyes track user's HMD)
+        // Follow-me gaze toggle: OFF → ON → LOCK (3-state cycle)
+        //   OFF  = no follow-me eyes
+        //   ON   = follow-me eyes, BehaviorEngine thinking drift plays normally
+        //   LOCK = follow-me eyes + conversational gaze (maintains eye contact during AI speech)
         if (key === 'xr_gaze') {
-            this.xrSettings.followGaze = !this.xrSettings.followGaze;
-            console.log(`[VRChatPanel] Follow-me gaze → ${this.xrSettings.followGaze ? 'ON' : 'OFF'}`);
+            const cur = this.xrSettings.followGaze;
+            // Cycle: false → true → 'lock' → false
+            if (cur === false) {
+                this.xrSettings.followGaze = true;
+            } else if (cur === true) {
+                this.xrSettings.followGaze = 'lock';
+            } else {
+                this.xrSettings.followGaze = false;
+            }
+            const labels = { false: 'OFF', true: 'ON', lock: 'LOCK' };
+            console.log(`[VRChatPanel] Follow-me gaze → ${labels[this.xrSettings.followGaze] || 'LOCK'}`);
             window.dispatchEvent(
                 new CustomEvent('vr-setting-changed', {
                     detail: { key: 'followGaze', value: this.xrSettings.followGaze },

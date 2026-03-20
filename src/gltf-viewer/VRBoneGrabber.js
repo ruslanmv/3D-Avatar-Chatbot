@@ -15,6 +15,7 @@
  */
 
 import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
+import { clampBoneRotation } from './VRPoseSystem.js';
 
 export class VRBoneGrabber {
     constructor({ scene, renderer }) {
@@ -490,6 +491,11 @@ export class VRBoneGrabber {
 
         // Apply: newRot = localDelta * startRot
         bone.quaternion.copy(localDelta).multiply(this._grabStartQuat);
+
+        // Enforce anatomical joint angle limits (prevent impossible poses)
+        if (this._grabbedBoneKey) {
+            clampBoneRotation(bone, this._grabbedBoneKey);
+        }
 
         // Update highlight position
         this._showHighlight(bone);

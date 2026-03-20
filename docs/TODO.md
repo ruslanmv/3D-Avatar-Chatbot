@@ -215,7 +215,62 @@ and ensures ground contact.
 
 ---
 
-## 6. Physics & Secondary Motion
+## 5b. Walking & Locomotion (Planned)
+
+> **Status**: Not yet implemented — architectural planning phase.
+> This section outlines the industry-standard approach for avatar locomotion.
+
+### 5b.1 Procedural Walk Cycle
+**Industry standard**: AAA titles (GTA V, Red Dead 2, Uncharted 4) use
+parameterized procedural walk cycles or blended motion-captured clips
+driven by velocity and direction.
+
+- [ ] Implement basic bipedal walk cycle generator:
+  - Leg swing via hip/knee/ankle IK chain
+  - Foot plant detection with ground contact events
+  - Arm counter-swing (opposite arm to leg, ~30% amplitude)
+  - Hip vertical bob (sinusoidal, 2-4 cm at walk speed)
+  - Spine counter-rotation (shoulders twist opposite to hips)
+- [ ] Speed-parameterized blending: idle → walk → jog → run
+- [ ] Direction blending: forward, backward, strafe left/right (2D blend space)
+
+### 5b.2 Foot IK & Ground Adaptation
+**Industry standard**: All AAA locomotion systems use foot IK to prevent
+floating/penetrating feet on uneven terrain (Unreal/Unity built-in).
+
+- [ ] Two-bone IK solver per leg (hip → knee → ankle)
+- [ ] Per-frame ground raycast from each foot
+- [ ] Pelvis height adjustment based on lowest foot contact
+- [ ] Toe alignment to surface normal (ankle rotation)
+- [ ] Foot locking during stance phase (prevents sliding)
+
+### 5b.3 Root Motion vs In-Place Animation
+**Industry standard**: Root motion (animation drives transform) is used
+for precise movement (combat, cinematics). In-place animation with
+code-driven translation is used for responsive gameplay.
+
+- [ ] Support both modes: root-motion clips and in-place + velocity drive
+- [ ] Extract root displacement from animation clips for root-motion mode
+- [ ] Blend between modes for smooth transitions (cutscene → gameplay)
+
+### 5b.4 VR Locomotion Integration
+**Reference**: VRChat, Blade & Sorcery — avatar walks when user moves
+via thumbstick, with upper body driven by tracked controllers.
+
+- [ ] Map thumbstick input to walk velocity vector
+- [ ] Upper body follows HMD + controllers (IK), lower body walks procedurally
+- [ ] Smooth acceleration/deceleration curves (no instant start/stop)
+- [ ] Turn-in-place animation when user rotates without translating
+
+### 5b.5 Navigation & Pathfinding (Future)
+**Reference**: NavMesh-based pathfinding (Unreal/Unity standard).
+
+- [ ] Bake simple NavMesh from scene geometry
+- [ ] A* pathfinding for autonomous avatar movement
+- [ ] Steering behaviors: arrive, avoid obstacles, follow path
+- [ ] Integration with chat commands ("walk to X", "come here")
+
+
 
 ### 6.1 VRM Spring Bone Integration
 **Industry standard**: VRM spec includes SpringBone for hair, skirt, accessories.
@@ -384,7 +439,10 @@ at distance (60 Hz near, 15 Hz mid, 5 Hz far).
 | 5.1 Rhythm Detection | Medium | Medium | P2 |
 | 7.1 FACS Blend Shapes | High | High | P2 |
 | 9.1 FABRIK Full-Body IK | High | High | P2 |
+| 5b.1 Procedural Walk Cycle | High | High | P2 |
+| 5b.2 Foot IK & Ground Adapt | High | Medium | P2 |
 | 9.2 Finger Tracking | Medium | Medium | P2 |
+| 5b.4 VR Locomotion | Medium | Medium | P2 |
 | 5.3 Motion Matching | Very High | Very High | P3 |
 | 6.3 Cloth Simulation | Low | High | P3 |
 | 7.2 Wrinkle Maps | Low | Medium | P3 |

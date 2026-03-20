@@ -11,7 +11,8 @@
  *   4. Compute yaw/pitch in world space (both VRM and GLB face +Z after loading).
  *   5. Normalize to the -1..1 range that ProceduralAnimator's mouse system expects.
  *   6. Feed via setGazeOverride() — head bone rotates toward the user.
- *   7. BehaviorEngine VRM eye expressions (lookLeft/Right/Up/Down) add eye-leading.
+ *   7. Directly apply VRM eye expressions (lookLeft/Right/Up/Down) so eyes
+ *      lead head rotation — the AAA "eyes snap first" pattern.
  *
  * Natural gaze behaviors (researched from AAA games & VR UX guidelines):
  *   - Eyes lead head rotation by a small amount (faster saccade response)
@@ -37,6 +38,16 @@ export class VRGazeController {
         this.camera = camera;
         this.enabled = true;
 
+        /**
+         * When true (GAZE: LOCK), BehaviorEngine yields gaze control
+         * during LISTENING/THINKING/SPEAKING states so the avatar
+         * maintains eye contact throughout conversation.
+         * When false (GAZE: ON), BehaviorEngine's state-based gaze
+         * patterns (thinking drift, etc.) play normally.
+         * Default: true (best conversational experience).
+         */
+        this.conversationalGaze = true;
+
         // Current smoothed gaze values (normalized -1..1)
         this._gazeX = 0;
         this._gazeY = 0;
@@ -51,9 +62,24 @@ export class VRGazeController {
         this._prevGazeX = 0;
         this._prevGazeY = 0;
 
+        // Smoothed eye yaw/pitch (for smooth VRM expression application)
+        this._eyeYaw = 0;
+        this._eyePitch = 0;
+
         // Avatar reference (set externally)
         this._avatarRoot = null;
         this._headBone = null;
+    }
+
+    /**
+     * Get the VRM expression manager for the current avatar.
+     * Uses the same access path as BehaviorEngine._getVRMLoader().
+     * Returns null if unavailable (GLB model, or VRM not loaded).
+     */
+    _getExpressionManager() {
+        const viewer = window.NEXUS_VIEWER;
+        const vrm = viewer?.avatarManager?._currentVRM;
+        return vrm?.expressionManager || null;
     }
 
     /**
@@ -171,15 +197,49 @@ export class VRGazeController {
             y: this._gazeY,
         });
 
-        // --- 11. Set BehaviorEngine eye expressions (eyes lead head) ---
-        // Eyes track the full target, head tracks the dampened value.
-        // The difference = eyes lead ahead of head rotation.
+        // --- 11. Directly apply VRM eye expressions (eyes lead head) ---
+        // AAA pattern: eyes snap to full target quickly, head follows with
+        // damped inertia. The difference = eyes are always ahead of the head.
+        //
+        // BehaviorEngine._updateGaze() is skipped when _isFollowGazeActive()
+        // returns true (GAZE: LOCK in VR), so we MUST drive lookLeft/Right/
+        // Up/Down ourselves — otherwise eyes stay frozen during SPEAKING.
+        //
+        // References:
+        //   - Half-Life: Alyx, God of War, Wind Waker NPC gaze systems
+        //   - @pixiv/three-vrm LookAt expression type (lookLeft/Right/Up/Down)
+        //   - Unity Realistic Eye Movements asset (eyes-lead-head paradigm)
+        const eyeTargetYaw = THREE.MathUtils.clamp(yawNorm + this._saccadeOffsetX, -1, 1);
+        const eyeTargetPitch = THREE.MathUtils.clamp(pitchNorm + this._saccadeOffsetY, -1, 1);
+
+        // Also feed BehaviorEngine targets — used when GAZE: ON (non-LOCK)
+        // where BehaviorEngine._updateGaze() still runs and applies its own
+        // smooth eye interpolation. Harmless when LOCK is active since
+        // _updateGaze() is skipped in that case.
         const behavior = window.NEXUS_BEHAVIOR;
         if (behavior) {
-            const eyeYaw = yawNorm + this._saccadeOffsetX;
-            const eyePitch = pitchNorm + this._saccadeOffsetY;
-            behavior.gazeTargetYaw = THREE.MathUtils.clamp(eyeYaw, -1, 1);
-            behavior.gazeTargetPitch = THREE.MathUtils.clamp(eyePitch, -1, 1);
+            behavior.gazeTargetYaw = eyeTargetYaw;
+            behavior.gazeTargetPitch = eyeTargetPitch;
+        }
+
+        // Directly apply VRM eye expressions (mandatory for GAZE: LOCK mode
+        // where BehaviorEngine._updateGaze() is skipped).
+        // Smooth eye interpolation — faster than head (6x) for the natural
+        // "eyes snap, head follows" AAA feel. Eyes arrive first, head catches up.
+        const eyeDamp = 1 - Math.exp(-24.0 * dt);
+        this._eyeYaw += (eyeTargetYaw - this._eyeYaw) * eyeDamp;
+        this._eyePitch += (eyeTargetPitch - this._eyePitch) * eyeDamp;
+
+        const em = this._getExpressionManager();
+        if (em) {
+            try {
+                em.setValue('lookLeft', Math.max(0, -this._eyeYaw));
+                em.setValue('lookRight', Math.max(0, this._eyeYaw));
+                em.setValue('lookUp', Math.max(0, this._eyePitch));
+                em.setValue('lookDown', Math.max(0, -this._eyePitch));
+            } catch (_) {
+                /* gaze expressions may not exist on this model */
+            }
         }
     }
 
@@ -193,12 +253,34 @@ export class VRGazeController {
         }
         this._gazeX = 0;
         this._gazeY = 0;
+        this._eyeYaw = 0;
+        this._eyePitch = 0;
+
+        // Clear VRM eye expressions so BehaviorEngine can resume control
+        const em = this._getExpressionManager();
+        if (em) {
+            try {
+                em.setValue('lookLeft', 0);
+                em.setValue('lookRight', 0);
+                em.setValue('lookUp', 0);
+                em.setValue('lookDown', 0);
+            } catch (_) {}
+        }
     }
 
     setEnabled(enabled) {
         this.enabled = enabled;
         if (!enabled) {
             this.release();
+        } else {
+            // Immediately set a gaze override so ProceduralAnimator's mouse
+            // fallback path is suppressed from the very first frame.
+            // Without this, the first frame uses stale desktop mouse values
+            // and the gaze appears to not work until toggled OFF→ON.
+            const animator = window.NEXUS_PROCEDURAL_ANIMATOR;
+            if (animator) {
+                animator.setGazeOverride({ x: this._gazeX, y: this._gazeY });
+            }
         }
         console.log(`[VRGazeController] Follow-me gaze ${enabled ? 'ON' : 'OFF'}`);
     }

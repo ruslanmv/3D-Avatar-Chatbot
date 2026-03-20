@@ -14,7 +14,7 @@ LEFT CONTROLLER                    RIGHT CONTROLLER
 │             │                    │             │
 │  [Stick]    │                    │  [Stick]    │
 │  Move/Strafe│                    │  Snap Turn  │
-│             │                    │  Fly Up/Down│
+│  L3: Teleport                    │  Fly Up/Down│
 │  [Trigger]  │                    │  [Trigger]  │
 │  Select/UI  │                    │  Select/UI  │
 │             │                    │             │
@@ -28,15 +28,16 @@ LEFT CONTROLLER                    RIGHT CONTROLLER
 This control scheme follows the same conventions as VRChat, Half-Life: Alyx,
 Meta Horizon Worlds, and other major VR titles:
 
-| Action          | Input                    | Notes                                       |
-| --------------- | ------------------------ | ------------------------------------------- |
-| **Select / UI** | Trigger (index finger)   | Point and click on UI elements               |
-| **Grab / Hold** | Grip (squeeze)           | Grab avatar to spin, grab panel to drag       |
-| **Move**        | Left stick               | Walk forward/back, strafe left/right          |
-| **Turn**        | Right stick X            | Snap turn left/right                          |
-| **Fly**         | Right stick Y            | Fly up/down                                   |
-| **Menu**        | X (left) or A (right)    | Toggle chat panel visibility                  |
-| **Push-to-talk**| Y (left) or B (right)    | Hold to record voice, release to send         |
+| Action           | Input                 | Notes                                        |
+| ---------------- | --------------------- | -------------------------------------------- |
+| **Select / UI**  | Trigger (index)       | Point and click on UI elements               |
+| **Grab / Hold**  | Grip (squeeze)        | Grab avatar to spin, grab panel to drag      |
+| **Move**         | Left stick            | Walk forward/back, strafe left/right         |
+| **Teleport Arc** | Left stick click (L3) | Hold to show arc, release to walk there      |
+| **Turn**         | Right stick X         | Snap turn left/right                         |
+| **Fly**          | Right stick Y         | Fly up/down                                  |
+| **Menu**         | X (left) or A (right) | Toggle chat panel visibility                 |
+| **Push-to-talk** | Y (left) or B (right) | Hold to record voice, release to send        |
 
 ### WebXR Button Index Reference
 
@@ -50,14 +51,20 @@ Meta Horizon Worlds, and other major VR titles:
 
 ## Movement
 
-| Control                   | Action                |
-| ------------------------- | --------------------- |
-| Left stick forward/back   | Walk forward/backward |
-| Left stick left/right     | Strafe left/right     |
-| Right stick left/right    | Snap turn             |
-| Right stick up/down       | Fly up/down           |
+| Control                      | Action                                     |
+| ---------------------------- | ------------------------------------------ |
+| Left stick forward/back      | Walk forward/backward                      |
+| Left stick left/right        | Strafe left/right                          |
+| Left stick click (L3)        | Teleport arc (hold to aim, release to walk)|
+| Right stick left/right       | Snap turn                                  |
+| Right stick up/down          | Fly up/down                                |
 
 Movement speed can be adjusted via the VR settings panel (slow / normal / fast).
+
+> **Teleport Arc** requires the "Walk" toggle to be ON in the VR controls panel.
+> Click and hold the left thumbstick to show a parabolic arc. Aim at the ground
+> and release to make the avatar walk to that point. Smooth locomotion is
+> suppressed while aiming.
 
 ## Avatar Interaction
 
