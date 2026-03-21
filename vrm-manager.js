@@ -2596,14 +2596,29 @@ function sanitizeFileName(name) {
  * For local URLs: direct fetch.
  */
 async function fetchModelUrl(url) {
-    const isR2 = url.includes('r2.dev') || url.includes('r2.cloudflarestorage.com');
+    const isR2Dev = url.includes('r2.dev') || url.includes('r2.cloudflarestorage.com');
+    const isR2Custom = url.includes('avatars.yourfriend.online');
     const isExternal = /^https?:\/\//.test(url);
 
     if (!isExternal) return fetch(url);
 
+    // R2 custom domain (avatars.yourfriend.online): no bot protection, fetch directly via CORS.
+    if (isR2Custom) {
+        try {
+            const res = await fetch(url, { mode: 'cors' });
+            if (res.ok) return res;
+            console.warn(`[VRM-Manager] Custom domain direct fetch returned ${res.status}, trying proxy...`);
+        } catch (e) {
+            console.warn('[VRM-Manager] Custom domain direct fetch error:', e.message, '— trying proxy...');
+        }
+        // Fallback to proxy if direct fails
+        const proxyUrl = '/api/avatar-proxy?url=' + encodeURIComponent(url);
+        return fetch(proxyUrl);
+    }
+
     // R2 r2.dev domains are blocked by Cloudflare bot protection in browsers.
     // Always use the server-side proxy (Edge streaming, no size limit).
-    if (isR2) {
+    if (isR2Dev) {
         const proxyUrl = '/api/avatar-proxy?url=' + encodeURIComponent(url);
         try {
             const res = await fetch(proxyUrl);
