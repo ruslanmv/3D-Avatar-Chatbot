@@ -2588,46 +2588,38 @@ function sanitizeFileName(name) {
 
 /**
  * Resilient fetch for external model files (VRM/GLB).
- * Tries direct CORS fetch first, retries once, then falls back to avatar-proxy.
- * Handles R2 r2.dev Cloudflare challenge pages that break direct fetch.
+ *
+ * For R2 r2.dev URLs: proxy FIRST (Cloudflare bot protection blocks direct
+ * browser fetch on r2.dev domains), fallback to direct CORS fetch.
+ *
+ * For other external URLs: proxy first, fallback to direct CORS fetch.
+ * For local URLs: direct fetch.
  */
 async function fetchModelUrl(url) {
-    const isCorsOk = url.includes('r2.dev') || url.includes('r2.cloudflarestorage.com');
+    const isR2 = url.includes('r2.dev') || url.includes('r2.cloudflarestorage.com');
     const isExternal = /^https?:\/\//.test(url);
 
     if (!isExternal) return fetch(url);
 
-    // Strategy 1: Direct CORS fetch (best for R2 and CORS-friendly CDNs)
-    if (isCorsOk) {
-        for (let attempt = 0; attempt < 2; attempt++) {
-            try {
-                const res = await fetch(url, { mode: 'cors' });
-                if (res.ok) {
-                    const ct = res.headers.get('content-type') || '';
-                    if (!ct.includes('text/html')) return res;
-                    // Cloudflare challenge page — fall through to proxy
-                    console.warn('[VRM-Manager] R2 returned challenge page, trying proxy...');
-                    break;
-                }
-            } catch (e) {
-                console.warn(`[VRM-Manager] Direct fetch attempt ${attempt + 1} failed:`, e.message);
-                if (attempt === 0) await new Promise((r) => setTimeout(r, 1000));
-            }
-        }
-        // Fallback: use avatar-proxy for R2 URLs that failed direct fetch
+    // R2 r2.dev domains are blocked by Cloudflare bot protection in browsers.
+    // Always use the server-side proxy (Edge streaming, no size limit).
+    if (isR2) {
+        const proxyUrl = '/api/avatar-proxy?url=' + encodeURIComponent(url);
         try {
-            const proxyUrl = '/api/avatar-proxy?url=' + encodeURIComponent(url);
             const res = await fetch(proxyUrl);
-            if (res.ok) return res;
-            console.warn(`[VRM-Manager] Proxy also failed (${res.status}), last direct attempt...`);
+            if (res.ok) {
+                const ct = res.headers.get('content-type') || '';
+                if (!ct.includes('text/html')) return res;
+            }
+            console.warn(`[VRM-Manager] Proxy returned ${res.status}, trying direct...`);
         } catch (e) {
-            console.warn('[VRM-Manager] Proxy fetch error:', e.message);
+            console.warn('[VRM-Manager] Proxy error:', e.message, '— trying direct...');
         }
-        // Last resort: one more direct try
+        // Fallback: direct CORS fetch (works if user already passed Cloudflare challenge)
         return fetch(url, { mode: 'cors' });
     }
 
-    // Strategy 2: Proxy first for non-CORS external URLs, fallback to direct
+    // Other external URLs: proxy first, fallback to direct
     const proxyUrl = '/api/avatar-proxy?url=' + encodeURIComponent(url);
     const res = await fetch(proxyUrl);
     if (res.ok) return res;

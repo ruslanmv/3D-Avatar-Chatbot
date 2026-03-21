@@ -8,9 +8,6 @@
     "api/proxy.js": {
       "maxDuration": 10
     },
-    "api/avatar-proxy.js": {
-      "maxDuration": 30
-    },
     "api/rpm-guest.js": {
       "maxDuration": 10
     }
