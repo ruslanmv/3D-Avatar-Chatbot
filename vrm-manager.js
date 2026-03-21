@@ -1114,9 +1114,17 @@ const VRMManager = {
             return;
         }
 
-        // Basic validation
+        // Basic validation — must be a direct model file URL
         if (!/^https?:\/\/.+\.(vrm|glb|gltf)(\?.*)?$/i.test(url)) {
-            toast('URL must point to a .vrm, .glb, or .gltf file', 'error');
+            // Give helpful message for VRoid Hub page URLs
+            if (url.includes('hub.vroid.com')) {
+                toast(
+                    'This is a VRoid Hub page link, not a direct model file. Download the .vrm file from hub.vroid.com first, then install via "Add Avatar → From File".',
+                    'error'
+                );
+            } else {
+                toast('URL must point to a .vrm, .glb, or .gltf file', 'error');
+            }
             return;
         }
 
@@ -1129,14 +1137,25 @@ const VRMManager = {
         toast(`Downloading ${fileName}...`, 'info');
 
         try {
-            // Use avatar proxy for external URLs to bypass CORS
+            // Download the model file
             const isExternal = url.startsWith('https://') || url.startsWith('http://');
-            const fetchUrl = isExternal ? '/api/avatar-proxy?url=' + encodeURIComponent(url) : url;
-            let res = await fetch(fetchUrl);
-            // If proxy fails, try direct download as fallback
-            if (!res.ok && isExternal) {
-                console.warn(`[VRM-Manager] Proxy failed (${res.status}), trying direct download...`);
+            // R2 public URLs have CORS enabled — fetch directly without proxy
+            const isCorsOk = url.includes('r2.dev') || url.includes('r2.cloudflarestorage.com');
+            let res;
+            if (!isExternal) {
+                res = await fetch(url);
+            } else if (isCorsOk) {
+                // Direct CORS fetch for R2 and other CORS-friendly CDNs
                 res = await fetch(url, { mode: 'cors' });
+            } else {
+                // Use avatar proxy for external URLs that block CORS
+                const fetchUrl = '/api/avatar-proxy?url=' + encodeURIComponent(url);
+                res = await fetch(fetchUrl);
+                // If proxy fails, try direct download as fallback
+                if (!res.ok) {
+                    console.warn(`[VRM-Manager] Proxy failed (${res.status}), trying direct download...`);
+                    res = await fetch(url, { mode: 'cors' });
+                }
             }
             if (!res.ok) throw new Error(`Download failed: ${res.status}`);
 
@@ -1707,13 +1726,22 @@ const VRMManager = {
                     );
                 }
 
-                // Use avatar proxy for external URLs to bypass CORS, fall back to direct fetch
-                let fetchUrl = isExternal ? '/api/avatar-proxy?url=' + encodeURIComponent(downloadUrl) : downloadUrl;
-                let res = await fetch(fetchUrl);
-                // If proxy fails (403/502/etc), try direct download as fallback
-                if (!res.ok && isExternal) {
-                    console.warn(`[VRM-Manager] Proxy failed (${res.status}), trying direct download...`);
+                // R2 public URLs have CORS enabled — fetch directly without proxy
+                const isCorsOk = downloadUrl.includes('r2.dev') || downloadUrl.includes('r2.cloudflarestorage.com');
+                let res;
+                if (isCorsOk) {
                     res = await fetch(downloadUrl, { mode: 'cors' });
+                } else {
+                    // Use avatar proxy for CORS-blocked external URLs, fall back to direct fetch
+                    let fetchUrl = isExternal
+                        ? '/api/avatar-proxy?url=' + encodeURIComponent(downloadUrl)
+                        : downloadUrl;
+                    res = await fetch(fetchUrl);
+                    // If proxy fails (403/502/etc), try direct download as fallback
+                    if (!res.ok && isExternal) {
+                        console.warn(`[VRM-Manager] Proxy failed (${res.status}), trying direct download...`);
+                        res = await fetch(downloadUrl, { mode: 'cors' });
+                    }
                 }
                 if (!res.ok) throw new Error(`Download failed: ${res.status} ${res.statusText}`);
 

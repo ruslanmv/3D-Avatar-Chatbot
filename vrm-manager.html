@@ -600,10 +600,12 @@
             import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
             import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
             import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
-            THREE.GLTFLoader = GLTFLoader;
-            THREE.KTX2Loader = KTX2Loader;
-            THREE.MeshoptDecoder = MeshoptDecoder;
-            window.THREE = THREE;
+            // ES module namespace objects are frozen — spread into a mutable object
+            const threeWithLoaders = Object.assign(Object.create(null), THREE);
+            threeWithLoaders.GLTFLoader = GLTFLoader;
+            threeWithLoaders.KTX2Loader = KTX2Loader;
+            threeWithLoaders.MeshoptDecoder = MeshoptDecoder;
+            window.THREE = threeWithLoaders;
         </script>
         <script defer src="vrm-manager.js"></script>
     </body>
