@@ -566,9 +566,19 @@ const SOURCES = [
         name: 'Open Source Avatars',
         icon: '🆓',
         url: 'opensourceavatars.com',
-        desc: '300+ CC0 avatars fetched live from GitHub. No auth needed — automatic catalog.',
+        desc: '300+ CC0 avatars fetched live from GitHub. No auth needed — loaded on-demand when selected.',
         auth: 'none',
         formats: ['vrm'],
+        status: 'connected',
+    },
+    {
+        id: 'homepilot-hub',
+        name: 'HomePilot Avatar Hub',
+        icon: '🧑‍🚀',
+        url: 'homepilotai.github.io/vrm-avatar-catalog',
+        desc: '2,500+ free VRM avatars served from Cloudflare R2 CDN. Curated collection from 11 sources — VRoid Hub, Sketchfab, 100 Avatars, and more. No auth needed.',
+        auth: 'none',
+        formats: ['vrm', 'glb'],
         status: 'connected',
     },
 ];
@@ -582,6 +592,7 @@ let currentFiltered = [];
 let visibleCount = VM_CONFIG.PAGE_SIZE;
 let installedAvatars = {};
 let db = null;
+let osAvatarsLoaded = false;
 
 /* ═══════════════════════════════════════════════════════════
    INITIALIZATION
@@ -617,6 +628,24 @@ const VRMManager = {
 
         // Auto-generate thumbnails for core avatars that still have no preview
         this.autoGenerateMissingThumbnails();
+
+        // Handle ?install=URL parameter from gallery deep-link
+        this.handleInstallParam();
+    },
+
+    handleInstallParam() {
+        const params = new URLSearchParams(window.location.search);
+        const installUrl = params.get('install');
+        if (!installUrl) return;
+
+        // Clean the URL param from address bar
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, '', cleanUrl);
+
+        // Auto-install the avatar from URL
+        console.log('[VRM-Manager] Auto-installing from URL param:', installUrl);
+        toast(`Installing avatar from catalog...`, 'info');
+        this.installFromUrl(installUrl);
     },
 
     async autoGenerateMissingThumbnails() {
@@ -906,11 +935,14 @@ const VRMManager = {
         // Fetch remote sources in parallel and merge in later
         const fetchers = [];
 
-        // Open Source Avatars — always fetch (no auth, CC0)
-        fetchers.push(this.fetchOpenSourceAvatars());
+        // Open Source Avatars — loaded on-demand only when user selects the source filter
+        // (already included in HomePilot Hub catalog, so no need to double-fetch)
 
         // GitHub VRM Samples — always fetch (no auth, CC0)
         fetchers.push(this.fetchGitHubVRMSamples());
+
+        // HomePilot Avatar Hub — always fetch (no auth, 2000+ avatars on R2 CDN)
+        fetchers.push(this.fetchHomePilotCatalog());
 
         // Sketchfab search (if connected)
         if (this.credentials.sketchfab && this.credentials.sketchfab.token) {
@@ -1077,6 +1109,55 @@ const VRMManager = {
             return avatars;
         } catch (e) {
             console.warn('[VRM-Manager] VRM Samples fetch error:', e);
+            return [];
+        }
+    },
+
+    /* ── HomePilot Avatar Hub (Cloudflare R2 CDN) ────── */
+
+    async fetchHomePilotCatalog() {
+        const CATALOG_URL = 'https://homepilotai.github.io/vrm-avatar-catalog/catalog.json';
+        try {
+            const res = await fetch(CATALOG_URL, { mode: 'cors' });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const catalog = await res.json();
+
+            const avatars = catalog
+                .filter((entry) => entry.public_url || entry.object_key)
+                .map((entry) => {
+                    const format = (entry.format_type || 'vrm').toLowerCase();
+                    const isVrm = format === 'vrm';
+                    const sourceProject = entry.source_project || entry.source_name || 'homepilot';
+                    return {
+                        id: `hp-${(entry.id || entry.name || '')
+                            .replace(/[^a-zA-Z0-9]/g, '-')
+                            .toLowerCase()
+                            .slice(0, 60)}`,
+                        name: entry.name || entry.filename || 'Unknown',
+                        desc: `From ${sourceProject.replace(/[-_]/g, ' ')}. ${entry.license || 'Free'}. ${entry.quality === 'curated' ? 'Curated quality.' : ''}`.trim(),
+                        source: 'HomePilot Hub',
+                        sourceId: 'homepilot-hub',
+                        format: isVrm ? 'vrm' : 'glb',
+                        license: (entry.license || 'free').toLowerCase().includes('cc0')
+                            ? 'cc0'
+                            : (entry.license || '').toLowerCase().includes('cc-by')
+                              ? 'cc-by'
+                              : 'free',
+                        url: entry.public_url || '',
+                        preview: entry.thumbnail_url || '',
+                        icon: '🧑‍🚀',
+                        tags: [sourceProject, entry.quality || 'community', format].filter(Boolean),
+                        features: isVrm ? ['lipsync', 'emotions', 'gaze', 'blink'] : [],
+                        size: entry.size_bytes || 0,
+                        homepilotId: entry.id || '',
+                    };
+                })
+                .filter((a) => a.url);
+
+            console.log(`[VRM-Manager] HomePilot Hub: found ${avatars.length} avatars`);
+            return avatars;
+        } catch (e) {
+            console.warn('[VRM-Manager] HomePilot Hub fetch error:', e);
             return [];
         }
     },
@@ -1381,11 +1462,36 @@ const VRMManager = {
 
     /* ── Filter & Render ───────────────────────────────── */
 
+    async onSourceFilterChange() {
+        const sourceEl = el('vm-filter-source');
+        const selected = (sourceEl && sourceEl.value) || '';
+
+        // On-demand: fetch Open Source Avatars only when user selects that source
+        if (selected === 'Open Source Avatars' && !osAvatarsLoaded) {
+            setStatus('Loading Open Source Avatars...');
+            try {
+                const osaItems = await this.fetchOpenSourceAvatars();
+                if (Array.isArray(osaItems) && osaItems.length > 0) {
+                    allItems = allItems.concat(osaItems);
+                    osAvatarsLoaded = true;
+                    this.populateSourceFilter();
+                }
+            } catch (e) {
+                console.warn('[VRM-Manager] On-demand OSA load error:', e);
+            }
+            setStatus('');
+        }
+
+        this.applyFilters();
+    },
+
     populateSourceFilter() {
         const sourceSet = {};
         allItems.forEach((it) => {
             sourceSet[it.source] = true;
         });
+        // Always show Open Source Avatars as a selectable source (loaded on-demand)
+        sourceSet['Open Source Avatars'] = true;
         const select = el('vm-filter-source');
         while (select.options.length > 1) select.remove(1);
         Object.keys(sourceSet)
@@ -1427,12 +1533,22 @@ const VRMManager = {
             currentFiltered = [...allItems];
         }
 
-        // Sort: VRM first, then GLB+morph, then GLB. Installed last.
+        // Sort: installed last, then by source priority (HomePilot Hub first, Open Source Avatars last),
+        // then VRM first, then GLB+morph, then GLB.
         const formatOrder = { vrm: 0, 'glb-morph': 1, glb: 2 };
+        const sourceOrder = {
+            'github-vrm-samples': 0,
+            'homepilot-hub': 1,
+            sketchfab: 2,
+            readyplayerme: 3,
+            opensourceavatars: 4,
+        };
         currentFiltered.sort((a, b) => {
             const aInst = this.isInstalled(a.id) ? 1 : 0;
             const bInst = this.isInstalled(b.id) ? 1 : 0;
             if (aInst !== bInst) return aInst - bInst;
+            const srcDiff = (sourceOrder[a.sourceId] ?? 3) - (sourceOrder[b.sourceId] ?? 3);
+            if (srcDiff !== 0) return srcDiff;
             return (formatOrder[a.format] || 9) - (formatOrder[b.format] || 9);
         });
 
@@ -2186,7 +2302,7 @@ const VRMManager = {
         );
 
         // Filters
-        el('vm-filter-source').addEventListener('change', () => this.applyFilters());
+        el('vm-filter-source').addEventListener('change', () => this.onSourceFilterChange());
         el('vm-filter-format').addEventListener('change', () => this.applyFilters());
         el('vm-filter-license').addEventListener('change', () => this.applyFilters());
 
