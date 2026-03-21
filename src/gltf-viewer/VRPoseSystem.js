@@ -79,8 +79,8 @@ const JOINT_LIMITS = {
     // ── Legs ──
     leftUpperLeg: { minX: -130, maxX: 35, minY: -45, maxY: 60, minZ: -30, maxZ: 45 },
     rightUpperLeg: { minX: -130, maxX: 35, minY: -60, maxY: 45, minZ: -45, maxZ: 30 },
-    leftLowerLeg: { minX: -5, maxX: 155, minY: -5, maxY: 5, minZ: -5, maxZ: 5 },
-    rightLowerLeg: { minX: -5, maxX: 155, minY: -5, maxY: 5, minZ: -5, maxZ: 5 },
+    leftLowerLeg: { minX: -155, maxX: 5, minY: -5, maxY: 5, minZ: -5, maxZ: 5 },
+    rightLowerLeg: { minX: -155, maxX: 5, minY: -5, maxY: 5, minZ: -5, maxZ: 5 },
     leftFoot: { minX: -45, maxX: 55, minY: -25, maxY: 25, minZ: -20, maxZ: 20 },
     rightFoot: { minX: -45, maxX: 55, minY: -25, maxY: 25, minZ: -20, maxZ: 20 },
 
@@ -126,13 +126,10 @@ function clampBoneRotation(bone, boneKey) {
 // A pole vector is a world-space direction hint that tells the IK solver
 // which way a joint should "point" (e.g. elbows point backward, knees
 // point forward).  Without it, CCD-IK can flip joints to the wrong side.
-
-const POLE_VECTORS = {
+//
+const ARM_POLE_VECTORS = {
     leftArm: new THREE.Vector3(0, 0, -1), // elbows point backward
     rightArm: new THREE.Vector3(0, 0, -1), // elbows point backward
-    leftLeg: new THREE.Vector3(0, 0, 1), // knees point forward
-    rightLeg: new THREE.Vector3(0, 0, 1), // knees point forward
-    spine: null, // spine has no pole vector
 };
 
 // =========================================================================
@@ -1242,6 +1239,367 @@ const PRESET_ORDER = [
 ];
 
 // =========================================================================
+// VAM-STYLE LEG IK SYSTEM (FABRIK + Hinge Knee + Soft Limits + SLERP)
+// =========================================================================
+//
+// Inspired by Virt-A-Mate's leg IK approach:
+//
+//   1) FABRIK (Forward And Backward Reaching IK) for natural chain solving
+//      — Positions converge by alternating forward/backward passes
+//      — No rotation fighting or pole vector nudging
+//
+//   2) Hinge constraint on knee — 1-DOF (flex/extend only, no lateral)
+//      — Flamingo and lateral oscillation are physically impossible
+//
+//   3) Soft limits with spring falloff
+//      — Instead of hard clamp (causes jitter at boundaries), limits push
+//        back gradually with a spring force
+//
+//   4) SLERP damping between frames
+//      — Previous frame's rotations blend toward new solution
+//      — Silky smooth, no popping
+//
+//   5) Mid-chain grab support
+//      — Grab the knee → thigh aims at grabbed position, shin follows
+//      — Grab the foot → full 2-bone solve
+//      — Grab the thigh → direct rotation (hip ball joint)
+
+// ── Reusable temp vectors (avoid GC pressure) ──
+const _vamHipPos = new THREE.Vector3();
+const _vamKneePos = new THREE.Vector3();
+const _vamFootPos = new THREE.Vector3();
+const _vamTargetPos = new THREE.Vector3();
+const _vamDir = new THREE.Vector3();
+const _vamFwd = new THREE.Vector3();
+const _vamUp = new THREE.Vector3();
+const _vamSide = new THREE.Vector3();
+const _vamPole = new THREE.Vector3();
+const _vamParentQ = new THREE.Quaternion();
+const _vamInvParentQ = new THREE.Quaternion();
+const _vamTargetQ = new THREE.Quaternion();
+const _vamPrevQ = new THREE.Quaternion();
+
+// ── Per-leg SLERP damping state (persists across frames) ──
+const _legDampState = {
+    leftLeg: { upperQ: null, lowerQ: null },
+    rightLeg: { upperQ: null, lowerQ: null },
+};
+
+// Damping factor: 0 = no smoothing (instant), 1 = never reaches target
+// 0.3 gives ~3 frames to converge — responsive but smooth
+const LEG_SLERP_FACTOR = 0.3;
+
+/**
+ * Detect the bone's rest-pose direction (local axis pointing toward child).
+ * VRM models typically use +Y, but we auto-detect from child position.
+ *
+ * @param {THREE.Bone} bone
+ * @returns {THREE.Vector3} Normalized local bone axis
+ */
+function getBoneAxis(bone) {
+    const axis = new THREE.Vector3(0, 1, 0); // VRM default
+    if (bone.children.length > 0) {
+        const childPos = new THREE.Vector3().copy(bone.children[0].position);
+        if (childPos.lengthSq() > 0.001) {
+            axis.copy(childPos).normalize();
+        }
+    }
+    return axis;
+}
+
+/**
+ * Aim a bone so its local bone-axis points along `worldDir`.
+ * Writes directly to bone.quaternion (no SLERP — caller handles damping).
+ *
+ * @param {THREE.Bone} bone
+ * @param {THREE.Vector3} worldDir - Desired world-space aim direction
+ * @returns {THREE.Quaternion} The computed local quaternion (for SLERP)
+ */
+function computeAimQuat(bone, worldDir) {
+    // Parent world quat → invert to get world-to-local transform
+    _vamParentQ.identity();
+    if (bone.parent) {
+        bone.parent.getWorldQuaternion(_vamParentQ);
+    }
+    _vamInvParentQ.copy(_vamParentQ).invert();
+
+    // World direction → local direction
+    const localDir = _vamDir.copy(worldDir).applyQuaternion(_vamInvParentQ).normalize();
+
+    // Rotate bone axis → local direction
+    const boneAxis = getBoneAxis(bone);
+    _vamTargetQ.setFromUnitVectors(boneAxis, localDir);
+
+    return _vamTargetQ.clone();
+}
+
+/**
+ * Soft limit with spring falloff (VaM-style).
+ *
+ * Instead of hard clamping (which causes jitter when the solver pushes
+ * against the limit every frame), this applies a smooth spring force
+ * that increases as the angle exceeds the soft zone.
+ *
+ * @param {number} angle - Current angle in radians
+ * @param {number} limit - Hard limit in radians
+ * @param {number} softZone - Size of the spring zone before the hard limit (radians)
+ * @returns {number} Adjusted angle
+ */
+function softClamp(angle, limit, softZone) {
+    if (angle <= limit - softZone) return angle; // within safe zone
+    if (angle >= limit) return limit; // past hard limit
+
+    // In the soft zone: exponential falloff pushes back toward safe zone
+    // Maps [limit-softZone, limit] → [0, 1], applies smooth hermite
+    const t = (angle - (limit - softZone)) / softZone; // 0→1
+    const smooth = t * t * (3 - 2 * t); // smoothstep
+    return limit - softZone + smooth * softZone;
+}
+
+/**
+ * Apply hinge constraint to knee (VaM-style).
+ *
+ * The knee is a 1-DOF hinge: it can only flex/extend along the local X axis.
+ * Any lateral (Y) or twist (Z) rotation is zeroed out.
+ * Flexion is clamped with soft limits: 0° (straight) to 155° (full bend).
+ *
+ * @param {THREE.Quaternion} quat - The knee's local quaternion (modified in place)
+ */
+function applyKneeHingeConstraint(quat) {
+    // Decompose quaternion to Euler
+    const euler = new THREE.Euler().setFromQuaternion(quat, 'XYZ');
+
+    // ── HINGE: zero out Y and Z (lateral bend and twist) ──
+    euler.y = 0;
+    euler.z = 0;
+
+    // ── SOFT LIMITS on X (flexion): 0° to 155° ──
+    // In VRM rigs, negative X = knee bending (shin folds behind thigh)
+    // Positive X = hyperextension (flamingo — disallowed)
+    const softZoneRad = THREE.MathUtils.degToRad(15); // 15° spring zone
+
+    // Prevent hyperextension (positive X): soft limit at 5°
+    if (euler.x > 0) {
+        const hardLimit = THREE.MathUtils.degToRad(5);
+        euler.x = softClamp(euler.x, hardLimit, softZoneRad);
+    }
+
+    // Prevent over-flexion (negative X): soft limit at -155°
+    if (euler.x < 0) {
+        const hardLimit = THREE.MathUtils.degToRad(155);
+        euler.x = -softClamp(-euler.x, hardLimit, softZoneRad);
+    }
+
+    quat.setFromEuler(euler);
+}
+
+/**
+ * VaM-style FABRIK leg IK solver.
+ *
+ * Supports two grab modes:
+ *   - effectorBone = 'foot'     → full 2-bone solve (foot tracks controller)
+ *   - effectorBone = 'lowerLeg' → knee grab (thigh aims at controller, shin follows)
+ *   - effectorBone = 'upperLeg' → direct hip rotation (handled by fallback in grabber)
+ *
+ * @param {THREE.Bone[]} chain - [upperLeg, lowerLeg, foot]
+ * @param {THREE.Vector3} targetWorldPos - Controller world position
+ * @param {string} chainName - 'leftLeg' or 'rightLeg'
+ * @param {string} grabbedBoneKey - Which bone was grabbed (e.g. 'leftFoot', 'leftLowerLeg')
+ */
+function solveLegIK(chain, targetWorldPos, chainName, grabbedBoneKey) {
+    if (chain.length < 3) return;
+
+    const upperLeg = chain[0];
+    const lowerLeg = chain[1];
+    const foot = chain[2];
+
+    // Ensure world matrices are current
+    upperLeg.updateMatrixWorld(true);
+
+    // ── Measure bone lengths ──
+    upperLeg.getWorldPosition(_vamHipPos);
+    lowerLeg.getWorldPosition(_vamKneePos);
+    foot.getWorldPosition(_vamFootPos);
+
+    const thighLen = _vamHipPos.distanceTo(_vamKneePos);
+    const shinLen = _vamKneePos.distanceTo(_vamFootPos);
+    if (thighLen < 0.001 || shinLen < 0.001) return;
+
+    // ── Determine grab mode ──
+    const isKneeGrab =
+        grabbedBoneKey.includes('LowerLeg') ||
+        grabbedBoneKey.includes('lowerLeg') ||
+        grabbedBoneKey === 'leftLowerLeg' ||
+        grabbedBoneKey === 'rightLowerLeg';
+
+    if (isKneeGrab) {
+        // ═══════════════════════════════════════════════════════════════
+        // KNEE GRAB MODE: thigh aims at grabbed position, shin hangs
+        // ═══════════════════════════════════════════════════════════════
+
+        // Aim the thigh from hip → grabbed knee position
+        const thighDir = new THREE.Vector3().subVectors(targetWorldPos, _vamHipPos).normalize();
+        const thighTargetQ = computeAimQuat(upperLeg, thighDir);
+
+        // SLERP damp the upper leg
+        const state = _legDampState[chainName];
+        if (state.upperQ) {
+            _vamPrevQ.copy(state.upperQ);
+            _vamPrevQ.slerp(thighTargetQ, 1.0 - LEG_SLERP_FACTOR);
+            upperLeg.quaternion.copy(_vamPrevQ);
+            state.upperQ.copy(_vamPrevQ);
+        } else {
+            upperLeg.quaternion.copy(thighTargetQ);
+            state.upperQ = thighTargetQ.clone();
+        }
+        upperLeg.updateMatrixWorld(true);
+
+        // Shin hangs naturally (gravity-like: aim straight down from knee)
+        lowerLeg.getWorldPosition(_vamKneePos);
+        const shinDir = new THREE.Vector3(0, -1, 0); // gravity
+        // Blend slightly toward foot's original direction for natural feel
+        const toFoot = new THREE.Vector3().subVectors(_vamFootPos, _vamKneePos);
+        if (toFoot.lengthSq() > 0.001) {
+            toFoot.normalize();
+            shinDir.lerp(toFoot, 0.3).normalize();
+        }
+        const shinTargetQ = computeAimQuat(lowerLeg, shinDir);
+
+        // Apply hinge constraint (knee can only flex, no lateral)
+        applyKneeHingeConstraint(shinTargetQ);
+
+        // SLERP damp the lower leg
+        if (state.lowerQ) {
+            _vamPrevQ.copy(state.lowerQ);
+            _vamPrevQ.slerp(shinTargetQ, 1.0 - LEG_SLERP_FACTOR);
+            lowerLeg.quaternion.copy(_vamPrevQ);
+            state.lowerQ.copy(_vamPrevQ);
+        } else {
+            lowerLeg.quaternion.copy(shinTargetQ);
+            state.lowerQ = shinTargetQ.clone();
+        }
+        lowerLeg.updateMatrixWorld(true);
+
+        return;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // FOOT GRAB MODE: Full 2-bone FABRIK solve
+    // ═══════════════════════════════════════════════════════════════════
+
+    // ── Step 1: Clamp target to reachable distance ──
+    _vamDir.subVectors(targetWorldPos, _vamHipPos);
+    let dist = _vamDir.length();
+    const maxReach = (thighLen + shinLen) * 0.999;
+    const minReach = Math.abs(thighLen - shinLen) * 1.01;
+    dist = THREE.MathUtils.clamp(dist, minReach, maxReach);
+    _vamDir.normalize();
+
+    // ── Step 2: Law of cosines → exact knee bend angle ──
+    const cosHip = (thighLen * thighLen + dist * dist - shinLen * shinLen) / (2 * thighLen * dist);
+    const hipAngle = Math.acos(THREE.MathUtils.clamp(cosHip, -1, 1));
+
+    // ── Step 3: Pole vector → knee plane ──
+    // Forward (+Z) with slight outward bias (prevents knees touching)
+    const lateralSign = chainName === 'leftLeg' ? -0.15 : 0.15;
+    _vamPole.set(lateralSign, 0, 1).normalize();
+
+    // Build orthonormal frame: fwd = hip→target, up = in pole plane
+    _vamFwd.copy(_vamDir);
+    _vamSide.crossVectors(_vamFwd, _vamPole);
+    if (_vamSide.lengthSq() < 0.0001) _vamSide.set(1, 0, 0);
+    _vamSide.normalize();
+    _vamUp.crossVectors(_vamSide, _vamFwd).normalize();
+
+    // ── Step 4: Knee world position from triangle geometry ──
+    const kneeWorld = new THREE.Vector3()
+        .copy(_vamFwd)
+        .multiplyScalar(Math.cos(hipAngle) * thighLen)
+        .addScaledVector(_vamUp, Math.sin(hipAngle) * thighLen)
+        .add(_vamHipPos);
+
+    // ── Step 5: Aim bones (VaM approach) ──
+    //
+    // VaM's key insight: the hip is a 3-DOF ball joint that handles ALL 3D
+    // positioning. The knee gets its flexion angle ANALYTICALLY from the
+    // law of cosines — it never does aim-then-hinge-constrain (which kills
+    // the aim direction and locks degrees of freedom).
+    //
+    // The pole vector geometry already guarantees the knee bends forward,
+    // so the shin aim rotation naturally produces correct flexion without
+    // needing to zero out Y/Z.
+
+    // -- Upper leg (hip ball joint, 3-DOF) → aim at computed knee --
+    const thighDir = new THREE.Vector3().subVectors(kneeWorld, _vamHipPos).normalize();
+    const thighTargetQ = computeAimQuat(upperLeg, thighDir);
+
+    // SLERP damping
+    const state = _legDampState[chainName];
+    if (state.upperQ) {
+        _vamPrevQ.copy(state.upperQ);
+        _vamPrevQ.slerp(thighTargetQ, 1.0 - LEG_SLERP_FACTOR);
+        upperLeg.quaternion.copy(_vamPrevQ);
+        state.upperQ.copy(_vamPrevQ);
+    } else {
+        upperLeg.quaternion.copy(thighTargetQ);
+        state.upperQ = thighTargetQ.clone();
+    }
+    upperLeg.updateMatrixWorld(true);
+
+    // -- Lower leg (knee hinge, 1-DOF) → analytical flexion --
+    //
+    // Instead of aim-then-constrain (which zeroes Y/Z and kills the aim),
+    // we compute the knee flexion angle directly from the law of cosines.
+    // The hip already positioned the knee in 3D space, so the shin only
+    // needs to flex by the correct amount along its local hinge axis.
+    //
+    // kneeAngle = angle at knee vertex of the triangle (hip, knee, foot)
+    // When kneeAngle = π → straight leg (no flex)
+    // When kneeAngle < π → bent knee (flex = π - kneeAngle)
+    const cosKnee = (thighLen * thighLen + shinLen * shinLen - dist * dist) / (2 * thighLen * shinLen);
+    const kneeAngle = Math.acos(THREE.MathUtils.clamp(cosKnee, -1, 1));
+
+    // Flexion = how much the knee bends from straight (π)
+    let kneeFlexion = Math.PI - kneeAngle;
+
+    // Soft-limit the flexion (VaM-style spring falloff)
+    const softZoneRad = THREE.MathUtils.degToRad(15);
+    const maxFlexion = THREE.MathUtils.degToRad(155);
+    kneeFlexion = softClamp(kneeFlexion, maxFlexion, softZoneRad);
+
+    // Apply as pure X-axis rotation (hinge: only flexion, no lateral/twist)
+    // Negative X = knee bends backward (shin folds behind thigh) in VRM rigs
+    const boneAxis = getBoneAxis(lowerLeg);
+    // Detect flex direction: if bone axis is mostly +Y, flexion is -X
+    // This ensures correct bend direction regardless of rig convention
+    const shinTargetQ = new THREE.Quaternion();
+    shinTargetQ.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -kneeFlexion);
+
+    // SLERP damping
+    if (state.lowerQ) {
+        _vamPrevQ.copy(state.lowerQ);
+        _vamPrevQ.slerp(shinTargetQ, 1.0 - LEG_SLERP_FACTOR);
+        lowerLeg.quaternion.copy(_vamPrevQ);
+        state.lowerQ.copy(_vamPrevQ);
+    } else {
+        lowerLeg.quaternion.copy(shinTargetQ);
+        state.lowerQ = shinTargetQ.clone();
+    }
+    lowerLeg.updateMatrixWorld(true);
+}
+
+/**
+ * Reset leg SLERP damping state (call when IK ends to prevent stale data).
+ * @param {string} chainName - 'leftLeg' or 'rightLeg'
+ */
+function resetLegDampState(chainName) {
+    if (_legDampState[chainName]) {
+        _legDampState[chainName].upperQ = null;
+        _legDampState[chainName].lowerQ = null;
+    }
+}
+
+// =========================================================================
 // CCD-IK SOLVER (Cyclic Coordinate Descent — Inverse Kinematics)
 // =========================================================================
 
@@ -1284,9 +1642,8 @@ function solveCCDIK(chain, targetWorldPos, opts = {}) {
     const toTarget = new THREE.Vector3();
     const axis = new THREE.Vector3();
 
-    // Pole vector for this chain (prevents elbow/knee flipping)
-    const poleDir = chainName ? POLE_VECTORS[chainName] : null;
-    // Pole is applied to the "mid-joint" of the chain (elbow for arm, knee for leg)
+    // Pole is applied to the "mid-joint" of the chain (elbow for arm)
+    // Note: legs now use analytical solveLegIK() and never reach this code
     const midIdx = chain.length >= 3 ? Math.floor((chain.length - 1) / 2) : -1;
 
     for (let iter = 0; iter < iterations; iter++) {
@@ -1348,39 +1705,37 @@ function solveCCDIK(chain, targetWorldPos, opts = {}) {
             bone.updateMatrixWorld(true);
         }
 
-        // ── POLE VECTOR PASS: nudge mid-joint toward preferred direction ──
+        // ── POLE VECTOR PASS: steer mid-joint (elbow) toward preferred direction ──
+        const poleDir = ARM_POLE_VECTORS[chainName] || null;
         if (poleDir && midIdx >= 0 && midIdx < chain.length) {
             const midBone = chain[midIdx];
             const midPos = new THREE.Vector3();
             midBone.getWorldPosition(midPos);
 
-            // Compute the plane formed by root → end-effector
             const rootPos = new THREE.Vector3();
             chain[0].getWorldPosition(rootPos);
             endEffector.getWorldPosition(effectorPos);
 
             const chainDir = new THREE.Vector3().subVectors(effectorPos, rootPos).normalize();
-            // Project mid-joint onto chain axis to find where it "should" be
             const midOnAxis = new THREE.Vector3()
                 .copy(chainDir)
                 .multiplyScalar(new THREE.Vector3().subVectors(midPos, rootPos).dot(chainDir))
                 .add(rootPos);
 
-            // Current mid-joint offset from axis
             const currentOffset = new THREE.Vector3().subVectors(midPos, midOnAxis);
             if (currentOffset.lengthSq() > 0.0001) {
-                // Check if mid-joint is on the wrong side of the pole
-                const poleDotCurrent = currentOffset.normalize().dot(poleDir);
+                const currentDir = currentOffset.clone().normalize();
+                const poleDotCurrent = currentDir.dot(poleDir);
+
                 if (poleDotCurrent < 0.1) {
-                    // Nudge mid-joint toward pole direction (gentle — 5% per frame)
-                    const nudgeAxis = new THREE.Vector3().crossVectors(currentOffset, poleDir).normalize();
+                    const nudgeAxis = new THREE.Vector3().crossVectors(currentDir, poleDir).normalize();
                     if (nudgeAxis.lengthSq() > 0.001) {
                         const parentWorldQuat = new THREE.Quaternion();
                         if (midBone.parent) {
                             midBone.parent.getWorldQuaternion(parentWorldQuat);
                         }
                         const localNudge = nudgeAxis.clone().applyQuaternion(parentWorldQuat.invert());
-                        const nudgeQuat = new THREE.Quaternion().setFromAxisAngle(localNudge, 0.08);
+                        const nudgeQuat = new THREE.Quaternion().setFromAxisAngle(localNudge, 0.04);
                         midBone.quaternion.premultiply(nudgeQuat);
 
                         if (boneKeys && boneKeys[midIdx]) {
@@ -1797,12 +2152,30 @@ export class VRPoseSystem {
             }
         }
 
+        // ── Capture grab offset ──
+        // The controller is at the user's hand, NOT at the bone.
+        // Without this offset, the bone teleports to the hand on first frame.
+        // We store: offset = boneWorldPos - controllerWorldPos
+        // Then each frame: targetPos = controllerWorldPos + offset
+        // Result: bone stays in place until the hand actually moves.
+        const grabbedBone = this._bones.get(boneKey);
+        const grabOffset = new THREE.Vector3();
+        if (grabbedBone) {
+            const boneWorldPos = new THREE.Vector3();
+            const controllerWorldPos = new THREE.Vector3();
+            grabbedBone.updateMatrixWorld(true);
+            grabbedBone.getWorldPosition(boneWorldPos);
+            controller.getWorldPosition(controllerWorldPos);
+            grabOffset.subVectors(boneWorldPos, controllerWorldPos);
+        }
+
         this._activeIKTarget = {
             chainName,
             chainBones,
             chainKeys: resolvedKeys,
             controller,
             boneKey,
+            grabOffset,
         };
 
         console.log(`[VRPoseSystem] IK started: ${chainName} (effector: ${boneKey})`);
@@ -1818,15 +2191,27 @@ export class VRPoseSystem {
             return;
         }
 
-        const { chainBones, controller, chainName, chainKeys } = this._activeIKTarget;
+        const { chainBones, controller, chainName, chainKeys, boneKey, grabOffset } = this._activeIKTarget;
         const targetPos = new THREE.Vector3();
         controller.getWorldPosition(targetPos);
+        // Apply grab offset so bone stays in place until hand actually moves
+        if (grabOffset) {
+            targetPos.add(grabOffset);
+        }
 
-        solveCCDIK(chainBones, targetPos, {
-            iterations: 12,
-            chainName,
-            boneKeys: chainKeys,
-        });
+        // Legs: VaM-style FABRIK + hinge knee + SLERP damping
+        // Arms/spine: CCD-IK (flexible for multi-bone chains)
+        const isLeg = chainName === 'leftLeg' || chainName === 'rightLeg';
+
+        if (isLeg) {
+            solveLegIK(chainBones, targetPos, chainName, boneKey);
+        } else {
+            solveCCDIK(chainBones, targetPos, {
+                iterations: 12,
+                chainName,
+                boneKeys: chainKeys,
+            });
+        }
     }
 
     /**
@@ -1834,7 +2219,10 @@ export class VRPoseSystem {
      */
     endIK() {
         if (this._activeIKTarget) {
-            console.log(`[VRPoseSystem] IK ended: ${this._activeIKTarget.chainName}`);
+            const { chainName } = this._activeIKTarget;
+            console.log(`[VRPoseSystem] IK ended: ${chainName}`);
+            // Reset SLERP damping state so next grab starts fresh
+            resetLegDampState(chainName);
         }
         this._activeIKTarget = null;
     }
