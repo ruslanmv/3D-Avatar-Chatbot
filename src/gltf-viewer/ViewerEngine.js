@@ -48,7 +48,7 @@ export class ViewerEngine {
         // Camera
         this.camera = new THREE.PerspectiveCamera(35, w / h, 0.01, 100);
         // Initial desktop pose (auto-framed after avatar loads)
-        this.camera.position.set(0, 1.4, 2.2);
+        this.camera.position.set(0, 1.4, 2.8);
 
         // Renderer — xrCompatible is required for WebXR immersive sessions
         this.renderer = new THREE.WebGLRenderer({
@@ -509,7 +509,7 @@ export class ViewerEngine {
             }
 
             // Reset, then re-frame if an avatar exists
-            this.camera.position.set(0, 1.4, 2.2);
+            this.camera.position.set(0, 1.4, 2.8);
             this.controls.target.set(0, 1.0, 0);
             this.controls.update();
 
@@ -891,10 +891,10 @@ export class ViewerEngine {
         const maxSize = Math.max(size.x, size.y, size.z);
         const isMobileDevice = this.mobileSupport?.isMobile?.() || false;
 
-        // Don't allow tiny models to push camera too close.
+        // Don't allow tiny models to push camera too close — ensure full body is visible.
         // On mobile the narrower FOV already handles framing, so allow closer.
-        const minDFloor = isMobileDevice ? 0.5 : 0.8;
-        const minDCeil = isMobileDevice ? 1.2 : 2.0;
+        const minDFloor = isMobileDevice ? 0.6 : 1.2;
+        const minDCeil = isMobileDevice ? 1.5 : 2.5;
         const minD = THREE.MathUtils.clamp(maxSize * 0.9, minDFloor, minDCeil);
 
         // Allow huge models to be framed and allow zooming out
@@ -1167,7 +1167,7 @@ export class ViewerEngine {
         if (this.avatarManager?.currentRoot) {
             this.frameObject(this.avatarManager.currentRoot, 1.35);
         } else {
-            this.camera.position.set(0, 1.4, 2.2);
+            this.camera.position.set(0, 1.4, 2.8);
             this.controls.target.set(0, 1.0, 0);
             this.controls.update();
         }
