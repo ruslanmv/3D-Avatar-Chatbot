@@ -1777,3 +1777,34 @@ select optgroup {
     width: 100% !important;
     height: 100% !important;
 }
+
+/* ── HomePilot Hub Banner ──────────────────────────── */
+.vm-hub-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    margin-bottom: 14px;
+    background: rgba(0, 150, 250, 0.06);
+    border: 1px solid rgba(0, 150, 250, 0.15);
+    border-radius: 10px;
+    font-size: 0.82rem;
+    color: var(--vm-text);
+    flex-wrap: wrap;
+}
+.vm-hub-banner-icon {
+    font-size: 1.2rem;
+}
+.vm-hub-banner strong {
+    color: var(--vm-accent);
+}
+.vm-hub-banner-link {
+    margin-left: auto;
+    color: var(--vm-accent);
+    font-weight: 600;
+    font-size: 0.82rem;
+    white-space: nowrap;
+}
+.vm-hub-banner-link:hover {
+    text-decoration: underline;
+}
