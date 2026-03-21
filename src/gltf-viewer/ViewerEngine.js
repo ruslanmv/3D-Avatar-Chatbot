@@ -635,6 +635,7 @@ export class ViewerEngine {
         // --- AR Event Listeners ---
         window.addEventListener('ar-session-start', () => {
             console.log('[ViewerEngine] AR Session Starting...');
+            this._removeARActivationOverlay();
             this.postProcessing?.onXRSessionStart();
             this.controls.enabled = false;
 
@@ -720,6 +721,14 @@ export class ViewerEngine {
      * Switch between VR and AR sessions.
      * WebXR only allows one active session, so we end the current one first.
      * Waits for isPresenting to clear before starting the new session.
+     *
+     * IMPORTANT: For AR mode, the WebXR spec requires that requestSession()
+     * is called inside a real DOM user gesture (click/tap). When switching
+     * from VR → AR, the original gesture (controller button on VR Chat Panel)
+     * is NOT a real DOM event, and the async waits (session.end + cleanup)
+     * expire the user activation token. To solve this, we show a real DOM
+     * overlay button that the user taps, providing a fresh user activation.
+     *
      * @param {'vr'|'ar'} targetMode
      */
     async _switchXRMode(targetMode) {
@@ -737,11 +746,9 @@ export class ViewerEngine {
 
             if (targetMode === 'ar') {
                 if (this.arSupport) {
-                    const started = await this.arSupport.startAR();
-                    if (!started) {
-                        console.warn('[ViewerEngine] AR start failed — retrying after 500ms');
-                        setTimeout(() => this.arSupport?.startAR(), 500);
-                    }
+                    // Show a real DOM button so the user can provide a fresh
+                    // user activation gesture required by the WebXR spec.
+                    this._showARActivationOverlay();
                 }
             } else {
                 if (this.vrSupport) {
@@ -770,6 +777,87 @@ export class ViewerEngine {
             // Give at least 100ms for session end event to propagate
             setTimeout(check, 100);
         });
+    }
+
+    /**
+     * Show a full-screen DOM overlay with a "Tap to enter AR" button.
+     * WebXR requires requestSession() to be called inside a real user gesture
+     * (click/tap). This overlay provides that fresh activation after ending
+     * a prior VR session.
+     */
+    _showARActivationOverlay() {
+        // Remove any existing overlay
+        this._removeARActivationOverlay();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'ar-activation-overlay';
+        overlay.style.cssText = `
+            position: fixed; inset: 0; z-index: 99999;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            background: rgba(0, 0, 0, 0.85);
+            font-family: system-ui, sans-serif;
+            color: #fff; text-align: center;
+            touch-action: manipulation;
+        `;
+
+        const btn = document.createElement('button');
+        btn.textContent = 'Tap to Enter AR';
+        btn.style.cssText = `
+            padding: 24px 48px; font-size: 28px; font-weight: 600;
+            border: none; border-radius: 16px; cursor: pointer;
+            background: #00c853; color: #fff;
+            box-shadow: 0 4px 24px rgba(0, 200, 83, 0.4);
+            -webkit-tap-highlight-color: transparent;
+        `;
+
+        const hint = document.createElement('p');
+        hint.textContent = 'AR requires a tap gesture to start the session.';
+        hint.style.cssText = 'margin-top: 16px; opacity: 0.7; font-size: 16px;';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.style.cssText = `
+            margin-top: 24px; padding: 12px 32px; font-size: 18px;
+            border: 1px solid rgba(255,255,255,0.3); border-radius: 10px;
+            background: transparent; color: #fff; cursor: pointer;
+        `;
+
+        overlay.appendChild(btn);
+        overlay.appendChild(hint);
+        overlay.appendChild(cancelBtn);
+        document.body.appendChild(overlay);
+
+        // The real user gesture: tap → requestSession inside click handler
+        btn.addEventListener('click', async () => {
+            btn.textContent = 'Starting AR...';
+            btn.disabled = true;
+            try {
+                await this.arSupport.startARFromGesture();
+                this._removeARActivationOverlay();
+            } catch (err) {
+                console.error('[ViewerEngine] AR activation failed:', err);
+                btn.textContent = 'Tap to Retry';
+                btn.disabled = false;
+            }
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            this._removeARActivationOverlay();
+            // Reset session mode back to VR in panel
+            if (this.vrChatPanel) {
+                this.vrChatPanel.xrSettings.sessionMode = 'vr';
+                this.vrChatPanel.redraw();
+            }
+        });
+    }
+
+    /**
+     * Remove the AR activation overlay if present.
+     */
+    _removeARActivationOverlay() {
+        const existing = document.getElementById('ar-activation-overlay');
+        if (existing) existing.remove();
     }
 
     _getViewportSize() {
