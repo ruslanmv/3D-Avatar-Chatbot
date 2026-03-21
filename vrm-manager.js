@@ -770,6 +770,35 @@ const VRMManager = {
         } catch (_) {
             installedAvatars = {};
         }
+
+        // Remove legacy GLB models whose files were removed from the server.
+        // These were TalkingHead-era .glb avatars that are no longer shipped;
+        // their URLs return HTML 404 pages which break thumbnail generation.
+        const LEGACY_GLB_IDS = [
+            'glb-brunette',
+            'glb-brunette-t',
+            'glb-avaturn',
+            'glb-avatarsdk',
+            'glb-mpfb',
+            'glb-readyplayerme',
+            'local-woman',
+            'local-girl',
+            'local-student',
+        ];
+        let cleaned = false;
+        for (const id of LEGACY_GLB_IDS) {
+            if (installedAvatars[id]) {
+                delete installedAvatars[id];
+                cleaned = true;
+            }
+        }
+        if (cleaned) {
+            console.log('[VRM-Manager] Cleaned up legacy GLB entries from installed list');
+            try {
+                localStorage.setItem('vrm_manager_installed', JSON.stringify(installedAvatars));
+            } catch (_) {}
+        }
+
         // Mark pre-installed local avatars as core (non-removable)
         BUILTIN_CATALOG.forEach((item) => {
             if (item.installed) installedAvatars[item.id] = { ...item, installedAt: 0, core: true };
@@ -2818,6 +2847,22 @@ async function generateAvatarThumbnail(item, pose) {
                 throw new Error(`Server returned HTML instead of model file for ${loadUrl} (file may not exist)`);
             }
             const arrayBuffer = await resp.arrayBuffer();
+            // Validate GLB magic bytes ('glTF') before parsing — catches SPA fallback
+            // HTML pages served with application/octet-stream for missing files
+            const magic = new Uint8Array(arrayBuffer.slice(0, 4));
+            const isGLB = magic[0] === 0x67 && magic[1] === 0x6c && magic[2] === 0x54 && magic[3] === 0x46;
+            if (!isGLB) {
+                // Check if it starts with '<' (HTML) or '{' (JSON/glTF)
+                const firstByte = magic[0];
+                if (firstByte === 0x3c) {
+                    // '<'
+                    throw new Error(`Server returned HTML instead of model file for ${loadUrl} (file may not exist)`);
+                }
+                if (firstByte !== 0x7b) {
+                    // not '{' either (valid glTF JSON)
+                    throw new Error(`File at ${loadUrl} is not a valid GLB/glTF model`);
+                }
+            }
             gltf = await new Promise((resolve, reject) => {
                 loader.parse(arrayBuffer, '', resolve, reject);
             });

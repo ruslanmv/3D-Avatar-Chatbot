@@ -196,6 +196,17 @@ export class ARSupport {
                 msg += 'AR mode is not supported on this device/browser.';
             } else if (error.name === 'NotAllowedError') {
                 msg += 'Camera/AR access was denied.\nPlease grant permissions and try again.';
+            } else if (error.name === 'SecurityError' || (error.message && error.message.includes('user activation'))) {
+                // WebXR requires requestSession to be called inside a user gesture.
+                // This error means the activation token expired (e.g. too many async
+                // steps between the user tap and the requestSession call).
+                msg +=
+                    'AR session requires a direct tap gesture.\n' +
+                    'Please tap the "Enter AR" button directly — do not switch from VR.';
+                console.warn(
+                    '[AR] User activation expired before requestSession. ' +
+                        'Ensure requestSession is called synchronously inside a click handler.'
+                );
             } else {
                 msg += error.message;
             }
@@ -486,6 +497,67 @@ export class ARSupport {
         }
         await this.toggleAR();
         return true;
+    }
+
+    /**
+     * Start AR directly from a real DOM user gesture (click/tap handler).
+     *
+     * WebXR spec requires requestSession() to be called inside a user
+     * activation event. This method is designed to be called from a real
+     * DOM click handler (e.g. an overlay button) so the browser recognises
+     * the gesture. Unlike startAR()/toggleAR(), this method keeps the call
+     * stack synchronous up to the requestSession() await — no intermediate
+     * awaits that would expire the user activation token.
+     *
+     * @returns {Promise<void>}
+     */
+    async startARFromGesture() {
+        if (this.isARActive) {
+            console.warn('[AR] AR is already active');
+            return;
+        }
+
+        // Build session init (all synchronous — preserves user activation)
+        const sessionInit = {
+            requiredFeatures: ['local-floor'],
+            optionalFeatures: [
+                'hit-test',
+                'dom-overlay',
+                'hand-tracking',
+                'camera-access',
+                'anchors',
+                'plane-detection',
+                'mesh-detection',
+                'light-estimation',
+                'layers',
+            ],
+        };
+
+        try {
+            sessionInit.optionalFeatures.push('depth-sensing');
+            sessionInit.depthSensing = {
+                usagePreference: ['cpu-optimized', 'gpu-optimized'],
+                dataFormatPreference: ['luminance-alpha', 'float32'],
+            };
+        } catch {
+            // depthSensing config not supported — ignore
+        }
+
+        const overlayEl = document.getElementById('ar-dom-overlay');
+        if (overlayEl) {
+            sessionInit.domOverlay = { root: overlayEl };
+        }
+
+        // CRITICAL: requestSession must be the first await in this call stack
+        // so the user activation from the DOM click is still valid.
+        console.log('[AR] Requesting immersive-ar session from user gesture...');
+        const session = await navigator.xr.requestSession('immersive-ar', sessionInit);
+        await this.renderer.xr.setSession(session);
+
+        this.isARActive = true;
+        if (this.arButton) {
+            this.arButton.textContent = 'EXIT AR';
+        }
     }
 
     dispose() {

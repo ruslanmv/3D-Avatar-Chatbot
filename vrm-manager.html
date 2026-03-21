@@ -594,18 +594,17 @@
             </p>
         </footer>
 
-        <script defer src="vendor/three-0.147.0/build/three.min.js"></script>
-        <script defer src="vendor/three-0.147.0/examples/js/loaders/GLTFLoader.js"></script>
-        <!-- KTX2Loader for models with BasisU/KTX2 textures -->
+        <!-- Single ESM entry point: avoids "Multiple instances of Three.js" warning -->
         <script type="module">
-            import { KTX2Loader } from './vendor/three-0.147.0/examples/jsm/loaders/KTX2Loader.js';
-            if (window.THREE) window.THREE.KTX2Loader = KTX2Loader;
+            import * as THREE from 'three';
+            import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+            import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+            import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+            THREE.GLTFLoader = GLTFLoader;
+            THREE.KTX2Loader = KTX2Loader;
+            THREE.MeshoptDecoder = MeshoptDecoder;
+            window.THREE = THREE;
         </script>
-        <!-- MeshoptDecoder for models with meshopt compression -->
-        <script type="module">
-            import { MeshoptDecoder } from './vendor/three-0.147.0/examples/jsm/libs/meshopt_decoder.module.js';
-            if (window.THREE) window.THREE.MeshoptDecoder = MeshoptDecoder;
-        </script>
-        <script src="vrm-manager.js"></script>
+        <script defer src="vrm-manager.js"></script>
     </body>
 </html>
