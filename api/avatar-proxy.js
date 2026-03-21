@@ -1,17 +1,22 @@
 /**
- * Vercel Serverless Avatar Proxy
+ * Vercel Edge Avatar Proxy (streaming)
  *
  * Proxies binary avatar downloads (GLB/VRM) from external sources
- * that don't support browser CORS (Ready Player Me, GitHub raw, etc.)
+ * that don't support browser CORS or are blocked by Cloudflare bot
+ * protection (R2 r2.dev domains).
+ *
+ * Uses Edge runtime with streaming — no response body size limit,
+ * handles 50 MB+ VRM files without buffering into memory.
  *
  * Usage:
- *   GET /api/avatar-proxy?url=https://models.readyplayer.me/...glb
+ *   GET /api/avatar-proxy?url=https://pub-...r2.dev/vroid_hub/model.vrm
  *
  * Security:
  *   - HTTPS only
  *   - Domain allowlist (avatar CDNs only)
- *   - 50 MB size limit
  */
+
+export const config = { runtime: 'edge' };
 
 const ALLOWED_HOSTS = [
     'models.readyplayer.me',
@@ -37,35 +42,56 @@ function isAllowedHost(urlStr) {
     }
 }
 
-export default async function handler(req, res) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+const CORS_HEADERS = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+};
 
-    if (req.method === 'OPTIONS') return res.status(204).end();
-    if (req.method !== 'GET') return res.status(405).json({ error: 'Method Not Allowed' });
+export default async function handler(req) {
+    if (req.method === 'OPTIONS') {
+        return new Response(null, { status: 204, headers: CORS_HEADERS });
+    }
+    if (req.method !== 'GET') {
+        return Response.json({ error: 'Method Not Allowed' }, { status: 405, headers: CORS_HEADERS });
+    }
 
-    const targetUrl = req.query.url;
-    if (!targetUrl) return res.status(400).json({ error: 'Missing "url" query parameter.' });
-    if (!isAllowedHost(targetUrl)) return res.status(403).json({ error: 'Host not in avatar proxy allowlist.' });
+    const { searchParams } = new URL(req.url);
+    const targetUrl = searchParams.get('url');
+
+    if (!targetUrl) {
+        return Response.json({ error: 'Missing "url" query parameter.' }, { status: 400, headers: CORS_HEADERS });
+    }
+    if (!isAllowedHost(targetUrl)) {
+        return Response.json({ error: 'Host not in avatar proxy allowlist.' }, { status: 403, headers: CORS_HEADERS });
+    }
 
     try {
         const upstream = await fetch(targetUrl);
         if (!upstream.ok) {
-            return res.status(upstream.status).json({ error: `Upstream: ${upstream.status} ${upstream.statusText}` });
+            return Response.json(
+                { error: `Upstream: ${upstream.status} ${upstream.statusText}` },
+                { status: upstream.status, headers: CORS_HEADERS }
+            );
         }
 
         const ct = upstream.headers.get('content-type') || 'application/octet-stream';
         const cl = upstream.headers.get('content-length');
 
-        res.setHeader('Content-Type', ct);
-        if (cl) res.setHeader('Content-Length', cl);
-        res.setHeader('Cache-Control', 'public, max-age=86400');
+        const responseHeaders = {
+            ...CORS_HEADERS,
+            'Content-Type': ct,
+            'Cache-Control': 'public, max-age=86400',
+        };
+        if (cl) responseHeaders['Content-Length'] = cl;
 
-        const buf = Buffer.from(await upstream.arrayBuffer());
-        return res.status(200).send(buf);
+        // Stream the response body directly — no buffering, no size limit
+        return new Response(upstream.body, {
+            status: 200,
+            headers: responseHeaders,
+        });
     } catch (err) {
         console.error('[api/avatar-proxy] error:', err);
-        return res.status(500).json({ error: err?.message || String(err) });
+        return Response.json({ error: err?.message || String(err) }, { status: 500, headers: CORS_HEADERS });
     }
 }
