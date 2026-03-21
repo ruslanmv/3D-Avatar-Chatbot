@@ -135,23 +135,10 @@ download_with_fallback "${AVATAR_DIR}/Sakurada_Fumiriya.vrm" \
 download_with_fallback "${AVATAR_DIR}/VRM1_Constraint_Twist_Sample.vrm" \
   "https://raw.githubusercontent.com/pixiv/three-vrm/dev/packages/three-vrm/examples/models/VRM1_Constraint_Twist_Sample.vrm"
 
-# ── GLB Tier 2: Models with morph targets (TalkingHead) ──
-download_with_fallback "${AVATAR_DIR}/brunette.glb" \
-  "https://raw.githubusercontent.com/met4citizen/TalkingHead/main/avatars/brunette.glb"
-
-download_with_fallback "${AVATAR_DIR}/brunette-t.glb" \
-  "https://raw.githubusercontent.com/met4citizen/TalkingHead/main/avatars/brunette-t.glb"
-
-download_with_fallback "${AVATAR_DIR}/avaturn.glb" \
-  "https://raw.githubusercontent.com/met4citizen/TalkingHead/main/avatars/avaturn.glb"
-
-download_with_fallback "${AVATAR_DIR}/avatarsdk.glb" \
-  "https://raw.githubusercontent.com/met4citizen/TalkingHead/main/avatars/avatarsdk.glb"
-
-download_with_fallback "${AVATAR_DIR}/mpfb.glb" \
-  "https://raw.githubusercontent.com/met4citizen/TalkingHead/main/avatars/mpfb.glb"
-
-# ── GLB Tier 3: Models without morph targets ──
+# ── Legacy GLB models removed ──
+# TalkingHead GLB models (brunette, avaturn, avatarsdk, mpfb) were removed from
+# the built-in catalog. See addons/glb/ for archived copies.
+# GLB body-only models (woman, girl, student) also removed.
 
 # ------------------------------------------------------------
 # Generate vendor/avatars/avatars.json from downloaded GLBs and VRMs
@@ -166,7 +153,7 @@ echo "==> Writing: ${AVATARS_JSON#${ROOT_DIR}/}"
 
   first=1
   shopt -s nullglob
-  for f in "${AVATAR_DIR}"/*.vrm "${AVATAR_DIR}"/*.glb; do
+  for f in "${AVATAR_DIR}"/*.vrm; do
     file="$(basename "$f")"
     name="$(pretty_name "$file")"
     ext="${file##*.}"

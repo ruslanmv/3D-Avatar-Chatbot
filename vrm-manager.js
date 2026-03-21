@@ -345,7 +345,7 @@ const SOURCES = [
         name: 'TalkingHead Avatars',
         icon: '🗣️',
         url: 'github.com/met4citizen/TalkingHead',
-        desc: 'Create your own GLB avatar with ARKit + Oculus viseme blend shapes. Avatars not distributed in repo — use external tools.',
+        desc: 'Create your own GLB avatar with ARKit + Oculus viseme blend shapes. Legacy GLB models removed from built-in catalog — convert to VRM for full feature support.',
         auth: 'manual',
         formats: ['glb-morph'],
         status: 'no-api',
