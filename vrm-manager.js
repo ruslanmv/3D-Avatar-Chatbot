@@ -652,8 +652,21 @@ const VRMManager = {
         const missing = Object.values(installedAvatars).filter((it) => !it.preview && it.url && it.url.startsWith('/'));
         if (missing.length === 0) return;
 
-        console.log(`[VRM-Manager] Auto-generating ${missing.length} missing thumbnails...`);
+        // Pre-filter: only attempt thumbnails for files that actually exist
+        const valid = [];
         for (const item of missing) {
+            try {
+                const check = await fetch(item.url, { method: 'HEAD' });
+                const ct = check.headers.get('content-type') || '';
+                if (check.ok && !ct.includes('text/html')) valid.push(item);
+            } catch {
+                /* skip unreachable files */
+            }
+        }
+        if (valid.length === 0) return;
+
+        console.log(`[VRM-Manager] Auto-generating ${valid.length} missing thumbnails...`);
+        for (const item of valid) {
             await generateAndSaveThumbnail(item);
             const catalogItem = allItems.find((x) => x.id === item.id);
             if (catalogItem && item.preview) catalogItem.preview = item.preview;
