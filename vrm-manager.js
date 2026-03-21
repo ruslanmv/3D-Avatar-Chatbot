@@ -649,18 +649,40 @@ const VRMManager = {
     },
 
     async autoGenerateMissingThumbnails() {
-        const missing = Object.values(installedAvatars).filter((it) => !it.preview && it.url && it.url.startsWith('/'));
+        // Include both local AND external installed avatars that are missing thumbnails
+        const missing = Object.values(installedAvatars).filter((it) => {
+            if (it.preview) return false;
+            if (!it.url) return false;
+            // Skip non-downloadable URLs (VRoid Hub web pages without .vrm extension)
+            const isExternal = it.url.startsWith('https://') || it.url.startsWith('http://');
+            if (isExternal && !/\.(vrm|glb|gltf)(\?.*)?$/i.test(it.url)) return false;
+            return true;
+        });
         if (missing.length === 0) return;
 
-        // Pre-filter: only attempt thumbnails for files that actually exist
+        // Pre-filter: for local URLs, check that the file actually exists
+        // For external URLs with cached blobs, allow them through
         const valid = [];
         for (const item of missing) {
-            try {
-                const check = await fetch(item.url, { method: 'HEAD' });
-                const ct = check.headers.get('content-type') || '';
-                if (check.ok && !ct.includes('text/html')) valid.push(item);
-            } catch {
-                /* skip unreachable files */
+            const isLocal = item.url.startsWith('/');
+            if (isLocal) {
+                try {
+                    const check = await fetch(item.url, { method: 'HEAD' });
+                    const ct = check.headers.get('content-type') || '';
+                    if (check.ok && !ct.includes('text/html')) valid.push(item);
+                } catch {
+                    /* skip unreachable local files */
+                }
+            } else {
+                // External URL — check if we have a cached blob
+                try {
+                    const cached = await this.getCachedBlob(item.id);
+                    if (cached && cached.blob) {
+                        valid.push(item);
+                    }
+                } catch {
+                    /* skip items without cached blobs */
+                }
             }
         }
         if (valid.length === 0) return;
@@ -1136,7 +1158,15 @@ const VRMManager = {
             const catalog = await res.json();
 
             const avatars = catalog
-                .filter((entry) => entry.public_url || entry.object_key)
+                .filter((entry) => {
+                    const url = entry.public_url || '';
+                    // Must have a URL
+                    if (!url && !entry.object_key) return false;
+                    // Skip entries where public_url is a web page (not a direct model file)
+                    // e.g. VRoid Hub pages like hub.vroid.com/en/characters/.../models/...
+                    if (url && !url.match(/\.(vrm|glb|gltf)(\?.*)?$/i) && !url.includes('r2.dev')) return false;
+                    return true;
+                })
                 .map((entry) => {
                     const format = (entry.format_type || 'vrm').toLowerCase();
                     const isVrm = format === 'vrm';
@@ -1202,8 +1232,21 @@ const VRMManager = {
             // Use avatar proxy for external URLs to bypass CORS
             const isExternal = url.startsWith('https://') || url.startsWith('http://');
             const fetchUrl = isExternal ? '/api/avatar-proxy?url=' + encodeURIComponent(url) : url;
-            const res = await fetch(fetchUrl);
+            let res = await fetch(fetchUrl);
+            // If proxy fails, try direct download as fallback
+            if (!res.ok && isExternal) {
+                console.warn(`[VRM-Manager] Proxy failed (${res.status}), trying direct download...`);
+                res = await fetch(url, { mode: 'cors' });
+            }
             if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+
+            // Validate response is actually a binary file
+            const contentType = res.headers.get('content-type') || '';
+            if (contentType.includes('text/html')) {
+                throw new Error(
+                    'Server returned HTML instead of a model file. The URL may require authentication or may not be a direct download link.'
+                );
+            }
 
             const blob = await res.blob();
 
@@ -1752,8 +1795,19 @@ const VRMManager = {
                     if (!downloadUrl) throw new Error('Could not get Sketchfab download URL');
                 }
 
-                // Use avatar proxy for external URLs to bypass CORS, fall back to direct fetch
+                // Check if URL is a web page (not a direct model download)
                 const isExternal = downloadUrl.startsWith('https://') || downloadUrl.startsWith('http://');
+                if (isExternal && !/\.(vrm|glb|gltf)(\?.*)?$/i.test(downloadUrl)) {
+                    // This is a VRoid Hub page or similar — not a direct download link
+                    const isVroidHub = downloadUrl.includes('hub.vroid.com');
+                    throw new Error(
+                        isVroidHub
+                            ? 'This VRoid Hub model requires download from hub.vroid.com first. Visit the model page to download the .vrm file, then install it via "Add Avatar → From File".'
+                            : 'URL does not point to a downloadable model file (.vrm, .glb, or .gltf).'
+                    );
+                }
+
+                // Use avatar proxy for external URLs to bypass CORS, fall back to direct fetch
                 let fetchUrl = isExternal ? '/api/avatar-proxy?url=' + encodeURIComponent(downloadUrl) : downloadUrl;
                 let res = await fetch(fetchUrl);
                 // If proxy fails (403/502/etc), try direct download as fallback
@@ -1762,6 +1816,14 @@ const VRMManager = {
                     res = await fetch(downloadUrl, { mode: 'cors' });
                 }
                 if (!res.ok) throw new Error(`Download failed: ${res.status} ${res.statusText}`);
+
+                // Validate response is actually a binary file, not an HTML error page
+                const contentType = res.headers.get('content-type') || '';
+                if (contentType.includes('text/html')) {
+                    throw new Error(
+                        'Server returned an HTML page instead of a model file. The URL may require authentication.'
+                    );
+                }
 
                 const contentLength = parseInt(res.headers.get('content-length') || '0', 10);
                 const reader = res.body.getReader();
@@ -2837,9 +2899,51 @@ async function generateAvatarThumbnail(item, pose) {
         if (THREE.MeshoptDecoder) {
             loader.setMeshoptDecoder(THREE.MeshoptDecoder);
         }
-        const gltf = await new Promise((resolve, reject) => {
-            loader.load(item.url, resolve, undefined, reject);
-        });
+
+        // Determine how to load the model:
+        // 1. Try cached blob from IndexedDB first (already downloaded models)
+        // 2. For external URLs, use the proxy to avoid CORS issues
+        // 3. For local URLs, load directly
+        let loadUrl = item.url;
+        const isExternal = loadUrl && (loadUrl.startsWith('https://') || loadUrl.startsWith('http://'));
+
+        // Skip non-downloadable URLs (VRoid Hub web pages, etc.)
+        if (isExternal && !/\.(vrm|glb|gltf)(\?.*)?$/i.test(loadUrl)) {
+            renderer.dispose();
+            return '';
+        }
+
+        let gltf;
+        // Try loading from cached blob first
+        let cachedBlob = null;
+        if (typeof VRMManager !== 'undefined' && VRMManager.getCachedBlob) {
+            try {
+                const cached = await VRMManager.getCachedBlob(item.id);
+                if (cached && cached.blob) cachedBlob = cached.blob;
+            } catch (_) {}
+        }
+
+        if (cachedBlob) {
+            // Load from cached blob (no network needed)
+            const arrayBuffer = await cachedBlob.arrayBuffer();
+            gltf = await new Promise((resolve, reject) => {
+                loader.parse(arrayBuffer, '', resolve, reject);
+            });
+        } else if (isExternal) {
+            // Use proxy for external URLs to bypass CORS
+            const proxyUrl = '/api/avatar-proxy?url=' + encodeURIComponent(loadUrl);
+            gltf = await new Promise((resolve, reject) => {
+                loader.load(proxyUrl, resolve, undefined, (err) => {
+                    // If proxy fails, try direct as last resort
+                    loader.load(loadUrl, resolve, undefined, reject);
+                });
+            });
+        } else {
+            // Local URL — load directly
+            gltf = await new Promise((resolve, reject) => {
+                loader.load(loadUrl, resolve, undefined, reject);
+            });
+        }
 
         const root = gltf.scene;
         if (!root) throw new Error('No scene in GLTF');
