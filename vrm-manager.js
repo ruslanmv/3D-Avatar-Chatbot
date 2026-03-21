@@ -1064,7 +1064,13 @@ const VRMManager = {
                     if (!url && !entry.object_key) return false;
                     // Skip entries where public_url is a web page (not a direct model file)
                     // e.g. VRoid Hub pages like hub.vroid.com/en/characters/.../models/...
-                    if (url && !url.match(/\.(vrm|glb|gltf)(\?.*)?$/i) && !url.includes('r2.dev')) return false;
+                    if (
+                        url &&
+                        !url.match(/\.(vrm|glb|gltf)(\?.*)?$/i) &&
+                        !url.includes('r2.dev') &&
+                        !url.includes('avatars.yourfriend.online')
+                    )
+                        return false;
                     return true;
                 })
                 .map((entry) => {
@@ -2589,6 +2595,9 @@ function sanitizeFileName(name) {
 /**
  * Resilient fetch for external model files (VRM/GLB).
  *
+ * For R2 custom domain (avatars.yourfriend.online): proxy first for reliability,
+ * fallback to direct CORS fetch (no bot protection on custom domain).
+ *
  * For R2 r2.dev URLs: proxy FIRST (Cloudflare bot protection blocks direct
  * browser fetch on r2.dev domains), fallback to direct CORS fetch.
  *
@@ -2602,18 +2611,38 @@ async function fetchModelUrl(url) {
 
     if (!isExternal) return fetch(url);
 
-    // R2 custom domain (avatars.yourfriend.online): no bot protection, fetch directly via CORS.
+    // R2 custom domain: proxy first (reliable server-side), fallback to direct CORS.
     if (isR2Custom) {
-        try {
-            const res = await fetch(url, { mode: 'cors' });
-            if (res.ok) return res;
-            console.warn(`[VRM-Manager] Custom domain direct fetch returned ${res.status}, trying proxy...`);
-        } catch (e) {
-            console.warn('[VRM-Manager] Custom domain direct fetch error:', e.message, '— trying proxy...');
-        }
-        // Fallback to proxy if direct fails
+        console.log('[VRM-Manager] Custom domain detected, trying proxy first:', url);
         const proxyUrl = '/api/avatar-proxy?url=' + encodeURIComponent(url);
-        return fetch(proxyUrl);
+        try {
+            const res = await fetch(proxyUrl);
+            if (res.ok) {
+                const ct = res.headers.get('content-type') || '';
+                if (!ct.includes('text/html')) {
+                    console.log('[VRM-Manager] Custom domain proxy fetch succeeded');
+                    return res;
+                }
+            }
+            console.warn(`[VRM-Manager] Custom domain proxy returned ${res.status}, trying direct CORS...`);
+        } catch (e) {
+            console.warn('[VRM-Manager] Custom domain proxy error:', e.message, '— trying direct CORS...');
+        }
+        // Fallback: direct CORS fetch (custom domain has no bot protection)
+        try {
+            console.log('[VRM-Manager] Trying direct CORS fetch to custom domain...');
+            const res = await fetch(url, { mode: 'cors' });
+            if (res.ok) {
+                console.log('[VRM-Manager] Custom domain direct CORS fetch succeeded');
+                return res;
+            }
+            console.warn(`[VRM-Manager] Custom domain direct CORS returned ${res.status}`);
+        } catch (e) {
+            console.warn('[VRM-Manager] Custom domain direct CORS error:', e.message);
+        }
+        throw new Error(
+            'Failed to download from custom domain (both proxy and direct CORS failed). Please try again or use "Upload from device".'
+        );
     }
 
     // R2 r2.dev domains are blocked by Cloudflare bot protection in browsers.
