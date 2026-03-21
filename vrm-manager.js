@@ -40,7 +40,7 @@ const VM_CONFIG = {
 
 const BUILTIN_CATALOG = [
     // ══════════════════════════════════════════════════════════
-    // Tier 1: CC0 VRM — Full Face Animation (18 avatars)
+    // CC0 VRM — Full Face Animation
     // ══════════════════════════════════════════════════════════
     {
         id: 'vrm-avatar-sample-a',
@@ -268,149 +268,6 @@ const BUILTIN_CATALOG = [
         installed: true,
     },
 
-    // ══════════════════════════════════════════════════════════
-    // Tier 2: GLB with Morph Targets — Beta
-    // ══════════════════════════════════════════════════════════
-    {
-        id: 'glb-brunette',
-        name: 'Brunette (TalkingHead)',
-        icon: '💃',
-        desc: 'Full-body avatar with ARKit + Oculus viseme blend shapes. Ready for lip-sync.',
-        source: 'TalkingHead',
-        sourceId: 'github-talkinghead',
-        format: 'glb-morph',
-        license: 'free',
-        url: '/vendor/avatars/brunette.glb',
-        tags: ['arkit', 'visemes', 'female'],
-        features: ['lipsync', 'emotions', 'blink'],
-        size: 4700000,
-        installed: true,
-    },
-    {
-        id: 'glb-brunette-t',
-        name: 'Brunette T-Pose (TalkingHead)',
-        icon: '🧍‍♀️',
-        desc: 'T-pose version of brunette avatar. ARKit + Oculus viseme blend shapes.',
-        source: 'TalkingHead',
-        sourceId: 'github-talkinghead',
-        format: 'glb-morph',
-        license: 'free',
-        url: '/vendor/avatars/brunette-t.glb',
-        tags: ['arkit', 'visemes', 'female', 't-pose'],
-        features: ['lipsync', 'emotions', 'blink'],
-        size: 2900000,
-        installed: true,
-    },
-    {
-        id: 'glb-avaturn',
-        name: 'Avaturn (TalkingHead)',
-        icon: '🧑‍🦱',
-        desc: 'Avaturn-generated avatar with ARKit + Oculus viseme blend shapes.',
-        source: 'TalkingHead',
-        sourceId: 'github-talkinghead',
-        format: 'glb-morph',
-        license: 'free',
-        url: '/vendor/avatars/avaturn.glb',
-        tags: ['arkit', 'visemes', 'avaturn'],
-        features: ['lipsync', 'emotions', 'blink'],
-        size: 13700000,
-        installed: true,
-    },
-    {
-        id: 'glb-avatarsdk',
-        name: 'AvatarSDK (TalkingHead)',
-        icon: '🧑‍💻',
-        desc: 'AvatarSDK-generated avatar with ARKit + Oculus viseme blend shapes.',
-        source: 'TalkingHead',
-        sourceId: 'github-talkinghead',
-        format: 'glb-morph',
-        license: 'free',
-        url: '/vendor/avatars/avatarsdk.glb',
-        tags: ['arkit', 'visemes', 'avatarsdk'],
-        features: ['lipsync', 'emotions', 'blink'],
-        size: 12300000,
-        installed: true,
-    },
-    {
-        id: 'glb-mpfb',
-        name: 'MakeHuman (TalkingHead)',
-        icon: '🧬',
-        desc: 'MakeHuman/MPFB-generated avatar with ARKit + Oculus viseme blend shapes.',
-        source: 'TalkingHead',
-        sourceId: 'github-talkinghead',
-        format: 'glb-morph',
-        license: 'free',
-        url: '/vendor/avatars/mpfb.glb',
-        tags: ['arkit', 'visemes', 'makehuman'],
-        features: ['lipsync', 'emotions', 'blink'],
-        size: 36800000,
-        installed: true,
-    },
-
-    {
-        id: 'glb-readyplayerme',
-        name: 'ReadyPlayerMe Sample',
-        icon: '🧑',
-        desc: 'Ready Player Me sample avatar with morph targets. From three.js examples.',
-        source: 'Ready Player Me',
-        sourceId: 'readyplayerme',
-        format: 'glb-morph',
-        license: 'free',
-        url: '/vendor/avatars/readyplayerme.glb',
-        tags: ['rpm', 'morph-targets', 'sample'],
-        features: ['lipsync', 'emotions', 'blink'],
-        size: 1838000,
-        installed: true,
-    },
-
-    // ══════════════════════════════════════════════════════════
-    // Tier 3: GLB without Morph Targets — Body Only
-    // ══════════════════════════════════════════════════════════
-    {
-        id: 'local-woman',
-        name: 'Woman',
-        icon: '👩‍💼',
-        desc: 'Pre-installed GLB avatar. Body animation only.',
-        source: 'Local',
-        sourceId: 'local',
-        format: 'glb',
-        license: 'free',
-        url: '/vendor/avatars/woman.glb',
-        tags: ['local', 'pre-installed'],
-        features: [],
-        size: 14000000,
-        installed: true,
-    },
-    {
-        id: 'local-girl',
-        name: 'Avatar',
-        icon: '👧',
-        desc: 'Pre-installed GLB avatar. Body animation only.',
-        source: 'Local',
-        sourceId: 'local',
-        format: 'glb',
-        license: 'free',
-        url: '/vendor/avatars/girl.glb',
-        tags: ['local', 'pre-installed'],
-        features: [],
-        size: 7700000,
-        installed: true,
-    },
-    {
-        id: 'local-student',
-        name: 'Student',
-        icon: '🧑‍🎓',
-        desc: 'Pre-installed GLB avatar. Body animation only.',
-        source: 'Local',
-        sourceId: 'local',
-        format: 'glb',
-        license: 'free',
-        url: '/vendor/avatars/student.glb',
-        tags: ['local', 'pre-installed'],
-        features: [],
-        size: 1300000,
-        installed: true,
-    },
     {
         id: 'vrm-perfectsync-female',
         name: 'VRoid PerfectSync Female',
@@ -667,11 +524,25 @@ const VRMManager = {
             const isLocal = item.url.startsWith('/');
             if (isLocal) {
                 try {
-                    const check = await fetch(item.url, { method: 'HEAD' });
+                    // Use a range GET instead of HEAD — some servers return 200+HTML
+                    // for missing files (SPA fallback), and HEAD may not expose content-type reliably.
+                    const check = await fetch(item.url, {
+                        method: 'GET',
+                        headers: { Range: 'bytes=0-3' },
+                    });
+                    if (!check.ok && check.status !== 206) throw new Error('not found');
                     const ct = check.headers.get('content-type') || '';
-                    if (check.ok && !ct.includes('text/html')) valid.push(item);
+                    if (ct.includes('text/html')) throw new Error('html response');
+                    // Extra check: GLB files start with 'glTF' magic bytes, VRM (which is GLB) too
+                    const buf = await check.arrayBuffer();
+                    const magic = new Uint8Array(buf.slice(0, 4));
+                    const isGLB = magic[0] === 0x67 && magic[1] === 0x6c && magic[2] === 0x54 && magic[3] === 0x46; // 'glTF'
+                    if (!isGLB && !ct.includes('model/') && !ct.includes('application/octet-stream')) {
+                        throw new Error('not a valid GLB/VRM file');
+                    }
+                    valid.push(item);
                 } catch {
-                    /* skip unreachable local files */
+                    /* skip unreachable or non-binary local files */
                 }
             } else {
                 // External URL — check if we have a cached blob
@@ -2939,9 +2810,16 @@ async function generateAvatarThumbnail(item, pose) {
                 });
             });
         } else {
-            // Local URL — load directly
+            // Local URL — fetch and validate before parsing to avoid cryptic GLTFLoader errors
+            const resp = await fetch(loadUrl);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status} for ${loadUrl}`);
+            const ct = resp.headers.get('content-type') || '';
+            if (ct.includes('text/html')) {
+                throw new Error(`Server returned HTML instead of model file for ${loadUrl} (file may not exist)`);
+            }
+            const arrayBuffer = await resp.arrayBuffer();
             gltf = await new Promise((resolve, reject) => {
-                loader.load(loadUrl, resolve, undefined, reject);
+                loader.parse(arrayBuffer, '', resolve, reject);
             });
         }
 
