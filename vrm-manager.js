@@ -1137,26 +1137,8 @@ const VRMManager = {
         toast(`Downloading ${fileName}...`, 'info');
 
         try {
-            // Download the model file
-            const isExternal = url.startsWith('https://') || url.startsWith('http://');
-            // R2 public URLs have CORS enabled — fetch directly without proxy
-            const isCorsOk = url.includes('r2.dev') || url.includes('r2.cloudflarestorage.com');
-            let res;
-            if (!isExternal) {
-                res = await fetch(url);
-            } else if (isCorsOk) {
-                // Direct CORS fetch for R2 and other CORS-friendly CDNs
-                res = await fetch(url, { mode: 'cors' });
-            } else {
-                // Use avatar proxy for external URLs that block CORS
-                const fetchUrl = '/api/avatar-proxy?url=' + encodeURIComponent(url);
-                res = await fetch(fetchUrl);
-                // If proxy fails, try direct download as fallback
-                if (!res.ok) {
-                    console.warn(`[VRM-Manager] Proxy failed (${res.status}), trying direct download...`);
-                    res = await fetch(url, { mode: 'cors' });
-                }
-            }
+            // Download the model file with retry + proxy fallback
+            const res = await fetchModelUrl(url);
             if (!res.ok) throw new Error(`Download failed: ${res.status}`);
 
             // Validate response is actually a binary file
@@ -1726,23 +1708,8 @@ const VRMManager = {
                     );
                 }
 
-                // R2 public URLs have CORS enabled — fetch directly without proxy
-                const isCorsOk = downloadUrl.includes('r2.dev') || downloadUrl.includes('r2.cloudflarestorage.com');
-                let res;
-                if (isCorsOk) {
-                    res = await fetch(downloadUrl, { mode: 'cors' });
-                } else {
-                    // Use avatar proxy for CORS-blocked external URLs, fall back to direct fetch
-                    let fetchUrl = isExternal
-                        ? '/api/avatar-proxy?url=' + encodeURIComponent(downloadUrl)
-                        : downloadUrl;
-                    res = await fetch(fetchUrl);
-                    // If proxy fails (403/502/etc), try direct download as fallback
-                    if (!res.ok && isExternal) {
-                        console.warn(`[VRM-Manager] Proxy failed (${res.status}), trying direct download...`);
-                        res = await fetch(downloadUrl, { mode: 'cors' });
-                    }
-                }
+                // Download with retry + proxy fallback
+                const res = await fetchModelUrl(downloadUrl);
                 if (!res.ok) throw new Error(`Download failed: ${res.status} ${res.statusText}`);
 
                 // Validate response is actually a binary file, not an HTML error page
@@ -2619,6 +2586,55 @@ function sanitizeFileName(name) {
         .slice(0, 60);
 }
 
+/**
+ * Resilient fetch for external model files (VRM/GLB).
+ * Tries direct CORS fetch first, retries once, then falls back to avatar-proxy.
+ * Handles R2 r2.dev Cloudflare challenge pages that break direct fetch.
+ */
+async function fetchModelUrl(url) {
+    const isCorsOk = url.includes('r2.dev') || url.includes('r2.cloudflarestorage.com');
+    const isExternal = /^https?:\/\//.test(url);
+
+    if (!isExternal) return fetch(url);
+
+    // Strategy 1: Direct CORS fetch (best for R2 and CORS-friendly CDNs)
+    if (isCorsOk) {
+        for (let attempt = 0; attempt < 2; attempt++) {
+            try {
+                const res = await fetch(url, { mode: 'cors' });
+                if (res.ok) {
+                    const ct = res.headers.get('content-type') || '';
+                    if (!ct.includes('text/html')) return res;
+                    // Cloudflare challenge page — fall through to proxy
+                    console.warn('[VRM-Manager] R2 returned challenge page, trying proxy...');
+                    break;
+                }
+            } catch (e) {
+                console.warn(`[VRM-Manager] Direct fetch attempt ${attempt + 1} failed:`, e.message);
+                if (attempt === 0) await new Promise((r) => setTimeout(r, 1000));
+            }
+        }
+        // Fallback: use avatar-proxy for R2 URLs that failed direct fetch
+        try {
+            const proxyUrl = '/api/avatar-proxy?url=' + encodeURIComponent(url);
+            const res = await fetch(proxyUrl);
+            if (res.ok) return res;
+            console.warn(`[VRM-Manager] Proxy also failed (${res.status}), last direct attempt...`);
+        } catch (e) {
+            console.warn('[VRM-Manager] Proxy fetch error:', e.message);
+        }
+        // Last resort: one more direct try
+        return fetch(url, { mode: 'cors' });
+    }
+
+    // Strategy 2: Proxy first for non-CORS external URLs, fallback to direct
+    const proxyUrl = '/api/avatar-proxy?url=' + encodeURIComponent(url);
+    const res = await fetch(proxyUrl);
+    if (res.ok) return res;
+    console.warn(`[VRM-Manager] Proxy failed (${res.status}), trying direct download...`);
+    return fetch(url, { mode: 'cors' });
+}
+
 function debounce(fn, ms) {
     let t;
     return function () {
@@ -2858,13 +2874,12 @@ async function generateAvatarThumbnail(item, pose) {
                 loader.parse(arrayBuffer, '', resolve, reject);
             });
         } else if (isExternal) {
-            // Use proxy for external URLs to bypass CORS
-            const proxyUrl = '/api/avatar-proxy?url=' + encodeURIComponent(loadUrl);
+            // Use resilient fetch (direct + retry + proxy fallback), then parse
+            const modelRes = await fetchModelUrl(loadUrl);
+            if (!modelRes.ok) throw new Error(`Download failed: ${modelRes.status}`);
+            const ab = await modelRes.arrayBuffer();
             gltf = await new Promise((resolve, reject) => {
-                loader.load(proxyUrl, resolve, undefined, (err) => {
-                    // If proxy fails, try direct as last resort
-                    loader.load(loadUrl, resolve, undefined, reject);
-                });
+                loader.parse(ab, '', resolve, reject);
             });
         } else {
             // Local URL — fetch and validate before parsing to avoid cryptic GLTFLoader errors
