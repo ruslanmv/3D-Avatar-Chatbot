@@ -3050,6 +3050,12 @@ async function generateAndSaveThumbnail(item) {
         VRMManager.saveInstalled();
     }
 
+    // Sync thumbnail to Browse Catalog (allItems) so both tabs show it
+    const catalogItem = allItems.find((x) => x.id === item.id);
+    if (catalogItem && !catalogItem.preview) {
+        catalogItem.preview = preview;
+    }
+
     // Persist in IndexedDB (avoids localStorage bloat from large base64)
     await saveThumbToDB(item.id, preview);
 
