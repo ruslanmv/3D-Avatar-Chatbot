@@ -158,6 +158,7 @@ const AVATAR_PROXY_HOSTS = [
     'cdn.discordapp.com',
     'pub-c8f0641365ad47e5b3e1c85c39874909.r2.dev',
     'r2.dev',
+    'avatars.yourfriend.online',
     'vrm-avatar-catalog.cloud-data.workers.dev',
     'homepilotai.github.io',
 ];
