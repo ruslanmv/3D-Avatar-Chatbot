@@ -995,6 +995,23 @@ const VRMManager = {
 
     /* ── GitHub: madjin/vrm-samples (recursive tree) ──── */
 
+    _generateVRMSampleSVG(name) {
+        const colors = ['#e040fb', '#ff4081', '#7c4dff', '#00e5ff', '#ff9100', '#69f0ae', '#ea80fc', '#ffab40'];
+        const hash = name.split('').reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
+        const bg = colors[Math.abs(hash) % colors.length];
+        const initial = (name.charAt(0) || '?').toUpperCase();
+        const label = name.length > 18 ? name.slice(0, 18) + '…' : name;
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+      <rect width="256" height="256" rx="16" fill="${bg}22"/>
+      <rect x="4" y="4" width="248" height="248" rx="14" fill="none" stroke="${bg}" stroke-width="2" opacity="0.4"/>
+      <text x="128" y="120" text-anchor="middle" font-family="sans-serif" font-size="80" font-weight="700" fill="${bg}">${initial}</text>
+      <text x="128" y="160" text-anchor="middle" font-family="sans-serif" font-size="14" fill="${bg}" opacity="0.8">${label}</text>
+      <rect x="88" y="218" width="80" height="22" rx="11" fill="${bg}" opacity="0.15"/>
+      <text x="128" y="233" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="600" fill="${bg}">VRM</text>
+    </svg>`;
+        return `data:image/svg+xml;base64,${btoa(svg)}`;
+    },
+
     async fetchGitHubVRMSamples() {
         // Files are spread across subdirectories, use Git Trees API with recursive flag
         const API_URL = 'https://api.github.com/repos/madjin/vrm-samples/git/trees/master?recursive=1';
@@ -1008,16 +1025,17 @@ const VRMManager = {
                 .filter((f) => f.path.endsWith('.vrm') && f.type === 'blob')
                 .map((f) => {
                     const fileName = f.path.split('/').pop();
+                    const displayName = fileName.replace('.vrm', '').replace(/[_-]/g, ' ');
                     return {
                         id: `vrm-samples-${fileName.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`,
-                        name: fileName.replace('.vrm', '').replace(/[_-]/g, ' '),
+                        name: displayName,
                         desc: 'CC0 VRM from madjin/vrm-samples repository.',
                         source: 'VRM Samples (GitHub)',
                         sourceId: 'github-vrm-samples',
                         format: 'vrm',
                         license: 'cc0',
                         url: `${RAW_BASE}/${f.path}`,
-                        preview: '',
+                        preview: this._generateVRMSampleSVG(displayName),
                         icon: '📦',
                         tags: ['cc0', 'github', 'vrm-samples'],
                         features: ['lipsync', 'emotions', 'gaze', 'blink'],
@@ -1071,18 +1089,23 @@ const VRMManager = {
                         desc: `From ${sourceProject.replace(/[-_]/g, ' ')}. ${entry.license || 'Free'}. ${entry.quality === 'curated' ? 'Curated quality.' : ''}`.trim(),
                         source: 'HomePilot Hub',
                         sourceId: 'homepilot-hub',
+                        sourceCategory: entry.source_category || 'unknown',
                         format: isVrm ? 'vrm' : 'glb',
                         license: (entry.license || 'free').toLowerCase().includes('cc0')
                             ? 'cc0'
                             : (entry.license || '').toLowerCase().includes('cc-by')
                               ? 'cc-by'
-                              : 'free',
+                              : (entry.license || '').toLowerCase().includes('vroid hub')
+                                ? 'vroid-hub-terms'
+                                : 'free',
                         url: entry.public_url || '',
                         preview: entry.thumbnail_url || '',
                         icon: '🧑‍🚀',
                         tags: [sourceProject, entry.quality || 'community', format].filter(Boolean),
                         features: isVrm ? ['lipsync', 'emotions', 'gaze', 'blink'] : [],
                         size: entry.size_bytes || 0,
+                        likeCount: (entry.metadata && entry.metadata.like_count) || 0,
+                        quality: entry.quality || 'community',
                         homepilotId: entry.id || '',
                     };
                 })
@@ -1490,23 +1513,65 @@ const VRMManager = {
             currentFiltered = [...allItems];
         }
 
-        // Sort: installed last, then by source priority (HomePilot Hub first, Open Source Avatars last),
-        // then VRM first, then GLB+morph, then GLB.
-        const formatOrder = { vrm: 0, 'glb-morph': 1, glb: 2 };
-        const sourceOrder = {
+        // ── Sort ──
+        // Primary key: format (VRM first — full face tracking, GLB last — body only).
+        // Secondary key: user-selected sort criterion.
+        // Installed items always sink to the bottom within each group.
+        const FORMAT_ORDER = { vrm: 0, 'glb-morph': 1, glb: 2 };
+        // Source priority: vroid_hub first, open_source last (matches Avatar Catalog)
+        const SOURCE_ORDER = {
             'github-vrm-samples': 0,
             'homepilot-hub': 1,
             sketchfab: 2,
             readyplayerme: 3,
             opensourceavatars: 4,
         };
+        // Map sourceCategory from catalog to priority (vroid=0, sketchfab=1, open_source=2)
+        const CAT_ORDER = { vroid: 0, marketplace: 1, unknown: 1, open_source: 2, sample: 3 };
+        const fmtPri = (item) => FORMAT_ORDER[item.format] ?? 9;
+        const srcPri = (item) => {
+            // Use sourceCategory if available (from HomePilot catalog), else sourceId
+            if (item.sourceCategory) return CAT_ORDER[item.sourceCategory] ?? 1;
+            return SOURCE_ORDER[item.sourceId] ?? 3;
+        };
+
+        const sortEl = el('vm-filter-sort');
+        const sortBy = (sortEl && sortEl.value) || 'popular';
+
         currentFiltered.sort((a, b) => {
-            const aInst = this.isInstalled(a.id) ? 1 : 0;
-            const bInst = this.isInstalled(b.id) ? 1 : 0;
-            if (aInst !== bInst) return aInst - bInst;
-            const srcDiff = (sourceOrder[a.sourceId] ?? 3) - (sourceOrder[b.sourceId] ?? 3);
-            if (srcDiff !== 0) return srcDiff;
-            return (formatOrder[a.format] || 9) - (formatOrder[b.format] || 9);
+            // Installed items always last
+            const instDiff = (this.isInstalled(a.id) ? 1 : 0) - (this.isInstalled(b.id) ? 1 : 0);
+            if (instDiff !== 0) return instDiff;
+
+            // Format priority: VRM > GLB+Morph > GLB (always)
+            const fmtDiff = fmtPri(a) - fmtPri(b);
+            if (fmtDiff !== 0) return fmtDiff;
+
+            // User-selected sort
+            switch (sortBy) {
+                case 'name':
+                    return (a.name || '').localeCompare(b.name || '');
+                case 'name-desc':
+                    return (b.name || '').localeCompare(a.name || '');
+                case 'size':
+                    return (a.size || 0) - (b.size || 0);
+                case 'size-desc':
+                    return (b.size || 0) - (a.size || 0);
+                case 'source':
+                    return (
+                        srcPri(a) - srcPri(b) ||
+                        (a.source || '').localeCompare(b.source || '') ||
+                        (a.name || '').localeCompare(b.name || '')
+                    );
+                case 'popular':
+                default:
+                    // Most Popular: like_count desc → source priority → name A-Z
+                    return (
+                        (b.likeCount || 0) - (a.likeCount || 0) ||
+                        srcPri(a) - srcPri(b) ||
+                        (a.name || '').localeCompare(b.name || '')
+                    );
+            }
         });
 
         visibleCount = VM_CONFIG.PAGE_SIZE;
@@ -1930,7 +1995,7 @@ const VRMManager = {
       <p style="color:var(--vm-text-muted);font-size:13px;margin-bottom:16px">${esc(item.desc)}</p>
       <div class="vm-detail-row"><span class="vm-detail-label">Format</span><span class="vm-detail-value">${formatLabel}</span></div>
       <div class="vm-detail-row"><span class="vm-detail-label">Source</span><span class="vm-detail-value">${esc(item.source)}</span></div>
-      <div class="vm-detail-row"><span class="vm-detail-label">License</span><span class="vm-detail-value">${esc(item.license.toUpperCase())}</span></div>
+      <div class="vm-detail-row"><span class="vm-detail-label">License</span><span class="vm-detail-value">${esc(item.license === 'vroid-hub-terms' ? 'VRoid Hub Terms' : item.license.toUpperCase())}</span></div>
       <div class="vm-detail-row"><span class="vm-detail-label">Size</span><span class="vm-detail-value">${formatBytes(item.size)}</span></div>
       <div class="vm-detail-row"><span class="vm-detail-label">Tags</span><span class="vm-detail-value">${(item.tags || []).join(', ') || 'None'}</span></div>
       <div style="margin-top:12px"><span class="vm-detail-label">Features</span><div style="margin-top:6px">${features}</div></div>
@@ -2271,7 +2336,8 @@ const VRMManager = {
             debounce(() => this.applyFilters(), 200)
         );
 
-        // Filters
+        // Filters & sort
+        el('vm-filter-sort').addEventListener('change', () => this.applyFilters());
         el('vm-filter-source').addEventListener('change', () => this.onSourceFilterChange());
         el('vm-filter-format').addEventListener('change', () => this.applyFilters());
         el('vm-filter-license').addEventListener('change', () => this.applyFilters());
