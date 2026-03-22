@@ -51,6 +51,15 @@ export default async function handler(req) {
         const finalClientId = clientId || ENV_APP_ID;
         const finalClientSecret = clientSecret || ENV_APP_SECRET;
 
+        console.log('[vroid-hub-callback] Token exchange debug:', {
+            hasCode: !!code,
+            redirectUri,
+            finalClientId: finalClientId ? finalClientId.substring(0, 8) + '...' : '(empty)',
+            hasSecret: !!finalClientSecret,
+            secretSource: clientSecret ? 'state' : ENV_APP_SECRET ? 'env' : 'none',
+            hasCodeVerifier: !!codeVerifier,
+        });
+
         // Exchange authorization code for tokens
         const tokenRes = await fetch(`${VROID_API}/oauth/token`, {
             method: 'POST',
@@ -69,6 +78,14 @@ export default async function handler(req) {
         });
 
         const tokenData = await tokenRes.json();
+
+        console.log('[vroid-hub-callback] Token response:', {
+            status: tokenRes.status,
+            hasAccessToken: !!tokenData.access_token,
+            hasRefreshToken: !!tokenData.refresh_token,
+            error: tokenData.error || null,
+            errorDescription: tokenData.error_description || null,
+        });
 
         if (!tokenData.access_token) {
             return htmlResponse(`
