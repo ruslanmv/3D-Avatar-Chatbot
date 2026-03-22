@@ -1140,7 +1140,16 @@ const VRMManager = {
                 );
             }
 
-            const blob = await res.blob();
+            // Stream body via getReader (more reliable than res.blob() for large files
+            // streamed through Edge proxies, which can drop the connection mid-transfer).
+            const reader = res.body.getReader();
+            const chunks = [];
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                chunks.push(value);
+            }
+            const blob = new Blob(chunks);
 
             const item = {
                 id,
@@ -2596,11 +2605,28 @@ async function fetchModelUrl(url) {
 
     if (!isExternal) return fetch(url);
 
-    // R2 custom domain: proxy first (reliable server-side), fallback to direct CORS.
+    // R2 custom domain: direct CORS first (fast, no proxy overhead), proxy fallback.
+    // Custom domains have proper CORS headers and no bot protection, so direct fetch
+    // is more reliable than streaming through the Edge proxy (which can drop large bodies).
     if (isR2Custom) {
-        console.log('[VRM-Manager] Custom domain detected, trying proxy first:', url);
-        const proxyUrl = '/api/avatar-proxy?url=' + encodeURIComponent(url);
+        console.log('[VRM-Manager] Custom domain detected, trying direct CORS first:', url);
         try {
+            const res = await fetch(url, { mode: 'cors' });
+            if (res.ok) {
+                const ct = res.headers.get('content-type') || '';
+                if (!ct.includes('text/html')) {
+                    console.log('[VRM-Manager] Custom domain direct CORS fetch succeeded');
+                    return res;
+                }
+            }
+            console.warn(`[VRM-Manager] Custom domain direct CORS returned ${res.status}, trying proxy...`);
+        } catch (e) {
+            console.warn('[VRM-Manager] Custom domain direct CORS error:', e.message, '— trying proxy...');
+        }
+        // Fallback: server-side proxy (handles edge cases like corporate firewalls)
+        try {
+            console.log('[VRM-Manager] Trying proxy fallback for custom domain...');
+            const proxyUrl = '/api/avatar-proxy?url=' + encodeURIComponent(url);
             const res = await fetch(proxyUrl);
             if (res.ok) {
                 const ct = res.headers.get('content-type') || '';
@@ -2609,24 +2635,12 @@ async function fetchModelUrl(url) {
                     return res;
                 }
             }
-            console.warn(`[VRM-Manager] Custom domain proxy returned ${res.status}, trying direct CORS...`);
+            console.warn(`[VRM-Manager] Custom domain proxy returned ${res.status}`);
         } catch (e) {
-            console.warn('[VRM-Manager] Custom domain proxy error:', e.message, '— trying direct CORS...');
-        }
-        // Fallback: direct CORS fetch (custom domain has no bot protection)
-        try {
-            console.log('[VRM-Manager] Trying direct CORS fetch to custom domain...');
-            const res = await fetch(url, { mode: 'cors' });
-            if (res.ok) {
-                console.log('[VRM-Manager] Custom domain direct CORS fetch succeeded');
-                return res;
-            }
-            console.warn(`[VRM-Manager] Custom domain direct CORS returned ${res.status}`);
-        } catch (e) {
-            console.warn('[VRM-Manager] Custom domain direct CORS error:', e.message);
+            console.warn('[VRM-Manager] Custom domain proxy error:', e.message);
         }
         throw new Error(
-            'Failed to download from custom domain (both proxy and direct CORS failed). Please try again or use "Upload from device".'
+            'Failed to download from custom domain (both direct CORS and proxy failed). Please try again or use "Upload from device".'
         );
     }
 
