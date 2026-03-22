@@ -226,6 +226,52 @@
                             />
                             <button id="vm-addsrc-fetch-btn" class="vm-btn vm-btn-primary">Fetch</button>
                         </div>
+                        <details id="vm-addsrc-auth-details" style="margin-top: 10px">
+                            <summary
+                                style="cursor: pointer; font-size: 12px; color: var(--vm-text-muted); user-select: none"
+                            >
+                                Private repository? Add access token
+                            </summary>
+                            <div style="margin-top: 8px">
+                                <input
+                                    type="password"
+                                    id="vm-addsrc-token-input"
+                                    placeholder="ghp_xxxx... (GitHub PAT with contents:read)"
+                                    spellcheck="false"
+                                    autocomplete="off"
+                                    style="
+                                        width: 100%;
+                                        box-sizing: border-box;
+                                        padding: 8px 10px;
+                                        background: var(--vm-bg-input, #1a1a2e);
+                                        color: var(--vm-text);
+                                        border: 1px solid var(--vm-border);
+                                        border-radius: 6px;
+                                        font-size: 13px;
+                                    "
+                                />
+                                <p
+                                    style="
+                                        font-size: 11px;
+                                        color: var(--vm-text-muted);
+                                        margin: 6px 0 0;
+                                        line-height: 1.5;
+                                    "
+                                >
+                                    For private GitHub repos. Create a
+                                    <a
+                                        href="https://github.com/settings/tokens?type=beta"
+                                        target="_blank"
+                                        rel="noopener"
+                                        style="color: #6af"
+                                        >fine-grained PAT</a
+                                    >
+                                    with <strong>Repository permissions &rarr; Contents &rarr; Read</strong>. Without
+                                    this specific permission, you will get a 403 error. Token is stored locally only,
+                                    never sent to any server except GitHub.
+                                </p>
+                            </div>
+                        </details>
                         <p id="vm-addsrc-status" class="vm-addsrc-status"></p>
                         <p style="font-size: 12px; color: var(--vm-text-muted); margin: 12px 0 0; line-height: 1.6">
                             Accepts GitHub repo URLs, GitHub Pages URLs, or direct

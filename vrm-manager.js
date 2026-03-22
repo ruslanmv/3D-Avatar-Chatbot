@@ -1762,7 +1762,17 @@ const VRMManager = {
 
     async fetchCustomCatalog(customSrc) {
         try {
-            const res = await fetch(customSrc.catalogUrl, { mode: 'cors' });
+            // Build fetch headers — include auth token for private sources
+            const headers = {};
+            if (customSrc.isPrivate) {
+                const token = localStorage.getItem(`vrm_src_token_${customSrc.id}`) || '';
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                    headers['Accept'] = 'application/vnd.github.v3.raw';
+                    headers['X-GitHub-Api-Version'] = '2022-11-28';
+                }
+            }
+            const res = await fetch(customSrc.catalogUrl, { mode: 'cors', headers });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const catalog = await res.json();
 
@@ -1831,6 +1841,10 @@ const VRMManager = {
         if (stepResult) stepResult.classList.add('vm-hidden');
         const input = el('vm-addsrc-url-input');
         if (input) input.value = '';
+        const tokenInput = el('vm-addsrc-token-input');
+        if (tokenInput) tokenInput.value = '';
+        const authDetails = el('vm-addsrc-auth-details');
+        if (authDetails) authDetails.removeAttribute('open');
         modal.classList.remove('vm-hidden');
         if (input) setTimeout(() => input.focus(), 100);
     },
@@ -1847,51 +1861,115 @@ const VRMManager = {
             return;
         }
 
+        // Read optional GitHub PAT for private repo access
+        const tokenInput = el('vm-addsrc-token-input');
+        const token = ((tokenInput && tokenInput.value) || '').trim();
+
         // Build a list of candidate URLs to try in order
+        // Each candidate: { url, headers } — headers carry auth when needed
         const candidates = [];
 
-        // If it already ends with .json, try it directly
-        if (rawUrl.endsWith('.json')) {
-            candidates.push(rawUrl);
-        }
-
-        // GitHub repo URL → GitHub Pages URL
-        // e.g. https://github.com/HomePilotAI/vrm-avatar-catalog → https://homepilotai.github.io/vrm-avatar-catalog/catalog.json
         const ghRepoMatch = rawUrl.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/?$/i);
-        if (ghRepoMatch) {
+
+        // If a token is provided AND this is a GitHub repo, use ONLY the GitHub Contents API.
+        // Don't try public URLs — they'll CORS-fail for private repos and spam the console.
+        if (token && ghRepoMatch) {
             const [, owner, repo] = ghRepoMatch;
-            candidates.push(`https://${owner.toLowerCase()}.github.io/${repo}/catalog.json`);
-            // Also try raw GitHub URL for repos that don't use Pages
-            candidates.push(`https://raw.githubusercontent.com/${owner}/${repo}/main/docs/catalog.json`);
-            candidates.push(`https://raw.githubusercontent.com/${owner}/${repo}/main/catalog.json`);
-            candidates.push(`https://raw.githubusercontent.com/${owner}/${repo}/master/docs/catalog.json`);
+            const authHeaders = {
+                Authorization: `Bearer ${token}`,
+                Accept: 'application/vnd.github.v3.raw',
+                'X-GitHub-Api-Version': '2022-11-28',
+            };
+            candidates.push({
+                url: `https://api.github.com/repos/${owner}/${repo}/contents/docs/catalog.json`,
+                headers: authHeaders,
+            });
+            candidates.push({
+                url: `https://api.github.com/repos/${owner}/${repo}/contents/catalog.json`,
+                headers: authHeaders,
+            });
+        } else if (ghRepoMatch) {
+            // Public repo — try GitHub Pages and raw URLs
+            const [, owner, repo] = ghRepoMatch;
+            candidates.push({ url: `https://${owner.toLowerCase()}.github.io/${repo}/catalog.json`, headers: {} });
+            candidates.push({
+                url: `https://raw.githubusercontent.com/${owner}/${repo}/main/docs/catalog.json`,
+                headers: {},
+            });
+            candidates.push({
+                url: `https://raw.githubusercontent.com/${owner}/${repo}/main/catalog.json`,
+                headers: {},
+            });
+            candidates.push({
+                url: `https://raw.githubusercontent.com/${owner}/${repo}/master/docs/catalog.json`,
+                headers: {},
+            });
         }
 
-        // GitHub Pages URL without catalog.json
-        if (!rawUrl.endsWith('.json')) {
-            candidates.push(rawUrl.replace(/\/+$/, '') + '/catalog.json');
+        // If it already ends with .json, try it directly (no auth — public URL)
+        if (!token && rawUrl.endsWith('.json')) {
+            candidates.push({ url: rawUrl, headers: {} });
         }
 
-        // Deduplicate
-        const uniqueCandidates = [...new Set(candidates)];
+        // Generic URL without catalog.json (only for non-GitHub or no-token)
+        if (!token && !rawUrl.endsWith('.json')) {
+            candidates.push({ url: rawUrl.replace(/\/+$/, '') + '/catalog.json', headers: {} });
+        }
+
+        // Deduplicate by URL
+        const seen = new Set();
+        const uniqueCandidates = candidates.filter((c) => {
+            if (seen.has(c.url)) return false;
+            seen.add(c.url);
+            return true;
+        });
 
         const statusEl = el('vm-addsrc-status');
         if (statusEl) statusEl.textContent = 'Fetching catalog...';
 
         let catalogUrl = null;
+        let catalogHeaders = {};
         let data = null;
 
-        for (const url of uniqueCandidates) {
+        for (const candidate of uniqueCandidates) {
             try {
-                if (statusEl) statusEl.textContent = `Trying ${new URL(url).hostname}...`;
-                const res = await fetch(url, { mode: 'cors' });
-                if (!res.ok) continue;
+                if (statusEl) statusEl.textContent = `Trying ${new URL(candidate.url).hostname}...`;
+                const res = await fetch(candidate.url, {
+                    mode: 'cors',
+                    headers: candidate.headers,
+                });
+                if (!res.ok) {
+                    console.warn(`[VRM-Manager] Source probe ${res.status} for ${candidate.url}`);
+                    // For GitHub API, provide specific feedback
+                    if (candidate.url.includes('api.github.com') && res.status === 404) {
+                        const body = await res.json().catch(() => null);
+                        console.warn(
+                            '[VRM-Manager] GitHub API 404 — repo may not exist, token may lack access, or catalog.json not found at this path.',
+                            body?.message || ''
+                        );
+                    }
+                    if (candidate.url.includes('api.github.com') && res.status === 401) {
+                        if (statusEl) statusEl.textContent = '';
+                        toast('Invalid GitHub token. Check that your PAT is correct and not expired.', 'error');
+                        return;
+                    }
+                    if (candidate.url.includes('api.github.com') && res.status === 403) {
+                        if (statusEl) statusEl.textContent = '';
+                        toast(
+                            'Token lacks "Contents: Read" permission. Edit your fine-grained PAT → Repository permissions → Contents → set to Read.',
+                            'error'
+                        );
+                        return;
+                    }
+                    continue;
+                }
                 const contentType = res.headers.get('content-type') || '';
                 if (contentType.includes('text/html')) continue; // Skip HTML pages
                 const parsed = await res.json();
                 const entries = Array.isArray(parsed) ? parsed : parsed.items || [];
                 if (entries.length > 0) {
-                    catalogUrl = url;
+                    catalogUrl = candidate.url;
+                    catalogHeaders = candidate.headers;
                     data = parsed;
                     break;
                 }
@@ -1902,7 +1980,10 @@ const VRMManager = {
 
         if (!catalogUrl || !data) {
             if (statusEl) statusEl.textContent = '';
-            toast('Could not find a valid catalog at that URL. Make sure it points to a JSON catalog.', 'error');
+            const hint = token
+                ? 'Could not find a valid catalog. Check that the token has Contents:Read permission and the repo contains a catalog.json.'
+                : 'Could not find a valid catalog at that URL. Make sure it points to a JSON catalog.';
+            toast(hint, 'error');
             return;
         }
 
@@ -1970,11 +2051,13 @@ const VRMManager = {
             // Store probe result for confirm step
             this._pendingSource = {
                 catalogUrl,
+                catalogHeaders, // Auth headers (empty for public sources)
                 displayUrl,
                 totalAvatars: entries.length,
                 formats: [...formats],
                 licenses: [...licenses].slice(0, 3),
                 defaultName: sourceName,
+                token: token || '', // GitHub PAT — stored locally for refresh
             };
         } catch (e) {
             if (statusEl) statusEl.textContent = '';
@@ -2005,6 +2088,14 @@ const VRMManager = {
             totalAvatars: this._pendingSource.totalAvatars,
             addedAt: Date.now(),
         };
+        // Store auth token separately (not in the source object) for security.
+        // Token is stored per-source in localStorage under its own key.
+        if (this._pendingSource.token) {
+            try {
+                localStorage.setItem(`vrm_src_token_${sourceId}`, this._pendingSource.token);
+            } catch (_) {}
+            customSource.isPrivate = true;
+        }
 
         const added = addCustomSource(customSource);
         if (!added) {
@@ -2040,6 +2131,12 @@ const VRMManager = {
         const custom = getCustomSources().find((s) => s.catalogUrl === catalogUrl);
         const name = custom ? custom.name : 'Source';
         if (!confirm(`Remove "${name}"? Its avatars will be removed from the catalog.`)) return;
+        // Clean up stored auth token for private sources
+        if (custom && custom.isPrivate) {
+            try {
+                localStorage.removeItem(`vrm_src_token_${custom.id}`);
+            } catch (_) {}
+        }
         removeCustomSource(catalogUrl);
         this.buildSourceCards();
         // Remove avatars from that source from both catalog and installed
@@ -3380,6 +3477,7 @@ const VRMManager = {
         <div class="vm-source-card-desc">${esc(src.desc)}</div>
         <div class="vm-source-card-meta">
           ${formatBadges}
+          ${src.isPrivate ? '<span class="vm-badge" style="font-size:9px;background:rgba(255,165,0,0.2);color:#ffa500">Private</span>' : ''}
           <span style="font-size:11px;color:var(--vm-text-muted)">Custom source</span>
         </div>
         <div class="vm-source-card-actions">
