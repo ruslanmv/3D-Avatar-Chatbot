@@ -865,6 +865,259 @@ body {
     border-color: var(--vm-primary);
 }
 
+/* ── Add Source Card ──────────────────────────────────── */
+
+.vm-source-add-card {
+    border: 2px dashed var(--vm-border);
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 140px;
+    transition: all 0.2s;
+}
+
+.vm-source-add-card:hover {
+    border-color: var(--vm-primary);
+    background: rgba(0, 229, 255, 0.04);
+}
+
+.vm-source-add-inner {
+    text-align: center;
+}
+
+.vm-source-add-icon {
+    font-size: 36px;
+    color: var(--vm-primary);
+    margin-bottom: 8px;
+    font-weight: 300;
+}
+
+.vm-source-add-label {
+    font-family: var(--vm-font-display);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--vm-primary);
+    letter-spacing: 0.5px;
+}
+
+.vm-source-add-hint {
+    font-size: 12px;
+    color: var(--vm-text-muted);
+    margin-top: 4px;
+}
+
+/* ── Custom Source Card ──────────────────────────────── */
+
+.vm-source-custom {
+    border-color: rgba(0, 229, 255, 0.25);
+}
+
+.vm-source-remove-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: var(--vm-radius-sm);
+    border: 1px solid rgba(255, 82, 82, 0.3);
+    background: rgba(255, 82, 82, 0.08);
+    color: #ff5252;
+    font-family: var(--vm-font-body);
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.vm-source-remove-btn:hover {
+    background: rgba(255, 82, 82, 0.2);
+    border-color: #ff5252;
+}
+
+/* ── Add Source Wizard ────────────────────────────────── */
+
+.vm-modal-addsrc {
+    max-width: 520px;
+}
+
+.vm-addsrc-url-row {
+    display: flex;
+    gap: 8px;
+    margin: 16px 0;
+}
+
+.vm-addsrc-url-row input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid var(--vm-border);
+    border-radius: var(--vm-radius-sm);
+    background: var(--vm-bg);
+    color: var(--vm-text);
+    font-size: 13px;
+    font-family: var(--vm-font-body);
+}
+
+.vm-addsrc-url-row input:focus {
+    outline: none;
+    border-color: var(--vm-primary);
+}
+
+.vm-addsrc-status {
+    font-size: 12px;
+    color: var(--vm-primary);
+    margin: 8px 0;
+}
+
+.vm-addsrc-preview-card {
+    background: var(--vm-surface);
+    border: 1px solid var(--vm-border);
+    border-radius: var(--vm-radius);
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.vm-addsrc-stats {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--vm-text-muted);
+}
+
+.vm-addsrc-name-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 10px 0;
+}
+
+.vm-addsrc-name-row label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--vm-text-muted);
+    white-space: nowrap;
+    min-width: 100px;
+}
+
+.vm-addsrc-name-row input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--vm-border);
+    border-radius: var(--vm-radius-sm);
+    background: var(--vm-bg);
+    color: var(--vm-text);
+    font-size: 13px;
+    font-family: var(--vm-font-body);
+}
+
+.vm-addsrc-name-row input:focus {
+    outline: none;
+    border-color: var(--vm-primary);
+}
+
+.vm-addsrc-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.vm-btn {
+    padding: 10px 20px;
+    border-radius: var(--vm-radius-sm);
+    border: 1px solid var(--vm-border);
+    background: var(--vm-surface);
+    color: var(--vm-text);
+    font-family: var(--vm-font-body);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.vm-btn:hover {
+    border-color: var(--vm-border-hover);
+    background: var(--vm-surface-hover, var(--vm-surface));
+}
+
+.vm-btn-primary {
+    background: var(--vm-primary);
+    color: var(--vm-bg);
+    border-color: var(--vm-primary);
+}
+
+.vm-btn-primary:hover {
+    opacity: 0.9;
+}
+
+.vm-addsrc-success {
+    text-align: center;
+    padding: 24px 0;
+}
+
+.vm-addsrc-success-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+}
+
+.vm-addsrc-success h3 {
+    font-family: var(--vm-font-display);
+    font-size: 18px;
+    color: var(--vm-text);
+    margin: 0 0 8px;
+}
+
+.vm-addsrc-success p {
+    color: var(--vm-green);
+    font-size: 14px;
+    margin: 4px 0;
+}
+
+/* ── Source Enable/Disable Toggle ──────────────────────── */
+
+.vm-source-card.vm-source-disabled {
+    opacity: 0.5;
+    border-color: var(--vm-border);
+}
+
+.vm-source-card.vm-source-disabled:hover {
+    opacity: 0.7;
+}
+
+.vm-source-toggle {
+    margin-left: auto;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid;
+    flex-shrink: 0;
+}
+
+.vm-source-toggle-on {
+    background: rgba(0, 255, 136, 0.1);
+    color: var(--vm-green);
+    border-color: rgba(0, 255, 136, 0.3);
+}
+
+.vm-source-toggle-on:hover {
+    background: rgba(0, 255, 136, 0.2);
+}
+
+.vm-source-toggle-off {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--vm-text-muted);
+    border-color: var(--vm-border);
+}
+
+.vm-source-toggle-off:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--vm-text);
+}
+
 /* ── Empty State ──────────────────────────────────────── */
 
 .vm-empty {

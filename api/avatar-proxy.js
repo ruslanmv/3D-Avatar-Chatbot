@@ -32,6 +32,8 @@ const ALLOWED_HOSTS = [
     'pub-c8f0641365ad47e5b3e1c85c39874909.r2.dev',
     'r2.dev',
     'avatars.yourfriend.online',
+    's3.amazonaws.com',
+    'amazonaws.com',
 ];
 
 function isAllowedHost(urlStr) {
