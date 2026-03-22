@@ -15,7 +15,6 @@
     { "name": "HairSample Female", "file": "HairSample_Female.vrm", "format": "vrm", "source": "VRoid (CC0)", "features": ["lipsync", "emotions", "gaze", "blink"] },
     { "name": "HairSample Male", "file": "HairSample_Male.vrm", "format": "vrm", "source": "VRoid (CC0)", "features": ["lipsync", "emotions", "gaze", "blink"] },
     { "name": "Sakurada Fumiriya", "file": "Sakurada_Fumiriya.vrm", "format": "vrm", "source": "VRoid (CC0)", "features": ["lipsync", "emotions", "gaze", "blink"] },
-    { "name": "VRM1 Sample", "file": "VRM1_Constraint_Twist_Sample.vrm", "format": "vrm", "source": "Pixiv (CC0)", "features": ["lipsync", "emotions", "gaze", "blink"] },
     { "name": "VRoid PerfectSync Female", "file": "VRoid_PerfectSync_Female.vrm", "format": "vrm", "source": "hinzka/52blendshapes (CC0)", "features": ["lipsync", "emotions", "gaze", "blink", "perfectsync"], "notes": "Enhanced VRoid female with 52 ARKit blendshapes for iPhone facial tracking" },
     { "name": "VRoid PerfectSync Male", "file": "VRoid_PerfectSync_Male.vrm", "format": "vrm", "source": "hinzka/52blendshapes (CC0)", "features": ["lipsync", "emotions", "gaze", "blink", "perfectsync"], "notes": "Enhanced VRoid male with 52 ARKit blendshapes for iPhone facial tracking" },
     { "name": "VRM Viewer Sample", "file": "VRM_Viewer_Sample.vrm", "format": "vrm", "source": "tk256ailab/vrm-viewer (Open Source)", "features": ["lipsync", "emotions", "gaze", "blink"], "notes": "High-quality VRoid-compatible sample with full expression set" }

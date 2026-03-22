@@ -132,9 +132,6 @@ download_with_fallback "${AVATAR_DIR}/HairSample_Male.vrm" \
 download_with_fallback "${AVATAR_DIR}/Sakurada_Fumiriya.vrm" \
   "https://raw.githubusercontent.com/madjin/vrm-samples/master/vroid/beta/Sakurada_Fumiriya.vrm"
 
-download_with_fallback "${AVATAR_DIR}/VRM1_Constraint_Twist_Sample.vrm" \
-  "https://raw.githubusercontent.com/pixiv/three-vrm/dev/packages/three-vrm/examples/models/VRM1_Constraint_Twist_Sample.vrm"
-
 # ── Legacy GLB models removed ──
 # TalkingHead GLB models (brunette, avaturn, avatarsdk, mpfb) were removed from
 # the built-in catalog. See addons/glb/ for archived copies.

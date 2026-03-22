@@ -252,21 +252,6 @@ const BUILTIN_CATALOG = [
         size: 20300000,
         installed: true,
     },
-    {
-        id: 'vrm-vrm1-sample',
-        name: 'VRM1 Sample',
-        icon: '🤖',
-        desc: 'Official VRM 1.0 spec sample. Constraints, SpringBones, expressions.',
-        source: 'Pixiv (CC0)',
-        sourceId: 'github-three-vrm',
-        format: 'vrm',
-        license: 'cc0',
-        url: '/vendor/avatars/VRM1_Constraint_Twist_Sample.vrm',
-        tags: ['vrm1', 'pixiv', 'sample'],
-        features: ['lipsync', 'emotions', 'gaze', 'blink'],
-        size: 10700000,
-        installed: true,
-    },
 
     {
         id: 'vrm-perfectsync-female',
@@ -335,10 +320,10 @@ const SOURCES = [
         name: 'three-vrm Samples',
         icon: '🎮',
         url: 'github.com/pixiv/three-vrm',
-        desc: 'Official Pixiv three-vrm sample model (VRM1_Constraint_Twist_Sample) already included in built-in catalog.',
+        desc: 'Official Pixiv three-vrm sample models. VRM1_Constraint_Twist_Sample was removed from built-in catalog due to low quality.',
         auth: 'none',
         formats: ['vrm'],
-        status: 'included',
+        status: 'connected',
     },
     {
         id: 'github-talkinghead',
@@ -433,7 +418,7 @@ const SOURCES = [
         name: 'HomePilot Avatar Hub',
         icon: '🧑‍🚀',
         url: 'homepilotai.github.io/vrm-avatar-catalog',
-        desc: '2,500+ free VRM avatars served from Cloudflare R2 CDN. Curated collection from 11 sources — VRoid Hub, Sketchfab, 100 Avatars, and more. No auth needed.',
+        desc: 'A curated collection of 2,500+ top free VRM avatars from 11 sources — VRoid Hub, Sketchfab, 100 Avatars, and more.',
         auth: 'none',
         formats: ['vrm', 'glb'],
         status: 'connected',
@@ -876,7 +861,7 @@ const VRMManager = {
         // GitHub VRM Samples — always fetch (no auth, CC0)
         fetchers.push(this.fetchGitHubVRMSamples());
 
-        // HomePilot Avatar Hub — always fetch (no auth, 2000+ avatars on R2 CDN)
+        // HomePilot Avatar Hub — always fetch (no auth, curated avatar collection)
         fetchers.push(this.fetchHomePilotCatalog());
 
         // Sketchfab search (if connected)
@@ -1048,7 +1033,7 @@ const VRMManager = {
         }
     },
 
-    /* ── HomePilot Avatar Hub (Cloudflare R2 CDN) ────── */
+    /* ── HomePilot Avatar Hub ────── */
 
     async fetchHomePilotCatalog() {
         const CATALOG_URL = 'https://homepilotai.github.io/vrm-avatar-catalog/catalog.json';
