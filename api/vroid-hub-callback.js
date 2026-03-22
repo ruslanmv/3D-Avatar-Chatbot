@@ -44,6 +44,13 @@ export default async function handler(req) {
         const stateData = JSON.parse(atob(state));
         const { codeVerifier, clientId, clientSecret, redirectUri } = stateData;
 
+        // Use server env vars as fallback when client didn't provide credentials
+        // (simplified flow: user only clicks "Authorize", server has the app keys)
+        const ENV_APP_ID = typeof process !== 'undefined' ? process.env.VROID_APP_ID || '' : '';
+        const ENV_APP_SECRET = typeof process !== 'undefined' ? process.env.VROID_APP_SECRET || '' : '';
+        const finalClientId = clientId || ENV_APP_ID;
+        const finalClientSecret = clientSecret || ENV_APP_SECRET;
+
         // Exchange authorization code for tokens
         const tokenRes = await fetch(`${VROID_API}/oauth/token`, {
             method: 'POST',
@@ -54,8 +61,8 @@ export default async function handler(req) {
             body: new URLSearchParams({
                 grant_type: 'authorization_code',
                 code,
-                client_id: clientId,
-                client_secret: clientSecret,
+                client_id: finalClientId,
+                client_secret: finalClientSecret,
                 redirect_uri: redirectUri,
                 code_verifier: codeVerifier,
             }).toString(),

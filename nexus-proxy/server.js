@@ -311,6 +311,17 @@ const VROID_API_VERSION = '11';
 
 app.get('/api/vroid-hub', async (req, res) => {
     const action = req.query.action;
+
+    // env_config — tell client whether server has pre-configured credentials (no auth required)
+    if (action === 'env_config') {
+        const ENV_APP_ID = process.env.VROID_APP_ID || '';
+        const ENV_APP_SECRET = process.env.VROID_APP_SECRET || '';
+        return res.json({
+            hasEnvCredentials: !!(ENV_APP_ID && ENV_APP_SECRET),
+            appId: ENV_APP_ID || null,
+        });
+    }
+
     const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
 
     if (!token) return res.status(401).json({ error: 'Missing Authorization header' });
@@ -381,6 +392,117 @@ app.post('/api/vroid-hub', async (req, res) => {
         }
     }
     return res.status(400).json({ error: 'Unknown POST action' });
+});
+
+// -----------------------------
+// VRoid Hub OAuth Callback (mirrors api/vroid-hub-callback.js for local dev)
+// GET /api/vroid-hub-callback?code=...&state=...
+// -----------------------------
+app.get('/api/vroid-hub-callback', async (req, res) => {
+    const { code, state, error } = req.query;
+
+    const html = (body) => `<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<title>VRoid Hub — OAuth</title>
+<style>
+    body { font-family: system-ui, sans-serif; display: flex; justify-content: center;
+           align-items: center; min-height: 100vh; margin: 0; background: #1a1a2e; color: #e0e0e0; }
+    div { text-align: center; padding: 2rem; }
+    h2 { color: #7c4dff; }
+</style>
+</head><body><div>${body}</div></body></html>`;
+
+    const esc = (s) =>
+        String(s || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+
+    if (error) {
+        return res.type('html').send(
+            html(`<h2>Authorization Failed</h2>
+                <p>${esc(error)}: ${esc(req.query.error_description)}</p>
+                <script>
+                    window.opener && window.opener.postMessage({ type: 'vroid-oauth-error', error: ${JSON.stringify(error)} }, '*');
+                    setTimeout(() => window.close(), 3000);
+                </script>`)
+        );
+    }
+
+    if (!code || !state) {
+        return res.type('html').send(html('<h2>Missing Parameters</h2><p>Authorization code or state missing.</p>'));
+    }
+
+    try {
+        const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
+        const { codeVerifier, clientId, clientSecret, redirectUri } = stateData;
+
+        // Use server env vars as fallback
+        const ENV_APP_ID = process.env.VROID_APP_ID || '';
+        const ENV_APP_SECRET = process.env.VROID_APP_SECRET || '';
+        const finalClientId = clientId || ENV_APP_ID;
+        const finalClientSecret = clientSecret || ENV_APP_SECRET;
+
+        const tokenRes = await fetch(`${VROID_API}/oauth/token`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Api-Version': VROID_API_VERSION,
+            },
+            body: new URLSearchParams({
+                grant_type: 'authorization_code',
+                code,
+                client_id: finalClientId,
+                client_secret: finalClientSecret,
+                redirect_uri: redirectUri,
+                code_verifier: codeVerifier,
+            }).toString(),
+        });
+
+        const tokenData = await tokenRes.json();
+
+        if (!tokenData.access_token) {
+            return res.type('html').send(
+                html(`<h2>Token Exchange Failed</h2>
+                    <p>${esc(tokenData.error || tokenData.error_description || 'Unknown error')}</p>
+                    <script>
+                        window.opener && window.opener.postMessage({
+                            type: 'vroid-oauth-error',
+                            error: ${JSON.stringify(tokenData.error || 'token_exchange_failed')}
+                        }, '*');
+                        setTimeout(() => window.close(), 3000);
+                    </script>`)
+            );
+        }
+
+        console.log('[vroid-hub-callback] OAuth token exchange successful');
+
+        return res.type('html').send(
+            html(`<h2>Connected!</h2>
+                <p>VRoid Hub authorized successfully. This window will close automatically.</p>
+                <script>
+                    window.opener && window.opener.postMessage({
+                        type: 'vroid-oauth-success',
+                        accessToken: ${JSON.stringify(tokenData.access_token)},
+                        refreshToken: ${JSON.stringify(tokenData.refresh_token || '')},
+                        expiresIn: ${tokenData.expires_in || 3600}
+                    }, '*');
+                    setTimeout(() => window.close(), 1500);
+                </script>`)
+        );
+    } catch (err) {
+        console.error('[vroid-hub-callback] error:', err);
+        return res.type('html').send(
+            html(`<h2>Error</h2>
+                <p>${esc(err.message)}</p>
+                <script>
+                    window.opener && window.opener.postMessage({ type: 'vroid-oauth-error', error: 'callback_error' }, '*');
+                    setTimeout(() => window.close(), 3000);
+                </script>`)
+        );
+    }
 });
 
 // SPA fallback: serve index.html for unknown GET routes
