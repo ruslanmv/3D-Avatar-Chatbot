@@ -48,6 +48,10 @@ export default async function handler(req) {
         return new Response(null, { status: 204, headers: CORS_HEADERS });
     }
 
+    // Server-configured VRoid Hub app credentials (Vercel env vars)
+    const ENV_APP_ID = typeof process !== 'undefined' ? process.env.VROID_APP_ID || '' : '';
+    const ENV_APP_SECRET = typeof process !== 'undefined' ? process.env.VROID_APP_SECRET || '' : '';
+
     try {
         // POST — token exchange / refresh
         if (req.method === 'POST') {
@@ -55,13 +59,18 @@ export default async function handler(req) {
             const { action } = body;
 
             if (action === 'token') {
+                // If client omits client_id/client_secret, use server env vars as fallback
+                const params = { ...body.params };
+                if (!params.client_id && ENV_APP_ID) params.client_id = ENV_APP_ID;
+                if (!params.client_secret && ENV_APP_SECRET) params.client_secret = ENV_APP_SECRET;
+
                 const tokenRes = await fetch(`${VROID_API}/oauth/token`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
                         'X-Api-Version': API_VERSION,
                     },
-                    body: new URLSearchParams(body.params).toString(),
+                    body: new URLSearchParams(params).toString(),
                 });
                 const tokenData = await tokenRes.json();
                 return jsonResponse(tokenData, tokenRes.status);
@@ -77,6 +86,16 @@ export default async function handler(req) {
 
         const { searchParams } = new URL(req.url);
         const action = searchParams.get('action');
+
+        // env_config — tell client whether server has pre-configured credentials
+        // Returns appId (safe to expose) but NEVER the secret.
+        if (action === 'env_config') {
+            return jsonResponse({
+                hasEnvCredentials: !!(ENV_APP_ID && ENV_APP_SECRET),
+                appId: ENV_APP_ID || null,
+            });
+        }
+
         const token = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
 
         if (!token) {

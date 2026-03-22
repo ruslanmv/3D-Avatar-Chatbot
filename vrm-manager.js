@@ -346,7 +346,7 @@ const SOURCES = [
         status: 'disconnected',
         settingsKey: 'vroid',
         apiDocs: 'https://developer.vroid.com/en/api',
-        signupUrl: 'https://hub.vroid.com/en/developers',
+        signupUrl: 'https://hub.vroid.com/oauth/applications',
     },
     {
         id: 'readyplayerme',
@@ -660,17 +660,73 @@ const VRMManager = {
             this.credentials = {};
         }
         this.populateCredentialFields();
+        // Check if server has pre-configured VRoid Hub credentials (env vars)
+        this._checkServerVroidConfig();
+    },
+
+    /**
+     * Check if the server has VROID_APP_ID/VROID_APP_SECRET env vars configured.
+     * If yes, auto-populate appId so users just click "Authorize" without pasting keys.
+     */
+    async _checkServerVroidConfig() {
+        // Skip if user already has credentials configured
+        if (this.credentials.vroid && this.credentials.vroid.appId) return;
+        try {
+            const res = await fetch('/api/vroid-hub?action=env_config');
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data.hasEnvCredentials && data.appId) {
+                // Server has credentials — store flag only, never store actual values locally
+                this.credentials.vroid = {
+                    ...this.credentials.vroid,
+                    appId: data.appId, // Needed for OAuth authorize URL (client_id param)
+                    appSecret: '', // Never stored — server uses env var directly
+                    _serverConfigured: true,
+                };
+                // Hide credential fields entirely and show server-configured message
+                const appIdEl = el('vm-vroid-app-id');
+                const appSecretEl = el('vm-vroid-app-secret');
+                // Clear and disable fields — never display credentials
+                if (appIdEl) {
+                    appIdEl.value = '';
+                    appIdEl.closest('.vm-cred-row')?.classList.add('vm-hidden');
+                }
+                if (appSecretEl) {
+                    appSecretEl.value = '';
+                    appSecretEl.closest('.vm-cred-row')?.classList.add('vm-hidden');
+                }
+                // Show a hint instead
+                const vroidFields = appIdEl && appIdEl.closest('.vm-cred-fields');
+                if (vroidFields && !vroidFields.querySelector('.vm-server-config-hint')) {
+                    const hint = document.createElement('div');
+                    hint.className = 'vm-server-config-hint';
+                    hint.style.cssText =
+                        'font-size:12px;color:#4caf50;margin-top:8px;padding:8px 12px;background:rgba(76,175,80,0.08);border-radius:6px;line-height:1.5;';
+                    hint.innerHTML =
+                        '<strong>Server configured</strong> — VRoid Hub API credentials are managed by the server. ' +
+                        'Click <strong>Authorize with VRoid Hub</strong> below to connect your account.';
+                    vroidFields.appendChild(hint);
+                }
+                this.updateSourceStatuses();
+                console.log('[VRM-Manager] VRoid Hub credentials auto-configured from server env vars');
+            }
+        } catch (_) {
+            // Server doesn't have env_config endpoint or is unavailable — silent fallback
+        }
     },
 
     saveCredentials() {
         // Read from UI fields — token fields allow direct paste
         const existingVroid = this.credentials.vroid || {};
+        const isServerConfigured = existingVroid._serverConfigured;
         const uiAccessToken = el('vm-vroid-access-token') ? el('vm-vroid-access-token').value.trim() : '';
         const uiRefreshToken = el('vm-vroid-refresh-token') ? el('vm-vroid-refresh-token').value.trim() : '';
         this.credentials = {
             vroid: {
-                appId: el('vm-vroid-app-id').value.trim(),
-                appSecret: el('vm-vroid-app-secret').value.trim(),
+                // Preserve server-configured values — don't overwrite with UI placeholder text
+                appId: isServerConfigured ? existingVroid.appId : el('vm-vroid-app-id').value.trim(),
+                appSecret: isServerConfigured ? existingVroid.appSecret : el('vm-vroid-app-secret').value.trim(),
+                _serverConfigured: isServerConfigured || false,
                 accessToken: uiAccessToken || existingVroid.accessToken || '',
                 refreshToken: uiRefreshToken || existingVroid.refreshToken || '',
                 tokenExpiresAt:
@@ -694,8 +750,14 @@ const VRMManager = {
     populateCredentialFields() {
         const c = this.credentials;
         if (c.vroid) {
-            setVal('vm-vroid-app-id', c.vroid.appId || '');
-            setVal('vm-vroid-app-secret', c.vroid.appSecret || '');
+            // Never show server-configured credentials in UI fields
+            if (c.vroid._serverConfigured) {
+                setVal('vm-vroid-app-id', '');
+                setVal('vm-vroid-app-secret', '');
+            } else {
+                setVal('vm-vroid-app-id', c.vroid.appId || '');
+                setVal('vm-vroid-app-secret', c.vroid.appSecret || '');
+            }
             setVal('vm-vroid-access-token', c.vroid.accessToken || '');
             setVal('vm-vroid-refresh-token', c.vroid.refreshToken || '');
         }
@@ -738,19 +800,21 @@ const VRMManager = {
         toast(`Testing ${provider} connection...`, 'info');
 
         if (provider === 'vroid') {
-            const appId = el('vm-vroid-app-id').value.trim();
-            const appSecret = el('vm-vroid-app-secret').value.trim();
+            const existing = this.credentials.vroid || {};
+            const isServerCfg = existing._serverConfigured;
+            const appId = isServerCfg ? existing.appId : el('vm-vroid-app-id').value.trim();
+            const appSecret = isServerCfg ? '' : el('vm-vroid-app-secret').value.trim();
+            const canOAuth = isServerCfg || (appId && appSecret);
             const pastedToken = el('vm-vroid-access-token') ? el('vm-vroid-access-token').value.trim() : '';
             const pastedRefresh = el('vm-vroid-refresh-token') ? el('vm-vroid-refresh-token').value.trim() : '';
 
-            if (!appId && !pastedToken) {
+            if (!canOAuth && !pastedToken) {
                 toast('Enter App ID + Secret, or paste an Access Token', 'error');
                 return;
             }
 
             try {
                 // Use pasted token, existing token, or start OAuth flow
-                const existing = this.credentials.vroid || {};
                 let token = pastedToken || existing.accessToken;
 
                 // If token was pasted, save it immediately
@@ -758,7 +822,7 @@ const VRMManager = {
                     this.credentials.vroid = {
                         ...existing,
                         appId: appId || existing.appId || '',
-                        appSecret: appSecret || existing.appSecret || '',
+                        appSecret: isServerCfg ? '' : appSecret || existing.appSecret || '',
                         accessToken: pastedToken,
                         refreshToken: pastedRefresh || existing.refreshToken || '',
                         tokenExpiresAt: Date.now() + 3600 * 1000,
@@ -768,7 +832,7 @@ const VRMManager = {
 
                 if (!token) {
                     // No token available — start OAuth authorization_code + PKCE flow
-                    if (appId && appSecret) {
+                    if (canOAuth) {
                         this.startVroidOAuth();
                         return;
                     }
@@ -791,7 +855,7 @@ const VRMManager = {
                     if (refreshed) {
                         toast('VRoid Hub token refreshed and connected!', 'success');
                         this.updateSourceStatuses();
-                    } else if (appId && appSecret) {
+                    } else if (canOAuth) {
                         toast('Token expired — starting OAuth re-authorization...', 'info');
                         this.startVroidOAuth();
                     } else {
@@ -1106,9 +1170,16 @@ const VRMManager = {
      * Opens VRoid Hub authorization page, handles callback via postMessage.
      */
     async startVroidOAuth() {
-        const appId = el('vm-vroid-app-id').value.trim();
-        const appSecret = el('vm-vroid-app-secret').value.trim();
-        if (!appId || !appSecret) {
+        const isServerConfigured = this.credentials.vroid && this.credentials.vroid._serverConfigured;
+        const appId = isServerConfigured ? this.credentials.vroid.appId : el('vm-vroid-app-id').value.trim();
+        const appSecret = isServerConfigured
+            ? '' // Server holds the secret — don't send it in the state
+            : el('vm-vroid-app-secret').value.trim();
+        if (!appId) {
+            toast('Enter Application ID first', 'error');
+            return;
+        }
+        if (!appSecret && !isServerConfigured) {
             toast('Enter Application ID and Secret first', 'error');
             return;
         }
@@ -1140,6 +1211,11 @@ const VRMManager = {
             `&code_challenge=${encodeURIComponent(codeChallenge)}` +
             `&code_challenge_method=S256`;
 
+        console.log(`[VRM-Manager] OAuth authorize URL redirect_uri: ${redirectUri}`);
+        console.log(
+            '[VRM-Manager] If you get a 400 "Invalid parameters" error, check that this redirect_uri ' +
+                'is registered in your VRoid Hub app at https://hub.vroid.com/oauth/applications'
+        );
         toast('Opening VRoid Hub authorization...', 'info');
 
         // Open popup
@@ -1165,11 +1241,13 @@ const VRMManager = {
     /** Handle successful OAuth callback — store tokens and verify */
     async _handleOAuthSuccess(data, appId, appSecret) {
         const { accessToken, refreshToken, expiresIn } = data;
+        const isServerCfg = this.credentials.vroid && this.credentials.vroid._serverConfigured;
 
         this.credentials.vroid = {
             ...this.credentials.vroid,
             appId,
-            appSecret,
+            appSecret: isServerCfg ? '' : appSecret, // Never store server secret
+            _serverConfigured: isServerCfg || false,
             accessToken,
             refreshToken: refreshToken || '',
             tokenExpiresAt: Date.now() + (expiresIn || 3600) * 1000,
@@ -1201,21 +1279,25 @@ const VRMManager = {
 
     async _refreshVroidToken() {
         const v = this.credentials.vroid;
-        if (!v || !v.refreshToken || !v.appId || !v.appSecret) return false;
+        if (!v || !v.refreshToken) return false;
+        // For server-configured apps, server fills client_id/client_secret from env
+        const isServerCfg = v._serverConfigured;
+        if (!isServerCfg && (!v.appId || !v.appSecret)) return false;
 
         try {
+            const params = {
+                grant_type: 'refresh_token',
+                refresh_token: v.refreshToken,
+            };
+            // Only send client credentials if not server-configured (server uses env vars)
+            if (!isServerCfg) {
+                params.client_id = v.appId;
+                params.client_secret = v.appSecret;
+            }
             const res = await fetch('/api/vroid-hub', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'token',
-                    params: {
-                        grant_type: 'refresh_token',
-                        client_id: v.appId,
-                        client_secret: v.appSecret,
-                        refresh_token: v.refreshToken,
-                    },
-                }),
+                body: JSON.stringify({ action: 'token', params }),
             });
             const data = await res.json();
             if (data.access_token) {
