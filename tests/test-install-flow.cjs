@@ -17,11 +17,7 @@ const path = require('path');
 
 const TEST_URL = 'https://avatars.yourfriend.online/vroid_hub/ruby-the-demon-7966170650761748708.vrm';
 const CUSTOM_DOMAIN = 'avatars.yourfriend.online';
-const ORIGINS = [
-    'https://www.yourfriend.online',
-    'https://yourfriend.online',
-    'https://homepilotai.github.io',
-];
+const ORIGINS = ['https://www.yourfriend.online', 'https://yourfriend.online', 'https://homepilotai.github.io'];
 
 let passed = 0;
 let failed = 0;
@@ -58,9 +54,11 @@ function testDNS() {
 
 function testHTTPS() {
     console.log('\n--- HTTPS Connectivity ---');
-    const result = curl(`-o /dev/null -w "status:%{http_code}|size:%{size_download}|time:%{time_total}|type:%{content_type}" "${TEST_URL}"`);
+    const result = curl(
+        `-o /dev/null -w "status:%{http_code}|size:%{size_download}|time:%{time_total}|type:%{content_type}" "${TEST_URL}"`
+    );
     const parts = {};
-    result.split('|').forEach(p => {
+    result.split('|').forEach((p) => {
         const [k, v] = p.split(':');
         parts[k] = v;
     });
@@ -83,21 +81,24 @@ function testCORS() {
     for (const origin of ORIGINS) {
         const headers = curl(`-I -H "Origin: ${origin}" "${TEST_URL}" 2>&1`);
         const acao = (headers.match(/access-control-allow-origin:\s*(.+)/i) || [])[1]?.trim();
-        log(acao === origin ? 'PASS' : 'FAIL',
-            `Origin ${origin} → ACAO: ${acao || '(missing)'}`);
+        log(acao === origin ? 'PASS' : 'FAIL', `Origin ${origin} → ACAO: ${acao || '(missing)'}`);
     }
 }
 
 function testPreflight() {
     console.log('\n--- CORS Preflight (OPTIONS) ---');
     for (const origin of ORIGINS) {
-        const headers = curl(`-X OPTIONS -H "Origin: ${origin}" -H "Access-Control-Request-Method: GET" -D - -o /dev/null "${TEST_URL}" 2>&1`);
+        const headers = curl(
+            `-X OPTIONS -H "Origin: ${origin}" -H "Access-Control-Request-Method: GET" -D - -o /dev/null "${TEST_URL}" 2>&1`
+        );
         const status = (headers.match(/HTTP\/\d\.?\d?\s+(\d+)/g) || []).pop();
         const statusCode = status ? parseInt(status.match(/(\d+)$/)[1]) : 0;
         const acao = (headers.match(/access-control-allow-origin:\s*(.+)/i) || [])[1]?.trim();
         const methods = (headers.match(/access-control-allow-methods:\s*(.+)/i) || [])[1]?.trim();
-        log(statusCode >= 200 && statusCode < 300 ? 'PASS' : 'FAIL',
-            `OPTIONS ${origin} → ${statusCode}, ACAO: ${acao || '(missing)'}, Methods: ${methods || '(missing)'}`);
+        log(
+            statusCode >= 200 && statusCode < 300 ? 'PASS' : 'FAIL',
+            `OPTIONS ${origin} → ${statusCode}, ACAO: ${acao || '(missing)'}, Methods: ${methods || '(missing)'}`
+        );
     }
 }
 
@@ -105,8 +106,7 @@ function testNoRedirects() {
     console.log('\n--- No Redirect Check ---');
     const result = curl(`-o /dev/null -w "%{num_redirects}|%{url_effective}" -L "${TEST_URL}"`);
     const [redirects, finalUrl] = result.split('|');
-    log(redirects === '0' ? 'PASS' : 'FAIL',
-        `Redirects: ${redirects} (final URL: ${finalUrl || TEST_URL})`);
+    log(redirects === '0' ? 'PASS' : 'FAIL', `Redirects: ${redirects} (final URL: ${finalUrl || TEST_URL})`);
 }
 
 function testDownload() {
@@ -117,8 +117,10 @@ function testDownload() {
             timeout: 15000,
         });
         const magic = data.slice(0, 4).toString('ascii');
-        log(magic === 'glTF' ? 'PASS' : 'FAIL',
-            `Magic bytes: ${magic === 'glTF' ? 'glTF (valid VRM/GLB binary)' : `"${magic}" (expected "glTF")`}`);
+        log(
+            magic === 'glTF' ? 'PASS' : 'FAIL',
+            `Magic bytes: ${magic === 'glTF' ? 'glTF (valid VRM/GLB binary)' : `"${magic}" (expected "glTF")`}`
+        );
     } catch (e) {
         log('FAIL', `Download test failed: ${e.message}`);
     }
@@ -131,8 +133,10 @@ function testProxyAllowlist() {
     const proxyPath = path.join(__dirname, '..', 'api', 'avatar-proxy.js');
     try {
         const code = fs.readFileSync(proxyPath, 'utf8');
-        log(code.includes("'avatars.yourfriend.online'") ? 'PASS' : 'FAIL',
-            'avatar-proxy.js ALLOWED_HOSTS includes avatars.yourfriend.online');
+        log(
+            code.includes("'avatars.yourfriend.online'") ? 'PASS' : 'FAIL',
+            'avatar-proxy.js ALLOWED_HOSTS includes avatars.yourfriend.online'
+        );
     } catch (e) {
         log('FAIL', `Could not read proxy file: ${e.message}`);
     }
@@ -140,8 +144,10 @@ function testProxyAllowlist() {
     const nexusPath = path.join(__dirname, '..', 'nexus-proxy', 'server.js');
     try {
         const code = fs.readFileSync(nexusPath, 'utf8');
-        log(code.includes("'avatars.yourfriend.online'") ? 'PASS' : 'FAIL',
-            'nexus-proxy/server.js includes avatars.yourfriend.online');
+        log(
+            code.includes("'avatars.yourfriend.online'") ? 'PASS' : 'FAIL',
+            'nexus-proxy/server.js includes avatars.yourfriend.online'
+        );
     } catch (e) {
         log('FAIL', `Could not read nexus proxy: ${e.message}`);
     }
@@ -154,34 +160,45 @@ function testFetchModelUrl() {
         const code = fs.readFileSync(vrmPath, 'utf8');
 
         // Check custom domain detection
-        log(code.includes("url.includes('avatars.yourfriend.online')") ? 'PASS' : 'FAIL',
-            'fetchModelUrl detects avatars.yourfriend.online');
+        log(
+            code.includes("url.includes('avatars.yourfriend.online')") ? 'PASS' : 'FAIL',
+            'fetchModelUrl detects avatars.yourfriend.online'
+        );
 
         // Check it tries direct CORS first for custom domain (faster, more reliable)
         const customStart = code.indexOf('if (isR2Custom)');
         const customEnd = code.indexOf('if (isR2Dev)');
-        const customBlock = customStart > 0 && customEnd > customStart
-            ? code.substring(customStart, customEnd) : '';
-        log(customBlock.includes('proxy') && customBlock.includes('cors') ? 'PASS' : 'FAIL',
-            'fetchModelUrl has both direct CORS and proxy paths for custom domain');
+        const customBlock = customStart > 0 && customEnd > customStart ? code.substring(customStart, customEnd) : '';
+        log(
+            customBlock.includes('proxy') && customBlock.includes('cors') ? 'PASS' : 'FAIL',
+            'fetchModelUrl has both direct CORS and proxy paths for custom domain'
+        );
 
         // Check direct CORS comes before proxy for custom domain
         const corsIdx = customBlock.indexOf("fetch(url, { mode: 'cors' }");
-        const proxyIdx = customBlock.indexOf("fetch(proxyUrl)");
-        log(corsIdx > 0 && proxyIdx > 0 && corsIdx < proxyIdx ? 'PASS' : 'FAIL',
-            'fetchModelUrl tries direct CORS before proxy for custom domain');
+        const proxyIdx = customBlock.indexOf('fetch(proxyUrl)');
+        log(
+            corsIdx > 0 && proxyIdx > 0 && corsIdx < proxyIdx ? 'PASS' : 'FAIL',
+            'fetchModelUrl tries direct CORS before proxy for custom domain'
+        );
 
         // Check detailed logging
-        log(code.includes('Custom domain detected') ? 'PASS' : 'FAIL',
-            'fetchModelUrl has detailed logging for custom domain path');
+        log(
+            code.includes('Custom domain detected') ? 'PASS' : 'FAIL',
+            'fetchModelUrl has detailed logging for custom domain path'
+        );
 
         // Check proper error message
-        log(code.includes('both direct CORS and proxy failed') ? 'PASS' : 'FAIL',
-            'fetchModelUrl throws descriptive error when all paths fail');
+        log(
+            code.includes('both direct CORS and proxy failed') ? 'PASS' : 'FAIL',
+            'fetchModelUrl throws descriptive error when all paths fail'
+        );
 
         // Check catalog filter includes custom domain
-        log(code.includes("!url.includes('avatars.yourfriend.online')") ? 'PASS' : 'FAIL',
-            'fetchHomePilotCatalog filter recognizes custom domain URLs');
+        log(
+            code.includes("!url.includes('avatars.yourfriend.online')") ? 'PASS' : 'FAIL',
+            'fetchHomePilotCatalog filter recognizes custom domain URLs'
+        );
     } catch (e) {
         log('FAIL', `Could not read vrm-manager.js: ${e.message}`);
     }
@@ -194,21 +211,24 @@ function testInstallFromUrlStreaming() {
 
     // Find the installFromUrl function (ends at the next method in the object)
     const fnStart = code.indexOf('async installFromUrl(');
-    // The function ends before the RPM Creator section
-    const fnEnd = code.indexOf('/* ── Ready Player Me iFrame Creator');
+    // The function ends before the Avaturn Creator section
+    const fnEnd = code.indexOf('/* ── Avaturn Avatar Creator');
     const fnBlock = fnStart > 0 && fnEnd > fnStart ? code.substring(fnStart, fnEnd) : '';
 
     // Check it uses streaming getReader instead of res.blob()
-    log(fnBlock.includes('res.body.getReader()') ? 'PASS' : 'FAIL',
-        'installFromUrl uses streaming res.body.getReader() (not res.blob())');
+    log(
+        fnBlock.includes('res.body.getReader()') ? 'PASS' : 'FAIL',
+        'installFromUrl uses streaming res.body.getReader() (not res.blob())'
+    );
 
     // Check it does NOT use await res.blob() which fails on large streamed responses
-    log(!fnBlock.includes('await res.blob()') ? 'PASS' : 'FAIL',
-        'installFromUrl does NOT use await res.blob() (fragile for proxied streams)');
+    log(
+        !fnBlock.includes('await res.blob()') ? 'PASS' : 'FAIL',
+        'installFromUrl does NOT use await res.blob() (fragile for proxied streams)'
+    );
 
     // Check it assembles chunks into a Blob
-    log(fnBlock.includes('new Blob(chunks)') ? 'PASS' : 'FAIL',
-        'installFromUrl assembles streamed chunks into Blob');
+    log(fnBlock.includes('new Blob(chunks)') ? 'PASS' : 'FAIL', 'installFromUrl assembles streamed chunks into Blob');
 }
 
 function testInstallFromUrlValidation() {
@@ -249,16 +269,22 @@ function testCatalogIntegration() {
         const code = fs.readFileSync(catalogAppPath, 'utf8');
 
         // Check isDirectModelUrl recognizes custom domain
-        log(code.includes("avatars.yourfriend.online") ? 'PASS' : 'FAIL',
-            'Catalog isDirectModelUrl recognizes custom domain');
+        log(
+            code.includes('avatars.yourfriend.online') ? 'PASS' : 'FAIL',
+            'Catalog isDirectModelUrl recognizes custom domain'
+        );
 
         // Check "Use in App" URL format
-        log(code.includes('vrm-manager.html?install=') ? 'PASS' : 'FAIL',
-            'Catalog "Use in App" uses correct URL format (?install=)');
+        log(
+            code.includes('vrm-manager.html?install=') ? 'PASS' : 'FAIL',
+            'Catalog "Use in App" uses correct URL format (?install=)'
+        );
 
         // Check it targets the right host
-        log(code.includes('www.yourfriend.online/vrm-manager.html') ? 'PASS' : 'FAIL',
-            'Catalog redirects to correct host (www.yourfriend.online)');
+        log(
+            code.includes('www.yourfriend.online/vrm-manager.html') ? 'PASS' : 'FAIL',
+            'Catalog redirects to correct host (www.yourfriend.online)'
+        );
     } catch (e) {
         log('FAIL', `Could not read catalog app.js: ${e.message}`);
     }
@@ -267,10 +293,11 @@ function testCatalogIntegration() {
     const catalogJsonPath = path.join(__dirname, '..', '..', 'vrm-avatar-catalog', 'docs', 'catalog.json');
     try {
         const catalog = fs.readFileSync(catalogJsonPath, 'utf8');
-        log(!catalog.includes('pub-c8f0641365ad47e5b3e1c85c39874909.r2.dev') ? 'PASS' : 'FAIL',
-            'catalog.json has no old r2.dev URLs');
-        log(catalog.includes('avatars.yourfriend.online') ? 'PASS' : 'FAIL',
-            'catalog.json uses custom domain URLs');
+        log(
+            !catalog.includes('pub-c8f0641365ad47e5b3e1c85c39874909.r2.dev') ? 'PASS' : 'FAIL',
+            'catalog.json has no old r2.dev URLs'
+        );
+        log(catalog.includes('avatars.yourfriend.online') ? 'PASS' : 'FAIL', 'catalog.json uses custom domain URLs');
     } catch (e) {
         log('FAIL', `Could not read catalog.json: ${e.message}`);
     }
