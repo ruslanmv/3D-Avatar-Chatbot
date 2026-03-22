@@ -144,10 +144,18 @@ export default async function handler(req) {
             const keyword = searchParams.get('keyword') || '';
             const count = searchParams.get('count') || '50';
             if (!keyword) return jsonResponse({ error: 'Missing keyword' }, 400);
-            const res = await vroidFetch(
-                `/api/search/character_models?keyword=${encodeURIComponent(keyword)}&count=${count}`,
-                token
-            );
+            let searchPath = `/api/search/character_models?keyword=${encodeURIComponent(keyword)}&count=${count}`;
+            // Pass through official VRoid Hub search filter params
+            for (const f of ['is_downloadable', 'characterization_allowed_user', 'sort']) {
+                const v = searchParams.get(f);
+                if (v) searchPath += `&${f}=${encodeURIComponent(v)}`;
+            }
+            // Cursor-based pagination: search_after[] from _links.next.href
+            const sa = searchParams.getAll('search_after[]');
+            for (const v of sa) {
+                searchPath += `&search_after[]=${encodeURIComponent(v)}`;
+            }
+            const res = await vroidFetch(searchPath, token);
             const data = await res.json();
             return jsonResponse(data, res.status);
         }
