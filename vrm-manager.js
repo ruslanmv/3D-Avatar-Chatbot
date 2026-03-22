@@ -408,22 +408,69 @@ const SOURCES = [
         name: 'Open Source Avatars',
         icon: '🆓',
         url: 'opensourceavatars.com',
-        desc: '300+ CC0 avatars fetched live from GitHub. No auth needed — loaded on-demand when selected.',
+        desc: '300+ CC0 avatars fetched live from GitHub. No auth needed — enable to browse.',
         auth: 'none',
         formats: ['vrm'],
         status: 'connected',
-    },
-    {
-        id: 'homepilot-hub',
-        name: 'HomePilot Avatar Hub',
-        icon: '🧑‍🚀',
-        url: 'homepilotai.github.io/vrm-avatar-catalog',
-        desc: 'A curated collection of 2,500+ top free VRM avatars from 11 sources — VRoid Hub, Sketchfab, 100 Avatars, and more.',
-        auth: 'none',
-        formats: ['vrm', 'glb'],
-        status: 'connected',
+        enabledByDefault: false,
     },
 ];
+
+/* ── Source Enable/Disable ─────────────────────────────────── */
+function getDisabledSources() {
+    try {
+        return new Set(JSON.parse(localStorage.getItem('vrm_manager_disabled_sources') || '[]'));
+    } catch (_) {
+        return new Set();
+    }
+}
+function saveDisabledSources(set) {
+    localStorage.setItem('vrm_manager_disabled_sources', JSON.stringify([...set]));
+}
+function isSourceEnabled(src) {
+    const disabled = getDisabledSources();
+    if (disabled.has(src.id)) return false;
+    // On first run (nothing in localStorage), respect enabledByDefault
+    if (!localStorage.getItem('vrm_manager_disabled_sources') && src.enabledByDefault === false) return false;
+    return true;
+}
+function toggleSourceEnabled(srcId) {
+    const disabled = getDisabledSources();
+    // If first run, initialize disabled set from enabledByDefault flags
+    if (!localStorage.getItem('vrm_manager_disabled_sources')) {
+        SOURCES.forEach((s) => {
+            if (s.enabledByDefault === false) disabled.add(s.id);
+        });
+    }
+    if (disabled.has(srcId)) disabled.delete(srcId);
+    else disabled.add(srcId);
+    saveDisabledSources(disabled);
+    return !disabled.has(srcId);
+}
+
+/* ── Custom Sources (user-added catalog URLs) ──────────────── */
+function getCustomSources() {
+    try {
+        return JSON.parse(localStorage.getItem('vrm_manager_custom_sources') || '[]');
+    } catch (_) {
+        return [];
+    }
+}
+function saveCustomSources(list) {
+    localStorage.setItem('vrm_manager_custom_sources', JSON.stringify(list));
+}
+function addCustomSource(source) {
+    const list = getCustomSources();
+    // Prevent duplicates by URL
+    if (list.some((s) => s.catalogUrl === source.catalogUrl)) return false;
+    list.push(source);
+    saveCustomSources(list);
+    return true;
+}
+function removeCustomSource(catalogUrl) {
+    const list = getCustomSources().filter((s) => s.catalogUrl !== catalogUrl);
+    saveCustomSources(list);
+}
 
 /* ═══════════════════════════════════════════════════════════
    GLOBALS
@@ -616,11 +663,20 @@ const VRMManager = {
     },
 
     saveCredentials() {
-        // Read from UI fields
+        // Read from UI fields — token fields allow direct paste
+        const existingVroid = this.credentials.vroid || {};
+        const uiAccessToken = el('vm-vroid-access-token') ? el('vm-vroid-access-token').value.trim() : '';
+        const uiRefreshToken = el('vm-vroid-refresh-token') ? el('vm-vroid-refresh-token').value.trim() : '';
         this.credentials = {
             vroid: {
                 appId: el('vm-vroid-app-id').value.trim(),
                 appSecret: el('vm-vroid-app-secret').value.trim(),
+                accessToken: uiAccessToken || existingVroid.accessToken || '',
+                refreshToken: uiRefreshToken || existingVroid.refreshToken || '',
+                tokenExpiresAt:
+                    uiAccessToken && uiAccessToken !== existingVroid.accessToken
+                        ? Date.now() + 3600 * 1000 // assume 1h if new token pasted
+                        : existingVroid.tokenExpiresAt || 0,
             },
             rpm: {
                 subdomain: el('vm-rpm-subdomain').value.trim(),
@@ -640,6 +696,8 @@ const VRMManager = {
         if (c.vroid) {
             setVal('vm-vroid-app-id', c.vroid.appId || '');
             setVal('vm-vroid-app-secret', c.vroid.appSecret || '');
+            setVal('vm-vroid-access-token', c.vroid.accessToken || '');
+            setVal('vm-vroid-refresh-token', c.vroid.refreshToken || '');
         }
         if (c.rpm) {
             setVal('vm-rpm-subdomain', c.rpm.subdomain || '');
@@ -653,8 +711,10 @@ const VRMManager = {
     updateSourceStatuses() {
         const c = this.credentials;
 
-        // VRoid Hub
-        const vroidOk = c.vroid && c.vroid.appId && c.vroid.appSecret;
+        // VRoid Hub — connected if we have a valid token OR appId+appSecret
+        const vroidHasToken = c.vroid && c.vroid.accessToken;
+        const vroidHasCreds = c.vroid && c.vroid.appId && c.vroid.appSecret;
+        const vroidOk = vroidHasToken || vroidHasCreds;
         setCredStatus('vm-vroid-status', vroidOk);
         const vroidSrc = SOURCES.find((s) => s.id === 'vroid-hub');
         if (vroidSrc) vroidSrc.status = vroidOk ? 'connected' : 'disconnected';
@@ -679,23 +739,72 @@ const VRMManager = {
 
         if (provider === 'vroid') {
             const appId = el('vm-vroid-app-id').value.trim();
-            if (!appId) {
-                toast('Enter your VRoid Hub App ID first', 'error');
+            const appSecret = el('vm-vroid-app-secret').value.trim();
+            const pastedToken = el('vm-vroid-access-token') ? el('vm-vroid-access-token').value.trim() : '';
+            const pastedRefresh = el('vm-vroid-refresh-token') ? el('vm-vroid-refresh-token').value.trim() : '';
+
+            if (!appId && !pastedToken) {
+                toast('Enter App ID + Secret, or paste an Access Token', 'error');
                 return;
             }
-            // VRoid Hub uses OAuth — test by checking API availability
+
             try {
-                const res = await fetch('https://hub.vroid.com/api/character_models?max_results=1', {
-                    headers: { 'X-Api-Version': '11' },
-                    mode: 'cors',
+                // Use pasted token, existing token, or start OAuth flow
+                const existing = this.credentials.vroid || {};
+                let token = pastedToken || existing.accessToken;
+
+                // If token was pasted, save it immediately
+                if (pastedToken && pastedToken !== existing.accessToken) {
+                    this.credentials.vroid = {
+                        ...existing,
+                        appId: appId || existing.appId || '',
+                        appSecret: appSecret || existing.appSecret || '',
+                        accessToken: pastedToken,
+                        refreshToken: pastedRefresh || existing.refreshToken || '',
+                        tokenExpiresAt: Date.now() + 3600 * 1000,
+                    };
+                    localStorage.setItem('vrm_manager_credentials', JSON.stringify(this.credentials));
+                }
+
+                if (!token) {
+                    // No token available — start OAuth authorization_code + PKCE flow
+                    if (appId && appSecret) {
+                        this.startVroidOAuth();
+                        return;
+                    }
+                    toast('Enter App ID + Secret to connect via OAuth, or paste an Access Token', 'error');
+                    return;
+                }
+
+                // Test the token by fetching account info
+                const testRes = await fetch('/api/vroid-hub?action=account', {
+                    headers: { Authorization: `Bearer ${token}` },
                 });
-                if (res.ok || res.status === 401) {
-                    toast('VRoid Hub API is reachable. Note: Full OAuth flow requires server-side proxy.', 'info');
+                const testData = await testRes.json();
+                if (testRes.ok && testData.data) {
+                    const name = testData.data.user?.name || testData.data.name || 'Unknown';
+                    toast(`VRoid Hub connected! Account: ${name}`, 'success');
+                    this.updateSourceStatuses();
+                } else if (testRes.status === 401) {
+                    // Token expired — try refresh first, then OAuth flow
+                    const refreshed = await this._refreshVroidToken();
+                    if (refreshed) {
+                        toast('VRoid Hub token refreshed and connected!', 'success');
+                        this.updateSourceStatuses();
+                    } else if (appId && appSecret) {
+                        toast('Token expired — starting OAuth re-authorization...', 'info');
+                        this.startVroidOAuth();
+                    } else {
+                        toast('VRoid Hub token expired. Enter App ID + Secret to re-authorize.', 'error');
+                        this.credentials.vroid.accessToken = '';
+                        localStorage.setItem('vrm_manager_credentials', JSON.stringify(this.credentials));
+                    }
                 } else {
-                    toast(`VRoid Hub API returned ${res.status}`, 'error');
+                    toast(`VRoid Hub API error: ${testData.error?.message || testRes.status}`, 'error');
                 }
             } catch (e) {
-                toast('VRoid Hub API not reachable (CORS). A proxy server is needed for full integration.', 'error');
+                console.error('[VRM-Manager] VRoid Hub test error:', e);
+                toast(`VRoid Hub connection failed: ${e.message}`, 'error');
             }
         } else if (provider === 'rpm') {
             const subdomain = el('vm-rpm-subdomain').value.trim();
@@ -800,7 +909,7 @@ const VRMManager = {
         const stripped = {};
         for (const [id, item] of Object.entries(installedAvatars)) {
             const copy = { ...item };
-            if (copy.preview && copy.preview.startsWith('data:')) {
+            if (copy.preview && typeof copy.preview === 'string' && copy.preview.startsWith('data:')) {
                 delete copy.preview;
             }
             stripped[id] = copy;
@@ -840,8 +949,9 @@ const VRMManager = {
     async loadCatalog() {
         setStatus('Loading avatar catalog...');
 
-        // Start with built-in catalog
+        // Start with built-in catalog — reset everything
         allItems = [...BUILTIN_CATALOG];
+        osAvatarsLoaded = false;
 
         // Reset filter controls so catalog always opens showing everything
         this.resetCatalogControls();
@@ -852,22 +962,49 @@ const VRMManager = {
         // Render immediately so catalog is never blank on first open
         this.applyFilters();
 
-        // Fetch remote sources in parallel and merge in later
+        // Fetch remote sources in parallel and merge in later.
+        // Built-in sources only fetch when user has custom sources or explicitly
+        // enabled API-based sources — keeps the default catalog clean.
         const fetchers = [];
+        const customSources = getCustomSources();
+        const hasCustomSources = customSources.length > 0;
 
-        // Open Source Avatars — loaded on-demand only when user selects the source filter
-        // (already included in HomePilot Hub catalog, so no need to double-fetch)
+        // GitHub VRM Samples — only fetch if user has custom sources active
+        // (avoids showing placeholder thumbnails in default catalog)
+        if (hasCustomSources) {
+            const ghSrc = SOURCES.find((s) => s.id === 'github-vrm-samples');
+            if (!ghSrc || isSourceEnabled(ghSrc)) {
+                fetchers.push(this.fetchGitHubVRMSamples());
+            }
+        }
 
-        // GitHub VRM Samples — always fetch (no auth, CC0)
-        fetchers.push(this.fetchGitHubVRMSamples());
+        // VRoid Hub (if connected and enabled)
+        const vroidSrc = SOURCES.find((s) => s.id === 'vroid-hub');
+        if (this.credentials.vroid && this.credentials.vroid.accessToken && (!vroidSrc || isSourceEnabled(vroidSrc))) {
+            fetchers.push(this.fetchVroidHubAvatars());
+        }
 
-        // HomePilot Avatar Hub — always fetch (no auth, curated avatar collection)
-        fetchers.push(this.fetchHomePilotCatalog());
-
-        // Sketchfab search (if connected)
-        if (this.credentials.sketchfab && this.credentials.sketchfab.token) {
+        // Sketchfab search (if connected and enabled)
+        const sfSrc = SOURCES.find((s) => s.id === 'sketchfab');
+        if (this.credentials.sketchfab && this.credentials.sketchfab.token && (!sfSrc || isSourceEnabled(sfSrc))) {
             fetchers.push(this.fetchSketchfabAvatars());
         }
+
+        // Open Source Avatars (if enabled — disabled by default, user opts in via toggle)
+        const osaSrc = SOURCES.find((s) => s.id === 'opensourceavatars');
+        if (osaSrc && isSourceEnabled(osaSrc)) {
+            fetchers.push(
+                this.fetchOpenSourceAvatars().then((items) => {
+                    osAvatarsLoaded = true;
+                    return items;
+                })
+            );
+        }
+
+        // Custom sources (user-added catalog URLs)
+        customSources.forEach((cs) => {
+            fetchers.push(this.fetchCustomCatalog(cs));
+        });
 
         try {
             const results = await Promise.allSettled(fetchers);
@@ -884,6 +1021,24 @@ const VRMManager = {
         this.populateSourceFilter();
         setStatus('');
         this.applyFilters();
+        this.updateHubBanner();
+    },
+
+    updateHubBanner() {
+        const banner = el('vm-hub-banner');
+        if (!banner) return;
+        const customSources = getCustomSources();
+        if (customSources.length > 0) {
+            // Show installed custom source count
+            const totalCustom = allItems.filter((a) => a.sourceId && a.sourceId.startsWith('custom-')).length;
+            banner.innerHTML = `
+                <span class="vm-hub-banner-icon">📂</span>
+                <span>${customSources.length} custom source${customSources.length > 1 ? 's' : ''} installed (${totalCustom.toLocaleString()} avatars). Manage in the <strong>Sources</strong> tab.</span>`;
+        } else {
+            banner.innerHTML = `
+                <span class="vm-hub-banner-icon">💡</span>
+                <span>Want more avatars? Go to the <strong>Sources</strong> tab and click <strong>+ Add Source</strong> to add custom avatar catalogs.</span>`;
+        }
     },
 
     /* ── Sketchfab API ─────────────────────────────────── */
@@ -920,6 +1075,487 @@ const VRMManager = {
         } catch (e) {
             console.warn('[VRM-Manager] Sketchfab fetch error:', e);
             return [];
+        }
+    },
+
+    /* ── VRoid Hub API ─────────────────────────────────── */
+
+    /** Generate PKCE code_verifier (43-128 chars, RFC 7636) */
+    _generateCodeVerifier() {
+        const array = new Uint8Array(48);
+        crypto.getRandomValues(array);
+        return btoa(String.fromCharCode(...array))
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/, '');
+    },
+
+    /** Generate PKCE code_challenge from code_verifier (S256) */
+    async _generateCodeChallenge(verifier) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(verifier);
+        const digest = await crypto.subtle.digest('SHA-256', data);
+        return btoa(String.fromCharCode(...new Uint8Array(digest)))
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/, '');
+    },
+
+    /**
+     * Start OAuth authorization_code + PKCE flow via popup window.
+     * Opens VRoid Hub authorization page, handles callback via postMessage.
+     */
+    async startVroidOAuth() {
+        const appId = el('vm-vroid-app-id').value.trim();
+        const appSecret = el('vm-vroid-app-secret').value.trim();
+        if (!appId || !appSecret) {
+            toast('Enter Application ID and Secret first', 'error');
+            return;
+        }
+
+        const codeVerifier = this._generateCodeVerifier();
+        const codeChallenge = await this._generateCodeChallenge(codeVerifier);
+
+        // Build the redirect URI — callback handler on our own domain
+        const origin = window.location.origin;
+        const redirectUri = `${origin}/api/vroid-hub-callback`;
+
+        // Encode state with PKCE verifier + credentials for the callback
+        const state = btoa(
+            JSON.stringify({
+                codeVerifier,
+                clientId: appId,
+                clientSecret: appSecret,
+                redirectUri,
+            })
+        );
+
+        const authUrl =
+            `https://hub.vroid.com/oauth/authorize?` +
+            `response_type=code` +
+            `&client_id=${encodeURIComponent(appId)}` +
+            `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+            `&scope=default` +
+            `&state=${encodeURIComponent(state)}` +
+            `&code_challenge=${encodeURIComponent(codeChallenge)}` +
+            `&code_challenge_method=S256`;
+
+        toast('Opening VRoid Hub authorization...', 'info');
+
+        // Open popup
+        const popup = window.open(authUrl, 'vroid-oauth', 'width=600,height=700,scrollbars=yes');
+
+        // Listen for postMessage from callback page
+        const handler = (event) => {
+            if (!event.data || !event.data.type) return;
+            if (event.data.type === 'vroid-oauth-success') {
+                window.removeEventListener('message', handler);
+                this._handleOAuthSuccess(event.data, appId, appSecret);
+            } else if (event.data.type === 'vroid-oauth-error') {
+                window.removeEventListener('message', handler);
+                toast(`VRoid Hub authorization failed: ${event.data.error}`, 'error');
+            }
+        };
+        window.addEventListener('message', handler);
+
+        // Timeout after 5 minutes
+        setTimeout(() => window.removeEventListener('message', handler), 300000);
+    },
+
+    /** Handle successful OAuth callback — store tokens and verify */
+    async _handleOAuthSuccess(data, appId, appSecret) {
+        const { accessToken, refreshToken, expiresIn } = data;
+
+        this.credentials.vroid = {
+            ...this.credentials.vroid,
+            appId,
+            appSecret,
+            accessToken,
+            refreshToken: refreshToken || '',
+            tokenExpiresAt: Date.now() + (expiresIn || 3600) * 1000,
+        };
+        localStorage.setItem('vrm_manager_credentials', JSON.stringify(this.credentials));
+
+        // Populate fields so UI reflects the new state
+        setVal('vm-vroid-access-token', accessToken);
+        if (refreshToken) setVal('vm-vroid-refresh-token', refreshToken);
+
+        // Verify the token
+        try {
+            const testRes = await fetch('/api/vroid-hub?action=account', {
+                headers: { Authorization: `Bearer ${accessToken}` },
+            });
+            const testData = await testRes.json();
+            if (testRes.ok && testData.data) {
+                const name = testData.data.user?.name || testData.data.name || 'Unknown';
+                toast(`VRoid Hub connected! Account: ${name}`, 'success');
+            } else {
+                toast('VRoid Hub authorized — token saved', 'success');
+            }
+        } catch (_) {
+            toast('VRoid Hub authorized — token saved', 'success');
+        }
+
+        this.updateSourceStatuses();
+    },
+
+    async _refreshVroidToken() {
+        const v = this.credentials.vroid;
+        if (!v || !v.refreshToken || !v.appId || !v.appSecret) return false;
+
+        try {
+            const res = await fetch('/api/vroid-hub', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'token',
+                    params: {
+                        grant_type: 'refresh_token',
+                        client_id: v.appId,
+                        client_secret: v.appSecret,
+                        refresh_token: v.refreshToken,
+                    },
+                }),
+            });
+            const data = await res.json();
+            if (data.access_token) {
+                this.credentials.vroid.accessToken = data.access_token;
+                this.credentials.vroid.refreshToken = data.refresh_token || v.refreshToken;
+                this.credentials.vroid.tokenExpiresAt = Date.now() + (data.expires_in || 3600) * 1000;
+                localStorage.setItem('vrm_manager_credentials', JSON.stringify(this.credentials));
+                return true;
+            }
+        } catch (e) {
+            console.warn('[VRM-Manager] VRoid token refresh failed:', e);
+        }
+        return false;
+    },
+
+    async _getVroidToken() {
+        const v = this.credentials.vroid;
+        if (!v || !v.accessToken) return null;
+
+        // If token expires within 5 minutes, try to refresh proactively
+        if (v.tokenExpiresAt && Date.now() > v.tokenExpiresAt - 300000) {
+            const refreshed = await this._refreshVroidToken();
+            // If refresh fails, still return the token — let the API decide
+            // (the 401 handler in fetchVroidHubAvatars will catch truly expired tokens)
+            if (!refreshed) {
+                console.log('[VRM-Manager] Token may be expired, trying anyway...');
+            }
+        }
+        return this.credentials.vroid.accessToken;
+    },
+
+    /**
+     * Fetch VRoid Hub avatars using the connected OAuth token.
+     *
+     * Sources (fetched in parallel):
+     *   1. Staff picks — curated popular models, always has content
+     *   2. Hearts — user's liked models (requires user-scoped token + application_id)
+     *
+     * All models shown in catalog. Non-downloadable get "♥ Like to Download" CTA.
+     */
+    async fetchVroidHubAvatars() {
+        const token = await this._getVroidToken();
+        if (!token) return [];
+
+        const appId = this.credentials.vroid.appId || '';
+
+        try {
+            // Fetch staff picks and hearts in parallel
+            const fetchers = [
+                fetch('/api/vroid-hub?action=staff_picks&count=100', {
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            ];
+
+            // Hearts requires application_id — only fetch if we have it
+            if (appId) {
+                fetchers.push(
+                    fetch(`/api/vroid-hub?action=hearts&count=100&application_id=${appId}`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                    })
+                );
+            }
+
+            const results = await Promise.allSettled(fetchers);
+
+            // Handle 401 on staff_picks (first request) — token expired
+            if (results[0].status === 'fulfilled' && results[0].value.status === 401) {
+                const refreshed = await this._refreshVroidToken();
+                if (refreshed) return this.fetchVroidHubAvatars(); // retry once
+                return [];
+            }
+
+            const mapped = [];
+            const seenIds = new Set();
+            let heartsCount = 0;
+            let staffCount = 0;
+
+            // Process hearts first (user's liked models — can be installed)
+            if (results[1]?.status === 'fulfilled' && results[1].value.ok) {
+                const heartsData = await results[1].value.json();
+                for (const m of heartsData.data || []) {
+                    const modelData = m.heart?.character_model || m.character_model || m;
+                    const modelId = modelData.id || m.id;
+                    if (seenIds.has(modelId)) continue;
+                    seenIds.add(modelId);
+                    mapped.push(this._mapVroidModel(m, true)); // userLiked=true
+                    heartsCount++;
+                }
+            } else if (results[1]?.status === 'fulfilled' && !results[1].value.ok) {
+                console.warn(`[VRM-Manager] VRoid hearts: HTTP ${results[1].value.status}`);
+            }
+
+            // Then add staff picks (browse-only — must Like on hub to install)
+            if (results[0].status === 'fulfilled' && results[0].value.ok) {
+                const staffData = await results[0].value.json();
+                for (const m of staffData.data || []) {
+                    const modelData = m.heart?.character_model || m.character_model || m;
+                    const modelId = modelData.id || m.id;
+                    if (seenIds.has(modelId)) continue;
+                    seenIds.add(modelId);
+                    mapped.push(this._mapVroidModel(m, false)); // userLiked=false
+                    staffCount++;
+                }
+            } else if (results[0].status === 'fulfilled') {
+                console.warn(`[VRM-Manager] VRoid staff_picks: HTTP ${results[0].value.status}`);
+            }
+
+            if (mapped.length > 0) {
+                console.log(
+                    `[VRM-Manager] VRoid Hub: ${mapped.length} models (${heartsCount} liked, ${staffCount} staff picks)`
+                );
+            } else {
+                console.log(
+                    '[VRM-Manager] VRoid Hub connected but no models found. ' +
+                        '♥ Like models on hub.vroid.com to see them here.'
+                );
+            }
+            return mapped;
+        } catch (e) {
+            console.warn('[VRM-Manager] VRoid Hub fetch error:', e);
+            return [];
+        }
+    },
+
+    /**
+     * Search VRoid Hub models by keyword.
+     */
+    async searchVroidHub(keyword) {
+        const token = await this._getVroidToken();
+        if (!token) return [];
+
+        try {
+            const res = await fetch(`/api/vroid-hub?action=search&keyword=${encodeURIComponent(keyword)}&count=50`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) return [];
+            const data = await res.json();
+            return (data.data || []).map((m) => this._mapVroidModel(m, false));
+        } catch (e) {
+            console.warn('[VRM-Manager] VRoid Hub search error:', e);
+            return [];
+        }
+    },
+
+    /**
+     * Map a VRoid Hub character_model API object to our catalog item format.
+     *
+     * Handles multiple API response structures:
+     *   - Hearts:       { heart: { character_model: { id, name, user, character_model_version, ... } } }
+     *   - Staff picks:  { id, name, character: { user }, portrait_image, latest_character_model_version, ... }
+     *   - Search:       Same as staff picks
+     *
+     * @param {object} m - Raw API model object
+     * @param {boolean} userLiked - Whether this model was liked (from hearts endpoint)
+     */
+    _mapVroidModel(m, userLiked = false) {
+        // Extract the core model data from various nesting patterns
+        const modelData = m.heart?.character_model || m.character_model || m;
+
+        // Helper: extract URL from an image field.
+        // VRoid API returns ImageSerializer objects: { url: "...", url2x: "...", width, height }
+        // Some fields may be plain strings (e.g. from hearts/older API versions).
+        const imgUrl = (img) => {
+            if (!img) return '';
+            if (typeof img === 'string') return img;
+            return img.url || '';
+        };
+
+        // Thumbnail: try all known image paths
+        // Hearts: character_model_version.images[0].sq170
+        // Staff picks/search: portrait_image.sq300 / sq150 / full_body_image.sq300
+        const thumb =
+            imgUrl(modelData.character_model_version?.images?.[0]?.sq170) ||
+            imgUrl(modelData.character_model_version?.images?.[0]?.sq150) ||
+            imgUrl(modelData.portrait_image?.sq300) ||
+            imgUrl(modelData.portrait_image?.sq150) ||
+            imgUrl(modelData.full_body_image?.sq300) ||
+            imgUrl(modelData.full_body_image?.sq150) ||
+            imgUrl(m.portrait_image?.sq300) ||
+            imgUrl(m.portrait_image?.sq150) ||
+            imgUrl(m.heart?.character_model?.portrait_image?.sq150) ||
+            '';
+
+        // Name: model name, or character name, or user name as fallback
+        const name =
+            modelData.name ||
+            modelData.character?.name ||
+            modelData.user?.name ||
+            modelData.character?.user?.name ||
+            'VRoid Hub Avatar';
+
+        // Creator: user is at model.user (hearts) or model.character.user (staff picks/search)
+        const creator =
+            modelData.user?.name ||
+            modelData.character?.user?.name ||
+            m.heart?.character_model?.user?.name ||
+            'Unknown';
+
+        const isDownloadable = modelData.is_downloadable !== undefined ? modelData.is_downloadable : true;
+
+        // Version ID: character_model_version (hearts) or latest_character_model_version (staff picks)
+        const versionId = modelData.character_model_version?.id || modelData.latest_character_model_version?.id || '';
+
+        // URL format: /characters/{CHARACTER_ID}/models/{MODEL_ID}
+        // character.id is the parent character; modelData.id is the model itself
+        const characterId = modelData.character?.id || m.heart?.character_model?.character?.id || modelData.id;
+        const vroidPageUrl = `https://hub.vroid.com/en/characters/${characterId}/models/${modelData.id}`;
+
+        // A model can only be installed if the user has liked it AND it's downloadable
+        const canInstall = userLiked && isDownloadable;
+
+        // Extract conditions of use from VRoid Hub license object (VRM 1.0 fields)
+        const lic = modelData.license || {};
+        const conditionsOfUse = {
+            avatarUse: lic.characterization_allowed_user || 'default',
+            violentExpression: lic.violent_expression || 'default',
+            sexualExpression: lic.sexual_expression || 'default',
+            corporateCommercialUse: lic.corporate_commercial_use || 'default',
+            personalCommercialUse: lic.personal_commercial_use || 'default',
+            redistribution: lic.redistribution || 'default',
+            modification: lic.modification || 'default',
+            credit: lic.credit || 'default',
+        };
+
+        // Description varies by state
+        let desc = `By ${creator} on VRoid Hub.`;
+        if (!isDownloadable) {
+            desc += ' See on VRoid Hub to enable download.';
+        } else if (!userLiked) {
+            desc += ' See on VRoid Hub to install.';
+        }
+
+        return {
+            id: `vroid-hub-${modelData.id || Math.random().toString(36).slice(2)}`,
+            name,
+            desc,
+            source: 'VRoid Hub',
+            sourceId: 'vroid-hub',
+            format: 'vrm',
+            license: 'vroid-hub-terms',
+            // Only use vroid-hub: URL scheme for models the user can actually download
+            url: canInstall ? `vroid-hub:${modelData.id}` : vroidPageUrl,
+            preview: thumb,
+            icon: '🌐',
+            tags: ['vroid-hub', 'community', ...(modelData.tags || []).map((t) => t.name || t).slice(0, 2)],
+            features: ['lipsync', 'emotions', 'gaze', 'blink'],
+            size: modelData.latest_character_model_version?.original_file_size || 0,
+            likeCount: modelData.heart_count || 0,
+            vroidModelId: modelData.id,
+            vroidPageUrl,
+            isDownloadable: canInstall, // true only when user can actually install
+            userLiked,
+            conditionsOfUse,
+        };
+    },
+
+    /**
+     * Render VRoid Hub "Model Data Conditions of Use" panel (per VRoid developer guidelines).
+     */
+    _renderConditionsOfUse(cou) {
+        const labelMap = {
+            avatarUse: 'Avatar Use',
+            violentExpression: 'Violent Expression',
+            sexualExpression: 'Sexual Expression',
+            corporateCommercialUse: 'Corporate Commercial Use',
+            personalCommercialUse: 'Personal Commercial Use',
+            redistribution: 'Redistribution',
+            modification: 'Modification',
+            credit: 'Credit',
+        };
+        const valueLabel = (v) => {
+            if (v === 'allow' || v === 'everyone') return '✅ Allow';
+            if (v === 'disallow') return '❌ Disallow';
+            if (v === 'author') return '👤 Author Only';
+            if (v === 'necessary') return '📝 Required';
+            if (v === 'unnecessary') return '—  Not Required';
+            if (v === 'profit') return '✅ Profit OK';
+            if (v === 'nonprofit') return '⚠️ Nonprofit Only';
+            return '— Not Set';
+        };
+        const rows = Object.entries(cou)
+            .map(
+                ([k, v]) =>
+                    `<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px"><span style="color:var(--vm-text-muted)">${labelMap[k] || k}</span><span>${valueLabel(v)}</span></div>`
+            )
+            .join('');
+        return `<div style="margin-top:16px;padding:12px;background:rgba(255,193,7,0.06);border-radius:8px;border:1px solid rgba(255,193,7,0.2)">
+        <div style="font-size:11px;color:#ffc107;font-weight:600;margin-bottom:6px">MODEL DATA CONDITIONS OF USE</div>
+        ${rows}
+      </div>`;
+    },
+
+    /**
+     * Download a VRoid Hub model via download_license flow.
+     * Returns the S3 presigned URL for the VRM file, or an object with error details.
+     *
+     * VRoid Hub requires:
+     * 1. The model must have is_downloadable=true
+     * 2. The user must have "liked" (hearted) the model on hub.vroid.com
+     * 3. The model owner must allow downloads for the app
+     */
+    async getVroidHubDownloadUrl(characterModelId) {
+        const token = await this._getVroidToken();
+        if (!token) return null;
+
+        try {
+            // Step 1: Create download license
+            const licRes = await fetch(
+                `/api/vroid-hub?action=download_license&character_model_id=${characterModelId}`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            if (!licRes.ok) {
+                const errData = await licRes.json().catch(() => ({}));
+                const errCode = errData.error?.code || '';
+                console.warn('[VRM-Manager] VRoid download license error:', licRes.status, errCode);
+
+                // 404 = model not found or user hasn't liked it
+                // 403 = model doesn't allow downloads for this app
+                if (licRes.status === 404 || licRes.status === 403) {
+                    toast(
+                        `Cannot download this model. Visit hub.vroid.com, find this model, and click the ♥ (Like) button first. Then try again.`,
+                        'error',
+                        8000
+                    );
+                }
+                return null;
+            }
+            const licData = await licRes.json();
+            const licenseId = licData.data?.id;
+            if (!licenseId) return null;
+
+            // Step 2: Get download URL (S3 presigned)
+            const dlRes = await fetch(`/api/vroid-hub?action=download&license_id=${licenseId}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const dlData = await dlRes.json();
+            return dlData.download_url || null;
+        } catch (e) {
+            console.warn('[VRM-Manager] VRoid download error:', e);
+            return null;
         }
     },
 
@@ -1000,14 +1636,17 @@ const VRMManager = {
         const hash = name.split('').reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
         const bg = colors[Math.abs(hash) % colors.length];
         const initial = (name.charAt(0) || '?').toUpperCase();
-        const label = name.length > 18 ? name.slice(0, 18) + '…' : name;
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
-      <rect width="256" height="256" rx="16" fill="${bg}22"/>
-      <rect x="4" y="4" width="248" height="248" rx="14" fill="none" stroke="${bg}" stroke-width="2" opacity="0.4"/>
-      <text x="128" y="120" text-anchor="middle" font-family="sans-serif" font-size="80" font-weight="700" fill="${bg}">${initial}</text>
-      <text x="128" y="160" text-anchor="middle" font-family="sans-serif" font-size="14" fill="${bg}" opacity="0.8">${label}</text>
-      <rect x="88" y="218" width="80" height="22" rx="11" fill="${bg}" opacity="0.15"/>
-      <text x="128" y="233" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="600" fill="${bg}">VRM</text>
+        const label = name.length > 18 ? name.slice(0, 18) + '...' : name;
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="320" viewBox="0 0 256 320">
+      <defs><linearGradient id="g${hash}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${bg}" stop-opacity="0.15"/><stop offset="100%" stop-color="${bg}" stop-opacity="0.03"/></linearGradient></defs>
+      <rect width="256" height="320" rx="12" fill="url(#g${hash})"/>
+      <circle cx="128" cy="100" r="40" fill="${bg}" opacity="0.18"/>
+      <ellipse cx="128" cy="185" rx="55" ry="45" fill="${bg}" opacity="0.10"/>
+      <text x="128" y="115" text-anchor="middle" font-family="sans-serif" font-size="36" font-weight="700" fill="${bg}" opacity="0.6">${initial}</text>
+      <text x="128" y="260" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="600" fill="${bg}" opacity="0.7">${label}</text>
+      <text x="128" y="282" text-anchor="middle" font-family="sans-serif" font-size="11" fill="${bg}" opacity="0.4">CC0 \u00b7 VRM</text>
+      <rect x="98" y="295" width="60" height="18" rx="9" fill="${bg}" opacity="0.12"/>
+      <text x="128" y="308" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="600" fill="${bg}" opacity="0.5">GitHub</text>
     </svg>`;
         return `data:image/svg+xml;base64,${btoa(svg)}`;
     },
@@ -1117,6 +1756,313 @@ const VRMManager = {
             console.warn('[VRM-Manager] HomePilot Hub fetch error:', e);
             return [];
         }
+    },
+
+    /* ── Custom Catalog Source Fetch ─────────────────── */
+
+    async fetchCustomCatalog(customSrc) {
+        try {
+            const res = await fetch(customSrc.catalogUrl, { mode: 'cors' });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const catalog = await res.json();
+
+            // Support both array and {items:[...]} formats
+            const entries = Array.isArray(catalog) ? catalog : catalog.items || [];
+
+            const avatars = entries
+                .filter((entry) => {
+                    const url = entry.public_url || entry.url || entry.model_url || '';
+                    if (!url) return false;
+                    return true;
+                })
+                .map((entry) => {
+                    const url = entry.public_url || entry.url || entry.model_url || '';
+                    const format = (entry.format_type || entry.format || 'vrm').toLowerCase();
+                    const isVrm = format === 'vrm';
+                    return {
+                        id: `custom-${customSrc.id}-${(entry.id || entry.name || Math.random().toString(36).slice(2))
+                            .replace(/[^a-zA-Z0-9]/g, '-')
+                            .toLowerCase()
+                            .slice(0, 60)}`,
+                        name: entry.name || entry.filename || 'Unknown',
+                        desc: `From ${customSrc.name}. ${entry.license || 'Free'}.`.trim(),
+                        source: customSrc.name,
+                        sourceId: customSrc.id,
+                        sourceCategory: entry.source_category || 'custom',
+                        format: isVrm ? 'vrm' : 'glb',
+                        license: (entry.license || 'free').toLowerCase().includes('cc0')
+                            ? 'cc0'
+                            : (entry.license || '').toLowerCase().includes('cc-by')
+                              ? 'cc-by'
+                              : (entry.license || '').toLowerCase().includes('vroid hub')
+                                ? 'vroid-hub-terms'
+                                : 'free',
+                        url: url,
+                        preview: entry.thumbnail_url || entry.preview || '',
+                        icon: customSrc.icon || '📂',
+                        tags: [customSrc.name, entry.quality || 'community', format].filter(Boolean),
+                        features: isVrm ? ['lipsync', 'emotions', 'gaze', 'blink'] : [],
+                        size: entry.size_bytes || entry.size || 0,
+                        likeCount: (entry.metadata && entry.metadata.like_count) || 0,
+                        quality: entry.quality || 'community',
+                    };
+                })
+                .filter((a) => a.url);
+
+            console.log(`[VRM-Manager] Custom source "${customSrc.name}": found ${avatars.length} avatars`);
+            return avatars;
+        } catch (e) {
+            console.warn(`[VRM-Manager] Custom source "${customSrc.name}" fetch error:`, e);
+            return [];
+        }
+    },
+
+    /* ── Add Source Wizard ────────────────────────────── */
+
+    openAddSourceWizard() {
+        const modal = el('vm-add-source-modal');
+        if (!modal) return;
+        // Reset wizard state
+        const stepUrl = el('vm-addsrc-step-url');
+        const stepReview = el('vm-addsrc-step-review');
+        const stepResult = el('vm-addsrc-step-result');
+        if (stepUrl) stepUrl.classList.remove('vm-hidden');
+        if (stepReview) stepReview.classList.add('vm-hidden');
+        if (stepResult) stepResult.classList.add('vm-hidden');
+        const input = el('vm-addsrc-url-input');
+        if (input) input.value = '';
+        modal.classList.remove('vm-hidden');
+        if (input) setTimeout(() => input.focus(), 100);
+    },
+
+    closeAddSourceWizard() {
+        const modal = el('vm-add-source-modal');
+        if (modal) modal.classList.add('vm-hidden');
+    },
+
+    async probeSourceUrl(rawUrl) {
+        rawUrl = (rawUrl || '').trim();
+        if (!rawUrl) {
+            toast('Please enter a URL', 'error');
+            return;
+        }
+
+        // Build a list of candidate URLs to try in order
+        const candidates = [];
+
+        // If it already ends with .json, try it directly
+        if (rawUrl.endsWith('.json')) {
+            candidates.push(rawUrl);
+        }
+
+        // GitHub repo URL → GitHub Pages URL
+        // e.g. https://github.com/HomePilotAI/vrm-avatar-catalog → https://homepilotai.github.io/vrm-avatar-catalog/catalog.json
+        const ghRepoMatch = rawUrl.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/?$/i);
+        if (ghRepoMatch) {
+            const [, owner, repo] = ghRepoMatch;
+            candidates.push(`https://${owner.toLowerCase()}.github.io/${repo}/catalog.json`);
+            // Also try raw GitHub URL for repos that don't use Pages
+            candidates.push(`https://raw.githubusercontent.com/${owner}/${repo}/main/docs/catalog.json`);
+            candidates.push(`https://raw.githubusercontent.com/${owner}/${repo}/main/catalog.json`);
+            candidates.push(`https://raw.githubusercontent.com/${owner}/${repo}/master/docs/catalog.json`);
+        }
+
+        // GitHub Pages URL without catalog.json
+        if (!rawUrl.endsWith('.json')) {
+            candidates.push(rawUrl.replace(/\/+$/, '') + '/catalog.json');
+        }
+
+        // Deduplicate
+        const uniqueCandidates = [...new Set(candidates)];
+
+        const statusEl = el('vm-addsrc-status');
+        if (statusEl) statusEl.textContent = 'Fetching catalog...';
+
+        let catalogUrl = null;
+        let data = null;
+
+        for (const url of uniqueCandidates) {
+            try {
+                if (statusEl) statusEl.textContent = `Trying ${new URL(url).hostname}...`;
+                const res = await fetch(url, { mode: 'cors' });
+                if (!res.ok) continue;
+                const contentType = res.headers.get('content-type') || '';
+                if (contentType.includes('text/html')) continue; // Skip HTML pages
+                const parsed = await res.json();
+                const entries = Array.isArray(parsed) ? parsed : parsed.items || [];
+                if (entries.length > 0) {
+                    catalogUrl = url;
+                    data = parsed;
+                    break;
+                }
+            } catch (_) {
+                continue;
+            }
+        }
+
+        if (!catalogUrl || !data) {
+            if (statusEl) statusEl.textContent = '';
+            toast('Could not find a valid catalog at that URL. Make sure it points to a JSON catalog.', 'error');
+            return;
+        }
+
+        try {
+            const entries = Array.isArray(data) ? data : data.items || [];
+            if (!entries.length) throw new Error('Catalog is empty or has no entries');
+
+            // Extract info from the catalog
+            const first = entries[0];
+            const sourceName =
+                first.source_label || first.origin_name || first.source_name || new URL(catalogUrl).hostname;
+            const formats = new Set();
+            const licenses = new Set();
+            entries.forEach((e) => {
+                formats.add(e.format_type || e.format || 'vrm');
+                if (e.license) licenses.add(e.license);
+            });
+
+            // Extract base URL for display
+            const urlObj = new URL(catalogUrl);
+            const displayUrl = urlObj.hostname + urlObj.pathname.replace(/\/catalog\.json$/, '');
+
+            // Show review step
+            const stepUrl = el('vm-addsrc-step-url');
+            const stepReview = el('vm-addsrc-step-review');
+            if (stepUrl) stepUrl.classList.add('vm-hidden');
+            if (stepReview) stepReview.classList.remove('vm-hidden');
+
+            const reviewEl = el('vm-addsrc-review-content');
+            if (reviewEl) {
+                const fmtBadges = [...formats]
+                    .map((f) => {
+                        const cls =
+                            f === 'vrm' ? 'vm-badge-vrm' : f === 'glb-morph' ? 'vm-badge-glb-morph' : 'vm-badge-glb';
+                        const label = f === 'vrm' ? 'VRM' : f === 'glb-morph' ? 'GLB+M' : 'GLB';
+                        return `<span class="vm-badge ${cls}" style="font-size:10px">${label}</span>`;
+                    })
+                    .join(' ');
+
+                reviewEl.innerHTML = `
+                    <div class="vm-addsrc-preview-card">
+                        <div class="vm-source-card-header">
+                            <div class="vm-source-card-icon">📂</div>
+                            <div>
+                                <div class="vm-source-card-title">${esc(sourceName)}</div>
+                                <div class="vm-source-card-url">${esc(displayUrl)}</div>
+                            </div>
+                        </div>
+                        <div class="vm-addsrc-stats">
+                            <span><strong>${entries.length.toLocaleString()}</strong> avatars</span>
+                            <span>${fmtBadges}</span>
+                            <span>${[...licenses].slice(0, 3).join(', ')}</span>
+                        </div>
+                    </div>
+                    <div class="vm-addsrc-name-row">
+                        <label for="vm-addsrc-name">Source name</label>
+                        <input type="text" id="vm-addsrc-name" value="${esc(sourceName)}" spellcheck="false">
+                    </div>
+                    <div class="vm-addsrc-name-row">
+                        <label for="vm-addsrc-icon">Icon (emoji)</label>
+                        <input type="text" id="vm-addsrc-icon" value="📂" maxlength="4" style="width:60px">
+                    </div>`;
+            }
+
+            // Store probe result for confirm step
+            this._pendingSource = {
+                catalogUrl,
+                displayUrl,
+                totalAvatars: entries.length,
+                formats: [...formats],
+                licenses: [...licenses].slice(0, 3),
+                defaultName: sourceName,
+            };
+        } catch (e) {
+            if (statusEl) statusEl.textContent = '';
+            toast(`Failed to fetch catalog: ${e.message}`, 'error');
+        }
+    },
+
+    confirmAddSource() {
+        if (!this._pendingSource) return;
+        const nameInput = el('vm-addsrc-name');
+        const iconInput = el('vm-addsrc-icon');
+        const name = (nameInput && nameInput.value.trim()) || this._pendingSource.defaultName;
+        const icon = (iconInput && iconInput.value.trim()) || '📂';
+
+        const sourceId = `custom-${name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .slice(0, 30)}-${Date.now().toString(36)}`;
+
+        const customSource = {
+            id: sourceId,
+            name: name,
+            icon: icon,
+            url: this._pendingSource.displayUrl,
+            catalogUrl: this._pendingSource.catalogUrl,
+            desc: `${this._pendingSource.totalAvatars.toLocaleString()} avatars. ${this._pendingSource.licenses.join(', ') || 'Free'}.`,
+            formats: this._pendingSource.formats,
+            totalAvatars: this._pendingSource.totalAvatars,
+            addedAt: Date.now(),
+        };
+
+        const added = addCustomSource(customSource);
+        if (!added) {
+            toast('This source is already added', 'error');
+            return;
+        }
+
+        // Show success step
+        const stepReview = el('vm-addsrc-step-review');
+        const stepResult = el('vm-addsrc-step-result');
+        if (stepReview) stepReview.classList.add('vm-hidden');
+        if (stepResult) {
+            stepResult.classList.remove('vm-hidden');
+            stepResult.innerHTML = `
+                <div class="vm-addsrc-success">
+                    <div class="vm-addsrc-success-icon">${icon}</div>
+                    <h3>${esc(name)}</h3>
+                    <p>${this._pendingSource.totalAvatars.toLocaleString()} avatars added</p>
+                    <p style="font-size:12px;color:var(--vm-text-muted)">Reload catalog to see avatars</p>
+                    <button class="vm-btn vm-btn-primary" id="vm-addsrc-done-btn">Done &amp; Reload</button>
+                </div>`;
+            el('vm-addsrc-done-btn').addEventListener('click', () => {
+                this.closeAddSourceWizard();
+                this.buildSourceCards();
+                this.loadCatalog();
+            });
+        }
+
+        this._pendingSource = null;
+    },
+
+    removeSource(catalogUrl) {
+        const custom = getCustomSources().find((s) => s.catalogUrl === catalogUrl);
+        const name = custom ? custom.name : 'Source';
+        if (!confirm(`Remove "${name}"? Its avatars will be removed from the catalog.`)) return;
+        removeCustomSource(catalogUrl);
+        this.buildSourceCards();
+        // Remove avatars from that source from both catalog and installed
+        const sourceId = custom ? custom.id : '';
+        if (sourceId) {
+            allItems = allItems.filter((a) => a.sourceId !== sourceId);
+
+            // Clean up installed avatars that came from this source
+            let removedInstalled = 0;
+            for (const [id, item] of Object.entries(installedAvatars)) {
+                if (item.sourceId === sourceId && !item.core) {
+                    delete installedAvatars[id];
+                    removedInstalled++;
+                }
+            }
+            if (removedInstalled > 0) this.saveInstalled();
+
+            this.populateSourceFilter();
+            this.applyFilters();
+            this.renderInstalledGrid();
+        }
+        toast(`${name} removed`, 'info');
+        this.updateHubBanner();
     },
 
     /* ── Direct URL Download ──────────────────────────── */
@@ -1520,11 +2466,12 @@ const VRMManager = {
         const FORMAT_ORDER = { vrm: 0, 'glb-morph': 1, glb: 2 };
         // Source priority: vroid_hub first, open_source last (matches Avatar Catalog)
         const SOURCE_ORDER = {
-            'github-vrm-samples': 0,
-            'homepilot-hub': 1,
-            sketchfab: 2,
-            readyplayerme: 3,
-            opensourceavatars: 4,
+            'vroid-hub': 0,
+            'github-vrm-samples': 1,
+            'homepilot-hub': 2,
+            sketchfab: 3,
+            readyplayerme: 4,
+            opensourceavatars: 5,
         };
         // Map sourceCategory from catalog to priority (vroid=0, sketchfab=1, open_source=2)
         const CAT_ORDER = { vroid: 0, marketplace: 1, unknown: 1, open_source: 2, sample: 3 };
@@ -1667,6 +2614,10 @@ const VRMManager = {
         // Core badge for built-in system avatars
         const isCoreSys = this.isCore(item.id);
 
+        // VRoid Hub models that can't be installed — either not liked or not downloadable
+        const isViewOnly = item.sourceId === 'vroid-hub' && item.isDownloadable === false;
+        const viewOnlyLabel = isViewOnly && item.userLiked === false ? 'See on VRoid Hub' : 'See on VRoid Hub';
+
         // Buttons
         let btnHtml;
         if (isInstalledView) {
@@ -1675,6 +2626,12 @@ const VRMManager = {
           <button class="vm-card-btn vm-card-btn-install" onclick="VRMManager.useAvatar('${esc(item.id)}')">Use Now</button>
           <button class="vm-card-btn vm-card-btn-preview" onclick="VRMManager.previewAvatar('${esc(item.id)}')">Details</button>
           ${!isCoreSys ? `<button class="vm-card-btn vm-card-btn-remove" onclick="VRMManager.removeAvatar('${esc(item.id)}')">Uninstall</button>` : ''}
+        </div>`;
+        } else if (isViewOnly) {
+            btnHtml = `
+        <div class="vm-card-btn-row">
+          <a class="vm-card-btn vm-card-btn-install" href="${esc(item.vroidPageUrl)}" target="_blank" rel="noopener" style="text-decoration:none;text-align:center">${viewOnlyLabel}</a>
+          <button class="vm-card-btn vm-card-btn-preview" onclick="VRMManager.previewAvatar('${esc(item.id)}')">Details</button>
         </div>`;
         } else if (isInst) {
             btnHtml = `
@@ -1698,6 +2655,7 @@ const VRMManager = {
         ${previewHtml}
         <span class="vm-badge ${formatBadgeClass} vm-format-badge">${formatLabel}</span>
         ${isCoreSys ? '<span class="vm-core-badge">CORE</span>' : ''}
+        ${isViewOnly ? `<span class="vm-core-badge" style="background:rgba(255,193,7,0.85);color:#000">${item.userLiked === false ? '♥ LIKE FIRST' : 'VIEW ONLY'}</span>` : ''}
         <span class="vm-source-badge">${esc(item.source)}</span>
       </div>
       <div class="vm-card-body">
@@ -1754,6 +2712,17 @@ const VRMManager = {
             } else {
                 // Download the file
                 let downloadUrl = item.url;
+
+                // VRoid Hub needs special download license flow
+                if (item.vroidModelId || (downloadUrl && downloadUrl.startsWith('vroid-hub:'))) {
+                    const modelId = item.vroidModelId || downloadUrl.replace('vroid-hub:', '');
+                    downloadUrl = await this.getVroidHubDownloadUrl(modelId);
+                    if (!downloadUrl)
+                        throw new Error(
+                            'VRoid Hub download requires you to "Like" (♥) this model on hub.vroid.com first. ' +
+                                'Open the model page, click ♥, then try installing again.'
+                        );
+                }
 
                 // Sketchfab needs special download flow
                 if (item.sketchfabUid && this.credentials.sketchfab?.token) {
@@ -1833,6 +2802,17 @@ const VRMManager = {
             toast(`${item.name} installed successfully!`, 'success');
             this.applyFilters();
             this.renderInstalledGrid();
+
+            // Generate thumbnail in background (model is already cached in IndexedDB)
+            generateAndSaveThumbnail(installedAvatars[id]).then((preview) => {
+                if (preview) {
+                    // Update preview on the catalog item too
+                    const catalogItem = allItems.find((x) => x.id === id);
+                    if (catalogItem) catalogItem.preview = preview;
+                    this.applyFilters();
+                    this.renderInstalledGrid();
+                }
+            });
         } catch (e) {
             console.error('[VRM-Manager] Install error:', e);
             if (btn) {
@@ -2000,6 +2980,7 @@ const VRMManager = {
       <div class="vm-detail-row"><span class="vm-detail-label">Tags</span><span class="vm-detail-value">${(item.tags || []).join(', ') || 'None'}</span></div>
       <div style="margin-top:12px"><span class="vm-detail-label">Features</span><div style="margin-top:6px">${features}</div></div>
 
+      ${item.conditionsOfUse ? this._renderConditionsOfUse(item.conditionsOfUse) : ''}
       <div style="margin-top:16px;padding:12px;background:rgba(0,229,255,0.05);border-radius:8px;border:1px solid rgba(0,229,255,0.15)">
         <div style="font-size:11px;color:var(--vm-primary);font-weight:600;margin-bottom:4px">PHASE 3 COMPATIBILITY</div>
         <div style="font-size:12px;color:var(--vm-text-muted)">
@@ -2027,7 +3008,7 @@ const VRMManager = {
     },
 
     /** Launch an interactive Three.js preview in the given container */
-    _startLivePreview(item, container) {
+    async _startLivePreview(item, container) {
         this._cleanupLivePreview();
 
         if (typeof THREE === 'undefined' || !THREE.GLTFLoader) {
@@ -2139,7 +3120,90 @@ const VRMManager = {
         if (THREE.MeshoptDecoder) {
             loader.setMeshoptDecoder(THREE.MeshoptDecoder);
         }
-        const modelUrl = item.url;
+
+        // Resolve vroid-hub: scheme to actual URL or cached blob
+        let modelUrl = item.url;
+        const isVroidScheme = modelUrl && modelUrl.startsWith('vroid-hub:');
+        const isVroidWebPage = modelUrl && modelUrl.includes('hub.vroid.com');
+
+        // VRoid Hub web page URLs (non-liked models) — show static preview, don't try 3D load
+        if (isVroidWebPage && !isVroidScheme) {
+            const vroidLink = item.vroidPageUrl || modelUrl;
+            container.innerHTML = item.preview
+                ? `<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center">
+                    <img src="${esc(item.preview)}" style="max-width:90%;max-height:80%;object-fit:contain" alt="${esc(item.name)}" />
+                    <a href="${esc(vroidLink)}" target="_blank" rel="noopener" style="margin-top:8px;color:#6af;font-size:13px">See on VRoid Hub to install</a>
+                   </div>`
+                : `<div class="vm-preview-placeholder" style="text-align:center">
+                    <div style="font-size:60px;margin-bottom:12px">🌐</div>
+                    <a href="${esc(vroidLink)}" target="_blank" rel="noopener" style="color:#6af;font-size:13px">See on VRoid Hub to install</a>
+                   </div>`;
+            return;
+        }
+
+        if (isVroidScheme) {
+            // Try cached blob first (already downloaded)
+            let cachedBlob = null;
+            try {
+                const cached = await VRMManager.getCachedBlob(item.id);
+                if (cached && cached.blob) cachedBlob = cached.blob;
+            } catch (_) {}
+
+            if (cachedBlob) {
+                // Load directly from cached blob
+                try {
+                    const arrayBuffer = await cachedBlob.arrayBuffer();
+                    loader.parse(
+                        arrayBuffer,
+                        '',
+                        (gltf) => {
+                            const root = gltf.scene;
+                            if (!root) return;
+                            scene.add(root);
+                            const isVRM = item.format === 'vrm';
+                            if (isVRM) root.rotation.y = Math.PI;
+                            const box = new THREE.Box3().setFromObject(root);
+                            const size = new THREE.Vector3();
+                            box.getSize(size);
+                            box.getCenter(modelCenter);
+                            modelHeight = size.y;
+                            updateCamera();
+                            animate();
+                        },
+                        (err) => {
+                            console.error('[VRM-Manager] Live preview parse error:', err);
+                            container.innerHTML = item.preview
+                                ? `<img src="${esc(item.preview)}" style="width:100%;height:100%;object-fit:contain" alt="${esc(item.name)}" />`
+                                : `<div class="vm-preview-placeholder">Failed to load 3D preview</div>`;
+                        }
+                    );
+                } catch (e) {
+                    console.error('[VRM-Manager] Live preview blob error:', e);
+                    container.innerHTML = item.preview
+                        ? `<img src="${esc(item.preview)}" style="width:100%;height:100%;object-fit:contain" alt="${esc(item.name)}" />`
+                        : `<div class="vm-preview-placeholder">Failed to load 3D preview</div>`;
+                }
+                return;
+            }
+
+            // No cached blob — show static preview with VRoid Hub link
+            // (Don't try download license here — it would trigger a toast error for every preview)
+            {
+                const vroidLink =
+                    item.vroidPageUrl || `https://hub.vroid.com/en/characters/${modelUrl.replace('vroid-hub:', '')}`;
+                container.innerHTML = item.preview
+                    ? `<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center">
+                        <img src="${esc(item.preview)}" style="max-width:90%;max-height:80%;object-fit:contain" alt="${esc(item.name)}" />
+                        <a href="${esc(vroidLink)}" target="_blank" rel="noopener" style="margin-top:8px;color:#6af;font-size:13px">See on VRoid Hub to enable download</a>
+                       </div>`
+                    : `<div class="vm-preview-placeholder" style="text-align:center">
+                        <div style="font-size:60px;margin-bottom:12px">🌐</div>
+                        <a href="${esc(vroidLink)}" target="_blank" rel="noopener" style="color:#6af;font-size:13px">See on VRoid Hub to enable download</a>
+                       </div>`;
+                return;
+            }
+        }
+
         loader.load(
             modelUrl,
             (gltf) => {
@@ -2277,9 +3341,64 @@ const VRMManager = {
         if (!grid) return;
         grid.innerHTML = '';
 
-        SOURCES.forEach((src) => {
+        // ── Add Source button (always first) ──
+        const addCard = document.createElement('div');
+        addCard.className = 'vm-source-card vm-source-add-card';
+        addCard.innerHTML = `
+        <div class="vm-source-add-inner">
+          <div class="vm-source-add-icon">+</div>
+          <div class="vm-source-add-label">Add Source</div>
+          <div class="vm-source-add-hint">Add a custom catalog URL</div>
+        </div>`;
+        addCard.addEventListener('click', () => this.openAddSourceWizard());
+        grid.appendChild(addCard);
+
+        // ── Custom sources (user-added) ──
+        const customSources = getCustomSources();
+        customSources.forEach((src) => {
             const card = document.createElement('div');
-            card.className = 'vm-source-card';
+            card.className = 'vm-source-card vm-source-custom';
+
+            const formatBadges = (src.formats || ['vrm'])
+                .map((f) => {
+                    const cls =
+                        f === 'vrm' ? 'vm-badge-vrm' : f === 'glb-morph' ? 'vm-badge-glb-morph' : 'vm-badge-glb';
+                    const label = f === 'vrm' ? 'VRM' : f === 'glb-morph' ? 'GLB+M' : 'GLB';
+                    return `<span class="vm-badge ${cls}" style="font-size:9px">${label}</span>`;
+                })
+                .join(' ');
+
+            card.innerHTML = `
+        <div class="vm-source-card-header">
+          <div class="vm-source-card-icon">${src.icon || '📂'}</div>
+          <div>
+            <div class="vm-source-card-title">${esc(src.name)}</div>
+            <div class="vm-source-card-url">${esc(src.url)}</div>
+          </div>
+          <span class="vm-source-card-status connected" style="margin-left:auto">Installed</span>
+        </div>
+        <div class="vm-source-card-desc">${esc(src.desc)}</div>
+        <div class="vm-source-card-meta">
+          ${formatBadges}
+          <span style="font-size:11px;color:var(--vm-text-muted)">Custom source</span>
+        </div>
+        <div class="vm-source-card-actions">
+          <button class="vm-source-remove-btn">Uninstall</button>
+        </div>`;
+
+            // Wire remove button
+            card.querySelector('.vm-source-remove-btn').addEventListener('click', () => {
+                this.removeSource(src.catalogUrl);
+            });
+
+            grid.appendChild(card);
+        });
+
+        // ── Built-in sources ──
+        SOURCES.forEach((src) => {
+            const enabled = isSourceEnabled(src);
+            const card = document.createElement('div');
+            card.className = `vm-source-card${enabled ? '' : ' vm-source-disabled'}`;
 
             const statusClass =
                 src.status === 'connected' ? 'connected' : src.status === 'no-api' ? 'no-api' : 'disconnected';
@@ -2308,6 +3427,11 @@ const VRMManager = {
           ${src.signupUrl ? `<a href="${esc(src.signupUrl)}" target="_blank" rel="noopener">Sign Up</a>` : ''}`;
             }
 
+            // Enable/disable toggle button
+            const toggleLabel = enabled ? 'Enabled' : 'Disabled';
+            const toggleClass = enabled ? 'vm-source-toggle-on' : 'vm-source-toggle-off';
+            const toggleHtml = `<button class="vm-source-toggle ${toggleClass}" data-source-id="${esc(src.id)}" title="${enabled ? 'Click to disable this source' : 'Click to enable this source'}">${toggleLabel}</button>`;
+
             card.innerHTML = `
         <div class="vm-source-card-header">
           <div class="vm-source-card-icon">${src.icon}</div>
@@ -2315,6 +3439,7 @@ const VRMManager = {
             <div class="vm-source-card-title">${esc(src.name)}</div>
             <div class="vm-source-card-url">${esc(src.url)}</div>
           </div>
+          ${toggleHtml}
         </div>
         <div class="vm-source-card-desc">${esc(src.desc)}</div>
         <div class="vm-source-card-meta">
@@ -2322,6 +3447,15 @@ const VRMManager = {
           ${formatBadges}
         </div>
         <div class="vm-source-card-actions">${actionsHtml}</div>`;
+
+            // Wire toggle button
+            const toggleBtn = card.querySelector('.vm-source-toggle');
+            toggleBtn.addEventListener('click', () => {
+                const nowEnabled = toggleSourceEnabled(src.id);
+                toast(`${src.name} ${nowEnabled ? 'enabled' : 'disabled'}. Reloading catalog...`, 'info');
+                this.buildSourceCards();
+                this.loadCatalog();
+            });
 
             grid.appendChild(card);
         });
@@ -2433,6 +3567,33 @@ const VRMManager = {
         const genAllBtn = el('vm-generate-all-thumbs');
         if (genAllBtn) genAllBtn.addEventListener('click', () => this.generateAllThumbnails());
 
+        // ── Add Source Wizard ──
+        const addSrcClose = el('vm-addsrc-close');
+        if (addSrcClose) addSrcClose.addEventListener('click', () => this.closeAddSourceWizard());
+        const addSrcModal = el('vm-add-source-modal');
+        if (addSrcModal)
+            addSrcModal.addEventListener('click', (e) => {
+                if (e.target.id === 'vm-add-source-modal') this.closeAddSourceWizard();
+            });
+        const addSrcFetchBtn = el('vm-addsrc-fetch-btn');
+        if (addSrcFetchBtn)
+            addSrcFetchBtn.addEventListener('click', () => {
+                this.probeSourceUrl(el('vm-addsrc-url-input').value);
+            });
+        const addSrcUrlInput = el('vm-addsrc-url-input');
+        if (addSrcUrlInput)
+            addSrcUrlInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') this.probeSourceUrl(addSrcUrlInput.value);
+            });
+        const addSrcBackBtn = el('vm-addsrc-back-btn');
+        if (addSrcBackBtn)
+            addSrcBackBtn.addEventListener('click', () => {
+                el('vm-addsrc-step-review').classList.add('vm-hidden');
+                el('vm-addsrc-step-url').classList.remove('vm-hidden');
+            });
+        const addSrcConfirmBtn = el('vm-addsrc-confirm-btn');
+        if (addSrcConfirmBtn) addSrcConfirmBtn.addEventListener('click', () => this.confirmAddSource());
+
         // ── Add Avatar Wizard ──
         const addBtn = el('vm-add-avatar-btn');
         if (addBtn) addBtn.addEventListener('click', () => this.openAddWizard());
@@ -2513,6 +3674,7 @@ const VRMManager = {
                 this.closePreview();
                 this.closeRPMCreator();
                 this.closeAddWizard();
+                this.closeAddSourceWizard();
             }
         });
     },
@@ -2950,6 +4112,27 @@ async function generateAvatarThumbnail(item, pose) {
         // 2. For external URLs, use the proxy to avoid CORS issues
         // 3. For local URLs, load directly
         let loadUrl = item.url;
+
+        // Resolve vroid-hub: scheme — not a real URL, resolve to actual download URL
+        if (loadUrl && loadUrl.startsWith('vroid-hub:')) {
+            if (typeof VRMManager !== 'undefined' && VRMManager.getVroidHubDownloadUrl) {
+                try {
+                    const modelId = loadUrl.replace('vroid-hub:', '');
+                    const realUrl = await VRMManager.getVroidHubDownloadUrl(modelId);
+                    if (realUrl) {
+                        loadUrl = realUrl;
+                    } else {
+                        // Can't resolve — will try cached blob below
+                        loadUrl = '';
+                    }
+                } catch (_) {
+                    loadUrl = '';
+                }
+            } else {
+                loadUrl = '';
+            }
+        }
+
         const isExternal = loadUrl && (loadUrl.startsWith('https://') || loadUrl.startsWith('http://'));
 
         // Skip non-downloadable URLs (VRoid Hub web pages, etc.)
