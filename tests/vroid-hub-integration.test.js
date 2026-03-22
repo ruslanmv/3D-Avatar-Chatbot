@@ -903,7 +903,7 @@ describe('VRoid Hub — Credential Validation', () => {
 });
 
 describe('VRoid Hub — API Proxy Allowlist', () => {
-    const ALLOWED_HOSTS = ['models.readyplayer.me', 'hub.vroid.com', 's3.amazonaws.com', 'amazonaws.com'];
+    const ALLOWED_HOSTS = ['api.avaturn.me', 'cdn.avaturn.me', 'hub.vroid.com', 's3.amazonaws.com', 'amazonaws.com'];
 
     function isAllowedHost(urlStr) {
         try {

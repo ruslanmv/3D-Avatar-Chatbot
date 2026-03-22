@@ -22,16 +22,20 @@ TIER 1 — Easy Integration (no auth / free API)
      - Avatar data   : https://raw.githubusercontent.com/ToxSam/open-source-avatars/main/data/avatars/<collection>.json
    Notes   : Best quick-win source. Direct VRM download links in JSON.
 
-2. Ready Player Me
-   Website : https://readyplayer.me
-   API docs: https://docs.readyplayer.me/ready-player-me/api-reference/rest-api/avatars/get-3d-avatars
+2. Avaturn (replaces discontinued Ready Player Me — acquired by Netflix, shut down Jan 2026)
+   Website : https://avaturn.me
+   API docs: https://docs.avaturn.me/docs/integration/web/html/
+   SDK docs: https://sdk-docs.avaturn.me/classes/AvaturnSDK
    Format  : GLB
-   Avatars : Unlimited (user-created)
-   License : CC BY-NC-SA 4.0
-   API     : REST — no auth needed for GLB downloads
-     - Avatar URL pattern: https://models.readyplayer.me/{avatarId}.glb
-     - iFrame creator    : https://docs.readyplayer.me/ready-player-me/integration-guides/api-integration/custom-avatar-creator
-   Notes   : Embed their avatar creator via iFrame. User builds avatar, you get GLB URL.
+   Avatars : Unlimited (free, no limits on exports)
+   License : Custom (per-avatar)
+   API     : JS SDK — embed via AvaturnSDK, export callback returns GLB URL or data URL
+     - Developer portal  : https://developer.avaturn.me/
+     - SDK CDN           : https://cdn.jsdelivr.net/npm/@avaturn/sdk/dist/index.js
+     - Export returns     : { url, urlType, avatarId, gender, bodyId, avatarSupportsFaceAnimations }
+   Notes   : Embed their avatar creator via SDK (creates iframe). User builds avatar, SDK fires
+             'export' event with GLB data. Supports face animations. No API key needed, just a
+             project subdomain from developer.avaturn.me.
 
 3. VIVERSE Avatar Maker
    Website : https://avatar.viverse.com

@@ -19,8 +19,8 @@
 export const config = { runtime: 'edge' };
 
 const ALLOWED_HOSTS = [
-    'models.readyplayer.me',
-    'api.readyplayer.me',
+    'api.avaturn.me',
+    'cdn.avaturn.me',
     'raw.githubusercontent.com',
     'github.com',
     'hub.vroid.com',

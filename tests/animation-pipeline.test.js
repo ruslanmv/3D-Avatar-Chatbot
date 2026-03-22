@@ -737,8 +737,8 @@ describe('Platform Compatibility', () => {
         window.NEXUS_LIP_SYNC.stop();
     });
 
-    test('Mobile (Android/iOS): MorphTargetAdapter works with RPM GLB', () => {
-        // Simulate a Ready Player Me GLB with Oculus Viseme targets
+    test('Mobile (Android/iOS): MorphTargetAdapter works with GLB morph targets', () => {
+        // Simulate a GLB with Oculus Viseme targets (e.g. from Avaturn or similar)
         const influences = new Array(15).fill(0);
         const dict = {};
         [
