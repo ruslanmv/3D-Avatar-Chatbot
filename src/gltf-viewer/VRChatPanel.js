@@ -774,6 +774,12 @@ export class VRChatPanel {
             this.mode = 'chat';
         }
         this.redraw();
+
+        // Notify controllers to update their raycast target list (Meta best practice:
+        // UI layers must update the interaction manager when visibility changes).
+        if (this.onModeChanged) {
+            this.onModeChanged(this.mode);
+        }
     }
 
     setStatus(status) {
@@ -869,6 +875,20 @@ export class VRChatPanel {
 
     getInteractables() {
         return this.interactables;
+    }
+
+    /**
+     * Returns only interactables active in the current mode.
+     * Industry best practice (Meta Interaction SDK / SteamVR): never raycast
+     * against hidden UI elements — they must be culled from the interaction
+     * set when their parent layer is inactive.
+     */
+    getActiveInteractables() {
+        const mode = this.mode;
+        return this.interactables.filter((m) => {
+            const mTag = m.userData.mode;
+            return mTag === 'global' || mTag === mode;
+        });
     }
 
     /**
@@ -1104,6 +1124,8 @@ export class VRChatPanel {
         this.group.remove(send);
         this.chatGroup.add(mic);
         this.chatGroup.add(send);
+        mic.userData.mode = 'chat';
+        send.userData.mode = 'chat';
         this.buttons.mic = mic;
         this.buttons.send = send;
 
@@ -1114,18 +1136,22 @@ export class VRChatPanel {
         this.group.remove(setBtn);
         this.chatGroup.add(ctrlBtn);
         this.chatGroup.add(setBtn);
+        ctrlBtn.userData.mode = 'chat';
+        setBtn.userData.mode = 'chat';
         this.buttons.open_controls = ctrlBtn;
         this.buttons.open_settings = setBtn;
 
         // Chat area hitbox (for attachment card tap detection)
         this.buttons.chatArea = this._makeHitbox('ChatArea:tap', L.chatArea, 'chat-area', { key: 'chat-area' });
         this.buttons.chatArea.position.z = 0.005;
+        this.buttons.chatArea.userData.mode = 'chat';
         this.group.remove(this.buttons.chatArea);
         this.chatGroup.add(this.buttons.chatArea);
 
         // Chips
         L.chips.forEach((c) => {
             const chip = this._makeHitbox(`Chip:${c.key}`, c, 'chip', { key: c.key, label: c.label });
+            chip.userData.mode = 'chat';
             this.group.remove(chip);
             this.chatGroup.add(chip);
             this.buttons[c.key] = chip;
@@ -1138,6 +1164,7 @@ export class VRChatPanel {
 
         // Back button
         const ctrlBack = this._makeHitbox('Btn:ctrl_back', L.ctrlBack, 'button', { key: 'back' });
+        ctrlBack.userData.mode = 'controls';
         this.group.remove(ctrlBack);
         this.controlsGroup.add(ctrlBack);
         this.buttons.ctrl_back = ctrlBack;
@@ -1150,6 +1177,7 @@ export class VRChatPanel {
         const clearBtn = this._makeHitbox('Btn:clear', poseNav.clear, 'button', { key: 'clear', label: 'CLEAR' });
 
         [posePrev, poseNext, poseReset, clearBtn].forEach((m) => {
+            m.userData.mode = 'controls';
             this.group.remove(m);
             this.controlsGroup.add(m);
         });
@@ -1169,6 +1197,7 @@ export class VRChatPanel {
         const walkBtn = inter.walk ? this._makeHitbox('Btn:xr_walk', inter.walk, 'button', { key: 'xr_walk' }) : null;
         const interBtns = [ik, puppet, place, closeBtn, arBtn, walkBtn].filter(Boolean);
         interBtns.forEach((m) => {
+            m.userData.mode = 'controls';
             this.group.remove(m);
             this.controlsGroup.add(m);
         });
@@ -1184,6 +1213,7 @@ export class VRChatPanel {
         const avPrev = this._makeHitbox('Btn:avatar_prev', avNav.prev, 'button', { key: 'avatar_prev' });
         const avNext = this._makeHitbox('Btn:avatar_next', avNav.next, 'button', { key: 'avatar_next' });
         [avPrev, avNext].forEach((m) => {
+            m.userData.mode = 'controls';
             this.group.remove(m);
             this.controlsGroup.add(m);
         });
@@ -1192,6 +1222,7 @@ export class VRChatPanel {
 
         // Advanced settings button
         const advanced = this._makeHitbox('Btn:open_advanced', L.ctrlAdvanced, 'button', { key: 'open_settings' });
+        advanced.userData.mode = 'controls';
         this.group.remove(advanced);
         this.controlsGroup.add(advanced);
         this.buttons.ctrl_advanced = advanced;
@@ -1203,6 +1234,7 @@ export class VRChatPanel {
 
         // Back button
         const setBack = this._makeHitbox('Btn:set_back', L.settingsBack, 'button', { key: 'back' });
+        setBack.userData.mode = 'settings';
         this.group.remove(setBack);
         this.settingsGroup.add(setBack);
         this.buttons.set_back = setBack;
@@ -1212,6 +1244,7 @@ export class VRChatPanel {
         const stt = this._makeHitbox('Btn:stt', toggles.stt, 'toggle', { key: 'stt' });
         const tts = this._makeHitbox('Btn:tts', toggles.tts, 'toggle', { key: 'tts' });
         [stt, tts].forEach((m) => {
+            m.userData.mode = 'settings';
             this.group.remove(m);
             this.settingsGroup.add(m);
         });
@@ -1224,6 +1257,7 @@ export class VRChatPanel {
         const xrEnv = this._makeHitbox('Btn:xr_env', xr.env, 'button', { key: 'xr_env' });
         const xrSpeed = this._makeHitbox('Btn:xr_speed', xr.speed, 'button', { key: 'xr_speed' });
         [xrScale, xrEnv, xrSpeed].forEach((m) => {
+            m.userData.mode = 'settings';
             this.group.remove(m);
             this.settingsGroup.add(m);
         });
@@ -1237,6 +1271,7 @@ export class VRChatPanel {
         const xrBg = this._makeHitbox('Btn:xr_bg', xr2.bg, 'button', { key: 'xr_bg' });
         const xrMode = this._makeHitbox('Btn:xr_mode', xr2.mode, 'button', { key: 'xr_mode' });
         [xrDist, xrBg, xrMode].forEach((m) => {
+            m.userData.mode = 'settings';
             this.group.remove(m);
             this.settingsGroup.add(m);
         });
@@ -1249,6 +1284,7 @@ export class VRChatPanel {
         const xrJoints = this._makeHitbox('Btn:xr_joints', xr3.joints, 'button', { key: 'xr_joints' });
         const xrGaze = this._makeHitbox('Btn:xr_gaze', xr3.gaze, 'button', { key: 'xr_gaze' });
         [xrJoints, xrGaze].forEach((m) => {
+            m.userData.mode = 'settings';
             this.group.remove(m);
             this.settingsGroup.add(m);
         });
@@ -1267,6 +1303,9 @@ export class VRChatPanel {
         mesh.name = name;
         mesh.position.set(x, y, 0.01);
         mesh.userData = { type, ...userData };
+        // Mode tag: set after creation when added to a layer group (see _createHitboxes).
+        // 'global' = always active (handle, panelGrab); 'chat'/'controls'/'settings' = mode-gated.
+        mesh.userData.mode = 'global';
 
         this.interactables.push(mesh);
         this.group.add(mesh);
@@ -2241,6 +2280,16 @@ export class VRChatPanel {
      */
     handleUIAction(name, userData = {}) {
         const key = userData?.key;
+
+        // ─── Mode guard (defense-in-depth) ───
+        // Reject clicks from hitboxes that belong to an inactive mode.
+        // This is the last safety net — the primary filter is in VRControllers
+        // (only active interactables are raycasted). This catches edge cases like
+        // rapid mode switches where the raycast list hasn't updated yet.
+        const hitMode = userData?.mode;
+        if (hitMode && hitMode !== 'global' && hitMode !== this.mode) {
+            return false;
+        }
 
         // ─── Layer navigation ───
         if (key === 'open_controls') {
