@@ -157,20 +157,26 @@ function testFetchModelUrl() {
         log(code.includes("url.includes('avatars.yourfriend.online')") ? 'PASS' : 'FAIL',
             'fetchModelUrl detects avatars.yourfriend.online');
 
-        // Check it tries proxy first for custom domain (more reliable than direct)
+        // Check it tries direct CORS first for custom domain (faster, more reliable)
         const customStart = code.indexOf('if (isR2Custom)');
         const customEnd = code.indexOf('if (isR2Dev)');
         const customBlock = customStart > 0 && customEnd > customStart
             ? code.substring(customStart, customEnd) : '';
         log(customBlock.includes('proxy') && customBlock.includes('cors') ? 'PASS' : 'FAIL',
-            'fetchModelUrl has both proxy and direct CORS paths for custom domain');
+            'fetchModelUrl has both direct CORS and proxy paths for custom domain');
+
+        // Check direct CORS comes before proxy for custom domain
+        const corsIdx = customBlock.indexOf("fetch(url, { mode: 'cors' }");
+        const proxyIdx = customBlock.indexOf("fetch(proxyUrl)");
+        log(corsIdx > 0 && proxyIdx > 0 && corsIdx < proxyIdx ? 'PASS' : 'FAIL',
+            'fetchModelUrl tries direct CORS before proxy for custom domain');
 
         // Check detailed logging
         log(code.includes('Custom domain detected') ? 'PASS' : 'FAIL',
             'fetchModelUrl has detailed logging for custom domain path');
 
         // Check proper error message
-        log(code.includes('both proxy and direct CORS failed') ? 'PASS' : 'FAIL',
+        log(code.includes('both direct CORS and proxy failed') ? 'PASS' : 'FAIL',
             'fetchModelUrl throws descriptive error when all paths fail');
 
         // Check catalog filter includes custom domain
@@ -179,6 +185,30 @@ function testFetchModelUrl() {
     } catch (e) {
         log('FAIL', `Could not read vrm-manager.js: ${e.message}`);
     }
+}
+
+function testInstallFromUrlStreaming() {
+    console.log('\n--- installFromUrl Body Streaming ---');
+    const vrmPath = path.join(__dirname, '..', 'vrm-manager.js');
+    const code = fs.readFileSync(vrmPath, 'utf8');
+
+    // Find the installFromUrl function (ends at the next method in the object)
+    const fnStart = code.indexOf('async installFromUrl(');
+    // The function ends before the RPM Creator section
+    const fnEnd = code.indexOf('/* ── Ready Player Me iFrame Creator');
+    const fnBlock = fnStart > 0 && fnEnd > fnStart ? code.substring(fnStart, fnEnd) : '';
+
+    // Check it uses streaming getReader instead of res.blob()
+    log(fnBlock.includes('res.body.getReader()') ? 'PASS' : 'FAIL',
+        'installFromUrl uses streaming res.body.getReader() (not res.blob())');
+
+    // Check it does NOT use await res.blob() which fails on large streamed responses
+    log(!fnBlock.includes('await res.blob()') ? 'PASS' : 'FAIL',
+        'installFromUrl does NOT use await res.blob() (fragile for proxied streams)');
+
+    // Check it assembles chunks into a Blob
+    log(fnBlock.includes('new Blob(chunks)') ? 'PASS' : 'FAIL',
+        'installFromUrl assembles streamed chunks into Blob');
 }
 
 function testInstallFromUrlValidation() {
@@ -265,6 +295,7 @@ function main() {
     // Code logic tests
     testProxyAllowlist();
     testFetchModelUrl();
+    testInstallFromUrlStreaming();
     testInstallFromUrlValidation();
     testCatalogIntegration();
 
