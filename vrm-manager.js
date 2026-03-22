@@ -1211,10 +1211,18 @@ const VRMManager = {
             `&code_challenge=${encodeURIComponent(codeChallenge)}` +
             `&code_challenge_method=S256`;
 
-        console.log(`[VRM-Manager] OAuth authorize URL redirect_uri: ${redirectUri}`);
+        console.log(`[VRM-Manager] OAuth flow starting — full debug info:`);
+        console.log(`[VRM-Manager]   origin:        ${origin}`);
+        console.log(`[VRM-Manager]   redirect_uri:  ${redirectUri}`);
+        console.log(`[VRM-Manager]   client_id:     ${appId}`);
+        console.log(`[VRM-Manager]   serverConfig:  ${isServerConfigured}`);
+        console.log(`[VRM-Manager]   hasSecret:     ${appSecret ? 'yes (client-side)' : 'no (server holds it)'}`);
+        console.log(`[VRM-Manager]   codeChallenge: ${codeChallenge.substring(0, 12)}...`);
+        console.log(`[VRM-Manager]   Full authorize URL:\n${authUrl}`);
         console.log(
-            '[VRM-Manager] If you get a 400 "Invalid parameters" error, check that this redirect_uri ' +
-                'is registered in your VRoid Hub app at https://hub.vroid.com/oauth/applications'
+            '[VRM-Manager] ⚠️  If you get 400 "Invalid parameters", the redirect_uri above MUST be ' +
+                'registered in your VRoid Hub app → https://hub.vroid.com/oauth/applications\n' +
+                '[VRM-Manager] ⚠️  Add EXACTLY this URI (including https/http and path) to the Redirect URI field.'
         );
         toast('Opening VRoid Hub authorization...', 'info');
 
