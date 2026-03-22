@@ -139,6 +139,14 @@
             <div id="vm-tab-catalog" class="vm-tab-content">
                 <!-- Inline filters (only visible in catalog) -->
                 <div class="vm-catalog-filters">
+                    <select id="vm-filter-sort" title="Sort by">
+                        <option value="popular">Most Popular</option>
+                        <option value="name">Name (A–Z)</option>
+                        <option value="name-desc">Name (Z–A)</option>
+                        <option value="size">Size (smallest)</option>
+                        <option value="size-desc">Size (largest)</option>
+                        <option value="source">Collection</option>
+                    </select>
                     <select id="vm-filter-source" title="Filter by source">
                         <option value="">All Sources</option>
                     </select>
@@ -152,6 +160,7 @@
                         <option value="">All Licenses</option>
                         <option value="cc0">CC0 (Public Domain)</option>
                         <option value="cc-by">CC-BY (Attribution)</option>
+                        <option value="vroid-hub-terms">VRoid Hub Terms</option>
                         <option value="free">Free (Check Terms)</option>
                     </select>
                     <button id="vm-refresh-btn" class="vm-icon-btn vm-icon-btn-sm" title="Refresh catalog">

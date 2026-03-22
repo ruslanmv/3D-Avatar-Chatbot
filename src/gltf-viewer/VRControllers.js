@@ -88,7 +88,8 @@ export class VRControllers {
         this.raycaster = new THREE.Raycaster();
         this.tempMatrix = new THREE.Matrix4();
         this.interactables = []; // Avatar interactables
-        this.uiInteractables = []; // UI panel interactables
+        this.uiInteractables = []; // UI panel interactables (full list, all modes)
+        this._activeUIInteractables = []; // Mode-filtered subset (updated on mode change)
         this.chatPanel = null; // Reference to VRChatPanel for dragging
 
         // Reusable vectors to avoid allocations each frame (important on Quest)
@@ -294,7 +295,8 @@ export class VRControllers {
         this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
 
         // Check UI interactions (trigger = click on UI)
-        const uiIntersects = this.raycaster.intersectObjects(this.uiInteractables, false);
+        // Only raycast against active-mode interactables (prevents ghost clicks on hidden layers)
+        const uiIntersects = this.raycaster.intersectObjects(this._activeUIInteractables, false);
         if (uiIntersects.length > 0) {
             const uiTarget = uiIntersects[0].object;
             const hit = uiIntersects[0];
@@ -348,7 +350,8 @@ export class VRControllers {
         this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
 
         // PRIORITY 1: Check UI panel drag (grip to grab panel handle)
-        const uiIntersects = this.raycaster.intersectObjects(this.uiInteractables, false);
+        // Use active-mode subset to avoid dragging from hidden layer hitboxes
+        const uiIntersects = this.raycaster.intersectObjects(this._activeUIInteractables, false);
         if (uiIntersects.length > 0) {
             const uiTarget = uiIntersects[0].object;
             const hit = uiIntersects[0];
@@ -504,7 +507,8 @@ export class VRControllers {
         this.raycaster.ray.origin.setFromMatrixPosition(this.controller2.matrixWorld);
         this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
 
-        const uiIntersects = this.raycaster.intersectObjects(this.uiInteractables, false);
+        // Only hover against active-mode interactables (prevents phantom highlights on hidden layers)
+        const uiIntersects = this.raycaster.intersectObjects(this._activeUIInteractables, false);
 
         // Reset previous hover
         if (this.hoveredUI && (uiIntersects.length === 0 || uiIntersects[0].object !== this.hoveredUI)) {
@@ -917,7 +921,23 @@ export class VRControllers {
             return;
         }
         this.uiInteractables = interactables;
+        this._activeUIInteractables = interactables;
         console.log(`[VRControllers] Registered ${interactables.length} UI interactables.`);
+    }
+
+    /**
+     * Update the active (raycastable) UI subset after a mode/layer change.
+     * Called by VRChatIntegration when the panel mode switches.
+     *
+     * Industry best practice (Meta Interaction SDK "InteractableGroup",
+     * SteamVR "UIInteractableModule"): interaction targets must be
+     * added/removed from the pointer's candidate list when their
+     * containing layer becomes active/inactive. Inactive hitboxes
+     * must never participate in raycasting — even if their meshes are
+     * invisible, Three.js Raycaster still hits them.
+     */
+    updateActiveUI(activeInteractables) {
+        this._activeUIInteractables = activeInteractables || [];
     }
 
     setUIButtonCallback(callback) {
@@ -1022,6 +1042,7 @@ export class VRControllers {
 
         this.interactables = [];
         this.uiInteractables = [];
+        this._activeUIInteractables = [];
         this.controllers = { left: null, right: null };
         console.log('[VRControllers] Disposed cleanly.');
     }
