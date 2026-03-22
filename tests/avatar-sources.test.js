@@ -7,7 +7,7 @@
  *   3. Install / uninstall lifecycle
  *   4. Core avatar protection
  *   5. Direct URL validation
- *   6. Ready Player Me integration
+ *   6. Avaturn integration (replaced discontinued Ready Player Me)
  *   7. Open Source Avatars JSON fetch
  */
 
@@ -107,8 +107,8 @@ const EXTERNAL_SOURCES = [
         expectedFormat: 'text',
     },
     {
-        name: 'Ready Player Me Avatar API',
-        url: 'https://readyplayer.me',
+        name: 'Avaturn Avatar Creator',
+        url: 'https://avaturn.me',
         type: 'website',
         expectedFormat: 'html',
     },
@@ -382,15 +382,14 @@ describe('Avatar External Sources — Health Checks', () => {
             delete mockFetchResponses['https://api.sketchfab.com/v3/search?type=models&q=VRM&count=1'];
         });
 
-        test('Ready Player Me — GLB download URL format is valid', () => {
-            const avatarId = '64bfa15f0f93e14abcde1234';
-            const baseUrl = `https://models.readyplayer.me/${avatarId}.glb`;
-            const fullUrl = `${baseUrl}?morphTargets=ARKit,Oculus+Visemes`;
+        test('Avaturn — GLB export URL format is valid', () => {
+            const avatarId = 'abc12345-def6-7890';
+            const httpUrl = `https://api.avaturn.me/avatars/${avatarId}.glb`;
+            const dataUrl = 'data:model/gltf-binary;base64,AAAA';
 
-            expect(() => new URL(baseUrl)).not.toThrow();
-            expect(() => new URL(fullUrl)).not.toThrow();
-            expect(fullUrl).toContain('morphTargets=ARKit');
-            expect(fullUrl).toContain('Oculus+Visemes');
+            expect(() => new URL(httpUrl)).not.toThrow();
+            // Data URLs are also valid for Avaturn exports
+            expect(dataUrl.startsWith('data:')).toBe(true);
         });
     });
 });
@@ -485,26 +484,26 @@ describe('Avatar Install / Uninstall Lifecycle', () => {
             expect(installed.format).toBe('glb');
         });
 
-        test('should install a Ready Player Me avatar', () => {
-            const rpmAvatar = {
-                id: 'rpm-64bfa15f',
-                name: 'RPM Avatar 64bfa15f',
+        test('should install an Avaturn avatar', () => {
+            const avaturnAvatar = {
+                id: 'avaturn-abc12345',
+                name: 'Avaturn Avatar abc12345',
                 format: 'glb-morph',
-                license: 'cc-by',
-                url: 'https://models.readyplayer.me/64bfa15f.glb?morphTargets=ARKit,Oculus+Visemes',
+                license: 'custom',
+                url: 'https://api.avaturn.me/avatars/abc12345.glb',
                 features: ['lipsync', 'emotions'],
-                tags: ['custom', 'rpm', 'morph-targets'],
+                tags: ['custom', 'avaturn', 'morph-targets'],
                 size: 8000000,
-                source: 'Ready Player Me',
-                sourceId: 'readyplayerme',
+                source: 'Avaturn',
+                sourceId: 'avaturn',
                 icon: '🧑',
-                desc: 'RPM avatar',
+                desc: 'Avaturn avatar with face animations',
             };
 
-            const installed = mgr.installAvatar(rpmAvatar);
-            expect(mgr.isInstalled('rpm-64bfa15f')).toBe(true);
+            const installed = mgr.installAvatar(avaturnAvatar);
+            expect(mgr.isInstalled('avaturn-abc12345')).toBe(true);
             expect(installed.format).toBe('glb-morph');
-            expect(installed.source).toBe('Ready Player Me');
+            expect(installed.source).toBe('Avaturn');
         });
     });
 
@@ -621,7 +620,7 @@ describe('Direct URL Validation', () => {
 
     test('should accept valid .glb URLs', () => {
         expect(mgr.validateUrl('https://example.com/avatar.glb')).toBe(true);
-        expect(mgr.validateUrl('https://models.readyplayer.me/abc123.glb?morphTargets=ARKit')).toBe(true);
+        expect(mgr.validateUrl('https://api.avaturn.me/avatars/abc123.glb')).toBe(true);
     });
 
     test('should accept valid .gltf URLs', () => {
@@ -693,67 +692,61 @@ describe('Built-in Catalog Integrity', () => {
     });
 });
 
-describe('Ready Player Me Integration', () => {
-    test('should construct valid RPM iFrame URL', () => {
+describe('Avaturn Integration', () => {
+    test('should construct valid Avaturn SDK URL', () => {
         const subdomain = 'demo';
-        const rpmUrl = `https://${subdomain}.readyplayer.me/avatar?frameApi`;
+        const avaturnUrl = `https://${subdomain}.avaturn.dev`;
 
-        expect(() => new URL(rpmUrl)).not.toThrow();
-        expect(rpmUrl).toContain('frameApi');
-        expect(rpmUrl).toContain(subdomain);
+        expect(() => new URL(avaturnUrl)).not.toThrow();
+        expect(avaturnUrl).toContain(subdomain);
+        expect(avaturnUrl).toContain('avaturn.dev');
     });
 
-    test('should append morph targets to GLB URL', () => {
-        const avatarUrl = 'https://models.readyplayer.me/64bfa15f';
-        const glbUrl = avatarUrl + '.glb';
-        const fullUrl = glbUrl + '?morphTargets=ARKit,Oculus+Visemes';
+    test('should handle Avaturn export result with httpURL', () => {
+        const exportData = {
+            avatarId: 'abc12345-def6-7890',
+            avatarSupportsFaceAnimations: true,
+            bodyId: 'body-01',
+            gender: 'male',
+            sessionId: 'session-xyz',
+            url: 'https://api.avaturn.me/avatars/abc12345.glb',
+            urlType: 'httpURL',
+        };
 
-        expect(fullUrl).toContain('.glb');
-        expect(fullUrl).toContain('ARKit');
-        expect(fullUrl).toContain('Oculus+Visemes');
+        expect(exportData.urlType).toBe('httpURL');
+        expect(() => new URL(exportData.url)).not.toThrow();
+        expect(exportData.avatarSupportsFaceAnimations).toBe(true);
     });
 
-    test('should extract avatar ID from RPM URL', () => {
-        const rpmUrl = 'https://models.readyplayer.me/64bfa15f0f93e14abcde1234.glb';
-        const avatarId = rpmUrl.split('/').pop().split('.')[0];
+    test('should handle Avaturn export result with dataURL', () => {
+        const exportData = {
+            avatarId: 'abc12345-def6-7890',
+            avatarSupportsFaceAnimations: true,
+            url: 'data:model/gltf-binary;base64,AAAA',
+            urlType: 'dataURL',
+        };
 
-        expect(avatarId).toBe('64bfa15f0f93e14abcde1234');
-        expect(avatarId.length).toBeGreaterThan(10);
+        expect(exportData.urlType).toBe('dataURL');
+        expect(exportData.url.startsWith('data:')).toBe(true);
     });
 
-    test('should create correct install metadata for RPM avatar', () => {
-        const avatarId = '64bfa15f';
+    test('should create correct install metadata for Avaturn avatar', () => {
+        const avatarId = 'abc12345';
+        const hasFaceAnim = true;
         const item = {
-            id: `rpm-${avatarId}`,
-            name: `RPM Avatar ${avatarId.slice(0, 8)}`,
-            format: 'glb-morph',
-            license: 'cc-by',
-            source: 'Ready Player Me',
-            sourceId: 'readyplayerme',
-            features: ['lipsync', 'emotions'],
+            id: `avaturn-${avatarId}`,
+            name: `Avaturn Avatar ${avatarId.slice(0, 8)}`,
+            format: hasFaceAnim ? 'glb-morph' : 'glb',
+            license: 'custom',
+            source: 'Avaturn',
+            sourceId: 'avaturn',
+            features: hasFaceAnim ? ['lipsync', 'emotions'] : [],
         };
 
-        expect(item.id).toBe('rpm-64bfa15f');
+        expect(item.id).toBe('avaturn-abc12345');
         expect(item.format).toBe('glb-morph');
-        expect(item.license).toBe('cc-by');
+        expect(item.source).toBe('Avaturn');
         expect(item.features).toContain('lipsync');
-    });
-
-    test('should handle RPM v1 message format (string URL)', () => {
-        const eventData = 'https://models.readyplayer.me/64bfa15f';
-        const isRPM = typeof eventData === 'string' && eventData.startsWith('https://models.readyplayer.me/');
-        expect(isRPM).toBe(true);
-    });
-
-    test('should handle RPM v2 message format (JSON object)', () => {
-        const eventData = {
-            source: 'readyplayerme',
-            eventName: 'v1.avatar.exported',
-            data: { url: 'https://models.readyplayer.me/64bfa15f' },
-        };
-        const isRPMv2 =
-            eventData.source === 'readyplayerme' && eventData.eventName === 'v1.avatar.exported' && eventData.data?.url;
-        expect(isRPMv2).toBeTruthy();
     });
 });
 
@@ -764,7 +757,7 @@ describe('Source Registry Integrity', () => {
         { id: 'github-talkinghead', auth: 'none', status: 'connected' },
         { id: 'opensourceavatars', auth: 'none', status: 'connected' },
         { id: 'vroid-hub', auth: 'oauth', status: 'disconnected' },
-        { id: 'readyplayerme', auth: 'api-key', status: 'disconnected' },
+        { id: 'avaturn', auth: 'subdomain', status: 'disconnected' },
         { id: 'sketchfab', auth: 'token', status: 'disconnected' },
         { id: 'booth', auth: 'manual', status: 'no-api' },
         { id: 'vroid-studio', auth: 'manual', status: 'no-api' },

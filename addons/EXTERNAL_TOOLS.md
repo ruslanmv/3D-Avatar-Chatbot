@@ -75,13 +75,14 @@ feature support.
 - **Platform**: Windows, macOS, Steam
 - **Best for**: Creating custom avatars without 3D modeling skills
 
-### Ready Player Me
+### Avaturn (replaces discontinued Ready Player Me)
 
-- **URL**: https://readyplayer.me/
-- **Description**: Web-based avatar creator. Exports GLB format (needs VRM
-  conversion).
-- **Formats**: GLB
-- **Workflow**: Create avatar → Download GLB → Convert to VRM
+- **URL**: https://avaturn.me/
+- **Description**: Web-based realistic avatar creator with face animation
+  support. Free, no limits. Exports GLB format.
+- **Formats**: GLB (with face animation support)
+- **Workflow**: Embed SDK → User creates avatar → SDK exports GLB automatically
+- **Developer Portal**: https://developer.avaturn.me/
 
 ---
 

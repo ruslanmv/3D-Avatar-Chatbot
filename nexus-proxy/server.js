@@ -146,8 +146,8 @@ app.get('/health', (req, res) => {
 // GET /api/avatar-proxy?url=https://models.readyplayer.me/...
 // -----------------------------
 const AVATAR_PROXY_HOSTS = [
-    'models.readyplayer.me',
-    'api.readyplayer.me',
+    'api.avaturn.me',
+    'cdn.avaturn.me',
     'raw.githubusercontent.com',
     'github.com',
     'hub.vroid.com',
@@ -259,47 +259,6 @@ async function handleProxy(req, res) {
 
 app.post('/proxy', handleProxy);
 app.post('/api/proxy', handleProxy); // alias for old frontends
-
-// -----------------------------
-// RPM Guest Token (mirrors api/rpm-guest.js for local dev)
-// POST /api/rpm-guest  { apiKey?: string, subdomain?: string }
-// -----------------------------
-app.post('/api/rpm-guest', async (req, res) => {
-    const apiKey = req.headers['x-rpm-api-key'] || req.body?.apiKey;
-    if (!apiKey) {
-        return res.status(400).json({ error: 'Missing RPM API key. Configure it in Avatar Library settings.' });
-    }
-
-    try {
-        const userRes = await fetch('https://api.readyplayer.me/v1/users', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': apiKey,
-            },
-            body: JSON.stringify({ data: { applicationId: apiKey } }),
-        });
-
-        if (!userRes.ok) {
-            const errText = await userRes.text();
-            console.error('[rpm-guest] user creation failed:', userRes.status, errText);
-            return res.status(userRes.status).json({ error: `RPM API error: ${userRes.status}` });
-        }
-
-        const userData = await userRes.json();
-        const token = userData.data?.token;
-        const userId = userData.data?.id;
-
-        if (!token) {
-            return res.status(502).json({ error: 'RPM returned no token.' });
-        }
-
-        return res.status(200).json({ token, userId });
-    } catch (err) {
-        console.error('[rpm-guest] error:', err);
-        return res.status(500).json({ error: err?.message || String(err) });
-    }
-});
 
 // -----------------------------
 // VRoid Hub API Proxy (bypasses CORS for hub.vroid.com API)

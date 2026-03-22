@@ -1,20 +1,10 @@
 /**
- * Vercel Serverless — RPM Guest Token
+ * Vercel Serverless — RPM Guest Token (DEPRECATED)
  *
- * Creates an anonymous Ready Player Me guest account and returns
- * a short-lived token that bypasses the login/signup screen in the iframe.
+ * Ready Player Me was acquired by Netflix (Dec 2025) and shut down on Jan 31, 2026.
+ * This endpoint is no longer functional. The avatar creator has been replaced by Avaturn.
  *
- * Usage:
- *   POST /api/rpm-guest
- *   Body: { "subdomain": "demo" }   (optional, defaults to "demo")
- *   Headers: { "x-rpm-api-key": "<your RPM Studio API key>" }
- *            OR the key can be sent in the body as "apiKey"
- *
- * Returns: { "token": "...", "userId": "..." }
- *
- * Security:
- *   - Requires a valid RPM API key (from RPM Studio dashboard)
- *   - No user data is stored server-side
+ * Kept as a stub to avoid 404 errors from cached clients.
  */
 
 export default async function handler(req, res) {
@@ -23,41 +13,10 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-rpm-api-key');
 
     if (req.method === 'OPTIONS') return res.status(204).end();
-    if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
-    const apiKey = req.headers['x-rpm-api-key'] || req.body?.apiKey;
-    if (!apiKey) {
-        return res.status(400).json({ error: 'Missing RPM API key. Configure it in Avatar Library settings.' });
-    }
-
-    try {
-        // Step 1: Create anonymous user
-        const userRes = await fetch('https://api.readyplayer.me/v1/users', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': apiKey,
-            },
-            body: JSON.stringify({ data: { applicationId: apiKey } }),
-        });
-
-        if (!userRes.ok) {
-            const errText = await userRes.text();
-            console.error('[rpm-guest] user creation failed:', userRes.status, errText);
-            return res.status(userRes.status).json({ error: `RPM API error: ${userRes.status}` });
-        }
-
-        const userData = await userRes.json();
-        const userId = userData.data?.id;
-        const token = userData.data?.token;
-
-        if (!token) {
-            return res.status(502).json({ error: 'RPM returned no token.' });
-        }
-
-        return res.status(200).json({ token, userId });
-    } catch (err) {
-        console.error('[rpm-guest] error:', err);
-        return res.status(500).json({ error: err?.message || String(err) });
-    }
+    return res.status(410).json({
+        error: 'Ready Player Me was discontinued on Jan 31, 2026 (acquired by Netflix). Use Avaturn instead.',
+        alternative: 'https://avaturn.me',
+        docs: 'https://docs.avaturn.me/docs/integration/web/html/',
+    });
 }

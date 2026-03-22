@@ -509,27 +509,23 @@
                     <div class="vm-cred-section">
                         <h3>
                             <span class="vm-cred-icon">🧑</span>
-                            Ready Player Me
-                            <span class="vm-cred-status" id="vm-rpm-status">Not configured</span>
+                            Avaturn
+                            <span class="vm-cred-status" id="vm-avaturn-status">Not configured</span>
                         </h3>
                         <p class="vm-cred-desc">
-                            Create custom avatars with 52 ARKit + 15 Oculus Viseme morph targets.
+                            Create realistic 3D avatars with face animations. Free, no limits on avatars or exports.
                         </p>
                         <div class="vm-cred-fields">
                             <label
                                 >Subdomain
-                                <input id="vm-rpm-subdomain" type="text" placeholder="your-app.readyplayer.me" />
-                            </label>
-                            <label
-                                >API Key (optional)
-                                <input id="vm-rpm-api-key" type="password" placeholder="For advanced API access" />
+                                <input id="vm-avaturn-subdomain" type="text" placeholder="your-project.avaturn.dev" />
                             </label>
                             <div class="vm-cred-actions">
-                                <button class="vm-btn vm-btn-sm" onclick="VRMManager.testCredential('rpm')">
+                                <button class="vm-btn vm-btn-sm" onclick="VRMManager.testCredential('avaturn')">
                                     Test Connection
                                 </button>
-                                <a href="https://studio.readyplayer.me/" target="_blank" rel="noopener" class="vm-link"
-                                    >Get API Key</a
+                                <a href="https://developer.avaturn.me/" target="_blank" rel="noopener" class="vm-link"
+                                    >Get Subdomain</a
                                 >
                             </div>
                         </div>
@@ -625,30 +621,25 @@
             </div>
         </div>
 
-        <!-- ====== READY PLAYER ME CREATOR MODAL ====== -->
-        <div id="vm-rpm-modal" class="vm-modal-overlay vm-hidden">
+        <!-- ====== AVATURN AVATAR CREATOR MODAL ====== -->
+        <div id="vm-avaturn-modal" class="vm-modal-overlay vm-hidden">
             <div class="vm-modal vm-modal-fullscreen">
                 <div class="vm-modal-header">
-                    <h2>Create Avatar — Ready Player Me</h2>
-                    <button id="vm-rpm-close" class="vm-modal-close">&times;</button>
+                    <h2>Create Avatar — Avaturn</h2>
+                    <button id="vm-avaturn-close" class="vm-modal-close">&times;</button>
                 </div>
                 <div class="vm-modal-body vm-rpm-body">
-                    <!-- Loading spinner (shown while iframe loads) -->
-                    <div id="vm-rpm-loader" class="vm-rpm-loader vm-hidden">
+                    <!-- Loading spinner (shown while SDK loads) -->
+                    <div id="vm-avaturn-loader" class="vm-rpm-loader vm-hidden">
                         <div class="vm-rpm-spinner"></div>
-                        <p>Loading avatar creator...</p>
+                        <p>Loading Avaturn creator...</p>
                     </div>
 
-                    <!-- Iframe mode (primary — uses demo.readyplayer.me with frameApi) -->
-                    <iframe
-                        id="vm-rpm-iframe"
-                        class="vm-rpm-iframe"
-                        allow="camera *; microphone *"
-                        src="about:blank"
-                    ></iframe>
+                    <!-- SDK container (Avaturn SDK creates iframe inside this) -->
+                    <div id="vm-avaturn-container" class="vm-rpm-iframe" style="width: 100%; height: 100%"></div>
 
-                    <!-- Fallback mode (shown only if iframe fails to load) -->
-                    <div id="vm-rpm-fallback" class="vm-rpm-fallback vm-hidden">
+                    <!-- Fallback mode (shown only if SDK fails to load) -->
+                    <div id="vm-avaturn-fallback" class="vm-rpm-fallback vm-hidden">
                         <div class="vm-rpm-fallback-content">
                             <div class="vm-rpm-fallback-icon">
                                 <svg
@@ -666,10 +657,10 @@
                                     <line x1="17" y1="11" x2="23" y2="11" />
                                 </svg>
                             </div>
-                            <h3>Embedded creator unavailable</h3>
+                            <h3>Avaturn creator unavailable</h3>
                             <p class="vm-rpm-fallback-desc">
-                                The embedded creator couldn't load. You can still create your avatar in a new tab and
-                                paste the URL below.
+                                The embedded creator couldn't load. You can create your avatar directly on Avaturn's
+                                website.
                             </p>
                             <div class="vm-rpm-fallback-steps">
                                 <div class="vm-rpm-step">
@@ -677,38 +668,28 @@
                                     <span
                                         >Open
                                         <a
-                                            id="vm-rpm-external-link"
-                                            href="https://demo.readyplayer.me/avatar?id=new"
+                                            id="vm-avaturn-external-link"
+                                            href="https://avaturn.me"
                                             target="_blank"
                                             rel="noopener"
                                             class="vm-link"
-                                            >Ready Player Me Creator</a
+                                            >Avaturn Creator</a
                                         >
                                         in a new tab</span
                                     >
                                 </div>
                                 <div class="vm-rpm-step">
                                     <span class="vm-rpm-step-num">2</span>
-                                    <span>Design your avatar and click "Next" until complete</span>
+                                    <span>Design your avatar and click "Next" to export</span>
                                 </div>
                                 <div class="vm-rpm-step">
                                     <span class="vm-rpm-step-num">3</span>
-                                    <span>Copy the page URL or model link and paste it below</span>
+                                    <span
+                                        >Download the GLB file, then use <strong>Upload File</strong> to install
+                                        it</span
+                                    >
                                 </div>
                             </div>
-                            <div class="vm-rpm-url-form">
-                                <input
-                                    id="vm-rpm-url-input"
-                                    type="url"
-                                    placeholder="https://demo.readyplayer.me/avatar?id=69b6ec6a... or .glb URL"
-                                    autocomplete="off"
-                                />
-                                <button id="vm-rpm-url-install" class="vm-primary-btn">Install Avatar</button>
-                            </div>
-                            <p class="vm-rpm-fallback-hint">
-                                Accepts both page URLs (<code>demo.readyplayer.me/avatar?id=...</code>) and model URLs
-                                (<code>models.readyplayer.me/&lt;id&gt;.glb</code>).
-                            </p>
                         </div>
                     </div>
                 </div>

@@ -5,7 +5,7 @@
  * - Built-in catalog (CC0 / open-source VRM & GLB models)
  * - VRoid Hub API integration (OAuth)
  * - Sketchfab API integration (token)
- * - Ready Player Me integration
+ * - Avaturn integration (replaces discontinued Ready Player Me)
  * - Local file upload
  * - IndexedDB cache for downloaded files
  * - Auto-install to avatar manifest (avatars.json)
@@ -349,16 +349,16 @@ const SOURCES = [
         signupUrl: 'https://hub.vroid.com/oauth/applications',
     },
     {
-        id: 'readyplayerme',
-        name: 'Ready Player Me',
+        id: 'avaturn',
+        name: 'Avaturn',
         icon: '🧑',
-        url: 'readyplayer.me',
-        desc: 'Create custom avatars with 52 ARKit + 15 Oculus Viseme morph targets. Free tier available.',
-        auth: 'api-key',
+        url: 'avaturn.me',
+        desc: 'Create realistic 3D avatars with face animations. Free, no limits on avatars or exports.',
+        auth: 'subdomain',
         formats: ['glb-morph'],
         status: 'disconnected',
-        settingsKey: 'rpm',
-        signupUrl: 'https://studio.readyplayer.me/',
+        settingsKey: 'avaturn',
+        signupUrl: 'https://developer.avaturn.me/',
     },
     {
         id: 'sketchfab',
@@ -734,9 +734,8 @@ const VRMManager = {
                         ? Date.now() + 3600 * 1000 // assume 1h if new token pasted
                         : existingVroid.tokenExpiresAt || 0,
             },
-            rpm: {
-                subdomain: el('vm-rpm-subdomain').value.trim(),
-                apiKey: el('vm-rpm-api-key').value.trim(),
+            avaturn: {
+                subdomain: el('vm-avaturn-subdomain').value.trim(),
             },
             sketchfab: {
                 token: el('vm-sketchfab-token').value.trim(),
@@ -761,9 +760,8 @@ const VRMManager = {
             setVal('vm-vroid-access-token', c.vroid.accessToken || '');
             setVal('vm-vroid-refresh-token', c.vroid.refreshToken || '');
         }
-        if (c.rpm) {
-            setVal('vm-rpm-subdomain', c.rpm.subdomain || '');
-            setVal('vm-rpm-api-key', c.rpm.apiKey || '');
+        if (c.avaturn) {
+            setVal('vm-avaturn-subdomain', c.avaturn.subdomain || '');
         }
         if (c.sketchfab) {
             setVal('vm-sketchfab-token', c.sketchfab.token || '');
@@ -781,11 +779,11 @@ const VRMManager = {
         const vroidSrc = SOURCES.find((s) => s.id === 'vroid-hub');
         if (vroidSrc) vroidSrc.status = vroidOk ? 'connected' : 'disconnected';
 
-        // RPM
-        const rpmOk = c.rpm && c.rpm.subdomain;
-        setCredStatus('vm-rpm-status', rpmOk);
-        const rpmSrc = SOURCES.find((s) => s.id === 'readyplayerme');
-        if (rpmSrc) rpmSrc.status = rpmOk ? 'connected' : 'disconnected';
+        // Avaturn
+        const avaturnOk = c.avaturn && c.avaturn.subdomain;
+        setCredStatus('vm-avaturn-status', avaturnOk);
+        const avaturnSrc = SOURCES.find((s) => s.id === 'avaturn');
+        if (avaturnSrc) avaturnSrc.status = avaturnOk ? 'connected' : 'disconnected';
 
         // Sketchfab
         const sfOk = c.sketchfab && c.sketchfab.token;
@@ -870,13 +868,13 @@ const VRMManager = {
                 console.error('[VRM-Manager] VRoid Hub test error:', e);
                 toast(`VRoid Hub connection failed: ${e.message}`, 'error');
             }
-        } else if (provider === 'rpm') {
-            const subdomain = el('vm-rpm-subdomain').value.trim();
+        } else if (provider === 'avaturn') {
+            const subdomain = el('vm-avaturn-subdomain').value.trim();
             if (!subdomain) {
-                toast('Enter your Ready Player Me subdomain first', 'error');
+                toast('Enter your Avaturn subdomain first', 'error');
                 return;
             }
-            toast('Ready Player Me uses iframe-based avatar creation. Subdomain saved.', 'success');
+            toast('Avaturn subdomain saved. Use "Create Avatar" to open the creator.', 'success');
         } else if (provider === 'sketchfab') {
             const token = el('vm-sketchfab-token').value.trim();
             if (!token) {
@@ -2529,186 +2527,143 @@ const VRMManager = {
         }
     },
 
-    /* ── Ready Player Me iFrame Creator ───────────────── */
+    /* ── Avaturn Avatar Creator ──────────────────────── */
 
-    async openRPMCreator() {
-        const subdomain = this.credentials?.rpm?.subdomain || 'demo';
-        const apiKey = this.credentials?.rpm?.apiKey;
-        const iframe = el('vm-rpm-iframe');
-        const fallback = el('vm-rpm-fallback');
-        const loader = el('vm-rpm-loader');
+    async openAvaturnCreator() {
+        const subdomain = this.credentials?.avaturn?.subdomain || 'demo';
+        const container = el('vm-avaturn-container');
+        const loader = el('vm-avaturn-loader');
+        const fallback = el('vm-avaturn-fallback');
 
-        el('vm-rpm-modal').classList.remove('vm-hidden');
+        el('vm-avaturn-modal').classList.remove('vm-hidden');
 
-        // Update external link to use configured subdomain
-        const extLink = el('vm-rpm-external-link');
-        if (extLink) extLink.href = `https://${subdomain}.readyplayer.me/avatar`;
+        // Update external link
+        const extLink = el('vm-avaturn-external-link');
+        if (extLink) extLink.href = `https://${subdomain}.avaturn.dev`;
 
-        // Show loading state while iframe loads
+        // Show loading state
         if (loader) loader.classList.remove('vm-hidden');
-        iframe.classList.remove('vm-hidden');
+        if (container) container.classList.remove('vm-hidden');
         if (fallback) fallback.classList.add('vm-hidden');
 
-        // Build iframe URL — always try iframe-first with frameApi
-        let rpmUrl;
-        if (apiKey) {
-            // If API key is configured, try guest token for premium features
+        // Load Avaturn SDK (CDN) if not already loaded
+        if (!window.AvaturnSDK) {
             try {
-                const res = await fetch('/api/rpm-guest', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-rpm-api-key': apiKey,
-                    },
-                    body: JSON.stringify({ subdomain }),
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    rpmUrl = `https://${subdomain}.readyplayer.me/avatar?frameApi&token=${data.token}&clearCache&bodyType=fullbody`;
-                }
+                const mod = await import('https://cdn.jsdelivr.net/npm/@avaturn/sdk/dist/index.js');
+                window.AvaturnSDK = mod.AvaturnSDK;
             } catch (e) {
-                console.warn('[VRM-Manager] RPM guest token failed, using demo:', e);
+                console.warn('[VRM-Manager] Avaturn SDK failed to load:', e);
+                this._showAvaturnFallback();
+                return;
             }
         }
 
-        // Default: use demo.readyplayer.me with frameApi (no API key needed)
-        if (!rpmUrl) {
-            rpmUrl = `https://demo.readyplayer.me/avatar?frameApi&bodyType=fullbody&clearCache`;
-        }
+        try {
+            // Destroy previous SDK instance if any
+            if (this._avaturnSdk) {
+                try {
+                    this._avaturnSdk.destroy();
+                } catch {}
+            }
 
-        iframe.src = rpmUrl;
+            const sdk = new window.AvaturnSDK();
+            this._avaturnSdk = sdk;
+            const url = `https://${subdomain}.avaturn.dev`;
 
-        // Hide loader once iframe content loads; fall back if it errors
-        const onIframeLoad = () => {
+            await sdk.init(container, { url });
             if (loader) loader.classList.add('vm-hidden');
-            iframe.removeEventListener('load', onIframeLoad);
-        };
-        iframe.addEventListener('load', onIframeLoad);
 
-        // Timeout fallback — if iframe doesn't load within 12s, show manual mode
-        this._rpmFallbackTimer = setTimeout(() => {
-            if (loader && !loader.classList.contains('vm-hidden')) {
-                console.warn('[VRM-Manager] RPM iframe timed out, showing fallback');
-                this._showRPMFallback();
-            }
-        }, 12000);
-
-        // Listen for messages from RPM iframe
-        if (!this._rpmListenerAttached) {
-            this._rpmListenerAttached = true;
-            window.addEventListener('message', (event) => {
-                // RPM sends the avatar URL when creation is complete (string format)
-                if (typeof event.data === 'string' && event.data.startsWith('https://models.readyplayer.me/')) {
-                    this.closeRPMCreator();
-                    this.installRPMAvatar(event.data);
-                }
-                // RPM v2 sends JSON messages
-                if (event.data && typeof event.data === 'object') {
-                    if (event.data.source === 'readyplayerme' && event.data.eventName === 'v1.avatar.exported') {
-                        const avatarUrl = event.data.data?.url;
-                        if (avatarUrl) {
-                            this.closeRPMCreator();
-                            this.installRPMAvatar(avatarUrl);
-                        }
-                    }
-                }
+            // Listen for avatar export
+            sdk.on('export', (data) => {
+                // data: { url, urlType, avatarId, gender, bodyId, avatarSupportsFaceAnimations }
+                this.closeAvaturnCreator();
+                this.installAvaturnAvatar(data);
             });
-
-            // Listen for RPM URL install from fallback form
-            const rpmUrlInstall = el('vm-rpm-url-install');
-            if (rpmUrlInstall) {
-                rpmUrlInstall.addEventListener('click', () => {
-                    const input = el('vm-rpm-url-input');
-                    const url = (input?.value || '').trim();
-                    if (!url) {
-                        toast('Please paste a Ready Player Me avatar URL.', 'error');
-                        return;
-                    }
-                    // Accept various RPM URL formats
-                    if (!url.includes('readyplayer.me')) {
-                        toast("This doesn't look like a Ready Player Me URL.", 'error');
-                        return;
-                    }
-                    // Extract the GLB URL from demo page URLs like
-                    // https://demo.readyplayer.me/avatar?id=69b6ec6afa04178f0ea8e732
-                    let glbUrl = url;
-                    const idMatch = url.match(/[?&]id=([a-f0-9]{24})/i);
-                    if (idMatch) {
-                        glbUrl = `https://models.readyplayer.me/${idMatch[1]}.glb`;
-                    }
-                    this.closeRPMCreator();
-                    this.installRPMAvatar(glbUrl);
-                });
-            }
+        } catch (e) {
+            console.warn('[VRM-Manager] Avaturn SDK init failed:', e);
+            this._showAvaturnFallback();
         }
+
+        // Timeout fallback — if SDK doesn't initialize within 15s
+        this._avaturnFallbackTimer = setTimeout(() => {
+            if (loader && !loader.classList.contains('vm-hidden')) {
+                console.warn('[VRM-Manager] Avaturn SDK timed out, showing fallback');
+                this._showAvaturnFallback();
+            }
+        }, 15000);
     },
 
-    /** Show fallback URL-paste mode (called when iframe fails) */
-    _showRPMFallback() {
-        const iframe = el('vm-rpm-iframe');
-        const fallback = el('vm-rpm-fallback');
-        const loader = el('vm-rpm-loader');
+    /** Show fallback mode (called when SDK fails to load) */
+    _showAvaturnFallback() {
+        const container = el('vm-avaturn-container');
+        const fallback = el('vm-avaturn-fallback');
+        const loader = el('vm-avaturn-loader');
         if (loader) loader.classList.add('vm-hidden');
-        iframe.classList.add('vm-hidden');
-        iframe.src = 'about:blank';
+        if (container) {
+            container.classList.add('vm-hidden');
+            container.innerHTML = ''; // Clean up any partial SDK state
+        }
         if (fallback) fallback.classList.remove('vm-hidden');
     },
 
-    closeRPMCreator() {
-        if (this._rpmFallbackTimer) clearTimeout(this._rpmFallbackTimer);
-        el('vm-rpm-modal').classList.add('vm-hidden');
-        el('vm-rpm-iframe').src = 'about:blank';
-        el('vm-rpm-iframe').classList.remove('vm-hidden');
-        const fallback = el('vm-rpm-fallback');
+    closeAvaturnCreator() {
+        if (this._avaturnFallbackTimer) clearTimeout(this._avaturnFallbackTimer);
+        if (this._avaturnSdk) {
+            try {
+                this._avaturnSdk.destroy();
+            } catch {}
+            this._avaturnSdk = null;
+        }
+        el('vm-avaturn-modal').classList.add('vm-hidden');
+        const container = el('vm-avaturn-container');
+        if (container) container.innerHTML = '';
+        const fallback = el('vm-avaturn-fallback');
         if (fallback) fallback.classList.add('vm-hidden');
-        const loader = el('vm-rpm-loader');
+        const loader = el('vm-avaturn-loader');
         if (loader) loader.classList.add('vm-hidden');
     },
 
-    async installRPMAvatar(avatarUrl) {
-        // Convert demo page URLs to GLB model URLs
-        // e.g. https://demo.readyplayer.me/avatar?id=69b6ec6a → https://models.readyplayer.me/69b6ec6a.glb
-        const idMatch = avatarUrl.match(/[?&]id=([a-f0-9]{24})/i);
-        if (idMatch) {
-            avatarUrl = `https://models.readyplayer.me/${idMatch[1]}.glb`;
-        }
-
-        // Append morphTargets to get full viseme + ARKit blend shapes
-        const glbUrl = avatarUrl.endsWith('.glb') ? avatarUrl : avatarUrl + '.glb';
-        const fullUrl = glbUrl + '?morphTargets=ARKit,Oculus+Visemes';
-
-        toast('Downloading Ready Player Me avatar...', 'info');
+    async installAvaturnAvatar(exportData) {
+        // exportData: { url, urlType, avatarId, gender, bodyId, avatarSupportsFaceAnimations }
+        toast('Downloading Avaturn avatar...', 'info');
 
         try {
-            // Use avatar proxy to bypass CORS restrictions on RPM CDN
-            const proxyUrl = '/api/avatar-proxy?url=' + encodeURIComponent(fullUrl);
-            const res = await fetch(proxyUrl);
-            if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+            let blob;
+            if (exportData.urlType === 'dataURL') {
+                // Base64 data URL — convert to blob
+                const res = await fetch(exportData.url);
+                blob = await res.blob();
+            } else {
+                // HTTP URL — download via proxy to bypass CORS
+                const proxyUrl = '/api/avatar-proxy?url=' + encodeURIComponent(exportData.url);
+                const res = await fetch(proxyUrl);
+                if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+                blob = await res.blob();
+            }
 
-            const blob = await res.blob();
-            const avatarId = avatarUrl.split('/').pop().split('.')[0];
-            const id = `rpm-${avatarId}`;
-            const fileName = `RPM_${avatarId}.glb`;
+            const avatarId = exportData.avatarId || Date.now().toString(36);
+            const id = `avaturn-${avatarId}`;
+            const fileName = `Avaturn_${avatarId}.glb`;
+            const hasFaceAnim = exportData.avatarSupportsFaceAnimations;
 
             const item = {
                 id,
-                name: `RPM Avatar ${avatarId.slice(0, 8)}`,
-                desc: 'Custom avatar created with Ready Player Me. GLB with ARKit + Oculus Viseme morph targets.',
-                source: 'Ready Player Me',
-                sourceId: 'readyplayerme',
-                format: 'glb-morph',
-                license: 'cc-by',
-                url: fullUrl,
-                preview: avatarUrl + '.png',
+                name: `Avaturn Avatar ${avatarId.slice(0, 8)}`,
+                desc: `Custom avatar created with Avaturn.${hasFaceAnim ? ' Supports face animations.' : ''}`,
+                source: 'Avaturn',
+                sourceId: 'avaturn',
+                format: hasFaceAnim ? 'glb-morph' : 'glb',
+                license: 'custom',
+                url: exportData.urlType === 'httpURL' ? exportData.url : '',
                 icon: '🧑',
-                tags: ['custom', 'rpm', 'morph-targets'],
-                features: ['lipsync', 'emotions'],
+                tags: ['custom', 'avaturn', hasFaceAnim ? 'morph-targets' : 'static'].filter(Boolean),
+                features: hasFaceAnim ? ['lipsync', 'emotions'] : [],
                 size: blob.size,
                 localFile: fileName,
                 installedAt: Date.now(),
             };
 
-            await this.cacheBlob(id, blob, { name: item.name, format: 'glb-morph' });
+            await this.cacheBlob(id, blob, { name: item.name, format: item.format });
 
             installedAvatars[id] = item;
             this.saveInstalled();
@@ -2721,23 +2676,21 @@ const VRMManager = {
             this.applyFilters();
             this.renderInstalledGrid();
 
-            // Switch to "My Avatars" tab so user sees the new avatar at the top
+            // Switch to "My Avatars" tab so user sees the new avatar
             this.switchTab('installed');
 
-            toast(`Avatar installed! Click "Use Now" to load it.`, 'success');
+            toast('Avatar installed! Click "Use Now" to load it.', 'success');
 
-            // Generate thumbnail in background (RPM preview URL may already exist, but generate local one too)
-            if (!item.preview) {
-                generateAndSaveThumbnail(item).then((preview) => {
-                    if (preview) {
-                        this.applyFilters();
-                        this.renderInstalledGrid();
-                    }
-                });
-            }
+            // Generate thumbnail in background
+            generateAndSaveThumbnail(item).then((preview) => {
+                if (preview) {
+                    this.applyFilters();
+                    this.renderInstalledGrid();
+                }
+            });
         } catch (e) {
-            console.error('[VRM-Manager] RPM install error:', e);
-            toast(`Failed to install RPM avatar: ${e.message}`, 'error');
+            console.error('[VRM-Manager] Avaturn install error:', e);
+            toast(`Failed to install Avaturn avatar: ${e.message}`, 'error');
         }
     },
 
@@ -2839,7 +2792,7 @@ const VRMManager = {
             'github-vrm-samples': 1,
             'homepilot-hub': 2,
             sketchfab: 3,
-            readyplayerme: 4,
+            avaturn: 4,
             opensourceavatars: 5,
         };
         // Map sourceCategory from catalog to priority (vroid=0, sketchfab=1, open_source=2)
@@ -3940,13 +3893,13 @@ const VRMManager = {
             });
         }
 
-        // RPM creator
-        const rpmClose = el('vm-rpm-close');
-        if (rpmClose) rpmClose.addEventListener('click', () => this.closeRPMCreator());
-        const rpmModal = el('vm-rpm-modal');
-        if (rpmModal)
-            rpmModal.addEventListener('click', (e) => {
-                if (e.target.id === 'vm-rpm-modal') this.closeRPMCreator();
+        // Avaturn creator
+        const avaturnClose = el('vm-avaturn-close');
+        if (avaturnClose) avaturnClose.addEventListener('click', () => this.closeAvaturnCreator());
+        const avaturnModal = el('vm-avaturn-modal');
+        if (avaturnModal)
+            avaturnModal.addEventListener('click', (e) => {
+                if (e.target.id === 'vm-avaturn-modal') this.closeAvaturnCreator();
             });
 
         // Generate all thumbnails button
@@ -4015,7 +3968,7 @@ const VRMManager = {
         if (optCreate)
             optCreate.addEventListener('click', () => {
                 this.closeAddWizard();
-                this.openRPMCreator();
+                this.openAvaturnCreator();
             });
         const urlBack = el('vm-add-url-back');
         if (urlBack)
@@ -4058,7 +4011,7 @@ const VRMManager = {
             if (e.key === 'Escape') {
                 this.closeSettings();
                 this.closePreview();
-                this.closeRPMCreator();
+                this.closeAvaturnCreator();
                 this.closeAddWizard();
                 this.closeAddSourceWizard();
             }
