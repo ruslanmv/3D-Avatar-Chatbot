@@ -798,4 +798,419 @@ describe('Source Registry Integrity', () => {
         const connected = SOURCES.filter((s) => s.status === 'connected');
         expect(connected.length).toBeGreaterThanOrEqual(4);
     });
+
+    test('opensourceavatars should be disabled by default (opt-in)', () => {
+        const osa = SOURCES.find((s) => s.id === 'opensourceavatars');
+        expect(osa).toBeDefined();
+        // enabledByDefault=false means user must opt-in via toggle
+        // (heavy source: 300+ avatars fetched from GitHub)
+    });
+});
+
+describe('Source Enable/Disable Toggle', () => {
+    // Simulate the isSourceEnabled / toggleSourceEnabled logic from vrm-manager.js
+    function isSourceEnabled(src, disabledSet) {
+        if (disabledSet.has(src.id)) return false;
+        if (disabledSet.size === 0 && src.enabledByDefault === false) return false;
+        return true;
+    }
+
+    test('source with enabledByDefault=false should be disabled on first run', () => {
+        const osa = { id: 'opensourceavatars', enabledByDefault: false };
+        const disabled = new Set(); // empty = first run
+        expect(isSourceEnabled(osa, disabled)).toBe(false);
+    });
+
+    test('source without enabledByDefault should be enabled on first run', () => {
+        const vroid = { id: 'vroid-hub' };
+        const disabled = new Set();
+        expect(isSourceEnabled(vroid, disabled)).toBe(true);
+    });
+
+    test('explicitly enabled source should be enabled even if enabledByDefault=false', () => {
+        const osa = { id: 'opensourceavatars', enabledByDefault: false };
+        // After user toggles it on, the disabled set has other entries but NOT osa
+        const disabled = new Set(['some-other-source']);
+        expect(isSourceEnabled(osa, disabled)).toBe(true);
+    });
+
+    test('explicitly disabled source should be disabled', () => {
+        const osa = { id: 'opensourceavatars', enabledByDefault: false };
+        const disabled = new Set(['opensourceavatars']);
+        expect(isSourceEnabled(osa, disabled)).toBe(false);
+    });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   CUSTOM SOURCE CATALOG SYNC — Install & Uninstall
+   ═══════════════════════════════════════════════════════════ */
+
+const MOCK_CUSTOM_CATALOG = [
+    {
+        id: 'avatar-001',
+        name: 'Sakura VRM',
+        format_type: 'vrm',
+        license: 'CC0',
+        public_url: 'https://example.com/sakura.vrm',
+        thumbnail_url: 'https://example.com/sakura-thumb.png',
+        size_bytes: 12000000,
+    },
+    {
+        id: 'avatar-002',
+        name: 'Ninja VRM',
+        format_type: 'vrm',
+        license: 'CC-BY',
+        public_url: 'https://example.com/ninja.vrm',
+        thumbnail_url: 'https://example.com/ninja-thumb.png',
+        size_bytes: 8000000,
+    },
+    {
+        id: 'avatar-003',
+        name: 'Robot GLB',
+        format_type: 'glb',
+        license: 'free',
+        public_url: 'https://example.com/robot.glb',
+        thumbnail_url: 'https://example.com/robot-thumb.png',
+        size_bytes: 5000000,
+    },
+];
+
+function createSyncManager() {
+    const customSourcesStore = [];
+    let allItems = [...BUILTIN_CATALOG];
+    let installedAvatars = {};
+
+    // Initialize core avatars
+    BUILTIN_CATALOG.forEach((item) => {
+        if (item.installed) {
+            installedAvatars[item.id] = { ...item, installedAt: 0, core: true };
+        }
+    });
+
+    return {
+        get allItems() {
+            return allItems;
+        },
+        get installedAvatars() {
+            return installedAvatars;
+        },
+        customSourcesStore,
+
+        getCustomSources() {
+            return [...customSourcesStore];
+        },
+
+        addCustomSource(source) {
+            if (customSourcesStore.some((s) => s.catalogUrl === source.catalogUrl)) return false;
+            customSourcesStore.push(source);
+            return true;
+        },
+
+        removeCustomSource(catalogUrl) {
+            const idx = customSourcesStore.findIndex((s) => s.catalogUrl === catalogUrl);
+            if (idx >= 0) customSourcesStore.splice(idx, 1);
+        },
+
+        isInstalled(id) {
+            return !!installedAvatars[id];
+        },
+
+        isCore(id) {
+            return !!(installedAvatars[id] && installedAvatars[id].core);
+        },
+
+        installAvatar(item) {
+            installedAvatars[item.id] = {
+                ...item,
+                installedAt: Date.now(),
+                localFile: item.name.replace(/[^a-zA-Z0-9_-]/g, '_') + '.' + (item.format === 'vrm' ? 'vrm' : 'glb'),
+            };
+            if (!allItems.find((x) => x.id === item.id)) {
+                allItems.unshift(item);
+            }
+        },
+
+        removeAvatar(id) {
+            const item = installedAvatars[id];
+            if (!item) return { success: false, reason: 'not-found' };
+            if (item.core) return { success: false, reason: 'core-protected' };
+            delete installedAvatars[id];
+            return { success: true };
+        },
+
+        fetchCustomCatalog(customSrc) {
+            const entries = MOCK_CUSTOM_CATALOG;
+            return entries
+                .filter((entry) => entry.public_url || entry.url)
+                .map((entry) => {
+                    const url = entry.public_url || entry.url || '';
+                    const format = (entry.format_type || entry.format || 'vrm').toLowerCase();
+                    const isVrm = format === 'vrm';
+                    return {
+                        id: `custom-${customSrc.id}-${(entry.id || entry.name)
+                            .replace(/[^a-zA-Z0-9]/g, '-')
+                            .toLowerCase()
+                            .slice(0, 60)}`,
+                        name: entry.name || 'Unknown',
+                        desc: `From ${customSrc.name}.`,
+                        source: customSrc.name,
+                        sourceId: customSrc.id,
+                        format: isVrm ? 'vrm' : 'glb',
+                        license: (entry.license || '').toLowerCase().includes('cc0') ? 'cc0' : 'free',
+                        url,
+                        preview: entry.thumbnail_url || '',
+                        icon: customSrc.icon || '📂',
+                        tags: [customSrc.name, format],
+                        features: isVrm ? ['lipsync', 'emotions', 'gaze', 'blink'] : [],
+                        size: entry.size_bytes || 0,
+                    };
+                });
+        },
+
+        async loadCatalog() {
+            allItems = [...BUILTIN_CATALOG];
+            const customSources = this.getCustomSources();
+            for (const cs of customSources) {
+                const items = this.fetchCustomCatalog(cs);
+                allItems = allItems.concat(items);
+            }
+        },
+
+        removeSource(catalogUrl) {
+            const custom = this.getCustomSources().find((s) => s.catalogUrl === catalogUrl);
+            const sourceId = custom ? custom.id : '';
+            this.removeCustomSource(catalogUrl);
+
+            if (sourceId) {
+                allItems = allItems.filter((a) => a.sourceId !== sourceId);
+
+                // Clean up installed avatars from this source
+                let removedInstalled = 0;
+                for (const [id, item] of Object.entries(installedAvatars)) {
+                    if (item.sourceId === sourceId && !item.core) {
+                        delete installedAvatars[id];
+                        removedInstalled++;
+                    }
+                }
+            }
+        },
+
+        /** Get unique source names from current allItems */
+        getActiveSources() {
+            const sources = new Set();
+            allItems.forEach((it) => sources.add(it.source));
+            return [...sources];
+        },
+    };
+}
+
+describe('Catalog Sync — Custom Source Install & Uninstall', () => {
+    let mgr;
+    const TEST_SOURCE = {
+        id: 'custom-vrm-avatar-catalog-test',
+        name: 'VRM Avatar Catalog',
+        icon: '📦',
+        catalogUrl: 'https://homepilotai.github.io/vrm-avatar-catalog/catalog.json',
+        url: 'https://github.com/HomePilotAI/vrm-avatar-catalog',
+        desc: '3 avatars. CC0.',
+        totalAvatars: 3,
+        addedAt: Date.now(),
+    };
+
+    beforeEach(() => {
+        mgr = createSyncManager();
+    });
+
+    test('should start with only built-in items in catalog', () => {
+        expect(mgr.allItems.length).toBe(BUILTIN_CATALOG.length);
+        expect(mgr.allItems.every((a) => BUILTIN_CATALOG.some((b) => b.id === a.id))).toBe(true);
+    });
+
+    test('should add custom source and merge its avatars into allItems', async () => {
+        const added = mgr.addCustomSource(TEST_SOURCE);
+        expect(added).toBe(true);
+
+        await mgr.loadCatalog();
+
+        // allItems should now contain built-in + custom source avatars
+        expect(mgr.allItems.length).toBe(BUILTIN_CATALOG.length + MOCK_CUSTOM_CATALOG.length);
+
+        // Custom avatars should have correct sourceId
+        const customItems = mgr.allItems.filter((a) => a.sourceId === TEST_SOURCE.id);
+        expect(customItems.length).toBe(MOCK_CUSTOM_CATALOG.length);
+        customItems.forEach((item) => {
+            expect(item.source).toBe('VRM Avatar Catalog');
+            expect(item.id).toMatch(/^custom-/);
+        });
+    });
+
+    test('should show custom source in active sources after install', async () => {
+        mgr.addCustomSource(TEST_SOURCE);
+        await mgr.loadCatalog();
+
+        const sources = mgr.getActiveSources();
+        expect(sources).toContain('VRM Avatar Catalog');
+    });
+
+    test('should preserve thumbnails from custom source after merge', async () => {
+        mgr.addCustomSource(TEST_SOURCE);
+        await mgr.loadCatalog();
+
+        const customItems = mgr.allItems.filter((a) => a.sourceId === TEST_SOURCE.id);
+        expect(customItems[0].preview).toBe('https://example.com/sakura-thumb.png');
+        expect(customItems[1].preview).toBe('https://example.com/ninja-thumb.png');
+        expect(customItems[2].preview).toBe('https://example.com/robot-thumb.png');
+    });
+
+    test('should remove custom source avatars from allItems on uninstall', async () => {
+        mgr.addCustomSource(TEST_SOURCE);
+        await mgr.loadCatalog();
+        expect(mgr.allItems.length).toBe(BUILTIN_CATALOG.length + MOCK_CUSTOM_CATALOG.length);
+
+        // Uninstall the source
+        mgr.removeSource(TEST_SOURCE.catalogUrl);
+
+        // allItems should only contain built-in avatars
+        expect(mgr.allItems.length).toBe(BUILTIN_CATALOG.length);
+        expect(mgr.allItems.filter((a) => a.sourceId === TEST_SOURCE.id).length).toBe(0);
+    });
+
+    test('should remove source from custom sources list on uninstall', async () => {
+        mgr.addCustomSource(TEST_SOURCE);
+        expect(mgr.getCustomSources().length).toBe(1);
+
+        mgr.removeSource(TEST_SOURCE.catalogUrl);
+        expect(mgr.getCustomSources().length).toBe(0);
+    });
+
+    test('should remove custom source name from active sources on uninstall', async () => {
+        mgr.addCustomSource(TEST_SOURCE);
+        await mgr.loadCatalog();
+        expect(mgr.getActiveSources()).toContain('VRM Avatar Catalog');
+
+        mgr.removeSource(TEST_SOURCE.catalogUrl);
+        expect(mgr.getActiveSources()).not.toContain('VRM Avatar Catalog');
+    });
+
+    test('should not affect built-in avatars when custom source is removed', async () => {
+        mgr.addCustomSource(TEST_SOURCE);
+        await mgr.loadCatalog();
+        mgr.removeSource(TEST_SOURCE.catalogUrl);
+
+        BUILTIN_CATALOG.forEach((builtin) => {
+            expect(mgr.allItems.find((a) => a.id === builtin.id)).toBeDefined();
+        });
+    });
+
+    test('should not affect core installed avatars when source is removed', async () => {
+        mgr.addCustomSource(TEST_SOURCE);
+        await mgr.loadCatalog();
+        mgr.removeSource(TEST_SOURCE.catalogUrl);
+
+        // Core avatars should still be installed
+        BUILTIN_CATALOG.forEach((item) => {
+            if (item.installed) {
+                expect(mgr.isInstalled(item.id)).toBe(true);
+                expect(mgr.isCore(item.id)).toBe(true);
+            }
+        });
+    });
+
+    test('should prevent adding duplicate source by URL', () => {
+        expect(mgr.addCustomSource(TEST_SOURCE)).toBe(true);
+        expect(mgr.addCustomSource(TEST_SOURCE)).toBe(false);
+        expect(mgr.getCustomSources().length).toBe(1);
+    });
+
+    test('should clean up installed avatars from removed source', async () => {
+        mgr.addCustomSource(TEST_SOURCE);
+        await mgr.loadCatalog();
+
+        // Install an avatar from the custom source
+        const customAvatar = mgr.allItems.find((a) => a.sourceId === TEST_SOURCE.id);
+        mgr.installAvatar(customAvatar);
+        expect(mgr.isInstalled(customAvatar.id)).toBe(true);
+
+        // Remove the source — should also clean up installed avatars
+        mgr.removeSource(TEST_SOURCE.catalogUrl);
+        expect(mgr.isInstalled(customAvatar.id)).toBe(false);
+    });
+
+    test('should handle install → uninstall → reinstall cycle', async () => {
+        // Install source
+        mgr.addCustomSource(TEST_SOURCE);
+        await mgr.loadCatalog();
+        const countWithSource = mgr.allItems.length;
+        expect(countWithSource).toBe(BUILTIN_CATALOG.length + MOCK_CUSTOM_CATALOG.length);
+
+        // Uninstall source
+        mgr.removeSource(TEST_SOURCE.catalogUrl);
+        expect(mgr.allItems.length).toBe(BUILTIN_CATALOG.length);
+
+        // Reinstall source
+        mgr.addCustomSource({ ...TEST_SOURCE, addedAt: Date.now() });
+        await mgr.loadCatalog();
+        expect(mgr.allItems.length).toBe(countWithSource);
+    });
+
+    test('allItems should stay in sync throughout full lifecycle', async () => {
+        // 1. Start clean
+        expect(mgr.allItems.length).toBe(BUILTIN_CATALOG.length);
+
+        // 2. Add source and load
+        mgr.addCustomSource(TEST_SOURCE);
+        await mgr.loadCatalog();
+        const withSource = mgr.allItems.length;
+        expect(withSource).toBeGreaterThan(BUILTIN_CATALOG.length);
+
+        // 3. Install one avatar from source
+        const avatar = mgr.allItems.find((a) => a.sourceId === TEST_SOURCE.id);
+        mgr.installAvatar(avatar);
+        expect(mgr.isInstalled(avatar.id)).toBe(true);
+        // allItems count unchanged (avatar was already there)
+        expect(mgr.allItems.length).toBe(withSource);
+
+        // 4. Remove source
+        mgr.removeSource(TEST_SOURCE.catalogUrl);
+        expect(mgr.allItems.length).toBe(BUILTIN_CATALOG.length);
+        expect(mgr.isInstalled(avatar.id)).toBe(false);
+
+        // 5. Re-add source
+        mgr.addCustomSource({ ...TEST_SOURCE, addedAt: Date.now() });
+        await mgr.loadCatalog();
+        expect(mgr.allItems.length).toBe(withSource);
+
+        // 6. Avatar should be browsable again but not installed
+        const refound = mgr.allItems.find((a) => a.sourceId === TEST_SOURCE.id && a.name === avatar.name);
+        expect(refound).toBeDefined();
+        expect(mgr.isInstalled(refound.id)).toBe(false);
+    });
+
+    test('multiple sources should not interfere with each other', async () => {
+        const SOURCE_2 = {
+            ...TEST_SOURCE,
+            id: 'custom-second-source-test',
+            name: 'Second Source',
+            catalogUrl: 'https://example.com/second-catalog.json',
+        };
+
+        mgr.addCustomSource(TEST_SOURCE);
+        mgr.addCustomSource(SOURCE_2);
+        await mgr.loadCatalog();
+
+        // Both sources merged
+        const fromFirst = mgr.allItems.filter((a) => a.sourceId === TEST_SOURCE.id);
+        const fromSecond = mgr.allItems.filter((a) => a.sourceId === SOURCE_2.id);
+        expect(fromFirst.length).toBe(MOCK_CUSTOM_CATALOG.length);
+        expect(fromSecond.length).toBe(MOCK_CUSTOM_CATALOG.length);
+
+        // Remove only first source
+        mgr.removeSource(TEST_SOURCE.catalogUrl);
+        expect(mgr.allItems.filter((a) => a.sourceId === TEST_SOURCE.id).length).toBe(0);
+        expect(mgr.allItems.filter((a) => a.sourceId === SOURCE_2.id).length).toBe(MOCK_CUSTOM_CATALOG.length);
+
+        // Remove second source
+        mgr.removeSource(SOURCE_2.catalogUrl);
+        expect(mgr.allItems.length).toBe(BUILTIN_CATALOG.length);
+    });
 });

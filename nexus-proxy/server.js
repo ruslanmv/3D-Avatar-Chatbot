@@ -161,6 +161,8 @@ const AVATAR_PROXY_HOSTS = [
     'avatars.yourfriend.online',
     'vrm-avatar-catalog.cloud-data.workers.dev',
     'homepilotai.github.io',
+    's3.amazonaws.com',
+    'amazonaws.com',
 ];
 
 function isAllowedAvatarHost(urlStr) {
@@ -297,6 +299,88 @@ app.post('/api/rpm-guest', async (req, res) => {
         console.error('[rpm-guest] error:', err);
         return res.status(500).json({ error: err?.message || String(err) });
     }
+});
+
+// -----------------------------
+// VRoid Hub API Proxy (bypasses CORS for hub.vroid.com API)
+// GET  /api/vroid-hub?action=list|search|account|...  (requires Authorization header)
+// POST /api/vroid-hub  { action: 'token', params: {...} }
+// -----------------------------
+const VROID_API = 'https://hub.vroid.com';
+const VROID_API_VERSION = '11';
+
+app.get('/api/vroid-hub', async (req, res) => {
+    const action = req.query.action;
+    const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+
+    if (!token) return res.status(401).json({ error: 'Missing Authorization header' });
+
+    const vroidHeaders = {
+        'X-Api-Version': VROID_API_VERSION,
+        Authorization: `Bearer ${token}`,
+    };
+
+    try {
+        let apiPath;
+        if (action === 'account') {
+            apiPath = '/api/account';
+        } else if (action === 'staff_picks') {
+            const count = req.query.count || '50';
+            apiPath = `/api/staff_picks?count=${count}${req.query.max_id ? `&max_id=${req.query.max_id}` : ''}`;
+        } else if (action === 'list') {
+            const count = req.query.count || '50';
+            apiPath = `/api/account/character_models?count=${count}${req.query.max_id ? `&max_id=${req.query.max_id}` : ''}`;
+        } else if (action === 'hearts') {
+            const count = req.query.count || '50';
+            apiPath = `/api/hearts?count=${count}&is_downloadable=true${req.query.application_id ? `&application_id=${req.query.application_id}` : ''}${req.query.max_id ? `&max_id=${req.query.max_id}` : ''}`;
+        } else if (action === 'search') {
+            if (!req.query.keyword) return res.status(400).json({ error: 'Missing keyword' });
+            apiPath = `/api/search/character_models?keyword=${encodeURIComponent(req.query.keyword)}&count=${req.query.count || '50'}&is_downloadable=true`;
+        } else if (action === 'download_license') {
+            if (!req.query.character_model_id) return res.status(400).json({ error: 'Missing character_model_id' });
+            const dlRes = await fetch(`${VROID_API}/api/download_licenses`, {
+                method: 'POST',
+                headers: { ...vroidHeaders, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ character_model_id: req.query.character_model_id }),
+            });
+            return res.status(dlRes.status).json(await dlRes.json());
+        } else if (action === 'download') {
+            if (!req.query.license_id) return res.status(400).json({ error: 'Missing license_id' });
+            const dlRes = await fetch(`${VROID_API}/api/download_licenses/${req.query.license_id}/download`, {
+                headers: vroidHeaders,
+                redirect: 'manual',
+            });
+            if (dlRes.status === 302 || dlRes.status === 301) {
+                return res.json({ download_url: dlRes.headers.get('location') });
+            }
+            return res.status(dlRes.status).json(await dlRes.json().catch(() => ({})));
+        } else {
+            return res.status(400).json({ error: 'Unknown action' });
+        }
+
+        const upstream = await fetch(`${VROID_API}${apiPath}`, { headers: vroidHeaders });
+        return res.status(upstream.status).json(await upstream.json());
+    } catch (err) {
+        console.error('[vroid-hub] error:', err);
+        return res.status(500).json({ error: err?.message || String(err) });
+    }
+});
+
+app.post('/api/vroid-hub', async (req, res) => {
+    const { action, params } = req.body || {};
+    if (action === 'token' && params) {
+        try {
+            const tokenRes = await fetch(`${VROID_API}/oauth/token`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Api-Version': VROID_API_VERSION },
+                body: new URLSearchParams(params).toString(),
+            });
+            return res.status(tokenRes.status).json(await tokenRes.json());
+        } catch (err) {
+            return res.status(500).json({ error: err?.message || String(err) });
+        }
+    }
+    return res.status(400).json({ error: 'Unknown POST action' });
 });
 
 // SPA fallback: serve index.html for unknown GET routes
