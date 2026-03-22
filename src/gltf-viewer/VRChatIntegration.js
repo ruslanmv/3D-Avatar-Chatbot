@@ -62,9 +62,21 @@ export class VRChatIntegration {
             // Wire up callbacks
             this.setupCallbacks();
 
-            // Register UI interactables with VR controllers
+            // Register UI interactables with VR controllers.
+            // Full list is stored for reference; the active (raycastable) subset
+            // is updated immediately and on every mode change — following the
+            // Meta Interaction SDK pattern where InteractableGroups dynamically
+            // add/remove members from the pointer's candidate set.
             const interactables = this.vrChatPanel.getInteractables();
             this.vrControllers.registerUIInteractables(interactables);
+
+            // Initialize active subset to current mode (chat on startup)
+            this.vrControllers.updateActiveUI(this.vrChatPanel.getActiveInteractables());
+
+            // Re-filter interactables whenever the panel mode changes
+            this.vrChatPanel.onModeChanged = () => {
+                this.vrControllers.updateActiveUI(this.vrChatPanel.getActiveInteractables());
+            };
 
             // Set up hover effects
             interactables.forEach((mesh) => {
