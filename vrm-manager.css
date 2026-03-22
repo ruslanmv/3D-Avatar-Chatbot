@@ -1431,6 +1431,7 @@ select optgroup {
 .vm-preview-body {
     display: flex;
     gap: 20px;
+    overflow: hidden;
 }
 
 .vm-preview-left {

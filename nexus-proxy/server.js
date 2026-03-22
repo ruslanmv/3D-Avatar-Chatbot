@@ -343,10 +343,28 @@ app.get('/api/vroid-hub', async (req, res) => {
             apiPath = `/api/account/character_models?count=${count}${req.query.max_id ? `&max_id=${req.query.max_id}` : ''}`;
         } else if (action === 'hearts') {
             const count = req.query.count || '50';
-            apiPath = `/api/hearts?count=${count}&is_downloadable=true${req.query.application_id ? `&application_id=${req.query.application_id}` : ''}${req.query.max_id ? `&max_id=${req.query.max_id}` : ''}`;
+            let p = `/api/hearts?count=${count}`;
+            if (req.query.application_id) p += `&application_id=${req.query.application_id}`;
+            if (req.query.max_id) p += `&max_id=${req.query.max_id}`;
+            apiPath = p;
         } else if (action === 'search') {
             if (!req.query.keyword) return res.status(400).json({ error: 'Missing keyword' });
-            apiPath = `/api/search/character_models?keyword=${encodeURIComponent(req.query.keyword)}&count=${req.query.count || '50'}&is_downloadable=true`;
+            let p = `/api/search/character_models?keyword=${encodeURIComponent(req.query.keyword)}&count=${req.query.count || '50'}`;
+            // Pass through official VRoid Hub search filter params
+            const searchFilters = ['is_downloadable', 'characterization_allowed_user', 'sort'];
+            searchFilters.forEach((f) => {
+                if (req.query[f]) p += `&${f}=${encodeURIComponent(req.query[f])}`;
+            });
+            // Cursor-based pagination: search_after[] from _links.next.href
+            if (req.query['search_after[]']) {
+                const sa = Array.isArray(req.query['search_after[]'])
+                    ? req.query['search_after[]']
+                    : [req.query['search_after[]']];
+                sa.forEach((v) => {
+                    p += `&search_after[]=${encodeURIComponent(v)}`;
+                });
+            }
+            apiPath = p;
         } else if (action === 'download_license') {
             if (!req.query.character_model_id) return res.status(400).json({ error: 'Missing character_model_id' });
             const dlRes = await fetch(`${VROID_API}/api/download_licenses`, {
