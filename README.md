@@ -129,13 +129,14 @@ npm run validate     # Lint + format + tests
 
 Open **Settings** in the app and select your AI provider:
 
-| Provider   | API Key Format   | Get Key                                                                  |
-| ---------- | ---------------- | ------------------------------------------------------------------------ |
-| OpenAI     | `sk-proj-...`    | [platform.openai.com](https://platform.openai.com/api-keys)              |
-| Claude     | `sk-ant-...`     | [console.anthropic.com](https://console.anthropic.com/settings/keys)     |
-| Watsonx    | IAM key          | [cloud.ibm.com](https://cloud.ibm.com)                                   |
-| Ollama     | None (local)     | [ollama.ai](https://ollama.ai)                                           |
-| OllaBridge | `sk-ollabridge-` | [github.com/ruslanmv/ollabridge](https://github.com/ruslanmv/ollabridge) |
+| Provider         | API Key Format   | Get Key                                                                                                                                                                     |
+| ---------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OpenAI           | `sk-proj-...`    | [platform.openai.com](https://platform.openai.com/api-keys)                                                                                                                 |
+| Claude           | `sk-ant-...`     | [console.anthropic.com](https://console.anthropic.com/settings/keys)                                                                                                        |
+| Watsonx          | IAM key          | [cloud.ibm.com](https://cloud.ibm.com)                                                                                                                                      |
+| Ollama           | None (local)     | [ollama.ai](https://ollama.ai)                                                                                                                                              |
+| OllaBridge       | `sk-ollabridge-` | [github.com/ruslanmv/ollabridge](https://github.com/ruslanmv/ollabridge)                                                                                                    |
+| OllaBridge Cloud | Device token     | [github.com/ruslanmv/ollabridge-cloud](https://github.com/ruslanmv/ollabridge-cloud) — pair your PC once, then point the Avatar to the Cloud URL; no port forwarding needed |
 
 Click **Fetch Models** after entering your key to discover available models.
 Keys are validated automatically before saving.

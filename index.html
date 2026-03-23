@@ -2159,9 +2159,16 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
                     document.getElementById('settings-btn')?.click();
                 });
 
-                // VR/AR mode
+                // VR/AR mode — handled by MobileDrawerWiring.js on mobile.
+                // This handler only runs on desktop/headset as a fallback.
                 const drawerVrBtn = document.getElementById('drawer-vr-btn');
                 drawerVrBtn?.addEventListener('click', () => {
+                    const ua = navigator.userAgent || '';
+                    const isHeadset = /OculusBrowser|Quest|Vive|Pico|Wolvic/i.test(ua);
+                    const isPhone = /Android|iPhone|iPod|iPad/i.test(ua) && !isHeadset;
+                    // On phones, MobileDrawerWiring.js handles the click (AR only).
+                    if (isPhone) return;
+
                     closeDrawer();
                     const vrBtn =
                         document.getElementById('vr-button') ||
@@ -2583,6 +2590,9 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <script defer src="src/AvatarPicker.js"></script>
 
         <script defer src="src/main.js"></script>
+
+        <!-- AR Coaching Overlay (Google-style onboarding animation) -->
+        <script defer src="src/gltf-viewer/ARCoachingOverlay.js"></script>
 
         <!-- Spicy Gate (adult content toggle — load before everything) -->
         <script defer src="src/SpicyGate.js"></script>
