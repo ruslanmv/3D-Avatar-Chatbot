@@ -495,6 +495,7 @@ async function loadAvatarManifest() {
                 file: x.file,
                 url: blobMap[x.file] || `${avatarBasePath}/${x.file}`,
                 format: x.format || (x.file.endsWith('.vrm') ? 'vrm' : 'glb'),
+                vroidModelId: x.vroidModelId || null,
             }));
 
         // Restore stale blob: URLs from IndexedDB.
@@ -505,7 +506,11 @@ async function loadAvatarManifest() {
         for (const item of avatarItems) {
             if (item.url && item.url.startsWith('blob:')) {
                 const fileKey = 'file:' + item.file;
-                const cached = await loadBlobFromVRMCache(fileKey);
+                let cached = await loadBlobFromVRMCache(fileKey);
+                // Also try VRoid Hub cache key if this is a VRoid Hub model
+                if (!cached && item.vroidModelId) {
+                    cached = await loadBlobFromVRMCache('vroid-hub-' + item.vroidModelId);
+                }
                 if (cached) {
                     item.url = cached;
                     refreshedBlobMap[item.file] = cached;
@@ -921,6 +926,11 @@ function loadAvatar(url, source) {
                                 if (res.ok) {
                                     const blob = await res.blob();
                                     blobUrl = URL.createObjectURL(blob);
+                                    // Cache the blob so future reloads don't need another download license
+                                    if (VRMManager.cacheBlob) {
+                                        const cacheId = `vroid-hub-${modelId}`;
+                                        VRMManager.cacheBlob(cacheId, blob, { format: 'vrm' }).catch(() => {});
+                                    }
                                 }
                             }
                         } catch (e) {
