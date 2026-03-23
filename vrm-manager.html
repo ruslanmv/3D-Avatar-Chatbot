@@ -168,6 +168,19 @@
                         <option value="connected">Connected (API)</option>
                         <option value="manual">Manual (Download)</option>
                     </select>
+                    <select id="vm-filter-rating" title="Filter by content rating">
+                        <option value="">All Ages</option>
+                        <option value="r15">R-15</option>
+                        <option value="r18">R-18 (18+)</option>
+                    </select>
+                    <button
+                        id="vm-filter-cou-toggle"
+                        class="vm-icon-btn vm-icon-btn-sm"
+                        title="Conditions of use filters"
+                        style="font-size: 14px; min-width: 28px"
+                    >
+                        ⚖️
+                    </button>
                     <button id="vm-refresh-btn" class="vm-icon-btn vm-icon-btn-sm" title="Refresh catalog">
                         <svg
                             width="16"
@@ -182,6 +195,67 @@
                             <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
                         </svg>
                     </button>
+                </div>
+                <!-- Conditions of Use filter panel (toggled by ⚖️ button) -->
+                <div id="vm-cou-filters" class="vm-cou-filters" style="display: none">
+                    <div class="vm-cou-row">
+                        <select id="vm-cou-third-party" title="Third-party avatar use">
+                            <option value="">Third-party Use: Any</option>
+                            <option value="everyone">Allow</option>
+                        </select>
+                        <select id="vm-cou-download" title="Download permission">
+                            <option value="">Download: Any</option>
+                            <option value="true">Allow</option>
+                        </select>
+                        <select id="vm-cou-sexual" title="Sexual expression">
+                            <option value="">Sexual Acts: Any</option>
+                            <option value="allow">Allow</option>
+                            <option value="disallow">Disallow</option>
+                        </select>
+                        <select id="vm-cou-violent" title="Violent expression">
+                            <option value="">Violent Acts: Any</option>
+                            <option value="allow">Allow</option>
+                            <option value="disallow">Disallow</option>
+                        </select>
+                    </div>
+                    <div class="vm-cou-row">
+                        <select id="vm-cou-commercial" title="Corporate commercial use">
+                            <option value="">Corporate Use: Any</option>
+                            <option value="allow">Allow</option>
+                            <option value="disallow">Disallow</option>
+                        </select>
+                        <select id="vm-cou-personal-commercial" title="Individual commercial use">
+                            <option value="">Individual Commercial: Any</option>
+                            <option value="allow">Allow</option>
+                            <option value="profit">Profit OK</option>
+                            <option value="disallow">Disallow</option>
+                        </select>
+                        <select id="vm-cou-redistribution" title="Redistribution">
+                            <option value="">Redistribution: Any</option>
+                            <option value="allow">Allow</option>
+                            <option value="disallow">Disallow</option>
+                        </select>
+                        <select id="vm-cou-modification" title="Alterations">
+                            <option value="">Alterations: Any</option>
+                            <option value="allow">Allow</option>
+                            <option value="disallow">Disallow</option>
+                        </select>
+                    </div>
+                    <div class="vm-cou-row">
+                        <select id="vm-cou-credit" title="Attribution required">
+                            <option value="">Attribution: Any</option>
+                            <option value="unnecessary">Not Required</option>
+                            <option value="necessary">Required</option>
+                        </select>
+                        <button
+                            id="vm-cou-clear"
+                            class="vm-btn-sm"
+                            title="Clear all conditions filters"
+                            style="margin-left: auto; font-size: 11px; padding: 2px 8px"
+                        >
+                            Clear
+                        </button>
+                    </div>
                 </div>
                 <!-- Format legend (subtle, inline) -->
                 <div class="vm-legend-bar">
