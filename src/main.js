@@ -497,6 +497,34 @@ async function loadAvatarManifest() {
                 format: x.format || (x.file.endsWith('.vrm') ? 'vrm' : 'glb'),
             }));
 
+        // Restore stale blob: URLs from IndexedDB.
+        // blob: URLs expire when the page is unloaded, so on a fresh page load
+        // any VRM Manager downloads will have dead blob URLs.  Re-create them
+        // from the cached binary stored in IndexedDB during install.
+        const refreshedBlobMap = {};
+        for (const item of avatarItems) {
+            if (item.url && item.url.startsWith('blob:')) {
+                const fileKey = 'file:' + item.file;
+                const cached = await loadBlobFromVRMCache(fileKey);
+                if (cached) {
+                    item.url = cached;
+                    refreshedBlobMap[item.file] = cached;
+                } else {
+                    // Blob gone from IndexedDB — fall back to server path so
+                    // it doesn't 404 on a dead blob: URL
+                    item.url = `${avatarBasePath}/${item.file}`;
+                }
+            }
+        }
+        // Update blobMap in localStorage with fresh URLs so the rest of the
+        // session doesn't hit dead blob: references
+        if (Object.keys(refreshedBlobMap).length > 0) {
+            const updated = { ...blobMap, ...refreshedBlobMap };
+            try {
+                localStorage.setItem('vrm_manager_blob_urls', JSON.stringify(updated));
+            } catch (_) {}
+        }
+
         populateAvatarSelect(avatarItems);
         window.__AVATAR_ITEMS__ = avatarItems; // expose to module bridge
 
@@ -512,13 +540,22 @@ async function loadAvatarManifest() {
 
                 // If not found in manifest, add it dynamically (e.g. downloaded via VRM Manager)
                 if (idx < 0 && selection.url) {
-                    // For downloaded avatars, blob URLs expire on page reload.
-                    // Try to restore from VRM Manager's IndexedDB cache.
+                    // For downloaded avatars, blob URLs expire on page reload
+                    // and vroid-hub: scheme URLs can't be loaded directly.
+                    // Restore from VRM Manager's IndexedDB cache.
                     let resolvedUrl = selection.url;
-                    if (resolvedUrl.startsWith('blob:')) {
+                    if (resolvedUrl.startsWith('blob:') || resolvedUrl.startsWith('vroid-hub:')) {
                         const fileKey = 'file:' + (selection.file || selection.id);
                         const cached = await loadBlobFromVRMCache(fileKey);
-                        if (cached) resolvedUrl = cached;
+                        if (cached) {
+                            resolvedUrl = cached;
+                        } else if (resolvedUrl.startsWith('vroid-hub:')) {
+                            // No cache — try the catalog item cache key
+                            const modelId = resolvedUrl.replace('vroid-hub:', '');
+                            const cacheId = 'vroid-hub-' + modelId;
+                            const cached2 = await loadBlobFromVRMCache(cacheId);
+                            if (cached2) resolvedUrl = cached2;
+                        }
                     }
 
                     avatarItems.push({
@@ -533,11 +570,15 @@ async function loadAvatarManifest() {
                 }
 
                 if (idx >= 0) {
-                    // For existing manifest items with stale blob URLs, try IndexedDB restore
+                    // For existing manifest items with stale blob/vroid-hub URLs, try IndexedDB restore
                     const item = avatarItems[idx];
-                    if (item.url && item.url.startsWith('blob:')) {
+                    if (item.url && (item.url.startsWith('blob:') || item.url.startsWith('vroid-hub:'))) {
                         const fileKey = 'file:' + item.file;
-                        const cached = await loadBlobFromVRMCache(fileKey);
+                        let cached = await loadBlobFromVRMCache(fileKey);
+                        if (!cached && item.url.startsWith('vroid-hub:')) {
+                            const modelId = item.url.replace('vroid-hub:', '');
+                            cached = await loadBlobFromVRMCache('vroid-hub-' + modelId);
+                        }
                         if (cached) item.url = cached;
                     }
 
@@ -847,7 +888,54 @@ function loadAvatar(url, source) {
         (async () => {
             try {
                 await waitForViewerEngineReady(15000);
-                await window.NEXUS_VIEWER.loadAvatar(url);
+
+                // Resolve vroid-hub: custom scheme to a real blob URL.
+                // Downloaded VRoid Hub models are cached in IndexedDB; fall
+                // back to the download-license API if no cache entry exists.
+                let resolvedUrl = url;
+                if (typeof url === 'string' && url.startsWith('vroid-hub:')) {
+                    const modelId = url.replace('vroid-hub:', '');
+                    let blobUrl = null;
+
+                    // 1. Try IndexedDB cache (model was already downloaded)
+                    if (typeof VRMManager !== 'undefined' && VRMManager.getCachedBlob) {
+                        // The cache key is the catalog item id, not the raw URL.
+                        // Installed avatars use id "vroid-hub-<modelId>".
+                        const cacheId = `vroid-hub-${modelId}`;
+                        try {
+                            const cached = await VRMManager.getCachedBlob(cacheId);
+                            if (cached && cached.blob) {
+                                blobUrl = URL.createObjectURL(cached.blob);
+                            }
+                        } catch (_) {
+                            /* cache miss */
+                        }
+                    }
+
+                    // 2. Fall back to download license API
+                    if (!blobUrl && typeof VRMManager !== 'undefined' && VRMManager.getVroidHubDownloadUrl) {
+                        try {
+                            const realUrl = await VRMManager.getVroidHubDownloadUrl(modelId);
+                            if (realUrl) {
+                                const res = await fetch(`/api/avatar-proxy?url=${encodeURIComponent(realUrl)}`);
+                                if (res.ok) {
+                                    const blob = await res.blob();
+                                    blobUrl = URL.createObjectURL(blob);
+                                }
+                            }
+                        } catch (e) {
+                            console.warn('[Main] VRoid Hub download-license fallback failed:', e.message);
+                        }
+                    }
+
+                    if (blobUrl) {
+                        resolvedUrl = blobUrl;
+                    } else {
+                        throw new Error('Could not resolve VRoid Hub model. Try re-installing it from the catalog.');
+                    }
+                }
+
+                await window.NEXUS_VIEWER.loadAvatar(resolvedUrl);
 
                 // Sync saved pose settings to the live viewport immediately.
                 // Without this, localStorage settings only take effect on "Save".

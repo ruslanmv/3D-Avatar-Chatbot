@@ -7,6 +7,7 @@
  * Endpoints:
  *   GET  /api/vroid-hub?action=list&count=50       — list character models (staff picks)
  *   GET  /api/vroid-hub?action=search&keyword=...   — search character models
+ *   GET  /api/vroid-hub?action=detail&character_model_id=...  — get model details by ID
  *   GET  /api/vroid-hub?action=account              — verify token (get account info)
  *   POST /api/vroid-hub  { action: 'token', ... }   — exchange/refresh OAuth token
  *
@@ -146,7 +147,18 @@ export default async function handler(req) {
             if (!keyword) return jsonResponse({ error: 'Missing keyword' }, 400);
             let searchPath = `/api/search/character_models?keyword=${encodeURIComponent(keyword)}&count=${count}`;
             // Pass through official VRoid Hub search filter params
-            for (const f of ['is_downloadable', 'characterization_allowed_user', 'sort']) {
+            for (const f of [
+                'is_downloadable',
+                'characterization_allowed_user',
+                'sort',
+                'violent_expression',
+                'sexual_expression',
+                'corporate_commercial_use',
+                'personal_commercial_use',
+                'redistribution',
+                'modification',
+                'credit',
+            ]) {
                 const v = searchParams.get(f);
                 if (v) searchPath += `&${f}=${encodeURIComponent(v)}`;
             }
@@ -157,6 +169,30 @@ export default async function handler(req) {
             }
             const res = await vroidFetch(searchPath, token);
             const data = await res.json();
+            return jsonResponse(data, res.status);
+        }
+
+        if (action === 'detail') {
+            const modelId = searchParams.get('character_model_id');
+            if (!modelId) return jsonResponse({ error: 'Missing character_model_id' }, 400);
+            const res = await vroidFetch(`/api/character_models/${encodeURIComponent(modelId)}`, token);
+            const data = await res.json();
+            return jsonResponse(data, res.status);
+        }
+
+        if (action === 'heart') {
+            const modelId = searchParams.get('character_model_id');
+            if (!modelId) return jsonResponse({ error: 'Missing character_model_id' }, 400);
+            const res = await vroidFetch(`/api/hearts`, token, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ character_model_id: modelId }),
+            });
+            // 200 = hearted, 409 = already hearted (both are fine)
+            if (res.ok || res.status === 409) {
+                return jsonResponse({ success: true }, 200);
+            }
+            const data = await res.json().catch(() => ({}));
             return jsonResponse(data, res.status);
         }
 
@@ -189,7 +225,9 @@ export default async function handler(req) {
         }
 
         return jsonResponse(
-            { error: 'Unknown action. Use: account, list, hearts, staff_picks, search, download_license, download' },
+            {
+                error: 'Unknown action. Use: account, list, hearts, staff_picks, search, detail, heart, download_license, download',
+            },
             400
         );
     } catch (err) {
