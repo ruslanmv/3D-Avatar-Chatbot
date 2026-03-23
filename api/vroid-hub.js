@@ -36,12 +36,21 @@ async function vroidFetch(path, token, options = {}) {
     };
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const res = await fetch(`${VROID_API}${path}`, {
+    const fetchOpts = {
         method: options.method || 'GET',
         headers,
         body: options.body,
-    });
-    return res;
+        redirect: options.redirect,
+    };
+
+    // Retry on 429 with exponential backoff (up to 3 attempts)
+    for (let attempt = 0; attempt < 3; attempt++) {
+        const res = await fetch(`${VROID_API}${path}`, fetchOpts);
+        if (res.status !== 429 || attempt === 2) return res;
+        const retryAfter = parseInt(res.headers.get('retry-after') || '0', 10);
+        const delayMs = retryAfter > 0 ? retryAfter * 1000 : (attempt + 1) * 1000;
+        await new Promise((r) => setTimeout(r, delayMs));
+    }
 }
 
 export default async function handler(req) {
