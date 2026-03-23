@@ -1880,6 +1880,62 @@ select optgroup {
     height: 32px;
 }
 
+/* ── Conditions of Use filter panel ──────────── */
+.vm-cou-filters {
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    border: 1px solid var(--vm-border);
+    border-radius: var(--vm-radius-sm);
+    background: rgba(5, 8, 16, 0.6);
+    animation: vm-slide-in 0.2s ease;
+}
+.vm-cou-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+}
+.vm-cou-row:last-child {
+    margin-bottom: 0;
+}
+.vm-cou-filters select {
+    padding: 5px 10px;
+    border-radius: var(--vm-radius-sm);
+    border: 1px solid var(--vm-border);
+    background: rgba(5, 8, 16, 0.8);
+    color: var(--vm-text);
+    font-family: var(--vm-font-body);
+    font-size: 12px;
+    outline: none;
+    transition:
+        border-color 0.2s,
+        box-shadow 0.2s;
+    flex: 1 1 auto;
+    min-width: 130px;
+    max-width: 200px;
+}
+.vm-cou-filters select:focus {
+    border-color: var(--vm-primary);
+    box-shadow: 0 0 12px rgba(0, 229, 255, 0.15);
+}
+.vm-btn-sm {
+    padding: 4px 10px;
+    border-radius: var(--vm-radius-sm);
+    border: 1px solid var(--vm-border);
+    background: transparent;
+    color: var(--vm-text-muted);
+    font-family: var(--vm-font-body);
+    cursor: pointer;
+    transition:
+        border-color 0.2s,
+        color 0.2s;
+}
+.vm-btn-sm:hover {
+    border-color: var(--vm-primary);
+    color: var(--vm-text);
+}
+
 /* ── Moved legend bar to inside catalog tab ──────────── */
 
 .vm-legend-bar {

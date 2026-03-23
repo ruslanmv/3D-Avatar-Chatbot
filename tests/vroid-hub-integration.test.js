@@ -257,7 +257,7 @@ function createVroidManager() {
                 modelData.character_model_version?.id || modelData.latest_character_model_version?.id || '';
             const characterId = modelData.character?.id || m.heart?.character_model?.character?.id || modelData.id;
             const vroidPageUrl = `https://hub.vroid.com/en/characters/${characterId}/models/${modelData.id}`;
-            const canInstall = userLiked && isDownloadable;
+            const canInstall = isDownloadable;
 
             const lic = modelData.license || {};
             const conditionsOfUse = {
@@ -272,8 +272,7 @@ function createVroidManager() {
             };
 
             let desc = `By ${creator} on VRoid Hub.`;
-            if (!isDownloadable) desc += ' See on VRoid Hub to enable download.';
-            else if (!userLiked) desc += ' See on VRoid Hub to install.';
+            if (!isDownloadable) desc += ' Downloads not enabled for this model.';
 
             return {
                 id: `vroid-hub-${modelData.id || 'unknown'}`,
@@ -474,27 +473,26 @@ describe('VRoid Hub — Character Model Mapping', () => {
     test('should map staff pick model to catalog format', () => {
         const model = MOCK_STAFF_PICKS_RESPONSE.data[0];
 
-        // Staff pick (not liked) — browse only
+        // Staff pick (not liked but downloadable) — can install via download_license API
         const browsed = mgr._mapVroidModel(model, false);
         expect(browsed.id).toBe('vroid-hub-model-001');
         expect(browsed.name).toBe('Cute Anime Girl');
         expect(browsed.source).toBe('VRoid Hub');
         expect(browsed.format).toBe('vrm');
-        expect(browsed.isDownloadable).toBe(false); // can't install until liked
+        expect(browsed.isDownloadable).toBe(true); // downloadable models can be installed
         expect(browsed.userLiked).toBe(false);
-        expect(browsed.url).toContain('https://hub.vroid.com'); // web page link
-        expect(browsed.desc).toContain('See on VRoid Hub to install');
+        expect(browsed.url).toBe('vroid-hub:model-001'); // vroid-hub: scheme (downloadable)
+        expect(browsed.preview).toBe('https://vroid-hub.pximg.net/thumb1.png');
+        expect(browsed.features).toEqual(['lipsync', 'emotions', 'gaze', 'blink']);
+        expect(browsed.vroidModelId).toBe('model-001');
+        expect(browsed.tags).toContain('vroid-hub');
+        expect(browsed.tags).toContain('anime');
 
-        // Same model as liked (from hearts) — can install
+        // Same model as liked — same result (already downloadable)
         const liked = mgr._mapVroidModel(model, true);
         expect(liked.isDownloadable).toBe(true);
         expect(liked.userLiked).toBe(true);
-        expect(liked.url).toBe('vroid-hub:model-001'); // vroid-hub: scheme
-        expect(liked.preview).toBe('https://vroid-hub.pximg.net/thumb1.png');
-        expect(liked.features).toEqual(['lipsync', 'emotions', 'gaze', 'blink']);
-        expect(liked.vroidModelId).toBe('model-001');
-        expect(liked.tags).toContain('vroid-hub');
-        expect(liked.tags).toContain('anime');
+        expect(liked.url).toBe('vroid-hub:model-001');
     });
 
     test('should set URL to web page for non-downloadable models', () => {
@@ -1008,14 +1006,14 @@ describe('VRoid Hub — vroid-hub: URL Scheme Resolution', () => {
             character_model_version: { id: 'v1', images: [] },
             tags: [],
         };
-        // Only liked + downloadable gets vroid-hub: URL
+        // Downloadable models get vroid-hub: URL (no heart required per official API)
         const mapped = mgr._mapVroidModel(model, true);
         expect(mapped.url).toBe('vroid-hub:12303502');
         expect(mapped.vroidModelId).toBe('12303502');
 
-        // Not liked → web URL even if is_downloadable
+        // Not liked but downloadable → still gets vroid-hub: URL (download_license uses default scope)
         const notLiked = mgr._mapVroidModel(model, false);
-        expect(notLiked.url).toContain('https://hub.vroid.com');
+        expect(notLiked.url).toBe('vroid-hub:12303502');
     });
 
     test('_mapVroidModel should produce web URL for non-downloadable models', () => {
@@ -1125,7 +1123,7 @@ describe('VRoid Hub — Full Credential Flow (Real Credentials Format)', () => {
         expect(avatars[0].name).toBe('Community Avatar');
         expect(avatars[0].isDownloadable).toBe(true);
 
-        // Step 2: Resolve download URL
+        // Step 2: Resolve download URL (license flow)
         mockFetchResponses['/api/vroid-hub?action=download_license'] = () => ({
             ok: true,
             status: 200,
@@ -1297,7 +1295,7 @@ describe('VRoid Hub — Fetch Top 10 Models with Thumbnails', () => {
         });
     });
 
-    test('non-downloadable models should show description with Like hint', () => {
+    test('non-downloadable models should show description with download hint', () => {
         const model = {
             id: 'view-only',
             name: 'View Only Model',
@@ -1307,7 +1305,7 @@ describe('VRoid Hub — Fetch Top 10 Models with Thumbnails', () => {
             tags: [],
         };
         const mapped = mgr._mapVroidModel(model);
-        expect(mapped.desc).toContain('See on VRoid Hub to enable download');
+        expect(mapped.desc).toContain('Downloads not enabled');
         expect(mapped.isDownloadable).toBe(false);
     });
 
