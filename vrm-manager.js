@@ -1449,16 +1449,27 @@ const VRMManager = {
 
             // [2+] Discovery searches — broad keyword queries for variety
             // Include any active COU filters so the API pre-filters results
+            // Batch discovery keywords to avoid VRoid Hub 429 rate limits.
+            // Send at most BATCH_SIZE concurrent requests, then wait briefly.
             const discoveryFilters = this._buildVroidSearchFilters();
-            for (const kw of DISCOVERY_KEYWORDS) {
-                fetchers.push(
-                    fetch(
-                        `/api/vroid-hub?action=search&keyword=${encodeURIComponent(kw)}&count=100${discoveryFilters}`,
-                        {
-                            headers: authHeaders,
-                        }
-                    )
-                );
+            const BATCH_SIZE = 5;
+            const BATCH_DELAY_MS = 300;
+            for (let b = 0; b < DISCOVERY_KEYWORDS.length; b += BATCH_SIZE) {
+                const batch = DISCOVERY_KEYWORDS.slice(b, b + BATCH_SIZE);
+                for (const kw of batch) {
+                    fetchers.push(
+                        fetch(
+                            `/api/vroid-hub?action=search&keyword=${encodeURIComponent(kw)}&count=100${discoveryFilters}`,
+                            {
+                                headers: authHeaders,
+                            }
+                        )
+                    );
+                }
+                // Small delay between batches to stay under rate limits
+                if (b + BATCH_SIZE < DISCOVERY_KEYWORDS.length) {
+                    await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
+                }
             }
 
             const results = await Promise.allSettled(fetchers);
@@ -1538,13 +1549,25 @@ const VRMManager = {
                 const remaining = activeCursors.filter((c) => !c.exhausted);
                 if (remaining.length === 0) break;
 
-                const pageFetchers = remaining.map((cursor) => {
-                    const saParams = cursor.searchAfter.map((v) => `search_after[]=${encodeURIComponent(v)}`).join('&');
-                    return fetch(
-                        `/api/vroid-hub?action=search&keyword=${encodeURIComponent(cursor.keyword)}&count=100&${saParams}`,
-                        { headers: authHeaders }
-                    );
-                });
+                // Batch pagination requests to avoid 429 rate limits
+                const pageFetchers = [];
+                for (let b = 0; b < remaining.length; b += BATCH_SIZE) {
+                    const batch = remaining.slice(b, b + BATCH_SIZE);
+                    for (const cursor of batch) {
+                        const saParams = cursor.searchAfter
+                            .map((v) => `search_after[]=${encodeURIComponent(v)}`)
+                            .join('&');
+                        pageFetchers.push(
+                            fetch(
+                                `/api/vroid-hub?action=search&keyword=${encodeURIComponent(cursor.keyword)}&count=100&${saParams}`,
+                                { headers: authHeaders }
+                            )
+                        );
+                    }
+                    if (b + BATCH_SIZE < remaining.length) {
+                        await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
+                    }
+                }
 
                 const pageResults = await Promise.allSettled(pageFetchers);
                 let roundNew = 0;
@@ -1624,14 +1647,23 @@ const VRMManager = {
         const authHeaders = { Authorization: `Bearer ${token}` };
 
         try {
-            // Fetch next page for each active cursor in parallel
-            const fetchers = active.map((cursor) => {
-                const saParams = cursor.searchAfter.map((v) => `search_after[]=${encodeURIComponent(v)}`).join('&');
-                return fetch(
-                    `/api/vroid-hub?action=search&keyword=${encodeURIComponent(cursor.keyword)}&count=100&${saParams}`,
-                    { headers: authHeaders }
-                );
-            });
+            // Fetch next page for each active cursor, batched to avoid 429
+            const fetchers = [];
+            for (let b = 0; b < active.length; b += 5) {
+                const batch = active.slice(b, b + 5);
+                for (const cursor of batch) {
+                    const saParams = cursor.searchAfter.map((v) => `search_after[]=${encodeURIComponent(v)}`).join('&');
+                    fetchers.push(
+                        fetch(
+                            `/api/vroid-hub?action=search&keyword=${encodeURIComponent(cursor.keyword)}&count=100&${saParams}`,
+                            { headers: authHeaders }
+                        )
+                    );
+                }
+                if (b + 5 < active.length) {
+                    await new Promise((r) => setTimeout(r, 300));
+                }
+            }
 
             const results = await Promise.allSettled(fetchers);
             const mapped = [];
@@ -2048,10 +2080,18 @@ const VRMManager = {
                 const errCode = errData.error?.code || '';
                 console.warn('[VRM-Manager] VRoid download license error:', licRes.status, errCode);
 
-                if (licRes.status === 403) {
-                    toast(`This model's owner does not allow downloads for this application.`, 'error', 8000);
+                if (licRes.status === 429) {
+                    toast('VRoid Hub rate limit reached. Please wait a moment and try again.', 'error', 8000);
+                } else if (licRes.status === 403) {
+                    toast("This model's owner does not allow downloads for this application.", 'error', 8000);
                 } else if (licRes.status === 404) {
-                    toast(`Model not found on VRoid Hub, or downloads are not enabled.`, 'error', 8000);
+                    toast('Model not found on VRoid Hub, or downloads are not enabled.', 'error', 8000);
+                } else if (licRes.status === 401) {
+                    toast(
+                        'VRoid Hub session expired. Please reconnect your VRoid Hub account in Settings.',
+                        'error',
+                        8000
+                    );
                 }
                 return null;
             }
@@ -3535,6 +3575,8 @@ const VRMManager = {
                 format: item.format,
                 features: item.features || [],
             };
+            // Preserve VRoid Hub model ID so reloads can resolve from IDB cache
+            if (item.vroidModelId) entry.vroidModelId = item.vroidModelId;
             manifest.items.push(entry);
 
             // Store updated manifest and blob URL for the main app to use
