@@ -2562,6 +2562,221 @@ html.is-mobile .status-badge {
 }
 
 /* ============================================
+   AR Coaching Overlay (Google-style onboarding)
+   State classes applied to #ar-dom-overlay:
+     .ar-state-scanning      → show phone animation
+     .ar-state-surface-found → fade phone, show pulse
+     .ar-state-placing       → pulse fades
+     .ar-state-placed        → all coaching hidden
+   ============================================ */
+
+/* Coaching container — centered, fills overlay */
+.ar-coaching {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+/* Illustration group (phone + hint text) */
+.ar-coaching__illustration {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    opacity: 0;
+    transform: translateY(10px);
+    transition:
+        opacity 0.5s ease,
+        transform 0.5s ease;
+}
+
+.ar-coaching__phone-svg {
+    width: 80px;
+    height: auto;
+    animation: ar-coaching-bob 2.4s ease-in-out infinite;
+    filter: drop-shadow(0 4px 12px rgba(0, 229, 255, 0.25));
+}
+
+.ar-coaching__hint {
+    margin: 0;
+    font-family: var(--font-display, 'Orbitron', monospace);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.9);
+    text-align: center;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+    line-height: 1.5;
+}
+
+/* Scanning lines sweep animation */
+.ar-coaching__scan-line {
+    animation: ar-coaching-scan 1.8s ease-in-out infinite;
+}
+.ar-coaching__scan-line--2 {
+    animation-delay: 0.3s;
+}
+.ar-coaching__scan-line--3 {
+    animation-delay: 0.6s;
+}
+
+/* Floating motion dots */
+.ar-coaching__dot {
+    animation: ar-coaching-dot-float 3s ease-in-out infinite;
+}
+.ar-coaching__dot--2 {
+    animation-delay: 1s;
+}
+.ar-coaching__dot--3 {
+    animation-delay: 2s;
+}
+
+/* Downward arrow pulse */
+.ar-coaching__arrow {
+    animation: ar-coaching-arrow-pulse 1.6s ease-in-out infinite;
+}
+
+/* Surface-found pulse ring */
+.ar-coaching__pulse {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 120px;
+    height: 120px;
+    margin: -60px 0 0 -60px;
+    border-radius: 50%;
+    border: 2px solid rgba(0, 229, 255, 0.6);
+    opacity: 0;
+    transform: scale(0.3);
+    transition:
+        opacity 0.4s ease,
+        transform 0.4s ease;
+    pointer-events: none;
+}
+
+/* ── State: SCANNING ── */
+.ar-state-scanning .ar-coaching {
+    opacity: 1;
+}
+.ar-state-scanning .ar-coaching__illustration {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* ── State: SURFACE_FOUND ── */
+.ar-state-surface-found .ar-coaching {
+    opacity: 1;
+}
+.ar-state-surface-found .ar-coaching__illustration {
+    opacity: 0;
+    transform: translateY(-20px);
+}
+.ar-state-surface-found .ar-coaching__pulse {
+    opacity: 1;
+    transform: scale(1);
+    animation: ar-coaching-surface-pulse 1.2s ease-out infinite;
+}
+
+/* ── State: PLACING ── */
+.ar-state-placing .ar-coaching {
+    opacity: 1;
+}
+.ar-state-placing .ar-coaching__illustration {
+    opacity: 0;
+}
+.ar-state-placing .ar-coaching__pulse {
+    opacity: 0.5;
+    transform: scale(1.2);
+    animation: ar-coaching-surface-pulse 0.8s ease-out infinite;
+}
+
+/* ── State: PLACED — coaching fully hidden ── */
+.ar-state-placed .ar-coaching {
+    opacity: 0;
+    transition: opacity 0.6s ease;
+}
+
+/* ── Keyframes ── */
+
+/* Phone bobbing up/down while scanning */
+@keyframes ar-coaching-bob {
+    0%,
+    100% {
+        transform: translateY(0) rotate(-3deg);
+    }
+    50% {
+        transform: translateY(-8px) rotate(3deg);
+    }
+}
+
+/* Scan lines sweeping across screen */
+@keyframes ar-coaching-scan {
+    0% {
+        opacity: 0.2;
+        stroke-dashoffset: 0;
+    }
+    50% {
+        opacity: 0.8;
+        stroke-dashoffset: 14;
+    }
+    100% {
+        opacity: 0.2;
+        stroke-dashoffset: 28;
+    }
+}
+
+/* Floating dots ambient motion */
+@keyframes ar-coaching-dot-float {
+    0%,
+    100% {
+        opacity: 0.3;
+        transform: translate(0, 0);
+    }
+    50% {
+        opacity: 0.7;
+        transform: translate(4px, -6px);
+    }
+}
+
+/* Downward arrow pulsing */
+@keyframes ar-coaching-arrow-pulse {
+    0%,
+    100% {
+        opacity: 0.4;
+        transform: translateY(0);
+    }
+    50% {
+        opacity: 1;
+        transform: translateY(4px);
+    }
+}
+
+/* Surface detection pulse ring expanding */
+@keyframes ar-coaching-surface-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(0, 229, 255, 0.4);
+        transform: scale(0.8);
+    }
+    70% {
+        box-shadow: 0 0 0 20px rgba(0, 229, 255, 0);
+        transform: scale(1.1);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(0, 229, 255, 0);
+        transform: scale(0.8);
+    }
+}
+
+/* ============================================
    AR QR Code Modal (Sketchfab-style desktop→mobile AR)
    ============================================ */
 

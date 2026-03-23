@@ -464,14 +464,31 @@ export class ModelViewerAR {
 
     /**
      * Update the AR button in the XR launch bar based on capabilities.
-     * Enhances the existing AR button to use:
-     * - model-viewer fallback on mobile (Scene Viewer / Quick Look)
-     * - QR code modal on desktop
+     * Awaits ARSupport.ready so the capability check has completed before
+     * deciding whether to apply the mobile fallback (Scene Viewer / Quick Look)
+     * or the desktop QR code handler. This eliminates the race condition where
+     * ARSupport's async isSessionSupported overwrites our onclick.
+     *
      * @param {HTMLButtonElement} arButton - The existing AR button from ARSupport.js
      * @param {ARSupport} arSupport - The existing ARSupport instance
+     * @returns {Promise<void>}
      */
-    enhanceARButton(arButton, arSupport) {
+    async enhanceARButton(arButton, arSupport) {
         if (!arButton) return;
+
+        // Wait for ARSupport's WebXR capability check to finish.
+        // This guarantees our onclick assignment happens *after* ARSupport's,
+        // so we always get the final word on fallback devices.
+        if (arSupport?.ready) {
+            await arSupport.ready;
+        }
+
+        // If WebXR immersive-ar is natively supported (Quest, compatible Android
+        // with ARCore), leave the button as ARSupport configured it — no fallback needed.
+        if (arSupport?.webxrARSupported) {
+            console.log('[ModelViewerAR] WebXR AR supported — no fallback needed');
+            return;
+        }
 
         // Desktop: always show AR button (opens QR code)
         if (this.isDesktop()) {
@@ -486,7 +503,8 @@ export class ModelViewerAR {
         }
 
         // Mobile fallback: override click to use model-viewer / direct launch
-        if (this.needsFallback()) {
+        // (Scene Viewer on Android, Quick Look on iOS)
+        if (this._isAndroid || this._isIOS) {
             arButton.classList.remove('xr-btn--disabled');
             arButton.innerHTML = '<span class="xr-btn__icon">&#x1F4F1;</span> VIEW IN AR';
             arButton.onclick = async () => {
