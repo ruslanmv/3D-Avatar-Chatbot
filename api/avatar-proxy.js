@@ -34,6 +34,7 @@ const ALLOWED_HOSTS = [
     'avatars.yourfriend.online',
     's3.amazonaws.com',
     'amazonaws.com',
+    'cloudfront.net',
 ];
 
 function isAllowedHost(urlStr) {

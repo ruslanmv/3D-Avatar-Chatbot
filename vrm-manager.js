@@ -620,8 +620,24 @@ const VRMManager = {
         });
     },
 
+    async _ensureDB() {
+        if (db) {
+            try {
+                // Quick check: if the connection was closed, this will throw
+                db.transaction(VM_CONFIG.STORE_NAME, 'readonly');
+                return true;
+            } catch (_) {
+                db = null;
+            }
+        }
+        try {
+            await this.openDB();
+        } catch (_) {}
+        return !!db;
+    },
+
     async cacheBlob(id, blob, meta) {
-        if (!db) return;
+        if (!(await this._ensureDB())) return;
         return new Promise((resolve) => {
             const tx = db.transaction(VM_CONFIG.STORE_NAME, 'readwrite');
             tx.objectStore(VM_CONFIG.STORE_NAME).put({ id, blob, meta, cachedAt: Date.now() });
@@ -631,7 +647,7 @@ const VRMManager = {
     },
 
     async getCachedBlob(id) {
-        if (!db) return null;
+        if (!(await this._ensureDB())) return null;
         return new Promise((resolve) => {
             const tx = db.transaction(VM_CONFIG.STORE_NAME, 'readonly');
             const req = tx.objectStore(VM_CONFIG.STORE_NAME).get(id);
@@ -1010,6 +1026,22 @@ const VRMManager = {
         if (accessEl) {
             accessEl.value = '';
         }
+        // Reset Conditions of Use filters
+        const couIds = [
+            'vm-cou-third-party',
+            'vm-cou-download',
+            'vm-cou-sexual',
+            'vm-cou-violent',
+            'vm-cou-commercial',
+            'vm-cou-personal-commercial',
+            'vm-cou-redistribution',
+            'vm-cou-modification',
+            'vm-cou-credit',
+        ];
+        for (const id of couIds) {
+            const s = el(id);
+            if (s) s.value = '';
+        }
     },
 
     async loadCatalog() {
@@ -1208,7 +1240,7 @@ const VRMManager = {
             `response_type=code` +
             `&client_id=${encodeURIComponent(appId)}` +
             `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-            `&scope=default` +
+            `&scope=default+heart` +
             `&state=${encodeURIComponent(state)}` +
             `&code_challenge=${encodeURIComponent(codeChallenge)}` +
             `&code_challenge_method=S256`;
@@ -1365,6 +1397,7 @@ const VRMManager = {
 
         // Diverse discovery keywords — chosen to minimize overlap and maximize unique results.
         // Japanese keywords tap into VRoid Hub's large JP creator base.
+        // Broad + niche terms ensure models tagged differently are still discovered.
         const DISCOVERY_KEYWORDS = [
             'VRM',
             'avatar',
@@ -1381,6 +1414,17 @@ const VRMManager = {
             'knight',
             'witch',
             'robot',
+            'monster',
+            'elf',
+            'demon',
+            'school',
+            'military',
+            'sci-fi',
+            'chibi',
+            'kemono',
+            'furry',
+            'idol',
+            'warrior',
         ];
 
         // Reset pagination state
@@ -1404,11 +1448,16 @@ const VRMManager = {
             }
 
             // [2+] Discovery searches — broad keyword queries for variety
+            // Include any active COU filters so the API pre-filters results
+            const discoveryFilters = this._buildVroidSearchFilters();
             for (const kw of DISCOVERY_KEYWORDS) {
                 fetchers.push(
-                    fetch(`/api/vroid-hub?action=search&keyword=${encodeURIComponent(kw)}&count=100`, {
-                        headers: authHeaders,
-                    })
+                    fetch(
+                        `/api/vroid-hub?action=search&keyword=${encodeURIComponent(kw)}&count=100${discoveryFilters}`,
+                        {
+                            headers: authHeaders,
+                        }
+                    )
                 );
             }
 
@@ -1457,40 +1506,84 @@ const VRMManager = {
                 console.warn('[VRM-Manager] VRoid staff_picks: HTTP', results[0].value.status);
             }
 
-            // Process discovery search results + store pagination cursors
+            // Process discovery search results + collect initial pagination cursors
             const searchStartIdx = appId ? 2 : 1;
+            const activeCursors = []; // cursors with more pages to fetch
             for (let i = 0; i < DISCOVERY_KEYWORDS.length; i++) {
                 const idx = searchStartIdx + i;
                 if (results[idx]?.status === 'fulfilled' && results[idx].value.ok) {
                     const searchData = await results[idx].value.json();
                     searchCount += processModels(searchData.data || [], false);
 
-                    // Store pagination cursor for this keyword if more pages exist
+                    // Check if this keyword has more pages
                     const nextHref = searchData._links?.next?.href || searchData.links?.next?.href || '';
                     if (nextHref) {
-                        // Extract search_after[] params from the next URL
                         const nextUrl = new URL(nextHref, 'https://hub.vroid.com');
                         const searchAfter = nextUrl.searchParams.getAll('search_after[]');
                         if (searchAfter.length > 0) {
-                            this._vroidPagination.cursors.push({
+                            activeCursors.push({
                                 keyword: DISCOVERY_KEYWORDS[i],
                                 searchAfter,
                                 exhausted: false,
                             });
                         }
-                    } else {
-                        // No next page — mark as exhausted
-                        this._vroidPagination.cursors.push({
-                            keyword: DISCOVERY_KEYWORDS[i],
-                            searchAfter: null,
-                            exhausted: true,
-                        });
                     }
                 }
             }
 
+            // Auto-paginate: keep fetching remaining pages until all keywords are exhausted
+            // Cap at 10 rounds to prevent runaway loops on very large result sets
+            const MAX_PAGINATION_ROUNDS = 10;
+            for (let round = 0; round < MAX_PAGINATION_ROUNDS; round++) {
+                const remaining = activeCursors.filter((c) => !c.exhausted);
+                if (remaining.length === 0) break;
+
+                const pageFetchers = remaining.map((cursor) => {
+                    const saParams = cursor.searchAfter.map((v) => `search_after[]=${encodeURIComponent(v)}`).join('&');
+                    return fetch(
+                        `/api/vroid-hub?action=search&keyword=${encodeURIComponent(cursor.keyword)}&count=100&${saParams}`,
+                        { headers: authHeaders }
+                    );
+                });
+
+                const pageResults = await Promise.allSettled(pageFetchers);
+                let roundNew = 0;
+
+                for (let j = 0; j < remaining.length; j++) {
+                    if (pageResults[j]?.status !== 'fulfilled' || !pageResults[j].value.ok) {
+                        remaining[j].exhausted = true;
+                        continue;
+                    }
+                    const pageData = await pageResults[j].value.json();
+                    const models = pageData.data || [];
+                    const pageNew = processModels(models, false);
+                    roundNew += pageNew;
+                    searchCount += pageNew;
+
+                    // Update cursor for the next round
+                    const nextHref = pageData._links?.next?.href || pageData.links?.next?.href || '';
+                    if (nextHref && models.length > 0) {
+                        const nextUrl = new URL(nextHref, 'https://hub.vroid.com');
+                        const sa = nextUrl.searchParams.getAll('search_after[]');
+                        if (sa.length > 0) {
+                            remaining[j].searchAfter = sa;
+                        } else {
+                            remaining[j].exhausted = true;
+                        }
+                    } else {
+                        remaining[j].exhausted = true;
+                    }
+                }
+
+                // If this round found nothing new, stop early
+                if (roundNew === 0) break;
+            }
+
+            // Store final cursor state for any future "Load More" calls
+            this._vroidPagination.cursors = activeCursors;
+
             if (mapped.length > 0) {
-                const moreAvailable = this._vroidPagination.cursors.some((c) => !c.exhausted);
+                const moreAvailable = activeCursors.some((c) => !c.exhausted);
                 console.log(
                     `[VRM-Manager] VRoid Hub: ${mapped.length} models ` +
                         `(${heartsCount} liked, ${staffCount} staff picks, ${searchCount} discovered)` +
@@ -1598,21 +1691,181 @@ const VRMManager = {
 
     /**
      * Search VRoid Hub models by keyword.
+     *
+     * Improvements over basic single-keyword search:
+     * - Multi-keyword: splits "cute maid" into parallel searches for broader results
+     * - Direct model lookup: if query looks like a VRoid Hub model ID, fetches it directly
+     * - Passes active UI filters to VRoid Hub API for server-side filtering
+     * - Stores pagination cursor for "load more" support on user searches
      */
     async searchVroidHub(keyword) {
         const token = await this._getVroidToken();
         if (!token) return [];
 
         try {
-            const res = await fetch(`/api/vroid-hub?action=search&keyword=${encodeURIComponent(keyword)}&count=100`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!res.ok) return [];
-            const data = await res.json();
-            return (data.data || []).map((m) => this._mapVroidModel(m, false));
+            // Build filter params from current UI state
+            const filterParams = this._buildVroidSearchFilters();
+
+            // Direct model ID lookup: numeric-only strings or known VRoid IDs
+            if (/^\d{10,}$/.test(keyword.trim())) {
+                const model = await this._fetchVroidModelById(keyword.trim());
+                return model ? [model] : [];
+            }
+
+            const results = [];
+            const seenIds = new Set();
+
+            // Primary search: full keyword as-is
+            const primaryData = await this._vroidSearchRequest(keyword, 100, filterParams);
+            for (const m of primaryData.models) {
+                if (!seenIds.has(m.id)) {
+                    seenIds.add(m.id);
+                    results.push(m);
+                }
+            }
+            // Store pagination cursor for the primary search
+            this._userSearchCursor = primaryData.cursor;
+            this._userSearchKeyword = keyword;
+
+            // Multi-keyword: if query has 2+ words, also search each word separately
+            // This catches models that VRoid Hub tags differently than the combined query
+            const words = keyword
+                .trim()
+                .split(/\s+/)
+                .filter((w) => w.length >= 2);
+            if (words.length >= 2 && words.length <= 4) {
+                const wordSearches = words.map((w) => this._vroidSearchRequest(w, 50, filterParams));
+                const wordResults = await Promise.allSettled(wordSearches);
+                for (const r of wordResults) {
+                    if (r.status === 'fulfilled') {
+                        for (const m of r.value.models) {
+                            if (!seenIds.has(m.id)) {
+                                seenIds.add(m.id);
+                                results.push(m);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return results;
         } catch (e) {
             console.warn('[VRM-Manager] VRoid Hub search error:', e);
             return [];
+        }
+    },
+
+    /**
+     * Internal: perform a single VRoid Hub search API request.
+     * Returns { models: MappedModel[], cursor: string[]|null }.
+     */
+    async _vroidSearchRequest(keyword, count = 100, filterParams = '', searchAfter = null) {
+        const token = await this._getVroidToken();
+        if (!token) return { models: [], cursor: null };
+
+        let url = `/api/vroid-hub?action=search&keyword=${encodeURIComponent(keyword)}&count=${count}${filterParams}`;
+        if (searchAfter && searchAfter.length) {
+            for (const v of searchAfter) url += `&search_after[]=${encodeURIComponent(v)}`;
+        }
+
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) return { models: [], cursor: null };
+        const data = await res.json();
+
+        // Parse pagination cursor from _links.next.href
+        let cursor = null;
+        const nextHref = data._links?.next?.href;
+        if (nextHref) {
+            try {
+                const nextUrl = new URL(nextHref, 'https://hub.vroid.com');
+                cursor = nextUrl.searchParams.getAll('search_after[]');
+            } catch (_) {}
+        }
+
+        const models = (data.data || []).map((m) => this._mapVroidModel(m, false));
+        return { models, cursor };
+    },
+
+    /**
+     * Fetch a specific VRoid Hub model by its ID.
+     * Uses the GET /api/character_models/{id} endpoint.
+     */
+    async _fetchVroidModelById(modelId) {
+        const token = await this._getVroidToken();
+        if (!token) return null;
+
+        try {
+            const res = await fetch(`/api/vroid-hub?action=detail&character_model_id=${encodeURIComponent(modelId)}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) return null;
+            const data = await res.json();
+            const model = data.data || data;
+            if (!model || !model.id) return null;
+            return this._mapVroidModel(model, false);
+        } catch (e) {
+            console.warn('[VRM-Manager] VRoid model detail fetch error:', e);
+            return null;
+        }
+    },
+
+    /**
+     * Build VRoid Hub API filter query string from current UI filter state.
+     */
+    _buildVroidSearchFilters() {
+        let params = '';
+        // Content rating → sexual_expression / violent_expression
+        const rating = el('vm-filter-rating')?.value || '';
+        if (rating === 'all-ages') {
+            params += '&sexual_expression=disallow&violent_expression=disallow';
+        }
+        // Access type → is_downloadable
+        const access = el('vm-filter-access')?.value || '';
+        if (access === 'connected') {
+            params += '&is_downloadable=true';
+        }
+
+        // ── Conditions of Use filters (server-side for VRoid Hub) ──
+        const couMap = {
+            'vm-cou-third-party': 'characterization_allowed_user',
+            'vm-cou-download': 'is_downloadable',
+            'vm-cou-sexual': 'sexual_expression',
+            'vm-cou-violent': 'violent_expression',
+            'vm-cou-commercial': 'corporate_commercial_use',
+            'vm-cou-personal-commercial': 'personal_commercial_use',
+        };
+        for (const [elId, apiParam] of Object.entries(couMap)) {
+            const val = el(elId)?.value || '';
+            if (val) params += `&${apiParam}=${encodeURIComponent(val)}`;
+        }
+
+        return params;
+    },
+
+    /**
+     * Load more results for the current user search query (pagination).
+     * Called when user has scrolled to end of search results.
+     */
+    async loadMoreUserSearchResults() {
+        if (!this._userSearchCursor || !this._userSearchKeyword) return [];
+        if (this._loadingMoreSearch) return [];
+        this._loadingMoreSearch = true;
+
+        try {
+            const filterParams = this._buildVroidSearchFilters();
+            const data = await this._vroidSearchRequest(
+                this._userSearchKeyword,
+                100,
+                filterParams,
+                this._userSearchCursor
+            );
+            this._userSearchCursor = data.cursor;
+            return data.models;
+        } catch (e) {
+            console.warn('[VRM-Manager] VRoid search pagination error:', e);
+            return [];
+        } finally {
+            this._loadingMoreSearch = false;
         }
     },
 
@@ -1680,8 +1933,8 @@ const VRMManager = {
         const characterId = modelData.character?.id || m.heart?.character_model?.character?.id || modelData.id;
         const vroidPageUrl = `https://hub.vroid.com/en/characters/${characterId}/models/${modelData.id}`;
 
-        // A model can only be installed if the user has liked it AND it's downloadable
-        const canInstall = userLiked && isDownloadable;
+        // A model can be installed if it's downloadable (no heart required per official API docs)
+        const canInstall = isDownloadable;
 
         // Extract conditions of use from VRoid Hub license object (VRM 1.0 fields)
         const lic = modelData.license || {};
@@ -1696,12 +1949,19 @@ const VRMManager = {
             credit: lic.credit || 'default',
         };
 
+        // Age/content rating from VRoid Hub AgeLimitSerializer
+        const ageLimit = modelData.age_limit || {};
+        const contentRating = ageLimit.is_r18 ? 'r18' : ageLimit.is_r15 ? 'r15' : 'all-ages';
+
+        // Build tags including content-rating tag
+        const baseTags = ['vroid-hub', 'community', ...(modelData.tags || []).map((t) => t.name || t).slice(0, 2)];
+        if (contentRating === 'r18') baseTags.push('R-18');
+        if (contentRating === 'r15') baseTags.push('R-15');
+
         // Description varies by state
         let desc = `By ${creator} on VRoid Hub.`;
         if (!isDownloadable) {
-            desc += ' See on VRoid Hub to enable download.';
-        } else if (!userLiked) {
-            desc += ' See on VRoid Hub to install.';
+            desc += ' Downloads not enabled for this model.';
         }
 
         return {
@@ -1716,7 +1976,7 @@ const VRMManager = {
             url: canInstall ? `vroid-hub:${modelData.id}` : vroidPageUrl,
             preview: thumb,
             icon: '🌐',
-            tags: ['vroid-hub', 'community', ...(modelData.tags || []).map((t) => t.name || t).slice(0, 2)],
+            tags: baseTags,
             features: ['lipsync', 'emotions', 'gaze', 'blink'],
             size: modelData.latest_character_model_version?.original_file_size || 0,
             likeCount: modelData.heart_count || 0,
@@ -1725,6 +1985,7 @@ const VRMManager = {
             isDownloadable: canInstall, // true only when user can actually install
             userLiked,
             conditionsOfUse,
+            contentRating, // 'all-ages' | 'r15' | 'r18'
         };
     },
 
@@ -1765,13 +2026,12 @@ const VRMManager = {
     },
 
     /**
-     * Download a VRoid Hub model via download_license flow.
-     * Returns the S3 presigned URL for the VRM file, or an object with error details.
+     * Download a VRoid Hub model via the official download_license flow.
+     * Returns the S3 presigned URL for the VRM file, or null on failure.
      *
-     * VRoid Hub requires:
-     * 1. The model must have is_downloadable=true
-     * 2. The user must have "liked" (hearted) the model on hub.vroid.com
-     * 3. The model owner must allow downloads for the app
+     * Per VRoid Hub API docs (https://developer.vroid.com/en/api/load-character.html):
+     *   1. POST /api/download_licenses  (scope: default — no heart required)
+     *   2. GET  /api/download_licenses/{id}/download → 302 to S3 presigned URL
      */
     async getVroidHubDownloadUrl(characterModelId) {
         const token = await this._getVroidToken();
@@ -1788,14 +2048,10 @@ const VRMManager = {
                 const errCode = errData.error?.code || '';
                 console.warn('[VRM-Manager] VRoid download license error:', licRes.status, errCode);
 
-                // 404 = model not found or user hasn't liked it
-                // 403 = model doesn't allow downloads for this app
-                if (licRes.status === 404 || licRes.status === 403) {
-                    toast(
-                        `Cannot download this model. Visit hub.vroid.com, find this model, and click the ♥ (Like) button first. Then try again.`,
-                        'error',
-                        8000
-                    );
+                if (licRes.status === 403) {
+                    toast(`This model's owner does not allow downloads for this application.`, 'error', 8000);
+                } else if (licRes.status === 404) {
+                    toast(`Model not found on VRoid Hub, or downloads are not enabled.`, 'error', 8000);
                 }
                 return null;
             }
@@ -2744,14 +3000,31 @@ const VRMManager = {
         const formatEl = el('vm-filter-format');
         const licenseEl = el('vm-filter-license');
         const accessEl = el('vm-filter-access');
+        const ratingEl = el('vm-filter-rating');
 
-        const search = ((searchEl && searchEl.value) || '').trim().toLowerCase();
+        const rawSearch = ((searchEl && searchEl.value) || '').trim().toLowerCase();
+        const search = rawSearch.replace(/^#+/, ''); // strip leading # (e.g. "#R18" → "r18")
         const source = (sourceEl && sourceEl.value) || '';
         const format = (formatEl && formatEl.value) || '';
         const license = (licenseEl && licenseEl.value) || '';
         const access = (accessEl && accessEl.value) || '';
+        const rating = (ratingEl && ratingEl.value) || '';
 
-        const hasActiveFilter = !!(search || source || format || license || access);
+        // ── Conditions of Use filters (client-side) ──
+        const couFilters = {
+            thirdParty: el('vm-cou-third-party')?.value || '',
+            download: el('vm-cou-download')?.value || '',
+            sexual: el('vm-cou-sexual')?.value || '',
+            violent: el('vm-cou-violent')?.value || '',
+            commercial: el('vm-cou-commercial')?.value || '',
+            personalCommercial: el('vm-cou-personal-commercial')?.value || '',
+            redistribution: el('vm-cou-redistribution')?.value || '',
+            modification: el('vm-cou-modification')?.value || '',
+            credit: el('vm-cou-credit')?.value || '',
+        };
+        const hasCouFilter = Object.values(couFilters).some(Boolean);
+
+        const hasActiveFilter = !!(search || source || format || license || access || rating || hasCouFilter);
 
         // Build sourceId → access type lookup from SOURCES definitions
         const accessTypeMap = {};
@@ -2761,6 +3034,9 @@ const VRMManager = {
             accessTypeMap[s.id] = s.auth === 'manual' ? 'manual' : 'connected';
         });
 
+        // SpicyGate: hide R-18/R-15 content unless adult mode is verified
+        const spicyEnabled = typeof window !== 'undefined' && window.NEXUS_SPICY && window.NEXUS_SPICY.isEnabled();
+
         currentFiltered = allItems.filter((item) => {
             if (source && item.source !== source) return false;
             if (format && item.format !== format) return false;
@@ -2769,9 +3045,41 @@ const VRMManager = {
                 const itemAccess = accessTypeMap[item.sourceId] || 'connected';
                 if (itemAccess !== access) return false;
             }
+            // Content rating gate: R-18/R-15 models require SpicyGate verification
+            // Exception: if the user is explicitly searching for R-18/R-15 content, show results
+            const itemRating = item.contentRating || 'all-ages';
+            const searchingForMature = search && /r.?18|r.?15|nsfw|adult/i.test(search);
+            if (!spicyEnabled && !searchingForMature && (itemRating === 'r18' || itemRating === 'r15')) return false;
+            // Content rating filter dropdown
+            if (rating && itemRating !== rating) return false;
+
+            // Conditions of Use (client-side filtering for all sources)
+            if (hasCouFilter && item.conditionsOfUse) {
+                const cou = item.conditionsOfUse;
+                if (couFilters.thirdParty && cou.avatarUse !== couFilters.thirdParty) return false;
+                if (couFilters.download && !item.isDownloadable) return false;
+                if (couFilters.sexual && cou.sexualExpression !== couFilters.sexual) return false;
+                if (couFilters.violent && cou.violentExpression !== couFilters.violent) return false;
+                if (couFilters.commercial && cou.corporateCommercialUse !== couFilters.commercial) return false;
+                if (couFilters.personalCommercial && cou.personalCommercialUse !== couFilters.personalCommercial)
+                    return false;
+                if (couFilters.redistribution && cou.redistribution !== couFilters.redistribution) return false;
+                if (couFilters.modification && cou.modification !== couFilters.modification) return false;
+                if (couFilters.credit && cou.credit !== couFilters.credit) return false;
+            } else if (hasCouFilter && !item.conditionsOfUse) {
+                // Non-VRoid items don't have conditions — hide them when COU filters are active
+                return false;
+            }
+
             if (search) {
                 const hay = [item.name, item.desc, item.source, (item.tags || []).join(' ')].join(' ').toLowerCase();
-                if (!hay.includes(search)) return false;
+                // Normalize common separators so "r 18" matches "r-18", "r_18", etc.
+                const hayNorm = hay.replace(/[-_]/g, ' ');
+                const searchNorm = search.replace(/[-_]/g, ' ');
+                // Split into words — all must match (AND logic)
+                const words = searchNorm.split(/\s+/).filter(Boolean);
+                const matched = words.every((w) => hayNorm.includes(w) || hay.includes(w));
+                if (!matched) return false;
             }
             return true;
         });
@@ -2846,6 +3154,58 @@ const VRMManager = {
         visibleCount = VM_CONFIG.PAGE_SIZE;
         this.renderGrid(currentFiltered, { hasActiveFilter });
         this.updateStats();
+
+        // Trigger VRoid Hub API search for longer queries (min 2 chars)
+        if (search && search.length >= 2 && !this._skipVroidSearch) {
+            this._triggerVroidHubSearch(search);
+        } else if (!search) {
+            // Clear search pagination state when search is cleared
+            this._userSearchCursor = null;
+            this._userSearchKeyword = null;
+        }
+    },
+
+    /**
+     * Search VRoid Hub via API and merge results into the catalog grid.
+     * Debounced to avoid excessive API calls while typing.
+     */
+    _triggerVroidHubSearch(query) {
+        // Skip if no VRoid token
+        if (!this.credentials?.vroid?.accessToken) return;
+
+        // Debounce — cancel any pending search
+        if (this._vroidSearchTimer) clearTimeout(this._vroidSearchTimer);
+        this._vroidSearchTimer = setTimeout(async () => {
+            try {
+                const results = await this.searchVroidHub(query);
+                if (!results.length) return;
+
+                // Merge results — avoid duplicates by checking existing IDs
+                const existingIds = new Set(allItems.map((it) => it.id));
+                let added = 0;
+                for (const item of results) {
+                    if (!existingIds.has(item.id)) {
+                        allItems.push(item);
+                        existingIds.add(item.id);
+                        added++;
+                    }
+                }
+
+                if (added > 0) {
+                    console.log(`[VRM-Manager] VRoid Hub search "${query}": +${added} new models`);
+                }
+                // Always re-apply filters after search (even if no new models) to update
+                // the Load More button state based on _userSearchCursor
+                const currentSearch = (el('vm-search')?.value || '').trim().toLowerCase().replace(/^#+/, '');
+                if (currentSearch === query) {
+                    this._skipVroidSearch = true;
+                    this.applyFilters();
+                    this._skipVroidSearch = false;
+                }
+            } catch (e) {
+                console.warn('[VRM-Manager] VRoid Hub search failed:', e);
+            }
+        }, 500);
     },
 
     renderGrid(items, { hasActiveFilter = false } = {}) {
@@ -2936,9 +3296,13 @@ const VRMManager = {
         // Core badge for built-in system avatars
         const isCoreSys = this.isCore(item.id);
 
-        // VRoid Hub models that can't be installed — either not liked or not downloadable
+        // VRoid Hub models that can't be downloaded
         const isViewOnly = item.sourceId === 'vroid-hub' && item.isDownloadable === false;
-        const viewOnlyLabel = isViewOnly && item.userLiked === false ? 'See on VRoid Hub' : 'See on VRoid Hub';
+
+        // VRoid Hub downloadable models: show "See on VRoid Hub" first,
+        // becomes "Install" after the user has viewed the original source.
+        const isVroidDownloadable = item.sourceId === 'vroid-hub' && item.isDownloadable !== false;
+        const vroidSeen = isVroidDownloadable && sessionStorage.getItem(`vroid-seen-${item.id}`);
 
         // Buttons
         let btnHtml;
@@ -2952,13 +3316,22 @@ const VRMManager = {
         } else if (isViewOnly) {
             btnHtml = `
         <div class="vm-card-btn-row">
-          <a class="vm-card-btn vm-card-btn-install" href="${esc(item.vroidPageUrl)}" target="_blank" rel="noopener" style="text-decoration:none;text-align:center">${viewOnlyLabel}</a>
+          <a class="vm-card-btn vm-card-btn-install" href="${esc(item.vroidPageUrl)}" target="_blank" rel="noopener" style="text-decoration:none;text-align:center">See on VRoid Hub</a>
           <button class="vm-card-btn vm-card-btn-preview" onclick="VRMManager.previewAvatar('${esc(item.id)}')">Details</button>
         </div>`;
         } else if (isInst) {
             btnHtml = `
         <div class="vm-card-btn-row">
           <button class="vm-card-btn vm-card-btn-install installed" disabled>${isCoreSys ? 'Core' : 'Installed'}</button>
+          <button class="vm-card-btn vm-card-btn-preview" onclick="VRMManager.previewAvatar('${esc(item.id)}')">Details</button>
+        </div>`;
+        } else if (isVroidDownloadable && !vroidSeen) {
+            // VRoid Hub model not yet viewed — show "See on VRoid Hub" to let user check the source first
+            btnHtml = `
+        <div class="vm-card-btn-row">
+          <a class="vm-card-btn vm-card-btn-install" href="${esc(item.vroidPageUrl)}" target="_blank" rel="noopener"
+             style="text-decoration:none;text-align:center"
+             onclick="sessionStorage.setItem('vroid-seen-${esc(item.id)}','1');setTimeout(function(){VRMManager.applyFilters()},300)">See on VRoid Hub</a>
           <button class="vm-card-btn vm-card-btn-preview" onclick="VRMManager.previewAvatar('${esc(item.id)}')">Details</button>
         </div>`;
         } else {
@@ -2977,7 +3350,7 @@ const VRMManager = {
         ${previewHtml}
         <span class="vm-badge ${formatBadgeClass} vm-format-badge">${formatLabel}</span>
         ${isCoreSys ? '<span class="vm-core-badge">CORE</span>' : ''}
-        ${isViewOnly ? `<span class="vm-core-badge" style="background:rgba(255,193,7,0.85);color:#000">${item.userLiked === false ? '♥ LIKE FIRST' : 'VIEW ONLY'}</span>` : ''}
+        ${isViewOnly ? `<span class="vm-core-badge" style="background:rgba(255,193,7,0.85);color:#000">VIEW ONLY</span>` : ''}
         <span class="vm-source-badge">${esc(item.source)}</span>
       </div>
       <div class="vm-card-body">
@@ -3041,8 +3414,7 @@ const VRMManager = {
                     downloadUrl = await this.getVroidHubDownloadUrl(modelId);
                     if (!downloadUrl)
                         throw new Error(
-                            'VRoid Hub download requires you to "Like" (♥) this model on hub.vroid.com first. ' +
-                                'Open the model page, click ♥, then try installing again.'
+                            'VRoid Hub download failed. Check that the model allows downloads for this application.'
                         );
                 }
 
@@ -3800,6 +4172,82 @@ const VRMManager = {
         el('vm-filter-license').addEventListener('change', () => this.applyFilters());
         el('vm-filter-access').addEventListener('change', () => this.applyFilters());
 
+        // Content rating filter — gated behind SpicyGate
+        const ratingFilter = el('vm-filter-rating');
+        if (ratingFilter) {
+            ratingFilter.addEventListener('change', () => {
+                const val = ratingFilter.value;
+                // Selecting R-18 or R-15 requires SpicyGate verification
+                if ((val === 'r18' || val === 'r15') && window.NEXUS_SPICY && !window.NEXUS_SPICY.isEnabled()) {
+                    window.NEXUS_SPICY.setEnabled(true, (enabled) => {
+                        if (!enabled) {
+                            ratingFilter.value = ''; // revert to All Ages if user cancels
+                        }
+                        this.applyFilters();
+                    });
+                } else {
+                    this.applyFilters();
+                }
+            });
+            // Rating dropdown is always visible — SpicyGate verification
+            // is triggered when the user selects R-18 or R-15 (handled above).
+            // If SpicyGate is disabled externally, revert to All Ages.
+            if (window.NEXUS_SPICY && window.NEXUS_SPICY.onChange) {
+                window.NEXUS_SPICY.onChange(() => {
+                    if (
+                        !window.NEXUS_SPICY.isEnabled() &&
+                        (ratingFilter.value === 'r18' || ratingFilter.value === 'r15')
+                    ) {
+                        ratingFilter.value = '';
+                        this.applyFilters();
+                    }
+                });
+            }
+        }
+
+        // ── Conditions of Use filter panel toggle + change handlers ──
+        const couPanel = el('vm-cou-filters');
+        const couToggle = el('vm-filter-cou-toggle');
+        if (couToggle && couPanel) {
+            couToggle.addEventListener('click', () => {
+                const show = couPanel.style.display === 'none';
+                couPanel.style.display = show ? '' : 'none';
+                couToggle.style.borderColor = show ? 'var(--vm-primary)' : '';
+            });
+        }
+        // Wire every COU dropdown to re-apply filters + trigger VRoid Hub search
+        const couIds = [
+            'vm-cou-third-party',
+            'vm-cou-download',
+            'vm-cou-sexual',
+            'vm-cou-violent',
+            'vm-cou-commercial',
+            'vm-cou-personal-commercial',
+            'vm-cou-redistribution',
+            'vm-cou-modification',
+            'vm-cou-credit',
+        ];
+        for (const id of couIds) {
+            const s = el(id);
+            if (s)
+                s.addEventListener('change', () => {
+                    this.applyFilters();
+                    // Also trigger a VRoid Hub search with updated filters
+                    const query = (el('vm-search')?.value || '').trim();
+                    if (query) this._triggerVroidHubSearch(query);
+                });
+        }
+        const couClear = el('vm-cou-clear');
+        if (couClear) {
+            couClear.addEventListener('click', () => {
+                for (const id of couIds) {
+                    const s = el(id);
+                    if (s) s.value = '';
+                }
+                this.applyFilters();
+            });
+        }
+
         // Tabs
         document.querySelectorAll('.vm-tab').forEach((tab) => {
             tab.addEventListener('click', () => this.switchTab(tab.dataset.tab));
@@ -3857,18 +4305,35 @@ const VRMManager = {
                 visibleCount += VM_CONFIG.PAGE_SIZE;
                 this.renderGrid(currentFiltered);
 
-                // If all client items are now visible and VRoid Hub has more pages, fetch them
-                if (visibleCount >= currentFiltered.length && this.hasMoreVroidHubPages()) {
-                    loadMoreBtn.textContent = 'Loading more from VRoid Hub...';
-                    loadMoreBtn.disabled = true;
-                    try {
-                        const moreModels = await this.fetchMoreVroidHubAvatars();
-                        if (moreModels.length > 0) {
-                            allItems = allItems.concat(moreModels);
-                            this.applyFilters();
+                // If all client items are now visible, fetch more from VRoid Hub
+                if (visibleCount >= currentFiltered.length) {
+                    const hasSearchPages = this._userSearchCursor && this._userSearchCursor.length > 0;
+                    const hasDiscoveryPages = this.hasMoreVroidHubPages();
+
+                    if (hasSearchPages || hasDiscoveryPages) {
+                        loadMoreBtn.textContent = 'Loading more avatars...';
+                        loadMoreBtn.disabled = true;
+                        try {
+                            let moreModels = [];
+                            // Try search pagination first, then discovery
+                            if (hasSearchPages) {
+                                moreModels = await this.loadMoreUserSearchResults();
+                            }
+                            // Also try discovery pages (supplements search results)
+                            if (hasDiscoveryPages) {
+                                const discoveryModels = await this.fetchMoreVroidHubAvatars();
+                                moreModels = moreModels.concat(discoveryModels);
+                            }
+                            if (moreModels.length > 0) {
+                                const existingIds = new Set(allItems.map((it) => it.id));
+                                for (const m of moreModels) {
+                                    if (!existingIds.has(m.id)) allItems.push(m);
+                                }
+                                this.applyFilters();
+                            }
+                        } finally {
+                            loadMoreBtn.disabled = false;
                         }
-                    } finally {
-                        loadMoreBtn.disabled = false;
                     }
                 }
             });
@@ -4264,14 +4729,15 @@ function setCredStatus(id, connected) {
 function updateLoadMore(visible, total) {
     const wrap = el('vm-load-more');
     if (!wrap) return;
-    const hasMoreHub = VRMManager.hasMoreVroidHubPages();
+    const hasSearchCursor = VRMManager._userSearchCursor && VRMManager._userSearchCursor.length > 0;
+    const hasDiscoveryPages = VRMManager.hasMoreVroidHubPages();
     if (visible < total) {
         wrap.style.display = 'flex';
         wrap.querySelector('.vm-load-more-btn').textContent = `Load more (${total - visible} remaining)`;
-    } else if (hasMoreHub) {
-        // All client items shown but VRoid Hub has more pages
+    } else if (hasSearchCursor || hasDiscoveryPages) {
+        // All client items shown but remote sources have more pages
         wrap.style.display = 'flex';
-        wrap.querySelector('.vm-load-more-btn').textContent = 'Load more from VRoid Hub...';
+        wrap.querySelector('.vm-load-more-btn').textContent = 'Load more avatars...';
     } else {
         wrap.style.display = 'none';
     }

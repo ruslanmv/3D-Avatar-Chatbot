@@ -324,6 +324,19 @@ app.get('/api/vroid-hub', async (req, res) => {
                 });
             }
             apiPath = p;
+        } else if (action === 'heart') {
+            if (!req.query.character_model_id) return res.status(400).json({ error: 'Missing character_model_id' });
+            const heartRes = await fetch(`${VROID_API}/api/hearts`, {
+                method: 'POST',
+                headers: { ...vroidHeaders, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ character_model_id: req.query.character_model_id }),
+            });
+            // 200 = hearted, 409 = already hearted (both are fine)
+            if (heartRes.ok || heartRes.status === 409) {
+                return res.status(200).json({ success: true });
+            }
+            const heartData = await heartRes.json().catch(() => ({}));
+            return res.status(heartRes.status).json(heartData);
         } else if (action === 'download_license') {
             if (!req.query.character_model_id) return res.status(400).json({ error: 'Missing character_model_id' });
             const dlRes = await fetch(`${VROID_API}/api/download_licenses`, {
