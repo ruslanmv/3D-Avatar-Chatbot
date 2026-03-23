@@ -233,14 +233,20 @@ export class ViewerEngine {
 
         // Model-Viewer AR (Sketchfab-style: QR on desktop, native AR on mobile)
         this.modelViewerAR = new ModelViewerAR();
-        // Enhance AR button for all platforms (desktop QR + mobile fallback)
-        setTimeout(() => {
-            if (this.arSupport?.arButton) {
-                this.modelViewerAR.enhanceARButton(this.arSupport.arButton, this.arSupport);
-            }
-            // Check if page was opened from QR code scan → auto-launch AR
+        // Enhance AR button for all platforms (desktop QR + mobile fallback).
+        // Uses ARSupport.ready to coordinate *after* the WebXR capability check,
+        // eliminating the race condition where ARSupport's async isSessionSupported
+        // overwrites the fallback onclick handler.
+        if (this.arSupport?.arButton) {
+            this.modelViewerAR.enhanceARButton(this.arSupport.arButton, this.arSupport);
+        }
+        // Check if page was opened from QR code scan → auto-launch AR.
+        // Awaits ARSupport.ready internally so the capability result is known.
+        if (this.arSupport?.ready) {
+            this.arSupport.ready.then(() => this.modelViewerAR.checkAutoLaunchAR());
+        } else {
             this.modelViewerAR.checkAutoLaunchAR();
-        }, 1000); // Wait for async AR support checks
+        }
 
         // XR Module Registry — lazy-loads AR/MR modules on session start
         // (zero boot cost, event-driven, non-destructive)
@@ -645,6 +651,11 @@ export class ViewerEngine {
             // Update panel state to reflect AR mode
             if (this.vrChatPanel) {
                 this.vrChatPanel.xrSettings.sessionMode = 'ar';
+
+                // Save current BG setting and switch to passthrough for AR
+                this._savedVrBackground = this.vrChatPanel.xrSettings.vrBackground;
+                this.vrChatPanel.xrSettings.vrBackground = 'passthrough';
+
                 this.vrChatPanel.redraw();
             }
 
@@ -684,9 +695,16 @@ export class ViewerEngine {
             // Deactivate passthrough enhancements (restore desktop lighting)
             this.passthroughEnhancer?.deactivate();
 
-            // Reset panel state to VR
+            // Reset panel state to VR and restore previous BG setting
             if (this.vrChatPanel) {
                 this.vrChatPanel.xrSettings.sessionMode = 'vr';
+
+                // Restore the BG setting that was active before entering AR
+                if (this._savedVrBackground) {
+                    this.vrChatPanel.xrSettings.vrBackground = this._savedVrBackground;
+                    this._savedVrBackground = null;
+                }
+
                 this.vrChatPanel.redraw();
             }
 

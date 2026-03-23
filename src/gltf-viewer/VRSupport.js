@@ -67,7 +67,7 @@ export class VRSupport {
 
     _isHeadsetBrowser() {
         const ua = navigator.userAgent || '';
-        return /OculusBrowser|Quest|Vive|Pico|Wolvic/i.test(ua);
+        return /OculusBrowser|Quest|Vive|Pico|Wolvic|SamsungXR/i.test(ua);
     }
 
     createVRButton() {
@@ -77,10 +77,16 @@ export class VRSupport {
             return;
         }
 
-        // On normal phones (Android / iOS, not headsets), skip VR button entirely.
+        // On phones (Android / iOS, not headsets or tablets), skip VR button.
         // VR requires a headset — showing a disabled button wastes precious mobile space.
+        // Tablets (larger screens) are allowed through: isSessionSupported() at line 96
+        // becomes the sole gatekeeper, supporting Android XR tablets (Samsung Galaxy Tab, etc.).
         const ua = navigator.userAgent || '';
-        const isPhone = (/Android/i.test(ua) || /iPhone|iPod/.test(ua)) && !this._isHeadsetBrowser();
+        const isAndroid = /Android/i.test(ua);
+        const isIOS = /iPhone|iPod/.test(ua);
+        const shortDim = Math.min(window.innerWidth, window.innerHeight);
+        const isTabletSize = shortDim > 480; // phones max ~430px on short axis
+        const isPhone = (isAndroid || isIOS) && !this._isHeadsetBrowser() && !isTabletSize;
         if (isPhone) {
             console.log('[VR] Phone detected — skipping VR button (no headset)');
             return; // vrButton stays null → XR launch bar won't add it
@@ -116,7 +122,14 @@ export class VRSupport {
             return;
         }
 
-        // 2. Check if WebGL context is lost (Prevent the crash loop)
+        // 2. Block VR on phones — immersive-vr requires a headset with 6DOF tracking.
+        // Without one, the user gets a black screen with no way to exit.
+        if (!this.vrButton && !this.renderer.xr.isPresenting) {
+            console.warn('[VR] VR not available on this device (no headset detected)');
+            return;
+        }
+
+        // 3. Check if WebGL context is lost (Prevent the crash loop)
         if (this.contextLost) {
             alert('WebGL Context Lost. Please wait for it to restore or refresh the page.');
             return;
@@ -124,9 +137,11 @@ export class VRSupport {
 
         this.isToggling = true;
 
-        // Update button to show loading state
-        this.vrButton.innerHTML = '<span class="xr-btn__icon">&#x23F3;</span> ...';
-        this.vrButton.style.cursor = 'wait';
+        // Update button to show loading state (null-safe for phones exiting VR)
+        if (this.vrButton) {
+            this.vrButton.innerHTML = '<span class="xr-btn__icon">&#x23F3;</span> ...';
+            this.vrButton.style.cursor = 'wait';
+        }
 
         try {
             if (this.renderer.xr.isPresenting) {
@@ -200,7 +215,9 @@ export class VRSupport {
                 // Set session on renderer
                 await this.renderer.xr.setSession(session);
 
-                this.vrButton.innerHTML = '<span class="xr-btn__icon">&#x23F9;</span> EXIT VR';
+                if (this.vrButton) {
+                    this.vrButton.innerHTML = '<span class="xr-btn__icon">&#x23F9;</span> EXIT VR';
+                }
             }
         } catch (error) {
             console.error('[VR] Error during toggle:', error);
@@ -220,11 +237,15 @@ export class VRSupport {
             alert(msg);
 
             this.forceExit();
-            this.vrButton.innerHTML = '<span class="xr-btn__icon">&#x1F576;</span> ENTER VR';
-            this.vrButton.style.cursor = 'pointer';
+            if (this.vrButton) {
+                this.vrButton.innerHTML = '<span class="xr-btn__icon">&#x1F576;</span> ENTER VR';
+                this.vrButton.style.cursor = 'pointer';
+            }
         } finally {
             this.isToggling = false;
-            this.vrButton.style.cursor = 'pointer';
+            if (this.vrButton) {
+                this.vrButton.style.cursor = 'pointer';
+            }
         }
     }
 

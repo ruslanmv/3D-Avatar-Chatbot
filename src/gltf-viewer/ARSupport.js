@@ -23,6 +23,14 @@ export class ARSupport {
         this.arButton = null;
         this.isARActive = false;
         this.isToggling = false;
+        this.webxrARSupported = false;
+
+        // Promise that resolves when the capability check completes.
+        // Consumers (e.g. ModelViewerAR) can await this before enhancing the button.
+        this._readyResolve = null;
+        this.ready = new Promise((resolve) => {
+            this._readyResolve = resolve;
+        });
 
         // AR-specific state
         this.hitTestSource = null;
@@ -84,6 +92,8 @@ export class ARSupport {
     createARButton() {
         if (!navigator.xr) {
             console.warn('[AR] WebXR not supported');
+            this.webxrARSupported = false;
+            this._readyResolve(false);
             return;
         }
 
@@ -93,26 +103,33 @@ export class ARSupport {
         this.arButton.className = 'xr-btn xr-btn--ar';
         this.arButton.innerHTML = '<span class="xr-btn__icon">&#x1F4F1;</span> ENTER AR';
 
-        // Check AR support
+        // Check AR support — resolve the ready Promise so consumers can
+        // await it and apply fallback handlers *after* this completes.
         navigator.xr
             .isSessionSupported('immersive-ar')
             .then((supported) => {
+                this.webxrARSupported = supported;
                 if (supported) {
                     this.arButton.onclick = () => this.toggleAR();
                     console.log('[AR] immersive-ar supported — AR button enabled');
                 } else {
-                    console.log('[AR] immersive-ar not supported on this device — button shown disabled');
+                    console.log('[AR] immersive-ar not supported on this device — awaiting fallback handler');
                     this.arButton.classList.add('xr-btn--disabled');
+                    // Set a default disabled handler; ModelViewerAR.enhanceARButton()
+                    // will override this with Scene Viewer / Quick Look on mobile.
                     this.arButton.onclick = () => {
                         alert(
                             'AR mode is not supported on this device/browser.\nUse a supported device like Meta Quest or Android with Chrome.'
                         );
                     };
                 }
+                this._readyResolve(supported);
             })
             .catch(() => {
                 console.warn('[AR] Failed to check immersive-ar support');
+                this.webxrARSupported = false;
                 this.arButton.classList.add('xr-btn--disabled');
+                this._readyResolve(false);
             });
         // Button is appended to the XR launch bar by ViewerEngine
     }
