@@ -95,20 +95,40 @@
         }
 
         // ── VR / AR Mode ──
+        // On phones/tablets, only offer AR (WebXR AR, Scene Viewer, or Quick Look).
+        // VR requires a headset with 6DOF tracking — entering immersive-vr on a
+        // phone produces a black screen with no way to exit.
         var drawerVR = $('drawer-vr-btn');
         if (drawerVR) {
             drawerVR.addEventListener('click', function () {
                 closeDrawer();
-                // Try to click the AR button first (more useful on mobile)
-                var arBtn = $('ar-button');
-                if (arBtn && !arBtn.classList.contains('xr-btn--disabled')) {
-                    arBtn.click();
+
+                var ua = navigator.userAgent || '';
+                var isHeadset = /OculusBrowser|Quest|Vive|Pico|Wolvic/i.test(ua);
+                var isPhone = (/Android/i.test(ua) || /iPhone|iPod|iPad/.test(ua)) && !isHeadset;
+
+                // On phones: AR only (never VR)
+                if (isPhone) {
+                    var arBtn = $('ar-button');
+                    if (arBtn) {
+                        arBtn.click();
+                        return;
+                    }
+                    alert(
+                        'AR is not available on this device.\nPlease use a supported browser (Chrome on Android, Safari on iOS).'
+                    );
                     return;
                 }
-                // Fallback to VR button
+
+                // On headsets/desktop: try VR first, then AR
                 var vrBtn = document.querySelector('.xr-btn--vr');
                 if (vrBtn && !vrBtn.classList.contains('xr-btn--disabled')) {
                     vrBtn.click();
+                    return;
+                }
+                var arBtn2 = $('ar-button');
+                if (arBtn2 && !arBtn2.classList.contains('xr-btn--disabled')) {
+                    arBtn2.click();
                     return;
                 }
                 alert('AR/VR is not supported on this device or browser.');
