@@ -23,11 +23,14 @@ const ALLOW = [
     'https://us-south.ml.cloud.ibm.com',
     'https://eu-de.ml.cloud.ibm.com',
     'https://ruslanmv-ollabridge.hf.space',
+    'https://ollabridge.com',
+    'https://cloud.ollabridge.com',
 ];
 
 // Trusted domain patterns (regex) — always allowed
 const TRUSTED_PATTERNS = [
-    /^https:\/\/[a-zA-Z0-9_-]+-[a-zA-Z0-9_-]+\.hf\.space/,  // HuggingFace Spaces
+    /^https:\/\/[a-zA-Z0-9_-]+-[a-zA-Z0-9_-]+\.hf\.space/, // HuggingFace Spaces
+    /^https:\/\/([a-zA-Z0-9_-]+\.)*ollabridge\.com/, // *.ollabridge.com
 ];
 
 function httpsOnly(url) {
