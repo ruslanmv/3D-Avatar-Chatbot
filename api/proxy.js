@@ -9,6 +9,7 @@
  * Security:
  * - HTTPS only
  * - Allowlist upstream domains (prevents open relay)
+ * - Supports PROXY_ALLOWLIST env var for additional domains
  *
  * Notes:
  * - Returns upstream status + upstream response body as text (passthrough)
@@ -21,15 +22,36 @@ const ALLOW = [
     'https://iam.cloud.ibm.com',
     'https://us-south.ml.cloud.ibm.com',
     'https://eu-de.ml.cloud.ibm.com',
+    'https://ruslanmv-ollabridge.hf.space',
+];
+
+// Trusted domain patterns (regex) — always allowed
+const TRUSTED_PATTERNS = [
+    /^https:\/\/[a-zA-Z0-9_-]+-[a-zA-Z0-9_-]+\.hf\.space/,  // HuggingFace Spaces
 ];
 
 function httpsOnly(url) {
     return /^https:\/\//i.test(String(url || ''));
 }
 
+/**
+ * Build the full allowlist: built-in + env var extras.
+ * PROXY_ALLOWLIST env var is a comma-separated list of base URLs.
+ */
+function getAllowlist() {
+    const extra = (process.env.PROXY_ALLOWLIST || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+    return [...ALLOW, ...extra];
+}
+
 function isAllowedUrl(url) {
     const u = String(url || '');
-    return ALLOW.some((base) => u.startsWith(base));
+    const list = getAllowlist();
+    if (list.some((base) => u.startsWith(base))) return true;
+    if (TRUSTED_PATTERNS.some((re) => re.test(u))) return true;
+    return false;
 }
 
 function copySafeHeaders(upstreamHeaders) {
