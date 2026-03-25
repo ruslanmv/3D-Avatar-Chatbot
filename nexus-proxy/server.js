@@ -53,6 +53,9 @@ const ALLOW = [
     'https://iam.cloud.ibm.com',
     'https://us-south.ml.cloud.ibm.com',
     'https://eu-de.ml.cloud.ibm.com',
+    'https://ruslanmv-ollabridge.hf.space',
+    'https://ollabridge.com',
+    'https://cloud.ollabridge.com',
 ];
 
 // -----------------------------
