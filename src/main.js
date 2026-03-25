@@ -52,7 +52,7 @@
 const SpeechSettings = {
     lang: localStorage.getItem('speech_lang') || 'en-US',
     voiceURI: localStorage.getItem('speech_voice_uri') || '',
-    voicePref: localStorage.getItem('speech_voice_pref') || 'any', // any|female|male
+    voicePref: localStorage.getItem('speech_voice_pref') || 'female', // any|female|male
     rate: parseFloat(localStorage.getItem('speech_rate') || '0.9'),
     pitch: parseFloat(localStorage.getItem('speech_pitch') || '1.0'),
     autoSend: localStorage.getItem('stt_auto_send') === 'true',
@@ -456,6 +456,78 @@ function loadBlobFromVRMCache(fileKey) {
 }
 
 /* =========================================================
+   Installed Avatar Sync — merge VRM Manager installs into manifest
+   ========================================================= */
+
+/**
+ * Merge user-installed avatars (from VRM Manager catalog) into the base
+ * manifest items. Also removes entries whose source file is no longer
+ * installed (uninstalled via VRM Manager).
+ *
+ * Non-destructive: legacy/bundled avatars in avatars.json are never removed.
+ * Only catalog-installed entries are added or pruned.
+ *
+ * @param {Array} baseItems - Items from avatars.json or manifest override
+ * @returns {Array} Merged items array
+ */
+function _mergeInstalledAvatars(baseItems) {
+    let installedRaw;
+    try {
+        installedRaw = JSON.parse(localStorage.getItem('vrm_manager_installed') || '{}');
+    } catch (_) {
+        return baseItems;
+    }
+
+    // Build a Set of files already in the base manifest (for dedup)
+    const existingFiles = new Set(baseItems.map((x) => x.file));
+
+    // Entries to add: installed but not in manifest
+    const additions = [];
+    for (const [id, entry] of Object.entries(installedRaw)) {
+        if (!entry || !entry.localFile) continue;
+        const file = entry.localFile;
+        if (existingFiles.has(file)) continue; // already in manifest
+
+        additions.push({
+            name: entry.name || file.replace(/\.\w+$/, ''),
+            file: file,
+            format: entry.format || (file.endsWith('.vrm') ? 'vrm' : 'glb'),
+            source: entry.source || 'VRM Manager',
+            features: entry.features || [],
+            _installedId: id, // marker for installed avatars
+        });
+    }
+
+    // Entries to remove: previously added by VRM Manager but now uninstalled.
+    // Only prune items that have a blob: or vroid-hub: URL and whose file
+    // is NOT in the installed list and NOT a bundled avatar (no _installedId).
+    const installedFiles = new Set(
+        Object.values(installedRaw)
+            .filter((e) => e && e.localFile)
+            .map((e) => e.localFile)
+    );
+
+    const merged = baseItems.filter((item) => {
+        // Keep all bundled/legacy avatars unconditionally
+        if (!item._installedId) return true;
+        // Keep installed entries that are still in vrm_manager_installed
+        return installedFiles.has(item.file);
+    });
+
+    if (additions.length > 0) {
+        merged.push(...additions);
+        console.log(
+            '[Main] Merged',
+            additions.length,
+            'installed avatar(s) into manifest:',
+            additions.map((a) => a.name).join(', ')
+        );
+    }
+
+    return merged;
+}
+
+/* =========================================================
    Avatar Manifest Loader
    ========================================================= */
 async function loadAvatarManifest() {
@@ -480,9 +552,14 @@ async function loadAvatarManifest() {
         }
 
         const basePath = (data && data.basePath) || '/vendor/avatars';
-        const items = (data && data.items) || [];
+        let items = (data && data.items) || [];
 
         if (!Array.isArray(items)) throw new Error('Manifest format invalid: items must be an array');
+
+        // ── Merge user-installed avatars from VRM Manager ──
+        // This ensures avatars installed via Browse Catalog always appear,
+        // even if autoInstall was off or the manifest override is stale.
+        items = _mergeInstalledAvatars(items);
 
         // Collect blob URLs from VRM Manager downloads
         const blobMap = JSON.parse(localStorage.getItem('vrm_manager_blob_urls') || '{}');
@@ -496,15 +573,18 @@ async function loadAvatarManifest() {
                 url: blobMap[x.file] || `${avatarBasePath}/${x.file}`,
                 format: x.format || (x.file.endsWith('.vrm') ? 'vrm' : 'glb'),
                 vroidModelId: x.vroidModelId || null,
+                _installedId: x._installedId || null, // preserve merge marker
             }));
 
         // Restore stale blob: URLs from IndexedDB.
         // blob: URLs expire when the page is unloaded, so on a fresh page load
         // any VRM Manager downloads will have dead blob URLs.  Re-create them
         // from the cached binary stored in IndexedDB during install.
+        // Also restore URLs for merged installed avatars (their files only exist in IndexedDB).
         const refreshedBlobMap = {};
         for (const item of avatarItems) {
-            if (item.url && item.url.startsWith('blob:')) {
+            const needsRestore = (item.url && item.url.startsWith('blob:')) || item._installedId;
+            if (needsRestore) {
                 const fileKey = 'file:' + item.file;
                 let cached = await loadBlobFromVRMCache(fileKey);
                 // Also try VRoid Hub cache key if this is a VRoid Hub model
@@ -1212,7 +1292,11 @@ function playAnimation(name, loop) {
 function guessGender(voice) {
     const s = `${voice.name} ${voice.voiceURI}`.toLowerCase();
     // Common patterns across OS/browsers (not perfect, but helpful)
-    if (/(female|woman|zira|susan|samantha|victoria|tessa|karen|serena|monica|lucia|alice|emma|olivia)/i.test(s))
+    if (
+        /(female|woman|zira|susan|samantha|victoria|tessa|karen|serena|monica|lucia|alice|emma|olivia|google us english)/i.test(
+            s
+        )
+    )
         return 'female';
     if (/(male|man|david|mark|daniel|george|alex|fred|tom|diego|luca|paul|joel)/i.test(s)) return 'male';
     return 'unknown';
@@ -1317,6 +1401,17 @@ function saveSpeechSettingsFromUI() {
         localStorage.setItem('speech_pitch', String(SpeechSettings.pitch));
     }
 
+    // Save TTS engine + Piper voice settings
+    const engineEl = document.getElementById('tts-engine');
+    const piperVoiceEl = document.getElementById('piper-voice');
+    if (engineEl && window.TTSProvider) {
+        window.TTSProvider.setEngine(engineEl.value);
+        _togglePiperVoiceUI(engineEl.value);
+    }
+    if (piperVoiceEl && window.PiperWasmTTSProvider) {
+        window.PiperWasmTTSProvider.setSelectedVoice(piperVoiceEl.value);
+    }
+
     // Apply to recognition immediately if running
     if (recognition) recognition.lang = SpeechSettings.lang;
 
@@ -1360,6 +1455,111 @@ function loadSpeechSettingsIntoUI() {
     if (pitchEl) pitchEl.value = String(SpeechSettings.pitch);
 
     if (voiceEl) voiceEl.value = SpeechSettings.voiceURI || '';
+
+    // Restore TTS engine + Piper voice
+    const engineEl = document.getElementById('tts-engine');
+    const piperVoiceEl = document.getElementById('piper-voice');
+    const savedEngine = localStorage.getItem('tts_engine') || 'web-speech-api';
+    if (engineEl) engineEl.value = savedEngine;
+    if (piperVoiceEl) piperVoiceEl.value = localStorage.getItem('piper_voice') || 'en_US-lessac-medium';
+    _togglePiperVoiceUI(savedEngine);
+}
+
+/** Show/hide Piper vs Web Speech API voice controls, and populate Piper voices for current language. */
+function _togglePiperVoiceUI(engine) {
+    const isPiper = engine === 'piper-wasm';
+    const piperGroup = document.getElementById('piper-voice-group');
+    if (piperGroup) piperGroup.style.display = isPiper ? '' : 'none';
+
+    // Hide Web Speech API VOICE dropdown when Piper is active (not needed)
+    // Keep VOICE PREFERENCE visible — it filters Piper voices by gender too
+    const webVoiceEl = document.getElementById('speech-voice');
+    if (webVoiceEl && webVoiceEl.closest('.input-group')) {
+        webVoiceEl.closest('.input-group').style.display = isPiper ? 'none' : '';
+    }
+
+    if (isPiper) _refreshPiperVoiceList();
+}
+
+/** Populate the Piper voice dropdown filtered by the current language. */
+function _refreshPiperVoiceList() {
+    const piperVoiceEl = document.getElementById('piper-voice');
+    if (!piperVoiceEl || !window.PiperWasmTTSProvider) return;
+
+    const langEl = document.getElementById('speech-lang');
+    const lang = (langEl ? langEl.value : SpeechSettings.lang) || 'en-US';
+    const base = lang.split('-')[0].toLowerCase(); // "en", "es", "fr", etc.
+
+    const allVoices = window.PiperWasmTTSProvider.getVoices();
+
+    // Filter: exact lang match first, then base match (e.g. es-ES also shows es-MX)
+    let filtered = allVoices.filter((v) => v.lang.toLowerCase() === lang.toLowerCase());
+    if (!filtered.length) {
+        filtered = allVoices.filter((v) => v.lang.toLowerCase().startsWith(base));
+    }
+
+    // Fallback: show all English if no voices match the language (e.g. ja-JP, ko-KR)
+    const noVoicesForLang = !filtered.length;
+    if (noVoicesForLang) {
+        filtered = allVoices.filter((v) => v.lang.startsWith('en-'));
+    }
+
+    // Apply gender preference filter
+    const prefEl = document.getElementById('speech-voice-pref');
+    const genderPref = (prefEl ? prefEl.value : SpeechSettings.voicePref || 'any').toLowerCase();
+    if (genderPref === 'female' || genderPref === 'male') {
+        const byGender = filtered.filter((v) => v.gender === genderPref);
+        if (byGender.length) {
+            filtered = byGender;
+        }
+        // If no voices match the gender, keep all (don't empty the list)
+    }
+
+    // Build options
+    const saved = localStorage.getItem('piper_voice') || '';
+    piperVoiceEl.innerHTML = '';
+
+    if (noVoicesForLang) {
+        const warn = document.createElement('option');
+        warn.value = '';
+        warn.textContent = '⚠ No Piper voices for ' + lang + ' — showing English';
+        warn.disabled = true;
+        piperVoiceEl.appendChild(warn);
+    }
+
+    let hasSelected = false;
+    for (const v of filtered) {
+        const opt = document.createElement('option');
+        opt.value = v.id;
+        const gLabel = v.gender !== 'unknown' ? ' [' + v.gender + ']' : '';
+        const qLabel = v.quality === 'low' ? ' ⚡' : v.quality === 'high' ? ' ★' : '';
+        opt.textContent = v.name + gLabel + qLabel;
+        if (v.id === saved) {
+            opt.selected = true;
+            hasSelected = true;
+        }
+        piperVoiceEl.appendChild(opt);
+    }
+
+    // If saved voice not in filtered list, select first
+    if (!hasSelected && piperVoiceEl.options.length) {
+        const firstValid = [...piperVoiceEl.options].find((o) => !o.disabled);
+        if (firstValid) {
+            firstValid.selected = true;
+            window.PiperWasmTTSProvider.setSelectedVoice(firstValid.value);
+        }
+    }
+
+    console.log(
+        '[PiperVoiceList] lang:',
+        lang,
+        '| gender:',
+        genderPref,
+        '| voices:',
+        filtered.length,
+        '| selected:',
+        piperVoiceEl.value
+    );
 }
 
 /* ============================
@@ -1783,7 +1983,18 @@ function setupEventListeners() {
             if (recognition) recognition.lang = SpeechSettings.lang;
 
             refreshVoiceList();
+            _refreshPiperVoiceList(); // sync Piper voices to new language
             loadSpeechSettingsIntoUI();
+        });
+    }
+
+    // Piper voice dropdown — apply selection immediately
+    const piperVoiceDropdown = document.getElementById('piper-voice');
+    if (piperVoiceDropdown) {
+        piperVoiceDropdown.addEventListener('change', () => {
+            if (window.PiperWasmTTSProvider) {
+                window.PiperWasmTTSProvider.setSelectedVoice(piperVoiceDropdown.value);
+            }
         });
     }
 
@@ -1795,6 +2006,7 @@ function setupEventListeners() {
 
             // ✅ Refresh voice list to show only matching gender
             refreshVoiceList();
+            _refreshPiperVoiceList(); // sync Piper voices to gender preference
         });
     }
 
@@ -1819,7 +2031,17 @@ function setupEventListeners() {
     });
 
     // TEST VOICE BUTTON
-    document.getElementById('test-tts')?.addEventListener('click', () => {
+    document.getElementById('test-tts')?.addEventListener('click', async () => {
+        // Apply current TTS engine selection before testing (user may not have saved yet)
+        const engineEl = document.getElementById('tts-engine');
+        const piperVoiceEl = document.getElementById('piper-voice');
+        if (engineEl && window.TTSProvider) {
+            await window.TTSProvider.setEngine(engineEl.value);
+        }
+        if (piperVoiceEl && window.PiperWasmTTSProvider) {
+            window.PiperWasmTTSProvider.setSelectedVoice(piperVoiceEl.value);
+        }
+
         const sampleByLang = {
             'en-US': 'Hello! This is Nexus. Your voice settings are working.',
             'en-GB': 'Hello! This is Nexus. Voice test complete.',
@@ -1831,7 +2053,27 @@ function setupEventListeners() {
             'ja-JP': 'こんにちは、Nexusです。音声テストは成功しました。',
             'ko-KR': '안녕하세요, 넥서스입니다. 음성 설정이 작동 중입니다.',
         };
+        // Apply rate/pitch/lang from UI fields (not yet saved)
+        const rateEl = document.getElementById('speech-rate');
+        const pitchEl = document.getElementById('speech-pitch');
+        const langTestEl = document.getElementById('speech-lang');
+        if (rateEl) SpeechSettings.rate = parseFloat(rateEl.value) || 0.9;
+        if (pitchEl) SpeechSettings.pitch = parseFloat(pitchEl.value) || 1.0;
+        if (langTestEl) SpeechSettings.lang = langTestEl.value || 'en-US';
+
         const sample = sampleByLang[SpeechSettings.lang] || 'Voice test successful.';
+        console.log(
+            '[TestVoice] engine:',
+            engineEl?.value,
+            '| piperVoice:',
+            piperVoiceEl?.value,
+            '| activeVoice:',
+            window.PiperWasmTTSProvider?.getSelectedVoice?.(),
+            '| lang:',
+            SpeechSettings.lang,
+            '| rate:',
+            SpeechSettings.rate
+        );
         speakText(sample);
     });
 
@@ -2119,6 +2361,13 @@ function openSettings() {
     // Load config + speech settings into UI whenever settings opens
     loadConfigIntoUI();
     loadSpeechSettingsIntoUI();
+
+    // Wire TTS engine selector to toggle Piper voice controls live
+    const ttsEngineEl = document.getElementById('tts-engine');
+    if (ttsEngineEl && !ttsEngineEl._wired) {
+        ttsEngineEl._wired = true;
+        ttsEngineEl.addEventListener('change', () => _togglePiperVoiceUI(ttsEngineEl.value));
+    }
 
     // Pre-select saved desktop background
     const savedBg = localStorage.getItem('desktop_bg') || 'black';
@@ -3021,6 +3270,71 @@ function speakText(text) {
         window.NEXUS_VIEWER?.avatarManager?.vrmLoader?.startLipSync?.();
     } catch (_) {}
 
+    // --- Pluggable TTS engine path (additive — Piper WASM, etc.) ---
+    if (window.TTSProvider && window.TTSProvider.isActive()) {
+        try {
+            window.speechSynthesis?.cancel?.();
+        } catch (_) {}
+
+        let rate = SpeechSettings.rate;
+        let pitch = SpeechSettings.pitch;
+        if (typeof window.PersonaContextBridge !== 'undefined') {
+            const vo = window.PersonaContextBridge.getVoiceOverrides({ rate, pitch });
+            if (vo) {
+                rate = vo.rate;
+                pitch = vo.pitch;
+            }
+        }
+
+        window.TTSProvider.speak(text, {
+            rate,
+            pitch,
+            onEnd: () => {
+                try {
+                    window.NEXUS_LIP_SYNC?.stop?.();
+                } catch (_) {}
+                try {
+                    window.NEXUS_BEHAVIOR?.onSpeechEnd?.();
+                } catch (_) {}
+                try {
+                    window.NEXUS_VIEWER?.avatarManager?.vrmLoader?.stopLipSync?.();
+                } catch (_) {}
+                const personaMode =
+                    typeof window.PersonaContextBridge !== 'undefined'
+                        ? window.PersonaContextBridge.getDefaultAvatarMode()
+                        : 'idle';
+                try {
+                    window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.(personaMode, personaMode === 'idle' ? 1 : 5000);
+                } catch (_) {}
+                setStatus('idle', 'READY');
+                try {
+                    const clipName = personaMode === 'happy' ? 'Happy' : 'Idle';
+                    window.NEXUS_VIEWER?.playAnimationByName?.(clipName);
+                } catch (_) {}
+            },
+            onError: () => {
+                try {
+                    window.NEXUS_LIP_SYNC?.stop?.();
+                } catch (_) {}
+                try {
+                    window.NEXUS_BEHAVIOR?.onSpeechEnd?.();
+                } catch (_) {}
+                try {
+                    window.NEXUS_VIEWER?.avatarManager?.vrmLoader?.stopLipSync?.();
+                } catch (_) {}
+                try {
+                    window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.('idle', 1);
+                } catch (_) {}
+                setStatus('idle', 'READY');
+                try {
+                    window.NEXUS_VIEWER?.playAnimationByName?.('Idle');
+                } catch (_) {}
+            },
+        });
+        return; // skip Web Speech API path
+    }
+
+    // --- Existing Web Speech API path (unchanged) ---
     if (!('speechSynthesis' in window)) {
         setStatus('idle', 'READY');
         return;

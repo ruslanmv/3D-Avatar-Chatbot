@@ -1060,6 +1060,13 @@ const VRMManager = {
         // Render immediately so catalog is never blank on first open
         this.applyFilters();
 
+        // Show skeleton placeholders in the catalog grid while remote sources load
+        // (appended after built-in cards to signal more content is coming)
+        const catalogGrid = el('vm-grid');
+        if (catalogGrid) {
+            for (let i = 0; i < 6; i++) catalogGrid.appendChild(buildSkeletonCard());
+        }
+
         // Fetch remote sources in parallel and merge in later.
         // Built-in sources only fetch when user has custom sources or explicitly
         // enabled API-based sources — keeps the default catalog clean.
@@ -4742,6 +4749,37 @@ async function fetchModelUrl(url) {
     if (res.ok) return res;
     console.warn(`[VRM-Manager] Proxy failed (${res.status}), trying direct download...`);
     return fetch(url, { mode: 'cors' });
+}
+
+/* ── Skeleton Loading Cards ── */
+
+function buildSkeletonCard() {
+    const div = document.createElement('div');
+    div.className = 'vm-skeleton-card';
+    div.innerHTML = `
+        <div class="vm-skel-preview"></div>
+        <div class="vm-skel-body">
+            <div class="vm-skel-line vm-skel-title"></div>
+            <div class="vm-skel-line vm-skel-desc"></div>
+            <div class="vm-skel-line vm-skel-tags"></div>
+            <div class="vm-skel-line vm-skel-btn"></div>
+        </div>`;
+    return div;
+}
+
+/**
+ * Show skeleton placeholder cards in a grid.
+ * @param {string} gridId - Element ID of the grid container
+ * @param {number} count  - Number of skeleton cards to show (default 6)
+ */
+function showSkeletonGrid(gridId, count) {
+    const grid = el(gridId);
+    if (!grid) return;
+    count = count || 6;
+    grid.innerHTML = '';
+    for (let i = 0; i < count; i++) {
+        grid.appendChild(buildSkeletonCard());
+    }
 }
 
 function debounce(fn, ms) {

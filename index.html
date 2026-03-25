@@ -76,7 +76,8 @@
                 "imports": {
                     "three": "/vendor/three-0.147.0/build/three.module.js",
                     "three/addons/": "/vendor/three-0.147.0/examples/jsm/",
-                    "@pixiv/three-vrm": "https://unpkg.com/@pixiv/three-vrm@2.1.0/lib/three-vrm.module.js"
+                    "@pixiv/three-vrm": "https://unpkg.com/@pixiv/three-vrm@2.1.0/lib/three-vrm.module.js",
+                    "onnxruntime-web": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/esm/ort.min.js"
                 }
             }
         </script>
@@ -1025,9 +1026,25 @@
                                 <option value="female" selected>Prefer Female</option>
                                 <option value="male">Prefer Male</option>
                             </select>
+                        </div>
+
+                        <div class="input-group">
+                            <label class="input-label" for="tts-engine">TTS ENGINE</label>
+                            <select id="tts-engine" class="select-input">
+                                <option value="web-speech-api" selected>Web Speech API (built-in)</option>
+                                <option value="piper-wasm">Piper (offline, no API key)</option>
+                            </select>
                             <p class="voice-status" style="margin-top: 8px; opacity: 0.8">
-                                Note: gender/style depends on installed voices in your OS/browser.
+                                Piper runs fully in-browser via WebAssembly. First use downloads a voice model (~20 MB,
+                                cached).
                             </p>
+                        </div>
+
+                        <div id="piper-voice-group" class="input-group" style="display: none">
+                            <label class="input-label" for="piper-voice">PIPER VOICE</label>
+                            <select id="piper-voice" class="select-input">
+                                <!-- Populated dynamically by _refreshPiperVoiceList() -->
+                            </select>
                         </div>
 
                         <div class="input-group">
@@ -2592,6 +2609,10 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <!-- Avatar Picker (bottom-sheet avatar selection — replaces dropdown).
              Must load BEFORE main.js so window.AvatarPicker exists when init() runs. -->
         <script defer src="src/AvatarPicker.js"></script>
+
+        <!-- TTS Provider System (pluggable TTS engines — additive, non-destructive) -->
+        <script defer src="src/TTSProvider.js"></script>
+        <script defer src="src/tts/PiperWasmTTSProvider.js"></script>
 
         <script defer src="src/main.js"></script>
 
