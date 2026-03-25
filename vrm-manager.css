@@ -2118,3 +2118,133 @@ select optgroup {
 .vm-hub-banner-link:hover {
     text-decoration: underline;
 }
+
+/* ─── Skeleton Loading Cards ─── */
+
+.vm-skeleton-card {
+    background: var(--vm-surface);
+    border: 1px solid var(--vm-border);
+    border-radius: var(--vm-radius);
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.vm-skeleton-card .vm-skel-preview {
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    max-height: 320px;
+    background: linear-gradient(135deg, rgba(15, 25, 35, 0.9), rgba(5, 8, 16, 0.9));
+    position: relative;
+    overflow: hidden;
+}
+
+.vm-skeleton-card .vm-skel-preview::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.04) 40%,
+        rgba(255, 255, 255, 0.08) 50%,
+        rgba(255, 255, 255, 0.04) 60%,
+        transparent 100%
+    );
+    animation: vm-shimmer 1.8s ease-in-out infinite;
+}
+
+.vm-skeleton-card .vm-skel-body {
+    padding: 14px 16px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.vm-skel-line {
+    height: 14px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    position: relative;
+    overflow: hidden;
+}
+
+.vm-skel-line::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.06) 40%,
+        rgba(255, 255, 255, 0.1) 50%,
+        rgba(255, 255, 255, 0.06) 60%,
+        transparent 100%
+    );
+    animation: vm-shimmer 1.8s ease-in-out infinite;
+}
+
+.vm-skel-line.vm-skel-title {
+    width: 70%;
+    height: 16px;
+}
+
+.vm-skel-line.vm-skel-desc {
+    width: 90%;
+    height: 12px;
+}
+
+.vm-skel-line.vm-skel-tags {
+    width: 50%;
+    height: 10px;
+    margin-top: 4px;
+}
+
+.vm-skel-line.vm-skel-btn {
+    width: 100%;
+    height: 34px;
+    border-radius: 6px;
+    margin-top: 6px;
+}
+
+/* Stagger the shimmer per card for a wave effect */
+.vm-skeleton-card:nth-child(2) .vm-skel-preview::after,
+.vm-skeleton-card:nth-child(2) .vm-skel-line::after {
+    animation-delay: 0.15s;
+}
+.vm-skeleton-card:nth-child(3) .vm-skel-preview::after,
+.vm-skeleton-card:nth-child(3) .vm-skel-line::after {
+    animation-delay: 0.3s;
+}
+.vm-skeleton-card:nth-child(4) .vm-skel-preview::after,
+.vm-skeleton-card:nth-child(4) .vm-skel-line::after {
+    animation-delay: 0.45s;
+}
+.vm-skeleton-card:nth-child(5) .vm-skel-preview::after,
+.vm-skeleton-card:nth-child(5) .vm-skel-line::after {
+    animation-delay: 0.6s;
+}
+.vm-skeleton-card:nth-child(6) .vm-skel-preview::after,
+.vm-skeleton-card:nth-child(6) .vm-skel-line::after {
+    animation-delay: 0.75s;
+}
+.vm-skeleton-card:nth-child(7) .vm-skel-preview::after,
+.vm-skeleton-card:nth-child(7) .vm-skel-line::after {
+    animation-delay: 0.9s;
+}
+.vm-skeleton-card:nth-child(8) .vm-skel-preview::after,
+.vm-skeleton-card:nth-child(8) .vm-skel-line::after {
+    animation-delay: 1.05s;
+}
+.vm-skeleton-card:nth-child(9) .vm-skel-preview::after,
+.vm-skeleton-card:nth-child(9) .vm-skel-line::after {
+    animation-delay: 1.2s;
+}
+
+@keyframes vm-shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
