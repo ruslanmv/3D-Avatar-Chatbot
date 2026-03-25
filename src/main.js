@@ -147,7 +147,7 @@ function loadConfig() {
             } else if (settings.provider === 'ollabridge' && settings.ollabridge) {
                 apiKey = settings.ollabridge.api_key || '';
                 model = settings.ollabridge.model || 'default';
-                baseUrl = settings.ollabridge.base_url || 'http://localhost:11435';
+                baseUrl = settings.ollabridge.base_url || '';
             }
 
             return {
@@ -237,7 +237,7 @@ const config = loadConfig();
             } else if (config.provider === 'ollabridge') {
                 patch.ollabridge = {
                     api_key: config.apiKey,
-                    base_url: config.baseUrl || 'http://localhost:11435',
+                    base_url: config.baseUrl || '',
                     model: config.model || 'default',
                 };
             }
@@ -2331,7 +2331,9 @@ function updateProviderFields() {
                 if (baseUrlInput) baseUrlInput.value = settings.ollama?.base_url || 'http://localhost:11434';
             } else if (provider === 'ollabridge' && settings.ollabridge) {
                 apiKeyInput.value = settings.ollabridge.api_key || '';
-                if (baseUrlInput) baseUrlInput.value = settings.ollabridge.base_url || 'http://localhost:11435';
+                if (baseUrlInput) {
+                    baseUrlInput.value = settings.ollabridge?.base_url || '';
+                }
             } else {
                 // No key saved for this provider, clear the field
                 apiKeyInput.value = '';
@@ -2469,7 +2471,7 @@ function _updateOllaBridgeAuthUI() {
             if (pairRow) pairRow.style.display = 'block';
             if (apiKeyRow) apiKeyRow.style.display = 'none';
             if (authHint) {
-                authHint.textContent = 'Enter the 6-digit pairing code from OllaBridge console and click Pair.';
+                authHint.textContent = 'Enter the OllaBridge pairing code and click Pair.';
                 authHint.style.color = '#888';
             }
         } else if (mode === 'apikey') {
@@ -2674,7 +2676,7 @@ function saveSettings() {
                 const remotePromptCb = $('ollabridge-use-remote-prompt');
                 patch.ollabridge = {
                     api_key: authMode === 'apikey' ? apiKey : '',
-                    base_url: baseUrl || 'http://localhost:11435',
+                    base_url: (baseUrl || '').trim(),
                     model: model || 'default',
                     auth_mode: authMode,
                     use_remote_prompt: remotePromptCb ? remotePromptCb.checked : true,
@@ -4105,7 +4107,7 @@ window.addEventListener('DOMContentLoaded', __nexusWireFetchModelsButton);
 
 /* =====================================================================
    OllaBridge Pairing Button
-   - Exchanges a 6-digit code for a persistent bearer token
+   - Exchanges a pairing code for a persistent bearer token
    - Stores the token in LLMManager settings (ollabridge.pair_token)
    ===================================================================== */
 function __nexusWireOllaBridgePairButton() {
@@ -4117,10 +4119,11 @@ function __nexusWireOllaBridgePairButton() {
         const statusDiv = document.getElementById('ollabridge-pair-status');
         if (!codeInput) return;
 
-        const code = codeInput.value.trim();
+        const code = codeInput.value.trim().toUpperCase().replace(/-/g, '').replace(/\s+/g, '');
+
         if (!code || code.length < 4) {
             if (statusDiv) {
-                statusDiv.textContent = 'Please enter the pairing code from the OllaBridge console.';
+                statusDiv.textContent = 'Please enter a valid OllaBridge pairing code.';
                 statusDiv.style.color = '#f59e0b';
             }
             return;
