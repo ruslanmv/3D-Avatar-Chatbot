@@ -682,7 +682,12 @@
                 );
             }
 
-            const baseUrlClean = (base_url || 'http://localhost:11435').replace(/\/$/, '');
+            const baseUrlClean = (base_url || '').replace(/\/$/, '');
+            if (!baseUrlClean) {
+                throw new Error(
+                    'OllaBridge: Missing Base URL. Enter the OllaBridge URL in Settings (e.g. http://localhost:11435 or https://ruslanmv-ollabridge.hf.space).'
+                );
+            }
             const url = `${baseUrlClean}/v1/chat/completions`;
             const headers = {
                 'Content-Type': 'application/json',
@@ -828,7 +833,12 @@
                 throw new Error('OllaBridge: No API key or pairing token.');
             }
 
-            const baseUrlClean = (base_url || 'http://localhost:11435').replace(/\/$/, '');
+            const baseUrlClean = (base_url || '').replace(/\/$/, '');
+            if (!baseUrlClean) {
+                throw new Error(
+                    'OllaBridge: Missing Base URL. Enter the OllaBridge URL in Settings (e.g. http://localhost:11435 or https://ruslanmv-ollabridge.hf.space).'
+                );
+            }
             const url = `${baseUrlClean}/v1/chat/completions`;
             const headers = {
                 'Content-Type': 'application/json',
@@ -1157,7 +1167,14 @@
             }
 
             try {
-                const url = `${(base_url || 'http://localhost:11435').replace(/\/$/, '')}/v1/models`;
+                const baseUrlClean = (base_url || '').replace(/\/$/, '');
+                if (!baseUrlClean) {
+                    return {
+                        models: fallback,
+                        error: 'Missing OllaBridge Base URL - enter it in Settings',
+                    };
+                }
+                const url = `${baseUrlClean}/v1/models`;
                 const headers = {};
                 if (authToken) {
                     headers['Authorization'] = `Bearer ${authToken}`;
@@ -1352,7 +1369,7 @@
                     api_key: '',
                     pair_token: '',
                     auth_mode: 'pairing',
-                    base_url: 'http://localhost:11435',
+                    base_url: '',
                     model: 'default',
                 },
             };
@@ -1395,7 +1412,7 @@
                     api_key: '',
                     pair_token: '',
                     auth_mode: 'pairing',
-                    base_url: 'http://localhost:11435',
+                    base_url: '',
                     model: 'default',
                     use_remote_prompt: true,
                 },
@@ -1415,37 +1432,67 @@
          * @returns {Promise<{ok: boolean, token?: string, device_id?: string, error?: string}>}
          */
         async pairWithOllaBridge(code, label = '3d-avatar') {
-            const base_url = (this._settings.ollabridge?.base_url || 'http://localhost:11435').replace(/\/$/, '');
+            const cfg = this._settings.ollabridge || {};
+            const base_url = (cfg.base_url || '').replace(/\/$/, '');
+
+            if (!base_url) {
+                return {
+                    ok: false,
+                    error: 'Missing OllaBridge Base URL. Enter it in Settings (e.g. http://localhost:11435 or https://ruslanmv-ollabridge.hf.space).',
+                };
+            }
+
             const url = `${base_url}/pair`;
 
             try {
                 let res;
                 const headers = { 'Content-Type': 'application/json' };
-                const body = { code: code.trim(), label };
+                const cleanCode = String(code || '')
+                    .trim()
+                    .toUpperCase()
+                    .replace(/-/g, '')
+                    .replace(/\s+/g, '');
+                const payload = { code: cleanCode, label };
 
                 if (this._hasProxy()) {
-                    res = await this._fetchViaProxy(url, 'POST', headers, body);
+                    res = await this._fetchViaProxy(url, 'POST', headers, payload);
                 } else {
                     res = await fetch(url, {
                         method: 'POST',
                         headers,
-                        body: JSON.stringify(body),
+                        body: JSON.stringify(payload),
                     });
                 }
 
+                const text = await res.text();
+
                 if (!res.ok) {
-                    const err = await res.text();
-                    return { ok: false, error: `Pairing failed: ${res.status} - ${err}` };
+                    return { ok: false, error: `Pairing failed: ${res.status} - ${text}` };
                 }
 
-                const data = await res.json();
-                if (data.ok && data.token) {
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch {
+                    return { ok: false, error: `Unexpected non-JSON response from OllaBridge: ${text}` };
+                }
+
+                if (data?.ok && data?.token) {
                     // Store the paired token in settings
                     this._settings.ollabridge.pair_token = data.token;
+                    if (data.device_id) {
+                        this._settings.ollabridge.device_id = data.device_id;
+                    }
                     this._saveSettings();
-                    return { ok: true, token: data.token, device_id: data.device_id };
+                    return { ok: true, token: data.token, device_id: data.device_id || null };
                 }
-                return { ok: false, error: 'Unexpected response from OllaBridge' };
+
+                // Server returned a structured error — surface it directly
+                if (data?.error) {
+                    return { ok: false, error: data.error };
+                }
+
+                return { ok: false, error: `Unexpected response from OllaBridge: ${JSON.stringify(data)}` };
             } catch (e) {
                 const hint =
                     e.message && e.message.includes('Failed to fetch')
@@ -1462,7 +1509,18 @@
          * @returns {Promise<{auth_mode: string, pairing_enabled: boolean, pairing_available: boolean, device_count: number, error?: string}>}
          */
         async getOllaBridgeAuthInfo() {
-            const base_url = (this._settings.ollabridge?.base_url || 'http://localhost:11435').replace(/\/$/, '');
+            const base_url = (this._settings.ollabridge?.base_url || '').replace(/\/$/, '');
+
+            if (!base_url) {
+                return {
+                    auth_mode: 'pairing',
+                    pairing_enabled: false,
+                    pairing_available: false,
+                    device_count: 0,
+                    error: 'Missing OllaBridge Base URL',
+                };
+            }
+
             const url = `${base_url}/pair/info`;
 
             try {
