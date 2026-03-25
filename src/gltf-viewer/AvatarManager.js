@@ -79,17 +79,41 @@ export class AvatarManager {
      */
     async initFromManifest(manifestUrl) {
         try {
-            const res = await fetch(manifestUrl, { cache: 'no-store' });
-            if (!res.ok) {
-                throw new Error(`Avatar manifest fetch failed: ${res.status}`);
+            // Check for VRM Manager manifest override (same as desktop main.js)
+            let data = null;
+            const override = localStorage.getItem('vrm_manager_manifest_override');
+            if (override) {
+                try {
+                    data = JSON.parse(override);
+                    console.log(
+                        '[AvatarManager] Using VRM Manager manifest override with',
+                        (data.items || []).length,
+                        'avatars'
+                    );
+                } catch (_) {
+                    data = null;
+                }
             }
 
-            const data = await res.json();
+            if (!data) {
+                const res = await fetch(manifestUrl, { cache: 'no-store' });
+                if (!res.ok) {
+                    throw new Error(`Avatar manifest fetch failed: ${res.status}`);
+                }
+                data = await res.json();
+            }
+
             this.basePath = (data.basePath || '/vendor/avatars').replace(/\/$/, '');
-            this.avatars = (data.items || []).map((item) => ({
+            let items = data.items || [];
+
+            // Merge user-installed avatars from VRM Manager catalog
+            items = this._mergeInstalledAvatars(items);
+
+            const blobMap = JSON.parse(localStorage.getItem('vrm_manager_blob_urls') || '{}');
+            this.avatars = items.map((item) => ({
                 name: item.name,
                 file: item.file,
-                url: `${this.basePath}/${item.file}`,
+                url: blobMap[item.file] || `${this.basePath}/${item.file}`,
             }));
 
             console.log(`[AvatarManager] Loaded ${this.avatars.length} avatars from manifest`);
@@ -101,6 +125,34 @@ export class AvatarManager {
             }
             throw error;
         }
+    }
+
+    /**
+     * Merge user-installed avatars from VRM Manager into the manifest.
+     * @param {Array} baseItems - Items from manifest
+     * @returns {Array} Merged items
+     */
+    _mergeInstalledAvatars(baseItems) {
+        let installed;
+        try {
+            installed = JSON.parse(localStorage.getItem('vrm_manager_installed') || '{}');
+        } catch (_) {
+            return baseItems;
+        }
+        const existing = new Set(baseItems.map((x) => x.file));
+        const additions = [];
+        for (const [, entry] of Object.entries(installed)) {
+            if (!entry || !entry.localFile || existing.has(entry.localFile)) continue;
+            additions.push({
+                name: entry.name || entry.localFile.replace(/\.\w+$/, ''),
+                file: entry.localFile,
+                format: entry.format || 'vrm',
+            });
+        }
+        if (additions.length) {
+            console.log('[AvatarManager] Merged', additions.length, 'installed avatar(s)');
+        }
+        return [...baseItems, ...additions];
     }
 
     /**

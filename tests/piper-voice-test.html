@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Piper TTS Voice Test</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                font-family: monospace;
+                background: #111;
+                color: #eee;
+                padding: 20px;
+            }
+            h1 {
+                margin-bottom: 10px;
+            }
+            .controls {
+                margin: 15px 0;
+                display: flex;
+                gap: 10px;
+                align-items: center;
+            }
+            button {
+                padding: 8px 18px;
+                font-size: 14px;
+                cursor: pointer;
+                border: none;
+                border-radius: 4px;
+            }
+            #run-btn {
+                background: #4caf50;
+                color: #fff;
+            }
+            #run-btn:disabled {
+                background: #555;
+                cursor: wait;
+            }
+            #stop-btn {
+                background: #f44336;
+                color: #fff;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 10px;
+            }
+            th,
+            td {
+                padding: 6px 10px;
+                border: 1px solid #333;
+                text-align: left;
+                font-size: 13px;
+            }
+            th {
+                background: #222;
+            }
+            .pass {
+                color: #4caf50;
+                font-weight: bold;
+            }
+            .fail {
+                color: #f44336;
+                font-weight: bold;
+            }
+            .skip {
+                color: #ff9800;
+            }
+            .running {
+                color: #2196f3;
+            }
+            .pending {
+                color: #666;
+            }
+            #summary {
+                margin-top: 15px;
+                padding: 10px;
+                background: #1a1a1a;
+                border-radius: 4px;
+            }
+            #log {
+                margin-top: 10px;
+                max-height: 300px;
+                overflow-y: auto;
+                padding: 10px;
+                background: #0a0a0a;
+                border-radius: 4px;
+                font-size: 12px;
+                white-space: pre-wrap;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>Piper TTS Voice Test Suite</h1>
+        <p>Tests every voice in the catalog by calling <code>predict()</code> and verifying audio output.</p>
+
+        <div class="controls">
+            <button id="run-btn" onclick="runTests()">Run All Tests</button>
+            <button id="stop-btn" onclick="stopTests()">Stop</button>
+            <label><input type="checkbox" id="play-audio" checked /> Play audio</label>
+            <span id="progress"></span>
+        </div>
+
+        <div id="summary"></div>
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Voice ID</th>
+                    <th>Lang</th>
+                    <th>Gender</th>
+                    <th>Quality</th>
+                    <th>Status</th>
+                    <th>Bytes</th>
+                    <th>Time</th>
+                    <th>Error</th>
+                </tr>
+            </thead>
+            <tbody id="results"></tbody>
+        </table>
+        <div id="log"></div>
+
+        <!-- Import map must match the main app -->
+        <script type="importmap">
+            {
+                "imports": {
+                    "onnxruntime-web": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.18.0/dist/esm/ort.min.js"
+                }
+            }
+        </script>
+
+        <script type="module">
+            const CDN_URL = 'https://cdn.jsdelivr.net/npm/@mintplex-labs/piper-tts-web@1.0.4/dist/piper-tts-web.js';
+
+            // Voice catalog — must match PiperWasmTTSProvider.js
+            const VOICES = [
+                {
+                    id: 'en_US-hfc_female-medium',
+                    lang: 'en-US',
+                    gender: 'female',
+                    quality: 'medium',
+                    text: 'Hello, this is a voice test.',
+                },
+                {
+                    id: 'en_US-lessac-medium',
+                    lang: 'en-US',
+                    gender: 'female',
+                    quality: 'medium',
+                    text: 'Hello, this is a voice test.',
+                },
+                {
+                    id: 'en_US-kristin-medium',
+                    lang: 'en-US',
+                    gender: 'female',
+                    quality: 'medium',
+                    text: 'Hello, this is a voice test.',
+                },
+                {
+                    id: 'en_US-libritts_r-medium',
+                    lang: 'en-US',
+                    gender: 'female',
+                    quality: 'medium',
+                    text: 'Hello, this is a voice test.',
+                },
+                {
+                    id: 'en_US-amy-medium',
+                    lang: 'en-US',
+                    gender: 'female',
+                    quality: 'medium',
+                    text: 'Hello, this is a voice test.',
+                },
+                {
+                    id: 'en_US-amy-low',
+                    lang: 'en-US',
+                    gender: 'female',
+                    quality: 'low',
+                    text: 'Hello, this is a voice test.',
+                },
+                {
+                    id: 'en_US-kathleen-low',
+                    lang: 'en-US',
+                    gender: 'female',
+                    quality: 'low',
+                    text: 'Hello, this is a voice test.',
+                },
+                {
+                    id: 'en_US-hfc_male-medium',
+                    lang: 'en-US',
+                    gender: 'male',
+                    quality: 'medium',
+                    text: 'Hello, this is a voice test.',
+                },
+                {
+                    id: 'en_US-ryan-medium',
+                    lang: 'en-US',
+                    gender: 'male',
+                    quality: 'medium',
+                    text: 'Hello, this is a voice test.',
+                },
+                {
+                    id: 'en_US-joe-medium',
+                    lang: 'en-US',
+                    gender: 'male',
+                    quality: 'medium',
+                    text: 'Hello, this is a voice test.',
+                },
+                {
+                    id: 'en_US-john-medium',
+                    lang: 'en-US',
+                    gender: 'male',
+                    quality: 'medium',
+                    text: 'Hello, this is a voice test.',
+                },
+                {
+                    id: 'en_US-bryce-medium',
+                    lang: 'en-US',
+                    gender: 'male',
+                    quality: 'medium',
+                    text: 'Hello, this is a voice test.',
+                },
+                {
+                    id: 'en_US-norman-medium',
+                    lang: 'en-US',
+                    gender: 'male',
+                    quality: 'medium',
+                    text: 'Hello, this is a voice test.',
+                },
+                {
+                    id: 'en_US-arctic-medium',
+                    lang: 'en-US',
+                    gender: 'male',
+                    quality: 'medium',
+                    text: 'Hello, this is a voice test.',
+                },
+                {
+                    id: 'en_US-danny-low',
+                    lang: 'en-US',
+                    gender: 'male',
+                    quality: 'low',
+                    text: 'Hello, this is a voice test.',
+                },
+                {
+                    id: 'en_US-ryan-low',
+                    lang: 'en-US',
+                    gender: 'male',
+                    quality: 'low',
+                    text: 'Hello, this is a voice test.',
+                },
+                {
+                    id: 'en_GB-alba-medium',
+                    lang: 'en-GB',
+                    gender: 'female',
+                    quality: 'medium',
+                    text: 'Hello, this is a voice test.',
+                },
+                {
+                    id: 'en_GB-cori-medium',
+                    lang: 'en-GB',
+                    gender: 'female',
+                    quality: 'medium',
+                    text: 'Hello, this is a voice test.',
+                },
+                {
+                    id: 'en_GB-jenny_dioco-medium',
+                    lang: 'en-GB',
+                    gender: 'female',
+                    quality: 'medium',
+                    text: 'Hello, this is a voice test.',
+                },
+                {
+                    id: 'en_GB-southern_english_female-low',
+                    lang: 'en-GB',
+                    gender: 'female',
+                    quality: 'low',
+                    text: 'Hello, this is a voice test.',
+                },
+                {
+                    id: 'en_GB-alan-medium',
+                    lang: 'en-GB',
+                    gender: 'male',
+                    quality: 'medium',
+                    text: 'Hello, this is a voice test.',
+                },
+                {
+                    id: 'en_GB-northern_english_male-medium',
+                    lang: 'en-GB',
+                    gender: 'male',
+                    quality: 'medium',
+                    text: 'Hello, this is a voice test.',
+                },
+                {
+                    id: 'en_GB-aru-medium',
+                    lang: 'en-GB',
+                    gender: 'male',
+                    quality: 'medium',
+                    text: 'Hello, this is a voice test.',
+                },
+                {
+                    id: 'es_ES-sharvard-medium',
+                    lang: 'es-ES',
+                    gender: 'female',
+                    quality: 'medium',
+                    text: 'Hola, esta es una prueba de voz.',
+                },
+                {
+                    id: 'es_ES-davefx-medium',
+                    lang: 'es-ES',
+                    gender: 'male',
+                    quality: 'medium',
+                    text: 'Hola, esta es una prueba de voz.',
+                },
+                {
+                    id: 'es_ES-carlfm-x_low',
+                    lang: 'es-ES',
+                    gender: 'male',
+                    quality: 'low',
+                    text: 'Hola, esta es una prueba de voz.',
+                },
+                {
+                    id: 'es_MX-ald-medium',
+                    lang: 'es-ES',
+                    gender: 'male',
+                    quality: 'medium',
+                    text: 'Hola, esta es una prueba de voz.',
+                },
+                {
+                    id: 'es_MX-claude-high',
+                    lang: 'es-ES',
+                    gender: 'male',
+                    quality: 'high',
+                    text: 'Hola, esta es una prueba de voz.',
+                },
+                {
+                    id: 'fr_FR-siwis-medium',
+                    lang: 'fr-FR',
+                    gender: 'female',
+                    quality: 'medium',
+                    text: 'Bonjour, ceci est un test vocal.',
+                },
+                {
+                    id: 'fr_FR-siwis-low',
+                    lang: 'fr-FR',
+                    gender: 'female',
+                    quality: 'low',
+                    text: 'Bonjour, ceci est un test vocal.',
+                },
+                {
+                    id: 'fr_FR-tom-medium',
+                    lang: 'fr-FR',
+                    gender: 'male',
+                    quality: 'medium',
+                    text: 'Bonjour, ceci est un test vocal.',
+                },
+                {
+                    id: 'fr_FR-upmc-medium',
+                    lang: 'fr-FR',
+                    gender: 'male',
+                    quality: 'medium',
+                    text: 'Bonjour, ceci est un test vocal.',
+                },
+                {
+                    id: 'fr_FR-gilles-low',
+                    lang: 'fr-FR',
+                    gender: 'male',
+                    quality: 'low',
+                    text: 'Bonjour, ceci est un test vocal.',
+                },
+                {
+                    id: 'de_DE-kerstin-low',
+                    lang: 'de-DE',
+                    gender: 'female',
+                    quality: 'low',
+                    text: 'Hallo, dies ist ein Sprachtest.',
+                },
+                {
+                    id: 'de_DE-eva_k-x_low',
+                    lang: 'de-DE',
+                    gender: 'female',
+                    quality: 'low',
+                    text: 'Hallo, dies ist ein Sprachtest.',
+                },
+                {
+                    id: 'de_DE-thorsten-medium',
+                    lang: 'de-DE',
+                    gender: 'male',
+                    quality: 'medium',
+                    text: 'Hallo, dies ist ein Sprachtest.',
+                },
+                {
+                    id: 'de_DE-thorsten_emotional-medium',
+                    lang: 'de-DE',
+                    gender: 'male',
+                    quality: 'medium',
+                    text: 'Hallo, dies ist ein Sprachtest.',
+                },
+                {
+                    id: 'de_DE-mls-medium',
+                    lang: 'de-DE',
+                    gender: 'male',
+                    quality: 'medium',
+                    text: 'Hallo, dies ist ein Sprachtest.',
+                },
+                {
+                    id: 'de_DE-karlsson-low',
+                    lang: 'de-DE',
+                    gender: 'male',
+                    quality: 'low',
+                    text: 'Hallo, dies ist ein Sprachtest.',
+                },
+                {
+                    id: 'de_DE-pavoque-low',
+                    lang: 'de-DE',
+                    gender: 'male',
+                    quality: 'low',
+                    text: 'Hallo, dies ist ein Sprachtest.',
+                },
+                {
+                    id: 'it_IT-paola-medium',
+                    lang: 'it-IT',
+                    gender: 'female',
+                    quality: 'medium',
+                    text: 'Ciao, questo e un test vocale.',
+                },
+                {
+                    id: 'it_IT-riccardo-x_low',
+                    lang: 'it-IT',
+                    gender: 'male',
+                    quality: 'low',
+                    text: 'Ciao, questo e un test vocale.',
+                },
+                {
+                    id: 'pt_BR-faber-medium',
+                    lang: 'pt-BR',
+                    gender: 'male',
+                    quality: 'medium',
+                    text: 'Ola, este e um teste de voz.',
+                },
+                {
+                    id: 'pt_BR-edresson-low',
+                    lang: 'pt-BR',
+                    gender: 'male',
+                    quality: 'low',
+                    text: 'Ola, este e um teste de voz.',
+                },
+            ];
+
+            let mod = null;
+            let stopped = false;
+            let audioCtx = null;
+
+            function log(msg) {
+                const el = document.getElementById('log');
+                el.textContent += msg + '\n';
+                el.scrollTop = el.scrollHeight;
+            }
+
+            function setRow(i, voice, status, bytes, time, error) {
+                const row = document.getElementById('row-' + i);
+                if (!row) return;
+                const cls =
+                    status === 'PASS'
+                        ? 'pass'
+                        : status === 'FAIL'
+                          ? 'fail'
+                          : status === 'SKIP'
+                            ? 'skip'
+                            : status === 'RUNNING'
+                              ? 'running'
+                              : 'pending';
+                row.innerHTML = `
+                <td>${i + 1}</td>
+                <td>${voice.id}</td>
+                <td>${voice.lang}</td>
+                <td>${voice.gender}</td>
+                <td>${voice.quality}</td>
+                <td class="${cls}">${status}</td>
+                <td>${bytes || '-'}</td>
+                <td>${time || '-'}</td>
+                <td style="color:#f88;font-size:11px">${error || ''}</td>
+            `;
+            }
+
+            function updateSummary(pass, fail, skip, total) {
+                document.getElementById('summary').innerHTML =
+                    `<span class="pass">PASS: ${pass}</span> &nbsp; ` +
+                    `<span class="fail">FAIL: ${fail}</span> &nbsp; ` +
+                    `<span class="skip">SKIP: ${skip}</span> &nbsp; ` +
+                    `Total: ${total}`;
+            }
+
+            async function playBlob(blob) {
+                if (!document.getElementById('play-audio').checked) return;
+                if (!audioCtx) audioCtx = new AudioContext();
+                if (audioCtx.state === 'suspended') await audioCtx.resume();
+                const buf = await audioCtx.decodeAudioData(await blob.arrayBuffer());
+                const src = audioCtx.createBufferSource();
+                src.buffer = buf;
+                src.connect(audioCtx.destination);
+                src.start(0);
+                // Wait for playback to finish (or max 3s)
+                await new Promise((r) => {
+                    src.onended = r;
+                    setTimeout(r, Math.min(buf.duration * 1000 + 200, 3000));
+                });
+            }
+
+            window.runTests = async function () {
+                const btn = document.getElementById('run-btn');
+                btn.disabled = true;
+                stopped = false;
+
+                // Build table rows
+                const tbody = document.getElementById('results');
+                tbody.innerHTML = '';
+                for (let i = 0; i < VOICES.length; i++) {
+                    const tr = document.createElement('tr');
+                    tr.id = 'row-' + i;
+                    tbody.appendChild(tr);
+                    setRow(i, VOICES[i], 'PENDING', '', '', '');
+                }
+
+                document.getElementById('log').textContent = '';
+                log('Loading piper-tts-web module...');
+
+                try {
+                    mod = await import(CDN_URL);
+                    log('Module loaded. predict=' + typeof mod.predict + ' TtsSession=' + typeof mod.TtsSession);
+                } catch (e) {
+                    log('FATAL: Failed to load module: ' + e);
+                    btn.disabled = false;
+                    return;
+                }
+
+                let pass = 0,
+                    fail = 0,
+                    skip = 0;
+
+                for (let i = 0; i < VOICES.length; i++) {
+                    if (stopped) {
+                        skip++;
+                        setRow(i, VOICES[i], 'SKIP', '', '', 'stopped');
+                        continue;
+                    }
+
+                    const v = VOICES[i];
+                    setRow(i, v, 'RUNNING', '', '', '');
+                    document.getElementById('progress').textContent = `${i + 1}/${VOICES.length}`;
+
+                    // Reset singleton to force new model load
+                    if (mod.TtsSession) mod.TtsSession._instance = null;
+
+                    const t0 = performance.now();
+                    try {
+                        log(`[${i + 1}/${VOICES.length}] Testing ${v.id}...`);
+                        const blob = await mod.predict({ voiceId: v.id, text: v.text });
+                        const ms = Math.round(performance.now() - t0);
+
+                        if (!blob || blob.size === 0) {
+                            throw new Error('Empty audio blob');
+                        }
+
+                        // Verify it's decodable
+                        if (!audioCtx) audioCtx = new AudioContext();
+                        await audioCtx.decodeAudioData(await blob.slice().arrayBuffer());
+
+                        pass++;
+                        setRow(i, v, 'PASS', blob.size.toLocaleString(), ms + 'ms', '');
+                        log(`  ✓ PASS (${blob.size} bytes, ${ms}ms)`);
+
+                        await playBlob(blob);
+                    } catch (err) {
+                        const ms = Math.round(performance.now() - t0);
+                        fail++;
+                        const errMsg = String(err).slice(0, 120);
+                        setRow(i, v, 'FAIL', '-', ms + 'ms', errMsg);
+                        log(`  ✗ FAIL: ${errMsg}`);
+                    }
+
+                    updateSummary(pass, fail, skip, VOICES.length);
+                }
+
+                // Final remaining skips
+                for (let i = 0; i < VOICES.length; i++) {
+                    const row = document.getElementById('row-' + i);
+                    if (row && row.querySelector('.pending')) {
+                        skip++;
+                        setRow(i, VOICES[i], 'SKIP', '', '', '');
+                    }
+                }
+
+                updateSummary(pass, fail, skip, VOICES.length);
+                log(`\nDone. PASS=${pass} FAIL=${fail} SKIP=${skip}`);
+
+                if (fail > 0) {
+                    log('\n--- FAILED VOICES (remove from PiperWasmTTSProvider.js) ---');
+                    for (let i = 0; i < VOICES.length; i++) {
+                        const row = document.getElementById('row-' + i);
+                        if (row && row.querySelector('.fail')) {
+                            log(`  ✗ ${VOICES[i].id}`);
+                        }
+                    }
+                }
+
+                btn.disabled = false;
+            };
+
+            window.stopTests = function () {
+                stopped = true;
+            };
+        </script>
+    </body>
+</html>
