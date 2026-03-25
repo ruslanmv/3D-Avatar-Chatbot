@@ -921,8 +921,8 @@
                                     type="text"
                                     id="ollabridge-pair-code"
                                     class="text-input"
-                                    placeholder="Enter 6-digit pairing code..."
-                                    maxlength="7"
+                                    placeholder="Enter pairing code..."
+                                    maxlength="9"
                                     style="flex: 1; letter-spacing: 0.3em; text-align: center; font-size: 1.1rem"
                                 />
                                 <button
@@ -946,8 +946,12 @@
                         </div>
 
                         <div class="input-group" id="baseurl-row" style="display: none">
-                            <label class="input-label" for="base-url">BASE URL (optional)</label>
-                            <input id="base-url" class="text-input" placeholder="https://..." />
+                            <label class="input-label" for="base-url">BASE URL (root only, no /v1)</label>
+                            <input
+                                id="base-url"
+                                class="text-input"
+                                placeholder="e.g. https://ruslanmv-ollabridge.hf.space or http://localhost:11435"
+                            />
                         </div>
 
                         <div class="input-group">
