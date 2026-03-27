@@ -49,6 +49,15 @@
     var EMOTIONS = [
         { id: 'idle', label: 'Idle', icon: '\u{1F9D8}', mode: 'idle', vrmExpr: 'neutral', intensity: 0, duration: 0 },
         {
+            id: 'waiting',
+            label: 'Waiting',
+            icon: '\u{1F9CD}',
+            mode: 'waiting',
+            vrmExpr: 'neutral',
+            intensity: 0,
+            duration: 0,
+        },
+        {
             id: 'happy',
             label: 'Happy',
             icon: '\u{1F60A}',
@@ -70,7 +79,8 @@
             id: 'dance',
             label: 'Dance',
             icon: '\u{1F57A}',
-            mode: 'dance',
+            mode: 'musicIdle', // procedural fallback only; primary path is clip-first via AnimationResolver
+            performanceIntent: 'dance', // routes through NEXUS_ANIMATION_RESOLVER
             vrmExpr: 'happy',
             intensity: 0.6,
             duration: 15000,
@@ -466,39 +476,47 @@
             spine: [
                 { axis: 'x', freq: 0, amp: 0, offset: 0.03 }, // slight forward lean
             ],
-            // Right hand near chin — the classic think pose
             rightUpperArm: [
                 { axis: 'x', freq: 0.2, amp: 0.02, offset: -0.22 },
                 { axis: 'z', freq: 0, amp: 0, offset: deg(-16) },
             ],
             rightLowerArm: [{ axis: 'y', freq: 0.15, amp: -0.015, offset: deg(48) }],
-            // Left arm crosses body — self-holding
             leftUpperArm: [
                 { axis: 'x', freq: 0.15, amp: 0.01, offset: 0.06 },
                 { axis: 'z', freq: 0, amp: 0, offset: deg(10) },
             ],
             leftLowerArm: [{ axis: 'y', freq: 0, amp: 0, offset: deg(-32) }],
             neck: [{ axis: 'z', freq: 0.3, amp: 0.025 }],
+            // Legs: weight on right leg (classic thinker pose), left knee slightly bent
+            leftUpperLeg: [
+                { axis: 'x', freq: 0.3, amp: 0.01 }, // counter hip sway
+                { axis: 'z', freq: 0, amp: 0, offset: deg(-2) }, // slight outward
+            ],
+            rightUpperLeg: [
+                { axis: 'x', freq: 0, amp: 0, offset: deg(-3) }, // locked straight (weight-bearing)
+            ],
+            leftLowerLeg: [
+                { axis: 'x', freq: 0, amp: 0, offset: deg(5) }, // relaxed knee bend
+            ],
+            rightLowerLeg: [
+                { axis: 'x', freq: 0, amp: 0, offset: deg(2) }, // nearly straight
+            ],
         },
         // ── HAPPY: NPC cheer — upright posture, gentle bounce, open arms ──
         // Reference: FFXIV /joy, GW2 /cheer — cheerful but planted feet
         happy: {
-            chest: [
-                { axis: 'x', freq: 1.8, amp: 0.03, offset: -0.04 }, // open chest, light bounce
-            ],
+            chest: [{ axis: 'x', freq: 1.8, amp: 0.03, offset: -0.04 }],
             hips: [
                 { axis: 'x', freq: 1.8, amp: 0.025 }, // gentle bounce
                 { axis: 'z', freq: 0.8, amp: 0.02 }, // weight shift
             ],
-            spine: [
-                { axis: 'x', freq: 0, amp: 0, offset: -0.03 }, // upright posture
-            ],
+            spine: [{ axis: 'x', freq: 0, amp: 0, offset: -0.03 }],
             head: [
-                { axis: 'x', freq: 1.6, amp: 0.025 }, // gentle nod
-                { axis: 'z', freq: 0.8, amp: 0.03 }, // slight head tilt
+                { axis: 'x', freq: 1.6, amp: 0.025 },
+                { axis: 'z', freq: 0.8, amp: 0.03 },
             ],
             leftUpperArm: [
-                { axis: 'x', freq: 1.6, amp: 0.08 }, // relaxed arm lift
+                { axis: 'x', freq: 1.6, amp: 0.08 },
                 { axis: 'z', freq: 0, amp: 0, offset: deg(8) },
             ],
             rightUpperArm: [
@@ -507,25 +525,31 @@
             ],
             leftLowerArm: [{ axis: 'y', freq: 1.6, amp: -0.06 }],
             rightLowerArm: [{ axis: 'y', freq: 1.6, amp: 0.06, phase: Math.PI }],
+            // Legs: knees absorb the bounce — Genshin-style planted feet
+            leftUpperLeg: [
+                { axis: 'x', freq: 1.8, amp: 0.02 }, // knee flexion matches hip bounce
+                { axis: 'z', freq: 0.8, amp: -0.012 }, // counter weight shift
+            ],
+            rightUpperLeg: [
+                { axis: 'x', freq: 1.8, amp: 0.02 },
+                { axis: 'z', freq: 0.8, amp: 0.012, phase: Math.PI },
+            ],
+            leftLowerLeg: [
+                { axis: 'x', freq: 1.8, amp: -0.015 }, // shin compensates
+            ],
+            rightLowerLeg: [{ axis: 'x', freq: 1.8, amp: -0.015 }],
         },
-        // ── SAD: NPC dejection — drooped head, slumped posture, self-comfort ──
+        // ── SAD: NPC dejection — drooped head, slumped posture, weight sinking ──
         // Reference: FFXIV /sulk, WoW /cry — minimal motion, heavy weight
         sad: {
             head: [
-                { axis: 'x', freq: 0.2, amp: 0.01, offset: 0.14 }, // head hanging down
-                { axis: 'z', freq: 0.15, amp: 0.02 }, // slow tilt
+                { axis: 'x', freq: 0.2, amp: 0.01, offset: 0.14 },
+                { axis: 'z', freq: 0.15, amp: 0.02 },
             ],
-            spine: [
-                { axis: 'x', freq: 0.15, amp: 0.008, offset: 0.08 }, // slumped forward
-            ],
-            chest: [
-                { axis: 'x', freq: 0.3, amp: 0.012, offset: 0.06 }, // chest caved in
-            ],
-            hips: [
-                { axis: 'z', freq: 0.2, amp: 0.01 }, // barely perceptible sway
-            ],
+            spine: [{ axis: 'x', freq: 0.15, amp: 0.008, offset: 0.08 }],
+            chest: [{ axis: 'x', freq: 0.3, amp: 0.012, offset: 0.06 }],
+            hips: [{ axis: 'z', freq: 0.2, amp: 0.01 }],
             neck: [{ axis: 'x', freq: 0.2, amp: 0.008, offset: 0.04 }],
-            // Arms hang heavy, slight self-holding
             leftUpperArm: [
                 { axis: 'z', freq: 0, amp: 0, offset: deg(10) },
                 { axis: 'x', freq: 0.2, amp: 0.01, offset: 0.06 },
@@ -536,27 +560,31 @@
             ],
             leftLowerArm: [{ axis: 'y', freq: 0, amp: 0, offset: deg(-30) }],
             rightLowerArm: [{ axis: 'y', freq: 0, amp: 0, offset: deg(30) }],
+            // Legs: weight sinks, slight knee bend (defeated posture)
+            leftUpperLeg: [
+                { axis: 'x', freq: 0.2, amp: 0.005, offset: deg(4) }, // knees slightly bent
+                { axis: 'z', freq: 0.2, amp: -0.006 },
+            ],
+            rightUpperLeg: [
+                { axis: 'x', freq: 0.2, amp: 0.005, offset: deg(4) },
+                { axis: 'z', freq: 0.2, amp: 0.006, phase: Math.PI },
+            ],
+            leftLowerLeg: [{ axis: 'x', freq: 0, amp: 0, offset: deg(3) }],
+            rightLowerLeg: [{ axis: 'x', freq: 0, amp: 0, offset: deg(3) }],
         },
-        // ── ANGRY: NPC aggro stance — rigid, tense, fists ready ──
-        // Reference: FFXIV /angry, WoW /threaten — controlled intensity, no flailing
+        // ── ANGRY: NPC aggro stance — rigid, tense, wide planted stance ──
+        // Reference: FFXIV /angry, WoW /threaten — controlled intensity
         angry: {
             head: [
-                { axis: 'x', freq: 0, amp: 0, offset: -0.06 }, // chin up defiant
-                { axis: 'y', freq: 0.8, amp: 0.03 }, // slow glare shifts
+                { axis: 'x', freq: 0, amp: 0, offset: -0.06 },
+                { axis: 'y', freq: 0.8, amp: 0.03 },
             ],
-            chest: [
-                { axis: 'x', freq: 1.5, amp: 0.02, offset: -0.08 }, // puffed up chest + tense breathing
-            ],
-            spine: [
-                { axis: 'x', freq: 0, amp: 0, offset: -0.05 }, // rigid upright
-            ],
-            hips: [
-                { axis: 'z', freq: 0.6, amp: 0.015 }, // restless weight shift
-            ],
-            // Fists at sides, slightly raised — ready stance
+            chest: [{ axis: 'x', freq: 1.5, amp: 0.02, offset: -0.08 }],
+            spine: [{ axis: 'x', freq: 0, amp: 0, offset: -0.05 }],
+            hips: [{ axis: 'z', freq: 0.6, amp: 0.015 }],
             leftUpperArm: [
                 { axis: 'z', freq: 0, amp: 0, offset: deg(10) },
-                { axis: 'x', freq: 0.8, amp: 0.02 }, // tense micro-pump
+                { axis: 'x', freq: 0.8, amp: 0.02 },
             ],
             rightUpperArm: [
                 { axis: 'z', freq: 0, amp: 0, offset: deg(-10) },
@@ -565,25 +593,29 @@
             leftLowerArm: [{ axis: 'y', freq: 0, amp: 0, offset: deg(-25) }],
             rightLowerArm: [{ axis: 'y', freq: 0, amp: 0, offset: deg(25) }],
             neck: [{ axis: 'x', freq: 0, amp: 0, offset: -0.03 }],
+            // Legs: wide planted stance, tense, restless weight shift
+            leftUpperLeg: [
+                { axis: 'z', freq: 0, amp: 0, offset: deg(-3) }, // slightly wide stance
+                { axis: 'x', freq: 0.6, amp: 0.008 }, // restless
+            ],
+            rightUpperLeg: [
+                { axis: 'z', freq: 0, amp: 0, offset: deg(3) },
+                { axis: 'x', freq: 0.6, amp: 0.008, phase: Math.PI },
+            ],
+            leftLowerLeg: [{ axis: 'x', freq: 0, amp: 0, offset: deg(3) }], // slightly bent
+            rightLowerLeg: [{ axis: 'x', freq: 0, amp: 0, offset: deg(3) }],
         },
-        // ── SURPRISED: NPC startle — step back, hands up, then settle ──
-        // Reference: FFXIV /surprised, WoW /gasp — reactive pose, not continuous
+        // ── SURPRISED: NPC startle — step back, hands up, knees bent ──
+        // Reference: FFXIV /surprised, WoW /gasp — reactive pose
         surprised: {
             head: [
-                { axis: 'x', freq: 0.6, amp: 0.015, offset: -0.1 }, // head pulled back
-                { axis: 'z', freq: 1.0, amp: 0.03 }, // alert look
-                { axis: 'y', freq: 0.8, amp: 0.02 }, // scanning
+                { axis: 'x', freq: 0.6, amp: 0.015, offset: -0.1 },
+                { axis: 'z', freq: 1.0, amp: 0.03 },
+                { axis: 'y', freq: 0.8, amp: 0.02 },
             ],
-            chest: [
-                { axis: 'x', freq: 0.5, amp: 0.015, offset: -0.08 }, // lean back
-            ],
-            spine: [
-                { axis: 'x', freq: 0, amp: 0, offset: -0.06 }, // upright, pulled back
-            ],
-            hips: [
-                { axis: 'x', freq: 0.6, amp: 0.015 }, // settling
-            ],
-            // Hands raised, palms out — startle reflex
+            chest: [{ axis: 'x', freq: 0.5, amp: 0.015, offset: -0.08 }],
+            spine: [{ axis: 'x', freq: 0, amp: 0, offset: -0.06 }],
+            hips: [{ axis: 'x', freq: 0.6, amp: 0.015 }],
             leftUpperArm: [
                 { axis: 'x', freq: 0.4, amp: 0.025, offset: -0.2 },
                 { axis: 'z', freq: 0, amp: 0, offset: deg(15) },
@@ -594,49 +626,70 @@
             ],
             leftLowerArm: [{ axis: 'y', freq: 0.6, amp: -0.03, offset: deg(-30) }],
             rightLowerArm: [{ axis: 'y', freq: 0.6, amp: 0.03, offset: deg(30) }],
+            // Legs: startle crouch — knees bent, settling back to stand
+            leftUpperLeg: [
+                { axis: 'x', freq: 0.6, amp: 0.012, offset: deg(6) }, // startled knee bend
+            ],
+            rightUpperLeg: [{ axis: 'x', freq: 0.6, amp: 0.012, offset: deg(6), phase: Math.PI * 0.3 }],
+            leftLowerLeg: [{ axis: 'x', freq: 0.6, amp: -0.008, offset: deg(4) }],
+            rightLowerLeg: [{ axis: 'x', freq: 0.6, amp: -0.008, offset: deg(4) }],
         },
-        // ── DANCE: MMORPG NPC groove — rhythmic sway, grounded feet ──
-        // Reference: FFXIV /dance, GW2 /dance — rhythmic but contained,
-        // weight stays centered, no spinning/flailing. Clean step-sway feel.
-        // 120 BPM base (freq 2.0 = on-beat, 4.0 = half-beat)
-        dance: {
-            // Hips: gentle sway and bounce — drives rhythm without spinning
+        // ── MUSIC IDLE: Subtle rhythmic sway (procedural fallback for dance) ──
+        // Used only when no BVH/VRMA dance clip is available.
+        // Primary dance path is clip-first via AnimationResolver.
+        // Kept deliberately restrained to avoid spinning/floating.
+        musicIdle: {
             hips: [
-                { axis: 'x', freq: 4.0, amp: 0.04 }, // knee bounce
+                { axis: 'x', freq: 4.0, amp: 0.025 }, // reduced — knees now drive bounce
                 { axis: 'y', freq: 2.0, amp: 0.06 }, // hip rotation groove
-                { axis: 'z', freq: 2.0, amp: 0.06, phase: Math.PI * 0.5 }, // weight transfer L/R
+                { axis: 'z', freq: 2.0, amp: 0.05, phase: Math.PI * 0.5 }, // weight transfer L/R
             ],
-            // Spine: gentle counter to hips — natural opposition
             spine: [
-                { axis: 'y', freq: 2.0, amp: -0.04, phase: Math.PI }, // counter-rotate
-                { axis: 'x', freq: 4.0, amp: 0.02 }, // pulse with bounce
+                { axis: 'y', freq: 2.0, amp: -0.04, phase: Math.PI },
+                { axis: 'x', freq: 4.0, amp: 0.015 },
             ],
-            // Chest: subtle isolation on top of spine
             chest: [
-                { axis: 'y', freq: 2.0, amp: 0.05, phase: Math.PI * 0.3 }, // chest groove
-                { axis: 'x', freq: 4.0, amp: 0.025 }, // bounce follow
-                { axis: 'z', freq: 4.0, amp: 0.015 }, // micro-shimmy accent
+                { axis: 'y', freq: 2.0, amp: 0.05, phase: Math.PI * 0.3 },
+                { axis: 'x', freq: 4.0, amp: 0.02 },
+                { axis: 'z', freq: 4.0, amp: 0.015 },
             ],
-            // Head: bobbing to the beat, relaxed
             head: [
-                { axis: 'x', freq: 4.0, amp: 0.03, phase: Math.PI * 0.2 }, // head bob
-                { axis: 'y', freq: 2.0, amp: 0.03 }, // look direction
-                { axis: 'z', freq: 1.0, amp: 0.02 }, // vibe tilt
+                { axis: 'x', freq: 4.0, amp: 0.025, phase: Math.PI * 0.2 },
+                { axis: 'y', freq: 2.0, amp: 0.03 },
+                { axis: 'z', freq: 1.0, amp: 0.02 },
             ],
             neck: [{ axis: 'y', freq: 2.0, amp: 0.02, phase: Math.PI * 0.5 }],
-            // Arms: natural swing, not pumping wildly
             leftUpperArm: [
-                { axis: 'x', freq: 2.0, amp: 0.1 }, // relaxed swing
+                { axis: 'x', freq: 2.0, amp: 0.1 },
                 { axis: 'z', freq: 1.0, amp: 0.04, offset: deg(6) },
             ],
             rightUpperArm: [
                 { axis: 'x', freq: 2.0, amp: 0.1, phase: Math.PI },
                 { axis: 'z', freq: 1.0, amp: 0.04, phase: Math.PI, offset: deg(-6) },
             ],
-            leftLowerArm: [
-                { axis: 'y', freq: 2.0, amp: -0.08 }, // elbow groove
-            ],
+            leftLowerArm: [{ axis: 'y', freq: 2.0, amp: -0.08 }],
             rightLowerArm: [{ axis: 'y', freq: 2.0, amp: 0.08, phase: Math.PI }],
+            // Legs: KNEES DRIVE THE BOUNCE — feet stay planted
+            // Upper legs flex on the beat, lower legs compensate to keep feet grounded
+            leftUpperLeg: [
+                { axis: 'x', freq: 4.0, amp: 0.04 }, // knee bend on half-beat
+                { axis: 'z', freq: 2.0, amp: -0.03, phase: Math.PI * 0.5 }, // step-shift L/R
+            ],
+            rightUpperLeg: [
+                { axis: 'x', freq: 4.0, amp: 0.04, phase: Math.PI * 0.15 }, // slightly offset
+                { axis: 'z', freq: 2.0, amp: 0.03, phase: Math.PI * 1.5 },
+            ],
+            leftLowerLeg: [
+                { axis: 'x', freq: 4.0, amp: -0.03 }, // shin counter-rotation (keeps foot grounded)
+            ],
+            rightLowerLeg: [{ axis: 'x', freq: 4.0, amp: -0.03, phase: Math.PI * 0.15 }],
+            // Feet: toe-taps on the beat
+            leftFoot: [
+                { axis: 'x', freq: 2.0, amp: 0.02 }, // toe-tap
+            ],
+            rightFoot: [
+                { axis: 'x', freq: 2.0, amp: 0.02, phase: Math.PI }, // alternating
+            ],
         },
         // ── FLIRT: NPC charm — coy head tilt, hand on hip, subtle sway ──
         // Reference: FFXIV /wink, GW2 /flirt — confident but controlled
@@ -670,6 +723,17 @@
             ],
             leftLowerArm: [{ axis: 'y', freq: 0, amp: 0, offset: deg(-38) }],
             neck: [{ axis: 'z', freq: 0.5, amp: 0.025 }],
+            // Legs: contrapposto — weight on left (hand-on-hip side), right relaxed
+            leftUpperLeg: [
+                { axis: 'x', freq: 0, amp: 0, offset: deg(-2) }, // weight-bearing, nearly straight
+                { axis: 'z', freq: 0.5, amp: -0.015 }, // subtle sway follow
+            ],
+            rightUpperLeg: [
+                { axis: 'x', freq: 0, amp: 0, offset: deg(4) }, // relaxed, slightly bent
+                { axis: 'z', freq: 0.5, amp: 0.015, phase: Math.PI },
+            ],
+            leftLowerLeg: [{ axis: 'x', freq: 0, amp: 0, offset: deg(2) }],
+            rightLowerLeg: [{ axis: 'x', freq: 0, amp: 0, offset: deg(6) }], // relaxed knee
         },
         // ── TEASE: NPC playful — asymmetric, shoulder pop, wag gesture ──
         // Reference: FFXIV /taunt, GW2 /taunt — characterful but not wild
@@ -699,6 +763,17 @@
                 { axis: 'z', freq: 0, amp: 0, offset: deg(8) },
             ],
             neck: [{ axis: 'z', freq: 0.8, amp: 0.025 }],
+            // Legs: playful weight shift, one hip popped
+            leftUpperLeg: [
+                { axis: 'z', freq: 0.8, amp: -0.02 }, // follows hip pop
+                { axis: 'x', freq: 0.8, amp: 0.01 },
+            ],
+            rightUpperLeg: [
+                { axis: 'z', freq: 0.8, amp: 0.02, phase: Math.PI },
+                { axis: 'x', freq: 0.8, amp: 0.01, phase: Math.PI },
+            ],
+            leftLowerLeg: [{ axis: 'x', freq: 0.8, amp: -0.008 }],
+            rightLowerLeg: [{ axis: 'x', freq: 0.8, amp: -0.008, phase: Math.PI }],
         },
         // ── INTIMATE: NPC closeness — gentle lean, soft breathing, eye contact ──
         // Reference: FFXIV /blush, GW2 /shy — warm proximity without exaggeration
@@ -728,6 +803,13 @@
             ],
             leftLowerArm: [{ axis: 'y', freq: 0.2, amp: -0.01, offset: deg(-12) }],
             rightLowerArm: [{ axis: 'y', freq: 0.2, amp: 0.01, offset: deg(12) }],
+            // Legs: gentle weight shift, close stance
+            leftUpperLeg: [
+                { axis: 'x', freq: 0.35, amp: 0.008 }, // counter hip sway
+            ],
+            rightUpperLeg: [{ axis: 'x', freq: 0.35, amp: 0.008, phase: Math.PI }],
+            leftLowerLeg: [{ axis: 'x', freq: 0, amp: 0, offset: deg(3) }], // relaxed
+            rightLowerLeg: [{ axis: 'x', freq: 0, amp: 0, offset: deg(3) }],
         },
         // ── SENSUAL SWAY: NPC slow dance — controlled sway, grounded ──
         // Reference: FFXIV /mdance, slow dance — flowing but not spinning
@@ -761,6 +843,17 @@
             ],
             leftLowerArm: [{ axis: 'y', freq: 0.3, amp: -0.02, offset: deg(-16) }],
             rightLowerArm: [{ axis: 'y', freq: 0.3, amp: 0.02, offset: deg(16) }],
+            // Legs: flowing weight shift with sway, feet planted
+            leftUpperLeg: [
+                { axis: 'z', freq: 0.6, amp: -0.03 }, // counter hip sway
+                { axis: 'x', freq: 1.2, amp: 0.01 }, // micro-bounce absorption
+            ],
+            rightUpperLeg: [
+                { axis: 'z', freq: 0.6, amp: 0.03, phase: Math.PI },
+                { axis: 'x', freq: 1.2, amp: 0.01, phase: Math.PI },
+            ],
+            leftLowerLeg: [{ axis: 'x', freq: 1.2, amp: -0.008 }],
+            rightLowerLeg: [{ axis: 'x', freq: 1.2, amp: -0.008, phase: Math.PI }],
         },
         // ── BECKON: NPC "come here" — controlled gesture, hand motion ──
         // Reference: FFXIV /beckon — clear gesture, minimal body movement
@@ -792,6 +885,17 @@
             ],
             leftLowerArm: [{ axis: 'y', freq: 0, amp: 0, offset: deg(-45) }],
             neck: [{ axis: 'z', freq: 0.4, amp: 0.02 }],
+            // Legs: weight on left hip (hand-on-hip side), right relaxed
+            leftUpperLeg: [
+                { axis: 'x', freq: 0, amp: 0, offset: deg(-2) }, // weight-bearing
+                { axis: 'z', freq: 0.4, amp: -0.012 },
+            ],
+            rightUpperLeg: [
+                { axis: 'x', freq: 0, amp: 0, offset: deg(5) }, // relaxed bend
+                { axis: 'z', freq: 0.4, amp: 0.012, phase: Math.PI },
+            ],
+            leftLowerLeg: [{ axis: 'x', freq: 0, amp: 0, offset: deg(2) }],
+            rightLowerLeg: [{ axis: 'x', freq: 0, amp: 0, offset: deg(7) }], // relaxed knee
         },
         // ── SLOW BURN: NPC intensity — controlled, magnetic, minimal ──
         // Reference: FFXIV /pose, confident idle — deliberate stillness with presence
@@ -821,6 +925,159 @@
                 { axis: 'z', freq: 0, amp: 0, offset: deg(6) },
             ],
             leftLowerArm: [{ axis: 'y', freq: 0, amp: 0, offset: deg(-10) }],
+            // Legs: deliberate planted stance, minimal motion (presence through stillness)
+            leftUpperLeg: [
+                { axis: 'z', freq: 0.3, amp: -0.01 }, // subtle sway counter
+                { axis: 'x', freq: 0, amp: 0, offset: deg(-2) },
+            ],
+            rightUpperLeg: [
+                { axis: 'z', freq: 0.3, amp: 0.01, phase: Math.PI },
+                { axis: 'x', freq: 0, amp: 0, offset: deg(-2) },
+            ],
+            leftLowerLeg: [{ axis: 'x', freq: 0, amp: 0, offset: deg(3) }],
+            rightLowerLeg: [{ axis: 'x', freq: 0, amp: 0, offset: deg(3) }],
+        },
+        // ── WAITING: VRoid-style natural idle — weight shift, gentle sway, alive ──
+        // Reference: VRoid Hub "Waiting" motion, FFXIV NPC idle, Genshin Impact
+        // standing idle, anime character resting pose. Multi-layered procedural
+        // idle that combines:
+        //   - Slow weight shift (contrapposto, ~8s full cycle)
+        //   - Natural breathing (layered spine + chest)
+        //   - Gentle head drift (looking around subtly)
+        //   - Micro arm adjustments (not rigid)
+        //   - Shoulder settling (organic upper body)
+        // Total cycle: ~16 seconds before repeating feel, uses irrational
+        // frequency ratios so the pattern never visibly loops.
+        waiting: {
+            // ── WAITING: VRoid-style natural idle — weight shift, gentle sway, alive ──
+            // Reference: VRoid Hub "Waiting" motion, FFXIV NPC idle, Genshin Impact
+            // standing idle, anime character resting pose. Combines:
+            //   - Slow contrapposto weight shift (~8s full cycle)
+            //   - Calm breathing (~5s cycle, wave propagates up spine)
+            //   - Gentle head drift (looking around subtly)
+            //   - Micro arm adjustments + shoulder settling
+            // Uses irrational frequency ratios so the pattern never visibly loops.
+            // AAA reference: breathing at 12 breaths/min = 0.2 Hz (5s cycle),
+            // wave propagation with ~0.15s delay per bone up the chain.
+
+            // Hips: contrapposto weight shift — the signature of natural standing
+            // Slow L/R sway (0.125 Hz = 8s cycle) drives the entire silhouette
+            hips: [
+                { axis: 'z', freq: 0.125, amp: 0.03 }, // weight shift L/R (primary)
+                { axis: 'y', freq: 0.09, amp: 0.015 }, // subtle hip rotation following weight
+                { axis: 'x', freq: 0.18, amp: 0.004 }, // micro bounce from breathing wave
+            ],
+            // Spine: organic S-curve that counters hip sway + breathing wave origin
+            // Breathing at 0.18 Hz (~5.5s cycle) — relaxed resting breath rate
+            spine: [
+                { axis: 'z', freq: 0.125, amp: -0.018, phase: Math.PI * 0.3 }, // counter-sway (opposition)
+                { axis: 'x', freq: 0.18, amp: 0.014 }, // breathing wave starts here (gentle)
+                { axis: 'y', freq: 0.07, amp: 0.006 }, // very slow torso turn
+            ],
+            // Chest: breathing wave arrives with phase delay (wave propagation)
+            chest: [
+                { axis: 'x', freq: 0.18, amp: 0.018, phase: 0.5 }, // breathing (delayed from spine)
+                { axis: 'z', freq: 0.125, amp: -0.01, phase: Math.PI * 0.5 }, // follows spine counter
+                { axis: 'y', freq: 0.11, amp: 0.008, phase: Math.PI * 0.2 }, // shoulder settling
+            ],
+            // Head: gentle drift — looking around naturally, not locked forward
+            // Counter-rotates slightly against breathing to stabilize gaze (AAA standard)
+            head: [
+                { axis: 'y', freq: 0.08, amp: 0.035 }, // slow horizontal look (~12s cycle)
+                { axis: 'z', freq: 0.13, amp: 0.02 }, // gentle head tilt
+                { axis: 'x', freq: 0.18, amp: -0.004, phase: 0.9 }, // counter-rotation vs breathing
+            ],
+            // Neck: adds organic lag between head and torso
+            neck: [
+                { axis: 'z', freq: 0.11, amp: 0.015, phase: Math.PI * 0.4 }, // tilt lag
+                { axis: 'y', freq: 0.06, amp: 0.01 }, // slow turn lag
+            ],
+            // ── Shoulders: lead arm motion — Genshin-style clavicle independence ──
+            // Shoulder rises/settles FIRST, then arm follows with phase delay.
+            // More pronounced than before: shoulder is the origin of arm chain motion.
+            leftShoulder: [
+                { axis: 'z', freq: 0.09, amp: 0.01 }, // settling drift (pronounced)
+                { axis: 'x', freq: 0.18, amp: 0.006, phase: 0.4 }, // rises with breath (leads arm)
+                { axis: 'y', freq: 0.125, amp: 0.005 }, // follows weight shift
+            ],
+            rightShoulder: [
+                { axis: 'z', freq: 0.09, amp: -0.01, phase: Math.PI * 0.7 }, // async
+                { axis: 'x', freq: 0.18, amp: 0.006, phase: 0.6 }, // rises with breath (leads arm)
+                { axis: 'y', freq: 0.125, amp: -0.005, phase: Math.PI * 0.3 },
+            ],
+            // ── Arms: follow shoulder with phase lag — Genshin arm pendulum ──
+            // Upper arm responds to: 1) body sway, 2) breathing (inhale lifts), 3) shoulder lead
+            // Elbow (lowerArm) is hinge-like: Y-axis only, slight natural bend offset
+            leftUpperArm: [
+                { axis: 'z', freq: 0, amp: 0, offset: deg(4) }, // slight outward rest
+                { axis: 'x', freq: 0.14, amp: 0.018, phase: 0.4 }, // body sway pendulum (lags shoulder)
+                { axis: 'x', freq: 0.18, amp: 0.006, phase: 1.0 }, // breathing: arm rises on inhale
+            ],
+            leftLowerArm: [
+                { axis: 'y', freq: 0.1, amp: -0.012, offset: deg(-8) }, // natural elbow bend (hinge axis)
+                // Elbow stays in flexion range — offset keeps it bent, oscillation stays small
+            ],
+            // Right arm: mirrored with async phase (natural asymmetry)
+            rightUpperArm: [
+                { axis: 'z', freq: 0, amp: 0, offset: deg(-4) },
+                { axis: 'x', freq: 0.14, amp: 0.018, phase: Math.PI * 0.6 + 0.4 }, // async pendulum
+                { axis: 'x', freq: 0.18, amp: 0.006, phase: 1.3 }, // breathing (delayed from left)
+            ],
+            rightLowerArm: [
+                { axis: 'y', freq: 0.1, amp: 0.012, offset: deg(8) }, // hinge-like elbow
+            ],
+            // ── Hands: wrist follows arm with secondary drag ──
+            // Wrist has moderate freedom but is animation-driven (not physics)
+            leftHand: [
+                { axis: 'z', freq: 0.125, amp: 0.012, phase: Math.PI * 0.6 }, // follows weight shift
+                { axis: 'x', freq: 0.18, amp: 0.008, phase: 1.2 }, // follows breathing wave
+                { axis: 'y', freq: 0.11, amp: 0.006 }, // subtle wrist rotation (limited)
+            ],
+            rightHand: [
+                { axis: 'z', freq: 0.125, amp: -0.012, phase: Math.PI * 0.8 }, // async
+                { axis: 'x', freq: 0.18, amp: 0.008, phase: 1.5 }, // follows breathing wave
+                { axis: 'y', freq: 0.11, amp: -0.006, phase: Math.PI * 0.3 }, // limited wrist rotation
+            ],
+            // ── Fingers: natural resting curl + breathing micro-movement ──
+            // Industry standard: progressive curl (each finger slightly more than prev)
+            // Thumb rests at ~15°, index ~20°, middle ~25°, ring ~30°, little ~35°
+            // Tiny breathing-linked oscillation (0.005-0.008 rad) adds life at close range
+            leftThumbProximal: [
+                { axis: 'z', freq: 0.18, amp: 0.005, phase: 0.2 }, // micro-movement with breath
+                { axis: 'x', freq: 0, amp: 0, offset: deg(15) }, // resting curl
+            ],
+            leftIndexProximal: [
+                { axis: 'x', freq: 0.07, amp: 0.008, offset: deg(20) }, // curl + micro
+            ],
+            leftMiddleProximal: [{ axis: 'x', freq: 0.07, amp: 0.006, phase: 0.3, offset: deg(25) }],
+            leftRingProximal: [{ axis: 'x', freq: 0.07, amp: 0.005, phase: 0.6, offset: deg(30) }],
+            leftLittleProximal: [{ axis: 'x', freq: 0.07, amp: 0.004, phase: 0.9, offset: deg(35) }],
+            rightThumbProximal: [
+                { axis: 'z', freq: 0.18, amp: -0.005, phase: 0.5 },
+                { axis: 'x', freq: 0, amp: 0, offset: deg(15) },
+            ],
+            rightIndexProximal: [{ axis: 'x', freq: 0.07, amp: 0.008, phase: Math.PI * 0.4, offset: deg(20) }],
+            rightMiddleProximal: [{ axis: 'x', freq: 0.07, amp: 0.006, phase: Math.PI * 0.4 + 0.3, offset: deg(25) }],
+            rightRingProximal: [{ axis: 'x', freq: 0.07, amp: 0.005, phase: Math.PI * 0.4 + 0.6, offset: deg(30) }],
+            rightLittleProximal: [{ axis: 'x', freq: 0.07, amp: 0.004, phase: Math.PI * 0.4 + 0.9, offset: deg(35) }],
+            // ── Legs: contrapposto weight shift — Genshin-style planted feet ──
+            // Rule: when hips shift Z, supporting leg straightens, free leg relaxes.
+            // Upper legs counter-rotate against hip sway to keep feet on the ground.
+            leftUpperLeg: [
+                { axis: 'x', freq: 0.125, amp: 0.018, phase: Math.PI }, // counter hip tilt
+                { axis: 'z', freq: 0.125, amp: -0.012 }, // leg follows weight shift
+            ],
+            rightUpperLeg: [
+                { axis: 'x', freq: 0.125, amp: 0.018 }, // opposite phase from left
+                { axis: 'z', freq: 0.125, amp: 0.012, phase: Math.PI },
+            ],
+            leftLowerLeg: [
+                { axis: 'x', freq: 0.125, amp: -0.012, phase: Math.PI }, // knee absorbs
+            ],
+            rightLowerLeg: [
+                { axis: 'x', freq: 0.125, amp: -0.012 }, // knee absorbs
+            ],
+            // Feet: stay at rest (planted on ground) — no animation = surface contact
         },
     };
 
@@ -840,6 +1097,21 @@
             dampLambda: 10,
         },
         jawTalk: { freq: 12.0, amp: 0.25 },
+    };
+
+    // =====================================================================
+    // CLIP INTENTS — clip-first animation routing (used by AnimationResolver)
+    // =====================================================================
+    // When an intent is requested (e.g. 'dance'), the resolver picks a clip
+    // from preferredFiles first, falling back to procedural fallbackMode.
+    var CLIP_INTENTS = {
+        dance: {
+            id: 'dance',
+            category: 'dance',
+            preferredFiles: ['dance/dance_1.bvh', 'dance/dance_2.bvh', 'dance/dance_rumba.bvh'],
+            fallbackMode: 'musicIdle',
+            loop: true,
+        },
     };
 
     // =====================================================================
@@ -1086,6 +1358,7 @@
         EMOJI_MAP: EMOJI_MAP,
         KEYWORD_GROUPS: KEYWORD_GROUPS,
         EMOTION_OUTPUT_MAP: EMOTION_OUTPUT_MAP,
+        CLIP_INTENTS: CLIP_INTENTS,
 
         // Helpers
         deg: deg,

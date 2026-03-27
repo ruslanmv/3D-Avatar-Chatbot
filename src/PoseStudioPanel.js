@@ -278,45 +278,64 @@
             '      <button id="poseRedoBtn" class="secondary-btn small-btn">Redo</button>' +
             '    </div>' +
             '  </div>' +
-            // Section 6: Animations — unified grid with search, categories, playback
+            // Section 6: Animations — organized into Behavior / Motion / Talk
             '  <div class="pose-studio-section">' +
-            '    <label class="pose-studio-label">Animations</label>' +
-            '    <div class="pose-anim-hint">Tap an emote to preview it on the avatar</div>' +
-            // Emotes category
-            '    <div class="pose-anim-category">Emotes</div>' +
+            '    <label class="pose-studio-label">\uD83C\uDFAD Behavior (Live)</label>' +
+            '    <div class="pose-anim-hint">Procedural modes — avatar reacts in real-time</div>' +
             '    <div id="poseAnimGridEmotes" class="pose-anim-grid"></div>' +
             // Spicy emotes (gated)
             '    <div class="spicy-gated" style="display:none;">' +
             '      <div class="pose-anim-category pose-anim-category--spicy">Spicy</div>' +
             '      <div id="poseAnimGridSpicy" class="pose-anim-grid"></div>' +
             '    </div>' +
-            // Clip animations (populated dynamically from loaded model)
-            '    <div id="poseAnimClipSection" style="display:none;">' +
-            '      <div class="pose-anim-category">Clips</div>' +
-            '      <div id="poseAnimGridClips" class="pose-anim-grid"></div>' +
-            '    </div>' +
-            // Playback controls
-            '    <div class="pose-playback">' +
-            '      <button id="posePlayToggleBtn" class="pose-playback-btn pose-playback-btn--play" title="Play / Stop">' +
-            '        <svg id="posePlayIcon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>' +
-            '        <svg id="poseStopIcon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><rect x="5" y="4" width="14" height="16" rx="2"/></svg>' +
+            '  </div>' +
+            // Section 7: VRMA Studio Animations (default)
+            '  <div class="pose-studio-section">' +
+            '    <label class="pose-studio-label">\u2728 VRMA Animations</label>' +
+            '    <div class="pose-anim-hint">VRM Animation clips \u2014 retargetable to any avatar</div>' +
+            '    <select id="poseVrmaSelect" class="pose-studio-select"></select>' +
+            '    <div class="pose-playback" style="margin-top:8px;">' +
+            '      <button id="poseVrmaPlayBtn" class="pose-playback-btn pose-playback-btn--play" title="Play">' +
+            '        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>' +
             '      </button>' +
-            '      <div class="pose-playback-speed">' +
-            '        <span class="pose-playback-speed-label">Speed</span>' +
-            '        <div class="pose-playback-speed-btns">' +
-            '          <button class="pose-speed-btn" data-speed="0.5">0.5x</button>' +
-            '          <button class="pose-speed-btn pose-speed-btn--active" data-speed="1">1x</button>' +
-            '          <button class="pose-speed-btn" data-speed="2">2x</button>' +
-            '        </div>' +
-            '      </div>' +
+            '      <button id="poseVrmaStopBtn" class="pose-playback-btn" title="Stop" style="display:none;">' +
+            '        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="4" width="14" height="16" rx="2"/></svg>' +
+            '      </button>' +
             '    </div>' +
             '  </div>' +
-            // Section 7: Base Pose & Talk Style
+            // Section 8: BVH Library (experimental) — collapsed by default
+            '  <details class="pose-studio-section" style="margin:0;padding:0;">' +
+            '    <summary class="pose-studio-label" style="cursor:pointer;user-select:none;list-style:none;display:flex;align-items:center;gap:6px;">' +
+            '      <span style="font-size:0.7rem;opacity:0.6;transition:transform 0.2s;" id="poseBvhArrow">\u25B6</span>' +
+            '      \uD83E\uDDEA BVH Library <span style="font-size:0.65rem;opacity:0.5;font-weight:normal;">(experimental)</span>' +
+            '    </summary>' +
+            '    <div style="padding:8px 0 0;">' +
+            '      <div class="pose-anim-hint">Motion capture clips \u2014 may need retarget tuning per avatar</div>' +
+            '      <label class="pose-studio-sublabel">Category</label>' +
+            '      <select id="poseBvhCategory" class="pose-studio-select"></select>' +
+            '      <label class="pose-studio-sublabel" style="margin-top:6px;">Animation</label>' +
+            '      <select id="poseBvhSelect" class="pose-studio-select"></select>' +
+            '      <div class="pose-playback" style="margin-top:8px;">' +
+            '        <button id="poseBvhPlayBtn" class="pose-playback-btn pose-playback-btn--play" title="Play">' +
+            '          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="6,4 20,12 6,20"/></svg>' +
+            '        </button>' +
+            '        <button id="poseBvhStopBtn" class="pose-playback-btn" title="Stop" style="display:none;">' +
+            '          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="4" width="14" height="16" rx="2"/></svg>' +
+            '        </button>' +
+            '      </div>' +
+            '    </div>' +
+            '  </details>' +
+            // Section 8: Talk Mode
             '  <div class="pose-studio-section">' +
-            '    <label class="pose-studio-label">Base Pose</label>' +
-            '    <select id="poseBasePoseSelect" class="pose-studio-select"></select>' +
-            '    <label class="pose-studio-label" style="margin-top:8px;">Talk Style</label>' +
+            '    <label class="pose-studio-label">\uD83D\uDCAC Talk Mode</label>' +
+            '    <div class="pose-anim-hint">How the avatar gestures while speaking</div>' +
             '    <select id="poseTalkStyleSelect" class="pose-studio-select"></select>' +
+            '  </div>' +
+            // Section 9: Base Pose
+            '  <div class="pose-studio-section">' +
+            '    <label class="pose-studio-label">\uD83E\uDDCD Base Pose</label>' +
+            '    <div class="pose-anim-hint">Standing posture foundation for all modes</div>' +
+            '    <select id="poseBasePoseSelect" class="pose-studio-select"></select>' +
             '  </div>' +
             '</div>';
 
@@ -358,13 +377,37 @@
         const resetBtn = this.rootEl.querySelector('#poseResetBtn');
         if (resetBtn) {
             resetBtn.addEventListener('click', () => {
-                // Reset via VRPoseSystem (smooth blend to T-pose)
+                // Reset bones to neutral (NaturalPosePlugin-corrected) pose
                 const vps = window.vrPoseSystem;
                 if (vps) {
                     vps.applyPreset('standing', 0.4);
                 }
                 self.editor.resetAll();
                 self._resetSliders();
+
+                const animator = window.NEXUS_PROCEDURAL_ANIMATOR;
+                if (animator) {
+                    // Re-capture rest pose so ProceduralAnimator has clean baseline
+                    try {
+                        animator.captureRestPose?.();
+                    } catch (_) {}
+
+                    // Set waiting mode and force immediate update to prevent
+                    // A-pose flash (same fix as initial load — the base pose
+                    // and waiting mode only apply inside update(), so without
+                    // this the avatar shows NaturalPosePlugin-only 55° arms
+                    // for one frame before the render loop catches up)
+                    try {
+                        animator.setMode?.('waiting', 0);
+                        animator.update?.(0, 0);
+                    } catch (_) {}
+                }
+
+                // Clear any active animation chip
+                self.rootEl.querySelectorAll('.pose-anim-chip').forEach(function (chip) {
+                    chip.classList.remove('pose-anim-chip--active');
+                });
+                self._isPlaying = false;
             });
         }
 
@@ -654,6 +697,63 @@
             });
         }
 
+        // --- Helper: wire play/stop for a clip dropdown ---
+        function wireClipPlayStop(playId, stopId, selectId) {
+            const playBtn = self.rootEl.querySelector('#' + playId);
+            const stopBtn = self.rootEl.querySelector('#' + stopId);
+            if (playBtn) {
+                playBtn.addEventListener('click', () => {
+                    const sel = self.rootEl.querySelector('#' + selectId);
+                    if (!sel || !sel.value) return;
+                    if (window.NEXUS_CLIP_LOADER?.playClip) {
+                        window.NEXUS_CLIP_LOADER.playClip(sel.value, true);
+                        try {
+                            window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.('idle', 1);
+                            window.NEXUS_PROCEDURAL_ANIMATOR?.setAllowWithMixer?.(true);
+                        } catch (_) {}
+                    }
+                    playBtn.style.display = 'none';
+                    if (stopBtn) stopBtn.style.display = '';
+                });
+            }
+            if (stopBtn) {
+                stopBtn.addEventListener('click', () => {
+                    try {
+                        window.NEXUS_CLIP_LOADER?.stopClip?.();
+                        window.NEXUS_ANIMATION_RESOLVER?.stop?.();
+                        window.NEXUS_PROCEDURAL_ANIMATOR?.setAllowWithMixer?.(false);
+                        window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.('waiting', 0);
+                        window.NEXUS_PROCEDURAL_ANIMATOR?.update?.(0, 0);
+                    } catch (_) {}
+                    stopBtn.style.display = 'none';
+                    if (playBtn) playBtn.style.display = '';
+                });
+            }
+        }
+
+        // --- VRMA play/stop ---
+        wireClipPlayStop('poseVrmaPlayBtn', 'poseVrmaStopBtn', 'poseVrmaSelect');
+
+        // --- BVH details arrow rotation ---
+        const bvhDetails = this.rootEl.querySelector('details.pose-studio-section');
+        const bvhArrow = this.rootEl.querySelector('#poseBvhArrow');
+        if (bvhDetails && bvhArrow) {
+            bvhDetails.addEventListener('toggle', () => {
+                bvhArrow.style.transform = bvhDetails.open ? 'rotate(90deg)' : '';
+            });
+        }
+
+        // --- BVH category dropdown ---
+        const bvhCatSelect = this.rootEl.querySelector('#poseBvhCategory');
+        if (bvhCatSelect) {
+            bvhCatSelect.addEventListener('change', () => {
+                self._updateBvhSelect();
+            });
+        }
+
+        // --- BVH play/stop ---
+        wireClipPlayStop('poseBvhPlayBtn', 'poseBvhStopBtn', 'poseBvhSelect');
+
         // --- T-Pose Intensity slider ---
         const tposeSlider = this.rootEl.querySelector('#poseTposeIntensitySlider');
         const tposeValue = this.rootEl.querySelector('#poseTposeIntensityValue');
@@ -759,12 +859,47 @@
         // Update play/stop button icon
         this._updatePlayBtn();
 
-        // Play via AnimationManager
-        if (window.NEXUS_ANIMATION_MANAGER?.play) {
+        // ── Clip playback path (clip:path/to/file.bvh) ──
+        if (animId.indexOf('clip:') === 0) {
+            var clipPath = animId.slice(5);
+            if (window.NEXUS_CLIP_LOADER?.playClip) {
+                window.NEXUS_CLIP_LOADER.playClip(clipPath, true);
+                // Set procedural to minimal overlay while clip plays
+                try {
+                    window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.('idle', 1);
+                    window.NEXUS_PROCEDURAL_ANIMATOR?.setAllowWithMixer?.(true);
+                } catch (_) {}
+            }
+            return;
+        }
+
+        // Check if this animation has a performanceIntent (clip-first via AnimationResolver)
+        var AP = window.NEXUS_ANIMATION_PRESETS;
+        var emotionDef = null;
+        if (AP && AP.EMOTIONS) {
+            emotionDef = AP.EMOTIONS.find(function (e) {
+                return e.id === animId;
+            });
+        }
+        if (!emotionDef && AP && AP.ADULT_EMOTIONS) {
+            emotionDef = AP.ADULT_EMOTIONS.find(function (e) {
+                return e.id === animId;
+            });
+        }
+
+        if (emotionDef && emotionDef.performanceIntent && window.NEXUS_ANIMATION_RESOLVER) {
+            // Clip-first path (dance, future gestures)
+            window.NEXUS_ANIMATION_RESOLVER.play(emotionDef.performanceIntent, {
+                fallbackMode: emotionDef.mode || 'waiting',
+                duration: emotionDef.duration || 15000,
+            });
+        } else if (window.NEXUS_ANIMATION_MANAGER?.play) {
+            // AnimationManager path
             window.NEXUS_ANIMATION_MANAGER.play(animId, false);
         } else if (window.NEXUS_ANIMATION_MANAGER?.applyEmotion) {
             window.NEXUS_ANIMATION_MANAGER.applyEmotion(animId);
         } else {
+            // Procedural fallback
             try {
                 window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.(animId, animId === 'talk' ? 30000 : 5000);
             } catch (_) {}
@@ -796,12 +931,19 @@
             this._playTimer = null;
         }
 
-        // Stop via AnimationManager
+        // Stop via ClipLoader, AnimationResolver, AnimationManager, and procedural
+        try {
+            window.NEXUS_CLIP_LOADER?.stopClip?.();
+        } catch (_) {}
+        try {
+            window.NEXUS_ANIMATION_RESOLVER?.stop?.();
+        } catch (_) {}
         if (window.NEXUS_ANIMATION_MANAGER?.stopAll) {
             window.NEXUS_ANIMATION_MANAGER.stopAll();
         }
         try {
-            window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.('idle', 1);
+            window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.('waiting', 0);
+            window.NEXUS_PROCEDURAL_ANIMATOR?.update?.(0, 0);
         } catch (_) {}
 
         // Clear active chip
@@ -890,33 +1032,88 @@
             spicyGrid.innerHTML = shtml;
         }
 
-        // Clip animations (from AnimationManager)
-        var clipSection = this.rootEl.querySelector('#poseAnimClipSection');
-        var clipGrid = this.rootEl.querySelector('#poseAnimGridClips');
-        if (clipGrid && window.NEXUS_ANIMATION_MANAGER?.getAvailableAnimations) {
-            var allAnims = window.NEXUS_ANIMATION_MANAGER.getAvailableAnimations();
-            var clips = allAnims.filter(function (a) {
-                return a.category === 'clip';
-            });
-            if (clips.length > 0) {
-                if (clipSection) clipSection.style.display = '';
-                var chtml = '';
-                for (var k = 0; k < clips.length; k++) {
-                    chtml +=
-                        '<button class="pose-anim-chip" data-anim="' +
-                        clips[k].id +
-                        '">' +
-                        '<span class="pose-anim-chip-icon">\u{1F3AC}</span>' +
-                        '<span class="pose-anim-chip-label">' +
-                        clips[k].label.replace(/\u{1F3AC}\s*/u, '') +
-                        '</span>' +
-                        '</button>';
-                }
-                clipGrid.innerHTML = chtml;
+        // Clip animations — populate category + clip dropdowns
+        this._populateClipDropdowns();
+    };
+
+    /**
+     * Populate the Motion (Clips) category and clip dropdowns.
+     */
+    PoseStudioPanel.prototype._populateClipDropdowns = function () {
+        var allClips = [];
+        if (window.NEXUS_CLIP_LOADER?.getAllAnimations) {
+            allClips = window.NEXUS_CLIP_LOADER.getAllAnimations();
+        }
+
+        // Split into VRMA and BVH
+        var vrmaClips = [];
+        var bvhByCategory = {};
+        for (var i = 0; i < allClips.length; i++) {
+            var clip = allClips[i];
+            if (clip.id && clip.id.toLowerCase().indexOf('.vrma') >= 0) {
+                vrmaClips.push(clip);
             } else {
-                if (clipSection) clipSection.style.display = 'none';
+                var cat = clip.categoryLabel || clip.category || 'Other';
+                if (!bvhByCategory[cat]) bvhByCategory[cat] = [];
+                bvhByCategory[cat].push(clip);
             }
         }
+
+        // ── VRMA dropdown ──
+        var vrmaSelect = this.rootEl.querySelector('#poseVrmaSelect');
+        if (vrmaSelect) {
+            var vhtml = '';
+            for (var v = 0; v < vrmaClips.length; v++) {
+                vhtml += '<option value="' + vrmaClips[v].id + '">\u2728 ' + vrmaClips[v].label + '</option>';
+            }
+            vrmaSelect.innerHTML = vhtml || '<option value="">No VRMA clips available</option>';
+        }
+
+        // ── BVH category dropdown ──
+        var bvhCatSelect = this.rootEl.querySelector('#poseBvhCategory');
+        if (bvhCatSelect) {
+            var catKeys = Object.keys(bvhByCategory);
+            var catHtml = '';
+            for (var c = 0; c < catKeys.length; c++) {
+                catHtml +=
+                    '<option value="' +
+                    catKeys[c] +
+                    '">' +
+                    catKeys[c] +
+                    ' (' +
+                    bvhByCategory[catKeys[c]].length +
+                    ')</option>';
+            }
+            bvhCatSelect.innerHTML = catHtml || '<option value="">No BVH clips available</option>';
+        }
+
+        this._bvhByCategory = bvhByCategory;
+        this._updateBvhSelect();
+    };
+
+    /**
+     * Update the BVH clip dropdown when category changes.
+     */
+    PoseStudioPanel.prototype._updateBvhSelect = function () {
+        var catSelect = this.rootEl.querySelector('#poseBvhCategory');
+        var clipSelect = this.rootEl.querySelector('#poseBvhSelect');
+        if (!catSelect || !clipSelect || !this._bvhByCategory) return;
+
+        var selectedCat = catSelect.value;
+        var clips = this._bvhByCategory[selectedCat] || [];
+
+        var html = '';
+        for (var i = 0; i < clips.length; i++) {
+            html +=
+                '<option value="' +
+                clips[i].id +
+                '">' +
+                (clips[i].icon || '\uD83C\uDFAC') +
+                ' ' +
+                clips[i].label +
+                '</option>';
+        }
+        clipSelect.innerHTML = html || '<option value="">No clips in this category</option>';
     };
 
     /**

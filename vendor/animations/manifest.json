@@ -162,6 +162,7 @@
       "label": "VRM Animations",
       "icon": "\u2728",
       "files": [
+        "vrma/waiting-standard.vrma",
         "vrma/Angry.vrma",
         "vrma/Sad.vrma",
         "vrma/Thinking.vrma",
@@ -181,6 +182,13 @@
     "love": ["emotion/love.bvh", "emotion/love2.bvh", "emotion/love3.bvh"],
     "fear": ["emotion/fear.bvh", "emotion/fear2.bvh", "emotion/fear3.bvh"],
     "disgust": ["emotion/disgust.bvh", "emotion/disgust1.bvh", "emotion/disgust2.bvh"]
+  },
+  "intentMapping": {
+    "dance": [
+      "dance/dance_1.bvh",
+      "dance/dance_2.bvh",
+      "dance/dance_rumba.bvh"
+    ]
   },
   "credits": {
     "bvh_pack": {

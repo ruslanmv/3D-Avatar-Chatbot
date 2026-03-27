@@ -3,15 +3,16 @@
 /**
  * ClipAnimationLoader — Loads BVH and VRMA animation files for avatar playback.
  * ===============================================================================
- * Reads the animation manifest from vendor/animations/manifest.json,
- * loads BVH files via THREE.BVHLoader, retargets them to the current avatar,
- * and exposes them through AnimationManager for UI selection.
- *
- * Supports:
- *   - .bvh files (via THREE.BVHLoader)
- *   - .vrma files (via @pixiv/three-vrm-animation or GLTFLoader fallback)
- *   - On-demand lazy loading (load clips only when selected)
- *   - Animation manifest with categories for UI organization
+ * Production fixes in this version:
+ *   - Prefers VRM normalized humanoid bones over raw bones
+ *   - Drops translation/root-motion tracks for BVH and VRMA clips
+ *   - Applies safer BVH quaternion retargeting using target bind/rest pose
+ *   - Rejects clips that retarget too few tracks
+ *   - Supports both playClip(path, loop) and playClip(path, options)
+ *   - Tracks current clip state and performs safer mixer cleanup
+ *   - Uses explicit canonical humanoid mapping for dance BVH files
+ *   - Separates required vs optional dance bones
+ *   - Supports per-bone correction quaternions for basis mismatch fixes
  *
  * Exposes: window.NEXUS_CLIP_LOADER
  */
@@ -22,42 +23,196 @@
         return;
     }
 
-    // ── State ──
     var manifest = null;
-    var loadedClips = {}; // path -> THREE.AnimationClip
-    var loadingQueue = {}; // path -> Promise
+    var loadedClips = {};
+    var loadingQueue = {};
     var currentMixer = null;
     var currentAction = null;
+    var currentClipPath = null;
+    var currentCategory = null;
     var avatarRoot = null;
-    var avatarVRM = null; // VRM instance (for humanoid bone access)
+    var avatarVRM = null;
     var bvhLoader = null;
     var basePath = 'vendor/animations';
+    var cachedBoneMap = null;
 
-    // ── BVH Loader (lazy init) ──
-    function getBVHLoader() {
-        if (bvhLoader) return bvhLoader;
-        if (THREE.BVHLoader) {
-            bvhLoader = new THREE.BVHLoader();
-            return bvhLoader;
-        }
-        // Try to create from imported module
-        if (window.BVHLoader) {
-            bvhLoader = new window.BVHLoader();
-            return bvhLoader;
-        }
-        return null;
-    }
+    var VRM_BONES = [
+        'hips',
+        'spine',
+        'chest',
+        'upperChest',
+        'neck',
+        'head',
+        'leftShoulder',
+        'rightShoulder',
+        'leftUpperArm',
+        'rightUpperArm',
+        'leftLowerArm',
+        'rightLowerArm',
+        'leftHand',
+        'rightHand',
+        'leftUpperLeg',
+        'rightUpperLeg',
+        'leftLowerLeg',
+        'rightLowerLeg',
+        'leftFoot',
+        'rightFoot',
+        'leftToes',
+        'rightToes',
+    ];
 
-    // ── BVH Bone Name Mapping ──
-    // Maps common BVH bone names to VRM/standard humanoid names
+    var REQUIRED_DANCE_BONES = [
+        'hips',
+        'spine',
+        'chest',
+        'upperChest',
+        'neck',
+        'head',
+        'leftShoulder',
+        'leftUpperArm',
+        'leftLowerArm',
+        'leftHand',
+        'rightShoulder',
+        'rightUpperArm',
+        'rightLowerArm',
+        'rightHand',
+        'leftUpperLeg',
+        'leftLowerLeg',
+        'leftFoot',
+        'leftToes',
+        'rightUpperLeg',
+        'rightLowerLeg',
+        'rightFoot',
+        'rightToes',
+    ];
+
+    var OPTIONAL_DANCE_BONES = [
+        'leftEye',
+        'rightEye',
+        'leftThumbProximal',
+        'leftThumbIntermediate',
+        'leftThumbDistal',
+        'leftIndexProximal',
+        'leftIndexIntermediate',
+        'leftIndexDistal',
+        'leftMiddleProximal',
+        'leftMiddleIntermediate',
+        'leftMiddleDistal',
+        'leftRingProximal',
+        'leftRingIntermediate',
+        'leftRingDistal',
+        'leftLittleProximal',
+        'leftLittleIntermediate',
+        'leftLittleDistal',
+        'rightThumbProximal',
+        'rightThumbIntermediate',
+        'rightThumbDistal',
+        'rightIndexProximal',
+        'rightIndexIntermediate',
+        'rightIndexDistal',
+        'rightMiddleProximal',
+        'rightMiddleIntermediate',
+        'rightMiddleDistal',
+        'rightRingProximal',
+        'rightRingIntermediate',
+        'rightRingDistal',
+        'rightLittleProximal',
+        'rightLittleIntermediate',
+        'rightLittleDistal',
+    ];
+
+    var REQUIRED_DANCE_MAP = {
+        hips: 'J_Bip_C_Hips',
+        spine: 'J_Bip_C_Spine',
+        chest: 'J_Bip_C_Chest',
+        upperChest: 'J_Bip_C_UpperChest',
+        neck: 'J_Bip_C_Neck',
+        head: 'J_Bip_C_Head',
+        leftShoulder: 'J_Bip_L_Shoulder',
+        leftUpperArm: 'J_Bip_L_UpperArm',
+        leftLowerArm: 'J_Bip_L_LowerArm',
+        leftHand: 'J_Bip_L_Hand',
+        rightShoulder: 'J_Bip_R_Shoulder',
+        rightUpperArm: 'J_Bip_R_UpperArm',
+        rightLowerArm: 'J_Bip_R_LowerArm',
+        rightHand: 'J_Bip_R_Hand',
+        leftUpperLeg: 'J_Bip_L_UpperLeg',
+        leftLowerLeg: 'J_Bip_L_LowerLeg',
+        leftFoot: 'J_Bip_L_Foot',
+        leftToes: 'J_Bip_L_ToeBase',
+        rightUpperLeg: 'J_Bip_R_UpperLeg',
+        rightLowerLeg: 'J_Bip_R_LowerLeg',
+        rightFoot: 'J_Bip_R_Foot',
+        rightToes: 'J_Bip_R_ToeBase',
+    };
+
+    var OPTIONAL_DANCE_MAP = {
+        leftEye: 'J_Adj_L_FaceEye',
+        rightEye: 'J_Adj_R_FaceEye',
+        leftThumbProximal: 'J_Bip_L_Thumb1',
+        leftThumbIntermediate: 'J_Bip_L_Thumb2',
+        leftThumbDistal: 'J_Bip_L_Thumb3',
+        leftIndexProximal: 'J_Bip_L_Index1',
+        leftIndexIntermediate: 'J_Bip_L_Index2',
+        leftIndexDistal: 'J_Bip_L_Index3',
+        leftMiddleProximal: 'J_Bip_L_Middle1',
+        leftMiddleIntermediate: 'J_Bip_L_Middle2',
+        leftMiddleDistal: 'J_Bip_L_Middle3',
+        leftRingProximal: 'J_Bip_L_Ring1',
+        leftRingIntermediate: 'J_Bip_L_Ring2',
+        leftRingDistal: 'J_Bip_L_Ring3',
+        leftLittleProximal: 'J_Bip_L_Little1',
+        leftLittleIntermediate: 'J_Bip_L_Little2',
+        leftLittleDistal: 'J_Bip_L_Little3',
+        rightThumbProximal: 'J_Bip_R_Thumb1',
+        rightThumbIntermediate: 'J_Bip_R_Thumb2',
+        rightThumbDistal: 'J_Bip_R_Thumb3',
+        rightIndexProximal: 'J_Bip_R_Index1',
+        rightIndexIntermediate: 'J_Bip_R_Index2',
+        rightIndexDistal: 'J_Bip_R_Index3',
+        rightMiddleProximal: 'J_Bip_R_Middle1',
+        rightMiddleIntermediate: 'J_Bip_R_Middle2',
+        rightMiddleDistal: 'J_Bip_R_Middle3',
+        rightRingProximal: 'J_Bip_R_Ring1',
+        rightRingIntermediate: 'J_Bip_R_Ring2',
+        rightRingDistal: 'J_Bip_R_Ring3',
+        rightLittleProximal: 'J_Bip_R_Little1',
+        rightLittleIntermediate: 'J_Bip_R_Little2',
+        rightLittleDistal: 'J_Bip_R_Little3',
+    };
+
+    var BVH_TO_AVATAR_SAMPLE_A = {};
+    assignMap(BVH_TO_AVATAR_SAMPLE_A, REQUIRED_DANCE_MAP);
+    assignMap(BVH_TO_AVATAR_SAMPLE_A, OPTIONAL_DANCE_MAP);
+
+    var LIKELY_CORRECTION_BONES = [
+        'leftUpperArm',
+        'rightUpperArm',
+        'leftLowerArm',
+        'rightLowerArm',
+        'leftHand',
+        'rightHand',
+    ];
+
+    var BONE_CORRECTION_PRESETS = {
+        leftUpperArm: [0, 0, 0, 1],
+        rightUpperArm: [0, 0, 0, 1],
+        leftLowerArm: [0, 0, 0, 1],
+        rightLowerArm: [0, 0, 0, 1],
+        leftHand: [0, 0, 0, 1],
+        rightHand: [0, 0, 0, 1],
+    };
+
     var BVH_TO_VRM_MAP = {
         hips: 'hips',
         hip: 'hips',
         pelvis: 'hips',
+        root: 'hips',
         spine: 'spine',
         spine1: 'chest',
         spine2: 'upperChest',
         chest: 'chest',
+        upperchest: 'upperChest',
         neck: 'neck',
         head: 'head',
         leftshoulder: 'leftShoulder',
@@ -86,62 +241,185 @@
         rightfoot: 'rightFoot',
         lefttoebase: 'leftToes',
         righttoebase: 'rightToes',
+        lefttoe: 'leftToes',
+        righttoe: 'rightToes',
+        // Canonical J_Bip names (dance_1.bvh)
+        jbipchips: 'hips',
+        jbipcspine: 'spine',
+        jbipcchest: 'chest',
+        jbipcupperchest: 'upperChest',
+        jbipcneck: 'neck',
+        jbipchead: 'head',
+        jadjlfaceeye: 'leftEye',
+        jadjrfaceeye: 'rightEye',
+        jbiplshoulder: 'leftShoulder',
+        jbiplupperarm: 'leftUpperArm',
+        jbipllowerarm: 'leftLowerArm',
+        jbiplhand: 'leftHand',
+        jbiprshoulder: 'rightShoulder',
+        jbiprupperarm: 'rightUpperArm',
+        jbiprlowerarm: 'rightLowerArm',
+        jbiprhand: 'rightHand',
+        jbiplupleg: 'leftUpperLeg',
+        jbiplupperleg: 'leftUpperLeg',
+        jbipllowerleg: 'leftLowerLeg',
+        jbiplfoot: 'leftFoot',
+        jbipltoebase: 'leftToes',
+        jbiprupleg: 'rightUpperLeg',
+        jbiprupperleg: 'rightUpperLeg',
+        jbiprlowerleg: 'rightLowerLeg',
+        jbiprfoot: 'rightFoot',
+        jbiprtoebase: 'rightToes',
+        jbiplthumb1: 'leftThumbProximal',
+        jbiplthumb2: 'leftThumbIntermediate',
+        jbiplthumb3: 'leftThumbDistal',
+        jbiplindex1: 'leftIndexProximal',
+        jbiplindex2: 'leftIndexIntermediate',
+        jbiplindex3: 'leftIndexDistal',
+        jbiplmiddle1: 'leftMiddleProximal',
+        jbiplmiddle2: 'leftMiddleIntermediate',
+        jbiplmiddle3: 'leftMiddleDistal',
+        jbiplring1: 'leftRingProximal',
+        jbiplring2: 'leftRingIntermediate',
+        jbiplring3: 'leftRingDistal',
+        jbipllittle1: 'leftLittleProximal',
+        jbipllittle2: 'leftLittleIntermediate',
+        jbipllittle3: 'leftLittleDistal',
+        jbiprthumb1: 'rightThumbProximal',
+        jbiprthumb2: 'rightThumbIntermediate',
+        jbiprthumb3: 'rightThumbDistal',
+        jbiprindex1: 'rightIndexProximal',
+        jbiprindex2: 'rightIndexIntermediate',
+        jbiprindex3: 'rightIndexDistal',
+        jbiprmiddle1: 'rightMiddleProximal',
+        jbiprmiddle2: 'rightMiddleIntermediate',
+        jbiprmiddle3: 'rightMiddleDistal',
+        jbiprring1: 'rightRingProximal',
+        jbiprring2: 'rightRingIntermediate',
+        jbiprring3: 'rightRingDistal',
+        jbiprlittle1: 'rightLittleProximal',
+        jbiprlittle2: 'rightLittleIntermediate',
+        jbiprlittle3: 'rightLittleDistal',
     };
 
-    /**
-     * Retarget a BVH clip's track names to match the avatar's bone names.
-     */
-    /**
-     * Build a map of VRM humanoid bone name → actual scene bone object.
-     * Uses fuzzy matching (same approach as ProceduralAnimator.findBones).
-     */
+    // ── Utility helpers ──
+    function hasFn(obj, name) {
+        return !!(obj && typeof obj[name] === 'function');
+    }
+    function safeGet(obj, path) {
+        var c = obj;
+        for (var i = 0; i < path.length; i++) {
+            if (!c) return null;
+            c = c[path[i]];
+        }
+        return c || null;
+    }
+    function normalizeBoneKey(name) {
+        return String(name || '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, '');
+    }
+    function cloneQuaternionArray(v) {
+        var o = new Float32Array(v.length);
+        for (var i = 0; i < v.length; i++) o[i] = v[i];
+        return o;
+    }
+    function getMixerRoot() {
+        if (avatarVRM && avatarVRM.scene) return avatarVRM.scene;
+        return avatarRoot;
+    }
+    function resetPlaybackState() {
+        currentAction = null;
+        currentClipPath = null;
+        currentCategory = null;
+    }
+    function assignMap(t, s) {
+        for (var k in s) {
+            if (Object.prototype.hasOwnProperty.call(s, k)) t[k] = s[k];
+        }
+        return t;
+    }
+    function isArray(v) {
+        return Object.prototype.toString.call(v) === '[object Array]';
+    }
+    function countOwnKeys(o) {
+        return o ? Object.keys(o).length : 0;
+    }
+
+    function getCorrectionQuaternionForBone(vrmName) {
+        var arr = BONE_CORRECTION_PRESETS[vrmName];
+        if (!arr || !isArray(arr) || arr.length !== 4) return null;
+        return new THREE.Quaternion(arr[0], arr[1], arr[2], arr[3]).normalize();
+    }
+
+    function getRequiredBoneMap(fullMap) {
+        var out = {};
+        for (var i = 0; i < REQUIRED_DANCE_BONES.length; i++) {
+            var b = REQUIRED_DANCE_BONES[i];
+            if (fullMap[b]) out[b] = fullMap[b];
+        }
+        return out;
+    }
+    function getOptionalBoneMap(fullMap) {
+        var out = {};
+        for (var i = 0; i < OPTIONAL_DANCE_BONES.length; i++) {
+            var b = OPTIONAL_DANCE_BONES[i];
+            if (fullMap[b]) out[b] = fullMap[b];
+        }
+        return out;
+    }
+
+    function isCanonicalDancePair(path) {
+        var lp = String(path || '')
+            .replace(/\\/g, '/')
+            .toLowerCase();
+        if (lp !== 'dance/dance_1.bvh' && lp !== 'vendor/animations/dance/dance_1.bvh') return false;
+        var n =
+            safeGet(avatarVRM, ['meta', 'name']) ||
+            safeGet(avatarVRM, ['meta', 'title']) ||
+            safeGet(avatarVRM, ['userData', 'vrmMeta', 'name']) ||
+            safeGet(avatarRoot, ['userData', 'vrmMeta', 'name']) ||
+            '';
+        var r = safeGet(avatarRoot, ['name']) || '';
+        var j = (String(n) + ' ' + String(r)).toLowerCase();
+        return j.indexOf('avatarsample_a') >= 0 || j.indexOf('avatarsample a') >= 0;
+    }
+
+    function getBVHLoader() {
+        if (bvhLoader) return bvhLoader;
+        if (THREE.BVHLoader) {
+            bvhLoader = new THREE.BVHLoader();
+            return bvhLoader;
+        }
+        if (window.BVHLoader) {
+            bvhLoader = new window.BVHLoader();
+            return bvhLoader;
+        }
+        return null;
+    }
+
+    // ── Bone mapping ──
     function buildAvatarBoneMap(root) {
-        var map = {}; // vrm humanoid name → actual bone Object3D
-
+        var map = {};
         if (!root) return map;
-
-        // Collect all bones from the scene graph
-        var allBones = [];
+        var allBones = [],
+            byName = {};
         root.traverse(function (o) {
-            if (o && o.isBone) allBones.push(o);
+            if (o && o.isBone) {
+                allBones.push(o);
+                if (o.name && !byName[o.name]) byName[o.name] = o;
+            }
         });
 
-        // Strategy 1: Try VRM humanoid API first (most accurate)
-        var humanoid = avatarVRM?.humanoid;
-        if (!humanoid && root.userData?.vrmHumanoid) {
-            humanoid = root.userData.vrmHumanoid;
-        }
+        // Strategy 1: VRM humanoid API (prefer normalized bones)
+        var humanoid = null;
+        if (avatarVRM && avatarVRM.humanoid) humanoid = avatarVRM.humanoid;
+        if (!humanoid && root.userData && root.userData.vrmHumanoid) humanoid = root.userData.vrmHumanoid;
         if (humanoid) {
-            var VRM_BONES = [
-                'hips',
-                'spine',
-                'chest',
-                'upperChest',
-                'neck',
-                'head',
-                'leftShoulder',
-                'rightShoulder',
-                'leftUpperArm',
-                'rightUpperArm',
-                'leftLowerArm',
-                'rightLowerArm',
-                'leftHand',
-                'rightHand',
-                'leftUpperLeg',
-                'rightUpperLeg',
-                'leftLowerLeg',
-                'rightLowerLeg',
-                'leftFoot',
-                'rightFoot',
-                'leftToes',
-                'rightToes',
-            ];
-            var getBone =
-                typeof humanoid.getRawBoneNode === 'function'
-                    ? humanoid.getRawBoneNode.bind(humanoid)
-                    : typeof humanoid.getNormalizedBoneNode === 'function'
-                      ? humanoid.getNormalizedBoneNode.bind(humanoid)
-                      : null;
+            var getBone = null;
+            if (typeof humanoid.getNormalizedBoneNode === 'function')
+                getBone = humanoid.getNormalizedBoneNode.bind(humanoid);
+            else if (typeof humanoid.getRawBoneNode === 'function') getBone = humanoid.getRawBoneNode.bind(humanoid);
             if (getBone) {
                 for (var i = 0; i < VRM_BONES.length; i++) {
                     try {
@@ -149,235 +427,282 @@
                         if (node) map[VRM_BONES[i]] = node;
                     } catch (_) {}
                 }
+                for (var j = 0; j < OPTIONAL_DANCE_BONES.length; j++) {
+                    try {
+                        var on = getBone(OPTIONAL_DANCE_BONES[j]);
+                        if (on) map[OPTIONAL_DANCE_BONES[j]] = on;
+                    } catch (_) {}
+                }
             }
             if (Object.keys(map).length > 5) {
-                console.log(
-                    '[ClipAnimationLoader] Bone map built via VRM humanoid API:',
-                    Object.keys(map).length,
-                    'bones'
-                );
+                console.log('[ClipAnimationLoader] Bone map via VRM humanoid:', Object.keys(map).length, 'bones');
                 return map;
             }
         }
 
-        // Strategy 2: Fuzzy name matching (same as ProceduralAnimator.findBones)
-        map = {};
-        for (var b = 0; b < allBones.length; b++) {
-            var bone = allBones[b];
-            var n = (bone.name || '').toLowerCase();
-
-            // hips
-            if (!map.hips && (n.includes('hip') || n.includes('pelvis') || n === 'hips' || n === 'root')) {
-                map.hips = bone;
-            }
-            // spine
-            else if (!map.spine && n.includes('spine') && !n.includes('1') && !n.includes('2')) {
-                map.spine = bone;
-            }
-            // chest
-            else if (!map.chest && (n.includes('chest') || (n.includes('spine') && n.includes('1')))) {
-                map.chest = bone;
-            }
-            // upperChest
-            else if (
-                !map.upperChest &&
-                ((n.includes('upper') && n.includes('chest')) || (n.includes('spine') && n.includes('2')))
-            ) {
-                map.upperChest = bone;
-            }
-            // neck
-            else if (!map.neck && n.includes('neck')) {
-                map.neck = bone;
-            }
-            // head
-            else if (!map.head && n.includes('head') && !n.includes('end')) {
-                map.head = bone;
-            }
-            // left shoulder
-            else if (!map.leftShoulder && n.includes('left') && n.includes('shoulder')) {
-                map.leftShoulder = bone;
-            }
-            // right shoulder
-            else if (!map.rightShoulder && n.includes('right') && n.includes('shoulder')) {
-                map.rightShoulder = bone;
-            }
-            // left upper arm
-            else if (
-                !map.leftUpperArm &&
-                n.includes('left') &&
-                (n.includes('upperarm') || (n.includes('arm') && !n.includes('fore') && !n.includes('lower')))
-            ) {
-                map.leftUpperArm = bone;
-            }
-            // right upper arm
-            else if (
-                !map.rightUpperArm &&
-                n.includes('right') &&
-                (n.includes('upperarm') || (n.includes('arm') && !n.includes('fore') && !n.includes('lower')))
-            ) {
-                map.rightUpperArm = bone;
-            }
-            // left lower arm
-            else if (!map.leftLowerArm && n.includes('left') && (n.includes('lowerarm') || n.includes('forearm'))) {
-                map.leftLowerArm = bone;
-            }
-            // right lower arm
-            else if (!map.rightLowerArm && n.includes('right') && (n.includes('lowerarm') || n.includes('forearm'))) {
-                map.rightLowerArm = bone;
-            }
-            // left hand
-            else if (
-                !map.leftHand &&
-                n.includes('left') &&
-                n.includes('hand') &&
-                !n.includes('arm') &&
-                !n.includes('thumb') &&
-                !n.includes('index') &&
-                !n.includes('middle') &&
-                !n.includes('ring') &&
-                !n.includes('little')
-            ) {
-                map.leftHand = bone;
-            }
-            // right hand
-            else if (
-                !map.rightHand &&
-                n.includes('right') &&
-                n.includes('hand') &&
-                !n.includes('arm') &&
-                !n.includes('thumb') &&
-                !n.includes('index') &&
-                !n.includes('middle') &&
-                !n.includes('ring') &&
-                !n.includes('little')
-            ) {
-                map.rightHand = bone;
-            }
-            // left upper leg
-            else if (
-                !map.leftUpperLeg &&
-                n.includes('left') &&
-                (n.includes('upperleg') || n.includes('thigh') || n.includes('upleg'))
-            ) {
-                map.leftUpperLeg = bone;
-            }
-            // right upper leg
-            else if (
-                !map.rightUpperLeg &&
-                n.includes('right') &&
-                (n.includes('upperleg') || n.includes('thigh') || n.includes('upleg'))
-            ) {
-                map.rightUpperLeg = bone;
-            }
-            // left lower leg
-            else if (
-                !map.leftLowerLeg &&
-                n.includes('left') &&
-                (n.includes('lowerleg') ||
-                    n.includes('shin') ||
-                    (n.includes('leg') && !n.includes('upper') && !n.includes('thigh') && !n.includes('upleg')))
-            ) {
-                map.leftLowerLeg = bone;
-            }
-            // right lower leg
-            else if (
-                !map.rightLowerLeg &&
-                n.includes('right') &&
-                (n.includes('lowerleg') ||
-                    n.includes('shin') ||
-                    (n.includes('leg') && !n.includes('upper') && !n.includes('thigh') && !n.includes('upleg')))
-            ) {
-                map.rightLowerLeg = bone;
-            }
-            // left foot
-            else if (!map.leftFoot && n.includes('left') && n.includes('foot')) {
-                map.leftFoot = bone;
-            }
-            // right foot
-            else if (!map.rightFoot && n.includes('right') && n.includes('foot')) {
-                map.rightFoot = bone;
-            }
-            // left toes
-            else if (!map.leftToes && n.includes('left') && n.includes('toe')) {
-                map.leftToes = bone;
-            }
-            // right toes
-            else if (!map.rightToes && n.includes('right') && n.includes('toe')) {
-                map.rightToes = bone;
+        // Strategy 2: exact canonical name match
+        var exact = {};
+        var cmaps = [REQUIRED_DANCE_MAP, OPTIONAL_DANCE_MAP];
+        for (var c = 0; c < cmaps.length; c++) {
+            var m = cmaps[c];
+            for (var hn in m) {
+                if (!Object.prototype.hasOwnProperty.call(m, hn)) continue;
+                var eb = byName[m[hn]] || null;
+                if (eb) exact[hn] = eb;
             }
         }
+        if (Object.keys(exact).length >= REQUIRED_DANCE_BONES.length * 0.8) {
+            console.log('[ClipAnimationLoader] Bone map via canonical names:', Object.keys(exact).length, 'bones');
+            return exact;
+        }
 
-        console.log('[ClipAnimationLoader] Bone map built via fuzzy matching:', Object.keys(map).length, 'bones');
+        // Strategy 3: fuzzy name match
+        map = {};
+        for (var b = 0; b < allBones.length; b++) {
+            var bone = allBones[b],
+                n = normalizeBoneKey(bone.name);
+            if (!map.hips && (n.indexOf('hip') >= 0 || n.indexOf('pelvis') >= 0 || n === 'hips' || n === 'root'))
+                map.hips = bone;
+            else if (!map.spine && n.indexOf('spine') >= 0 && n.indexOf('1') === -1 && n.indexOf('2') === -1)
+                map.spine = bone;
+            else if (!map.chest && (n.indexOf('chest') >= 0 || n.indexOf('spine1') >= 0)) map.chest = bone;
+            else if (!map.upperChest && (n.indexOf('upperchest') >= 0 || n.indexOf('spine2') >= 0))
+                map.upperChest = bone;
+            else if (!map.neck && n.indexOf('neck') >= 0) map.neck = bone;
+            else if (!map.head && n.indexOf('head') >= 0 && n.indexOf('end') === -1) map.head = bone;
+            else if (!map.leftShoulder && n.indexOf('left') >= 0 && n.indexOf('shoulder') >= 0) map.leftShoulder = bone;
+            else if (!map.rightShoulder && n.indexOf('right') >= 0 && n.indexOf('shoulder') >= 0)
+                map.rightShoulder = bone;
+            else if (
+                !map.leftUpperArm &&
+                n.indexOf('left') >= 0 &&
+                (n.indexOf('upperarm') >= 0 ||
+                    (n.indexOf('arm') >= 0 && n.indexOf('fore') === -1 && n.indexOf('lower') === -1))
+            )
+                map.leftUpperArm = bone;
+            else if (
+                !map.rightUpperArm &&
+                n.indexOf('right') >= 0 &&
+                (n.indexOf('upperarm') >= 0 ||
+                    (n.indexOf('arm') >= 0 && n.indexOf('fore') === -1 && n.indexOf('lower') === -1))
+            )
+                map.rightUpperArm = bone;
+            else if (
+                !map.leftLowerArm &&
+                n.indexOf('left') >= 0 &&
+                (n.indexOf('lowerarm') >= 0 || n.indexOf('forearm') >= 0)
+            )
+                map.leftLowerArm = bone;
+            else if (
+                !map.rightLowerArm &&
+                n.indexOf('right') >= 0 &&
+                (n.indexOf('lowerarm') >= 0 || n.indexOf('forearm') >= 0)
+            )
+                map.rightLowerArm = bone;
+            else if (
+                !map.leftHand &&
+                n.indexOf('left') >= 0 &&
+                n.indexOf('hand') >= 0 &&
+                n.indexOf('arm') === -1 &&
+                n.indexOf('thumb') === -1 &&
+                n.indexOf('index') === -1
+            )
+                map.leftHand = bone;
+            else if (
+                !map.rightHand &&
+                n.indexOf('right') >= 0 &&
+                n.indexOf('hand') >= 0 &&
+                n.indexOf('arm') === -1 &&
+                n.indexOf('thumb') === -1 &&
+                n.indexOf('index') === -1
+            )
+                map.rightHand = bone;
+            else if (
+                !map.leftUpperLeg &&
+                n.indexOf('left') >= 0 &&
+                (n.indexOf('upperleg') >= 0 || n.indexOf('thigh') >= 0 || n.indexOf('upleg') >= 0)
+            )
+                map.leftUpperLeg = bone;
+            else if (
+                !map.rightUpperLeg &&
+                n.indexOf('right') >= 0 &&
+                (n.indexOf('upperleg') >= 0 || n.indexOf('thigh') >= 0 || n.indexOf('upleg') >= 0)
+            )
+                map.rightUpperLeg = bone;
+            else if (
+                !map.leftLowerLeg &&
+                n.indexOf('left') >= 0 &&
+                (n.indexOf('lowerleg') >= 0 ||
+                    n.indexOf('shin') >= 0 ||
+                    (n.indexOf('leg') >= 0 && n.indexOf('upper') === -1 && n.indexOf('thigh') === -1))
+            )
+                map.leftLowerLeg = bone;
+            else if (
+                !map.rightLowerLeg &&
+                n.indexOf('right') >= 0 &&
+                (n.indexOf('lowerleg') >= 0 ||
+                    n.indexOf('shin') >= 0 ||
+                    (n.indexOf('leg') >= 0 && n.indexOf('upper') === -1 && n.indexOf('thigh') === -1))
+            )
+                map.rightLowerLeg = bone;
+            else if (!map.leftFoot && n.indexOf('left') >= 0 && n.indexOf('foot') >= 0) map.leftFoot = bone;
+            else if (!map.rightFoot && n.indexOf('right') >= 0 && n.indexOf('foot') >= 0) map.rightFoot = bone;
+            else if (!map.leftToes && n.indexOf('left') >= 0 && n.indexOf('toe') >= 0) map.leftToes = bone;
+            else if (!map.rightToes && n.indexOf('right') >= 0 && n.indexOf('toe') >= 0) map.rightToes = bone;
+        }
+        console.log('[ClipAnimationLoader] Bone map via fuzzy match:', Object.keys(map).length, 'bones');
         return map;
     }
 
-    // Cache the bone map (rebuilt on avatar registration)
-    var cachedBoneMap = null;
-
-    function retargetBVHClip(clip, targetRoot) {
-        if (!clip || !clip.tracks) return clip;
-
-        // Build or use cached bone map
-        if (!cachedBoneMap) {
-            cachedBoneMap = buildAvatarBoneMap(targetRoot);
+    function buildSourceBVHBoneMap(skeleton) {
+        var map = {};
+        if (!skeleton || !skeleton.bones) return map;
+        for (var i = 0; i < skeleton.bones.length; i++) {
+            var bone = skeleton.bones[i];
+            if (!bone) continue;
+            var norm = normalizeBoneKey(bone.name);
+            var vrm = BVH_TO_VRM_MAP[norm] || null;
+            if (vrm && !map[vrm]) map[vrm] = bone;
+            if (!map[bone.name]) map[bone.name] = bone;
+            if (!map[norm]) map[norm] = bone;
         }
-        var boneMap = cachedBoneMap;
+        return map;
+    }
 
-        if (Object.keys(boneMap).length === 0) {
-            console.warn('[ClipAnimationLoader] No bones found on avatar — cannot retarget');
-            return clip;
-        }
+    function getTrackBoneAndProperty(trackName) {
+        var m = String(trackName || '').match(/\.bones\[(.+?)\]\.(.+)/);
+        if (m) return { boneName: m[1], property: m[2] };
+        var p = String(trackName || '').split('.');
+        return { boneName: p[0], property: p.slice(1).join('.') };
+    }
 
-        var newTracks = [];
-        for (var i = 0; i < clip.tracks.length; i++) {
-            var track = clip.tracks[i];
-
-            // THREE.BVHLoader produces track names in two possible formats:
-            //   Format A: ".bones[BoneName].property"  (three.js standard)
-            //   Format B: "BoneName.property"          (some loaders)
-            // Extract the bone name and property for retargeting.
-            var boneName, property;
-            var bracketMatch = track.name.match(/\.bones\[(.+?)\]\.(.+)/);
-            if (bracketMatch) {
-                boneName = bracketMatch[1];
-                property = bracketMatch[2];
-            } else {
-                var parts = track.name.split('.');
-                boneName = parts[0];
-                property = parts.slice(1).join('.');
-            }
-
-            // Map BVH bone name to VRM humanoid name
-            var normalized = boneName.toLowerCase().replace(/[^a-z]/g, '');
-            var vrmName = BVH_TO_VRM_MAP[normalized] || boneName;
-
-            // Look up the actual avatar bone object
-            var targetBone = boneMap[vrmName] || boneMap[boneName];
-            if (!targetBone) {
-                // Try case-insensitive match
-                for (var key in boneMap) {
-                    if (key.toLowerCase() === vrmName.toLowerCase() || key.toLowerCase() === normalized) {
-                        targetBone = boneMap[key];
-                        break;
-                    }
+    function resolveTargetBone(boneMap, sourceBoneName, explicitMap) {
+        var norm = normalizeBoneKey(sourceBoneName),
+            vrmName = null;
+        if (explicitMap) {
+            for (var h in explicitMap) {
+                if (!Object.prototype.hasOwnProperty.call(explicitMap, h)) continue;
+                if (normalizeBoneKey(explicitMap[h]) === norm || explicitMap[h] === sourceBoneName) {
+                    vrmName = h;
+                    break;
                 }
             }
+        }
+        if (!vrmName) vrmName = BVH_TO_VRM_MAP[norm] || sourceBoneName;
+        var target = boneMap[vrmName] || boneMap[sourceBoneName] || null;
+        if (!target) {
+            for (var k in boneMap) {
+                if (!Object.prototype.hasOwnProperty.call(boneMap, k)) continue;
+                if (String(k).toLowerCase() === String(vrmName).toLowerCase() || normalizeBoneKey(k) === norm) {
+                    target = boneMap[k];
+                    break;
+                }
+            }
+        }
+        return { targetBone: target, vrmName: vrmName };
+    }
 
-            if (targetBone) {
-                var newTrack = track.clone();
-                newTrack.name = targetBone.name + '.' + property;
-                newTracks.push(newTrack);
+    function retargetQuaternionValues(trackValues, sourceBone, targetBone, vrmName) {
+        if (!trackValues || !sourceBone || !targetBone) return trackValues;
+        var out = cloneQuaternionArray(trackValues);
+        var sRest = sourceBone.quaternion ? sourceBone.quaternion.clone() : new THREE.Quaternion();
+        var tRest = targetBone.quaternion ? targetBone.quaternion.clone() : new THREE.Quaternion();
+        var sRestInv = sRest.clone().invert();
+        var correction = getCorrectionQuaternionForBone(vrmName);
+        var qS = new THREE.Quaternion(),
+            qD = new THREE.Quaternion(),
+            qO = new THREE.Quaternion();
+        for (var i = 0; i < out.length; i += 4) {
+            qS.set(out[i], out[i + 1], out[i + 2], out[i + 3]).normalize();
+            qD.copy(sRestInv).multiply(qS).normalize();
+            qO.copy(tRest).multiply(qD).normalize();
+            if (correction) qO.multiply(correction).normalize();
+            out[i] = qO.x;
+            out[i + 1] = qO.y;
+            out[i + 2] = qO.z;
+            out[i + 3] = qO.w;
+        }
+        return out;
+    }
+
+    // ── BVH retargeting ──
+    function retargetBVHClip(clip, sourceSkeleton, targetRoot, clipPath) {
+        if (!clip || !clip.tracks) return clip;
+        if (!cachedBoneMap) cachedBoneMap = buildAvatarBoneMap(targetRoot);
+        var boneMap = cachedBoneMap;
+        if (!boneMap || Object.keys(boneMap).length === 0) {
+            console.warn('[ClipAnimationLoader] No avatar bones — cannot retarget BVH');
+            clip._retargetFailed = true;
+            return clip;
+        }
+        var sourceBoneMap = buildSourceBVHBoneMap(sourceSkeleton);
+        var newTracks = [],
+            keptCount = 0,
+            quatCount = 0,
+            requiredMapped = {},
+            requiredHitCount = 0;
+        var useCanonical = isCanonicalDancePair(clipPath);
+        var explicitMap = useCanonical ? BVH_TO_AVATAR_SAMPLE_A : null;
+        if (useCanonical) console.log('[ClipAnimationLoader] Using canonical mapping for:', clipPath);
+
+        for (var i = 0; i < clip.tracks.length; i++) {
+            var track = clip.tracks[i],
+                info = getTrackBoneAndProperty(track.name);
+            var srcName = info.boneName,
+                property = info.property;
+            if (!srcName || !property) continue;
+            var ti = resolveTargetBone(boneMap, srcName, explicitMap);
+            var targetBone = ti.targetBone,
+                vrmName = ti.vrmName;
+            if (!targetBone) continue;
+            if (property === 'position' || property === 'scale') continue; // drop translation/scale
+
+            if (property === 'quaternion' && track.values && track.values.length >= 4) {
+                var norm = normalizeBoneKey(srcName);
+                var sBone = sourceBoneMap[vrmName] || sourceBoneMap[srcName] || sourceBoneMap[norm] || null;
+                if (!sBone && explicitMap && explicitMap[vrmName])
+                    sBone =
+                        sourceBoneMap[explicitMap[vrmName]] ||
+                        sourceBoneMap[normalizeBoneKey(explicitMap[vrmName])] ||
+                        null;
+                if (!sBone) continue;
+                var retargeted = retargetQuaternionValues(track.values, sBone, targetBone, vrmName);
+                newTracks.push(
+                    new THREE.QuaternionKeyframeTrack(
+                        targetBone.name + '.quaternion',
+                        track.times.slice ? track.times.slice(0) : track.times,
+                        retargeted
+                    )
+                );
+                quatCount++;
+                if (REQUIRED_DANCE_BONES.indexOf(vrmName) >= 0 && !requiredMapped[vrmName]) {
+                    requiredMapped[vrmName] = true;
+                    requiredHitCount++;
+                }
             }
         }
 
         if (newTracks.length === 0) {
-            console.warn('[ClipAnimationLoader] No tracks could be retargeted for clip:', clip.name);
+            console.warn('[ClipAnimationLoader] No BVH tracks retargeted:', clip.name);
             clip._retargetFailed = true;
             return clip;
         }
-
+        if (quatCount < 6) {
+            console.warn('[ClipAnimationLoader] Too few quaternion tracks:', clip.name, '(' + quatCount + ')');
+            clip._retargetFailed = true;
+            return clip;
+        }
+        if (useCanonical && requiredHitCount < Math.max(12, Math.floor(REQUIRED_DANCE_BONES.length * 0.75))) {
+            console.warn(
+                '[ClipAnimationLoader] Insufficient required bone coverage:',
+                clip.name,
+                '(' + requiredHitCount + '/' + REQUIRED_DANCE_BONES.length + ')'
+            );
+            clip._retargetFailed = true;
+            return clip;
+        }
         console.log(
-            '[ClipAnimationLoader] Retargeted',
+            '[ClipAnimationLoader] BVH retargeted',
             newTracks.length,
             '/',
             clip.tracks.length,
@@ -387,205 +712,49 @@
         return new THREE.AnimationClip(clip.name, clip.duration, newTracks);
     }
 
-    // ── Load Manifest ──
-    function loadManifest() {
-        return fetch(basePath + '/manifest.json')
-            .then(function (r) {
-                return r.json();
-            })
-            .then(function (data) {
-                manifest = data;
-                if (data.basePath) basePath = data.basePath;
-                console.log(
-                    '[ClipAnimationLoader] Manifest loaded:',
-                    Object.keys(data.categories).length,
-                    'categories'
-                );
-                return data;
-            })
-            .catch(function (err) {
-                console.warn('[ClipAnimationLoader] Could not load manifest:', err);
-                return null;
-            });
-    }
-
-    // ── Load a single BVH file ──
-    function loadBVH(path) {
-        if (loadedClips[path]) return Promise.resolve(loadedClips[path]);
-        if (loadingQueue[path]) return loadingQueue[path];
-
-        var loader = getBVHLoader();
-        if (!loader) {
-            console.warn('[ClipAnimationLoader] BVHLoader not available');
-            return Promise.resolve(null);
-        }
-
-        var url = basePath + '/' + path;
-
-        // Pre-validate the file is actual BVH data (not an HTML 404 page)
-        loadingQueue[path] = fetch(url)
-            .then(function (res) {
-                if (!res.ok) {
-                    console.warn('[ClipAnimationLoader] HTTP ' + res.status + ' for:', path);
-                    delete loadingQueue[path];
-                    return null;
-                }
-                return res.text();
-            })
-            .then(function (text) {
-                if (!text) return null;
-
-                // Detect HTML responses (server 404/error pages)
-                var trimmed = text.trimStart();
-                if (trimmed.startsWith('<') || trimmed.startsWith('<!')) {
-                    console.warn('[ClipAnimationLoader] Got HTML instead of BVH for:', path);
-                    delete loadingQueue[path];
-                    return null;
-                }
-
-                // Check for valid BVH header
-                if (!trimmed.startsWith('HIERARCHY')) {
-                    console.warn('[ClipAnimationLoader] Invalid BVH (no HIERARCHY header):', path);
-                    delete loadingQueue[path];
-                    return null;
-                }
-
-                // Parse valid BVH text
-                var result = loader.parse(text);
-                if (result && result.clip) {
-                    var clip = result.clip;
-                    clip.name = path.split('/').pop().replace('.bvh', '');
-                    if (avatarRoot) {
-                        clip = retargetBVHClip(clip, avatarRoot);
-                    }
-                    loadedClips[path] = clip;
-                    delete loadingQueue[path];
-                    return clip;
-                }
-                delete loadingQueue[path];
-                return null;
-            })
-            .catch(function (err) {
-                console.warn('[ClipAnimationLoader] Failed to load BVH:', path, err);
-                delete loadingQueue[path];
-                return null;
-            });
-
-        return loadingQueue[path];
-    }
-
-    // ── Load a VRMA file (via GLTFLoader) ──
-    function loadVRMA(path) {
-        if (loadedClips[path]) return Promise.resolve(loadedClips[path]);
-        if (loadingQueue[path]) return loadingQueue[path];
-
-        loadingQueue[path] = new Promise(function (resolve) {
-            var gltfLoader = window.NEXUS_VIEWER?.gltfLoader;
-            if (!gltfLoader && THREE.GLTFLoader) {
-                gltfLoader = new THREE.GLTFLoader();
-            }
-            if (!gltfLoader) {
-                console.warn('[ClipAnimationLoader] No GLTFLoader available for VRMA');
-                resolve(null);
-                return;
-            }
-
-            gltfLoader.load(
-                basePath + '/' + path,
-                function (gltf) {
-                    if (gltf.animations && gltf.animations.length > 0) {
-                        var clip = gltf.animations[0];
-                        clip.name = path.split('/').pop().replace('.vrma', '');
-
-                        // Retarget VRMA: node indices → humanoid bone names → avatar bones
-                        clip = retargetVRMAClip(clip, gltf);
-
-                        loadedClips[path] = clip;
-                        resolve(clip);
-                    } else {
-                        resolve(null);
-                    }
-                    delete loadingQueue[path];
-                },
-                undefined,
-                function (err) {
-                    console.warn('[ClipAnimationLoader] Failed to load VRMA:', path, err);
-                    delete loadingQueue[path];
-                    resolve(null);
-                }
-            );
-        });
-
-        return loadingQueue[path];
-    }
-
-    /**
-     * Retarget a VRMA clip to the current avatar.
-     * VRMA tracks reference nodes from the VRMA file's internal skeleton.
-     * The VRMC_vrm_animation extension maps node indices to humanoid bone names.
-     * We remap those to the avatar's actual bone names using cachedBoneMap.
-     */
+    // ── VRMA retargeting ──
     function retargetVRMAClip(clip, gltf) {
         if (!clip || !clip.tracks) return clip;
-
-        // Build bone map if not cached
-        if (!cachedBoneMap) {
-            cachedBoneMap = buildAvatarBoneMap(avatarRoot);
-        }
+        if (!cachedBoneMap) cachedBoneMap = buildAvatarBoneMap(avatarRoot);
         var boneMap = cachedBoneMap;
-
-        // Extract VRMC_vrm_animation humanoid bone mapping
-        var vrmAnimExt = null;
-        try {
-            vrmAnimExt = gltf.parser?.json?.extensions?.VRMC_vrm_animation;
-        } catch (_) {}
-        if (!vrmAnimExt && gltf.userData?.gltfExtensions) {
-            vrmAnimExt = gltf.userData.gltfExtensions.VRMC_vrm_animation;
-        }
-
-        // Build VRMA node name → humanoid bone name
-        var nodeNameToHumanoid = {};
-        if (vrmAnimExt && vrmAnimExt.humanoid && vrmAnimExt.humanoid.humanBones) {
-            var humanBones = vrmAnimExt.humanoid.humanBones;
-            try {
-                var nodes = gltf.parser?.json?.nodes || [];
-                for (var boneName in humanBones) {
-                    if (humanBones.hasOwnProperty(boneName)) {
-                        var nodeIdx = humanBones[boneName].node;
-                        if (nodeIdx !== undefined && nodes[nodeIdx]) {
-                            nodeNameToHumanoid[nodes[nodeIdx].name] = boneName;
-                        }
-                    }
-                }
-            } catch (_) {}
-        }
-
-        var newTracks = [];
-        for (var i = 0; i < clip.tracks.length; i++) {
-            var track = clip.tracks[i];
-            var parts = track.name.split('.');
-            var trackNodeName = parts[0];
-            var property = parts.slice(1).join('.');
-
-            // Map VRMA node name → humanoid bone name → avatar bone
-            var humanoidName = nodeNameToHumanoid[trackNodeName];
-            var targetBone = humanoidName ? boneMap[humanoidName] : null;
-
-            // Fallback: direct name match
-            if (!targetBone) targetBone = boneMap[trackNodeName];
-
-            if (targetBone) {
-                var newTrack = track.clone();
-                newTrack.name = targetBone.name + '.' + property;
-                newTracks.push(newTrack);
-            }
-        }
-
-        if (newTracks.length === 0) {
-            console.warn('[ClipAnimationLoader] No VRMA tracks retargeted for:', clip.name);
+        if (!boneMap || Object.keys(boneMap).length === 0) {
+            clip._retargetFailed = true;
             return clip;
         }
-
+        var vrmAnimExt =
+            safeGet(gltf, ['parser', 'json', 'extensions', 'VRMC_vrm_animation']) ||
+            safeGet(gltf, ['userData', 'gltfExtensions', 'VRMC_vrm_animation']) ||
+            null;
+        var nodeNameToHumanoid = {};
+        if (vrmAnimExt && vrmAnimExt.humanoid && vrmAnimExt.humanoid.humanBones) {
+            var hb = vrmAnimExt.humanoid.humanBones,
+                nodes = safeGet(gltf, ['parser', 'json', 'nodes']) || [];
+            for (var bn in hb) {
+                if (!Object.prototype.hasOwnProperty.call(hb, bn)) continue;
+                var ni = hb[bn].node;
+                if (ni !== undefined && nodes[ni] && nodes[ni].name) nodeNameToHumanoid[nodes[ni].name] = bn;
+            }
+        }
+        var newTracks = [];
+        for (var i = 0; i < clip.tracks.length; i++) {
+            var track = clip.tracks[i],
+                parts = String(track.name || '').split('.'),
+                trackNode = parts[0],
+                property = parts.slice(1).join('.');
+            if (!trackNode || !property) continue;
+            var humanoidName = nodeNameToHumanoid[trackNode] || trackNode;
+            var targetBone = boneMap[humanoidName] || boneMap[trackNode] || null;
+            if (!targetBone) continue;
+            if (property === 'position' || property === 'scale') continue;
+            if (property === 'quaternion')
+                newTracks.push(
+                    new THREE.QuaternionKeyframeTrack(targetBone.name + '.quaternion', track.times, track.values)
+                );
+        }
+        if (newTracks.length === 0) {
+            clip._retargetFailed = true;
+            return clip;
+        }
         console.log(
             '[ClipAnimationLoader] VRMA retargeted',
             newTracks.length,
@@ -597,180 +766,307 @@
         return new THREE.AnimationClip(clip.name, clip.duration, newTracks);
     }
 
-    // ── Load any supported file ──
+    // ── Manifest ──
+    function loadManifest() {
+        return fetch(basePath + '/manifest.json')
+            .then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(function (data) {
+                manifest = data || {};
+                if (data && data.basePath) basePath = data.basePath;
+                console.log(
+                    '[ClipAnimationLoader] Manifest loaded:',
+                    manifest && manifest.categories ? Object.keys(manifest.categories).length : 0,
+                    'categories'
+                );
+                return manifest;
+            })
+            .catch(function (err) {
+                console.warn('[ClipAnimationLoader] Could not load manifest:', err);
+                manifest = null;
+                return null;
+            });
+    }
+
+    // ── Loaders ──
+    function loadBVH(path) {
+        if (loadedClips[path]) return Promise.resolve(loadedClips[path]);
+        if (loadingQueue[path]) return loadingQueue[path];
+        var loader = getBVHLoader();
+        if (!loader) {
+            console.warn('[ClipAnimationLoader] BVHLoader not available');
+            return Promise.resolve(null);
+        }
+        loadingQueue[path] = fetch(basePath + '/' + path)
+            .then(function (res) {
+                if (!res.ok) {
+                    delete loadingQueue[path];
+                    return null;
+                }
+                return res.text();
+            })
+            .then(function (text) {
+                if (!text) return null;
+                var trimmed = String(text)
+                    .replace(/^\uFEFF/, '')
+                    .trimStart();
+                if (trimmed.charAt(0) === '<') {
+                    console.warn('[ClipAnimationLoader] Got HTML instead of BVH:', path);
+                    delete loadingQueue[path];
+                    return null;
+                }
+                if (trimmed.indexOf('HIERARCHY') !== 0) {
+                    console.warn('[ClipAnimationLoader] Invalid BVH:', path);
+                    delete loadingQueue[path];
+                    return null;
+                }
+                var result = loader.parse(text);
+                if (!result || !result.clip) {
+                    delete loadingQueue[path];
+                    return null;
+                }
+                var clip = result.clip;
+                clip.name = path
+                    .split('/')
+                    .pop()
+                    .replace(/\.bvh$/i, '');
+                if (avatarRoot) clip = retargetBVHClip(clip, result.skeleton, avatarRoot, path);
+                if (!clip || clip._retargetFailed) {
+                    delete loadingQueue[path];
+                    return null;
+                }
+                loadedClips[path] = clip;
+                delete loadingQueue[path];
+                return clip;
+            })
+            .catch(function (err) {
+                console.warn('[ClipAnimationLoader] Failed to load BVH:', path, err);
+                delete loadingQueue[path];
+                return null;
+            });
+        return loadingQueue[path];
+    }
+
+    function loadVRMA(path) {
+        if (loadedClips[path]) return Promise.resolve(loadedClips[path]);
+        if (loadingQueue[path]) return loadingQueue[path];
+        loadingQueue[path] = new Promise(function (resolve) {
+            var gltfLoader = safeGet(window, ['NEXUS_VIEWER', 'gltfLoader']);
+            if (!gltfLoader && THREE.GLTFLoader) gltfLoader = new THREE.GLTFLoader();
+            if (!gltfLoader) {
+                console.warn('[ClipAnimationLoader] No GLTFLoader for VRMA');
+                resolve(null);
+                return;
+            }
+            gltfLoader.load(
+                basePath + '/' + path,
+                function (gltf) {
+                    var clip = null;
+                    if (gltf && gltf.animations && gltf.animations.length > 0) {
+                        clip = gltf.animations[0];
+                        clip.name = path
+                            .split('/')
+                            .pop()
+                            .replace(/\.vrma$/i, '');
+                        clip = retargetVRMAClip(clip, gltf);
+                    }
+                    if (!clip || clip._retargetFailed) {
+                        delete loadingQueue[path];
+                        resolve(null);
+                        return;
+                    }
+                    loadedClips[path] = clip;
+                    delete loadingQueue[path];
+                    resolve(clip);
+                },
+                undefined,
+                function (err) {
+                    console.warn('[ClipAnimationLoader] Failed to load VRMA:', path, err);
+                    delete loadingQueue[path];
+                    resolve(null);
+                }
+            );
+        });
+        return loadingQueue[path];
+    }
+
     function loadClip(path) {
-        if (path.endsWith('.bvh')) return loadBVH(path);
-        if (path.endsWith('.vrma')) return loadVRMA(path);
+        if (!path || typeof path !== 'string') return Promise.resolve(null);
+        var lower = path.toLowerCase();
+        if (lower.slice(-4) === '.bvh') return loadBVH(path);
+        if (lower.slice(-5) === '.vrma') return loadVRMA(path);
         return Promise.resolve(null);
     }
 
-    // ── Play a clip on the current avatar ──
-    function playClip(path, loop) {
+    // ── Playback ──
+    function playClip(path, loopOrOptions) {
         if (!avatarRoot) {
-            console.warn('[ClipAnimationLoader] No avatar registered — trying to find from NEXUS_VIEWER');
-            // Auto-recover: try to register from current viewer state
             try {
-                var viewer = window.NEXUS_VIEWER;
-                if (viewer && viewer.avatarManager) {
-                    var mgr = viewer.avatarManager;
-                    if (mgr.currentRoot) {
-                        registerAvatar(mgr.currentRoot, mgr._currentVRM);
-                    }
-                }
+                var v = window.NEXUS_VIEWER;
+                if (v && v.avatarManager && v.avatarManager.currentRoot)
+                    registerAvatar(v.avatarManager.currentRoot, v.avatarManager._currentVRM);
             } catch (_) {}
             if (!avatarRoot) {
-                console.warn('[ClipAnimationLoader] Still no avatar — cannot play');
+                console.warn('[ClipAnimationLoader] No avatar — cannot play');
                 return Promise.resolve(false);
             }
         }
+        var opts = {};
+        if (typeof loopOrOptions === 'object' && loopOrOptions !== null) opts = loopOrOptions;
+        else opts.loop = !!loopOrOptions;
+        if (typeof opts.loop !== 'boolean') opts.loop = true;
+        if (typeof opts.fadeIn !== 'number') opts.fadeIn = 0.3;
+        if (typeof opts.fadeOut !== 'number') opts.fadeOut = 0.25;
 
         return loadClip(path).then(function (clip) {
             if (!clip) return false;
-
-            // Stop current
-            stopClip();
-
-            // Create mixer if needed — use VRM scene if available for proper bone binding
-            if (!currentMixer) {
-                var mixerRoot = avatarRoot;
-                // VRM models: use vrm.scene which is the proper root with skeleton
-                if (avatarVRM && avatarVRM.scene) {
-                    mixerRoot = avatarVRM.scene;
+            stopClip({ fadeOut: opts.fadeOut });
+            var mixerRoot = getMixerRoot();
+            if (!mixerRoot) return false;
+            if (!currentMixer || currentMixer.getRoot() !== mixerRoot) {
+                if (currentMixer) {
+                    try {
+                        currentMixer.stopAllAction();
+                    } catch (_) {}
                 }
                 currentMixer = new THREE.AnimationMixer(mixerRoot);
             }
-
             currentAction = currentMixer.clipAction(clip);
-            currentAction.clampWhenFinished = !loop;
-            currentAction.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce);
-            currentAction.reset().fadeIn(0.3).play();
-
-            console.log('[ClipAnimationLoader] Playing:', clip.name, loop ? '(loop)' : '(once)');
+            currentAction.enabled = true;
+            currentAction.clampWhenFinished = !opts.loop;
+            currentAction.setLoop(opts.loop ? THREE.LoopRepeat : THREE.LoopOnce, opts.loop ? Infinity : 1);
+            currentAction.reset().fadeIn(opts.fadeIn).play();
+            currentClipPath = path;
+            currentCategory = opts.category || null;
+            console.log('[ClipAnimationLoader] Playing:', clip.name, opts.loop ? '(loop)' : '(once)');
             return true;
         });
     }
 
-    // ── Stop current clip ──
-    function stopClip() {
+    function stopClip(options) {
+        options = options || {};
+        var fadeOut = typeof options.fadeOut === 'number' ? options.fadeOut : 0.3;
         if (currentAction) {
-            currentAction.fadeOut(0.3);
+            try {
+                currentAction.fadeOut(fadeOut);
+            } catch (_) {}
             currentAction = null;
         }
+        currentClipPath = null;
+        currentCategory = null;
+        return Promise.resolve(true);
     }
 
-    // ── Update mixer (call from animation loop) ──
     function update(dt) {
-        if (currentMixer) {
-            currentMixer.update(dt);
-        }
+        if (currentMixer && typeof dt === 'number' && isFinite(dt) && dt > 0) currentMixer.update(dt);
     }
 
-    // ── Register avatar root ──
+    // ── Avatar registration ──
     function registerAvatar(root, vrm) {
-        avatarRoot = root;
+        avatarRoot = root || null;
         avatarVRM = vrm || null;
-
-        // Try to find VRM from NEXUS_VIEWER if not passed directly
         if (!avatarVRM) {
             try {
-                var viewer = window.NEXUS_VIEWER;
-                if (viewer && viewer.avatarManager) {
-                    avatarVRM = viewer.avatarManager._currentVRM || null;
-                }
+                var v = window.NEXUS_VIEWER;
+                if (v && v.avatarManager) avatarVRM = v.avatarManager._currentVRM || null;
             } catch (_) {}
         }
-
-        // Clear cached clips and bone map (need re-retargeting for new avatar)
         loadedClips = {};
         loadingQueue = {};
         cachedBoneMap = null;
         if (currentMixer) {
-            currentMixer.stopAllAction();
+            try {
+                currentMixer.stopAllAction();
+            } catch (_) {}
             currentMixer = null;
         }
-        currentAction = null;
-
-        // Pre-build bone map immediately so we can log what we found
-        cachedBoneMap = buildAvatarBoneMap(root);
-        console.log('[ClipAnimationLoader] Avatar registered. Bones found:', Object.keys(cachedBoneMap).join(', '));
+        resetPlaybackState();
+        if (avatarRoot) {
+            cachedBoneMap = buildAvatarBoneMap(avatarRoot);
+            console.log('[ClipAnimationLoader] Avatar registered. Bones:', Object.keys(cachedBoneMap).join(', '));
+            console.log(
+                '[ClipAnimationLoader] Required dance bones:',
+                Object.keys(getRequiredBoneMap(cachedBoneMap)).join(', ')
+            );
+        }
     }
 
-    // ── Get manifest data ──
+    // ── Helpers ──
     function getManifest() {
         return manifest;
     }
-
     function getCategories() {
-        if (!manifest || !manifest.categories) return {};
-        return manifest.categories;
+        return manifest && manifest.categories ? manifest.categories : {};
+    }
+    function getCurrentPlaybackState() {
+        return { clip: currentClipPath, category: currentCategory, isPlaying: !!currentAction };
     }
 
-    /**
-     * Get a flat list of all animations for UI display.
-     * Returns: [{ id: path, label: name, category: catKey, icon: catIcon }]
-     */
     function getAllAnimations() {
         if (!manifest || !manifest.categories) return [];
-        var result = [];
-        var cats = manifest.categories;
-        var keys = Object.keys(cats);
+        var result = [],
+            cats = manifest.categories,
+            keys = Object.keys(cats);
         for (var c = 0; c < keys.length; c++) {
-            var catKey = keys[c];
-            var cat = cats[catKey];
-            var files = cat.files || [];
+            var cat = cats[keys[c]] || {},
+                files = cat.files || [];
             for (var f = 0; f < files.length; f++) {
-                var file = files[f];
-                var name = file
-                    .split('/')
-                    .pop()
-                    .replace(/\.(bvh|vrma|fbx)$/i, '');
-                // Make label human-readable
+                var file = files[f],
+                    name = String(file)
+                        .split('/')
+                        .pop()
+                        .replace(/\.(bvh|vrma|fbx)$/i, '');
                 var label = name
                     .replace(/^(action_|dance_|exercise_|emotion_)/, '')
                     .replace(/_/g, ' ')
                     .replace(/(\d+)$/, ' $1')
                     .trim();
-                label = label.charAt(0).toUpperCase() + label.slice(1);
+                label = label ? label.charAt(0).toUpperCase() + label.slice(1) : file;
                 result.push({
                     id: file,
                     label: label,
-                    category: catKey,
-                    categoryLabel: cat.label,
-                    icon: cat.icon,
+                    category: keys[c],
+                    categoryLabel: cat.label || keys[c],
+                    icon: cat.icon || '',
                 });
             }
         }
         return result;
     }
 
-    /**
-     * Preload clips for a specific emotion (for instant playback).
-     */
     function preloadEmotion(emotionId) {
         if (!manifest || !manifest.emotionMapping) return;
         var files = manifest.emotionMapping[emotionId];
-        if (!files) return;
-        // Load first file for instant access
-        loadClip(files[0]);
+        if (files && files.length) loadClip(files[0]);
     }
 
-    /**
-     * Play a random clip for an emotion.
-     */
     function playEmotionClip(emotionId, loop) {
         if (!manifest || !manifest.emotionMapping) return Promise.resolve(false);
         var files = manifest.emotionMapping[emotionId];
-        if (!files || files.length === 0) return Promise.resolve(false);
-        var randomFile = files[Math.floor(Math.random() * files.length)];
-        return playClip(randomFile, loop);
+        if (!files || !files.length) return Promise.resolve(false);
+        return playClip(files[Math.floor(Math.random() * files.length)], !!loop);
     }
 
-    // ── Auto-load manifest on script load ──
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', loadManifest);
-    } else {
-        loadManifest();
+    function playPreferredClip(files, options) {
+        if (!files || !files.length) return Promise.resolve(false);
+        return playClip(files[0], options || {});
     }
+
+    function playIntentClip(intent, options) {
+        if (!manifest) return Promise.resolve(false);
+        var files =
+            (manifest.intentMapping && manifest.intentMapping[intent]) ||
+            (manifest.emotionMapping && manifest.emotionMapping[intent]) ||
+            null;
+        if (!files || !files.length) return Promise.resolve(false);
+        return playPreferredClip(files, options || {});
+    }
+
+    // ── Auto-load manifest ──
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadManifest);
+    else loadManifest();
 
     // ── Expose ──
     window.NEXUS_CLIP_LOADER = {
@@ -782,9 +1078,19 @@
         registerAvatar: registerAvatar,
         getManifest: getManifest,
         getCategories: getCategories,
+        getCurrentPlaybackState: getCurrentPlaybackState,
         getAllAnimations: getAllAnimations,
         preloadEmotion: preloadEmotion,
         playEmotionClip: playEmotionClip,
+        playPreferredClip: playPreferredClip,
+        playIntentClip: playIntentClip,
+        REQUIRED_DANCE_BONES: REQUIRED_DANCE_BONES,
+        OPTIONAL_DANCE_BONES: OPTIONAL_DANCE_BONES,
+        REQUIRED_DANCE_MAP: REQUIRED_DANCE_MAP,
+        OPTIONAL_DANCE_MAP: OPTIONAL_DANCE_MAP,
+        BVH_TO_AVATAR_SAMPLE_A: BVH_TO_AVATAR_SAMPLE_A,
+        LIKELY_CORRECTION_BONES: LIKELY_CORRECTION_BONES,
+        BONE_CORRECTION_PRESETS: BONE_CORRECTION_PRESETS,
     };
 
     console.log('[ClipAnimationLoader] Initialized — BVH/VRMA clip loading system');

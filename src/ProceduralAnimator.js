@@ -150,12 +150,25 @@
             chest: null,
             hips: null,
             jaw: null,
+            leftShoulder: null,
+            rightShoulder: null,
             leftUpperArm: null,
             rightUpperArm: null,
             leftLowerArm: null,
             rightLowerArm: null,
             leftHand: null,
             rightHand: null,
+            // Finger proximal bones (curl the root joint — chain follows via skinning)
+            leftThumbProximal: null,
+            leftIndexProximal: null,
+            leftMiddleProximal: null,
+            leftRingProximal: null,
+            leftLittleProximal: null,
+            rightThumbProximal: null,
+            rightIndexProximal: null,
+            rightMiddleProximal: null,
+            rightRingProximal: null,
+            rightLittleProximal: null,
             leftUpperLeg: null,
             rightUpperLeg: null,
             leftLowerLeg: null,
@@ -185,6 +198,12 @@
             else if (!map.spine && (n.includes('spine') || n.includes('abdomen') || n.includes('body'))) map.spine = o;
             else if (!map.chest && (n.includes('chest') || n.includes('thorax') || n.includes('upperchest')))
                 map.chest = o;
+            // shoulders
+            else if (!map.leftShoulder && n.includes('left') && n.includes('shoulder') && !n.includes('arm')) {
+                map.leftShoulder = o;
+            } else if (!map.rightShoulder && n.includes('right') && n.includes('shoulder') && !n.includes('arm')) {
+                map.rightShoulder = o;
+            }
             // arms (upper)
             else if (
                 !map.leftUpperArm &&
@@ -250,6 +269,38 @@
             map.rightLowerArm = map.rightUpperArm.children.find((c) => c.isBone) || null;
         }
 
+        // ── Finger bone discovery via VRM humanoid API ──
+        // VRM finger bone names vary between models, so heuristic name matching
+        // is unreliable. The VRM humanoid API provides a standard interface.
+        var humanoid =
+            root.userData?.vrm?.humanoid ||
+            root.userData?.vrmHumanoid ||
+            window.NEXUS_VIEWER?.avatarManager?._currentVRM?.humanoid;
+        if (humanoid && typeof humanoid.getNormalizedBoneNode === 'function') {
+            var fingerNames = [
+                'leftThumbProximal',
+                'leftIndexProximal',
+                'leftMiddleProximal',
+                'leftRingProximal',
+                'leftLittleProximal',
+                'rightThumbProximal',
+                'rightIndexProximal',
+                'rightMiddleProximal',
+                'rightRingProximal',
+                'rightLittleProximal',
+            ];
+            for (var fi = 0; fi < fingerNames.length; fi++) {
+                var fn = fingerNames[fi];
+                if (!map[fn]) {
+                    // getRawBoneNode gives us the actual skeleton bone (not normalized proxy)
+                    var rawBone = typeof humanoid.getRawBoneNode === 'function' ? humanoid.getRawBoneNode(fn) : null;
+                    if (rawBone) {
+                        map[fn] = rawBone;
+                    }
+                }
+            }
+        }
+
         return map;
     }
 
@@ -276,6 +327,16 @@
         if (!r) return;
         const qOff = new THREE.Quaternion().setFromEuler(euler);
         bone.quaternion.copy(r.quat).multiply(qOff);
+    }
+
+    /**
+     * Additive offset — multiplies on TOP of the bone's current quaternion.
+     * Use this after applyBasePose() so animations layer on the base pose
+     * rather than replacing it.
+     */
+    function applyAdditiveEuler(bone, euler) {
+        const qOff = new THREE.Quaternion().setFromEuler(euler);
+        bone.quaternion.multiply(qOff);
     }
 
     // ---------------------------
@@ -317,8 +378,37 @@
 
     /**
      * Apply a data-driven animation definition (talk style or mode anim).
-     * Reads oscillation channels from AnimationPresets and applies them to bones.
+     *
+     * Uses HYBRID compositing to prevent compounding:
+     *   - ARM CHAIN bones (shoulders, arms, hands, fingers): ADDITIVE on base pose
+     *     → preserves the base pose's arm-lowering offsets (prevents A-pose)
+     *   - BODY CORE bones (hips, spine, chest, head, neck, legs, feet): FROM REST
+     *     → prevents double-rotation (base pose + mode = spinning/wild motion)
+     *
+     * This matches AAA practice: body animations define complete poses from
+     * neutral, while arm positioning preserves the character's resting stance.
      */
+    var _armChainBones = {
+        leftShoulder: 1,
+        rightShoulder: 1,
+        leftUpperArm: 1,
+        rightUpperArm: 1,
+        leftLowerArm: 1,
+        rightLowerArm: 1,
+        leftHand: 1,
+        rightHand: 1,
+        leftThumbProximal: 1,
+        leftIndexProximal: 1,
+        leftMiddleProximal: 1,
+        leftRingProximal: 1,
+        leftLittleProximal: 1,
+        rightThumbProximal: 1,
+        rightIndexProximal: 1,
+        rightMiddleProximal: 1,
+        rightRingProximal: 1,
+        rightLittleProximal: 1,
+    };
+
     function applyAnimDef(animDef, timeSec) {
         if (!animDef || !AP) return;
         var boneKeys = Object.keys(animDef);
@@ -329,7 +419,13 @@
             var channels = animDef[boneKey];
             if (!channels) continue;
             var euler = AP.evalAnimChannels(THREE, channels, timeSec);
-            applyOffsetEuler(bone, euler);
+            if (_armChainBones[boneKey]) {
+                // Arm chain: additive on base pose (keeps arms at sides)
+                applyAdditiveEuler(bone, euler);
+            } else {
+                // Body core: from rest (prevents compounding with base pose)
+                applyOffsetEuler(bone, euler);
+            }
         }
     }
 
@@ -461,8 +557,18 @@
         // Re-capture to treat this as new rest pose:
         captureRestPose(avatarRoot);
 
-        mode = 'idle';
+        mode = 'waiting';
         modeUntilMs = 0;
+
+        // ── CRITICAL: Apply first frame immediately ──
+        // Without this, the avatar displays the NaturalPosePlugin-only pose
+        // (arms at 55° from horizontal = A-pose) until the render loop's
+        // first update() call. In Genshin Impact and AAA games, the very
+        // first visible frame is already the natural standing idle.
+        // Force one update(0,0) to apply base pose + waiting mode NOW.
+        try {
+            update(0, 0);
+        } catch (_) {}
 
         console.log('[ProceduralAnimator] Registered avatar. bakedClips=', hasBakedAnimations, 'bones=', {
             head: !!bones.head,
@@ -551,12 +657,32 @@
                   bones.chest,
                   bones.neck,
                   bones.head,
+                  bones.leftShoulder,
+                  bones.rightShoulder,
                   bones.leftUpperArm,
                   bones.rightUpperArm,
                   bones.leftLowerArm,
                   bones.rightLowerArm,
                   bones.leftHand,
                   bones.rightHand,
+                  // Leg bones — must be reset so animations can keep feet planted
+                  bones.leftUpperLeg,
+                  bones.rightUpperLeg,
+                  bones.leftLowerLeg,
+                  bones.rightLowerLeg,
+                  bones.leftFoot,
+                  bones.rightFoot,
+                  // Finger proximal bones
+                  bones.leftThumbProximal,
+                  bones.leftIndexProximal,
+                  bones.leftMiddleProximal,
+                  bones.leftRingProximal,
+                  bones.leftLittleProximal,
+                  bones.rightThumbProximal,
+                  bones.rightIndexProximal,
+                  bones.rightMiddleProximal,
+                  bones.rightRingProximal,
+                  bones.rightLittleProximal,
               ];
         touched.forEach((b) => b && restoreToRest(b));
 
@@ -564,6 +690,15 @@
         // Base standing pose (replaces T-pose as visual default)
         // ---------------------------
         applyBasePose();
+
+        // ---------------------------
+        // Determine which bones the active mode controls
+        // so we don't double-apply breathing/head on those bones.
+        // ---------------------------
+        var activeModeAnim = mode !== 'idle' && mode !== 'talk' && AP && AP.MODE_ANIMS ? AP.MODE_ANIMS[mode] : null;
+        var modeControlsSpine = !!(activeModeAnim && activeModeAnim.spine);
+        var modeControlsChest = !!(activeModeAnim && activeModeAnim.chest);
+        var modeControlsHead = !!(activeModeAnim && activeModeAnim.head);
 
         // ---------------------------
         // Base idle life (params from AnimationPresets)
@@ -576,20 +711,20 @@
                       headLook: { yawScale: 0.55, pitchScale: 0.25, yawClamp: 0.7, pitchClamp: 0.45, dampLambda: 10 },
                   };
 
-        // Breathing
-        if (bones.spine) {
+        // Breathing (additive on base pose) — skipped when mode has its own spine/chest
+        if (bones.spine && !modeControlsSpine) {
             var bp = idleP.breathing.spine;
             var breath = Math.sin(timeSec * bp.freq) * bp.amp;
-            applyOffsetEuler(bones.spine, new THREE.Euler(breath, 0, 0));
+            applyAdditiveEuler(bones.spine, new THREE.Euler(breath, 0, 0));
         }
-        if (bones.chest && bones.chest !== bones.spine) {
+        if (bones.chest && bones.chest !== bones.spine && !modeControlsChest) {
             var cp = idleP.breathing.chest;
             var breath2 = Math.sin(timeSec * cp.freq + (cp.phase || 0)) * cp.amp;
-            applyOffsetEuler(bones.chest, new THREE.Euler(breath2, 0, 0));
+            applyAdditiveEuler(bones.chest, new THREE.Euler(breath2, 0, 0));
         }
 
-        // Head look (face tracking OR mouse fallback)
-        if (bones.head) {
+        // Head look — skipped when mode has its own head channels (dance, happy, etc.)
+        if (bones.head && !modeControlsHead) {
             var hl = idleP.headLook;
             var ud = (bones.head.userData.__nexus_proc ||= { yaw: 0, pitch: 0, roll: 0 });
 
@@ -604,7 +739,7 @@
                 ud.pitch = damp(ud.pitch, ftPitch, hl.dampLambda, dtSec || 0.016);
                 ud.roll = damp(ud.roll || 0, ftRoll, hl.dampLambda, dtSec || 0.016);
 
-                applyOffsetEuler(bones.head, new THREE.Euler(ud.pitch, ud.yaw, ud.roll));
+                applyAdditiveEuler(bones.head, new THREE.Euler(ud.pitch, ud.yaw, ud.roll));
             } else {
                 // Mouse/touch follow (default behavior)
                 var yawT = THREE.MathUtils.clamp(mouse.x * hl.yawScale, -hl.yawClamp, hl.yawClamp);
@@ -614,7 +749,7 @@
                 ud.pitch = damp(ud.pitch, pitchT, hl.dampLambda, dtSec || 0.016);
                 ud.roll = damp(ud.roll || 0, 0, hl.dampLambda, dtSec || 0.016);
 
-                applyOffsetEuler(bones.head, new THREE.Euler(ud.pitch, ud.yaw, ud.roll));
+                applyAdditiveEuler(bones.head, new THREE.Euler(ud.pitch, ud.yaw, ud.roll));
             }
         }
 
@@ -628,7 +763,7 @@
             if (bones.jaw && AP && AP.IDLE_PARAMS) {
                 var jp = AP.IDLE_PARAMS.jawTalk;
                 var jawOpen = (Math.sin(timeSec * jp.freq) + 1) * 0.5 * jp.amp;
-                applyOffsetEuler(bones.jaw, new THREE.Euler(jawOpen, 0, 0));
+                applyAdditiveEuler(bones.jaw, new THREE.Euler(jawOpen, 0, 0));
             }
         } else if (mode !== 'idle' && AP && AP.MODE_ANIMS && AP.MODE_ANIMS[mode]) {
             // Data-driven mode animation (happy, thinking, dance, flirt, tease, intimate, etc.)
