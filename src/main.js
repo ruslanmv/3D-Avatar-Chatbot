@@ -3302,9 +3302,12 @@ function speakText(text) {
                 const personaMode =
                     typeof window.PersonaContextBridge !== 'undefined'
                         ? window.PersonaContextBridge.getDefaultAvatarMode()
-                        : 'idle';
+                        : 'waiting';
                 try {
-                    window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.(personaMode, personaMode === 'idle' ? 1 : 5000);
+                    window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.(
+                        personaMode,
+                        personaMode === 'idle' || personaMode === 'waiting' ? 0 : 5000
+                    );
                 } catch (_) {}
                 setStatus('idle', 'READY');
                 try {
@@ -3323,7 +3326,7 @@ function speakText(text) {
                     window.NEXUS_VIEWER?.avatarManager?.vrmLoader?.stopLipSync?.();
                 } catch (_) {}
                 try {
-                    window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.('idle', 1);
+                    window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.('waiting', 0);
                 } catch (_) {}
                 setStatus('idle', 'READY');
                 try {

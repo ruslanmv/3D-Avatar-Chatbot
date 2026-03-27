@@ -46,9 +46,9 @@ export class ViewerEngine {
         const { w, h } = this._getViewportSize();
 
         // Camera
-        this.camera = new THREE.PerspectiveCamera(35, w / h, 0.01, 100);
-        // Initial desktop pose (auto-framed after avatar loads)
-        this.camera.position.set(0, 1.4, 2.8);
+        this.camera = new THREE.PerspectiveCamera(30, w / h, 0.01, 100);
+        // Initial desktop pose — VRoid Hub standard framing
+        this.camera.position.set(0, 1.25, 2.0);
 
         // Renderer — xrCompatible is required for WebXR immersive sessions
         this.renderer = new THREE.WebGLRenderer({
@@ -82,7 +82,7 @@ export class ViewerEngine {
         // ✅ Defaults (will be adapted per-avatar in frameObject)
         this.controls.minDistance = 0.5;
         this.controls.maxDistance = 25.0; // ✅ allow zooming out for huge models
-        this.controls.target.set(0, 1.0, 0);
+        this.controls.target.set(0, 1.1, 0); // chest/neck (VRoid Hub standard)
         this.controls.update();
 
         // Environment
@@ -1008,8 +1008,8 @@ export class ViewerEngine {
 
         distance = THREE.MathUtils.clamp(distance, minD, maxD);
 
-        // Place camera on a pleasant diagonal view
-        const dir = new THREE.Vector3(0.28, 0.08, 1).normalize();
+        // Place camera: centered with subtle offset (VRoid Hub style)
+        const dir = new THREE.Vector3(0.08, 0.04, 1).normalize();
         const newPos = target.clone().add(dir.multiplyScalar(distance));
 
         this.camera.position.copy(newPos);

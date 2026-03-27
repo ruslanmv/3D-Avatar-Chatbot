@@ -140,7 +140,7 @@
 
         switch (state) {
             case State.IDLE:
-                animator?.setMode?.('idle', 1);
+                animator?.setMode?.('waiting', 0); // natural idle with weight shift + breathing
                 if (!followActive) {
                     animator?.setGazeOverride?.(null); // release — resume pointer tracking
                     engine.gazeTargetYaw = 0;
@@ -183,7 +183,7 @@
                 break;
 
             case State.MICRO_IDLE:
-                animator?.setMode?.('idle', 1);
+                animator?.setMode?.('waiting', 0); // same natural idle, with micro-expressions on top
                 if (!followActive) {
                     animator?.setGazeOverride?.(null); // release — resume pointer tracking
                 }
