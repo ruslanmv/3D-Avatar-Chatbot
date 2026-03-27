@@ -165,6 +165,32 @@
             document.head.appendChild(style);
         }
 
+        // ── Tracking Settings gear button wiring ──────────────────────
+        const gearBtn = document.getElementById('tracking-settings-btn');
+        const drawerGearBtn = document.getElementById('drawer-tracking-settings-btn');
+
+        function _toggleSettingsPanel() {
+            const panel = window.NEXUS_TRACKING_PANEL;
+            if (panel) panel.toggle();
+        }
+
+        if (gearBtn) {
+            gearBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                _toggleSettingsPanel();
+            });
+        }
+        if (drawerGearBtn) {
+            drawerGearBtn.addEventListener('click', function () {
+                // Close mobile drawer first
+                const overlay = document.getElementById('mobile-drawer-overlay');
+                const drawer = document.getElementById('mobile-drawer');
+                if (overlay) overlay.classList.remove('active');
+                if (drawer) drawer.classList.remove('active');
+                _toggleSettingsPanel();
+            });
+        }
+
         console.log('[FaceTrackButton] Wired');
     }
 

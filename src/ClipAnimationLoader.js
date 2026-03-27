@@ -30,6 +30,7 @@
     var currentAction = null;
     var currentClipPath = null;
     var currentCategory = null;
+    var clipIsPlaying = false;
     var avatarRoot = null;
     var avatarVRM = null;
     var bvhLoader = null;
@@ -89,6 +90,8 @@
     var OPTIONAL_DANCE_BONES = [
         'leftEye',
         'rightEye',
+        'leftThumbMetacarpal',
+        'rightThumbMetacarpal',
         'leftThumbProximal',
         'leftThumbIntermediate',
         'leftThumbDistal',
@@ -411,15 +414,25 @@
             }
         });
 
-        // Strategy 1: VRM humanoid API (prefer normalized bones)
+        // Strategy 1: VRM humanoid API
+        //
+        // IMPORTANT: use getRawBoneNode (not getNormalizedBoneNode).
+        // Normalized bones are proxy objects NOT in the scene graph —
+        // AnimationMixer cannot find them by name.  Raw bones are the
+        // actual Three.js Object3D nodes in the scene hierarchy, so
+        // tracks like "J_Bip_C_Hips.quaternion" resolve correctly.
+        //
+        // VRoid Hub uses @pixiv/three-vrm's createVRMAnimationClip()
+        // which targets raw bones for the same reason.
         var humanoid = null;
         if (avatarVRM && avatarVRM.humanoid) humanoid = avatarVRM.humanoid;
         if (!humanoid && root.userData && root.userData.vrmHumanoid) humanoid = root.userData.vrmHumanoid;
         if (humanoid) {
             var getBone = null;
-            if (typeof humanoid.getNormalizedBoneNode === 'function')
+            // Prefer raw bones for AnimationMixer compatibility
+            if (typeof humanoid.getRawBoneNode === 'function') getBone = humanoid.getRawBoneNode.bind(humanoid);
+            else if (typeof humanoid.getNormalizedBoneNode === 'function')
                 getBone = humanoid.getNormalizedBoneNode.bind(humanoid);
-            else if (typeof humanoid.getRawBoneNode === 'function') getBone = humanoid.getRawBoneNode.bind(humanoid);
             if (getBone) {
                 for (var i = 0; i < VRM_BONES.length; i++) {
                     try {
@@ -713,45 +726,131 @@
     }
 
     // ── VRMA retargeting ──
+    /**
+     * Extract VRMC_vrm_animation extension from a loaded glTF result.
+     *
+     * THREE.js GLTFLoader may dispose gltf.parser after load, making
+     * gltf.parser.json inaccessible.  We try multiple paths:
+     *   1. gltf.parser.json (works if parser not disposed)
+     *   2. gltf.userData.gltfExtensions (VRM plugin path)
+     *   3. Scene-level userData (fallback)
+     */
+    function _extractVRMAExtension(gltf) {
+        // Path 1: parser.json (may be disposed in THREE.js r147+)
+        var ext = safeGet(gltf, ['parser', 'json', 'extensions', 'VRMC_vrm_animation']);
+        var nodes = safeGet(gltf, ['parser', 'json', 'nodes']);
+        if (ext && nodes) return { ext: ext, nodes: nodes };
+
+        // Path 2: userData.gltfExtensions (VRM plugin stores here)
+        ext = safeGet(gltf, ['userData', 'gltfExtensions', 'VRMC_vrm_animation']);
+        if (ext) {
+            nodes = safeGet(gltf, ['parser', 'json', 'nodes']) || safeGet(gltf, ['userData', 'gltfNodes']);
+            if (ext && nodes) return { ext: ext, nodes: nodes };
+        }
+
+        // Path 3: Reconstruct from the scene's node tree
+        // VRMA files loaded by GLTFLoader have all nodes accessible in scene.children
+        // Build node list from the scene hierarchy
+        ext =
+            safeGet(gltf, ['scene', 'userData', 'gltfExtensions', 'VRMC_vrm_animation']) ||
+            safeGet(gltf, ['scenes', 0, 'userData', 'gltfExtensions', 'VRMC_vrm_animation']);
+        if (ext) {
+            // Build node name list from scene traversal
+            nodes = [];
+            if (gltf.scene) {
+                gltf.scene.traverse(function (obj) {
+                    if (obj.name) nodes.push({ name: obj.name });
+                });
+            }
+            if (nodes.length > 0) return { ext: ext, nodes: nodes };
+        }
+
+        return null;
+    }
+
+    /**
+     * Build node name → humanoid bone name mapping from VRMA extension.
+     *
+     * VRMA files contain a VRMC_vrm_animation extension that maps humanoid
+     * bone names (e.g., "hips") to node indices, and the node list maps
+     * indices to names (e.g., "J_Bip_C_Hips").  This builds the reverse
+     * mapping: "J_Bip_C_Hips" → "hips" so animation tracks targeting
+     * "J_Bip_C_Hips.quaternion" can be retargeted to the avatar's actual
+     * bone for "hips".
+     */
+    function _buildVRMANodeToHumanoid(vrmAnimExt, nodes) {
+        var map = {};
+        if (!vrmAnimExt || !vrmAnimExt.humanoid || !vrmAnimExt.humanoid.humanBones) return map;
+        var hb = vrmAnimExt.humanoid.humanBones;
+        for (var bn in hb) {
+            if (!Object.prototype.hasOwnProperty.call(hb, bn)) continue;
+            var ni = hb[bn].node;
+            if (ni !== undefined && nodes[ni] && nodes[ni].name) {
+                map[nodes[ni].name] = bn;
+            }
+        }
+        return map;
+    }
+
     function retargetVRMAClip(clip, gltf) {
         if (!clip || !clip.tracks) return clip;
         if (!cachedBoneMap) cachedBoneMap = buildAvatarBoneMap(avatarRoot);
         var boneMap = cachedBoneMap;
         if (!boneMap || Object.keys(boneMap).length === 0) {
+            console.warn('[ClipAnimationLoader] VRMA retarget: no avatar bone map');
             clip._retargetFailed = true;
             return clip;
         }
-        var vrmAnimExt =
-            safeGet(gltf, ['parser', 'json', 'extensions', 'VRMC_vrm_animation']) ||
-            safeGet(gltf, ['userData', 'gltfExtensions', 'VRMC_vrm_animation']) ||
-            null;
+
+        // Extract VRMC_vrm_animation extension (tries multiple access paths)
+        var vrmaData = _extractVRMAExtension(gltf);
         var nodeNameToHumanoid = {};
-        if (vrmAnimExt && vrmAnimExt.humanoid && vrmAnimExt.humanoid.humanBones) {
-            var hb = vrmAnimExt.humanoid.humanBones,
-                nodes = safeGet(gltf, ['parser', 'json', 'nodes']) || [];
-            for (var bn in hb) {
-                if (!Object.prototype.hasOwnProperty.call(hb, bn)) continue;
-                var ni = hb[bn].node;
-                if (ni !== undefined && nodes[ni] && nodes[ni].name) nodeNameToHumanoid[nodes[ni].name] = bn;
-            }
+        if (vrmaData) {
+            nodeNameToHumanoid = _buildVRMANodeToHumanoid(vrmaData.ext, vrmaData.nodes);
         }
+
+        // If extension extraction failed, build a fallback mapping from
+        // common VRoid bone names (J_Bip_*) to VRM humanoid names.
+        // This handles cases where gltf.parser.json is disposed.
+        if (Object.keys(nodeNameToHumanoid).length === 0) {
+            console.warn('[ClipAnimationLoader] VRMA extension not accessible, using fallback J_Bip mapping');
+            nodeNameToHumanoid = _buildJBipFallbackMap();
+        }
+
         var newTracks = [];
+        var skippedCount = 0;
         for (var i = 0; i < clip.tracks.length; i++) {
             var track = clip.tracks[i],
                 parts = String(track.name || '').split('.'),
                 trackNode = parts[0],
                 property = parts.slice(1).join('.');
             if (!trackNode || !property) continue;
+
+            // Skip position/scale — only retarget rotations (prevents root motion)
+            if (property === 'position' || property === 'scale') continue;
+
+            // Map VRMA node name → VRM humanoid name → avatar bone
             var humanoidName = nodeNameToHumanoid[trackNode] || trackNode;
             var targetBone = boneMap[humanoidName] || boneMap[trackNode] || null;
-            if (!targetBone) continue;
-            if (property === 'position' || property === 'scale') continue;
+            if (!targetBone) {
+                skippedCount++;
+                continue;
+            }
             if (property === 'quaternion')
                 newTracks.push(
                     new THREE.QuaternionKeyframeTrack(targetBone.name + '.quaternion', track.times, track.values)
                 );
         }
         if (newTracks.length === 0) {
+            console.warn(
+                '[ClipAnimationLoader] VRMA retarget failed: 0 tracks mapped (' +
+                    skippedCount +
+                    ' skipped). nodeNameToHumanoid has ' +
+                    Object.keys(nodeNameToHumanoid).length +
+                    ' entries, boneMap has ' +
+                    Object.keys(boneMap).length +
+                    ' entries'
+            );
             clip._retargetFailed = true;
             return clip;
         }
@@ -761,9 +860,73 @@
             '/',
             clip.tracks.length,
             'tracks for:',
-            clip.name
+            clip.name,
+            '(' + skippedCount + ' skipped)'
         );
         return new THREE.AnimationClip(clip.name, clip.duration, newTracks);
+    }
+
+    /**
+     * Fallback mapping for VRoid-standard J_Bip bone names.
+     * Used when VRMC_vrm_animation extension cannot be extracted from
+     * the VRMA file (e.g., gltf.parser disposed after load in THREE.js r147+).
+     */
+    function _buildJBipFallbackMap() {
+        return {
+            J_Bip_C_Hips: 'hips',
+            J_Bip_C_Spine: 'spine',
+            J_Bip_C_Chest: 'chest',
+            J_Bip_C_UpperChest: 'upperChest',
+            J_Bip_C_Neck: 'neck',
+            J_Bip_C_Head: 'head',
+            J_Bip_L_Shoulder: 'leftShoulder',
+            J_Bip_L_UpperArm: 'leftUpperArm',
+            J_Bip_L_LowerArm: 'leftLowerArm',
+            J_Bip_L_Hand: 'leftHand',
+            J_Bip_R_Shoulder: 'rightShoulder',
+            J_Bip_R_UpperArm: 'rightUpperArm',
+            J_Bip_R_LowerArm: 'rightLowerArm',
+            J_Bip_R_Hand: 'rightHand',
+            J_Bip_L_UpperLeg: 'leftUpperLeg',
+            J_Bip_L_LowerLeg: 'leftLowerLeg',
+            J_Bip_L_Foot: 'leftFoot',
+            J_Bip_L_ToeBase: 'leftToes',
+            J_Bip_R_UpperLeg: 'rightUpperLeg',
+            J_Bip_R_LowerLeg: 'rightLowerLeg',
+            J_Bip_R_Foot: 'rightFoot',
+            J_Bip_R_ToeBase: 'rightToes',
+            // Finger bones
+            J_Bip_L_Thumb1: 'leftThumbMetacarpal',
+            J_Bip_L_Thumb2: 'leftThumbProximal',
+            J_Bip_L_Thumb3: 'leftThumbDistal',
+            J_Bip_L_Index1: 'leftIndexProximal',
+            J_Bip_L_Index2: 'leftIndexIntermediate',
+            J_Bip_L_Index3: 'leftIndexDistal',
+            J_Bip_L_Middle1: 'leftMiddleProximal',
+            J_Bip_L_Middle2: 'leftMiddleIntermediate',
+            J_Bip_L_Middle3: 'leftMiddleDistal',
+            J_Bip_L_Ring1: 'leftRingProximal',
+            J_Bip_L_Ring2: 'leftRingIntermediate',
+            J_Bip_L_Ring3: 'leftRingDistal',
+            J_Bip_L_Little1: 'leftLittleProximal',
+            J_Bip_L_Little2: 'leftLittleIntermediate',
+            J_Bip_L_Little3: 'leftLittleDistal',
+            J_Bip_R_Thumb1: 'rightThumbMetacarpal',
+            J_Bip_R_Thumb2: 'rightThumbProximal',
+            J_Bip_R_Thumb3: 'rightThumbDistal',
+            J_Bip_R_Index1: 'rightIndexProximal',
+            J_Bip_R_Index2: 'rightIndexIntermediate',
+            J_Bip_R_Index3: 'rightIndexDistal',
+            J_Bip_R_Middle1: 'rightMiddleProximal',
+            J_Bip_R_Middle2: 'rightMiddleIntermediate',
+            J_Bip_R_Middle3: 'rightMiddleDistal',
+            J_Bip_R_Ring1: 'rightRingProximal',
+            J_Bip_R_Ring2: 'rightRingIntermediate',
+            J_Bip_R_Ring3: 'rightRingDistal',
+            J_Bip_R_Little1: 'rightLittleProximal',
+            J_Bip_R_Little2: 'rightLittleIntermediate',
+            J_Bip_R_Little3: 'rightLittleDistal',
+        };
     }
 
     // ── Manifest ──
@@ -922,7 +1085,7 @@
 
         return loadClip(path).then(function (clip) {
             if (!clip) return false;
-            stopClip({ fadeOut: opts.fadeOut });
+            stopClip({ fadeOut: opts.fadeOut, _skipRestore: true });
             var mixerRoot = getMixerRoot();
             if (!mixerRoot) return false;
             if (!currentMixer || currentMixer.getRoot() !== mixerRoot) {
@@ -933,6 +1096,14 @@
                 }
                 currentMixer = new THREE.AnimationMixer(mixerRoot);
             }
+
+            // VRoid Hub–style exclusive clip playback:
+            // ProceduralAnimator yields entirely while clip plays,
+            // preventing breathing/head-look from fighting the VRMA.
+            if (window.NEXUS_PROCEDURAL_ANIMATOR?.setAllowWithMixer) {
+                window.NEXUS_PROCEDURAL_ANIMATOR.setAllowWithMixer(false);
+            }
+
             currentAction = currentMixer.clipAction(clip);
             currentAction.enabled = true;
             currentAction.clampWhenFinished = !opts.loop;
@@ -940,6 +1111,7 @@
             currentAction.reset().fadeIn(opts.fadeIn).play();
             currentClipPath = path;
             currentCategory = opts.category || null;
+            clipIsPlaying = true;
             console.log('[ClipAnimationLoader] Playing:', clip.name, opts.loop ? '(loop)' : '(once)');
             return true;
         });
@@ -956,6 +1128,14 @@
         }
         currentClipPath = null;
         currentCategory = null;
+        clipIsPlaying = false;
+
+        // Restore ProceduralAnimator control when clip stops
+        // (skip during clip-to-clip transitions to avoid flicker)
+        if (!options._skipRestore && window.NEXUS_PROCEDURAL_ANIMATOR?.setAllowWithMixer) {
+            window.NEXUS_PROCEDURAL_ANIMATOR.setAllowWithMixer(true);
+        }
+
         return Promise.resolve(true);
     }
 
@@ -1001,7 +1181,7 @@
         return manifest && manifest.categories ? manifest.categories : {};
     }
     function getCurrentPlaybackState() {
-        return { clip: currentClipPath, category: currentCategory, isPlaying: !!currentAction };
+        return { clip: currentClipPath, category: currentCategory, isPlaying: clipIsPlaying };
     }
 
     function getAllAnimations() {

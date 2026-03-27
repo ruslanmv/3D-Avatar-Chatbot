@@ -158,17 +158,38 @@
             rightLowerArm: null,
             leftHand: null,
             rightHand: null,
-            // Finger proximal bones (curl the root joint — chain follows via skinning)
+            // Finger bones: Proximal + Intermediate + Distal (30 bones total)
+            // Required for camera-based hand tracking (MediaPipe HandLandmarker)
             leftThumbProximal: null,
+            leftThumbIntermediate: null,
+            leftThumbDistal: null,
             leftIndexProximal: null,
+            leftIndexIntermediate: null,
+            leftIndexDistal: null,
             leftMiddleProximal: null,
+            leftMiddleIntermediate: null,
+            leftMiddleDistal: null,
             leftRingProximal: null,
+            leftRingIntermediate: null,
+            leftRingDistal: null,
             leftLittleProximal: null,
+            leftLittleIntermediate: null,
+            leftLittleDistal: null,
             rightThumbProximal: null,
+            rightThumbIntermediate: null,
+            rightThumbDistal: null,
             rightIndexProximal: null,
+            rightIndexIntermediate: null,
+            rightIndexDistal: null,
             rightMiddleProximal: null,
+            rightMiddleIntermediate: null,
+            rightMiddleDistal: null,
             rightRingProximal: null,
+            rightRingIntermediate: null,
+            rightRingDistal: null,
             rightLittleProximal: null,
+            rightLittleIntermediate: null,
+            rightLittleDistal: null,
             leftUpperLeg: null,
             rightUpperLeg: null,
             leftLowerLeg: null,
@@ -279,15 +300,35 @@
         if (humanoid && typeof humanoid.getNormalizedBoneNode === 'function') {
             var fingerNames = [
                 'leftThumbProximal',
+                'leftThumbIntermediate',
+                'leftThumbDistal',
                 'leftIndexProximal',
+                'leftIndexIntermediate',
+                'leftIndexDistal',
                 'leftMiddleProximal',
+                'leftMiddleIntermediate',
+                'leftMiddleDistal',
                 'leftRingProximal',
+                'leftRingIntermediate',
+                'leftRingDistal',
                 'leftLittleProximal',
+                'leftLittleIntermediate',
+                'leftLittleDistal',
                 'rightThumbProximal',
+                'rightThumbIntermediate',
+                'rightThumbDistal',
                 'rightIndexProximal',
+                'rightIndexIntermediate',
+                'rightIndexDistal',
                 'rightMiddleProximal',
+                'rightMiddleIntermediate',
+                'rightMiddleDistal',
                 'rightRingProximal',
+                'rightRingIntermediate',
+                'rightRingDistal',
                 'rightLittleProximal',
+                'rightLittleIntermediate',
+                'rightLittleDistal',
             ];
             for (var fi = 0; fi < fingerNames.length; fi++) {
                 var fn = fingerNames[fi];
@@ -398,15 +439,35 @@
         leftHand: 1,
         rightHand: 1,
         leftThumbProximal: 1,
+        leftThumbIntermediate: 1,
+        leftThumbDistal: 1,
         leftIndexProximal: 1,
+        leftIndexIntermediate: 1,
+        leftIndexDistal: 1,
         leftMiddleProximal: 1,
+        leftMiddleIntermediate: 1,
+        leftMiddleDistal: 1,
         leftRingProximal: 1,
+        leftRingIntermediate: 1,
+        leftRingDistal: 1,
         leftLittleProximal: 1,
+        leftLittleIntermediate: 1,
+        leftLittleDistal: 1,
         rightThumbProximal: 1,
+        rightThumbIntermediate: 1,
+        rightThumbDistal: 1,
         rightIndexProximal: 1,
+        rightIndexIntermediate: 1,
+        rightIndexDistal: 1,
         rightMiddleProximal: 1,
+        rightMiddleIntermediate: 1,
+        rightMiddleDistal: 1,
         rightRingProximal: 1,
+        rightRingIntermediate: 1,
+        rightRingDistal: 1,
         rightLittleProximal: 1,
+        rightLittleIntermediate: 1,
+        rightLittleDistal: 1,
     };
 
     function applyAnimDef(animDef, timeSec) {
@@ -712,15 +773,28 @@
                   };
 
         // Breathing (additive on base pose) — skipped when mode has its own spine/chest
+        //
+        // Natural breathing anatomy:
+        //   - Spine: minimal pitch (X). Heavy X-axis rotation pitches head
+        //     forward/backward, causing VR nausea.  Real breathing lifts the
+        //     ribcage upward (slight -Z rotation lifts shoulders) with only
+        //     a tiny forward pitch.
+        //   - Chest: primary expansion.  Chest lifts slightly up and forward.
+        //     Phase offset from spine simulates wave propagation.
+        //
+        // Frequency: 0.2-0.27 Hz = 12-16 breaths/min (resting adult).
         if (bones.spine && !modeControlsSpine) {
             var bp = idleP.breathing.spine;
-            var breath = Math.sin(timeSec * bp.freq) * bp.amp;
-            applyAdditiveEuler(bones.spine, new THREE.Euler(breath, 0, 0));
+            var breathX = Math.sin(timeSec * bp.freq * Math.PI * 2) * bp.amp;
+            applyAdditiveEuler(bones.spine, new THREE.Euler(breathX, 0, 0));
         }
         if (bones.chest && bones.chest !== bones.spine && !modeControlsChest) {
             var cp = idleP.breathing.chest;
-            var breath2 = Math.sin(timeSec * cp.freq + (cp.phase || 0)) * cp.amp;
-            applyAdditiveEuler(bones.chest, new THREE.Euler(breath2, 0, 0));
+            var breathPhase = timeSec * cp.freq * Math.PI * 2 + (cp.phase || 0);
+            var breathChestX = Math.sin(breathPhase) * cp.amp;
+            // Subtle shoulder lift on inhale (Z-axis) — keeps head stable
+            var breathChestZ = Math.sin(breathPhase) * cp.amp * 0.3;
+            applyAdditiveEuler(bones.chest, new THREE.Euler(breathChestX, 0, -breathChestZ));
         }
 
         // Head look — skipped when mode has its own head channels (dance, happy, etc.)
@@ -731,8 +805,11 @@
             if (faceTrackingHead) {
                 // Face tracking active — use webcam head rotation directly
                 // Negate yaw for mirror effect (webcam is mirrored)
+                // Negate pitch: MediaPipe positive pitch = look up, but
+                // VRM/Three.js positive X rotation = head tilts DOWN.
+                // VRoid Hub inverts pitch so user looking up → avatar looks up.
                 var ftYaw = THREE.MathUtils.clamp(-faceTrackingHead.yaw, -hl.yawClamp, hl.yawClamp);
-                var ftPitch = THREE.MathUtils.clamp(faceTrackingHead.pitch, -hl.pitchClamp, hl.pitchClamp);
+                var ftPitch = THREE.MathUtils.clamp(-faceTrackingHead.pitch, -hl.pitchClamp, hl.pitchClamp);
                 var ftRoll = THREE.MathUtils.clamp(faceTrackingHead.roll, -0.35, 0.35);
 
                 ud.yaw = damp(ud.yaw, ftYaw, hl.dampLambda, dtSec || 0.016);

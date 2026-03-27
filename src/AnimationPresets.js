@@ -1086,8 +1086,12 @@
     // =====================================================================
     var IDLE_PARAMS = {
         breathing: {
-            spine: { freq: 2.0, amp: 0.04 },
-            chest: { freq: 2.0, phase: 0.7, amp: 0.03 },
+            // Real resting breath: 12-16 breaths/min = 0.2-0.27 Hz (~4-5s cycle).
+            // Previous 2.0 Hz = 120 bpm was hyperventilation.
+            // X-axis rotation is minimized to avoid head-bobbing nausea.
+            // Breathing expands the chest upward, not forward.
+            spine: { freq: 0.22, amp: 0.008 },
+            chest: { freq: 0.22, phase: 0.5, amp: 0.012 },
         },
         headLook: {
             yawScale: 0.55,
@@ -1110,6 +1114,13 @@
             category: 'dance',
             preferredFiles: ['dance/dance_1.bvh', 'dance/dance_2.bvh', 'dance/dance_rumba.bvh'],
             fallbackMode: 'musicIdle',
+            loop: true,
+        },
+        waiting: {
+            id: 'waiting',
+            category: 'vrma',
+            preferredFiles: ['vrma/waiting-standard.vrma'],
+            fallbackMode: 'waiting',
             loop: true,
         },
     };

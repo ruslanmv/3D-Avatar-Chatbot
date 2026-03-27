@@ -42,13 +42,18 @@
     const MOBILE_DETECT_INTERVAL_MS = 50; // ~20fps
 
     /** Smoothing lerp factor (0..1). Lower = smoother but more latent. */
-    const BLEND_SHAPE_SMOOTHING = 0.4;
+    const BLEND_SHAPE_SMOOTHING = 0.5;
+
+    /** Faster smoothing for mouth/visemes — mouth moves quickly in speech. */
+    const MOUTH_SMOOTHING = 0.65;
 
     /** Minimum blend shape value to apply (noise gate). */
     const BLEND_SHAPE_EPSILON = 0.01;
 
-    /** Smoothing lerp factor for head rotation (lower = smoother). */
-    const HEAD_ROTATION_SMOOTHING = 0.3;
+    /** Smoothing lerp factor for head rotation.
+     *  VRoid Hub uses ~0.6 for responsive, natural tracking.
+     *  Lower = smoother but laggy; higher = snappier but jittery. */
+    const HEAD_ROTATION_SMOOTHING = 0.6;
 
     // ── Blink Pipeline (ported from KalidoKit — industry standard) ──────
     //
@@ -174,6 +179,27 @@
         };
     }
 
+    // ── New Tracking Settings (controlled by TrackingSettingsPanel) ─────
+    //
+    // These extend the original FaceTracker with VRoid Hub–style controls:
+    //   - Camera device selection (switch webcams)
+    //   - Flip toggle (mirror camera horizontally)
+    //   - Overwrite expressions toggle (camera vs preset)
+    //   - Look-at-camera toggle (force gaze to center)
+
+    /** When true, camera feed is mirrored horizontally. Affects coordinate mapping. */
+    let _flipped = false;
+
+    /** When true, camera ARKit blendshapes overwrite all expressions (Imitate only).
+     *  When false, camera only drives blink + gaze; emotions come from presets. */
+    let _overwriteExpressions = true;
+
+    /** When true, eye gaze is locked to center (looking at camera). */
+    let _lookAtCamera = false;
+
+    /** Requested camera device ID (empty = default camera). */
+    let _requestedDeviceId = '';
+
     /** Seconds without face detection before dispatching face-lost event. */
     const FACE_LOST_WARN_SEC = 3;
 
@@ -253,12 +279,20 @@
         vrm.lookLeft = (get('eyeLookOutLeft') + get('eyeLookInRight')) / 2;
         vrm.lookRight = (get('eyeLookInLeft') + get('eyeLookOutRight')) / 2;
 
-        // ── Mouth / Visemes ─────────────────────────────────────────
-        vrm.aa = get('jawOpen') * 0.8;
-        vrm.oh = Math.min(1.0, (get('mouthFunnel') + get('mouthPucker')) / 2 + get('jawOpen') * 0.2);
-        vrm.ih = Math.min(1.0, ((get('mouthSmileLeft') + get('mouthSmileRight')) / 2) * (1 - get('jawOpen')));
-        vrm.ee = vrm.ih; // VRM 'ee' is equivalent
-        vrm.ou = get('mouthPucker') * 0.9;
+        // ── Mouth / Visemes (VRoid Hub–style amplification) ──────────
+        //
+        // MediaPipe jawOpen typically reports 0.0–0.5 for normal speech,
+        // rarely exceeding 0.6 even for wide-open mouth.  VRoid Hub
+        // amplifies this to fill the 0..1 VRM range with a 1.8× gain.
+        //
+        const jaw = Math.min(1.0, get('jawOpen') * 1.8);
+        const mouthSmile = (get('mouthSmileLeft') + get('mouthSmileRight')) / 2;
+
+        vrm.aa = jaw;
+        vrm.oh = Math.min(1.0, (get('mouthFunnel') + get('mouthPucker')) / 2 + jaw * 0.3);
+        vrm.ih = Math.min(1.0, mouthSmile * (1 - jaw));
+        vrm.ee = vrm.ih;
+        vrm.ou = Math.min(1.0, get('mouthPucker') * 1.2);
 
         // ── Emotions (composite) ────────────────────────────────────
         vrm.happy = Math.min(1.0, (get('mouthSmileLeft') + get('mouthSmileRight')) / 2);
@@ -370,9 +404,13 @@
             const vision = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14');
             FaceLandmarker = vision.FaceLandmarker;
             FilesetResolver = vision.FilesetResolver;
+            // Cache for HandTracker to reuse (avoid re-downloading WASM)
+            global.__MEDIAPIPE_VISION__ = vision;
         }
 
         const filesetResolver = await FilesetResolver.forVisionTasks(MEDIAPIPE_CDN);
+        // Cache resolved fileset for HandTracker
+        global.__MEDIAPIPE_FILESET__ = filesetResolver;
 
         _faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
             baseOptions: {
@@ -390,10 +428,20 @@
 
     // ── Webcam ──────────────────────────────────────────────────────────
 
-    async function _startWebcam() {
+    async function _startWebcam(deviceId) {
+        const baseVideo = _isMobile() ? MOBILE_VIDEO : DESKTOP_VIDEO;
+        const videoConstraints = { ...baseVideo };
+
+        // Use specific camera device if requested
+        if (deviceId) {
+            videoConstraints.deviceId = { exact: deviceId };
+            // Remove facingMode when using exact deviceId (they conflict)
+            delete videoConstraints.facingMode;
+        }
+
         const constraints = {
             audio: false,
-            video: _isMobile() ? MOBILE_VIDEO : DESKTOP_VIDEO,
+            video: videoConstraints,
         };
 
         _stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -402,6 +450,7 @@
         _videoEl = document.createElement('video');
         _videoEl.setAttribute('playsinline', '');
         _videoEl.setAttribute('autoplay', '');
+        _videoEl.setAttribute('data-facetracker', 'true');
         _videoEl.muted = true;
         _videoEl.srcObject = _stream;
         _videoEl.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;';
@@ -561,6 +610,13 @@
     // ── Imitate Mode ─────────────────────────────────────────────────
     // Avatar mirrors user's facial expressions (default).
 
+    // Expression categories for overwrite filtering
+    const _GAZE_NAMES = new Set(['lookUp', 'lookDown', 'lookLeft', 'lookRight']);
+    const _BLINK_NAMES = new Set(['blink', 'blinkLeft', 'blinkRight']);
+    const _EMOTION_NAMES = new Set(['happy', 'sad', 'angry', 'surprised']);
+    const _VISEME_NAMES = new Set(['aa', 'ee', 'ih', 'oh', 'ou']);
+    const _MOUTH_NAMES = new Set(['aa', 'oh', 'ih', 'ee', 'ou', 'jawOpen']);
+
     function _applyImitateMode() {
         const em = _getExpressionManager();
         if (!em || !_faceDetected) return;
@@ -575,6 +631,23 @@
             if (!_independentEyes && isIndivBlink) continue;
             if (_independentEyes && isBlink) continue;
 
+            // ── Overwrite Expressions filter ──
+            // When OFF: camera only drives blink + gaze + head rotation.
+            // Emotions and visemes come from presets / AI, not camera.
+            if (!_overwriteExpressions) {
+                if (_EMOTION_NAMES.has(name) || _VISEME_NAMES.has(name)) continue;
+            }
+
+            // ── Look-at-camera override ──
+            // When ON: force all gaze expressions to 0 (eyes look straight at camera)
+            if (_lookAtCamera && _GAZE_NAMES.has(name)) {
+                try {
+                    em.setValue(name, 0);
+                } catch (_) {}
+                _smoothedBlendShapes[name] = 0;
+                continue;
+            }
+
             if (isBlink || isIndivBlink) {
                 // KalidoKit temporal lerp: lerp(target, currentVRM, 0.5)
                 let currentVRM = 0;
@@ -585,7 +658,9 @@
                 _smoothedBlendShapes[name] = smoothed;
             } else {
                 const prev = _smoothedBlendShapes[name] || 0;
-                smoothed = prev + (targetValue - prev) * BLEND_SHAPE_SMOOTHING;
+                // Mouth/visemes use faster smoothing for responsive speech tracking
+                const factor = _MOUTH_NAMES.has(name) ? MOUTH_SMOOTHING : BLEND_SHAPE_SMOOTHING;
+                smoothed = prev + (targetValue - prev) * factor;
                 _smoothedBlendShapes[name] = smoothed;
             }
 
@@ -805,7 +880,7 @@
      *
      * @returns {Promise<void>}
      */
-    async function start() {
+    async function start(opts) {
         if (_active || _initializing) {
             console.warn('[FaceTracker] Already active or initializing');
             return;
@@ -821,9 +896,12 @@
         _initializing = true;
         _dispatchEvent('facetracker-initializing');
 
+        // Accept options from TrackingSettingsPanel
+        var deviceId = (opts && opts.deviceId) || _requestedDeviceId || '';
+
         try {
             // Step 1: Webcam
-            await _startWebcam();
+            await _startWebcam(deviceId);
             _dispatchEvent('facetracker-webcam-ready');
 
             // Step 2: MediaPipe (lazy init — cached after first call)
@@ -1065,9 +1143,73 @@
                 faceDetected: _faceDetected,
                 mode: _mode,
                 independentEyes: _independentEyes,
+                flipped: _flipped,
+                overwriteExpressions: _overwriteExpressions,
+                lookAtCamera: _lookAtCamera,
                 videoSize: _videoEl ? `${_videoEl.videoWidth}x${_videoEl.videoHeight}` : null,
                 blendShapeCount: Object.keys(_smoothedBlendShapes).length,
             };
+        },
+
+        // ── New APIs for TrackingSettingsPanel + HandTracker ─────────
+
+        /** Expose video element for HandTracker (shared webcam). */
+        _getVideoElement() {
+            return _videoEl;
+        },
+
+        /** Whether camera is flipped. */
+        isFlipped() {
+            return _flipped;
+        },
+
+        /** Set camera flip (mirror). Affects coordinate mapping for follow mode. */
+        setFlipped(enabled) {
+            _flipped = !!enabled;
+            console.log(`[FaceTracker] Flip ${_flipped ? 'ON' : 'OFF'}`);
+        },
+
+        /** Set overwrite expressions mode.
+         *  true = camera drives ALL expressions (default, full Imitate)
+         *  false = camera only drives blink + gaze; emotions from presets */
+        setOverwriteExpressions(enabled) {
+            _overwriteExpressions = !!enabled;
+            // When turning OFF overwrite, re-enable LipSync so AI speech works
+            if (!_overwriteExpressions && _active && _mode === 'imitate') {
+                if (global.NEXUS_LIP_SYNC?.setPaused) {
+                    global.NEXUS_LIP_SYNC.setPaused(false);
+                }
+            }
+            // When turning ON, pause LipSync (camera drives mouth)
+            if (_overwriteExpressions && _active && _mode === 'imitate') {
+                if (global.NEXUS_LIP_SYNC?.setPaused) {
+                    global.NEXUS_LIP_SYNC.setPaused(true);
+                }
+            }
+            console.log(`[FaceTracker] Overwrite expressions ${_overwriteExpressions ? 'ON' : 'OFF'}`);
+        },
+
+        /** Force eye gaze to center (look at camera). */
+        setLookAtCamera(enabled) {
+            _lookAtCamera = !!enabled;
+            // When turning ON, immediately zero out gaze expressions
+            if (_lookAtCamera) {
+                const em = _getExpressionManager();
+                if (em) {
+                    try {
+                        em.setValue('lookLeft', 0);
+                        em.setValue('lookRight', 0);
+                        em.setValue('lookUp', 0);
+                        em.setValue('lookDown', 0);
+                    } catch (_) {}
+                }
+            }
+            console.log(`[FaceTracker] Look at camera ${_lookAtCamera ? 'ON' : 'OFF'}`);
+        },
+
+        /** Set preferred camera device ID (used on next start). */
+        setDeviceId(deviceId) {
+            _requestedDeviceId = deviceId || '';
         },
     };
 
