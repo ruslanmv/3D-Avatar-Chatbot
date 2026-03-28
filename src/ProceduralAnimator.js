@@ -651,6 +651,20 @@
         allowWithMixer = !!v;
     }
 
+    /**
+     * Toggle VRM autoUpdateHumanBones. When true, vrm.update() syncs
+     * normalized→raw bones each frame. Must be false when ProceduralAnimator
+     * writes raw bones directly (otherwise vrm.update() overwrites them).
+     */
+    function _setAutoUpdateHumanBones(enabled) {
+        try {
+            var vrm = window.NEXUS_VIEWER?.avatarManager?._currentVRM;
+            if (vrm && vrm.humanoid && 'autoUpdateHumanBones' in vrm.humanoid) {
+                vrm.humanoid.autoUpdateHumanBones = !!enabled;
+            }
+        } catch (_) {}
+    }
+
     function setMode(nextMode, durationMs) {
         mode = (nextMode || 'idle').toLowerCase();
         const dur = Number.isFinite(durationMs) ? durationMs : 1200;
@@ -663,6 +677,13 @@
         // Enable animation override so animations play even during Pose Studio editMode
         // When returning to idle, disable the override so the editor regains control
         animOverride = mode !== 'idle';
+
+        // When overriding pose mode with a behavior animation, disable
+        // autoUpdateHumanBones so ProceduralAnimator's raw bone writes
+        // aren't overwritten by vrm.update() every frame (spinning bug).
+        if (poseMode && animOverride) {
+            _setAutoUpdateHumanBones(false);
+        }
     }
 
     function setBasePose(nextPose) {
@@ -690,6 +711,12 @@
             mode = 'idle';
             forceMode = false; // Disable force mode when returning to idle
             animOverride = false; // Re-enable editMode protection
+
+            // If still in pose mode, re-enable autoUpdateHumanBones so
+            // VRPoseSystem's normalized bone writes sync to raw again
+            if (poseMode) {
+                _setAutoUpdateHumanBones(true);
+            }
         }
 
         // If mixer is active and we are not allowed, bail (do not fight baked clips)

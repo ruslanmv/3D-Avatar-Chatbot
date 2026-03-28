@@ -357,11 +357,42 @@
         const self = this;
 
         // --- Close ---
+        // Closing the panel exits pose mode and restores normal procedural
+        // animations (breathing, head tracking, base pose). The avatar
+        // smoothly returns to its default idle state.
         const closeBtn = this.rootEl.querySelector('#poseStudioCloseBtn');
         if (closeBtn) {
             closeBtn.addEventListener('click', () => {
                 self.hide();
                 self.editor.exit();
+
+                // Cancel any VRPoseSystem blending so it doesn't fight
+                try {
+                    var vps = window.vrPoseSystem;
+                    if (vps) {
+                        vps._isBlending = false;
+                    }
+                } catch (_) {}
+
+                // Re-register avatar so ProceduralAnimator recaptures rest
+                // pose from the clean T-pose-corrected state, then immediately
+                // apply default idle so procedural animations resume.
+                var animator = window.NEXUS_PROCEDURAL_ANIMATOR;
+                if (animator) {
+                    try {
+                        var viewer = window.NEXUS_VIEWER;
+                        var root = viewer?.avatarManager?.currentRoot;
+                        var vrm = viewer?.avatarManager?._currentVRM;
+                        if (root) {
+                            animator.registerAvatar(root, vrm);
+                        }
+                    } catch (_) {}
+                    try {
+                        animator.setBasePose?.('lecturerNeutral');
+                        animator.setMode?.('idle', 0);
+                        animator.update?.(0, 0);
+                    } catch (_) {}
+                }
             });
         }
 
@@ -374,40 +405,133 @@
         }
 
         // --- Reset All ---
+        // Full viewport reset: stop ALL animations and systems, clear ALL
+        // modified bone state, return avatar to clean default procedural pose.
+        // After this, closing the panel resumes normal procedural animations.
         const resetBtn = this.rootEl.querySelector('#poseResetBtn');
         if (resetBtn) {
             resetBtn.addEventListener('click', () => {
-                // Reset bones to neutral (NaturalPosePlugin-corrected) pose
-                const vps = window.vrPoseSystem;
-                if (vps) {
-                    vps.applyPreset('standing', 0.4);
-                }
+                // 1. Stop ALL animation systems
+                try {
+                    window.NEXUS_CLIP_LOADER?.stopClip?.({ fadeOut: 0.2 });
+                } catch (_) {}
+                try {
+                    window.NEXUS_ANIMATION_RESOLVER?.stop?.();
+                } catch (_) {}
+                // Stop locomotion (walking/running state machine + blend controller)
+                try {
+                    window.NEXUS_ANIMATION_BLEND?.fadeOutAll?.(0.2);
+                } catch (_) {}
+                try {
+                    window.NEXUS_LOCOMOTION?.forceStop?.();
+                } catch (_) {}
+
+                // 2. Exit pose mode — poseMode=false, editMode=false,
+                //    autoUpdateHumanBones=false
+                self._exitPoseMode();
+
+                // 3. Cancel any active VRPoseSystem blending
+                try {
+                    var vps = window.vrPoseSystem;
+                    if (vps) {
+                        vps._isBlending = false;
+                        vps._blendTime = 0;
+                    }
+                } catch (_) {}
+
+                // 4. Reset all normalized bones to identity AND restore
+                //    hips position so avatar doesn't float or sink
+                try {
+                    var vrm = window.NEXUS_VIEWER?.avatarManager?._currentVRM;
+                    if (vrm && vrm.humanoid && vrm.humanoid.getNormalizedBoneNode) {
+                        var boneNames = [
+                            'hips',
+                            'spine',
+                            'chest',
+                            'upperChest',
+                            'neck',
+                            'head',
+                            'leftShoulder',
+                            'rightShoulder',
+                            'leftUpperArm',
+                            'rightUpperArm',
+                            'leftLowerArm',
+                            'rightLowerArm',
+                            'leftHand',
+                            'rightHand',
+                            'leftUpperLeg',
+                            'rightUpperLeg',
+                            'leftLowerLeg',
+                            'rightLowerLeg',
+                            'leftFoot',
+                            'rightFoot',
+                        ];
+                        for (var bi = 0; bi < boneNames.length; bi++) {
+                            try {
+                                var nb = vrm.humanoid.getNormalizedBoneNode(boneNames[bi]);
+                                if (nb) nb.quaternion.set(0, 0, 0, 1);
+                            } catch (_) {}
+                        }
+                        // Restore hips position from VRPoseSystem rest
+                        // (prevents avatar staying lowered after sitting/lying poses)
+                        var vpsRef = window.vrPoseSystem;
+                        if (vpsRef && vpsRef._hipsRestPosition) {
+                            var hipsBone = vpsRef._bones?.get?.('hips');
+                            if (hipsBone) {
+                                hipsBone.position.copy(vpsRef._hipsRestPosition);
+                            }
+                        }
+                    }
+                } catch (_) {}
+
+                // 5. Reset pose editor state and sliders
                 self.editor.resetAll();
                 self._resetSliders();
 
-                const animator = window.NEXUS_PROCEDURAL_ANIMATOR;
+                // 6. Re-register avatar with ProceduralAnimator for clean baseline.
+                //    registerAvatar re-runs fixTPose + captureRestPose, giving
+                //    ProceduralAnimator a clean T-pose-corrected rest state.
+                var animator = window.NEXUS_PROCEDURAL_ANIMATOR;
                 if (animator) {
-                    // Re-capture rest pose so ProceduralAnimator has clean baseline
                     try {
-                        animator.captureRestPose?.();
+                        var viewer = window.NEXUS_VIEWER;
+                        var root = viewer?.avatarManager?.currentRoot;
+                        var avrm = viewer?.avatarManager?._currentVRM;
+                        if (root) {
+                            animator.registerAvatar(root, avrm);
+                        }
                     } catch (_) {}
 
-                    // Set waiting mode and force immediate update to prevent
-                    // A-pose flash (same fix as initial load — the base pose
-                    // and waiting mode only apply inside update(), so without
-                    // this the avatar shows NaturalPosePlugin-only 55° arms
-                    // for one frame before the render loop catches up)
+                    // Set default base pose + idle mode and force immediate update
                     try {
-                        animator.setMode?.('waiting', 0);
+                        animator.setBasePose?.('lecturerNeutral');
+                        animator.setMode?.('idle', 0);
                         animator.update?.(0, 0);
                     } catch (_) {}
                 }
 
-                // Clear any active animation chip
+                // 7. Reset navigator to first preset
+                self._navIndex = 0;
+                self._updateNavDisplay();
+                self._hasAppliedInitialPose = false;
+
+                // 8. Clear any active animation chip
                 self.rootEl.querySelectorAll('.pose-anim-chip').forEach(function (chip) {
                     chip.classList.remove('pose-anim-chip--active');
                 });
                 self._isPlaying = false;
+                self._playingAnimId = null;
+
+                // 9. Re-frame camera on avatar so viewport reflects the reset
+                try {
+                    if (window.NEXUS_CAMERA_PRESETS?.transitionToFullBody) {
+                        window.NEXUS_CAMERA_PRESETS.transitionToFullBody(600);
+                    } else if (window.NEXUS_VIEWER?.frameObject && window.NEXUS_VIEWER?.avatarManager?.currentRoot) {
+                        window.NEXUS_VIEWER.frameObject(window.NEXUS_VIEWER.avatarManager.currentRoot, 1.35);
+                    }
+                } catch (_) {}
+
+                console.log('[PoseStudio] Reset All — avatar restored to default');
             });
         }
 
