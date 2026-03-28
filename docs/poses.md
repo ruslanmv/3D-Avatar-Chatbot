@@ -1149,3 +1149,245 @@ the absolute quaternion presets.
 | Correction quats (ozz) | `delta × current` | Orientation-agnostic joint correction |
 | Cross-product hinge | `axis = cross(boneA, boneB)` | Natural hinge axis for any pose |
 | Twist distribution | `bone.twist = total × weight` | Spread rotation across chain |
+
+---
+
+## Part XVIII: Pose Mode — Pose Navigator Integration
+
+The Pose Navigator (inside Pose Studio panel) allows users to cycle through predefined
+poses using arrow buttons or keyboard left/right arrows. This section documents how
+pose mode coordinates bone control between VRPoseSystem and ProceduralAnimator.
+
+### The Problem
+
+Three systems compete for bone control every frame:
+
+| System | Runs in | Writes to | Purpose |
+|--------|---------|-----------|---------|
+| **ClipAnimationLoader** | `AvatarAliveness` hook | Raw or normalized bones | BVH/VRMA clip playback |
+| **ProceduralAnimator** | `ViewerEngine.animate()` | Raw bones | Breathing, head tracking, base pose |
+| **VRPoseSystem** | `ViewerEngine.animate()` | Normalized bones (via PoseRigMap) | Pose presets with smooth blending |
+
+Without coordination, ProceduralAnimator resets all bones to rest pose every frame
+(to prevent drift), then applies its own base pose — destroying whatever VRPoseSystem
+just set. Active clip animations also overwrite bones before either system runs.
+
+### Frame Execution Order
+
+```
+ViewerEngine.animate() {
+    1. avatarManager.update(dt)            // vrm.update() — syncs normalized → raw IF autoUpdateHumanBones=true
+    2. NEXUS_PROCEDURAL_ANIMATOR.update()  // Wrapped by AvatarAliveness:
+       2a. NEXUS_CLIP_LOADER.update(dt)    //   → Clip mixer writes bones
+       2b. originalUpdate(t, dt)           //   → ProceduralAnimator: reset → basePose → breathing → head
+    3. vrPoseSystem.update(dt)             // Blends pose quaternions on normalized bones
+    4. vrPuppetInteraction.update(dt)
+    5. vrIntimacySystem.update(dt)
+}
+```
+
+### Pose Mode Solution
+
+`PoseStudioPanel` manages pose mode transitions:
+
+**Entering Pose Mode** (`_enterPoseMode()`):
+1. Stop active clip animations (`NEXUS_CLIP_LOADER.stopClip()`)
+2. Stop animation resolver (`NEXUS_ANIMATION_RESOLVER.stop()`)
+3. Activate pose mode (`NEXUS_PROCEDURAL_ANIMATOR.setPoseMode(true)`)
+4. Enable `autoUpdateHumanBones = true` on VRM humanoid
+
+**Exiting Pose Mode** (`_exitPoseMode()`):
+1. Deactivate pose mode (`NEXUS_PROCEDURAL_ANIMATOR.setPoseMode(false)`)
+2. Restore `autoUpdateHumanBones = false`
+
+### Why autoUpdateHumanBones Matters
+
+VRPoseSystem resolves bones via `PoseRigMap`, which prefers `getNormalizedBoneNode()`
+over `getRawBoneNode()`. This means VRPoseSystem writes quaternions to **normalized
+proxy bones**, not the raw skeleton.
+
+- `autoUpdateHumanBones = true`: `vrm.update()` syncs normalized → raw each frame.
+  VRPoseSystem's changes become visible on the rendered skeleton.
+- `autoUpdateHumanBones = false`: Normalized bone values are NOT synced to raw bones.
+  ProceduralAnimator writes raw bones directly (breathing, base pose).
+
+| Mode | autoUpdateHumanBones | Bone Control Owner | Use Case |
+|------|---------------------|--------------------|----------|
+| Normal (procedural) | `false` | ProceduralAnimator (raw) | Default: breathing, head tracking, base pose |
+| Pose mode | `true` | VRPoseSystem (normalized) | Pose Navigator, pose presets |
+| VRMA clip playback | `true` | ClipAnimationLoader (normalized) | .vrma animation files |
+| BVH clip playback | `false` | ClipAnimationLoader (raw) | .bvh animation files |
+
+### ProceduralAnimator State Machine
+
+```javascript
+// State variables
+let editMode = false;   // Pose Studio mouse editing active
+let poseMode = false;   // Pose Navigator active — VRPoseSystem owns bones
+let animOverride = false; // Animation playing from Pose Studio panel
+
+// Decision tree in update():
+if (editMode && !poseMode && !animOverride) return; // Mouse editing: skip all
+if (poseMode) return;                                // Pose mode: skip all (no additive!)
+// ... normal procedural animation follows
+```
+
+**Important**: Pose mode skips ALL procedural effects including breathing and head
+tracking. Additive effects (`applyAdditiveEuler`) compound each frame without a
+bone reset, causing rotation drift (spinning head artifact). VRPoseSystem has
+exclusive bone control in pose mode.
+
+### Pose Navigator UX Flow
+
+```
+Open Pose Studio  → poseEditor.enter() + show()
+                    → Stop clips, enter pose mode, apply first preset
+
+Navigate (← →)    → _navigatePose(±1)
+                    → Ensure pose mode, apply preset with 0.5s blend
+
+Select dropdown    → _applySelectedPreset()
+                    → Ensure pose mode, apply preset with 0.5s blend
+
+Close panel        → hide() + editor.exit()
+                    → Exit pose mode, restore procedural animations
+```
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `src/ProceduralAnimator.js` | Added `poseMode` state + `setPoseMode()` API |
+| `src/PoseStudioPanel.js` | Added `_enterPoseMode()`, `_exitPoseMode()`, `hide()` |
+
+---
+
+## Part XIX: Modular Animation Architecture (VRMA Fix)
+
+The animation loading system was refactored from a single monolithic file into
+four modular files following the official `@pixiv/three-vrm-animation` pipeline.
+
+### File Structure
+
+```
+Load order (all via <script defer>):
+
+1. ClipAnimationShared.js    → Shared state, constants, bone maps, utilities
+2. BVHAnimationLoader.js     → BVH parsing & retargeting
+3. VRMAAnimationLoader.js    → VRMA retargeting (official pipeline)
+4. ClipAnimationLoader.js    → Thin orchestrator + public API
+```
+
+### Module Communication
+
+All modules communicate through two global objects:
+
+| Object | Purpose | Scope |
+|--------|---------|-------|
+| `window.__CLIP_ANIM_STATE__` | Mutable shared state (mixer, avatar, clips, proxy state) | Internal |
+| `window.__CLIP_ANIM_CONST__` | Read-only constants + utility functions | Internal |
+| `window.__BVH_LOADER__` | BVH sub-loader API | Internal |
+| `window.__VRMA_LOADER__` | VRMA sub-loader API | Internal |
+| `window.NEXUS_CLIP_LOADER` | Public API for all consumers | External |
+
+### VRMA Animation Fixes
+
+Three bugs were fixed in the VRMA retargeting pipeline:
+
+#### Fix 1: VRM 0.x Coordinate System Transform
+
+VRMA animations use VRM 1.0 coordinates. VRM 0.x models (like AvatarSample_A) use
+a different coordinate system. The official `@pixiv/three-vrm-animation` library
+handles this by negating X and Z quaternion components:
+
+```javascript
+// Official formula: negate every even-indexed value in flat array
+// [x₀, y₀, z₀, w₀, ...] → [-x₀, y₀, -z₀, w₀, ...]
+// Per quaternion: (x, y, z, w) → (-x, y, -z, w)
+function transformQuatForVRM0(values) {
+    var out = new Float32Array(values.length);
+    for (var i = 0; i < values.length; i++) {
+        out[i] = (i % 2 === 0) ? -values[i] : values[i];
+    }
+    return out;
+}
+```
+
+Hips position uses the same principle: `(x, y, z) → (-x, y, -z)`.
+
+The old code incorrectly normalized `w >= 0` (flipping all components when w < 0),
+which caused arms-up and inverted facing artifacts.
+
+#### Fix 2: Direct Bone Targeting (No Proxies)
+
+The old approach created intermediate proxy `Object3D` nodes and copied quaternions
+via `syncProxies()` every frame. The new approach targets normalized bone nodes
+directly on `vrm.scene`:
+
+```javascript
+// NEW: mixer writes directly to normalized bone
+var normNode = humanoid.getNormalizedBoneNode(humanoidName);
+var qValues = isVRM0 ? transformQuatForVRM0(track.values) : track.values;
+new THREE.QuaternionKeyframeTrack(normNode.name + '.quaternion', times, qValues);
+```
+
+The `AnimationMixer` on `vrm.scene` finds these nodes by name and writes to them
+directly. No per-frame `syncProxies()` needed for bone quaternions.
+
+#### Fix 3: VRMRoot Scene Rotation
+
+The `VRMRoot` rotation track (present in appearing/waiting VRMA files) controls the
+entire character's facing direction. This was previously silently skipped because
+`VRMRoot` is not a humanoid bone. Now it uses a lightweight proxy:
+
+```javascript
+// VRMRoot proxy — applied to vrm.scene quaternion each frame
+if (trackNode === 'VRMRoot' && property === 'quaternion') {
+    vrmaRootProxy = new THREE.Object3D();
+    vrmaRootProxy.name = '__vrma_root';
+    proxyRoot.add(vrmaRootProxy);
+    newTracks.push(new THREE.QuaternionKeyframeTrack(
+        '__vrma_root.quaternion', track.times, rootValues
+    ));
+}
+
+// Per-frame in syncProxies():
+scene.quaternion.copy(originalSceneQuat).multiply(vrmaRootProxy.quaternion);
+```
+
+### VRMA Retargeting Pipeline
+
+```
+.vrma file
+    ↓ GLTFLoader
+gltf result
+    ↓ extractVRMAExtension()
+VRMC_vrm_animation extension + node list
+    ↓ buildNodeToHumanoidMap()
+node name → humanoid bone name mapping
+    ↓ retargetVRMAClip()
+For each track:
+    ├── VRMRoot.quaternion     → proxy Object3D (scene rotation)
+    ├── expression tracks      → proxy Object3D (userData.weight)
+    ├── bone.quaternion        → normalized bone node (direct targeting)
+    │   └── VRM 0.x?          → transformQuatForVRM0() (negate X, Z)
+    ├── hips.position          → normalized bone node (height-scaled)
+    │   └── VRM 0.x?          → transformPosForVRM0() (negate X, Z)
+    └── scale, lookAt          → filtered out
+    ↓
+THREE.AnimationClip (retargeted for target VRM)
+    ↓ AnimationMixer on vrm.scene
+Playback (autoUpdateHumanBones=true syncs normalized → raw)
+```
+
+### Public API (unchanged)
+
+The public `window.NEXUS_CLIP_LOADER` API is unchanged:
+
+```javascript
+NEXUS_CLIP_LOADER.playClip(path, loopOrOptions)  // Play BVH or VRMA
+NEXUS_CLIP_LOADER.stopClip(options)               // Stop with fadeOut
+NEXUS_CLIP_LOADER.loadClip(path)                  // Preload
+NEXUS_CLIP_LOADER.update(dt)                      // Per-frame (called by AvatarAliveness)
+NEXUS_CLIP_LOADER.registerAvatar(root, vrm)       // Set target avatar
+```

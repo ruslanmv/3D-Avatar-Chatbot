@@ -360,7 +360,7 @@
         const closeBtn = this.rootEl.querySelector('#poseStudioCloseBtn');
         if (closeBtn) {
             closeBtn.addEventListener('click', () => {
-                self.rootEl.classList.add('hidden');
+                self.hide();
                 self.editor.exit();
             });
         }
@@ -1209,6 +1209,8 @@
         const vrPreset = NAV_PRESETS.find((p) => p.name === selectedValue);
 
         if (vrPreset) {
+            // Ensure pose mode is active (stops clips, yields ProceduralAnimator)
+            this._enterPoseMode();
             // Apply via VRPoseSystem — smooth blended transition on the 3D character
             const vps = window.vrPoseSystem;
             if (vps) {
@@ -1239,6 +1241,9 @@
 
         const preset = filtered[this._navIndex];
         this._updateNavDisplay();
+
+        // Ensure pose mode is active (stops clips, yields ProceduralAnimator)
+        this._enterPoseMode();
 
         // Apply via VRPoseSystem — always (desktop + VR unified)
         const vps = window.vrPoseSystem;
@@ -1504,9 +1509,60 @@
         }
     };
 
+    /**
+     * Enter pose mode: stop any playing clips, tell ProceduralAnimator to yield
+     * bone control to VRPoseSystem, and enable VRM normalized→raw bone sync.
+     */
+    PoseStudioPanel.prototype._enterPoseMode = function () {
+        // Stop any active clip animations (graceful fadeOut)
+        try {
+            window.NEXUS_CLIP_LOADER?.stopClip?.({ fadeOut: 0.25 });
+        } catch (_) {}
+        try {
+            window.NEXUS_ANIMATION_RESOLVER?.stop?.();
+        } catch (_) {}
+
+        // Enter pose mode: ProceduralAnimator yields all bone control
+        try {
+            window.NEXUS_PROCEDURAL_ANIMATOR?.setPoseMode?.(true);
+        } catch (_) {}
+
+        // VRPoseSystem writes to normalized bones (via PoseRigMap).
+        // Enable autoUpdateHumanBones so vrm.update() syncs normalized → raw
+        // each frame, making the pose visible on the rendered skeleton.
+        try {
+            var vrm = window.NEXUS_VIEWER?.avatarManager?._currentVRM;
+            if (vrm && vrm.humanoid && 'autoUpdateHumanBones' in vrm.humanoid) {
+                vrm.humanoid.autoUpdateHumanBones = true;
+            }
+        } catch (_) {}
+    };
+
+    /**
+     * Exit pose mode: restore ProceduralAnimator to normal operation and
+     * disable autoUpdateHumanBones so ProceduralAnimator can write raw bones.
+     */
+    PoseStudioPanel.prototype._exitPoseMode = function () {
+        try {
+            window.NEXUS_PROCEDURAL_ANIMATOR?.setPoseMode?.(false);
+        } catch (_) {}
+
+        // Restore autoUpdateHumanBones=false so ProceduralAnimator's raw bone
+        // writes (breathing, base pose) aren't overwritten by vrm.humanoid.update()
+        try {
+            var vrm = window.NEXUS_VIEWER?.avatarManager?._currentVRM;
+            if (vrm && vrm.humanoid && 'autoUpdateHumanBones' in vrm.humanoid) {
+                vrm.humanoid.autoUpdateHumanBones = false;
+            }
+        } catch (_) {}
+    };
+
     PoseStudioPanel.prototype.show = function () {
         this.rootEl.classList.remove('hidden');
         this.refresh();
+
+        // Enter pose mode so VRPoseSystem has exclusive bone control
+        this._enterPoseMode();
 
         // On first open, apply the first pose (Lecturer) to the character
         if (!this._hasAppliedInitialPose) {
@@ -1521,6 +1577,14 @@
                 this._updateNavDisplay();
             }
         }
+    };
+
+    /**
+     * Hide the panel and exit pose mode, restoring normal procedural control.
+     */
+    PoseStudioPanel.prototype.hide = function () {
+        this.rootEl.classList.add('hidden');
+        this._exitPoseMode();
     };
 
     window.NEXUS_POSE_STUDIO_PANEL = PoseStudioPanel;

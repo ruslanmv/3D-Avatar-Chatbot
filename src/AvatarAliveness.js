@@ -81,24 +81,29 @@
         const originalUpdate = animator.update;
 
         animator.update = function (t, dt) {
-            // Run the original procedural animator first
-            originalUpdate(t, dt);
-
-            // Then run the behavior engine
-            if (global.NEXUS_BEHAVIOR) {
-                try {
-                    global.NEXUS_BEHAVIOR.update(dt, t);
-                } catch (e) {
-                    console.warn('[AvatarAliveness] BehaviorEngine update error:', e);
-                }
-            }
-
-            // Update ClipAnimationLoader mixer (BVH/VRMA playback)
+            // 1. Update ClipAnimationLoader mixer FIRST (BVH/VRMA playback).
+            //    VRoid Hub–style: when a VRMA clip is active, it has exclusive
+            //    bone control.  Running it first ensures VRMA sets all bone
+            //    quaternions before ProceduralAnimator decides whether to overlay.
             if (global.NEXUS_CLIP_LOADER && global.NEXUS_CLIP_LOADER.update) {
                 try {
                     global.NEXUS_CLIP_LOADER.update(dt || 0.016);
                 } catch (e) {
                     // Silent — clip loader is optional
+                }
+            }
+
+            // 2. Run the procedural animator (breathing, head look, modes).
+            //    When a VRMA clip is active, playClip() sets allowWithMixer=false,
+            //    so ProceduralAnimator bails early and doesn't fight the clip.
+            originalUpdate(t, dt);
+
+            // 3. Run the behavior engine (state machine, gaze, micro-expressions)
+            if (global.NEXUS_BEHAVIOR) {
+                try {
+                    global.NEXUS_BEHAVIOR.update(dt, t);
+                } catch (e) {
+                    console.warn('[AvatarAliveness] BehaviorEngine update error:', e);
                 }
             }
         };

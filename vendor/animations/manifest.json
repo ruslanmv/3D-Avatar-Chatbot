@@ -172,6 +172,7 @@
     }
   },
   "emotionMapping": {
+    "waiting": ["vrma/waiting-standard.vrma"],
     "happy": ["emotion/joy.bvh", "emotion/joy2.bvh", "emotion/joy3.bvh", "emotion/amusement.bvh"],
     "sad": ["emotion/sadness.bvh", "emotion/sadness2.bvh", "emotion/grief.bvh", "vrma/Sad.vrma"],
     "angry": ["emotion/anger.bvh", "emotion/anger2.bvh", "emotion/anger3.bvh", "vrma/Angry.vrma"],

@@ -347,6 +347,28 @@
                             <circle cx="12" cy="13" r="4" />
                         </svg>
                     </button>
+                    <button
+                        class="icon-btn mobile-hide-label"
+                        id="tracking-settings-btn"
+                        title="Tracking Settings"
+                        aria-label="Tracking Settings"
+                        type="button"
+                    >
+                        <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            aria-hidden="true"
+                        >
+                            <circle cx="12" cy="12" r="3" />
+                            <path
+                                d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"
+                            />
+                        </svg>
+                    </button>
                     <!-- Trace button: hidden by default, shown only in debug mode -->
                     <button
                         class="icon-btn mobile-hide-label"
@@ -730,6 +752,22 @@
                                 <circle cx="12" cy="13" r="4" />
                             </svg>
                             <span>Face Tracking</span>
+                        </button>
+                        <button class="drawer-nav-item" id="drawer-tracking-settings-btn" type="button">
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <circle cx="12" cy="12" r="3" />
+                                <path
+                                    d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"
+                                />
+                            </svg>
+                            <span>Tracking Settings</span>
                         </button>
                         <!-- Trace button: hidden by default, shown only in debug mode -->
                         <button class="drawer-nav-item" id="drawer-trace-btn" type="button" style="display: none">
@@ -2601,9 +2639,11 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <script defer src="src/TraceRecorder.js"></script>
         <script defer src="src/TraceRecorderHooks.js"></script>
 
-        <!-- Phase 4: Face Tracking (VRoid Hub–style webcam expression mirroring) -->
+        <!-- Phase 4: Face + Hand Tracking (VRoid Hub–style webcam tracking) -->
         <script defer src="src/gltf-viewer/CameraPresets.js"></script>
         <script defer src="src/FaceTracker.js"></script>
+        <script defer src="src/HandTracker.js"></script>
+        <script defer src="src/TrackingSettingsPanel.js"></script>
         <script defer src="src/FaceTrackButton.js"></script>
 
         <!-- Avatar Picker (bottom-sheet avatar selection — replaces dropdown).
@@ -2631,7 +2671,10 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <!-- Animation Manager (central registry — load before PoseStudioInit) -->
         <script defer src="src/AnimationManager.js"></script>
 
-        <!-- Clip Animation Loader (BVH/VRMA file loading & playback) -->
+        <!-- Clip Animation System (modular: shared → BVH → VRMA → orchestrator) -->
+        <script defer src="src/ClipAnimationShared.js"></script>
+        <script defer src="src/BVHAnimationLoader.js"></script>
+        <script defer src="src/VRMAAnimationLoader.js"></script>
         <script defer src="src/ClipAnimationLoader.js"></script>
 
         <!-- Avatar Locomotion (additive — avatar walks toward user in VR) -->
