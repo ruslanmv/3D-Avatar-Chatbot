@@ -1008,8 +1008,8 @@ export class ViewerEngine {
 
         distance = THREE.MathUtils.clamp(distance, minD, maxD);
 
-        // Place camera: centered with subtle offset (VRoid Hub style)
-        const dir = new THREE.Vector3(0.08, 0.04, 1).normalize();
+        // Place camera: directly in front, slight upward angle (VRoid Hub style)
+        const dir = new THREE.Vector3(0, 0.03, 1).normalize();
         const newPos = target.clone().add(dir.multiplyScalar(distance));
 
         this.camera.position.copy(newPos);

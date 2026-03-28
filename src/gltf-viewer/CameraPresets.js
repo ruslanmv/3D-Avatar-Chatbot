@@ -35,11 +35,8 @@
     /** Mobile transition is shorter for responsiveness. */
     const MOBILE_DURATION_MS = 600;
 
-    /** Face camera distance from head bone (meters). */
-    const FACE_DISTANCE = 0.55;
-
-    /** Face camera vertical offset above head bone center (meters). */
-    const FACE_Y_OFFSET = 0.05;
+    /** Face camera padding multiplier (extra margin around portrait box). */
+    const FACE_FIT_PADDING = 1.15;
 
     /** Bust camera distance factor (relative to avatar height). */
     const BUST_DISTANCE_FACTOR = 0.55;
@@ -147,20 +144,35 @@
 
         switch (preset) {
             case 'face': {
-                const headPos = _getHeadWorldPosition();
-                if (!headPos) return null;
+                // VRoid Hub approach: frame from chest bone to top of model.
+                // Adaptive — works for any avatar proportions.
+                const loader = _getVRMLoader();
+                const vrm = loader?.currentVRM;
+                const bounds = _getAvatarBounds();
+                if (!bounds) return null;
 
-                // Camera looks at head, positioned slightly above and in front
-                const target = headPos.clone();
-                target.y += FACE_Y_OFFSET;
+                // Get chest bone Y (fallback: spine, then 60% of height)
+                var chestY = bounds.center.y;
+                if (vrm?.humanoid?.getNormalizedBoneNode) {
+                    var chestBone =
+                        vrm.humanoid.getNormalizedBoneNode('chest') || vrm.humanoid.getNormalizedBoneNode('spine');
+                    if (chestBone) {
+                        var bonePos = new THREE.Vector3();
+                        chestBone.getWorldPosition(bonePos);
+                        chestY = bonePos.y;
+                    }
+                }
 
-                // Direction: from head toward current camera, normalized, at FACE_DISTANCE
-                const camDir = new THREE.Vector3().subVectors(camera.position, headPos).normalize();
-                // Flatten vertical component to avoid looking from above/below
-                camDir.y = 0.08;
-                camDir.normalize();
+                var topY = bounds.box.max.y;
+                var portraitHeight = (topY - chestY) * FACE_FIT_PADDING;
+                var midY = (chestY + topY) / 2;
 
-                const position = target.clone().add(camDir.multiplyScalar(FACE_DISTANCE));
+                // Distance = height / (2 * tan(FOV/2))
+                var vFov = THREE.MathUtils.degToRad(camera.fov);
+                var distance = portraitHeight / (2 * Math.tan(vFov / 2));
+
+                var target = new THREE.Vector3(0, midY, bounds.center.z);
+                var position = new THREE.Vector3(0, midY, bounds.center.z + distance);
 
                 return { position, target };
             }
@@ -213,7 +225,7 @@
                 const maxD = Math.max(6.0, maxSize * 4.0);
                 distance = THREE.MathUtils.clamp(distance, minD, maxD);
 
-                const dir = new THREE.Vector3(0.28, 0.08, 1).normalize();
+                const dir = new THREE.Vector3(0, 0.03, 1).normalize();
                 const position = target.clone().add(dir.multiplyScalar(distance));
 
                 return { position, target };

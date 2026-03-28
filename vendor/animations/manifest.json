@@ -4,8 +4,9 @@
   "basePath": "vendor/animations",
   "categories": {
     "dance": {
-      "label": "Dance",
+      "label": "Dance (Experimental BVH)",
       "icon": "\ud83d\udd7a",
+      "experimental": true,
       "files": [
         "dance/dance_1.bvh",
         "dance/dance_2.bvh",
@@ -179,17 +180,13 @@
     "surprised": ["emotion/surprise.bvh", "emotion/surprise2.bvh", "vrma/Surprised.vrma"],
     "thinking": ["emotion/confusion.bvh", "emotion/curiosity.bvh", "vrma/Thinking.vrma"],
     "excited": ["emotion/excitement.bvh", "emotion/excitement2.bvh", "emotion/excitement3.bvh"],
-    "dance": ["dance/dance_1.bvh", "dance/dance_2.bvh", "dance/dance_rumba.bvh", "dance/dance_gangnam_style.bvh"],
+    "dance": [],
     "love": ["emotion/love.bvh", "emotion/love2.bvh", "emotion/love3.bvh"],
     "fear": ["emotion/fear.bvh", "emotion/fear2.bvh", "emotion/fear3.bvh"],
     "disgust": ["emotion/disgust.bvh", "emotion/disgust1.bvh", "emotion/disgust2.bvh"]
   },
   "intentMapping": {
-    "dance": [
-      "dance/dance_1.bvh",
-      "dance/dance_2.bvh",
-      "dance/dance_rumba.bvh"
-    ]
+    "dance": []
   },
   "credits": {
     "bvh_pack": {

@@ -93,7 +93,16 @@
             if (!Object.prototype.hasOwnProperty.call(hb, bn)) continue;
             var ni = hb[bn].node;
             if (ni !== undefined && nodes[ni] && nodes[ni].name) {
-                map[nodes[ni].name] = bn;
+                var rawName = nodes[ni].name;
+                map[rawName] = bn;
+                // THREE.GLTFLoader sanitizes node names by stripping characters
+                // like colons (e.g. "mixamorig:Hips" → "mixamorigHips").
+                // Register the sanitized name too so track lookups match.
+                // Safe to remove if all VRMA files use clean node names.
+                var sanitized = rawName.replace(/[^a-zA-Z0-9_]/g, '');
+                if (sanitized !== rawName) {
+                    map[sanitized] = bn;
+                }
             }
         }
         return map;

@@ -1391,3 +1391,153 @@ NEXUS_CLIP_LOADER.loadClip(path)                  // Preload
 NEXUS_CLIP_LOADER.update(dt)                      // Per-frame (called by AvatarAliveness)
 NEXUS_CLIP_LOADER.registerAvatar(root, vrm)       // Set target avatar
 ```
+
+---
+
+## Part XX: VRMA Animation Library
+
+The project includes VRMA animation files from multiple sources, organized by category.
+
+### File Structure
+
+```
+vendor/animations/
+├── vrma/                    # Original VRMA pack (tk256ailab/vrm-viewer)
+│   ├── Angry.vrma
+│   ├── Sad.vrma
+│   ├── Thinking.vrma
+│   ├── Surprised.vrma
+│   ├── Relax.vrma
+│   └── waiting-standard.vrma
+├── vrma-dance/              # Dance VRMA (DavinciDreams/3dchat, Mixamo-derived)
+│   ├── hipHopDancing.vrma
+│   ├── sambaDancing.vrma
+│   ├── rumbaDancing.vrma
+│   ├── sillyDancing.vrma
+│   ├── twistDance.vrma
+│   ├── hipHopDance.vrma
+│   ├── dancingTwerk.vrma
+│   └── breakdanceUprock.vrma
+├── vrma-actions/            # Action/gesture VRMA (DavinciDreams/3dchat)
+│   ├── waving.vrma
+│   ├── bowing.vrma
+│   ├── standingGreeting.vrma
+│   ├── standingClap.vrma
+│   ├── victory.vrma
+│   ├── backflip.vrma
+│   ├── jumpingJacks.vrma
+│   ├── singing.vrma
+│   ├── talking.vrma
+│   ├── shrugging.vrma
+│   ├── happyIdle.vrma
+│   ├── sadIdle.vrma
+│   └── victoryIdle.vrma
+└── dance/                   # BVH dance (experimental, deprecated)
+    └── *.bvh
+```
+
+### Adding New VRMA Files
+
+1. Place `.vrma` file in the appropriate directory
+2. Add the path to `vendor/animations/manifest.json` under the correct category
+3. Optionally add to `emotionMapping` or `intentMapping` for automatic routing
+4. For dance: add to `CLIP_INTENTS.dance.preferredFiles` in `AnimationPresets.js`
+
+### Sources
+
+| Source | URL | License |
+|--------|-----|---------|
+| tk256ailab vrm-viewer | https://github.com/tk256ailab/vrm-viewer | Open source |
+| DavinciDreams 3dchat | https://github.com/DavinciDreams/3dchat | Mixamo royalty-free |
+| VRoid Project (BOOTH) | https://booth.pm/ja/items/5512385 | pixiv Inc. free use |
+
+---
+
+## Part XXI: BVH Retargeting — Known Issues & Future Fix Plan
+
+BVH dance files are currently **experimental** due to a rest-pose retargeting bug.
+This section documents the issue and planned fix for future implementation.
+
+### The Bug
+
+`retargetQuaternionValues()` in `BVHAnimationLoader.js` reads the target bone's
+**current quaternion** as the rest pose. On first play this is correct (T-pose),
+but on subsequent plays the bones still hold the previous animation's values:
+
+```
+1st play: tRest = identity (T-pose) → correct retargeting
+2nd play: tRest = dance pose quaternion → corrupted retargeting
+           output = dancePoseQuat × identity × frameQuat → double-rotated
+```
+
+### BVH File Origin
+
+The BVH files were created via: **Mixamo FBX → SystemAnimatorOnline → VRM-named BVH**
+
+- Source: [VRM Assets Pack for SillyTavern](https://github.com/test157t/VRM-Assets-Pack-For-Silly-Tavern)
+- Converter: [SystemAnimatorOnline](https://github.com/ButzYung/SystemAnimatorOnline)
+- Result: BVH files with VRM bone names (`hips`, `leftUpperArm`, etc.) and T-pose rest
+
+### Planned Fix (not yet implemented)
+
+**Option A — Same-skeleton direct application:**
+
+Since the BVH files use VRM bone names and T-pose (identity) rest, the retargeting
+formula `tRest × sRest⁻¹ × frame` simplifies to `identity × identity × frame = frame`.
+Skip `retargetQuaternionValues()` entirely for same-skeleton BVH:
+
+```javascript
+function isSameSkeletonBVH(sourceSkeleton) {
+    // Check if BVH uses VRM bone names (hips, spine, leftUpperArm, etc.)
+    var coreNames = ['hips', 'spine', 'chest', 'head', 'leftUpperArm', 'rightUpperArm'];
+    var matchCount = 0;
+    for (var i = 0; i < sourceSkeleton.bones.length; i++) {
+        if (coreNames.indexOf(sourceSkeleton.bones[i].name) >= 0) matchCount++;
+    }
+    return matchCount >= 5;
+}
+
+// In retargetBVHClip():
+if (isSameSkeletonBVH(sourceSkeleton)) {
+    // Apply quaternions directly — no rest-pose multiplication
+    finalValues = cloneQuaternionArray(track.values);
+} else {
+    // Foreign skeleton — use rest-pose delta retargeting
+    finalValues = retargetQuaternionValues(track.values, sBone, tBone, vrmName);
+}
+```
+
+**Option B — Store bind pose separately:**
+
+Capture T-pose quaternions once at avatar registration, store them in a separate
+map (not on live bone objects), and use those for retargeting:
+
+```javascript
+// At registration:
+var bindPose = {};
+for (var name in boneMap) {
+    bindPose[name] = boneMap[name].quaternion.clone();
+}
+
+// In retargetQuaternionValues():
+var tRest = bindPose[vrmName] || new THREE.Quaternion(); // Always clean T-pose
+```
+
+**Option C — Reset bones before retarget:**
+
+Before each `retargetBVHClip()` call, reset all target bones to identity so the
+captured `tRest` is always clean:
+
+```javascript
+// Before retargeting:
+for (var name in boneMap) {
+    boneMap[name].quaternion.set(0, 0, 0, 1);
+}
+```
+
+### Additional BVH Improvements Needed
+
+- **Include hips position tracks** for sitting/ground BVH animations
+- **Height-ratio scaling** for hips position (like pixiv's `loadMixamoAnimation.js`)
+- **VRM 0.x coordinate flip** for BVH (negate X/Z like VRMA pipeline does)
+- **World-space retargeting** for foreign skeletons (Mixamo `mixamorig*` names)

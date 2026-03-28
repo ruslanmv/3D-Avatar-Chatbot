@@ -323,36 +323,43 @@ describe('VRMA Files Are Valid glTF', () => {
         }
     }
 
-    test.each(vrmaFiles)('$file is valid glTF binary', ({ file }) => {
+    test.each(vrmaFiles)('$file is valid glTF (binary or JSON)', ({ file }) => {
         const fullPath = path.join(ANIM_DIR, file);
         const buffer = fs.readFileSync(fullPath);
-
-        // glTF binary magic: "glTF" (0x46546C67)
         expect(buffer.length).toBeGreaterThan(12);
+
         const magic = buffer.toString('ascii', 0, 4);
-        expect(magic).toBe('glTF');
-
-        // Version should be 2
-        const version = buffer.readUInt32LE(4);
-        expect(version).toBe(2);
-
-        // Total length should match file size
-        const totalLength = buffer.readUInt32LE(8);
-        expect(totalLength).toBe(buffer.length);
+        if (magic === 'glTF') {
+            // glTF binary: validate header
+            const version = buffer.readUInt32LE(4);
+            expect(version).toBe(2);
+            const totalLength = buffer.readUInt32LE(8);
+            expect(totalLength).toBe(buffer.length);
+        } else {
+            // glTF JSON: validate parseable JSON with correct structure
+            const text = buffer.toString('utf-8');
+            const gltf = JSON.parse(text);
+            expect(gltf.asset).toBeDefined();
+        }
     });
 
     test.each(vrmaFiles)('$file contains animation data', ({ file }) => {
         const fullPath = path.join(ANIM_DIR, file);
         const buffer = fs.readFileSync(fullPath);
 
-        // Read JSON chunk (first chunk after 12-byte header)
-        const chunkLength = buffer.readUInt32LE(12);
-        const chunkType = buffer.readUInt32LE(16);
-        // Type should be JSON (0x4E4F534A)
-        expect(chunkType).toBe(0x4e4f534a);
-
-        const jsonStr = buffer.toString('utf-8', 20, 20 + chunkLength);
-        const gltf = JSON.parse(jsonStr);
+        let gltf;
+        const magic = buffer.toString('ascii', 0, 4);
+        if (magic === 'glTF') {
+            // glTF binary: read JSON chunk (first chunk after 12-byte header)
+            const chunkLength = buffer.readUInt32LE(12);
+            const chunkType = buffer.readUInt32LE(16);
+            expect(chunkType).toBe(0x4e4f534a); // JSON chunk type
+            const jsonStr = buffer.toString('utf-8', 20, 20 + chunkLength);
+            gltf = JSON.parse(jsonStr);
+        } else {
+            // glTF JSON: parse directly
+            gltf = JSON.parse(buffer.toString('utf-8'));
+        }
 
         // Should have animations array
         expect(gltf.animations).toBeDefined();

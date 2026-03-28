@@ -2192,7 +2192,7 @@ function setupPoseNormalizerUI() {
 
     const s = pn.getSettings();
 
-    // Global intensity slider
+    // Global intensity slider — apply live as user drags
     const intensitySlider = document.getElementById('pose-intensity');
     const intensityVal = document.getElementById('pose-intensity-val');
     if (intensitySlider) {
@@ -2201,6 +2201,8 @@ function setupPoseNormalizerUI() {
         intensitySlider.addEventListener('input', () => {
             const v = parseFloat(intensitySlider.value);
             if (intensityVal) intensityVal.textContent = v.toFixed(2);
+            // Apply intensity change live without requiring "Apply" button
+            applyPoseSettingsLive();
         });
     }
 
@@ -2258,16 +2260,36 @@ function setupPoseNormalizerUI() {
     });
 
     // VR Pose Preset dropdown — uses VRPoseSystem (same as VR chat panel)
+    // Requires pose mode coordination: stop clips, yield ProceduralAnimator,
+    // enable autoUpdateHumanBones so normalized→raw bone sync works.
     const vrPoseSelect = document.getElementById('vr-pose-preset');
     if (vrPoseSelect) {
         vrPoseSelect.addEventListener('change', () => {
             const vps = window.vrPoseSystem;
-            if (vps && vps.enabled) {
-                vps.applyPreset(vrPoseSelect.value, 0.6);
-                console.log(`[Desktop] VR pose preset → ${vrPoseSelect.value}`);
-            } else {
+            if (!vps || !vps.enabled) {
                 console.warn('[Desktop] VRPoseSystem not available — load an avatar first');
+                return;
             }
+
+            // Enter pose mode: stop clips, yield ProceduralAnimator, enable bone sync
+            try {
+                window.NEXUS_CLIP_LOADER?.stopClip?.({ fadeOut: 0.25 });
+            } catch (_) {}
+            try {
+                window.NEXUS_ANIMATION_RESOLVER?.stop?.();
+            } catch (_) {}
+            try {
+                window.NEXUS_PROCEDURAL_ANIMATOR?.setPoseMode?.(true);
+            } catch (_) {}
+            try {
+                const vrm = window.NEXUS_VIEWER?.avatarManager?._currentVRM;
+                if (vrm && vrm.humanoid && 'autoUpdateHumanBones' in vrm.humanoid) {
+                    vrm.humanoid.autoUpdateHumanBones = true;
+                }
+            } catch (_) {}
+
+            vps.applyPreset(vrPoseSelect.value, 0.6);
+            console.log(`[Desktop] VR pose preset → ${vrPoseSelect.value}`);
         });
 
         // Listen for VR-side pose changes to sync dropdown back

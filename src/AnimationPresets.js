@@ -55,7 +55,7 @@
             mode: 'waiting',
             vrmExpr: 'neutral',
             intensity: 0,
-            duration: 0,
+            duration: 10000,
         },
         {
             id: 'happy',
@@ -1112,7 +1112,10 @@
         dance: {
             id: 'dance',
             category: 'dance',
-            preferredFiles: ['dance/dance_1.bvh', 'dance/dance_2.bvh', 'dance/dance_rumba.bvh'],
+            // VRMA dance files moved to addons/ (Mixamo-origin files need
+            // additional retargeting work — inverted poses on VRM 0.x models).
+            // Using procedural musicIdle as reliable default until fixed.
+            preferredFiles: [],
             fallbackMode: 'musicIdle',
             loop: true,
         },
