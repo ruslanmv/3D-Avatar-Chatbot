@@ -1150,6 +1150,28 @@
             }
         }
 
+        /**
+         * Derive a human-readable label for an OllaBridge model id when the
+         * server didn't supply a display_name (e.g. persona:/personality:).
+         * @param {string} id
+         * @returns {string}
+         */
+        _prettyModelName(id) {
+            if (typeof id !== 'string') return String(id);
+            if (id.startsWith('personality:')) {
+                return id
+                    .slice(12)
+                    .replace(/_/g, ' ')
+                    .replace(/\b\w/g, (c) => c.toUpperCase());
+            }
+            if (id.startsWith('persona:')) {
+                const body = id.slice(8);
+                const alias = body.includes('--') ? body.split('--')[0] : body;
+                return alias.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+            }
+            return id;
+        }
+
         async _fetchOllaBridgeModels() {
             const { api_key: rawKey, pair_token: rawPairToken, auth_mode, base_url } = this._settings.ollabridge;
             const api_key = (rawKey || '').trim();
@@ -1190,30 +1212,46 @@
                 if (!res.ok) throw new Error('Could not reach OllaBridge gateway');
 
                 const data = await res.json();
-                const entries = data.data || [];
-                const models = entries.map((m) => m.id).sort();
-                // Build display name map for persona/personality models
-                const modelNames = {};
-                entries.forEach((m) => {
-                    if (m.name) {
-                        modelNames[m.id] = m.name;
-                    } else if (typeof m.id === 'string') {
-                        if (m.id.startsWith('personality:')) {
-                            modelNames[m.id] = m.id
-                                .slice(12)
-                                .replace(/_/g, ' ')
-                                .replace(/\b\w/g, (c) => c.toUpperCase());
-                        } else if (m.id.startsWith('persona:')) {
-                            const body = m.id.slice(8);
-                            const alias = body.includes('--') ? body.split('--')[0] : body;
-                            modelNames[m.id] = alias.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-                        }
-                    }
+                const rawEntries = (data.data || []).filter((m) => m && m.id);
+
+                // Preserve the server's source metadata so the selector can
+                // group entries (My Private Models / Cloud / Personas) instead
+                // of flattening five local models into one alphabetical soup.
+                // Do NOT sort — the server already orders the caller's own
+                // shared models first.
+                const entries = rawEntries.map((m) => {
+                    const id = m.id;
+                    const source =
+                        m.x_source ||
+                        (typeof id === 'string' && (id.startsWith('persona:') || id.startsWith('personality:'))
+                            ? 'homepilot'
+                            : 'unknown');
+                    const kind = m.x_kind || (source === 'route_alias' ? 'route' : 'concrete_model');
+                    return {
+                        id,
+                        displayName: m.display_name || m.name || this._prettyModelName(id),
+                        source,
+                        kind,
+                        deviceId: m.x_device_id || null,
+                        deviceName: m.x_device_name || null,
+                        available: m.x_available !== false,
+                        requiresDeviceOnline: m.x_requires_device_online === true,
+                        description: m.description || '',
+                    };
                 });
+
+                const modelNames = {};
+                entries.forEach((e) => {
+                    modelNames[e.id] = e.displayName;
+                });
+
+                const availableIds = entries.filter((e) => e.available).map((e) => e.id);
+
                 return {
-                    models: models.length > 0 ? models : fallback,
+                    models: availableIds.length > 0 ? availableIds : fallback,
+                    modelEntries: entries,
                     modelNames,
-                    error: models.length === 0 ? 'No models found on OllaBridge' : null,
+                    error: entries.length === 0 ? 'No published models available on OllaBridge' : null,
                 };
             } catch (e) {
                 return {

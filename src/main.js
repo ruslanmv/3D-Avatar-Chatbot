@@ -2463,6 +2463,94 @@ function openInfo() {
    Provider UI + Storage
    ============================ */
 
+// Group metadata: label + display order for each x_source bucket. Sources
+// not listed fall into an "Other" group at the end.
+const OLLABRIDGE_GROUPS = [
+    { key: 'shared_device', label: 'MY PRIVATE MODELS' },
+    { key: 'managed_dedicated', label: 'ORGANIZATION MODELS' },
+    { key: 'managed_shared', label: 'ORGANIZATION MODELS' },
+    { key: 'tenant_provider', label: 'ORGANIZATION MODELS' },
+    { key: 'homepilot', label: 'PERSONAS' },
+    { key: 'persona', label: 'PERSONAS' },
+    { key: 'cloud_catalog', label: 'CLOUD MODELS' },
+    { key: 'route_alias', label: 'CLOUD ROUTES' },
+    { key: 'route', label: 'CLOUD ROUTES' },
+];
+
+/**
+ * Short, human-readable descriptor of a model entry's origin, shown after
+ * the display name so users can tell a private local model from a cloud
+ * route at a glance.
+ * @param {object} entry
+ * @returns {string}
+ */
+function ollabridgeSourceHint(entry) {
+    switch (entry.source) {
+        case 'shared_device': {
+            const where = entry.deviceName ? ` · ${entry.deviceName}` : '';
+            const online = entry.available ? 'Online' : 'Offline';
+            return `Local${where} · ${online}`;
+        }
+        case 'route_alias':
+        case 'route':
+            return 'Cloud route · provider may vary';
+        case 'cloud_catalog':
+            return 'Cloud model';
+        case 'managed_dedicated':
+            return 'Dedicated cloud';
+        case 'managed_shared':
+        case 'tenant_provider':
+            return 'Organization cloud';
+        case 'homepilot':
+        case 'persona':
+            return 'Persona';
+        default:
+            return '';
+    }
+}
+
+/**
+ * Populate a <select> with grouped <optgroup> sections, preserving the
+ * server's ordering within each group. Used for OllaBridge, whose /v1/models
+ * carries x_source metadata distinguishing private local models, cloud
+ * routes, and personas.
+ * @param {HTMLSelectElement} selectElement
+ * @param {Array<object>} entries
+ */
+function populateGroupedModels(selectElement, entries) {
+    // Bucket by group label, preserving first-seen order within each bucket.
+    const labelFor = {};
+    OLLABRIDGE_GROUPS.forEach((g) => {
+        labelFor[g.key] = g.label;
+    });
+    const orderedLabels = [];
+    const buckets = {};
+    entries.forEach((entry) => {
+        const label = labelFor[entry.source] || 'OTHER MODELS';
+        if (!buckets[label]) {
+            buckets[label] = [];
+            orderedLabels.push(label);
+        }
+        buckets[label].push(entry);
+    });
+
+    orderedLabels.forEach((label) => {
+        const group = document.createElement('optgroup');
+        group.label = `${label} (${buckets[label].length})`;
+        buckets[label].forEach((entry) => {
+            const opt = document.createElement('option');
+            opt.value = entry.id;
+            const hint = ollabridgeSourceHint(entry);
+            opt.textContent = hint ? `${entry.displayName} — ${hint}` : entry.displayName;
+            if (!entry.available) {
+                opt.disabled = true;
+            }
+            group.appendChild(opt);
+        });
+        selectElement.appendChild(group);
+    });
+}
+
 /**
  * Fetch available models from LLMManager and populate dropdown
  * @param {string} provider - Provider name (openai, claude, etc.)
@@ -2525,7 +2613,17 @@ async function fetchAndPopulateModels(provider, selectElement) {
 
         selectElement.innerHTML = '<option value="">Select a model...</option>';
 
-        if (result.models && result.models.length > 0) {
+        if (result.modelEntries && result.modelEntries.length > 0) {
+            // Grouped rendering for OllaBridge: keep the server's ordering and
+            // separate "My Private Models" (shared local devices) from cloud
+            // routes and personas instead of one flat alphabetical list.
+            populateGroupedModels(selectElement, result.modelEntries);
+
+            const statusMsg = result.error
+                ? `⚠️ Loaded ${result.modelEntries.length} ${provider} models (${result.error})`
+                : `✅ Loaded ${result.modelEntries.length} ${provider} models`;
+            console.log(`[Main] ${statusMsg}`);
+        } else if (result.models && result.models.length > 0) {
             const nameMap = result.modelNames || {};
 
             // Deduplicate display names — add numeric suffix when the same
