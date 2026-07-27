@@ -1221,11 +1221,15 @@
                 // shared models first.
                 const entries = rawEntries.map((m) => {
                     const id = m.id;
-                    const source =
-                        m.x_source ||
-                        (typeof id === 'string' && (id.startsWith('persona:') || id.startsWith('personality:'))
-                            ? 'homepilot'
-                            : 'unknown');
+                    // A persona/personality is a HomePilot agent no matter how it
+                    // reaches us. Personas shared from a local HomePilot arrive
+                    // over the relay tagged x_source:'shared_device', which would
+                    // otherwise bucket them under "My Private Models"; the id
+                    // prefix is authoritative, so classify them as HomePilot
+                    // first and fall back to the server's x_source for the rest.
+                    const isPersonaId =
+                        typeof id === 'string' && (id.startsWith('persona:') || id.startsWith('personality:'));
+                    const source = isPersonaId ? 'homepilot' : m.x_source || 'unknown';
                     const kind = m.x_kind || (source === 'route_alias' ? 'route' : 'concrete_model');
                     return {
                         id,

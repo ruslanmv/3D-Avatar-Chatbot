@@ -107,4 +107,22 @@ describe('OllaBridge _fetchOllaBridgeModels', () => {
         expect(result.modelEntries[0].source).toBe('homepilot');
         expect(result.modelEntries[0].displayName).toBe('My Therapist');
     });
+
+    test('classifies persona/personality ids as HomePilot even when the relay tags them shared_device', async () => {
+        // Personas shared from a local HomePilot reach the cloud over the relay,
+        // which tags every relay model x_source:'shared_device'. The id prefix
+        // must win so they group under HomePilot Agents, not "My Private Models".
+        const mgr = makeManager({
+            data: [
+                { id: 'llama3:8b', x_source: 'shared_device', x_available: true },
+                { id: 'persona:girlfriend--d1ee423b', x_source: 'shared_device', x_available: true },
+                { id: 'personality:assistant', x_source: 'shared_device', x_available: true },
+            ],
+        });
+        const result = await mgr._fetchOllaBridgeModels();
+        const bySource = Object.fromEntries(result.modelEntries.map((e) => [e.id, e.source]));
+        expect(bySource['llama3:8b']).toBe('shared_device');
+        expect(bySource['persona:girlfriend--d1ee423b']).toBe('homepilot');
+        expect(bySource['personality:assistant']).toBe('homepilot');
+    });
 });

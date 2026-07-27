@@ -285,3 +285,7 @@ vrm-factory/temp/*
 vrm-factory/addons/*.zip
 vrm-factory/**/__pycache__/
 vrm-factory/**/*.pyc
+
+# Python bytecode caches anywhere (e.g. tests/e2e when running the E2E test)
+__pycache__/
+*.pyc

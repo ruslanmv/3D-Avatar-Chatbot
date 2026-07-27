@@ -1,4 +1,4 @@
-.PHONY: help install build start dev test test-api test-avatars start-vrm-factory stop-vrm-factory format lint validate clean
+.PHONY: help install build start dev test test-api test-avatars e2e e2e-check start-vrm-factory stop-vrm-factory format lint validate clean
 
 # Default target
 help:
@@ -14,6 +14,8 @@ help:
 	@echo "  make test             - Run all tests (unit + avatar health)"
 	@echo "  make test-avatars     - Validate avatar files, manifest, config"
 	@echo "  make test-api         - Test VRM Factory API"
+	@echo "  make e2e              - End-to-end hello-world across the whole stack"
+	@echo "  make e2e-check        - E2E assertion against an already-running stack"
 	@echo "  make format           - Format code with Prettier"
 	@echo "  make lint             - Lint code with ESLint"
 	@echo "  make validate         - Run lint, format check, and tests"
@@ -62,6 +64,21 @@ test:
 # Validate avatar files, manifest, and config
 test-avatars:
 	@python3 check-avatars.py --test
+
+# End-to-end "hello world" smoke test across the whole local stack:
+#   Ollama -> HomePilot -> OllaBridge Local -> yourfriend.online
+# Brings each service up (sibling repo checkouts), waits for health, asserts an
+# avatar chat reply, then tears everything down. Non-destructive.
+#   make e2e                      # start the stack + assert
+#   make e2e SKIP_INSTALL=1       # faster re-run (skip `make install`)
+#   make e2e KEEP_UP=1            # leave services running for debugging
+e2e:
+	@bash scripts/e2e-local.sh
+
+# Assert against an ALREADY-running stack (no start/stop). Handy in CI or when
+# you started the services yourself.
+e2e-check:
+	@python3 tests/e2e/hello_world_e2e.py
 
 # Test VRM Factory API
 test-api:
