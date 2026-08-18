@@ -2451,7 +2451,13 @@ html.is-mobile .status-badge {
 /* AR chat transcript */
 .ar-chat {
     pointer-events: auto;
-    flex: 1 1 0;
+    /* Capped: the transcript may NEVER take over the camera view.
+       vh first as the fallback — a browser without dvh drops the whole
+       declaration, and an uncapped transcript is the bug we are fixing. */
+    flex: 0 1 auto;
+    max-height: 32vh;
+    max-height: 32dvh;
+    margin-top: auto;
     min-height: 0;
     overflow-y: auto;
     display: flex;
@@ -2460,6 +2466,32 @@ html.is-mobile .status-badge {
     gap: 6px;
     padding: 8px 4px;
     -webkit-overflow-scrolling: touch;
+}
+
+.ar-chat--hidden {
+    display: none !important;
+}
+
+/* Reply caption — cinema-style chunks over the camera, max 3 lines. */
+.ar-caption {
+    pointer-events: none;
+    margin-top: auto;
+    padding: 4px 10px 6px;
+    text-align: center;
+    font-family: var(--font-body, 'Rajdhani', sans-serif);
+    font-size: 0.95rem;
+    line-height: 1.35;
+    color: #fff;
+    text-shadow:
+        0 1px 4px rgba(0, 0, 0, 0.9),
+        0 0 12px rgba(0, 0, 0, 0.5);
+    display: none;
+    overflow: hidden;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+.ar-caption.show {
+    display: -webkit-box;
 }
 
 .ar-chat-bubble {
@@ -4363,4 +4395,25 @@ html.is-tablet .chat-input {
     .chat-overlay-handle {
         display: none !important;
     }
+}
+
+/* Chat inputs use type="search" ONLY to opt out of Chrome's payment/address
+   autofill (Chrome ignores autocomplete="off" for autofill).
+
+   Two things are needed to keep them looking like chat inputs. First, reset the
+   control itself: iOS Safari gives input[type=search] -webkit-appearance:
+   searchfield, which imposes its own height, padding and corner radius and would
+   override the design. Second, hide the search-cancel decoration WebKit adds. */
+.chat-input,
+.ar-chat-input {
+    -webkit-appearance: none;
+    appearance: none;
+}
+.chat-input::-webkit-search-cancel-button,
+.chat-input::-webkit-search-decoration,
+.ar-chat-input::-webkit-search-cancel-button,
+.ar-chat-input::-webkit-search-decoration {
+    -webkit-appearance: none;
+    appearance: none;
+    display: none;
 }

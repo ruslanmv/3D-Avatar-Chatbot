@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a2740"/>
+      <stop offset="0.55" stop-color="#0e5c8a"/>
+      <stop offset="1" stop-color="#4f7cff"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.38" r="0.6">
+      <stop offset="0" stop-color="#7fe9ff" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#7fe9ff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- full-bleed background (safe for maskable icons) -->
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <rect width="512" height="512" fill="url(#glow)"/>
+  <!-- avatar bust, kept within the center safe zone -->
+  <g fill="#ffffff">
+    <circle cx="256" cy="196" r="70"/>
+    <path d="M256 284c-79 0-134 47-146 116a12 12 0 0 0 12 14h268a12 12 0 0 0 12-14c-12-69-67-116-146-116z"/>
+  </g>
+  <!-- online / talk dot -->
+  <circle cx="330" cy="150" r="26" fill="#2ec36b" stroke="#ffffff" stroke-width="8"/>
+</svg>

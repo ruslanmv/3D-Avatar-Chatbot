@@ -29,37 +29,102 @@ Client-side neural TTS running entirely in the browser via WebAssembly. No serve
 | Engine | [piper-tts-web](https://github.com/Poket-Jony/piper-tts-web) |
 | Runtime | ONNX Runtime Web (WASM + SIMD) |
 | Models | Downloaded from HuggingFace CDN on first use, cached by browser |
-| Model size | 15-30 MB (low/medium quality) |
-| Voices | 11 built-in presets across 7 languages |
+| Model size | ~60 MB (medium), ~80 MB (high) |
+| Voices | 35 verified presets across 8 languages |
 | License | MIT (Piper), Apache 2.0 (ONNX Runtime) |
 
 #### Available Voices
 
-| Voice ID | Name | Language | Gender | Quality |
-| --- | --- | --- | --- | --- |
-| `en_US-lessac-medium` | Lessac | en-US | Female | Medium |
-| `en_US-libritts_r-medium` | LibriTTS-R | en-US | Female | Medium |
-| `en_US-amy-low` | Amy | en-US | Female | Low (fast) |
-| `en_US-ryan-medium` | Ryan | en-US | Male | Medium |
-| `en_US-arctic-medium` | Arctic | en-US | Male | Medium |
-| `en_GB-alba-medium` | Alba | en-GB | Female | Medium |
-| `es_ES-davefx-medium` | DaveFX | es-ES | Male | Medium |
-| `fr_FR-upmc-medium` | UPMC | fr-FR | Male | Medium |
-| `de_DE-thorsten-medium` | Thorsten | de-DE | Male | Medium |
-| `it_IT-riccardo-x_low` | Riccardo | it-IT | Male | Low (fast) |
-| `pt_BR-faber-medium` | Faber | pt-BR | Male | Medium |
+The full catalog lives in `src/tts/PiperWasmTTSProvider.js`. The default pick per
+language and gender — what the app actually selects when you switch the master
+language — is:
+
+| Language | Female | Male |
+| --- | --- | --- |
+| en-US | `en_US-hfc_female-medium` | `en_US-hfc_male-medium` |
+| en-GB | `en_GB-alba-medium` | `en_GB-alan-medium` |
+| es-ES | ⚠ none exist → `es_ES-davefx-medium` | `es_ES-davefx-medium` |
+| it-IT | `it_IT-paola-medium` | ⚠ none exist → Paola |
+| fr-FR | `fr_FR-siwis-medium` | `fr_FR-tom-medium` |
+| de-DE | ⚠ none exist → `de_DE-thorsten-high` | `de_DE-thorsten-high` |
+| pt-BR | ⚠ none exist → `pt_BR-faber-medium` | `pt_BR-faber-medium` |
+| zh-CN | `zh_CN-huayan-medium` | ⚠ none exist → Huayan |
+| ja-JP | ✖ no Piper models — use the built-in engine | ✖ |
+| ko-KR | ✖ no Piper models — use the built-in engine | ✖ |
+
+**For a female Spanish, German or Portuguese voice, use the built-in engine** —
+the device voices (Google español, Mónica, Helena…) are female. Piper's official
+catalog simply has none that this runtime can play, which is not a bug we can fix
+in the catalog (see below).
+
+#### Only 256-symbol models work — 16 catalog voices never could
+
+`piper-tts-web` generates phoneme IDs with its own bundled (modern)
+`piper_phonemize` WASM, passing only `espeak.voice` from the model config; the
+model's own `phoneme_id_map` is never consulted. Models published for **piper
+0.2.0** have a 130-symbol embedding table, so they receive out-of-range IDs, ONNX
+throws (`OrtRun`), and `speak()` falls back to its English safety voice.
+
+The effect is nasty because it is silent: the voice appears in the dropdown, gets
+selected, downloads ~60 MB — and then speaks **English**. Sixteen such voices were
+in the catalog, including both Spanish "fast" voices and the only Spanish female
+candidate (`es_ES-mls_10246-low`). They have been removed. `num_symbols === 256`
+is now asserted by `tests/piper-catalog-audit.mjs`, so none can return unnoticed.
 
 Full voice catalog with audio samples: [rhasspy.github.io/piper-samples](https://rhasspy.github.io/piper-samples/)
+
+#### Multi-speaker models — why some voices ignore the gender setting
+
+`piper-tts-web` hardcodes `const speakerId = 0`, so for a **multi-speaker** model
+it always synthesizes speaker 0 and the other speakers are unreachable. A gender
+label on such a model therefore describes speaker 0 only. Seven catalog models are
+multi-speaker, and two used to be labelled wrongly because of it:
+
+| Model | Speakers | Speaker 0 is | Catalog says |
+| --- | --- | --- | --- |
+| `es_ES-sharvard-medium` | 2 (`{"M":0,"F":1}`) | the **male** speaker | male — was "female", the cause of "Spanish sounds male" |
+| `fr_FR-upmc-medium` | 2 (`{"jessica":0,"pierre":1}`) | **Jessica**, female | female — was "male" |
+| `en_US-arctic-medium` | 18 | `awb` (male) | male |
+| `de_DE-thorsten_emotional-medium` | 8 (emotions) | `amused` (Thorsten) | male |
+| `en_US-libritts_r-medium` | 904 | corpus ID `3922` | unknown |
+| `de_DE-mls-medium` | 236 | corpus ID `2422` | unknown |
+| `en_GB-aru-medium` | 12 | corpus ID `03` | unknown |
+
+Models whose speaker 0 is an anonymous corpus ID are tagged `unknown` rather than
+guessed, so "Prefer Female/Male" never promises what it can't deliver. Selection
+prefers **single-speaker** models for that reason.
+
+#### Verifying the voice matrix
+
+Two complementary checks, because only one of them can be automated:
+
+```bash
+node tests/piper-catalog-audit.mjs      # catalog facts, no ears needed
+```
+
+verifies every catalog voice ID against the piper-tts-web runtime PATH_MAP (a
+typo'd ID would 404 at playback), each model's own `.onnx.json` for
+`num_speakers` and language code, and the `speaker_id_map` from
+`rhasspy/piper-voices` to confirm who speaker 0 actually is. It also asserts that
+the library still hardcodes `speakerId = 0`, so the reasoning above can't rot
+silently. Exit code 1 on any defect; `--offline` skips the network checks.
+
+`tests/tts-language-matrix.html` covers the rest: a 10 languages × (built-in,
+Piper) × (female, male) grid where each cell speaks a **localized** sentence, so a
+wrong-language voice is instantly audible. It shows the voice the app itself would
+pick, using the same selection logic. Whether a voice truly *sounds* female is the
+one thing no script can settle — run it on desktop and on the phone, since
+built-in voices are supplied by the OS and differ per device.
 
 #### Quest Performance
 
 | Model Quality | Size | Quest 3 | Quest 2 |
 | --- | --- | --- | --- |
-| low | ~15 MB | Real-time | Near real-time |
-| medium | ~30 MB | Near real-time | Slow |
+| medium | ~60 MB | Near real-time | Slow |
 | high | ~80 MB | Acceptable | Too slow |
 
-Recommendation: Use `low` or `medium` quality voices on Quest.
+Recommendation: use `medium` quality voices on Quest. (The `low`/`x_low` tier is
+gone — every model in it was a piper 0.2.0 build that this runtime cannot play.)
 
 ## How to Switch Engines
 
@@ -160,8 +225,28 @@ window.TTSProvider.registerProvider('your-provider', YourProvider);
 | Key | Storage | Default | Description |
 | --- | --- | --- | --- |
 | `tts_engine` | localStorage | `web-speech-api` | Active TTS engine ID |
-| `piper_voice` | localStorage | `en_US-lessac-medium` | Selected Piper voice model |
-| `piper_speaker` | localStorage | `0` | Speaker index (multi-speaker models) |
+| `piper_voice` | localStorage | `en_US-hfc_female-medium` | Selected Piper voice model |
+| `speech_voice_pref` | localStorage | `female` | Gender preference: `any` \| `female` \| `male` |
+| `app_lang` | localStorage | browser language | Master language; re-picks the Piper voice on change |
+
+There is no speaker-index setting: `piper-tts-web` hardcodes `speakerId = 0`, so
+multi-speaker models can only ever produce their first speaker (see above).
+
+`main.js` publishes its live settings object as `window.SpeechSettings`. It is a
+top-level `const` in a **classic script**, so it lives in the global *lexical*
+environment and is not otherwise a property of `window` — every other script that
+read `window.SpeechSettings` silently got `undefined`. Read that object (not just
+localStorage) when you need the values `speakText()` and `pickBestVoice()` will
+actually use.
+
+### Gender preference is a preference, never a dead end
+
+If the requested gender has no voice for the language, selection takes the other
+gender rather than going silent or leaving the wrong language playing. Speaking
+the right **language** always outranks the gender wish. The order is: requested
+gender (single-speaker first for Piper) → requested gender (multi-speaker) →
+other gender → anything for that language. This is why "Prefer Female" +
+Português plays Faber, and "Prefer Male" + 中文 plays Huayan.
 
 ## Future Cloud Providers (Planned)
 

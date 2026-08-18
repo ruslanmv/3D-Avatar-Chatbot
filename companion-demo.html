@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+    <!--
+  companion-demo.html — standalone proof of Companion Mode.
+
+  Loads the REAL src/CompanionMode.js (not a copy), so what you see here is
+  exactly what ships in the app. Open in Chrome/Edge (a local server is fine:
+  `npx serve` or `python3 -m http.server`), click "🪟 Companion", then drag the
+  little window over VS Code or onto a second monitor. The 3D character keeps
+  animating, always on top, floating on a transparent background.
+
+  A simple animated Three.js figure stands in for the avatar so it runs with no
+  assets; in the real integration the same code moves the app's avatar canvas.
+-->
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Companion Mode demo</title>
+        <style>
+            html,
+            body {
+                margin: 0;
+                height: 100%;
+                background: #14151a;
+                color: #eee;
+                font:
+                    14px system-ui,
+                    sans-serif;
+                overflow: hidden;
+            }
+            #stage {
+                position: fixed;
+                inset: 0;
+            }
+            #hint {
+                position: fixed;
+                top: 14px;
+                left: 14px;
+                opacity: 0.8;
+                max-width: 440px;
+                line-height: 1.5;
+            }
+            #hint b {
+                color: #9db4ff;
+            }
+            kbd {
+                background: #2a2d38;
+                border: 1px solid #3a3e4c;
+                border-radius: 4px;
+                padding: 1px 6px;
+                font: 12px monospace;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="stage"></div>
+        <div id="hint">
+            Demo: click <b>🪟 Companion</b> (bottom-right) or press <kbd>Alt</kbd>+<kbd>C</kbd>. The character pops into
+            an always-on-top mini window — drag it to any corner or monitor and keep working. Close the window to bring
+            it back.
+        </div>
+
+        <script type="importmap">
+            { "imports": { "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.module.min.js" } }
+        </script>
+
+        <!-- The real module (classic global script → window.CompanionMode). -->
+        <script src="./src/CompanionMode.js"></script>
+
+        <script type="module">
+            import * as THREE from 'three';
+
+            // Expose THREE so CompanionMode's transparent-float restore can read colors.
+            window.THREE = THREE;
+
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x14151a);
+            const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 100);
+            camera.position.set(0, 1.4, 4);
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(innerWidth, innerHeight);
+            renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+            document.getElementById('stage').appendChild(renderer.domElement);
+
+            scene.add(new THREE.HemisphereLight(0xffffff, 0x334455, 1.2));
+            const key = new THREE.DirectionalLight(0xffffff, 1.5);
+            key.position.set(2, 4, 3);
+            scene.add(key);
+
+            // A tiny stand-in "character": body, head, waving arm.
+            const mat = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.5 });
+            const chr = new THREE.Group();
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, 1.1, 24), mat(0x4f7cff));
+            body.position.y = 0.9;
+            chr.add(body);
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 32, 32), mat(0xffd9b3));
+            head.position.y = 1.75;
+            chr.add(head);
+            const eye = () => new THREE.Mesh(new THREE.SphereGeometry(0.045, 16, 16), mat(0x222222));
+            const e1 = eye(),
+                e2 = eye();
+            e1.position.set(-0.11, 1.8, 0.28);
+            e2.position.set(0.11, 1.8, 0.28);
+            chr.add(e1, e2);
+            const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.8, 16), mat(0x4f7cff));
+            arm.geometry.translate(0, 0.4, 0);
+            arm.position.set(0.42, 1.25, 0);
+            chr.add(arm);
+            scene.add(chr);
+
+            const clock = new THREE.Clock();
+            (function loop() {
+                requestAnimationFrame(loop);
+                const t = clock.getElapsedTime();
+                arm.rotation.z = Math.PI * 0.75 + Math.sin(t * 4) * 0.35; // waving
+                chr.rotation.y = Math.sin(t * 0.6) * 0.25;
+                head.position.y = 1.75 + Math.sin(t * 2) * 0.02; // idle bob
+                renderer.render(scene, camera);
+            })();
+
+            const fit = (w = innerWidth, h = innerHeight) => {
+                camera.aspect = w / h;
+                camera.updateProjectionMatrix();
+            };
+            addEventListener('resize', () => {
+                renderer.setSize(innerWidth, innerHeight);
+                fit();
+            });
+
+            // --- the mode under test -------------------------------------------
+            // Construct explicitly (this pre-empts the module's page auto-wiring).
+            const companion = new window.CompanionMode({ renderer, scene, onResize: fit });
+            companion.showButton();
+            window.companionMode = companion;
+        </script>
+    </body>
+</html>

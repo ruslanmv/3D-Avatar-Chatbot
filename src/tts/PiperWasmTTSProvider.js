@@ -24,36 +24,69 @@
        Covers all languages supported by the settings Language dropdown.
        Sorted: medium quality first, then low/high, female before male.
        @see https://rhasspy.github.io/piper-samples/
+
+       MULTI-SPEAKER MODELS (`multi: true`) — piper-tts-web hardcodes
+       `const speakerId = 0`, so for these models it ALWAYS synthesizes
+       speaker 0 and the other speakers are unreachable. A gender tag on such
+       a model is therefore a promise about speaker 0 only. Where the model's
+       speaker_id_map identifies speaker 0 (e.g. es_ES-sharvard = {"M":0,"F":1}
+       → male; fr_FR-upmc = {"jessica":0,"pierre":1} → female) the tag below is
+       that speaker's real gender. Where speaker 0 is an anonymous corpus ID
+       (LibriTTS-R 3922, MLS 2422, ARU 03) the gender is honestly 'unknown' so
+       the "Prefer Female/Male" filter never promises what it can't deliver.
+       `speakers` counts are read from each model's own .onnx.json config.
+
+       RUNTIME COMPATIBILITY — only models with `num_symbols: 256` work here.
+       piper-tts-web generates phoneme IDs with its own bundled (modern)
+       piper_phonemize WASM, passing ONLY `espeak.voice` from the config; the
+       model's own phoneme_id_map is never consulted. Older piper 0.2.0 models
+       have a 130-symbol embedding table, so they receive IDs outside their
+       range, ONNX throws (OrtRun), and speak() silently falls back to ENGLISH.
+       Sixteen such models were listed here — every one of them "worked" in the
+       dropdown and then spoke English, which is why Spanish appeared broken.
+       They are removed; `node tests/piper-catalog-audit.mjs` now fails on any
+       model that is not 256-symbol, so none can come back by accident.
        ---------------------------------------------------------- */
     const PIPER_VOICES = [
         // ── English (US) ──
         { id: 'en_US-hfc_female-medium', name: 'HFC Female', lang: 'en-US', gender: 'female', quality: 'medium' },
+        { id: 'en_US-lessac-high', name: 'Lessac (HQ)', lang: 'en-US', gender: 'female', quality: 'high' },
+        { id: 'en_US-ljspeech-high', name: 'LJSpeech (HQ)', lang: 'en-US', gender: 'female', quality: 'high' },
         { id: 'en_US-lessac-medium', name: 'Lessac', lang: 'en-US', gender: 'female', quality: 'medium' },
         { id: 'en_US-kristin-medium', name: 'Kristin', lang: 'en-US', gender: 'female', quality: 'medium' },
-        { id: 'en_US-libritts_r-medium', name: 'LibriTTS-R', lang: 'en-US', gender: 'female', quality: 'medium' },
+        // 904 speakers; plays speaker 0 = LibriTTS-R corpus ID "3922" (gender
+        // not published) — not offered under a gender preference.
+        {
+            id: 'en_US-libritts_r-medium',
+            name: 'LibriTTS-R (multi-speaker)',
+            lang: 'en-US',
+            gender: 'unknown',
+            quality: 'medium',
+            speakers: 904,
+            multi: true,
+        },
         { id: 'en_US-amy-medium', name: 'Amy', lang: 'en-US', gender: 'female', quality: 'medium' },
-        { id: 'en_US-amy-low', name: 'Amy (fast)', lang: 'en-US', gender: 'female', quality: 'low' },
-        { id: 'en_US-kathleen-low', name: 'Kathleen (fast)', lang: 'en-US', gender: 'female', quality: 'low' },
         { id: 'en_US-hfc_male-medium', name: 'HFC Male', lang: 'en-US', gender: 'male', quality: 'medium' },
         { id: 'en_US-ryan-medium', name: 'Ryan', lang: 'en-US', gender: 'male', quality: 'medium' },
         { id: 'en_US-joe-medium', name: 'Joe', lang: 'en-US', gender: 'male', quality: 'medium' },
         { id: 'en_US-john-medium', name: 'John', lang: 'en-US', gender: 'male', quality: 'medium' },
         { id: 'en_US-bryce-medium', name: 'Bryce', lang: 'en-US', gender: 'male', quality: 'medium' },
         { id: 'en_US-norman-medium', name: 'Norman', lang: 'en-US', gender: 'male', quality: 'medium' },
-        { id: 'en_US-arctic-medium', name: 'Arctic', lang: 'en-US', gender: 'male', quality: 'medium' },
-        { id: 'en_US-danny-low', name: 'Danny (fast)', lang: 'en-US', gender: 'male', quality: 'low' },
-        { id: 'en_US-ryan-low', name: 'Ryan (fast)', lang: 'en-US', gender: 'male', quality: 'low' },
+        // 18 speakers; plays speaker 0 = CMU Arctic "awb" (male).
+        {
+            id: 'en_US-arctic-medium',
+            name: 'Arctic (awb)',
+            lang: 'en-US',
+            gender: 'male',
+            quality: 'medium',
+            speakers: 18,
+            multi: true,
+        },
         // ── English (UK) ──
         { id: 'en_GB-alba-medium', name: 'Alba', lang: 'en-GB', gender: 'female', quality: 'medium' },
+        { id: 'en_GB-cori-high', name: 'Cori (HQ)', lang: 'en-GB', gender: 'female', quality: 'high' },
         { id: 'en_GB-cori-medium', name: 'Cori', lang: 'en-GB', gender: 'female', quality: 'medium' },
         { id: 'en_GB-jenny_dioco-medium', name: 'Jenny Dioco', lang: 'en-GB', gender: 'female', quality: 'medium' },
-        {
-            id: 'en_GB-southern_english_female-low',
-            name: 'Southern Female (fast)',
-            lang: 'en-GB',
-            gender: 'female',
-            quality: 'low',
-        },
         { id: 'en_GB-alan-medium', name: 'Alan', lang: 'en-GB', gender: 'male', quality: 'medium' },
         {
             id: 'en_GB-northern_english_male-medium',
@@ -62,41 +95,89 @@
             gender: 'male',
             quality: 'medium',
         },
-        { id: 'en_GB-aru-medium', name: 'Aru', lang: 'en-GB', gender: 'male', quality: 'medium' },
+        // 12 speakers; plays speaker 0 = ARU corpus ID "03" (gender not
+        // published) — not offered under a gender preference.
+        {
+            id: 'en_GB-aru-medium',
+            name: 'Aru (multi-speaker)',
+            lang: 'en-GB',
+            gender: 'unknown',
+            quality: 'medium',
+            speakers: 12,
+            multi: true,
+        },
         // ── Español ──
-        { id: 'es_ES-sharvard-medium', name: 'SHarvard', lang: 'es-ES', gender: 'female', quality: 'medium' },
+        // NO FEMALE SPANISH VOICE EXISTS in the official Piper catalog that this
+        // runtime can play. The two candidates both fail: mls_10246 is a 130-
+        // symbol piper 0.2.0 model (throws, falls back to English — this is what
+        // "Spanish doesn't work" was), and sharvard's female speaker sits at
+        // index 1 of a 2-speaker map {"M":0,"F":1} while the runtime is hardwired
+        // to speaker 0, the MALE one. So "Prefer Female" + Español falls back to
+        // a male voice here; for a female Spanish voice use the built-in engine,
+        // whose device voices (Google español, Mónica, Helena…) are female.
+        // Claude (Mexico) is the only HIGH-quality official Spanish model.
+        {
+            id: 'es_ES-sharvard-medium',
+            name: 'SHarvard (male speaker)',
+            lang: 'es-ES',
+            gender: 'male',
+            quality: 'medium',
+            speakers: 2,
+            multi: true,
+        },
         { id: 'es_ES-davefx-medium', name: 'DaveFX', lang: 'es-ES', gender: 'male', quality: 'medium' },
-        { id: 'es_ES-carlfm-x_low', name: 'Carlfm (fast)', lang: 'es-ES', gender: 'male', quality: 'low' },
         { id: 'es_MX-ald-medium', name: 'Ald (Mexico)', lang: 'es-ES', gender: 'male', quality: 'medium' },
         { id: 'es_MX-claude-high', name: 'Claude (Mexico, HQ)', lang: 'es-ES', gender: 'male', quality: 'high' },
         // ── Français ──
         { id: 'fr_FR-siwis-medium', name: 'Siwis', lang: 'fr-FR', gender: 'female', quality: 'medium' },
-        { id: 'fr_FR-siwis-low', name: 'Siwis (fast)', lang: 'fr-FR', gender: 'female', quality: 'low' },
         { id: 'fr_FR-tom-medium', name: 'Tom', lang: 'fr-FR', gender: 'male', quality: 'medium' },
-        { id: 'fr_FR-upmc-medium', name: 'UPMC', lang: 'fr-FR', gender: 'male', quality: 'medium' },
-        { id: 'fr_FR-gilles-low', name: 'Gilles (fast)', lang: 'fr-FR', gender: 'male', quality: 'low' },
+        // 2 speakers; speaker_id_map is {"jessica":0,"pierre":1} and the runtime
+        // plays speaker 0 — so this is JESSICA (female), not the male voice the
+        // catalog used to promise. Pierre is unreachable.
+        {
+            id: 'fr_FR-upmc-medium',
+            name: 'UPMC (Jessica)',
+            lang: 'fr-FR',
+            gender: 'female',
+            quality: 'medium',
+            speakers: 2,
+            multi: true,
+        },
         // ── Deutsch ──
-        { id: 'de_DE-kerstin-low', name: 'Kerstin', lang: 'de-DE', gender: 'female', quality: 'low' },
-        { id: 'de_DE-eva_k-x_low', name: 'Eva K (fast)', lang: 'de-DE', gender: 'female', quality: 'low' },
+        { id: 'de_DE-thorsten-high', name: 'Thorsten (HQ)', lang: 'de-DE', gender: 'male', quality: 'high' },
         { id: 'de_DE-thorsten-medium', name: 'Thorsten', lang: 'de-DE', gender: 'male', quality: 'medium' },
+        // 8 "speakers" are Thorsten's emotions {"amused":0,…}; the runtime plays
+        // speaker 0 = "amused". Still Thorsten, so the male tag holds.
         {
             id: 'de_DE-thorsten_emotional-medium',
-            name: 'Thorsten Emotional',
+            name: 'Thorsten Emotional (amused)',
             lang: 'de-DE',
             gender: 'male',
             quality: 'medium',
+            speakers: 8,
+            multi: true,
         },
-        { id: 'de_DE-mls-medium', name: 'MLS', lang: 'de-DE', gender: 'male', quality: 'medium' },
-        { id: 'de_DE-karlsson-low', name: 'Karlsson (fast)', lang: 'de-DE', gender: 'male', quality: 'low' },
-        { id: 'de_DE-pavoque-low', name: 'Pavoque (fast)', lang: 'de-DE', gender: 'male', quality: 'low' },
+        // 236 speakers; plays speaker 0 = MLS corpus ID "2422" (gender not
+        // published) — not offered under a gender preference.
+        {
+            id: 'de_DE-mls-medium',
+            name: 'MLS (multi-speaker)',
+            lang: 'de-DE',
+            gender: 'unknown',
+            quality: 'medium',
+            speakers: 236,
+            multi: true,
+        },
         // ── Italiano ──
         { id: 'it_IT-paola-medium', name: 'Paola', lang: 'it-IT', gender: 'female', quality: 'medium' },
-        { id: 'it_IT-riccardo-x_low', name: 'Riccardo (fast)', lang: 'it-IT', gender: 'male', quality: 'low' },
         // ── Português (BR) ──
+        // Piper publishes no Brazilian FEMALE model — "Prefer Female" here
+        // falls back to a male voice (the matrix test marks it ⚠).
         { id: 'pt_BR-faber-medium', name: 'Faber', lang: 'pt-BR', gender: 'male', quality: 'medium' },
-        { id: 'pt_BR-edresson-low', name: 'Edresson (fast)', lang: 'pt-BR', gender: 'male', quality: 'low' },
-        // ── 日本語 (no Piper voices available — fallback handled in UI) ──
-        // ── 한국어 (no Piper voices available — fallback handled in UI) ──
+        // ── 中文 (Chinese, Mandarin) ──
+        { id: 'zh_CN-huayan-medium', name: 'Huayan', lang: 'zh-CN', gender: 'female', quality: 'medium' },
+        // ── 日本語 (no Piper voices exist — the app steers to the built-in engine) ──
+        // ── 한국어 (no Piper voices exist — the app steers to the built-in engine) ──
     ];
 
     /* ----------------------------------------------------------

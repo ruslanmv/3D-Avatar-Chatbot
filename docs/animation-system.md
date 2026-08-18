@@ -62,7 +62,38 @@ Applied **once** at avatar load time. Sets absolute quaternion rotations on VRM 
    Final = rest × basePose × breathing × headLook × mode
 ```
 
-### Additive vs Replacement Compositing
+### Head Look: eye contact is the resting state
+
+The head follows a single normalized `mouse {x, y}` (−1..1 across the window).
+A **mouse is a continuous presence**, so on desktop it follows the pointer
+forever with no decay — unchanged, and deliberately so.
+
+**Touch is not a pointer.** It's sparse and edge-biased: the last touch before
+you look at her was probably a button near a screen edge. With no decay the head
+held that value indefinitely, so she appeared to "prefer looking sideways" —
+frozen in profile until the next touch happened to land centre-screen. Two
+aggravators: in companion mode most taps *are* chrome at the edges, and
+coordinates normalize against the whole window even when the avatar occupies a
+small widget, so an edge touch maps to extreme yaw.
+
+So a touch is a **glance**, not a command:
+
+| | Behaviour |
+| --- | --- |
+| Mouse | Continuous follow, no decay (`lastTouchAt` is never set by `mousemove`) |
+| Touch | Deflects the gaze, then eases back to centre `GAZE_GLANCE_HOLD_MS` (2.5 s) after the finger stops, over ~1.6 s |
+| In conversation | Listening / thinking / speaking returns the gaze immediately — no 2.5 s wait |
+| UI chrome | Touches on chat controls and the companion's own chrome (`.cm-drag`, `.cm-close`, `.cm-expand`, `.cm-resize`, `.cm-bar`, the mobile drawer) are ignored entirely |
+| Companion open | `recenterGaze()` puts the gaze on the user at once — first impressions are eye contact |
+
+**`setGazeOverride()` must not be decayed.** It is not a separate channel: it
+*writes into* `mouse`, and the head look always reads `mouse`. `VRGazeController`
+and `FaceTracker` follow-mode rewrite it **every frame**, so decaying underneath
+them compounds — measured at a **0.44 → 0.32 yaw loss over 4 s (−27%), still
+falling**, and because they keep writing non-zero values the rest threshold is
+never reached, so it never stops. Hence the decay is guarded by
+`if (lastTouchAt && !gazeOverride)`. Headset gaze and mobile face tracking are
+per-frame authorities and always win.
 
 **Wrong (replacement):**
 ```

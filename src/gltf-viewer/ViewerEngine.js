@@ -886,6 +886,11 @@ export class ViewerEngine {
     }
 
     resize() {
+        // Companion Mode (additive, non-destructive): while the WebGL canvas is
+        // detached into an always-on-top Picture-in-Picture window, that window
+        // owns sizing. Skip so a stray main-window resize can't shrink it.
+        if (window.__COMPANION_ACTIVE__) return;
+
         const { w, h } = this._getViewportSize();
 
         // Clamp aspect to prevent extreme distortion on very narrow/wide windows
@@ -1156,8 +1161,18 @@ export class ViewerEngine {
 
             // Follow-me eyes: set gaze override BEFORE ProceduralAnimator
             // so the head rotation uses current HMD position, not stale data.
-            if (this.renderer.xr.isPresenting && !this.arSupport?.isARActive) {
-                this.vrGazeController?.update(dt);
+            // Runs in VR AND AR — in phone AR the XR camera IS the user's
+            // eyes, so the same head/eye tracking gives the AAA NPC feel.
+            if (this.renderer.xr.isPresenting) {
+                // In AR, both head/eye tracking and body turning obey the
+                // Settings ▸ "Follow me in AR" toggle (default on) — they switch
+                // together, because a character whose body follows you while her
+                // eyes don't (or the reverse) reads as uncanny. Off keeps the
+                // pre-existing static behavior. VR is unaffected by the toggle.
+                const inAR = !!this.arSupport?.isARActive;
+                const followAR = !inAR || this.arSupport.isFollowUserEnabled();
+                if (followAR) this.vrGazeController?.update(dt);
+                if (inAR && followAR) this.arSupport.updateFollowUser?.(dt);
             }
 
             try {

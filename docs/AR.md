@@ -28,6 +28,93 @@ The app supports three AR modes depending on the device:
 
 ---
 
+## Living NPC in AR — she greets you, tracks you, turns with you
+
+Placement used to set position but never rotation, so the character appeared in
+whatever orientation she happened to have — often in profile. And the AAA gaze
+system (`VRGazeController`: saccades, eyes-lead-head, blink-on-shift, dead zones)
+was gated off in AR by one condition, even though in phone AR the XR camera *is*
+the user's eyes and the maths is identical.
+
+| Behaviour | How |
+| --- | --- |
+| **Greets you** | On placement she yaw-turns to face the camera — shortest arc, yaw only, posture untouched |
+| **Tracks you** | The gaze controller now runs in AR too: eyes snap first, head eases behind, micro-saccades |
+| **Turns with you** | Head+eyes cover ±60°; beyond that for 0.6 s the *body* rotates at ~2.2 rad/s until you are back in range |
+| **Listens** | The placement tap arms the companion's live loop — endpointing, echo-safety, auto-resume, chunk-subtitle captions |
+
+Tunables: `TURN_AT` (60°), the 0.6 s dwell that stops her twitching when you
+merely sway, and the 2.2 rad/s turn speed. Settings ▸ OVERLAY ▸ **"Follow me in
+AR"** (default on) gates head/eye tracking and body turning *together* — a
+character whose body follows you while her eyes don't is uncanny. VR is never
+gated; Quest keeps its own GAZE control.
+
+### Three traps this hit
+
+**Forward is not the same axis for every model.** Per the VRM spec a VRM faces
+`-Z`, and `AvatarManager` compensates with `root.rotation.y = Math.PI` so it
+looks at the `+Z` camera; a plain GLB is authored facing `+Z` and gets no flip.
+Assuming `+Z` for everything turns a VRM's **back** to the user — a clean 180°
+error on this app's own default avatar, and one that passes any test using a GLB.
+Use `root.userData.isVRM`, which `AvatarManager` sets for exactly this purpose.
+Measured: hardcoded `+Z` gives a 180.0° facing error on a VRM and 0.0° on a GLB;
+axis-by-format gives 0.0° on both.
+
+**`ar-floor-detected` is not a placement.** It fires from the XR frame loop the
+instant a surface is recognized — automatically, with no tap. Starting the
+microphone there opens it with no user action at all, and `SpeechRecognition`
+started outside a user gesture is blocked on mobile regardless. The mic is armed
+from the placement tap, which is a real gesture.
+
+**Do not read `localStorage` in the render loop.** It is synchronous and
+blocking; the follow-me preference was being read twice per frame (~120×/second
+on a phone). `ARSupport.isFollowUserEnabled()` caches it and re-reads at most
+4×/second, which still applies a settings flip effectively instantly.
+
+### Known cosmetic limit
+
+The body turn is a root rotation, not a stepped-feet animation, so the feet slide
+during the turn. That is the standard mobile-AR compromise (Pokémon GO does the
+same); a foot-planted turn would need the pose system.
+
+---
+
+## In-AR chat UX — the camera and the character are the hero
+
+Text must never take over the scene. The AR transcript used to be `flex: 1`, so
+it claimed all the space between the top and bottom bars, kept 8 messages and
+capped no bubble height — one long reply buried the camera view *and* the placed
+avatar under a wall of text, with no way to hide or clear it.
+
+The layer is purely presentational (the real conversation still lives in the
+normal chat history), and it now follows three rules:
+
+1. **Replies are a transient caption, not a wall.** They play as **chunk
+   subtitles** — the same boundary-aware chunker the companion uses
+   (`CompanionMode._nextChunk`), so the behaviour is identical in both places:
+   ≤3 lines at a time, ~75 ms/character pacing, holding the last chunk while the
+   voice is still talking, then fading ~2 s after it stops. Your own message
+   flashes for 2.5 s and gets out of the way. The caption is
+   `pointer-events: none`, so tap-to-place still works straight through it.
+2. **History is on demand.** The transcript is hidden by default; **💬** toggles
+   it, and even open it is capped at `32dvh` (with a `32vh` fallback) and scrolls
+   internally, so the scene is always visible. **Long-press 💬 (600 ms) clears
+   it**, with a haptic tick for confirmation.
+3. **Nothing underneath changes.** Removing the AR layer would lose no data.
+
+Two implementation notes worth keeping:
+
+- A long-press is followed by a **synthesized `click`**. Without suppressing that
+  one click the clear is instantly undone — the transcript reopens, empty. The
+  handler tracks `longPressFired` for exactly this.
+- "Is she still speaking?" defers to `companionMode._replyAudioBusy()` when it
+  exists, rather than checking `speechSynthesis` alone. Piper (WASM) plays
+  through WebAudio and is invisible to `speechSynthesis`, so a Piper reply would
+  otherwise read as already finished and the caption would fade mid-sentence.
+  See `docs/COMPANION-MODE.md` for why that check is centralized.
+
+---
+
 ## Entry Points — 3 Ways to Enter AR
 
 ```
