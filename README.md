@@ -84,7 +84,10 @@ framework dependencies — runs on vanilla JavaScript, Three.js, and WebXR.
 - **3D avatar engine** — 30+ GLB/VRM models with morph-target lip sync,
   emotions, gaze tracking
 - **Voice interaction** — Speech-to-text and text-to-speech with device/language
-  selection
+  selection. Two TTS engines: your device's built-in voices, or Piper (offline
+  neural, identical on every device). If a language has no voice on your phone,
+  Settings ▸ SPEECH explains how to install one — see
+  [docs/VOICES.md](docs/VOICES.md)
 - **WebXR immersion** — VR mode (Quest 2/3, Pico) and AR mode (hit-test surface
   placement)
 - **Passthrough AR** — See your real room with the avatar standing in it
@@ -122,6 +125,36 @@ make test            # Avatar health check + unit tests
 make test-avatars    # Avatar file validation only
 npm run validate     # Lint + format + tests
 ```
+
+---
+
+## Companion Mode
+
+Pop the live avatar out into a small floating window and keep it beside you
+while you work — talk to it hands-free, or type.
+
+![Companion Mode — the avatar floating over the app with voice and text chat](assets/companion-mode.png)
+
+**How to use**
+
+1. Click **🪟** in the avatar toolbar to float it, or **📞** to start a
+   hands-free call. (Desktop shortcut: `Alt + C`. Deep links: `?mode=companion`,
+   `?mode=call`. On mobile: **☰ menu ▸ Companion**.)
+2. **Talk or type** in the window: **📞** starts/ends the call, **🎤** is
+   push-to-talk (mute/unmute during a call), and replies are spoken aloud with
+   subtitles.
+3. **Drag** it by its handle, **resize** from the **◢** corner, **⛶** expands
+   it, **✕** brings the avatar back into the page.
+4. Optional **wake word** — enable it in **Settings ▸ Overlay**, then just say
+   **"Nexus"** to start talking; it returns to standby after ~20 s of silence.
+
+Everything is additive: closing the companion restores the page exactly as it
+was. Full details in [docs/COMPANION-MODE.md](docs/COMPANION-MODE.md).
+
+> **Want it transparent over your desktop?** Browsers can't make a window
+> see-through to the OS, so use the Electron shell in
+> [`desktop-shell/`](desktop-shell/) (`npm install && npm start`) — it loads the
+> same app frameless, always-on-top and click-through.
 
 ---
 

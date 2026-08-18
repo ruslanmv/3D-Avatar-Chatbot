@@ -30,6 +30,22 @@
 
         <link rel="icon" href="favicon.ico" />
 
+        <!-- PWA: installable companion ("Add to Home Screen" → one-tap launch/call) -->
+        <link rel="manifest" href="manifest.webmanifest" />
+        <link rel="apple-touch-icon" href="assets/companion-180.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Companion" />
+        <script>
+            // Register the (cache-free) service worker so the app is installable.
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function () {
+                    navigator.serviceWorker.register('sw.js').catch(function () {});
+                });
+            }
+        </script>
+
         <!-- Device detection (runs first for CSS classes) -->
         <script src="src/DeviceDetector.js"></script>
 
@@ -565,7 +581,7 @@
                                     </svg>
                                 </button>
                                 <input
-                                    type="text"
+                                    type="search"
                                     id="speech-text"
                                     class="chat-input"
                                     placeholder="Type your message..."
@@ -721,6 +737,20 @@
                                 <path d="M10 12h4" />
                             </svg>
                             <span>VR / AR Mode</span>
+                        </button>
+                        <button class="drawer-nav-item" id="drawer-companion-btn" type="button">
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <rect x="3" y="4" width="18" height="14" rx="2" />
+                                <rect x="12" y="10" width="7" height="5" rx="1" />
+                            </svg>
+                            <span>Companion</span>
                         </button>
                         <button class="drawer-nav-item" id="drawer-pose-studio-btn" type="button">
                             <svg
@@ -886,6 +916,23 @@
                 </div>
 
                 <div class="modal-content">
+                    <div class="config-section">
+                        <h3 class="config-title">GENERAL</h3>
+                        <div class="input-group">
+                            <label class="input-label" for="app-language">🌐 LANGUAGE / IDIOMA</label>
+                            <select id="app-language" class="select-input"></select>
+                            <p style="font-size: 0.68rem; color: rgba(255, 255, 255, 0.45); margin: 6px 2px 0">
+                                One language for everything: voice recognition, the assistant's spoken voice, and its
+                                replies. The dropdowns in SPEECH and SPEECH-TO-TEXT below become expert overrides —
+                                changing this re-syncs them.
+                            </p>
+                            <div
+                                id="app-lang-status"
+                                style="display: none; font-size: 0.68rem; color: #f59e0b; margin-top: 4px"
+                            ></div>
+                        </div>
+                    </div>
+
                     <div class="config-section">
                         <h3 class="config-title">AI PROVIDER</h3>
                         <div class="provider-grid">
@@ -1054,6 +1101,7 @@
                                 <option value="pt-BR">Português (BR)</option>
                                 <option value="ja-JP">日本語</option>
                                 <option value="ko-KR">한국어</option>
+                                <option value="zh-CN">中文</option>
                             </select>
                         </div>
 
@@ -1073,9 +1121,12 @@
                                 <option value="piper-wasm">Piper (offline, no API key)</option>
                             </select>
                             <p class="voice-status" style="margin-top: 8px; opacity: 0.8">
-                                Piper runs fully in-browser via WebAssembly. First use downloads a voice model (~20 MB,
-                                cached).
+                                Built-in = your device's own voices (free, instant, varies by phone/PC). Piper runs
+                                fully in-browser via WebAssembly and sounds the same everywhere; first use downloads a
+                                voice model (~60 MB, cached).
                             </p>
+                            <!-- "Get more built-in voices" notice — rendered by src/VoiceHelp.js -->
+                            <div id="voice-help"></div>
                         </div>
 
                         <div id="piper-voice-group" class="input-group" style="display: none">
@@ -1458,6 +1509,216 @@
                                     </div>
                                 </div>
                             </label>
+                        </div>
+                    </div>
+
+                    <div class="config-section">
+                        <h3 class="config-title">OVERLAY / COMPANION</h3>
+                        <p style="font-size: 0.72rem; color: rgba(255, 255, 255, 0.5); margin-bottom: 12px">
+                            Pop the live avatar into a small floating companion you can talk or type to. On desktop it's
+                            an always-on-top window over your other apps; on mobile it's a transparent widget in the
+                            corner (or an opt-in bubble over other apps). Non-destructive — closing it restores
+                            everything.
+                        </p>
+                        <div style="display: flex; flex-direction: column; gap: 10px">
+                            <label
+                                class="provider-card"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 10px;
+                                    padding: 8px 12px;
+                                    cursor: pointer;
+                                "
+                            >
+                                <input type="checkbox" id="overlay-controls" checked />
+                                <div>
+                                    <div class="provider-name" style="font-size: 0.82rem">Voice &amp; text chat</div>
+                                    <div style="font-size: 0.68rem; color: rgba(255, 255, 255, 0.45)">
+                                        Show a mic + text bar in the companion window so you can talk to the avatar
+                                    </div>
+                                </div>
+                            </label>
+                            <label
+                                class="provider-card"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 10px;
+                                    padding: 8px 12px;
+                                    cursor: pointer;
+                                "
+                            >
+                                <input type="checkbox" id="overlay-chatwindow" />
+                                <div>
+                                    <div class="provider-name" style="font-size: 0.82rem">Conversation window</div>
+                                    <div style="font-size: 0.68rem; color: rgba(255, 255, 255, 0.45)">
+                                        Show the full conversation transcript inside the companion window (default off)
+                                    </div>
+                                </div>
+                            </label>
+                            <label
+                                class="provider-card"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 10px;
+                                    padding: 8px 12px;
+                                    cursor: pointer;
+                                "
+                            >
+                                <input type="checkbox" id="overlay-subtitle" checked />
+                                <div>
+                                    <div class="provider-name" style="font-size: 0.82rem">Reply subtitles</div>
+                                    <div style="font-size: 0.68rem; color: rgba(255, 255, 255, 0.45)">
+                                        Caption the avatar's latest reply over the floating window
+                                    </div>
+                                </div>
+                            </label>
+                            <label
+                                class="provider-card"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 10px;
+                                    padding: 8px 12px;
+                                    cursor: pointer;
+                                "
+                            >
+                                <input type="checkbox" id="overlay-chunksubs" checked />
+                                <div>
+                                    <div class="provider-name" style="font-size: 0.82rem">
+                                        Chunk subtitles — cinema style
+                                    </div>
+                                    <div style="font-size: 0.68rem; color: rgba(255, 255, 255, 0.45)">
+                                        Long answers play as short movie-style subtitle lines that change in sync with
+                                        the voice, like Netflix captions, instead of one wall of text (default on)
+                                    </div>
+                                </div>
+                            </label>
+                            <label
+                                class="provider-card"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 10px;
+                                    padding: 8px 12px;
+                                    cursor: pointer;
+                                "
+                            >
+                                <input type="checkbox" id="overlay-transparent" checked />
+                                <div>
+                                    <div class="provider-name" style="font-size: 0.82rem">Transparent background</div>
+                                    <div style="font-size: 0.68rem; color: rgba(255, 255, 255, 0.45)">
+                                        Float the avatar with no window background (shows what's behind it)
+                                    </div>
+                                </div>
+                            </label>
+                            <label
+                                class="provider-card"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 10px;
+                                    padding: 8px 12px;
+                                    cursor: pointer;
+                                "
+                            >
+                                <input type="checkbox" id="overlay-floatoverapps" />
+                                <div>
+                                    <div class="provider-name" style="font-size: 0.82rem">
+                                        Ambient mode — float over other apps (mobile)
+                                    </div>
+                                    <div style="font-size: 0.68rem; color: rgba(255, 255, 255, 0.45)">
+                                        Pops the avatar out as a system bubble that floats over other apps and
+                                        automatically starts a hands-free voice conversation — it listens, replies out
+                                        loud, and listens again, like a voice assistant. The bubble shows a listening
+                                        ring and live captions of what it hears and says. Off = transparent in-page
+                                        companion you chat with by text or the 🎤 / 📞 buttons.
+                                    </div>
+                                </div>
+                            </label>
+                            <label
+                                class="provider-card"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 10px;
+                                    padding: 8px 12px;
+                                    cursor: pointer;
+                                "
+                            >
+                                <input type="checkbox" id="overlay-wakeword" />
+                                <div style="flex: 1">
+                                    <div class="provider-name" style="font-size: 0.82rem">
+                                        Wake word — hands-free wake up
+                                    </div>
+                                    <div style="font-size: 0.68rem; color: rgba(255, 255, 255, 0.45)">
+                                        While the site is open, the companion quietly stands by and only wakes when you
+                                        say the wake word — then it starts a hands-free phone conversation and shows a
+                                        LISTENING indicator so you know it heard you. After ~20s of silence it goes back
+                                        to standby. You can say the word and the question together: “Nexus, what time is
+                                        it?”
+                                    </div>
+                                    <input
+                                        type="text"
+                                        id="overlay-wakephrase"
+                                        placeholder="nexus"
+                                        style="
+                                            margin-top: 6px;
+                                            width: 100%;
+                                            max-width: 220px;
+                                            background: rgba(255, 255, 255, 0.06);
+                                            border: 1px solid rgba(255, 255, 255, 0.14);
+                                            border-radius: 8px;
+                                            color: #eef1f8;
+                                            font-size: 0.72rem;
+                                            padding: 5px 8px;
+                                        "
+                                    />
+                                </div>
+                            </label>
+                            <label
+                                class="provider-card"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 10px;
+                                    padding: 8px 12px;
+                                    cursor: pointer;
+                                "
+                            >
+                                <input type="checkbox" id="ar-followme" checked />
+                                <div style="flex: 1">
+                                    <div class="provider-name" style="font-size: 0.82rem">Follow me in AR (mobile)</div>
+                                    <div style="font-size: 0.68rem; color: rgba(255, 255, 255, 0.45)">
+                                        When placed in your room, the character keeps eye contact with you and turns to
+                                        face you as you walk around — like a game NPC. Off = she stays exactly as placed
+                                        (she still faces you once at placement).
+                                    </div>
+                                </div>
+                            </label>
+                            <p style="font-size: 0.66rem; color: rgba(255, 255, 255, 0.4); margin: 6px 2px 0">
+                                Open it from the ☰ menu ▸ Companion, the 🪟 / 📞 buttons under the avatar, or press Alt
+                                + C. Best in Chrome / Edge; on Android it can float as a bubble over other apps.
+                            </p>
+                            <button
+                                type="button"
+                                id="overlay-reset-btn"
+                                style="
+                                    align-self: flex-start;
+                                    margin-top: 8px;
+                                    background: transparent;
+                                    border: 1px solid rgba(255, 255, 255, 0.18);
+                                    color: rgba(255, 255, 255, 0.7);
+                                    border-radius: 8px;
+                                    padding: 7px 12px;
+                                    font-size: 0.72rem;
+                                    cursor: pointer;
+                                "
+                            >
+                                ↺ Reset to defaults
+                            </button>
                         </div>
                     </div>
 
@@ -2551,12 +2812,27 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
             <div class="ar-overlay-top">
                 <button id="ar-exit-btn" class="ar-pill-btn" type="button">EXIT AR</button>
                 <span class="ar-status" id="ar-status">Point at a surface</span>
+                <span style="flex: 1"></span>
+                <button
+                    id="ar-chat-toggle"
+                    class="ar-pill-btn ar-pill-btn--secondary"
+                    type="button"
+                    aria-label="Show conversation"
+                    title="Show conversation"
+                >
+                    💬
+                </button>
             </div>
 
-            <!-- Chat transcript (scrollable, semi-transparent) -->
-            <div class="ar-chat" id="ar-chat">
+            <!-- Chat transcript — ON DEMAND (💬), height-capped so the camera
+                 and the character always stay visible. Hidden by default:
+                 in AR the scene is the hero, text is a transient caption. -->
+            <div class="ar-chat ar-chat--hidden" id="ar-chat">
                 <!-- Messages injected dynamically -->
             </div>
+
+            <!-- Reply caption: movie-style chunks, auto-hides (Chunk Subtitles) -->
+            <div class="ar-caption" id="ar-caption"></div>
 
             <!-- Bottom bar: placement + voice/chat controls -->
             <div class="ar-overlay-bottom">
@@ -2574,7 +2850,7 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
                         </svg>
                     </button>
                     <input
-                        type="text"
+                        type="search"
                         id="ar-chat-input"
                         class="ar-chat-input"
                         placeholder="Ask something..."
@@ -2655,6 +2931,13 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <script defer src="src/tts/PiperWasmTTSProvider.js"></script>
 
         <script defer src="src/main.js"></script>
+
+        <!-- Companion Mode (additive): pop the live avatar into a small always-on-top
+             Picture-in-Picture window so it floats over VS Code / your desktop.
+             Self-wiring — adds a 🪟 button to the avatar toolbar. ?mode=companion / Alt+C. -->
+        <script defer src="src/AppLanguage.js"></script>
+        <script defer src="src/VoiceHelp.js"></script>
+        <script defer src="src/CompanionMode.js"></script>
 
         <!-- Animation Resolver (clip-first routing for dance/gestures) -->
         <script defer src="src/AnimationResolver.js"></script>

@@ -1,0 +1,34 @@
+{
+    "name": "HomePilot Avatar Companion",
+    "short_name": "Companion",
+    "description": "Your 3D AI companion — float it in a corner and talk to it, hands-free, on desktop or mobile.",
+    "start_url": "/?utm=pwa",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "any",
+    "background_color": "#071821",
+    "theme_color": "#071821",
+    "categories": ["productivity", "entertainment", "utilities"],
+    "icons": [
+        { "src": "assets/companion-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+        { "src": "assets/companion-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+        { "src": "assets/companion-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+        { "src": "assets/companion-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    ],
+    "shortcuts": [
+        {
+            "name": "Call companion",
+            "short_name": "Call",
+            "description": "Open the companion and start a hands-free voice conversation",
+            "url": "/?mode=call",
+            "icons": [{ "src": "assets/companion-192.png", "sizes": "192x192", "type": "image/png" }]
+        },
+        {
+            "name": "Open companion window",
+            "short_name": "Companion",
+            "description": "Pop the avatar into a floating companion window",
+            "url": "/?mode=companion",
+            "icons": [{ "src": "assets/companion-192.png", "sizes": "192x192", "type": "image/png" }]
+        }
+    ]
+}

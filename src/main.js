@@ -59,6 +59,15 @@ const SpeechSettings = {
     showConfidence: localStorage.getItem('stt_show_confidence') === 'true',
 };
 
+// This file is a CLASSIC script, so a top-level `const` lives in the global
+// LEXICAL environment and is NOT a property of `window` — other scripts reading
+// `window.SpeechSettings` were silently getting undefined. That broke the master
+// language switch (it wrote localStorage but could never update the LIVE object
+// that speakText/pickBestVoice actually read, so a voice pinned for the old
+// language kept winning) and the lip-sync rate below. Publish the same object —
+// a reference, so both names stay in sync.
+window.SpeechSettings = SpeechSettings;
+
 /* =========================================================
    Strict Global Aliases (GLOBAL build)
    ========================================================= */
@@ -1288,17 +1297,26 @@ function playAnimation(name, loop) {
    Speech Settings UI & Logic
    ========================================================= */
 
-// Heuristic to guess gender from voice name
+// Heuristic to guess gender from voice name.
+// NOTE: "female" contains "male", so the female test MUST run first.
+// The list covers the voice names shipped by Windows/macOS/iOS/Android/Chrome
+// for every language in Settings — an English-only list made every Spanish,
+// French, German, Italian and Portuguese voice read as "unknown", so the
+// "Prefer Female/Male" setting quietly did nothing outside English.
 function guessGender(voice) {
     const s = `${voice.name} ${voice.voiceURI}`.toLowerCase();
-    // Common patterns across OS/browsers (not perfect, but helpful)
     if (
-        /(female|woman|zira|susan|samantha|victoria|tessa|karen|serena|monica|lucia|alice|emma|olivia|google us english)/i.test(
+        /(female|femen|woman|mujer|donna|femme|frau|feminin|zira|susan|samantha|victoria|tessa|karen|serena|moira|fiona|kate|hazel|catherine|monica|mónica|helena|laura|elvira|paulina|lucia|lucía|penelope|alice|emma|olivia|amelie|amélie|audrey|aurelie|chantal|marie|anna|petra|katja|vicki|hedda|luciana|joana|maria|kyoko|haruka|o-ren|sora|yuna|heami|ting-ting|tingting|xiaoxiao|huihui|yaoyao|mei-jia|liu|google us english)/.test(
             s
         )
     )
         return 'female';
-    if (/(male|man|david|mark|daniel|george|alex|fred|tom|diego|luca|paul|joel)/i.test(s)) return 'male';
+    if (
+        /(male|man|hombre|uomo|homme|mann|masculin|david|mark|daniel|george|alex|fred|tom|joel|guy|ravi|james|jorge|pablo|diego|carlos|juan|miguel|raul|raúl|luca|cosimo|paolo|thomas|paul|nicolas|mathieu|henri|stefan|hans|klaus|conrad|yannick|felipe|ricardo|otoya|ichiro|hattori|minsu|injoon|kangkang|yunyang|yun-yang|liang|danny)/.test(
+            s
+        )
+    )
+        return 'male';
     return 'unknown';
 }
 
@@ -1325,10 +1343,14 @@ function pickBestVoice() {
     // Fallback: all voices if no lang match (rare, but possible)
     if (!candidates.length) candidates = voices;
 
-    // 4) Apply Gender Preference
+    // 4) Apply Gender Preference. Never fail because the wanted gender is
+    //    missing: prefer it, then take the other gender, then anything for the
+    //    language. Speaking in the right LANGUAGE always beats the gender wish.
     if (pref === 'female' || pref === 'male') {
         const preferred = candidates.filter((v) => guessGender(v) === pref);
         if (preferred.length) return preferred[0];
+        const other = candidates.filter((v) => guessGender(v) === (pref === 'female' ? 'male' : 'female'));
+        if (other.length) return other[0];
     }
 
     // 5) Default best match
@@ -1823,10 +1845,16 @@ function setupEventListeners() {
     const chatInput = $('speech-text');
     if (chatInput) {
         chatInput.value = '';
-        // Mobile browsers (Chrome Android, Safari iOS) ignore autocomplete="off"
-        // on standard text inputs. Setting a non-standard value forces them to
-        // skip their built-in autofill (address, email, name suggestions).
-        chatInput.setAttribute('autocomplete', 'one-time-code');
+        // NOT 'one-time-code'. That is not a "non-standard value browsers
+        // ignore" — it is a standard autofill token meaning "this field expects
+        // an SMS verification code", so it ASKS the browser for a suggestion bar
+        // above the keyboard (iOS offers codes from Messages) — the opposite of
+        // the intent, and a likely cause of the bar reported on mobile.
+        // Suppression comes from type="search", which Chrome's payment/address
+        // autofill genuinely excludes; these attributes are for password managers.
+        chatInput.setAttribute('autocomplete', 'off');
+        chatInput.setAttribute('data-form-type', 'other');
+        chatInput.setAttribute('data-lpignore', 'true');
     }
 
     const avatarSelect = $('avatar-select');
@@ -2035,10 +2063,28 @@ function setupEventListeners() {
         // Apply current TTS engine selection before testing (user may not have saved yet)
         const engineEl = document.getElementById('tts-engine');
         const piperVoiceEl = document.getElementById('piper-voice');
+        const statusEl = document.getElementById('test-tts-status');
+        if (statusEl) statusEl.textContent = '';
         if (engineEl && window.TTSProvider) {
-            await window.TTSProvider.setEngine(engineEl.value);
+            // setEngine() returns false when the engine can't start (Piper
+            // downloads its WASM module from a CDN, so a blocked/slow network
+            // fails here) and silently falls back to the built-in voice. Ignoring
+            // that return is why "Piper doesn't work" showed no error at all —
+            // the dropdown still said Piper while the built-in voice spoke.
+            const ok = await window.TTSProvider.setEngine(engineEl.value);
+            if (!ok && engineEl.value !== 'web-speech-api') {
+                engineEl.value = window.TTSProvider.getEngine(); // reflect reality
+                if (statusEl)
+                    statusEl.textContent =
+                        '⚠ Could not start that engine (it downloads from a CDN) — using the built-in voice.';
+                try {
+                    updateTTSEngineUI(engineEl.value);
+                } catch (_) {}
+            }
         }
-        if (piperVoiceEl && window.PiperWasmTTSProvider) {
+        // Only let the Piper dropdown drive the voice when Piper is the engine —
+        // otherwise an empty/hidden dropdown resets the saved voice to English.
+        if (piperVoiceEl?.value && window.PiperWasmTTSProvider && window.TTSProvider?.getEngine() === 'piper-wasm') {
             window.PiperWasmTTSProvider.setSelectedVoice(piperVoiceEl.value);
         }
 
@@ -2052,6 +2098,7 @@ function setupEventListeners() {
             'pt-BR': 'Olá! Eu sou Nexus. O teste de voz funcionou.',
             'ja-JP': 'こんにちは、Nexusです。音声テストは成功しました。',
             'ko-KR': '안녕하세요, 넥서스입니다. 음성 설정이 작동 중입니다.',
+            'zh-CN': '你好，我是 Nexus。语音设置正常。',
         };
         // Apply rate/pitch/lang from UI fields (not yet saved)
         const rateEl = document.getElementById('speech-rate');
@@ -4123,9 +4170,16 @@ if (document.readyState === 'loading') {
 
     const arChat = document.getElementById('ar-chat');
     const arInput = document.getElementById('ar-chat-input');
-    if (arInput) arInput.setAttribute('autocomplete', 'one-time-code');
+    // See setupEventListeners(): 'one-time-code' requests SMS-code autofill
+    // rather than suppressing anything. Plain 'off' + type="search".
+    if (arInput) {
+        arInput.setAttribute('autocomplete', 'off');
+        arInput.setAttribute('data-form-type', 'other');
+        arInput.setAttribute('data-lpignore', 'true');
+    }
     const arSendBtn = document.getElementById('ar-send-btn');
     const arVoiceBtn = document.getElementById('ar-voice-btn');
+    let arVoiceStateTimer = null;
     const arExitBtn = document.getElementById('ar-exit-btn');
     const arPlaceBtn = document.getElementById('ar-place-btn');
     const arScaleBtn = document.getElementById('ar-scale-btn');
@@ -4145,7 +4199,12 @@ if (document.readyState === 'loading') {
     });
 
     window.addEventListener('ar-floor-detected', () => {
-        if (arStatus) arStatus.textContent = 'Avatar placed — talk to me!';
+        // NOTE: this fires from the XR frame loop the moment a surface is
+        // recognized — automatically, with no tap. It must NOT open the
+        // microphone: that would start listening with no user action at all,
+        // and SpeechRecognition started outside a user gesture is blocked on
+        // mobile anyway. The mic is armed from the placement tap instead.
+        if (arStatus) arStatus.textContent = 'Tap to place — then just talk';
     });
 
     // --- Send text message from AR input ---
@@ -4172,16 +4231,36 @@ if (document.readyState === 'loading') {
     function startARVoice() {
         arVoiceActive = true;
         if (arVoiceBtn) arVoiceBtn.classList.add('ar-listening');
-        // Use the existing speech recognition system
-        if (typeof startVoiceInput === 'function') {
-            startVoiceInput();
+        // Hands-free conversation: reuse the companion's live loop — full
+        // sentence endpointing, echo-safety, auto-resume after each reply.
+        const cm = window.companionMode;
+        if (cm && typeof cm._startLive === 'function') {
+            if (!cm._live) cm._startLive();
+            // Mirror the conversation state into the AR status pill.
+            clearInterval(arVoiceStateTimer);
+            arVoiceStateTimer = setInterval(() => {
+                if (!arStatus || !arVoiceActive) return;
+                const t = (k, fb) => window.AppLanguage?.t?.(k) || fb;
+                const map = {
+                    listening: t('listening', '🎙️ Listening…'),
+                    thinking: t('thinking', '💭 Thinking…'),
+                    speaking: t('speaking', '🗣️ Speaking…'),
+                };
+                const label = map[cm._convState];
+                if (label) arStatus.textContent = label;
+            }, 300);
+        } else if (typeof startVoiceInput === 'function') {
+            startVoiceInput(); // fallback: legacy push-to-talk
         }
     }
 
     function stopARVoice() {
         arVoiceActive = false;
         if (arVoiceBtn) arVoiceBtn.classList.remove('ar-listening');
-        if (typeof stopVoiceInput === 'function') {
+        clearInterval(arVoiceStateTimer);
+        const cm = window.companionMode;
+        if (cm && cm._live) cm._stopLive();
+        else if (typeof stopVoiceInput === 'function') {
             stopVoiceInput();
         }
     }
@@ -4215,6 +4294,10 @@ if (document.readyState === 'loading') {
                 if (engine?.arSupport && engine?.avatarManager?.currentRoot) {
                     engine.arSupport.placeAvatarAtReticle(engine.avatarManager.currentRoot);
                     if (arStatus) arStatus.textContent = 'Avatar placed — talk to me!';
+                    // AAA NPC: placing the character starts the conversation.
+                    // This runs inside the tap handler ON PURPOSE — it is the
+                    // user gesture that authorizes the microphone.
+                    if (!arVoiceActive) startARVoice();
                 }
             } catch (e) {
                 console.warn('[AR Overlay] Place error:', e);
@@ -4241,17 +4324,127 @@ if (document.readyState === 'loading') {
     }
 
     // --- Mirror chat messages into the AR overlay ---
-    function appendARBubble(role, text) {
-        if (!arChat) return;
-        const bubble = document.createElement('div');
-        bubble.className = `ar-chat-bubble ar-chat-bubble--${role === 'user' ? 'user' : 'bot'}`;
-        bubble.textContent = text;
-        arChat.appendChild(bubble);
-        // Keep only last 8 messages visible to avoid clutter over camera
-        while (arChat.children.length > 8) {
-            arChat.removeChild(arChat.firstChild);
+    // AR UX contract (industry practice — the camera/character is the hero):
+    //  * replies play as transient movie-style CAPTION CHUNKS that auto-hide;
+    //  * the full transcript is ON DEMAND via 💬, height-capped + clearable;
+    //  * nothing persistent may cover the scene.
+    const arCaption = document.getElementById('ar-caption');
+    const arChatToggle = document.getElementById('ar-chat-toggle');
+    let capText = '';
+    let capConsumed = 0;
+    let capTimer = null;
+    let capPlaying = false;
+
+    function arAudioBusy() {
+        try {
+            // Prefer the companion's single source of truth: it also knows about
+            // the pluggable engines (Piper WASM plays through WebAudio and is
+            // invisible to speechSynthesis) and correctly ignores silent media
+            // such as the face-tracking webcam. Without it a Piper reply reads
+            // as "already finished" and the caption fades mid-sentence.
+            if (window.companionMode?._replyAudioBusy) return window.companionMode._replyAudioBusy();
+            if (window.SpeechService?.isSpeaking) return true;
+            if (window.speechSynthesis && (speechSynthesis.speaking || speechSynthesis.pending)) return true;
+        } catch (_) {}
+        return false;
+    }
+
+    function arAdvanceChunk() {
+        if (!arCaption) return;
+        const rest = capText.slice(capConsumed);
+        if (!rest.trim()) {
+            capPlaying = false;
+            clearTimeout(capTimer);
+            capTimer = setTimeout(
+                () => {
+                    if (capText.slice(capConsumed).trim() || arAudioBusy()) return arAdvanceChunk();
+                    arCaption.classList.remove('show');
+                },
+                arAudioBusy() ? 600 : 2200
+            );
+            return;
         }
-        arChat.scrollTop = arChat.scrollHeight;
+        // Reuse the companion's boundary-aware chunker when available.
+        const chunker = window.CompanionMode?._nextChunk;
+        const chunk = chunker ? chunker(rest) : { text: rest.slice(0, 90), rawLen: Math.min(90, rest.length) };
+        capConsumed += chunk.rawLen;
+        capPlaying = true;
+        arCaption.textContent = chunk.text;
+        arCaption.classList.add('show');
+        clearTimeout(capTimer);
+        capTimer = setTimeout(arAdvanceChunk, Math.max(1500, chunk.text.length * 75));
+    }
+
+    function appendARBubble(role, text) {
+        // Transcript (on demand): keep, capped at the last 8 messages.
+        if (arChat) {
+            const bubble = document.createElement('div');
+            bubble.className = `ar-chat-bubble ar-chat-bubble--${role === 'user' ? 'user' : 'bot'}`;
+            bubble.textContent = text;
+            arChat.appendChild(bubble);
+            while (arChat.children.length > 8) {
+                arChat.removeChild(arChat.firstChild);
+            }
+            arChat.scrollTop = arChat.scrollHeight;
+        }
+        // Caption: replies play as chunks; user messages flash briefly.
+        if (!arCaption) return;
+        if (role === 'user') {
+            if (!capPlaying) {
+                arCaption.textContent = '🗣 ' + text;
+                arCaption.classList.add('show');
+                clearTimeout(capTimer);
+                capTimer = setTimeout(() => arCaption.classList.remove('show'), 2500);
+            }
+            return;
+        }
+        capText = text;
+        capConsumed = 0;
+        clearTimeout(capTimer);
+        arAdvanceChunk();
+    }
+
+    // 💬 toggles the transcript; long-press (600ms) clears it.
+    if (arChatToggle && arChat) {
+        let pressTimer = null;
+        let longPressFired = false;
+        const setToggleState = (hidden) => {
+            arChatToggle.title = hidden ? 'Show conversation' : 'Hide conversation';
+            arChatToggle.setAttribute('aria-label', arChatToggle.title);
+            arChatToggle.setAttribute('aria-expanded', hidden ? 'false' : 'true');
+        };
+        setToggleState(arChat.classList.contains('ar-chat--hidden'));
+
+        arChatToggle.addEventListener('click', () => {
+            // A long-press is followed by a synthesized click. Without this the
+            // clear would immediately be undone — the transcript reopens, empty.
+            if (longPressFired) {
+                longPressFired = false;
+                return;
+            }
+            setToggleState(arChat.classList.toggle('ar-chat--hidden'));
+        });
+
+        // Pointer events, not touch-only: this also works with a mouse or a
+        // stylus, and one code path covers every input type.
+        const startPress = () => {
+            longPressFired = false;
+            clearTimeout(pressTimer);
+            pressTimer = setTimeout(() => {
+                longPressFired = true;
+                arChat.innerHTML = '';
+                arChat.classList.add('ar-chat--hidden');
+                setToggleState(true);
+                if (navigator.vibrate) navigator.vibrate(15); // "it cleared" confirmation
+            }, 600);
+        };
+        const cancelPress = () => clearTimeout(pressTimer);
+        arChatToggle.addEventListener('pointerdown', startPress);
+        arChatToggle.addEventListener('pointerup', cancelPress);
+        arChatToggle.addEventListener('pointercancel', cancelPress);
+        arChatToggle.addEventListener('pointerleave', cancelPress);
+        // Suppress the context menu a long-press raises on some browsers.
+        arChatToggle.addEventListener('contextmenu', (e) => e.preventDefault());
     }
 
     // Expose so the main addMessageToHistory can mirror to AR

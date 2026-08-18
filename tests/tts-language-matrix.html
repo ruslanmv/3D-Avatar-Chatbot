@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>TTS Language Matrix — verification</title>
+        <style>
+            body {
+                margin: 0;
+                padding: 20px;
+                background: #0b1020;
+                color: #e8ecf6;
+                font:
+                    14px/1.5 system-ui,
+                    sans-serif;
+            }
+            h1 {
+                font-size: 18px;
+                margin: 0 0 4px;
+            }
+            p {
+                color: #9aa4bd;
+                margin: 4px 0 14px;
+                max-width: 820px;
+            }
+            table {
+                border-collapse: collapse;
+                width: 100%;
+                max-width: 980px;
+            }
+            th,
+            td {
+                border: 1px solid #24304d;
+                padding: 8px 10px;
+                text-align: center;
+                font-size: 13px;
+            }
+            th {
+                background: #131c33;
+            }
+            td.lang {
+                text-align: left;
+                font-weight: 600;
+                white-space: nowrap;
+            }
+            button {
+                background: #1c2a4a;
+                border: 1px solid #34497e;
+                color: #e8ecf6;
+                border-radius: 8px;
+                padding: 5px 10px;
+                cursor: pointer;
+                font-size: 12px;
+            }
+            button:hover {
+                background: #26375f;
+            }
+            button:disabled {
+                opacity: 0.35;
+                cursor: default;
+            }
+            .ok {
+                color: #34d399;
+            }
+            .warn {
+                color: #f59e0b;
+            }
+            .bad {
+                color: #f87171;
+            }
+            .cell small {
+                display: block;
+                color: #8b94ad;
+                font-size: 10px;
+                margin-top: 3px;
+            }
+            #runall {
+                margin: 14px 0;
+                padding: 8px 16px;
+                font-size: 13px;
+            }
+            #status {
+                color: #93c5fd;
+                margin-left: 10px;
+            }
+            .legend {
+                font-size: 12px;
+                color: #9aa4bd;
+                margin-top: 12px;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>🔊 TTS Language Matrix</h1>
+        <p>
+            Verifies text-to-speech for every language in Settings, on <b>both engines</b> and <b>both genders</b>. Each
+            cell shows the voice <b>the app itself would choose</b> (same selection logic as
+            <code>src/main.js</code> and <code>src/AppLanguage.js</code>). Availability is detected automatically;
+            <b>gender and quality must be verified by ear</b> — press ▶ (or Run all) and confirm each cell sounds like
+            the right language and the right gender. Piper downloads each model (~20&nbsp;MB) on first play.
+        </p>
+        <p>
+            Catalog facts are checked separately and automatically by
+            <code>node tests/piper-catalog-audit.mjs</code> (voice IDs exist, speaker counts, language codes, who
+            speaker&nbsp;0 is). Run that first — this page is only for what a machine can't judge: how a voice
+            <i>sounds</i>.
+        </p>
+        <button id="runall">▶ Run all available</button><span id="status"></span>
+        <table id="matrix">
+            <thead>
+                <tr>
+                    <th>Language</th>
+                    <th>Built-in · Female</th>
+                    <th>Built-in · Male</th>
+                    <th>Piper · Female</th>
+                    <th>Piper · Male</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <div class="legend">
+            ✔ available · ⚠ available but compromised (no matching voice — a fallback is shown, or the app's heuristic
+            can't tell the voice's gender) · ✖ nothing for this language.<br />
+            Known gaps, confirmed against the Piper model index: <b>pt-BR</b> has no female Piper model and
+            <b>ja-JP / ko-KR</b> have no Piper models at all — use the built-in engine there. Built-in voices are
+            supplied by the device/OS, so the same test on another phone can differ.
+        </div>
+
+        <script src="../src/tts/PiperWasmTTSProvider.js"></script>
+        <script>
+            const LANGS = [
+                ['en-US', 'The quick brown fox jumps over the lazy dog.'],
+                ['en-GB', 'The quick brown fox jumps over the lazy dog.'],
+                ['es-ES', 'Hola, soy tu asistente y estoy hablando en español.'],
+                ['it-IT', 'Ciao, sono il tuo assistente e sto parlando in italiano.'],
+                ['fr-FR', 'Bonjour, je suis votre assistante et je parle français.'],
+                ['de-DE', 'Hallo, ich bin deine Assistentin und spreche Deutsch.'],
+                ['pt-BR', 'Olá, eu sou sua assistente e estou falando português.'],
+                ['ja-JP', 'こんにちは、私はあなたのアシスタントです。日本語で話しています。'],
+                ['ko-KR', '안녕하세요, 저는 당신의 어시스턴트입니다. 한국어로 말하고 있어요.'],
+                ['zh-CN', '你好，我是你的助手，正在说中文。'],
+            ];
+            // MIRRORED VERBATIM from guessGender() in src/main.js — the point of this page
+            // is to predict what the APP will pick, so it must use the app's heuristic and
+            // not a cleverer one of its own. Keep in sync if main.js changes.
+            function guess(v) {
+                const s = (v.name + ' ' + v.voiceURI).toLowerCase();
+                if (
+                    /(female|woman|zira|susan|samantha|victoria|tessa|karen|serena|monica|lucia|alice|emma|olivia|google us english)/i.test(
+                        s
+                    )
+                )
+                    return 'female';
+                if (/(male|man|david|mark|daniel|george|alex|fred|tom|diego|luca|paul|joel)/i.test(s)) return 'male';
+                return 'unknown';
+            }
+
+            function wsVoices() {
+                return new Promise((res) => {
+                    let v = speechSynthesis.getVoices();
+                    if (v.length) return res(v);
+                    speechSynthesis.onvoiceschanged = () => res(speechSynthesis.getVoices());
+                    setTimeout(() => res(speechSynthesis.getVoices()), 1200);
+                });
+            }
+
+            function pickWS(voices, lang, gender) {
+                const base = lang.slice(0, 2).toLowerCase();
+                let pool = voices.filter((v) => v.lang.toLowerCase().replace('_', '-') === lang.toLowerCase());
+                if (!pool.length) pool = voices.filter((v) => v.lang.toLowerCase().startsWith(base));
+                if (!pool.length) return { v: null, note: 'no voice on this device' };
+                const exact = pool.filter((v) => guess(v) === gender);
+                if (exact.length) return { v: exact[0], note: exact[0].name };
+                // The app can only honor "Prefer Female/Male" for voices its heuristic
+                // recognizes — an unrecognized name is a real limitation, so flag it.
+                const unk = pool.filter((v) => guess(v) === 'unknown');
+                if (unk.length) return { v: unk[0], note: unk[0].name + ' — app can’t tell gender', warn: true };
+                return { v: pool[0], note: pool[0].name + ' (other gender)', warn: true };
+            }
+            // Mirrors the app's Piper selection (src/AppLanguage.js): match the language,
+            // then the requested gender, PREFERRING single-speaker models — piper-tts-web
+            // hardcodes speakerId=0, so a multi-speaker model's gender tag only describes
+            // speaker 0.
+            function pickPiper(lang, gender) {
+                const cat = window.PiperWasmTTSProvider?.getVoices?.() || [];
+                const base = lang.slice(0, 2).toLowerCase();
+                let pool = cat.filter((v) => v.lang.toLowerCase() === lang.toLowerCase());
+                if (!pool.length) pool = cat.filter((v) => v.lang.toLowerCase().startsWith(base));
+                if (!pool.length) return { v: null, note: 'no Piper model for this language' };
+                const other = gender === 'female' ? 'male' : 'female';
+                const byGender = pool.filter((v) => v.gender === gender);
+                const byOther = pool.filter((v) => v.gender === other);
+                const solo = (l) => l.filter((v) => !v.multi);
+                const tag = (v) => v.name + (v.multi ? ' — multi-speaker, plays speaker 0' : '');
+                const fell = (v) => ({ v, note: tag(v) + ' — no ' + gender + ' model, using ' + other, warn: true });
+                if (solo(byGender).length) return { v: solo(byGender)[0], note: tag(solo(byGender)[0]) };
+                if (byGender.length) return { v: byGender[0], note: tag(byGender[0]), warn: true };
+                // No voice of the requested gender: take the other gender rather
+                // than nothing — same rule the app applies.
+                if (solo(byOther).length) return fell(solo(byOther)[0]);
+                if (byOther.length) return fell(byOther[0]);
+                return { v: pool[0], note: pool[0].name + ' — no gendered model, falling back', warn: true };
+            }
+
+            function speakWS(voice, lang, text) {
+                return new Promise((res, rej) => {
+                    const u = new SpeechSynthesisUtterance(text);
+                    u.lang = lang;
+                    if (voice) u.voice = voice;
+                    u.onend = res;
+                    u.onerror = (e) => rej(e.error || 'error');
+                    speechSynthesis.cancel();
+                    speechSynthesis.speak(u);
+                    setTimeout(res, 15000);
+                });
+            }
+            function speakPiper(id, text) {
+                return new Promise((res, rej) => {
+                    window.PiperWasmTTSProvider.setSelectedVoice(id);
+                    window.PiperWasmTTSProvider.speak(text, { onEnd: res, onError: rej });
+                    setTimeout(res, 60000);
+                });
+            }
+
+            async function build() {
+                const tbody = document.querySelector('#matrix tbody');
+                const voices = await wsVoices();
+                const cells = [];
+                for (const [lang, sample] of LANGS) {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = '<td class="lang">' + lang + '</td>';
+                    for (const [engine, gender] of [
+                        ['ws', 'female'],
+                        ['ws', 'male'],
+                        ['piper', 'female'],
+                        ['piper', 'male'],
+                    ]) {
+                        const td = document.createElement('td');
+                        td.className = 'cell';
+                        const pick = engine === 'ws' ? pickWS(voices, lang, gender) : pickPiper(lang, gender);
+                        if (!pick.v) {
+                            td.innerHTML = '<span class="bad">✖</span><small>' + pick.note + '</small>';
+                        } else {
+                            const b = document.createElement('button');
+                            b.textContent = '▶';
+                            const mark = document.createElement('span');
+                            mark.className = pick.warn ? 'warn' : 'ok';
+                            mark.textContent = pick.warn ? ' ⚠' : ' ✔';
+                            const note = document.createElement('small');
+                            note.textContent = pick.note;
+                            b.onclick = async () => {
+                                b.disabled = true;
+                                b.textContent = '…';
+                                try {
+                                    if (engine === 'ws') await speakWS(pick.v, lang, sample);
+                                    else await speakPiper(pick.v.id, sample);
+                                    b.textContent = '▶ ✓';
+                                } catch (e) {
+                                    b.textContent = '▶ ✖';
+                                    mark.className = 'bad';
+                                    note.textContent += ' — ' + e;
+                                }
+                                b.disabled = false;
+                            };
+                            td.append(b, mark, note);
+                            cells.push({ b, available: true });
+                        }
+                        tr.appendChild(td);
+                    }
+                    tbody.appendChild(tr);
+                }
+                document.getElementById('runall').onclick = async () => {
+                    const st = document.getElementById('status');
+                    for (let i = 0; i < cells.length; i++) {
+                        st.textContent = 'Playing ' + (i + 1) + '/' + cells.length + '…';
+                        cells[i].b.click();
+                        await new Promise((r) => {
+                            const iv = setInterval(() => {
+                                if (!cells[i].b.disabled) {
+                                    clearInterval(iv);
+                                    r();
+                                }
+                            }, 300);
+                        });
+                    }
+                    st.textContent = 'Done — mark by ear which cells sounded wrong.';
+                };
+            }
+            build();
+        </script>
+    </body>
+</html>

@@ -60,6 +60,14 @@
     // Mouse/touch input (normalized -1..1)
     const mouse = { x: 0, y: 0 };
     let inputInit = false;
+    let lastTouchAt = 0; // last TOUCH input (mouse never sets this — desktop keeps continuous follow)
+
+    // Gaze return ("eye contact is the resting state"). Touch is sparse and
+    // edge-biased, so a touch is treated as a GLANCE that expires; a mouse is a
+    // continuous presence, so it is exempt and keeps today's follow behavior.
+    const GAZE_GLANCE_HOLD_MS = 2500; // how long a glance holds before returning
+    const GAZE_RETURN_LAMBDA = 3; // exponential rate → ~1.6s from full deflection
+    const GAZE_REST_EPSILON = 0.01; // close enough to center to stop decaying
 
     // Gaze override: when non-null, head bone ignores mouse/touch and uses these values
     let gazeOverride = null; // { x: number, y: number } | null
@@ -96,17 +104,39 @@
             mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
         });
-        // Touch tracking for mobile — skip touches on UI controls
+        // Touch tracking for mobile — skip touches on UI controls.
+        // Unlike a mouse, touch is SPARSE: without decay, the last touch
+        // (usually a button at a screen edge) freezes the head sideways
+        // forever. So every touch is a GLANCE: it moves the gaze, and after a
+        // short while the gaze eases back to eye contact (see decay below).
         window.addEventListener(
             'touchmove',
             (e) => {
                 if (gazeOverride || faceTrackingActive) return;
                 var t = e.touches[0];
                 if (!t) return;
+                // ALLOWLIST, not a denylist. The gaze may only follow a touch
+                // that lands on the 3D VIEW ITSELF — the renderer canvas, or the
+                // bare viewport behind it. Everything else is UI: the settings
+                // panel, the drawer, chat controls, the companion's drag bar and
+                // buttons, the floating ⛶. Operating a control must never turn
+                // her head away from you.
+                //
+                // A denylist was tried first and is unmaintainable: every new
+                // panel silently reintroduces the bug (the drawer selector in
+                // the original list didn't even exist, so the very element that
+                // caused the report was never actually excluded). An allowlist
+                // fails safe — an unknown new overlay is ignored by default.
+                // Verified: the avatar area reports CANVAS in both the main view
+                // and the companion widget, while the settings panel reports its
+                // own elements.
                 var el = document.elementFromPoint(t.clientX, t.clientY);
-                if (el && el.closest('.voice-btn-compact, .chat-input, .send-btn, .chat-input-bar')) return;
+                if (!el) return;
+                var onView = el.tagName === 'CANVAS' || el.id === 'avatar-viewport';
+                if (!onView) return;
                 mouse.x = (t.clientX / window.innerWidth) * 2 - 1;
                 mouse.y = -(t.clientY / window.innerHeight) * 2 + 1;
+                lastTouchAt = performance.now(); // start the glance timer
             },
             { passive: true }
         );
@@ -119,6 +149,19 @@
             mouse.x = coords.x;
             mouse.y = coords.y;
         }
+    }
+
+    /**
+     * Put the gaze back on the user immediately ("first impressions are eye
+     * contact"). The decay alone would take up to ~4s to recover from a stale
+     * touch, which is a long time to be stared past when a companion opens.
+     * No-op while a gaze override owns the head (VR / face tracking).
+     */
+    function recenterGaze() {
+        if (gazeOverride) return;
+        mouse.x = 0;
+        mouse.y = 0;
+        lastTouchAt = 0;
     }
 
     /**
@@ -859,7 +902,40 @@
 
                 applyAdditiveEuler(bones.head, new THREE.Euler(ud.pitch, ud.yaw, ud.roll));
             } else {
-                // Mouse/touch follow (default behavior)
+                // Mouse/touch follow (default behavior).
+                // EYE CONTACT IS THE RESTING STATE (touch only):
+                //  - a touch is a glance — ~2.5s after the finger stops, the
+                //    gaze eases back to center (facing the user), so a stale
+                //    edge-of-screen tap can never freeze her in profile;
+                //  - while she is listening/thinking/speaking, eye contact is
+                //    held immediately (conversational gaze, like the VR path).
+                //  Desktop mice never set lastTouchAt, so mouse-follow keeps
+                //  today's continuous behavior untouched.
+                //  CRITICAL: skip while a gaze override is active. setGazeOverride()
+                //  does not bypass this code — it WRITES INTO `mouse` (see its
+                //  definition), and VRGazeController / FaceTracker follow-mode
+                //  rewrite it every frame. Decaying underneath them would pull
+                //  every frame's value ~5% toward center, and because they keep
+                //  writing non-zero values `mouse` would never reach the rest
+                //  threshold, so the decay would never stop — a permanent, silent
+                //  inward bias on headset gaze and on mobile face tracking.
+                if (lastTouchAt && !gazeOverride) {
+                    var convState = window.companionMode && window.companionMode._convState;
+                    var inConversation =
+                        convState === 'listening' || convState === 'thinking' || convState === 'speaking';
+                    var sinceTouch = performance.now() - lastTouchAt;
+                    if (inConversation || sinceTouch > GAZE_GLANCE_HOLD_MS) {
+                        // Ease the gaze target home (frame-rate independent).
+                        var k = 1 - Math.exp(-GAZE_RETURN_LAMBDA * (dtSec || 0.016));
+                        mouse.x += (0 - mouse.x) * k;
+                        mouse.y += (0 - mouse.y) * k;
+                        if (Math.abs(mouse.x) < GAZE_REST_EPSILON && Math.abs(mouse.y) < GAZE_REST_EPSILON) {
+                            mouse.x = 0;
+                            mouse.y = 0;
+                            lastTouchAt = 0; // fully home — stop decaying (zero cost at rest)
+                        }
+                    }
+                }
                 var yawT = THREE.MathUtils.clamp(mouse.x * hl.yawScale, -hl.yawClamp, hl.yawClamp);
                 var pitchT = THREE.MathUtils.clamp(mouse.y * hl.pitchScale, -hl.pitchClamp, hl.pitchClamp);
 
@@ -974,6 +1050,7 @@
         setSpeed,
         getSpeed,
         setGazeOverride,
+        recenterGaze,
         setFaceTrackingActive,
         setFaceTrackingHead,
         captureRestPose,

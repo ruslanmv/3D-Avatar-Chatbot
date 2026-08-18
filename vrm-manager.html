@@ -537,6 +537,20 @@
                                 >Application Secret
                                 <input id="vm-vroid-app-secret" type="password" placeholder="Your App Secret" />
                             </label>
+                            <label
+                                class="vm-cred-row"
+                                style="flex-direction: row; align-items: center; gap: 8px; font-weight: normal"
+                            >
+                                <input id="vm-vroid-scope-heart" type="checkbox" style="width: auto" />
+                                <span style="font-size: 13px"
+                                    >Request “heart” permission
+                                    <span style="opacity: 0.6"
+                                        >— only tick this if your app has it enabled at
+                                        hub.vroid.com/oauth/applications. Asking for a permission the app doesn’t have
+                                        makes VRoid Hub reject the sign-in with “400 Invalid parameters”.</span
+                                    >
+                                </span>
+                            </label>
                             <details style="margin-top: 4px">
                                 <summary style="cursor: pointer; opacity: 0.7; font-size: 13px">
                                     Advanced: paste token manually

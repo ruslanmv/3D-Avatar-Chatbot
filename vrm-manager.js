@@ -743,6 +743,8 @@ const VRMManager = {
                 appId: isServerConfigured ? existingVroid.appId : el('vm-vroid-app-id').value.trim(),
                 appSecret: isServerConfigured ? existingVroid.appSecret : el('vm-vroid-app-secret').value.trim(),
                 _serverConfigured: isServerConfigured || false,
+                // Opt-in extra OAuth scope — off unless the app really has it.
+                scopeHeart: !!el('vm-vroid-scope-heart')?.checked,
                 accessToken: uiAccessToken || existingVroid.accessToken || '',
                 refreshToken: uiRefreshToken || existingVroid.refreshToken || '',
                 tokenExpiresAt:
@@ -775,6 +777,8 @@ const VRMManager = {
             }
             setVal('vm-vroid-access-token', c.vroid.accessToken || '');
             setVal('vm-vroid-refresh-token', c.vroid.refreshToken || '');
+            const heartBox = el('vm-vroid-scope-heart');
+            if (heartBox) heartBox.checked = !!c.vroid.scopeHeart;
         }
         if (c.avaturn) {
             setVal('vm-avaturn-subdomain', c.avaturn.subdomain || '');
@@ -1228,9 +1232,36 @@ const VRMManager = {
         const codeVerifier = this._generateCodeVerifier();
         const codeChallenge = await this._generateCodeChallenge(codeVerifier);
 
-        // Build the redirect URI — callback handler on our own domain
-        const origin = window.location.origin;
-        const redirectUri = `${origin}/api/vroid-hub-callback`;
+        // Build the redirect URI — it MUST be one the VRoid Hub application
+        // has registered, and window.location.origin often is not.
+        //
+        // Vercel PREVIEW deployments get a host containing a per-branch hash
+        // (avatar-chatbot-git-2239aa-….vercel.app) that changes on every push,
+        // so it can never be pre-registered — and VRoid Hub answers an
+        // unregistered redirect_uri with exactly the "400 Invalid parameters"
+        // page on /authorize/confirm. Registering preview URLs is not a fix;
+        // there is a new one every deployment.
+        //
+        // So: use this origin when it IS registered, otherwise borrow the
+        // stable production callback. The popup lands there, and that page
+        // posts the tokens back to this window — postMessage works
+        // cross-origin, and no COOP header is set that would null the opener.
+        // For another deployment, override with:
+        //   localStorage.setItem('vroid_oauth_origin', 'https://your.domain')
+        const REGISTERED_ORIGINS = [
+            'https://www.yourfriend.online',
+            'https://yourfriend.online',
+            'http://localhost:8080',
+        ];
+        const FALLBACK_CALLBACK_ORIGIN = 'https://www.yourfriend.online';
+        const here = window.location.origin;
+        let originOverride = '';
+        try {
+            originOverride = (localStorage.getItem('vroid_oauth_origin') || '').trim().replace(/\/+$/, '');
+        } catch (_) {}
+        const callbackOrigin = originOverride || (REGISTERED_ORIGINS.includes(here) ? here : FALLBACK_CALLBACK_ORIGIN);
+        const originBorrowed = callbackOrigin !== here;
+        const redirectUri = `${callbackOrigin}/api/vroid-hub-callback`;
 
         // Encode state with PKCE verifier + credentials for the callback
         const state = btoa(
@@ -1242,12 +1273,35 @@ const VRMManager = {
             })
         );
 
+        // SCOPE — ask for the least privilege that works.
+        //
+        // 'default' is the only scope every VRoid Hub application has; it covers
+        // listing, searching, model details and download licences. 'heart' is a
+        // SEPARATE permission that must be enabled per-application at
+        // https://hub.vroid.com/oauth/applications — and an authorize request
+        // for a scope the application does not hold is rejected by VRoid Hub,
+        // which renders "400 Invalid parameters" on /authorize/confirm.
+        // Requesting 'default heart' unconditionally therefore broke sign-in for
+        // every app without that permission. Opt in only when the user says the
+        // app has it.
+        const wantHeart = (() => {
+            const box = el('vm-vroid-scope-heart');
+            if (box) return !!box.checked;
+            try {
+                return localStorage.getItem('vroid_scope_heart') === 'on';
+            } catch (_) {
+                return false;
+            }
+        })();
+        // Space-delimited per OAuth 2.0 (§3.3); '+' is a space in a query string.
+        const scope = wantHeart ? 'default heart' : 'default';
+
         const authUrl =
             `https://hub.vroid.com/oauth/authorize?` +
             `response_type=code` +
             `&client_id=${encodeURIComponent(appId)}` +
             `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-            `&scope=default+heart` +
+            `&scope=${encodeURIComponent(scope)}` +
             `&state=${encodeURIComponent(state)}` +
             `&code_challenge=${encodeURIComponent(codeChallenge)}` +
             `&code_challenge_method=S256`;
@@ -1256,14 +1310,27 @@ const VRMManager = {
         console.log(`[VRM-Manager] OAuth flow starting:`);
         console.log(`[VRM-Manager]   origin:        ${origin}`);
         console.log(`[VRM-Manager]   redirect_uri:  ${redirectUri}`);
+        if (originBorrowed) {
+            console.log(
+                `[VRM-Manager]   NOTE: this origin (${here}) is not a registered VRoid Hub\n` +
+                    '[VRM-Manager]         redirect URI — Vercel preview hosts change per deployment and\n' +
+                    '[VRM-Manager]         cannot be registered. Borrowing the stable production callback\n' +
+                    '[VRM-Manager]         above; the popup posts the tokens back here cross-origin.'
+            );
+        }
         console.log(`[VRM-Manager]   client_id:     ${mask(appId)}`);
         console.log(`[VRM-Manager]   serverConfig:  ${isServerConfigured}`);
         console.log(`[VRM-Manager]   hasSecret:     ${appSecret ? 'yes' : 'no (server holds it)'}`);
+        console.log(`[VRM-Manager]   scope:         ${scope}`);
         console.log(`[VRM-Manager]   codeChallenge: ${codeChallenge.substring(0, 6)}...`);
         console.log(
-            '[VRM-Manager] ⚠️  If you get 400 "Invalid parameters", the redirect_uri above MUST be ' +
-                'registered in your VRoid Hub app → https://hub.vroid.com/oauth/applications\n' +
-                '[VRM-Manager] ⚠️  Add EXACTLY this URI (including https/http and path) to the Redirect URI field.'
+            '[VRM-Manager] ⚠️  A 400 "Invalid parameters" page on /authorize/confirm means VRoid Hub\n' +
+                '[VRM-Manager]     accepted the request shape but rejected your APP settings. In order of likelihood:\n' +
+                `[VRM-Manager]     1. redirect_uri not registered — add EXACTLY "${redirectUri}"\n` +
+                '[VRM-Manager]        (scheme, host, port and path must match) at https://hub.vroid.com/oauth/applications\n' +
+                `[VRM-Manager]     2. scope "${scope}" includes a permission your app does not have —\n` +
+                '[VRM-Manager]        untick "Request heart permission", or enable it on the app.\n' +
+                '[VRM-Manager]     3. client_id wrong, or the application was deleted/suspended.'
         );
         toast('Opening VRoid Hub authorization...', 'info');
 
@@ -1272,6 +1339,9 @@ const VRMManager = {
 
         // Listen for postMessage from callback page
         const handler = (event) => {
+            // Only accept the callback we opened. Without this any window could
+            // post a forged token into the app.
+            if (event.origin !== callbackOrigin) return;
             if (!event.data || !event.data.type) return;
             if (event.data.type === 'vroid-oauth-success') {
                 window.removeEventListener('message', handler);
