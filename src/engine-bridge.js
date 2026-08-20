@@ -104,13 +104,27 @@ const initEngine = async () => {
         window.NEXUS_VIEWER = engine;
         console.log('[ViewerBridge] ViewerEngine created, NEXUS_VIEWER set');
 
+        // Render-mode preset FIRST — it seeds every visual toggle, and the
+        // explicitly saved per-setting keys below are re-applied on top of it.
+        //
+        // 'anime' is the default for existing installs too, not just fresh
+        // ones. Migrating installs with saved fx_*/desktop_* keys to
+        // 'cinematic' was considered and rejected: the linear->sRGB output
+        // pass added in this change corrects the composer for BOTH modes, so
+        // 'cinematic' is not the pre-change look either — the migration would
+        // have withheld the new default from essentially every real install
+        // (saveSettings() writes desktop_bg on every Save) while still
+        // changing how it looks. The Settings toggle is the way back.
+        engine.setRenderMode(localStorage.getItem('render_mode') || ViewerEngine.DEFAULT_RENDER_MODE);
+
         // Apply saved desktop background from settings
         const savedBg = localStorage.getItem('desktop_bg');
         if (savedBg) engine.setDesktopBackground(savedBg);
 
-        // Apply saved shadow setting (default: off)
+        // Apply saved shadow setting (only when the user explicitly saved one —
+        // otherwise the render-mode preset decides)
         const savedShadow = localStorage.getItem('desktop_shadow');
-        engine.setShadows(savedShadow === 'on');
+        if (savedShadow !== null) engine.setShadows(savedShadow === 'on');
 
         // Apply saved visual effects settings (default: all on)
         const fxKeys = [
@@ -128,8 +142,12 @@ const initEngine = async () => {
         if (window.NEXUS_DEVICE) {
             const settings = window.NEXUS_DEVICE.getRendererSettings();
             engine.renderer.setPixelRatio(settings.pixelRatio);
-            if (settings.shadowMapEnabled !== undefined) {
-                engine.setShadows(settings.shadowMapEnabled);
+            // Device profiles may only RESTRICT shadows (weak GPUs force them
+            // off). Previously the desktop profile force-ENABLED shadows here
+            // on every boot, silently overriding the user's saved preference
+            // and the render-mode preset.
+            if (settings.shadowMapEnabled === false) {
+                engine.setShadows(false);
             }
         }
 

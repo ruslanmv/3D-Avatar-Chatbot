@@ -91,12 +91,14 @@ export class ViewerEngine {
         this._savedEnvMap = this.scene.environment; // saved for toggle restore
         this._envMapEnabled = true;
         this._toneMappingEnabled = true;
+        this._renderMode = null; // set via setRenderMode() at end of constructor
 
         // Desktop background (default: black — can be changed via settings)
         this._desktopBgKey = 'black';
         this.scene.background = new THREE.Color(0x000000);
 
-        this.scene.add(new THREE.HemisphereLight(0xffffff, 0x888899, 0.9));
+        this._hemiLight = new THREE.HemisphereLight(0xffffff, 0x888899, 0.9);
+        this.scene.add(this._hemiLight);
 
         // Key light — main directional light with optimized shadows
         this.directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
@@ -116,21 +118,21 @@ export class ViewerEngine {
         this.scene.add(this.directionalLight);
 
         // Fill light — bright opposite side for even illumination (Sketchfab-style)
-        const fillLight = new THREE.DirectionalLight(0xffffff, 0.85);
-        fillLight.position.set(-1, 1.5, -0.5);
-        this.scene.add(fillLight);
+        this._fillLight = new THREE.DirectionalLight(0xffffff, 0.85);
+        this._fillLight.position.set(-1, 1.5, -0.5);
+        this.scene.add(this._fillLight);
 
         // Rim light — very subtle backlight for depth separation from background
         // Kept low to avoid bright edge outlines on dark VRM materials
-        const rimLight = new THREE.DirectionalLight(0xeeeeff, 0.15);
-        rimLight.position.set(0, 1.5, -2);
-        this.scene.add(rimLight);
+        this._rimLight = new THREE.DirectionalLight(0xeeeeff, 0.15);
+        this._rimLight.position.set(0, 1.5, -2);
+        this.scene.add(this._rimLight);
 
         // Bottom fill — prevents dark legs/lower body (Sketchfab uses env map for this)
         // Kept low to avoid bright edge outlines on trouser/leg seams
-        const bottomFill = new THREE.DirectionalLight(0xffffff, 0.18);
-        bottomFill.position.set(0, -0.5, 1);
-        this.scene.add(bottomFill);
+        this._bottomFill = new THREE.DirectionalLight(0xffffff, 0.18);
+        this._bottomFill.position.set(0, -0.5, 1);
+        this.scene.add(this._bottomFill);
 
         // Ground shadow plane (desktop — makes avatar look grounded)
         this._desktopShadowPlane = new THREE.Mesh(
@@ -268,7 +270,16 @@ export class ViewerEngine {
             initialLevel: this.mobileSupport.isMobileOrTablet() ? 1 : 0,
         });
         this.perfMonitor.onQualityChange((level, _fps) => {
-            this.postProcessing?.setQualityLevel(level);
+            // 'anime' bypasses the composer by design, and setQualityLevel()
+            // turns SSAO/bloom back ON at levels 0-1. Letting it run here would
+            // re-flag effects the preset just cleared, desyncing the Settings
+            // panel (getVisualState() reads those flags) the moment the FPS
+            // sampler fires. There is nothing to downgrade in 'anime' anyway —
+            // it is already the cheapest path. 'cinematic' keeps the existing
+            // adaptive behaviour untouched.
+            if (this._renderMode !== 'anime') {
+                this.postProcessing?.setQualityLevel(level);
+            }
 
             // At level 3 (lowest), also reduce shadow quality
             if (level >= 3) {
@@ -730,6 +741,12 @@ export class ViewerEngine {
             window.visualViewport.addEventListener('resize', this._onVisualViewportResize);
             window.visualViewport.addEventListener('scroll', this._onVisualViewportResize);
         }
+
+        // Default render mode — 'anime' reproduces VRoid Hub (direct sRGB
+        // render, no tone mapping, authored MToon). This is the safe default
+        // for anyone constructing a ViewerEngine directly; engine-bridge.js
+        // re-applies the user's saved mode right after construction.
+        this.setRenderMode(ViewerEngine.DEFAULT_RENDER_MODE);
 
         this.animate();
         console.log('[ViewerEngine] Ready.');
@@ -1274,6 +1291,33 @@ export class ViewerEngine {
         dark: 0x1a1a2e,
         gray: 0x808080,
         light: 0xb0b0b0,
+        white: 0xf5f5f5, // VRoid Hub-style near-white canvas
+    };
+
+    /** Default render mode for new installs ('anime' = VRM-accurate). */
+    static DEFAULT_RENDER_MODE = 'anime';
+
+    /**
+     * Light rigs per render mode.
+     *
+     * Units: renderer.physicallyCorrectLights is true, so WebGLLights.setup()
+     * uses scaleFactor = 1 (three r147, build/three.module.js:20252) and these
+     * intensities reach the shader unscaled. The xπ boost only applies when
+     * physicallyCorrectLights is FALSE, so both rigs below are directly
+     * comparable to each other — no π conversion is involved.
+     *
+     * MToon sums every light, and 'anime' runs with NoToneMapping, so there is
+     * no highlight rolloff to absorb an over-bright rig: the sum of the four
+     * front-facing terms is what a white surface facing the key light clips at.
+     * Keep it just under the point where a white shirt reaches 255.
+     */
+    static LIGHT_RIGS = {
+        // Flat, bright VRoid-style rig — hemi ambient + a strong key, no rim
+        // or bottom fill (both exist only to separate the avatar from a DARK
+        // background, and 'anime' renders on a near-white one).
+        anime: { hemi: 1.0, key: 2.0, fill: 0.55, rim: 0.0, bottom: 0.0 },
+        // The original values — the legacy stylised rig.
+        cinematic: { hemi: 0.9, key: 1.2, fill: 0.85, rim: 0.15, bottom: 0.18 },
     };
 
     // =========================================================================
@@ -1298,6 +1342,104 @@ export class ViewerEngine {
     // =========================================================================
     // VISUAL EFFECTS TOGGLES (additive, non-destructive — MMO-style FX panel)
     // =========================================================================
+
+    /** @returns {'anime'|'cinematic'|null} the active render-mode preset */
+    getRenderMode() {
+        return this._renderMode;
+    }
+
+    /**
+     * Snapshot of the user-facing visual toggles (drives the Settings panel).
+     */
+    getVisualState() {
+        return {
+            renderMode: this._renderMode,
+            background: this._desktopBgKey,
+            shadows: this._shadowsEnabled,
+            envmap: this._envMapEnabled,
+            tonemapping: this._toneMappingEnabled,
+            ssao: this.postProcessing?._ssaoEnabled ?? false,
+            bloom: this.postProcessing?._bloomEnabled ?? false,
+        };
+    }
+
+    /**
+     * Apply a render-mode preset.
+     *
+     *   'anime'      VRM-accurate / VRoid Hub parity — direct render (composer
+     *                bypassed) so the canvas sRGB output encoding applies,
+     *                NoToneMapping so MToon's authored colours pass through,
+     *                π-corrected light rig, no SSAO / bloom / IBL, soft contact
+     *                shadow only, white background, authored MToon rim & matcap.
+     *
+     *   'cinematic'  The legacy stylised look — ACES Filmic + SSAO + Bloom +
+     *                FXAA (now with a correct linear→sRGB output pass inside
+     *                the composer), RoomEnvironment IBL, shadow map + contact
+     *                shadow, black background, MToon rim/matcap neutralised.
+     *
+     * The preset drives the same toggles exposed in Settings, so individual
+     * effects can still be overridden afterwards (engine-bridge re-applies any
+     * explicitly saved per-effect keys on top of the preset at boot).
+     *
+     * @param {'anime'|'cinematic'} mode
+     */
+    setRenderMode(mode) {
+        if (!ViewerEngine.LIGHT_RIGS[mode]) {
+            console.warn(`[ViewerEngine] Unknown render mode "${mode}" — ignoring`);
+            return;
+        }
+        this._renderMode = mode;
+        const anime = mode === 'anime';
+
+        // 1. Colour pipeline — bypassing the composer routes rendering through
+        //    the canvas path where renderer.outputEncoding (sRGB) is honoured.
+        this.postProcessing?.setEnabled(!anime);
+        this.setToneMapping(!anime);
+        this.postProcessing?.setSSAO(!anime && !this.mobileSupport?.isMobileOrTablet());
+        this.postProcessing?.setBloom(!anime);
+
+        // 2. Lighting (rig values are physical — ÷π vs legacy numbers)
+        this._applyLightRig(mode);
+        this.setEnvironmentMap(!anime);
+
+        // 3. Grounding — anime keeps only the soft contact blob, no shadow map
+        this.setShadows(!anime);
+        if (anime) {
+            this.desktopShadowEnhancer?.enable();
+        }
+        // setShadows() recreates the contact blob at its default size; re-fit
+        // it (and the shadow frustum) to the loaded avatar, mirroring what
+        // frameObject() does at load time.
+        if (this.avatarManager?.currentRoot && this.desktopShadowEnhancer) {
+            const fitRoot = this.avatarManager.currentRoot;
+            const fitBox = new THREE.Box3().setFromObject(fitRoot);
+            const fitCenter = fitBox.getCenter(new THREE.Vector3());
+            const fitSize = fitBox.getSize(new THREE.Vector3());
+            this.desktopShadowEnhancer.fitToAvatar(fitBox, fitCenter, fitSize);
+        }
+
+        // 4. Canvas
+        this.setDesktopBackground(anime ? 'white' : 'black');
+
+        // 5. Authored MToon rim / matcap (restored in anime, neutralised in cinematic)
+        this.avatarManager?.setMToonEdgeFxNeutralized?.(!anime);
+
+        console.log(`[ViewerEngine] Render mode → ${mode}`);
+    }
+
+    /**
+     * Apply one of the LIGHT_RIGS presets to the studio lights.
+     * @param {'anime'|'cinematic'} name
+     */
+    _applyLightRig(name) {
+        const rig = ViewerEngine.LIGHT_RIGS[name];
+        if (!rig) return;
+        if (this._hemiLight) this._hemiLight.intensity = rig.hemi;
+        if (this.directionalLight) this.directionalLight.intensity = rig.key;
+        if (this._fillLight) this._fillLight.intensity = rig.fill;
+        if (this._rimLight) this._rimLight.intensity = rig.rim;
+        if (this._bottomFill) this._bottomFill.intensity = rig.bottom;
+    }
 
     /**
      * Toggle the environment map (PMREM probe reflections).
@@ -1341,17 +1483,19 @@ export class ViewerEngine {
     }
 
     /**
-     * Toggle ACES Filmic tone mapping vs neutral Linear tone mapping.
-     * ACES = cinematic contrast curve (lifts shadows, compresses highlights).
-     * Linear = flat, faithful color reproduction (VRoid Hub style).
-     * @param {boolean} enabled  true = ACES Filmic, false = Linear
+     * Toggle ACES Filmic tone mapping vs no tone mapping.
+     * ACES = cinematic contrast curve (compresses highlights — pure white
+     * caps at ~226 even on the direct render path).
+     * Off  = NoToneMapping: faithful, art-directed colour reproduction
+     * (the VRoid Hub / VRM-recommended workflow for MToon).
+     * @param {boolean} enabled  true = ACES Filmic, false = none
      */
     setToneMapping(enabled) {
         if (enabled) {
             this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
             this.renderer.toneMappingExposure = 1.0;
         } else {
-            this.renderer.toneMapping = THREE.LinearToneMapping;
+            this.renderer.toneMapping = THREE.NoToneMapping;
             this.renderer.toneMappingExposure = 1.0;
         }
         this._toneMappingEnabled = enabled;
@@ -1366,7 +1510,7 @@ export class ViewerEngine {
             }
         });
 
-        console.log(`[ViewerEngine] Tone mapping → ${enabled ? 'ACES Filmic' : 'Linear'}`);
+        console.log(`[ViewerEngine] Tone mapping → ${enabled ? 'ACES Filmic' : 'off (none)'}`);
     }
 
     // =========================================================================

@@ -30,6 +30,12 @@ export class AvatarManager {
         // Track VRM instance for update()
         this._currentVRM = null;
 
+        // When true (legacy 'cinematic' mode), authored MToon rim lighting and
+        // matcap are zeroed on load to avoid edge glow against dark
+        // backgrounds. ViewerEngine.setRenderMode() flips this to false for
+        // the VRM-accurate 'anime' mode so avatars render exactly as authored.
+        this._mtoonEdgeFxNeutralized = true;
+
         // Load generation counter — prevents stale async loads from adding
         // orphaned avatars to the scene when rapid switching occurs
         this._loadGeneration = 0;
@@ -70,6 +76,97 @@ export class AvatarManager {
             console.warn('[AvatarManager] VRMLoaderPlugin registration failed:', e);
             return false;
         }
+    }
+
+    // =========================================================================
+    // MTOON EDGE FX (parametric rim + matcap) — render-mode aware
+    // =========================================================================
+
+    /**
+     * Save a material's authored rim/matcap values once (idempotent) so they
+     * can be restored when switching to the VRM-accurate render mode.
+     * @param {THREE.Material} mat
+     */
+    _storeMToonEdgeFx(mat) {
+        if (!mat || !mat.isMToonMaterial || mat.userData.__mtoonEdgeFx) return;
+        mat.userData.__mtoonEdgeFx = {
+            rimColor: mat.parametricRimColorFactor ? mat.parametricRimColorFactor.clone() : null,
+            rimFresnel: mat.parametricRimFresnelPowerFactor,
+            rimLift: mat.parametricRimLiftFactor,
+            matcapTexture: mat.matcapTexture || null,
+            matcapFactor: mat.matcapFactor ? mat.matcapFactor.clone() : null,
+        };
+    }
+
+    /**
+     * Neutralize (zero) or restore (authored) a material's rim/matcap.
+     * Safe on non-MToon materials — all property accesses are guarded.
+     * @param {THREE.Material} mat
+     * @param {boolean} neutralize
+     */
+    _applyMToonEdgeFx(mat, neutralize) {
+        if (!mat) return;
+        if (neutralize) {
+            // Disable MToon parametric rim lighting (golden edge glow)
+            if (mat.parametricRimColorFactor) {
+                mat.parametricRimColorFactor.setRGB(0, 0, 0);
+            }
+            if ('parametricRimFresnelPowerFactor' in mat) {
+                mat.parametricRimFresnelPowerFactor = 1;
+            }
+            if ('parametricRimLiftFactor' in mat) {
+                mat.parametricRimLiftFactor = 0;
+            }
+            // Disable matcap spherical reflections
+            if (mat.matcapTexture) {
+                mat.matcapTexture = null;
+            }
+            if (mat.matcapFactor) {
+                mat.matcapFactor.setRGB(0, 0, 0);
+            }
+        } else {
+            const saved = mat.userData.__mtoonEdgeFx;
+            if (!saved) return; // nothing was neutralised for this material
+            if (saved.rimColor && mat.parametricRimColorFactor) {
+                mat.parametricRimColorFactor.copy(saved.rimColor);
+            }
+            if (saved.rimFresnel !== undefined && 'parametricRimFresnelPowerFactor' in mat) {
+                mat.parametricRimFresnelPowerFactor = saved.rimFresnel;
+            }
+            if (saved.rimLift !== undefined && 'parametricRimLiftFactor' in mat) {
+                mat.parametricRimLiftFactor = saved.rimLift;
+            }
+            if ('matcapTexture' in mat) {
+                mat.matcapTexture = saved.matcapTexture;
+            }
+            if (saved.matcapFactor && mat.matcapFactor) {
+                mat.matcapFactor.copy(saved.matcapFactor);
+            }
+        }
+        mat.needsUpdate = true;
+    }
+
+    /**
+     * Render-mode hook: neutralise or restore MToon rim/matcap on the
+     * currently loaded avatar (and every avatar loaded afterwards).
+     * @param {boolean} neutralized
+     */
+    setMToonEdgeFxNeutralized(neutralized) {
+        this._mtoonEdgeFxNeutralized = !!neutralized;
+        if (!this.currentRoot) return;
+        this.currentRoot.traverse((node) => {
+            if (!node.isMesh) return;
+            const mats = Array.isArray(node.material) ? node.material : [node.material];
+            for (const mat of mats) {
+                if (mat && mat.isMToonMaterial) {
+                    this._storeMToonEdgeFx(mat);
+                    this._applyMToonEdgeFx(mat, this._mtoonEdgeFxNeutralized);
+                }
+            }
+        });
+        console.log(
+            `[AvatarManager] MToon rim/matcap ${this._mtoonEdgeFxNeutralized ? 'neutralized' : 'restored (authored)'}`
+        );
     }
 
     /**
@@ -369,23 +466,12 @@ export class AvatarManager {
                             mat.envMap = null;
                             mat.envMapIntensity = 0;
 
-                            // Disable MToon parametric rim lighting (golden edge glow)
-                            if (mat.parametricRimColorFactor) {
-                                mat.parametricRimColorFactor.setRGB(0, 0, 0);
-                            }
-                            if ('parametricRimFresnelPowerFactor' in mat) {
-                                mat.parametricRimFresnelPowerFactor = 1;
-                            }
-                            if ('parametricRimLiftFactor' in mat) {
-                                mat.parametricRimLiftFactor = 0;
-                            }
-                            // Disable matcap spherical reflections
-                            if (mat.matcapTexture) {
-                                mat.matcapTexture = null;
-                            }
-                            if (mat.matcapFactor) {
-                                mat.matcapFactor.setRGB(0, 0, 0);
-                            }
+                            // Remember the authored MToon rim / matcap so the
+                            // 'anime' render mode can show the avatar exactly
+                            // as authored (VRoid Hub parity); the legacy
+                            // 'cinematic' mode keeps neutralising them.
+                            this._storeMToonEdgeFx(mat);
+                            this._applyMToonEdgeFx(mat, this._mtoonEdgeFxNeutralized);
                             mat.needsUpdate = true;
                         }
                     }

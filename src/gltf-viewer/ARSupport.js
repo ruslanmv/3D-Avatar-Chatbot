@@ -41,6 +41,7 @@ export class ARSupport {
         this._savedBackground = null;
         this._savedEnvironment = null;
         this._savedToneMappingExposure = null;
+        this._savedToneMapping = null;
 
         // Ground plane for AR shadow
         this.shadowPlane = null;
@@ -275,12 +276,24 @@ export class ARSupport {
         this._savedBackground = this.scene.background;
         this._savedEnvironment = this.scene.environment;
         this._savedToneMappingExposure = this.renderer.toneMappingExposure;
+        this._savedToneMapping = this.renderer.toneMapping;
 
         // Make scene transparent for AR passthrough / camera feed
         this.scene.background = null;
 
         // Reduce environment intensity so avatar doesn't look "floating"
-        // Keep some environment for reflections but dim it
+        // Keep some environment for reflections but dim it.
+        //
+        // toneMappingExposure is only read by the tone-mapping function, and
+        // the 'anime' render mode runs with NoToneMapping — so setting the
+        // exposure alone would be a silent no-op there and the avatar would
+        // enter AR undimmed. LinearToneMapping is a bare `exposure * color`
+        // multiply (three r147 tonemapping_pars_fragment) with no curve, so
+        // it applies exactly the intended 0.7 dim and nothing else. Modes
+        // that already have a curve (cinematic/ACES) keep it.
+        if (this.renderer.toneMapping === THREE.NoToneMapping) {
+            this.renderer.toneMapping = THREE.LinearToneMapping;
+        }
         this.renderer.toneMappingExposure = 0.7;
 
         // Reset floor detection for auto-placement
@@ -323,6 +336,9 @@ export class ARSupport {
         }
         if (this._savedToneMappingExposure !== null) {
             this.renderer.toneMappingExposure = this._savedToneMappingExposure;
+        }
+        if (this._savedToneMapping !== null && this._savedToneMapping !== undefined) {
+            this.renderer.toneMapping = this._savedToneMapping;
         }
 
         // Remove AR-specific objects

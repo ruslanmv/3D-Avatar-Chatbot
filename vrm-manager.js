@@ -1252,6 +1252,11 @@ const VRMManager = {
             'https://www.yourfriend.online',
             'https://yourfriend.online',
             'http://localhost:8080',
+            // Vercel's STABLE project alias (no per-branch hash), registered at
+            // hub.vroid.com/oauth/applications. Branch previews
+            // (avatar-chatbot-git-<hash>-…) still borrow the fallback below,
+            // because their host changes on every deployment.
+            'https://avatar-chatbot-ruslan-magana-vsevolodovnas-projects.vercel.app',
         ];
         const FALLBACK_CALLBACK_ORIGIN = 'https://www.yourfriend.online';
         const here = window.location.origin;
