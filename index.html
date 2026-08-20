@@ -1340,6 +1340,28 @@
                     </div>
 
                     <div class="config-section">
+                        <h3 class="config-title">RENDER MODE</h3>
+                        <p style="font-size: 0.72rem; color: rgba(255, 255, 255, 0.5); margin-bottom: 12px">
+                            Anime renders VRM avatars exactly as authored (VRoid Hub parity). Cinematic FX is the
+                            previous stylised look. The toggles below fine-tune the selected mode.
+                        </p>
+                        <div class="provider-grid" id="render-mode-selector">
+                            <label class="provider-card">
+                                <input type="radio" name="render-mode" value="anime" class="provider-radio" checked />
+                                <div class="provider-content">
+                                    <div class="provider-name">Anime (VRM-accurate)</div>
+                                </div>
+                            </label>
+                            <label class="provider-card">
+                                <input type="radio" name="render-mode" value="cinematic" class="provider-radio" />
+                                <div class="provider-content">
+                                    <div class="provider-name">Cinematic FX (legacy)</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="config-section">
                         <h3 class="config-title">VIEWPORT BACKGROUND</h3>
                         <div class="provider-grid" id="bg-selector">
                             <label class="provider-card">
@@ -1408,6 +1430,23 @@
                                         "
                                     ></div>
                                     <div class="provider-name">Light</div>
+                                </div>
+                            </label>
+                            <label class="provider-card">
+                                <input type="radio" name="desktop-bg" value="white" class="provider-radio" />
+                                <div class="provider-content">
+                                    <div
+                                        class="provider-icon"
+                                        style="
+                                            width: 28px;
+                                            height: 28px;
+                                            border-radius: 50%;
+                                            background: #f5f5f5;
+                                            border: 2px solid #444;
+                                            margin: 0 auto;
+                                        "
+                                    ></div>
+                                    <div class="provider-name">White</div>
                                 </div>
                             </label>
                         </div>

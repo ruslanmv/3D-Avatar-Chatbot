@@ -1592,9 +1592,24 @@ select optgroup {
     }
     .vm-preview-body {
         flex-direction: column;
+        /* The base .vm-preview-body rule sets `overflow: hidden` so the
+           two-column desktop layout can manage its own inner scroll areas.
+           That shorthand also lands later in this file than .vm-modal-body's
+           `overflow-y: auto` at equal specificity, so it wins on the shared
+           element. Stacked into one column the content is taller than the
+           modal, and the action button ends up below the fold with no way to
+           scroll to it. Restore scrolling here. */
+        overflow-y: auto;
     }
     .vm-preview-right {
         width: 100%;
+    }
+    /* With the body scrolling, the details block must not also be a scroll
+       container — nested scrollers on touch mean a drag that starts on the
+       details swallows the gesture and the button below stays unreachable. */
+    .vm-preview-details {
+        flex: none;
+        overflow-y: visible;
     }
     .vm-modal {
         max-height: 90vh;

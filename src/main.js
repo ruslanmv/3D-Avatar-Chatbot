@@ -2178,6 +2178,15 @@ function setupModals() {
         radio.addEventListener('change', updateProviderFields);
     });
 
+    // Live preview: apply the render-mode preset immediately, then reflect
+    // its effect on the individual controls below.
+    document.querySelectorAll('input[name="render-mode"]').forEach((radio) => {
+        radio.addEventListener('change', () => {
+            window.NEXUS_VIEWER?.setRenderMode?.(radio.value);
+            _syncVisualControlsFromEngine();
+        });
+    });
+
     // Live preview: change desktop background immediately when radio is selected
     document.querySelectorAll('input[name="desktop-bg"]').forEach((radio) => {
         radio.addEventListener('change', () => {
@@ -2423,6 +2432,35 @@ function loadPoseSettingsIntoUI() {
     });
 }
 
+/**
+ * Reflect the viewer's live visual state (render-mode preset, background,
+ * shadows, fx toggles) onto the Settings panel controls.
+ */
+function _syncVisualControlsFromEngine() {
+    const vis = window.NEXUS_VIEWER?.getVisualState?.();
+    if (!vis) return;
+
+    const modeRadio = document.querySelector(`input[name="render-mode"][value="${vis.renderMode}"]`);
+    if (modeRadio) modeRadio.checked = true;
+
+    const bgRadio = document.querySelector(`input[name="desktop-bg"][value="${vis.background}"]`);
+    if (bgRadio) bgRadio.checked = true;
+
+    const shadowRadio = document.querySelector(`input[name="desktop-shadow"][value="${vis.shadows ? 'on' : 'off'}"]`);
+    if (shadowRadio) shadowRadio.checked = true;
+
+    const fxMap = [
+        ['fx-envmap', vis.envmap],
+        ['fx-bloom', vis.bloom],
+        ['fx-ssao', vis.ssao],
+        ['fx-tonemapping', vis.tonemapping],
+    ];
+    for (const [id, value] of fxMap) {
+        const el = document.getElementById(id);
+        if (el) el.checked = !!value;
+    }
+}
+
 function openSettings() {
     const modal = $('settings-modal');
     if (!modal) return;
@@ -2438,27 +2476,41 @@ function openSettings() {
         ttsEngineEl.addEventListener('change', () => _togglePiperVoiceUI(ttsEngineEl.value));
     }
 
-    // Pre-select saved desktop background
-    const savedBg = localStorage.getItem('desktop_bg') || 'black';
+    // Pre-select render mode + visual toggles. Prefer the live engine state
+    // (it reflects the render-mode preset and the legacy migration); fall
+    // back to localStorage in chat-only mode (no viewer).
+    const vis = window.NEXUS_VIEWER?.getVisualState?.() || null;
+
+    const savedMode = vis?.renderMode || localStorage.getItem('render_mode') || 'anime';
+    const modeRadio = document.querySelector(`input[name="render-mode"][value="${savedMode}"]`);
+    if (modeRadio) modeRadio.checked = true;
+
+    // Pre-select desktop background
+    const savedBg = vis?.background || localStorage.getItem('desktop_bg') || 'black';
     const bgRadio = document.querySelector(`input[name="desktop-bg"][value="${savedBg}"]`);
     if (bgRadio) bgRadio.checked = true;
 
-    // Pre-select saved shadow setting
-    const savedShadow = localStorage.getItem('desktop_shadow') || 'off';
+    // Pre-select shadow setting
+    const savedShadow = vis ? (vis.shadows ? 'on' : 'off') : localStorage.getItem('desktop_shadow') || 'off';
     const shadowRadio = document.querySelector(`input[name="desktop-shadow"][value="${savedShadow}"]`);
     if (shadowRadio) shadowRadio.checked = true;
 
-    // Restore visual effects toggles from localStorage
+    // Visual effects toggles — live engine state first, then localStorage
     const fxFields = [
-        { id: 'fx-envmap', key: 'fx_envmap' },
-        { id: 'fx-bloom', key: 'fx_bloom' },
-        { id: 'fx-ssao', key: 'fx_ssao' },
-        { id: 'fx-tonemapping', key: 'fx_tonemapping' },
+        { id: 'fx-envmap', key: 'fx_envmap', stateKey: 'envmap' },
+        { id: 'fx-bloom', key: 'fx_bloom', stateKey: 'bloom' },
+        { id: 'fx-ssao', key: 'fx_ssao', stateKey: 'ssao' },
+        { id: 'fx-tonemapping', key: 'fx_tonemapping', stateKey: 'tonemapping' },
     ];
-    for (const { id, key } of fxFields) {
+    for (const { id, key, stateKey } of fxFields) {
         const el = document.getElementById(id);
-        const saved = localStorage.getItem(key);
-        if (el && saved !== null) el.checked = saved === 'true';
+        if (!el) continue;
+        if (vis) {
+            el.checked = !!vis[stateKey];
+        } else {
+            const saved = localStorage.getItem(key);
+            if (saved !== null) el.checked = saved === 'true';
+        }
     }
 
     // Restore face tracking settings
@@ -2967,6 +3019,10 @@ function saveSettings() {
             );
         }
     }
+
+    // Persist render mode (the preset; individual toggles below refine it)
+    const renderModeRadio = document.querySelector('input[name="render-mode"]:checked');
+    if (renderModeRadio) localStorage.setItem('render_mode', renderModeRadio.value);
 
     // Persist viewport background
     const bgRadio = document.querySelector('input[name="desktop-bg"]:checked');
@@ -4100,6 +4156,18 @@ async function init() {
                 hideLoading();
                 setStatus('idle', 'CHAT MODE');
             } else {
+                // Render-mode preset FIRST — it seeds every visual toggle, and
+                // the explicitly saved per-setting overrides below are applied
+                // on top of it. engine-bridge.js runs the same sequence at
+                // engine creation; this re-applies it for the slow mobile boot
+                // path, where init() can win the race against the bridge.
+                window.NEXUS_VIEWER?.setRenderMode?.(localStorage.getItem('render_mode') || 'anime');
+
+                const savedBgStartup = localStorage.getItem('desktop_bg');
+                if (savedBgStartup) window.NEXUS_VIEWER?.setDesktopBackground(savedBgStartup);
+                const savedShadowStartup = localStorage.getItem('desktop_shadow');
+                if (savedShadowStartup !== null) window.NEXUS_VIEWER?.setShadows(savedShadowStartup === 'on');
+
                 // Apply saved visual effects settings on startup
                 const fxStartup = [
                     { key: 'fx_envmap', apply: (v) => window.NEXUS_VIEWER?.setEnvironmentMap(v) },
