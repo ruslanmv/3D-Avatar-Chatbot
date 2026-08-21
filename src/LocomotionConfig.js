@@ -14,7 +14,7 @@
 (function () {
     var config = {
         // ── Master toggle ──
-        enabled: false, // Off by default — user must enable via UI toggle
+        enabled: true, // On by default — powers Living NPC locomotion (follow/approach)
 
         // ── Distance thresholds (metres) ──
         // When user walks beyond walkTriggerDistance from avatar, she starts walking

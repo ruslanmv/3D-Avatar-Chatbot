@@ -155,6 +155,12 @@
         this.root = opts.root || null;
         this.vrmHumanoid = opts.vrmHumanoid || null;
         this.bones = {};
+        // Visual bones: the RAW skeleton that actually drives the rendered
+        // mesh. three-vrm 2.x "normalized" nodes (used in this.bones for
+        // writing) are a proxy rig whose world positions do NOT follow
+        // animations/presets applied to the raw bones — overlays reading
+        // them float away from the body. Read positions from visualBones.
+        this.visualBones = {};
         this._build();
     }
 
@@ -163,7 +169,25 @@
         for (var i = 0; i < keys.length; i++) {
             var key = keys[i];
             this.bones[key] = this._findHumanoidBone(key) || this._findFallbackBone(key) || null;
+            this.visualBones[key] = this._findRawBone(key) || this.bones[key];
         }
+    };
+
+    PoseRigMap.prototype._findRawBone = function (key) {
+        if (!this.vrmHumanoid) return null;
+        var humanoidName = VRM_MAP[key];
+        if (!humanoidName) return null;
+        try {
+            if (typeof this.vrmHumanoid.getRawBoneNode === 'function') {
+                return this.vrmHumanoid.getRawBoneNode(humanoidName) || null;
+            }
+            if (typeof this.vrmHumanoid.getBoneNode === 'function') {
+                return this.vrmHumanoid.getBoneNode(humanoidName) || null;
+            }
+        } catch (err) {
+            /* fall through to write-rig bone */
+        }
+        return null;
     };
 
     PoseRigMap.prototype._findHumanoidBone = function (key) {
@@ -192,6 +216,14 @@
 
     PoseRigMap.prototype.getBone = function (name) {
         return this.bones[name] || null;
+    };
+
+    /**
+     * Bone on the RAW (rendered) skeleton — use for reading world positions
+     * in overlays/gizmos. Falls back to the write bone when no raw rig exists.
+     */
+    PoseRigMap.prototype.getVisualBone = function (name) {
+        return this.visualBones[name] || this.bones[name] || null;
     };
 
     PoseRigMap.prototype.hasUpperBodyRig = function () {

@@ -85,6 +85,24 @@
             window.__NEXUS_VIEWER_READY__ = new Promise(function (resolve) {
                 window.__resolveNexusViewerReady__ = resolve;
             });
+
+            // One-time migration: viewport background default moved white → black.
+            // Anime mode used to seed 'white', and saveSettings() writes desktop_bg
+            // on EVERY save — so installs that never chose a background still have
+            // 'white' stored and would keep booting white. Flip that stored value
+            // once. Guarded by a flag, so picking white in Settings afterwards
+            // sticks permanently. Runs here (classic inline script) to beat both
+            // boot paths: engine-bridge.js and the mobile fallback in main.js.
+            try {
+                if (!localStorage.getItem('desktop_bg_black_default_v1')) {
+                    if (localStorage.getItem('desktop_bg') === 'white') {
+                        localStorage.setItem('desktop_bg', 'black');
+                    }
+                    localStorage.setItem('desktop_bg_black_default_v1', '1');
+                }
+            } catch (e) {
+                /* storage unavailable — the preset default (black) already applies */
+            }
         </script>
 
         <script type="importmap">
@@ -2935,8 +2953,10 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <script defer src="src/PoseStudioNormalizer.js"></script>
         <script defer src="src/PoseEditor.js"></script>
         <script defer src="src/PoseStudioPanel.js"></script>
+        <script defer src="src/PoseSheet.js"></script>
         <script defer src="src/PoseGizmoOverlay.js"></script>
         <script defer src="src/PoseHandleIK.js"></script>
+        <script defer src="src/PosePuppetIK.js"></script>
         <script defer src="src/SkeletonLineOverlay.js"></script>
         <script defer src="src/BridgeResponseAdapter.js"></script>
         <script defer src="src/PersonaContextBridge.js"></script>
@@ -3005,6 +3025,17 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <script defer src="src/AnimationBlendController.js"></script>
         <script defer src="src/AvatarLocomotionSystem.js"></script>
         <script defer src="src/TeleportArcPointer.js"></script>
+
+        <!-- Living NPC (additive — voice/LLM-driven avatar gameplay: follow, sit, handshake) -->
+        <!-- NON-DESTRUCTIVE: To remove, delete these 8 script tags and search "NEXUS_MOTION" -->
+        <script defer src="src/xr/MotionDSL.js"></script>
+        <script defer src="src/xr/MotionExecutor.js"></script>
+        <script defer src="src/xr/MotionClipMap.js"></script>
+        <script defer src="src/xr/MotionBlockParser.js"></script>
+        <script defer src="src/xr/IntentFastPath.js"></script>
+        <script defer src="src/xr/MotionContract.js"></script>
+        <script defer src="src/xr/HandContactIK.js"></script>
+        <script defer src="src/xr/MotionIntegration.js"></script>
 
         <!-- Pose Studio init (must load after main.js and all Pose modules) -->
         <script defer src="src/PoseStudioInit.js"></script>

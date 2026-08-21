@@ -149,15 +149,43 @@
         // Line hit radius in pixels
         _lineHitRadius: 18,
 
+        // Lifecycle hardening (fixes enable→disable→enable dead state)
+        _ctxReady: false,
+        _activePointerId: null,
+
+        // Puppet Mode drag state
+        _dragMode: 'rotate',
+        _dragAnchorWorld: null,
+        _dragChangedKeys: null,
+        _dragFrameOffset: null,
+
         // =====================================================================
         // LIFECYCLE
         // =====================================================================
 
         init: function () {
+            // NEXUS_VIEWER is created by an async module import and is often
+            // NOT ready when this runs — acquire lazily, retry from enable().
+            if (!this._ensureContext()) {
+                var self = this;
+                var ready = window.__NEXUS_VIEWER_READY__;
+                if (ready && typeof ready.then === 'function') {
+                    ready.then(function () {
+                        self._ensureContext();
+                    });
+                }
+            }
+        },
+
+        /**
+         * Acquire renderer/camera/scene and bind pointer listeners exactly
+         * once. Safe to call repeatedly; returns readiness.
+         */
+        _ensureContext: function () {
+            if (this._ctxReady) return true;
             var viewer = window.NEXUS_VIEWER;
-            if (!viewer) {
-                console.warn('[SkeletonLineOverlay] NEXUS_VIEWER not available.');
-                return;
+            if (!viewer || !viewer.renderer || !viewer.camera || !viewer.scene) {
+                return false;
             }
 
             this._renderer = viewer.renderer;
@@ -195,10 +223,43 @@
             canvas.addEventListener('pointermove', this._onPointerMove);
             canvas.addEventListener('pointerup', this._onPointerUp);
 
+            this._ctxReady = true;
             console.log('[SkeletonLineOverlay] Initialized.');
+            return true;
+        },
+
+        /**
+         * Always restore camera controls + pointer capture, even when the
+         * overlay is toggled off (or the editor exits) mid-drag.
+         */
+        _endDragCleanup: function () {
+            if (this._activePointerId != null && this._renderer) {
+                try {
+                    this._renderer.domElement.releasePointerCapture(this._activePointerId);
+                } catch (_) {}
+            }
+            if (this._dragging) {
+                this._enableOrbitControls();
+            }
+            this._dragging = false;
+            this._dragStarted = false;
+            this._dragEdgeIndex = -1;
+            this._dragBoneKey = null;
+            this._dragAnchorWorld = null;
+            this._dragChangedKeys = null;
+            this._dragFrameOffset = null;
+            this._activePointerId = null;
         },
 
         enable: function () {
+            if (!this._ensureContext()) {
+                console.warn('[SkeletonLineOverlay] Viewer not ready yet — try again in a moment.');
+                return false;
+            }
+            // Rebind the editor if the avatar was switched while we were off.
+            var editorRef = window.poseEditor;
+            if (editorRef && editorRef.rebindIfStale) editorRef.rebindIfStale();
+
             this._enabled = true;
             this._createEdges();
             this._createJoints();
@@ -211,11 +272,12 @@
             }
 
             console.log('[SkeletonLineOverlay] Enabled — skeleton lines visible.');
+            return true;
         },
 
         disable: function () {
             this._enabled = false;
-            this._dragging = false;
+            this._endDragCleanup();
             this._hoveredEdgeIndex = -1;
             this._hoveredJointKey = null;
             this._stopUpdater();
@@ -277,8 +339,15 @@
 
             for (var i = 0; i < SKELETON_TOPOLOGY.length; i++) {
                 var topo = SKELETON_TOPOLOGY[i];
-                var fromBone = editor.rigMap.getBone(topo.from);
-                var toBone = editor.rigMap.getBone(topo.to);
+                // Visual bones: RAW rendered skeleton — the write rig can be a
+                // normalized proxy whose world positions ignore animations,
+                // which made the lines float away from the body.
+                var fromBone = editor.rigMap.getVisualBone
+                    ? editor.rigMap.getVisualBone(topo.from)
+                    : editor.rigMap.getBone(topo.from);
+                var toBone = editor.rigMap.getVisualBone
+                    ? editor.rigMap.getVisualBone(topo.to)
+                    : editor.rigMap.getBone(topo.to);
                 if (!fromBone || !toBone) continue;
 
                 var colors = GROUP_COLORS[topo.group] || GROUP_COLORS.spine;
@@ -345,7 +414,9 @@
             var keys = Object.keys(uniqueKeys);
             for (var k = 0; k < keys.length; k++) {
                 var boneKey = keys[k];
-                var bone = editor.rigMap.getBone(boneKey);
+                var bone = editor.rigMap.getVisualBone
+                    ? editor.rigMap.getVisualBone(boneKey)
+                    : editor.rigMap.getBone(boneKey);
                 if (!bone) continue;
 
                 var def = JOINT_DEFS[boneKey];
@@ -446,7 +517,9 @@
                 return;
             }
 
-            var bone = editor.rigMap.getBone(this._selectedBoneKey);
+            var bone = editor.rigMap.getVisualBone
+                ? editor.rigMap.getVisualBone(this._selectedBoneKey)
+                : editor.rigMap.getBone(this._selectedBoneKey);
             if (!bone) {
                 this._selectHighlight.visible = false;
                 return;
@@ -742,6 +815,20 @@
             this._dragStartY = e.clientY;
             this._dragPrevX = e.clientX;
             this._dragPrevY = e.clientY;
+            this._activePointerId = e.pointerId;
+            this._dragChangedKeys = null;
+
+            // Puppet Mode: drag moves the whole chain naturally
+            var puppet = window.NEXUS_POSE_PUPPET_IK;
+            var vBone = editor.rigMap.getVisualBone ? editor.rigMap.getVisualBone(jointKey) || bone : bone;
+            this._dragAnchorWorld = vBone.getWorldPosition(new THREE.Vector3());
+            this._dragMode = puppet && puppet.isEnabled() && puppet.hasChain(jointKey) ? 'puppet' : 'rotate';
+            // Solver reads the write rig, anchor comes from the visual rig —
+            // correct the gap or the grab alone jerks the limb.
+            this._dragFrameOffset =
+                puppet && puppet.frameOffset
+                    ? puppet.frameOffset(editor.rigMap, jointKey, this._dragAnchorWorld)
+                    : null;
 
             this._renderer.domElement.setPointerCapture(e.pointerId);
             this._disableOrbitControls();
@@ -778,6 +865,18 @@
             this._dragStartY = e.clientY;
             this._dragPrevX = e.clientX;
             this._dragPrevY = e.clientY;
+            this._activePointerId = e.pointerId;
+            this._dragChangedKeys = null;
+
+            // Puppet Mode: dragging a line puppets its child joint's chain
+            var puppet = window.NEXUS_POSE_PUPPET_IK;
+            var vBone = editor.rigMap.getVisualBone ? editor.rigMap.getVisualBone(boneKey) || bone : bone;
+            this._dragAnchorWorld = vBone.getWorldPosition(new THREE.Vector3());
+            this._dragMode = puppet && puppet.isEnabled() && puppet.hasChain(boneKey) ? 'puppet' : 'rotate';
+            // Solver reads the write rig, anchor comes from the visual rig —
+            // correct the gap or the grab alone jerks the limb.
+            this._dragFrameOffset =
+                puppet && puppet.frameOffset ? puppet.frameOffset(editor.rigMap, boneKey, this._dragAnchorWorld) : null;
 
             this._renderer.domElement.setPointerCapture(e.pointerId);
             this._disableOrbitControls();
@@ -824,6 +923,26 @@
                 var dy = e.clientY - this._dragPrevY;
                 this._dragPrevX = e.clientX;
                 this._dragPrevY = e.clientY;
+
+                // Puppet Mode: solve the whole chain toward the 3D pointer target
+                if (this._dragMode === 'puppet' && window.NEXUS_POSE_PUPPET_IK && this._dragAnchorWorld) {
+                    this._updateMouseFromEvent(e);
+                    var puppetTarget = window.NEXUS_POSE_PUPPET_IK.screenTarget(
+                        this._camera,
+                        this._mouse,
+                        this._dragAnchorWorld
+                    );
+                    if (puppetTarget) {
+                        if (this._dragFrameOffset) puppetTarget.add(this._dragFrameOffset);
+                        var puppetChanged = window.NEXUS_POSE_PUPPET_IK.solve(
+                            editor.rigMap,
+                            this._dragBoneKey,
+                            puppetTarget
+                        );
+                        if (puppetChanged && puppetChanged.length) this._dragChangedKeys = puppetChanged;
+                    }
+                    return;
+                }
 
                 if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
 
@@ -881,8 +1000,14 @@
         },
 
         _handlePointerUp: function (e) {
-            if (!this._enabled) return;
             if (e.button !== 0) return;
+
+            // Disabled (or editor exited) mid-drag: still restore camera
+            // controls + pointer capture, or the viewport feels dead.
+            if (!this._enabled) {
+                if (this._dragging) this._endDragCleanup();
+                return;
+            }
 
             if (this._dragging) {
                 try {
@@ -891,8 +1016,13 @@
 
                 this._enableOrbitControls();
 
-                // Sync axis state for slider sync
-                this._syncAxisStateAfterDrag(this._dragBoneKey);
+                // Sync axis state for slider sync — every bone the drag moved
+                // (puppet mode rotates the whole chain).
+                var changedKeys =
+                    this._dragChangedKeys && this._dragChangedKeys.length ? this._dragChangedKeys : [this._dragBoneKey];
+                for (var ci = 0; ci < changedKeys.length; ci++) {
+                    this._syncAxisStateAfterDrag(changedKeys[ci]);
+                }
 
                 // Reset edge color if we were dragging a line
                 if (this._dragEdgeIndex >= 0 && this._dragEdgeIndex < this._edges.length) {
@@ -907,6 +1037,10 @@
                 this._dragStarted = false;
                 this._dragEdgeIndex = -1;
                 this._dragBoneKey = null;
+                this._dragAnchorWorld = null;
+                this._dragChangedKeys = null;
+                this._dragFrameOffset = null;
+                this._activePointerId = null;
 
                 // Emit change so panel/sliders refresh
                 var editor = window.poseEditor;
@@ -995,6 +1129,7 @@
         dispose: function () {
             this._enabled = false;
             this._dragging = false;
+            this._ctxReady = false;
             this._stopUpdater();
             this._removeEdges();
             this._removeJoints();

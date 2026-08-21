@@ -126,6 +126,8 @@
     PoseStudioPanel.prototype._render = function () {
         this.rootEl.innerHTML =
             '<div class="pose-studio-card">' +
+            // Bottom-sheet drag affordance (mobile only — hidden by CSS elsewhere).
+            '  <div class="pose-sheet-grabber" aria-hidden="true"></div>' +
             '  <div class="pose-studio-header">' +
             '    <div>' +
             '      <div class="pose-studio-title">Pose Studio</div>' +
@@ -210,6 +212,14 @@
             '      </label>' +
             '    </div>' +
             '    <div class="pose-toggle-hint">Click &amp; drag bones in viewport (off = slider only)</div>' +
+            '    <div class="pose-toggle-row" style="margin-top:8px;">' +
+            '      <label class="pose-studio-label" style="margin-bottom:0;">Puppet Mode</label>' +
+            '      <label class="pose-toggle">' +
+            '        <input type="checkbox" id="posePuppetToggle" checked />' +
+            '        <span class="pose-toggle-track"><span class="pose-toggle-thumb"></span></span>' +
+            '      </label>' +
+            '    </div>' +
+            '    <div class="pose-toggle-hint">Drag moves the whole body naturally (IK). Off = rotate single bones</div>' +
             '  </div>' +
             // Section 4: Bone selector + bipolar sliders
             '  <div class="pose-studio-section">' +
@@ -701,17 +711,35 @@
         // --- Mouse bone editing toggle ---
         const mouseToggle = this.rootEl.querySelector('#poseMouseEditToggle');
         if (mouseToggle) {
-            mouseToggle.checked = false; // disabled by default
+            mouseToggle.checked = false; // disabled by default; show() restores the saved preference
             mouseToggle.addEventListener('change', () => {
-                self._mouseEditEnabled = mouseToggle.checked;
                 const gizmo = window.NEXUS_POSE_GIZMO_OVERLAY;
+                let on = mouseToggle.checked;
                 if (gizmo) {
-                    if (self._mouseEditEnabled) {
-                        gizmo.enable();
+                    if (on) {
+                        // enable() can fail (viewer not ready) — reflect reality
+                        // in the checkbox instead of desyncing UI and gizmo.
+                        on = gizmo.enable() !== false;
+                        mouseToggle.checked = on;
                     } else {
                         gizmo.disable();
                     }
                 }
+                self._mouseEditEnabled = on;
+                try {
+                    localStorage.setItem('nexus-pose-mouse-edit', on ? '1' : '0');
+                } catch (_) {}
+            });
+        }
+
+        // --- Puppet Mode toggle (natural whole-body IK dragging) ---
+        const puppetToggle = this.rootEl.querySelector('#posePuppetToggle');
+        if (puppetToggle) {
+            const puppet = window.NEXUS_POSE_PUPPET_IK;
+            puppetToggle.checked = puppet ? puppet.isEnabled() : true;
+            puppetToggle.addEventListener('change', () => {
+                const p = window.NEXUS_POSE_PUPPET_IK;
+                if (p && p.setEnabled) p.setEnabled(puppetToggle.checked);
             });
         }
 
@@ -1687,6 +1715,34 @@
 
         // Enter pose mode so VRPoseSystem has exclusive bone control
         this._enterPoseMode();
+
+        // Re-sync Mouse Bone Editing with the real gizmo state. Closing the
+        // studio (editor.exit) disables the gizmo behind the checkbox's back;
+        // restore the user's saved preference so the toggle never lies.
+        var mouseToggleEl = this.rootEl.querySelector('#poseMouseEditToggle');
+        var gizmoRef = window.NEXUS_POSE_GIZMO_OVERLAY;
+        if (mouseToggleEl && gizmoRef) {
+            var wantMouseEdit = false;
+            try {
+                wantMouseEdit = localStorage.getItem('nexus-pose-mouse-edit') === '1';
+            } catch (_) {}
+            var gizmoOn = gizmoRef.isEnabled ? gizmoRef.isEnabled() : false;
+            if (wantMouseEdit && !gizmoOn && gizmoRef.enable) {
+                gizmoOn = gizmoRef.enable() !== false;
+            }
+            this._mouseEditEnabled = gizmoOn;
+            mouseToggleEl.checked = gizmoOn;
+        }
+        var puppetToggleEl = this.rootEl.querySelector('#posePuppetToggle');
+        if (puppetToggleEl && window.NEXUS_POSE_PUPPET_IK) {
+            puppetToggleEl.checked = window.NEXUS_POSE_PUPPET_IK.isEnabled();
+        }
+
+        // Restore the mobile sheet to its last detent (a flick-dismiss clears
+        // the inline height, and the topbar may have resized while we were away).
+        if (window.NEXUS_POSE_SHEET && window.NEXUS_POSE_SHEET.init) {
+            window.NEXUS_POSE_SHEET.init(this.rootEl);
+        }
 
         // On first open, apply the first pose (Lecturer) to the character
         if (!this._hasAppliedInitialPose) {
