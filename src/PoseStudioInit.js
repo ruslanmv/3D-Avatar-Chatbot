@@ -70,6 +70,14 @@
 
         poseStudioPanel.init();
 
+        // Mobile bottom-sheet behaviour (drag handle, detent snapping, and the
+        // ceiling that keeps the sheet from covering the topbar). No-op on
+        // desktop, where the panel stays a side panel.
+        // Runs after init() because it needs the rendered grabber/header.
+        if (window.NEXUS_POSE_SHEET && window.NEXUS_POSE_SHEET.init) {
+            window.NEXUS_POSE_SHEET.init(poseRoot);
+        }
+
         // Initialize desktop mouse pose editing (PoseGizmoOverlay)
         const gizmo = window.NEXUS_POSE_GIZMO_OVERLAY;
         if (gizmo && gizmo.init) {

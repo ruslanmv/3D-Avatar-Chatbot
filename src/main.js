@@ -3185,6 +3185,9 @@ function saveSettings() {
 async function handleUserMessage(text) {
     addMessageToHistory('user', text);
 
+    // Living NPC: instant motion for recognized commands (LLM still replies)
+    window.NEXUS_MOTION?.onUserUtterance?.(text);
+
     // Add user message to chat session history
     chatHistory.addMessage('user', text);
 
@@ -3217,14 +3220,17 @@ async function _handleStreamingResponse(text) {
 
     try {
         const history = window.chatHistory.getHistory();
-        const systemPrompt = config.systemPrompt || 'You are a helpful AI assistant named Nexus.';
+        const systemPrompt =
+            (config.systemPrompt || 'You are a helpful AI assistant named Nexus.') +
+            (window.NEXUS_MOTION?.systemPromptSuffix?.() || '');
         let accumulated = '';
 
         const fullText = await window._nexusLLM.sendMessageStream(text, systemPrompt, history, (token) => {
             // Hide typing indicator on first token
             if (!accumulated && window.setTypingIndicator) window.setTypingIndicator(false);
             accumulated += token;
-            textDiv.textContent = accumulated;
+            // Living NPC: hide the ```motion block while it streams in
+            textDiv.textContent = window.NEXUS_MOTION ? window.NEXUS_MOTION.maskStreaming(accumulated) : accumulated;
             // Scroll chat
             const chatEl = $('chat-history');
             if (chatEl) chatEl.scrollTop = chatEl.scrollHeight;
@@ -3232,7 +3238,9 @@ async function _handleStreamingResponse(text) {
 
         if (window.setTypingIndicator) window.setTypingIndicator(false);
 
-        const displayText = fullText || accumulated || 'No response';
+        let displayText = fullText || accumulated || 'No response';
+        // Living NPC: execute the ```motion plan and strip it from display/TTS
+        displayText = window.NEXUS_MOTION ? window.NEXUS_MOTION.processReply(displayText) : displayText;
         textDiv.textContent = displayText;
 
         // Mirror to AR overlay
@@ -3282,6 +3290,9 @@ async function _handleNonStreamingResponse(text) {
         } else {
             displayText = String(response);
         }
+
+        // Living NPC: execute the ```motion plan and strip it from display/TTS
+        displayText = window.NEXUS_MOTION ? window.NEXUS_MOTION.processReply(displayText) : displayText;
 
         addMessageToHistory('avatar', displayText, attachments);
 
@@ -3401,7 +3412,9 @@ async function callLLM(userMessage) {
     // ✅ Use LLMManager with conversation history if available
     if (window._nexusLLM && config.provider !== 'none') {
         const history = window.chatHistory.getHistory();
-        const systemPrompt = config.systemPrompt || 'You are a helpful AI assistant named Nexus.';
+        const systemPrompt =
+            (config.systemPrompt || 'You are a helpful AI assistant named Nexus.') +
+            (window.NEXUS_MOTION?.systemPromptSuffix?.() || '');
 
         // Use structured response for OllaBridge to get attachments
         if (config.provider === 'ollabridge' && typeof window._nexusLLM.sendMessageStructured === 'function') {

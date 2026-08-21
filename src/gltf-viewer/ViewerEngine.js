@@ -1141,6 +1141,11 @@ export class ViewerEngine {
                 window.NEXUS_LOCOMOTION.preload();
             }
 
+            // ── MOTION_HOOK: Attach Living NPC to the new avatar ──
+            // Non-destructive: if NEXUS_MOTION doesn't exist, this is a no-op.
+            // To remove: delete these 2 lines.
+            window.NEXUS_MOTION?.onAvatarChanged?.(this.avatarManager.currentRoot, this.avatarManager._currentVRM);
+
             // ── ARC_POINTER_HOOK: Initialize teleport arc pointer ──
             // Non-destructive: if NEXUS_ARC_POINTER doesn't exist, this is a no-op.
             // To remove: delete these 2 lines.
@@ -1207,6 +1212,11 @@ export class ViewerEngine {
             // Non-destructive: if NEXUS_LOCOMOTION doesn't exist, this is a no-op.
             // To remove: delete this line.
             window.NEXUS_LOCOMOTION?.update?.(dt);
+
+            // ── MOTION_HOOK: Update Living NPC (follow, contact IK, expressions) ──
+            // Non-destructive: if NEXUS_MOTION doesn't exist, this is a no-op.
+            // To remove: delete this line.
+            window.NEXUS_MOTION?.update?.(dt);
 
             if (this.renderer.xr.isPresenting) {
                 if (this.arSupport?.isARActive) {
@@ -1418,8 +1428,11 @@ export class ViewerEngine {
             this.desktopShadowEnhancer.fitToAvatar(fitBox, fitCenter, fitSize);
         }
 
-        // 4. Canvas
-        this.setDesktopBackground(anime ? 'white' : 'black');
+        // 4. Canvas — black in both modes. White flatters VRM-accurate anime
+        //    shading, but black is the house look; Settings → Viewport
+        //    Background switches back to white and that choice is persisted
+        //    (desktop_bg) and re-applied on top of this preset at boot.
+        this.setDesktopBackground('black');
 
         // 5. Authored MToon rim / matcap (restored in anime, neutralised in cinematic)
         this.avatarManager?.setMToonEdgeFxNeutralized?.(!anime);

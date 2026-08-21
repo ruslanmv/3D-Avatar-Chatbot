@@ -103,6 +103,20 @@
         return this.enabled;
     };
 
+    /**
+     * If the avatar was swapped while Pose Studio stayed active, the rig map
+     * still points at the OLD skeleton — handles float in space and drags
+     * rotate an invisible ghost. Re-enter to rebind to the current avatar.
+     * @returns {boolean} true when a rebind happened
+     */
+    PoseEditor.prototype.rebindIfStale = function () {
+        if (!this.enabled || !this.rigMap) return false;
+        const root = this.getAvatarRoot ? this.getAvatarRoot() : null;
+        if (!root || this.rigMap.root === root) return false;
+        console.log('[PoseEditor] Avatar changed — rebinding rig to the new skeleton');
+        return this.enter();
+    };
+
     PoseEditor.prototype.selectBone = function (key) {
         if (!this.enabled) {
             return;

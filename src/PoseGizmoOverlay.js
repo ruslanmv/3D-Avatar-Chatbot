@@ -86,11 +86,38 @@
         // Animation frame for handle position updates
         _animFrameId: null,
 
+        // Lifecycle hardening (fixes enable→disable→enable dead state)
+        _ctxReady: false,
+        _externalHandlesActive: false,
+        _activePointerId: null,
+
+        // Puppet Mode drag state
+        _dragMode: 'rotate',
+        _dragAnchorWorld: null,
+        _dragChangedKeys: null,
+        _dragFrameOffset: null,
+
         init() {
+            // NEXUS_VIEWER is created by an async module import and is often
+            // NOT ready when this runs (DOMContentLoaded + 100ms). Acquire the
+            // context lazily and retry from enable() — never hard-fail here.
+            if (!this._ensureContext()) {
+                const ready = window.__NEXUS_VIEWER_READY__;
+                if (ready && typeof ready.then === 'function') {
+                    ready.then(() => this._ensureContext());
+                }
+            }
+        },
+
+        /**
+         * Acquire renderer/camera/scene and bind pointer listeners exactly
+         * once. Safe to call repeatedly; returns readiness.
+         */
+        _ensureContext() {
+            if (this._ctxReady) return true;
             const viewer = window.NEXUS_VIEWER;
-            if (!viewer) {
-                console.warn('[PoseGizmoOverlay] NEXUS_VIEWER not available.');
-                return;
+            if (!viewer || !viewer.renderer || !viewer.camera || !viewer.scene) {
+                return false;
             }
 
             this._renderer = viewer.renderer;
@@ -122,27 +149,68 @@
             canvas.addEventListener('pointermove', this._onPointerMove);
             canvas.addEventListener('pointerup', this._onPointerUp);
 
+            this._ctxReady = true;
             console.log('[PoseGizmoOverlay] Desktop mouse pose editing initialized.');
+            return true;
         },
 
         enable() {
+            if (!this._ensureContext()) {
+                console.warn('[PoseGizmoOverlay] Viewer not ready yet — try again in a moment.');
+                return false;
+            }
+            // Rebind the editor if the avatar was switched while we were off,
+            // otherwise handles attach to a stale (invisible) skeleton.
+            const editor = window.poseEditor;
+            if (editor && editor.rebindIfStale) editor.rebindIfStale();
+
             this._enabled = true;
             this._refreshAvatarMeshes();
             this._createBoneHandles();
+            // Re-apply skeleton-overlay coordination across off/on cycles so
+            // re-enabling never spawns duplicate handles.
+            this.setExternalHandlesActive(this._externalHandlesActive);
             this._startHandleUpdater();
             console.log('[PoseGizmoOverlay] Enabled — bone spheres visible. Click & drag to edit.');
+            return true;
         },
 
         disable() {
             this._enabled = false;
-            this._dragging = false;
+            this._endDragCleanup();
             this._stopHandleUpdater();
             this._removeBoneHandles();
             if (this._selectHighlight) {
                 this._selectHighlight.visible = false;
             }
-            this._renderer.domElement.style.cursor = '';
+            if (this._renderer) {
+                this._renderer.domElement.style.cursor = '';
+            }
             console.log('[PoseGizmoOverlay] Disabled.');
+        },
+
+        /**
+         * Always restore camera controls + pointer capture, even when the
+         * gizmo is toggled off (or the editor exits) mid-drag. Leaving
+         * OrbitControls disabled is the classic "viewport feels dead" bug.
+         */
+        _endDragCleanup() {
+            if (this._activePointerId != null && this._renderer) {
+                try {
+                    this._renderer.domElement.releasePointerCapture(this._activePointerId);
+                } catch (_) {}
+            }
+            if (this._dragging) {
+                this._enableOrbitControls();
+            }
+            this._dragging = false;
+            this._dragStarted = false;
+            this._dragBoneKey = null;
+            this._dragBoneStartQuat = null;
+            this._dragAnchorWorld = null;
+            this._dragChangedKeys = null;
+            this._dragFrameOffset = null;
+            this._activePointerId = null;
         },
 
         isEnabled() {
@@ -161,7 +229,8 @@
 
             for (const def of BONE_HANDLE_DEFS) {
                 const bone = editor.rigMap.getBone(def.key);
-                if (!bone) continue;
+                const visualBone = editor.rigMap.getVisualBone ? editor.rigMap.getVisualBone(def.key) : bone;
+                if (!bone || !visualBone) continue;
 
                 const geo = new THREE.SphereGeometry(def.radius, 14, 14);
                 const mat = new THREE.MeshBasicMaterial({
@@ -174,13 +243,14 @@
                 mesh.renderOrder = 999;
                 mesh.userData._boneHandleKey = def.key;
 
-                // Position at bone
+                // Position at the RAW (rendered) bone — the write rig can be a
+                // normalized proxy whose world position ignores animations.
                 const pos = new THREE.Vector3();
-                bone.getWorldPosition(pos);
+                visualBone.getWorldPosition(pos);
                 mesh.position.copy(pos);
 
                 this._scene.add(mesh);
-                this._boneHandles.set(def.key, { mesh, bone, def });
+                this._boneHandles.set(def.key, { mesh, bone: visualBone, def });
             }
         },
 
@@ -241,7 +311,8 @@
         _showHighlightOnBone(highlight, boneKey) {
             if (!highlight) return;
             const editor = window.poseEditor;
-            const bone = editor && editor.rigMap ? editor.rigMap.getBone(boneKey) : null;
+            const rig = editor && editor.rigMap ? editor.rigMap : null;
+            const bone = rig ? (rig.getVisualBone ? rig.getVisualBone(boneKey) : rig.getBone(boneKey)) : null;
             if (!bone) {
                 highlight.visible = false;
                 return;
@@ -460,6 +531,21 @@
                 this._dragPrevY = e.clientY;
                 this._dragBoneKey = boneKey;
                 this._dragBoneStartQuat = bone.quaternion.clone();
+                this._activePointerId = e.pointerId;
+                this._dragChangedKeys = null;
+
+                // Puppet Mode: drag the joint in 3D and let the whole chain
+                // (elbow, shoulder, chest…) follow with natural falloff.
+                const puppet = window.NEXUS_POSE_PUPPET_IK;
+                const vBone = editor.rigMap.getVisualBone ? editor.rigMap.getVisualBone(boneKey) || bone : bone;
+                this._dragAnchorWorld = vBone.getWorldPosition(new THREE.Vector3());
+                this._dragMode = puppet && puppet.isEnabled() && puppet.hasChain(boneKey) ? 'puppet' : 'rotate';
+                // The solver reads the write rig but the anchor comes from the
+                // visual rig; without this the grab alone jerks the limb.
+                this._dragFrameOffset =
+                    puppet && puppet.frameOffset
+                        ? puppet.frameOffset(editor.rigMap, boneKey, this._dragAnchorWorld)
+                        : null;
 
                 // Capture pointer for reliable drag tracking outside canvas
                 this._renderer.domElement.setPointerCapture(e.pointerId);
@@ -513,6 +599,23 @@
                 this._dragPrevX = e.clientX;
                 this._dragPrevY = e.clientY;
 
+                // Puppet Mode: solve the whole chain toward the 3D pointer target
+                if (this._dragMode === 'puppet' && window.NEXUS_POSE_PUPPET_IK && this._dragAnchorWorld) {
+                    this._updateMouseFromEvent(e);
+                    const target = window.NEXUS_POSE_PUPPET_IK.screenTarget(
+                        this._camera,
+                        this._mouse,
+                        this._dragAnchorWorld
+                    );
+                    if (target) {
+                        if (this._dragFrameOffset) target.add(this._dragFrameOffset);
+                        const changed = window.NEXUS_POSE_PUPPET_IK.solve(editor.rigMap, this._dragBoneKey, target);
+                        if (changed && changed.length) this._dragChangedKeys = changed;
+                    }
+                    this._showHighlightOnBone(this._selectHighlight, this._dragBoneKey);
+                    return;
+                }
+
                 if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
 
                 // Camera-relative rotation projected into bone-local space
@@ -550,8 +653,14 @@
         },
 
         _handlePointerUp(e) {
-            if (!this._enabled) return;
             if (e.button !== 0) return;
+
+            // Disabled (or editor exited) mid-drag: still restore camera
+            // controls + pointer capture, or the viewport feels dead.
+            if (!this._enabled) {
+                if (this._dragging) this._endDragCleanup();
+                return;
+            }
 
             if (this._dragging) {
                 // Release pointer capture
@@ -562,8 +671,13 @@
                 // Re-enable OrbitControls
                 this._enableOrbitControls();
 
-                // Sync PoseApplier axis state from final bone quaternion
-                this._syncAxisStateAfterDrag(this._dragBoneKey);
+                // Sync PoseApplier axis state — every bone the drag moved
+                // (puppet mode rotates the whole chain), so sliders match.
+                const changedKeys =
+                    this._dragChangedKeys && this._dragChangedKeys.length ? this._dragChangedKeys : [this._dragBoneKey];
+                for (const key of changedKeys) {
+                    this._syncAxisStateAfterDrag(key);
+                }
 
                 // Reset the handle color
                 const entry = this._boneHandles.get(this._dragBoneKey);
@@ -577,6 +691,10 @@
                 this._dragStarted = false;
                 this._dragBoneKey = null;
                 this._dragBoneStartQuat = null;
+                this._dragAnchorWorld = null;
+                this._dragChangedKeys = null;
+                this._dragFrameOffset = null;
+                this._activePointerId = null;
 
                 // Emit change so panel/sliders refresh
                 const editor = window.poseEditor;
@@ -659,6 +777,7 @@
         dispose() {
             this._enabled = false;
             this._dragging = false;
+            this._ctxReady = false;
             this._stopHandleUpdater();
             this._removeBoneHandles();
 
