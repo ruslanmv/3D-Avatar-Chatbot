@@ -251,6 +251,20 @@
     }
 
     /**
+     * How far a clip's hips may sit from the avatar's rest height and still
+     * count as "standing" — a fraction of the rest height itself.
+     *
+     * The shipped captures fall into two clean groups. Standing clips land
+     * between 0.85 and 1.08 of rest; every genuine posture is far lower —
+     * sitting 0.59, kneeling 0.44-0.55, crouch 0.42, laying 0.13. The nearest
+     * excluded clip (sit_idle4, 0.591) is 0.41 from rest, more than three
+     * times this band, so the exact value is not delicate.
+     *
+     * @private
+     */
+    var STANDING_BAND = 0.12;
+
+    /**
      * Scale a hips position track into the target rig, applying the VRM 0.x
      * handedness flip when needed.
      *
@@ -270,10 +284,47 @@
         // same thing when the rest pose happens to sit on the origin, and
         // otherwise it displaces her for the length of the clip.
         var restX = targetHips && targetHips.position ? targetHips.position.x : 0;
+        var restY = targetHips && targetHips.position ? targetHips.position.y : 0;
         var restZ = targetHips && targetHips.position ? targetHips.position.z : 0;
+
+        // A STANDING clip is re-centred on the avatar's own rest height.
+        //
+        // THREE.BVHLoader bakes OFFSET + channel into the position track
+        // (BVHLoader.js:375), so the value written is restY * (1 + channel /
+        // OFFSET). Each capture's OFFSET is close to, but not equal to, the
+        // hips height it actually stands at, and the residual differs per
+        // file: neutral_idle writes 0.965 of rest, neutral4 0.967, neutral
+        // 0.974. That is a silent 2-4 cm sink, and because idle clips LOOP it
+        // never recovers — the reported symptom was the avatar sitting lower
+        // in the viewport after a sit/stand cycle, since the procedural idle
+        // she started in holds the hips at exactly rest and neutral_idle does
+        // not.
+        //
+        // Re-centring subtracts the clip's own neutral height and adds the
+        // avatar's, so any bob or breathing survives while the standing height
+        // becomes the avatar's rather than the capture's. Only clips that
+        // never leave the standing band are touched: sit, kneel, crouch,
+        // laying, standup and the dances all carry real vertical choreography
+        // and are written through unchanged.
+        var lo = Infinity;
+        var hi = -Infinity;
+        var k;
+        for (k = 1; k < values.length; k += 3) {
+            var v = values[k] * scale;
+            if (v < lo) lo = v;
+            if (v > hi) hi = v;
+        }
+        var recentre = 0;
+        if (restY > 0 && lo <= hi) {
+            var band = STANDING_BAND * restY;
+            if (Math.abs(lo - restY) <= band && Math.abs(hi - restY) <= band) {
+                recentre = restY - (lo + hi) / 2;
+            }
+        }
+
         for (var i = 0; i + 2 < values.length; i += 3) {
             out[i] = restX;
-            out[i + 1] = values[i + 1] * scale;
+            out[i + 1] = values[i + 1] * scale + recentre;
             out[i + 2] = restZ;
         }
         return isVRM0 ? C.transformPosForVRM0(out) : out;
@@ -458,6 +509,11 @@
         loadBVH: loadBVH,
         retargetBVHClip: retargetBVHClip,
         BVH_TO_VRM_MAP: BVH_TO_VRM_MAP,
+        // Test seams. Pure maths; the loader itself needs THREE and a live
+        // avatar, so these are what the unit tests can reach.
+        _scaleHipsPosition: scaleHipsPosition,
+        _computeHipsScale: computeHipsScale,
+        _STANDING_BAND: STANDING_BAND,
     };
 
     console.log('[BVHAnimationLoader] Initialized');
