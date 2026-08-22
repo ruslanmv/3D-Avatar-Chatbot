@@ -127,6 +127,28 @@ you with a contact shadow for grounding. A green tint on the BG button
 indicates passthrough is active. Light estimation and depth occlusion are
 enabled automatically when available.
 
+## Desktop vs VR — what changes
+
+The desktop viewport and an immersive session are two different camera
+systems, and controls do not carry across.
+
+| Capability            | Desktop                                  | VR                                    |
+| --------------------- | ---------------------------------------- | ------------------------------------- |
+| Move the camera       | Mouse drag, wheel, and the [keyboard shortcuts](keyboard.md) | Your head — the headset owns the camera |
+| Zoom                  | `+` / `-` or the wheel                   | Walk closer, or use avatar scale       |
+| Framing presets       | `1` / `2` / `3`                          | Not available                          |
+| Reset the view        | `0`, `F`, or **Reset View** in the drawer | Recentre with the headset's own reset  |
+| Turn the character    | Ask her, or drag                          | Grip to grab and spin                  |
+| Send a message        | Type and press `Enter`                    | Hold `Y` / `B` and speak               |
+
+`CameraPresets.transitionTo()` deliberately returns without moving anything
+while a session is presenting — overriding a headset's view is a reliable way
+to make someone motion sick. The keyboard camera bindings are likewise
+desktop-only.
+
+Settings made on desktop before you put the headset on **do** carry across:
+provider and model, system prompt, and TTS voice and rate.
+
 ## Customization (Developer)
 
 ```javascript
@@ -153,3 +175,9 @@ vrControllers.setMenuButtonCallback(() => {
 | Wolvic             | Yes | No  | Full 6DOF   |
 | Chrome (desktop)   | Emulator only | No | N/A |
 | Firefox Reality    | Yes | No  | Full 6DOF   |
+
+## Related
+
+- [keyboard.md](keyboard.md) — the desktop keyboard shortcuts
+- [vr-setup.md](vr-setup.md) — headset setup and troubleshooting
+- [getting-started-for-kids.md](getting-started-for-kids.md) — the friendly version

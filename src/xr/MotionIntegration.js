@@ -395,6 +395,17 @@ const MotionIntegration = (() => {
         return null;
     }
 
+    /**
+     * Activities that are a resting stance rather than a performance.
+     *
+     * These are the names _scheduleIdle plays, and the clip they put on the
+     * mixer is a valid pose-restore baseline. Kept beside the ambient checks in
+     * playAnimation so the two lists cannot drift apart.
+     *
+     * @private
+     */
+    const AMBIENT_ACTIVITIES = ['idle', 'sit_idle', 'talking'];
+
     /** Return to a context-appropriate idle after one-shot gestures. */
     function _scheduleIdle(afterS) {
         if (_idleTimer) clearTimeout(_idleTimer);
@@ -505,7 +516,22 @@ const MotionIntegration = (() => {
             } else if (!pr.hasSnapshot() && _vrm && _vrm.humanoid) {
                 const loader = typeof window !== 'undefined' ? window.NEXUS_CLIP_LOADER : null;
                 const st = loader && loader.getCurrentPlaybackState ? loader.getCurrentPlaybackState() : null;
-                if (!st || !st.isPlaying) _capturePoseSnapshot(pr);
+                // A clip already on the mixer used to veto the snapshot outright.
+                // The intent was right — never snapshot a pose mid-gesture — but
+                // it also vetoed the case that matters most. After any gesture,
+                // _scheduleIdle plays neutral_idle.bvh, which LOOPS forever, so
+                // from the second gesture onward something was always playing
+                // and no baseline was ever taken. "Stop" then had nothing to
+                // settle back to and simply left her in the last frame of the
+                // dance: twisted, off her mark, and not where she started.
+                //
+                // An ambient clip is a resting stance, so any frame of it is a
+                // perfectly good baseline. state.lastActivity names what put it
+                // there, which is more reliable than the playback category —
+                // MotionClipMap never passes one, so st.category is always null
+                // for motion-driven clips.
+                const ambient = AMBIENT_ACTIVITIES.indexOf(state.lastActivity) !== -1;
+                if (!st || !st.isPlaying || ambient) _capturePoseSnapshot(pr);
             }
         }
         clips.play(key).then((res) => {
