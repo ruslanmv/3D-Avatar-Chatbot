@@ -1373,9 +1373,18 @@ function pickBestVoice() {
     // Fallback: all voices if no lang match (rare, but possible)
     if (!candidates.length) candidates = voices;
 
-    // 4) Apply Gender Preference. Never fail because the wanted gender is
-    //    missing: prefer it, then take the other gender, then anything for the
-    //    language. Speaking in the right LANGUAGE always beats the gender wish.
+    // 3) Auto (best match) — scored across locale, gender and vendor, so the
+    //    pick is Google, then Microsoft, then any other voice for the target
+    //    locale, rather than whatever the platform happened to list first.
+    //    Shared with SpeechService.getPreferredVoice() to prevent drift.
+    if (window.NEXUS_VOICE_PRIORITY) {
+        const best = window.NEXUS_VOICE_PRIORITY.pickBest(voices, { lang: targetLang, gender: pref });
+        if (best) return best;
+    }
+
+    // 4) Module missing — prefer the requested gender, then the other, then
+    //    anything for the language. Speaking in the right LANGUAGE always
+    //    beats the gender wish.
     if (pref === 'female' || pref === 'male') {
         const preferred = candidates.filter((v) => guessGender(v) === pref);
         if (preferred.length) return preferred[0];
@@ -3697,7 +3706,28 @@ function _applyEmotionFromText(text) {
     );
 }
 
-function speakText(text) {
+function speakText(rawText) {
+    // Markdown is for the eye. The transcript keeps whatever the model wrote;
+    // only the audio path gets the normalised form, so nothing on screen
+    // changes and nothing is stored differently. One funnel covers every
+    // engine (TTSProvider, Web Speech) and the lip-sync segmentation below.
+    let text = rawText;
+    try {
+        if (window.NEXUS_SPEECH_TEXT) {
+            const lang = (window.SpeechSettings?.lang || window.AppLanguage?.get?.() || 'en').slice(0, 2);
+            const spoken = window.NEXUS_SPEECH_TEXT.forSpeech(rawText, { lang });
+            // A reply that was only emoji or punctuation normalises to nothing
+            // — stay silent rather than speak an empty utterance.
+            if (!spoken) {
+                setStatus('idle', 'READY');
+                return;
+            }
+            text = spoken;
+        }
+    } catch (e) {
+        console.warn('[Speech] Markdown normalisation skipped:', e);
+    }
+
     setStatus('speaking', 'SPEAKING...');
 
     /* NEXUS_PATCH_LIFE_ENGINE_TALK_MODE */

@@ -22,6 +22,19 @@ const MANIFEST = {
     },
 };
 
+/**
+ * The two dance families library mode trusts: the native VRMA addon pack and
+ * the dance BVH that ship in vendor/. Both are permitted deliberately —
+ * restricting to VRMA alone made "dance" a silent no-op on a GLB avatar, which
+ * has no VRM humanoid to retarget onto.
+ *
+ * "dance" is a `random: true` entry, so WHICH of the two wins any given draw
+ * is chance. Assertions about a played dance therefore have to be about the
+ * permitted SET, never about one prefix.
+ */
+const TRUSTED_DANCE_ROOTS = ['addons/vrma-dance/', 'vendor/animations/dance/'];
+const fromTrustedDanceSet = (p) => TRUSTED_DANCE_ROOTS.some((root) => p.startsWith(root));
+
 beforeEach(() => {
     ClipMap._setManifest(MANIFEST);
     ClipMap._setLibraryOnly(true);
@@ -40,7 +53,7 @@ describe('library mode restricts to the proven set', () => {
         // "dance" a silent no-op on a GLB avatar, which has no VRM humanoid to
         // retarget onto — the exact failure the toggle is supposed to prevent.
         for (const p of entry.candidates) {
-            expect(p.startsWith('addons/vrma-dance/') || p.startsWith('vendor/animations/dance/')).toBe(true);
+            expect(fromTrustedDanceSet(p)).toBe(true);
         }
         expect(entry.candidates.some((p) => p.startsWith('addons/vrma-dance/'))).toBe(true);
         expect(entry.candidates.some((p) => p.startsWith('vendor/animations/dance/'))).toBe(true);
@@ -57,9 +70,7 @@ describe('library mode restricts to the proven set', () => {
     test('experimental clips degrade to trusted dances until the toggle is off', () => {
         const safe = ClipMap.resolve('dance_1'); // fuzzy → the trusted dance set
         expect(safe).not.toBeNull();
-        expect(
-            safe.candidates.every((p) => p.startsWith('addons/vrma-dance/') || p.startsWith('vendor/animations/dance/'))
-        ).toBe(true);
+        expect(safe.candidates.every(fromTrustedDanceSet)).toBe(true);
         ClipMap._setLibraryOnly(false);
         const entry = ClipMap.resolve('dance_1');
         // dance_1 ships in BOTH formats now: the original .bvh and a .vrma
@@ -104,7 +115,11 @@ describe('library mode reaches the loader with the same contract', () => {
         const res = await ClipMap.play('dance');
         expect(res.ok).toBe(true);
         expect(calls[0][1].loop).toBe(true); // dance loops
-        expect(calls[0][0].startsWith('addons/vrma-dance/')).toBe(true);
+        // Pinning `addons/vrma-dance/` here failed roughly one CI run in ten:
+        // the shuffle bag draws from BOTH trusted families (see the first test
+        // in this file, which asserts both are present). Which trusted file won
+        // the draw is not the contract — that a trusted one did, is.
+        expect(fromTrustedDanceSet(calls[0][0])).toBe(true);
 
         ClipMap._setLibraryOnly(false);
         calls.length = 0;
@@ -120,9 +135,7 @@ describe('the setting defaults to ON and reads localStorage live', () => {
         ClipMap._setLibraryOnly(null); // fall back to storage
         localStorage.removeItem('npc_library_anims');
         const safe = ClipMap.resolve('dance_1'); // default = restricted set
-        expect(
-            safe.candidates.every((p) => p.startsWith('addons/vrma-dance/') || p.startsWith('vendor/animations/dance/'))
-        ).toBe(true);
+        expect(safe.candidates.every(fromTrustedDanceSet)).toBe(true);
         localStorage.setItem('npc_library_anims', 'false');
         const adv = ClipMap.resolve('dance_1').candidates;
         expect(adv).toContain('vendor/animations/dance/dance_1.bvh'); // BVH is back in advanced mode

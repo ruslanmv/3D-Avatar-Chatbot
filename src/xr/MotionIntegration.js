@@ -717,11 +717,34 @@ const MotionIntegration = (() => {
 
     // ── Behaviors (registered over MotionExecutor defaults) ────────────
 
-    async function _standRoutine() {
-        if (!state.sitting) return;
+    /**
+     * Leave the seated posture, in the world state only.
+     *
+     * Split out from _standRoutine so a caller can clear the flag
+     * SYNCHRONOUSLY. main.js calls onUserUtterance(text) and then builds the
+     * chat request; systemPromptSuffix() reads getWorldSnapshot() in that same
+     * synchronous run. Anything cleared after an `await` is therefore still
+     * set when the model is prompted — which is why "stop" was answered with
+     * "I'll sit back down": the snapshot said avatar_sitting=yes on the very
+     * turn the user asked her to stop.
+     *
+     * @private
+     */
+    function _clearSeated() {
         state.sitting = false;
+        state.lastActivity = 'idle';
+    }
+
+    /** Play the stand-up clip and give it time to read. @private */
+    async function _playStandUp() {
         playAnimation('stand');
         await new Promise((r) => setTimeout(r, 1100));
+    }
+
+    async function _standRoutine() {
+        if (!state.sitting) return;
+        _clearSeated();
+        await _playStandUp();
     }
 
     function _registerBehaviors() {
@@ -765,6 +788,14 @@ const MotionIntegration = (() => {
         };
         dsl.registerHandler('stop_follow', stopFollow);
         dsl.registerHandler('stop', async () => {
+            // Everything the world snapshot reports has to be settled BEFORE
+            // the first await — see _clearSeated. last_action closes the loop
+            // for the model: without it the only evidence it had about this
+            // turn was a posture flag, and it narrated the posture.
+            const wasSitting = state.sitting;
+            if (wasSitting) _clearSeated();
+            state.lastAction = { type: 'stop', result: wasSitting ? 'stood_up' : 'stopped' };
+
             await stopFollow();
             _reach.active = false;
             if (_ik()) _ik().clearTargets();
@@ -774,7 +805,22 @@ const MotionIntegration = (() => {
                 _contact.active = false;
                 r('interrupted');
             }
-            _scheduleIdle(0.1);
+            // "Stop" is the universal escape hatch — MotionPolicy lets it
+            // through at every setting — so it has to be able to escape
+            // SITTING too. It could not: state.sitting stayed true, and
+            // _scheduleIdle's first branch put her straight back into
+            // sit_idle. Once seated, nothing but an explicit "stand up" got
+            // her out of the chair, and the pose-restore settle in the third
+            // branch was unreachable, so the body never returned to rest.
+            if (wasSitting) {
+                // playAnimation('stand') already scheduled the idle for the
+                // clip's real length (action_standup is 3.47 s, while the wait
+                // here is 1.1 s). Calling _scheduleIdle would clear that timer
+                // and cut the stand-up off a third of the way through.
+                await _playStandUp();
+            } else {
+                _scheduleIdle(0.1);
+            }
         });
 
         dsl.registerHandler('sit', async (cmd) => {
