@@ -4335,6 +4335,86 @@ function toggleTelemetryOverlay() {
 const _npcTelemetryBtn = document.getElementById('npc-telemetry');
 if (_npcTelemetryBtn) _npcTelemetryBtn.addEventListener('click', toggleTelemetryOverlay);
 
+/* ============================
+   Clear = clear + FORGET (persistence only when the user keeps the chat)
+   ============================ */
+const _drawerClearBtn = document.getElementById('drawer-clear-btn');
+if (_drawerClearBtn) {
+    _drawerClearBtn.addEventListener('click', () => {
+        try {
+            // The constants are declared further down the file, but a click can
+            // only happen long after this script has finished evaluating, so
+            // they are initialised by then. Naming them rather than repeating
+            // the literals means a rename cannot leave a stale key behind.
+            localStorage.removeItem(CHAT_STORAGE_KEY);
+            localStorage.removeItem(CHAT_DISPLAY_KEY);
+            console.log('[ChatHistory] Persisted conversation forgotten (Clear)');
+        } catch (_e) {
+            /* storage unavailable */
+        }
+    });
+}
+
+/* ============================
+   Reset view — a clean character, exactly like a fresh page load
+   ============================ */
+// Industry-standard 3D-viewer "recenter": stop whatever is playing, put the
+// character back at the origin facing the camera, drop any pose snapshot,
+// hand the body to the ambient system, and re-frame the camera on the model
+// (the same 1.35 framing the app uses on load).
+function resetCompanionView() {
+    const v = window.NEXUS_VIEWER;
+    try {
+        window.NEXUS_CLIP_LOADER?.stopClip?.({ fadeOut: 0.15 });
+        window.NEXUS_MOTION_POSE_RESTORE?.clear?.();
+        window.NEXUS_MOTION?.execute?.({ commands: [{ type: 'stop' }] });
+        window.NEXUS_PROCEDURAL_ANIMATOR?.setAllowWithMixer?.(true);
+    } catch (_e) {
+        /* each subsystem is optional */
+    }
+    const root = v?.avatarManager?.currentRoot;
+    // In an MR session AvatarGrounding owns position.y — it tracks the detected
+    // floor plane, so forcing the root to the origin would sink her through it
+    // or leave her hovering until the next plane update.
+    const groundedByXR = !!v?.renderer?.xr?.isPresenting;
+    if (root && !groundedByXR) {
+        root.position.set(0, 0, 0);
+        // VRM forward is −Z and ViewerEngine rests VRM roots at yaw π, so this
+        // is "facing the camera", not "unrotated".
+        root.rotation.set(0, root.userData?.isVRM ? Math.PI : 0, 0);
+    }
+    // Delegate the camera half rather than repeating it: resetCamera() already
+    // frames the avatar at 1.35 when one is loaded and falls back to the
+    // on-load pose when none is. Inlining it here would make this the fourth
+    // copy of those magic numbers.
+    if (typeof v?.resetCamera === 'function') {
+        v.resetCamera();
+    } else if (v?.camera && v?.controls) {
+        v.camera.position.set(0, 1.4, 2.8);
+        v.controls.target.set(0, 1.0, 0);
+        v.controls.update();
+    }
+    showMessage('View reset', 'success');
+}
+const _drawerResetViewBtn = document.getElementById('drawer-reset-view-btn');
+if (_drawerResetViewBtn) _drawerResetViewBtn.addEventListener('click', resetCompanionView);
+
+// F = frame the character — the muscle memory every desktop 3D tool ships
+// (Maya, Unity, Unreal, Blender's Frame Selected). Ignored while typing.
+window.addEventListener('keydown', (e) => {
+    if (e.key !== 'f' && e.key !== 'F') return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const t = e.target;
+    const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+    if (typing) return;
+    const v = window.NEXUS_VIEWER;
+    const root = v?.avatarManager?.currentRoot;
+    if (root && typeof v.frameObject === 'function') {
+        v.frameObject(root, 1.35);
+        showMessage('Framed', 'success');
+    }
+});
+
 function showMessage(text, type) {
     const notification = document.createElement('div');
     notification.textContent = text;

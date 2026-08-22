@@ -756,6 +756,24 @@
                             </svg>
                             <span>VR / AR Mode</span>
                         </button>
+                        <button class="drawer-nav-item" id="drawer-reset-view-btn" type="button">
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <circle cx="12" cy="12" r="8" />
+                                <circle cx="12" cy="12" r="2" />
+                                <line x1="12" y1="1" x2="12" y2="5" />
+                                <line x1="12" y1="19" x2="12" y2="23" />
+                                <line x1="1" y1="12" x2="5" y2="12" />
+                                <line x1="19" y1="12" x2="23" y2="12" />
+                            </svg>
+                            <span>Reset View</span>
+                        </button>
                         <button class="drawer-nav-item" id="drawer-companion-btn" type="button">
                             <svg
                                 width="18"
@@ -3145,6 +3163,7 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <script defer src="src/TraceRecorderHooks.js"></script>
 
         <!-- Phase 4: Face + Hand Tracking (VRoid Hub–style webcam tracking) -->
+        <script defer src="src/gltf-viewer/CameraFraming.js"></script>
         <script defer src="src/gltf-viewer/CameraPresets.js"></script>
         <script defer src="src/FaceTracker.js"></script>
         <script defer src="src/HandTracker.js"></script>
