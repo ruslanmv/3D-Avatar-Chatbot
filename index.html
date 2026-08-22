@@ -1019,25 +1019,70 @@
                         </div>
 
                         <div class="input-group" id="ollabridge-pair-row" style="display: none">
-                            <label class="input-label">PAIR WITH CODE</label>
-                            <div style="display: flex; gap: 8px; align-items: center">
-                                <input
-                                    type="text"
-                                    id="ollabridge-pair-code"
-                                    class="text-input"
-                                    placeholder="Enter pairing code..."
-                                    maxlength="9"
-                                    style="flex: 1; letter-spacing: 0.3em; text-align: center; font-size: 1.1rem"
-                                />
-                                <button
-                                    id="ollabridge-pair-btn"
-                                    class="btn-primary"
-                                    style="white-space: nowrap; font-size: 0.875rem"
-                                    title="Exchange pairing code for a persistent token"
+                            <label class="input-label">DEVICE PAIRING</label>
+
+                            <!-- Shown when a pairing token is already stored. The token
+                                 persists across reloads, so this is the normal state on
+                                 every visit after the first. -->
+                            <div id="ollabridge-paired-box" style="display: none">
+                                <div
+                                    style="
+                                        display: flex;
+                                        gap: 8px;
+                                        align-items: center;
+                                        justify-content: space-between;
+                                        padding: 8px 10px;
+                                        border: 1px solid rgba(34, 197, 94, 0.35);
+                                        border-radius: 8px;
+                                        background: rgba(34, 197, 94, 0.08);
+                                    "
                                 >
-                                    🔗 Pair
-                                </button>
+                                    <div style="min-width: 0">
+                                        <div style="font-size: 0.82rem; color: #22c55e">✅ Paired — no code needed</div>
+                                        <div
+                                            id="ollabridge-paired-device"
+                                            style="
+                                                font-size: 0.68rem;
+                                                color: rgba(255, 255, 255, 0.5);
+                                                overflow: hidden;
+                                                text-overflow: ellipsis;
+                                                white-space: nowrap;
+                                            "
+                                        ></div>
+                                    </div>
+                                    <button
+                                        id="ollabridge-unpair-btn"
+                                        class="btn-secondary"
+                                        style="white-space: nowrap; font-size: 0.8rem"
+                                        title="Forget this device token and pair again with a new code"
+                                    >
+                                        🔓 Unpair
+                                    </button>
+                                </div>
                             </div>
+
+                            <!-- Shown only when there is no stored token. -->
+                            <div id="ollabridge-pair-box">
+                                <div style="display: flex; gap: 8px; align-items: center">
+                                    <input
+                                        type="text"
+                                        id="ollabridge-pair-code"
+                                        class="text-input"
+                                        placeholder="Enter pairing code..."
+                                        maxlength="9"
+                                        style="flex: 1; letter-spacing: 0.3em; text-align: center; font-size: 1.1rem"
+                                    />
+                                    <button
+                                        id="ollabridge-pair-btn"
+                                        class="btn-primary"
+                                        style="white-space: nowrap; font-size: 0.875rem"
+                                        title="Exchange pairing code for a persistent token"
+                                    >
+                                        🔗 Pair
+                                    </button>
+                                </div>
+                            </div>
+
                             <div
                                 id="ollabridge-pair-status"
                                 style="font-size: 0.75rem; margin-top: 4px; color: #888"
@@ -1051,11 +1096,7 @@
 
                         <div class="input-group" id="baseurl-row" style="display: none">
                             <label class="input-label" for="base-url">BASE URL (root only, no /v1)</label>
-                            <input
-                                id="base-url"
-                                class="text-input"
-                                placeholder="e.g. https://ruslanmv-ollabridge.hf.space or http://localhost:11435"
-                            />
+                            <input id="base-url" class="text-input" placeholder="https://app.ollabridge.com" />
                         </div>
 
                         <div class="input-group">
@@ -1101,6 +1142,26 @@
                                 When checked, the persona's own prompt from HomePilot is used instead of the local
                                 system prompt below. Uncheck to override with your own Nexus prompt.
                             </div>
+                        </div>
+
+                        <!-- Verify the provider before leaving this section, rather than
+                             discovering it is misconfigured on the first message. -->
+                        <div class="input-group" style="margin-top: 4px">
+                            <button
+                                class="secondary-btn"
+                                id="test-connection-btn"
+                                type="button"
+                                style="width: 100%"
+                                title="Send one short prompt to the selected provider and show the reply"
+                            >
+                                🔌 TEST CONNECTION
+                            </button>
+                            <div
+                                id="test-connection-status"
+                                role="status"
+                                aria-live="polite"
+                                style="font-size: 0.75rem; margin-top: 6px; opacity: 0.85; min-height: 1em"
+                            ></div>
                         </div>
                     </div>
 
@@ -1563,6 +1624,120 @@
                                     <div class="provider-name" style="font-size: 0.82rem">ACES Tone Mapping</div>
                                     <div style="font-size: 0.68rem; color: rgba(255, 255, 255, 0.45)">
                                         Cinematic contrast curve (off = flat Linear for VRoid-style)
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="config-section">
+                        <h3 class="config-title">EXPERIMENTAL</h3>
+                        <p style="font-size: 0.72rem; color: rgba(255, 255, 255, 0.5); margin-bottom: 12px">
+                            Unfinished features, off by default. Turning them off restores the normal avatar completely.
+                        </p>
+                        <div style="display: flex; flex-direction: column; gap: 10px">
+                            <label
+                                class="provider-card"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 10px;
+                                    padding: 8px 12px;
+                                    cursor: pointer;
+                                "
+                            >
+                                <input type="checkbox" id="npc-enabled" />
+                                <div>
+                                    <div class="provider-name" style="font-size: 0.82rem">
+                                        Living NPC — voice &amp; chat body control
+                                    </div>
+                                    <div style="font-size: 0.68rem; color: rgba(255, 255, 255, 0.45)">
+                                        She reacts to what you say — "dance", "wave", "sit down", "shake my hand". Works
+                                        with any AI provider.
+                                    </div>
+                                </div>
+                            </label>
+                            <label
+                                class="provider-card"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 10px;
+                                    padding: 8px 12px;
+                                    cursor: pointer;
+                                "
+                            >
+                                <input type="checkbox" id="npc-library-anims" checked />
+                                <div>
+                                    <div class="provider-name" style="font-size: 0.82rem">
+                                        Built-in animations only (recommended)
+                                    </div>
+                                    <div style="font-size: 0.68rem; color: rgba(255, 255, 255, 0.45)">
+                                        Motion commands play only the animation set that ships and already works for
+                                        this character. Untick to allow experimental clips.
+                                    </div>
+                                </div>
+                            </label>
+                            <label
+                                class="provider-card"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 10px;
+                                    padding: 8px 12px;
+                                    cursor: pointer;
+                                "
+                            >
+                                <input type="checkbox" id="npc-bvh-anims" checked />
+                                <div>
+                                    <div class="provider-name" style="font-size: 0.82rem">BVH animations</div>
+                                    <div style="font-size: 0.68rem; color: rgba(255, 255, 255, 0.45)">
+                                        On by default — adds the ~110 motion-capture clips (dance, emotion, action) to
+                                        the ~30 VRM Animation clips. Turn off to play VRMA only, which is a quick way to
+                                        tell whether a problem is specific to one format. Ignored on a non-VRM (GLB)
+                                        avatar, where .vrma has no humanoid to retarget onto and BVH is all that plays.
+                                    </div>
+                                </div>
+                            </label>
+                            <div class="provider-card" style="padding: 8px 12px">
+                                <div class="provider-name" style="font-size: 0.82rem; margin-bottom: 4px">Movement</div>
+                                <div
+                                    style="font-size: 0.68rem; color: rgba(255, 255, 255, 0.45); margin-bottom: 8px"
+                                    id="npc-movement-hint"
+                                >
+                                    Lets her walk toward or away from you. Walking is still rough on desktop — VR only
+                                    is recommended.
+                                </div>
+                                <select id="npc-movement" class="select-input" disabled>
+                                    <option value="off" selected>Off — gestures only</option>
+                                    <option value="vr">VR only (recommended)</option>
+                                    <option value="all">Everywhere</option>
+                                </select>
+                            </div>
+                            <button
+                                type="button"
+                                id="npc-telemetry"
+                                class="select-input"
+                                style="cursor: pointer; text-align: left"
+                            >
+                                📊 Show live telemetry overlay
+                            </button>
+                            <label
+                                class="provider-card"
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 10px;
+                                    padding: 8px 12px;
+                                    cursor: pointer;
+                                "
+                            >
+                                <input type="checkbox" id="npc-debug" />
+                                <div>
+                                    <div class="provider-name" style="font-size: 0.82rem">Verbose motion logs</div>
+                                    <div style="font-size: 0.68rem; color: rgba(255, 255, 255, 0.45)">
+                                        Trace every command, clip pick and load attempt in the console ([Motion],
+                                        [MotionClipMap]).
                                     </div>
                                 </div>
                             </label>
@@ -2157,12 +2332,7 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
 
                     <div class="modal-footer">
                         <button class="secondary-btn" id="cancel-settings" type="button">CANCEL</button>
-                        <button class="secondary-btn" id="test-connection-btn" type="button">TEST</button>
                         <button class="primary-btn" id="save-settings" type="button">SAVE</button>
-                        <span
-                            id="test-connection-status"
-                            style="width: 100%; font-size: 12px; opacity: 0.85; text-align: center"
-                        ></span>
                     </div>
                 </div>
             </div>
@@ -3027,10 +3197,13 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <script defer src="src/TeleportArcPointer.js"></script>
 
         <!-- Living NPC (additive — voice/LLM-driven avatar gameplay: follow, sit, handshake) -->
-        <!-- NON-DESTRUCTIVE: To remove, delete these 8 script tags and search "NEXUS_MOTION" -->
+        <!-- NON-DESTRUCTIVE: To remove, delete these 11 script tags and search "NEXUS_MOTION" -->
+        <script defer src="src/xr/ActionRegistry.js"></script>
         <script defer src="src/xr/MotionDSL.js"></script>
         <script defer src="src/xr/MotionExecutor.js"></script>
+        <script defer src="src/xr/MotionPoseRestore.js"></script>
         <script defer src="src/xr/MotionClipMap.js"></script>
+        <script defer src="src/xr/MotionPolicy.js"></script>
         <script defer src="src/xr/MotionBlockParser.js"></script>
         <script defer src="src/xr/IntentFastPath.js"></script>
         <script defer src="src/xr/MotionContract.js"></script>

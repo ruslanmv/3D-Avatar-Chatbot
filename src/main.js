@@ -106,6 +106,36 @@ let lastFrameFitOffset = window.matchMedia('(max-width: 767px)').matches ? 0.9 :
 let floorMesh = null;
 let dirLight = null;
 
+/**
+ * One-time migration: BVH animations became the default.
+ *
+ * "BVH animations" shipped defaulting to OFF while its retarget pipeline was
+ * still baking the avatar's live pose into every frame. saveSettings() writes
+ * the checkbox on every Save, so anyone who opened Settings during that window
+ * has `npc_bvh_anims: "false"` stored — and a stored value beats the new
+ * default forever.
+ *
+ * That is not a harmless preference. `idle` and `sit_idle` resolve to BVH
+ * files only, so on a VRM avatar (where the format policy applies) they end up
+ * with zero candidates and log "gesture idle did not play — load_failed".
+ *
+ * Clear that stale value once. The marker means a deliberate opt-out made
+ * afterwards is respected and never re-cleared.
+ */
+(function __nexusMigrateBvhDefaultOn() {
+    try {
+        if (typeof localStorage === 'undefined') return;
+        if (localStorage.getItem('npc_bvh_anims_default_on_v1') === 'done') return;
+        localStorage.setItem('npc_bvh_anims_default_on_v1', 'done');
+        if (localStorage.getItem('npc_bvh_anims') === 'false') {
+            localStorage.removeItem('npc_bvh_anims');
+            console.log('[Main] Migration: cleared a stale "BVH animations off" left by the old default');
+        }
+    } catch (_) {
+        /* storage unavailable — nothing to migrate */
+    }
+})();
+
 /* ============================
    Configuration (Providers)
    ============================ */
@@ -2201,6 +2231,45 @@ function setupModals() {
         });
     });
 
+    // Living NPC (experimental) — live apply, like the render-mode preset.
+    // The movement select is only meaningful while the master is on, so it
+    // enables and disables with it.
+    const npcEnabled = document.getElementById('npc-enabled');
+    const npcMovement = document.getElementById('npc-movement');
+    const syncNpcControls = () => {
+        if (npcMovement && npcEnabled) npcMovement.disabled = !npcEnabled.checked;
+    };
+    if (npcEnabled) {
+        npcEnabled.addEventListener('change', () => {
+            localStorage.setItem('npc_enabled', npcEnabled.checked ? 'true' : 'false');
+            syncNpcControls();
+        });
+    }
+    if (npcMovement) {
+        npcMovement.addEventListener('change', () => {
+            localStorage.setItem('npc_movement', npcMovement.value);
+        });
+    }
+    const npcLibraryAnims = document.getElementById('npc-library-anims');
+    if (npcLibraryAnims) {
+        npcLibraryAnims.addEventListener('change', () => {
+            localStorage.setItem('npc_library_anims', npcLibraryAnims.checked ? 'true' : 'false');
+        });
+    }
+    const npcBvhAnims = document.getElementById('npc-bvh-anims');
+    if (npcBvhAnims) {
+        npcBvhAnims.addEventListener('change', () => {
+            localStorage.setItem('npc_bvh_anims', npcBvhAnims.checked ? 'true' : 'false');
+        });
+    }
+    const npcDebug = document.getElementById('npc-debug');
+    if (npcDebug) {
+        npcDebug.addEventListener('change', () => {
+            window.NEXUS_MOTION?.setDebug?.(npcDebug.checked);
+            localStorage.setItem('npc_debug', npcDebug.checked ? 'true' : 'false');
+        });
+    }
+
     // Visual effects toggles — live preview (additive, non-destructive)
     const fxEnvMap = document.getElementById('fx-envmap');
     if (fxEnvMap) {
@@ -2494,6 +2563,39 @@ function openSettings() {
     const savedShadow = vis ? (vis.shadows ? 'on' : 'off') : localStorage.getItem('desktop_shadow') || 'off';
     const shadowRadio = document.querySelector(`input[name="desktop-shadow"][value="${savedShadow}"]`);
     if (shadowRadio) shadowRadio.checked = true;
+
+    // Living NPC (experimental) — both controls default to off/off when the
+    // user has never opted in.
+    const npcEnabledEl = document.getElementById('npc-enabled');
+    const npcMovementEl = document.getElementById('npc-movement');
+    if (npcEnabledEl) {
+        npcEnabledEl.checked = localStorage.getItem('npc_enabled') === 'true';
+    }
+    if (npcMovementEl) {
+        const savedMovement = localStorage.getItem('npc_movement');
+        npcMovementEl.value = ['off', 'vr', 'all'].includes(savedMovement) ? savedMovement : 'off';
+        npcMovementEl.disabled = !(npcEnabledEl && npcEnabledEl.checked);
+    }
+    const npcLibraryAnimsEl = document.getElementById('npc-library-anims');
+    if (npcLibraryAnimsEl) {
+        npcLibraryAnimsEl.checked = localStorage.getItem('npc_library_anims') !== 'false';
+    }
+    // A connection result from a previous visit says nothing about now.
+    try {
+        __nexusClearTestStatus();
+    } catch (_) {
+        /* the button may not be wired yet on first open */
+    }
+
+    const npcBvhAnimsEl = document.getElementById('npc-bvh-anims');
+    if (npcBvhAnimsEl) {
+        // Default ON: only an explicit "false" turns it off.
+        npcBvhAnimsEl.checked = localStorage.getItem('npc_bvh_anims') !== 'false';
+    }
+    const npcDebugEl = document.getElementById('npc-debug');
+    if (npcDebugEl) {
+        npcDebugEl.checked = localStorage.getItem('npc_debug') === 'true';
+    }
 
     // Visual effects toggles — live engine state first, then localStorage
     const fxFields = [
@@ -2911,6 +3013,89 @@ function updateProviderFields() {
 }
 
 /**
+ * Reflect the stored pairing state in Settings.
+ *
+ * The device token has always survived a reload — it is written to
+ * `nexus_llm_settings` by pairWithOllaBridge and preserved by every later
+ * save. What was missing is any sign of that in the UI: reopening Settings
+ * showed an empty "Enter pairing code..." box, which reads as "you are not
+ * paired", so people re-paired every session and burned a fresh single-use
+ * code each time.
+ *
+ * Paired  → a green summary with the device id and an Unpair button.
+ * Unpaired→ the code input and the Pair button.
+ */
+function _updateOllaBridgePairUI() {
+    const pairedBox = $('ollabridge-paired-box');
+    const pairBox = $('ollabridge-pair-box');
+    const deviceEl = $('ollabridge-paired-device');
+    if (!pairedBox || !pairBox) return;
+
+    let token = '';
+    let deviceId = '';
+    try {
+        const unified = JSON.parse(localStorage.getItem('nexus_llm_settings') || '{}');
+        token = (unified.ollabridge && unified.ollabridge.pair_token) || '';
+        deviceId = (unified.ollabridge && unified.ollabridge.device_id) || '';
+    } catch (_) {
+        /* unreadable storage — fall through to the unpaired view */
+    }
+
+    const paired = !!String(token).trim();
+    pairedBox.style.display = paired ? '' : 'none';
+    pairBox.style.display = paired ? 'none' : '';
+    if (deviceEl) {
+        // Never render the token itself — only the device id identifies it.
+        // Cleared when unpaired so no stale label survives in the hidden box.
+        deviceEl.textContent = !paired ? '' : deviceId ? 'Device ' + deviceId : 'Token stored on this browser';
+    }
+    return paired;
+}
+
+/**
+ * Forget the stored pairing token so a new code can be entered.
+ *
+ * Local only: the device stays registered on the OllaBridge account, which
+ * is where it can be revoked. This just stops this browser from using it.
+ */
+function __nexusWireOllaBridgeUnpairButton() {
+    const btn = document.getElementById('ollabridge-unpair-btn');
+    if (!btn) return;
+
+    btn.addEventListener('click', () => {
+        const statusDiv = document.getElementById('ollabridge-pair-status');
+        try {
+            if (!window._nexusLLM && typeof window.LLMManager === 'function') {
+                window._nexusLLM = new window.LLMManager();
+            }
+            if (window._nexusLLM) {
+                window._nexusLLM.updateSettings({ ollabridge: { pair_token: '', device_id: '' } });
+            }
+        } catch (e) {
+            console.warn('[Main] Unpair failed:', e);
+        }
+
+        _updateOllaBridgePairUI();
+        const codeInput = document.getElementById('ollabridge-pair-code');
+        if (codeInput) codeInput.value = '';
+        const pairBtn = document.getElementById('ollabridge-pair-btn');
+        if (pairBtn) {
+            pairBtn.disabled = false;
+            pairBtn.textContent = '🔗 Pair';
+        }
+        if (statusDiv) {
+            statusDiv.textContent = 'Unpaired on this browser. Enter a new code to pair again.';
+            statusDiv.style.color = '#888';
+        }
+        const modelSelect = document.getElementById('model-select');
+        if (modelSelect) modelSelect.innerHTML = '<option value="default">default</option>';
+        console.log('[Main] OllaBridge unpaired (local token cleared)');
+    });
+}
+
+window.addEventListener('DOMContentLoaded', __nexusWireOllaBridgeUnpairButton);
+
+/**
  * Update the OllaBridge settings UI based on the selected auth mode dropdown.
  * Shows/hides fields dynamically: pairing code, API key, or just base URL.
  */
@@ -2932,6 +3117,7 @@ function _updateOllaBridgeAuthUI() {
     } catch (_) {}
 
     function applyAuthMode() {
+        _updateOllaBridgePairUI();
         const mode = authModeSelect.value;
 
         if (mode === 'pairing') {
@@ -3035,6 +3221,30 @@ function saveSettings() {
     const desktopShadow = shadowRadio ? shadowRadio.value : 'off';
     localStorage.setItem('desktop_shadow', desktopShadow);
     window.NEXUS_VIEWER?.setShadows(desktopShadow === 'on');
+
+    // Persist Living NPC (experimental). The change handlers already wrote
+    // these for live apply; saving again keeps Save authoritative if a control
+    // was set before the listeners bound.
+    const npcEnabledSave = document.getElementById('npc-enabled');
+    if (npcEnabledSave) {
+        localStorage.setItem('npc_enabled', npcEnabledSave.checked ? 'true' : 'false');
+    }
+    const npcMovementSave = document.getElementById('npc-movement');
+    if (npcMovementSave) {
+        localStorage.setItem('npc_movement', npcMovementSave.value);
+    }
+    const npcLibraryAnimsSave = document.getElementById('npc-library-anims');
+    if (npcLibraryAnimsSave) {
+        localStorage.setItem('npc_library_anims', npcLibraryAnimsSave.checked ? 'true' : 'false');
+    }
+    const npcBvhAnimsSave = document.getElementById('npc-bvh-anims');
+    if (npcBvhAnimsSave) {
+        localStorage.setItem('npc_bvh_anims', npcBvhAnimsSave.checked ? 'true' : 'false');
+    }
+    const npcDebugSave = document.getElementById('npc-debug');
+    if (npcDebugSave) {
+        localStorage.setItem('npc_debug', npcDebugSave.checked ? 'true' : 'false');
+    }
 
     // Persist visual effects toggles
     const fxSaveFields = [
@@ -3954,6 +4164,147 @@ function clearHistory() {
     }
 }
 
+/* ============================
+   Living NPC — command echo (M2)
+   ============================ */
+// AAA voice-UX convention (EndWar, SOCOM, Bridge Crew): always ECHO the
+// parsed order. A misfire becomes a visible shrug instead of a mystery, and
+// users learn the vocabulary across languages by seeing what was understood.
+// Decoupled from the motion stack via a DOM event — removing the stack's
+// script tags removes the toasts with it.
+let _lastMotionToastAt = 0;
+window.addEventListener('nexus-motion:action', (e) => {
+    const d = (e && e.detail) || {};
+    const now = Date.now();
+    // Failures bypass the burst throttle. They arrive a beat AFTER the echo
+    // they contradict ("💃 dance" then nothing moves), so throttling them
+    // swallows the only signal the user gets — which is the whole bug this
+    // notice exists to expose. They also replace the echo rather than stack
+    // on it, so there is no burst to guard against.
+    const isFailure = d.source === 'clip_failed' || d.source === 'policy';
+    if (!isFailure && now - _lastMotionToastAt < 1500) return;
+    _lastMotionToastAt = now;
+    if (d.source === 'policy') {
+        showMessage('🚫 Movement is off — enable it in Settings → EXPERIMENTAL', 'info');
+        return;
+    }
+    if (d.source === 'clip_failed') {
+        // Name what went wrong instead of leaving the user staring at a still
+        // avatar after a confident-looking echo.
+        const why =
+            d.reason === 'unknown_clip'
+                ? 'no animation matches'
+                : d.reason === 'load_failed'
+                  ? "couldn't load for this character"
+                  : d.reason === 'loader_unavailable'
+                    ? 'animation system not ready'
+                    : d.reason;
+        _showMotionEcho('⚠️ ' + String(d.label || '').replace(/_/g, ' ') + ' — ' + why);
+        return;
+    }
+    const reg = window.NEXUS_ACTION_REGISTRY;
+    const icon = (reg && reg.icon && reg.icon(d.label)) || '🎯';
+    const label = String(d.label || '').replace(/_/g, ' ');
+    if (label) _showMotionEcho(icon + ' ' + label);
+});
+
+/**
+ * The command echo gets its own toast rather than reusing showMessage().
+ *
+ * showMessage sits at top:20px / z-index:2000 with no pointer-events rule, so
+ * it covers the .topbar (z-index 30) AND swallows taps on it for three
+ * seconds. That is survivable for an occasional error notice; the echo fires
+ * on EVERY recognised command, so it would hide the app title and block the
+ * hamburger constantly. This one docks below the header and is click-through.
+ */
+let _motionEchoEl = null;
+let _motionEchoTimer = null;
+function _showMotionEcho(text) {
+    const bar = document.querySelector('.topbar');
+    const top = (bar ? Math.round(bar.getBoundingClientRect().height) : 56) + 8;
+    if (!_motionEchoEl) {
+        _motionEchoEl = document.createElement('div');
+        _motionEchoEl.id = 'motion-echo-toast';
+        _motionEchoEl.style.cssText =
+            'position:fixed;left:50%;transform:translateX(-50%);z-index:29;' +
+            'background:rgba(9,18,28,0.92);color:#9fe8ff;' +
+            'border:1px solid rgba(140,220,255,0.35);border-radius:999px;' +
+            'padding:6px 14px;font:600 13px/1.2 var(--font-display,system-ui);' +
+            'pointer-events:none;transition:opacity .25s ease-out;';
+        document.body.appendChild(_motionEchoEl);
+    }
+    // z-index 29 keeps it strictly under the topbar (30); re-measure each time
+    // because the header height changes with orientation.
+    _motionEchoEl.style.top = top + 'px';
+    _motionEchoEl.textContent = text;
+    _motionEchoEl.style.opacity = '1';
+    clearTimeout(_motionEchoTimer);
+    _motionEchoTimer = setTimeout(() => {
+        if (_motionEchoEl) _motionEchoEl.style.opacity = '0';
+    }, 1800);
+}
+
+/* ============================
+   Living NPC — telemetry overlay (M3)
+   ============================ */
+// On-screen readout of NEXUS_MOTION.getTelemetry() so phone testing needs no
+// USB inspector: Settings → EXPERIMENTAL → "Show live telemetry overlay".
+// Refreshes once a second while visible; tap the panel to dismiss.
+let _telemetryPanel = null;
+let _telemetryTick = null;
+
+function _telemetryText() {
+    const M = window.NEXUS_MOTION;
+    if (!M || !M.getTelemetry) return 'Living NPC is not loaded.';
+    const t = M.getTelemetry();
+    const pct = t.utterances ? Math.round((100 * t.recall_gap_hits) / t.utterances) : 0;
+    const top =
+        Object.entries(t.by_label || {})
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([k, v]) => k + '×' + v)
+            .join('  ') || '—';
+    return [
+        '🎛 Living NPC — session telemetry (tap to close)',
+        'utterances       ' + t.utterances,
+        'fast-path hits   ' + t.fastpath_hits + '   ' + top,
+        'LLM plans        ' + t.llm_plans + '   suppressed ' + t.suppressed_llm_plans,
+        'recall gap       ' + t.recall_gap_hits + '   (' + pct + '% of utterances)',
+        'misfire stops    ' + (t.misfire_stops || 0) + '   ' + (t.misfire_recent || []).join(', '),
+        'policy strips    ' + t.policy_strips,
+        'missed texts     ' +
+            (t.missed_count || 0) +
+            (M.config && M.config.debug ? '' : '   (set config.debug=true to read)'),
+    ].join('\n');
+}
+
+function toggleTelemetryOverlay() {
+    if (_telemetryPanel) {
+        clearInterval(_telemetryTick);
+        _telemetryTick = null;
+        _telemetryPanel.remove();
+        _telemetryPanel = null;
+        return;
+    }
+    const el = document.createElement('pre');
+    el.id = 'npc-telemetry-overlay';
+    el.style.cssText =
+        'position:fixed;left:10px;bottom:120px;z-index:99999;margin:0;padding:10px 12px;' +
+        'background:rgba(10,12,18,0.85);color:#9fe8ff;border:1px solid rgba(140,220,255,0.35);' +
+        'border-radius:10px;font:11px/1.6 ui-monospace,Menlo,monospace;white-space:pre;' +
+        'max-width:92vw;overflow:auto;backdrop-filter:blur(4px);cursor:pointer';
+    el.addEventListener('click', toggleTelemetryOverlay);
+    el.textContent = _telemetryText();
+    document.body.appendChild(el);
+    _telemetryPanel = el;
+    _telemetryTick = setInterval(() => {
+        if (_telemetryPanel) _telemetryPanel.textContent = _telemetryText();
+    }, 1000);
+}
+
+const _npcTelemetryBtn = document.getElementById('npc-telemetry');
+if (_npcTelemetryBtn) _npcTelemetryBtn.addEventListener('click', toggleTelemetryOverlay);
+
 function showMessage(text, type) {
     const notification = document.createElement('div');
     notification.textContent = text;
@@ -4704,9 +5055,45 @@ async function callWatsonX(userMessage) {
 }
 
 // ---- Test Connection button (Settings modal) ----
+
+/**
+ * Does the selected provider have the credential it actually needs?
+ *
+ * The old check was `!config.apiKey` for everyone, which is wrong for two of
+ * the five providers. OllaBridge in Device Pairing mode authenticates with a
+ * stored pairing token and deliberately keeps api_key empty, so a paired,
+ * working setup was told to "Enter an API key/token first." Ollama needs no
+ * credential at all.
+ *
+ * @returns {string|null} What is missing, or null when the provider is ready.
+ */
+function __nexusMissingCredential() {
+    const provider = config && config.provider;
+    if (provider === 'ollama') return null; // local, unauthenticated
+
+    if (provider === 'ollabridge') {
+        let stored = {};
+        try {
+            stored = JSON.parse(localStorage.getItem('nexus_llm_settings') || '{}').ollabridge || {};
+        } catch (_) {
+            /* fall through to the api_key check below */
+        }
+        const hasPairToken = !!String(stored.pair_token || '').trim();
+        const hasKey = !!String(config.apiKey || stored.api_key || '').trim();
+        if (hasPairToken || hasKey) return null;
+        return stored.auth_mode === 'apikey'
+            ? 'Enter an OllaBridge API key first.'
+            : 'Pair this device first — enter a pairing code above and click Pair.';
+    }
+
+    if (!config.apiKey) return 'Enter an API key/token first.';
+    return null;
+}
+
 async function __nexusTestConnection() {
     if (!config || config.provider === 'none') return { ok: false, message: 'Select a provider first.' };
-    if (!config.apiKey) return { ok: false, message: 'Enter an API key/token first.' };
+    const missing = __nexusMissingCredential();
+    if (missing) return { ok: false, message: missing };
     if (!config.model) return { ok: false, message: 'Select a model first.' };
 
     const ping = 'Respond with the single word: OK';
@@ -4726,6 +5113,25 @@ function __nexusWireTestButton() {
     const btn = document.getElementById('test-connection-btn');
     const status = document.getElementById('test-connection-status');
     if (!btn) return;
+
+    const LABEL = btn.textContent;
+
+    function setStatus(text, tone) {
+        if (!status) return;
+        status.textContent = text;
+        status.style.color = tone === 'ok' ? '#22c55e' : tone === 'err' ? '#ef4444' : '#888';
+    }
+
+    // A result stops being true the moment the provider, key or model changes,
+    // and a stale "Connected" is worse than no result at all.
+    __nexusClearTestStatus = () => setStatus('', null);
+    ['provider-select', 'api-key', 'model-select', 'base-url', 'ollabridge-auth-mode'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', __nexusClearTestStatus);
+    });
+    document.querySelectorAll('input[name="provider"]').forEach((el) => {
+        el.addEventListener('change', __nexusClearTestStatus);
+    });
 
     btn.addEventListener('click', async () => {
         // Pull latest values from the Settings inputs (test without saving)
@@ -4747,14 +5153,36 @@ function __nexusWireTestButton() {
         } catch (_) {}
 
         btn.disabled = true;
-        if (status) status.textContent = 'Testing...';
+        btn.textContent = '⏳ TESTING…';
+        setStatus('Sending a one-word prompt to the provider…', null);
 
-        const result = await __nexusTestConnection();
-        if (status) status.textContent = result.message;
+        // A provider that never answers must not leave the button dead. The
+        // budget is generous because OllaBridge relays to the user's own PC and
+        // a cold model can take a while to load.
+        const TIMEOUT_MS = 45000;
+        let result;
+        try {
+            result = await Promise.race([
+                __nexusTestConnection(),
+                new Promise((resolve) =>
+                    setTimeout(
+                        () => resolve({ ok: false, message: `❌ No answer within ${TIMEOUT_MS / 1000}s.` }),
+                        TIMEOUT_MS
+                    )
+                ),
+            ]);
+        } catch (e) {
+            result = { ok: false, message: `❌ ${e?.message || e}` };
+        }
 
+        setStatus(result.message, result.ok ? 'ok' : 'err');
         btn.disabled = false;
+        btn.textContent = LABEL;
     });
 }
+
+/** Set by __nexusWireTestButton so openSettings can reset a stale result. */
+let __nexusClearTestStatus = () => {};
 
 window.addEventListener('DOMContentLoaded', __nexusWireTestButton);
 
@@ -4872,10 +5300,13 @@ function __nexusWireOllaBridgePairButton() {
             if (result.ok) {
                 codeInput.value = '';
                 if (statusDiv) {
-                    statusDiv.textContent = `✅ Paired successfully! Device: ${result.device_id || 'unknown'}. Token saved.`;
+                    statusDiv.textContent = `✅ Paired successfully! Device: ${result.device_id || 'unknown'}. Saved — you will not need to pair again on this browser.`;
                     statusDiv.style.color = '#22c55e';
                 }
                 btn.textContent = '✅ Paired!';
+                // Swap to the paired view so the code box does not linger and
+                // invite a second, wasted pairing.
+                _updateOllaBridgePairUI();
 
                 // Refresh models now that we have a token
                 const modelSelect = document.getElementById('model-select');

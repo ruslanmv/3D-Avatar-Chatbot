@@ -250,6 +250,143 @@ A pre-recorded VRoid Hub "Waiting" clip is also available:
 
 ---
 
+## Clip Retargeting (BVH + VRMA)
+
+Motion commands ("dance", "wave") resolve through `MotionClipMap` to files in
+`vendor/animations/` and `addons/`, and play through `NEXUS_CLIP_LOADER`. Two
+clip formats are supported, and the difference matters:
+
+| | `.vrma` (VRM Animation) | `.bvh` (motion capture) |
+|---|---|---|
+| Authored against | VRM normalized rig | its own skeleton, retargeted at load |
+| Needs a VRM humanoid | **Yes** — cannot play on a plain GLB | No |
+| Retargets to any avatar | Yes, by construction | Yes, since the fixes below |
+| Shipped count | 19 dances + 13 actions | ~110 across 9 manifest categories |
+
+### Path resolution
+
+`manifest.json` lists clips **relative to `basePath`** (`action/walk.bvh`),
+while `MotionClipMap` lists them **relative to the site root**
+(`addons/vrma-dance/hipHopDance.vrma`). Both loaders used to prefix every path
+with `basePath`, producing `vendor/animations/addons/vrma-dance/…` — a path
+that does not exist.
+
+An unmatched path is answered with `index.html` and **HTTP 200** (SPA fallback
+locally, catch-all rewrite on Vercel), not a 404, so the loader received
+`<!doctype html>` and died on the leading `<`. Every MotionClipMap candidate
+reported `load_failed` while the files themselves served perfectly — which is
+why this looked like a deployment problem for a long time.
+
+`ClipAnimationShared.resolveClipUrl(path, basePath)` now handles both shapes.
+A `.vrma` that still comes back as HTML logs an explicit diagnostic naming the
+URL it fetched, rather than a bare `SyntaxError: Unexpected token '<'`.
+
+### The BVH retarget
+
+BVH clips are retargeted onto the **normalized** rig, the same target VRMA
+uses, so one clip plays the same on every avatar and three-vrm composes
+normalized → raw itself (`autoUpdateHumanBones = true` for both formats).
+
+Five defects made the old path avatar-specific:
+
+1. **Raw bones.** `buildAvatarBoneMap` preferred `getRawBoneNode`, so each
+   avatar's rest pose leaked into playback. It now accepts
+   `{ normalized: true }`, which the BVH loader passes.
+
+2. **The live pose was baked into every keyframe.** The retarget computed
+   `qOut = tRest · inv(sRest) · qSrc`. A BVH hierarchy carries no rest rotation
+   — only `OFFSET` translations — so `sRest` was always identity and did
+   nothing. `tRest` was the target bone's quaternion **at load time**, and
+   clips load lazily on first play, so the avatar's arms-lowered, mid-breath
+   stance was welded into the whole animation. The shipped skeletons already
+   use VRM humanoid bone names with identity rests, so values now pass
+   through untouched.
+
+3. **Hips translation was discarded**, costing every clip its bounce, weight
+   shift and travel. It is kept and scaled by
+   `normalizedHipsRestY / bvhRootOffsetY` — the files are authored ~10× larger
+   (`dance_1.bvh` root `OFFSET` Y = 12.19 vs a normalized hips rest of ~1.1).
+
+4. **No VRM 0.x handedness flip**, which the VRMA path always had. VRM 0.x
+   uses the opposite handedness, so X and Z must be negated or the body plays
+   mirrored. `getMetaVersion`, `transformQuatForVRM0` and `transformPosForVRM0`
+   live in `ClipAnimationShared` and are used by both loaders.
+
+5. **Dead correction data.** Every `BONE_CORRECTION_PRESETS` entry was the
+   identity quaternion `[0,0,0,1]`, so that multiplication never corrected
+   anything, and `isCanonicalDancePair` hardcoded a single
+   `dance_1.bvh` × `AvatarSample_A` pairing. Both removed.
+
+Bone coverage is reported per clip but does **not** fail it — a sparse rig
+(a GLB resolving bones by name) can legitimately map fewer. Partial motion
+beats a silent no-op; the `quatCount < 6` gate still rejects an unusable
+retarget.
+
+### Format policy and the GLB guard
+
+Settings → **BVH animations** (`npc_bvh_anims`) chooses whether `.bvh` clips
+are offered. It defaults to **ON** — the retarget above is fixed, so those
+~110 clips are part of the library like any other. Turning it off restricts
+playback to VRM Animation clips, which is a quick way to tell whether a
+problem is specific to one format.
+
+The setting is consulted **only when a VRM humanoid is present**: on a plain
+GLB avatar every `.vrma` fails with "No VRM humanoid — cannot retarget", so
+switching BVH off would leave nothing playable at all (measured: dance 19
+candidates → 8 unplayable; idle, sit_idle, sit and stand → zero each). BVH is
+always available on a non-VRM avatar, whatever the toggle says.
+
+### Knowing which format played
+
+Every successful clip logs one line, always — not behind the verbose setting,
+because "which format was that?" is the first question asked of any animation
+bug:
+
+```
+[Motion] "dance" → BVH  vendor/animations/dance/dance_rumba.bvh  (2.30s, loop)
+[Motion] "wave" → VRMA  addons/vrma-actions/waving.vrma  (3.42s, candidate 2/2)
+```
+
+`candidate N/M` appears only when earlier candidates were skipped, so a clip
+quietly falling back is visible. `play()` also returns `format` and `path` on
+its result object.
+
+Failures name formats too: a skipped file logs
+`[MotionClipMap] VRMA clip failed to load (skipped from now on): …`, and when
+everything fails the summary breaks the attempts down —
+`ALL 4 candidates failed to load (2 VRMA, 2 BVH) — …`. A path that failed once
+is skipped thereafter; `NEXUS_MOTION_CLIPS.resetUnavailable()` clears that
+cache without a reload.
+
+### Returning to the previous pose
+
+`MotionPoseRestore` snapshots the skeleton before the first non-ambient clip
+of a sequence and eases back to it over 0.5 s on "stop" or when a one-shot
+clip finishes, before the ambient animator resumes. A pose set in Pose Studio
+is recovered exactly, because the snapshot is simply whatever the user had.
+
+Both rigs are captured, not just the normalized one: a GLB has no normalized
+layer, and `ProceduralAnimator` writes raw bones with `autoUpdateHumanBones`
+off, so raw can hold state normalized does not. Root x/z is restored only if
+no locomotion ran since the snapshot, so "come with me" is never undone; yaw
+belongs to the facing system and is never touched.
+
+### The dance library
+
+`addons/vrma-dance/` holds 19 clips. Eight are Mixamo-origin; the eleven
+`dance_*.vrma` were converted from this repo's own
+`vendor/animations/dance/*.bvh` with the official
+[vrm-c/bvh2vrma](https://github.com/vrm-c/bvh2vrma) (MIT, VRM Consortium), so
+they carry no new licensing surface — same motions, in the format that
+retargets anywhere.
+
+**To add your own:** drop any `.vrma` into `addons/vrma-dance/` and say its
+name — the clip index picks it up with no code change. Add it to `ADDON_DANCE`
+in `src/xr/MotionClipMap.js` to include it in the random "dance" pool. See
+`addons/vrma-dance/README.md` for per-file provenance.
+
+---
+
 ## File Reference
 
 | File | Role |
@@ -263,3 +400,10 @@ A pre-recorded VRoid Hub "Waiting" clip is also available:
 | `src/AvatarAliveness.js` | Bootstrap/wiring layer |
 | `src/PoseStudioPanel.js` | Pose Studio UI + reset behavior |
 | `vendor/animations/vrma/waiting-standard.vrma` | VRoid Hub clip idle |
+| `src/ClipAnimationShared.js` | Shared state, bone maps, `resolveClipUrl`, VRM 0.x transforms |
+| `src/BVHAnimationLoader.js` | BVH parse + retarget onto the normalized rig |
+| `src/VRMAAnimationLoader.js` | VRMA load + retarget (official three-vrm pipeline) |
+| `src/ClipAnimationLoader.js` | Playback orchestration, manifest, avatar registration |
+| `src/xr/MotionClipMap.js` | Command name → clip files, format policy, clip index |
+| `src/xr/MotionPoseRestore.js` | Snapshot + eased return to the pre-animation pose |
+| `addons/vrma-dance/` | 19 dance clips (8 Mixamo-origin, 11 converted from BVH) |

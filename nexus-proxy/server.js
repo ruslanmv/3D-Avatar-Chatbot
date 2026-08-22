@@ -20,6 +20,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { isAllowedUrl as isAllowedRemoteUrl } from '../api/_allowlist.js';
 
 const app = express();
 
@@ -46,17 +47,14 @@ const allowedOrigins = allowedOriginsEnv
           .filter(Boolean)
     : null;
 
-// Upstream allowlist (prevents open relay)
-const ALLOW = [
-    'https://api.openai.com',
-    'https://api.anthropic.com',
-    'https://iam.cloud.ibm.com',
-    'https://us-south.ml.cloud.ibm.com',
-    'https://eu-de.ml.cloud.ibm.com',
-    'https://ruslanmv-ollabridge.hf.space',
-    'https://ollabridge.com',
-    'https://cloud.ollabridge.com',
-];
+// Upstream allowlist (prevents open relay).
+// Shared with the Vercel function in api/proxy.js so the two can't drift.
+// Imported at the top of the file — plain ESM, same as everything else here.
+
+// Upstream request budget. OllaBridge Cloud relays chat completions to the
+// user's own PC and waits up to RELAY_TIMEOUT_SECONDS (120s) for it, so a
+// shorter budget here would abort a request the gateway is still serving.
+const UPSTREAM_TIMEOUT_MS = Number(process.env.PROXY_TIMEOUT_MS || 120000);
 
 // -----------------------------
 // Middleware
@@ -92,11 +90,11 @@ app.use(express.static(REPO_ROOT, { extensions: ['html'] }));
 // Helpers
 // -----------------------------
 function isAllowedUrl(url) {
-    const u = String(url || '');
-    // Allow configured upstream APIs
-    if (ALLOW.some((base) => u.startsWith(base))) return true;
-    // Allow local network URLs (OllaBridge, HomePilot, Ollama on LAN)
-    if (isLocalNetworkUrl(u)) return true;
+    // Remote hosts go through the shared policy; LAN hosts are an extra
+    // allowance that exists only in local dev (reach OllaBridge, HomePilot or
+    // Ollama on your own network) and must never leak into production.
+    if (isAllowedRemoteUrl(url)) return true;
+    if (isLocalNetworkUrl(String(url || ''))) return true;
     return false;
 }
 
@@ -240,11 +238,34 @@ async function handleProxy(req, res) {
 
         console.log(`[Proxy] ${m} -> ${url}`);
 
-        const upstream = await fetch(url, {
-            method: m,
-            headers: fetchHeaders,
-            body: upstreamBody,
-        });
+        // Bound the upstream request so a stalled gateway surfaces as an
+        // explicit 504 with a readable body instead of hanging the socket.
+        const ac = new AbortController();
+        const started = Date.now();
+        const timer = setTimeout(() => ac.abort(), UPSTREAM_TIMEOUT_MS);
+
+        let upstream;
+        try {
+            upstream = await fetch(url, {
+                method: m,
+                headers: fetchHeaders,
+                body: upstreamBody,
+                signal: ac.signal,
+            });
+        } catch (err) {
+            clearTimeout(timer);
+            if (err && err.name === 'AbortError') {
+                const secs = Math.round((Date.now() - started) / 1000);
+                console.error(`[Proxy Timeout] ${m} -> ${url} after ${secs}s`);
+                return res.status(504).json({
+                    error: `Upstream did not respond within ${secs}s.`,
+                    code: 'UPSTREAM_TIMEOUT',
+                    url,
+                });
+            }
+            throw err;
+        }
+        clearTimeout(timer);
 
         const text = await upstream.text();
 

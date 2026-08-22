@@ -34,6 +34,8 @@ const MotionBlockParser = (() => {
         'point',
         'offer_hand',
         'wait_contact',
+        'turn',
+        'raise_hand',
         'sit',
         'stand',
         'idle',
@@ -80,6 +82,9 @@ const MotionBlockParser = (() => {
         if (cmd.seconds != null) out.seconds = _num(cmd.seconds, 0, 30, 0.5);
         if (cmd.radius_m != null) out.radius_m = _num(cmd.radius_m, 0.05, 0.5, 0.12);
         if (cmd.timeout_s != null) out.timeout_s = _num(cmd.timeout_s, 1, 20, 6);
+        // Turn is relative and clamped to a half-circle each way: a model that
+        // asks for 720 gets a half turn, never a spin.
+        if (cmd.degrees != null) out.degrees = _num(cmd.degrees, -180, 180, 180);
         return out;
     }
 

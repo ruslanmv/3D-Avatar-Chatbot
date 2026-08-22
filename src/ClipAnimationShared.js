@@ -231,9 +231,20 @@
     // BONE MAPPING (shared by BVH + VRMA)
     // =========================================================================
 
-    function buildAvatarBoneMap(root, avatarVRM) {
+    /**
+     * @param {Object} root - Avatar root to traverse
+     * @param {Object} avatarVRM - VRM instance, if any
+     * @param {{normalized?: boolean}} [opts] - `normalized: true` targets the
+     *   VRM normalized rig, which is what retargeted clips should drive: it is
+     *   avatar-independent, so the same clip plays the same on every model and
+     *   three-vrm composes normalized → raw itself. Raw bones (the default,
+     *   kept for existing callers) bake each avatar's own rest pose into
+     *   playback, which is why nothing retargeted universally.
+     */
+    function buildAvatarBoneMap(root, avatarVRM, opts) {
         var map = {};
         if (!root) return map;
+        var preferNormalized = !!(opts && opts.normalized);
         var allBones = [],
             byName = {};
         root.traverse(function (o) {
@@ -249,9 +260,15 @@
         if (!humanoid && root.userData && root.userData.vrmHumanoid) humanoid = root.userData.vrmHumanoid;
         if (humanoid) {
             var getBone = null;
-            if (typeof humanoid.getRawBoneNode === 'function') getBone = humanoid.getRawBoneNode.bind(humanoid);
-            else if (typeof humanoid.getNormalizedBoneNode === 'function')
-                getBone = humanoid.getNormalizedBoneNode.bind(humanoid);
+            var order = preferNormalized
+                ? ['getNormalizedBoneNode', 'getRawBoneNode']
+                : ['getRawBoneNode', 'getNormalizedBoneNode'];
+            for (var g = 0; g < order.length; g++) {
+                if (typeof humanoid[order[g]] === 'function') {
+                    getBone = humanoid[order[g]].bind(humanoid);
+                    break;
+                }
+            }
             if (getBone) {
                 for (var i = 0; i < VRM_BONES.length; i++) {
                     try {
@@ -395,6 +412,53 @@
         return out;
     }
 
+    // =========================================================================
+    // VRM 0.x COORDINATE TRANSFORMS
+    // =========================================================================
+    //
+    // Retargeted clip data is authored in VRM 1.0 space. VRM 0.x models use
+    // the opposite handedness (Z-forward vs Z-back), so X and Z must be
+    // negated or the whole body plays mirrored. The VRMA path did this; the
+    // BVH path did not, which is defect 4 of the retarget audit. One
+    // implementation here, used by both loaders, so they cannot drift.
+
+    /**
+     * @param {Object} vrm
+     * @returns {'0'|'1'} VRM spec generation ('0' when unknown, for safety)
+     */
+    function getMetaVersion(vrm) {
+        if (!vrm || !vrm.meta) return '0';
+        if (vrm.meta.metaVersion === '1') return '1';
+        return '0';
+    }
+
+    /**
+     * Official @pixiv/three-vrm-animation formula:
+     *   values.map((v, i) => (metaVersion === '0' && i % 2 === 0) ? -v : v)
+     * Per quaternion: (x, y, z, w) → (-x, y, -z, w).
+     *
+     * @param {ArrayLike<number>} values - Flat [x,y,z,w, x,y,z,w, …]
+     * @returns {Float32Array}
+     */
+    function transformQuatForVRM0(values) {
+        var out = new Float32Array(values.length);
+        for (var i = 0; i < values.length; i++) out[i] = i % 2 === 0 ? -values[i] : values[i];
+        return out;
+    }
+
+    /**
+     * Official formula: negate X and Z, keep Y.
+     * Per vector: (x, y, z) → (-x, y, -z).
+     *
+     * @param {ArrayLike<number>} values - Flat [x,y,z, x,y,z, …]
+     * @returns {Float32Array}
+     */
+    function transformPosForVRM0(values) {
+        var out = new Float32Array(values.length);
+        for (var i = 0; i < values.length; i++) out[i] = i % 3 !== 1 ? -values[i] : values[i];
+        return out;
+    }
+
     function _setHumanoidAutoUpdate(enabled, avatarVRM) {
         var vrm = avatarVRM || safeGet(window, ['NEXUS_VIEWER', 'avatarManager', '_currentVRM']);
         if (vrm && vrm.humanoid && 'autoUpdateHumanBones' in vrm.humanoid) {
@@ -439,10 +503,46 @@
     // READ-ONLY CONSTANTS + UTILITIES
     // =========================================================================
 
+    /**
+     * Turn a clip path into the URL to fetch.
+     *
+     * Two callers supply paths in two different shapes, and conflating them
+     * is what made every motion command silently do nothing:
+     *
+     *   - manifest.json lists paths RELATIVE to basePath ("action/walk.bvh"),
+     *     which must be prefixed → "vendor/animations/action/walk.bvh".
+     *   - MotionClipMap lists paths relative to the SITE ROOT
+     *     ("addons/vrma-dance/hipHopDance.vrma", "vendor/animations/dance/x.bvh"),
+     *     which must NOT be prefixed.
+     *
+     * Blindly prefixing produced "vendor/animations/addons/vrma-dance/…",
+     * a path that does not exist. Because the site answers an unmatched path
+     * with index.html and HTTP 200 (SPA fallback locally, the catch-all
+     * rewrite on Vercel), the loader got "<!doctype html>" instead of a 404
+     * and died on the leading "<" — so "dance" reported load_failed for
+     * every candidate while the files themselves were served perfectly.
+     *
+     * @param {string} path - Clip path in either shape
+     * @param {string} basePath - Manifest base (e.g. "vendor/animations")
+     * @returns {string} URL to fetch
+     */
+    function resolveClipUrl(path, basePath) {
+        var p = String(path || '');
+        var base = String(basePath == null ? '' : basePath).replace(/\/+$/, '');
+        // Absolute URL or site-absolute path: already final.
+        if (/^(?:[a-z]+:)?\/\//i.test(p) || p.charAt(0) === '/') return p;
+        // Already rooted at a known top-level asset directory.
+        if (/^(addons|vendor|assets)\//.test(p)) return p;
+        // Already carries the base prefix (belt and braces).
+        if (base && p.indexOf(base + '/') === 0) return p;
+        return base ? base + '/' + p : p;
+    }
+
     window.__CLIP_ANIM_CONST__ = {
         VRM_BONES: VRM_BONES,
         REQUIRED_DANCE_BONES: REQUIRED_DANCE_BONES,
         OPTIONAL_DANCE_BONES: OPTIONAL_DANCE_BONES,
+        resolveClipUrl: resolveClipUrl,
         REQUIRED_DANCE_MAP: REQUIRED_DANCE_MAP,
         OPTIONAL_DANCE_MAP: OPTIONAL_DANCE_MAP,
         BVH_TO_AVATAR_SAMPLE_A: BVH_TO_AVATAR_SAMPLE_A,
@@ -459,6 +559,9 @@
         buildAvatarBoneMap: buildAvatarBoneMap,
         getRequiredBoneMap: getRequiredBoneMap,
         setHumanoidAutoUpdate: _setHumanoidAutoUpdate,
+        getMetaVersion: getMetaVersion,
+        transformQuatForVRM0: transformQuatForVRM0,
+        transformPosForVRM0: transformPosForVRM0,
     };
 
     console.log('[ClipAnimationShared] Initialized');

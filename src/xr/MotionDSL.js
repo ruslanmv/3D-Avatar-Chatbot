@@ -200,6 +200,14 @@ const MotionDSL = (() => {
     };
 })();
 
+// Classic script: a top-level `const` becomes a global LEXICAL binding, not a
+// property of window — so `window.MotionDSL` was undefined while the bare
+// identifier worked. MotionIntegration reads it off window (its modules are
+// interchangeable that way), so without this line every plan silently
+// no-opped in the browser and boot() never completed. Match the rest of the
+// stack and register explicitly.
+if (typeof window !== 'undefined') window.MotionDSL = MotionDSL;
+
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = MotionDSL;
 }

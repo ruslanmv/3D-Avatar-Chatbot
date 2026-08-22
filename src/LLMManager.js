@@ -30,6 +30,15 @@
     const STORAGE_KEY = 'nexus_llm_settings';
 
     /**
+     * Default OllaBridge gateway. Pre-filling this means Device Pairing needs
+     * only the pairing code — the Base URL field is already correct.
+     *
+     * Root only, no /v1: the client appends /v1/chat/completions, /v1/models
+     * and /pair itself.
+     */
+    const OLLABRIDGE_DEFAULT_BASE_URL = 'https://app.ollabridge.com';
+
+    /**
      * PersonaUnavailableError — thrown when a persona model is unpublished or not found.
      * Allows the UI to display a friendly message instead of a generic error.
      */
@@ -389,6 +398,82 @@
          * @param {object|string} body - Request body
          * @returns {Promise<Response>}
          */
+        /**
+         * Translate an upstream gateway failure into something actionable.
+         *
+         * A 504 on a chat completion is almost never a problem with the
+         * payload — it is the request outliving the proxy's time budget.
+         * Vercel serves an HTML FUNCTION_INVOCATION_TIMEOUT page rather than
+         * JSON, so the raw body is noise in the UI; our own api/proxy.js
+         * returns { code: 'UPSTREAM_TIMEOUT' } when it aborts first. Both
+         * mean the same thing to the person waiting for a reply.
+         *
+         * @param {number} status - Upstream HTTP status
+         * @returns {string|null} Message to show, or null if not a gateway error
+         */
+        _gatewayErrorMessage(status) {
+            if (status === 504) {
+                return (
+                    'OllaBridge timed out: the gateway did not answer in time. ' +
+                    'With Device Pairing the request is relayed to your own PC, so this ' +
+                    'usually means the connector is offline, the model is still loading, ' +
+                    'or generation is slower than the proxy budget. Check that your PC ' +
+                    'shows as online in the OllaBridge console, then retry.'
+                );
+            }
+            if (status === 502 || status === 503) {
+                return `OllaBridge is unreachable (HTTP ${status}). The gateway may be restarting — retry in a moment.`;
+            }
+            return null;
+        }
+
+        /**
+         * POST a chat completion to OllaBridge, retrying transient gateway
+         * failures.
+         *
+         * Measured against the live gateway (app.ollabridge.com, single
+         * replica, relay device connected): /v1/chat/completions returns a
+         * Cloudflare 502 for roughly half of all requests, in under a second,
+         * without ever reaching the application replica. /health, /v1/models
+         * and /pair are unaffected — it is specific to the relayed chat path.
+         *
+         * That fast, body-independent failure is safe to retry, and doing so
+         * takes a ~50% user-visible failure rate to ~12% at two retries. It is
+         * a workaround, not a cure: the fault is upstream.
+         *
+         * Only 502/503/504 are retried. A 4xx is a real answer about the
+         * request and must surface immediately.
+         *
+         * @param {string} url
+         * @param {object} headers
+         * @param {object} body
+         * @param {number} [maxRetries=2]
+         * @returns {Promise<Response>}
+         */
+        async _postOllaBridgeWithRetry(url, headers, body, maxRetries = 2) {
+            const RETRYABLE = [502, 503, 504];
+            const backoffMs = [400, 1200];
+            let res = null;
+
+            for (let attempt = 0; attempt <= maxRetries; attempt++) {
+                res = this._hasProxy()
+                    ? await this._fetchViaProxy(url, 'POST', headers, body)
+                    : await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+
+                if (res.ok || !RETRYABLE.includes(res.status)) return res;
+
+                if (attempt < maxRetries) {
+                    const wait = backoffMs[attempt] || 1200;
+                    console.warn(
+                        `[LLMManager] OllaBridge returned ${res.status}; retrying in ${wait}ms ` +
+                            `(attempt ${attempt + 2} of ${maxRetries + 1})`
+                    );
+                    await new Promise((r) => setTimeout(r, wait));
+                }
+            }
+            return res;
+        }
+
         async _fetchViaProxy(url, method, headers, body) {
             // Use proxy_url directly - it already includes /proxy or /api/proxy
             const proxyUrl = this._proxyBase();
@@ -685,7 +770,7 @@
             const baseUrlClean = (base_url || '').replace(/\/$/, '');
             if (!baseUrlClean) {
                 throw new Error(
-                    'OllaBridge: Missing Base URL. Enter the OllaBridge URL in Settings (e.g. http://localhost:11435 or https://ruslanmv-ollabridge.hf.space).'
+                    `OllaBridge: Missing Base URL. Enter the OllaBridge URL in Settings (e.g. ${OLLABRIDGE_DEFAULT_BASE_URL} or http://localhost:11435).`
                 );
             }
             const url = `${baseUrlClean}/v1/chat/completions`;
@@ -734,18 +819,12 @@
                 max_tokens: 800,
             };
 
-            let res;
-            if (this._hasProxy()) {
-                res = await this._fetchViaProxy(url, 'POST', headers, body);
-            } else {
-                res = await fetch(url, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify(body),
-                });
-            }
+            const res = await this._postOllaBridgeWithRetry(url, headers, body);
 
             if (!res.ok) {
+                const gatewayMsg = this._gatewayErrorMessage(res.status);
+                if (gatewayMsg) throw new Error(gatewayMsg);
+
                 // Try to parse structured error from HomePilot via OllaBridge
                 let errBody = null;
                 try {
@@ -836,7 +915,7 @@
             const baseUrlClean = (base_url || '').replace(/\/$/, '');
             if (!baseUrlClean) {
                 throw new Error(
-                    'OllaBridge: Missing Base URL. Enter the OllaBridge URL in Settings (e.g. http://localhost:11435 or https://ruslanmv-ollabridge.hf.space).'
+                    `OllaBridge: Missing Base URL. Enter the OllaBridge URL in Settings (e.g. ${OLLABRIDGE_DEFAULT_BASE_URL} or http://localhost:11435).`
                 );
             }
             const url = `${baseUrlClean}/v1/chat/completions`;
@@ -871,18 +950,12 @@
                 max_tokens: 800,
             };
 
-            let res;
-            if (this._hasProxy()) {
-                res = await this._fetchViaProxy(url, 'POST', headers, body);
-            } else {
-                res = await fetch(url, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify(body),
-                });
-            }
+            const res = await this._postOllaBridgeWithRetry(url, headers, body);
 
             if (!res.ok) {
+                const gatewayMsg = this._gatewayErrorMessage(res.status);
+                if (gatewayMsg) throw new Error(gatewayMsg);
+
                 let errBody = null;
                 try {
                     errBody = await res.json();
@@ -1355,7 +1428,17 @@
                     const stored = localStorage.getItem(STORAGE_KEY);
                     if (stored) {
                         const parsed = JSON.parse(stored);
-                        return this._deepMerge(defaults, parsed);
+                        const merged = this._deepMerge(defaults, parsed);
+
+                        // Existing installs saved base_url: '' before the
+                        // gateway had a default, and a stored empty string
+                        // wins the merge — so they would keep seeing "Missing
+                        // Base URL". Backfill it, but never overwrite a URL
+                        // the user chose (their own gateway, an HF Space).
+                        if (merged.ollabridge && !String(merged.ollabridge.base_url || '').trim()) {
+                            merged.ollabridge.base_url = OLLABRIDGE_DEFAULT_BASE_URL;
+                        }
+                        return merged;
                     }
                 } catch (e) {
                     console.warn('[LLMManager] Could not load settings from localStorage:', e);
@@ -1411,7 +1494,7 @@
                     api_key: '',
                     pair_token: '',
                     auth_mode: 'pairing',
-                    base_url: '',
+                    base_url: OLLABRIDGE_DEFAULT_BASE_URL,
                     model: 'default',
                 },
             };
@@ -1454,7 +1537,7 @@
                     api_key: '',
                     pair_token: '',
                     auth_mode: 'pairing',
-                    base_url: '',
+                    base_url: OLLABRIDGE_DEFAULT_BASE_URL,
                     model: 'default',
                     use_remote_prompt: true,
                 },
@@ -1480,7 +1563,7 @@
             if (!base_url) {
                 return {
                     ok: false,
-                    error: 'Missing OllaBridge Base URL. Enter it in Settings (e.g. http://localhost:11435 or https://ruslanmv-ollabridge.hf.space).',
+                    error: `Missing OllaBridge Base URL. Enter it in Settings (e.g. ${OLLABRIDGE_DEFAULT_BASE_URL} or http://localhost:11435).`,
                 };
             }
 

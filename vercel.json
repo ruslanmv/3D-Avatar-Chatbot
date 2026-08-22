@@ -6,7 +6,7 @@
 
   "functions": {
     "api/proxy.js": {
-      "maxDuration": 10
+      "maxDuration": 60
     },
     "api/rpm-guest.js": {
       "maxDuration": 10
@@ -44,6 +44,14 @@
       ]
     },
     {
+      "source": "/(.*)\\.(vrma|bvh)",
+      "headers": [
+        { "key": "Content-Type", "value": "application/octet-stream" },
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" }
+      ]
+    },
+    {
       "source": "/styles/(.*)\\.css",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
     },
@@ -74,6 +82,8 @@
     { "source": "/demo", "destination": "/demo.html" },
     { "source": "/vrm-manager", "destination": "/vrm-manager.html" },
     { "source": "/vendor/(.*)", "destination": "/vendor/$1" },
+    { "source": "/addons/(.*)", "destination": "/addons/$1" },
+    { "source": "/assets/(.*)", "destination": "/assets/$1" },
     { "source": "/src/(.*)", "destination": "/src/$1" },
     { "source": "/css/(.*)", "destination": "/css/$1" },
     { "source": "/js/(.*)", "destination": "/js/$1" },

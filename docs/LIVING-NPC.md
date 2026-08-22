@@ -78,12 +78,22 @@ NEXUS_MOTION.execute({commands:[{type:'wave'}]});    // drive it yourself
 NEXUS_MOTION.getWorldSnapshot();              // what the LLM sees
 ```
 
-## Better clips (optional, recommended)
+## Clips
 
-Out of the box the system uses the shipped `vendor/animations` BVH library
-and `addons/vrma-actions` VRMA clips, with procedural fallbacks for nod,
-point and hand-offering. For best quality, generate the 8-clip pack in
-`addons/vrma-locomotion/` — see the README there (one Blender command).
+Out of the box the system uses `addons/vrma-actions` (13 action clips),
+`addons/vrma-dance` (19 dances) and the `vendor/animations` BVH library
+(~110 clips), with procedural fallbacks for nod, point and hand-offering.
+
+Both formats retarget onto the VRM normalized rig, so a clip plays the same
+on any avatar — see [Clip Retargeting](animation-system.md#clip-retargeting-bvh--vrma)
+for the pipeline and the defects that were fixed to get there. Settings →
+**BVH animations** chooses whether `.bvh` clips are offered; it is ignored on
+a non-VRM (GLB) avatar, where `.vrma` cannot retarget and BVH is the only
+format that can play.
+
+Adding clips needs no code: drop a `.vrma` into `addons/vrma-dance/` and say
+its name. For the optional 8-clip locomotion pack in
+`addons/vrma-locomotion/`, see the README there (one Blender command).
 
 ## Troubleshooting
 
@@ -92,6 +102,14 @@ point and hand-offering. For best quality, generate the 8-clip pack in
   `[Motion] booted — living NPC online`.
 - **No walking, avatar glides** — the walk state machine failed to preload
   clips; verify `vendor/animations/action/action_walk.bvh` is served.
+- **A gesture is announced but nothing moves** — open the console. A clip
+  that returns HTML instead of binary names itself explicitly (a routing or
+  deploy problem, not a parser bug); `[MotionClipMap] "<name>": ALL N
+  candidates failed` means every candidate was tried. `NEXUS_MOTION.debugMotion()`
+  probes the paths live.
+- **Dance does nothing on a GLB avatar** — `.vrma` needs a VRM humanoid to
+  retarget onto. BVH stays enabled automatically in that case; if you see
+  zero candidates, check that the format policy has not been forced on.
 - **Handshake doesn't connect in VR** — hand tracking/controllers must be
   active; the avatar reaches toward a natural forward point on desktop.
 - **Model never emits motion blocks** — some small local models ignore

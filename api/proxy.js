@@ -16,45 +16,23 @@
  * - Copies only safe response headers (content-type)
  */
 
-const ALLOW = [
-    'https://api.openai.com',
-    'https://api.anthropic.com',
-    'https://iam.cloud.ibm.com',
-    'https://us-south.ml.cloud.ibm.com',
-    'https://eu-de.ml.cloud.ibm.com',
-    'https://ruslanmv-ollabridge.hf.space',
-    'https://ollabridge.com',
-    'https://cloud.ollabridge.com',
-];
+import { isAllowedUrl } from './_allowlist.js';
 
-// Trusted domain patterns (regex) — always allowed
-const TRUSTED_PATTERNS = [
-    /^https:\/\/[a-zA-Z0-9_-]+-[a-zA-Z0-9_-]+\.hf\.space/, // HuggingFace Spaces
-    /^https:\/\/([a-zA-Z0-9_-]+\.)*ollabridge\.com/, // *.ollabridge.com
-];
+// Upstream request budget, in milliseconds.
+//
+// This MUST stay below the function's `maxDuration` in vercel.json (60s), so
+// that a slow upstream produces our own JSON 504 — which the client can
+// explain to the user — rather than Vercel killing the invocation and
+// returning an opaque FUNCTION_INVOCATION_TIMEOUT page.
+//
+// 60s is also the Hobby-plan ceiling. OllaBridge Cloud relays chat
+// completions to the user's own PC and waits up to 120s for it, so a very
+// slow local model can still exceed this; the error body says so explicitly
+// instead of failing silently.
+const UPSTREAM_TIMEOUT_MS = Number(process.env.PROXY_TIMEOUT_MS || 55000);
 
 function httpsOnly(url) {
     return /^https:\/\//i.test(String(url || ''));
-}
-
-/**
- * Build the full allowlist: built-in + env var extras.
- * PROXY_ALLOWLIST env var is a comma-separated list of base URLs.
- */
-function getAllowlist() {
-    const extra = (process.env.PROXY_ALLOWLIST || '')
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-    return [...ALLOW, ...extra];
-}
-
-function isAllowedUrl(url) {
-    const u = String(url || '');
-    const list = getAllowlist();
-    if (list.some((base) => u.startsWith(base))) return true;
-    if (TRUSTED_PATTERNS.some((re) => re.test(u))) return true;
-    return false;
 }
 
 function copySafeHeaders(upstreamHeaders) {
@@ -131,11 +109,35 @@ export default async function handler(req, res) {
 
         const upstreamBody = !hasBody ? undefined : typeof body === 'string' ? body : JSON.stringify(body);
 
-        const upstream = await fetch(url, {
-            method: m,
-            headers: upstreamHeaders,
-            body: upstreamBody,
-        });
+        const ac = new AbortController();
+        const started = Date.now();
+        const timer = setTimeout(() => ac.abort(), UPSTREAM_TIMEOUT_MS);
+
+        let upstream;
+        try {
+            upstream = await fetch(url, {
+                method: m,
+                headers: upstreamHeaders,
+                body: upstreamBody,
+                signal: ac.signal,
+            });
+        } catch (err) {
+            clearTimeout(timer);
+            if (err && err.name === 'AbortError') {
+                const secs = Math.round((Date.now() - started) / 1000);
+                console.error(`[api/proxy] upstream timeout after ${secs}s: ${url}`);
+                return res.status(504).json({
+                    error:
+                        `Upstream did not respond within ${secs}s. If this is OllaBridge ` +
+                        `Cloud with Device Pairing, your PC may be offline or the model is ` +
+                        `still loading — check the connector and try a smaller model.`,
+                    code: 'UPSTREAM_TIMEOUT',
+                    url,
+                });
+            }
+            throw err;
+        }
+        clearTimeout(timer);
 
         const text = await upstream.text();
 
