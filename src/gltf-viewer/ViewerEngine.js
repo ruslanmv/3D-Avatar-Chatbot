@@ -927,6 +927,25 @@ export class ViewerEngine {
         }
     }
 
+    /**
+     * How far above the subject's centre to put the camera target, as a
+     * fraction of subject height.
+     *
+     * Both framing paths share it so they cannot drift apart — they used to
+     * disagree (0.12 here, 0.12/0.08 there), which meant the composition
+     * changed depending on whether you had just loaded the avatar or just
+     * rotated your phone. CameraFraming owns the value and the reasoning; this
+     * falls back to the same number if that script has not loaded.
+     *
+     * @returns {number}
+     * @private
+     */
+    static _headroomBias() {
+        const framing = typeof window !== 'undefined' ? window.NEXUS_CAMERA_FRAMING : null;
+        const b = framing && framing.HEADROOM_BIAS;
+        return typeof b === 'number' && isFinite(b) ? b : 0.04;
+    }
+
     _storeFramingState(object) {
         if (!object) {
             return;
@@ -970,7 +989,7 @@ export class ViewerEngine {
 
         const distance = Math.max(fitHeightDistance, fitWidthDistance);
 
-        const targetY = center.y + size.y * (isPortrait ? 0.12 : 0.08);
+        const targetY = center.y + size.y * ViewerEngine._headroomBias();
 
         this.controls.target.set(center.x, targetY, center.z);
 
@@ -1001,9 +1020,12 @@ export class ViewerEngine {
         const size = box.getSize(new THREE.Vector3());
         const center = box.getCenter(new THREE.Vector3());
 
-        // Better composition: bias target slightly upward (toward head/torso)
+        // Composition bias — see CameraFraming. Raising the TARGET pushes the
+        // subject DOWN in frame, so the old 0.12 left a 5.4:1 headroom-to-
+        // footroom split: a band of dead space above her and her feet almost
+        // on the bottom edge.
         const target = center.clone();
-        target.y += size.y * 0.12;
+        target.y += size.y * ViewerEngine._headroomBias();
 
         // Compute distance required to fit object in view (height + width)
         const aspect = this.camera.aspect;
