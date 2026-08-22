@@ -106,7 +106,90 @@ const CameraFraming = (() => {
         return { headroom, footroom, ratio };
     }
 
-    return { fitDistance, composition, HEADROOM_BIAS };
+    /**
+     * Per-press dolly factors.
+     *
+     * Zoom has to be MULTIPLICATIVE. Subtracting a fixed distance crawls when
+     * the camera is far out and slams into the model when it is close, because
+     * the same metre covers wildly different angular amounts at each range. A
+     * ratio covers the same proportion at every range, which is why
+     * OrbitControls' own dolly uses 0.95 ^ zoomSpeed rather than a subtraction.
+     * Getting this wrong is the usual reason a hand-rolled zoom "feels bad",
+     * and it is normally misdiagnosed as a speed-tuning problem.
+     */
+    const DOLLY_STEP = 0.9; // ~10% closer per press
+    const DOLLY_STEP_FINE = 0.97; // with Shift held
+
+    /**
+     * The camera distance after one zoom keypress.
+     *
+     * @param {{distance: number, direction: number, fine?: boolean,
+     *          minDistance?: number, maxDistance?: number}} o
+     *        direction: +1 to zoom in (closer), -1 to zoom out
+     * @returns {number|null} New distance, or null when it would not move
+     */
+    function dollyStep(o) {
+        const opts = o || {};
+        const distance = Number(opts.distance) || 0;
+        const direction = Number(opts.direction) || 0;
+        if (!(distance > 0) || !direction) return null;
+
+        const step = opts.fine ? DOLLY_STEP_FINE : DOLLY_STEP;
+        let next = direction > 0 ? distance * step : distance / step;
+
+        const min = Number(opts.minDistance);
+        const max = Number(opts.maxDistance);
+        if (isFinite(min) && min > 0) next = Math.max(next, min);
+        if (isFinite(max) && max > 0) next = Math.min(next, max);
+
+        // Already against a clamp — report "no move" so the caller can leave
+        // the camera untouched rather than rewrite an identical value.
+        if (Math.abs(next - distance) < 1e-6) return null;
+        return next;
+    }
+
+    /** Fraction of the visible frame one pan press travels. */
+    const PAN_FRACTION = 0.06;
+    const PAN_FRACTION_FINE = 0.02;
+
+    /**
+     * World distance one pan press should travel.
+     *
+     * Pan MUST scale with camera distance, for the same reason zoom must be
+     * multiplicative: a fixed number of world units is a huge jump when the
+     * camera is close to the face and an imperceptible nudge when it is backed
+     * off to see the whole body. Expressing the step as a fraction of the
+     * VISIBLE FRAME makes one press feel identical at every zoom level.
+     *
+     * The visible height at distance d is 2 * d * tan(vFov / 2) — the same
+     * relation fitDistance inverts, and the same one OrbitControls uses in its
+     * own panUp/panLeft.
+     *
+     * @param {{distance: number, fovDeg: number, fine?: boolean, fraction?: number}} o
+     * @returns {number} World units; 0 when the inputs are unusable
+     */
+    function panStep(o) {
+        const opts = o || {};
+        const distance = Number(opts.distance) || 0;
+        const fovDeg = Number(opts.fovDeg) || 0;
+        if (!(distance > 0) || !(fovDeg > 0)) return 0;
+        const fraction = opts.fraction == null ? (opts.fine ? PAN_FRACTION_FINE : PAN_FRACTION) : Number(opts.fraction);
+        if (!(fraction > 0)) return 0;
+        const visibleHeight = 2 * distance * Math.tan((fovDeg * DEG2RAD) / 2);
+        return visibleHeight * fraction;
+    }
+
+    return {
+        fitDistance,
+        composition,
+        dollyStep,
+        panStep,
+        HEADROOM_BIAS,
+        DOLLY_STEP,
+        DOLLY_STEP_FINE,
+        PAN_FRACTION,
+        PAN_FRACTION_FINE,
+    };
 })();
 
 if (typeof window !== 'undefined') window.NEXUS_CAMERA_FRAMING = CameraFraming;
