@@ -122,10 +122,14 @@ const MotionClipMap = (() => {
         // manifest file and must stay reachable by name for the Animations
         // panel, so it is demoted rather than removed.
         sit: {
+            // One looping state: with no real sit_down transition shipped,
+            // 'sit' IS the seated loop. The old loop:false + then:'sit_idle'
+            // chain replayed the SAME file from frame 0 — the visible
+            // "sits down twice". A real transition clip can restore
+            // loop:false + then later.
             candidates: [PACK + 'sit_down.vrma', VEND + 'sitting/sit_idle4.bvh'],
-            loop: false,
+            loop: true,
             sticky: true,
-            then: 'sit_idle',
         },
         sit_idle: {
             candidates: [
@@ -686,6 +690,29 @@ const MotionClipMap = (() => {
         for (let i = 0; i < candidates.length; i++) {
             const path = candidates[i];
             if (_unavailable[path]) continue;
+            // AAA idempotence: re-requesting the clip ALREADY playing with
+            // the same loop intent is a no-op, never a restart (this is what
+            // made sit_idle replay and dances restart mid-song).
+            {
+                const l2 = _loader();
+                const st = l2 && l2.getCurrentPlaybackState ? l2.getCurrentPlaybackState() : null;
+                if (st && st.isPlaying && st.clip === path && entry.loop) {
+                    _trace('already playing', path, '— idempotent no-op');
+                    return {
+                        ok: true,
+                        duration: 0,
+                        loop: true,
+                        sticky: !!entry.sticky,
+                        then: null,
+                        resolved: path
+                            .split('/')
+                            .pop()
+                            .replace(/\.(bvh|vrma)$/i, ''),
+                        procedural: null,
+                        already: true,
+                    };
+                }
+            }
             tried.push(path);
             _trace('trying', path);
             try {

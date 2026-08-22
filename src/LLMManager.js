@@ -179,8 +179,7 @@
             };
             const messages = [
                 { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
-                ...conversationHistory,
-                { role: 'user', content: userMessage },
+                ...this._withCurrentTurn(conversationHistory, userMessage),
             ];
             const body = { model, messages, max_tokens: 500, stream: true };
 
@@ -211,7 +210,7 @@
                 'x-api-key': api_key,
                 'anthropic-version': '2023-06-01',
             };
-            const messages = [...conversationHistory, { role: 'user', content: userMessage }];
+            const messages = this._withCurrentTurn(conversationHistory, userMessage);
             const body = {
                 model,
                 system: systemPrompt || 'You are a helpful assistant.',
@@ -246,8 +245,7 @@
             const headers = { 'Content-Type': 'application/json' };
             const messages = [
                 { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
-                ...conversationHistory,
-                { role: 'user', content: userMessage },
+                ...this._withCurrentTurn(conversationHistory, userMessage),
             ];
             const body = { model, messages, stream: true };
 
@@ -428,6 +426,39 @@
         }
 
         /**
+         * Join prior turns with the current one, without repeating it.
+         *
+         * The API here is (userMessage, systemPrompt, conversationHistory),
+         * where the history is meant to be the turns BEFORE this one. main.js
+         * does not honour that: handleUserMessage() calls
+         * chatHistory.addMessage('user', text) before dispatching, and both
+         * callLLM() and _handleStreamingResponse() then hand the whole of
+         * getHistory() — the new turn included — straight back. Appending
+         * userMessage on top sent it twice:
+         *
+         *     system … | user: hello | assistant: hi! | user: sit down | user: sit down
+         *
+         * Models read that as being asked twice, and answered accordingly:
+         * "You want me to sit down twice in a row?" and "I'll stand up … and
+         * then stand up AGAIN?!". The body followed the fast path once, so the
+         * words and the animation disagreed.
+         *
+         * De-duplicating here rather than at the two call sites covers every
+         * provider path and cannot be undone by a future caller. It is a
+         * no-op for a caller that passes prior turns only.
+         *
+         * @param {Array<{role: string, content: string}>} conversationHistory
+         * @param {string} userMessage
+         * @returns {Array<{role: string, content: string}>}
+         */
+        _withCurrentTurn(conversationHistory, userMessage) {
+            const prior = Array.isArray(conversationHistory) ? conversationHistory : [];
+            const last = prior.length ? prior[prior.length - 1] : null;
+            if (last && last.role === 'user' && last.content === userMessage) return prior.slice();
+            return prior.concat([{ role: 'user', content: userMessage }]);
+        }
+
+        /**
          * POST a chat completion to OllaBridge, retrying transient gateway
          * failures.
          *
@@ -570,8 +601,7 @@
             // ✅ Build messages with conversation history
             const messages = [
                 { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
-                ...conversationHistory, // Include previous conversation for context
-                { role: 'user', content: userMessage },
+                ...this._withCurrentTurn(conversationHistory, userMessage),
             ];
 
             const body = {
@@ -626,7 +656,7 @@
             };
 
             // ✅ Build messages with conversation history
-            const messages = [...conversationHistory, { role: 'user', content: userMessage }];
+            const messages = this._withCurrentTurn(conversationHistory, userMessage);
 
             const body = {
                 model: model,
@@ -672,11 +702,11 @@
 
             // ✅ Build input string with conversation history
             let input = `${systemPrompt || 'You are a helpful assistant.'}\n\n`;
-            for (const msg of conversationHistory) {
+            for (const msg of this._withCurrentTurn(conversationHistory, userMessage)) {
                 const speaker = msg.role === 'user' ? 'User' : 'Assistant';
                 input += `${speaker}: ${msg.content}\n\n`;
             }
-            input += `User: ${userMessage}\n\nAssistant:`;
+            input += 'Assistant:';
 
             const body = {
                 model_id: model_id,
@@ -717,8 +747,7 @@
             // ✅ Build messages with conversation history
             const messages = [
                 { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
-                ...conversationHistory, // Include previous conversation for context
-                { role: 'user', content: userMessage },
+                ...this._withCurrentTurn(conversationHistory, userMessage),
             ];
 
             const body = {
@@ -811,7 +840,7 @@
             if (!isRemotePersona) {
                 messages.push({ role: 'system', content: systemPrompt || 'You are a helpful assistant.' });
             }
-            messages.push(...conversationHistory, { role: 'user', content: userMessage });
+            messages.push(...this._withCurrentTurn(conversationHistory, userMessage));
 
             const body = {
                 model: model || 'default',
@@ -942,7 +971,7 @@
             if (!isRemotePersona) {
                 messages.push({ role: 'system', content: systemPrompt || 'You are a helpful assistant.' });
             }
-            messages.push(...conversationHistory, { role: 'user', content: userMessage });
+            messages.push(...this._withCurrentTurn(conversationHistory, userMessage));
 
             const body = {
                 model: model || 'default',
