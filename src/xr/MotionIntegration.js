@@ -43,6 +43,9 @@ const MotionIntegration = (() => {
         if (typeof localStorage !== 'undefined' && localStorage.getItem('nexus-motion-enabled') === 'false') {
             config.enabled = false;
         }
+        if (typeof localStorage !== 'undefined' && localStorage.getItem('npc_debug') === 'true') {
+            config.debug = true;
+        }
     } catch (_e) {
         /* storage unavailable */
     }
@@ -54,6 +57,11 @@ const MotionIntegration = (() => {
         following: false,
         speaking: false,
         lastActivity: 'idle',
+        // Closes the loop: what the last plan actually did. Injected into the
+        // next world snapshot so the model can see its own outcome and answer
+        // honestly ("I'd love to, but I can't walk yet") instead of repeating
+        // a command that silently went nowhere.
+        lastAction: null, // { type, result } | null
     };
 
     let _viewer = null;
@@ -64,11 +72,63 @@ const MotionIntegration = (() => {
     let _suppressNextPlan = 0; // timestamp until which LLM plans are dropped
     let _idleTimer = null;
 
+    // ── Telemetry (M1) ──────────────────────────────────────────────────
+    // Session counters that answer ONE question cheaply: is the fast path's
+    // recall gap big enough to justify a local ML tier? `recall_gap_hits`
+    // counts utterances the regex missed where the LLM then DID emit a plan
+    // — the decision number. `missed_recent` keeps the last few missed texts
+    // in memory only (never persisted, never sent anywhere) so their
+    // phrasings can be mined into ActionRegistry.
+    const _telemetry = {
+        utterances: 0,
+        fastpath_hits: 0,
+        by_label: Object.create(null),
+        llm_plans: 0,
+        suppressed_llm_plans: 0,
+        recall_gap_hits: 0,
+        policy_strips: 0,
+        misfire_stops: 0,
+        misfire_recent: [],
+        missed_recent: [],
+    };
+    // -1 = nothing pending. A plain falsy check would misread a legitimate
+    // timestamp of 0 — fake clocks in tests, and the first millisecond after
+    // page load, start at 0.
+    let _lastMissAt = -1;
+    // When the body last acted on a non-control command. -1 = nothing pending
+    // (a plain falsy check would misread a legitimate timestamp of 0 — fake
+    // clocks in tests, and the first millisecond after page load, start at 0).
+    let _lastActionAt = -1;
+    let _lastActionLabel = '';
+
+    /** Notify the UI (command-echo toast, M2) — decoupled via a DOM event. */
+    function _emitAction(detail) {
+        try {
+            if (typeof window !== 'undefined' && typeof window.CustomEvent === 'function') {
+                window.dispatchEvent(new CustomEvent('nexus-motion:action', { detail }));
+            }
+        } catch (_e) {
+            /* UI feedback is optional */
+        }
+    }
+
+    /** First non-ambient command type in a plan — what the echo toast names. */
+    function _primaryType(plan) {
+        const AMBIENT = ['look_at', 'expression', 'idle', 'pause', 'speak_start', 'speak_end'];
+        if (!plan || !Array.isArray(plan.commands)) return null;
+        for (const c of plan.commands) {
+            const t = c ? String(c.type || '').toLowerCase() : '';
+            if (t && AMBIENT.indexOf(t) === -1) return t === 'gesture' ? String(c.name || 'gesture') : t;
+        }
+        return null;
+    }
+
     const _follow = { active: false, dist: 1.5, sinceRefresh: 0 };
     const _walk = { active: false, goal: null, resolve: null, deadline: 0, manual: false, speed: 0.9 };
     const _contact = { active: false, side: 'right', radius: 0.14, resolve: null, deadline: 0 };
     const _reach = { active: false, side: 'right', high: false };
     const _headFx = { active: false, axis: 'x', t: 0, dur: 1.1, amp: 0.28 };
+    const _turn = { active: false, remaining: 0, speed: 2.6, resolve: null, deadline: 0 };
     const _expr = Object.create(null); // name → { w, until }
 
     function _log() {
@@ -186,16 +246,97 @@ const MotionIntegration = (() => {
 
     // ── Body primitives ─────────────────────────────────────────────────
 
-    /** Smoothly yaw the avatar root toward a world point. */
+    /**
+     * Smallest signed equivalent of an angle, in (−π, π].
+     *
+     * JavaScript's % keeps the dividend's sign, so the previous inline
+     * normalisation ((a + π) % 2π) − π returned values BELOW −π for negative
+     * inputs — one of the two ways the avatar could take the long way round
+     * and appear to spin.
+     */
+    function _normAngle(a) {
+        return a - 2 * Math.PI * Math.round(a / (2 * Math.PI));
+    }
+
+    /**
+     * The yaw at which THIS avatar's forward axis points along (dx, dz).
+     *
+     * VRM forward is −Z, and the app rests VRM roots at rotation.y = π —
+     * ViewerEngine resets exactly `root.rotation.set(0, isVRM ? Math.PI : 0, 0)`.
+     * The old math used atan2(dx, dz), the +Z-forward yaw, so every
+     * "face the user" converged toward facing AWAY from the user: the first
+     * ambient look_at of a reply spun her ~90–110°, the next reply ~40° more,
+     * and so on — the reported "hello turns her left, every answer rotates
+     * again". Plain GLB roots rest at 0 and face +Z, hence the offset switch.
+     */
+    function _yawToward(dx, dz) {
+        const vrmForward = !!((_avatarRoot && _avatarRoot.userData && _avatarRoot.userData.isVRM) || _vrm);
+        return _normAngle(Math.atan2(dx, dz) + (vrmForward ? Math.PI : 0));
+    }
+
+    /** Smoothly yaw the avatar root toward a world point. Idempotent at rest. */
     function _faceTarget(pos, amount) {
         if (!_avatarRoot || !pos) return;
         const dx = pos.x - _avatarRoot.position.x;
         const dz = pos.z - _avatarRoot.position.z;
         if (dx * dx + dz * dz < 1e-6) return;
-        const target = Math.atan2(dx, dz);
-        let diff = target - _avatarRoot.rotation.y;
-        diff = ((diff + Math.PI) % (2 * Math.PI)) - Math.PI;
-        _avatarRoot.rotation.y += diff * Math.min(1, amount == null ? 0.25 : amount);
+        const target = _yawToward(dx, dz);
+        const diff = _normAngle(target - _avatarRoot.rotation.y);
+        _avatarRoot.rotation.y = _normAngle(
+            _avatarRoot.rotation.y + diff * Math.min(1, amount == null ? 0.25 : amount)
+        );
+    }
+
+    /**
+     * Turn in place by a relative angle. Tier A: yaw only, the root never
+     * translates, so this is safe on desktop and in VR whatever the movement
+     * policy says — she cannot rotate into anything.
+     *
+     * @param {number} degrees - signed, clamped to +/-180 by the parser
+     * @returns {Promise<boolean>} resolves when the turn finishes
+     */
+    function _turnBy(degrees) {
+        if (!_avatarRoot) return Promise.resolve(false);
+        _stopTurn(false); // a new turn supersedes one in flight
+        const rad = (Math.max(-180, Math.min(180, Number(degrees) || 0)) * Math.PI) / 180;
+        if (Math.abs(rad) < 1e-3) return Promise.resolve(true);
+
+        _turn.active = true;
+        _turn.remaining = rad;
+        // Fixed angular speed, so a 180 takes about twice as long as a 90 and
+        // the motion reads as one deliberate movement rather than a snap.
+        _turn.speed = 2.6; // rad/s
+        _turn.deadline = _now() + Math.abs(rad) / _turn.speed + 1.5;
+        return new Promise((resolve) => {
+            _turn.resolve = resolve;
+        });
+    }
+
+    /** @private */
+    function _stopTurn(value) {
+        if (_turn.resolve) {
+            const r = _turn.resolve;
+            _turn.resolve = null;
+            r(value !== false);
+        }
+        _turn.active = false;
+        _turn.remaining = 0;
+    }
+
+    /** @private */
+    function _updateTurn(dt) {
+        if (!_turn.active) return;
+        if (!_avatarRoot || _now() > _turn.deadline) {
+            _stopTurn(false);
+            return;
+        }
+        const step = Math.sign(_turn.remaining) * Math.min(Math.abs(_turn.remaining), _turn.speed * dt);
+        // Wrap after every step: an unwrapped 2π of drift made the next
+        // look_at's diff exceed −π, which the old normalisation turned into
+        // a full extra revolution.
+        _avatarRoot.rotation.y = _normAngle(_avatarRoot.rotation.y + step);
+        _turn.remaining -= step;
+        if (Math.abs(_turn.remaining) < 1e-3) _stopTurn(true);
     }
 
     /** Expression with auto-decay so faces never freeze. */
@@ -261,10 +402,87 @@ const MotionIntegration = (() => {
             () => {
                 if (state.sitting) playAnimation('sit_idle');
                 else if (state.speaking) playAnimation('talking');
-                else playAnimation('idle');
+                else if (_startPoseRestore()) {
+                    /* she settles back first; idle follows from update() */
+                } else playAnimation('idle');
             },
             Math.max(200, (afterS || 0.8) * 1000)
         );
+    }
+
+    /**
+     * Snapshot the pose across BOTH humanoid rigs.
+     *
+     * Both formats now retarget onto the NORMALIZED rig, but capturing both
+     * rigs is still the right call and is deliberately kept:
+     *
+     *   - A non-VRM (GLB) avatar has no normalized layer at all; its bones are
+     *     resolved by name and written directly.
+     *   - The ambient ProceduralAnimator writes RAW bones with
+     *     autoUpdateHumanBones off, so raw can hold state normalized does not.
+     *   - Before BVH was fixed it wrote raw bones directly, and capturing
+     *     normalized alone made the settle a silent no-op — she stayed in the
+     *     frame the dance ended on. Capturing both is what makes the restore
+     *     independent of which pipeline last touched the body.
+     *
+     * The blend writes both; whichever rig is live gets restored, and the
+     * other is left consistent for whatever plays next.
+     */
+    function _capturePoseSnapshot(pr) {
+        try {
+            const h = _vrm.humanoid;
+            const names = Object.keys(h.humanBones || {});
+            const bones = [];
+            const seen = new Set();
+            const pick = (fn, n) => (typeof h[fn] === 'function' ? h[fn](n) : null);
+            for (const n of names) {
+                // A rig without a normalized layer returns the same object for
+                // both; dedupe so a bone is not captured twice.
+                for (const node of [pick('getNormalizedBoneNode', n), pick('getRawBoneNode', n)]) {
+                    if (node && !seen.has(node)) {
+                        seen.add(node);
+                        bones.push(node);
+                    }
+                }
+            }
+            if (!bones.length) return;
+            // Hips carry translation: BVH animates hips position and leaves a
+            // visible displacement behind. Restore it on whichever rig moved.
+            const hips = [pick('getNormalizedBoneNode', 'hips'), pick('getRawBoneNode', 'hips')].filter(
+                (n, i, a) => n && a.indexOf(n) === i
+            );
+            pr.capture({ bones: bones, hips: hips, root: _avatarRoot });
+            _log('pose snapshot captured (' + bones.length + ' bones)');
+        } catch (_e) {
+            /* the snapshot is best-effort */
+        }
+    }
+
+    /**
+     * Settle the body back to the pre-animation snapshot (short eased blend),
+     * then update() hands it to the ambient system. The current clip is
+     * stopped first so the mixer cannot fight the blend.
+     * @returns {boolean} false when there is nothing to restore
+     */
+    function _startPoseRestore() {
+        const pr = _poseRestore();
+        if (!pr || !pr.hasSnapshot() || (pr.isBlending && pr.isBlending())) return false;
+        const clips = _clips();
+        if (clips && clips.stop) clips.stop({ fadeOut: 0.15, _skipRestore: true });
+        try {
+            if (window.NEXUS_PROCEDURAL_ANIMATOR && window.NEXUS_PROCEDURAL_ANIMATOR.setAllowWithMixer) {
+                window.NEXUS_PROCEDURAL_ANIMATOR.setAllowWithMixer(false); // the blend owns the bones
+            }
+            // The blend writes raw bones directly, so the humanoid must not
+            // re-derive them from normalized mid-settle and undo the work.
+            const C = window.__CLIP_ANIM_CONST__;
+            if (C && C.setHumanoidAutoUpdate) C.setHumanoidAutoUpdate(false, _vrm);
+        } catch (_e) {
+            /* ambient animator is optional */
+        }
+        pr.start(0.5);
+        _log('pose restore: settling back to the pre-animation pose');
+        return true;
     }
 
     /**
@@ -276,6 +494,20 @@ const MotionIntegration = (() => {
         if (!clips) return;
         const key = String(name || '').toLowerCase();
         if (key === 'walk' || key === 'walk_backward' || key === 'run') return; // locomotion owns gait
+        // Snapshot the pre-animation skeleton ONCE per sequence, so a stop or
+        // a natural finish settles her back to exactly how she stood —
+        // including a Pose-Studio pose. Ambient names never own the snapshot;
+        // a posture change (sit / stand) starts a new baseline.
+        const pr = _poseRestore();
+        if (pr && key !== 'idle' && key !== 'sit_idle' && key !== 'talking') {
+            if (key === 'sit' || key === 'stand') {
+                pr.clear();
+            } else if (!pr.hasSnapshot() && _vrm && _vrm.humanoid) {
+                const loader = typeof window !== 'undefined' ? window.NEXUS_CLIP_LOADER : null;
+                const st = loader && loader.getCurrentPlaybackState ? loader.getCurrentPlaybackState() : null;
+                if (!st || !st.isPlaying) _capturePoseSnapshot(pr);
+            }
+        }
         clips.play(key).then((res) => {
             if (res.ok) {
                 state.lastActivity = key;
@@ -289,6 +521,28 @@ const MotionIntegration = (() => {
             } else if (res.procedural) {
                 _reach.active = true; // arm raise handled purely by IK ramp
                 _reach.high = res.procedural === 'reach_high';
+            } else if (res.reason) {
+                // Surface it. The reported symptom — "I say dance, the toast
+                // appears, nothing moves" — was this branch running silently:
+                // the reason was recorded for the LLM and logged only under
+                // config.debug, so on a phone there was nothing to see.
+                _emitAction({ source: 'clip_failed', label: key, reason: res.reason });
+                // B5: nothing in the library matched and there is no procedural
+                // stand-in. Tell the model on the next turn instead of leaving
+                // it to promise something the body never did — and substitute a
+                // talking idle so she is not frozen mid-sentence.
+                state.lastAction = { type: 'gesture:' + key, result: res.reason };
+                if (typeof console !== 'undefined' && console.warn) {
+                    console.warn(
+                        '[Motion] gesture "' +
+                            key +
+                            '" did not play — ' +
+                            res.reason +
+                            (res.tried && res.tried.length ? '; tried: ' + res.tried.join(', ') : '') +
+                            '. Run NEXUS_MOTION.debugMotion() for a full report.'
+                    );
+                }
+                if (res.reason === 'unknown_clip' && key !== 'talking') clips.play('talking');
             }
         });
     }
@@ -317,6 +571,8 @@ const MotionIntegration = (() => {
     function walkTo(target, stopDist) {
         const THREE = _T();
         if (!THREE || !_avatarRoot || !target) return Promise.resolve(false);
+        const pr = _poseRestore();
+        if (pr && pr.invalidateRoot) pr.invalidateRoot(); // locomotion owns the root now
         return new Promise(async (resolve) => {
             try {
                 if (state.sitting) await _standRoutine();
@@ -572,6 +828,26 @@ const MotionIntegration = (() => {
             playAnimation(name);
         });
 
+        // Tier A: yaw only, never translates the root, so it runs whatever the
+        // movement policy says. Registered through the public registerHandler,
+        // so MotionDSL itself needs no edit.
+        dsl.registerHandler('turn', async (cmd) => {
+            if (cmd && cmd.target) {
+                // "turn to face me" — aim at a point rather than a fixed angle.
+                const p = cmd.target === 'nearest_seat' ? getAnchorPosition('seat') : getUserPosition();
+                if (p) {
+                    _faceTarget(p, 1);
+                    return;
+                }
+            }
+            await _turnBy(cmd && cmd.degrees != null ? cmd.degrees : 180);
+        });
+
+        dsl.registerHandler('raise_hand', async (cmd) => {
+            playAnimation('raise_hand');
+            _reach.side = cmd && cmd.side === 'left' ? 'left' : 'right';
+        });
+
         dsl.registerHandler('nod', async () => playAnimation('nod'));
         dsl.registerHandler('point', async (cmd) => {
             const user = getUserPosition();
@@ -602,9 +878,55 @@ const MotionIntegration = (() => {
 
     // ── Plan I/O (called from main.js) ──────────────────────────────────
 
+    /** Policy module, when loaded. Absent = everything allowed (pre-B2 behaviour). */
+    function _policy() {
+        return typeof window !== 'undefined' ? window.NEXUS_MOTION_POLICY : null;
+    }
+
+    /**
+     * Master switch. Reads the policy when it is loaded so a Settings toggle
+     * applies live; falls back to the local config when it is not, which keeps
+     * the module standalone (and keeps its removal contract intact).
+     */
+    function _enabled() {
+        const p = _policy();
+        if (p && typeof p.isEnabled === 'function') return p.isEnabled();
+        return config.enabled;
+    }
+    function _poseRestore() {
+        return typeof window !== 'undefined' ? window.NEXUS_MOTION_POSE_RESTORE : null;
+    }
+
+    /** Environment the policy needs. Injected so MotionPolicy stays pure. */
+    function _policyCtx() {
+        const xr = _xr();
+        return { inVR: !!(xr && xr.isPresenting) };
+    }
+
+    /**
+     * SEAM 3 — the executor boundary. Disallowed types are stripped here even
+     * if the fast path missed them or a provider hallucinated one, so no single
+     * upstream mistake can move the avatar against policy.
+     */
     function execute(plan) {
         const dsl = _dsl();
-        if (!config.enabled || !dsl || !plan) return;
+        if (!_enabled() || !dsl || !plan) return;
+
+        const policy = _policy();
+        if (policy && policy.filterPlan) {
+            const res = policy.filterPlan(plan, _policyCtx());
+            if (res.stripped.length) {
+                // Record the first blocked command so the next prompt can
+                // explain it; movement is the only thing the policy gates.
+                state.lastAction = { type: res.stripped[0], result: 'movement_disabled' };
+                _telemetry.policy_strips++;
+                _emitAction({ source: 'policy', label: 'movement_disabled', stripped: res.stripped });
+                _log('policy stripped:', res.stripped.join(','));
+            }
+            if (!res.plan) return;
+            plan = res.plan;
+        }
+
         dsl.execute(plan, { integration: 'nexus-motion' });
     }
 
@@ -615,13 +937,49 @@ const MotionIntegration = (() => {
      * @param {string} text
      */
     function onUserUtterance(text) {
-        if (!config.enabled || typeof window === 'undefined') return;
+        if (!_enabled() || typeof window === 'undefined') return;
         const fp = window.NEXUS_INTENT_FASTPATH;
         const hit = fp && fp.match ? fp.match(text) : null;
         const user = getUserPosition();
         if (user) setLookAtTarget(user); // acknowledge instantly, always
-        if (!hit) return;
+        _telemetry.utterances++;
+        // A new utterance opens a new pairing window: a previous turn's miss
+        // must never pair with a later turn's reply.
+        _lastMissAt = -1;
+        if (!hit) {
+            // Remember the miss: if the LLM emits a plan for this turn, that
+            // pair is exactly the recall gap a local ML tier would close.
+            _lastMissAt = _now();
+            const t = String(text || '')
+                .trim()
+                .slice(0, 80);
+            if (t) {
+                _telemetry.missed_recent.push(t);
+                if (_telemetry.missed_recent.length > 20) _telemetry.missed_recent.shift();
+            }
+            _log('no fast-path match → the LLM decides:', t);
+            if (_telemetry.utterances % 20 === 0) _log('telemetry:', getTelemetry());
+            return;
+        }
+        _telemetry.fastpath_hits++;
+        _telemetry.by_label[hit.label] = (_telemetry.by_label[hit.label] || 0) + 1;
+        if (hit.label === 'stop' || hit.label === 'stop_follow') {
+            // Misfire proxy: a stop right after an action is the cheapest
+            // observable correction signal — it measures the direction
+            // recall_gap cannot see (the fast path acting when it should not,
+            // e.g. "don't dance" → dance).
+            if (_lastActionAt >= 0 && _now() - _lastActionAt < 5) {
+                _telemetry.misfire_stops++;
+                _telemetry.misfire_recent.push(_lastActionLabel);
+                if (_telemetry.misfire_recent.length > 10) _telemetry.misfire_recent.shift();
+            }
+            _lastActionAt = -1;
+        } else {
+            _lastActionAt = _now();
+            _lastActionLabel = hit.label;
+        }
         _log('fast-path:', hit.label);
+        _emitAction({ source: 'fastpath', label: hit.label });
         _suppressNextPlan = _now() + 20;
         execute(hit.plan);
     }
@@ -635,11 +993,38 @@ const MotionIntegration = (() => {
     function processReply(text) {
         if (typeof window === 'undefined' || !window.NEXUS_MOTION_PARSER) return text;
         const { cleanText, plan } = window.NEXUS_MOTION_PARSER.extract(text);
-        if (plan && config.enabled) {
+        if (plan && _enabled()) {
             if (_now() < _suppressNextPlan) {
                 _suppressNextPlan = 0;
+                _telemetry.suppressed_llm_plans++;
                 _log('LLM plan suppressed (fast-path already acted)');
             } else {
+                _telemetry.llm_plans++;
+                const primary = _primaryType(plan);
+                // The recall gap is "the regex missed a COMMAND the LLM then
+                // acted on" — so it must only count non-ambient plans. The
+                // contract mandates an ambient plan (look_at + expression) on
+                // every plain-conversation turn, so counting any plan here
+                // scores 100% on pure small talk and the number becomes
+                // meaningless. Consume _lastMissAt so one miss counts once.
+                if (primary && _lastMissAt >= 0 && _now() - _lastMissAt < 30) {
+                    _telemetry.recall_gap_hits++;
+                    _lastMissAt = -1;
+                }
+                if (primary === 'stop' || primary === 'stop_follow') {
+                    // A long-phrased "please stop that" the regex missed but
+                    // the LLM honoured is the same correction signal.
+                    if (_lastActionAt >= 0 && _now() - _lastActionAt < 5) {
+                        _telemetry.misfire_stops++;
+                        _telemetry.misfire_recent.push(_lastActionLabel);
+                        if (_telemetry.misfire_recent.length > 10) _telemetry.misfire_recent.shift();
+                    }
+                    _lastActionAt = -1;
+                } else if (primary) {
+                    _lastActionAt = _now();
+                    _lastActionLabel = primary;
+                }
+                if (primary) _emitAction({ source: 'llm', label: primary });
                 execute(plan);
             }
         }
@@ -675,13 +1060,25 @@ const MotionIntegration = (() => {
             anchors: Object.keys(_anchors)
                 .filter((k) => _anchors[k])
                 .map((k) => ({ type: k })),
+            last_action: state.lastAction,
         };
     }
 
     function systemPromptSuffix() {
-        if (!config.enabled || typeof window === 'undefined' || !window.NEXUS_MOTION_CONTRACT) return '';
+        if (!_enabled() || typeof window === 'undefined' || !window.NEXUS_MOTION_CONTRACT) return '';
         const clips = _clips() ? _clips().availableNames() : [];
-        return window.NEXUS_MOTION_CONTRACT.systemPromptSuffix(getWorldSnapshot(), clips);
+
+        // SEAM 1 — the vocabulary. Telling the model only about commands that
+        // are currently enabled is a stronger guarantee than asking it not to
+        // use them: it cannot misuse a tool it was never handed.
+        let types = null;
+        const policy = _policy();
+        const parser = window.NEXUS_MOTION_PARSER;
+        if (policy && policy.allowedTypes && parser) {
+            types = policy.allowedTypes(parser.ALLOWED_TYPES, _policyCtx());
+        }
+
+        return window.NEXUS_MOTION_CONTRACT.systemPromptSuffix(getWorldSnapshot(), clips, types);
     }
 
     // ── Lifecycle ───────────────────────────────────────────────────────
@@ -698,12 +1095,31 @@ const MotionIntegration = (() => {
 
     /** ViewerEngine hook: per-frame update (after mixer, before render). */
     function update(dt) {
-        if (!config.enabled || !state.booted) return;
+        if (!_enabled() || !state.booted) return;
         const d = Math.min(0.1, dt || 0.016);
+        const pr = _poseRestore();
+        if (pr && pr.isBlending && pr.isBlending()) {
+            if (!pr.update(d)) {
+                // Settle finished — hand the body back to the ambient system.
+                try {
+                    if (window.NEXUS_PROCEDURAL_ANIMATOR && window.NEXUS_PROCEDURAL_ANIMATOR.setAllowWithMixer) {
+                        window.NEXUS_PROCEDURAL_ANIMATOR.setAllowWithMixer(true);
+                    }
+                    const C = window.__CLIP_ANIM_CONST__;
+                    if (C && C.setHumanoidAutoUpdate) C.setHumanoidAutoUpdate(false, _vrm);
+                } catch (_e) {
+                    /* ambient hand-back is best-effort */
+                }
+                _log('pose restore: done');
+                _scheduleIdle(0.4);
+            }
+            return; // the settle owns the body this frame
+        }
         _updateWalk(d);
         _updateFollow(d);
         _updateContact(d);
         _updateHeadFx(d);
+        _updateTurn(d);
         _updateLook(d);
         _applyExpressions(d);
     }
@@ -733,19 +1149,166 @@ const MotionIntegration = (() => {
             _registerBehaviors(); // enhanced handlers win (registered last)
             onAvatarChanged(root, vrm);
             state.booted = true;
-            _log('booted — living NPC online');
+            if (typeof console !== 'undefined') {
+                const pol = _policy();
+                let lib = true;
+                try {
+                    lib = typeof localStorage === 'undefined' || localStorage.getItem('npc_library_anims') !== 'false';
+                } catch (_e) {
+                    /* storage unavailable */
+                }
+                console.log(
+                    '[Motion] ready — enabled=' +
+                        _enabled() +
+                        ' movement=' +
+                        (pol && pol.movementMode ? pol.movementMode() : 'n/a') +
+                        ' libraryAnims=' +
+                        lib +
+                        ' debug=' +
+                        config.debug +
+                        ' | avatar ✓ dsl ✓ executor ' +
+                        (window.MotionExecutor ? '✓' : '–') +
+                        ' clips ' +
+                        (_clips() ? '✓' : '–') +
+                        ' loader ' +
+                        (window.NEXUS_CLIP_LOADER ? '✓' : '–')
+                );
+            }
             return true;
         };
         if (tryInit()) return;
         let tries = 0;
         const timer = setInterval(() => {
-            if (tryInit() || ++tries > 120) clearInterval(timer);
+            if (tryInit()) {
+                clearInterval(timer);
+                return;
+            }
+            if (++tries > 120) {
+                clearInterval(timer);
+                if (typeof console !== 'undefined' && console.warn) {
+                    const am = window.NEXUS_VIEWER && window.NEXUS_VIEWER.avatarManager;
+                    console.warn(
+                        '[Motion] boot gave up after 60s — missing:' +
+                            (window.NEXUS_VIEWER ? '' : ' viewer') +
+                            (window.MotionDSL ? '' : ' MotionDSL') +
+                            ((window.__CLIP_ANIM_STATE__ || {}).avatarRoot || (am && am.currentRoot) ? '' : ' avatar')
+                    );
+                }
+            }
         }, 500);
     }
 
     if (typeof window !== 'undefined') {
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
         else boot();
+    }
+
+    /**
+     * Snapshot of the session's intent-detection counters. The number that
+     * decides whether a local ML tier is worth building is
+     * `recall_gap_hits / utterances` — see ActionRegistry's header.
+     * In-memory only; resets on reload.
+     */
+    function getTelemetry() {
+        return Object.assign({}, _telemetry, {
+            by_label: Object.assign({}, _telemetry.by_label),
+            misfire_recent: _telemetry.misfire_recent.slice(),
+            missed_count: _telemetry.missed_recent.length,
+            // Raw user speech only leaves this closure under debug: it is
+            // never persisted or sent, but a window global is readable by any
+            // script on the page, so the texts stay opt-in
+            // (NEXUS_MOTION.config.debug = true).
+            missed_recent: config.debug ? _telemetry.missed_recent.slice() : [],
+        });
+    }
+
+    /** Toggle verbose [Motion]/[MotionClipMap] tracing; persists npc_debug. */
+    function setDebug(on) {
+        config.debug = !!on;
+        try {
+            if (typeof localStorage !== 'undefined') localStorage.setItem('npc_debug', on ? 'true' : 'false');
+        } catch (_e) {
+            /* storage unavailable */
+        }
+        if (typeof console !== 'undefined') console.log('[Motion] verbose tracing', on ? 'ON' : 'off');
+        return config.debug;
+    }
+
+    /**
+     * One-shot diagnostics for "she said she would, nothing moved".
+     * Prints flags, module presence, clip availability and — in a browser —
+     * live-probes representative asset URLs so a missing-deployment or
+     * rewrite-to-HTML problem is identified in a single console line.
+     *
+     * @param {{probe?: boolean}} [opts] - probe:false skips network fetches
+     * @returns {Promise<Object>} the collected report
+     */
+    async function debugMotion(opts) {
+        const pol = _policy();
+        const clips = _clips();
+        const loader = typeof window !== 'undefined' ? window.NEXUS_CLIP_LOADER : null;
+        let lib = true;
+        try {
+            lib = typeof localStorage === 'undefined' || localStorage.getItem('npc_library_anims') !== 'false';
+        } catch (_e) {
+            /* storage unavailable */
+        }
+        const report = {
+            enabled: _enabled(),
+            movement: pol && pol.movementMode ? pol.movementMode() : null,
+            libraryAnims: lib,
+            debug: config.debug,
+            booted: state.booted,
+            avatarAttached: !!_avatarRoot,
+            modules: {
+                dsl: !!_dsl(),
+                executor: typeof window !== 'undefined' && !!window.MotionExecutor,
+                policy: !!pol,
+                clips: !!clips,
+                parser: typeof window !== 'undefined' && !!window.NEXUS_MOTION_PARSER,
+                loader: !!loader,
+            },
+            gestureNames: clips && clips.availableNames ? clips.availableNames().length : 0,
+            libraryCatalog: loader && loader.getAllAnimations ? (loader.getAllAnimations() || []).length : 0,
+            unavailable: clips && clips.getUnavailable ? clips.getUnavailable() : [],
+            telemetry: getTelemetry(),
+            probes: [],
+        };
+        const doProbe = !opts || opts.probe !== false;
+        if (doProbe && typeof fetch === 'function' && clips && clips.probeCandidates) {
+            const targets = clips.probeCandidates().concat(report.unavailable.slice(0, 2));
+            for (const url of targets.slice(0, 5)) {
+                try {
+                    const r = await fetch(url, { cache: 'no-store' });
+                    const type = r.headers && r.headers.get ? r.headers.get('content-type') || '?' : '?';
+                    const head = (await r.text()).slice(0, 12);
+                    report.probes.push({ url, status: r.status, type, html: head.trimStart().charAt(0) === '<' });
+                } catch (err) {
+                    report.probes.push({ url, error: String(err && err.message) });
+                }
+            }
+        }
+        if (typeof console !== 'undefined') {
+            console.log('[Motion] diagnostics', report);
+            for (const p of report.probes) {
+                if (p.html || (p.type && p.type.indexOf('text/html') !== -1)) {
+                    console.warn(
+                        '[Motion] PROBE ' +
+                            p.url +
+                            ' → ' +
+                            p.status +
+                            ' ' +
+                            p.type +
+                            ' — the server returned HTML for a binary asset: the file is missing from ' +
+                            'the deployment, or a catch-all rewrite intercepts it (vercel.json must pass ' +
+                            '/addons and /assets through, like /vendor).'
+                    );
+                } else if (p.error) {
+                    console.warn('[Motion] PROBE ' + p.url + ' → fetch failed: ' + p.error);
+                }
+            }
+        }
+        return report;
     }
 
     return {
@@ -760,6 +1323,12 @@ const MotionIntegration = (() => {
         setAnchor,
         execute,
         playAnimation,
+        getTelemetry,
+        setDebug,
+        debugMotion,
+        _faceTarget,
+        _normAngle,
+        _startPoseRestore,
         state,
         config,
     };

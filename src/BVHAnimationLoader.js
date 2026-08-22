@@ -5,9 +5,14 @@
  *
  * Handles BVH motion capture files:
  *   1. Parse BVH text via THREE.BVHLoader
- *   2. Build source skeleton bone map
- *   3. Retarget quaternion tracks to avatar bones
- *   4. Apply per-bone correction quaternions
+ *   2. Resolve BVH joint names to VRM humanoid bones
+ *   3. Copy local rotations onto the NORMALIZED rig (avatar-independent),
+ *      applying the VRM 0.x handedness flip when the model needs it
+ *   4. Carry the hips translation across, scaled to the target's rig
+ *
+ * Steps 3 and 4 replaced a retarget that multiplied the avatar's live pose
+ * into every keyframe and discarded hips motion entirely; see
+ * retargetQuaternionValues() for why that could never be avatar-independent.
  *
  * Depends on: ClipAnimationShared.js (must load first)
  * Exposes: window.__BVH_LOADER__
@@ -151,37 +156,6 @@
         return null;
     }
 
-    function isCanonicalDancePair(path) {
-        var lp = String(path || '')
-            .replace(/\\/g, '/')
-            .toLowerCase();
-        if (lp !== 'dance/dance_1.bvh' && lp !== 'vendor/animations/dance/dance_1.bvh') return false;
-        var n =
-            C.safeGet(S.avatarVRM, ['meta', 'name']) ||
-            C.safeGet(S.avatarVRM, ['meta', 'title']) ||
-            C.safeGet(S.avatarVRM, ['userData', 'vrmMeta', 'name']) ||
-            C.safeGet(S.avatarRoot, ['userData', 'vrmMeta', 'name']) ||
-            '';
-        var r = C.safeGet(S.avatarRoot, ['name']) || '';
-        var j = (String(n) + ' ' + String(r)).toLowerCase();
-        return j.indexOf('avatarsample_a') >= 0 || j.indexOf('avatarsample a') >= 0;
-    }
-
-    function buildSourceBVHBoneMap(skeleton) {
-        var map = {};
-        if (!skeleton || !skeleton.bones) return map;
-        for (var i = 0; i < skeleton.bones.length; i++) {
-            var bone = skeleton.bones[i];
-            if (!bone) continue;
-            var norm = C.normalizeBoneKey(bone.name);
-            var vrm = BVH_TO_VRM_MAP[norm] || null;
-            if (vrm && !map[vrm]) map[vrm] = bone;
-            if (!map[bone.name]) map[bone.name] = bone;
-            if (!map[norm]) map[norm] = bone;
-        }
-        return map;
-    }
-
     function getTrackBoneAndProperty(trackName) {
         var m = String(trackName || '').match(/\.bones\[(.+?)\]\.(.+)/);
         if (m) return { boneName: m[1], property: m[2] };
@@ -215,33 +189,94 @@
         return { targetBone: target, vrmName: vrmName };
     }
 
-    function getCorrectionQuaternionForBone(vrmName) {
-        var arr = C.BONE_CORRECTION_PRESETS[vrmName];
-        if (!arr || !C.isArray(arr) || arr.length !== 4) return null;
-        return new THREE.Quaternion(arr[0], arr[1], arr[2], arr[3]).normalize();
+    /**
+     * Map BVH local rotations onto the normalized rig.
+     *
+     * This used to capture the SOURCE and TARGET bones' rest quaternions at
+     * retarget time and pre-multiply them into every keyframe:
+     *
+     *     qOut = tRest * inv(sRest) * qSrc
+     *
+     * Two things made that wrong. A BVH hierarchy carries no rest rotation —
+     * only OFFSET translations — so `sRest` is always identity and the term
+     * does nothing. And `tRest` was the target bone's LIVE quaternion, read
+     * whenever the clip happened to load. Clips load lazily on first play, by
+     * which time the avatar is standing with arms lowered and mid-breath, so
+     * that pose was welded into all frames of the animation (the arm-through-
+     * face dance). Nothing about it was avatar-independent.
+     *
+     * The shipped BVH skeletons already use VRM humanoid bone names with
+     * identity rest rotations, so their local quaternions are exactly what the
+     * normalized rig expects — the same situation as VRMA data. Copy them
+     * through, and apply only the VRM 0.x handedness flip the VRMA path has
+     * always applied and this one never did.
+     *
+     * @param {ArrayLike<number>} trackValues - Flat [x,y,z,w, …]
+     * @param {boolean} isVRM0 - Target model is VRM 0.x
+     * @returns {ArrayLike<number>}
+     */
+    function retargetQuaternionValues(trackValues, isVRM0) {
+        if (!trackValues) return trackValues;
+        return isVRM0 ? C.transformQuatForVRM0(trackValues) : C.cloneQuaternionArray(trackValues);
     }
 
-    function retargetQuaternionValues(trackValues, sourceBone, targetBone, vrmName) {
-        if (!trackValues || !sourceBone || !targetBone) return trackValues;
-        var out = C.cloneQuaternionArray(trackValues);
-        var sRest = sourceBone.quaternion ? sourceBone.quaternion.clone() : new THREE.Quaternion();
-        var tRest = targetBone.quaternion ? targetBone.quaternion.clone() : new THREE.Quaternion();
-        var sRestInv = sRest.clone().invert();
-        var correction = getCorrectionQuaternionForBone(vrmName);
-        var qS = new THREE.Quaternion(),
-            qD = new THREE.Quaternion(),
-            qO = new THREE.Quaternion();
-        for (var i = 0; i < out.length; i += 4) {
-            qS.set(out[i], out[i + 1], out[i + 2], out[i + 3]).normalize();
-            qD.copy(sRestInv).multiply(qS).normalize();
-            qO.copy(tRest).multiply(qD).normalize();
-            if (correction) qO.multiply(correction).normalize();
-            out[i] = qO.x;
-            out[i + 1] = qO.y;
-            out[i + 2] = qO.z;
-            out[i + 3] = qO.w;
+    /**
+     * Ratio between the target's hips rest height and the BVH root offset.
+     *
+     * The shipped BVH skeletons are authored roughly 10x larger than the VRM
+     * normalized rig (root OFFSET Y is ~10.7-12.2; normalized hips sit at
+     * ~1.05-1.12), so hips translation has to be divided down or the avatar
+     * launches off-screen. Falls back to 1 when either height is unknown,
+     * which is a no-op rather than a guess.
+     *
+     * @param {Object} sourceSkeleton - Skeleton returned by THREE.BVHLoader
+     * @param {Object} boneMap - Resolved target bones
+     * @returns {number}
+     */
+    function computeHipsScale(sourceSkeleton, boneMap) {
+        var srcY = 0;
+        var bones = (sourceSkeleton && sourceSkeleton.bones) || [];
+        for (var i = 0; i < bones.length; i++) {
+            var b = bones[i];
+            if (b && b.position && C.normalizeBoneKey(b.name) === 'hips') {
+                srcY = Math.abs(b.position.y);
+                break;
+            }
         }
-        return out;
+        if (!srcY && bones.length && bones[0] && bones[0].position) srcY = Math.abs(bones[0].position.y);
+        var tgt = boneMap.hips;
+        var tgtY = tgt && tgt.position ? Math.abs(tgt.position.y) : 0;
+        if (!srcY || !tgtY) return 1;
+        return tgtY / srcY;
+    }
+
+    /**
+     * Scale a hips position track into the target rig, applying the VRM 0.x
+     * handedness flip when needed.
+     *
+     * @param {ArrayLike<number>} values - Flat [x,y,z, …]
+     * @param {number} scale
+     * @param {boolean} isVRM0
+     * @returns {Float32Array}
+     */
+    function scaleHipsPosition(values, scale, isVRM0, targetHips) {
+        var out = new Float32Array(values.length);
+        // Vertical only. Clips animate the BODY; where the avatar stands is the
+        // locomotion system's business, and it already owns the root. BVH hips
+        // channels carry the capture volume's absolute XZ, so letting them
+        // through walked her off her mark every time she danced.
+        //
+        // Pinned to the hips' REST x/z rather than to zero — zero is only the
+        // same thing when the rest pose happens to sit on the origin, and
+        // otherwise it displaces her for the length of the clip.
+        var restX = targetHips && targetHips.position ? targetHips.position.x : 0;
+        var restZ = targetHips && targetHips.position ? targetHips.position.z : 0;
+        for (var i = 0; i + 2 < values.length; i += 3) {
+            out[i] = restX;
+            out[i + 1] = values[i + 1] * scale;
+            out[i + 2] = restZ;
+        }
+        return isVRM0 ? C.transformPosForVRM0(out) : out;
     }
 
     // =========================================================================
@@ -252,7 +287,11 @@
         if (!_init()) return clip;
         if (!clip || !clip.tracks) return clip;
 
-        if (!S.cachedBoneMap) S.cachedBoneMap = C.buildAvatarBoneMap(targetRoot, S.avatarVRM);
+        // Target the NORMALIZED rig: avatar-independent, so one clip plays the
+        // same on every model and three-vrm composes normalized → raw itself.
+        if (!S.cachedBoneMap) {
+            S.cachedBoneMap = C.buildAvatarBoneMap(targetRoot, S.avatarVRM, { normalized: true });
+        }
         var boneMap = S.cachedBoneMap;
         if (!boneMap || Object.keys(boneMap).length === 0) {
             console.warn('[BVHLoader] No avatar bones');
@@ -260,14 +299,13 @@
             return clip;
         }
 
-        var sourceBoneMap = buildSourceBVHBoneMap(sourceSkeleton);
         var newTracks = [],
             quatCount = 0,
+            posCount = 0,
             requiredMapped = {},
             requiredHitCount = 0;
-        var useCanonical = isCanonicalDancePair(clipPath);
-        var explicitMap = useCanonical ? C.BVH_TO_AVATAR_SAMPLE_A : null;
-        if (useCanonical) console.log('[BVHLoader] Using canonical mapping for:', clipPath);
+        var isVRM0 = S.avatarVRM ? C.getMetaVersion(S.avatarVRM) === '0' : false;
+        var hipsScale = computeHipsScale(sourceSkeleton, boneMap);
 
         for (var i = 0; i < clip.tracks.length; i++) {
             var track = clip.tracks[i],
@@ -275,25 +313,16 @@
             var srcName = info.boneName,
                 property = info.property;
             if (!srcName || !property) continue;
-            var ti = resolveTargetBone(boneMap, srcName, explicitMap);
+            var ti = resolveTargetBone(boneMap, srcName, null);
             if (!ti.targetBone) continue;
-            if (property === 'position' || property === 'scale') continue;
+            if (property === 'scale') continue;
 
             if (property === 'quaternion' && track.values && track.values.length >= 4) {
-                var norm = C.normalizeBoneKey(srcName);
-                var sBone = sourceBoneMap[ti.vrmName] || sourceBoneMap[srcName] || sourceBoneMap[norm] || null;
-                if (!sBone && explicitMap && explicitMap[ti.vrmName])
-                    sBone =
-                        sourceBoneMap[explicitMap[ti.vrmName]] ||
-                        sourceBoneMap[C.normalizeBoneKey(explicitMap[ti.vrmName])] ||
-                        null;
-                if (!sBone) continue;
-                var retargeted = retargetQuaternionValues(track.values, sBone, ti.targetBone, ti.vrmName);
                 newTracks.push(
                     new THREE.QuaternionKeyframeTrack(
                         ti.targetBone.name + '.quaternion',
                         track.times.slice ? track.times.slice(0) : track.times,
-                        retargeted
+                        retargetQuaternionValues(track.values, isVRM0)
                     )
                 );
                 quatCount++;
@@ -301,6 +330,21 @@
                     requiredMapped[ti.vrmName] = true;
                     requiredHitCount++;
                 }
+            } else if (property === 'position' && ti.vrmName === 'hips' && track.values) {
+                // Hips translation was discarded outright, which cost every
+                // clip its bounce, weight shift and travel — and left nothing
+                // to put the body back at a sane height afterwards. The BVH
+                // skeletons are authored ~10x larger than the normalized rig
+                // (root offset Y ~12 vs hips rest Y ~1.1), so scale rather
+                // than drop.
+                newTracks.push(
+                    new THREE.VectorKeyframeTrack(
+                        ti.targetBone.name + '.position',
+                        track.times.slice ? track.times.slice(0) : track.times,
+                        scaleHipsPosition(track.values, hipsScale, isVRM0, ti.targetBone)
+                    )
+                );
+                posCount++;
             }
         }
 
@@ -314,16 +358,29 @@
             clip._retargetFailed = true;
             return clip;
         }
-        if (useCanonical && requiredHitCount < Math.max(12, Math.floor(C.REQUIRED_DANCE_BONES.length * 0.75))) {
+        // Coverage is reported for every clip now that the hardcoded
+        // dance_1 x AvatarSample_A special case is gone — but it does NOT
+        // fail the clip. That gate only ever ran for that one pair, and
+        // widening it would newly reject clips on sparse rigs (a GLB avatar
+        // resolves bones by name and can legitimately map fewer). Partial
+        // motion beats a silent no-op; `quatCount < 6` above still catches a
+        // genuinely unusable retarget.
+        if (requiredHitCount < Math.max(12, Math.floor(C.REQUIRED_DANCE_BONES.length * 0.75))) {
             console.warn(
-                '[BVHLoader] Insufficient coverage:',
+                '[BVHLoader] Partial coverage:',
                 clip.name,
-                '(' + requiredHitCount + '/' + C.REQUIRED_DANCE_BONES.length + ')'
+                '(' + requiredHitCount + '/' + C.REQUIRED_DANCE_BONES.length + ' required bones) — playing anyway'
             );
-            clip._retargetFailed = true;
-            return clip;
         }
-        console.log('[BVHLoader] Retargeted', newTracks.length, '/', clip.tracks.length, 'tracks for:', clip.name);
+        console.log(
+            '[BVHLoader] Retargeted',
+            newTracks.length,
+            '/',
+            clip.tracks.length,
+            'tracks for:',
+            clip.name,
+            '(' + quatCount + ' rot, ' + posCount + ' pos)'
+        );
         return new THREE.AnimationClip(clip.name, clip.duration, newTracks);
     }
 
@@ -343,7 +400,7 @@
             return Promise.resolve(null);
         }
 
-        S.loadingQueue[path] = fetch(S.basePath + '/' + path)
+        S.loadingQueue[path] = fetch(C.resolveClipUrl(path, S.basePath))
             .then(function (res) {
                 if (!res.ok) {
                     delete S.loadingQueue[path];

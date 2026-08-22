@@ -36,6 +36,13 @@ const IntentFastPath = (() => {
     }
 
     /**
+     * Longest utterance the fast path will act on. Spoken commands are short
+     * and imperative; past this we hand over to the LLM, which can read intent
+     * from context instead of pattern-matching a stray keyword.
+     */
+    const MAX_WORDS = 6;
+
+    /**
      * Ordered rules — first match wins. Keep destructive/stop rules early.
      * Each rule: { label, re, plan }.
      */
@@ -43,6 +50,10 @@ const IntentFastPath = (() => {
         {
             label: 'stop',
             re: /\b(stop|halt|freeze|quieto|parate?|alto|fermati|ferma|arrete?|stopp|anhalten|para|pare)\b/,
+            // "stop being sarcastic" is conversation, not a halt command. The
+            // word gate alone does not catch it (five words), so the most
+            // misfire-prone rule carries its own negative guard.
+            not: /\b((dont|don t) stop|never stop|stop\s+(being|saying|talking|telling|pretending|acting|asking|joking|doing|making|trying|thinking|worrying|calling|treating|it|that|this)|para\s+de\s+\w+|deja\s+de\s+\w+|smetti\s+di\s+\w+)\b/,
             plan: () => _plan([{ type: 'stop' }]),
         },
         {
@@ -76,6 +87,32 @@ const IntentFastPath = (() => {
                 _plan([
                     { type: 'expression', name: 'sad', weight: 0.3 },
                     { type: 'retreat', distance_m: 2.0 },
+                ]),
+        },
+        // Tier A — rotation only, so these run whatever the movement policy is.
+        // MUST come before `stand`: its `levanta( te)?` alternative also matches
+        // "levanta la mano", which would stand her up instead of raising a hand.
+        {
+            label: 'turn_around',
+            re: /\b(turn\s*a?round|turn back|spin\s*a?round|date la vuelta|da(te)? la vuelta|girate|voltate|girati|gira ti|fais demi tour|tourne toi|dreh dich um|umdrehen|vira te|da meia volta)\b/,
+            plan: () => _plan([{ type: 'turn', degrees: 180 }]),
+        },
+        {
+            label: 'turn_to_me',
+            re: /\b(turn (to|toward|towards) me|face me|girate hacia mi|voltate hacia mi|mirame de frente|girati verso di me|tourne toi vers moi|dreh dich zu mir|vira te para mim)\b/,
+            plan: () =>
+                _plan([
+                    { type: 'turn', target: 'user' },
+                    { type: 'look_at', target: 'user_head' },
+                ]),
+        },
+        {
+            label: 'raise_hand',
+            re: /\b(raise (your |the )?hand|put (your )?hand up|hands? up|levanta (la |tu )?mano|alza (la )?mano|leve (la )?main|heb die hand|hand hoch|levante a mao)\b/,
+            plan: () =>
+                _plan([
+                    { type: 'raise_hand', side: 'right' },
+                    { type: 'look_at', target: 'user_head' },
                 ]),
         },
         {
@@ -165,15 +202,24 @@ const IntentFastPath = (() => {
     function match(text) {
         const t = _normalize(text);
         if (!t || t.length > 160) return null; // long sentences → let the LLM reason
+
+        // Commands are short and imperative. Anything longer is a sentence
+        // that merely happens to contain a command word ("I was going to say
+        // we should stop by the shop later"), and the LLM has the context to
+        // judge it. This is a cheap filter, not a complete one — see the `not`
+        // guards, which catch short false positives the word count cannot.
+        if (t.split(' ').length > MAX_WORDS) return null;
+
         for (let i = 0; i < RULES.length; i++) {
-            if (RULES[i].re.test(t)) {
-                return { label: RULES[i].label, plan: RULES[i].plan() };
-            }
+            const rule = RULES[i];
+            if (!rule.re.test(t)) continue;
+            if (rule.not && rule.not.test(t)) continue; // known false positive
+            return { label: rule.label, plan: rule.plan() };
         }
         return null;
     }
 
-    return { match, RULES, _normalize };
+    return { match, RULES, _normalize, MAX_WORDS };
 })();
 
 if (typeof window !== 'undefined') window.NEXUS_INTENT_FASTPATH = IntentFastPath;

@@ -206,58 +206,18 @@
     // 3. COORDINATE SYSTEM HANDLING
     // =====================================================================
 
-    /**
-     * Detect VRM model meta version: '0' for VRM 0.x, '1' for VRM 1.0+.
-     *
-     * This determines whether quaternion values need coordinate system
-     * transformation. VRMA animations are in VRM 1.0 space. VRM 0.x models
-     * use a different coordinate system (right-handed Z-forward vs
-     * left-handed Z-back), requiring X and Z negation.
-     */
+    // VRMA animations are authored in VRM 1.0 space; VRM 0.x models use the
+    // opposite handedness and need X/Z negation. These now delegate to
+    // ClipAnimationShared so the BVH loader applies the identical transform —
+    // it previously had no VRM 0.x handling at all, and played mirrored.
     function getMetaVersion(vrm) {
-        if (!vrm || !vrm.meta) return '0'; // default to 0.x for safety
-        // three-vrm v2+: vrm.meta.metaVersion is '0' or '1'
-        if (vrm.meta.metaVersion === '1') return '1';
-        // VRM 0.x: metaVersion is '0' or undefined
-        return '0';
+        return C.getMetaVersion(vrm);
     }
-
-    /**
-     * Transform quaternion values for VRM 0.x coordinate system.
-     *
-     * Official @pixiv/three-vrm-animation formula:
-     *   values.map((v, i) => (metaVersion === '0' && i % 2 === 0) ? -v : v)
-     *
-     * This negates every even-indexed value in the flat array:
-     *   [x₀, y₀, z₀, w₀, x₁, y₁, z₁, w₁, ...]
-     *    ^       ^           ^       ^
-     *    negate  negate      negate  negate
-     *
-     * Result per quaternion: (x, y, z, w) → (-x, y, -z, w)
-     * This flips handedness from VRM 1.0 (VRMA) to VRM 0.x (model).
-     */
     function transformQuatForVRM0(values) {
-        var out = new Float32Array(values.length);
-        for (var i = 0; i < values.length; i++) {
-            out[i] = i % 2 === 0 ? -values[i] : values[i];
-        }
-        return out;
+        return C.transformQuatForVRM0(values);
     }
-
-    /**
-     * Transform hips position values for VRM 0.x coordinate system.
-     *
-     * Official formula: negate X and Z (keep Y).
-     *   values.map((v, i) => (metaVersion === '0' && i % 3 !== 1) ? -v : v)
-     *
-     * Result per vector: (x, y, z) → (-x, y, -z)
-     */
     function transformPosForVRM0(values) {
-        var out = new Float32Array(values.length);
-        for (var i = 0; i < values.length; i++) {
-            out[i] = i % 3 !== 1 ? -values[i] : values[i];
-        }
-        return out;
+        return C.transformPosForVRM0(values);
     }
 
     // =====================================================================
@@ -275,6 +235,85 @@
      *   - VRMRoot and expressions use lightweight proxies
      *   - No per-frame syncProxies() needed for bone quaternions
      */
+    /**
+     * Find the hips node's REST translation inside the .vrma itself.
+     *
+     * This is the clip's own idea of how tall its hips sit, and it is the
+     * denominator for height normalisation: official VRoid clips author it
+     * around 0.90, while a clip converted from a BVH authored at ~10x scale
+     * can land anywhere. Without it there is no way to know what units the
+     * translation track is in.
+     *
+     * @returns {number} rest Y, or 0 when it cannot be determined
+     * @private
+     */
+    function getAnimationHipsRestY(gltf, vrmaData) {
+        try {
+            var json = C.safeGet(gltf, ['parser', 'json']);
+            var hipsIdx = C.safeGet(vrmaData, ['ext', 'humanoid', 'humanBones', 'hips', 'node']);
+            if (json && json.nodes && hipsIdx != null && json.nodes[hipsIdx]) {
+                var t = json.nodes[hipsIdx].translation;
+                if (t && isFinite(t[1])) return Math.abs(t[1]);
+            }
+        } catch (_) {}
+        return 0;
+    }
+
+    /**
+     * Put a hips translation track into the target rig's units, and keep the
+     * avatar where it was placed.
+     *
+     * Two things were wrong here. The height scaling was never implemented —
+     * the track was written to the normalized hips node verbatim — so a clip
+     * authored at a different scale set the hips to the wrong height outright.
+     * The converted dance clips carry ~0.12 where an official VRoid clip
+     * carries ~0.87, which dropped the avatar through the floor.
+     *
+     * Horizontal travel is also dropped. Clips animate the BODY; where the
+     * avatar stands belongs to the locomotion system, which already owns the
+     * root (see MotionIntegration.walkTo / MotionPoseRestore.invalidateRoot).
+     * Mocap always carries some sway, and letting it through moved her off her
+     * mark every time she danced. Vertical motion — the bounce and weight
+     * shift that make a dance read as a dance — is kept.
+     *
+     * @param {ArrayLike<number>} values - Flat [x,y,z, …] from the clip
+     * @param {Object} gltf
+     * @param {Object} vrmaData
+     * @param {Object} normNode - Target normalized hips node
+     * @returns {Float32Array}
+     * @private
+     */
+    function normalizeHipsTrack(values, gltf, vrmaData, normNode) {
+        var out = new Float32Array(values.length);
+        var animRestY = getAnimationHipsRestY(gltf, vrmaData);
+        var targetRestY = normNode && normNode.position ? Math.abs(normNode.position.y) : 0;
+        var scale = animRestY > 1e-6 && targetRestY > 1e-6 ? targetRestY / animRestY : 1;
+
+        // Some clips encode hips translation absolutely (official VRoid), others
+        // relative to the rest pose (bvh2vrma subtracts the rest offset). Decide
+        // from the first frame: a value near zero cannot be an absolute height.
+        var firstY = values.length > 1 ? Math.abs(values[1]) : 0;
+        var isRelative = animRestY > 1e-6 && firstY < animRestY * 0.5;
+
+        // Hold the hips at their REST x/z, not at zero. Writing 0 only leaves
+        // the avatar where she stands if her rest hips happen to sit exactly on
+        // the origin; otherwise every clip carrying a hips track teleported her
+        // by (-restX, -restZ) for as long as it played. That is why it happened
+        // "sometimes": only the converted dances carry a hips position track —
+        // the Mixamo-origin ones have none, so those never moved her.
+        var restX = normNode && normNode.position ? normNode.position.x : 0;
+        var restZ = normNode && normNode.position ? normNode.position.z : 0;
+
+        for (var i = 0; i + 2 < values.length; i += 3) {
+            var y = values[i + 1];
+            if (isRelative) y += animRestY;
+            out[i] = restX; // no horizontal travel — pinned to the rest pose
+            out[i + 1] = y * scale;
+            out[i + 2] = restZ;
+        }
+        return out;
+    }
+
     function retargetVRMAClip(clip, gltf) {
         if (!_init()) return clip;
         if (!clip || !clip.tracks) return clip;
@@ -409,12 +448,10 @@
                     continue;
                 }
 
-                // Scale hips position by height ratio (official approach)
-                var pValues = new Float32Array(track.values);
+                var pValues = normalizeHipsTrack(track.values, gltf, vrmaData, normNode);
                 if (isVRM0) {
                     pValues = transformPosForVRM0(pValues);
                 }
-                // TODO: height scaling (animationHipsY / targetHipsY) when available
 
                 newTracks.push(new THREE.VectorKeyframeTrack(normNode.name + '.position', track.times, pValues));
                 _dbg.mapped.push('hips (pos)');
@@ -476,7 +513,7 @@
                 return;
             }
             gltfLoader.load(
-                S.basePath + '/' + path,
+                C.resolveClipUrl(path, S.basePath),
                 function (gltf) {
                     var clip = null;
                     if (gltf && gltf.animations && gltf.animations.length > 0) {
@@ -502,7 +539,28 @@
                 },
                 undefined,
                 function (err) {
-                    console.warn('[VRMALoader] Load failed:', path, err);
+                    // A misrouted asset is NOT a 404. Both the local dev
+                    // server (SPA fallback) and Vercel (the catch-all rewrite
+                    // in vercel.json) answer an unmatched path with
+                    // index.html and HTTP 200, so GLTFLoader receives
+                    // "<!doctype html>" and dies on the leading "<". That
+                    // reads as a parser bug when it is really a routing or
+                    // deployment problem, so name it explicitly.
+                    var msg = (err && (err.message || err.reason)) || String(err || '');
+                    if (/Unexpected token\s*'?</.test(msg) || /<!doctype/i.test(msg)) {
+                        console.error(
+                            '[VRMALoader] ' +
+                                path +
+                                ' returned HTML, not a .vrma file. The server is ' +
+                                'serving index.html for this path — the file is missing from ' +
+                                'the deployment, or the /addons rewrite in vercel.json is not ' +
+                                'live yet. Open ' +
+                                C.resolveClipUrl(path, S.basePath) +
+                                ' directly: it should download binary, not render the app.'
+                        );
+                    } else {
+                        console.warn('[VRMALoader] Load failed:', path, err);
+                    }
                     delete S.loadingQueue[path];
                     resolve(null);
                 }

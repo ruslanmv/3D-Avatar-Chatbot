@@ -55,3 +55,12 @@ jest.config.js
 # This includes Three.js libraries required for 3D rendering
 !vendor/
 !vendor/**/*
+
+# IMPORTANT: the animation packs MUST be deployed too. Every motion command
+# resolves to a file under addons/ (vrma-dance, vrma-actions), and a missing
+# one is NOT a 404 — the catch-all rewrite in vercel.json serves index.html
+# instead, so the loader receives "<!doctype html>" and every clip fails.
+!addons/
+!addons/**/*
+!assets/
+!assets/**/*

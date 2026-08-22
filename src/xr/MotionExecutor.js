@@ -142,14 +142,27 @@ const MotionExecutor = (() => {
         const avatar = _ctx.avatar;
         const dx = targetPos.x - avatar.position.x;
         const dz = targetPos.z - avatar.position.z;
-        const targetAngle = Math.atan2(dx, dz);
+        if (dx * dx + dz * dz < 1e-6) return;
 
-        // Slerp-like rotation over frames
-        const currentY = avatar.rotation.y;
-        const diff = targetAngle - currentY;
-        // Normalize angle difference
-        const normalizedDiff = ((diff + Math.PI) % (2 * Math.PI)) - Math.PI;
-        avatar.rotation.y += normalizedDiff * Math.min(speed, 1.0);
+        // Same two bugs MotionIntegration._faceTarget had, and the same fix:
+        //  1. atan2(dx, dz) is the +Z-forward yaw, but VRM forward is −Z and
+        //     ViewerEngine rests VRM roots at rotation.y = π, so this aimed the
+        //     avatar's BACK at the target.
+        //  2. ((d + π) % 2π) − π returns values below −π for negative inputs
+        //     (JS % keeps the dividend's sign), sending the turn the long way.
+        // Currently MotionIntegration re-registers every handler that reaches
+        // here, so this path is dormant — but it is one registration-order
+        // change away from being live again, and a fixed bug should not be
+        // left duplicated in the tree.
+        const vrmForward = !!(avatar.userData && avatar.userData.isVRM);
+        const targetAngle = _normAngle(Math.atan2(dx, dz) + (vrmForward ? Math.PI : 0));
+        const diff = _normAngle(targetAngle - avatar.rotation.y);
+        avatar.rotation.y = _normAngle(avatar.rotation.y + diff * Math.min(speed, 1.0));
+    }
+
+    /** Smallest signed equivalent of an angle, in (−π, π]. */
+    function _normAngle(a) {
+        return a - 2 * Math.PI * Math.round(a / (2 * Math.PI));
     }
 
     /**
@@ -330,6 +343,14 @@ const MotionExecutor = (() => {
         init,
     };
 })();
+
+// Classic script: a top-level `const` becomes a global LEXICAL binding, not a
+// property of window — so `window.MotionExecutor` was undefined while the bare
+// identifier worked. MotionIntegration reads it off window (its modules are
+// interchangeable that way), so without this line every plan silently
+// no-opped in the browser and boot() never completed. Match the rest of the
+// stack and register explicitly.
+if (typeof window !== 'undefined') window.MotionExecutor = MotionExecutor;
 
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = MotionExecutor;

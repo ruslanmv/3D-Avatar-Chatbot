@@ -164,9 +164,13 @@
                 window.NEXUS_PROCEDURAL_ANIMATOR.setAllowWithMixer(false);
             }
 
-            // VRMA: autoUpdateHumanBones=true (mixer writes normalized → humanoid syncs to raw)
-            // BVH:  autoUpdateHumanBones=false (mixer writes raw bones directly)
-            C.setHumanoidAutoUpdate(isVRMA, S.avatarVRM);
+            // Both formats now retarget onto the NORMALIZED rig, so the mixer
+            // writes normalized bones and three-vrm composes them into raw —
+            // its job, not ours. BVH used to write raw bones directly with
+            // autoUpdate off, which is what made its output avatar-specific.
+            // No-op on a non-VRM avatar (guarded on vrm.humanoid), so the GLB
+            // path keeps writing the bones it resolved by name.
+            C.setHumanoidAutoUpdate(true, S.avatarVRM);
 
             S.currentAction = S.currentMixer.clipAction(clip);
             S.currentAction.enabled = true;

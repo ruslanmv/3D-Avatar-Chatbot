@@ -40,3 +40,38 @@ additional retargeting work before they can be used in production.
 
 - Repository: https://github.com/DavinciDreams/3dchat
 - License: Mixamo royalty-free (converted from Mixamo FBX)
+
+## Converted from this repo's own BVH files
+
+The 11 `dance_*.vrma` files were produced from `vendor/animations/dance/*.bvh` —
+assets that already ship with this project — using the official
+[vrm-c/bvh2vrma](https://github.com/vrm-c/bvh2vrma) converter (MIT, VRM
+Consortium), run unmodified against its own conversion library.
+
+There is nothing new to license: same motions, same source files, now in the
+format that retargets to any VRM avatar. They therefore play with the Settings →
+"BVH animations" toggle OFF, which the `.bvh` originals cannot.
+
+| File                          | Motion             | Length |
+| ----------------------------- | ------------------ | ------ |
+| dance_1.vrma                  | Dance 1            | 22.1s  |
+| dance_2.vrma                  | Dance 2            | 20.4s  |
+| dance_backup.vrma             | Backup             | 25.4s  |
+| dance_dab.vrma                | Dab                | 7.7s   |
+| dance_gangnam_style.vrma      | Gangnam Style      | 12.4s  |
+| dance_headdrop.vrma           | Head drop          | 15.7s  |
+| dance_marachinostep.vrma      | Marachino step     | 3.2s   |
+| dance_northern_soul_spin.vrma | Northern soul spin | 8.8s   |
+| dance_ontop.vrma              | On top             | 24.3s  |
+| dance_pushback.vrma           | Pushback           | 17.8s  |
+| dance_rumba.vrma              | Rumba              | 2.3s   |
+
+Each was validated after conversion: GLB container, `VRMC_vrm_animation`
+extension present, 52 human bones mapped, 55 animation channels.
+
+### Adding your own
+
+Drop any `.vrma` into this folder and the clip index picks it up — say its name
+and it plays, with no code change. Add it to `ADDON_DANCE` in
+`src/xr/MotionClipMap.js` if you also want it in the random "dance" pool. Keep
+per-file credit lines here for anything sourced externally.

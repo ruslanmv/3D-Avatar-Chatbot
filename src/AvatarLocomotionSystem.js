@@ -336,7 +336,14 @@
 
         if (_tmpDir.lengthSq() < 0.001) return true;
 
-        var targetYaw = Math.atan2(_tmpDir.x, _tmpDir.z);
+        // VRM forward is −Z and ViewerEngine rests VRM roots at rotation.y = π
+        // (see ViewerEngine's root.rotation.set(0, isVRM ? Math.PI : 0, 0)), so
+        // the bare +Z-forward yaw would turn her BACK toward the walk target —
+        // she would approach the user walking backwards. Plain GLB roots rest
+        // at 0 and face +Z, hence the switch. The quaternion slerp below
+        // already takes the shortest path, so no angle wrapping is needed here.
+        var vrmForward = !!(avatarRoot.userData && avatarRoot.userData.isVRM);
+        var targetYaw = Math.atan2(_tmpDir.x, _tmpDir.z) + (vrmForward ? Math.PI : 0);
         var targetQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), targetYaw);
 
         var turnSpeed = cfg('turnSpeed') || 3.0;
