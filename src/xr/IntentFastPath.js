@@ -121,6 +121,11 @@ const IntentFastPath = (() => {
             plan: () => _plan([{ type: 'sit', target: 'nearest_seat' }]),
         },
         {
+            label: 'lay',
+            re: /\b(lie down|lay down|lie( on the)? (floor|ground)|lay( on the)? (floor|ground)|acuestate|tumbate|sdraiati|stenditi|allonge toi|leg dich( hin)?)\b/,
+            plan: () => _plan([{ type: 'lay' }]),
+        },
+        {
             label: 'stand',
             re: /\b(stand( up)?|get up|levantate|de pie|alzati|in piedi|leve toi|debout|steh auf|aufstehen|levanta( te)?)\b/,
             plan: () => _plan([{ type: 'stand' }]),

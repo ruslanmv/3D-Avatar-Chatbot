@@ -37,6 +37,7 @@ const MotionBlockParser = (() => {
         'turn',
         'raise_hand',
         'sit',
+        'lay',
         'stand',
         'idle',
         'speak_start',

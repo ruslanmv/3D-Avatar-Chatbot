@@ -51,6 +51,7 @@ const BASELINE_TYPES = [
     'turn', // added in B4
     'raise_hand', // added in B4
     'sit',
+    'lay',
     'stand',
     'idle',
     'speak_start',
@@ -62,7 +63,7 @@ const BASELINE_TYPES = [
 const MOVEMENT_TYPES = ['approach', 'retreat', 'follow'];
 
 describe('baseline: command vocabulary', () => {
-    test('the parser whitelist is exactly these 21 types', () => {
+    test('the parser whitelist is exactly these 22 types', () => {
         // Membership, not just length — a new type must show up in this diff.
         expect(Parser.ALLOWED_TYPES).toEqual(BASELINE_TYPES);
     });
@@ -104,6 +105,7 @@ const BASELINE_RULES = [
     'turn_to_me', // added in B4
     'raise_hand', // added in B4
     'sit',
+    'lay', // the laying posture
     'stand',
     'handshake',
     'high_five',
@@ -116,7 +118,7 @@ const BASELINE_RULES = [
 ];
 
 describe('baseline: IntentFastPath', () => {
-    test('the rule set is exactly these 18 labels, in this order', () => {
+    test('the rule set is exactly these 19 labels, in this order', () => {
         expect(FastPath.RULES.map((r) => r.label)).toEqual(BASELINE_RULES);
     });
 
@@ -168,17 +170,25 @@ describe('baseline: IntentFastPath', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('baseline: MotionClipMap', () => {
-    test('24 entries and 13 aliases resolve today', () => {
-        expect(Object.keys(Clips.ENTRIES)).toHaveLength(24); // +raise_hand in B4
-        expect(Object.keys(Clips.ALIASES)).toHaveLength(13);
+    test('26 entries and 21 aliases resolve today', () => {
+        // +raise_hand in B4; +lay/lay_idle and eight laying phrasings when the
+        // laying POSTURE landed.
+        expect(Object.keys(Clips.ENTRIES)).toHaveLength(26);
+        expect(Object.keys(Clips.ALIASES)).toHaveLength(21);
     });
 
-    test('20 names are advertised to the model — idle variants are withheld', () => {
+    test('21 names are advertised to the model — every *_idle is withheld', () => {
         const names = Clips.availableNames();
-        expect(names).toHaveLength(20); // +raise_hand in B4
+        expect(names).toHaveLength(21);
         expect(names).toContain('dance');
+        expect(names).toContain('sit');
+        expect(names).toContain('lay'); // the posture IS offered
         expect(names).not.toContain('idle');
+        // The reschedule targets are not: the model asks for the posture and
+        // _scheduleIdle holds it. lay_idle leaked here until availableNames
+        // matched the suffix instead of naming sit_idle alone.
         expect(names).not.toContain('sit_idle');
+        expect(names).not.toContain('lay_idle');
     });
 
     test('every alias resolves to a real entry', () => {

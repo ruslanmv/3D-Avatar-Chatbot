@@ -54,6 +54,7 @@ const MotionIntegration = (() => {
     const state = {
         booted: false,
         sitting: false,
+        laying: false,
         following: false,
         speaking: false,
         lastActivity: 'idle',
@@ -411,7 +412,8 @@ const MotionIntegration = (() => {
         if (_idleTimer) clearTimeout(_idleTimer);
         _idleTimer = setTimeout(
             () => {
-                if (state.sitting) playAnimation('sit_idle');
+                if (state.laying) playAnimation('lay_idle');
+                else if (state.sitting) playAnimation('sit_idle');
                 else if (state.speaking) playAnimation('talking');
                 else if (_startPoseRestore()) {
                     /* she settles back first; idle follows from update() */
@@ -601,7 +603,7 @@ const MotionIntegration = (() => {
         if (pr && pr.invalidateRoot) pr.invalidateRoot(); // locomotion owns the root now
         return new Promise(async (resolve) => {
             try {
-                if (state.sitting) await _standRoutine();
+                if (_inPosture()) await _standRoutine();
             } catch (_e) {
                 /* stand fallback failed — keep going */
             }
@@ -744,7 +746,7 @@ const MotionIntegration = (() => {
     // ── Behaviors (registered over MotionExecutor defaults) ────────────
 
     /**
-     * Leave the seated posture, in the world state only.
+     * Leave whatever posture she is in, in the world state only.
      *
      * Split out from _standRoutine so a caller can clear the flag
      * SYNCHRONOUSLY. main.js calls onUserUtterance(text) and then builds the
@@ -752,13 +754,20 @@ const MotionIntegration = (() => {
      * synchronous run. Anything cleared after an `await` is therefore still
      * set when the model is prompted — which is why "stop" was answered with
      * "I'll sit back down": the snapshot said avatar_sitting=yes on the very
-     * turn the user asked her to stop.
+     * turn the user asked her to stop. Laying is cleared alongside sitting;
+     * they are two values of one posture, never both at once.
      *
      * @private
      */
-    function _clearSeated() {
+    function _clearPosture() {
         state.sitting = false;
+        state.laying = false;
         state.lastActivity = 'idle';
+    }
+
+    /** Is she in a posture she has to leave before doing anything else? */
+    function _inPosture() {
+        return !!(state.sitting || state.laying);
     }
 
     /** Play the stand-up clip and give it time to read. @private */
@@ -768,8 +777,8 @@ const MotionIntegration = (() => {
     }
 
     async function _standRoutine() {
-        if (!state.sitting) return;
-        _clearSeated();
+        if (!_inPosture()) return;
+        _clearPosture();
         await _playStandUp();
     }
 
@@ -799,7 +808,7 @@ const MotionIntegration = (() => {
         });
 
         dsl.registerHandler('follow', async (cmd) => {
-            if (state.sitting) await _standRoutine();
+            if (_inPosture()) await _standRoutine();
             _follow.active = true;
             state.following = true;
             _follow.dist = cmd.distance_m || 1.5;
@@ -815,12 +824,12 @@ const MotionIntegration = (() => {
         dsl.registerHandler('stop_follow', stopFollow);
         dsl.registerHandler('stop', async () => {
             // Everything the world snapshot reports has to be settled BEFORE
-            // the first await — see _clearSeated. last_action closes the loop
+            // the first await — see _clearPosture. last_action closes the loop
             // for the model: without it the only evidence it had about this
             // turn was a posture flag, and it narrated the posture.
-            const wasSitting = state.sitting;
-            if (wasSitting) _clearSeated();
-            state.lastAction = { type: 'stop', result: wasSitting ? 'stood_up' : 'stopped' };
+            const wasPosed = _inPosture();
+            if (wasPosed) _clearPosture();
+            state.lastAction = { type: 'stop', result: wasPosed ? 'stood_up' : 'stopped' };
 
             await stopFollow();
             _reach.active = false;
@@ -838,7 +847,7 @@ const MotionIntegration = (() => {
             // sit_idle. Once seated, nothing but an explicit "stand up" got
             // her out of the chair, and the pose-restore settle in the third
             // branch was unreachable, so the body never returned to rest.
-            if (wasSitting) {
+            if (wasPosed) {
                 // playAnimation('stand') already scheduled the idle for the
                 // clip's real length (action_standup is 3.47 s, while the wait
                 // here is 1.1 s). Calling _scheduleIdle would clear that timer
@@ -851,6 +860,7 @@ const MotionIntegration = (() => {
 
         dsl.registerHandler('sit', async (cmd) => {
             if (state.sitting) return;
+            _clearPosture(); // lie -> sit must leave the floor first
             const seat = cmd.target === 'user' ? null : getAnchorPosition('seat');
             if (seat) {
                 await walkTo(seat, 0.1);
@@ -858,6 +868,17 @@ const MotionIntegration = (() => {
             }
             state.sitting = true;
             playAnimation('sit');
+        });
+
+        // Laying mirrors sitting: a sticky, looping POSTURE that only
+        // "stand up" or "stop" leaves. Without a state flag the next
+        // _scheduleIdle would have pulled her upright into a standing idle a
+        // second later, which is what "laying is not an idle" means in code.
+        dsl.registerHandler('lay', async () => {
+            if (state.laying) return;
+            _clearPosture(); // sit -> lie leaves the chair first
+            state.laying = true;
+            playAnimation('lay');
         });
 
         dsl.registerHandler('stand', async () => {
@@ -939,7 +960,7 @@ const MotionIntegration = (() => {
         );
         dsl.registerHandler('speak_start', async () => {
             state.speaking = true;
-            if (!_walk.active && !state.sitting) playAnimation('talking');
+            if (!_walk.active && !_inPosture()) playAnimation('talking');
         });
         dsl.registerHandler('speak_end', async () => {
             state.speaking = false;
@@ -1127,6 +1148,7 @@ const MotionIntegration = (() => {
             avatar: {
                 state: _walk.active ? 'walking' : state.speaking ? 'speaking' : state.lastActivity,
                 sitting: state.sitting,
+                laying: state.laying,
                 following: state.following,
             },
             anchors: Object.keys(_anchors)
@@ -1160,6 +1182,7 @@ const MotionIntegration = (() => {
         _avatarRoot = root || null;
         _vrm = vrm || null;
         state.sitting = false;
+        state.laying = false;
         if (_ik()) _ik().attach(_vrm);
         if (_vrm && _vrm.lookAt && _lookProxy) _vrm.lookAt.target = _lookProxy;
         _log('avatar attached');

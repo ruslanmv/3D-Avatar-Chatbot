@@ -63,6 +63,7 @@ const ActionRegistry = (() => {
         turn: 'expressive',
         raise_hand: 'expressive',
         sit: 'expressive',
+        lay: 'expressive',
         stand: 'expressive',
         idle: 'expressive',
         speak_start: 'expressive',
@@ -224,6 +225,15 @@ const ActionRegistry = (() => {
                 en: ['sit down', 'take a seat', 'have a seat', 'sit'],
                 es: ['siéntate', 'toma asiento', 'a sentarse', 'siéntese'],
                 it: ['siediti', 'accomodati', 'a sedere', 'siedi'],
+            },
+        },
+        {
+            id: 'lay',
+            icon: '🛌',
+            phrases: {
+                en: ['lie down', 'lay down', 'lie on the floor', 'lay on the floor'],
+                es: ['acuéstate', 'túmbate', 'échate', 'acostarse'],
+                it: ['sdraiati', 'stenditi', 'mettiti giù', 'a terra'],
             },
         },
         {
