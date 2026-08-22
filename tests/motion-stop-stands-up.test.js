@@ -59,12 +59,14 @@ beforeEach(() => {
 
     MI.state.booted = false;
     MI.state.sitting = false;
+    MI.state.laying = false;
     MI.boot();
 });
 
 afterEach(() => {
     MI.state.booted = false;
     MI.state.sitting = false;
+    MI.state.laying = false;
     Policy._setOverride(null);
     delete window.MotionDSL;
     delete window.NEXUS_VIEWER;
@@ -78,7 +80,7 @@ const flush = () => new Promise((r) => setTimeout(r, 0));
 
 describe('the handlers are wired at all', () => {
     test('boot registered both posture handlers and stop', () => {
-        for (const name of ['sit', 'stand', 'stop']) {
+        for (const name of ['sit', 'lay', 'stand', 'stop']) {
             expect(typeof handlers[name]).toBe('function');
         }
     });
@@ -165,6 +167,49 @@ describe('stop releases the seated posture', () => {
     test('a stop while standing reports itself too', async () => {
         handlers.stop({});
         expect(MI.getWorldSnapshot().last_action).toEqual({ type: 'stop', result: 'stopped' });
+    });
+
+    test('stop gets her off the FLOOR too, not just out of a chair', async () => {
+        // Laying is the same kind of state as sitting: without this, the flag
+        // stayed true and _scheduleIdle's laying branch put her straight back
+        // down, exactly as it did for sit before the posture was generalised.
+        await handlers.lay({});
+        await flush();
+        expect(MI.state.laying).toBe(true);
+        played.length = 0;
+
+        await handlers.stop({});
+        await flush();
+        expect(MI.state.laying).toBe(false);
+        expect(played).toContain('stand');
+    });
+
+    test('the world snapshot reports laying SYNCHRONOUSLY too', async () => {
+        await handlers.lay({});
+        await flush();
+        expect(MI.getWorldSnapshot().avatar.laying).toBe(true);
+        handlers.stop({}); // deliberately NOT awaited
+        expect(MI.getWorldSnapshot().avatar.laying).toBe(false);
+    });
+
+    test('sit and lay are never both true — one posture at a time', async () => {
+        await handlers.sit({});
+        await flush();
+        expect(MI.state.sitting).toBe(true);
+        await handlers.lay({}); // lie down from the chair
+        await flush();
+        expect(MI.state.laying).toBe(true);
+        expect(MI.state.sitting).toBe(false);
+    });
+
+    test('an explicit "stand up" gets her up from laying as well', async () => {
+        await handlers.lay({});
+        await flush();
+        played.length = 0;
+        await handlers.stand({});
+        await flush();
+        expect(MI.state.laying).toBe(false);
+        expect(played).toContain('stand');
     });
 
     test('an explicit "stand up" still works on its own', async () => {

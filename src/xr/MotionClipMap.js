@@ -89,7 +89,39 @@ const MotionClipMap = (() => {
      *  sticky — do NOT auto-return to idle after playing (posture/state clips)
      */
     const ENTRIES = {
-        idle: { candidates: [VEND + 'idle/neutral_idle.bvh', VEND + 'idle/neutral.bvh'], loop: true, sticky: true },
+        // Idle is a POOL, drawn from at random, not a single clip.
+        //
+        // Two clips meant every return to rest looked the same, and since idle
+        // is where she spends most of her time that is the animation people
+        // actually watch. All six shipped neutral captures are listed, plus the
+        // VRMA waiting loop — different pipeline, different feel, and it
+        // retargets to any avatar including a plain GLB with no VRM humanoid.
+        //
+        // `curated` keeps the pool to exactly this list. Without it, resolve()
+        // widens a `random` entry with the library index — and the index keys a
+        // file by its basename minus the category prefix, so
+        // `laying/laying_idle.bvh` is indexed under `idle`. She would lie down
+        // on the floor when she was only meant to return to rest.
+        //
+        // `ambient` keeps a running idle from being swapped mid-loop — see the
+        // idempotence guard in play(). Variety happens when she ENTERS idle,
+        // not every time _scheduleIdle fires.
+        idle: {
+            candidates: [
+                VEND + 'idle/neutral_idle.bvh',
+                VEND + 'idle/neutral_idle2.bvh',
+                VEND + 'idle/neutral.bvh',
+                VEND + 'idle/neutral2.bvh',
+                VEND + 'idle/neutral3.bvh',
+                VEND + 'idle/neutral4.bvh',
+                VEND + 'vrma/waiting-standard.vrma',
+            ],
+            loop: true,
+            sticky: true,
+            random: true,
+            ambient: true,
+            curated: true,
+        },
         idle_happy: { candidates: [ACT + 'happyIdle.vrma'], loop: true, sticky: true },
         idle_sad: { candidates: [ACT + 'sadIdle.vrma'], loop: true, sticky: true },
         talking: { candidates: [ACT + 'talking.vrma'], loop: true, sticky: true },
@@ -141,6 +173,41 @@ const MotionClipMap = (() => {
             loop: true,
             sticky: true,
         },
+        // Laying is a POSTURE, like sitting — not an idle. It was reachable
+        // only by accident: "laying" fuzzy-matched laying_idle2.bvh as a
+        // one-shot, and "lay"/"lie down" resolved to nothing at all.
+        //
+        // laying_idle leads, for the same reason sit_idle4 does. Hips as a
+        // fraction of the avatar's rest height, frame 0 on:
+        //
+        //   laying_idle   0.129 flat, 309 frames   <- lying down, and stays
+        //   laying_idle3  1.959 -> 0.129           a stand-to-lie TRANSITION;
+        //                                          looping it stands her back up
+        //   laying_idle2  1.075 flat, 25 frames    ABOVE standing height, and
+        //                                          under a second long
+        //
+        // The other two are demoted rather than dropped: they are manifest
+        // files and must stay reachable by name for the Animations panel.
+        lay: {
+            candidates: [
+                VEND + 'laying/laying_idle.bvh',
+                VEND + 'laying/laying_idle3.bvh',
+                VEND + 'laying/laying_idle2.bvh',
+            ],
+            loop: true,
+            sticky: true,
+            curated: true,
+        },
+        lay_idle: {
+            candidates: [
+                VEND + 'laying/laying_idle.bvh',
+                VEND + 'laying/laying_idle3.bvh',
+                VEND + 'laying/laying_idle2.bvh',
+            ],
+            loop: true,
+            sticky: true,
+            curated: true,
+        },
         stand: { candidates: [PACK + 'stand_up.vrma', VEND + 'action/action_standup.bvh'], loop: false },
 
         // Interaction — generated pack first, graceful procedural fallback is
@@ -176,6 +243,17 @@ const MotionClipMap = (() => {
         applaud: 'clap',
         applause: 'clap',
         sit_down: 'sit',
+        // Every natural phrasing lands on the curated posture. Without these,
+        // "lie down" resolved to null and "lay down" to the action_laydown
+        // transition played as a one-shot.
+        lie: 'lay',
+        lie_down: 'lay',
+        lay_down: 'lay',
+        laydown: 'lay',
+        laying: 'lay',
+        lying: 'lay',
+        lying_down: 'lay',
+        laying_down: 'lay',
         stand_up: 'stand',
         get_up: 'stand',
         shake_hands: 'handshake',
@@ -564,8 +642,20 @@ const MotionClipMap = (() => {
             // "dance" reaches all 19 dances rather than the same six.
             const idx = _idx();
             const libraryKey = ENTRIES[key] ? key : ALIASES[key];
-            const extra = idx[libraryKey];
-            if (direct.random && extra && extra.length) {
+            // ...unless the entry says its pool is CURATED. The index keys a
+            // file under its basename minus the category prefix, so
+            // `laying/laying_idle.bvh` is indexed as `idle` — and widening
+            // "idle" with the library meant she could lie down on the floor
+            // when she was only meant to return to rest. An entry that
+            // enumerates exactly what belongs in its pool opts out of the
+            // merge; "dance", which genuinely wants every dance in the
+            // library, does not.
+            const extra = direct.curated ? [] : idx[libraryKey] || [];
+            // The draw and the widening are separate decisions. A curated pool
+            // still shuffles — it just shuffles its own list. Gating the draw on
+            // `extra` (as this once did) silently turned "idle" back into a
+            // fixed clip the moment it opted out of the merge.
+            if (direct.random && (direct.candidates.length > 1 || extra.length)) {
                 const pool = _restrict(
                     direct.candidates.concat(extra.filter((p) => direct.candidates.indexOf(p) === -1))
                 );
@@ -638,6 +728,29 @@ const MotionClipMap = (() => {
      * @param {Object} [opts] - { fadeIn, fadeOut }
      * @returns {Promise<{ok:boolean, duration:number, loop:boolean, sticky:boolean, then:(string|null), procedural:(string|null)}>}
      */
+    /**
+     * The result an idempotent no-op reports: the state is already running, so
+     * the mixer was not touched. `already` lets callers tell this apart from a
+     * fresh start — tests assert on it, and the trace log reads better.
+     *
+     * @private
+     */
+    function _alreadyPlaying(path, entry) {
+        return {
+            ok: true,
+            duration: 0,
+            loop: true,
+            sticky: !!(entry && entry.sticky),
+            then: null,
+            resolved: path
+                .split('/')
+                .pop()
+                .replace(/\.(bvh|vrma)$/i, ''),
+            procedural: null,
+            already: true,
+        };
+    }
+
     async function play(name, opts) {
         const entry = resolve(name);
         const fail = {
@@ -686,6 +799,26 @@ const MotionClipMap = (() => {
             candidates.slice(0, 3)
         );
 
+        // AAA idempotence, pool-wide: for an AMBIENT looping state, any member
+        // of the pool counts as "already in this state".
+        //
+        // idle is a `random` entry, so every resolve() draws a different clip.
+        // Without this, each _scheduleIdle — after a gesture, after speaking,
+        // after the settle — would swap her to a different idle mid-loop, which
+        // reads as a twitch. Variety belongs at state ENTRY, not on every tick.
+        //
+        // Only ambient states opt in. A re-requested `dance` still draws a new
+        // one, because that is an explicit ask rather than an automatic
+        // reschedule.
+        if (entry.ambient && entry.loop) {
+            const l0 = _loader();
+            const st0 = l0 && l0.getCurrentPlaybackState ? l0.getCurrentPlaybackState() : null;
+            if (st0 && st0.isPlaying && candidates.indexOf(st0.clip) !== -1) {
+                _trace('already in ambient state', st0.clip, '— idempotent no-op');
+                return _alreadyPlaying(st0.clip, entry);
+            }
+        }
+
         const tried = [];
         for (let i = 0; i < candidates.length; i++) {
             const path = candidates[i];
@@ -698,19 +831,7 @@ const MotionClipMap = (() => {
                 const st = l2 && l2.getCurrentPlaybackState ? l2.getCurrentPlaybackState() : null;
                 if (st && st.isPlaying && st.clip === path && entry.loop) {
                     _trace('already playing', path, '— idempotent no-op');
-                    return {
-                        ok: true,
-                        duration: 0,
-                        loop: true,
-                        sticky: !!entry.sticky,
-                        then: null,
-                        resolved: path
-                            .split('/')
-                            .pop()
-                            .replace(/\.(bvh|vrma)$/i, ''),
-                        procedural: null,
-                        already: true,
-                    };
+                    return _alreadyPlaying(path, entry);
                 }
             }
             tried.push(path);
@@ -845,7 +966,12 @@ const MotionClipMap = (() => {
 
     /** Names to advertise to the LLM in the motion contract. */
     function availableNames() {
-        return Object.keys(ENTRIES).filter((n) => n.indexOf('idle') !== 0 && n !== 'sit_idle');
+        // `sit_idle` / `lay_idle` are what _scheduleIdle re-issues to hold a
+        // posture; the model asks for `sit` or `lay` and the posture handler
+        // does the rest. Matching the `_idle` suffix rather than naming each
+        // one keeps a future posture from leaking into the vocabulary the way
+        // `lay_idle` just did.
+        return Object.keys(ENTRIES).filter((n) => n.indexOf('idle') !== 0 && !/_idle$/.test(n));
     }
 
     return {
