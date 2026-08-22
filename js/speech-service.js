@@ -410,6 +410,7 @@ class SpeechService {
             speechPitch: 1.0,
             speechVolume: 1.0,
             speechLang: 'en-US',
+            speechVoicePref: 'any', // 'female' | 'male' | 'any'
             ttsEnabled: true,
         };
 
@@ -442,6 +443,12 @@ class SpeechService {
                 speechPitch: typeof s.speechPitch === 'number' ? s.speechPitch : defaults.speechPitch,
                 speechVolume: typeof s.speechVolume === 'number' ? s.speechVolume : defaults.speechVolume,
                 speechLang: s.speechLang || defaults.speechLang,
+
+                // Gender preference for "Auto (best match)". It has always
+                // been written by the Settings UI (speech-service.js:1102
+                // persists it) but was never read back here, so the automatic
+                // pick ignored it entirely.
+                speechVoicePref: s.speechVoicePref || defaults.speechVoicePref,
                 ttsEnabled: typeof s.ttsEnabled === 'boolean' ? s.ttsEnabled : defaults.ttsEnabled,
             };
         } catch (e) {
@@ -481,24 +488,24 @@ class SpeechService {
             console.warn('[SpeechService] ⚠️ Saved voice name not found:', prefs.speechVoice);
         }
 
-        // 3) Language fallback
+        // 3) Auto (best match) — scored: locale, then gender, then vendor.
+        //    Shared with pickBestVoice() in main.js so the two cannot drift.
         const lang = prefs.speechLang || 'en-US';
-        const base = lang.split('-')[0].toLowerCase();
+        const gender = prefs.speechVoicePref || 'any';
 
-        const langVoices = this.voices.filter((v) => (v.lang || '').toLowerCase().startsWith(base));
-        const pool = langVoices.length ? langVoices : this.voices;
-
-        // 4) Prefer "Google US English" female voice as default
-        const googleUSEnglish = pool.find((v) => v.name === 'Google US English');
-        if (googleUSEnglish) {
-            return googleUSEnglish;
+        if (typeof window !== 'undefined' && window.NEXUS_VOICE_PRIORITY) {
+            const best = window.NEXUS_VOICE_PRIORITY.pickBest(this.voices, { lang, gender });
+            if (best) {
+                console.log('[SpeechService] 🎙️ Auto-selected:', best.name, `(${best.lang})`);
+                return best;
+            }
         }
 
-        // 5) Friendly heuristic fallback — prefer female voices
-        const preferred =
-            pool.find((v) => /female|samantha|victoria|zira|google.*english/i.test(v.name)) || pool[0] || null;
-
-        return preferred;
+        // 4) Module missing (script order, VR bundle) — keep speaking rather
+        //    than fail: any voice in the right language, else anything.
+        const base = lang.split('-')[0].toLowerCase();
+        const langVoices = this.voices.filter((v) => (v.lang || '').toLowerCase().startsWith(base));
+        return langVoices[0] || this.voices[0] || null;
     }
 
     /**

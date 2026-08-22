@@ -106,14 +106,34 @@ const MotionClipMap = (() => {
 
         // Posture — sit_down/stand_up come from the generated pack; the
         // shipped sit_idle/standup assets are the always-working fallback.
+        //
+        // sit_idle4 leads both entries. It is the only sitting capture that
+        // opens ALREADY SEATED: the other three spend their first 3-6 frames
+        // standing before the root drops onto the seated plane, so looping
+        // them reads as a rhythmic stand/sit flicker. Root Y, frame 0 on:
+        //
+        //   sit_idle   11.68,  4.34, -3.00 -> -10.34   (3 standing frames)
+        //   sit_idle2  11.68 ...    -1.75 ->  -4.44    (6 standing frames)
+        //   sit_idle3  11.68,  6.31,  0.94 ->  -4.44   (3 standing frames)
+        //   sit_idle4  -4.11 flat from frame 0          <- the clean one
+        //
+        // sit_idle is kept LAST. Its seated plane is -10.34, ~5.9 units below
+        // its siblings, which drops the avatar through the seat — but it is a
+        // manifest file and must stay reachable by name for the Animations
+        // panel, so it is demoted rather than removed.
         sit: {
-            candidates: [PACK + 'sit_down.vrma', VEND + 'sitting/sit_idle.bvh'],
+            candidates: [PACK + 'sit_down.vrma', VEND + 'sitting/sit_idle4.bvh'],
             loop: false,
             sticky: true,
             then: 'sit_idle',
         },
         sit_idle: {
-            candidates: [VEND + 'sitting/sit_idle.bvh', VEND + 'sitting/sit_idle2.bvh'],
+            candidates: [
+                VEND + 'sitting/sit_idle4.bvh',
+                VEND + 'sitting/sit_idle3.bvh',
+                VEND + 'sitting/sit_idle2.bvh',
+                VEND + 'sitting/sit_idle.bvh',
+            ],
             loop: true,
             sticky: true,
         },

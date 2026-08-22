@@ -53,6 +53,34 @@ const MotionBlockParser = (() => {
     const BLOCK_START_RE = /```motion/i;
 
     /**
+     * Any fenced block, with its info string captured separately.
+     *
+     * Smaller models routinely drop the `motion` tag and emit the plan in a
+     * bare fence — sometimes all on one line, with no newline after the
+     * backticks:
+     *
+     *     ``` {"commands":[{"type":"look_at",...}],"priority":"normal"} ```
+     *
+     * BLOCK_RE misses that entirely, so the plan never ran AND the raw JSON
+     * was shown in the chat and read aloud by TTS. Untagged fences are
+     * therefore checked too, but only accepted when validatePlan() recognises
+     * the contents — an ordinary ```python or ```js block never will, so real
+     * code blocks are left alone.
+     */
+    const ANY_FENCE_RE = /```([a-zA-Z0-9_-]*)[ \t]*\r?\n?([\s\S]*?)```/g;
+
+    /**
+     * A fence that opens a JSON object, for streaming masking.
+     *
+     * Deliberately narrower than "any fence": masking every ``` would blank
+     * out a legitimate code block while it types. A block whose first
+     * non-space character is `{` is nearly always the plan; if it turns out
+     * to be a genuine JSON snippet, extract() leaves it in cleanText and it
+     * reappears when the block completes.
+     */
+    const JSON_FENCE_START_RE = /```[a-zA-Z0-9_-]*[ \t]*\r?\n?[ \t]*\{/;
+
+    /**
      * Clamp a number into [min, max]; returns fallback when not a number.
      * @private
      */
@@ -126,24 +154,43 @@ const MotionBlockParser = (() => {
         }
 
         let plan = null;
-        let m;
-        BLOCK_RE.lastIndex = 0;
-        while ((m = BLOCK_RE.exec(text)) !== null) {
-            try {
-                const candidate = validatePlan(JSON.parse(m[1]));
-                if (candidate) plan = candidate;
-            } catch (_err) {
-                /* malformed block — ignore, keep chatting */
-            }
-        }
 
-        let cleanText = text
-            .replace(BLOCK_RE, '')
-            .replace(/\n{3,}/g, '\n\n')
-            .trim();
-        // A dangling, unterminated block at the very end (stream cut off).
-        const dangling = cleanText.search(BLOCK_START_RE);
-        if (dangling !== -1) cleanText = cleanText.slice(0, dangling).trim();
+        // One pass over every fence. A block is a motion block when it is
+        // tagged `motion`, or when its body validates as a plan whatever the
+        // tag says. Only those are removed — a ```python block is left where
+        // the model put it. Multiple blocks: the last valid one wins.
+        ANY_FENCE_RE.lastIndex = 0;
+        let cleanText = text.replace(ANY_FENCE_RE, (whole, tag, body) => {
+            const tagged = String(tag || '').toLowerCase() === 'motion';
+            let candidate = null;
+            try {
+                candidate = validatePlan(JSON.parse(String(body).trim()));
+            } catch (_err) {
+                /* not JSON, or malformed — keep chatting */
+            }
+            if (candidate) {
+                plan = candidate;
+                return '';
+            }
+            // A `motion` block that failed to parse is still ours to hide:
+            // showing the user broken JSON helps nobody.
+            return tagged ? '' : whole;
+        });
+
+        cleanText = cleanText.replace(/\n{3,}/g, '\n\n').trim();
+
+        // A dangling, UNTERMINATED block at the very end (stream cut off).
+        //
+        // The "unterminated" half matters now that untagged fences are
+        // candidates: any surviving ```json or ```python block would otherwise
+        // be truncated away along with everything after it. A fence with a
+        // closing ``` after it survived the pass above precisely because it is
+        // not a motion block, so it must be left alone.
+        let dangling = cleanText.search(BLOCK_START_RE);
+        if (dangling === -1) dangling = cleanText.search(JSON_FENCE_START_RE);
+        if (dangling !== -1 && cleanText.indexOf('```', dangling + 3) === -1) {
+            cleanText = cleanText.slice(0, dangling).trim();
+        }
 
         return { cleanText, plan };
     }
@@ -156,7 +203,9 @@ const MotionBlockParser = (() => {
      */
     function maskStreaming(accumulated) {
         if (typeof accumulated !== 'string') return '';
-        const i = accumulated.search(BLOCK_START_RE);
+        let i = accumulated.search(BLOCK_START_RE);
+        // Untagged plan fences leak the same way; hide those too.
+        if (i === -1) i = accumulated.search(JSON_FENCE_START_RE);
         if (i !== -1) return accumulated.slice(0, i).replace(/\s+$/, '');
         // Also hide a partial trailing fence that is *probably* the block opening.
         // Line-anchored and tolerant of a half-typed run of backticks ("`", "``"),
