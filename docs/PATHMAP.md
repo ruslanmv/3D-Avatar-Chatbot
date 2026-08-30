@@ -187,6 +187,43 @@ invisible to it, so `main.js`'s boot call and update call were not being guard-c
 all. Both are fixed in `scripts/behavior-parity-baseline.mjs` and mirrored in
 `tests/behavior/parity.smoke.test.js`.
 
+## 2e. The tag channel (B4)
+
+`[[emote:…]]` is a **second** LLM→body channel, alongside the ```motion fence this repo
+already ships. It does not add a call site: `main.js` already routes every reply through
+`window.NEXUS_MOTION` in the three places that matter, and each is a place a tag must not
+survive — so `LLMTagAdapter` **decorates that facade** at boot and restores it exactly on
+detach. Spec §1.5 asks for this ("existing managers are wrapped, never rewritten") and the
+repo's own `BehaviorEngine.js` set the precedent.
+
+| Wrapped | What the tag channel adds |
+|---|---|
+| `maskStreaming(accumulated)` | Fires newly complete tags as intents mid-stream, emits `llm:token` deltas, and hides complete **and partial** tags from the transcript |
+| `processReply(text)` | Fires tags on the non-streaming path, strips them before display **and TTS** (`speakText` receives this output), then resets the per-reply budget |
+| `systemPromptSuffix()` | Appends the §6.8 paragraph *after* the existing motion contract |
+
+**B4 touched no pre-existing file at all.** The consequence worth knowing: the two channels
+are masked in one pass rather than two, which is the failure mode §7 warns about, and the
+existing `src/xr/` suites cannot regress because nothing in them changed.
+
+Three defects the tests caught, all worth keeping in mind when editing this file:
+
+- The partial-tag mask used `\[\[[^\]]*$`, which does not match `[[emote:happy 0.8]` —
+  that string contains a `]`. It leaked one frame of raw tag onto the screen. The rule is a
+  `[[` with no `]]` after it, not a `[[` with no `]`.
+- `detach()` restored a **bound copy** of the original method, so `motion.maskStreaming`
+  came back as a different function object. "Restores it exactly" means identity.
+- Removing a tag leaves the space it stood in. Tidying is part of stripping, not cosmetic.
+
+`SentimentFallback` carries no keyword table: `EmotionEngine` already has one (emoji,
+weighted patterns, punctuation, HomePilot directives, in a documented priority order) and a
+second would drift from it. It only speaks when the model sent no tag — explicit beats
+inferred.
+
+`SpeechAdapter` polls rather than listening: `speechSynthesis` drops `end` when a tab is
+backgrounded or an utterance is cancelled mid-word, and a missed `tts:end` leaves her mouth
+moving after the audio stops. A poll can arrive a tick late; it cannot miss an edge.
+
 ### Names that are already taken
 
 | Wanted | Taken by | Use instead |

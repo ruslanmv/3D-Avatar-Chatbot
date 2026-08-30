@@ -21,6 +21,11 @@
         'src/behavior/ContextBlackboard.js',
         'src/behavior/registry/validate.js',
         'src/behavior/registry/AnimationRegistry.js',
+        'src/behavior/adapters/LLMTagAdapter.js',
+        'src/behavior/adapters/SentimentFallback.js',
+        'src/behavior/adapters/SpeechAdapter.js',
+        'src/behavior/adapters/IdleAdapter.js',
+        'src/behavior/adapters/GazeAdapter.js',
     ];
 
     const CONFIG_URL = 'config/behavior.config.json';
@@ -91,6 +96,10 @@
                 /** Tier 0. Called from the render loop; must stay cheap and never throw. */
                 update(dt) {
                     blackboard.tick(dt);
+                    // Two adapters are polled rather than event-driven; see their headers.
+                    for (const adapter of this.adapters) {
+                        if (adapter.tick) adapter.tick();
+                    }
                 },
 
                 /** Undo everything: adapters unsubscribe, listeners go, the global clears. */
@@ -117,10 +126,31 @@
                 },
             };
 
+            // Sense (B4). Each adapter wires itself and hands back a detach; the order is
+            // only significant for the tag adapter, which must wrap NEXUS_MOTION before the
+            // first reply streams.
+            const wiring = [
+                ['tag', global.NEXUS_BD_TAG_ADAPTER],
+                ['sentiment', global.NEXUS_BD_SENTIMENT_FALLBACK],
+                ['speech', global.NEXUS_BD_SPEECH_ADAPTER],
+                ['idle', global.NEXUS_BD_IDLE_ADAPTER],
+                ['gaze', global.NEXUS_BD_GAZE_ADAPTER],
+            ];
+            for (const [label, module] of wiring) {
+                if (!module || typeof module.attach !== 'function') continue;
+                try {
+                    director.adapters.push(module.attach({ bus, blackboard, config }));
+                } catch (error) {
+                    console.warn(`[BD] ${label} adapter failed to attach — continuing without it`, error);
+                }
+            }
+
             global.NEXUS_BD = director;
 
             const ms = Math.round((global.performance || Date).now() - started);
+            const names = director.adapters.map((a) => a.name).join(', ') || 'none';
             console.log(`[BD] Behavior Director up in ${ms}ms — ${registry.summary()}`);
+            console.log(`[BD] adapters: ${names}`);
             if (debug) console.log('[BD] counts by kind', registry.countsByKind());
 
             return director;
