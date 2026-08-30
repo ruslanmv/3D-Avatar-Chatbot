@@ -196,7 +196,7 @@ not vacuous.
 
 ---
 
-#### B1 · KB schema + harvester `[C]`
+#### B1 · KB schema + harvester `[C]` — ✅ landed
 **Branch:** `feat/bd-b1-kb-harvest` · **Depends on:** B0
 **New:** `kb/schema/animation.schema.json` (§6.1 verbatim), `kb/scripts/harvest-existing.mjs`
 (**not in the spec — required here**: walks `MotionClipMap`'s tables +
@@ -209,6 +209,17 @@ with the retarget note carried into the record, never silently into the pool. Pr
 entries use `behaviorRef` pointing at `AnimationPresets` ids.
 **AC:** every shipped asset has exactly one record; ids unique; every `file` resolves on
 disk; schema validation wired into CI and red on a hand-broken record.
+**Landed as:** `kb/schema/animation.schema.json`, `kb/scripts/{harvest-existing,
+extract-bvh-stats,extract-vrma-stats,validate-manifest}.mjs`,
+`kb/animations.manifest.jsonl` (166 records — 107 bvh + 44 vrma + 15 procedural, every
+shipped asset covered exactly once), `kb/harvest-report.json`,
+`tests/behavior/kb-manifest.test.js`, plus two CI steps. 48 suites / 1257 tests green.
+The gate is proven non-vacuous: seven ways a record can be wrong are broken on purpose
+against a copy of the manifest and each must fail. Two findings worth carrying forward —
+`MotionClipMap` cannot be `require`d (ESM under `type: module` makes its `module.exports`
+a no-op, and the first pass harvested an empty table without complaining), and **81 of the
+151 shipped assets are reachable by nothing today**, which is the clearest statement of
+what the KB is for.
 
 ---
 
