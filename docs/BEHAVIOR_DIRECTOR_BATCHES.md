@@ -162,7 +162,7 @@ and ship *after* it, each behind its own activity flag — see the note on B19.
 
 ---
 
-#### B0 · Path map, §7 addendum, parity harness `[C][S]`
+#### B0 · Path map, §7 addendum, parity harness `[C][S]` — ✅ landed
 **Branch:** `feat/bd-b0-groundwork` (both repos) · **Depends on:** —
 **New:** `docs/PATHMAP.md`, `docs/BEHAVIOR_DIRECTOR.md` (the spec, verbatim, + changelog),
 `docs/BEHAVIOR_DIRECTOR_BATCHES.md` (this file), `tests/fixtures/protocol/*.json`
@@ -177,6 +177,18 @@ HomePilot (`enabled:false`, `vision.max_image_px:768`, `frames.retention:0`,
 both repos' test runners; new CI job green; zero product files touched.
 **Why first:** every later batch cites the §7 allowlist, and a cross-repo protocol needs
 one set of fixtures owned by neither side.
+**Landed as:** client — `docs/PATHMAP.md`, `docs/BEHAVIOR_DIRECTOR.md` (both specs +
+changelog), `config/behavior.config.json`, `tests/fixtures/protocol/` (17 fixtures +
+`CHECKSUMS.txt`), `scripts/behavior-parity-baseline.mjs`, `tests/behavior/`,
+`.github/workflows/behavior-director.yml`. Server — `backend/app/avatar_director/config.py`
+(`AVATAR_*` env keys), `backend/tests/{avatar,fixtures/protocol}/`, `docs/PATHMAP.md`,
+`.github/workflows/avatar-director.yml`. 47 suites / 1237 tests green on the client and 18
+on the server, format and lint clean, **zero pre-existing files touched in either repo**.
+Parity is asserted as *inertness* rather than as file hashes — nothing in the engine
+namespace is loaded, imported or named outside the allowlist, and there only next to the
+flag guard — because hashing product files would pass once and then fail on unrelated
+work. A test plants a stray reference and requires the harness to fail, so the detector is
+not vacuous.
 
 ---
 
