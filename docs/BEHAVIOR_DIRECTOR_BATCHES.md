@@ -1,15 +1,88 @@
-# Behavior Director & Together Mode — Batch Plan (execution plan for spec v1.1)
+# Behavior Director & Together Mode — Batch Plan (execution plan for spec v1.1 + addendum v1.2)
 
 **Status:** planning artifact. No product code changes.
 **Scope:** `ruslanmv/3D-Avatar-Chatbot` (client), `ruslanmv/HomePilot` (server),
 `ruslanmv/ollabridge` + `ruslanmv/ollabridge-cloud` (transport conformance only).
-**Source spec:** `BEHAVIOR_DIRECTOR_SPEC_v1.1` §§0–11.
+**Source specs:** `BEHAVIOR_DIRECTOR_SPEC_v1.1` §§0–11 and
+`BEHAVIOR_DIRECTOR_SPEC_v1.2_ADDENDUM` §§12–17 (UC-12…UC-18, clip engine, adult tier).
 **Rule for every batch below:** additive only. New files in new directories; existing
 files receive guarded hooks and nothing else; every path is inert with the flags off.
 
 ---
 
-## 0. Why this differs from the spec's phase list
+## 0. The experiences we're building toward
+
+Batches are the *how*. This is the *what* — written from the user's side of the screen,
+because every acceptance criterion downstream exists to protect one of these moments.
+
+**The loop that makes all of them the same person:**
+**notice → wait for an opening → say one thing with the right gesture → remember it.**
+Get that loop right and every activity feels like her, just somewhere new with you. Every
+activity batch (B12–B15, B20–B27) is accepted against this loop, not just against its own
+feature list.
+
+### Flagship experiences
+
+**Movie night — the VR moment.** You put the headset on and say "let's watch something."
+She's already there, and because of curiosity memory she opens with *"you never finished
+that space documentary — tonight?"* The screen fades in, the room dims, she settles beside
+you. Then the magic is mostly **restraint**: she actually watches — gaze on the screen,
+leaning in when the music tenses, throwing you a glance every so often. She says nothing
+during the good parts. When *you* pause, that's her opening: one line, one gesture. Look at
+her a beat too long and she notices — *"what?"* At the credits she stretches, asks what you
+thought, and your answer becomes memory for next week.
+→ *Owned by* B12 (screen, joint attention, openings) + B13 (music-driven lean-in) + B16
+(the opening line and the memory it leaves). **UX rule: her silence is the feature.**
+
+**Second-screen copilot — the daily driver.** At your desk you tap "share this tab"; a
+persistent indicator lights up and she shrinks to a corner of your monitor, idling alive
+but quiet. You work. When you ask — *"what do you think of this chart?"* — one snapshot
+goes to **your** HomePilot, and two seconds later she leans in, points at the screen, and
+gives her take with a thinking-to-talk gesture arc, as if she'd walked over. Nothing
+streams when you're not asking; stopping the share kills everything visibly; frames are
+never stored.
+→ *Owned by* B11 (consent as a glowing light, not a buried setting) + B15 (the insight).
+**UX rule: insight arrives embodied — never as a chat toast.**
+
+**Journeys — presence and wind-down.** *"Take me to the sea."* Crossfade to the ocean
+skybox, waves in your ears, and she's beside you looking at the horizon — then at *you*
+when you speak. She points at the waves, comments once in a while, and in a long
+comfortable silence spends one curiosity token: *"you said work was heavy this week —
+better today?"* Say "meditation" instead and her whole personality overlay changes:
+initiative drops to zero, her idle syncs to a slow breathing rhythm, and she speaks only
+the guided script. On a phone outside VR the same journey uses your camera — she sees what
+you see on a real walk.
+→ *Owned by* B14 + B16. **UX rule: joint attention *is* presence, and each place changes
+who she is there.**
+
+### The five usages that make it a product
+
+| Usage | Why it matters | Batch |
+|---|---|---|
+| **Embodied HomePilot** — she becomes the face of your home | The strategic one. HomePilot's Context Forge already owns calendar, mail and home automation, so let her *be* that interface: "good morning" walks you through the day while she points at the agenda on the VR screen; "dim the lights, movie time" is her gesture, not a menu. No other companion app can do this, because none of them own the agent backend. | B20 · B21 |
+| **Gaming co-host** | The single most clippable experience in the product. She watches through the same capture pipeline and the reaction tiers finally shine — micro head-bobs on kills, a gasp-lean on near-deaths, a BVH dance on a clutch win, a consoling line on defeat — and curiosity remembers your games. | B23 |
+| **Coach mode** — workout and practice partner | MediaPipe already ships, so the camera counts reps and checks form while *she demos the movement* from the KB, mirrors your pace, and celebrates the last set. Same skeleton = language practice on a journey scene ("solo español"), vocabulary living in the interest graph. | B27 |
+| **Hands-busy copilot** — kitchen, DIY, repairs | "See what I see" turned into daily-life utility: phone propped up, she sees your pan or your half-disassembled shelf and answers *"does this look right?"* with a point and an opinion. Timers, next-step nudges, a wince when the sauce breaks. | B26 |
+| **Body-doubling focus sessions** | "Study with me" is already a massive content genre; this personalises it. She sits with you — quietly alive, pomodoro cycles, a stretch when you stretch, a nod when you refocus, a real celebration at the end, and a streak she remembers tomorrow. | B22 |
+
+**The viral engine that ties them together.** One tap: *clip the last 30 s* — her reaction
+plus your context (game moment, workout PR, cooking fail). Her reactions are the shareable
+content, so every user becomes distribution. The second loop is **"she remembered"** share
+cards — curiosity callbacks are inherently post-worthy. Ship both loops (B24, B25) and the
+co-host, coach and focus usages market themselves. Hard rule: nothing ever auto-uploads,
+and the recorder is fully torn down in the adult tier.
+
+**The adult tier, stated plainly.** Two usages (date night, intimate wind-down) behind
+three gates — server-side verification, the `nsfwAllowed` setting, and a mode that permits
+it — and the privacy story *is* the selling point: it runs on your own HomePilot and
+nothing leaves your hardware. Escalation is earned and reversible, the gate is enforced in
+exactly one place, minors are excluded by verification rather than honour, and **she never
+initiates — only reciprocates.** Batches B28–B29, and they are the last thing built, not
+the first. → §7.
+
+---
+
+## 1. Why this differs from the spec's phase list
 
 The spec's P0–P12 assume a greenfield layout (`src/main.js` ESM bootstrap, empty
 `src/behavior/`, a free `services/avatar/` on the server). The real repos already ship
@@ -29,9 +102,22 @@ mapped by `MotionClipMap` (so the KB is *harvested*, not authored from zero), an
 `SpicyGate.js` (`window.NEXUS_SPICY`, age-verified) is the existing NSFW authority
 (so §6.5's single gate *reads* it rather than introducing a second flag).
 
+**The addendum's heaviest assumptions checked out — four of them are already paid for:**
+
+| # | Reality in the repo | Consequence for the addendum batches |
+|---|---|---|
+| C6 | MediaPipe **tasks-vision 0.10.14** is already lazy-loaded from CDN by `FaceTracker.js` *and* `HandTracker.js` | UC-14's Pose is a third task on an **existing** loader, not a new dependency or a new vendor bundle. B27 adds `PoseLandmarker` beside them and reuses their lazy-load + fps-throttle pattern. |
+| C7 | `backend/app/daypilot_bridge/` implements **propose-only** tool mode: the persona proposes structured operations in `x_directives`, and an Approval Center gates every external write | UC-12's "act = *confirm* unless the owner sets autonomous" is this contract, already built and frozen. B21 renders proposals as panels and confirms through it — it must not invent a second tool-approval path. |
+| C8 | `agentic/integrations/mcp/personal_assistant_server.py` exposes `hp_personal_plan_day`; the Forge seed catalog ships `hp-google-calendar` and Microsoft Graph (mail + calendar) servers | UC-12's agenda has a real source on day one. B21 is a *presentation* batch over existing tools, which is why it is small enough to precede the heavier activities. |
+| C9 | `MediaRecorder` is already used in `CompanionMode.js` and `js/speech-service.js`; `ltm.py` upserts on `(project_id, category, key)` | §15's ring buffer has in-repo precedent to copy rather than invent, and focus streaks (UC-16) are one more LTM **category** — same additive path as curiosity records. |
+
+One assumption did **not** check out: the v1.0 Play-mode reaction tiers do not exist in the
+client yet. `play.profile.js` is marked optional in B7 — the gaming co-host (B23) is the
+batch that needs it, so **B23 promotes it from optional to required** and inherits the cost.
+
 ---
 
-## 1. How the batches are cut
+## 2. How the batches are cut
 
 **One batch = one session = one PR = one flag-off-safe increment.** Batches are sized
 so that a single session can finish code + tests + docs without a context handoff.
@@ -49,6 +135,10 @@ Four principles from the entertainment side of the house shape the cut:
    a negative assertion — she must be provably quiet when the moment isn't hers.
 4. **Budgets are gates, not reports.** The <2 ms/frame and <50 ms Tier-1 numbers are
    asserted in CI from B5 onward, so a regression fails a PR instead of surfacing at QA.
+5. **One flag per activity, so shipping never becomes a big bang.** The core engine flips
+   once (B19). Every activity after it carries its own flag and its own dynamic import, so
+   the co-host can ship the week it is ready without waiting for coach mode — and can be
+   turned off alone if it misbehaves in the wild.
 
 **Definition of done — applies to every batch, no exceptions:**
 
@@ -62,9 +152,11 @@ Four principles from the entertainment side of the house shape the cut:
 
 ---
 
-## 2. Batch list
+## 3. Batch list
 
-Twenty batches in five waves. `[C]` client repo, `[S]` HomePilot, `[B]` bridge repos.
+Thirty batches in ten waves. `[C]` client repo, `[S]` HomePilot, `[B]` bridge repos.
+Waves 0–5 deliver spec v1.1 and end in the flag flip; waves 6–9 deliver addendum v1.2
+and ship *after* it, each behind its own activity flag — see the note on B19.
 
 ### Wave 0 — Ground truth (blocks everything)
 
@@ -167,6 +259,11 @@ no parallel flag. Final pick is softmax-weighted random over topK (variety), not
 **AC:** intent → clip id <50 ms warm (perf assertion in CI); `nsfw` never selected while
 the gate is closed (property test over the whole manifest); same intent twice → different
 clips; MiniLM absent → keyword fallback still returns a legal pick.
+**Forward-compat for B28 (do it here, it costs nothing now):** carry `intent.source`
+through scoring and read `bb.escalationLevel` as an optional blackboard field. The adult
+tier's two gate lines then *append* to this function instead of refactoring it — which is
+the difference between an additive batch and a rewrite of the one file that enforces
+every gate.
 
 ---
 
@@ -216,6 +313,9 @@ the real endpoints (spec Appendix A). WS auth reuses HomePilot's existing auth/p
 heartbeat 15 s; unknown `type` ignored for forward compatibility.
 **AC:** every §6.9 message shape round-trips against fixtures; `avatar.enabled=false` →
 no route mounted, no import cost (asserted); HomePilot's existing suite untouched and green.
+**Forward-compat:** the "unknown `type` ignored" rule is what lets addendum v1.2 add
+`display`, `adult_ack`, `adult_verify_request` and `streak` later without a version bump —
+so it needs a test that an unknown type is ignored *silently*, not just tolerated.
 
 ---
 
@@ -260,6 +360,9 @@ machine** — this is why the batch precedes every consumer. Caps enforced here 
 **AC:** capture cannot start without an active consent state (test asserts the *absence*
 of a bypass); indicator visible in 2D and in XR; revoking consent cancels in-flight
 sampling within one frame; no frames retained client-side.
+**Forward-compat:** four later batches (B15, B23, B26, B27) are consumers of this one
+machine. Build it with a source enum (screen · camera · game) from the start so adding the
+camera and game consumers is registration, not surgery.
 
 ---
 
@@ -369,10 +472,191 @@ green (<2 ms/frame, <50 ms Tier-1, ≤1080p textures, <3 s scene loads); privacy
 its own PR — the client `behaviorEngine.enabled` default flips. HomePilot `avatar.enabled`
 stays opt-in, documentation-first.
 **Hard rule:** never flip a default in the same PR that introduces a feature.
+**Scope note:** B19 flips the *core* engine only. Waves 6–9 (addendum v1.2) ship after it,
+each activity behind its own flag and dynamic import, so none of them needs a second
+big-bang flip — and the adult tier never gets one at all: it stays behind its triple gate
+permanently.
 
 ---
 
-## 3. Dependency graph and parallel lanes
+### Wave 6 — Embodied assistant & the quiet daily loop `(addendum v1.2, P13a)`
+
+Sequenced first among the addendum waves because these two usages are the ones people open
+*every day*, and because both are small: one is presentation over tools that already exist,
+the other is a state machine over adapters that already exist.
+
+---
+
+#### B20 · Panel channel — `display` + PanelRenderer `[S][C]`
+**Branch:** `feat/bd-b20-panels` · **Depends on:** B9, B12 (screen mesh)
+**New:** `src/features/together/panels/PanelRenderer.js` (structured data → canvas texture
+on the virtual screen), server-side `display` emitter in `avatar_director/session.py`.
+**Touched:** none — `display` is a new message type, ignored by older peers per §6.9.
+**Notes:** the panel is a *texture*, not DOM, so it works identically in VR, AR and 2D.
+`assistant.panelMaxKb: 64` is enforced on the server side of the wire, not the render side.
+**AC:** an agenda payload renders legibly at Quest resolution and in 2D; oversized payloads
+are rejected with an error message, never truncated silently; `panel:shown`/`panel:closed`
+fire; a client without the renderer ignores `display` without erroring.
+**Why split from B21:** the renderer is the reusable half (tool results, share cards,
+coach stats all land on it); the assistant is one consumer.
+
+---
+
+#### B21 · Embodied HomePilot — assistant activity `[C][S]`
+**Branch:** `feat/bd-b21-assistant` · **Depends on:** B20
+**New:** `src/features/together/activities/assistant.js` (dynamic import).
+**Touched:** none. **Notes:** this is a **presentation batch over tools that already
+exist** — `hp_personal_plan_day`, the seeded `hp-google-calendar` and Microsoft Graph
+servers. Tool actions route through the existing `daypilot_bridge` **propose-only**
+contract and its Approval Center: the persona proposes, the user confirms, HomePilot's
+safety layer executes. Inventing a second approval path here would be the single worst
+mistake available in this plan.
+**AC:** scripted e2e — "good morning" produces panel + spoken summary + exactly one
+*confirm*-level tool call; no tool is ever invoked outside the persona safety layer
+(negative test); she points at the panel rather than narrating into space.
+**UX gate:** the beat is *assistant with a body and memory*, not a speaker puck with a
+face — reviewed live, not by screenshot.
+
+---
+
+#### B22 · Body-doubling focus sessions `[C][S]`
+**Branch:** `feat/bd-b22-focus` · **Depends on:** B7, B16
+**New:** `src/features/together/activities/focus.js` (pomodoro machine + quiet profile
+overlay, initiative ≈ 0 except block boundaries); streak records as a new LTM category.
+**Touched:** none. **AC:** a full 25/5 cycle passes as a scripted test with **zero** `say`
+inside a focus block; she stretches when you stretch and nods on refocus from idle/gaze
+signals alone; the streak persists server-side and is recalled next session.
+**Why here:** it is the cheapest proof that the "quietly alive" profile works, and it makes
+the curiosity memory visible to the user in a way movie night alone does not.
+
+---
+
+### Wave 7 — Reaction & the two viral loops `(addendum v1.2, P13b + P14)`
+
+---
+
+#### B23 · Gaming co-host + ExcitementDetector `[C]`
+**Branch:** `feat/bd-b23-cohost` · **Depends on:** B11, B12, B7
+**New:** `src/features/together/activities/cohost.js`,
+`src/features/together/heuristics/ExcitementDetector.js`, **plus `play.profile.js`
+promoted from optional to required** (the reaction tiers do not exist in the repo yet).
+**Touched:** none. **Notes:** no game API — audio RMS spikes + luma flash deltas emit
+synthetic `game:*` events, and real hooks can replace the heuristic later behind the same
+events. Macro coalescing at ≤1 per 30 s.
+**AC:** reaction tiers fire correctly from a synthetic event script; no full-body reaction
+while `attention ≥ 0.8` except macro events; the detector never exceeds one macro per 30 s.
+**Priority note:** this is the most clippable experience in the product, which is why it
+lands immediately before the clip engine rather than at the end of the activities pack.
+
+---
+
+#### B24 · Clip recorder — the 30-second ring buffer `[C]`
+**Branch:** `feat/bd-b24-cliprecorder` · **Depends on:** B6 (render loop), B23 (macro events)
+**New:** `src/features/clips/ClipRecorder.js`.
+**Touched:** none. **Notes:** `canvas.captureStream(30)` + a WebAudio mix, `MediaRecorder`
+with 1 s timeslices into a chunk ring — `CompanionMode.js` and `js/speech-service.js`
+already use `MediaRecorder`, so copy the in-repo pattern. Immersive XR framebuffers cannot
+be captured; the mirror view is the documented fallback, not a bug.
+**AC:** prove the 30 s trim with a test **before** any UI exists; saved webm is 30±1 s with
+avatar + activity composited; recorder adds <1 ms/frame while buffering; a static check
+proves **zero network imports** anywhere under `src/features/clips/**`.
+
+---
+
+#### B25 · Clip button + "she remembered" share cards `[C]`
+**Branch:** `feat/bd-b25-share` · **Depends on:** B24, B16
+**New:** `src/features/clips/ui/ClipButton.js`, `src/features/clips/ShareCard.js`
+(PNG of a curiosity callback — her quote, timestamp, portrait frame).
+**Touched:** none. **AC:** one tap saves locally and **never** uploads; the "clip that?"
+toast appears at most once per 60 s and never blocks; a share card renders from a real
+curiosity record; both loops are fully torn down when the adult tier is active (tested in
+B29, asserted here).
+**Product note:** these are the two distribution loops. They are cheap, they are late
+enough to have real moments to capture, and they are early enough to be in the first
+public build.
+
+---
+
+### Wave 8 — Camera-side activities `(addendum v1.2, P13c)`
+
+Both consume B11's consent machine through its camera source. Ordered copilot-then-coach
+because copilot is the lighter of the two and shares the B15 round trip verbatim.
+
+---
+
+#### B26 · Hands-busy copilot `[C]`
+**Branch:** `feat/bd-b26-copilot` · **Depends on:** B11, B15
+**New:** `src/features/together/activities/copilot.js` (checklist state machine + timers).
+**Touched:** none. **Notes:** **on-demand snapshots only** — no periodic frames in this
+activity, which is both the privacy posture and the battery posture on a propped-up phone.
+**AC:** camera snapshot round trip ≤3 s; the timer flow works hands-free by voice; the
+consent indicator is visible whenever camera consent is active; a periodic-frame code path
+does not exist (static check).
+
+---
+
+#### B27 · Coach mode — reps, form, practice `[C]`
+**Branch:** `feat/bd-b27-coach` · **Depends on:** B26, B14 (journey scenes for language practice)
+**New:** `src/features/together/activities/coach.js`,
+`src/features/together/heuristics/RepCounter.js`; a small KB content pass adding
+`exercise`-tagged demo clips through the B1/B2 pipeline.
+**Touched:** none. **Notes:** `PoseLandmarker` joins the **existing** MediaPipe
+tasks-vision 0.10.14 loader used by `FaceTracker` and `HandTracker` — same lazy-load, same
+throttle, 15–20 fps. Avatar fidgets pause while Pose runs to hold the frame budget.
+**AC:** rep events from a recorded video fixture match ground truth ±1; the demo clip is
+selected by exercise *intent*, never by name; the §9 frame budget still holds with Pose
+active (this is the batch most likely to break it, so the budget test runs on the
+reference device, not a laptop).
+**Heaviest of the activities pack** — schedule it last inside its wave and give it a full
+session.
+
+---
+
+### Wave 9 — Adult tier `(addendum v1.2, P15)` — server first, always
+
+Built last, gated hardest, and the only wave whose acceptance criteria are written as
+**invariants that must never be violated** rather than features that must work.
+
+---
+
+#### B28 · Verification, redaction, and the two ranker lines `[S][C]`
+**Branch:** `feat/avatar-b28-adult-gates` · **Depends on:** B5, B8, B16
+**New (server):** `avatar_director/verification.py` (owner attestation by default, pluggable
+`verify(user) -> {verified, exp}` provider; the owner-attest provider **refuses to load on
+a multi-user instance**), `avatar_director/redaction.py`, `adult_ack` / `adult_verify_request`
+message types, `tests/avatar/{verification,redaction}.py`.
+**New (client):** the two gate lines in `UtilityRanker.js` — permitted because that file is
+this project's own creation from B5, not a pre-existing repo file (addendum §13).
+**Touched:** none pre-existing. **Notes:** `adult_ack` is the **only** way `adultVerified`
+becomes true — session-scoped, re-checked on every reconnect. A "click yes" dialog is never
+sufficient and must not be implemented.
+**AC:** write the §16.7 invariant tests **before** the feature: no client path sets
+`adultVerified`; curiosity, vision and MCP sources can never select an nsfw clip (source
+rule); redaction fixtures prove warmth signals are stored and explicit details are not;
+with `avatar.adult.enabled=false` the tier is invisible in UI and unactivatable over MCP or
+session (negative tests).
+
+---
+
+#### B29 · ConsentFlow, adult profile, scenes `[C]`
+**Branch:** `feat/bd-b29-adult-arc` · **Depends on:** B28
+**New:** `src/behavior/ConsentFlow.js` (owns `escalationLevel`),
+`src/behavior/modes/adult.profile.js`, `scenes/{sunset,candlelit}.json`.
+**Touched:** none. **Notes:** the design rules are the deliverable, not the content:
+escalation is **earned** (`perLevelMinMs`, check-in before every level, advance only on an
+explicit user affirmative or unmistakable user initiation) and **reversible** (soft-exit
+word → level 1 + gentle crossfade, no commentary; hard exit → companion mode, neutral idle,
+no comment). `proactiveNsfw: false` is an invariant, not a setting.
+**AC:** check-in flow e2e with scripted affirmatives *and* negatives; soft and hard exits
+work from every level within one scheduler tick; the clip recorder is provably torn down;
+level decays to 1 on inactivity; nothing in the tier is ever proactive.
+**Why last:** it depends on the ranker, the profiles, the scenes, the session, curiosity
+and the recorder — every one of which must be stable before a tier this sensitive rides on
+top of it.
+
+---
+
+## 4. Dependency graph and parallel lanes
 
 ```
 B0 ──┬─► B1 ─► B2 ──────────────┐
@@ -385,20 +669,32 @@ B0 ──┬─► B1 ─► B2 ──────────────┐
                    ├─► B16
                    └─► B17
                                     all ─► B19 ─► flag flip (separate PR)
+
+  ── addendum v1.2, ships behind per-activity flags after B19 ──────────────
+
+  B12 ─► B20 ─► B21            (panels → embodied HomePilot)
+  B16 ─► B22                   (focus / body-doubling, streaks)
+  B11 ─┬► B23 ─► B24 ─► B25    (co-host → clip ring buffer → share loops)
+       └► B26 ─► B27           (copilot → coach; Pose on the existing loader)
+  B5·B8·B16 ─► B28 ─► B29      (adult tier: gates first, arc second)
 ```
 
 **Lane A (client engine):** B1 → B2 → B3 → B4 → B5 → B6 → B7
 **Lane B (server spine):** B8 → B9 → {B10, B16, B17}
-**Lane C (content/QA):** B2 descriptions, scene assets for B14, visual checklists
+**Lane C (content/QA):** B2 descriptions, scene assets for B14, exercise clips for B27
 Lanes A and B are independent after B0 and meet at B9. Two sessions can run them
 concurrently; a third can carry Lane C content work throughout.
 
+After B19 the addendum waves fan out almost completely: **B20→B21**, **B22**, **B23→B24→B25**
+and **B26→B27** share no files and can run as four concurrent lanes. Only the adult tier is
+serialised behind everything, deliberately.
+
 **Critical path:** B0 → B3 → B4 → B5 → B6 → B7 → B11 → B12 → B19. Everything else has
-slack. B6 is the single largest risk on that path.
+slack. B6 is the single largest risk on that path; B27 is the largest after the flip.
 
 ---
 
-## 4. Risk register
+## 5. Risk register
 
 | Risk | Where | Mitigation (built into a batch) |
 |---|---|---|
@@ -411,10 +707,17 @@ slack. B6 is the single largest risk on that path.
 | §7 violation by necessity (`index.html`) | B0 | Amend §7 with the script-tag seam *before* B3 needs it, rather than silently touching it |
 | Perf regression discovered at QA | B5, B6 | Budgets asserted in CI from B5 onward, not audited at B19 |
 | KB descriptions rushed → she feels generic | B2 | Content batch with named human approval; run it in parallel so it is never the thing being hurried |
+| A second tool-approval path appears for UC-12 | B21 | Route every action through the existing `daypilot_bridge` propose-only contract and its Approval Center; a new approval path fails review |
+| Pose tracking blows the frame budget | B27 | `PoseLandmarker` joins the existing MediaPipe loader at 15–20 fps, fidgets pause while it runs, and the budget test runs on the reference device |
+| Reaction tiers assumed to exist | B23 | They do not — B23 owns promoting `play.profile.js` from optional to required and carries the cost in its estimate |
+| Clip engine quietly becomes an upload feature | B24, B25 | Static check for zero network imports under `src/features/clips/**`; saving is local-only, always user-initiated |
+| Adult gate becomes a refactor of the ranker | B5 → B28 | B5 carries `intent.source` and `bb.escalationLevel` from the start, so B28 appends two lines instead of rewriting the enforcement point |
+| Adult tier ships on an honour-system age check | B28 | `adult_ack` server attestation is the only path; owner-attest refuses to load multi-user; a client "click yes" dialog must not exist |
+| She initiates something spicy | B28, B29 | `intent.source !== 'user'` returns `-Infinity` in the ranker, and `proactiveNsfw:false` is an invariant test, not a setting |
 
 ---
 
-## 5. Suggested cadence
+## 6. Suggested cadence
 
 | Wave | Batches | Can run in parallel | Ends with |
 |---|---|---|---|
@@ -424,12 +727,51 @@ slack. B6 is the single largest risk on that path.
 | 3 | B8–B10 | with Wave 2 | **Demo:** speak to her, she answers and gestures |
 | 4 | B11–B15 | B13/B14/B15 fan out after B11 | **Demo:** watch a film together in VR |
 | 5 | B16–B19 | B16/B17/B18 fan out | **Demo:** she asks about your week, unprompted — then the flag flip |
+| 6 | B20–B22 | B22 alongside B20/B21 | **Demo:** "good morning" — agenda on the screen, she walks you through it |
+| 7 | B23–B25 | after B23 the loops are serial | **Demo:** a clutch win, her reaction, one tap, a shareable clip |
+| 8 | B26, B27 | serial (shared camera consent) | **Demo:** "does this look right?" in a real kitchen; a counted set of squats |
+| 9 | B28, B29 | strictly serial, server first | **Gate:** every §16.7 invariant green as an automated test |
 
 Each wave-ending demo is the review gate. A wave is not done because its PRs merged; it
 is done when the demo runs on the main avatar set with the flag on and the parity smoke
 still green with it off.
 
+Waves 0–5 are one release. Waves 6–9 are a stream of independently shippable activities —
+which is the point of the per-activity flag: the co-host can be in users' hands while coach
+mode is still being built.
+
 ---
 
-*Companion document to `docs/BEHAVIOR_DIRECTOR.md` (spec v1.1). The server-lane extract
-lives in HomePilot at `docs/AVATAR_DIRECTOR_BATCHES.md`.*
+## 7. Adult tier — the design rules, in one place
+
+Two usages (UC-17 date night, UC-18 intimate wind-down), built last, in B28–B29. Nothing
+here changes the animation system: it is gating, pacing and UX around behaviours the app
+already ships. Six rules, all test-enforced:
+
+1. **Triple gate, single enforcement point.** Server attestation (`adultVerified`) **and**
+   the existing `nsfwAllowed` setting **and** an active profile with `allowNsfw:true` —
+   checked on every selection, in the ranker and nowhere else. A second gate elsewhere is
+   how one of them ends up open.
+2. **Minors excluded by verification, not honour.** `adult_ack` is server-signed, expiring
+   and session-scoped; the owner-attest provider refuses to load on a multi-user instance;
+   distribution builds must configure a real provider. A client-side "click yes" dialog is
+   never sufficient and must not be implemented.
+3. **She never initiates.** `intent.source !== 'user'` → `-Infinity`. Curiosity, vision and
+   MCP can never reach this content. `proactiveNsfw:false` is an invariant, not a setting.
+4. **Escalation is earned and reversible.** Four levels, a check-in before each, a minimum
+   dwell per level, decay to level 1 on inactivity, a soft-exit word that crossfades back to
+   cozy companion with zero commentary, and a hard exit that works from any state within one
+   scheduler tick.
+5. **Privacy is the selling point, so it has to be real.** Clip engine and telemetry are off
+   in this mode (torn down, not merely disabled); memory may store warmth signals
+   ("prefers slow pacing") and never explicit detail, enforced by a server-side redaction
+   pass with fixture tests. It runs on the user's own HomePilot; nothing leaves their
+   hardware.
+6. **Invisible when off.** With `avatar.adult.enabled=false` the mode is absent from the UI
+   and unactivatable over MCP or the session channel — proven by negative tests, not by the
+   absence of a button.
+
+---
+
+*Companion document to `docs/BEHAVIOR_DIRECTOR.md` (spec v1.1 + addendum v1.2). The
+server-lane extract lives in HomePilot at `docs/AVATAR_DIRECTOR_BATCHES.md`.*
