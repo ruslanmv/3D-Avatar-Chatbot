@@ -1,0 +1,33 @@
+{
+  "$comment": "Recorded by scripts/behavior-parity-baseline.mjs. Re-record deliberately with --write; the diff is the review surface for every new §7 touch.",
+  "engineBootScripts": [],
+  "strayReferences": [],
+  "allowlistReferences": [],
+  "configKeys": [
+    "adult",
+    "antiRepeatWindow",
+    "assistant",
+    "behaviorEngine",
+    "budgets",
+    "capture",
+    "clips",
+    "coach",
+    "emoteRateLimit",
+    "emoteWhitelist",
+    "nsfwAllowed",
+    "session",
+    "topK",
+    "weights"
+  ],
+  "masterFlagsOff": {
+    "behaviorEngine.enabled": true,
+    "behaviorEngine.debug": true,
+    "nsfwAllowed": true,
+    "session.enabled": true,
+    "session.tier1Remote": true,
+    "adult.available": true
+  },
+  "informational": {
+    "totalBootScripts": 78
+  }
+}

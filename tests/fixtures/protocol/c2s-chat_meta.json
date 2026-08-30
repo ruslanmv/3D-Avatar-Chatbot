@@ -1,0 +1,12 @@
+{
+  "name": "chat_meta",
+  "direction": "client->server",
+  "spec": "v1.1 6.9",
+  "required": ["v", "type", "msgId", "source"],
+  "message": {
+    "v": 1,
+    "type": "chat_meta",
+    "msgId": "m-0001",
+    "source": "voice"
+  }
+}

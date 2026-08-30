@@ -1,0 +1,13 @@
+{
+  "name": "ctx",
+  "direction": "client->server",
+  "spec": "v1.1 6.9",
+  "required": ["v", "type", "mode", "activity", "attention"],
+  "message": {
+    "v": 1,
+    "type": "ctx",
+    "mode": "together",
+    "activity": "watch",
+    "attention": 0.8
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "$comment": "Shared session-protocol fixtures. This directory is byte-identical in ruslanmv/3D-Avatar-Chatbot and ruslanmv/HomePilot; CHECKSUMS.txt is the proof. Change it in one repo and the other repo's contract test goes red.",
+  "protocolVersion": 1,
+  "fixtures": [
+    {
+      "file": "c2s-hello.json",
+      "name": "hello",
+      "direction": "client->server",
+      "spec": "v1.1 6.9"
+    },
+    {
+      "file": "c2s-ctx.json",
+      "name": "ctx",
+      "direction": "client->server",
+      "spec": "v1.1 6.9"
+    },
+    {
+      "file": "c2s-user_event.json",
+      "name": "user_event",
+      "direction": "client->server",
+      "spec": "v1.1 6.9"
+    },
+    {
+      "file": "c2s-vision_ask.json",
+      "name": "vision_ask",
+      "direction": "client->server",
+      "spec": "v1.1 6.9"
+    },
+    {
+      "file": "c2s-chat_meta.json",
+      "name": "chat_meta",
+      "direction": "client->server",
+      "spec": "v1.1 6.9"
+    },
+    {
+      "file": "c2s-pong.json",
+      "name": "pong",
+      "direction": "client->server",
+      "spec": "v1.1 6.9"
+    },
+    {
+      "file": "c2s-adult_verify_request.json",
+      "name": "adult_verify_request",
+      "direction": "client->server",
+      "spec": "v1.2 14.3"
+    },
+    {
+      "file": "c2s-streak.json",
+      "name": "streak",
+      "direction": "client->server",
+      "spec": "v1.2 14.3"
+    },
+    {
+      "file": "s2c-intent.json",
+      "name": "intent",
+      "direction": "server->client",
+      "spec": "v1.1 6.9"
+    },
+    {
+      "file": "s2c-say.json",
+      "name": "say",
+      "direction": "server->client",
+      "spec": "v1.1 6.9"
+    },
+    {
+      "file": "s2c-vision_insight.json",
+      "name": "vision_insight",
+      "direction": "server->client",
+      "spec": "v1.1 6.9"
+    },
+    {
+      "file": "s2c-scene.json",
+      "name": "scene",
+      "direction": "server->client",
+      "spec": "v1.1 6.9"
+    },
+    {
+      "file": "s2c-error.json",
+      "name": "error",
+      "direction": "server->client",
+      "spec": "v1.1 6.9"
+    },
+    {
+      "file": "s2c-ping.json",
+      "name": "ping",
+      "direction": "server->client",
+      "spec": "v1.1 6.9"
+    },
+    {
+      "file": "s2c-display.json",
+      "name": "display",
+      "direction": "server->client",
+      "spec": "v1.2 14.3"
+    },
+    {
+      "file": "s2c-adult_ack.json",
+      "name": "adult_ack",
+      "direction": "server->client",
+      "spec": "v1.2 14.3"
+    },
+    {
+      "file": "s2c-unknown_type.json",
+      "name": "unknown_type",
+      "direction": "server->client",
+      "spec": "v1.1 6.9 forward-compatibility"
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+name: Behavior Director
+
+# Additive gate for the Behavior Director work (spec v1.1 + addendum v1.2). It runs
+# beside ci.yml and changes nothing about it: this workflow only asserts that the engine
+# stays inert while its flag is off, and that the shared protocol fixtures still match the
+# manifest HomePilot holds a copy of.
+#
+# Every batch from B0 onward has to keep this green.
+
+on:
+  push:
+    branches: [main, master, develop, "claude/**", "feat/bd-**"]
+  pull_request:
+
+jobs:
+  parity:
+    name: Flag-off parity & protocol fixtures
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The claim in spec v1.1 §7, proven by a script rather than by eyeball: with
+      # behaviorEngine.enabled false, nothing in the engine's namespace is loaded,
+      # imported or referenced outside the amended §7 allowlist.
+      - name: Flag-off parity
+        run: node scripts/behavior-parity-baseline.mjs --check
+
+      # The same claims re-implemented independently, plus the fixture contract.
+      - name: Behavior tests
+        run: npx jest tests/behavior --ci
+
+      # docs/PATHMAP.md is how later batches stay consistent with this one; a PR that
+      # touches the engine namespace without recording its decisions there is a PR that
+      # took a decision the next session cannot find.
+      - name: Frozen names are documented
+        run: |
+          grep -q "src/behavior/" docs/PATHMAP.md
+          grep -q "avatar_director" docs/PATHMAP.md
