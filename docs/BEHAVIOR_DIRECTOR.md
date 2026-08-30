@@ -17,6 +17,7 @@ never edited to match the repo, the mapping is recorded instead.
 
 | Batch | Date | Change |
 |---|---|---|
+| B2 | 2026-08-30 | Content pass: authored lexicon fills description/tags/intents/valence/energy for all 166 records; `bootstrap-lexical-v1` TF-IDF index over an explicit 3641-term vocabulary (`index.f32`, `index.vocab.tsv`, `index.meta.json`); review ledger + `--require-approval` gate; CI raised to `--level semantic`. MiniLM deferred to B5 (no bundler, and `package.json` is not on the §7 allowlist). No app code. |
 | B1 | 2026-08-30 | KB harvested from the repo's own records: `kb/schema/animation.schema.json`, `harvest-existing.mjs`, `extract-bvh-stats.mjs`, `extract-vrma-stats.mjs`, `validate-manifest.mjs`, and a 166-record manifest (107 BVH + 44 VRMA + 15 procedural) covering every shipped asset exactly once. Semantic fields left as drafts for B2. No app code. |
 | B0 | 2026-08-30 | Spec v1.1 + addendum v1.2 vendored into the repo; names frozen (`src/behavior/**`, `window.NEXUS_BD`, `avatar_director`); §7 allowlist amended (see PATHMAP §4); `config/behavior.config.json` added flags-off; shared protocol fixtures + parity harness landed. No product code. |
 

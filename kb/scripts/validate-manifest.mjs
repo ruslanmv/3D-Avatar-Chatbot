@@ -27,16 +27,19 @@
  *   node kb/scripts/validate-manifest.mjs
  *   node kb/scripts/validate-manifest.mjs --level semantic
  *   node kb/scripts/validate-manifest.mjs --manifest <path>   # validate a copy
+ *   node kb/scripts/validate-manifest.mjs --require-approval  # demand human sign-off
  */
 
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, resolve, sep, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
+import { createHash } from 'node:crypto';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const DEFAULT_MANIFEST = 'kb/animations.manifest.jsonl';
 const SCHEMA = 'kb/schema/animation.schema.json';
+const LEDGER = 'kb/descriptions.approved.json';
 
 /** Directories whose .bvh/.vrma files are shipped assets and must each have a record. */
 const ASSET_DIRS = ['vendor/animations', 'addons/vrma-actions', 'addons/vrma-dance', 'addons/vrma-locomotion'];
@@ -172,18 +175,32 @@ function walk(dir, out = []) {
     return out;
 }
 
-/** Behaviour ids AnimationPresets actually defines, so `behaviorRef` cannot go stale. */
-function knownBehaviorIds() {
+/**
+ * The behaviours AnimationPresets defines, and which of them it marks adult.
+ *
+ * `SpicyGate` is a single on/off switch with no list of its own — the content it gates is
+ * declared here, by the `adult: true` flag. So "cross-checked against the SpicyGate
+ * category list" means: cross-checked against the list SpicyGate gates.
+ */
+function animationPresets() {
     const source = readFileSync(join(ROOT, 'src/AnimationPresets.js'), 'utf8');
     const sandbox = { window: {}, module: { exports: {} }, console: { log() {}, warn() {}, error() {} } };
     runInNewContext(source, sandbox, { filename: 'src/AnimationPresets.js' });
     const presets = sandbox.window.NEXUS_ANIMATION_PRESETS || {};
-    return new Set([...(presets.EMOTIONS || []), ...(presets.ADULT_EMOTIONS || [])].map((e) => e.id));
+    const all = [...(presets.EMOTIONS || []), ...(presets.ADULT_EMOTIONS || [])];
+    return {
+        ids: new Set(all.map((e) => e.id)),
+        adultIds: new Set(all.filter((e) => e.adult).map((e) => e.id)),
+    };
 }
 
 // ── the gate ─────────────────────────────────────────────────────────────────
 
-export function validateManifest({ manifestPath = DEFAULT_MANIFEST, level = 'structural' } = {}) {
+export function validateManifest({
+    manifestPath = DEFAULT_MANIFEST,
+    level = 'structural',
+    requireApproval = false,
+} = {}) {
     const schema = JSON.parse(readFileSync(join(ROOT, SCHEMA), 'utf8'));
     // resolve, not join: the test suite validates broken copies from a temp directory.
     const raw = readFileSync(resolve(ROOT, manifestPath), 'utf8');
@@ -215,7 +232,7 @@ export function validateManifest({ manifestPath = DEFAULT_MANIFEST, level = 'str
     }
 
     // 3 · references resolve
-    const behaviorIds = knownBehaviorIds();
+    const { ids: behaviorIds, adultIds } = animationPresets();
     for (const { record, line } of records) {
         if (record.file && !existsSync(join(ROOT, record.file))) {
             problems.push(`line ${line} (${record.id}): file does not exist — ${record.file}`);
@@ -240,7 +257,26 @@ export function validateManifest({ manifestPath = DEFAULT_MANIFEST, level = 'str
         if (count > 1) problems.push(`${count} records for shipped asset ${asset} — expected exactly one`);
     }
 
-    // 5 · the semantic level B2 has to satisfy
+    // 5 · nsfw is decided in one place, and the manifest has to agree with it.
+    //     A clip that is quietly nsfw would be invisible to review; a behaviour that is
+    //     quietly *not* nsfw would walk straight past the ranker's single gate.
+    for (const { record, line } of records) {
+        if (record.kind !== 'procedural') {
+            if (record.nsfw) {
+                problems.push(`line ${line} (${record.id}): a clip is marked nsfw, but only behaviours are gated`);
+            }
+            continue;
+        }
+        const shouldBeNsfw = adultIds.has(record.behaviorRef);
+        if (shouldBeNsfw !== record.nsfw) {
+            problems.push(
+                `line ${line} (${record.id}): nsfw=${record.nsfw} but AnimationPresets marks ` +
+                    `"${record.behaviorRef}" adult=${shouldBeNsfw}`
+            );
+        }
+    }
+
+    // 6 · the semantic level B2 has to satisfy
     if (level === 'semantic') {
         for (const { record, line } of records) {
             if (!record.description || record.description.trim().length < 20) {
@@ -250,6 +286,26 @@ export function validateManifest({ manifestPath = DEFAULT_MANIFEST, level = 'str
             if (!record.intents.length) problems.push(`line ${line} (${record.id}): no intents`);
             if (record.energy === 0 && record.valence === 0) {
                 problems.push(`line ${line} (${record.id}): valence and energy are both still 0`);
+            }
+        }
+    }
+
+    // 7 · human sign-off. Opt-in, because it is not satisfied yet and a gate that passes
+    //     while the review has not happened is worse than no gate.
+    if (requireApproval) {
+        let ledger = { approved: {} };
+        try {
+            ledger = JSON.parse(readFileSync(join(ROOT, LEDGER), 'utf8'));
+        } catch {
+            problems.push(`${LEDGER} is missing — nothing has been approved`);
+        }
+        for (const { record, line } of records) {
+            const signed = (ledger.approved || {})[record.id];
+            const hash = createHash('sha256').update(record.description).digest('hex').slice(0, 16);
+            if (!signed) {
+                problems.push(`line ${line} (${record.id}): description has not been approved by a human`);
+            } else if (signed.sha256 !== hash) {
+                problems.push(`line ${line} (${record.id}): description changed since ${signed.by} approved it`);
             }
         }
     }
@@ -275,9 +331,10 @@ function main() {
         process.exit(2);
     }
 
-    const { problems, counts } = validateManifest({ manifestPath, level });
+    const requireApproval = args.includes('--require-approval');
+    const { problems, counts } = validateManifest({ manifestPath, level, requireApproval });
 
-    console.log(`KB manifest — ${manifestPath} (level: ${level})`);
+    console.log(`KB manifest — ${manifestPath} (level: ${level}${requireApproval ? ', approval required' : ''})`);
     console.log(`  records        : ${counts.records}`);
     console.log(`  shipped assets : ${counts.shippedAssets} (${counts.withFile} covered)`);
     console.log(`  procedural     : ${counts.procedural}`);

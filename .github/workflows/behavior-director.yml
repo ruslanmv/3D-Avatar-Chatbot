@@ -39,13 +39,16 @@ jobs:
       # and coverage in both directions — every shipped asset has exactly one record.
       # `--level semantic` is the higher bar B2 raises this to once descriptions exist.
       - name: KB manifest
-        run: node kb/scripts/validate-manifest.mjs
+        run: node kb/scripts/validate-manifest.mjs --level semantic
 
-      # A harvest that does not reproduce itself is a manifest nobody can review.
-      - name: KB harvest is reproducible
+      # A harvest that does not reproduce itself is a manifest nobody can review; the same
+      # goes for the index built from it.
+      - name: KB harvest and content are reproducible
         run: |
           node kb/scripts/harvest-existing.mjs --write
-          git diff --exit-code -- kb/animations.manifest.jsonl kb/harvest-report.json
+          node kb/scripts/draft-descriptions.mjs --write
+          node kb/scripts/build-embeddings.mjs --write
+          git diff --exit-code -- kb/
 
       # The same claims re-implemented independently, plus the fixture contract.
       - name: Behavior tests

@@ -12,11 +12,12 @@
       "production": 147
     },
     "nsfw": 6,
-    "withIntents": 85
+    "withIntents": 166
   },
   "drafts": {
-    "note": "description, valence and energy are empty by design in B1; B2 fills them with a human in the loop.",
-    "missingDescription": 166,
+    "note": "description, valence and energy are empty on a first harvest; B2 fills them with a human in the loop, and a re-harvest preserves whatever B2 wrote.",
+    "authoredFieldsPreserved": 166,
+    "missingDescription": 0,
     "energySuggestions": {
       "vrma_action_backflip": 0.57,
       "vrma_action_bowing": 0.16,

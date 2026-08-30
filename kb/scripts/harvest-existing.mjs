@@ -310,7 +310,43 @@ function proceduralRecords(presets) {
 
 // ── main ─────────────────────────────────────────────────────────────────────
 
+/**
+ * The fields B2 authors, which a re-harvest must never overwrite.
+ *
+ * B1 harvests facts; B2 writes meaning. Without this, re-running the harvester after a new
+ * clip is added silently blanks 166 descriptions — which is exactly what happened the first
+ * time the full test suite ran both batches' scripts in the same pass.
+ */
+const AUTHORED_FIELDS = ['description', 'tags', 'intents', 'valence', 'energy'];
+
+/** Existing records by id, so authored content survives a re-harvest. */
+function existingById() {
+    try {
+        const lines = readFileSync(join(ROOT, MANIFEST), 'utf8').split('\n').filter(Boolean);
+        return new Map(lines.map((line) => JSON.parse(line)).map((record) => [record.id, record]));
+    } catch {
+        return new Map(); // first harvest
+    }
+}
+
+/** Carry the authored half of a previous record forward onto a freshly harvested one. */
+function preserveAuthored(record, previous) {
+    if (!previous) return record;
+    const merged = { ...record };
+    for (const field of AUTHORED_FIELDS) {
+        if (previous[field] !== undefined && !isEmpty(previous[field])) merged[field] = previous[field];
+    }
+    return merged;
+}
+
+function isEmpty(value) {
+    if (Array.isArray(value)) return value.length === 0;
+    if (typeof value === 'string') return value.trim() === '';
+    return value === 0 ? false : value === undefined || value === null;
+}
+
 export function harvest() {
+    const previous = existingById();
     const clips = loadMotionClipMap();
     const presets = loadAnimationPresets();
     const vendorManifest = loadVendorManifest();
@@ -331,7 +367,8 @@ export function harvest() {
     const energySuggestions = {};
 
     for (const asset of assets) {
-        const { record, facts, emotions } = clipRecord(asset, ctx);
+        const { record: harvested, facts, emotions } = clipRecord(asset, ctx);
+        const record = preserveAuthored(harvested, previous.get(harvested.id));
         records.push(record);
         if (!facts.names.length && !emotions.length) orphans.push(record.id);
         const scale = ENERGY_SCALE[record.kind];
@@ -340,7 +377,7 @@ export function harvest() {
         }
     }
 
-    records.push(...proceduralRecords(presets));
+    records.push(...proceduralRecords(presets).map((r) => preserveAuthored(r, previous.get(r.id))));
     records.sort((a, b) => a.id.localeCompare(b.id));
 
     // Candidates the clip map points at that are not on disk: a broken fallback chain is
@@ -368,7 +405,10 @@ export function harvest() {
             withIntents: records.filter((r) => r.intents.length).length,
         },
         drafts: {
-            note: 'description, valence and energy are empty by design in B1; B2 fills them with a human in the loop.',
+            note:
+                'description, valence and energy are empty on a first harvest; B2 fills them ' +
+                'with a human in the loop, and a re-harvest preserves whatever B2 wrote.',
+            authoredFieldsPreserved: records.filter((r) => r.description).length,
             missingDescription: records.filter((r) => !r.description).length,
             energySuggestions,
             energyScale: ENERGY_SCALE,

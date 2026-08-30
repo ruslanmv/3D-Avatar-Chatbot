@@ -58,6 +58,12 @@ files must be prettier-clean or CI goes red.
 | *(not in the spec)* | `kb/scripts/extract-vrma-stats.mjs` | **Added in B1.** The spec assumes only BVH needs a stats reader. 44 of the 151 shipped clips are VRMA, in two different containers, and a record with no duration is a record the ranker cannot use |
 | *(not in the spec)* | `kb/scripts/harvest-existing.mjs` | **Added in B1**, per the batch plan: the KB is derived from what the repo already knows |
 | *(not in the spec)* | `kb/harvest-report.json` | **Added in B1.** Generated working note for B2 — drafts still open, energy suggestions, orphaned assets, provenance |
+| `kb/scripts/draft-descriptions.mjs` | as specified | **B2.** Carries the authored lexicon — the content artefact of the batch |
+| `kb/scripts/build-embeddings.mjs` | as specified | **B2.** Model is `bootstrap-lexical-v1`, not MiniLM — see §2c |
+| `kb/embeddings/index.f32` | as specified | `[gen]` count × dims Float32 matrix |
+| `kb/embeddings/index.meta.json` | as specified | `[gen]` model, dims, count, row↔id map, manifest hash |
+| *(not in the spec)* | `kb/embeddings/index.vocab.tsv` | **Added in B2.** `term<TAB>idf` per column. A query cannot be embedded into the same space without it, and it keeps the numbers out of a prettier-formatted JSON file |
+| *(not in the spec)* | `kb/descriptions.approved.json` | **Added in B2.** The human review ledger — see §2c |
 | `config/behavior.config.json` | as specified | Landed in B0, flags off |
 | `tests/behavior/` | as specified | Jest picks it up automatically via `testMatch: **/tests/**/*.test.js` |
 | `tests/fixtures/protocol/` | as specified | Byte-identical to HomePilot `backend/tests/fixtures/protocol/` |
@@ -97,6 +103,59 @@ node kb/scripts/validate-manifest.mjs --level semantic   # + descriptions — B2
 on ajv: this repo has no bundler and no build step, and a gate that needs an install is a
 gate that stops being run. It rejects any schema keyword it does not implement, so the
 schema cannot quietly outgrow it.
+
+## 2c. The semantic half of the KB (B2)
+
+`draft-descriptions.mjs` fills `description`, `tags`, `intents`, `valence` and `energy`
+from an authored lexicon of ~90 concepts — the `emotion/` pack is the GoEmotions taxonomy,
+so the emotional vocabulary maps onto it directly. The formula is §5.P0's: **action + body
+focus + tempo + emotion**, where tempo comes from the *measurement* rather than the label,
+so three takes of the same joy capture read at three different tempos and the anti-repeat
+memory of §6.5 has something to tell them apart by.
+
+Two decisions worth knowing before editing it:
+
+- **Tempo words are measurement-backed synonyms.** A clip measured fast is tagged
+  `energetic`, `quick`, `high energy`. Without that, "energetic" was a rare word appearing
+  in one description, IDF made it enormous, and *"energetic celebration dance"* returned a
+  jump.
+- **Colliding descriptions are disambiguated by source.** `dance_1.bvh` and the
+  `dance_1.vrma` converted from it are the same motion at the same tempo, so they drafted
+  identically — 14 records did. Identical prose means identical vectors, which means the
+  selector cannot tell them apart. Each now names its source file.
+
+### The model is not MiniLM yet
+
+Spec §4A names transformers.js MiniLM. There is no bundler, no build step, and
+`package.json` is not on the §7 allowlist, so adding the dependency here would be a spec
+violation dressed as a build detail. **B5 owns that decision** (it is listed in §5 below)
+and regenerates these artefacts with a real encoder.
+
+`bootstrap-lexical-v1` is TF-IDF over an **explicit vocabulary** (3641 terms) — unigrams,
+adjacent bigrams and 4-character shingles, tags and intents weighted 3× over prose.
+Explicit, not hashed, because hashing was measurably wrong here: at 512 buckets every
+bucket was occupied, so query words matching nothing still landed somewhere and scored, and
+*"sit down quietly"* returned a jump followed by three angry clips. Raising the bucket count
+and zeroing empty buckets each helped and neither fixed it. With a vocabulary, an unknown
+term has no column and contributes nothing. The same query now returns the four sitting
+idles.
+
+### The approval ledger
+
+The batch plan says a human approves every line. `kb/descriptions.approved.json` is where
+that is recorded — id → `sha256(description)` prefix, who, when — so editing a line
+silently un-approves it. `validate-manifest.mjs --require-approval` fails while anything is
+pending, and **CI does not run that flag**: all 166 descriptions are machine-drafted and
+have not been through human review. CI runs `--level semantic`, which checks the fields are
+real; the flag is what a reviewer flips when the read-through is done.
+
+```bash
+node kb/scripts/draft-descriptions.mjs --write   # redraft from the lexicon
+node kb/scripts/build-embeddings.mjs --write     # rebuild the index
+node kb/scripts/build-embeddings.mjs --search "energetic celebration dance"
+node kb/scripts/validate-manifest.mjs --level semantic      # what CI runs
+node kb/scripts/validate-manifest.mjs --require-approval    # the human gate
+```
 
 ### Names that are already taken
 
@@ -191,7 +250,7 @@ Recorded when the batch that needs them lands.
 | B3 | Exact settings-panel control location for the "Behavior engine (beta)" toggle |
 | B4 | Whether `js/speech-service.js` and `PiperWasmTTSProvider` both emit, or one wraps the other |
 | B5 | Where the MiniLM worker and its IndexedDB cache live given no bundler (vendored vs. CDN, matching the existing MediaPipe CDN pattern in `FaceTracker.js`) |
-| B2 | Whether the 81 orphaned assets (shipped but reachable by no clip-map entry and no emotion mapping) all deserve descriptions, or whether some should be marked `experimental` first |
-| B2 | Whether the per-category `priority`/`cooldownMs` defaults the harvest applies survive contact with the ranker |
+| B2 → human | Read-through and sign-off of all 166 descriptions into `kb/descriptions.approved.json`, then turn on `--require-approval` in CI |
+| B5 | Whether the per-category `priority`/`cooldownMs` defaults and the lexicon's valence values survive contact with the ranker |
 | B6 | Whether `LayerMixer` drives `AnimationResolver` or registers as a source inside it |
 | B12 | Screen mesh placement API on `WebXRChatbot` / `gltf-viewer` |
