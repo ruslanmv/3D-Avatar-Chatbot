@@ -223,7 +223,7 @@ what the KB is for.
 
 ---
 
-#### B2 · Descriptions, tags, embeddings `[C]`
+#### B2 · Descriptions, tags, embeddings `[C]` — ✅ landed (drafts written, human review still open)
 **Branch:** `feat/bd-b2-kb-embed` · **Depends on:** B1
 **New:** `kb/scripts/draft-descriptions.mjs`, `kb/scripts/build-embeddings.mjs`,
 `kb/embeddings/index.f32`, `kb/embeddings/index.meta.json`, `tests/behavior/kb-search.test.js`.
@@ -237,6 +237,18 @@ record cross-checked against the SpicyGate category list.
 **Sizing note:** the only batch with a hard human dependency (~151 descriptions). Run it
 in parallel with Wave 2 if review capacity is the bottleneck — B5 is the first batch
 that actually needs the vectors.
+**Landed as:** `kb/scripts/{draft-descriptions,build-embeddings}.mjs`,
+`kb/embeddings/{index.f32,index.vocab.tsv,index.meta.json}`,
+`kb/descriptions.approved.json`, `tests/behavior/kb-search.test.js`; CI raised to
+`--level semantic`. 49 suites / 1274 tests green. All 166 records carry real content and
+`search("energetic celebration dance")` returns a dance at rank 3.
+**The human dependency is real and still open:** the drafts are machine-written, the
+ledger records that nothing is approved, and `--require-approval` is the gate a reviewer
+flips — CI deliberately does not run it yet.
+**Two findings for later batches:** hashing was the wrong vectoriser at this corpus size
+(collisions made unmatched query words score, so *"sit down quietly"* returned a jump);
+and the B1 harvester blanked B2's content until re-harvest was made content-preserving —
+any batch that regenerates a shared artefact needs the same care.
 
 ---
 
