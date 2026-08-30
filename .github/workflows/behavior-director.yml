@@ -35,6 +35,18 @@ jobs:
       - name: Flag-off parity
         run: node scripts/behavior-parity-baseline.mjs --check
 
+      # The KB gate (spec v1.1 §5.P0): schema, unique ids, every referenced file on disk,
+      # and coverage in both directions — every shipped asset has exactly one record.
+      # `--level semantic` is the higher bar B2 raises this to once descriptions exist.
+      - name: KB manifest
+        run: node kb/scripts/validate-manifest.mjs
+
+      # A harvest that does not reproduce itself is a manifest nobody can review.
+      - name: KB harvest is reproducible
+        run: |
+          node kb/scripts/harvest-existing.mjs --write
+          git diff --exit-code -- kb/animations.manifest.jsonl kb/harvest-report.json
+
       # The same claims re-implemented independently, plus the fixture contract.
       - name: Behavior tests
         run: npx jest tests/behavior --ci

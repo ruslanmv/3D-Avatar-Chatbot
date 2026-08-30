@@ -17,6 +17,7 @@ never edited to match the repo, the mapping is recorded instead.
 
 | Batch | Date | Change |
 |---|---|---|
+| B1 | 2026-08-30 | KB harvested from the repo's own records: `kb/schema/animation.schema.json`, `harvest-existing.mjs`, `extract-bvh-stats.mjs`, `extract-vrma-stats.mjs`, `validate-manifest.mjs`, and a 166-record manifest (107 BVH + 44 VRMA + 15 procedural) covering every shipped asset exactly once. Semantic fields left as drafts for B2. No app code. |
 | B0 | 2026-08-30 | Spec v1.1 + addendum v1.2 vendored into the repo; names frozen (`src/behavior/**`, `window.NEXUS_BD`, `avatar_director`); §7 allowlist amended (see PATHMAP §4); `config/behavior.config.json` added flags-off; shared protocol fixtures + parity harness landed. No product code. |
 
 ---

@@ -53,10 +53,50 @@ files must be prettier-clean or CI goes red.
 | VR / XR system | `src/WebXRChatbot.js`, `src/xr/**`, `src/gltf-viewer/**` | Screen placement and AR hit-test in B12 |
 | NSFW setting | `src/SpicyGate.js` → `window.NEXUS_SPICY` | The **existing**, age-verified authority. §6.5's gate reads it; there is no second flag |
 | animation assets | `addons/vrma-actions/`, `addons/vrma-dance/`, `addons/vrma-locomotion/`, `vendor/animations/` | 44 VRMA + 107 BVH, already mapped by `src/xr/MotionClipMap.js` |
-| `kb/` | `kb/` | As specified. B1 harvests it from `MotionClipMap` + `AnimationPresets` rather than authoring from zero |
+| `kb/` | `kb/` | As specified. B1 harvests it (see §2b) rather than authoring from zero |
+| `kb/scripts/extract-bvh-stats.mjs` | as specified | Pure text parser; no 3D library |
+| *(not in the spec)* | `kb/scripts/extract-vrma-stats.mjs` | **Added in B1.** The spec assumes only BVH needs a stats reader. 44 of the 151 shipped clips are VRMA, in two different containers, and a record with no duration is a record the ranker cannot use |
+| *(not in the spec)* | `kb/scripts/harvest-existing.mjs` | **Added in B1**, per the batch plan: the KB is derived from what the repo already knows |
+| *(not in the spec)* | `kb/harvest-report.json` | **Added in B1.** Generated working note for B2 — drafts still open, energy suggestions, orphaned assets, provenance |
 | `config/behavior.config.json` | as specified | Landed in B0, flags off |
 | `tests/behavior/` | as specified | Jest picks it up automatically via `testMatch: **/tests/**/*.test.js` |
 | `tests/fixtures/protocol/` | as specified | Byte-identical to HomePilot `backend/tests/fixtures/protocol/` |
+
+## 2b. Where the KB comes from (B1)
+
+The manifest is **harvested**, not authored. Four sources, in the order they are trusted:
+
+| Source | What it settles |
+|---|---|
+| `vendor/animations/manifest.json` | Categories, the `experimental` flag on the BVH dance pack, `emotionMapping` (which becomes `intents`), and the `credits` block that gives every asset its `source` and `license` |
+| `src/xr/MotionClipMap.js` | Which clips the running app can reach, their `loop`/`sticky` flags (`interruptible` is `!sticky`), and the eight Mixamo-origin dance clips it deliberately excludes |
+| `src/AnimationPresets.js` | The 15 procedural behaviours and their `adult: true` flag, which becomes `nsfw` |
+| The filesystem | Ground truth: 107 BVH + 44 VRMA. Coverage is checked in both directions |
+
+Both JS sources are **executed**, not pattern-matched, so the KB cannot drift from the
+tables the app itself uses. They are executed in a `vm` sandbox rather than `require`d:
+`package.json` declares `"type": "module"`, so Node reads these `.js` files as ESM, where
+`MotionClipMap`'s trailing `module.exports = …` is a no-op — a `require` hands back an
+empty namespace and the harvest silently degrades. The sandbox supplies `window` and
+`module`, and `loadBrowserModule` throws if a module ever stops publishing.
+
+**What B1 does not do is author meaning.** `description` is empty, `valence` and `energy`
+are `0`. The measured numbers behind them live in `stats` (`duration`, `rootMotion` in body
+heights, `meanJointVel` in rad/s) where they are facts; `kb/harvest-report.json` carries
+suggested energy values so B2 starts from data rather than a blank page. This is the split
+the two validation levels enforce:
+
+```bash
+node kb/scripts/harvest-existing.mjs          # dry run
+node kb/scripts/harvest-existing.mjs --write  # rewrite manifest + report
+node kb/scripts/validate-manifest.mjs                    # structural — B1, what CI runs
+node kb/scripts/validate-manifest.mjs --level semantic   # + descriptions — B2 raises CI to this
+```
+
+`validate-manifest.mjs` carries its own small JSON Schema validator rather than depending
+on ajv: this repo has no bundler and no build step, and a gate that needs an install is a
+gate that stops being run. It rejects any schema keyword it does not implement, so the
+schema cannot quietly outgrow it.
 
 ### Names that are already taken
 
@@ -151,5 +191,7 @@ Recorded when the batch that needs them lands.
 | B3 | Exact settings-panel control location for the "Behavior engine (beta)" toggle |
 | B4 | Whether `js/speech-service.js` and `PiperWasmTTSProvider` both emit, or one wraps the other |
 | B5 | Where the MiniLM worker and its IndexedDB cache live given no bundler (vendored vs. CDN, matching the existing MediaPipe CDN pattern in `FaceTracker.js`) |
+| B2 | Whether the 81 orphaned assets (shipped but reachable by no clip-map entry and no emotion mapping) all deserve descriptions, or whether some should be marked `experimental` first |
+| B2 | Whether the per-category `priority`/`cooldownMs` defaults the harvest applies survive contact with the ranker |
 | B6 | Whether `LayerMixer` drives `AnimationResolver` or registers as a source inside it |
 | B12 | Screen mesh placement API on `WebXRChatbot` / `gltf-viewer` |
