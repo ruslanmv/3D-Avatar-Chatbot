@@ -907,6 +907,26 @@ function setupThreeJS() {
         ro.observe(viewport);
     }
 
+    /* NEXUS_BD — Behavior Director bootstrap (spec v1.1 §7, batch B3).
+       Opt-in only: with behaviorEngine.enabled false nothing under src/behavior/ is
+       fetched, parsed or evaluated, so the app is byte-for-byte the one that shipped.
+       The settings toggle writes this key; see docs/PATHMAP.md §4. */
+    window.NEXUS_BD_ENABLED = (() => {
+        try {
+            return localStorage.getItem('nexus_bd_enabled') === 'true';
+        } catch (_) {
+            return false;
+        }
+    })();
+    if (window.NEXUS_BD_ENABLED) {
+        const bdScript = document.createElement('script');
+        bdScript.src = 'src/behavior/boot.js';
+        bdScript.async = false;
+        bdScript.onload = () => window.NEXUS_BD_BOOT?.();
+        bdScript.onerror = () => console.warn('[BD] boot.js failed to load — engine stays off');
+        document.head.appendChild(bdScript);
+    }
+
     animate();
 }
 
@@ -914,6 +934,9 @@ function animate() {
     requestAnimationFrame(animate);
     const delta = clock ? clock.getDelta() : 0;
     if (mixer) mixer.update(delta);
+
+    /* NEXUS_BD — Tier 0 tick. One boolean while behaviorEngine.enabled is false. */
+    if (window.NEXUS_BD_ENABLED) window.NEXUS_BD?.update?.(delta);
 
     /* NEXUS_PATCH_LIFE_ENGINE_UPDATE_LOOP */
     try {

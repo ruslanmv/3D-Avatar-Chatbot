@@ -157,6 +157,36 @@ node kb/scripts/validate-manifest.mjs --level semantic      # what CI runs
 node kb/scripts/validate-manifest.mjs --require-approval    # the human gate
 ```
 
+## 2d. The runtime switch (B3)
+
+The engine is **opt-in at runtime** through `localStorage.nexus_bd_enabled`. That key is
+the switch; `config/behavior.config.json` holds the shipped defaults and everything else
+the engine reads (weights, whitelist, budgets). B7 adds the settings toggle that writes it.
+
+```js
+// src/main.js, before the render loop starts — the whole seam:
+window.NEXUS_BD_ENABLED = localStorage.getItem('nexus_bd_enabled') === 'true';  // in a try
+if (window.NEXUS_BD_ENABLED) { /* inject src/behavior/boot.js, then NEXUS_BD_BOOT() */ }
+
+// src/main.js, in animate() — one boolean per frame while the engine is off:
+if (window.NEXUS_BD_ENABLED) window.NEXUS_BD?.update?.(delta);
+```
+
+`boot.js` loads its own dependencies in order, reads the config, builds the bus, blackboard
+and registry, and logs the KB summary. Booting twice returns the running instance;
+`NEXUS_BD.teardown()` detaches every adapter and clears the global.
+
+Globals published by the engine: `NEXUS_BD_ENABLED` (the guard), `NEXUS_BD_BOOT` (the
+entry point), `NEXUS_BD` (the director), and one per module — `NEXUS_BD_EVENT_BUS`,
+`NEXUS_BD_BLACKBOARD`, `NEXUS_BD_REGISTRY`, `NEXUS_BD_VALIDATE`.
+
+**A note for whoever touches the parity harness next.** B3 hardened it twice, and both were
+real gaps rather than tuning: the engine's own files were being reported as stray references
+to the engine, and a reach made through the `NEXUS_BD` global rather than a path was
+invisible to it, so `main.js`'s boot call and update call were not being guard-checked at
+all. Both are fixed in `scripts/behavior-parity-baseline.mjs` and mirrored in
+`tests/behavior/parity.smoke.test.js`.
+
 ### Names that are already taken
 
 | Wanted | Taken by | Use instead |
@@ -190,9 +220,12 @@ Decided in B0; every later batch cites them.
 Spec §7 lists the only pre-existing files any batch may touch. Two additions are forced by
 §1 and are recorded here rather than taken silently:
 
-1. **`index.html`** — the spec's `src/main.js` import has no equivalent in a script-tag
-   app. Registering `src/behavior/boot.js` is a one-line `<script defer>` addition. It is
-   additive, but it is an existing-file touch the spec did not list.
+1. **`index.html`** — reserved, **not used**. B0 assumed a script-tag app needs a static
+   `<script>` registration. **B3 found it does not:** `main.js` injects `boot.js` itself,
+   and only when the flag is on, so with the engine off no engine file is fetched, parsed
+   or evaluated at all. That is a stronger claim than a tag that loads and does nothing, so
+   the seam stayed at one file. The entry remains for B7's settings markup; a batch that
+   uses it must say so here.
 2. **`src/PoseStudioPanel.js`** — the spec's optional "Publish to KB" action (B7); named
    here so the file is on the list before the batch needs it.
 
@@ -200,8 +233,8 @@ The allowlist, as enforced by `scripts/behavior-parity-baseline.mjs` and
 `tests/behavior/parity.smoke.test.js`:
 
 ```
-index.html                        script registration (B3)
-src/main.js                       guarded boot + update(dt) (B3)
+index.html                        reserved for the B7 settings toggle — unused as of B3
+src/main.js                       guarded boot + update(dt) (B3) ✅
 src/LLMManager.js                 llm:token emit (B4)
 js/speech-service.js              tts:start / tts:end (B4)
 src/tts/PiperWasmTTSProvider.js   tts:start / tts:end (B4)
@@ -247,7 +280,7 @@ Recorded when the batch that needs them lands.
 
 | Batch | To decide |
 |---|---|
-| B3 | Exact settings-panel control location for the "Behavior engine (beta)" toggle |
+| B7 | Exact settings-panel control location for the "Behavior engine (beta)" toggle that writes `localStorage.nexus_bd_enabled` |
 | B4 | Whether `js/speech-service.js` and `PiperWasmTTSProvider` both emit, or one wraps the other |
 | B5 | Where the MiniLM worker and its IndexedDB cache live given no bundler (vendored vs. CDN, matching the existing MediaPipe CDN pattern in `FaceTracker.js`) |
 | B2 → human | Read-through and sign-off of all 166 descriptions into `kb/descriptions.approved.json`, then turn on `--require-approval` in CI |

@@ -2,7 +2,38 @@
   "$comment": "Recorded by scripts/behavior-parity-baseline.mjs. Re-record deliberately with --write; the diff is the review surface for every new §7 touch.",
   "engineBootScripts": [],
   "strayReferences": [],
-  "allowlistReferences": [],
+  "allowlistReferences": [
+    {
+      "file": "src/main.js",
+      "line": 910,
+      "guarded": true
+    },
+    {
+      "file": "src/main.js",
+      "line": 911,
+      "guarded": true
+    },
+    {
+      "file": "src/main.js",
+      "line": 923,
+      "guarded": true
+    },
+    {
+      "file": "src/main.js",
+      "line": 925,
+      "guarded": true
+    },
+    {
+      "file": "src/main.js",
+      "line": 938,
+      "guarded": true
+    },
+    {
+      "file": "src/main.js",
+      "line": 939,
+      "guarded": true
+    }
+  ],
   "configKeys": [
     "adult",
     "antiRepeatWindow",

@@ -60,6 +60,14 @@ const SKIP_DIRS = new Set([
 
 const SCAN_EXTENSIONS = ['.js', '.mjs', '.html', '.json'];
 
+/** Reaching the engine through its globals counts too — see the harness for why. */
+const ENGINE_GLOBALS = [/\bNEXUS_BD_BOOT\b/, /\bNEXUS_BD\b(?!_)/];
+
+const reachesEngine = (line) =>
+    ENGINE_NAMESPACES.some((ns) => line.includes(ns)) || ENGINE_GLOBALS.some((re) => re.test(line));
+
+const isEngineFile = (rel) => ENGINE_NAMESPACES.some((ns) => ns.endsWith('/') && rel.startsWith(ns));
+
 /** Every scannable shipping file, as a repo-relative path. */
 function productFiles(dir = ROOT, out = []) {
     for (const entry of fs.readdirSync(dir)) {
@@ -139,7 +147,7 @@ describe('config/behavior.config.json is frozen and off', () => {
 describe('the engine is invisible to the shipping app', () => {
     test('no file outside the §7 allowlist names an engine namespace', () => {
         const stray = productFiles()
-            .filter((f) => !ALLOWLIST.includes(f))
+            .filter((f) => !ALLOWLIST.includes(f) && !isEngineFile(f))
             .map((f) => ({
                 file: f,
                 hits: ENGINE_NAMESPACES.filter((ns) => fs.readFileSync(path.join(ROOT, f), 'utf8').includes(ns)),
@@ -161,8 +169,8 @@ describe('the engine is invisible to the shipping app', () => {
             if (!fs.existsSync(abs)) continue;
             const lines = fs.readFileSync(abs, 'utf8').split('\n');
             lines.forEach((line, i) => {
-                if (!ENGINE_NAMESPACES.some((ns) => line.includes(ns))) return;
-                const near = lines.slice(Math.max(0, i - 3), i + 4).join('\n');
+                if (!reachesEngine(line)) return;
+                const near = lines.slice(Math.max(0, i - 6), i + 4).join('\n');
                 if (!/behaviorEngine|NEXUS_BD_ENABLED/.test(near)) unguarded.push(`${file}:${i + 1}`);
             });
         }
@@ -174,7 +182,9 @@ describe('the engine is invisible to the shipping app', () => {
         for (const ns of ENGINE_NAMESPACES) {
             if (ns.endsWith('/')) expect(ns.split('/').length).toBeGreaterThan(1);
         }
-        expect(fs.existsSync(path.join(ROOT, 'src', 'behavior'))).toBe(false);
+        // From B3 the engine exists, and it lives entirely under src/behavior/.
+        expect(fs.existsSync(path.join(ROOT, 'src', 'behavior'))).toBe(true);
+        expect(fs.readdirSync(path.join(ROOT, 'src'))).toContain('behavior');
     });
 });
 

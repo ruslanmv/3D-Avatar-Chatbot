@@ -59,6 +59,24 @@ export const ALLOWLIST = [
     'src/PoseStudioPanel.js',
 ];
 
+/**
+ * Globals through which a file can reach the engine without naming a path. Added in B3:
+ * `main.js` calls `NEXUS_BD_BOOT()` and `NEXUS_BD.update()`, and a reference that the
+ * harness cannot see is a reference nobody checks for a guard.
+ * `NEXUS_BD_ENABLED` is the guard itself, not a reach, so it is not on this list.
+ */
+export const ENGINE_GLOBALS = [/\bNEXUS_BD_BOOT\b/, /\bNEXUS_BD\b(?!_)/];
+
+/** Does this line reach into the engine, by path or by global? */
+function reachesEngine(line) {
+    return ENGINE_NAMESPACES.some((ns) => line.includes(ns)) || ENGINE_GLOBALS.some((re) => re.test(line));
+}
+
+/** Is this file part of the engine itself? Then it is not a stray reference to it. */
+function isEngineFile(rel) {
+    return ENGINE_NAMESPACES.some((ns) => ns.endsWith('/') && rel.startsWith(ns));
+}
+
 /** Directories that are ours (or not ours to police) and so are not scanned. */
 const SKIP_DIRS = new Set([
     '.git',
@@ -114,7 +132,8 @@ function engineBootScripts() {
 function strayReferences() {
     const stray = [];
     for (const file of productFiles()) {
-        if (ALLOWLIST.includes(file)) continue;
+        // The engine's own files name the engine constantly; that is not a stray.
+        if (ALLOWLIST.includes(file) || isEngineFile(file)) continue;
         const text = readFileSync(join(ROOT, file), 'utf8');
         const hits = ENGINE_NAMESPACES.filter((ns) => text.includes(ns));
         if (hits.length) stray.push({ file, namespaces: hits });
@@ -137,8 +156,9 @@ function allowlistReferences() {
         }
         const lines = text.split('\n');
         lines.forEach((line, i) => {
-            if (!ENGINE_NAMESPACES.some((ns) => line.includes(ns))) return;
-            const window = lines.slice(Math.max(0, i - 3), i + 4).join('\n');
+            if (!reachesEngine(line)) return;
+            // Six lines back: the guard often opens a block a few lines above the call.
+            const window = lines.slice(Math.max(0, i - 6), i + 4).join('\n');
             refs.push({
                 file,
                 line: i + 1,
