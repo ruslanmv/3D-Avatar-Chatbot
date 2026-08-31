@@ -876,6 +876,7 @@ Recorded when the batch that needs them lands.
 | B14 → B16 | How the server learns the active scene, so §6.12's "hard mutes: meditation scenes" has something to read. The blackboard carries `scene`; `ctx` does not, and adding the field is a shared-fixture change both repos have to make |
 | B14 → art | The six skybox and ambient files the manifests name. See `src/features/together/scenes/README.md` |
 | B15 | Where the insight endpoint URL comes from when no session URL is configured — today it is derived from `session.url`, so an install with the socket off has no vision either |
+| B17 → someone | The standalone `mcp-server/`. Specified in `mcp-server/README.md`, not written: it serves only an install with no HomePilot, and B17's acceptance is met by the Forge-registered server |
 | B13 | Where the music analyser is attached from in the running app — `analyserFor()` exists and is tested, but nothing calls it until a track has a source element |
 | B12 | Whether the VR screen should sit at a fixed distance or be placed by a controller ray; today it is 2.4 m in front of the camera on entry |
 | B16 | Whether a server `say` also lands in the chat transcript, or stays audio-only as it is in B9 |

@@ -533,7 +533,7 @@ session and reports the initiative count and whether any felt intrusive.
 
 ---
 
-#### B17 · MCP `avatar_control` tool server `[S][C]`
+#### B17 · MCP `avatar_control` tool server `[S][C]` — ✅ landed
 **Branch:** `feat/avatar-b17-mcp` · **Depends on:** B9 (live session routing)
 **New:** `backend/app/avatar_director/tool_servers/avatar_control/{server.py,manifest.json}`
 registered through the existing `backend/app/agentic/` Context Forge registry;
@@ -543,6 +543,18 @@ registered through the existing `backend/app/agentic/` Context Forge registry;
 avatar; safety mapping enforced (`play_animation` autonomous, capture/vision tools
 `confirm` + active client consent); no live session → clean error, never a silent drop;
 killing the tool server has zero effect on local behaviour.
+**As landed:** the server lives at `agentic/integrations/mcp/avatar_control/` rather than the
+path this plan named — that is where the other twenty-odd `hp-*` servers live and what the
+Forge registry points at, so the repository won over the plan as it did for `avatar_director`.
+The catalogue tools read the client's manifest at a configured path rather than copying it
+into HomePilot; two copies would give two answers to "what can she do", and with no manifest
+they refuse by name rather than returning nothing. "Killing the server changes nothing" is
+checked as an architectural claim — no avatar state, no timing, one method that reaches the
+session — because a test runner cannot kill a process and watch an avatar keep dancing.
+**The standalone `mcp-server/` is a specification, not code.** Its only use is an install
+with no HomePilot at all; every acceptance criterion is met by the registered path, and
+writing an unused optional layer to demonstrate that the layer is optional is the wrong
+trade. `mcp-server/README.md` gives the exact contract and the three rules it may not relax.
 
 ---
 
