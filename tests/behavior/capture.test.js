@@ -27,6 +27,18 @@ const TogetherPanel = require('../../src/features/together/ui/TogetherPanel.js')
 const ROOT = path.join(__dirname, '..', '..');
 const CONFIG = JSON.parse(fs.readFileSync(path.join(ROOT, 'config', 'behavior.config.json'), 'utf8'));
 
+/**
+ * Source with the comments taken out.
+ *
+ * Every source-grep test in this repo wants to know what the *code* does, and several have
+ * now failed because a file explained in prose the very thing it was being checked for not
+ * doing. Grepping a file that documents its own constraints is how a good assertion becomes
+ * a bad one, so the comments come off first.
+ */
+function codeOf(text) {
+    return text.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/.*$/gm, '$1');
+}
+
 /** A media track that records whether anybody stopped it. */
 class FakeTrack {
     constructor() {
@@ -141,7 +153,7 @@ describe('there is no way around the machine', () => {
                 if (fs.statSync(abs).isDirectory()) {
                     walk(abs);
                 } else if (entry.endsWith('.js')) {
-                    const text = fs.readFileSync(abs, 'utf8');
+                    const text = codeOf(fs.readFileSync(abs, 'utf8'));
                     if (/getDisplayMedia|getUserMedia/.test(text)) {
                         offenders.push(path.relative(ROOT, abs).split(path.sep).join('/'));
                     }
@@ -152,10 +164,18 @@ describe('there is no way around the machine', () => {
         expect(offenders).toEqual(['src/features/together/capture/ConsentMachine.js']);
     });
 
+    test('the comment strip the checks rely on actually strips', () => {
+        // A vacuity guard on the guard: if codeOf stopped working, every source assertion
+        // below would quietly start passing for the wrong reason.
+        expect(codeOf('/* getUserMedia */ const a = 1;')).not.toContain('getUserMedia');
+        expect(codeOf('// getDisplayMedia\nconst b = 2;')).not.toContain('getDisplayMedia');
+        expect(codeOf('const url = "https://x/y"; // note')).toContain('https://x/y');
+        expect(codeOf('navigator.mediaDevices.getUserMedia({})')).toContain('getUserMedia');
+    });
+
     test('the pipeline has no way to obtain a stream of its own', () => {
-        const source = fs.readFileSync(
-            path.join(ROOT, 'src', 'features', 'together', 'capture', 'CapturePipeline.js'),
-            'utf8'
+        const source = codeOf(
+            fs.readFileSync(path.join(ROOT, 'src', 'features', 'together', 'capture', 'CapturePipeline.js'), 'utf8')
         );
         const body = source.slice(source.indexOf('const CapturePipeline'));
         for (const forbidden of ['navigator', 'mediaDevices', 'getDisplayMedia', 'getUserMedia']) {

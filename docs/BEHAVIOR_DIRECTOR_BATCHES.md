@@ -489,7 +489,7 @@ run; it is now best-of-five against `budgets.frameMs / 4`.
 
 ---
 
-#### B15 · Vision & Screen Insight `[S][C]`
+#### B15 · Vision & Screen Insight `[S][C]` — ✅ landed
 **Branch:** `feat/avatar-b15-vision` · **Depends on:** B11, B8
 **New:** `backend/app/avatar_director/vision.py` (`POST /avatar/vision/insight`, pluggable
 model adapter through HomePilot's existing model runner),
@@ -498,6 +498,19 @@ model adapter through HomePilot's existing model runner),
 re-checks the 768 px cap and stores **nothing** (retention test inspects disk + logs);
 returned intents are whitelist-checked server-side *and* client-side; disabling capture
 mid-flight cancels the ask.
+**As landed:** "Touched: none" held on the client and was amended on the server — one
+optional `image_b64=` argument on `multimodal.analyze_image`, because that function resolves
+images *from disk*, which is exactly what retention 0 forbids. The alternative was a second
+Ollama call that would drift from the one owning model resolution. The retention test patches
+`open`, `Path.write_bytes`, `Path.write_text` and `os.replace` process-wide rather than
+checking this module alone, since a module's own cleanliness says nothing about what it calls.
+The size re-check reads the JPEG/PNG header instead of decoding, so a 20000×20000 declaration
+costs what a thumbnail costs. `vision_ask` over the socket answers only refusals: B10 shipped
+transcript mode, so there is no data channel for bytes, and naming the endpoint beats
+accepting an ask that can never be answered. Mid-flight consent loss drops the answer on
+arrival, unspoken. Fixed while here: the B11 bypass test grepped prose as well as code and
+caught this batch's own doc comment — it now strips comments first, with a vacuity guard on
+the strip.
 
 ---
 

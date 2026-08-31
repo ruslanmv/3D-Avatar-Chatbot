@@ -727,6 +727,57 @@ replaces the room the user is standing in, which is the opposite of what AR is f
 
 ---
 
+## 2n. Screen Insight (B15)
+
+`src/features/together/activities/screen-insight.js`, against HomePilot's
+`POST /avatar/vision/insight`. Zero pre-existing files touched on this side.
+
+### On demand by default
+
+§6.13 permits ≤1 fps while explicitly enabled, and this ships with that off. A companion who
+reads your screen once a second is a different product from one who looks when you ask, and
+the difference is a boolean nobody flipped. `startWatching()` exists and is tested; nothing
+calls it, and its interval is floored at 1 s by the pipeline regardless of what a caller asks
+for.
+
+### It cannot obtain a frame
+
+The same structural guarantee B11 built, and asserted the same way: no `navigator`, no
+`getDisplayMedia`, no `createElement`, no `toDataURL` in the file. A frame comes from a
+`CapturePipeline`, a pipeline comes from a grant, a grant comes from the consent machine. The
+512 px / q0.7 caps are B11's and are not restated here.
+
+### Consent can go while the model is thinking
+
+The case this batch exists to get right. A round trip takes seconds; the frame was captured
+legitimately and then the user stopped sharing. **An insight about a screen you have stopped
+sharing is not one you agreed to**, however far along it was — so the answer is dropped on
+arrival if the grant that produced the frame is no longer live, nothing is spoken, and
+nothing reaches the bus. Mutating that check to always-deliver fails the test by name.
+
+### Whitelist twice
+
+The server checks returned intents against §6.2 (B15 server side, using B10's tag splitter)
+and the client checks again on arrival. Belt and braces, as §6.9 intends. Delivered intents
+carry `source: 'vision'` — not `'user'`, so §6.5's NSFW gate holds against them like every
+other non-user source.
+
+### Consent, as the server sees it
+
+`user_event` `capture:start` / `capture:stop` on the session socket. No new message type:
+§6.14 needs the server to know the client's consent state before it will answer an ask, and
+"something happened on the client" is exactly what `user_event` already means.
+
+### A note on source-grep tests
+
+Four of these batches have now had a source assertion fail because the file explained in
+prose the very thing it was being checked for not doing. `tests/behavior/capture.test.js`
+now strips comments first (`codeOf`), and has a vacuity guard on the strip itself — if that
+helper stopped working, every source assertion using it would start passing for the wrong
+reason.
+
+---
+
 ## 3. Frozen names
 
 Decided in B0; every later batch cites them.
@@ -824,6 +875,7 @@ Recorded when the batch that needs them lands.
 | B14 → B19 | Where `TogetherPanel.mount()` is called from — three activities are registered now, so a real picker is worth drawing |
 | B14 → B16 | How the server learns the active scene, so §6.12's "hard mutes: meditation scenes" has something to read. The blackboard carries `scene`; `ctx` does not, and adding the field is a shared-fixture change both repos have to make |
 | B14 → art | The six skybox and ambient files the manifests name. See `src/features/together/scenes/README.md` |
+| B15 | Where the insight endpoint URL comes from when no session URL is configured — today it is derived from `session.url`, so an install with the socket off has no vision either |
 | B13 | Where the music analyser is attached from in the running app — `analyserFor()` exists and is tested, but nothing calls it until a track has a source element |
 | B12 | Whether the VR screen should sit at a fixed distance or be placed by a controller ray; today it is 2.4 m in front of the camera on entry |
 | B16 | Whether a server `say` also lands in the chat transcript, or stays audio-only as it is in B9 |

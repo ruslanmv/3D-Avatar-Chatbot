@@ -49,6 +49,7 @@
         'src/features/together/activities/watch.js',
         'src/features/together/activities/music.js',
         'src/features/together/activities/scene-journey.js',
+        'src/features/together/activities/screen-insight.js',
     ];
 
     const CONFIG_URL = 'config/behavior.config.json';
@@ -176,6 +177,7 @@
                 watch: null,
                 music: null,
                 journey: null,
+                insight: null,
                 consent: null,
                 consentIndicator: null,
                 togetherPanel: null,
@@ -343,6 +345,26 @@
                     global.NEXUS_BD_JOURNEY.loadManifests(director.journey).catch(() => {});
                     director.togetherPanel.register(director.journey);
                     director.adapters.push(director.journey);
+                }
+
+                // Screen Insight (B15). On demand by default: registered, never started,
+                // and its continuous mode is off until somebody deliberately turns it on.
+                if (global.NEXUS_BD_SCREEN_INSIGHT) {
+                    const url = config.session && config.session.url;
+                    director.insight = global.NEXUS_BD_SCREEN_INSIGHT.attach({
+                        bus,
+                        blackboard,
+                        consent: director.consent,
+                        config,
+                        session: director.session,
+                        endpoint: url
+                            ? global.NEXUS_BD_SCREEN_INSIGHT.httpEndpoint(
+                                  url.replace(/^ws/, 'http').replace(/\/avatar\/session$/, '/avatar/vision/insight')
+                              )
+                            : null,
+                    });
+                    director.togetherPanel.register(director.insight);
+                    director.adapters.push(director.insight);
                 }
             }
 
