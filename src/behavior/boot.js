@@ -24,6 +24,14 @@
         'src/behavior/selector/AntiRepeatMemory.js',
         'src/behavior/selector/UtilityRanker.js',
         'src/behavior/selector/SemanticSelector.js',
+        'src/behavior/mixer/PoseBuffer.js',
+        'src/behavior/mixer/BoneMasks.js',
+        'src/behavior/mixer/LayerMixer.js',
+        'src/behavior/mixer/ProceduralLayer.js',
+        'src/behavior/mixer/ClipLayer.js',
+        'src/behavior/mixer/PoseLayer.js',
+        'src/behavior/scheduler/TransitionRules.js',
+        'src/behavior/scheduler/Scheduler.js',
         'src/behavior/adapters/LLMTagAdapter.js',
         'src/behavior/adapters/SentimentFallback.js',
         'src/behavior/adapters/SpeechAdapter.js',
@@ -97,6 +105,25 @@
             const antiRepeat = new global.NEXUS_BD_ANTI_REPEAT(config.antiRepeatWindow || 5);
             const ranker = new global.NEXUS_BD_RANKER.Ranker({ weights: config.weights, antiRepeat });
 
+            // Tier 0 (B6). Two clip slots so a handover is a crossfade rather than a cut,
+            // and a head layer above them so lipsync and look-at survive a full-body clip.
+            const humanoid = options.humanoid || currentHumanoid();
+            const mixer = new global.NEXUS_BD_LAYER_MIXER.Mixer({
+                applyBone: makeBoneWriter(humanoid),
+            });
+            mixer.addLayer({ name: 'procedural', mask: 'fullBody', order: 0, weight: 1 });
+            mixer.addLayer({ name: 'clipA', mask: 'fullBody', order: 1, weight: 0 });
+            mixer.addLayer({ name: 'clipB', mask: 'fullBody', order: 2, weight: 0 });
+            mixer.addLayer({ name: 'head', mask: 'head', order: 3, weight: 1 });
+
+            const scheduler = new global.NEXUS_BD_SCHEDULER.ClipScheduler({
+                mixer,
+                bus,
+                antiRepeat,
+                // The single-owner rule: the engine asks the resolver, it never writes clips.
+                resolver: global.NEXUS_ANIMATION_RESOLVER || null,
+            });
+
             const director = {
                 version: 1,
                 config,
@@ -106,7 +133,8 @@
                 selector,
                 ranker,
                 antiRepeat,
-                scheduler: null, // B6 installs one; until then a pick is recorded, not played
+                mixer,
+                scheduler,
                 lastPick: null,
                 adapters: [],
 
@@ -122,14 +150,15 @@
 
                     blackboard.resetTimer('sinceIntent');
                     this.lastPick = { ...picked, intent, at: Date.now() };
-                    if (this.scheduler) this.scheduler.request(picked.clip, intent);
-                    else antiRepeat.remember(picked.clip.id);
+                    this.scheduler.request(picked.clip, intent);
                     return picked;
                 },
 
                 /** Tier 0. Called from the render loop; must stay cheap and never throw. */
                 update(dt) {
                     blackboard.tick(dt);
+                    scheduler.tick(dt);
+                    mixer.update();
                     // Two adapters are polled rather than event-driven; see their headers.
                     for (const adapter of this.adapters) {
                         if (adapter.tick) adapter.tick();
@@ -154,6 +183,8 @@
                     return {
                         registry: registry.countsByKind(),
                         tier1: { ready: selector.ready, vocabulary: selector.column.size },
+                        scheduler: scheduler.state,
+                        layers: mixer.activeLayers(),
                         lastPick: director.lastPick && {
                             id: director.lastPick.clip.id,
                             score: director.lastPick.score,
@@ -203,6 +234,31 @@
         });
 
         return booting;
+    }
+
+    /** The VRM humanoid, if an avatar is loaded. Absent is survivable: the mixer no-ops. */
+    function currentHumanoid() {
+        try {
+            return global.NEXUS_VRM?.humanoid || global.currentVRM?.humanoid || null;
+        } catch {
+            return null;
+        }
+    }
+
+    /**
+     * The one write per bone per frame (§6.6). Everything above this produces buffers; this
+     * is the only place a rotation reaches the rig.
+     */
+    function makeBoneWriter(humanoid) {
+        if (!humanoid) return null;
+        return (bone, q) => {
+            try {
+                const node = humanoid.getNormalizedBoneNode(bone);
+                if (node) node.quaternion.set(q[0], q[1], q[2], q[3]);
+            } catch {
+                /* a bone this avatar does not have */
+            }
+        };
     }
 
     function hasDebugParam() {

@@ -224,6 +224,51 @@ inferred.
 backgrounded or an utterance is cancelled mid-word, and a missed `tts:end` leaves her mouth
 moving after the audio stops. A poll can arrive a tick late; it cannot miss an edge.
 
+## 2f. The mixer (B5–B6)
+
+§6.6 calls pose-buffer blending "the one hard problem". The hard part is not the slerp: it
+is that three sources in this app write bones **directly** — `ProceduralAnimator` sets
+rotations, the clip loaders drive a `THREE.AnimationMixer`, and `PoseApplier` applies a
+saved pose. Whoever writes last wins, and that is the pop. Under the engine each layer
+writes into its own **pose buffer**; `LayerMixer` blends the buffers and performs exactly
+one write per bone per frame.
+
+The buffers are plain `[x, y, z, w]` arrays and the maths has no THREE dependency, matching
+the convention `tests/bvh-retarget.test.js` already sets: the maths is pinned in Jest, the
+playback is a browser concern.
+
+### Two things that had to be got right
+
+**The double cover.** `q` and `−q` are the same rotation. Interpolating between them without
+flipping the sign spins the bone almost all the way round — that is the pop, and it is three
+lines of slerp.
+
+**A crossfade needs two clip slots.** The first implementation faded a single clip layer
+from 0 to 1, which blends the incoming clip against the *base pose* rather than against the
+clip it replaces: the outgoing pose vanishes in one frame. The pop detector measured it as a
+**2.16 rad jump**. The scheduler now ping-pongs `clipA`/`clipB`: the outgoing clip holds full
+weight underneath for the whole fade while the incoming ramps up above it, and the per-bone
+slerp is then exactly the crossfade. Dropping both weights together would dip through the
+base pose in the middle, which is the other version of the same bug.
+
+### The single-owner rule
+
+`AnimationResolver` already owns the rig, clip-first with a procedural fallback. The engine
+does **not** become a second owner: every request the scheduler approves is handed to it
+(`source: 'behavior-director'`), so `NEXUS_MOTION`, Pose Studio and the Director all queue
+behind one door. A refused request never reaches it — tested.
+
+### Layer stack
+
+| Order | Layer | Mask | What it is |
+|---|---|---|---|
+| — | base pose | — | T-pose correction + Natural Pose Style, the floor under everything (§5.P4) |
+| 0 | `procedural` | fullBody | `ProceduralAnimator`, run unchanged and read back into a buffer |
+| 1–2 | `clipA` / `clipB` | fullBody | The two crossfade slots, fed by the existing clip loaders |
+| 3 | `head` | head | Look-at and lipsync — above everything, so a full-body dance never takes the head with it |
+
+A layer at weight 0 reveals the corrected base pose, never a raw T-pose.
+
 ### Names that are already taken
 
 | Wanted | Taken by | Use instead |
