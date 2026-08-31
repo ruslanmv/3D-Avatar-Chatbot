@@ -1,0 +1,38 @@
+{
+  "id": "forest",
+  "title": "Under the trees",
+  "skybox": "src/features/together/scenes/assets/forest_8k.ktx2",
+  "ambient": "src/features/together/scenes/assets/forest_loop.ogg",
+  "fallbackColor": "#1b2a1a",
+  "lighting": {
+    "exposure": 1.0,
+    "hemi": "#cfe3c0"
+  },
+  "anchors": [
+    {
+      "name": "canopy",
+      "dir": [0.15, 0.35, -1]
+    },
+    {
+      "name": "path",
+      "dir": [-0.1, -0.25, -1]
+    },
+    {
+      "name": "clearing",
+      "dir": [0.6, 0, -0.8]
+    }
+  ],
+  "avatarPlacement": {
+    "pos": [0.55, 0, -0.5],
+    "faceUser": true
+  },
+  "profileOverlay": {
+    "idleProfile": "calm-curious",
+    "commentaryOpenings": ["anchor:clearing", "anchor:path", "user:silent>10000"],
+    "initiative": {
+      "budgetPerSession": 5,
+      "minGapMs": 90000
+    }
+  },
+  "guidedScript": null
+}

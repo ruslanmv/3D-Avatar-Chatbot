@@ -48,6 +48,7 @@
         'src/features/together/ui/TogetherPanel.js',
         'src/features/together/activities/watch.js',
         'src/features/together/activities/music.js',
+        'src/features/together/activities/scene-journey.js',
     ];
 
     const CONFIG_URL = 'config/behavior.config.json';
@@ -174,6 +175,7 @@
                 media: null,
                 watch: null,
                 music: null,
+                journey: null,
                 consent: null,
                 consentIndicator: null,
                 togetherPanel: null,
@@ -214,6 +216,7 @@
                     // exactly the lag that makes an avatar's gaze feel wrong.
                     if (this.watch && this.watch.video) this.watch.update();
                     if (this.music && this.music.running) this.music.update();
+                    if (this.journey && this.journey.active) this.journey.update();
                     mixer.update();
                     // Two adapters are polled rather than event-driven; see their headers.
                     for (const adapter of this.adapters) {
@@ -251,6 +254,7 @@
                         session: director.session && director.session.stats,
                         voice: director.voice && director.voice.stats,
                         consent: director.consent && director.consent.snapshot(),
+                        journey: director.journey && director.journey.stats,
                         indicator: director.consentIndicator && director.consentIndicator.stats,
                     };
                 },
@@ -325,6 +329,20 @@
                     director.music = global.NEXUS_BD_MUSIC.attach({ bus, blackboard, scheduler, config });
                     director.togetherPanel.register(director.music);
                     director.adapters.push(director.music);
+                }
+
+                // Journeys (B14). Shares the watch activity's commentary gate rather than
+                // building a second one — a scene overlay changes which openings are in
+                // force, and two gates would disagree about that within a frame.
+                if (global.NEXUS_BD_JOURNEY) {
+                    director.journey = global.NEXUS_BD_JOURNEY.attach({
+                        bus,
+                        blackboard,
+                        gate: director.watch && director.watch.gate,
+                    });
+                    global.NEXUS_BD_JOURNEY.loadManifests(director.journey).catch(() => {});
+                    director.togetherPanel.register(director.journey);
+                    director.adapters.push(director.journey);
                 }
             }
 

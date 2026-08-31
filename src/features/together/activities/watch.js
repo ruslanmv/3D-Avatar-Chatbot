@@ -281,7 +281,10 @@ const WatchActivity = (() => {
             this.profile = profile;
             this.now = now;
 
-            this.lastOpeningAt = 0;
+            /** Null, not 0: an opening at timestamp zero is a real opening, and `0` is
+             *  falsy. The same sentinel mistake has now been made three times in this
+             *  engine, which is why it is written down here. */
+            this.lastOpeningAt = null;
             this.lastOpening = '';
             this.allowed = 0;
             this.refused = 0;
@@ -295,15 +298,46 @@ const WatchActivity = (() => {
             return openings.map((entry) => String(entry).split('>')[0]);
         }
 
+        /**
+         * Scene anchors (B14). §6.11 lets a manifest spell an opening `anchor:waves`, but
+         * the bus vocabulary is closed on purpose — an unknown event name is a typo, not a
+         * feature. So anchors travel as one `scene:anchor` event carrying a name, and this
+         * matches on the payload rather than on a per-anchor event that would have to be
+         * registered somewhere.
+         */
+        get anchorOpenings() {
+            return this.openingEvents
+                .filter((event) => event.startsWith('anchor:'))
+                .map((event) => event.slice('anchor:'.length));
+        }
+
+        /** The profile is re-read on every activation, so a scene overlay takes effect. */
+        setProfile(profile) {
+            this.detach();
+            this.profile = profile;
+            if (this.bus) this._listen();
+            return this;
+        }
+
         _listen() {
+            const anchors = new Set(this.anchorOpenings);
             for (const event of this.openingEvents) {
+                if (event.startsWith('anchor:')) continue; // handled below, as one event
+                this._unsubscribes.push(this.bus.on(event, () => this._open(event)));
+            }
+            if (anchors.size) {
                 this._unsubscribes.push(
-                    this.bus.on(event, () => {
-                        this.lastOpeningAt = this.now();
-                        this.lastOpening = event;
+                    this.bus.on('scene:anchor', (payload) => {
+                        const name = payload && payload.name;
+                        if (anchors.has(name)) this._open(`anchor:${name}`);
                     })
                 );
             }
+        }
+
+        _open(name) {
+            this.lastOpeningAt = this.now();
+            this.lastOpening = name;
         }
 
         /**
@@ -318,8 +352,17 @@ const WatchActivity = (() => {
                 this.refused++;
                 return { allowed: false, why: 'the user is speaking' };
             }
-            const since = at - this.lastOpeningAt;
-            if (this.lastOpeningAt && since <= OPENING_WINDOW_MS) {
+            // §6.12's budget, and B14's reason for it. A scene overlay that sets
+            // `budgetPerSession: 0` — meditation does — silences unprompted speech
+            // outright, including at an opening. A guided script is not unprompted and
+            // does not come through here.
+            const initiative = (this.profile && this.profile.initiative) || {};
+            if (initiative.budgetPerSession === 0) {
+                this.refused++;
+                return { allowed: false, why: 'this scene has no initiative budget' };
+            }
+            const since = this.lastOpeningAt === null ? Infinity : at - this.lastOpeningAt;
+            if (since <= OPENING_WINDOW_MS) {
                 this.allowed++;
                 return { allowed: true, why: `${this.lastOpening} ${Math.round(since)}ms ago` };
             }
@@ -340,6 +383,7 @@ const WatchActivity = (() => {
         get stats() {
             return {
                 openings: this.openingEvents,
+                anchors: this.anchorOpenings,
                 lastOpening: this.lastOpening,
                 allowed: this.allowed,
                 refused: this.refused,

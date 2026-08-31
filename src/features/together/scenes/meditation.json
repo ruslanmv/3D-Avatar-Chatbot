@@ -1,0 +1,61 @@
+{
+  "id": "meditation",
+  "title": "Ten quiet minutes",
+  "skybox": "src/features/together/scenes/assets/meditation_8k.ktx2",
+  "ambient": "src/features/together/scenes/assets/meditation_loop.ogg",
+  "fallbackColor": "#151228",
+  "lighting": {
+    "exposure": 0.85,
+    "hemi": "#b3a9d6"
+  },
+  "anchors": [
+    {
+      "name": "breath",
+      "dir": [0, -0.1, -1]
+    }
+  ],
+  "avatarPlacement": {
+    "pos": [0.45, 0, -0.6],
+    "faceUser": true
+  },
+  "profileOverlay": {
+    "idleProfile": "breath-sync",
+    "commentaryOpenings": [],
+    "initiative": {
+      "budgetPerSession": 0,
+      "minGapMs": 0
+    }
+  },
+  "guidedScript": [
+    {
+      "t": 0,
+      "say": "Let's settle. Find a position you can hold for a while.",
+      "intent": "breathe"
+    },
+    {
+      "t": 20000,
+      "say": "Breathing in… and out. Let it be a little slower than usual.",
+      "intent": "breathe"
+    },
+    {
+      "t": 60000,
+      "say": "If your attention wandered, that's the practice. Come back to the breath.",
+      "intent": "breathe"
+    },
+    {
+      "t": 180000,
+      "say": "Nothing to do for a few minutes. I'm here.",
+      "intent": "idle"
+    },
+    {
+      "t": 480000,
+      "say": "Start to widen your attention. Sounds in the room, the floor under you.",
+      "intent": "breathe"
+    },
+    {
+      "t": 540000,
+      "say": "Whenever you're ready, open your eyes.",
+      "intent": "happy"
+    }
+  ]
+}

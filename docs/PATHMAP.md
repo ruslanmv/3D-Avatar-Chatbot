@@ -658,6 +658,75 @@ ships with no sound. There is a test on the connection order.
 
 ---
 
+## 2m. Journeys (B14)
+
+`src/features/together/activities/scene-journey.js` plus three §6.11 manifests in
+`src/features/together/scenes/`. Zero pre-existing files touched.
+
+### Nothing is undone; everything is restored
+
+Ten enter/exit cycles is the acceptance, and the way to fail it is an `exit` that reverses
+each thing `enter` did — that drifts the moment somebody adds a field and forgets its undo,
+and it fails silently for nine cycles. So `enter` snapshots every value it is about to
+overwrite and `exit` writes the snapshot back verbatim, which is `ModeManager`'s approach one
+level down (its header already said B14 would stack this way).
+
+Two properties make the cycles safe, and both have their own test:
+
+* the base profile is **never mutated** — an overlay produces a *derived* object, fresh each
+  time, so overlays cannot compound;
+* `exit` restores the original profile **by reference**, and the test asserts `toBe`, not
+  `toEqual`. Restoring an equal copy passes a deep-equality check and is exactly how this bug
+  hides. Mutating the restore to `{ ...snapshot.mode }` fails four tests.
+
+There is also a guard test that `enter` really changes things, because a revert test passes
+trivially if nothing was applied.
+
+`initiative` merges field by field so a scene that only changes the budget does not drop
+`minGapMs`; everything else replaces, because a scene's `commentaryOpenings` is a complete
+statement — meditation's empty list means "nothing", not "the defaults". The derived profile
+keeps `allows()`, which §6.5 calls; a spread that lost it would open a gate silently, so
+there is a test for that too.
+
+### Anchors, and the closed vocabulary
+
+§6.11 spells an opening `anchor:waves`, but the bus vocabulary is closed on purpose — an
+unknown event name is a typo, not a feature. So anchors travel as one new typed event,
+`scene:anchor`, carrying a name, and `CommentaryGate` matches on the payload. The vocabulary
+stays checkable and the manifests keep the spelling the spec wrote. A test asserts no
+`anchor:*` event was added to `EventBus`.
+
+### Meditation
+
+The overlay sets `initiative.budgetPerSession: 0` and `commentaryOpenings: []`. The gate now
+reads the budget: zero means refuse, **including at an opening and including when attention
+is elsewhere** — that last case is the one that lets her speak mid-scene everywhere else, so
+without the budget rule the mute would have a hole in it. The negative test fires every
+opening the other scenes honour, ten times over, and requires every verdict to be `false`.
+
+The guided script is the exception, and deliberately not routed through Tier 1: a line the
+manifest promised at a fixed time must not be declinable by a cooldown or a gate. Its intents
+carry `source: 'scene'` — not `'user'`, so §6.5's NSFW gate still holds against them.
+
+### The art is not in the repository
+
+The 8K KTX2 skyboxes and ambient `.ogg` loops are licensed assets and an art-direction
+decision, not a code one. Every manifest carries a `fallbackColor`; a scene whose sky will not
+load enters anyway in that colour, and the missing-asset path is a first-class tested case
+rather than an error branch. `scenes/README.md` says where to drop the files.
+
+`enter()` does every behavioural change **synchronously** and only the sky asynchronously — an
+8K texture must not hold up the first line of a guided meditation or leave `scene:enter`
+unannounced for two seconds. The returned promise settles when the sky does, for a caller who
+wants to await the whole thing. An enter epoch (the same trick B11 uses for consent grants)
+means a texture that arrives after the user left is disposed rather than painted over the room
+they came back to.
+
+**AR keeps the profile and the anchors and skips the sky.** Painting a skybox over passthrough
+replaces the room the user is standing in, which is the opposite of what AR is for.
+
+---
+
 ## 3. Frozen names
 
 Decided in B0; every later batch cites them.
@@ -752,7 +821,9 @@ Recorded when the batch that needs them lands.
 | B5 | Whether the per-category `priority`/`cooldownMs` defaults and the lexicon's valence values survive contact with the ranker |
 | B6 | Whether `LayerMixer` drives `AnimationResolver` or registers as a source inside it |
 | B12 | Screen mesh placement API on `WebXRChatbot` / `gltf-viewer` |
-| B13 → B14 | Where `TogetherPanel.mount()` is called from — two activities are registered now, so a real picker is worth drawing |
+| B14 → B19 | Where `TogetherPanel.mount()` is called from — three activities are registered now, so a real picker is worth drawing |
+| B14 → B16 | How the server learns the active scene, so §6.12's "hard mutes: meditation scenes" has something to read. The blackboard carries `scene`; `ctx` does not, and adding the field is a shared-fixture change both repos have to make |
+| B14 → art | The six skybox and ambient files the manifests name. See `src/features/together/scenes/README.md` |
 | B13 | Where the music analyser is attached from in the running app — `analyserFor()` exists and is tested, but nothing calls it until a track has a source element |
 | B12 | Whether the VR screen should sit at a fixed distance or be placed by a controller ray; today it is 2.4 m in front of the camera on entry |
 | B16 | Whether a server `say` also lands in the chat transcript, or stays audio-only as it is in B9 |

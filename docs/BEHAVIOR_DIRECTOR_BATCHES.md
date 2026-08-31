@@ -464,7 +464,7 @@ its own explanatory comment.
 
 ---
 
-#### B14 · Journeys (scenes) `[C]`
+#### B14 · Journeys (scenes) `[C]` — ✅ landed
 **Branch:** `feat/bd-b14-journeys` · **Depends on:** B7 (profiles), B11
 **New:** `src/features/together/activities/scene-journey.js`,
 `scenes/{forest,ocean,meditation}.json`, KTX2 skyboxes + ambient loops.
@@ -473,6 +473,19 @@ its own explanatory comment.
 meditation sets initiative budget 0 — curiosity provably silent except script lines;
 romantic anchors ride the same single NSFW gate; AR variant skips the skybox, keeps
 profile + anchors.
+**As landed:** "reverts exactly" is asserted by object identity, not deep equality —
+restoring an equal copy is how the bug hides, and mutating the restore to a spread fails
+four tests. The skybox art is deliberately not in the repository: it is licensed and an
+art-direction decision, so every manifest carries a `fallbackColor` and the missing-asset
+path is a first-class tested case (`scenes/README.md` says where to drop the files). §6.11's
+`anchor:waves` opening syntax is honoured without opening the bus vocabulary — anchors are
+one typed `scene:anchor` event and the gate matches on the payload. `enter()` applies every
+behavioural change synchronously and only the sky asynchronously, with an epoch so a late 8K
+texture cannot land in a scene the user already left. Fixed while here: `CommentaryGate`'s
+`lastOpeningAt` used `0` as its sentinel, so an opening at timestamp zero was ignored — the
+third time that sentinel mistake has appeared in this engine, and now written down in the
+code. Also de-flaked B6's frame-budget test, which asserted a hand-picked 0.2 ms on a single
+run; it is now best-of-five against `budgets.frameMs / 4`.
 
 ---
 

@@ -33,6 +33,10 @@ const BehaviorEventBus = (() => {
         'media:beat',
         'scene:enter',
         'scene:exit',
+        // B14. One typed event carrying the anchor's name, rather than a family of
+        // `anchor:<name>` events: the vocabulary stays closed, so a typo is still caught,
+        // and §6.11's manifests can still spell an opening `anchor:waves`.
+        'scene:anchor',
         'vision:insight',
         'session:up',
         'session:down',
