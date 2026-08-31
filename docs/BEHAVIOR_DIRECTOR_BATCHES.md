@@ -397,7 +397,7 @@ panel — the only caller of `enableVoice()`, because a microphone is asked for 
 
 ---
 
-#### B11 · Consent state machine + capture pipeline + panel `[C]`
+#### B11 · Consent state machine + capture pipeline + panel `[C]` — ✅ landed
 **Branch:** `feat/bd-b11-consent-capture` · **Depends on:** B7
 **New:** `src/features/together/capture/CapturePipeline.js`,
 `src/features/together/ui/TogetherPanel.js`, consent state machine + persistent indicator
@@ -411,6 +411,14 @@ sampling within one frame; no frames retained client-side.
 **Forward-compat:** four later batches (B15, B23, B26, B27) are consumers of this one
 machine. Build it with a source enum (screen · camera · game) from the start so adding the
 camera and game consumers is registration, not surgery.
+**As landed:** the bypass test is a source walk over `src/behavior/` and `src/features/`,
+asserting `ConsentMachine.js` is the only file that names the two browser APIs — checked
+against the files rather than the exports, because a bypass gets written by someone who never
+read the machine. The stronger half is structural: `CapturePipeline` contains no `navigator`,
+takes a grant in its constructor, and refuses to exist without one. The indicator was split
+out of the panel: the panel is optional UI a batch mounts, and B11 ships it unmounted because
+a picker for zero activities is a mock-up. The panel is the half that exists — sharing
+controls, live state, and an `activities` registry B12–B14 register into.
 
 ---
 

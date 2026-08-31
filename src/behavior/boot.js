@@ -39,6 +39,12 @@
         'src/behavior/adapters/GazeAdapter.js',
         'src/behavior/adapters/SessionAdapter.js',
         'src/behavior/adapters/VoiceAdapter.js',
+        // Together Mode's gate (B11). Loaded with the engine rather than with the first
+        // activity: the consent machine has to exist before anything that wants a frame.
+        'src/features/together/capture/ConsentMachine.js',
+        'src/features/together/capture/CapturePipeline.js',
+        'src/features/together/ui/ConsentIndicator.js',
+        'src/features/together/ui/TogetherPanel.js',
     ];
 
     const CONFIG_URL = 'config/behavior.config.json';
@@ -162,6 +168,9 @@
                 adapters: [],
                 session: null,
                 voice: null,
+                consent: null,
+                consentIndicator: null,
+                togetherPanel: null,
 
                 /**
                  * Tier 1, on every intent: narrow by declared intent, rank, pick. The gates
@@ -230,6 +239,8 @@
                         adapters: this.adapters.map((a) => a.name),
                         session: director.session && director.session.stats,
                         voice: director.voice && director.voice.stats,
+                        consent: director.consent && director.consent.snapshot(),
+                        indicator: director.consentIndicator && director.consentIndicator.stats,
                     };
                 },
             };
@@ -263,6 +274,20 @@
                 } catch (error) {
                     console.warn(`[BD] ${label} adapter failed to attach — continuing without it`, error);
                 }
+            }
+
+            // Consent (B11). The indicator subscribes here and not in a consumer, because
+            // an indicator a consumer can forget to mount is an indicator that lies.
+            if (global.NEXUS_BD_CONSENT) {
+                director.consent = new global.NEXUS_BD_CONSENT.Machine({ config });
+                director.consentIndicator = global.NEXUS_BD_CONSENT_INDICATOR.attach({
+                    consent: director.consent,
+                });
+                director.togetherPanel = global.NEXUS_BD_TOGETHER_PANEL.attach({
+                    consent: director.consent,
+                    config,
+                });
+                director.adapters.push(director.consentIndicator, director.togetherPanel);
             }
 
             bus.on('intent', (intent) => director.handleIntent(intent));

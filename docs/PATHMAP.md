@@ -425,6 +425,81 @@ grabs the mic on load is one nobody should switch on.
 
 ---
 
+## 2j. Consent and capture (B11)
+
+Together Mode's gate, landed before any of its consumers. Four later batches want frames —
+screen insight (B15), the game co-host (B23), the camera activities (B26, B27) — and the
+ordering is the design: if any of them could reach `getDisplayMedia` directly there would be
+four consent stories to keep true instead of one.
+
+### Paths
+
+The spec's tree names `capture/CapturePipeline.js` and `ui/TogetherPanel.js`. Two files it
+does not name were needed to make the machine and the indicator separate things:
+
+```
+src/features/together/capture/ConsentMachine.js    the gate — spec calls it "consent state machine"
+src/features/together/capture/CapturePipeline.js   as specified
+src/features/together/ui/ConsentIndicator.js       the 2D + XR indicator, split out of the panel
+src/features/together/ui/TogetherPanel.js          as specified
+```
+
+The indicator is deliberately **not** part of the panel: the panel is optional UI a batch
+mounts, and an indicator that can be left unmounted is an indicator that lies. It subscribes
+to the machine in `boot.js`, alongside the machine itself.
+
+### There is no way around it
+
+`ConsentMachine` is the only file in `src/behavior/` or `src/features/` that names
+`getDisplayMedia` or `getUserMedia`, and `tests/behavior/capture.test.js` asserts that by
+walking both trees. `CapturePipeline` contains no `navigator` at all: it is constructed *from
+a grant*, and a grant only comes out of `request()`. So "capture requires consent" is the
+shape of the API rather than a check somebody has to remember to write — a future consumer
+has to ask for consent simply to obtain an object it can build a pipeline with.
+
+Nothing is persisted. A reload starts at `idle`, because consent to share a screen five
+minutes ago is not consent to share it now.
+
+### Revocation is an integer
+
+A grant reads `live` as `machine.epoch === myEpoch && state === 'active'`. Revoking bumps the
+epoch **first**, before anything that can yield, so every grant ever issued is dead in the
+same tick with no listener to fire and no promise to await. The sampler re-reads `grant.live`
+after each await, which is what makes "cancels in-flight sampling within one frame" true
+rather than approximately true: a sample mid-encode resolves to `null`, its bytes are never
+handed over, and the canvas is wiped on the way out.
+
+The epoch earns its keep in exactly one case the state flag cannot cover: requesting a new
+source while one is active revokes and re-activates, so `state` is `'active'` again and only
+the epoch tells the old grant apart from the new one. There is a test for that alone.
+
+The user can also stop sharing from the browser's own bar, which ends the track without
+telling the app. The machine listens for `ended` and revokes — an indicator still saying
+"Sharing your screen" after that would be worse than no indicator.
+
+### The caps, once
+
+§6.2's `maxFps: 1`, `frameLongEdgePx: 512`, `jpegQuality: 0.7` are **ceilings**, enforced in
+`CapturePipeline` and nowhere else. A caller asking for 30 fps gets 1; 1080 px gets 512; q1.0
+gets 0.7. They are clamped from below too, so a config typo of `0` or `-5` cannot become a
+divide-by-zero interval or an unbounded sampler. The server's own re-check (§6.13) is a second
+opinion, not the only one.
+
+### The indicator, in both places
+
+One `onChange` subscription drives both surfaces, so they cannot disagree — the failure where
+the badge clears and the headset keeps sharing is not reachable. The 2D half is a fixed badge
+with `role="status"` and `aria-live`, so it is announced and not only drawn. The XR half is a
+small plane parented to `NEXUS_VIEWER.camera` with `depthTest: false`: an immersive session
+renders its own framebuffer and never sees the DOM, and parenting to the camera means turning
+around cannot leave the marker behind. Either half failing is caught and logged; the other
+still renders.
+
+The wording comes from the grant — "Sharing your screen", "Camera on", "Sharing your game" —
+because a generic "sharing" badge is not an honest one.
+
+---
+
 ## 3. Frozen names
 
 Decided in B0; every later batch cites them.
@@ -519,6 +594,7 @@ Recorded when the batch that needs them lands.
 | B5 | Whether the per-category `priority`/`cooldownMs` defaults and the lexicon's valence values survive contact with the ranker |
 | B6 | Whether `LayerMixer` drives `AnimationResolver` or registers as a source inside it |
 | B12 | Screen mesh placement API on `WebXRChatbot` / `gltf-viewer` |
+| B12 | Where `TogetherPanel.mount()` is called from — B11 ships the panel unmounted, since a picker for zero activities is a mock-up rather than a batch |
 | B16 | Whether a server `say` also lands in the chat transcript, or stays audio-only as it is in B9 |
 | B10 → deployment | Whether HomePilot ships a WebRTC media terminus at all; without `aiortc` the server serves transcript mode and refuses `webrtc` offers by name |
 | B10 | Who calls `VoiceAdapter.transcript()` in the running app — today the settings button starts listening and SpeechService's own `onresult` owns the text; wiring the two is a one-line hook when the chat path is next opened |
