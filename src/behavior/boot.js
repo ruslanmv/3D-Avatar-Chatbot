@@ -21,6 +21,9 @@
         'src/behavior/ContextBlackboard.js',
         'src/behavior/registry/validate.js',
         'src/behavior/registry/AnimationRegistry.js',
+        'src/behavior/selector/AntiRepeatMemory.js',
+        'src/behavior/selector/UtilityRanker.js',
+        'src/behavior/selector/SemanticSelector.js',
         'src/behavior/adapters/LLMTagAdapter.js',
         'src/behavior/adapters/SentimentFallback.js',
         'src/behavior/adapters/SpeechAdapter.js',
@@ -85,13 +88,44 @@
             const registry = new Registry();
             await registry.load(options.manifestUrl || MANIFEST_URL);
 
+            // Tier 1 (B5). The vocabulary is small; the vectors are rebuilt from the
+            // manifest already in memory rather than downloading 2.3 MB of mostly zeros.
+            const selector = new global.NEXUS_BD_SELECTOR.Selector();
+            await selector.loadVocabulary();
+            selector.index(registry.records);
+
+            const antiRepeat = new global.NEXUS_BD_ANTI_REPEAT(config.antiRepeatWindow || 5);
+            const ranker = new global.NEXUS_BD_RANKER.Ranker({ weights: config.weights, antiRepeat });
+
             const director = {
                 version: 1,
                 config,
                 bus,
                 blackboard,
                 registry,
+                selector,
+                ranker,
+                antiRepeat,
+                scheduler: null, // B6 installs one; until then a pick is recorded, not played
+                lastPick: null,
                 adapters: [],
+
+                /**
+                 * Tier 1, on every intent: narrow by declared intent, rank, pick. The gates
+                 * are the ranker's alone (§6.5) — nothing here filters candidates first.
+                 */
+                handleIntent(intent) {
+                    if (!intent || !intent.name) return null;
+                    const candidates = selector.topK(intent, registry, config.topK || 3);
+                    const picked = ranker.best(candidates, intent, blackboard);
+                    if (!picked) return null;
+
+                    blackboard.resetTimer('sinceIntent');
+                    this.lastPick = { ...picked, intent, at: Date.now() };
+                    if (this.scheduler) this.scheduler.request(picked.clip, intent);
+                    else antiRepeat.remember(picked.clip.id);
+                    return picked;
+                },
 
                 /** Tier 0. Called from the render loop; must stay cheap and never throw. */
                 update(dt) {
@@ -119,6 +153,11 @@
                 stats() {
                     return {
                         registry: registry.countsByKind(),
+                        tier1: { ready: selector.ready, vocabulary: selector.column.size },
+                        lastPick: director.lastPick && {
+                            id: director.lastPick.clip.id,
+                            score: director.lastPick.score,
+                        },
                         blackboard: blackboard.snapshot(),
                         bus: bus.stats(),
                         adapters: this.adapters.map((a) => a.name),
@@ -144,6 +183,8 @@
                     console.warn(`[BD] ${label} adapter failed to attach — continuing without it`, error);
                 }
             }
+
+            bus.on('intent', (intent) => director.handleIntent(intent));
 
             global.NEXUS_BD = director;
 
