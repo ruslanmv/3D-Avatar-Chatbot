@@ -586,6 +586,78 @@ work.
 
 ---
 
+## 2l. Listen Together (B13)
+
+`src/features/together/activities/music.js`. Zero pre-existing files touched.
+
+### She dances to what the KB chooses
+
+There is no clip id in the file, and a test proves it by loading every id from the manifest
+and checking none of them appears in the source. A second test asserts the file contains no
+`.request(` at all: the only thing it may do to the scheduler is **stop** it.
+
+What it does instead is emit an `intent` named `dance` and stand back. Tier 1 does the rest —
+the selector narrows to the 31 clips that declare that intent, and the ranker picks among
+them partly on `1 - |clip.energy - blackboard.energy|`. That is the whole mechanism behind
+"grooves in time": the same energy this file pushes onto the blackboard is what makes a loud
+track pull an energetic dance and a quiet one pull a sway. No special code, and nothing that
+goes stale when the KB is re-harvested. A live test runs the real manifest, selector and
+ranker and asserts a clip comes back declaring `dance`.
+
+The ask is emitted **on a beat**, not between beats, so the clip starts with the music rather
+than a random distance into a bar. There is a test that the intent's timestamp is one of the
+beat timestamps.
+
+### Beat detection
+
+Spectral flux in the bass band against its own rolling history — the standard approach,
+standard because a fixed threshold cannot work across tracks. Bins 0–4 at a 1024-point FFT is
+roughly everything under 200 Hz, which is where kick drums live; reading the whole spectrum
+makes vocals and cymbals into beats. The threshold is `mean × 1.35 + √variance` over about a
+second of history, with a 250 ms floor between beats (240 BPM — faster is one kick ringing).
+
+A streak is *consistency*, not repetition: consecutive intervals have to agree within 28%
+before they count, so four bangs at random distances is a noisy room rather than a tempo, and
+does not start her dancing. BPM is the median of recent intervals, because one dropped beat
+doubles an interval and would drag a mean halfway to nonsense.
+
+### Energy climbs here and decays there
+
+`EnergyDrift` pushes and never pulls. It raises `blackboard.energy` toward the smoothed
+loudness — fast up (0.35), slow down (0.08), so a chorus lands and a last note does not snap —
+and it explicitly refuses to lower it. Decay is the blackboard's own `MOOD_DECAY_TAU`, already
+running every frame. Two systems easing the same number gives a rate that is neither, and
+nobody can say which one is wrong; the test for this is behavioural rather than a source grep,
+because the earlier grep version matched this paragraph.
+
+### Silence never leaves a dance stuck on
+
+Two independent mechanisms, because it is the failure that would be most obvious:
+
+1. **A watchdog**, and it is the fast one. Four beat periods without a beat (never less than
+   1.6 s — at 60 BPM a shorter grace would end the dance mid-bar) and the scheduler is
+   stopped. It does not wait for anything to decay, and the test asserts the dance ends while
+   `blackboard.energy` is still well above rest.
+2. **Energy decay**, which handles the quieter half of the same bug: a stale high energy would
+   keep pulling energetic clips long after the music stopped.
+
+`media:paused`, `stop()` and the watchdog all go through one `_endDance`, so there is one way
+a dance ends rather than three, and it goes through the scheduler because `AnimationResolver`
+owns the rig (§6.6).
+
+There are no timers in the file — `setInterval`, `setTimeout` and `requestAnimationFrame` are
+all asserted absent. Everything runs from the render loop, so a backgrounded tab stops
+analysing rather than dancing to a track nobody can hear.
+
+### The analyser
+
+`analyserFor(element)` builds one over WebAudio and connects it onward to `destination`. That
+last connection is not optional: `createMediaElementSource` *re-routes* the element's audio
+into the graph, so omitting it silences the track completely — the classic way a visualiser
+ships with no sound. There is a test on the connection order.
+
+---
+
 ## 3. Frozen names
 
 Decided in B0; every later batch cites them.
@@ -680,7 +752,8 @@ Recorded when the batch that needs them lands.
 | B5 | Whether the per-category `priority`/`cooldownMs` defaults and the lexicon's valence values survive contact with the ranker |
 | B6 | Whether `LayerMixer` drives `AnimationResolver` or registers as a source inside it |
 | B12 | Screen mesh placement API on `WebXRChatbot` / `gltf-viewer` |
-| B12 → B13 | Where `TogetherPanel.mount()` is called from — the panel now has one registered activity, so a real picker becomes worth drawing |
+| B13 → B14 | Where `TogetherPanel.mount()` is called from — two activities are registered now, so a real picker is worth drawing |
+| B13 | Where the music analyser is attached from in the running app — `analyserFor()` exists and is tested, but nothing calls it until a track has a source element |
 | B12 | Whether the VR screen should sit at a fixed distance or be placed by a controller ray; today it is 2.4 m in front of the camera on entry |
 | B16 | Whether a server `say` also lands in the chat transcript, or stays audio-only as it is in B9 |
 | B10 → deployment | Whether HomePilot ships a WebRTC media terminus at all; without `aiortc` the server serves transcript mode and refuses `webrtc` offers by name |

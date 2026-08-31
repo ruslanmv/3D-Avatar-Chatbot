@@ -445,13 +445,22 @@ cut of a session (now `null`), and joint attention ran after the blend rather th
 
 ---
 
-#### B13 · Music Together `[C]`
+#### B13 · Music Together `[C]` — ✅ landed
 **Branch:** `feat/bd-b13-music` · **Depends on:** B12 (MediaAdapter)
 **New:** `src/features/together/activities/music.js`.
 **Touched:** none. **AC:** `AnalyserNode` → `media:beat` on a click-track fixture within
 one beat period; blackboard energy climbs with track energy and decays after; a beat
 streak fires dance clips from the KB (not a hardcoded name); silence → energy returns to
 baseline without a stuck dance.
+**As landed:** "not a hardcoded name" is checked by loading every id from the manifest and
+asserting none appears in the source, plus a second test that the file contains no
+`.request(` — stopping the scheduler is the only thing it may do to it. The click track is
+synthetic arithmetic on an injected clock, so "within one beat period" is a number rather
+than an impression. Energy is pushed and never pulled: decay stays the blackboard's, because
+two systems easing one number ease it at neither rate. The stuck-dance watchdog is separate
+from and faster than that decay, and the test asserts the dance ends while energy is still
+high. The `decay`-absent source grep was replaced with a behavioural test after it matched
+its own explanatory comment.
 
 ---
 

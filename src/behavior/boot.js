@@ -47,6 +47,7 @@
         'src/features/together/ui/ConsentIndicator.js',
         'src/features/together/ui/TogetherPanel.js',
         'src/features/together/activities/watch.js',
+        'src/features/together/activities/music.js',
     ];
 
     const CONFIG_URL = 'config/behavior.config.json';
@@ -172,6 +173,7 @@
                 voice: null,
                 media: null,
                 watch: null,
+                music: null,
                 consent: null,
                 consentIndicator: null,
                 togetherPanel: null,
@@ -211,6 +213,7 @@
                     // blend. After it, joint attention would be one frame stale — which is
                     // exactly the lag that makes an avatar's gaze feel wrong.
                     if (this.watch && this.watch.video) this.watch.update();
+                    if (this.music && this.music.running) this.music.update();
                     mixer.update();
                     // Two adapters are polled rather than event-driven; see their headers.
                     for (const adapter of this.adapters) {
@@ -314,6 +317,14 @@
                     });
                     director.togetherPanel.register(director.watch);
                     director.adapters.push(director.watch);
+                }
+
+                // Listen Together (B13). Also registered rather than started; its analyser
+                // arrives with a track, not with the engine.
+                if (global.NEXUS_BD_MUSIC) {
+                    director.music = global.NEXUS_BD_MUSIC.attach({ bus, blackboard, scheduler, config });
+                    director.togetherPanel.register(director.music);
+                    director.adapters.push(director.music);
                 }
             }
 
