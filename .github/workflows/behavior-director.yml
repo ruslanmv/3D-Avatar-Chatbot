@@ -54,6 +54,15 @@ jobs:
       - name: Behavior tests
         run: npx jest tests/behavior --ci
 
+      # B19's two automated audits. The third is docs/QA_CHECKLIST.md, which is a person
+      # on a headset and cannot run here — which is exactly why the two that can, do,
+      # on every push rather than once before a release.
+      - name: Privacy audit
+        run: node scripts/audit-privacy.mjs --check
+
+      - name: Budgets audit
+        run: node scripts/audit-budgets.mjs --check
+
       # docs/PATHMAP.md is how later batches stay consistent with this one; a PR that
       # touches the engine namespace without recording its decisions there is a PR that
       # took a decision the next session cannot find.

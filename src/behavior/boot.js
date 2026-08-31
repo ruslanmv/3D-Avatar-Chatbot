@@ -50,6 +50,8 @@
         'src/features/together/activities/music.js',
         'src/features/together/activities/scene-journey.js',
         'src/features/together/activities/screen-insight.js',
+        'src/behavior/debug/PickLog.js',
+        'src/behavior/debug/DebugHUD.js',
     ];
 
     const CONFIG_URL = 'config/behavior.config.json';
@@ -170,6 +172,8 @@
                 mixer,
                 scheduler,
                 lastPick: null,
+                pickLog: null,
+                hud: null,
                 adapters: [],
                 session: null,
                 voice: null,
@@ -190,6 +194,9 @@
                     if (!intent || !intent.name) return null;
                     const candidates = selector.topK(intent, registry, config.topK || 3);
                     const picked = ranker.best(candidates, intent, blackboard);
+                    // Recorded before the early return, because "she did nothing" is the
+                    // hardest behaviour to debug and the one most worth a reason (B19).
+                    if (this.pickLog) this.pickLog.record(intent, picked, blackboard.snapshot());
                     if (!picked) return null;
 
                     blackboard.resetTimer('sinceIntent');
@@ -258,6 +265,7 @@
                         consent: director.consent && director.consent.snapshot(),
                         journey: director.journey && director.journey.stats,
                         indicator: director.consentIndicator && director.consentIndicator.stats,
+                        pickLog: director.pickLog && director.pickLog.stats,
                     };
                 },
             };
@@ -366,6 +374,17 @@
                     director.togetherPanel.register(director.insight);
                     director.adapters.push(director.insight);
                 }
+            }
+
+            // QA instrumentation (B19). The log costs one boolean per pick while off; the
+            // HUD is not attached at all unless ?behaviorDebug=1 or behaviorEngine.debug.
+            if (global.NEXUS_BD_PICK_LOG) {
+                director.pickLog = global.NEXUS_BD_PICK_LOG.attach({ enabled: debug });
+            }
+            if (debug && global.NEXUS_BD_HUD && global.NEXUS_BD_HUD.requested(config)) {
+                director.hud = global.NEXUS_BD_HUD.attach({ director });
+                director.hud.mount();
+                director.adapters.push(director.hud);
             }
 
             bus.on('intent', (intent) => director.handleIntent(intent));

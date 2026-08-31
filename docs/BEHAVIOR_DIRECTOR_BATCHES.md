@@ -573,7 +573,7 @@ additive fix and its own batch.
 
 ---
 
-#### B19 · QA, budgets, privacy, rollout `[C][S]`
+#### B19 · QA, budgets, privacy, rollout `[C][S]` — ✅ apparatus landed; visual audit open
 **Branch:** `feat/bd-b19-rollout` · **Depends on:** all
 **New:** debug HUD (`?behaviorDebug=1`: layer weights, last 5 picks with score breakdown,
 session state), pick-logging ring buffer, visual QA checklist, budgets audit, privacy audit.
@@ -583,6 +583,16 @@ green (<2 ms/frame, <50 ms Tier-1, ≤1080p textures, <3 s scene loads); privacy
 its own PR — the client `behaviorEngine.enabled` default flips. HomePilot `avatar.enabled`
 stays opt-in, documentation-first.
 **Hard rule:** never flip a default in the same PR that introduces a feature.
+**As landed:** two of the three audits are automated and green in CI on every push —
+budgets (0.19 ms/frame, 0.23 ms/pick, both required inside 25% of budget because Node is not
+a Quest) and privacy (six claims, all source properties, therefore signable). The third is
+`docs/QA_CHECKLIST.md`: forty rows, eight sections, run by a person on a headset across the
+main avatar set. It is **unsigned**, and the checklist says in as many words that an unsigned
+checklist is not a green audit. The budgets audit is explicit about the four claims it cannot
+make and defers them to that document by name.
+**The default did not flip and a test asserts it.** B19 built the apparatus; the flip is a
+one-line diff in its own PR with the signed checklist and two green audit runs attached —
+so that reverting it at midnight is also one line.
 **Scope note:** B19 flips the *core* engine only. Waves 6–9 (addendum v1.2) ship after it,
 each activity behind its own flag and dynamic import, so none of them needs a second
 big-bang flip — and the adult tier never gets one at all: it stays behind its triple gate

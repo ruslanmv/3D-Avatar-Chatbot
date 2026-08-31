@@ -778,6 +778,68 @@ reason.
 
 ---
 
+## 2o. QA and the three audits (B19)
+
+```
+src/behavior/debug/PickLog.js        the last sixteen decisions, and why
+src/behavior/debug/DebugHUD.js       ?behaviorDebug=1
+scripts/audit-budgets.mjs            §9's numbers, measured
+scripts/audit-privacy.mjs            six promises, checked against the source
+docs/QA_CHECKLIST.md                 the third audit — a person, a headset, forty minutes
+```
+
+### Two switches, not one
+
+The HUD needs the engine flag *and* `?behaviorDebug=1` (or `behaviorEngine.debug`). Turning
+the engine on does not produce a debug overlay, and there is a checklist row for that
+specifically. The pick log costs one boolean per pick while off.
+
+Both are asserted to be read-only: `PickLog.js` names no scheduler, mixer, bus or `emit(`;
+`DebugHUD.js` names none of those plus no `handleIntent` or `setMood`. A debug facility that
+could alter behaviour makes every observation it produces suspect — you would never know
+whether the odd gesture was the bug or the logging.
+
+The log records **refusals** as well as picks. "She did nothing" is the hardest behaviour to
+debug and the one most worth a reason attached, so `handleIntent` records before its early
+return.
+
+### What each audit can and cannot say
+
+**Budgets — measured, not claimed.** The frame cost and Tier-1 latency are pure CPU over the
+shipped KB, so Node runs the same code the browser does and the numbers are real: currently
+**0.19 ms/frame** against a 2 ms budget and **0.23 ms/pick** against 50 ms, best-of-five.
+
+They are **not Quest measurements**. The audit therefore demands *headroom* rather than
+compliance — a measurement must come in under 25% of its budget, because the device is
+slower and the margin is the entire point of measuring here. An engine needing 1.9 ms on a
+desktop core has already failed. Everything needing the device — texture upload, a real
+scene load, sustained framerate with an avatar — is deferred by name to the checklist.
+
+The texture check is **vacuously true and says so**: the scene art is not in the repository
+(B14), so there is nothing to be over budget.
+
+**Privacy — signed.** Every one of the six claims is a property of the source rather than of
+a device, so a green run here is the whole client-side privacy story, not a proxy for it:
+one door to a camera, no store, nothing persisted, an indicator in both surfaces from one
+subscription, every documented refusal present, every master flag false. Comments are
+stripped before reading source — four assertions in this project have failed because a file
+explained the thing it was checked for not doing.
+
+**Visual — a person.** `docs/QA_CHECKLIST.md`, forty rows across eight sections, run on each
+avatar in the main set. It names the acceptance criteria the batches were bought on, in the
+words a person can check: *no pop at the transition*, *lipsync keeps running*, *she says
+nothing*, *nothing is left running*, *she says only the script lines*, *her answer never
+arrives*. Section F (consent) may not ship amber — every other section is a judgement about
+quality; F is a promise about the user's camera.
+
+### The flip is not in this batch
+
+`behaviorEngine.enabled` is still `false`, and a test asserts it. B19 builds the audits; the
+flip is a one-line diff in its own PR with the signed checklist attached — so that if it has
+to be reverted at midnight, reverting it is also one line.
+
+---
+
 ## 3. Frozen names
 
 Decided in B0; every later batch cites them.
