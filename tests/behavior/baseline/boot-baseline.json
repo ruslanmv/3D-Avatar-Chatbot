@@ -20,22 +20,32 @@
     },
     {
       "file": "src/main.js",
+      "line": 921,
+      "guarded": true
+    },
+    {
+      "file": "src/main.js",
       "line": 923,
       "guarded": true
     },
     {
       "file": "src/main.js",
-      "line": 925,
+      "line": 927,
       "guarded": true
     },
     {
       "file": "src/main.js",
-      "line": 938,
+      "line": 929,
       "guarded": true
     },
     {
       "file": "src/main.js",
-      "line": 939,
+      "line": 942,
+      "guarded": true
+    },
+    {
+      "file": "src/main.js",
+      "line": 943,
       "guarded": true
     },
     {

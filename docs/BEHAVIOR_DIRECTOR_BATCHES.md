@@ -256,7 +256,7 @@ any batch that regenerates a shared artefact needs the same care.
 
 ---
 
-#### B3 · Runtime spine `[C]`
+#### B3 · Runtime spine `[C]` — ✅ landed
 **Branch:** `feat/bd-b3-spine` · **Depends on:** B1 (manifest shape), B0
 **New:** `src/behavior/EventBus.js`, `ContextBlackboard.js`, `registry/AnimationRegistry.js`,
 `registry/validate.js`, `boot.js`.
@@ -267,7 +267,7 @@ flag off → no `src/behavior/**` code executes (coverage-asserted); parity smok
 
 ---
 
-#### B4 · Sense adapters `[C]`
+#### B4 · Sense adapters `[C]` — ✅ landed
 **Branch:** `feat/bd-b4-sense` · **Depends on:** B3
 **New:** `src/behavior/adapters/{LLMTagAdapter,SpeechAdapter,IdleAdapter,SentimentFallback,GazeAdapter}.js`.
 **Touched (§7):** `src/LLMManager.js` (`this.bus?.emit('llm:token')`),
@@ -284,7 +284,7 @@ tags drop silently; the existing motion-block tests stay green.
 
 ---
 
-#### B5 · Tier-1 selector `[C]`
+#### B5 · Tier-1 selector `[C]` — ✅ landed
 **Branch:** `feat/bd-b5-select` · **Depends on:** B2, B3
 **New:** `src/behavior/selector/{SemanticSelector,UtilityRanker,AntiRepeatMemory,embedding.worker}.js`,
 plus a keyword-cosine fallback for devices that cannot host the worker.
@@ -302,7 +302,7 @@ every gate.
 
 ---
 
-#### B6 · Executor & mixer `[C]` — **the hard batch**
+#### B6 · Executor & mixer `[C]` — **the hard batch** — ✅ landed
 **Branch:** `feat/bd-b6-mixer` · **Depends on:** B5
 **New:** `src/behavior/mixer/{BoneMasks,ClipLayer,ProceduralLayer,PoseLayer,LayerMixer}.js`,
 `src/behavior/scheduler/{Scheduler,TransitionRules}.js`.
@@ -321,7 +321,7 @@ B6b scheduler/transitions. Do not merge B6a alone with the flag on.
 
 ---
 
-#### B7 · Modes + Pose Studio publish `[C]`
+#### B7 · Modes + Pose Studio publish `[C]` — ✅ landed
 **Branch:** `feat/bd-b7-modes` · **Depends on:** B6
 **New:** `src/behavior/modes/{ModeManager,companion.profile,together.profile,showcase.profile}.js`
 (+ optional `play.profile.js`), `src/features/together/TogetherMode.js` (lifecycle shell only).
@@ -338,7 +338,7 @@ ranker on next load; companion regression suite green both flag states.
 
 ---
 
-#### B8 · Session gateway + mock + contract tests `[S]`
+#### B8 · Session gateway + mock + contract tests `[S]` — ✅ landed
 **Branch:** `feat/avatar-b8-session` · **Depends on:** B0
 **New:** `backend/app/avatar_director/{__init__,session,safety}.py`, `tests/avatar/test_protocol.py`,
 a mock server driven by the B0 fixtures.
@@ -354,7 +354,7 @@ so it needs a test that an unknown type is ignored *silently*, not just tolerate
 
 ---
 
-#### B9 · Client SessionAdapter `[C]`
+#### B9 · Client SessionAdapter `[C]` — ✅ landed
 **Branch:** `feat/bd-b9-session-client` · **Depends on:** B3 (bus), B8 (fixtures)
 **New:** `src/behavior/adapters/SessionAdapter.js`.
 **Touched (§7):** settings panel — one "Connect HomePilot session" toggle bound to
@@ -364,6 +364,11 @@ Talk behaviour fire as usual.
 **AC:** contract tests pass against both the mock and the real B8 server; network pulled
 mid-session → local Tier-1 keeps working, reconnect backoff caps at 30 s; a server intent
 naming a non-whitelisted emote is dropped client-side.
+**As landed:** the §7 touch turned out to be two, not one — the settings switch as planned,
+plus a third guarded line in `src/main.js` publishing `NEXUS_BD_SAY`, because `speakText` is
+module-local and `say` had no other route to the app's own speech path. Two disconnect shapes
+are handled rather than one: a clean close, and a socket stranded by a pulled cable, which
+never fires `onclose` and is caught instead by the server's heartbeat going quiet.
 
 ---
 

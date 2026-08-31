@@ -918,6 +918,10 @@ function setupThreeJS() {
             return false;
         }
     })();
+    /* NEXUS_BD — the engine's only route into speech (batch B9). A server-started line goes
+       through the same speakText a chat reply does; lipsync does not care who began it. */
+    if (window.NEXUS_BD_ENABLED) window.NEXUS_BD_SAY = (text) => speakText(text);
+
     if (window.NEXUS_BD_ENABLED) {
         const bdScript = document.createElement('script');
         bdScript.src = 'src/behavior/boot.js';

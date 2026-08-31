@@ -307,6 +307,76 @@ the toggle and nothing else.
 
 ---
 
+## 2h. The session channel (B9)
+
+`src/behavior/adapters/SessionAdapter.js` is the client half of the protocol B8 mounts at
+`/avatar/session` in HomePilot. Both halves read the same fixtures, `tests/fixtures/protocol/`,
+which are byte-identical in the two repositories — change one and the other repo's contract
+test goes red.
+
+### A server intent has no privileges
+
+The rule the adapter exists to enforce. An `intent` off the socket goes through the §6.2
+whitelist and onto the same bus as a locally parsed `[[emote:…]]` tag, so §6.5's gates apply
+to it unchanged. Nothing on this path can name a clip, and `source` is preserved rather than
+rewritten, which is what makes the ranker's "she never initiates spicy" line (`source !==
+'user'` blocks NSFW) mean anything once curiosity (B16) starts sending.
+
+`vision_insight` carries intents too; they go through the same filter, counted in the same
+`dropped.notWhitelisted`.
+
+### The speech seam
+
+`say` is the one message type that needs something the engine does not own. `speakText` is a
+module-local function in `main.js`, not a global, so B9 adds a third guarded line there:
+
+```js
+if (window.NEXUS_BD_ENABLED) window.NEXUS_BD_SAY = (text) => speakText(text);
+```
+
+A server-started line is therefore spoken by exactly the path a chat reply takes —
+normalisation, lipsync segmentation, Talk behaviour — rather than a second speech route that
+would drift from the first. With the flag off the global does not exist.
+
+`NEXUS_BD_SAY` had to be added to `ENGINE_GLOBALS` in both enforcement points: `\bNEXUS_BD\b`
+does not match it, because the next character is an underscore. Same lesson as B3 — a reach
+the harness cannot see is a reach nobody checks for a guard.
+
+### Two settings, and why there are two
+
+The BEHAVIOR ENGINE (BETA) section gains a "Connect HomePilot session" switch and a URL
+field, writing `nexus_bd_session_url` and `nexus_bd_session_enabled`. `boot.js` overlays them
+onto the shipped `session` block, which stays `enabled: false` in the JSON.
+
+The switch is disabled until a URL is present, and a URL on its own does not connect: filling
+in a field is not consent to open a socket to it. That is also why this is a second switch
+rather than a consequence of the engine flag — everything else the Director does runs on this
+device, and this is the one control that lets something off-device reach it.
+
+### Losing the network
+
+Two failure shapes, because they are not the same failure:
+
+- **A clean close.** `onclose` fires: `session:down` is emitted, `sessionUp` clears,
+  reconnection backs off 1 s → 30 s and a successful open resets it.
+- **A pulled cable.** TCP does not notice, so `onclose` never fires and the socket sits there
+  looking healthy. The only evidence is the server's 15 s heartbeat going quiet, so the
+  adapter has a `tick` — the render loop already polls adapters — that abandons a socket
+  silent for 2.5 heartbeats. It nulls the handlers first, so the real `onclose` arriving late
+  cannot schedule a second reconnect.
+
+Neither touches Tier 1. The selector, ranker and mixer are local and stay local; a dropped
+session costs the server's contributions and nothing else.
+
+### `adult_ack` is recorded, and unlocks nothing
+
+Server attestation (§16.1) is one of three conjunctive conditions in the ranker's NSFW gate,
+alongside the owner's `nsfwAllowed` setting and a mode that permits it. The adapter records it
+on the blackboard, never in storage — a reload or a reconnect re-asks — and nothing reads it
+yet; B28 wires it at the gate, which is the only place a gate may live.
+
+---
+
 ## 3. Frozen names
 
 Decided in B0; every later batch cites them.
@@ -329,12 +399,12 @@ Decided in B0; every later batch cites them.
 Spec §7 lists the only pre-existing files any batch may touch. Two additions are forced by
 §1 and are recorded here rather than taken silently:
 
-1. **`index.html`** — reserved, **not used**. B0 assumed a script-tag app needs a static
+1. **`index.html`** — settings markup only. B0 assumed a script-tag app needs a static
    `<script>` registration. **B3 found it does not:** `main.js` injects `boot.js` itself,
    and only when the flag is on, so with the engine off no engine file is fetched, parsed
    or evaluated at all. That is a stronger claim than a tag that loads and does nothing, so
-   the seam stayed at one file. The entry remains for B7's settings markup; a batch that
-   uses it must say so here.
+   the seam stayed at one file. What the entry is actually used for is the settings panel:
+   B7's engine toggle and B9's session switch and URL field. No engine script tag, ever.
 2. **`src/PoseStudioPanel.js`** — the spec's optional "Publish to KB" action (B7); named
    here so the file is on the list before the batch needs it.
 
@@ -342,7 +412,7 @@ The allowlist, as enforced by `scripts/behavior-parity-baseline.mjs` and
 `tests/behavior/parity.smoke.test.js`:
 
 ```
-index.html                        settings toggle (B7) ✅ — no engine script, only the flag
+index.html                        settings toggles (B7, B9) ✅ — no engine script, only flags
 src/main.js                       guarded boot + update(dt) (B3) ✅
 src/LLMManager.js                 llm:token emit (B4)
 js/speech-service.js              tts:start / tts:end (B4)
@@ -351,6 +421,11 @@ src/FaceTracker.js                gaze:* emit, optional hook 5 (B4)
 src/xr/MotionContract.js          §6.8 tag paragraph (B4)
 src/PoseStudioPanel.js            "Publish to KB" action (B7) ✅
 ```
+
+`src/main.js` now carries three guarded seams, not two: the boot injection and the per-frame
+`update(dt)` from B3, and `NEXUS_BD_SAY` from B9. `tests/behavior/engine-spine.test.js` asserts
+the exact count of engine-naming lines in that file, so a fourth seam cannot appear without a
+reviewer seeing the number change.
 
 Anything else is a spec violation: stop and flag it, do not widen the list quietly. Adding
 a file to the list is itself a reviewable change to this section and to both enforcement
@@ -396,3 +471,5 @@ Recorded when the batch that needs them lands.
 | B5 | Whether the per-category `priority`/`cooldownMs` defaults and the lexicon's valence values survive contact with the ranker |
 | B6 | Whether `LayerMixer` drives `AnimationResolver` or registers as a source inside it |
 | B12 | Screen mesh placement API on `WebXRChatbot` / `gltf-viewer` |
+| B16 | Whether a server `say` also lands in the chat transcript, or stays audio-only as it is in B9 |
+| B9 → B10 | Where the pairing token for `hello.auth` comes from; B9 reads `session.auth` from config and sends whatever is there — the panel collects a URL but no credential yet |

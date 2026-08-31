@@ -37,6 +37,7 @@
         'src/behavior/adapters/SpeechAdapter.js',
         'src/behavior/adapters/IdleAdapter.js',
         'src/behavior/adapters/GazeAdapter.js',
+        'src/behavior/adapters/SessionAdapter.js',
     ];
 
     const CONFIG_URL = 'config/behavior.config.json';
@@ -57,14 +58,35 @@
     }
 
     async function loadConfig() {
+        let config;
         try {
             const response = await fetch(CONFIG_URL);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            return await response.json();
+            config = await response.json();
         } catch (error) {
             console.warn('[BD] no behavior config — using built-in defaults', error);
-            return { behaviorEngine: { enabled: true, debug: false }, nsfwAllowed: false };
+            config = { behaviorEngine: { enabled: true, debug: false }, nsfwAllowed: false };
         }
+        return { ...config, session: sessionSettings(config.session) };
+    }
+
+    /**
+     * The shipped config's `session` block is the default, and the settings panel is the
+     * override (batch B9). Both flags off unless the user filled in a URL and ticked the
+     * box: `session.enabled` in the JSON stays false, so an unconfigured install opens no
+     * socket even with the engine on.
+     */
+    function sessionSettings(shipped = {}) {
+        let url = '';
+        let enabled = false;
+        try {
+            url = (global.localStorage.getItem('nexus_bd_session_url') || '').trim();
+            enabled = global.localStorage.getItem('nexus_bd_session_enabled') === 'true';
+        } catch {
+            /* storage disabled: the session stays off, which is the default */
+        }
+        if (!url) return { ...shipped, enabled: false };
+        return { ...shipped, url, enabled };
     }
 
     /**
@@ -199,17 +221,22 @@
             // Sense (B4). Each adapter wires itself and hands back a detach; the order is
             // only significant for the tag adapter, which must wrap NEXUS_MOTION before the
             // first reply streams.
+            // The session adapter (B9) is last: it is the only one that can be handed an
+            // intent by something other than this device, and it should not be able to do
+            // that before the local senses are wired. Its own `attach` is a no-op while
+            // `session.enabled` is false, which is how it ships.
             const wiring = [
                 ['tag', global.NEXUS_BD_TAG_ADAPTER],
                 ['sentiment', global.NEXUS_BD_SENTIMENT_FALLBACK],
                 ['speech', global.NEXUS_BD_SPEECH_ADAPTER],
                 ['idle', global.NEXUS_BD_IDLE_ADAPTER],
                 ['gaze', global.NEXUS_BD_GAZE_ADAPTER],
+                ['session', global.NEXUS_BD_SESSION_ADAPTER, { say: global.NEXUS_BD_SAY }],
             ];
-            for (const [label, module] of wiring) {
+            for (const [label, module, extra] of wiring) {
                 if (!module || typeof module.attach !== 'function') continue;
                 try {
-                    director.adapters.push(module.attach({ bus, blackboard, config }));
+                    director.adapters.push(module.attach({ bus, blackboard, config, ...extra }));
                 } catch (error) {
                     console.warn(`[BD] ${label} adapter failed to attach — continuing without it`, error);
                 }
@@ -282,4 +309,7 @@
     }
 
     global.NEXUS_BD_BOOT = bootBehavior;
+    /* Test seam: the settings overlay decides whether a socket is ever opened, and that is
+       worth asserting without standing up the whole engine. */
+    global.NEXUS_BD_BOOT.sessionSettings = sessionSettings;
 })(typeof window !== 'undefined' ? window : globalThis);

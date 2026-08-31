@@ -62,10 +62,11 @@ export const ALLOWLIST = [
 /**
  * Globals through which a file can reach the engine without naming a path. Added in B3:
  * `main.js` calls `NEXUS_BD_BOOT()` and `NEXUS_BD.update()`, and a reference that the
- * harness cannot see is a reference nobody checks for a guard.
+ * harness cannot see is a reference nobody checks for a guard. B9 adds `NEXUS_BD_SAY`,
+ * which needs its own pattern: the underscore means `\bNEXUS_BD\b` does not match it.
  * `NEXUS_BD_ENABLED` is the guard itself, not a reach, so it is not on this list.
  */
-export const ENGINE_GLOBALS = [/\bNEXUS_BD_BOOT\b/, /\bNEXUS_BD\b(?!_)/];
+export const ENGINE_GLOBALS = [/\bNEXUS_BD_BOOT\b/, /\bNEXUS_BD_SAY\b/, /\bNEXUS_BD\b(?!_)/];
 
 /** Does this line reach into the engine, by path or by global? */
 function reachesEngine(line) {

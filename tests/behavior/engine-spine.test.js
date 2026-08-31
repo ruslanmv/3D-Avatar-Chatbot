@@ -213,17 +213,19 @@ describe('AnimationRegistry against the real KB', () => {
 describe('the flag off executes zero new code', () => {
     const MAIN = fs.readFileSync(path.join(ROOT, 'src', 'main.js'), 'utf8');
 
-    test('main.js reaches the engine in exactly two places, both guarded', () => {
+    test('main.js reaches the engine in exactly three places, all guarded', () => {
         const lines = MAIN.split('\n');
         const hits = lines
             .map((line, i) => ({ line, n: i + 1 }))
             // The same definition of "reaches the engine" the harness uses: a path or an
             // engine global. NEXUS_BD_ENABLED is the guard itself, not a reach.
-            .filter(({ line }) => /NEXUS_BD_BOOT|\bNEXUS_BD\b(?!_)|src\/behavior\//.test(line));
+            .filter(({ line }) => /NEXUS_BD_BOOT|NEXUS_BD_SAY|\bNEXUS_BD\b(?!_)|src\/behavior\//.test(line));
 
-        // Six lines, in two blocks: the guarded boot (comment, flag, guard, path, call)
-        // and the guarded per-frame update. Every one has to sit next to the flag.
-        expect(hits).toHaveLength(6);
+        // Eight lines in three blocks — the guarded boot, the guarded speech route B9 adds,
+        // and the guarded per-frame update — counting the comments that name the engine.
+        // Every one has to sit next to the flag, and this count going up is the review
+        // surface for a new seam: a batch cannot add one without editing this number.
+        expect(hits).toHaveLength(8);
         for (const { line, n } of hits) {
             const near = lines.slice(Math.max(0, n - 7), n + 2).join('\n');
             expect(`${n}: ${/NEXUS_BD_ENABLED|behaviorEngine/.test(near)}`).toBe(`${n}: true`);

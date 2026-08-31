@@ -1456,6 +1456,28 @@
                                 </div>
                             </label>
                         </div>
+
+                        <!-- Batch B9. A second, narrower switch: the engine runs entirely on
+                             this device, and this is the only thing that lets a HomePilot
+                             instance reach it. Off unless a URL is filled in. -->
+                        <div class="input-group">
+                            <label class="spicy-toggle-label">
+                                <span>Connect HomePilot session</span>
+                                <div class="spicy-toggle-switch">
+                                    <input type="checkbox" id="behavior-session-toggle" />
+                                    <span class="spicy-toggle-slider"></span>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label" for="behavior-session-url">HOMEPILOT SESSION URL</label>
+                            <input
+                                type="text"
+                                id="behavior-session-url"
+                                class="text-input"
+                                placeholder="wss://homepilot.local/avatar/session"
+                            />
+                        </div>
                     </div>
                     <script>
                         (function () {
@@ -1473,6 +1495,41 @@
                                     /* nothing to do: without storage the flag cannot persist */
                                 }
                             });
+
+                            /* Batch B9. Two more keys, read at boot and nowhere else. The
+                               session cannot be switched on without a URL, so a stray click
+                               cannot start something retrying against a placeholder. */
+                            var sessionBox = document.getElementById('behavior-session-toggle');
+                            var sessionUrl = document.getElementById('behavior-session-url');
+                            if (!sessionBox || !sessionUrl) return;
+
+                            function readKey(key) {
+                                try {
+                                    return localStorage.getItem(key) || '';
+                                } catch (e) {
+                                    return '';
+                                }
+                            }
+                            function writeKey(key, value) {
+                                try {
+                                    localStorage.setItem(key, value);
+                                } catch (e) {
+                                    /* without storage neither setting persists */
+                                }
+                            }
+                            function syncSession() {
+                                var hasUrl = sessionUrl.value.trim().length > 0;
+                                sessionBox.disabled = !hasUrl;
+                                if (!hasUrl) sessionBox.checked = false;
+                                writeKey('nexus_bd_session_url', sessionUrl.value.trim());
+                                writeKey('nexus_bd_session_enabled', sessionBox.checked ? 'true' : 'false');
+                            }
+
+                            sessionUrl.value = readKey('nexus_bd_session_url');
+                            sessionBox.checked = readKey('nexus_bd_session_enabled') === 'true';
+                            sessionBox.disabled = sessionUrl.value.trim().length === 0;
+                            sessionUrl.addEventListener('change', syncSession);
+                            sessionBox.addEventListener('change', syncSession);
                         })();
                     </script>
 

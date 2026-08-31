@@ -61,7 +61,7 @@ const SKIP_DIRS = new Set([
 const SCAN_EXTENSIONS = ['.js', '.mjs', '.html', '.json'];
 
 /** Reaching the engine through its globals counts too — see the harness for why. */
-const ENGINE_GLOBALS = [/\bNEXUS_BD_BOOT\b/, /\bNEXUS_BD\b(?!_)/];
+const ENGINE_GLOBALS = [/\bNEXUS_BD_BOOT\b/, /\bNEXUS_BD_SAY\b/, /\bNEXUS_BD\b(?!_)/];
 
 const reachesEngine = (line) =>
     ENGINE_NAMESPACES.some((ns) => line.includes(ns)) || ENGINE_GLOBALS.some((re) => re.test(line));
