@@ -4,6 +4,11 @@
   "strayReferences": [],
   "allowlistReferences": [
     {
+      "file": "index.html",
+      "line": 1439,
+      "guarded": true
+    },
+    {
       "file": "src/main.js",
       "line": 910,
       "guarded": true
@@ -31,6 +36,16 @@
     {
       "file": "src/main.js",
       "line": 939,
+      "guarded": true
+    },
+    {
+      "file": "src/PoseStudioPanel.js",
+      "line": 287,
+      "guarded": true
+    },
+    {
+      "file": "src/PoseStudioPanel.js",
+      "line": 582,
       "guarded": true
     }
   ],

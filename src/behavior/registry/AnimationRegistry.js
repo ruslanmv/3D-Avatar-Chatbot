@@ -18,6 +18,15 @@ const AnimationRegistry = (() => {
         (typeof window !== 'undefined' && window.NEXUS_BD_VALIDATE) ||
         (typeof require === 'function' ? require('./validate.js') : null);
 
+    /** The publisher is optional: the registry works without any published poses. */
+    function safeRequire(path) {
+        try {
+            return require(path);
+        } catch {
+            return null;
+        }
+    }
+
     class Registry {
         constructor() {
             this.records = [];
@@ -62,7 +71,17 @@ const AnimationRegistry = (() => {
                 }
             }
 
+            // Poses published from Pose Studio (UC-11) live in localStorage, because a
+            // browser cannot write the shipped manifest. They merge over it at load and go
+            // through the same validator, so a malformed one is dropped here rather than
+            // reaching the ranker.
+            const publisher =
+                (typeof window !== 'undefined' && window.NEXUS_BD_POSE_PUBLISHER) ||
+                (typeof require === 'function' ? safeRequire('./PosePublisher.js') : null);
+            const userPoses = publisher ? publisher.published() : [];
+
             const { records, rejected } = validate.partition(parsed);
+            records.push(...userPoses);
             this.records = records;
             this.rejected = rejected;
             this._index();
@@ -88,6 +107,18 @@ const AnimationRegistry = (() => {
                 for (const intent of record.intents) push(this.byIntent, intent, record);
                 for (const tag of record.tags) push(this.byTag, tag, record);
             }
+        }
+
+        /**
+         * Add one record to a live registry — a pose published from Pose Studio, without a
+         * reload. Re-indexes, because a record nothing can look up is not in the KB.
+         */
+        addRecord(record) {
+            if (!record || validate.reject(record)) return false;
+            this.records = this.records.filter((existing) => existing.id !== record.id);
+            this.records.push(record);
+            this._index();
+            return true;
         }
 
         get(id) {

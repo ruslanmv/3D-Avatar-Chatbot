@@ -1436,6 +1436,46 @@
                         </div>
                     </div>
 
+                    <!-- NEXUS_BD — Behavior Director (spec v1.1 §7, batch B7).
+                         Additive and self-contained: this control writes the single
+                         localStorage key that behaviorEngine.enabled reads at boot. With it
+                         off, no engine file is ever fetched. Deleting this section
+                         removes the toggle and nothing else. -->
+                    <div class="config-section">
+                        <h3 class="config-title">BEHAVIOR ENGINE (BETA)</h3>
+                        <p style="font-size: 0.72rem; color: rgba(255, 255, 255, 0.5); margin-bottom: 12px">
+                            Let her choose her own gestures from the animation library, instead of a fixed mapping.
+                            Takes effect on reload.
+                        </p>
+                        <div class="input-group">
+                            <label class="spicy-toggle-label">
+                                <span>Enable Behavior Director</span>
+                                <div class="spicy-toggle-switch">
+                                    <input type="checkbox" id="behavior-engine-toggle" />
+                                    <span class="spicy-toggle-slider"></span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    <script>
+                        (function () {
+                            var box = document.getElementById('behavior-engine-toggle');
+                            if (!box) return;
+                            try {
+                                box.checked = localStorage.getItem('nexus_bd_enabled') === 'true';
+                            } catch (e) {
+                                /* storage disabled: the engine stays off, which is the default */
+                            }
+                            box.addEventListener('change', function () {
+                                try {
+                                    localStorage.setItem('nexus_bd_enabled', box.checked ? 'true' : 'false');
+                                } catch (e) {
+                                    /* nothing to do: without storage the flag cannot persist */
+                                }
+                            });
+                        })();
+                    </script>
+
                     <div class="config-section">
                         <h3 class="config-title">RENDER MODE</h3>
                         <p style="font-size: 0.72rem; color: rgba(255, 255, 255, 0.5); margin-bottom: 12px">

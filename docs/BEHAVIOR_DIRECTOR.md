@@ -17,6 +17,7 @@ never edited to match the repo, the mapping is recorded instead.
 
 | Batch | Date | Change |
 |---|---|---|
+| B7 | 2026-08-30 | Modes: `ModeManager` plus companion/together/showcase profiles, restore-by-snapshot so a round trip is exact; showcase cycles the whole KB in a stable order. "Publish to KB" in Pose Studio (UC-11) and the settings toggle in `index.html`. |
 | B6 | 2026-08-30 | Executor: pose buffers, bone masks, `LayerMixer`, the three layer adapters over the existing loaders/animator/pose library, `TransitionRules` and `Scheduler`. Crossfades measured pop-free frame by frame; head layer keeps lipsync alive under a full-body clip; blend measured at ~0.03 ms/frame over every humanoid bone. Single-owner rule: every approved request goes through `AnimationResolver`. |
 | B5 | 2026-08-30 | Tier 1: `SemanticSelector`, `UtilityRanker` (the single gate), `AntiRepeatMemory`. Client vectors proven identical to the shipped offline index. B28's source rule enforced from here. |
 | B4 | 2026-08-30 | Sense adapters: streaming `[[emote:…]]` parser, speech, idle, gaze, and a sentiment fallback that delegates to the existing `EmotionEngine`. **No pre-existing file touched** — the tag channel decorates `window.NEXUS_MOTION`, so both LLM→body channels are masked in one pass and the `src/xr/` suites cannot regress. |

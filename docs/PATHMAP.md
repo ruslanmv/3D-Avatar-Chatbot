@@ -269,6 +269,33 @@ behind one door. A refused request never reaches it — tested.
 
 A layer at weight 0 reveals the corrected base pose, never a raw T-pose.
 
+## 2g. Modes and published poses (B7)
+
+**A mode is data, and leaving one puts everything back.** The tempting implementation of
+"restores companion exactly" is to undo each change on the way out; that is the version
+that drifts, because a field added to a profile in six months needs a matching undo and the
+one nobody adds is the one that breaks. `ModeManager` snapshots every field it is about to
+touch and restores the snapshot verbatim, so a new field is covered because it was
+captured, not because someone remembered it. Scene overlays (B14) stack the same way.
+
+A mode **narrows and never opens**: `together` refuses clips that would walk her out of
+joint attention, and `showcase` forces the adult tier off whatever the user setting says,
+because a demo runs in front of whoever walks past.
+
+**Published poses live in localStorage** (`nexus_bd_published_poses`), because
+`kb/animations.manifest.jsonl` is a build artefact a browser cannot write. The registry
+merges them over the shipped manifest at load, through the same runtime validator. Three
+consequences worth knowing: they are per-browser until someone exports them; their ids are
+namespaced `pose_user_`, so a user pose can never shadow a shipped clip; and
+`publisher.publish()` adds to the *live* registry itself, so Pose Studio makes one call and
+never reaches into the KB.
+
+### The settings toggle
+
+`index.html` gained one config section writing `localStorage.nexus_bd_enabled` — the key
+`main.js` reads at boot. No engine script is registered there; deleting the section removes
+the toggle and nothing else.
+
 ### Names that are already taken
 
 | Wanted | Taken by | Use instead |
@@ -315,14 +342,14 @@ The allowlist, as enforced by `scripts/behavior-parity-baseline.mjs` and
 `tests/behavior/parity.smoke.test.js`:
 
 ```
-index.html                        reserved for the B7 settings toggle — unused as of B3
+index.html                        settings toggle (B7) ✅ — no engine script, only the flag
 src/main.js                       guarded boot + update(dt) (B3) ✅
 src/LLMManager.js                 llm:token emit (B4)
 js/speech-service.js              tts:start / tts:end (B4)
 src/tts/PiperWasmTTSProvider.js   tts:start / tts:end (B4)
 src/FaceTracker.js                gaze:* emit, optional hook 5 (B4)
 src/xr/MotionContract.js          §6.8 tag paragraph (B4)
-src/PoseStudioPanel.js            "Publish to KB" action (B7)
+src/PoseStudioPanel.js            "Publish to KB" action (B7) ✅
 ```
 
 Anything else is a spec violation: stop and flag it, do not widen the list quietly. Adding
