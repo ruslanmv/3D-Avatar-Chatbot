@@ -422,7 +422,7 @@ controls, live state, and an `activities` registry B12–B14 register into.
 
 ---
 
-#### B12 · Watch Together `[C]`
+#### B12 · Watch Together `[C]` — ✅ landed
 **Branch:** `feat/bd-b12-watch` · **Depends on:** B11
 **New:** `src/features/together/activities/watch.js`,
 `src/behavior/adapters/MediaAdapter.js`.
@@ -434,6 +434,14 @@ screen, timed glances at the user; commentary only at §6.7 openings.
 hardware; **negative assertion** — no `intent(source:commentary)` while `media:playing`
 with high attention unless an opening preceded it within 2 s; scene-cut detector fires on
 a luma/audio delta fixture.
+**As landed:** the fps claim is asserted as the property that decides it — zero-copy
+`VideoTexture`, geometry built once, and a source test forbidding `drawImage`,
+`getImageData`, `toDataURL` and `needsUpdate` anywhere in the file — plus a Node-measured
+per-frame budget that is explicitly not a Quest measurement. YouTube is the shared-tab path,
+because a DRM'd player cannot be textured directly and the tab showing it can. The AR pin
+reads `ARSupport`'s existing reticle and the file is asserted to contain no
+`requestHitTestSource`. Two bugs the tests caught: a `lastCutAt` of `0` swallowed the first
+cut of a session (now `null`), and joint attention ran after the blend rather than before it.
 
 ---
 

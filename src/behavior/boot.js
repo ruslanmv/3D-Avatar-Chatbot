@@ -39,12 +39,14 @@
         'src/behavior/adapters/GazeAdapter.js',
         'src/behavior/adapters/SessionAdapter.js',
         'src/behavior/adapters/VoiceAdapter.js',
+        'src/behavior/adapters/MediaAdapter.js',
         // Together Mode's gate (B11). Loaded with the engine rather than with the first
         // activity: the consent machine has to exist before anything that wants a frame.
         'src/features/together/capture/ConsentMachine.js',
         'src/features/together/capture/CapturePipeline.js',
         'src/features/together/ui/ConsentIndicator.js',
         'src/features/together/ui/TogetherPanel.js',
+        'src/features/together/activities/watch.js',
     ];
 
     const CONFIG_URL = 'config/behavior.config.json';
@@ -168,6 +170,8 @@
                 adapters: [],
                 session: null,
                 voice: null,
+                media: null,
+                watch: null,
                 consent: null,
                 consentIndicator: null,
                 togetherPanel: null,
@@ -203,6 +207,10 @@
                 update(dt) {
                     blackboard.tick(dt);
                     scheduler.tick(dt);
+                    // The running activity writes the head layer, so it runs *before* the
+                    // blend. After it, joint attention would be one frame stale — which is
+                    // exactly the lag that makes an avatar's gaze feel wrong.
+                    if (this.watch && this.watch.video) this.watch.update();
                     mixer.update();
                     // Two adapters are polled rather than event-driven; see their headers.
                     for (const adapter of this.adapters) {
@@ -263,6 +271,7 @@
                 // deps are a thunk rather than a literal. It asks for no microphone here;
                 // that waits for `director.enableVoice()`.
                 ['voice', global.NEXUS_BD_VOICE_ADAPTER, () => ({ session: director.session })],
+                ['media', global.NEXUS_BD_MEDIA_ADAPTER],
             ];
             for (const [label, module, extra] of wiring) {
                 if (!module || typeof module.attach !== 'function') continue;
@@ -271,6 +280,7 @@
                     director.adapters.push(adapter);
                     if (label === 'session') director.session = adapter;
                     if (label === 'voice') director.voice = adapter;
+                    if (label === 'media') director.media = adapter;
                 } catch (error) {
                     console.warn(`[BD] ${label} adapter failed to attach — continuing without it`, error);
                 }
@@ -288,6 +298,23 @@
                     config,
                 });
                 director.adapters.push(director.consentIndicator, director.togetherPanel);
+
+                // Watch Together (B12). Registered into the panel rather than started:
+                // an activity that mounts a cinema screen the moment the engine boots is
+                // not an activity, it is a takeover.
+                if (global.NEXUS_BD_WATCH) {
+                    director.watch = global.NEXUS_BD_WATCH.attach({
+                        bus,
+                        blackboard,
+                        mixer,
+                        consent: director.consent,
+                        config,
+                        profile: global.NEXUS_BD_PROFILE_TOGETHER,
+                        media: director.media,
+                    });
+                    director.togetherPanel.register(director.watch);
+                    director.adapters.push(director.watch);
+                }
             }
 
             bus.on('intent', (intent) => director.handleIntent(intent));

@@ -500,6 +500,92 @@ because a generic "sharing" badge is not an honest one.
 
 ---
 
+## 2k. Watch Together (B12)
+
+`src/features/together/activities/watch.js` and `src/behavior/adapters/MediaAdapter.js`.
+Zero pre-existing files touched.
+
+### How YouTube gets on the screen
+
+Not by embedding it. A DRM'd player cannot be read into a `VideoTexture`, and an iframe is
+not a texture source. The route the spec chose and this batch implements is **tab capture**:
+`getDisplayMedia` through B11's consent machine, `video.srcObject = grant.stream`, and from
+there the same texture a local file gets. So "YouTube in VR" is the shared-tab path, and it
+performs like a local file rather than like a screenshot loop because there is only one
+frame path.
+
+Source (a), a file or HLS URL, sets `video.src` and involves no grant — it is the user's own
+file. Source (b) sets `video.srcObject` from a grant. That is the only difference between
+them; both end at the same `VideoTexture` on the same mesh.
+
+### Why it can hold 1080p
+
+The claim rests on a property, not a measurement, and the tests say so. `THREE.VideoTexture`
+is bound straight to the element and the GPU uploads from it; nothing in `watch.js` calls
+`drawImage`, `getImageData`, `toDataURL` or `needsUpdate`, and a test reads the file to keep
+it that way. The regression that would break 1080p is a per-frame canvas round trip, and
+that is exactly what the source assertion forbids. Geometry and texture are built once
+however many times placement is called.
+
+A Node process is not a Quest. The measured number in `watch.test.js` is the per-frame cost
+of joint attention plus a media tick, which stays inside `budgets.frameMs`; it says nothing
+about a headset's GPU and the test's own comment says as much.
+
+### Placement reuses the running systems
+
+`src/gltf-viewer/ARSupport.js` already owns an AR session with a hit-test and a reticle.
+B12 reads `viewer.arSupport.reticle.matrix` and creates **no second `XRHitTestSource`** — two
+of those on one frame loop is a frame-rate bug and a pair of disagreeing reticles. VR
+placement adds the mesh to `viewer.scene` in front of `viewer.camera`, and deliberately does
+not parent it to the camera: a screen that follows your head is nauseating and is not a
+cinema. Tests assert the file names no `WebGLRenderer`, no `new THREE.Scene`, no
+`requestHitTestSource` and no `requestSession`.
+
+The screen is a 60° open-ended cylinder section at 2.4 m, seen from the inside (`BackSide`),
+`toneMapped: false` because a screen emits. 16:9 comes out of the arc length rather than a
+hardcoded height.
+
+Note the app runs two three.js instances of the same version — `window.THREE` for classic
+scripts and the module build for `src/gltf-viewer/` — and `src/PoseGizmoOverlay.js` already
+mixes them the same way. B11's indicator and B12's screen follow that precedent.
+
+### Joint attention
+
+Gaze rests on the screen; a jittered glance at the user every 8–20 s, from the profile's
+`glanceUserEveryMs` rather than a constant here. `aimQuaternion` is plain arithmetic on
+arrays — no three.js — so the maths is testable and produces the same numbers in a test
+runner and on a headset. Yaw and pitch are clamped to ±1.2 and ±0.7 rad; past those she is
+not glancing, she is possessed.
+
+It writes into the mixer's `head` layer, which B6 built as an always-on masked layer for
+exactly this, so the single-write rule holds. `boot.js` runs the activity's `update` **before**
+`mixer.update()` — after it, gaze would be one frame stale, which is the lag that makes an
+avatar's eyes feel wrong.
+
+### Her silence is the feature
+
+`CommentaryGate` is the single decision point, and it reads `commentaryOpenings` from the
+active profile rather than keeping a list of its own — a second copy is a copy that drifts
+from the mode that defines it. An opening stays open 2 s. Mid-scene with attention high the
+answer is no; while the user is speaking the answer is no even at an opening; with attention
+elsewhere she may speak, because then a remark is company rather than an interruption. The
+refusal names the rule, so a silence in a log does not read as a bug.
+
+### The cut detector reads pixels, and is gated for it
+
+Luma on a 32×18 draw plus audio RMS, four times a second, in `MediaAdapter` — off the render
+path. Reading pixels from a shared tab is a capture code path, so when the source came from a
+grant the detector refuses unless that grant is live, and stops in the same tick on revoke. A
+local file needs no grant because it is not capture. What it produces is a *scalar*: there is
+no `toDataURL`, no `toBlob` and nothing here can hand anybody an image, which is the
+distinction that makes reading pixels for a number acceptable where sending them would not be.
+
+A cross-origin source that taints the canvas latches cut detection off after one warning
+rather than throwing four times a second — a degraded feature, since the other openings still
+work.
+
+---
+
 ## 3. Frozen names
 
 Decided in B0; every later batch cites them.
@@ -594,7 +680,8 @@ Recorded when the batch that needs them lands.
 | B5 | Whether the per-category `priority`/`cooldownMs` defaults and the lexicon's valence values survive contact with the ranker |
 | B6 | Whether `LayerMixer` drives `AnimationResolver` or registers as a source inside it |
 | B12 | Screen mesh placement API on `WebXRChatbot` / `gltf-viewer` |
-| B12 | Where `TogetherPanel.mount()` is called from — B11 ships the panel unmounted, since a picker for zero activities is a mock-up rather than a batch |
+| B12 → B13 | Where `TogetherPanel.mount()` is called from — the panel now has one registered activity, so a real picker becomes worth drawing |
+| B12 | Whether the VR screen should sit at a fixed distance or be placed by a controller ray; today it is 2.4 m in front of the camera on entry |
 | B16 | Whether a server `say` also lands in the chat transcript, or stays audio-only as it is in B9 |
 | B10 → deployment | Whether HomePilot ships a WebRTC media terminus at all; without `aiortc` the server serves transcript mode and refuses `webrtc` offers by name |
 | B10 | Who calls `VoiceAdapter.transcript()` in the running app — today the settings button starts listening and SpeechService's own `onresult` owns the text; wiring the two is a one-line hook when the chat path is next opened |
