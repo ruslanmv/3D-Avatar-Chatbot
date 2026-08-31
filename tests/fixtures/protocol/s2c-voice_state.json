@@ -1,0 +1,16 @@
+{
+  "name": "voice_state",
+  "direction": "server->client",
+  "spec": "v1.1 6.10",
+  "required": [
+    "v",
+    "type",
+    "state"
+  ],
+  "message": {
+    "v": 1,
+    "type": "voice_state",
+    "state": "listening"
+  },
+  "note": "listening / thinking / idle. Drives the mic indicator; it is not a gesture and never reaches the ranker."
+}

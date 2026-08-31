@@ -103,6 +103,42 @@
       "name": "unknown_type",
       "direction": "server->client",
       "spec": "v1.1 6.9 forward-compatibility"
+    },
+    {
+      "file": "c2s-voice_offer.json",
+      "name": "voice_offer",
+      "direction": "client->server",
+      "spec": "v1.1 6.10"
+    },
+    {
+      "file": "c2s-voice_ice.json",
+      "name": "voice_ice",
+      "direction": "client->server",
+      "spec": "v1.1 6.10"
+    },
+    {
+      "file": "c2s-voice_transcript.json",
+      "name": "voice_transcript",
+      "direction": "client->server",
+      "spec": "v1.1 6.10"
+    },
+    {
+      "file": "c2s-voice_end.json",
+      "name": "voice_end",
+      "direction": "client->server",
+      "spec": "v1.1 6.10"
+    },
+    {
+      "file": "s2c-voice_answer.json",
+      "name": "voice_answer",
+      "direction": "server->client",
+      "spec": "v1.1 6.10"
+    },
+    {
+      "file": "s2c-voice_state.json",
+      "name": "voice_state",
+      "direction": "server->client",
+      "spec": "v1.1 6.10"
     }
   ]
 }

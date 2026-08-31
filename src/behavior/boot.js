@@ -38,6 +38,7 @@
         'src/behavior/adapters/IdleAdapter.js',
         'src/behavior/adapters/GazeAdapter.js',
         'src/behavior/adapters/SessionAdapter.js',
+        'src/behavior/adapters/VoiceAdapter.js',
     ];
 
     const CONFIG_URL = 'config/behavior.config.json';
@@ -159,6 +160,8 @@
                 scheduler,
                 lastPick: null,
                 adapters: [],
+                session: null,
+                voice: null,
 
                 /**
                  * Tier 1, on every intent: narrow by declared intent, rank, pick. The gates
@@ -174,6 +177,17 @@
                     this.lastPick = { ...picked, intent, at: Date.now() };
                     this.scheduler.request(picked.clip, intent);
                     return picked;
+                },
+
+                /**
+                 * Ask for the microphone (B10). A user action, never a boot step: consent
+                 * is the whole point, and an engine that grabs the mic on load is one
+                 * nobody should switch on. Resolves to 'listening' or 'unavailable' —
+                 * declining is an answer, not a failure, and nothing else changes either way.
+                 */
+                async enableVoice() {
+                    if (!this.voice) return 'unavailable';
+                    return this.voice.enable();
                 },
 
                 /** Tier 0. Called from the render loop; must stay cheap and never throw. */
@@ -214,6 +228,8 @@
                         blackboard: blackboard.snapshot(),
                         bus: bus.stats(),
                         adapters: this.adapters.map((a) => a.name),
+                        session: director.session && director.session.stats,
+                        voice: director.voice && director.voice.stats,
                     };
                 },
             };
@@ -231,12 +247,19 @@
                 ['speech', global.NEXUS_BD_SPEECH_ADAPTER],
                 ['idle', global.NEXUS_BD_IDLE_ADAPTER],
                 ['gaze', global.NEXUS_BD_GAZE_ADAPTER],
-                ['session', global.NEXUS_BD_SESSION_ADAPTER, { say: global.NEXUS_BD_SAY }],
+                ['session', global.NEXUS_BD_SESSION_ADAPTER, () => ({ say: global.NEXUS_BD_SAY })],
+                // The voice adapter needs the session that was just built, so its extra
+                // deps are a thunk rather than a literal. It asks for no microphone here;
+                // that waits for `director.enableVoice()`.
+                ['voice', global.NEXUS_BD_VOICE_ADAPTER, () => ({ session: director.session })],
             ];
             for (const [label, module, extra] of wiring) {
                 if (!module || typeof module.attach !== 'function') continue;
                 try {
-                    director.adapters.push(module.attach({ bus, blackboard, config, ...extra }));
+                    const adapter = module.attach({ bus, blackboard, config, ...(extra ? extra() : {}) });
+                    director.adapters.push(adapter);
+                    if (label === 'session') director.session = adapter;
+                    if (label === 'voice') director.voice = adapter;
                 } catch (error) {
                     console.warn(`[BD] ${label} adapter failed to attach — continuing without it`, error);
                 }

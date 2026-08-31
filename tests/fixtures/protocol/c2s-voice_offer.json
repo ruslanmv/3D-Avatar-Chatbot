@@ -1,0 +1,18 @@
+{
+  "name": "voice_offer",
+  "direction": "client->server",
+  "spec": "v1.1 6.10",
+  "required": [
+    "v",
+    "type",
+    "mode",
+    "sdp"
+  ],
+  "message": {
+    "v": 1,
+    "type": "voice_offer",
+    "mode": "transcript",
+    "sdp": ""
+  },
+  "note": "Two media modes. 'transcript' carries no SDP — the client's own recogniser does the work and the field stays empty — and is the mode a server without a media terminus serves. 'webrtc' carries a real offer and is refused with voice_media_unavailable unless a terminus is installed."
+}

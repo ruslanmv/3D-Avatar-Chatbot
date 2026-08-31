@@ -377,6 +377,54 @@ yet; B28 wires it at the gate, which is the only place a gate may live.
 
 ---
 
+## 2i. The microphone (B10)
+
+`src/behavior/adapters/VoiceAdapter.js` observes the recogniser the app already has. It does
+not build one, and the test that matters most in `tests/behavior/voice-uplink.test.js` is the
+one asserting the file contains no `SpeechRecognition`, no `MediaRecorder` and no
+`AudioContext`.
+
+### What it observes, and how
+
+`window.SpeechService` (`js/speech-service.js`) already owns Web Speech recognition, the
+MediaRecorder fallback for Quest, permission handling and device selection. The adapter
+**chains** onto `recognition.onspeechstart` / `onspeechend` / `onerror` / `onend` rather than
+replacing them: the app's own handler still runs, and `detach()` restores the originals
+object-for-object. Same decorate-and-restore pattern as B4's tag channel, so `js/speech-service.js`
+stays untouched even though it is on the allowlist.
+
+Those edges become `user:speaking` / `user:silent` on the bus — the browser's own VAD, from
+the same engine doing the ASR, not a second audio analyser. `onerror` and `onend` also clear
+the flag, because `onspeechend` is unreliable on some builds and a latched flag is how she
+ends up waiting politely for a sentence that finished two minutes ago. A `tick()` releases it
+after a 1.2 s tail as the last resort.
+
+The adapter does **not** read `onresult`. SpeechService's own handler owns the app's
+transcript; reading the raw event a second time here is how the two would eventually disagree
+about what the user said. A final transcript is handed in by its caller.
+
+### What the server does with it
+
+`voice_transcript` → HomePilot's `rtc.py` → `voice_call.turn.run_turn` → a reply, split into
+`intent` + `say` and sent back down the socket, both marked `source: "voice"`. Those are B9's
+existing handlers, so speech reaches the rig by the path a `[[emote:…]]` tag already took.
+`source: "voice"` is not `"user"`, so §6.5's NSFW gate holds against it exactly as it does
+against a curiosity intent.
+
+`voice_state` (listening / thinking / idle) drives a mic indicator and is deliberately **not**
+put on the bus: it is a fact about the server, not something she should react to.
+
+### Declining is an answer
+
+`enable()` resolves to `'listening'` or `'unavailable'` and never throws. On a refusal the
+adapter does not observe the recogniser at all, offers nothing to the server, and every other
+channel — typed chat, the tag parser, idle, gaze, the session socket, the whole mixer — is
+untouched. `attach()` asks for nothing; the microphone is requested only by
+`director.enableVoice()`, which the settings button is the one caller of. An engine that
+grabs the mic on load is one nobody should switch on.
+
+---
+
 ## 3. Frozen names
 
 Decided in B0; every later batch cites them.
@@ -412,7 +460,7 @@ The allowlist, as enforced by `scripts/behavior-parity-baseline.mjs` and
 `tests/behavior/parity.smoke.test.js`:
 
 ```
-index.html                        settings toggles (B7, B9) ✅ — no engine script, only flags
+index.html                        settings toggles (B7, B9, B10) ✅ — no engine script, only flags
 src/main.js                       guarded boot + update(dt) (B3) ✅
 src/LLMManager.js                 llm:token emit (B4)
 js/speech-service.js              tts:start / tts:end (B4)
@@ -472,4 +520,6 @@ Recorded when the batch that needs them lands.
 | B6 | Whether `LayerMixer` drives `AnimationResolver` or registers as a source inside it |
 | B12 | Screen mesh placement API on `WebXRChatbot` / `gltf-viewer` |
 | B16 | Whether a server `say` also lands in the chat transcript, or stays audio-only as it is in B9 |
+| B10 → deployment | Whether HomePilot ships a WebRTC media terminus at all; without `aiortc` the server serves transcript mode and refuses `webrtc` offers by name |
+| B10 | Who calls `VoiceAdapter.transcript()` in the running app — today the settings button starts listening and SpeechService's own `onresult` owns the text; wiring the two is a one-line hook when the chat path is next opened |
 | B9 → B10 | Where the pairing token for `hello.auth` comes from; B9 reads `session.auth` from config and sends whatever is there — the panel collects a URL but no credential yet |

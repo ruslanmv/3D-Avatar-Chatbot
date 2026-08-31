@@ -43,7 +43,23 @@ const SessionAdapter = (() => {
     const BACKOFF_CEILING_MS = 30000;
 
     /** Message types this client understands. Anything else is ignored, per §6.9. */
-    const KNOWN = new Set(['intent', 'say', 'vision_insight', 'scene', 'error', 'ping', 'display', 'adult_ack']);
+    const KNOWN = new Set([
+        'intent',
+        'say',
+        'vision_insight',
+        'scene',
+        'error',
+        'ping',
+        'display',
+        'adult_ack',
+        // §6.10, batch B10 — the voice uplink's half of the negotiation.
+        'voice_answer',
+        'voice_ice',
+        'voice_state',
+    ]);
+
+    /** What the server can say it is doing with the microphone. */
+    const VOICE_STATES = new Set(['listening', 'thinking', 'idle']);
 
     class Adapter {
         /**
@@ -73,6 +89,10 @@ const SessionAdapter = (() => {
             this._stopped = false;
 
             this.dropped = { notWhitelisted: 0, unknownType: 0, badVersion: 0 };
+
+            /** Set by `voice_answer` (B10). Null until the server accepts an offer. */
+            this.voice = null;
+            this.voiceState = 'idle';
             this.received = 0;
             this._lastMessageAt = 0;
 
@@ -127,6 +147,11 @@ const SessionAdapter = (() => {
             const wasConnected = this.connected;
             this.connected = false;
             this.socket = null;
+            // A negotiation does not survive the socket it was negotiated on. Forgetting it
+            // is what makes `sendVoiceTranscript` refuse rather than post into the void, and
+            // what makes the reconnect re-offer rather than assume.
+            this.voice = null;
+            this.voiceState = 'idle';
             this.blackboard?.setFlag('sessionUp', false);
             if (wasConnected) this.bus.emit('session:down', {});
             this._scheduleReconnect();
@@ -270,6 +295,48 @@ const SessionAdapter = (() => {
             return { action: 'applied' };
         }
 
+        // ── the voice uplink (B10) ───────────────────────────────────────────
+
+        _on_voice_answer(message) {
+            // The mode the server *accepted*, which need not be the one offered: a server
+            // with no media terminus answers transcript mode, and the client obliges by
+            // sending text from the recogniser it already has.
+            this.voice = { negotiated: true, mode: message.mode || 'transcript', sdp: message.sdp || '' };
+            if (this.onVoiceAnswer) this.onVoiceAnswer(this.voice);
+            return { action: 'applied', why: this.voice.mode };
+        }
+
+        _on_voice_ice(message) {
+            if (this.onVoiceIce) this.onVoiceIce(message.candidate);
+            return { action: 'applied' };
+        }
+
+        _on_voice_state(message) {
+            if (!VOICE_STATES.has(message.state)) return { action: 'dropped', why: 'unknown voice state' };
+            this.voiceState = message.state;
+            // Not an event on the bus: this drives a mic indicator, it is not something
+            // she reacts to, and putting it on the bus would invite exactly that.
+            if (this.onVoiceState) this.onVoiceState(message.state);
+            return { action: 'applied' };
+        }
+
+        /** Offer the uplink. `transcript` needs no SDP — the recogniser is already here. */
+        offerVoice(mode = 'transcript', sdp = '') {
+            return this.send({ v: PROTOCOL_VERSION, type: 'voice_offer', mode, sdp });
+        }
+
+        sendVoiceTranscript(text, { final = true, lang = 'en' } = {}) {
+            if (!this.voice || !this.voice.negotiated) return false;
+            return this.send({ v: PROTOCOL_VERSION, type: 'voice_transcript', text, final, lang });
+        }
+
+        endVoice(reason = 'user_stopped') {
+            const sent = this.send({ v: PROTOCOL_VERSION, type: 'voice_end', reason });
+            this.voice = null;
+            this.voiceState = 'idle';
+            return sent;
+        }
+
         _on_error(message) {
             console.warn(`[BD] session error ${message.code}: ${message.msg}`);
             return { action: 'logged' };
@@ -330,6 +397,8 @@ const SessionAdapter = (() => {
         get stats() {
             return {
                 connected: this.connected,
+                voice: this.voice ? this.voice.mode : null,
+                voiceState: this.voiceState,
                 attempts: this.attempts,
                 nextRetryMs: this.nextRetryMs || 0,
                 received: this.received,

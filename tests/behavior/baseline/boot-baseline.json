@@ -9,6 +9,11 @@
       "guarded": true
     },
     {
+      "file": "index.html",
+      "line": 1554,
+      "guarded": true
+    },
+    {
       "file": "src/main.js",
       "line": 910,
       "guarded": true

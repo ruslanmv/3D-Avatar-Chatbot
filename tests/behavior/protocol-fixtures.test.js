@@ -65,6 +65,13 @@ describe('protocol fixture set', () => {
                 'streak',
                 'display',
                 'adult_ack',
+                // spec v1.1 §6.10 — the voice uplink (B10)
+                'voice_offer',
+                'voice_ice',
+                'voice_transcript',
+                'voice_end',
+                'voice_answer',
+                'voice_state',
                 // forward compatibility
                 FORWARD_COMPAT,
             ].sort()

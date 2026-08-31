@@ -372,7 +372,7 @@ never fires `onclose` and is caught instead by the server's heartbeat going quie
 
 ---
 
-#### B10 · Voice uplink (WebRTC + ASR) `[S][C]`
+#### B10 · Voice uplink (WebRTC + ASR) `[S][C]` — ✅ landed
 **Branch:** `feat/avatar-b10-rtc` · **Depends on:** B8, B9
 **New:** `backend/app/avatar_director/rtc.py` (signalling over the B8 WS).
 **Touched:** none beyond B8's registration. **Notes:** this is an **integration batch** —
@@ -382,6 +382,14 @@ a second ASR path.
 **AC:** mic → ASR → persona reply with `[[emote:…]]` → avatar gestures, end to end;
 `user:speaking`/`user:silent` VAD events reach the client bus; opting out of mic leaves
 every other channel working.
+**As landed:** the ASR is the browser's, and that is the integration rather than a shortcut —
+`js/speech-service.js` already runs Web Speech with a MediaRecorder fallback for Quest, and
+`voice_call` was already built to take a final transcript from a client. Server-side media
+termination is a second, optional mode: `rtc.py` negotiates it, and refuses it by name unless
+a terminus is installed, because `aiortc` is a deployment's decision and not a batch's. The
+server strips `[[emote:…]]` out of the reply before sending it, since a `say` goes to
+`speakText` and an unstripped tag is read aloud. The §7 touch is one button in the settings
+panel — the only caller of `enableVoice()`, because a microphone is asked for by a person.
 
 ---
 

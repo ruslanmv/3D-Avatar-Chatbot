@@ -1,0 +1,15 @@
+{
+  "name": "voice_end",
+  "direction": "client->server",
+  "spec": "v1.1 6.10",
+  "required": [
+    "v",
+    "type",
+    "reason"
+  ],
+  "message": {
+    "v": 1,
+    "type": "voice_end",
+    "reason": "user_stopped"
+  }
+}

@@ -1478,6 +1478,19 @@
                                 placeholder="wss://homepilot.local/avatar/session"
                             />
                         </div>
+
+                        <!-- Batch B10. A button rather than a stored flag: the browser's own
+                             permission prompt is the consent, and re-asking on every reload
+                             is the correct behaviour for a microphone. -->
+                        <div class="input-group">
+                            <button id="behavior-voice-btn" class="btn-primary" type="button">
+                                Use microphone with HomePilot
+                            </button>
+                            <div
+                                id="behavior-voice-status"
+                                style="font-size: 0.7rem; color: #888; margin-top: 6px"
+                            ></div>
+                        </div>
                     </div>
                     <script>
                         (function () {
@@ -1530,6 +1543,27 @@
                             sessionBox.disabled = sessionUrl.value.trim().length === 0;
                             sessionUrl.addEventListener('change', syncSession);
                             sessionBox.addEventListener('change', syncSession);
+
+                            /* Batch B10. The one caller of enableVoice(). Guarded on the
+                               same line, and it reports what actually happened: declining
+                               the microphone is an outcome to show, not an error to hide. */
+                            var voiceBtn = document.getElementById('behavior-voice-btn');
+                            var voiceStatus = document.getElementById('behavior-voice-status');
+                            if (!voiceBtn || !voiceStatus) return;
+                            voiceBtn.addEventListener('click', async function () {
+                                var director = window.NEXUS_BD_ENABLED ? window.NEXUS_BD : null;
+                                if (!director) {
+                                    voiceStatus.textContent = 'Turn the Behavior Director on and reload first.';
+                                    return;
+                                }
+                                voiceStatus.textContent = 'Asking for the microphone…';
+                                var result = await director.enableVoice();
+                                var why = director.voice ? director.voice.stats.reason : 'unavailable';
+                                voiceStatus.textContent =
+                                    result === 'listening'
+                                        ? 'Listening. Speak and she will answer.'
+                                        : 'Microphone not in use — ' + why + '. Everything else keeps working.';
+                            });
                         })();
                     </script>
 
