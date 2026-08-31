@@ -608,7 +608,7 @@ the other is a state machine over adapters that already exist.
 
 ---
 
-#### B20 · Panel channel — `display` + PanelRenderer `[S][C]`
+#### B20 · Panel channel — `display` + PanelRenderer `[S][C]` — ✅ landed
 **Branch:** `feat/bd-b20-panels` · **Depends on:** B9, B12 (screen mesh)
 **New:** `src/features/together/panels/PanelRenderer.js` (structured data → canvas texture
 on the virtual screen), server-side `display` emitter in `avatar_director/session.py`.
@@ -620,6 +620,15 @@ are rejected with an error message, never truncated silently; `panel:shown`/`pan
 fire; a client without the renderer ignores `display` without erroring.
 **Why split from B21:** the renderer is the reusable half (tool results, share cards,
 coach stats all land on it); the assistant is one consumer.
+**As landed:** legibility is computed rather than eyeballed — 1.76 arc-minutes per canvas
+pixel at B12's geometry, every style clearing the 20 arc-minute floor with 1.5× headroom, and
+tests that find the exact size where legible stops so the threshold is a measurement rather
+than one picked to let the current fonts pass. The canvas out-resolves a Quest 3 (34 px/deg
+against ~25), so the headset is the limit rather than the texture. The size cap is enforced
+only on the server: two ceilings eventually differ, and the renderer is asserted to name no
+size check at all. `truncatable()` is advice and changes nothing — the caller's object is
+byte-identical afterwards. One test I wrote was wrong and got replaced: a smaller canvas
+makes text *blockier*, not smaller, because each pixel then covers more arc.
 
 ---
 

@@ -43,6 +43,10 @@ const BehaviorEventBus = (() => {
         'mode:changed',
         'anim:started',
         'anim:ended',
+        // B20. A panel appearing and going are events the assistant, the coach and the
+        // share flow all react to; a single typed pair beats three private callbacks.
+        'panel:shown',
+        'panel:closed',
     ];
 
     class EventBus {

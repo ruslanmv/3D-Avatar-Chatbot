@@ -50,6 +50,7 @@
         'src/features/together/activities/music.js',
         'src/features/together/activities/scene-journey.js',
         'src/features/together/activities/screen-insight.js',
+        'src/features/together/panels/PanelRenderer.js',
         'src/behavior/debug/PickLog.js',
         'src/behavior/debug/DebugHUD.js',
     ];
@@ -182,6 +183,7 @@
                 music: null,
                 journey: null,
                 insight: null,
+                panels: null,
                 consent: null,
                 consentIndicator: null,
                 togetherPanel: null,
@@ -266,9 +268,18 @@
                         journey: director.journey && director.journey.stats,
                         indicator: director.consentIndicator && director.consentIndicator.stats,
                         pickLog: director.pickLog && director.pickLog.stats,
+                        panels: director.panels && director.panels.stats,
                     };
                 },
             };
+
+            // Panels (B20). Built before the session adapter, which is handed it — a
+            // `display` arriving at a client with no renderer is ignored cleanly, and this
+            // is the client that has one.
+            if (global.NEXUS_BD_PANEL_RENDERER) {
+                director.panels = global.NEXUS_BD_PANEL_RENDERER.attach({ bus });
+                director.adapters.push(director.panels);
+            }
 
             // Sense (B4). Each adapter wires itself and hands back a detach; the order is
             // only significant for the tag adapter, which must wrap NEXUS_MOTION before the
@@ -283,7 +294,11 @@
                 ['speech', global.NEXUS_BD_SPEECH_ADAPTER],
                 ['idle', global.NEXUS_BD_IDLE_ADAPTER],
                 ['gaze', global.NEXUS_BD_GAZE_ADAPTER],
-                ['session', global.NEXUS_BD_SESSION_ADAPTER, () => ({ say: global.NEXUS_BD_SAY })],
+                [
+                    'session',
+                    global.NEXUS_BD_SESSION_ADAPTER,
+                    () => ({ say: global.NEXUS_BD_SAY, panels: director.panels }),
+                ],
                 // The voice adapter needs the session that was just built, so its extra
                 // deps are a thunk rather than a literal. It asks for no microphone here;
                 // that waits for `director.enableVoice()`.

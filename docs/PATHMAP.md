@@ -840,6 +840,74 @@ to be reverted at midnight, reverting it is also one line.
 
 ---
 
+## 2p. The panel channel (B20)
+
+`src/features/together/panels/PanelRenderer.js`, against HomePilot's
+`avatar_director/panels.py`. Zero pre-existing files touched.
+
+### A texture, not DOM
+
+The decision the batch turns on. A DOM panel works in 2D and vanishes in VR — an immersive
+session renders its own framebuffer and never sees the page. A canvas texture works in all
+three the same way, on the screen B12 already builds, so there is one renderer and one
+appearance rather than a web panel and a VR panel that drift apart. A test asserts the file
+names no `innerHTML`, `appendChild`, `document.body` or `style.cssText`.
+
+It is also why the renderer is a separate batch from the assistant that uses it: tool
+results, coach stats and share cards all land here.
+
+### Legible is arithmetic
+
+"Reads legibly at Quest resolution" is usually answered with a screenshot. Here it is a
+number. B12's screen subtends 60°; the canvas spans it at 2048 px, so one canvas pixel is
+**1.76 arc-minutes** at the eye, and a font size converts to arc-minutes of cap height
+(≈70% of nominal). Twenty arc-minutes is the floor for comfortable reading:
+
+| style | px | arc-min |
+|---|---|---|
+| title | 64 | 78.8 |
+| row | 44 | 54.1 |
+| key | 40 | 49.2 |
+| meta | 32 | 39.4 |
+
+Every one clears the floor with better than 1.5× headroom, and the tests find the exact size
+where legible stops (between 15 and 17 px) — which is what makes it a measurement rather
+than a threshold picked to let the current fonts pass.
+
+The canvas resolution is chosen the same way: 2048 across 60° is **34 px/degree**, above a
+Quest 3's ~25, so the *headset* is the limit rather than the texture. A test asserts a 512 px
+canvas would be the wrong way round.
+
+Note the failure mode is not the intuitive one: a smaller canvas makes each pixel cover
+*more* arc, so text gets blockier rather than smaller. The first draft of that test asserted
+the opposite and was wrong.
+
+### The size limit lives on one side
+
+The server rejects a payload over `panels.max_kb` (64, matching the client's
+`assistant.panelMaxKb`) with its size named in bytes *and* in KB — the two answer different
+questions and a sender needs both. **Nothing is truncated**: a shortened agenda is an agenda
+with the afternoon missing, drawn as confidently as a complete one, and the user cannot tell
+it from a short day.
+
+The client deliberately does **not** re-check. Two ceilings eventually differ, and the one
+that can refuse is the server's; a test asserts the renderer names no `panelMaxKb`, `maxKb`,
+`byteLength` or `JSON.stringify`. What the renderer does refuse is a *kind* it cannot draw —
+a blank screen is the least useful failure a panel can have.
+
+`truncatable()` exists as **advice, not action**: it tells a caller roughly how many rows
+would have to go, and changes nothing. A test asserts the caller's own object is byte-identical
+afterwards.
+
+### A client without the renderer
+
+`display` is a type the client knows and may be unable to act on, which is a different case
+from §6.9's unknown-type rule. It is ignored, counted in `dropped.noRenderer` so an operator
+can see the panels are going nowhere, and the session stays open — with a test that every
+other message type keeps working alongside it.
+
+---
+
 ## 3. Frozen names
 
 Decided in B0; every later batch cites them.

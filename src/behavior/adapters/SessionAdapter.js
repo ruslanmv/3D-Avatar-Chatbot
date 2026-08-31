@@ -70,7 +70,7 @@ const SessionAdapter = (() => {
          * @param {function} [deps.socketFactory] (url) => WebSocket-like; injectable for tests
          * @param {function} [deps.say]      routes text through the normal TTS pipeline
          */
-        constructor({ bus, config = {}, blackboard, socketFactory, say, now = () => Date.now() } = {}) {
+        constructor({ bus, config = {}, blackboard, socketFactory, say, panels, now = () => Date.now() } = {}) {
             this.bus = bus;
             this.blackboard = blackboard;
             this.config = config;
@@ -92,6 +92,8 @@ const SessionAdapter = (() => {
 
             /** Set by `voice_answer` (B10). Null until the server accepts an offer. */
             this.voice = null;
+            /** B20's renderer, when this client has one. Optional by design. */
+            this.panels = panels || null;
             this.voiceState = 'idle';
             this.received = 0;
             this._lastMessageAt = 0;
@@ -278,9 +280,16 @@ const SessionAdapter = (() => {
             return { action: 'emitted' };
         }
 
-        _on_display() {
-            // B20 renders these. Until then it is ignored rather than mishandled.
-            return { action: 'ignored', why: 'no panel renderer yet' };
+        _on_display(message) {
+            // B20. A client without the renderer ignores this cleanly rather than erroring —
+            // §6.9's rule applied one level down: a message type you know but cannot act on
+            // is still not a reason to break the session.
+            if (!this.panels || typeof this.panels.show !== 'function') {
+                this.dropped.noRenderer = (this.dropped.noRenderer || 0) + 1;
+                return { action: 'ignored', why: 'no panel renderer' };
+            }
+            const result = this.panels.show(message);
+            return result.ok ? { action: 'applied', why: result.kind } : { action: 'dropped', why: result.why };
         }
 
         _on_adult_ack(message) {
