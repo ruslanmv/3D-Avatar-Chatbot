@@ -54,6 +54,9 @@
         // B21 loads after the renderer it attends to: an assistant with no panel to point
         // at is a speaker puck with a face.
         'src/features/together/activities/assistant.js',
+        // B22 loads after scene-journey, whose `derive` it reuses rather than writing a
+        // second answer to what an overlay does to `initiative`.
+        'src/features/together/activities/focus.js',
         'src/behavior/debug/PickLog.js',
         'src/behavior/debug/DebugHUD.js',
     ];
@@ -188,6 +191,7 @@
                 insight: null,
                 panels: null,
                 assistant: null,
+                focus: null,
                 consent: null,
                 consentIndicator: null,
                 togetherPanel: null,
@@ -274,6 +278,7 @@
                         pickLog: director.pickLog && director.pickLog.stats,
                         panels: director.panels && director.panels.stats,
                         assistant: director.assistant && director.assistant.stats,
+                        focus: director.focus && director.focus.stats,
                     };
                 },
             };
@@ -401,6 +406,21 @@
                     });
                     director.togetherPanel.register(director.insight);
                     director.adapters.push(director.insight);
+                }
+
+                // B22. Body doubling: the quiet profile and the pomodoro clock. It takes
+                // the same gate B14 does, and refuses to start a block without an overlay
+                // function — a focus session it cannot keep quiet is worse than none.
+                if (global.NEXUS_BD_FOCUS) {
+                    director.focus = global.NEXUS_BD_FOCUS.attach({
+                        bus,
+                        blackboard,
+                        config,
+                        gate: director.watch && director.watch.gate,
+                        session: director.session,
+                    });
+                    director.togetherPanel.register(director.focus);
+                    director.adapters.push(director.focus);
                 }
             }
 

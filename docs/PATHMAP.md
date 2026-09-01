@@ -1005,6 +1005,88 @@ all three of which B9 and B20 already carry.
 
 ---
 
+## 2r. Body-doubling focus (B22)
+
+`src/features/together/activities/focus.js` against HomePilot's `avatar_director/focus.py`.
+Touched: `EventBus.js` (one event), `boot.js` (one module, one guarded attach),
+`app/ltm.py` (one category), `avatar_director/protocol.py` (one optional constructor
+argument). Everything else is new.
+
+Somebody else working in the room, and the cheapest proof that §6.7's "quietly alive"
+profile actually works: twenty-five minutes in which she is present, visibly breathing,
+occasionally mirroring — and says nothing at all.
+
+### The silence is structural, and it is B12's gate that enforces it
+
+Not this module remembering not to speak. Entering a focus block installs an overlay with
+`initiative.budgetPerSession: 0` and an empty `commentaryOpenings`, and `CommentaryGate`
+checks the budget **before** openings and before attention, so every path through `may()`
+returns false. Meditation's mechanism (§6.11), reused rather than reimplemented — including
+`SceneJourney.derive`, so there is one answer to what an overlay does to `initiative`
+rather than two.
+
+The acceptance test drives a **real gate through a real twenty-five minutes**: 1500
+simulated seconds, three openings fired at every one of them, and `gate.stats.allowed === 0`
+at the end. Then it fires the same openings during the break and requires a *yes*, because a
+test that only proves silence would also pass on a gate that refuses everything always.
+
+Two independent mechanisms, and they are not equally load-bearing. Restoring the base
+`commentaryOpenings` in the overlay does **not** break the twenty-five minutes — with the
+budget at zero the gate refuses before it ever consults openings. Removing the overlay
+entirely fails the headline test. So the budget is the guarantee and the empty openings list
+is defence in depth; a separate test names the budget as the reason, so a change to it
+cannot hide behind the other.
+
+The corollary is uncomfortable and correct: **she will not start a block she cannot be quiet
+in.** With no overlay function, `start()` refuses with a reason rather than running a focus
+session on the ordinary profile — a companion who chats at you for twenty-five minutes is
+worse than no feature.
+
+### What she does instead of talking
+
+Mirrors, from signals the engine already produces: `user:idle` → `breathe`, `user:active`
+after an idle → `nod_along`. Intent *names* from the protocol whitelist, so the KB picks the
+clip and this file names no animation. They are gestures, not speech, and they do not pass
+through the gate. One-minute cooldown, because a companion who mirrors every twitch is a
+mime — a test twitches sixty times in a minute and expects one mirror. She does not mirror
+during a break: the ordinary profile's own idle behaviour has that.
+
+### The streak is memory, not a scoreboard
+
+`focus_streak` rows in `app.ltm`, alongside B16's `interest` rows. Not a table, not a file:
+a parallel store is a second place a user's data hides from the delete button they already
+have, and a test asserts `forget()` reaches it.
+
+The arithmetic is pure and **takes the date as an argument** — a test greps `focus.py` for
+`date.today`, `datetime.now`, `time.time` and `utcnow`, because a function that reads the
+clock cannot be asked about a midnight or a gap. Three rules:
+
+| case | effect |
+|---|---|
+| a second block **today** | `blocks` +1, `days` unchanged |
+| a block **the next day** | `days` +1 |
+| a block after **a gap** | `days` = 1; `best` is never lowered |
+
+`days` counts days shown up rather than work done, or one frantic afternoon out-ranks a
+fortnight of mornings. `is_live` is true on the day itself **and the day after**: at 9am on
+Tuesday a Monday streak is alive and about to be continued, and showing a zero every morning
+until the first block lands is the opposite of what this batch is for.
+
+Client-side there is no count of record — a test asserts `focus.js` never says `days`. The
+client sends one `streak` frame per completed block, at the **boundary** rather than at
+`stop`, so a session abandoned mid-break still did the work. The server owns what a streak
+means.
+
+### The protocol seam was already there
+
+`streak` has been a client message since B9 and landed in `SessionState.streaks`, which is
+session-scoped and gone when the socket closes. B22 adds one optional `streaks=` argument to
+`ProtocolHandler`; without it the frame behaves exactly as it did, asserted by a test. The
+day comes from the handler's own injectable clock, not `date.today()`, and a store that
+raises is logged rather than allowed to cost the client its session.
+
+---
+
 ## 3. Frozen names
 
 Decided in B0; every later batch cites them.

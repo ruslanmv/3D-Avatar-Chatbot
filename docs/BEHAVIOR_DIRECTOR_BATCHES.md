@@ -666,7 +666,7 @@ Three things worth carrying forward:
 
 ---
 
-#### B22 · Body-doubling focus sessions `[C][S]`
+#### B22 · Body-doubling focus sessions `[C][S]` — ✅ landed
 **Branch:** `feat/bd-b22-focus` · **Depends on:** B7, B16
 **New:** `src/features/together/activities/focus.js` (pomodoro machine + quiet profile
 overlay, initiative ≈ 0 except block boundaries); streak records as a new LTM category.
@@ -675,6 +675,27 @@ inside a focus block; she stretches when you stretch and nods on refocus from id
 signals alone; the streak persists server-side and is recalled next session.
 **Why here:** it is the cheapest proof that the "quietly alive" profile works, and it makes
 the curiosity memory visible to the user in a way movie night alone does not.
+
+**As landed:** client `src/features/together/activities/focus.js`, server
+`backend/app/avatar_director/focus.py`. The plan's "Touched: none" was optimistic by four
+one-line edits: `EventBus.js` (one event — `focus:phase`, carrying the phase the way
+`scene:anchor` carries a name, rather than a family of `focus:*` entries), `boot.js` (module
++ guarded attach), `app/ltm.py` (the `focus_streak` category, which PATHMAP already
+sanctioned), and `protocol.py` (one optional `streaks=` argument; without it the existing
+`streak` frame behaves exactly as it did, asserted).
+
+Three things worth carrying forward:
+
+* the silence has **two** mechanisms and they are not equal. Restoring the base
+  `commentaryOpenings` does not break the twenty-five minutes, because the zeroed budget is
+  checked first; removing the overlay entirely does. A separate test names the budget as the
+  reason so a change to it cannot hide behind the openings list;
+* the double-apply guard in `_applyOverlay` is unreachable from the phase machine, which
+  restores on every break. It is exercised directly by a test rather than left as a guard
+  nothing protects — a mutation removing it now fails;
+* `derive` distinguishes `undefined` ("find it yourself") from `null` ("there isn't one"),
+  the same idiom the renderer uses for `three`. The first draft used `||` and the refusal
+  path was untestable because jsdom had already published `NEXUS_BD_JOURNEY`.
 
 ---
 

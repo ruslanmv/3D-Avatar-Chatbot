@@ -47,6 +47,10 @@ const BehaviorEventBus = (() => {
         // share flow all react to; a single typed pair beats three private callbacks.
         'panel:shown',
         'panel:closed',
+        // B22. One typed event carrying the phase, the way `scene:anchor` carries a name:
+        // `focus:start`/`focus:break`/`focus:end` would be three entries and a fourth the
+        // day somebody adds a long break.
+        'focus:phase',
     ];
 
     class EventBus {
