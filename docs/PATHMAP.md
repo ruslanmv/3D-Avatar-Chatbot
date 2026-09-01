@@ -908,6 +908,103 @@ other message type keeps working alongside it.
 
 ---
 
+## 2q. Embodied HomePilot (B21)
+
+`src/features/together/activities/assistant.js`, against HomePilot's
+`avatar_director/assistant.py`. Zero pre-existing files touched on the server; on the client,
+`boot.js` gains one module and one guarded attach.
+
+The flagship beat of the plan, and it is nearly no code. Every tool already existed —
+`hp_personal_plan_day` fetches the day, the seeded calendar servers know the meetings,
+`daypilot_bridge` already carries a proposal to an Approval Center. What was missing was
+somebody in the room to put the day on a screen, point at it, and say one short sentence.
+
+### One approval path, and it is the one that was already there
+
+The worst mistake available in this plan is a second approval path — an assistant that calls
+a calendar API "just for the easy cases" and builds a second door into the same house, with
+a different lock, maintained by nobody. So the server module is structurally incapable of
+it rather than merely disciplined about it:
+
+* it takes no executor, no client, no session — `compose()`'s parameters are data, and a
+  test asserts the names `client`, `executor`, `session`, `http`, `tools`, `run` are not
+  among them;
+* its output type is `Proposal`, whose only public method is `as_directive()`. A test
+  enumerates the callables on it and asserts the list is exactly that;
+* a test greps the module for `httpx`, `requests`, `urllib`, `aiohttp`, `subprocess`,
+  `socket`, `smtplib`, `googleapiclient`, `msgraph`. Adding `import subprocess` fails it.
+
+The emitted directive is then handed to the bridge's own `_sanitize_directive` in a test, so
+a proposal cannot silently fail validation on the far side and vanish between the persona
+and the Approval Center — which would look, to the user, exactly like never being asked.
+
+### Two safety namespaces, one door
+
+Conflating them is how a gesture ends up needing approval and a calendar write does not.
+
+| namespace | graded by | levels present |
+|---|---|---|
+| avatar tools (`play_animation`, `vision_insight`) | `safety.TOOL_SAFETY` | read-only, confirm, autonomous |
+| DayPilot capabilities (`calendar.create`, `email.send`) | `daypilot_bridge.CAPABILITIES` | confirm, always |
+
+`gate()` reads both and returns a level; a name in neither is **refused**, not defaulted to
+confirm — grading a typo "confirm to be safe" lets it become a real-world action the user
+then approves believing they read it. `propose()` refuses anything it grades autonomous:
+asking permission to blink is how a user learns to approve without reading.
+
+The capability set is read from the bridge rather than copied, and a test asserts identity
+(`is`), because a copy is a second, staler statement of what may be approved.
+
+### One proposal per brief
+
+`MAX_PROPOSALS_PER_BRIEF = 1`. A brief that proposes five things is a to-do list you decline
+four times before breakfast. The rest are **deferred, not dropped** — returned on the brief
+so a caller can offer them when asked, with a test that `len(proposals) + len(deferred)`
+accounts for every candidate, and another that deferred proposals are absent from
+`directives()`: not offered means not sent, and a proposal arriving at the Approval Center
+that the user was never shown the question for is the same bug in a different direction.
+
+### She points at the panel rather than narrating into space
+
+The UX gate, made into numbers on both sides.
+
+* Server: the spoken summary names at most `SPOKEN_ITEM_LIMIT` (2) items and says how many
+  more are on the screen, within `SPEECH_CHAR_BUDGET` (320) characters. A twelve-meeting day
+  is two names and "and 10 more on the screen", while the panel carries all twelve.
+* Client: the gesture is the client's own reading of its own screen. Only the `display`
+  frame is delivered in the end-to-end test; the `point` intent that follows is emitted
+  locally, which is what makes it embodiment rather than remote control.
+
+`POINT_INTENT` is `point`, and it is built through `ProtocolHandler.intent()` so it still has
+to clear `EMOTE_WHITELIST` — the first draft used `point_at_screen`, which is not in it.
+
+### The client's half is attention, and nothing else
+
+It draws nothing, says nothing, and cannot act.
+
+* **Says nothing**: a test greps the module for `NEXUS_BD_SAY`, `speakText`,
+  `speechSynthesis`, `.say(`. Every word of a brief arrives as a `say` frame on the normal
+  TTS path, exactly as a chat reply does.
+* **Cannot act**, stated the strong way: not "there is no handler" but *there is no frame*.
+  A test feeds the session adapter `tool_call`, `proposal`, `approve`, `execute`, `action`
+  and `directive` and asserts each comes back `ignored / unknown type` with the session
+  still open. A proposal lives in `x_directives` on the chat response and never reaches this
+  client at all.
+* **Attention** it does own: `activityTarget` goes to `panel` on show and is restored *by
+  reference* on close, §6.11's snapshot discipline one level down. It snapshots only when
+  nothing is already attended, so a second panel over the first does not capture `panel` as
+  the thing to restore and leave her never looking away again. Ten show/close cycles leave
+  the value unchanged.
+* She points **once** per panel, at `agenda`, `tool_result` and `stats` — the ones she is
+  presenting. She looks at `cards` and `share` without pointing: those are the user's own
+  things on her screen. After `ATTENTION_MS` (12 s) her attention drifts back to you, and
+  the drift is the only thing a tick does.
+
+No new protocol frame, and therefore no new fixture: a brief is `display` + `intent` + `say`,
+all three of which B9 and B20 already carry.
+
+---
+
 ## 3. Frozen names
 
 Decided in B0; every later batch cites them.

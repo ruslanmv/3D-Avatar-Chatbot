@@ -51,6 +51,9 @@
         'src/features/together/activities/scene-journey.js',
         'src/features/together/activities/screen-insight.js',
         'src/features/together/panels/PanelRenderer.js',
+        // B21 loads after the renderer it attends to: an assistant with no panel to point
+        // at is a speaker puck with a face.
+        'src/features/together/activities/assistant.js',
         'src/behavior/debug/PickLog.js',
         'src/behavior/debug/DebugHUD.js',
     ];
@@ -184,6 +187,7 @@
                 journey: null,
                 insight: null,
                 panels: null,
+                assistant: null,
                 consent: null,
                 consentIndicator: null,
                 togetherPanel: null,
@@ -269,6 +273,7 @@
                         indicator: director.consentIndicator && director.consentIndicator.stats,
                         pickLog: director.pickLog && director.pickLog.stats,
                         panels: director.panels && director.panels.stats,
+                        assistant: director.assistant && director.assistant.stats,
                     };
                 },
             };
@@ -279,6 +284,14 @@
             if (global.NEXUS_BD_PANEL_RENDERER) {
                 director.panels = global.NEXUS_BD_PANEL_RENDERER.attach({ bus });
                 director.adapters.push(director.panels);
+
+                // B21. Attention only: it draws nothing, says nothing, and cannot act. The
+                // brief's panel and sentence both arrive as protocol frames the session
+                // adapter already handles.
+                if (global.NEXUS_BD_ASSISTANT) {
+                    director.assistant = global.NEXUS_BD_ASSISTANT.attach({ bus, blackboard, panels: director.panels });
+                    director.adapters.push(director.assistant);
+                }
             }
 
             // Sense (B4). Each adapter wires itself and hands back a detach; the order is

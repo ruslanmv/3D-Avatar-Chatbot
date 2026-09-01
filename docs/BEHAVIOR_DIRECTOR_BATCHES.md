@@ -632,7 +632,7 @@ makes text *blockier*, not smaller, because each pixel then covers more arc.
 
 ---
 
-#### B21 · Embodied HomePilot — assistant activity `[C][S]`
+#### B21 · Embodied HomePilot — assistant activity `[C][S]` — ✅ landed
 **Branch:** `feat/bd-b21-assistant` · **Depends on:** B20
 **New:** `src/features/together/activities/assistant.js` (dynamic import).
 **Touched:** none. **Notes:** this is a **presentation batch over tools that already
@@ -646,6 +646,23 @@ mistake available in this plan.
 (negative test); she points at the panel rather than narrating into space.
 **UX gate:** the beat is *assistant with a body and memory*, not a speaker puck with a
 face — reviewed live, not by screenshot.
+
+**As landed:** server `backend/app/avatar_director/assistant.py` + client
+`src/features/together/activities/assistant.js`; **`boot.js` is touched** (one module, one
+guarded attach, two null fields), which the plan recorded as "Touched: none" — the client
+half needs a home like every other activity. Nothing else pre-existing is touched in either
+repo, and no new protocol frame was needed: a brief is `display` + `intent` + `say`.
+
+Three things worth carrying forward:
+
+* the plan's `point_at_screen` is **not** in `protocol.EMOTE_WHITELIST`. The gesture is
+  `point`, and it is built through `ProtocolHandler.intent()` so the whitelist is what
+  catches this rather than a reviewer;
+* "no tool runs outside the safety layer" is asserted on the client as *there is no frame*,
+  not *there is no handler* — six invented action types come back `ignored / unknown type`;
+* the UX gate's live review is still **unsigned**, like B16's twenty minutes and B19's
+  visual checklist. What is signed is the arithmetic half: at most 2 items spoken of a
+  twelve-item day, inside 320 characters, with the panel carrying all twelve.
 
 ---
 
