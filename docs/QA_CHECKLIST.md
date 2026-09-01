@@ -142,3 +142,18 @@ to be reverted at midnight, reverting it is also one line.
 
 HomePilot's `avatar.enabled` does **not** flip. It stays opt-in and documentation-first —
 see `HomePilot/docs/AVATAR_ENABLING.md`.
+
+## I. Coach mode on the reference device (B27)
+
+The one acceptance criterion in this plan that names a device. `scripts/audit-budgets.mjs`
+measures the engine half (0.0009 ms/frame) and cannot measure the rest.
+
+| # | Check | Result |
+|---|---|---|
+| I1 | Sustained framerate with Pose active and an avatar loaded, Quest-class hardware | ☐ |
+| I2 | Pose detection holds 15–20 fps rather than degrading under thermal load | ☐ |
+| I3 | Fidgets visibly stop while a set is running, and resume when it ends | ☐ |
+| I4 | Reps counted from a real person match what they counted, ±1, over three sets | ☐ |
+| I5 | A squat, push-up, plank or lunge demo is refused by name rather than substituted | ☐ |
+
+Section I may not ship amber.

@@ -52,6 +52,9 @@
         'src/features/together/activities/screen-insight.js',
         // B26 holds the B15 activity above rather than describing its round trip again.
         'src/features/together/activities/copilot.js',
+        // B27. The counter loads before the coach that owns one.
+        'src/features/together/heuristics/RepCounter.js',
+        'src/features/together/activities/coach.js',
         'src/features/together/panels/PanelRenderer.js',
         // B21 loads after the renderer it attends to: an assistant with no panel to point
         // at is a speaker puck with a face.
@@ -207,6 +210,7 @@
                 clips: null,
                 clipButton: null,
                 copilot: null,
+                coach: null,
                 consent: null,
                 consentIndicator: null,
                 togetherPanel: null,
@@ -298,6 +302,7 @@
                         clips: director.clips && director.clips.stats,
                         clipButton: director.clipButton && director.clipButton.stats,
                         copilot: director.copilot && director.copilot.stats,
+                        coach: director.coach && director.coach.stats,
                     };
                 },
             };
@@ -440,6 +445,22 @@
                         });
                         director.togetherPanel.register(director.copilot);
                         director.adapters.push(director.copilot);
+                    }
+
+                    // Coach (B27). The heaviest activity here: Pose joins the MediaPipe
+                    // loader FaceTracker and HandTracker already fill, and its overlay
+                    // declines idle-class clips through §6.5's one gate while it runs.
+                    if (global.NEXUS_BD_COACH) {
+                        director.coach = global.NEXUS_BD_COACH.attach({
+                            bus,
+                            blackboard,
+                            registry,
+                            insight: director.insight,
+                            gate: director.watch && director.watch.gate,
+                            say: (text, options) => global.NEXUS_BD_SAY && global.NEXUS_BD_SAY(text, options),
+                        });
+                        director.togetherPanel.register(director.coach);
+                        director.adapters.push(director.coach);
                     }
                 }
 

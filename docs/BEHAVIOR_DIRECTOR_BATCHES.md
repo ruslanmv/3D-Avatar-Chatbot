@@ -851,7 +851,7 @@ AC asks for as its eighth standing claim.
 
 ---
 
-#### B27 · Coach mode — reps, form, practice `[C]`
+#### B27 · Coach mode — reps, form, practice `[C]` — ✅ landed
 **Branch:** `feat/bd-b27-coach` · **Depends on:** B26, B14 (journey scenes for language practice)
 **New:** `src/features/together/activities/coach.js`,
 `src/features/together/heuristics/RepCounter.js`; a small KB content pass adding
@@ -865,6 +865,46 @@ active (this is the batch most likely to break it, so the budget test runs on th
 reference device, not a laptop).
 **Heaviest of the activities pack** — schedule it last inside its wave and give it a full
 session.
+
+**As landed:** both files as planned, plus `kb/scripts/tag-exercises.mjs`,
+`scripts/make-pose-fixture.mjs` and `tests/fixtures/pose/squat-set.json`. "Touched: none" was
+optimistic by five: `EventBus.js`, `boot.js`, `audit-budgets.mjs` (a `coach-frame` row), and
+**two fixes to landed batches**.
+
+**Two defects found, both mine, both from B23:**
+
+1. `UtilityRanker.modeAllows` called `mode.allows(clip)` with one argument. B23's play
+   profile reads the blackboard's attention to refuse a walking clip mid-boss, so it got
+   `undefined` and always returned true — that gate had never fired. Fixed by passing the
+   blackboard through; profiles that ignore the argument are unaffected.
+2. `SceneJourney.derive`'s `OVERLAY_FIELDS` omitted `allows`, so B23's *and* B27's overlays
+   had theirs silently merged away. Fixed by adding it, **function-only**, which preserves
+   B14's rule that a scene manifest may not change what may play — a manifest is JSON and can
+   never carry a function. B14's test bundled two claims and has been split into them, with
+   the reason written down; that is a deliberate change to a landed batch's tested behaviour,
+   not an accident.
+
+**On the acceptance criteria:**
+
+* **±1 against ground truth** is met exactly (12 of 12), and the fixture is **synthesised**,
+  which its own `provenance` field states. There is no video in this repository: a real
+  capture is personal data and a stock clip needs a licence this project does not hold. What
+  makes it a real test is the four shapes it encodes — a partial rep that must not count, an
+  eight-second pause, reps that slow down, and seeded tracking noise — and that raising `low`
+  above the partial makes the same data read 13;
+* **chosen by intent** required the KB pass to be possible at all: every exercise clip
+  carried only the generic `exercise` intent, so asking for jumping jacks and getting a
+  crunch was luck. Five records gained the specific intent they already depicted, from the
+  harvester's own tags rather than a list of ids, additively and idempotently;
+* **the frame budget** is met for the half this repository owns (0.0009 ms). The pose
+  inference is MediaPipe's cost on a GPU that is not in the test process, and it stays on
+  `docs/QA_CHECKLIST.md` — the AC itself says this one runs on the reference device, and it
+  has not.
+
+**Still owed:** the on-device budget run with Pose active, alongside B19's other unsigned
+device checks. And there is no squat, push-up, plank or lunge asset in the repository, so
+four of the five exercises `RepCounter` can count have no demo clip; the coach refuses them
+by name rather than substituting one.
 
 ---
 

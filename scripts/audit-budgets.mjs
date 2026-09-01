@@ -182,6 +182,76 @@ function measureClipFrame() {
     return { msPerFrame, draws };
 }
 
+/**
+ * B27's per-frame cost: what coach mode adds to a frame while Pose is running.
+ *
+ * The `detectForVideo` call is MediaPipe's cost on a GPU that is not in this process, so
+ * what is measured is the *engine* half — the throttle check on every frame, and the
+ * landmark reduction plus rep counting on the fifteen to twenty that get through. Those are
+ * the parts this repository is responsible for, and they are the parts a regression would
+ * appear in.
+ *
+ * The pose inference itself is an on-device number and stays on the checklist, where the
+ * batch's own acceptance criterion puts it: the budget test runs on the reference device,
+ * not a laptop.
+ */
+function measureCoachFrame() {
+    const coachPath = 'src/features/together/activities/coach.js';
+    if (!existsSync(join(ROOT, coachPath))) return null;
+    load('src/features/together/heuristics/RepCounter.js', (s) => s.window.NEXUS_BD_REP_COUNTER);
+    const Coach = load(coachPath, (s) => s.window.NEXUS_BD_COACH);
+    const RepCounter = load('src/features/together/heuristics/RepCounter.js', (s) => s.window.NEXUS_BD_REP_COUNTER);
+
+    // One squat's worth of landmarks, cycling, so the reduction and the counter both work.
+    // 42 detections at 48 ms apart is a two-second rep, which is what `RepCounter`'s
+    // 700 ms refractory period expects. Sized from the cadence rather than picked: the
+    // first draft used 40 *frames*, which made every rep 640 ms and every one rejected.
+    const CYCLE = 42;
+    const frames = [];
+    for (let i = 0; i < CYCLE; i++) {
+        const knee = 130 + 42 * Math.cos((i / CYCLE) * Math.PI * 2);
+        const radians = (knee * Math.PI) / 180;
+        const points = [];
+        points[Coach.LM.leftHip] = { x: 0, y: 0 };
+        points[Coach.LM.leftKnee] = { x: 0, y: 1 };
+        // Ankle placed so the interior angle at the knee is exactly `knee` degrees.
+        points[Coach.LM.leftAnkle] = { x: Math.sin(radians), y: 1 - Math.cos(radians) };
+        points[Coach.LM.rightHip] = { x: 1, y: 0 };
+        points[Coach.LM.rightKnee] = { x: 1, y: 1 };
+        points[Coach.LM.rightAnkle] = { x: 1 + Math.sin(radians), y: 1 - Math.cos(radians) };
+        frames.push({ landmarks: [points] });
+    }
+
+    const coach = Coach.attach({
+        counters: RepCounter,
+        derive: (base, overlay) => ({ ...base, ...overlay }),
+        say: () => {},
+        isMobile: () => false,
+        now: () => 0,
+    });
+    coach.running = true;
+    coach.exercise = 'squat';
+    coach.counter = RepCounter.attach({ exercise: 'squat', now: () => 0 });
+
+    // A second of frames at 60 fps: three detections' worth of work, and 57 throttle checks.
+    const FRAMES = 6000;
+    let observed = 0;
+    const msPerFrame = best(RUNS, () => {
+        for (let i = 0; i < FRAMES; i++) {
+            // Every frame pays the throttle check; roughly one in three does the work, which
+            // is the 20 fps ratio at 60 fps.
+            if (i % 3 === 0) {
+                // Indexed by detection, not by frame: the cycle is a rep, and a rep is
+                // measured in detections.
+                coach.observe(frames[observed % frames.length], i * 16);
+                observed++;
+            }
+        }
+        return FRAMES;
+    });
+    return { msPerFrame, observed, reps: coach.reps };
+}
+
 // ── tier 1 ───────────────────────────────────────────────────────────────────
 
 function measureTier1() {
@@ -259,6 +329,7 @@ function audit() {
     const assets = measureAssets();
 
     const clip = measureClipFrame();
+    const coach = measureCoachFrame();
     const frameCeiling = CONFIG.budgets.frameMs * HEADROOM;
     const tier1Ceiling = CONFIG.budgets.tier1Ms * HEADROOM;
 
@@ -324,7 +395,24 @@ function audit() {
         });
     }
 
-    return { checks, detail: { frame, tier1, assets, clip }, headroom: HEADROOM };
+    if (coach) {
+        checks.push({
+            id: 'coach-frame',
+            budget: `${CONFIG.budgets.frameMs} ms/frame`,
+            measured: `${coach.msPerFrame.toFixed(4)} ms`,
+            ceiling: frameCeiling,
+            value: coach.msPerFrame,
+            // `reps` guards the vacuous pass: a reduction that returned NaN would cost
+            // nothing and look like the fastest code here.
+            pass: coach.reps > 0 && coach.msPerFrame <= frameCeiling,
+            note:
+                coach.reps > 0
+                    ? `engine half only (${coach.observed} reductions, ${coach.reps} reps); pose inference is on-device`
+                    : 'the reduction produced no reps — this measurement is meaningless',
+        });
+    }
+
+    return { checks, detail: { frame, tier1, assets, clip, coach }, headroom: HEADROOM };
 }
 
 function main() {

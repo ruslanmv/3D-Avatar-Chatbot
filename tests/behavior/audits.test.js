@@ -246,6 +246,22 @@ describe('the budgets audit', () => {
         expect(text).toContain('not on a Quest');
         expect(text).toContain('QA_CHECKLIST');
     });
+
+    test('the measured set is frozen, so a batch that adds a cost has to say so', () => {
+        // B24 added clip-frame, B27 coach-frame. A batch that quietly drops one fails here.
+        const report = JSON.parse(run('audit-budgets.mjs', '--json'));
+        expect(report.checks.map((c) => c.id).sort()).toEqual(
+            ['clip-frame', 'coach-frame', 'frame', 'textures', 'tier1', 'tier1-cold'].sort()
+        );
+    });
+
+    test('the two optional rows carry a vacuity guard', () => {
+        // Both measure code that has to be *running* to cost anything, so both would read
+        // as the fastest thing in the file if they silently failed to start.
+        const report = JSON.parse(run('audit-budgets.mjs', '--json'));
+        expect(report.detail.clip.draws).toBeGreaterThan(0);
+        expect(report.detail.coach.reps).toBeGreaterThan(0);
+    });
 });
 
 describe('the privacy audit', () => {

@@ -246,9 +246,25 @@ describe('overlays revert exactly', () => {
     });
 
     test('an overlay may not invent fields the profile does not own', () => {
-        const derived = Journey.derive(TogetherProfile, { idleProfile: 'x', mischief: true, allows: () => true });
+        const derived = Journey.derive(TogetherProfile, { idleProfile: 'x', mischief: true });
         expect(derived.mischief).toBeUndefined();
-        expect(derived.allows).toBe(TogetherProfile.allows);
+        expect(derived.idleProfile).toBe('x');
+    });
+
+    test('a manifest may not change what may play', () => {
+        // B14's rule, and the reason it still holds after B27 added `allows` to the
+        // overlay fields: only a *function* overlays it, and a manifest is JSON. A scene
+        // that shipped `"allows": true` would be changing the ranker's mind from a data
+        // file, which is exactly what this forbids.
+        const fromJson = Journey.derive(TogetherProfile, JSON.parse('{"allows": true}'));
+        expect(fromJson.allows).toBe(TogetherProfile.allows);
+    });
+
+    test('but a code overlay may narrow it', () => {
+        // B23's play profile and B27's coach both do, and both were being silently merged
+        // away before `allows` joined OVERLAY_FIELDS.
+        const narrow = () => false;
+        expect(Journey.derive(TogetherProfile, { allows: narrow }).allows).toBe(narrow);
     });
 
     test('entering a second scene exits the first rather than stacking', () => {

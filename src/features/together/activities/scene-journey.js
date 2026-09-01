@@ -39,8 +39,16 @@
 const SceneJourney = (() => {
     'use strict';
 
-    /** Manifest fields a scene overlay may set. Anything else is ignored, loudly in debug. */
-    const OVERLAY_FIELDS = ['idleProfile', 'commentaryOpenings', 'initiative', 'attention', 'allowNsfw'];
+    /**
+     * Manifest fields a scene overlay may set. Anything else is ignored, loudly in debug.
+     *
+     * `allows` joined the list in B27. A scene manifest is JSON and can never carry a
+     * function, so journeys are unaffected; what it fixes is the *code* overlays B23 and
+     * B27 build, which set `allows` to narrow what may play and had it silently dropped
+     * here — the play profile's "no walking clip mid-boss" rule and the coach's "no
+     * fidgets while Pose is running" rule were both being merged away.
+     */
+    const OVERLAY_FIELDS = ['idleProfile', 'commentaryOpenings', 'initiative', 'attention', 'allowNsfw', 'allows'];
 
     /** Blackboard and renderer state a scene touches, and therefore must restore. */
     const SCENE_STATE = ['background', 'environment'];
@@ -100,6 +108,12 @@ const SceneJourney = (() => {
             if (!(field in overlay)) continue;
             if (field === 'initiative') {
                 derived.initiative = { ...(base && base.initiative), ...overlay.initiative };
+            } else if (field === 'allows') {
+                // Only a *function* overlays `allows`. A scene manifest is JSON and can
+                // never supply one, so B14's rule — a manifest may not change what may
+                // play — is unchanged; what this admits is the code overlays B23 and B27
+                // build, whose whole purpose is to narrow it.
+                if (typeof overlay.allows === 'function') derived.allows = overlay.allows;
             } else {
                 derived[field] = overlay[field];
             }

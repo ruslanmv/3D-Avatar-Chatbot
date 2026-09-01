@@ -64,6 +64,10 @@ const BehaviorEventBus = (() => {
         // And the copilot's timer, as one typed event carrying its state.
         'copilot:timer',
         'copilot:look',
+        // B27. A rep, and the two ends of a set — openings in the coach profile.
+        'coach:rep',
+        'coach:set_start',
+        'coach:set_end',
     ];
 
     class EventBus {

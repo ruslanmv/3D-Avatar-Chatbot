@@ -51,7 +51,7 @@ const UtilityRanker = (() => {
             if (clip.nsfw && !(bb.nsfwAllowed && modeAllowsNsfw(bb.mode))) return BLOCKED;
             if (clip.nsfw && intent && intent.source && intent.source !== 'user') return BLOCKED;
             if (clip.nsfw && !tierAllows(bb.mode, clip, bb.escalationLevel)) return BLOCKED;
-            if (!modeAllows(bb.mode, clip)) return BLOCKED;
+            if (!modeAllows(bb.mode, clip, bb)) return BLOCKED;
 
             const since = now - (this.antiRepeat ? this.antiRepeat.lastPlayed(clip.id) : 0);
             if (this.antiRepeat && this.antiRepeat.lastPlayed(clip.id) && since < (clip.cooldownMs || 0)) {
@@ -108,10 +108,17 @@ const UtilityRanker = (() => {
         return scored[0];
     }
 
-    function modeAllows(mode, clip) {
+    /**
+     * The blackboard is passed as a second argument so a mode can narrow on *state* rather
+     * than on the clip alone — B23's play profile refuses a walking clip while the game has
+     * the player's attention, and could not read that attention without it. Profiles that
+     * ignore the argument are unaffected; a mode that throws is treated as permissive,
+     * because a broken profile must not silence her entirely.
+     */
+    function modeAllows(mode, clip, bb) {
         if (!mode || typeof mode.allows !== 'function') return true;
         try {
-            return Boolean(mode.allows(clip));
+            return Boolean(mode.allows(clip, bb));
         } catch {
             return true;
         }
