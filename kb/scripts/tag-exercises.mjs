@@ -70,19 +70,26 @@ export function plan(records) {
         }
 
         const missing = [...wanted].filter((intent) => !intents.includes(intent));
-        if (missing.length) changes.push({ id: record.id, add: missing });
+        // Ordering is a change too. `intents` is an AUTHORED_FIELD, so a re-harvest carries
+        // it forward verbatim while `draft-descriptions.mjs` emits it sorted — a record left
+        // unsorted here regenerates differently from itself, and CI's reproducibility gate
+        // is what catches it. Reporting it means this script can heal a manifest it did not
+        // break rather than only ever adding.
+        const sorted = [...new Set([...intents, ...missing])].sort();
+        const unsorted = intents.join() !== [...intents].sort().join();
+        if (missing.length || unsorted) {
+            changes.push({ id: record.id, add: missing, sort: unsorted, intents: sorted });
+        }
     }
     return changes;
 }
 
 export function apply(records, changes) {
-    const byId = new Map(changes.map((c) => [c.id, c.add]));
+    const byId = new Map(changes.map((c) => [c.id, c.intents]));
     for (const record of records) {
-        const add = byId.get(record.id);
-        if (!add) continue;
-        // Appended, never reordered: the manifest is diffed by humans and a record that
-        // shuffles its own fields is noise in every future review.
-        record.intents = [...(record.intents || []), ...add];
+        const intents = byId.get(record.id);
+        if (!intents) continue;
+        record.intents = intents;
     }
     return records;
 }
@@ -105,7 +112,13 @@ function main() {
         return;
     }
     for (const change of changes) {
-        console.log(`  ${change.id.padEnd(38)} + ${change.add.join(', ')}`);
+        const what = [
+            change.add.length ? `+ ${change.add.join(', ')}` : '',
+            change.sort ? '(sorted)' : '',
+        ]
+            .filter(Boolean)
+            .join(' ');
+        console.log(`  ${change.id.padEnd(38)} ${what}`);
     }
 
     if (!write) {
