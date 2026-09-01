@@ -28,7 +28,7 @@
  *   node scripts/audit-budgets.mjs --json    # machine-readable
  */
 
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
@@ -128,6 +128,60 @@ function measureFrame() {
     return { msPerFrame, bones: bones.length, writesPerFrame: mixer.lastWriteCount };
 }
 
+/**
+ * B24's per-frame cost: what the clip recorder adds to a frame while it is buffering.
+ *
+ * The `drawImage` itself is the browser's cost, not the engine's, and there is no browser
+ * here — so what is measured is the bookkeeping the recorder wraps around it, with a context
+ * that counts the call. That is the honest thing to measure in Node and the number is
+ * reported as such. The composite copy on a real device is a GPU blit of one canvas into
+ * another at the same size, which is the cheapest operation in this file.
+ */
+function measureClipFrame() {
+    const path = 'src/features/clips/ClipRecorder.js';
+    if (!existsSync(join(ROOT, path))) return null;
+    const ClipRecorder = load(path, (s) => s.window.NEXUS_BD_CLIP_RECORDER);
+
+    let draws = 0;
+    const source = { width: 1280, height: 720, captureStream: () => stream() };
+    const stream = () => ({ addTrack() {}, getTracks: () => [] });
+    const composite = {
+        width: 1280,
+        height: 720,
+        getContext: () => ({ drawImage: () => draws++ }),
+        captureStream: () => stream(),
+    };
+    class FakeRecorder {
+        static isTypeSupported() {
+            return true;
+        }
+        constructor() {
+            this.state = 'inactive';
+        }
+        start() {
+            this.state = 'recording';
+        }
+        stop() {
+            this.state = 'inactive';
+        }
+    }
+
+    const recorder = ClipRecorder.attach({
+        canvas: source,
+        makeCanvas: () => composite,
+        RecorderImpl: FakeRecorder,
+        makeBlob: (parts) => ({ parts }),
+    });
+    recorder.start();
+
+    const FRAMES = 5000;
+    const msPerFrame = best(RUNS, () => {
+        for (let i = 0; i < FRAMES; i++) recorder.tick();
+        return FRAMES;
+    });
+    return { msPerFrame, draws };
+}
+
 // ── tier 1 ───────────────────────────────────────────────────────────────────
 
 function measureTier1() {
@@ -204,6 +258,7 @@ function audit() {
     const tier1 = measureTier1();
     const assets = measureAssets();
 
+    const clip = measureClipFrame();
     const frameCeiling = CONFIG.budgets.frameMs * HEADROOM;
     const tier1Ceiling = CONFIG.budgets.tier1Ms * HEADROOM;
 
@@ -249,7 +304,27 @@ function audit() {
         },
     ];
 
-    return { checks, detail: { frame, tier1, assets }, headroom: HEADROOM };
+    if (clip) {
+        checks.push({
+            id: 'clip-frame',
+            budget: '1 ms/frame',
+            measured: `${clip.msPerFrame.toFixed(4)} ms`,
+            // Its own budget rather than a share of §9's 2 ms: B24's acceptance criterion
+            // names one millisecond, and the recorder is optional — a frame that is not
+            // being clipped pays none of it.
+            ceiling: 1 * HEADROOM,
+            value: clip.msPerFrame,
+            // `draws` guards against the vacuous pass: a recorder that failed to start
+            // ticks in zero time and would otherwise look like the fastest code here.
+            pass: clip.draws > 0 && clip.msPerFrame <= 1 * HEADROOM,
+            note:
+                clip.draws > 0
+                    ? `${clip.draws} composites; bookkeeping only, the blit is the browser's cost`
+                    : 'the recorder did not start — this measurement is meaningless',
+        });
+    }
+
+    return { checks, detail: { frame, tier1, assets, clip }, headroom: HEADROOM };
 }
 
 function main() {

@@ -253,10 +253,20 @@ describe('the privacy audit', () => {
         expect(run('audit-privacy.mjs', '--check')).toContain('every privacy claim holds');
     });
 
-    test('all six claims are checked and all six hold', () => {
+    test('every claim is checked and every claim holds', () => {
+        // The set is frozen deliberately: a batch that adds a privacy claim has to come
+        // here and say so, and a batch that quietly drops one fails. B24 added the seventh.
         const checks = JSON.parse(run('audit-privacy.mjs', '--json'));
         expect(checks.map((c) => c.id).sort()).toEqual(
-            ['indicator', 'no-store', 'nothing-persists', 'off-by-default', 'one-door', 'opt-outs'].sort()
+            [
+                'clips-offline',
+                'indicator',
+                'no-store',
+                'nothing-persists',
+                'off-by-default',
+                'one-door',
+                'opt-outs',
+            ].sort()
         );
         expect(checks.filter((c) => !c.pass)).toEqual([]);
     });

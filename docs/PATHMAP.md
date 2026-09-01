@@ -1159,6 +1159,105 @@ the adaptive baseline cannot save it — and checks every macro's gap against th
 
 ---
 
+## 2t. The clip engine and the two distribution loops (B24, B25)
+
+`src/features/clips/ClipRecorder.js`, `ShareCard.js`, `ui/ClipButton.js`. Touched:
+`EventBus.js` (two events), `boot.js` (three modules, one guarded attach), and the two audit
+scripts, which gained a claim and a budget row.
+
+### The header problem, which is most of B24
+
+`MediaRecorder` with a one-second timeslice does **not** produce thirty interchangeable
+one-second files. The first blob carries the WebM EBML header and the initialisation
+segment; every blob after it is a bare cluster. Concatenate blobs 6 through 35 and you get
+thirty seconds of video that no player on earth will open — a file that is exactly the right
+size and completely broken, which is the worst kind of bug to find in a share sheet.
+
+So the header blob is kept outside the ring, never evicted, and prepended to every trim —
+unless it is still inside the window, in which case prepending it would duplicate it. Four
+lines, and `ChunkRing.headerIsResident` exists because the header is genuinely two things at
+different times: for the first thirty-five seconds it is the oldest chunk *and* the
+initialisation segment, and after that only the latter. Whoever measures a clip's length has
+to know which — counting a prepended header reports a 31-second clip, and skipping a resident
+one reported a four-second clip as five, which is how that distinction was found.
+
+### 35 s in the ring, 30 s in the clip
+
+Timeslices are a request, not a guarantee: a browser under load emits a 1400 ms blob and then
+a 600 ms one. Five seconds of slack means the trim always has thirty seconds to choose from
+rather than twenty-eight and an apology — there is a test that feeds exactly that jitter. A
+chunk straddling the boundary is kept whole, so a clip is 30 s ± one chunk: cutting a cluster
+in half produces a file that is the right length and unplayable.
+
+The ring is bounded by **time**, not by entry count, so a four-hour session holds the same
+memory as a forty-second one, and `stop()` clears it — thirty seconds of the user's living
+room must not outlive the thing that was recording it.
+
+### The trim was proven before any UI existed
+
+`ChunkRing` is separate from `Recorder` precisely so the trim could be tested against a
+scripted sequence of chunk durations — including the ugly ones — with no browser, no canvas
+and no codec, and with no button anywhere in the repository. That ordering is the acceptance
+criterion, and it is the only order in which "the saved clip is thirty seconds" is a claim
+rather than a hope.
+
+### Immersive XR cannot be captured, and that is documented, not worked around
+
+In an immersive session the frames go to the headset's framebuffer; the page's canvas holds
+the mirror view. No API hands a page the composited XR frame, on any platform, by design. So
+the mirror view **is** the clip in XR — reported on every clip as `source: 'mirror'`, with a
+test that the file names no `XRWebGLLayer`, `getViewerPose`, `readPixels` or `framebuffer`,
+because a workaround that does not exist should not be half-attempted.
+
+### Zero network, checked for files nobody has written yet
+
+`scripts/audit-privacy.mjs` gained a seventh claim, `clips-offline`, which **walks the
+directory** rather than naming the three files in it today, and fails on `fetch(`,
+`XMLHttpRequest`, `WebSocket`, `sendBeacon`, `EventSource`, `import(`, `importScripts`,
+`axios` and a URL scheme. Planting a `fetch` fails it. The same check runs in Jest as well,
+because an audit that only runs in CI is one a developer discovers after pushing.
+
+A save is `createObjectURL`, an anchor with `download`, a click, a remove and a revoke on the
+next tick — a live object URL pins the whole clip in memory for the life of the document, tens
+of megabytes nothing will read again.
+
+### The per-frame cost
+
+`tick()` is one `drawImage` and two increments. The app's WebGL canvas has
+`preserveDrawingBuffer: false` and reads back blank unless copied inside a render frame — the
+constraint `CompanionMode` already hit and solved the same way, which is why this is a tick
+rather than a timer. A tainted source is warned about once rather than every frame.
+
+`audit-budgets.mjs` gained a `clip-frame` row against its own 1 ms budget (B24's number, not a
+share of §9's 2 ms, because a frame that is not being clipped pays none of it). Measured at
+**0.0000094 ms** of bookkeeping over 25 000 composites. The blit itself is the browser's cost
+and there is no browser in Node, so the row carries a `draws > 0` guard: a recorder that
+failed to start ticks in zero time and would otherwise look like the fastest code in the file.
+
+### B25: two loops, and both stop in the adult tier
+
+**Loop one** is the button. One tap saves; the nudge is a `role="status"` div with a timeout,
+at most once a minute, triggered only by a **macro event** from B23 — a real win or loss from
+a game hook, never the heuristic's `surge`, because a toast every time the screen flashes is
+an advert. A test drives ten minutes of wins at one every two seconds and checks every gap.
+"Never blocks" is checked as the absence of `await`, `confirm`, `alert`, `showModal` and
+`aria-modal`.
+
+**Loop two** is the "she remembered" card: her quote, the topic, the timestamp, a portrait
+frame. It renders a **record**, and refuses one without a quote — a generated "she remembered"
+would be a fabrication of the user's own relationship with the thing, printed and shareable,
+and the fact that it would usually be roughly right makes it worse rather than better. The
+portrait is drawn as handed over: no posing, no relighting, and a missing one is a design case
+rather than an error branch.
+
+Both tear down when the adult tier is active, and **tear down** means `recorder.stop()` with
+the buffer dropped, not a hidden button — hiding it would leave thirty seconds of the session
+buffered, which is the single worst artefact this product could hold. `adultActive()` requires
+`adultVerified && nsfwAllowed`: either alone is a setting rather than a state, and a user who
+ticked a box in settings keeps their clips.
+
+---
+
 ## 3. Frozen names
 
 Decided in B0; every later batch cites them.

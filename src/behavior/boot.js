@@ -62,6 +62,10 @@
         'src/behavior/modes/play.profile.js',
         'src/features/together/heuristics/ExcitementDetector.js',
         'src/features/together/activities/cohost.js',
+        // B24/B25. The recorder first: the button is the thing that keeps what it buffered.
+        'src/features/clips/ClipRecorder.js',
+        'src/features/clips/ShareCard.js',
+        'src/features/clips/ui/ClipButton.js',
         'src/behavior/debug/PickLog.js',
         'src/behavior/debug/DebugHUD.js',
     ];
@@ -198,6 +202,8 @@
                 assistant: null,
                 focus: null,
                 cohost: null,
+                clips: null,
+                clipButton: null,
                 consent: null,
                 consentIndicator: null,
                 togetherPanel: null,
@@ -286,6 +292,8 @@
                         assistant: director.assistant && director.assistant.stats,
                         focus: director.focus && director.focus.stats,
                         cohost: director.cohost && director.cohost.stats,
+                        clips: director.clips && director.clips.stats,
+                        clipButton: director.clipButton && director.clipButton.stats,
                     };
                 },
             };
@@ -444,6 +452,25 @@
                     });
                     director.togetherPanel.register(director.cohost);
                     director.adapters.push(director.cohost);
+                }
+
+                // Clips (B24, B25). Attached, not started: the ring buffer begins when an
+                // activity does, so an idle session holds no video. The button tears the
+                // recorder down — not merely hides itself — when the adult tier is active.
+                if (global.NEXUS_BD_CLIP_RECORDER && config.clips && config.clips.enabled) {
+                    director.clips = global.NEXUS_BD_CLIP_RECORDER.attach({ bus });
+                    director.adapters.push(director.clips);
+
+                    if (global.NEXUS_BD_CLIP_BUTTON) {
+                        director.clipButton = global.NEXUS_BD_CLIP_BUTTON.attach({
+                            bus,
+                            blackboard,
+                            config,
+                            recorder: director.clips,
+                            cards: global.NEXUS_BD_SHARE_CARD && global.NEXUS_BD_SHARE_CARD.attach({}),
+                        });
+                        director.adapters.push(director.clipButton);
+                    }
                 }
             }
 

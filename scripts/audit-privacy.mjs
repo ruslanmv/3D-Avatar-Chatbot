@@ -168,8 +168,66 @@ function offByDefault() {
     };
 }
 
+/**
+ * B24's acceptance criterion, as a standing check rather than a one-off.
+ *
+ * A clip is thirty seconds of the user's living room, and it is the user's. The guarantee is
+ * not that this code chooses not to upload it — it is that nothing under `src/features/clips/`
+ * has any way to. That has to hold for files nobody has written yet, which is why the check
+ * walks the directory rather than naming the three files that are in it today.
+ */
+function clipsAreOffline() {
+    const dir = join(ROOT, 'src/features/clips');
+    if (!existsSync(dir)) {
+        return {
+            id: 'clips-offline',
+            claim: 'nothing under src/features/clips can reach the network',
+            pass: true,
+            detail: '(no clip engine in this build)',
+        };
+    }
+
+    const forbidden = [
+        'fetch(',
+        'XMLHttpRequest',
+        'WebSocket',
+        'sendBeacon',
+        'EventSource',
+        'import(',
+        'importScripts',
+        'axios',
+        'https://',
+        'http://',
+    ];
+    const files = [];
+    (function walk(at) {
+        for (const entry of readdirSync(at, { withFileTypes: true })) {
+            const full = join(at, entry.name);
+            if (entry.isDirectory()) walk(full);
+            else if (entry.name.endsWith('.js')) files.push(relative(ROOT, full));
+        }
+    })(dir);
+
+    const problems = [];
+    for (const file of files) {
+        const text = source(file);
+        // A file the stripper emptied would pass for free.
+        if (text.trim().length < 200) problems.push(`${file} has no readable code`);
+        for (const token of forbidden) {
+            if (text.includes(token)) problems.push(`${file} names ${token}`);
+        }
+    }
+
+    return {
+        id: 'clips-offline',
+        claim: 'nothing under src/features/clips can reach the network',
+        pass: files.length > 0 && problems.length === 0,
+        detail: problems.join('; ') || `${files.length} files, none can send bytes anywhere`,
+    };
+}
+
 export function audit() {
-    return [oneDoor(), noStore(), nothingPersists(), alwaysVisible(), optOutsHold(), offByDefault()];
+    return [oneDoor(), noStore(), nothingPersists(), alwaysVisible(), optOutsHold(), offByDefault(), clipsAreOffline()];
 }
 
 function main() {

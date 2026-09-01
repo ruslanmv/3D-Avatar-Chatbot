@@ -749,7 +749,7 @@ so it is left for its own batch rather than smuggled in here.
 
 ---
 
-#### B24 · Clip recorder — the 30-second ring buffer `[C]`
+#### B24 · Clip recorder — the 30-second ring buffer `[C]` — ✅ landed
 **Branch:** `feat/bd-b24-cliprecorder` · **Depends on:** B6 (render loop), B23 (macro events)
 **New:** `src/features/clips/ClipRecorder.js`.
 **Touched:** none. **Notes:** `canvas.captureStream(30)` + a WebAudio mix, `MediaRecorder`
@@ -760,9 +760,29 @@ be captured; the mirror view is the documented fallback, not a bug.
 avatar + activity composited; recorder adds <1 ms/frame while buffering; a static check
 proves **zero network imports** anywhere under `src/features/clips/**`.
 
+**As landed:** `ClipRecorder.js` as planned. Touched: `EventBus.js` (`clip:saved`),
+`boot.js`, and `scripts/audit-privacy.mjs` / `audit-budgets.mjs`, which gained the static
+check and the budget row the AC asks for.
+
+The batch turned out to be mostly one thing the plan did not name: **the WebM header**. A
+one-second timeslice does not produce thirty interchangeable files — the first blob carries
+the EBML header and initialisation segment, and every blob after it is a bare cluster. A
+trim without it is exactly the right size and unopenable. The header is kept outside the
+ring and prepended, unless it is still resident; that distinction is real enough that
+reporting a clip's length got it wrong first (a four-second clip as five) before
+`headerIsResident` existed.
+
+"30±1 s" is more precisely **30 s ± one chunk**: a chunk straddling the boundary is kept
+whole, because cutting a cluster in half is the unopenable-file bug again.
+
+The `<1 ms/frame` claim is honestly narrower than it sounds and the audit says so: what is
+measured is the recorder's bookkeeping, since the composite blit is the browser's cost and
+there is no browser in Node. The row carries a `draws > 0` guard so a recorder that failed
+to start cannot pass as the fastest code in the file.
+
 ---
 
-#### B25 · Clip button + "she remembered" share cards `[C]`
+#### B25 · Clip button + "she remembered" share cards `[C]` — ✅ landed
 **Branch:** `feat/bd-b25-share` · **Depends on:** B24, B16
 **New:** `src/features/clips/ui/ClipButton.js`, `src/features/clips/ShareCard.js`
 (PNG of a curiosity callback — her quote, timestamp, portrait frame).
@@ -773,6 +793,23 @@ B29, asserted here).
 **Product note:** these are the two distribution loops. They are cheap, they are late
 enough to have real moments to capture, and they are early enough to be in the first
 public build.
+
+**As landed:** both files as planned; touched `EventBus.js` (`clip:suggested`) and `boot.js`.
+
+* the nudge fires only on a **macro event** from B23 — a real win or loss from a game hook,
+  never the heuristic's `surge`. A toast every time the screen flashes is an advert, and
+  B23's event/tier distinction is what makes that expressible;
+* "tear down" is taken literally: the recorder is **stopped and its buffer dropped**, not
+  the button hidden. Hiding it would leave thirty seconds of an adult-tier session buffered;
+* `adultActive()` requires `adultVerified && nsfwAllowed`. Either alone is a setting rather
+  than a state, and disabling clips for anyone who ticked a settings box would read as a bug.
+  It is a named predicate so B29 can tighten it in one place;
+* the card refuses a record without a quote. A generated "she remembered" would be a
+  fabrication of the user's own relationship with the thing, printed and shareable, and the
+  fact that it would usually be roughly right makes it worse rather than better.
+
+**Still owed to B29:** the adult-tier teardown is asserted here against a blackboard the test
+sets directly. B29 owns proving it against the real attestation path.
 
 ---
 

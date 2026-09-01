@@ -54,6 +54,9 @@ const BehaviorEventBus = (() => {
         // B23. One typed event carrying the kind and the tier, the way `scene:anchor`
         // carries a name: five `game:*` entries would be six the day somebody adds a revive.
         'game:moment',
+        // B24/B25. A clip landing on disk, and the one-a-minute nudge that offers it.
+        'clip:saved',
+        'clip:suggested',
     ];
 
     class EventBus {
