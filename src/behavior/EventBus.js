@@ -57,6 +57,13 @@ const BehaviorEventBus = (() => {
         // B24/B25. A clip landing on disk, and the one-a-minute nudge that offers it.
         'clip:saved',
         'clip:suggested',
+        // B26. A final transcript, published once by the adapter that already receives it,
+        // so a consumer that wants the words does not hook the recogniser a second time —
+        // which is exactly how two readers end up disagreeing about what was said.
+        'voice:final',
+        // And the copilot's timer, as one typed event carrying its state.
+        'copilot:timer',
+        'copilot:look',
     ];
 
     class EventBus {

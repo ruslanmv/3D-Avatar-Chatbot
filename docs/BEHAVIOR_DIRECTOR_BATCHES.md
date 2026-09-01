@@ -820,7 +820,7 @@ because copilot is the lighter of the two and shares the B15 round trip verbatim
 
 ---
 
-#### B26 · Hands-busy copilot `[C]`
+#### B26 · Hands-busy copilot `[C]` — ✅ landed
 **Branch:** `feat/bd-b26-copilot` · **Depends on:** B11, B15
 **New:** `src/features/together/activities/copilot.js` (checklist state machine + timers).
 **Touched:** none. **Notes:** **on-demand snapshots only** — no periodic frames in this
@@ -828,6 +828,26 @@ activity, which is both the privacy posture and the battery posture on a propped
 **AC:** camera snapshot round trip ≤3 s; the timer flow works hands-free by voice; the
 consent indicator is visible whenever camera consent is active; a periodic-frame code path
 does not exist (static check).
+
+**As landed:** `copilot.js` as planned. "Touched: none" was optimistic by four:
+`EventBus.js` (`voice:final`, `copilot:timer`, `copilot:look`), `VoiceAdapter.js` (one
+guarded emit), `boot.js`, and `scripts/audit-privacy.mjs`, which gained the static check the
+AC asks for as its eighth standing claim.
+
+* **"a periodic-frame code path does not exist"** is taken as strongly as it can be: the file
+  names no timer primitive *at all*, so the proving timer is a deadline compared against the
+  clock on each render-loop tick. The check also forbids `watch(` and `startWatching`,
+  because B15's activity has a periodic mode and that is the thing somebody would reach for;
+* **the indicator claim** is met structurally rather than by wiring: `copilot.sharing` is
+  whatever the consent-holding activity says it is, so the indicator and the copilot cannot
+  disagree about whether the camera is on;
+* the **transcript seam** needed a decision. `VoiceAdapter.transcript()`'s own header says
+  the adapter owns the app's transcript and a second reader is how two readers disagree; so
+  the words are published once, there, as `voice:final`, rather than each consumer hooking
+  the recogniser. That is the one pre-existing file this batch touches for a reason beyond
+  registration;
+* two refusals carry the hands-free claim more than the recognitions do: unrecognised speech
+  is counted and left alone, and "set a timer" with no number is answered "How long?".
 
 ---
 

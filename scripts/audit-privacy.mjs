@@ -2,7 +2,7 @@
 /**
  * audit-privacy — the promises, checked against the code (batch B19).
  *
- * Six claims this engine makes about the user's data. Unlike the budgets audit, every one
+ * Eight claims this engine makes about the user's data. Unlike the budgets audit, every one
  * of them is a property of the source rather than of a device, so this audit can be
  * **signed** — a green run here is the whole privacy story for the client, not a proxy for
  * it.
@@ -13,6 +13,8 @@
  *   4. Always visible.  Consent has an indicator in 2D *and* in XR, from one subscription.
  *   5. Opt-outs hold.   Every documented mute and refusal has a test that fails without it.
  *   6. Off by default.  Every master flag ships false.
+ *   7. Clips offline.   Nothing under `src/features/clips/` can reach the network (B24).
+ *   8. On demand only.  The copilot names no timer primitive, so it cannot poll (B26).
  *
  * Where a claim is checked by reading source, comments are stripped first: this project has
  * had four assertions fail because a file explained in prose the very thing it was being
@@ -52,7 +54,7 @@ function engineFiles() {
 
 const source = (rel) => codeOf(readFileSync(join(ROOT, rel), 'utf8'));
 
-// ── the six claims ───────────────────────────────────────────────────────────
+// ── the claims ───────────────────────────────────────────────────────────────
 
 function oneDoor() {
     const offenders = engineFiles().filter((f) => /getDisplayMedia|getUserMedia/.test(source(f)));
@@ -226,8 +228,58 @@ function clipsAreOffline() {
     };
 }
 
+/**
+ * B26's acceptance criterion, as a standing check.
+ *
+ * The copilot may take a frame only when somebody asks for one — the privacy posture and, on
+ * a phone propped against a flour bag for forty minutes, the battery posture. The guarantee
+ * is not that it currently calls no timer: it is that the file **names no timer primitive at
+ * all**, so a periodic path cannot appear without somebody adding one, which is a thing a
+ * reviewer notices in a diff.
+ */
+function copilotOnDemand() {
+    const path = 'src/features/together/activities/copilot.js';
+    if (!existsSync(join(ROOT, path))) {
+        return {
+            id: 'copilot-on-demand',
+            claim: 'the copilot has no periodic-frame path',
+            pass: true,
+            detail: '(no copilot in this build)',
+        };
+    }
+    const text = source(path);
+    const forbidden = [
+        'setInterval',
+        'setTimeout',
+        'requestAnimationFrame',
+        'requestIdleCallback',
+        'Worker',
+        // B15's activity has a periodic mode, which is exactly the temptation.
+        'watch(',
+        'startWatching',
+        'getUserMedia',
+        'getDisplayMedia',
+    ];
+    const found = forbidden.filter((token) => text.includes(token));
+    return {
+        id: 'copilot-on-demand',
+        claim: 'the copilot has no periodic-frame path',
+        pass: found.length === 0 && text.trim().length > 200,
+        detail: found.length ? `names ${found.join(', ')}` : 'no timer primitive, no capture call',
+    };
+}
+
 export function audit() {
-    return [oneDoor(), noStore(), nothingPersists(), alwaysVisible(), optOutsHold(), offByDefault(), clipsAreOffline()];
+    return [
+        oneDoor(),
+        noStore(),
+        nothingPersists(),
+        alwaysVisible(),
+        optOutsHold(),
+        offByDefault(),
+        clipsAreOffline(),
+        copilotOnDemand(),
+    ];
 }
 
 function main() {

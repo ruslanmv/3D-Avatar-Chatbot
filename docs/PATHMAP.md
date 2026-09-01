@@ -1258,6 +1258,75 @@ ticked a box in settings keeps their clips.
 
 ---
 
+## 2u. Hands-busy copilot (B26)
+
+`src/features/together/activities/copilot.js`. Touched: `EventBus.js` (three events),
+`VoiceAdapter.js` (one guarded emit), `boot.js`, `scripts/audit-privacy.mjs` (an eighth
+claim).
+
+Your phone is propped against the flour bag and your hands are covered in dough. She holds
+the recipe, counts the proving time, and — when you ask — looks at what you are doing.
+
+### On-demand only, and the absence is structural
+
+The file **names no timer primitive at all**: no `setInterval`, no `setTimeout`, no
+`requestAnimationFrame`, no `requestIdleCallback`, no `Worker`. Even the proving timer is a
+deadline compared against the clock on each `tick()` from the render loop, the way every
+other activity in this engine is driven. So a frame can only be taken by somebody asking for
+one, and a periodic path cannot appear without a reviewer seeing a new primitive in a diff.
+
+That is checked twice: in the tests, and as the audit's eighth claim `copilot-on-demand`,
+which also forbids `watch(` and `startWatching` — B15's activity *does* have a periodic mode
+and reaching for it is exactly the temptation. Adding a `setInterval` fails both.
+
+It is the privacy posture and the battery posture at once: a phone propped up for forty
+minutes of bread, sampling once a second, is hot and flat by the second prove.
+
+### It reuses B15's round trip rather than describing it again
+
+The copilot holds a `ScreenInsight` activity and calls `start('camera')` and `ask()`. It
+builds no pipeline, opens no camera and posts nothing — the audit checks it names no
+`getUserMedia`, no `getDisplayMedia`, no `fetch(` and no `endpoint`. So B11's consent machine
+is the only door, which is what makes "the indicator is visible whenever camera consent is
+active" true by construction rather than by a second subscription that could fall out of
+step: `copilot.sharing` is *whatever the consent-holding activity says it is*, with a test
+that flipping the underlying value flips the copilot's.
+
+The round trip is measured, not asserted: `look()` times itself against the injected clock
+and reports `p95`. Twenty asks at realistic latencies come in under the 3 s budget, and an
+ask that misses it is reported on `copilot:look` with `overBudget` rather than hidden.
+
+### Hands-free means a small grammar, said out loud
+
+Nine phrases with the synonyms people actually use mid-task — "done" is "next", "what was
+that" is "repeat". The whole acceptance flow is driven through `voice:final` in the tests,
+with no method called directly, because that is what hands-free means.
+
+Two refusals matter more than the recognitions:
+
+* **unrecognised speech is left alone**, counted and not guessed at. A misheard "next" that
+  skips a step in a recipe is worse than a copilot that says nothing;
+* **"set a timer" with no number is a question**, answered with "How long?". Inventing a
+  length and counting down from it is the same failure in a different costume.
+
+One timer at a time; a second replaces the first and says so, because two countdowns you
+cannot see, announced by the same voice, is worse than none.
+
+### The transcript seam
+
+`VoiceAdapter.transcript()` gained one guarded emit: `voice:final`. Its own header already
+explains why the adapter, not each consumer, owns the app's transcript — a consumer that
+wanted the words and hooked `onresult` itself would be the second reader that header warns
+about. Publishing once, where the transcript already arrives, is the same argument one step
+further on.
+
+`Checklist` is a pure state machine — no clock, no bus, no camera, asserted by enumerating
+its own keys — so the ordering rules are checked directly. `back()` from *finished* returns
+to the **last** step rather than the one before it: "back" after the last "next" means you
+have not finished after all, not that you did the last step twice.
+
+---
+
 ## 3. Frozen names
 
 Decided in B0; every later batch cites them.

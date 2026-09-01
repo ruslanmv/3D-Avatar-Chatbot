@@ -50,6 +50,8 @@
         'src/features/together/activities/music.js',
         'src/features/together/activities/scene-journey.js',
         'src/features/together/activities/screen-insight.js',
+        // B26 holds the B15 activity above rather than describing its round trip again.
+        'src/features/together/activities/copilot.js',
         'src/features/together/panels/PanelRenderer.js',
         // B21 loads after the renderer it attends to: an assistant with no panel to point
         // at is a speaker puck with a face.
@@ -204,6 +206,7 @@
                 cohost: null,
                 clips: null,
                 clipButton: null,
+                copilot: null,
                 consent: null,
                 consentIndicator: null,
                 togetherPanel: null,
@@ -294,6 +297,7 @@
                         cohost: director.cohost && director.cohost.stats,
                         clips: director.clips && director.clips.stats,
                         clipButton: director.clipButton && director.clipButton.stats,
+                        copilot: director.copilot && director.copilot.stats,
                     };
                 },
             };
@@ -421,6 +425,22 @@
                     });
                     director.togetherPanel.register(director.insight);
                     director.adapters.push(director.insight);
+
+                    // Hands-busy copilot (B26). It holds the insight activity rather than
+                    // building a second pipeline, so B11's consent machine stays the only
+                    // door to a camera and its indicator lights up without the copilot
+                    // knowing the indicator exists.
+                    if (global.NEXUS_BD_COPILOT) {
+                        director.copilot = global.NEXUS_BD_COPILOT.attach({
+                            bus,
+                            blackboard,
+                            config,
+                            insight: director.insight,
+                            say: (text, options) => global.NEXUS_BD_SAY && global.NEXUS_BD_SAY(text, options),
+                        });
+                        director.togetherPanel.register(director.copilot);
+                        director.adapters.push(director.copilot);
+                    }
                 }
 
                 // B22. Body doubling: the quiet profile and the pomodoro clock. It takes

@@ -186,6 +186,11 @@ const VoiceAdapter = (() => {
             this.lastFinalAt = this.now();
             this.setSpeaking(false);
 
+            // B26. Published once, here, because this is where the app's transcript already
+            // arrives. A consumer that wanted the words and hooked `onresult` itself would
+            // be the second reader this method's header warns about.
+            if (this.bus) this.bus.emit('voice:final', { text: clean, lang });
+
             if (!this.session || !this.session.connected) {
                 // No server: the app's own chat path handles this transcript exactly as it
                 // did before B10. There is nothing to fall back to because nothing was

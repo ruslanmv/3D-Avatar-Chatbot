@@ -255,11 +255,12 @@ describe('the privacy audit', () => {
 
     test('every claim is checked and every claim holds', () => {
         // The set is frozen deliberately: a batch that adds a privacy claim has to come
-        // here and say so, and a batch that quietly drops one fails. B24 added the seventh.
+        // here and say so, and a batch that quietly drops one fails. B24 added the seventh, B26 the eighth.
         const checks = JSON.parse(run('audit-privacy.mjs', '--json'));
         expect(checks.map((c) => c.id).sort()).toEqual(
             [
                 'clips-offline',
+                'copilot-on-demand',
                 'indicator',
                 'no-store',
                 'nothing-persists',
