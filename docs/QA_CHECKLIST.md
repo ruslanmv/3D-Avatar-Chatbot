@@ -157,3 +157,24 @@ measures the engine half (0.0009 ms/frame) and cannot measure the rest.
 | I5 | A squat, push-up, plank or lunge demo is refused by name rather than substituted | ☐ |
 
 Section I may not ship amber.
+
+## J. Adult tier, end to end (B28, B29)
+
+Every invariant in §16.7 is enforced by a test, and those tests pass. What no test in either
+repository can do is drive the whole round trip on a real instance with a real socket — the
+tests set a blackboard flag where a person would wait for an ack. That is what this section
+is for, and it is the reason the tier's flag stays false until somebody signs it.
+
+| #  | Check | Result |
+|----|-------|--------|
+| J1 | With `avatar.adult.enabled=false`, `adult_verify_request` over a live socket returns `adult_unavailable` and the tier is absent from the UI | ☐ |
+| J2 | On a second user account, the server logs owner-attest refusing to load and the tier stays unavailable | ☐ |
+| J3 | On a single-user instance with the flag on, the ack arrives, `adultVerified` goes true, and the mode activates | ☐ |
+| J4 | Killing the socket mid-session drops verification; reconnecting re-asks rather than resuming | ☐ |
+| J5 | The clip recorder is observably stopped on entry — ring buffer empty, not merely the button hidden | ☐ |
+| J6 | Soft exit (`cozy`) from level 4 lands warm with no remark; hard exit (`stop`) lands in companion with a neutral idle | ☐ |
+| J7 | Over a full session, nothing in the tier is ever initiated by her | ☐ |
+| J8 | A memory write after an evening contains warmth and pacing only — read the LTM row directly | ☐ |
+| J9 | Leaving the tab idle past `decayAfterMs` returns the level to 1 | ☐ |
+
+Section J may not ship amber, and the tier's flag may not flip until it is signed.

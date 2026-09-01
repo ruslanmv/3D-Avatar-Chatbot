@@ -134,8 +134,24 @@ function optOutsHold() {
     // audit checks the *rule* is present in the source it belongs to; the tests check it
     // works, and both are needed — a rule with no test rots, a test with no rule is noise.
     const rules = [
-        ['src/behavior/selector/UtilityRanker.js', /clip\.nsfw && !\(bb\.nsfwAllowed/, 'nsfw needs the user setting'],
+        [
+            'src/behavior/selector/UtilityRanker.js',
+            // B28 made this stricter: the user setting alone used to open the tier. The
+            // pattern now demands the server attestation is in the same expression.
+            /clip\.nsfw && !\(bb\.adultVerified && bb\.nsfwAllowed/,
+            'nsfw needs the server attestation AND the user setting',
+        ],
         ['src/behavior/selector/UtilityRanker.js', /intent\.source !== 'user'/, 'she never initiates nsfw'],
+        [
+            'src/behavior/selector/UtilityRanker.js',
+            /tierAllows\(bb\.mode, clip, bb\.escalationLevel\)/,
+            'the escalation ceiling is checked on every selection',
+        ],
+        [
+            'src/behavior/adapters/SessionAdapter.js',
+            /adultVerified = message\.verified === true/,
+            'only a server ack sets adultVerified',
+        ],
         ['src/features/together/activities/watch.js', /budgetPerSession === 0/, 'a zero budget silences commentary'],
         ['src/features/together/activities/watch.js', /the user is speaking/, 'she does not speak over you'],
         ['src/features/together/capture/CapturePipeline.js', /grant\.live/, 'no frame without a live grant'],

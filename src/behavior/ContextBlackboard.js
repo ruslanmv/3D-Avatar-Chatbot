@@ -33,6 +33,13 @@ const ContextBlackboard = (() => {
 
             this.nsfwAllowed = Boolean(nsfwAllowed);
             this.escalationLevel = 1; // reserved for B29; the ranker reads it from B5 on
+            /**
+             * §16.1's first gate, and §16.7's first invariant. Written by exactly one
+             * thing: `SessionAdapter._on_adult_ack`, on a frame the server produced. There
+             * is no setter, no config key and no dialog — a test enumerates every writer in
+             * the engine and requires the list to be that one line.
+             */
+            this.adultVerified = false;
 
             this.flags = {
                 userIdle: false,
@@ -80,6 +87,7 @@ const ContextBlackboard = (() => {
                 scene: this.scene,
                 attention: round(this.attention),
                 nsfwAllowed: this.nsfwAllowed,
+                adultVerified: this.adultVerified,
                 flags: { ...this.flags },
                 timers: Object.fromEntries(Object.entries(this.timers).map(([k2, v]) => [k2, round(v)])),
             };

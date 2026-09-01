@@ -48,7 +48,10 @@ const UtilityRanker = (() => {
         score(clip, intent, bb, now = Date.now()) {
             // ── gates ────────────────────────────────────────────────────────
             // The one place. §6.5, plus the two lines B28 adds for the adult tier.
-            if (clip.nsfw && !(bb.nsfwAllowed && modeAllowsNsfw(bb.mode))) return BLOCKED;
+            // §16.1's triple gate. `adultVerified` is set by exactly one thing — an
+            // `adult_ack` frame from the server (B28) — and it was missing from this line
+            // until B28 landed, which meant the user setting alone opened the tier.
+            if (clip.nsfw && !(bb.adultVerified && bb.nsfwAllowed && modeAllowsNsfw(bb.mode))) return BLOCKED;
             if (clip.nsfw && intent && intent.source && intent.source !== 'user') return BLOCKED;
             if (clip.nsfw && !tierAllows(bb.mode, clip, bb.escalationLevel)) return BLOCKED;
             if (!modeAllows(bb.mode, clip, bb)) return BLOCKED;

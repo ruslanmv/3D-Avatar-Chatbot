@@ -915,7 +915,7 @@ Built last, gated hardest, and the only wave whose acceptance criteria are writt
 
 ---
 
-#### B28 · Verification, redaction, and the two ranker lines `[S][C]`
+#### B28 · Verification, redaction, and the two ranker lines `[S][C]` — ✅ landed
 **Branch:** `feat/avatar-b28-adult-gates` · **Depends on:** B5, B8, B16
 **New (server):** `avatar_director/verification.py` (owner attestation by default, pluggable
 `verify(user) -> {verified, exp}` provider; the owner-attest provider **refuses to load on
@@ -932,9 +932,38 @@ rule); redaction fixtures prove warmth signals are stored and explicit details a
 with `avatar.adult.enabled=false` the tier is invisible in UI and unactivatable over MCP or
 session (negative tests).
 
+**As landed.** The invariant tests were written first, and the first thing they found is the
+one that mattered: **`UtilityRanker`'s first gate was missing `adultVerified`.** It read
+`bb.nsfwAllowed && modeAllowsNsfw(bb.mode)` — two of §16.1's three — so the server
+attestation had been arriving, being stored on the blackboard, and never consulted. The user
+setting plus a permissive mode was the whole gate. B28's client half is one word.
+
+Two existing tests asserted that two-gate world and have been updated and renamed; the
+privacy audit's rule now requires the attestation in the same expression, and two further
+rules were added (the escalation ceiling, and "only a server ack sets adultVerified").
+
+Also worth carrying forward:
+
+* `adult_ack` is produced in exactly one place and a test **counts the occurrences**. A second
+  emitter would be a second way to verify, and one of them would eventually be reachable
+  without a provider;
+* owner-attest **raises** on a multi-user instance rather than degrading, and a user store
+  that will not answer raises too — an unanswerable question is not a yes;
+* an unknown provider name is refused, never defaulted. Silently falling back when somebody
+  typos their real provider is how an instance ends up with no gate and no warning;
+* `DisabledProvider` is a provider rather than a `None`, so no caller writes its own
+  "if configured" branch;
+* redaction **allow-lists the shape** instead of scrubbing text, and the load-bearing test is
+  `leaks()`, which asserts nothing from the input survives rather than that particular
+  phrases were removed. A phrasing this repository has never seen still fails it.
+
+**Touched:** `UtilityRanker.js` (permitted, addendum §13), `ContextBlackboard.js` (one field),
+`protocol.py` (one constructor argument and the handler), and two tests plus the audit that
+encoded the old two-gate rule.
+
 ---
 
-#### B29 · ConsentFlow, adult profile, scenes `[C]`
+#### B29 · ConsentFlow, adult profile, scenes `[C]` — ✅ landed
 **Branch:** `feat/bd-b29-adult-arc` · **Depends on:** B28
 **New:** `src/behavior/ConsentFlow.js` (owns `escalationLevel`),
 `src/behavior/modes/adult.profile.js`, `scenes/{sunset,candlelit}.json`.
@@ -949,6 +978,35 @@ level decays to 1 on inactivity; nothing in the tier is ever proactive.
 **Why last:** it depends on the ranker, the profiles, the scenes, the session, curiosity
 and the recorder — every one of which must be stable before a tier this sensitive rides on
 top of it.
+
+**As landed.** All four files as planned, plus five bus events and a boot guard behind
+`adult.available` (which ships false, and while it is false the flow is not constructed at
+all).
+
+The design rules, as they ended up:
+
+* the fastest path from level 1 to 4 is **six minutes and three explicit yeses**, driven by a
+  test; a hundred ambiguous answers stay at level 1, driven by another;
+* `checkIn()` asks and then waits. A pending flow never advances, and an ambiguous answer is
+  a not-now that is **not re-asked**. Yes has to be said; no happens by default;
+* negatives classify **before** affirmatives, so "no, keep going" is a no. Reading the
+  affirmative out of a person changing their mind mid-sentence is the failure the file exists
+  to prevent. The §16.4 LLM hook can only turn *unclear* into yes — it can never overturn a no;
+* exits work from every level including mid-check-in, and **neither says a word about it**.
+  Being asked why you wanted to stop is what makes people not say it next time. Asserted
+  synchronous by grepping the file for `await` and `async`;
+* `tick()` only ever decays — six hundred minutes of ticks leave the level at 1;
+* the ceiling is **cumulative**: a ceiling that replaced the previous level's list would make
+  advancing take things away. An unknown level is refused rather than clamped to 4.
+
+**Not authored:** any sexual content. The tier is gating, pacing and consent around clips the
+app already shipped, exactly as §16 opens by saying, and the six art assets the two scenes
+name are absent like B14's — each manifest carries a `fallbackColor` and enters anyway.
+
+**Owed:** B25's adult-tier teardown is now proven against `ConsentFlow.enter()`, but still
+against a blackboard a test sets rather than a live attestation round trip. An end-to-end
+run — server attests, ack lands, mode activates, recorder stops — is a person's job and
+belongs on the QA checklist alongside B19's and B27's.
 
 ---
 

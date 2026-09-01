@@ -65,6 +65,11 @@
         // B23. The profile carries the reaction tiers, so it loads before the detector that
         // classifies against them and the co-host that asks it for permission.
         'src/behavior/modes/play.profile.js',
+        // B28/B29. The profile carries the tier's ceiling, so it loads before the flow that
+        // reads it. Loading it is not enabling it: `requires` is checked at activation and
+        // the ranker checks all three gates on every selection.
+        'src/behavior/modes/adult.profile.js',
+        'src/behavior/ConsentFlow.js',
         'src/features/together/heuristics/ExcitementDetector.js',
         'src/features/together/activities/cohost.js',
         // B24/B25. The recorder first: the button is the thing that keeps what it buffered.
@@ -211,6 +216,7 @@
                 clipButton: null,
                 copilot: null,
                 coach: null,
+                adult: null,
                 consent: null,
                 consentIndicator: null,
                 togetherPanel: null,
@@ -303,6 +309,7 @@
                         clipButton: director.clipButton && director.clipButton.stats,
                         copilot: director.copilot && director.copilot.stats,
                         coach: director.coach && director.coach.stats,
+                        adult: director.adult && director.adult.stats,
                     };
                 },
             };
@@ -513,6 +520,22 @@
                         director.adapters.push(director.clipButton);
                     }
                 }
+            }
+
+            // The adult tier (B28, B29). `adult.available` is a third independent flag and
+            // ships false; with it off the flow is not constructed at all, so the tier is
+            // unactivatable rather than merely unadvertised. Even with it on, `enter()`
+            // refuses until the server's attestation has landed on the blackboard, and the
+            // ranker re-checks all three gates on every single selection.
+            if (config.adult && config.adult.available && global.NEXUS_BD_CONSENT_FLOW) {
+                director.adult = global.NEXUS_BD_CONSENT_FLOW.attach({
+                    bus,
+                    blackboard,
+                    profile: global.NEXUS_BD_PROFILE_ADULT,
+                    recorder: director.clips,
+                    say: (text, options) => global.NEXUS_BD_SAY && global.NEXUS_BD_SAY(text, options),
+                });
+                director.adapters.push(director.adult);
             }
 
             // QA instrumentation (B19). The log costs one boolean per pick while off; the

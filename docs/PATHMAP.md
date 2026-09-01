@@ -1439,6 +1439,129 @@ guard is what said so.
 
 ---
 
+## 2w. The adult tier: gates, then the arc (B28, B29)
+
+Server: `avatar_director/verification.py`, `avatar_director/redaction.py`, one handler in
+`protocol.py`. Client: `src/behavior/ConsentFlow.js`, `src/behavior/modes/adult.profile.js`,
+`scenes/{sunset,candlelit}.json`, one word in `UtilityRanker.js` (this project's own file,
+per addendum §13), one field on `ContextBlackboard`. Plus five bus events and the boot guard.
+
+Built last, gated hardest, server first. **No content was authored in this wave** — the tier
+is pacing and consent around clips the app already shipped, and both batches are entirely
+restrictions.
+
+### The defect this wave found
+
+`UtilityRanker`'s first gate read `bb.nsfwAllowed && modeAllowsNsfw(bb.mode)` — two of
+§16.1's three. **`adultVerified` was not in it.** The server attestation existed, the session
+adapter set the flag, and the ranker never looked at it, so the user setting plus a
+permissive mode was the whole gate. B28's client half is one word, and it is the most
+important word in the wave. Two tests that asserted the two-gate world have been updated and
+renamed to say so, and the privacy audit's rule now demands the attestation is in the same
+expression.
+
+### The server is the only thing that can verify
+
+`adult_ack` is produced in exactly one place — a test counts the occurrences and requires
+one — because a second emitter would be a second way to verify and one of them would
+eventually be reachable without a provider. A client sending `adult_ack` upward is an unknown
+type and is ignored, per §6.9.
+
+An attestation is a fact about a **session**: it expires, it is re-asked on reconnect, it
+carries no identity (a test asserts the ack's key set is exactly `verified`/`exp`/`provider`),
+and it is never written anywhere (a test greps the module for `open(`, `sqlite`, `Path(`,
+`write`). Revoking is closing the tab.
+
+`verified` is computed on read rather than stored, because an expiry that is only checked
+when it is set is an expiry that never fires.
+
+### Owner-attest refuses to load on a multi-user instance
+
+The self-host default is honest: the owner asserts their own age about their own machine.
+That is *only* honest while there is one user — on an instance with accounts the owner is
+attesting for people they have never met, which is worse than no gate because it looks like
+one. So `OwnerAttestProvider.load()` **raises** rather than degrading, and `build_provider`
+turns that into a `DisabledProvider` that answers no.
+
+Three related decisions:
+
+* a user store that will not answer is **not a yes** — it raises too;
+* an unknown provider name is refused, never defaulted. Silently falling back to owner-attest
+  when somebody typos their real provider is how an instance ends up with no gate and no
+  warning;
+* `DisabledProvider` is a provider, not a `None`. A null provider means every caller writes
+  its own "if configured" branch and one of them eventually gets it wrong.
+
+With `adult.enabled = false` the factory returns the refusing provider **without consulting
+the named provider at all** — a test asserts the user count is never read — so the tier is
+unactivatable rather than unadvertised.
+
+### Redaction allow-lists the shape, it does not scrub the text
+
+Warmth signals are kept ("enjoyed date night, prefers slow pacing") because they are what
+make the next evening a relationship rather than a script. Explicit detail is not, because a
+companion's long-term memory is a file on a disk.
+
+The split is **constructive, not subtractive**: `redact()` builds a new record from a fixed
+field list with values clamped to closed vocabularies, and drops everything else. A scrubber
+has to be right about every phrasing forever, in every language; an allow-list has to be
+right once. The test that matters is `leaks()`, which asserts *nothing from the input* is in
+the output rather than that particular phrases were removed — so a phrasing this repository
+has never seen still fails it. A field a future batch invents cannot appear in the output.
+
+The topic key is fixed too: `user.intimate.<something they said>` would leak through the key
+itself. Duration is bucketed — "47 minutes" is a fact about an evening, "short" is a fact
+about a preference. A write to any category the tier does not own is **refused** rather than
+reshaped, because guessing what an unfamiliar category is for is how detail escapes.
+
+### The arc: earned, and reversible
+
+A level advances on exactly two things — an explicit affirmative to a check-in she asked, or
+unmistakable user initiation — and never before `perLevelMinMs`. The fastest possible path
+from level 1 to level 4 is **six minutes and three explicit yeses**, and a test drives
+exactly that; another drives a hundred ambiguous answers and stays at level 1.
+
+`checkIn()` asks and then **waits**. A pending flow does not advance no matter what else
+happens, and an ambiguous answer is a *no for now* that is not re-asked. That asymmetry is
+the ethic of the file: yes has to be said, no happens by default. Negatives are classified
+before affirmatives, so "no, keep going" is a no — reading the affirmative out of a person
+changing their mind mid-sentence is exactly the failure the file exists to prevent. The
+§16.4 LLM hook can only turn *unclear* into yes; it can never overturn a no.
+
+Exits work from every level including mid-check-in, synchronously (a test asserts the file
+contains no `await` and no `async`), and **neither says a word about it** — being asked why
+you wanted to stop is what makes people not say it next time. `cozy` drops to level 1 and
+stays in the tier; `stop`/`exit` leaves for companion. "Cozily" is conversation.
+
+`tick()` only ever decays. A tier that escalated on a timer would be one that escalated
+without being asked, and a test runs six hundred minutes of ticks and stays at level 1.
+
+### The ceiling is cumulative, and an unknown level is refused
+
+Level 3 admits everything levels 1 and 2 do: a ceiling that *replaced* the previous list
+would make advancing take things away, which is not what escalation means to anybody. An
+eight-row truth table covers the three gates, because the interesting bug is a gate that is
+load-bearing only while another happens to be open. A level the table does not describe is
+refused rather than clamped — clamping to 4 resolves a bug in the most permissive direction
+available.
+
+### Where the invariants live
+
+| § | invariant | tested in |
+|---|---|---|
+| 1 | no client path sets `adultVerified` | both (source-grep for every writer; server owns the ack) |
+| 2 | three gates + user source + ceiling | `tests/behavior/adult.test.js` |
+| 3 | no non-user source, ever | `tests/behavior/adult.test.js` (thirteen sources) |
+| 4 | recorder torn down | `tests/behavior/adult.test.js` |
+| 5 | exits from any state, one tick | `tests/behavior/adult.test.js` |
+| 6 | minors excluded by verification | `backend/tests/avatar/test_adult_gates.py` |
+
+`config/behavior.config.json`'s `adult.available` ships false and boot does not construct the
+flow at all while it is; even constructed, `enter()` refuses until the server's attestation
+lands on the blackboard, and the ranker re-checks all three gates on every selection.
+
+---
+
 ## 3. Frozen names
 
 Decided in B0; every later batch cites them.

@@ -68,6 +68,13 @@ const BehaviorEventBus = (() => {
         'coach:rep',
         'coach:set_start',
         'coach:set_end',
+        // B29. The consent arc. `adult:level` carries the level and why it changed, rather
+        // than a family of per-level events — and `adult:exit` carries soft or hard.
+        'adult:enter',
+        'adult:exit',
+        'adult:checkin',
+        'adult:declined',
+        'adult:level',
     ];
 
     class EventBus {

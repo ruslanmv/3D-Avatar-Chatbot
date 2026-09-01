@@ -119,14 +119,25 @@ describe('the ranker is the single enforcement point', () => {
         expect(ranker.score(nsfwClip(), { name: 'flirt', source: 'user' }, bb)).toBe(BLOCKED);
     });
 
-    test('nsfw needs both, and then it passes', () => {
+    test('nsfw needs all three, and then it passes', () => {
+        // §16.1's triple gate. B28 added the first of them: before it, the user setting
+        // plus a permissive mode was enough, and the server attestation was decorative.
+        bb.adultVerified = true;
         bb.nsfwAllowed = true;
         bb.mode = { allowNsfw: true };
         expect(ranker.score(nsfwClip(), { name: 'flirt', source: 'user' }, bb)).toBeGreaterThan(-Infinity);
     });
 
+    test('and without the server attestation it does not, however the client is configured', () => {
+        bb.adultVerified = false;
+        bb.nsfwAllowed = true;
+        bb.mode = { allowNsfw: true };
+        expect(ranker.score(nsfwClip(), { name: 'flirt', source: 'user' }, bb)).toBe(-Infinity);
+    });
+
     test('she never initiates: a non-user source can never reach nsfw content', () => {
         // The B28 rule, in place from B5 so the adult tier is two lines and not a rewrite.
+        bb.adultVerified = true;
         bb.nsfwAllowed = true;
         bb.mode = { allowNsfw: true };
         for (const source of ['curiosity', 'llm', 'vision', 'mcp', 'sentiment']) {

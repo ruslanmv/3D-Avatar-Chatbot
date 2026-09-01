@@ -202,6 +202,9 @@ describe('a server intent is an intent like any other', () => {
     test('no server intent reaches an NSFW clip, whitelisted or not', () => {
         const bus = new EventBus({});
         const blackboard = new Blackboard({ nsfwAllowed: true });
+        // All three of §16.1's gates open, so the only thing left standing is the source
+        // rule — which is what this test is about.
+        blackboard.adultVerified = true;
         blackboard.mode = { id: 'test', allowNsfw: true, allows: () => true };
         const ranker = new Ranker({ antiRepeat: new AntiRepeat(5) });
         const spicy = { id: 'x', nsfw: true, energy: 0.5, valence: 0.5, quality: 'production', intents: ['flirt'] };
