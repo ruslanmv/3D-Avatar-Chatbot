@@ -51,6 +51,9 @@ const BehaviorEventBus = (() => {
         // `focus:start`/`focus:break`/`focus:end` would be three entries and a fourth the
         // day somebody adds a long break.
         'focus:phase',
+        // B23. One typed event carrying the kind and the tier, the way `scene:anchor`
+        // carries a name: five `game:*` entries would be six the day somebody adds a revive.
+        'game:moment',
     ];
 
     class EventBus {

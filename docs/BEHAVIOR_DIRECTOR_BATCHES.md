@@ -703,7 +703,7 @@ Three things worth carrying forward:
 
 ---
 
-#### B23 · Gaming co-host + ExcitementDetector `[C]`
+#### B23 · Gaming co-host + ExcitementDetector `[C]` — ✅ landed
 **Branch:** `feat/bd-b23-cohost` · **Depends on:** B11, B12, B7
 **New:** `src/features/together/activities/cohost.js`,
 `src/features/together/heuristics/ExcitementDetector.js`, **plus `play.profile.js`
@@ -715,6 +715,37 @@ events. Macro coalescing at ≤1 per 30 s.
 while `attention ≥ 0.8` except macro events; the detector never exceeds one macro per 30 s.
 **Priority note:** this is the most clippable experience in the product, which is why it
 lands immediately before the clip engine rather than at the end of the activities pack.
+
+**As landed:** all three files as planned. "Touched: none" was again optimistic by two:
+`EventBus.js` (one event, `game:moment`, carrying the kind and the tier rather than five
+`game:*` entries) and `boot.js` (three modules, one guarded attach).
+
+Design decisions worth carrying forward:
+
+* a **macro event** is not a **macro tier**. The heuristic's top inference is `surge`, which
+  is macro for pacing and may *not* interrupt a locked-in player; only `win` and `loss`, which
+  come from a real hook's `mark()`, may. That is what makes "except macro events" an exception
+  rather than a hole — a flash detector cannot tell a win from a defeat, and pretending
+  otherwise is the failure mode;
+* pacing lives in the **detector**, not the co-host, so B24's clip engine sees exactly the
+  moments the reaction path sees. A grep for `COOLDOWN` in `cohost.js` keeps it there;
+* the flash test needed its own rolling baseline. With a bare threshold, a permanently
+  strobing shooter produced a nod every two seconds forever. Both signals now take the same
+  shape: a floor plus a statistical test against the recent past;
+* a building surge emits once, on its first sample. Emitting on each was three gasps and a
+  dance.
+
+**Finding, escalated rather than fixed here (pre-existing, from B7):** `src/behavior/modes/`
+was never loaded. `ModeManager.js`, `companion.profile.js`, `showcase.profile.js` and
+`together.profile.js` are absent from `boot.js`'s `MODULES` and are referenced nowhere else,
+so `window.NEXUS_BD_PROFILE_TOGETHER` is undefined at runtime and `watch.js` falls back to a
+null profile — meaning `CommentaryGate` currently runs with **no openings and no budget** in
+a real browser. The tests construct profiles directly and so never saw it.
+
+B23 adds `play.profile.js` to `MODULES` because it cannot work without it, and that changes
+nothing that exists (nothing reads `NEXUS_BD_PROFILE_PLAY` today). Adding the other three
+*would* change behaviour — `watch.js` would suddenly get a real profile where it gets null —
+so it is left for its own batch rather than smuggled in here.
 
 ---
 

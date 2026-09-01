@@ -57,6 +57,11 @@
         // B22 loads after scene-journey, whose `derive` it reuses rather than writing a
         // second answer to what an overlay does to `initiative`.
         'src/features/together/activities/focus.js',
+        // B23. The profile carries the reaction tiers, so it loads before the detector that
+        // classifies against them and the co-host that asks it for permission.
+        'src/behavior/modes/play.profile.js',
+        'src/features/together/heuristics/ExcitementDetector.js',
+        'src/features/together/activities/cohost.js',
         'src/behavior/debug/PickLog.js',
         'src/behavior/debug/DebugHUD.js',
     ];
@@ -192,6 +197,7 @@
                 panels: null,
                 assistant: null,
                 focus: null,
+                cohost: null,
                 consent: null,
                 consentIndicator: null,
                 togetherPanel: null,
@@ -279,6 +285,7 @@
                         panels: director.panels && director.panels.stats,
                         assistant: director.assistant && director.assistant.stats,
                         focus: director.focus && director.focus.stats,
+                        cohost: director.cohost && director.cohost.stats,
                     };
                 },
             };
@@ -421,6 +428,22 @@
                     });
                     director.togetherPanel.register(director.focus);
                     director.adapters.push(director.focus);
+                }
+
+                // Gaming co-host (B23). Registered, never started: she watches a game
+                // because somebody asked her to. The detector reads the media adapter's
+                // scalars, so it inherits B11's consent gating rather than adding a second
+                // pixel reader to audit.
+                if (global.NEXUS_BD_COHOST) {
+                    director.cohost = global.NEXUS_BD_COHOST.attach({
+                        bus,
+                        blackboard,
+                        gate: director.watch && director.watch.gate,
+                        media: director.media,
+                        profile: global.NEXUS_BD_PROFILE_PLAY,
+                    });
+                    director.togetherPanel.register(director.cohost);
+                    director.adapters.push(director.cohost);
                 }
             }
 

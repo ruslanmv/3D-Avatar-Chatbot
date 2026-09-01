@@ -1087,6 +1087,78 @@ raises is logged rather than allowed to cost the client its session.
 
 ---
 
+## 2s. Gaming co-host and the excitement heuristic (B23)
+
+`src/behavior/modes/play.profile.js`, `src/features/together/heuristics/ExcitementDetector.js`,
+`src/features/together/activities/cohost.js`. Touched: `EventBus.js` (one event), `boot.js`
+(three modules, one guarded attach).
+
+The most clippable experience in the product, and it is three files and almost no logic —
+everything it needs was built by B7, B11 and B12.
+
+### The reaction tiers finally exist
+
+B7 shipped `play.profile.js` as optional and it was never written, so the tiers the plan
+keeps citing were a paragraph in a use case. They are data now:
+
+| tier | body | example | fires while she is watching closely? |
+|---|---|---|---|
+| `micro` | head and face | a nod on a hit | yes — that is the point of it |
+| `medium` | upper body | a gasp-lean on a near-death | no |
+| `macro` | whole body | a dance on the win, consoling on the loss | only for a **macro event** |
+
+### A macro event is not the same as a macro tier
+
+The distinction the acceptance criterion turns on, and the reason "except macro events" is a
+meaningful exception rather than a hole.
+
+`ExcitementDetector` infers moments from audio and pixels. It cannot tell a win from a total
+defeat — both are loud and bright — so its top tier is `surge`, meaning *something big just
+happened*, and `surge` is macro **for pacing** but is not a macro event. `win` and `loss`
+come only from `mark()`, which is what a real game hook calls. A test asserts no inferred
+kind carries `macroEvent`.
+
+So while all she has is a flash detector, she never does a full-body anything while you are
+concentrating. She does not do a victory dance because the screen went white.
+
+`mayReact(kind, attention)` is the single place the rule lives — the co-host asks and does
+not decide, and a test greps `cohost.js` for `0.8` and `HIGH_ATTENTION =` to keep it that
+way. B24's clip engine wants the same moments, and a second consumer with its own copy of
+the etiquette is how she ends up dancing in one code path and not the other.
+
+### The detector reads numbers, never pixels
+
+`MediaAdapter.sample()` already produces `{luma, rms, lumaJump, rmsJump}` from a 32×18 draw,
+already gated on B11's consent for a shared source. Feeding the detector from those scalars
+means there is no second pixel reader to audit and no second place a frame could be retained
+— asserted by grepping the file for `drawImage`, `getImageData`, `toDataURL`, `toBlob`,
+`getByteFrequencyData`, `getUserMedia`, `getDisplayMedia` and `createElement`.
+
+### Two baselines, because one was not enough
+
+Loudness is compared against a rolling mean over ~4 s: notable means notable *for this game*.
+The first draft applied that to audio only and used a bare threshold for the flash — and a
+permanently strobing shooter became a permanent nod, once every micro cooldown, forever. A
+flash delta needs the same treatment as a loudness level, so both now take the same shape: a
+floor so the arithmetic is not measuring noise, and a statistical test against the recent
+past. A test drives 400 samples of an unbroken storm and requires the reactions to stop.
+
+A building surge emits **once**, on its first sample. Emitting on each would be three gasps
+and a dance, which is a person having a fit.
+
+### Pacing lives in the detector
+
+"Never more than one macro per thirty seconds" is enforced where moments are produced, not in
+the co-host — otherwise B24's clip engine would see a storm the reaction path was shielded
+from and the two would disagree about what happened. A test greps `cohost.js` for `COOLDOWN`
+and requires its absence. Cooldowns are per tier (2 s / 8 s / 30 s), so a nod is not blocked
+by a dance, and `mark()` goes through the same door: a game reporting a win twice is one win.
+
+The acceptance test runs five minutes of a hook firing four times a second — the case where
+the adaptive baseline cannot save it — and checks every macro's gap against the one before.
+
+---
+
 ## 3. Frozen names
 
 Decided in B0; every later batch cites them.
