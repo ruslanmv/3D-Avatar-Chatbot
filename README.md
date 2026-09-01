@@ -101,6 +101,37 @@ framework dependencies — runs on vanilla JavaScript, Three.js, and WebXR.
 - **Privacy-first** — API keys stored in browser localStorage, zero server-side
   data collection
 
+### Behavior Director (opt-in)
+
+An animation and companion engine that decides what she does, in three tiers:
+reflexes every frame, a semantic clip selector under 50 ms, and — when paired
+with [HomePilot](https://github.com/ruslanmv/HomePilot) — turn-level
+orchestration. It ships **off**; `config/behavior.config.json` turns it on.
+
+- **Together Mode** — watch a film, listen to music, or sit in a guided scene
+  with her. Her silence is the feature: she comments only at openings
+- **Body doubling** — 25/5 focus blocks with a quiet profile and streaks stored
+  in her long-term memory. Zero spoken lines inside a block, enforced by the
+  same gate that runs everything else
+- **Hands-busy copilot & coach** — a checklist and timers by voice while your
+  hands are covered in dough, and rep counting from the camera. **On-demand
+  snapshots only** — there is no periodic-frame code path, and the privacy audit
+  checks that by reading source
+- **Clips & share cards** — a rolling 30-second buffer, one tap to save. Nothing
+  under `src/features/clips/` can reach the network, and a static check holds
+  that for files nobody has written yet
+- **Consent-first capture** — one file may open a camera or a screen, the
+  indicator shows in 2D _and_ in XR, and revoking cancels in-flight sampling
+  within a frame
+
+Four gates run in CI and are all green: the engine is provably inert with the
+flag off, eight privacy claims hold as properties of the source, the frame and
+pick budgets sit inside 25% headroom, and the knowledge base regenerates itself
+byte for byte.
+
+Setup, browser requirements and a per-feature test recipe:
+**[docs/ENABLING.md](docs/ENABLING.md)**.
+
 ---
 
 ## Quick Start
@@ -124,6 +155,12 @@ npm run dev          # http://localhost:8080
 make test            # Avatar health check + unit tests
 make test-avatars    # Avatar file validation only
 npm run validate     # Lint + format + tests
+
+# Behavior Director gates — the four CI runs
+node scripts/behavior-parity-baseline.mjs --check   # inert with the flag off
+node scripts/audit-privacy.mjs --check              # eight privacy claims
+node scripts/audit-budgets.mjs --check              # frame / pick / clip / pose cost
+node kb/scripts/validate-manifest.mjs --level semantic
 ```
 
 ---
