@@ -512,3 +512,114 @@ describe('mobile is the same panel, by media query', () => {
         expect(TogetherLauncher.CSS).toContain(':focus-visible');
     });
 });
+
+// ── keyboard and focus ───────────────────────────────────────────────────────
+
+describe('it behaves like a menu for somebody not using a mouse', () => {
+    const press = (key, opts = {}) =>
+        document.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, ...opts }));
+    const pointerOn = (node) => node.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
+
+    test('opening moves focus into the chooser', () => {
+        const h = harness();
+        h.launcher.open();
+        expect(document.activeElement).toBe(tiles()[0]);
+    });
+
+    test('Escape closes it', () => {
+        const h = harness();
+        h.launcher.open();
+        press('Escape');
+        expect(h.panel.isOpen).toBe(false);
+    });
+
+    test('and puts focus back on the button, not at the top of the document', () => {
+        const h = harness();
+        h.launcher.open();
+        press('Escape');
+        expect(document.activeElement).toBe(button());
+    });
+
+    test('Escape never stops a running activity', async () => {
+        const h = harness();
+        button().click();
+        tileNamed('Focus').click();
+        optionNamed('Start').click();
+        await flush();
+        h.launcher.open();
+        press('Escape');
+        expect(h.panel.activeActivity).toBe('focus');
+        expect(h.activities.focus.stopped).toEqual([]);
+    });
+
+    test('a click outside dismisses it', () => {
+        const h = harness();
+        h.launcher.open();
+        pointerOn(document.querySelector('#reset-view-btn'));
+        expect(h.panel.isOpen).toBe(false);
+    });
+
+    test('a click inside does not', () => {
+        const h = harness();
+        h.launcher.open();
+        pointerOn(tiles()[0]);
+        expect(h.panel.isOpen).toBe(true);
+    });
+
+    test('and the button keeps toggling rather than double-firing', () => {
+        const h = harness();
+        button().click();
+        expect(h.panel.isOpen).toBe(true);
+        pointerOn(button());
+        expect(h.panel.isOpen).toBe(true);
+        button().click();
+        expect(h.panel.isOpen).toBe(false);
+    });
+
+    test('Tab wraps at the end, so focus cannot escape the open menu', () => {
+        const h = harness();
+        h.launcher.open();
+        const focusable = [...overlay().querySelectorAll('button')];
+        focusable[focusable.length - 1].focus();
+        press('Tab');
+        expect(document.activeElement).toBe(focusable[0]);
+    });
+
+    test('and Shift+Tab wraps at the start', () => {
+        const h = harness();
+        h.launcher.open();
+        const focusable = [...overlay().querySelectorAll('button')];
+        focusable[0].focus();
+        press('Tab', { shiftKey: true });
+        expect(document.activeElement).toBe(focusable[focusable.length - 1]);
+    });
+
+    test('the overlay is announced as a dialog, and is not modal', () => {
+        // Not `aria-modal`: it is dismissible and the page behind stays live — an activity
+        // keeps running while the chooser is shut.
+        const h = harness();
+        h.launcher.open();
+        expect(overlay().getAttribute('role')).toBe('dialog');
+        expect(overlay().getAttribute('aria-label')).toBe('Together');
+        expect(overlay().getAttribute('aria-modal')).toBeNull();
+    });
+
+    test('document listeners exist only while it is open', () => {
+        // A menu that keeps a keydown handler on the document forever is a menu that
+        // eventually swallows somebody else's Escape.
+        const h = harness();
+        expect(h.launcher.stats.listening).toBe(false);
+        h.launcher.open();
+        expect(h.launcher.stats.listening).toBe(true);
+        h.launcher.close();
+        expect(h.launcher.stats.listening).toBe(false);
+    });
+
+    test('and detach takes them with it', () => {
+        const h = harness();
+        h.launcher.open();
+        h.launcher.detach();
+        expect(h.launcher.stats.listening).toBe(false);
+        expect(() => press('Escape')).not.toThrow();
+    });
+});

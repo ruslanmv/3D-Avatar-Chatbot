@@ -331,6 +331,11 @@ const TogetherPanel = (() => {
             if (!this.doc || !container) return null;
             this.root = this.doc.createElement('div');
             this.root.id = PANEL_ID;
+            // A menu over the page, announced as one. `aria-modal` is deliberately absent:
+            // it is dismissible and the page behind it stays live — an activity keeps
+            // running while the chooser is shut.
+            this.root.setAttribute('role', 'dialog');
+            this.root.setAttribute('aria-label', 'Together');
             container.appendChild(this.root);
             this._paint();
             return this.root;

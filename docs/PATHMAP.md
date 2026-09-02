@@ -1640,6 +1640,22 @@ which is the entire reason that renderer draws to a canvas texture — and selec
 from B26's `voice:final`. Saying "watch" suits a headset better than a raycast at a menu,
 and it needs no new pointer code. Deleting the XR branch fails two tests.
 
+### Keyboard and focus (B32)
+
+It is a menu over the page, so it behaves like one. Escape closes it, a click outside closes
+it, focus moves to the first tile on open and **returns to the button** on close — without
+that last part a keyboard user is dropped at the top of the document every time they dismiss
+it, which is the most common way a home-grown overlay fails an audit.
+
+Focus is trapped while open: Tab from the last control wraps to the first, because a menu you
+can Tab out of but not see is worse than one that holds you. Escape is always the way out and
+**never stops a running activity** — dismissing and leaving stay different, here too.
+
+The overlay is `role="dialog"` and deliberately **not** `aria-modal`: it is dismissible and
+the page behind it stays live, because an activity keeps running while the chooser is shut.
+Document listeners are bound only while it is open — a menu that keeps a keydown handler on
+the document forever is one that eventually swallows somebody else's Escape.
+
 **The known limit:** controller-raycast selection against the canvas is *not* implemented.
 It would mean hit-testing a texture from `VRPuppetInteraction`, which is a pre-existing file
 this batch may not touch. Voice is the VR input until that has a batch of its own.

@@ -31,6 +31,18 @@
  * DOM. Selection there comes from B26's `voice:final` — saying "watch" is a better fit for
  * a headset than a raycast at a menu, and it needs no new pointer code.
  *
+ * ## Keyboard and focus (B32)
+ *
+ * The chooser is a menu over the page, so it behaves like one: Escape closes it, a click
+ * outside closes it, focus moves to the first tile when it opens and **returns to the
+ * button** when it shuts. Without that last part a keyboard user is dropped at the top of
+ * the document every time they dismiss it, which is the single most common way a home-grown
+ * overlay fails an audit.
+ *
+ * Focus is trapped while it is open — Tab from the last control wraps to the first — because
+ * a menu you can Tab out of but not see is worse than one that holds you. Escape is always
+ * the way out, and it never stops a running activity: dismissing and leaving stay different.
+ *
  * Exposes: window.NEXUS_BD_TOGETHER_LAUNCHER
  */
 const TogetherLauncher = (() => {
@@ -142,6 +154,9 @@ const TogetherLauncher = (() => {
             this.style = null;
             this.opens = 0;
             this._unsubscribe = null;
+            this._onKey = (event) => this._key(event);
+            this._onPointer = (event) => this._pointer(event);
+            this._bound = false;
         }
 
         get name() {
@@ -163,7 +178,10 @@ const TogetherLauncher = (() => {
             this._injectDrawerItem();
             this._mountPanel();
             if (typeof this.panel.onChange === 'function') {
-                this._unsubscribe = this.panel.onChange(() => this._reflect());
+                this._unsubscribe = this.panel.onChange((snapshot) => {
+                    this._reflect();
+                    this._listen(snapshot.open);
+                });
             }
             this._reflect();
             return this;
@@ -254,11 +272,18 @@ const TogetherLauncher = (() => {
             this.opens++;
             if (this.inXR) return this._openXR();
             this.panel.open();
+            this._listen(true);
+            this._focusFirst();
             return { ok: true, surface: '2d' };
         }
 
-        close() {
+        close({ restoreFocus = true } = {}) {
+            const wasOpen = this.panel.isOpen;
             this.panel.close();
+            this._listen(false);
+            // Back to where they were. A keyboard user dropped at the top of the document
+            // every time they dismiss a menu has to find their place again, every time.
+            if (wasOpen && restoreFocus && this.button) this.button.focus();
             return true;
         }
 
@@ -286,6 +311,69 @@ const TogetherLauncher = (() => {
                 data: { title: 'Together — what should we do?', cards: items },
             });
             return { ok: true, surface: 'xr', spoken: true };
+        }
+
+        // ── keyboard and focus ───────────────────────────────────────────────
+
+        /** Document listeners exist only while the chooser is open. */
+        _listen(shouldListen) {
+            if (shouldListen === this._bound || !this.doc) return;
+            const method = shouldListen ? 'addEventListener' : 'removeEventListener';
+            this.doc[method]('keydown', this._onKey, true);
+            this.doc[method]('pointerdown', this._onPointer, true);
+            this._bound = shouldListen;
+        }
+
+        /** Everything focusable inside the panel, in tab order. */
+        _focusable() {
+            const root = this.panel.root;
+            if (!root) return [];
+            return [...root.querySelectorAll('button:not([disabled])')];
+        }
+
+        _focusFirst() {
+            const first = this._focusable()[0];
+            if (first && typeof first.focus === 'function') first.focus();
+            return first || null;
+        }
+
+        /**
+         * Escape closes; Tab wraps. Escape never stops a running activity — dismissing the
+         * menu and leaving the experience stay different intentions.
+         */
+        _key(event) {
+            if (!this.panel.isOpen) return;
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                this.close();
+                return;
+            }
+            if (event.key !== 'Tab') return;
+
+            const focusable = this._focusable();
+            if (!focusable.length) return;
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            const active = this.doc.activeElement;
+
+            // A menu you can Tab out of but not see is worse than one that holds you.
+            if (event.shiftKey && (active === first || !this.panel.root.contains(active))) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && active === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        }
+
+        /** A click anywhere else dismisses — but never through the button's own toggle. */
+        _pointer(event) {
+            if (!this.panel.isOpen || !this.panel.root) return;
+            const target = event.target;
+            if (this.panel.root.contains(target)) return;
+            if (this.button && this.button.contains(target)) return;
+            if (this.drawerItem && this.drawerItem.contains(target)) return;
+            this.close({ restoreFocus: false });
         }
 
         // ── reflecting state ─────────────────────────────────────────────────
@@ -317,6 +405,7 @@ const TogetherLauncher = (() => {
         detach() {
             if (this._unsubscribe) this._unsubscribe();
             this._unsubscribe = null;
+            this._listen(false);
             for (const node of [this.button, this.drawerItem, this.style]) {
                 if (node && node.parentNode) node.parentNode.removeChild(node);
             }
@@ -331,6 +420,7 @@ const TogetherLauncher = (() => {
                 opens: this.opens,
                 state: this.button ? this.button.dataset.state : null,
                 surface: this.inXR ? 'xr' : '2d',
+                listening: this._bound,
             };
         }
     }
