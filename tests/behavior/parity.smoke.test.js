@@ -60,12 +60,6 @@ const SKIP_DIRS = new Set([
 
 const SCAN_EXTENSIONS = ['.js', '.mjs', '.html', '.json'];
 
-/** Reaching the engine through its globals counts too — see the harness for why. */
-const ENGINE_GLOBALS = [/\bNEXUS_BD_BOOT\b/, /\bNEXUS_BD_SAY\b/, /\bNEXUS_BD\b(?!_)/];
-
-const reachesEngine = (line) =>
-    ENGINE_NAMESPACES.some((ns) => line.includes(ns)) || ENGINE_GLOBALS.some((re) => re.test(line));
-
 const isEngineFile = (rel) => ENGINE_NAMESPACES.some((ns) => ns.endsWith('/') && rel.startsWith(ns));
 
 /** Every scannable shipping file, as a repo-relative path. */
@@ -162,19 +156,13 @@ describe('the engine is invisible to the shipping app', () => {
         expect(srcs.filter((s) => ENGINE_NAMESPACES.some((ns) => s.startsWith(ns)))).toEqual([]);
     });
 
-    test('every allowlisted reference to the engine sits next to the flag guard', () => {
-        const unguarded = [];
-        for (const file of ALLOWLIST) {
-            const abs = path.join(ROOT, file);
-            if (!fs.existsSync(abs)) continue;
-            const lines = fs.readFileSync(abs, 'utf8').split('\n');
-            lines.forEach((line, i) => {
-                if (!reachesEngine(line)) return;
-                const near = lines.slice(Math.max(0, i - 6), i + 4).join('\n');
-                if (!/behaviorEngine|NEXUS_BD_ENABLED/.test(near)) unguarded.push(`${file}:${i + 1}`);
-            });
-        }
-        expect(unguarded).toEqual([]);
+    test('no allowlisted reference to the engine is reachable with the flag off', () => {
+        // Asked of the harness rather than re-derived here. This test used to carry its own
+        // copy of the proximity rule, and when B33 moved the bootstrap into a function whose
+        // guard is one early return, the copy and the harness disagreed: two definitions of
+        // "guarded", both claiming to be the gate. One definition, in the file the CI job
+        // runs, and this asserts its verdict.
+        expect(runHarness('--check')).toMatch(/allowlisted references\s+: \d+ \(0 unguarded\)/);
     });
 
     test('deleting the new directories would leave nothing dangling', () => {

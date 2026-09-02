@@ -1662,6 +1662,80 @@ this batch may not touch. Voice is the VR input until that has a batch of its ow
 
 ---
 
+## 2y. Ignition (B33)
+
+`src/main.js`. Touched: nothing else.
+
+Every section above this one describes code that had never run in a browser.
+
+### The defect
+
+B3 put the bootstrap inside `setupThreeJS()` — reasonable then, since that function owned the
+scene and the frame loop. `init()` calls it in one branch:
+
+```js
+if (useViewerEngine && window.__NEXUS_VIEWER_READY__) { ... }
+else if (!useViewerEngine) { setupThreeJS(); }
+```
+
+and `index.html` sets `window.__USE_GLTF_VIEWER_ENGINE__ = true` unconditionally. So
+`setupThreeJS()` runs on no path a shipped build takes, the Settings toggle wrote
+`nexus_bd_enabled` into localStorage, and nothing ever read it. Thirty batches, four CI
+gates, 2,159 tests — and the engine was never constructed outside Jest.
+
+It surfaced the way this class of thing always does: by opening the app. Loading
+`http://localhost:8080` with the toggle on and reading `window.NEXUS_BD_ENABLED` gave
+`undefined` — not `false`, which is what the guard would have produced. The assignment had
+not executed.
+
+### The shape of the fix
+
+`startBehaviorDirector({ ticker })` is now a top-level function that both paths call:
+`setupThreeJS()` with `ticker: false`, `init()` with `ticker: true`. It is idempotent —
+`if (window.NEXUS_BD_ENABLED !== undefined) return false` — so the two call sites cannot
+double-boot or double-tick a build where both somehow run.
+
+The ticker is the second half. `animate()` in `main.js` carries B3's Tier 0 call, and
+`animate()` belongs to the legacy path. The ViewerEngine's own loop lives in
+`src/gltf-viewer/viewer.js`, which is vendored upstream and exposes nothing to subscribe to.
+Rather than patch a vendored render loop, the ViewerEngine path starts its own
+`requestAnimationFrame` — an independent loop cannot change the frame the viewer renders,
+and it costs one `update` call per frame on a path where the engine is already running.
+
+### Why the guard checks had to change with it
+
+Two places asserted the §7 parity property, and both did it by proximity: an engine
+reference is guarded if `NEXUS_BD_ENABLED` appears within six lines. That was a fair proxy
+while every hook was an `if` and its body. It stops being one when the guard becomes a
+single early return at the top of a function — the property is *stronger*, and proximity
+reads it as absent.
+
+`scripts/behavior-parity-baseline.mjs` now computes **guarded regions**: a named function
+whose body refuses on the flag before it reaches the engine, plus a function every call site
+of which is inside such a region. The list is fixed rather than inferred, because a new
+guarded function is a new seam and should cost a line in a review. Region extents are found
+by column-anchored `^function` declarations, not by brace matching: a brace count that
+miscounts one regex literal would silently widen a region and hide exactly the reference
+this file exists to catch. Comment lines are recorded (moving one is still drift) but cannot
+be the unguarded reference the gate fails on, and block-comment continuations are tracked
+across lines — one of them names the engine mid-sentence.
+
+`tests/behavior/parity.smoke.test.js` had its own copy of the proximity rule. When the two
+definitions disagreed, there were two gates both claiming to be *the* gate. It now asserts
+the harness's verdict, which is what the CI job runs.
+
+### The gap this leaves open
+
+`config/behavior.config.json`'s `behaviorEngine.enabled` is read by nothing. `boot.js`
+consumes `debug` and the blocks below it; the ignition is the localStorage key alone.
+Whether that JSON key should become a second, deployment-side kill switch — so an operator
+can disable the engine for an install whose users have already ticked the box — is a real
+decision with two defensible answers, and making it silently while fixing the ignition would
+have been the wrong moment. `docs/ENABLING.md` documents the key as intent and the toggle as
+the truth until it is taken.
+
+---
+
 ## 3. Frozen names
 
 Decided in B0; every later batch cites them.

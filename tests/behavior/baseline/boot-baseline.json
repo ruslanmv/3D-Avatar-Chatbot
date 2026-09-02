@@ -6,62 +6,92 @@
     {
       "file": "index.html",
       "line": 1439,
-      "guarded": true
+      "guarded": true,
+      "comment": false
     },
     {
       "file": "index.html",
       "line": 1554,
-      "guarded": true
+      "guarded": true,
+      "comment": false
     },
     {
       "file": "src/main.js",
-      "line": 910,
-      "guarded": true
+      "line": 915,
+      "guarded": false,
+      "comment": true
     },
     {
       "file": "src/main.js",
-      "line": 911,
-      "guarded": true
+      "line": 918,
+      "guarded": false,
+      "comment": true
     },
     {
       "file": "src/main.js",
-      "line": 921,
-      "guarded": true
+      "line": 944,
+      "guarded": true,
+      "comment": true
     },
     {
       "file": "src/main.js",
-      "line": 923,
-      "guarded": true
+      "line": 946,
+      "guarded": true,
+      "comment": false
     },
     {
       "file": "src/main.js",
-      "line": 927,
-      "guarded": true
+      "line": 949,
+      "guarded": true,
+      "comment": false
     },
     {
       "file": "src/main.js",
-      "line": 929,
-      "guarded": true
+      "line": 952,
+      "guarded": true,
+      "comment": false
     },
     {
       "file": "src/main.js",
-      "line": 942,
-      "guarded": true
+      "line": 960,
+      "guarded": true,
+      "comment": true
     },
     {
       "file": "src/main.js",
-      "line": 943,
-      "guarded": true
+      "line": 969,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "src/main.js",
+      "line": 979,
+      "guarded": true,
+      "comment": true
+    },
+    {
+      "file": "src/main.js",
+      "line": 980,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "src/main.js",
+      "line": 4756,
+      "guarded": false,
+      "comment": true
     },
     {
       "file": "src/PoseStudioPanel.js",
       "line": 287,
-      "guarded": true
+      "guarded": true,
+      "comment": true
     },
     {
       "file": "src/PoseStudioPanel.js",
       "line": 582,
-      "guarded": true
+      "guarded": true,
+      "comment": true
     }
   ],
   "configKeys": [

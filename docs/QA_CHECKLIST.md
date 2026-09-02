@@ -178,3 +178,36 @@ is for, and it is the reason the tier's flag stays false until somebody signs it
 | J9 | Leaving the tab idle past `decayAfterMs` returns the level to 1 | ☐ |
 
 Section J may not ship amber, and the tier's flag may not flip until it is signed.
+
+## K. Ignition, in a browser (B33)
+
+Every section above assumes the engine is running. Until B33 it never was: the bootstrap sat
+in a function only the legacy engine path calls, so the toggle wrote a key nothing read. No
+automated gate caught it, because each one tests the engine rather than its ignition, and
+each unit test is handed the dependency production forgot.
+
+So this section is short and it is not optional: **open the app and look.** It is the check
+that would have failed on the day B3 landed, and it is worth more than the 2,159 tests
+around it.
+
+| #  | Check | Result |
+|----|-------|--------|
+| K1 | With the toggle **off**, the Network panel shows no request under `src/behavior/`, and `window.NEXUS_BD_ENABLED` is `false` — not `undefined` | ☐ |
+| K2 | With the toggle **on** and a reload, `window.NEXUS_BD` exists and the **✦ Together** pill is in the avatar footer beside 🎯 🎭 👤 🪟 📞 | ☐ |
+| K3 | The pill opens the chooser, and picking an activity starts it — the round trip a console call never proved | ☐ |
+| K4 | `?behaviorDebug=1` shows the HUD ticking: Tier 0 is advancing, so the ViewerEngine path's own rAF is running | ☐ |
+| K5 | Toggling off and reloading returns the footer to exactly the five buttons it shipped with | ☐ |
+
+### Reproducing the README screenshots
+
+`assets/companion-mode.png` and `assets/together-mode.png` are captures of this build, not
+mockups. To retake them: serve the repo (`npm run dev`), drive it with a headless Chromium at
+1440×900 and `deviceScaleFactor: 1.5`, seed `localStorage.nexus_bd_enabled = 'true'` before
+load, and give the avatar ~20 s to arrive.
+
+Two notes for whoever redoes them. `@pixiv/three-vrm` is loaded from unpkg through the import
+map, so a machine without egress must serve that one module locally or the avatar never
+appears — the app degrades to chat-only rather than failing loudly, which is easy to mistake
+for a broken capture. And on Chromium, 🪟 opens a Document Picture-in-Picture window that a
+page screenshot cannot see; `companionMode.activate('inpage')` selects the in-page overlay,
+which is the strategy Firefox, Safari and mobile get anyway.

@@ -106,7 +106,13 @@ framework dependencies — runs on vanilla JavaScript, Three.js, and WebXR.
 An animation and companion engine that decides what she does, in three tiers:
 reflexes every frame, a semantic clip selector under 50 ms, and — when paired
 with [HomePilot](https://github.com/ruslanmv/HomePilot) — turn-level
-orchestration. It ships **off**; `config/behavior.config.json` turns it on.
+orchestration. It ships **off**: turn it on in **Settings ▸ Behavior Director**,
+then tune it in `config/behavior.config.json`.
+
+Once it is on, a **✦ Together** pill joins the avatar toolbar — one entry point
+to every experience below. Nothing else in the toolbar moves.
+
+![The Together chooser open over the avatar: Watch, Journey, Music, Play, Focus, Coach, and Help me with this](assets/together-mode.png)
 
 - **Together Mode** — watch a film, listen to music, or sit in a guided scene
   with her. Her silence is the feature: she comments only at openings
@@ -170,7 +176,12 @@ node kb/scripts/validate-manifest.mjs --level semantic
 Pop the live avatar out into a small floating window and keep it beside you
 while you work — talk to it hands-free, or type.
 
-![Companion Mode — the avatar floating over the app with voice and text chat](assets/companion-mode.png)
+![Companion Mode — the live avatar in a small floating window over the app, with the call, push-to-talk and "Talk or type…" bar along its bottom edge](assets/companion-mode.png)
+
+_Above: the in-page window, which is what you get on Firefox, Safari and mobile.
+On a browser with Document Picture-in-Picture (Chrome, Edge) the same button
+pops the avatar into a real OS window you can park outside the browser — same
+controls, same canvas, no second copy of the avatar._
 
 **How to use**
 

@@ -252,3 +252,77 @@ describe('the commentary gate gets a real profile', () => {
         expect(real.stats.openings.length).toBeGreaterThan(0);
     });
 });
+
+// ── the bootstrap itself is reached on the path the app takes ────────────────
+
+describe('both engine paths start the director', () => {
+    /**
+     * The composition suite above proves boot.js wires what the units were tested
+     * against. It could not see one level up: whether anything calls boot at all on
+     * the path a shipped build takes.
+     *
+     * Nothing did. `index.html` sets `__USE_GLTF_VIEWER_ENGINE__ = true`
+     * unconditionally, and `init()` calls `setupThreeJS()` only in the
+     * `!useViewerEngine` branch — and setupThreeJS() was where B3 put the bootstrap.
+     * So from B3 to B32 the Settings toggle wrote `nexus_bd_enabled` and nothing ever
+     * read it: no batch of this plan ran in a browser. Every gate stayed green,
+     * because every gate tests the engine rather than its ignition.
+     */
+    const MAIN = fs.readFileSync(path.join(ROOT, 'src/main.js'), 'utf8');
+    const MAIN_CODE = codeOf(MAIN);
+
+    test('the bootstrap is a function, not a block inside one engine path', () => {
+        expect(MAIN_CODE).toMatch(/function startBehaviorDirector\(/);
+    });
+
+    test('the legacy path calls it', () => {
+        // setupThreeJS() runs its own animate() loop, which ticks the director itself.
+        const body = MAIN_CODE.slice(
+            MAIN_CODE.indexOf('function setupThreeJS('),
+            MAIN_CODE.indexOf('function startBehaviorDirector(')
+        );
+        expect(body).toContain('startBehaviorDirector({ ticker: false })');
+    });
+
+    test('the ViewerEngine path calls it — the one every shipped build takes', () => {
+        const body = MAIN_CODE.slice(MAIN_CODE.indexOf('async function init()'));
+        expect(body).toContain('startBehaviorDirector({ ticker: true })');
+    });
+
+    test('and index.html still sends every build down that path', () => {
+        // If this ever stops being unconditional the test above stops being the
+        // important one — but it is what makes the defect a total outage today.
+        const html = codeOf(fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8'));
+        expect(html).toMatch(/window\.__USE_GLTF_VIEWER_ENGINE__\s*=\s*true;/);
+    });
+
+    test('the ViewerEngine path brings its own tick, because viewer.js has no hook', () => {
+        // src/gltf-viewer/viewer.js is vendored upstream: its animate() calls
+        // controls/stats/mixer/render and offers nothing to subscribe to. Without our
+        // own rAF, Tier 0 would never advance on the path that matters.
+        const viewer = codeOf(fs.readFileSync(path.join(ROOT, 'src/gltf-viewer/viewer.js'), 'utf8'));
+        expect(viewer).not.toContain('NEXUS_BD');
+        expect(MAIN_CODE).toMatch(/function tickBehaviorDirector\(\)[\s\S]*NEXUS_BD\?\.update\?\.\(delta\)/);
+        // Defined is not called: the ticker must be started from the boot script's onload,
+        // which is the only moment NEXUS_BD exists to tick.
+        const start = MAIN_CODE.slice(
+            MAIN_CODE.indexOf('function startBehaviorDirector('),
+            MAIN_CODE.indexOf('function tickBehaviorDirector(')
+        );
+        expect(start).toContain('if (options.ticker) tickBehaviorDirector();');
+    });
+
+    test('booting twice is a no-op, so the two calls cannot double-tick', () => {
+        const body = MAIN_CODE.slice(
+            MAIN_CODE.indexOf('function startBehaviorDirector('),
+            MAIN_CODE.indexOf('function tickBehaviorDirector(')
+        );
+        expect(body).toContain('if (window.NEXUS_BD_ENABLED !== undefined) return false;');
+    });
+
+    test('and it is still opt-in — the flag default is untouched', () => {
+        expect(MAIN_CODE).toContain("localStorage.getItem('nexus_bd_enabled') === 'true'");
+        const config = JSON.parse(fs.readFileSync(path.join(ROOT, 'config/behavior.config.json'), 'utf8'));
+        expect(config.behaviorEngine.enabled).toBe(false);
+    });
+});

@@ -213,7 +213,7 @@ describe('AnimationRegistry against the real KB', () => {
 describe('the flag off executes zero new code', () => {
     const MAIN = fs.readFileSync(path.join(ROOT, 'src', 'main.js'), 'utf8');
 
-    test('main.js reaches the engine in exactly three places, all guarded', () => {
+    test('main.js reaches the engine in exactly four places, none reachable with the flag off', () => {
         const lines = MAIN.split('\n');
         const hits = lines
             .map((line, i) => ({ line, n: i + 1 }))
@@ -221,14 +221,62 @@ describe('the flag off executes zero new code', () => {
             // engine global. NEXUS_BD_ENABLED is the guard itself, not a reach.
             .filter(({ line }) => /NEXUS_BD_BOOT|NEXUS_BD_SAY|\bNEXUS_BD\b(?!_)|src\/behavior\//.test(line));
 
-        // Eight lines in three blocks — the guarded boot, the guarded speech route B9 adds,
-        // and the guarded per-frame update — counting the comments that name the engine.
-        // Every one has to sit next to the flag, and this count going up is the review
+        // Eleven lines in four blocks — `startBehaviorDirector` (the boot script and the
+        // speech route B9 adds), `tickBehaviorDirector` (B33's tick for the ViewerEngine
+        // path), animate()'s guarded per-frame update, and the comment on init()'s call —
+        // counting the comments that name the engine. This count going up is the review
         // surface for a new seam: a batch cannot add one without editing this number.
-        expect(hits).toHaveLength(8);
-        for (const { line, n } of hits) {
-            const near = lines.slice(Math.max(0, n - 7), n + 2).join('\n');
-            expect(`${n}: ${/NEXUS_BD_ENABLED|behaviorEngine/.test(near)}`).toBe(`${n}: true`);
+        expect(hits).toHaveLength(11);
+
+        // Until B33 the guard sat within a few lines of every reach, and proximity was a
+        // fair proxy. B33 moved the bootstrap into a function both engine paths call — it
+        // had lived in setupThreeJS(), which only the legacy path runs, so the director had
+        // never started in a shipped build — and the guard became one early return. Assert
+        // the property proximity was standing in for: nothing executes with the flag off.
+        const region = (name) => {
+            const start = lines.findIndex((l) => new RegExp(`^(?:async\\s+)?function\\s+${name}\\s*\\(`).test(l));
+            let end = lines.length;
+            for (let i = start + 1; i < lines.length; i++) {
+                if (/^(?:async\s+)?function\s/.test(lines[i])) {
+                    end = i;
+                    break;
+                }
+            }
+            return { start: start + 1, end };
+        };
+        const boot = region('startBehaviorDirector');
+        const tick = region('tickBehaviorDirector');
+        expect(lines.slice(boot.start - 1, boot.end).join('\n')).toContain(
+            'if (!window.NEXUS_BD_ENABLED) return false;'
+        );
+        // The ticker is not guarded itself; it is only ever entered past that return.
+        const tickCalls = lines
+            .map((l, i) => ({ l, n: i + 1 }))
+            .filter(({ l, n }) => /\btickBehaviorDirector\(/.test(l) && n !== tick.start);
+        expect(tickCalls.length).toBeGreaterThan(0);
+        for (const { n } of tickCalls) {
+            expect(`${n}: ${n > boot.start && n < boot.end}`).toBe(`${n}: true`);
+        }
+
+        const isComment = (n) => {
+            let inBlock = false;
+            for (let i = 0; i < n; i++) {
+                const t = lines[i].trim();
+                if (inBlock) {
+                    if (t.includes('*/')) inBlock = false;
+                    continue;
+                }
+                if (t.startsWith('/*') && !t.includes('*/')) inBlock = true;
+            }
+            const t = lines[n].trim();
+            return inBlock || t.startsWith('//') || t.startsWith('/*') || t.startsWith('*');
+        };
+
+        for (const { n } of hits) {
+            const inline = /NEXUS_BD_ENABLED|behaviorEngine/.test(lines.slice(Math.max(0, n - 7), n + 2).join('\n'));
+            const inRegion =
+                (n >= boot.start && n <= boot.end) || (n >= tick.start && n <= tick.end && tickCalls.length > 0);
+            expect(`${n}: ${inline || inRegion || isComment(n - 1)}`).toBe(`${n}: true`);
         }
     });
 

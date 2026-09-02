@@ -143,8 +143,99 @@ function strayReferences() {
 }
 
 /**
- * Allowlisted files that reference the engine, with whether each reference sits near the
- * `behaviorEngine` flag guard. A hook that forgets its guard is the failure this catches.
+ * Functions that refuse on the flag before they touch the engine, so every line inside one
+ * is unreachable with the engine off.
+ *
+ * Until B33 every hook was a line or two beside its own `if (window.NEXUS_BD_ENABLED)`, and
+ * proximity was a fair proxy for reachability. B33 had to move the bootstrap out of
+ * `setupThreeJS()` — which only the legacy engine path calls, so the director had never
+ * started in a shipped build — into a function both paths call. The guard became one early
+ * return at the top: the same property, stated once instead of at every line. Proximity
+ * cannot see that, so name the regions and check the guard is really in them.
+ *
+ * Deliberately a fixed list rather than inference. A new guarded function is a new seam and
+ * belongs in a review, which is the same reason the reference count is recorded at all.
+ */
+const GUARDED_REGIONS = {
+    'src/main.js': [
+        // Refuses on the flag itself, before it appends the boot script.
+        { name: 'startBehaviorDirector', guard: /if \(!window\.NEXUS_BD_ENABLED\) return false;/ },
+        // Reached only from inside that refusal — asserted below, not assumed.
+        { name: 'tickBehaviorDirector', calledOnlyFrom: 'startBehaviorDirector' },
+    ],
+};
+
+/**
+ * Line span of a top-level `function name(` declaration: from its line to the line before
+ * the next top-level declaration. Column-anchored rather than brace-matched — a brace count
+ * that miscounts one string or regex literal would silently widen a region and hide exactly
+ * the unguarded reference this file exists to catch.
+ */
+function regionOf(lines, name) {
+    const declares = (line) => /^(?:async\s+)?function\s/.test(line);
+    const start = lines.findIndex((line) => new RegExp(`^(?:async\\s+)?function\\s+${name}\\s*\\(`).test(line));
+    if (start === -1) return null;
+    let end = lines.length - 1;
+    for (let i = start + 1; i < lines.length; i++) {
+        if (declares(lines[i])) {
+            end = i - 1;
+            break;
+        }
+    }
+    return { start, end };
+}
+
+/** The guarded regions of one file, as `{first, last}` line numbers, or [] if it has none. */
+function guardedSpans(file, lines) {
+    const spans = [];
+    for (const region of GUARDED_REGIONS[file] || []) {
+        const at = regionOf(lines, region.name);
+        if (!at) continue; // renamed or removed: its references fall back to unguarded
+        const body = lines.slice(at.start, at.end + 1).join('\n');
+        if (region.guard && !region.guard.test(body)) continue; // the guard is gone — say so
+        if (region.calledOnlyFrom) {
+            const caller = regionOf(lines, region.calledOnlyFrom);
+            const calls = lines
+                .map((line, i) => ({ line, i }))
+                .filter(({ line, i }) => i !== at.start && new RegExp(`\\b${region.name}\\(`).test(line));
+            const outside = calls.filter(({ i }) => !caller || i < caller.start || i > caller.end);
+            if (outside.length) continue; // called from somewhere the flag does not cover
+        }
+        spans.push(at);
+    }
+    return spans;
+}
+
+/**
+ * Indices of lines that are entirely comment.
+ *
+ * Tracked across lines rather than matched per line: the continuation lines of a block
+ * comment start with prose, not with a delimiter, and one of them names the engine. A
+ * per-line regex reads that as executable code and fails the gate on a sentence.
+ */
+function commentLines(lines) {
+    const out = new Set();
+    let inBlock = false;
+    lines.forEach((line, i) => {
+        const trimmed = line.trim();
+        if (inBlock) {
+            out.add(i);
+            if (trimmed.includes('*/')) inBlock = false;
+            return;
+        }
+        if (trimmed.startsWith('//')) return void out.add(i);
+        if (trimmed.startsWith('/*')) {
+            out.add(i);
+            if (!trimmed.includes('*/')) inBlock = true;
+        }
+    });
+    return out;
+}
+
+/**
+ * Allowlisted files that reference the engine, with whether each reference is guarded —
+ * either beside an inline flag check, or inside a region the flag makes unreachable. A hook
+ * that forgets its guard is the failure this catches.
  */
 function allowlistReferences() {
     const refs = [];
@@ -156,15 +247,19 @@ function allowlistReferences() {
             continue; // an allowlisted file need not exist yet (PiperWasmTTSProvider paths vary)
         }
         const lines = text.split('\n');
+        const spans = guardedSpans(file, lines);
+        const comments = commentLines(lines);
         lines.forEach((line, i) => {
             if (!reachesEngine(line)) return;
             // Six lines back: the guard often opens a block a few lines above the call.
             const window = lines.slice(Math.max(0, i - 6), i + 4).join('\n');
-            refs.push({
-                file,
-                line: i + 1,
-                guarded: /behaviorEngine|NEXUS_BD_ENABLED/.test(window),
-            });
+            const inline = /behaviorEngine|NEXUS_BD_ENABLED/.test(window);
+            const inRegion = spans.some((s) => i >= s.start && i <= s.end);
+            // A comment that names the engine is still recorded — moving one is drift a
+            // reviewer should see — but it executes nothing, so it cannot be the unguarded
+            // reference this gate fails on. Only the code has to be behind the flag.
+            const comment = comments.has(i);
+            refs.push({ file, line: i + 1, guarded: inline || inRegion, comment });
         });
     }
     return refs;
@@ -228,7 +323,7 @@ function main() {
 
     const baseline = JSON.parse(readFileSync(join(ROOT, BASELINE), 'utf8'));
     const problems = diff(current, baseline);
-    const unguarded = current.allowlistReferences.filter((r) => !r.guarded);
+    const unguarded = current.allowlistReferences.filter((r) => !r.guarded && !r.comment);
 
     console.log('Behavior Director — flag-off parity');
     console.log(`  engine scripts in index.html : ${current.engineBootScripts.length}`);

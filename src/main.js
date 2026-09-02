@@ -907,10 +907,31 @@ function setupThreeJS() {
         ro.observe(viewport);
     }
 
-    /* NEXUS_BD — Behavior Director bootstrap (spec v1.1 §7, batch B3).
-       Opt-in only: with behaviorEngine.enabled false nothing under src/behavior/ is
-       fetched, parsed or evaluated, so the app is byte-for-byte the one that shipped.
-       The settings toggle writes this key; see docs/PATHMAP.md §4. */
+    startBehaviorDirector({ ticker: false });
+
+    animate();
+}
+
+/* NEXUS_BD — Behavior Director bootstrap (spec v1.1 §7, batch B3; given both engine
+   paths in B33).
+
+   Opt-in only: with `nexus_bd_enabled` unset nothing under src/behavior/ is fetched,
+   parsed or evaluated, so the app is byte-for-byte the one that shipped. The settings
+   toggle writes that key; see docs/PATHMAP.md §4.
+
+   This lived inside setupThreeJS() from B3 until B33, and setupThreeJS() runs only on
+   the legacy path — init() calls it in the `!useViewerEngine` branch. Every shipped
+   build sets __USE_GLTF_VIEWER_ENGINE__, so the engine booted on no path a user takes:
+   the toggle wrote a key nothing read. Both paths call this now.
+
+   @param {object} [options]
+   @param {boolean} [options.ticker] run our own rAF tick. False on the legacy path,
+       where animate() already ticks the director; true on the ViewerEngine path, whose
+       render loop (src/gltf-viewer/viewer.js) is upstream code with no update hook.
+   @returns {boolean} whether the engine was started by this call.
+*/
+function startBehaviorDirector(options = {}) {
+    if (window.NEXUS_BD_ENABLED !== undefined) return false; // idempotent: one boot per page
     window.NEXUS_BD_ENABLED = (() => {
         try {
             return localStorage.getItem('nexus_bd_enabled') === 'true';
@@ -918,20 +939,36 @@ function setupThreeJS() {
             return false;
         }
     })();
+    if (!window.NEXUS_BD_ENABLED) return false;
+
     /* NEXUS_BD — the engine's only route into speech (batch B9). A server-started line goes
        through the same speakText a chat reply does; lipsync does not care who began it. */
-    if (window.NEXUS_BD_ENABLED) window.NEXUS_BD_SAY = (text) => speakText(text);
+    window.NEXUS_BD_SAY = (text) => speakText(text);
 
-    if (window.NEXUS_BD_ENABLED) {
-        const bdScript = document.createElement('script');
-        bdScript.src = 'src/behavior/boot.js';
-        bdScript.async = false;
-        bdScript.onload = () => window.NEXUS_BD_BOOT?.();
-        bdScript.onerror = () => console.warn('[BD] boot.js failed to load — engine stays off');
-        document.head.appendChild(bdScript);
-    }
+    const bdScript = document.createElement('script');
+    bdScript.src = 'src/behavior/boot.js';
+    bdScript.async = false;
+    bdScript.onload = () => {
+        window.NEXUS_BD_BOOT?.();
+        if (options.ticker) tickBehaviorDirector();
+    };
+    bdScript.onerror = () => console.warn('[BD] boot.js failed to load — engine stays off');
+    document.head.appendChild(bdScript);
+    return true;
+}
 
-    animate();
+/* NEXUS_BD — Tier 0 tick for the ViewerEngine path (B33). Its own rAF rather than a hook
+   into viewer.js, which is vendored upstream: an independent loop cannot change the
+   frame the viewer renders, and it stops the moment the director goes away. */
+function tickBehaviorDirector() {
+    let previous = performance.now();
+    const frame = (now) => {
+        requestAnimationFrame(frame);
+        const delta = Math.min((now - previous) / 1000, 0.1); // a backgrounded tab returns seconds
+        previous = now;
+        window.NEXUS_BD?.update?.(delta);
+    };
+    requestAnimationFrame(frame);
 }
 
 function animate() {
@@ -4715,6 +4752,12 @@ async function init() {
             hideLoading();
             setStatus('idle', 'READY');
         }
+
+        /* NEXUS_BD — the ViewerEngine path's bootstrap (B33). setupThreeJS() carries the
+           legacy path's call and is skipped here, so without this the director never
+           started in a shipped build. No-ops when setupThreeJS() already ran, and when
+           the toggle is off — which is still the default. */
+        startBehaviorDirector({ ticker: true });
     } catch (err) {
         logError('Initialization failed', err);
         showLoading(`Initialization failed: ${err && err.message ? err.message : err}`);

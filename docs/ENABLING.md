@@ -9,15 +9,26 @@ you can see it work rather than take a test's word for it.
 
 ## The master flag
 
-`config/behavior.config.json`:
+**Settings ▸ Behavior Director ▸ Enable.** The checkbox writes `nexus_bd_enabled` to
+localStorage, and that key is the ignition: `src/main.js` reads it on both engine paths and
+only then fetches `src/behavior/boot.js`. Off — how it ships — nothing under `src/behavior/`
+is fetched, parsed or evaluated, which is the property
+`scripts/behavior-parity-baseline.mjs --check` proves: zero engine scripts in `index.html`,
+zero unguarded references, every master flag false.
+
+`config/behavior.config.json` is read **after** boot, and configures the engine that is
+already running:
 
 ```json
 { "behaviorEngine": { "enabled": true, "debug": false } }
 ```
 
-With `enabled: false` — how it ships — `scripts/behavior-parity-baseline.mjs --check` proves
-the engine is **inert**: zero engine scripts in `index.html`, zero unguarded references, and
-every master flag false. Turning it on costs one boolean; it does not turn on anything below.
+> **Known gap.** `behaviorEngine.enabled` in that file is currently read by nothing —
+> `boot.js` consumes `debug` and the blocks below, not `enabled`. The toggle is the only
+> switch. Whether the JSON key should become a second, deployment-side kill switch (so an
+> operator can disable the engine for an install whose users have already ticked the box) is
+> an open decision, not an oversight to paper over; until it is taken, treat the key as
+> documentation of intent and the toggle as the truth.
 
 Add `?behaviorDebug=1` to the URL (or set `behaviorEngine.debug`) for the on-screen HUD and
 the 16-entry pick log — including the refusals, because "she did nothing" is the hardest
@@ -27,7 +38,7 @@ behaviour to debug.
 
 | Flag | Default | Turns on | Needs |
 |---|---|---|---|
-| `behaviorEngine.enabled` | `false` | the engine at all | — |
+| **Settings ▸ Behavior Director** (`nexus_bd_enabled`) | off | the engine at all | — |
 | `session.enabled` + `session.url` | `false` | the HomePilot socket: server intents, curiosity, vision, MCP | a HomePilot with `AVATAR_ENABLED=true` |
 | `session.tier1Remote` | `false` | clip selection on the server, for weak devices | as above |
 | `nsfwAllowed` | `false` | the user half of the adult gate | — |
@@ -39,8 +50,8 @@ behaviour to debug.
 | `assistant.panelMaxKb` | `64` | mirrors the server's panel limit | — |
 | `budgets` | 2 ms/frame, 50 ms/pick | what `audit-budgets.mjs` holds you to | — |
 
-Nothing here is implied by anything else. `behaviorEngine.enabled` is a kill switch, not a
-master switch.
+Nothing here is implied by anything else. The toggle is a kill switch, not a master switch:
+turning it on turns on the engine and nothing in this table.
 
 ## Browser and hardware
 
