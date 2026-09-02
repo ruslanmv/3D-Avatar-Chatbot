@@ -20,7 +20,22 @@
         'src/behavior/EventBus.js',
         'src/behavior/ContextBlackboard.js',
         'src/behavior/registry/validate.js',
+        // Read by AnimationRegistry at load and by PoseStudioPanel's "Publish to KB", and
+        // loaded by nothing until B31 — so in a browser the global was undefined and B7's
+        // publish action silently did nothing. The registry's `require()` fallback works
+        // under Jest and not in the page, which is why every test passed.
+        'src/behavior/registry/PosePublisher.js',
         'src/behavior/registry/AnimationRegistry.js',
+        // The mode system (B7), loaded in B31. Before every consumer: `watch.js` reads the
+        // together profile, `cohost.js` the play profile, `ConsentFlow` the adult one.
+        'src/behavior/modes/ModeManager.js',
+        'src/behavior/modes/companion.profile.js',
+        'src/behavior/modes/showcase.profile.js',
+        'src/behavior/modes/together.profile.js',
+        // B23's reaction tiers and B28's tier ceiling. Registered like any other profile;
+        // `requires` is what keeps the adult one unenterable.
+        'src/behavior/modes/play.profile.js',
+        'src/behavior/modes/adult.profile.js',
         'src/behavior/selector/AntiRepeatMemory.js',
         'src/behavior/selector/UtilityRanker.js',
         'src/behavior/selector/SemanticSelector.js',
@@ -65,13 +80,6 @@
         // B22 loads after scene-journey, whose `derive` it reuses rather than writing a
         // second answer to what an overlay does to `initiative`.
         'src/features/together/activities/focus.js',
-        // B23. The profile carries the reaction tiers, so it loads before the detector that
-        // classifies against them and the co-host that asks it for permission.
-        'src/behavior/modes/play.profile.js',
-        // B28/B29. The profile carries the tier's ceiling, so it loads before the flow that
-        // reads it. Loading it is not enabling it: `requires` is checked at activation and
-        // the ranker checks all three gates on every selection.
-        'src/behavior/modes/adult.profile.js',
         'src/behavior/ConsentFlow.js',
         'src/features/together/heuristics/ExcitementDetector.js',
         'src/features/together/activities/cohost.js',
@@ -220,6 +228,7 @@
                 copilot: null,
                 coach: null,
                 adult: null,
+                modes: null,
                 consent: null,
                 consentIndicator: null,
                 togetherPanel: null,
@@ -315,6 +324,7 @@
                         copilot: director.copilot && director.copilot.stats,
                         coach: director.coach && director.coach.stats,
                         adult: director.adult && director.adult.stats,
+                        mode: director.modes && director.modes.activeId,
                     };
                 },
             };
@@ -342,6 +352,28 @@
             // intent by something other than this device, and it should not be able to do
             // that before the local senses are wired. Its own `attach` is a no-op while
             // `session.enabled` is false, which is how it ships.
+            // Modes (B7, wired in B31). Registered and companion activated *before* any
+            // adapter ticks, so `blackboard.mode` is a real profile from the first frame
+            // rather than `undefined` — which is what it had been at runtime since B7,
+            // leaving the ranker with nothing to narrow against and `watch.js` holding a
+            // null profile. `adult` is registered like any other; `requires` is what keeps
+            // it unenterable, and ModeManager is the second check §16.3 asks for.
+            if (global.NEXUS_BD_MODE_MANAGER) {
+                director.modes = new global.NEXUS_BD_MODE_MANAGER.Manager({ blackboard, bus, registry });
+                for (const profile of [
+                    global.NEXUS_BD_PROFILE_COMPANION,
+                    global.NEXUS_BD_PROFILE_TOGETHER,
+                    global.NEXUS_BD_PROFILE_SHOWCASE,
+                    global.NEXUS_BD_PROFILE_PLAY,
+                    global.NEXUS_BD_PROFILE_ADULT,
+                ]) {
+                    if (profile) director.modes.register(profile);
+                }
+                // Companion is what she already was; naming it is what makes returning to
+                // it exact rather than approximate (§4A).
+                director.modes.activate('companion');
+            }
+
             const wiring = [
                 ['tag', global.NEXUS_BD_TAG_ADAPTER],
                 ['sentiment', global.NEXUS_BD_SENTIMENT_FALLBACK],
@@ -547,6 +579,10 @@
                 director.adult = global.NEXUS_BD_CONSENT_FLOW.attach({
                     bus,
                     blackboard,
+                    // Without this the hard exit's `modes.activate('companion')` sat behind
+                    // a null guard and did nothing — B29's own acceptance criterion, unmet
+                    // at runtime until the manager existed.
+                    modes: director.modes,
                     profile: global.NEXUS_BD_PROFILE_ADULT,
                     recorder: director.clips,
                     say: (text, options) => global.NEXUS_BD_SAY && global.NEXUS_BD_SAY(text, options),
