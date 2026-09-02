@@ -39,7 +39,7 @@ behaviour to debug.
 | Flag | Default | Turns on | Needs |
 |---|---|---|---|
 | **Settings ▸ Behavior Director** (`nexus_bd_enabled`) | off | the engine at all | — |
-| `session.enabled` + `session.url` | `false` | the HomePilot socket: server intents, curiosity, vision, MCP | a HomePilot with `AVATAR_ENABLED=true` |
+| the HomePilot session | auto | server intents, curiosity, vision, MCP | an OllaBridge with HomePilot enabled — see below |
 | `session.tier1Remote` | `false` | clip selection on the server, for weak devices | as above |
 | `nsfwAllowed` | `false` | the user half of the adult gate | — |
 | `adult.available` | `false` | the consent flow is constructed at all | server attestation (below) |
@@ -52,6 +52,56 @@ behaviour to debug.
 
 Nothing here is implied by anything else. The toggle is a kill switch, not a master switch:
 turning it on turns on the engine and nothing in this table.
+
+## Reaching HomePilot
+
+**You should not have to configure this.** If you have linked OllaBridge — which you did to
+get models — the avatar finds HomePilot through it and connects with the credential it
+already holds. Settings shows a status line and nothing else:
+
+```
+HomePilot connected through OllaBridge — directives, curiosity.
+```
+
+### How it decides
+
+`boot.js` resolves the session in one pass, and the answer is reported as `session.source`:
+
+| `source` | What happened |
+|---|---|
+| `manual` | A URL is typed under **Advanced**. It wins over everything below — an override that a discovery could silently beat would be useless exactly when it is needed |
+| `bridge` | `GET {ollabridge}/health` reported a HomePilot and an `avatar.session` path |
+| `no-bridge` | No OllaBridge is linked in the chat provider settings |
+| `no-homepilot` | OllaBridge is linked, but HomePilot is off in its Local Runtimes |
+| `bridge-too-old` | OllaBridge sees HomePilot but cannot relay the session |
+| `bridge-unreachable` | OllaBridge did not answer within 4 s |
+| `off` | Automatic discovery was turned off (`nexus_bd_session_auto=false`) |
+
+`bridge-too-old` is the state every OllaBridge deployed before this feature is in, and it is
+deliberately **not** an error: the chat path already carries `x_directives`, so she still
+gestures and still shows media. What she cannot do is speak first. Saying that is more useful
+than reporting a flat failure.
+
+### Why not just type the URL
+
+Because the address only works in the one configuration nobody ships. The browser has to open
+that socket itself, so an HTTPS page cannot use a `ws://` address (mixed content, blocked with
+a console error that does not say so), and a hosted page reaching `localhost` reaches the
+server it is served from rather than the user's machine. The bridge has neither problem: it is
+one origin the page already talks to, and it is running next to HomePilot.
+
+There is a second reason. The direct path needs a HomePilot credential in the browser, and
+there was never a field for one — the client sent an empty token and the server rejected it,
+so the direct path did not work at all as shipped. Through the bridge the browser presents the
+bridge's own token, and the bridge holds HomePilot's key. One secret, one origin.
+
+### Connecting one directly anyway
+
+**Settings ▸ Behavior Engine ▸ Advanced.** Fill in the URL and tick the box. This is the right
+choice when you are not using OllaBridge, and it is the same control that shipped before —
+moved, not removed. It needs a HomePilot with `AVATAR_ENABLED=true`, a browser that can reach
+it, and — because of the credential gap above — an `auth` string in the `session` block of
+`config/behavior.config.json`.
 
 ## Browser and hardware
 

@@ -11,7 +11,13 @@
     },
     {
       "file": "index.html",
-      "line": 1554,
+      "line": 1618,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "index.html",
+      "line": 1653,
       "guarded": true,
       "comment": false
     },
@@ -26,6 +32,24 @@
       "line": 918,
       "guarded": false,
       "comment": true
+    },
+    {
+      "file": "src/main.js",
+      "line": 934,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "src/main.js",
+      "line": 935,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "src/main.js",
+      "line": 942,
+      "guarded": true,
+      "comment": false
     },
     {
       "file": "src/main.js",
@@ -89,9 +113,27 @@
     },
     {
       "file": "src/PoseStudioPanel.js",
+      "line": 289,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "src/PoseStudioPanel.js",
       "line": 582,
       "guarded": true,
       "comment": true
+    },
+    {
+      "file": "src/PoseStudioPanel.js",
+      "line": 587,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "src/PoseStudioPanel.js",
+      "line": 589,
+      "guarded": true,
+      "comment": false
     }
   ],
   "configKeys": [

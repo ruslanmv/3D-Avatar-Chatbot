@@ -493,18 +493,30 @@ describe('local Tier-1 outlives the session', () => {
     });
 });
 
-describe('the settings panel is the only thing that turns the session on', () => {
+describe('where the session URL comes from (B35)', () => {
     /**
      * `boot.js` is a browser IIFE with no CommonJS export, so it is evaluated the way the
      * page evaluates it and the seam it publishes is read off the sandbox.
+     *
+     * B35 made `sessionSettings` async and gave it a second source. Before it, reaching
+     * HomePilot meant typing a `wss://` into Settings — an address the browser had to be able
+     * to open itself, which is true on one machine and false everywhere the app is actually
+     * served. Now an unfilled box means "ask the bridge the user already linked", and the
+     * `source` field on the result says which answer won, because "off" and "the bridge said
+     * no" are different states that used to look identical.
+     *
+     * @param {object} storage the localStorage seen by boot
+     * @param {object} shipped the `session` block from behavior.config.json
+     * @param {object|null} discovery a fake `NEXUS_BD_BRIDGE_DISCOVERY`; null means absent
      */
-    function sessionSettings(storage, shipped) {
+    function sessionSettings(storage, shipped, discovery = null) {
         const sandbox = {
             window: { localStorage: storage },
             document: { querySelector: () => null, head: { appendChild() {} }, createElement: () => ({}) },
             console,
         };
         sandbox.window.window = sandbox.window;
+        if (discovery) sandbox.window.NEXUS_BD_BRIDGE_DISCOVERY = discovery;
         vm.runInNewContext(fs.readFileSync(path.join(ROOT, 'src', 'behavior', 'boot.js'), 'utf8'), sandbox, {
             filename: 'src/behavior/boot.js',
         });
@@ -513,36 +525,118 @@ describe('the settings panel is the only thing that turns the session on', () =>
 
     const store = (values) => ({ getItem: (k) => (k in values ? values[k] : null) });
 
-    test('the shipped config alone opens nothing, placeholder URL and all', () => {
+    /** A bridge that answers. `NOTHING`-shaped refusals carry their reason. */
+    const bridge = (answer) => ({ discover: async () => answer });
+    const FOUND = {
+        available: true,
+        reason: 'ok',
+        base: 'https://app.ollabridge.com',
+        sessionUrl: 'wss://app.ollabridge.com/v1/avatar/session',
+        auth: 'pair-token',
+        features: ['directives', 'curiosity'],
+    };
+    const REFUSED = (reason) => ({ available: false, reason, base: null, sessionUrl: null, auth: '', features: [] });
+
+    // ── nothing configured, no bridge ────────────────────────────────────────
+
+    test('the shipped config alone opens nothing, placeholder URL and all', async () => {
         expect(CONFIG.session.enabled).toBe(false);
-        expect(sessionSettings(store({}), CONFIG.session)).toEqual({ ...CONFIG.session, enabled: false });
+        expect(await sessionSettings(store({}), CONFIG.session)).toEqual({
+            ...CONFIG.session,
+            enabled: false,
+            source: 'off',
+        });
     });
 
-    test('a ticked box with no URL is still off', () => {
-        const settings = sessionSettings(store({ nexus_bd_session_enabled: 'true' }), CONFIG.session);
+    test('a ticked box with no URL is still off', async () => {
+        const settings = await sessionSettings(store({ nexus_bd_session_enabled: 'true' }), CONFIG.session);
         expect(settings.enabled).toBe(false);
     });
 
-    test('a URL and a ticked box turn it on, and the placeholder is replaced', () => {
-        const settings = sessionSettings(
+    // ── the manual path, which B35 hid but did not remove ────────────────────
+
+    test('a URL and a ticked box turn it on, and the placeholder is replaced', async () => {
+        const settings = await sessionSettings(
             store({ nexus_bd_session_enabled: 'true', nexus_bd_session_url: ' wss://pilot.local/avatar/session ' }),
             CONFIG.session
         );
-        expect(settings).toEqual({ ...CONFIG.session, url: 'wss://pilot.local/avatar/session', enabled: true });
+        expect(settings).toEqual({
+            ...CONFIG.session,
+            url: 'wss://pilot.local/avatar/session',
+            enabled: true,
+            source: 'manual',
+        });
     });
 
-    test('a URL without the box is off — filling a field is not consent to connect', () => {
-        const settings = sessionSettings(store({ nexus_bd_session_url: 'wss://pilot.local/x' }), CONFIG.session);
+    test('a URL without the box is off — filling a field is not consent to connect', async () => {
+        const settings = await sessionSettings(store({ nexus_bd_session_url: 'wss://pilot.local/x' }), CONFIG.session);
         expect(settings.enabled).toBe(false);
     });
 
-    test('storage that throws leaves the session off rather than breaking boot', () => {
+    test('storage that throws leaves the session off rather than breaking boot', async () => {
         const hostile = {
             getItem() {
                 throw new Error('storage disabled');
             },
         };
-        expect(sessionSettings(hostile, CONFIG.session).enabled).toBe(false);
+        expect((await sessionSettings(hostile, CONFIG.session)).enabled).toBe(false);
+    });
+
+    // ── the bridge path ──────────────────────────────────────────────────────
+
+    test('with no URL typed, a bridge that has HomePilot supplies one', async () => {
+        const settings = await sessionSettings(store({}), CONFIG.session, bridge(FOUND));
+        expect(settings.url).toBe(FOUND.sessionUrl);
+        expect(settings.enabled).toBe(true);
+        expect(settings.source).toBe('bridge');
+    });
+
+    test('and the credential comes with it, so the box never needed a token field', async () => {
+        // The blocker this batch removes: the client had no field for a HomePilot token and
+        // sent an empty one, which the server rejects. The bridge's own token is what travels
+        // now, and the bridge holds HomePilot's key.
+        const settings = await sessionSettings(store({}), CONFIG.session, bridge(FOUND));
+        expect(settings.auth).toBe('pair-token');
+    });
+
+    test('a typed URL beats the bridge — the override has to actually override', async () => {
+        const settings = await sessionSettings(
+            store({ nexus_bd_session_enabled: 'true', nexus_bd_session_url: 'ws://localhost:8000/avatar/session' }),
+            CONFIG.session,
+            bridge(FOUND)
+        );
+        expect(settings.url).toBe('ws://localhost:8000/avatar/session');
+        expect(settings.source).toBe('manual');
+    });
+
+    test.each([['no-bridge'], ['no-homepilot'], ['bridge-unreachable'], ['bridge-too-old']])(
+        'a bridge that answers %s leaves the session off, and says why',
+        async (reason) => {
+            const settings = await sessionSettings(store({}), CONFIG.session, bridge(REFUSED(reason)));
+            expect(settings.enabled).toBe(false);
+            expect(settings.source).toBe(reason);
+        }
+    );
+
+    test('auto can be switched off, and then no bridge is asked at all', async () => {
+        let asked = 0;
+        const counting = {
+            discover: async () => {
+                asked += 1;
+                return FOUND;
+            },
+        };
+        const settings = await sessionSettings(store({ nexus_bd_session_auto: 'false' }), CONFIG.session, counting);
+        expect(asked).toBe(0);
+        expect(settings.enabled).toBe(false);
+    });
+
+    test('a build without the discovery module is off, not broken', async () => {
+        // The module is loaded by boot's own MODULES list. If a build ever drops it, the
+        // session must be absent rather than throwing on a boot path.
+        const settings = await sessionSettings(store({}), CONFIG.session, null);
+        expect(settings.enabled).toBe(false);
+        expect(settings.source).toBe('off');
     });
 });
 

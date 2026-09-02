@@ -1457,27 +1457,60 @@
                             </label>
                         </div>
 
-                        <!-- Batch B9. A second, narrower switch: the engine runs entirely on
-                             this device, and this is the only thing that lets a HomePilot
-                             instance reach it. Off unless a URL is filled in. -->
+                        <!-- Batch B9, reshaped in B35. The two controls that used to live
+                             here — a "Connect HomePilot session" switch and a URL box — asked
+                             the user for something the app can find out: OllaBridge already
+                             knows whether a HomePilot is behind it, and the user has already
+                             linked OllaBridge to get models. So this is now a status line,
+                             and the manual path moved behind a disclosure rather than being
+                             deleted: an install that typed a URL in keeps working, and a
+                             developer can still aim at a box on their bench. -->
                         <div class="input-group">
-                            <label class="spicy-toggle-label">
-                                <span>Connect HomePilot session</span>
-                                <div class="spicy-toggle-switch">
-                                    <input type="checkbox" id="behavior-session-toggle" />
-                                    <span class="spicy-toggle-slider"></span>
-                                </div>
-                            </label>
+                            <div
+                                id="behavior-session-status"
+                                style="font-size: 0.72rem; color: rgba(255, 255, 255, 0.55); line-height: 1.5"
+                            >
+                                Checking for HomePilot…
+                            </div>
                         </div>
-                        <div class="input-group">
-                            <label class="input-label" for="behavior-session-url">HOMEPILOT SESSION URL</label>
-                            <input
-                                type="text"
-                                id="behavior-session-url"
-                                class="text-input"
-                                placeholder="wss://homepilot.local/avatar/session"
-                            />
-                        </div>
+
+                        <details id="behavior-session-advanced" style="margin-top: 4px">
+                            <summary
+                                style="
+                                    font-size: 0.68rem;
+                                    letter-spacing: 0.08em;
+                                    text-transform: uppercase;
+                                    color: rgba(255, 255, 255, 0.4);
+                                    cursor: pointer;
+                                    padding: 4px 0;
+                                "
+                            >
+                                Advanced — connect a HomePilot directly
+                            </summary>
+                            <p style="font-size: 0.68rem; color: rgba(255, 255, 255, 0.4); margin: 6px 0 10px">
+                                Only needed when you are not using OllaBridge. The browser must be able to open this
+                                socket itself, so an <code>http://</code> page cannot use a <code>wss://</code> address
+                                and a hosted page cannot reach <code>localhost</code>.
+                            </p>
+                            <div class="input-group">
+                                <label class="spicy-toggle-label">
+                                    <span>Connect HomePilot session</span>
+                                    <div class="spicy-toggle-switch">
+                                        <input type="checkbox" id="behavior-session-toggle" />
+                                        <span class="spicy-toggle-slider"></span>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="input-group">
+                                <label class="input-label" for="behavior-session-url">HOMEPILOT SESSION URL</label>
+                                <input
+                                    type="text"
+                                    id="behavior-session-url"
+                                    class="text-input"
+                                    placeholder="ws://localhost:8000/avatar/session"
+                                />
+                            </div>
+                        </details>
 
                         <!-- Batch B10. A button rather than a stored flag: the browser's own
                              permission prompt is the consent, and re-asking on every reload
@@ -1543,6 +1576,72 @@
                             sessionBox.disabled = sessionUrl.value.trim().length === 0;
                             sessionUrl.addEventListener('change', syncSession);
                             sessionBox.addEventListener('change', syncSession);
+
+                            /* Batch B35. The status line, and it is the whole of what most
+                               people will ever read here. Every branch names the *fix*, not
+                               the failure: "no bridge" and "bridge has no HomePilot" and
+                               "bridge too old" are three different problems, and a single
+                               "not connected" would send everyone to the wrong one.
+
+                               Runs on open, not on load: it is one GET, and a Settings panel
+                               nobody opened should not make it. */
+                            var statusEl = document.getElementById('behavior-session-status');
+                            var advanced = document.getElementById('behavior-session-advanced');
+
+                            var MESSAGES = {
+                                'no-bridge':
+                                    'No OllaBridge linked. Add one under Settings ▸ Provider to reach HomePilot ' +
+                                    'without typing an address here.',
+                                'bridge-unreachable':
+                                    'OllaBridge did not answer. Check it is running, then reopen this panel.',
+                                'no-homepilot':
+                                    'OllaBridge is linked, but no HomePilot behind it. Enable HomePilot in ' +
+                                    "OllaBridge's Local Runtimes to connect one.",
+                                'bridge-too-old':
+                                    'OllaBridge is linked and sees HomePilot, but this version cannot relay the ' +
+                                    'session. She will still gesture and show media; she will not speak first. ' +
+                                    'Upgrade OllaBridge.',
+                                'no-fetch': 'This browser blocked the check. Use the manual address below.',
+                            };
+
+                            function paintStatus() {
+                                if (!statusEl) return;
+                                var manual = sessionUrl.value.trim();
+                                if (manual) {
+                                    statusEl.textContent =
+                                        'Using the manual address below. Clear it to go back to automatic.';
+                                    if (advanced) advanced.open = true;
+                                    return;
+                                }
+                                /* The director owns the discovery module, so with the flag
+                                   off there is nothing to ask — and nothing to connect. */
+                                var discovery = window.NEXUS_BD_ENABLED ? window.NEXUS_BD_BRIDGE_DISCOVERY : null;
+                                if (!discovery) {
+                                    statusEl.textContent =
+                                        'Turn the Behavior Director on and reload to check for HomePilot.';
+                                    return;
+                                }
+                                statusEl.textContent = 'Checking for HomePilot…';
+                                discovery.discover().then(function (found) {
+                                    if (found.available) {
+                                        var extra = found.features.length ? ' — ' + found.features.join(', ') : '';
+                                        statusEl.textContent = 'HomePilot connected through OllaBridge' + extra + '.';
+                                        return;
+                                    }
+                                    statusEl.textContent = MESSAGES[found.reason] || 'HomePilot not connected.';
+                                });
+                            }
+
+                            sessionUrl.addEventListener('change', paintStatus);
+                            /* The panel is a modal; `open` is when the answer matters. Fall
+                               back to painting once if the app opens Settings some other way. */
+                            var settingsModal = document.getElementById('settings-modal');
+                            if (settingsModal && typeof MutationObserver === 'function') {
+                                new MutationObserver(function () {
+                                    if (settingsModal.classList.contains('active')) paintStatus();
+                                }).observe(settingsModal, { attributes: true, attributeFilter: ['class'] });
+                            }
+                            paintStatus();
 
                             /* Batch B10. The one caller of enableVoice(). Guarded on the
                                same line, and it reports what actually happened: declining

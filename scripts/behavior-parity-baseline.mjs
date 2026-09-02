@@ -66,7 +66,10 @@ export const ALLOWLIST = [
  * which needs its own pattern: the underscore means `\bNEXUS_BD\b` does not match it.
  * `NEXUS_BD_ENABLED` is the guard itself, not a reach, so it is not on this list.
  */
-export const ENGINE_GLOBALS = [/\bNEXUS_BD_BOOT\b/, /\bNEXUS_BD_SAY\b/, /\bNEXUS_BD\b(?!_)/];
+export // Any `NEXUS_BD*` global, not a list of three. B35 added `NEXUS_BD_BRIDGE_DISCOVERY` and
+// the named list could not see it: a new engine global was invisible to the gate that
+// exists to notice engine globals. A prefix is the property; a list is a snapshot of it.
+const ENGINE_GLOBALS = [/\bNEXUS_BD\w*/];
 
 /** Does this line reach into the engine, by path or by global? */
 function reachesEngine(line) {

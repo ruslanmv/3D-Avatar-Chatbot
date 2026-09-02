@@ -52,6 +52,7 @@
         'src/behavior/adapters/SpeechAdapter.js',
         'src/behavior/adapters/IdleAdapter.js',
         'src/behavior/adapters/GazeAdapter.js',
+        'src/behavior/adapters/BridgeDiscovery.js',
         'src/behavior/adapters/SessionAdapter.js',
         'src/behavior/adapters/VoiceAdapter.js',
         'src/behavior/adapters/MediaAdapter.js',
@@ -118,7 +119,7 @@
             console.warn('[BD] no behavior config — using built-in defaults', error);
             config = { behaviorEngine: { enabled: true, debug: false }, nsfwAllowed: false };
         }
-        return { ...config, session: sessionSettings(config.session) };
+        return { ...config, session: await sessionSettings(config.session) };
     }
 
     /**
@@ -127,17 +128,40 @@
      * box: `session.enabled` in the JSON stays false, so an unconfigured install opens no
      * socket even with the engine on.
      */
-    function sessionSettings(shipped = {}) {
+    async function sessionSettings(shipped = {}) {
         let url = '';
         let enabled = false;
+        let auto = true;
         try {
             url = (global.localStorage.getItem('nexus_bd_session_url') || '').trim();
             enabled = global.localStorage.getItem('nexus_bd_session_enabled') === 'true';
+            // The manual path is opt-in and survives: B35 hid the fields, it did not remove
+            // the ability to point at a HomePilot directly. An install that filled the box in
+            // keeps working, and a developer can still aim at a box on their bench.
+            auto = global.localStorage.getItem('nexus_bd_session_auto') !== 'false';
         } catch {
             /* storage disabled: the session stays off, which is the default */
         }
-        if (!url) return { ...shipped, enabled: false };
-        return { ...shipped, url, enabled };
+
+        // A typed URL wins. It is the more specific instruction, and a discovery that
+        // silently overrode it would make the override useless exactly when it is needed.
+        if (url) return { ...shipped, url, enabled, source: 'manual' };
+        if (!auto) return { ...shipped, enabled: false, source: 'off' };
+
+        // Otherwise ask the bridge. `discover` never rejects — a bridge that is down is a
+        // `false`, so this cannot be the thing that stops the engine from booting.
+        const discovery = global.NEXUS_BD_BRIDGE_DISCOVERY;
+        if (!discovery) return { ...shipped, enabled: false, source: 'off' };
+        const found = await discovery.discover();
+        if (!found.available) return { ...shipped, enabled: false, source: found.reason };
+        return {
+            ...shipped,
+            url: found.sessionUrl,
+            auth: found.auth,
+            enabled: true,
+            source: 'bridge',
+            features: found.features,
+        };
     }
 
     /**

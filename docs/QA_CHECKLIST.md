@@ -199,6 +199,20 @@ around it.
 | K4 | `?behaviorDebug=1` shows the HUD ticking: Tier 0 is advancing, so the ViewerEngine path's own rAF is running | ☐ |
 | K5 | Toggling off and reloading returns the footer to exactly the five buttons it shipped with | ☐ |
 
+### L. Finding HomePilot through OllaBridge (B35)
+
+| #  | Check | Result |
+|----|-------|--------|
+| L1 | With no OllaBridge linked, the status line says so and names Sources as the fix | ☐ |
+| L2 | With OllaBridge linked but HomePilot off, the line distinguishes that from L1 | ☐ |
+| L3 | With both on, the line reads "HomePilot connected through OllaBridge" and the socket opens without a URL being typed | ☐ |
+| L4 | A URL typed under **Advanced** wins, and the line says the manual address is in use | ☐ |
+| L5 | Against an OllaBridge without the `avatar` block, the line says the session cannot relay — and she still gestures on chat replies | ☐ |
+| L6 | With OllaBridge stopped, boot still completes and the engine still runs locally | ☐ |
+
+L5 and L6 are the ones worth doing by hand: both are states where something is missing and
+nothing should look broken.
+
 ### Reproducing the README screenshots
 
 `assets/companion-mode.png` and `assets/together-mode.png` are captures of this build, not
