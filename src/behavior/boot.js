@@ -46,6 +46,9 @@
         'src/features/together/capture/CapturePipeline.js',
         'src/features/together/ui/ConsentIndicator.js',
         'src/features/together/ui/TogetherPanel.js',
+        // B30. The way in. Loaded here rather than from index.html, so the feature adds no
+        // script tag and the flag-off DOM is unchanged.
+        'src/features/together/ui/TogetherLauncher.js',
         'src/features/together/activities/watch.js',
         'src/features/together/activities/music.js',
         'src/features/together/activities/scene-journey.js',
@@ -220,6 +223,7 @@
                 consent: null,
                 consentIndicator: null,
                 togetherPanel: null,
+                togetherLauncher: null,
 
                 /**
                  * Tier 1, on every intent: narrow by declared intent, rank, pick. The gates
@@ -302,6 +306,7 @@
                         indicator: director.consentIndicator && director.consentIndicator.stats,
                         pickLog: director.pickLog && director.pickLog.stats,
                         panels: director.panels && director.panels.stats,
+                        togetherLauncher: director.togetherLauncher && director.togetherLauncher.stats,
                         assistant: director.assistant && director.assistant.stats,
                         focus: director.focus && director.focus.stats,
                         cohost: director.cohost && director.cohost.stats,
@@ -379,6 +384,17 @@
                     config,
                 });
                 director.adapters.push(director.consentIndicator, director.togetherPanel);
+
+                // B30. One pill in the avatar toolbar and one drawer entry — injected, not
+                // marked up, so `index.html` is untouched. It starts nothing: opening the
+                // chooser is not consent to anything on it.
+                if (global.NEXUS_BD_TOGETHER_LAUNCHER) {
+                    director.togetherLauncher = global.NEXUS_BD_TOGETHER_LAUNCHER.attach({
+                        panel: director.togetherPanel,
+                        panels: director.panels,
+                    });
+                    director.adapters.push(director.togetherLauncher);
+                }
 
                 // Watch Together (B12). Registered into the panel rather than started:
                 // an activity that mounts a cinema screen the moment the engine boots is

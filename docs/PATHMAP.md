@@ -1562,6 +1562,90 @@ lands on the blackboard, and the ranker re-checks all three gates on every selec
 
 ---
 
+## 2x. The way in (B30)
+
+`src/features/together/ui/TogetherLauncher.js`, plus an additive reshape of
+`TogetherPanel.js`. Touched: `boot.js` only — **`index.html` is not touched at all**.
+
+Every activity this plan built had been reachable only from a console call. This is the
+button.
+
+### Additive down to the DOM
+
+The pill is inserted before `.avatar-footer-right` and the drawer entry appended to the
+group already labelled EXPERIENCE — the same self-injection `CompanionMode` uses for its own
+🪟 and 📞. The stylesheet is injected too, so no existing CSS moves and no script tag is
+added: the launcher rides `boot.js`'s module list like every other engine file.
+
+A test snapshots `document.body.innerHTML`, attaches, detaches, and requires the string to
+come back **byte-identical**. Another asserts every pre-existing footer button keeps its id
+and its order. Rewriting the toolbar instead of inserting into it fails three tests.
+
+The mark is `✦`, not 🎭 — Pose Studio already owns that one, and two controls with the same
+glyph in the same toolbar is a worse problem than a plain button.
+
+### Opening the chooser starts nothing
+
+No camera, no microphone, no capture, no mode change. A menu is not consent to what is on
+it. The launcher is grepped for `getUserMedia`, `getDisplayMedia`, `MediaRecorder`, `fetch(`,
+`consent`, `blackboard`, `mixer`, `scheduler` and `MediaPipe` — it owns none of them, because
+each already belongs somewhere, and a launcher that grew one would be a second orchestration
+layer wearing a button.
+
+Permission is **activity-scoped and arrives after the choice**:
+
+| Choice | Asks for | When |
+|---|---|---|
+| 🌊 Journey, 🎯 Focus, 🎧 Music | nothing | never |
+| 📺 Watch → *Open local video* | nothing | never |
+| 📺 Watch → *Share a tab* | screen | on that tap |
+| 🎮 Play → *Share game* | screen | on that tap |
+| 🏋 Coach, 👀 Help me with this | camera | on that tap |
+
+`share()` is unchanged from B11 and is still the only door; what moved is *when* it is
+called. The old panel's bare "Share screen" button named the capture system before asking
+what you wanted to do, so it is gone from the first view — a presentation change, not an
+architecture one, and `_paint` is the only thing that was rewritten.
+
+### The names are the product's, not the architecture's
+
+`STEPS` is a table keyed by activity id, so this batch touches **none of the eight activity
+files**. An activity supplying its own `activity.ui` overrides the table, which is the
+extension point a ninth would use. `screen-insight` gets no tile: it is a capability behind
+Watch and Help, not something a person sets out to do, and a test registers it and requires
+the chooser to still show seven.
+
+### Closing is not stopping
+
+Dismissing a menu and leaving an experience are different intentions, and conflating them is
+how somebody loses a focus block by tapping outside a panel. `close()` leaves the activity
+running; `stopActivity()` ends it and hands the sharing back. Making `close()` stop the
+activity fails a test by name.
+
+Starting an activity **closes** the chooser — you picked an experience in order to have it,
+not to look at a menu about it. The button then carries the running state, and tapping it
+brings back a view with Stop and Change on it. That was a real bug in the first draft, found
+by a test that could not click a button the panel was still covering.
+
+### Three surfaces, one launcher
+
+Desktop gets an overlay across the lower half of the avatar card, never over her face.
+Mobile gets the same `#nexus-bd-together-panel` as a bottom sheet by media query — one id,
+two rules, and a test asserts there is no `-mobile` variant and no `isMobile` branch in the
+file.
+
+**VR gets neither**, because in an immersive session the DOM is not on screen at all. There
+the chooser is drawn by B20's `PanelRenderer` as a `cards` panel on the virtual screen —
+which is the entire reason that renderer draws to a canvas texture — and selection comes
+from B26's `voice:final`. Saying "watch" suits a headset better than a raycast at a menu,
+and it needs no new pointer code. Deleting the XR branch fails two tests.
+
+**The known limit:** controller-raycast selection against the canvas is *not* implemented.
+It would mean hit-testing a texture from `VRPuppetInteraction`, which is a pre-existing file
+this batch may not touch. Voice is the VR input until that has a batch of its own.
+
+---
+
 ## 3. Frozen names
 
 Decided in B0; every later batch cites them.
