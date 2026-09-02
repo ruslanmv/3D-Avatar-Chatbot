@@ -1581,8 +1581,44 @@ A test snapshots `document.body.innerHTML`, attaches, detaches, and requires the
 come back **byte-identical**. Another asserts every pre-existing footer button keeps its id
 and its order. Rewriting the toolbar instead of inserting into it fails three tests.
 
-The mark is `✦`, not 🎭 — Pose Studio already owns that one, and two controls with the same
-glyph in the same toolbar is a worse problem than a plain button.
+The mark is the two-person glyph, drawn (B34). B30 shipped a wider `✦ TOGETHER` pill, on the
+reasoning that a control launching an experience should not look like a control toggling a
+tool. That was the wrong trade: it made the newest button the loudest thing in a row of five,
+and the label was the only reason it needed a media query to survive a narrow avatar.
+
+Two people is the glyph every major icon set spells "group" — SF Symbols `person.2`, Material
+`group`, Fluent `people`, Font Awesome `user-group`, Lucide `UsersRound` — so the word was
+carrying nothing the picture did not. It also earns its meaning from the button three places
+to its left: the footer already uses one person for "avatar identity", and one person → me,
+two people → together is a distinction the user learned in some other application years ago.
+
+Drawn rather than typed, for two reasons that are not aesthetic. An emoji renders as a
+different picture on every platform and usually in full colour, which would make this the one
+control in the row that does not follow the app's cyan; an outlined path inherits
+`currentColor` and so follows the button into its running state for free. And it is built
+with `createElementNS` — an `<svg>` made by `createElement` is an inert HTML element that
+renders nothing, which a test asserts against because it is the kind of thing that looks
+right in source and is invisible in a browser.
+
+The button is 38×38 with `.emotion-trigger`'s geometry restated locally rather than borrowed,
+since this file may not depend on a class it does not own. Running is a colour and a corner
+dot; the icon never changes shape, because a button that becomes a different picture at the
+moment it matters most is a button you have to find again.
+
+There is a cost, and it is paid in the accessible name. With no text in the button, `title`
+and `aria-label` are the only place state is stated in words, so `_reflect` writes
+"Together — Focus running" and reverts to the plain name on stop. `titleOf` stopped
+upper-casing at the same time: `FOCUS` was matching the pill's `text-transform`, and a screen
+reader may spell an all-caps word out letter by letter.
+
+### Where it sits in the row
+
+Before Companion's own pair when they are already in the toolbar, otherwise before the select
+group — which is where Companion inserts, so it lands after us either way. The order is
+`🎯 🎭 👤 👥 🪟 📞` whichever feature injects first, and both orders are tested. Three buttons
+that choose what you are looking at, then the one that chooses what you do together, then the
+two that move the window: grouped by what a button is for rather than by which feature
+shipped last.
 
 ### Opening the chooser starts nothing
 

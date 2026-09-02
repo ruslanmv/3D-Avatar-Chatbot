@@ -54,9 +54,61 @@ const TogetherLauncher = (() => {
     const OVERLAY_HOST = '.avatar-card';
     const TOOLBAR = '.avatar-footer-actions';
     const TOOLBAR_RIGHT = '.avatar-footer-right';
+    const COMPANION_BUTTON = '#companion-mode-btn';
 
     /** The drawer's EXPERIENCE group, found by its own label rather than by position. */
     const DRAWER_GROUP_LABEL = 'EXPERIENCE';
+
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+
+    /**
+     * Two people — the glyph every major icon set spells "group": SF Symbols `person.2`,
+     * Material `group`, Fluent `people`, Font Awesome `user-group`, Lucide `UsersRound`.
+     *
+     * Drawn rather than typed. An emoji renders as a different picture on every platform
+     * and often in full colour, which would make this the one control in the row that does
+     * not follow the app's cyan; an outlined path inherits `currentColor` and so changes
+     * with the button's state for free.
+     *
+     * It also earns its meaning from the button beside it: the footer already uses one
+     * person for "avatar identity", so two people read as "together" without anyone having
+     * to learn a house symbol first. That is the whole argument for the convention — the
+     * user has met it in every other application they own.
+     */
+    const ICON_PATHS = [
+        ['circle', { cx: 9, cy: 8, r: 3 }],
+        ['path', { d: 'M3.5 19c0-3 2.4-5.5 5.5-5.5S14.5 16 14.5 19' }],
+        ['circle', { cx: 16.5, cy: 9, r: 2.5 }],
+        ['path', { d: 'M15 14.5c3.2-.5 5.5 1.5 5.5 4.5' }],
+    ];
+
+    /** The icon as a real SVG element — `createElementNS`, so it is not an inert HTML tag. */
+    function groupIcon(doc, size) {
+        const svg = doc.createElementNS(SVG_NS, 'svg');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('width', String(size));
+        svg.setAttribute('height', String(size));
+        svg.setAttribute('fill', 'none');
+        svg.setAttribute('stroke', 'currentColor');
+        svg.setAttribute('stroke-width', '1.8');
+        svg.setAttribute('stroke-linecap', 'round');
+        svg.setAttribute('stroke-linejoin', 'round');
+        // The button carries the name; the picture repeating it is one more thing to hear.
+        svg.setAttribute('aria-hidden', 'true');
+        svg.setAttribute('focusable', 'false');
+        svg.classList.add('nexus-bd-together-mark');
+        for (const [tag, attrs] of ICON_PATHS) {
+            const node = doc.createElementNS(SVG_NS, tag);
+            for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
+            svg.appendChild(node);
+        }
+        return svg;
+    }
+
+    /** What a screen reader and a tooltip say, which is the only place the state has words. */
+    function buttonName(runningTitle) {
+        return runningTitle ? `Together — ${runningTitle} running` : 'Together — watch, listen, focus or move with her';
+    }
 
     /**
      * Namespaced to the last rule. The app's own glass/cyan language, borrowed through its
@@ -64,21 +116,30 @@ const TogetherLauncher = (() => {
      * looks native without depending on a token this file cannot see.
      */
     const CSS = `
+/* The geometry of .emotion-trigger, restated rather than borrowed: this file must not
+   depend on a class it does not own, and a 38px square is what makes the new control
+   disappear into the row instead of announcing itself. */
 #${BUTTON_ID} {
-  display: inline-flex; align-items: center; gap: .4em;
-  padding: 0 .85em; height: 2.1rem; margin: 0 .15rem;
-  border-radius: 999px; cursor: pointer; white-space: nowrap;
-  font: 600 .72rem/1 var(--font-sans, system-ui, sans-serif);
-  letter-spacing: .09em; text-transform: uppercase;
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 38px; height: 38px; padding: 0;
+  border-radius: var(--border-radius-sm, 8px); cursor: pointer;
   color: var(--accent-cyan, #22d3ee);
-  background: rgba(34, 211, 238, .09);
-  border: 1px solid rgba(34, 211, 238, .38);
-  transition: background .16s ease, border-color .16s ease;
+  background: rgba(0, 0, 0, .3);
+  border: 1px solid var(--glass-border, rgba(34, 211, 238, .28));
+  transition: background .16s ease, border-color .16s ease, color .16s ease;
 }
-#${BUTTON_ID}:hover { background: rgba(34, 211, 238, .17); border-color: rgba(34, 211, 238, .62); }
+#${BUTTON_ID}:hover { background: rgba(34, 211, 238, .12); border-color: var(--primary, #22d3ee); }
 #${BUTTON_ID}:focus-visible { outline: 2px solid var(--accent-cyan, #22d3ee); outline-offset: 2px; }
-#${BUTTON_ID}[data-state='running'] { color: #34d399; background: rgba(52, 211, 153, .12); border-color: rgba(52, 211, 153, .45); }
-#${BUTTON_ID} .nexus-bd-together-mark { font-size: .95em; line-height: 1; }
+#${BUTTON_ID}[data-state='open'] { background: rgba(34, 211, 238, .16); border-color: var(--primary, #22d3ee); }
+#${BUTTON_ID}[data-state='running'] { color: #34d399; background: rgba(52, 211, 153, .12); border-color: rgba(52, 211, 153, .5); }
+/* Running is a dot, not a second glyph: the icon has to stay the same picture, or the
+   button stops being recognisable at the moment it matters most. */
+#${BUTTON_ID}[data-state='running']::after {
+  content: ''; position: absolute; top: 4px; right: 4px;
+  width: 6px; height: 6px; border-radius: 50%; background: #34d399;
+}
+#${BUTTON_ID} .nexus-bd-together-mark { display: block; }
 
 #nexus-bd-together-panel {
   position: absolute; left: 50%; bottom: 4.6rem; transform: translateX(-50%);
@@ -132,8 +193,6 @@ const TogetherLauncher = (() => {
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
   .nexus-bd-together-grid { grid-template-columns: repeat(2, 1fr); }
-  #${BUTTON_ID} .nexus-bd-together-label { display: none; }
-  #${BUTTON_ID} { padding: 0 .6em; }
 }
 @media (prefers-reduced-motion: reduce) {
   #${BUTTON_ID}, .nexus-bd-together-tile { transition: none; }
@@ -198,9 +257,15 @@ const TogetherLauncher = (() => {
         }
 
         /**
-         * One pill, before the select group — `CompanionMode`'s own insertion point. Wider
-         * than the icon buttons beside it because it launches an experience rather than
-         * toggling a tool, and marked `✦` rather than 🎭, which Pose Studio already owns.
+         * One icon button, before the select group — `CompanionMode`'s own insertion point,
+         * and the same 38×38 square as the 🎯 🎭 👤 🪟 📞 beside it.
+         *
+         * B34 dropped the `✦ TOGETHER` pill this shipped as. A wider, lettered control was
+         * defensible while the icon was a house symbol nobody had met, but it made the one
+         * new button the loudest thing in a row of five, and the label was the reason it
+         * needed a media query to survive a narrow avatar. Two people is a glyph users have
+         * already learned somewhere else, so the word is redundant, and without it the
+         * control is simply another member of the row.
          */
         _injectButton() {
             const toolbar = this.doc.querySelector(TOOLBAR);
@@ -209,22 +274,21 @@ const TogetherLauncher = (() => {
             const b = this.doc.createElement('button');
             b.id = BUTTON_ID;
             b.type = 'button';
-            b.title = 'Together — watch, listen, focus or move with her';
+            b.title = buttonName(null);
             b.setAttribute('aria-label', b.title);
             b.setAttribute('aria-haspopup', 'menu');
             b.setAttribute('aria-expanded', 'false');
             b.addEventListener('click', () => this.toggle());
+            b.appendChild(groupIcon(this.doc, 22));
 
-            const mark = this.doc.createElement('span');
-            mark.className = 'nexus-bd-together-mark';
-            mark.textContent = '✦';
-            const label = this.doc.createElement('span');
-            label.className = 'nexus-bd-together-label';
-            label.textContent = 'Together';
-            b.append(mark, label);
-
-            const right = toolbar.querySelector(TOOLBAR_RIGHT);
-            if (right) toolbar.insertBefore(b, right);
+            // Before Companion's own pair when they are already there, otherwise before the
+            // select group — which is where Companion inserts, so it lands after us either
+            // way. Order is 🎯 🎭 👤 👥 🪟 📞 whichever of the two injects first: the three
+            // that choose what you are looking at, then the one that chooses what you do
+            // together, then the two that move the window. Grouping by what a button is
+            // for, rather than by which feature shipped last.
+            const anchor = toolbar.querySelector(COMPANION_BUTTON) || toolbar.querySelector(TOOLBAR_RIGHT);
+            if (anchor) toolbar.insertBefore(b, anchor);
             else toolbar.appendChild(b);
             this.button = b;
             return b;
@@ -242,8 +306,8 @@ const TogetherLauncher = (() => {
             item.type = 'button';
             item.className = 'drawer-nav-item';
             const mark = this.doc.createElement('span');
-            mark.textContent = '✦';
-            mark.style.cssText = 'width:18px;text-align:center;font-size:15px';
+            mark.style.cssText = 'width:18px;display:inline-flex;justify-content:center;align-items:center';
+            mark.appendChild(groupIcon(this.doc, 15));
             const text = this.doc.createElement('span');
             text.textContent = 'Together';
             item.append(mark, text);
@@ -388,17 +452,17 @@ const TogetherLauncher = (() => {
             const active = this.panel.activeActivity;
             const open = this.panel.isOpen;
 
-            const label = b.querySelector('.nexus-bd-together-label');
-            const mark = b.querySelector('.nexus-bd-together-mark');
             const state = active ? 'running' : open ? 'open' : 'idle';
             b.dataset.state = state;
             b.setAttribute('aria-expanded', open ? 'true' : 'false');
 
-            if (mark) mark.textContent = active ? '●' : '✦';
-            if (label) {
-                const meta = active && this.panel.activities.get(active);
-                label.textContent = active ? titleOf(meta, active) : 'Together';
-            }
+            // The icon never changes shape; running is a colour and a dot, drawn by CSS off
+            // `data-state`. What does change is the name — with no text in the button, the
+            // accessible name is the only place a screen reader can learn that something is
+            // already running, and "Together" alone would be a lie at that point.
+            const meta = active && this.panel.activities.get(active);
+            b.title = buttonName(active ? titleOf(meta, active) : null);
+            b.setAttribute('aria-label', b.title);
             return state;
         }
 
@@ -431,10 +495,16 @@ const TogetherLauncher = (() => {
         return panel && panel.metaFor ? panel.metaFor(activity) : activity.ui || {};
     }
 
+    /**
+     * The activity's name as a person would write it. It used to be upper-cased to match the
+     * pill's `text-transform`, which was harmless while it was decoration. B34's only
+     * consumer is the accessible name, and a screen reader may spell an all-caps word out
+     * letter by letter — so the casing the panel already uses is the casing to speak.
+     */
     function titleOf(activity, fallback) {
-        if (!activity) return String(fallback || '').toUpperCase();
+        if (!activity) return String(fallback || '');
         const meta = metaOf(activity);
-        return String(meta.title || activity.label || fallback || '').toUpperCase();
+        return String(meta.title || activity.label || fallback || '');
     }
 
     function choosableOf(activities) {

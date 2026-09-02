@@ -360,7 +360,10 @@ const TogetherPanel = (() => {
 
             const head = this.doc.createElement('p');
             head.className = 'nexus-bd-together-head';
-            head.textContent = '✦ TOGETHER';
+            // The word, without the `✦` B30 put in front of it. B34 replaced that mark with
+            // the two-person icon on the button; carrying a third symbol here would say the
+            // same thing twice, in a place a heading only needs to name.
+            head.textContent = 'TOGETHER';
             this.root.appendChild(head);
 
             if (this.view === 'running') this._paintRunning();

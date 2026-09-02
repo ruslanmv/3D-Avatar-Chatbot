@@ -109,8 +109,8 @@ with [HomePilot](https://github.com/ruslanmv/HomePilot) — turn-level
 orchestration. It ships **off**: turn it on in **Settings ▸ Behavior Director**,
 then tune it in `config/behavior.config.json`.
 
-Once it is on, a **✦ Together** pill joins the avatar toolbar — one entry point
-to every experience below. Nothing else in the toolbar moves.
+Once it is on, a **two-person button** joins the avatar toolbar — one entry
+point to every experience below. Nothing else in the toolbar moves.
 
 ![The Together chooser open over the avatar: Watch, Journey, Music, Play, Focus, Coach, and Help me with this](assets/together-mode.png)
 

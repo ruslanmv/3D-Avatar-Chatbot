@@ -193,8 +193,9 @@ around it.
 | #  | Check | Result |
 |----|-------|--------|
 | K1 | With the toggle **off**, the Network panel shows no request under `src/behavior/`, and `window.NEXUS_BD_ENABLED` is `false` — not `undefined` | ☐ |
-| K2 | With the toggle **on** and a reload, `window.NEXUS_BD` exists and the **✦ Together** pill is in the avatar footer beside 🎯 🎭 👤 🪟 📞 | ☐ |
-| K3 | The pill opens the chooser, and picking an activity starts it — the round trip a console call never proved | ☐ |
+| K2 | With the toggle **on** and a reload, `window.NEXUS_BD` exists and the footer reads 🎯 🎭 👤 👥 🪟 📞 — the two-person button in cyan, the same square as its neighbours | ☐ |
+| K3 | It opens the chooser, and picking an activity starts it — the round trip a console call never proved | ☐ |
+| K3b | While an activity runs, the button turns green with a corner dot and its tooltip reads "Together — <name> running" | ☐ |
 | K4 | `?behaviorDebug=1` shows the HUD ticking: Tier 0 is advancing, so the ViewerEngine path's own rAF is running | ☐ |
 | K5 | Toggling off and reloading returns the footer to exactly the five buttons it shipped with | ☐ |
 

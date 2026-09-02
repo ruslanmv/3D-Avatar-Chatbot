@@ -88,8 +88,10 @@ function activity(id, label) {
     };
 }
 
-function harness({ ids = ['watch', 'journey', 'music', 'cohost', 'focus', 'coach', 'copilot'] } = {}) {
-    document.body.innerHTML = MARKUP;
+function harness({ ids = ['watch', 'journey', 'music', 'cohost', 'focus', 'coach', 'copilot'], fresh = true } = {}) {
+    // `fresh: false` keeps a page the caller has already staged — the ordering tests need
+    // Companion's buttons in the toolbar before the launcher attaches.
+    if (fresh) document.body.innerHTML = MARKUP;
     const consent = fakeConsent();
     const capture = { fromGrant: () => ({ stop() {}, stats: {} }) };
     const panel = TogetherPanel.attach({ consent, capture, config: {}, doc: document });
@@ -129,17 +131,68 @@ describe('it adds one control and moves nothing', () => {
         expect(after.filter((x) => x !== TogetherLauncher.BUTTON_ID)).toEqual(before);
     });
 
-    test('the pill sits before the select group, where Companion puts its own', () => {
+    test('with Companion absent it goes before the select group, where Companion puts its own', () => {
         harness();
         const kids = [...document.querySelector('.avatar-footer-actions').children];
         expect(kids[kids.length - 1].className).toBe('avatar-footer-right');
         expect(kids[kids.length - 2].id).toBe(TogetherLauncher.BUTTON_ID);
     });
 
-    test('it does not reuse the mask Pose Studio already owns', () => {
+    describe('the row reads 🎯 🎭 👤 👥 🪟 📞 whichever feature injects first', () => {
+        /** Companion's own two buttons, inserted the way `CompanionMode.showButton()` does. */
+        function injectCompanion() {
+            const toolbar = document.querySelector('.avatar-footer-actions');
+            const right = toolbar.querySelector('.avatar-footer-right');
+            for (const id of ['companion-mode-btn', 'companion-call-btn']) {
+                const b = document.createElement('button');
+                b.id = id;
+                b.type = 'button';
+                toolbar.insertBefore(b, right);
+            }
+        }
+
+        const ids = () =>
+            [...document.querySelector('.avatar-footer-actions').children].map((n) => n.id || n.className);
+
+        const EXPECTED = [
+            'reset-view-btn',
+            'openPoseStudioBtn',
+            'avatar-picker-btn',
+            TogetherLauncher.BUTTON_ID,
+            'companion-mode-btn',
+            'companion-call-btn',
+            'avatar-footer-right',
+        ];
+
+        test('Companion first — we anchor on its window button', () => {
+            document.body.innerHTML = MARKUP;
+            injectCompanion();
+            harness({ fresh: false });
+            expect(ids()).toEqual(EXPECTED);
+        });
+
+        test('us first — Companion inserts before the select group, which is already after us', () => {
+            harness();
+            injectCompanion();
+            expect(ids()).toEqual(EXPECTED);
+        });
+    });
+
+    test('the mark is the drawn two-person glyph, not an emoji and not a borrowed mask', () => {
         harness();
-        expect(button().textContent).toContain('✦');
-        expect(button().textContent).not.toContain('🎭');
+        const svg = button().querySelector('svg.nexus-bd-together-mark');
+        // Two heads and two shoulder arcs — the shape every icon set spells "group".
+        expect(svg.querySelectorAll('circle')).toHaveLength(2);
+        expect(svg.querySelectorAll('path')).toHaveLength(2);
+        // Drawn, so it inherits the button's colour and follows it into the running state.
+        expect(svg.getAttribute('stroke')).toBe('currentColor');
+        // A real SVG element, not an HTML tag that merely spells svg and renders nothing.
+        expect(svg.namespaceURI).toBe('http://www.w3.org/2000/svg');
+        // The name lives on the button; the picture must not repeat it to a screen reader.
+        expect(svg.getAttribute('aria-hidden')).toBe('true');
+        // No character in the button at all — not Pose Studio's mask, not the old ✦, and
+        // not 👥, whose rendering is a different picture on every platform.
+        expect(button().textContent.trim()).toBe('');
     });
 
     test('the drawer entry is appended, so every existing item keeps its position', () => {
@@ -171,8 +224,12 @@ describe('it adds one control and moves nothing', () => {
     test('no stylesheet of its own outside its namespace', () => {
         harness();
         const css = document.getElementById(TogetherLauncher.STYLE_ID).textContent;
-        // Every rule that styles an element — at-rule headers are not selectors.
+        // Every rule that styles an element — at-rule headers are not selectors, and neither
+        // is a comment. Stripped first: a comment containing a comma used to split into a
+        // fragment the check then read as an un-namespaced selector, which made this test a
+        // rule about prose rather than about CSS.
         const selectors = css
+            .replace(/\/\*[\s\S]*?\*\//g, ' ')
             .split('}')
             .map((block) => block.slice(block.lastIndexOf('{', block.length) === -1 ? 0 : 0))
             .flatMap((block) => block.split('{')[0].split(','))
@@ -409,7 +466,7 @@ describe('the button says one of three things', () => {
     test('idle, open, then running', async () => {
         const h = harness();
         expect(button().dataset.state).toBe('idle');
-        expect(button().textContent).toContain('Together');
+        expect(button().getAttribute('aria-label')).toBe('Together — watch, listen, focus or move with her');
 
         button().click();
         expect(button().dataset.state).toBe('open');
@@ -419,8 +476,33 @@ describe('the button says one of three things', () => {
         optionNamed('Start').click();
         await flush();
         expect(button().dataset.state).toBe('running');
-        expect(button().textContent).toContain('FOCUS');
         expect(h.panel.activeActivity).toBe('focus');
+    });
+
+    test('running says so in the name, because the icon cannot', async () => {
+        // B34 took the word out of the button. `data-state` drives a colour and a dot, and
+        // neither reaches a screen reader — so the accessible name is now the only place
+        // "something is already running" is stated, and it has to carry which one.
+        const h = harness();
+        button().click();
+        tileNamed('Focus').click();
+        optionNamed('Start').click();
+        await flush();
+        expect(button().getAttribute('aria-label')).toBe('Together — Focus running');
+        // The tooltip a sighted user gets says the same thing, rather than going stale.
+        expect(button().title).toBe(button().getAttribute('aria-label'));
+        expect(h.panel.activeActivity).toBe('focus');
+    });
+
+    test('and it goes back to the plain name when the activity stops', async () => {
+        const h = harness();
+        button().click();
+        tileNamed('Focus').click();
+        optionNamed('Start').click();
+        await flush();
+        await h.panel.stopActivity();
+        expect(button().dataset.state).not.toBe('running');
+        expect(button().getAttribute('aria-label')).toBe('Together — watch, listen, focus or move with her');
     });
 
     test('it is not a feature toggle — the running button reopens the panel', async () => {
