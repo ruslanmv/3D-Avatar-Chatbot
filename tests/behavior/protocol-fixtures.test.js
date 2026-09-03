@@ -72,6 +72,13 @@ describe('protocol fixture set', () => {
                 'voice_end',
                 'voice_answer',
                 'voice_state',
+                // MS7 — MeetingSense over the avatar session. Three inbound, one outbound,
+                // and no version bump: the silent-ignore rule in §6.9 is what makes that
+                // safe, and this list is where the claim is checked rather than assumed.
+                'meeting_start',
+                'meeting_audio',
+                'meeting_stop',
+                'meeting',
                 // forward compatibility
                 FORWARD_COMPAT,
             ].sort()

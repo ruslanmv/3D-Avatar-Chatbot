@@ -139,6 +139,30 @@
       "name": "voice_state",
       "direction": "server->client",
       "spec": "v1.1 6.10"
+    },
+    {
+      "file": "c2s-meeting_start.json",
+      "name": "meeting_start",
+      "direction": "client->server",
+      "spec": "MS7"
+    },
+    {
+      "file": "c2s-meeting_audio.json",
+      "name": "meeting_audio",
+      "direction": "client->server",
+      "spec": "MS7"
+    },
+    {
+      "file": "c2s-meeting_stop.json",
+      "name": "meeting_stop",
+      "direction": "client->server",
+      "spec": "MS7"
+    },
+    {
+      "file": "s2c-meeting.json",
+      "name": "meeting",
+      "direction": "server->client",
+      "spec": "MS7"
     }
   ]
 }

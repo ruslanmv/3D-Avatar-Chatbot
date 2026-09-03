@@ -1,0 +1,16 @@
+{
+  "name": "meeting_audio",
+  "direction": "client->server",
+  "spec": "MS7",
+  "note": "Same audio contract as /v1/voice/session (decision D6): format + data_b64, never a second spelling. Channel 0 is the call, channel 1 is this microphone.",
+  "required": ["v", "type", "format", "data_b64"],
+  "message": {
+    "v": 1,
+    "type": "meeting_audio",
+    "format": "wav",
+    "data_b64": "UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQAAAAA=",
+    "seq": 1,
+    "t0": 0,
+    "t1": 1400
+  }
+}

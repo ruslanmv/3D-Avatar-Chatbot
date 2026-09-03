@@ -1,0 +1,10 @@
+{
+  "name": "meeting_stop",
+  "direction": "client->server",
+  "spec": "MS7",
+  "required": ["v", "type"],
+  "message": {
+    "v": 1,
+    "type": "meeting_stop"
+  }
+}
