@@ -64,6 +64,10 @@ const BehaviorEventBus = (() => {
         // And the copilot's timer, as one typed event carrying its state.
         'copilot:timer',
         'copilot:look',
+        // MS19. One typed event carrying the phase, the way `focus:phase` does: a meeting
+        // starting, stopping and being revoked are three states of one thing, and three
+        // entries would be four the day a pause is added.
+        'meeting:phase',
         // B27. A rep, and the two ends of a set — openings in the coach profile.
         'coach:rep',
         'coach:set_start',

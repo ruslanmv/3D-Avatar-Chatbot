@@ -98,6 +98,16 @@ const TogetherPanel = (() => {
             prompt: 'Point your camera at what you are working on.',
             options: [{ label: 'Use camera', needs: 'camera' }],
         },
+        meeting: {
+            title: 'Record this meeting',
+            icon: '🎙',
+            order: 80,
+            // The prompt says what will be asked for *before* either dialog opens, because
+            // two permission prompts in a row with no warning is how a person ends up
+            // declining the second one and wondering why nothing recorded.
+            prompt: 'I will ask for your screen and your microphone, and show a recording badge the whole time.',
+            options: [{ label: 'Start recording', needs: 'meeting' }],
+        },
     };
 
     /** An activity may override the table. Nothing in the repo does yet; a ninth would. */

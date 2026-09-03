@@ -84,6 +84,10 @@
         'src/behavior/ConsentFlow.js',
         'src/features/together/heuristics/ExcitementDetector.js',
         'src/features/together/activities/cohost.js',
+        // MS19. The eighth activity, and the last one loaded: it owns no capture of its own —
+        // the consent machine above grants the streams and HomePilot's recorder addon does
+        // the work — so nothing here depends on it being present.
+        'src/features/together/activities/meeting.js',
         // B24/B25. The recorder first: the button is the thing that keeps what it buffered.
         'src/features/clips/ClipRecorder.js',
         'src/features/clips/ShareCard.js',

@@ -231,10 +231,68 @@ describe('asking, and being told no', () => {
         }
     });
 
-    test('the three sources are present from the first batch', () => {
-        // B15, B23, B26 and B27 are consumers of this one machine; adding one should be a
-        // registration rather than surgery here.
-        expect(ConsentMachine.SOURCES).toEqual(['screen', 'camera', 'game']);
+    test('the sources are a registration, not surgery', () => {
+        // B15, B23, B26 and B27 are consumers of this one machine, and B11 shipped their
+        // three sources up front so adding a consumer would be a registration rather than
+        // surgery here. MS19 is the first to take that offer: `meeting` was added by naming
+        // it in SOURCES, LABELS and COMPOUND, with no change to request(), revoke() or the
+        // epoch — which is what "borrowing the consent machine" was supposed to mean.
+        expect(ConsentMachine.SOURCES).toEqual(['screen', 'camera', 'game', 'meeting']);
+    });
+
+    test('a compound source asks for each of its parts, in order', async () => {
+        // Screen first: it is the dialog a user is most likely to cancel, and somebody who
+        // declines it should not already have granted a microphone they now have no use for.
+        const media = fakeMedia();
+        const consent = new ConsentMachine.Machine({ media, config: CONFIG });
+        const grant = await consent.request('meeting');
+        expect(media.calls.map((c) => c.kind)).toEqual(['display', 'user']);
+        expect(grant.streams).toHaveLength(2);
+    });
+
+    test('a compound part that resolves with no stream stops the rest', async () => {
+        // Not the same case as a rejection: a browser that resolves `undefined` rather than
+        // throwing would otherwise leave a grant carrying only the *second* stream — a
+        // meeting recording the microphone with no screen, which is not what was agreed to.
+        const calls = [];
+        const media = {
+            getDisplayMedia: () => {
+                calls.push('display');
+                return Promise.resolve(null);
+            },
+            getUserMedia: () => {
+                calls.push('user');
+                return Promise.resolve({ getTracks: () => [] });
+            },
+        };
+        const consent = new ConsentMachine.Machine({ media, config: CONFIG });
+        expect(await consent.request('meeting')).toBeNull();
+        expect(calls).toEqual(['display']);
+        expect(consent.grant).toBeNull();
+    });
+
+    test('a compound source that is declined part-way grants nothing', async () => {
+        let asked = 0;
+        const media = {
+            calls: [],
+            getDisplayMedia: () => {
+                asked++;
+                return Promise.resolve({ getTracks: () => [] });
+            },
+            getUserMedia: () => {
+                asked++;
+                const denial = new Error('no');
+                denial.name = 'NotAllowedError';
+                return Promise.reject(denial);
+            },
+        };
+        const consent = new ConsentMachine.Machine({ media, config: CONFIG });
+        expect(await consent.request('meeting')).toBeNull();
+        expect(asked).toBe(2);
+        // Nothing is left active: a half-granted meeting would show a recording indicator
+        // over a capture that cannot record.
+        expect(consent.state).toBe('denied');
+        expect(consent.grant).toBeNull();
     });
 
     test('camera asks getUserMedia; screen and game ask getDisplayMedia', async () => {

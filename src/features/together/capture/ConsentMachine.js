@@ -38,14 +38,27 @@ const ConsentMachine = (() => {
      * plan has three consumers arriving later, and adding one should be a registration
      * rather than surgery on the machine that gates them.
      */
-    const SOURCES = ['screen', 'camera', 'game'];
+    const SOURCES = ['screen', 'camera', 'game', 'meeting'];
 
     /** Human wording for the indicator. A generic "sharing" badge is not an honest one. */
     const LABELS = {
         screen: 'Sharing your screen',
         camera: 'Camera on',
         game: 'Sharing your game',
+        meeting: 'Recording this meeting',
     };
+
+    /**
+     * Sources that need more than one stream (MS19). `meeting` is the first: recording a call
+     * means the screen *and* this microphone, and they come from two different browser
+     * dialogs.
+     *
+     * Registered here rather than special-cased in the consumer, which is what this file's
+     * own docstring asks for — a consumer that assembled its own second stream would be a
+     * second place capture can start, and the whole point of the machine is that there is
+     * one. It also means one revoke stops both, in the same tick, by the same epoch bump.
+     */
+    const COMPOUND = { meeting: ['screen', 'mic'] };
 
     const STATES = ['idle', 'requesting', 'active', 'denied'];
 
@@ -53,7 +66,13 @@ const ConsentMachine = (() => {
         constructor(machine, source, stream) {
             this.id = `grant_${source}_${machine._issued++}`;
             this.source = source;
-            this.stream = stream;
+            /**
+             * Every stream this grant covers. One for most sources; for a compound source it
+             * is what each part returned, in the order COMPOUND names them.
+             */
+            this.streams = Array.isArray(stream) ? stream.filter(Boolean) : [stream].filter(Boolean);
+            /** The primary stream — the video one. Unchanged for every existing consumer. */
+            this.stream = this.streams[0] || null;
             this.startedAt = machine.now();
             this._machine = machine;
             this._epoch = machine.epoch;
@@ -178,13 +197,43 @@ const ConsentMachine = (() => {
          * The only place in the engine that names these two APIs. The test that proves it
          * reads every other engine file looking for them.
          */
-        _acquire(source, constraints) {
+        async _acquire(source, constraints) {
+            const parts = COMPOUND[source];
+            if (parts) {
+                // In order, and the screen first: it is the dialog the user is most likely to
+                // cancel, and somebody who declines it should not already have granted a
+                // microphone they now have no use for. A cancelled first part aborts the rest.
+                const streams = [];
+                for (const part of parts) {
+                    const stream = await this._acquireOne(part, constraints);
+                    if (!stream) return null;
+                    streams.push(stream);
+                }
+                return streams;
+            }
+            return this._acquireOne(source, constraints);
+        }
+
+        _acquireOne(source, constraints) {
             if (source === 'camera') {
                 return this.media.getUserMedia({ video: constraints || { facingMode: 'environment' }, audio: false });
             }
+            if (source === 'mic') {
+                // Echo cancellation and noise suppression on: this microphone is in the room
+                // with the speakers playing the other side of the call, and without them the
+                // transcript of this side is the other side, twice.
+                return this.media.getUserMedia({
+                    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+                    video: false,
+                });
+            }
             // screen and game are both display capture; they differ in what the indicator
             // says and in which consumer registered them, not in how they are acquired.
-            return this.media.getDisplayMedia({ video: constraints || true, audio: false });
+            //
+            // `audio: true` asks for the call's own sound, which Chrome grants on a tab share
+            // and silently omits everywhere else. Asking costs nothing where it is refused,
+            // and where it is granted it is the other half of the conversation.
+            return this.media.getDisplayMedia({ video: constraints || true, audio: true });
         }
 
         _denied(reason) {
@@ -201,7 +250,8 @@ const ConsentMachine = (() => {
          * after that would be worse than no indicator at all.
          */
         _watchTracks(stream) {
-            const tracks = (stream.getTracks && stream.getTracks()) || [];
+            const streams = Array.isArray(stream) ? stream : [stream];
+            const tracks = streams.flatMap((s) => (s && s.getTracks && s.getTracks()) || []);
             const onEnded = () => this.revoke('ended by the browser');
             for (const track of tracks) {
                 if (typeof track.addEventListener === 'function') track.addEventListener('ended', onEnded);
