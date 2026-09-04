@@ -442,6 +442,9 @@ src/features/together/capture/ConsentMachine.js    the gate — spec calls it "c
 src/features/together/capture/CapturePipeline.js   as specified
 src/features/together/ui/ConsentIndicator.js       the 2D + XR indicator, split out of the panel
 src/features/together/ui/TogetherPanel.js          as specified
+src/features/together/ui/failures.js               B36  why a start failed, and what to do
+src/features/together/activities/contract.js       B36  the one activity execution contract
+src/features/together/activities/audioSource.js    B36  what Music listens to
 ```
 
 The indicator is deliberately **not** part of the panel: the panel is optional UI a batch
