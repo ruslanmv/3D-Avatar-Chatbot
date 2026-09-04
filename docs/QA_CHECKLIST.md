@@ -194,7 +194,10 @@ around it.
 |----|-------|--------|
 | K1 | With the toggle **off**, the Network panel shows no request under `src/behavior/`, and `window.NEXUS_BD_ENABLED` is `false` — not `undefined` | ☐ |
 | K2 | With the toggle **on** and a reload, `window.NEXUS_BD` exists and the footer reads 🎯 🎭 👤 👥 🪟 📞 — the two-person button in cyan, the same square as its neighbours | ☐ |
-| K3 | It opens the chooser, and picking an activity starts it — the round trip a console call never proved | ☐ |
+| K3 | It opens the chooser, and picking an activity starts it — the round trip a console call never proved. **B36 automates every tile of this in `together-journeys.test.js`; this row is the same journey on real hardware, which jsdom cannot be** | ☐ |
+| K3c | Each of Focus, Watch (tab **and** file), Help me (both ways in), Coach, Journey, Music and Meeting starts, shows its own status line, and stops — with the browser's own indicator gone afterwards | ☐ |
+| K3d | Declining a permission shows a named reason with **Try again**, and leaves no camera or screen light on | ☐ |
+| K3e | Closing the chooser returns focus to whichever control opened it — the toolbar button *and* the drawer entry | ☐ |
 | K3b | While an activity runs, the button turns green with a corner dot and its tooltip reads "Together — <name> running" | ☐ |
 | K4 | `?behaviorDebug=1` shows the HUD ticking: Tier 0 is advancing, so the ViewerEngine path's own rAF is running | ☐ |
 | K5 | Toggling off and reloading returns the footer to exactly the five buttons it shipped with | ☐ |

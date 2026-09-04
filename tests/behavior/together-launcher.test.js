@@ -50,6 +50,8 @@ function fakeConsent() {
     let handler = () => {};
     return {
         asked,
+        /** B36 counts these: a leaked grant is a revoke that never happened. */
+        revoked: 0,
         grant: true,
         async request(source) {
             asked.push(source);
@@ -61,6 +63,7 @@ function fakeConsent() {
             return { source, live: true };
         },
         revoke(why) {
+            this.revoked += 1;
             handler({ state: 'idle', reason: why });
             return true;
         },
@@ -71,12 +74,25 @@ function fakeConsent() {
     };
 }
 
-function activity(id, label) {
-    return {
+/**
+ * A stand-in with the *real* activity's surface (B36).
+ *
+ * The generic `{start(arg), stop(why)}` this used to build was the shape the panel assumed
+ * and the activities never had — which is precisely the bug B36 exists to fix. A stub that
+ * keeps the wrong shape would let the old assumption pass forever, so each one now mirrors
+ * what its file actually exposes: Watch has `playFile`/`shareTab` and no `start`, Journey has
+ * `enter`/`exit`, Music needs a source, CoHost needs a moment detector.
+ *
+ * `consent` is passed to the ones that request for themselves, so the double-owner tests can
+ * count real requests rather than a mock's intentions.
+ */
+function activity(id, label, { consent = null } = {}) {
+    const base = {
         id,
         label,
         started: [],
         stopped: [],
+        requests: [],
         async start(arg) {
             this.started.push(arg === undefined ? null : arg);
             return { ok: true };
@@ -86,6 +102,74 @@ function activity(id, label) {
             return true;
         },
     };
+
+    const asksForItself = async (source) => {
+        base.requests.push(source);
+        if (!consent) return { live: true };
+        return consent.request(source);
+    };
+
+    if (id === 'watch') {
+        // No `start`. This is the whole of the Watch bug.
+        delete base.start;
+        base.sourceLabel = 'YouTube tab';
+        base.playFile = async function playFile(url) { this.started.push({ file: url }); return { ok: true }; };
+        base.shareTab = async function shareTab() {
+            const grant = await asksForItself('screen');
+            if (!grant) return { ok: false, why: 'declined' };
+            this.started.push({ tab: true });
+            return { ok: true };
+        };
+    }
+    if (id === 'journey') {
+        delete base.start;
+        delete base.stop;
+        base.current = 'ocean';
+        base.scenes = new Map([
+            ['ocean', { id: 'ocean', title: 'Ocean', icon: '🌊' }],
+            ['forest', { id: 'forest', title: 'Forest', icon: '🌲' }],
+        ]);
+        base.enter = function enter(sceneId) { this.started.push(sceneId); return true; };
+        base.exit = function exit(why) { this.stopped.push(why); return true; };
+    }
+    if (id === 'music') {
+        base.trackName = '';
+        base.attachSource = function attachSource(url, { name = '' } = {}) {
+            this.trackName = name; this.started.push({ audio: url }); return { ok: true };
+        };
+        base.detachSource = function detachSource() { this.trackName = ''; return true; };
+    }
+    if (id === 'cohost') base.momentSource = {};
+    if (id === 'coach') {
+        base.exercises = ['squat', 'push-up'];
+        base.reps = 0;
+        base.start = async function start(exercise) {
+            const grant = await asksForItself('camera');
+            if (!grant) return { ok: false, why: 'camera consent was declined' };
+            this.exercise = exercise;
+            this.started.push(exercise);
+            return { ok: true };
+        };
+    }
+    if (id === 'copilot') {
+        base.steps = [];
+        base.start = async function start(steps) {
+            const grant = await asksForItself('camera');
+            if (!grant) return { ok: false, why: 'camera consent was declined' };
+            this.steps = steps || [];
+            this.started.push(steps);
+            return { ok: true };
+        };
+    }
+    if (id === 'meeting') {
+        base.start = async function start(options) {
+            const grant = await asksForItself('meeting');
+            if (!grant) return { ok: false, why: 'declined' };
+            this.started.push(options);
+            return { ok: true };
+        };
+    }
+    return base;
 }
 
 function harness({ ids = ['watch', 'journey', 'music', 'cohost', 'focus', 'coach', 'copilot'], fresh = true } = {}) {
@@ -97,7 +181,7 @@ function harness({ ids = ['watch', 'journey', 'music', 'cohost', 'focus', 'coach
     const panel = TogetherPanel.attach({ consent, capture, config: {}, doc: document });
     const activities = {};
     for (const id of ids) {
-        activities[id] = activity(id, `${id} together`);
+        activities[id] = activity(id, `${id} together`, { consent });
         panel.register(activities[id]);
     }
     const launcher = TogetherLauncher.attach({ panel, doc: document, viewer: null });
@@ -111,8 +195,20 @@ const button = () => document.getElementById(TogetherLauncher.BUTTON_ID);
 const overlay = () => document.getElementById(TogetherPanel.PANEL_ID);
 const tiles = () => [...document.querySelectorAll('.nexus-bd-together-tile')];
 const options = () => [...document.querySelectorAll('.nexus-bd-together-option')];
-const tileNamed = (name) => tiles().find((t) => t.textContent.includes(name));
-const optionNamed = (name) => options().find((o) => o.textContent === name);
+/** B36: the first screen shows four; the rest are behind "More together". */
+const moreButton = () => document.querySelector('.nexus-bd-together-more');
+const revealAll = () => { const more = moreButton(); if (more) more.click(); };
+const tileNamed = (name) => {
+    let found = tiles().find((t) => t.textContent.includes(name));
+    if (!found && moreButton()) {
+        revealAll();
+        found = tiles().find((t) => t.textContent.includes(name));
+    }
+    return found;
+};
+// B36: an option may carry a note under its label ("Your screen stops sharing when you
+// leave Watch"), so match the label rather than the whole button.
+const optionNamed = (name) => options().find((o) => o.textContent.startsWith(name));
 
 afterEach(() => {
     document.body.innerHTML = '';
@@ -285,24 +381,62 @@ describe('opening the chooser starts nothing at all', () => {
         expect(source).toContain('class Launcher');
     });
 
-    test('the chooser offers seven experiences and names no architecture', () => {
+    test('the first screen offers four experiences, ordered by user value', () => {
+        // B36. Seven equal boxes was becoming a product catalogue. These four are what
+        // somebody opens the launcher to do; the rest are one press away, and the order is
+        // by value rather than by the batch number that happened to build each one.
         harness();
         button().click();
         const names = tiles().map((t) => t.querySelector('.nexus-bd-together-name').textContent);
-        expect(names).toEqual(['Watch', 'Journey', 'Music', 'Play', 'Focus', 'Coach', 'Help me with this']);
-        for (const internal of ['Screen Insight', 'Copilot', 'Capture', 'Co-host', 'Pipeline']) {
-            expect(names.join(' ')).not.toContain(internal);
+        expect(names).toEqual(['Focus', 'Watch', 'Help me with this', 'Coach']);
+    });
+
+    test('More together reveals the rest without hiding the four', () => {
+        harness();
+        button().click();
+        moreButton().click();
+        const names = tiles().map((t) => t.querySelector('.nexus-bd-together-name').textContent);
+        expect(names.slice(0, 4)).toEqual(['Focus', 'Watch', 'Help me with this', 'Coach']);
+        expect(names).toEqual(expect.arrayContaining(['Journey', 'Music', 'Play']));
+    });
+
+    test('no tile names an implementation concept, on either screen', () => {
+        harness();
+        button().click();
+        revealAll();
+        const names = tiles().map((t) => t.querySelector('.nexus-bd-together-name').textContent).join(' ');
+        for (const internal of ['Screen Insight', 'Copilot', 'Capture', 'Co-host', 'Pipeline', 'Behavior Director']) {
+            expect(names).not.toContain(internal);
         }
     });
 
-    test('an activity the table does not know stays out of the chooser', () => {
+    test('an activity the contract does not know stays out of the chooser', () => {
         // `screen-insight` is a capability behind Watch and Help, not something a person
-        // sets out to do.
+        // sets out to do — and B36 asks the contract rather than a table, so an activity
+        // with no adapter cannot appear even if somebody registers it.
         const h = harness();
         h.panel.register(activity('screen-insight', 'Screen Insight'));
         button().click();
-        expect(tiles().map((t) => t.textContent)).not.toContain(expect.stringContaining('Screen Insight'));
+        revealAll();
+        expect(tiles().map((t) => t.textContent).join(' ')).not.toContain('Screen Insight');
         expect(tiles()).toHaveLength(7);
+    });
+
+    test('a tile that cannot complete its journey is not offered at all', () => {
+        // Music with no audio source and Play with no moment detector start something that
+        // cannot work. Hiding them is the honest answer; a tile that fails after the user
+        // has chosen is worse than one that was never there.
+        document.body.innerHTML = MARKUP;
+        const consent = fakeConsent();
+        const panel = TogetherPanel.attach({ consent, capture: { fromGrant: () => ({ stop() {}, stats: {} }) }, config: {}, doc: document });
+        panel.register({ id: 'music', start() {}, stop() {} });
+        panel.register({ id: 'cohost', start() {}, stop() {} });
+        panel.register(activity('focus', 'focus', { consent }));
+        TogetherLauncher.attach({ panel, doc: document, viewer: null });
+        button().click();
+        revealAll();
+        const names = tiles().map((t) => t.querySelector('.nexus-bd-together-name').textContent);
+        expect(names).toEqual(['Focus']);
     });
 
     test('there is no generic Share Screen button on the first view', () => {
@@ -327,17 +461,23 @@ describe('permission comes after the choice, never before', () => {
         expect(h.activities.journey.started).toEqual(['ocean']);
     });
 
-    test('Focus never asks for anything either', async () => {
+    test('Focus never asks for anything, and needs no setup screen at all', async () => {
+        // B36. One input with nothing to pick and nothing to type is not a question, so the
+        // tile starts it. A setup screen showing a single button labelled "Start" is a step
+        // that exists only to be got past.
         const h = harness();
         button().click();
         tileNamed('Focus').click();
-        optionNamed('Start').click();
         await flush();
         expect(h.consent.asked).toEqual([]);
         expect(h.activities.focus.started).toHaveLength(1);
+        expect(h.panel.activeActivity).toBe('focus');
     });
 
-    test('Watch asks for the screen only when a tab is chosen', async () => {
+    test('Watch asks for the screen exactly once when a tab is chosen', async () => {
+        // The B36 bug in one assertion. `watch.shareTab()` requests the screen itself, and
+        // the panel used to request first — `ConsentMachine.request()` revokes a live grant
+        // before asking again, so the user was prompted twice and the first grant died.
         const h = harness();
         button().click();
         tileNamed('Watch').click();
@@ -345,29 +485,41 @@ describe('permission comes after the choice, never before', () => {
         optionNamed('Share a tab').click();
         await flush();
         expect(h.consent.asked).toEqual(['screen']);
+        expect(h.activities.watch.requests).toEqual(['screen']);
     });
 
-    test('and not when a local file is chosen', async () => {
+    test('and asks for nothing when a local file is chosen', async () => {
         const h = harness();
         button().click();
         tileNamed('Watch').click();
-        optionNamed('Open local video').click();
+        optionNamed('Open a video file').click();
         await flush();
         expect(h.consent.asked).toEqual([]);
-        expect(h.activities.watch.started).toEqual(['file']);
     });
 
-    test('Coach asks for the camera, and says so before it does', async () => {
+    test('Coach asks for the camera exactly once, and says so before it does', async () => {
         const h = harness();
         button().click();
         tileNamed('Coach').click();
-        expect(optionNamed('Use camera').title).toMatch(/camera/);
-        optionNamed('Use camera').click();
+        const squat = optionNamed('Squat');
+        expect(squat.title).toMatch(/access/);
+        squat.click();
         await flush();
+        // Coach reaches consent through ScreenInsight. One owner, one prompt.
         expect(h.consent.asked).toEqual(['camera']);
+        expect(h.activities.coach.started).toEqual(['squat']);
     });
 
-    test('declining leaves nothing running and every other channel alone', async () => {
+    test('Coach offers the exercises Coach actually supports', () => {
+        // The tile used to hardcode `arg: 'squat'`. B27 has real validation and refuses an
+        // unsupported exercise by name; the setup screen now reads its list.
+        harness();
+        button().click();
+        tileNamed('Coach').click();
+        expect(options().map((o) => o.firstChild.textContent)).toEqual(['Squat', 'Push-up']);
+    });
+
+    test('declining leaves nothing running, and says so instead of going quiet', async () => {
         const h = harness();
         h.consent.grant = false;
         button().click();
@@ -376,7 +528,38 @@ describe('permission comes after the choice, never before', () => {
         await flush();
         expect(h.activities.cohost.started).toEqual([]);
         expect(h.panel.activeActivity).toBeNull();
-        expect(overlay().textContent).toContain('What should we do?');
+        // B36. The old panel dropped the reason and showed the menu again: a tile tapped, a
+        // dialog answered, and then nothing said.
+        expect(overlay().textContent).toContain('needs permission');
+        expect(options().map((o) => o.textContent)).toEqual(['Try again', 'Back']);
+    });
+
+    test('a failed start never leaves the camera on', async () => {
+        // The P0. The panel opened the camera, Copilot refused for want of steps, and the
+        // panel returned to the chooser with the grant still live — the consent badge told
+        // the truth and the product did not.
+        document.body.innerHTML = MARKUP;
+        const consent = fakeConsent();
+        const panel = TogetherPanel.attach({
+            consent, capture: { fromGrant: () => ({ stop() {}, stats: {} }) }, config: {}, doc: document,
+        });
+        const cohost = activity('cohost', 'cohost', { consent });
+        cohost.start = async () => ({ ok: false, why: 'no play profile — refusing to start' });
+        panel.register(cohost);
+        TogetherLauncher.attach({ panel, doc: document, viewer: null });
+
+        button().click();
+        tileNamed('Play').click();
+        optionNamed('Share game').click();
+        await flush();
+
+        expect(panel.activeActivity).toBeNull();
+        expect(consent.asked).toEqual(['screen']);
+        // Opened by this call, so revoked by this call.
+        expect(consent.revoked).toBeGreaterThan(0);
+        expect(panel.pipeline).toBeNull();
+        // And the activity's own words survive to the screen.
+        expect(overlay().textContent).toContain('No play profile');
     });
 
     test('the panel still asks through the machine — it never sees a stream', () => {
@@ -395,7 +578,6 @@ describe('dismissing the menu and leaving the activity are different', () => {
         const h = harness();
         button().click();
         tileNamed('Focus').click();
-        optionNamed('Start').click();
         await flush();
         return h;
     }
@@ -417,7 +599,7 @@ describe('dismissing the menu and leaving the activity are different', () => {
     test('Stop activity stops it', async () => {
         const h = await running();
         button().click();
-        optionNamed('Stop activity').click();
+        optionNamed('Stop').click();
         expect(h.activities.focus.stopped).toEqual(['user']);
         expect(h.panel.activeActivity).toBeNull();
     });
@@ -429,14 +611,14 @@ describe('dismissing the menu and leaving the activity are different', () => {
         optionNamed('Share a tab').click();
         await flush();
         button().click();
-        optionNamed('Stop activity').click();
+        optionNamed('Stop').click();
         expect(h.panel.stats.sharing).toBe(false);
     });
 
     test('Change activity returns to the chooser with nothing running', async () => {
         const h = await running();
         button().click();
-        optionNamed('Change activity').click();
+        optionNamed('Change').click();
         expect(h.activities.focus.stopped).toEqual(['changed']);
         expect(overlay().textContent).toContain('What should we do?');
     });
@@ -446,7 +628,7 @@ describe('dismissing the menu and leaving the activity are different', () => {
         h.launcher.close();
         button().click();
         expect(overlay().textContent).toContain('● FOCUS');
-        expect(overlay().textContent).toContain('Stop activity');
+        expect(overlay().textContent).toContain('Stop');
         expect(h.panel.stats.view).toBe('running');
     });
 
@@ -473,7 +655,6 @@ describe('the button says one of three things', () => {
         expect(button().getAttribute('aria-expanded')).toBe('true');
 
         tileNamed('Focus').click();
-        optionNamed('Start').click();
         await flush();
         expect(button().dataset.state).toBe('running');
         expect(h.panel.activeActivity).toBe('focus');
@@ -486,7 +667,6 @@ describe('the button says one of three things', () => {
         const h = harness();
         button().click();
         tileNamed('Focus').click();
-        optionNamed('Start').click();
         await flush();
         expect(button().getAttribute('aria-label')).toBe('Together — Focus running');
         // The tooltip a sighted user gets says the same thing, rather than going stale.
@@ -498,7 +678,6 @@ describe('the button says one of three things', () => {
         const h = harness();
         button().click();
         tileNamed('Focus').click();
-        optionNamed('Start').click();
         await flush();
         await h.panel.stopActivity();
         expect(button().dataset.state).not.toBe('running');
@@ -508,21 +687,34 @@ describe('the button says one of three things', () => {
     test('it is not a feature toggle — the running button reopens the panel', async () => {
         const h = harness();
         button().click();
-        tileNamed('Music').click();
+        tileNamed('Focus').click();
         await flush();
-        expect(h.activities.music.started).toHaveLength(1);
+        expect(h.activities.focus.started).toHaveLength(1);
         h.launcher.close();
         button().click();
         expect(h.panel.isOpen).toBe(true);
-        expect(h.activities.music.stopped).toEqual([]);
+        expect(h.activities.focus.stopped).toEqual([]);
     });
 
-    test('Music starts straight away, because it needs no setup', async () => {
+    test('Focus starts straight away, because it asks nothing at all', async () => {
+        // B36 replaced B30's `direct` flag with a rule: an activity whose single input has
+        // no permission, no picker and nothing to type has no question to ask. Music used to
+        // be the direct one and now has a source to choose, which is what made it work.
+        const h = harness();
+        button().click();
+        tileNamed('Focus').click();
+        await flush();
+        expect(h.panel.activeActivity).toBe('focus');
+    });
+
+    test('Music asks what to listen to instead of starting deaf', async () => {
+        // B14 shipped a tile that set `running = true` against an analyser nothing supplied.
         const h = harness();
         button().click();
         tileNamed('Music').click();
         await flush();
-        expect(h.panel.activeActivity).toBe('music');
+        expect(h.panel.activeActivity).toBeNull();
+        expect(overlay().textContent).toContain('What are we listening to?');
     });
 });
 
@@ -590,7 +782,8 @@ describe('mobile is the same panel, by media query', () => {
     test('the pill is reachable and labelled for a screen reader', () => {
         harness();
         expect(button().getAttribute('aria-label')).toBeTruthy();
-        expect(button().getAttribute('aria-haspopup')).toBe('menu');
+        // B36: `dialog`, matching what it actually opens. See the a11y block above.
+        expect(button().getAttribute('aria-haspopup')).toBe('dialog');
         expect(TogetherLauncher.CSS).toContain(':focus-visible');
     });
 });
@@ -626,7 +819,6 @@ describe('it behaves like a menu for somebody not using a mouse', () => {
         const h = harness();
         button().click();
         tileNamed('Focus').click();
-        optionNamed('Start').click();
         await flush();
         h.launcher.open();
         press('Escape');
@@ -676,14 +868,35 @@ describe('it behaves like a menu for somebody not using a mouse', () => {
         expect(document.activeElement).toBe(focusable[focusable.length - 1]);
     });
 
-    test('the overlay is announced as a dialog, and is not modal', () => {
-        // Not `aria-modal`: it is dismissible and the page behind stays live — an activity
-        // keeps running while the chooser is shut.
+    test('the overlay is announced as the modal dialog it behaves like', () => {
+        // B36. B34 gave this focus containment, Escape-to-close and focus movement into the
+        // panel — modal-dialog keyboard behaviour — while leaving `aria-modal` off, so
+        // assistive tech was told one thing and shown another. One model, not two.
+        //
+        // Modality is about the *menu*. Closing it still does not stop the activity, which
+        // the test below this one asserts.
         const h = harness();
         h.launcher.open();
         expect(overlay().getAttribute('role')).toBe('dialog');
         expect(overlay().getAttribute('aria-label')).toBe('Together');
-        expect(overlay().getAttribute('aria-modal')).toBeNull();
+        expect(overlay().getAttribute('aria-modal')).toBe('true');
+    });
+
+    test('the button names the kind of thing it opens', () => {
+        // `aria-haspopup="menu"` on a control that opens a `role="dialog"` names a pattern
+        // the panel is not. The APG expects the popup type to be what actually opens.
+        harness();
+        expect(button().getAttribute('aria-haspopup')).toBe('dialog');
+        expect(button().getAttribute('aria-controls')).toBe(TogetherPanel.PANEL_ID);
+    });
+
+    test('the button is easy to hit on a phone', () => {
+        // 38px visual, 44px target. Apple asks for 44pt, Android for 48dp; the icon stays
+        // the size it was and the hit area grows around it.
+        harness();
+        const target = Number.parseInt(button().style.minWidth || '0', 10);
+        expect(target).toBeGreaterThanOrEqual(44);
+        expect(Number.parseInt(button().style.minHeight || '0', 10)).toBeGreaterThanOrEqual(44);
     });
 
     test('document listeners exist only while it is open', () => {

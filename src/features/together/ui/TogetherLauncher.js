@@ -49,6 +49,8 @@ const TogetherLauncher = (() => {
     'use strict';
 
     const BUTTON_ID = 'nexus-bd-together-launcher';
+    /** The panel this button controls. Matches `TogetherPanel.PANEL_ID`; a test pins them. */
+    const PANEL_ID = 'nexus-bd-together-panel';
     const DRAWER_ID = 'nexus-bd-together-drawer-item';
     const STYLE_ID = 'nexus-bd-together-style';
     const OVERLAY_HOST = '.avatar-card';
@@ -122,7 +124,9 @@ const TogetherLauncher = (() => {
 #${BUTTON_ID} {
   position: relative;
   display: inline-flex; align-items: center; justify-content: center;
+  /* 38px of paint, 44px of target — see the inline min-width/min-height above. */
   width: 38px; height: 38px; padding: 0;
+  min-width: 44px; min-height: 44px;
   border-radius: var(--border-radius-sm, 8px); cursor: pointer;
   color: var(--accent-cyan, #22d3ee);
   background: rgba(0, 0, 0, .3);
@@ -276,8 +280,17 @@ const TogetherLauncher = (() => {
             b.type = 'button';
             b.title = buttonName(null);
             b.setAttribute('aria-label', b.title);
-            b.setAttribute('aria-haspopup', 'menu');
+            // B36. `menu` named a pattern the panel is not: it opens a `role="dialog"` with
+            // focus containment and Escape-to-close, and the APG expects the popup type to
+            // be what actually opens.
+            b.setAttribute('aria-haspopup', 'dialog');
+            b.setAttribute('aria-controls', PANEL_ID);
             b.setAttribute('aria-expanded', 'false');
+            // 38px of visible button inside a 44px target. The icon stays the size that
+            // makes it disappear into the toolbar row; only the hit area grows, which is
+            // what Apple's 44pt and Android's 48dp guidance are actually about.
+            b.style.minWidth = '44px';
+            b.style.minHeight = '44px';
             b.addEventListener('click', () => this.toggle());
             b.appendChild(groupIcon(this.doc, 22));
 

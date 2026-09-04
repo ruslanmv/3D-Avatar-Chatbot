@@ -1010,6 +1010,25 @@ belongs on the QA checklist alongside B19's and B27's.
 
 ---
 
+### Wave 10 — Together UX integration `(B36)`
+
+The audit that opened this wave put it plainly: *the UI and the activities do not currently
+share one consistent execution contract*. Everything below follows from that.
+
+| # | Batch | Scope | Acceptance | Status |
+|---|-------|-------|------------|--------|
+| **B36** | One activity contract | `activities/contract.js` — a normalised surface (`inputs`, `availability`, `start({input, grant, pipeline})`, `stop`, `status`) reached through **adapters**, so no activity file is edited. `ui/failures.js` turns each refusal into copy with recovery actions. `activities/audioSource.js` gives Music something to listen to. `TogetherPanel` gets one permission owner, guaranteed grant cleanup, a four-tile first screen with **More together**, activity-specific running status, a failure view, and coherent modal semantics. `boot.js` registers Meeting and equips Music | 67 new tests (31 contract + 36 journeys), 35 mutations each fail, 2298 in the suite. **Four tiles could not complete the journey their button promised**: `watch` has no `start()` (it has `playFile`/`shareTab`), `journey` has `enter`/`exit`, `copilot` refused without a checklist the panel never passed, and `meeting` was loaded since MS19 and **never registered**. **The P0**: `ConsentMachine.request()` revokes a live grant before asking again, and the panel requested one and then called activities that request their own — two owners, one machine, the user prompted twice and the first grant destroyed. Worse, a panel-opened grant survived an activity's refusal, so the camera stayed on with nothing running. **Now**: `permission` is `null`, `'self'` or a source; the panel asks only for the last, and revokes only what it opened. **Honest availability** — Music with no audio source and Play with no moment detector are hidden rather than started deaf; `cohost`'s reaction engine is real and its detector is not, and the tile says so. **Order preserved**: a tile press never opens a permission dialog, `'self'` included | ✅ |
+
+**Owed:** `cohost` still has no moment detector, so Play is hidden. That is the honest state
+rather than a regression — the reactions, the tier table and the overlay are all built and
+tested; nothing feeds them. A detector is its own batch.
+
+Also owed: QA rows K3 and K3b are now covered by `together-journeys.test.js` for every tile
+in jsdom, which is not the same as a person on a phone. They stay unsigned until somebody
+runs them on hardware.
+
+---
+
 ## 4. Dependency graph and parallel lanes
 
 ```

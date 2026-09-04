@@ -61,12 +61,19 @@
         'src/features/together/capture/ConsentMachine.js',
         'src/features/together/capture/CapturePipeline.js',
         'src/features/together/ui/ConsentIndicator.js',
+        // B36. The one activity contract and its failure copy, both read by the panel when
+        // it is constructed, so they load before it.
+        'src/features/together/activities/contract.js',
+        'src/features/together/ui/failures.js',
         'src/features/together/ui/TogetherPanel.js',
         // B30. The way in. Loaded here rather than from index.html, so the feature adds no
         // script tag and the flag-off DOM is unchanged.
         'src/features/together/ui/TogetherLauncher.js',
         'src/features/together/activities/watch.js',
         'src/features/together/activities/music.js',
+        // B36. What Music listens to. B14 shipped a beat detector reading an analyser
+        // nothing supplied, so the tile started and could not hear anything.
+        'src/features/together/activities/audioSource.js',
         'src/features/together/activities/scene-journey.js',
         'src/features/together/activities/screen-insight.js',
         // B26 holds the B15 activity above rather than describing its round trip again.
@@ -477,6 +484,12 @@
                 // arrives with a track, not with the engine.
                 if (global.NEXUS_BD_MUSIC) {
                     director.music = global.NEXUS_BD_MUSIC.attach({ bus, blackboard, scheduler, config });
+                    // B36. Two methods added to the activity, so the contract's availability
+                    // check passes and the tile can actually complete. `music.js` is left
+                    // byte-identical — it has a test that reads its own source.
+                    if (global.NEXUS_BD_AUDIO_SOURCE) {
+                        global.NEXUS_BD_AUDIO_SOURCE.equip(director.music);
+                    }
                     director.togetherPanel.register(director.music);
                     director.adapters.push(director.music);
                 }
@@ -576,6 +589,23 @@
                     });
                     director.togetherPanel.register(director.cohost);
                     director.adapters.push(director.cohost);
+                }
+
+                // Meeting (MS19). Loaded since MS19 and never registered — the module was in
+                // the list, the class was constructed nowhere, and the tile the panel drew
+                // for it could not exist. B36 registers it and gives it the conversation id
+                // it has always required, which is what `availability()` checks before any
+                // permission dialog opens.
+                if (global.NEXUS_BD_MEETING) {
+                    director.meeting = global.NEXUS_BD_MEETING.attach({
+                        bus,
+                        blackboard,
+                        consent: director.consent,
+                        session: director.session,
+                        config: config.meeting || {},
+                    });
+                    director.togetherPanel.register(director.meeting);
+                    director.adapters.push(director.meeting);
                 }
 
                 // Clips (B24, B25). Attached, not started: the ring buffer begins when an
