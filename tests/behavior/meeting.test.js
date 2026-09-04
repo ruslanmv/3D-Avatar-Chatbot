@@ -34,15 +34,27 @@ const CONFIG = JSON.parse(fs.readFileSync(path.join(ROOT, 'config', 'behavior.co
 const codeOf = (text) => text.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/.*$/gm, '$1');
 
 function track(kind = 'video') {
-    return { kind, stopped: false, stop() { this.stopped = true; }, addEventListener() {}, removeEventListener() {} };
+    return {
+        kind,
+        stopped: false,
+        stop() {
+            this.stopped = true;
+        },
+        addEventListener() {},
+        removeEventListener() {},
+    };
 }
 
 function fakeMedia({ grantDisplay = true, grantUser = true, displayAudio = false } = {}) {
     const calls = [];
     const make = (kind, tracks) => {
         calls.push({ kind });
-        return { kind, getTracks: () => tracks, getAudioTracks: () => tracks.filter((t) => t.kind === 'audio'),
-                 getVideoTracks: () => tracks.filter((t) => t.kind === 'video') };
+        return {
+            kind,
+            getTracks: () => tracks,
+            getAudioTracks: () => tracks.filter((t) => t.kind === 'audio'),
+            getVideoTracks: () => tracks.filter((t) => t.kind === 'video'),
+        };
     };
     const deny = (kind) => {
         calls.push({ kind });
@@ -79,8 +91,9 @@ function fakeRecorder({ ok = true } = {}) {
         muted: null,
         async startWithStreams(streams, options) {
             this.started.push({ streams, options });
-            return ok ? { ok: true, meetingId: 'meet-1', audioMode: 'system+mic' }
-                      : { ok: false, error: 'no audio source was granted' };
+            return ok
+                ? { ok: true, meetingId: 'meet-1', audioMode: 'system+mic' }
+                : { ok: false, error: 'no audio source was granted' };
         },
         async stop() {
             this.stopped++;
@@ -111,9 +124,7 @@ describe('the activity has no way to start capture itself', () => {
         // The same structural check `capture.test.js` runs over the engine, spelled out for
         // this file: a recorder that opened its own screen share from inside the launcher
         // would be a second consent story for the same screen.
-        const source = codeOf(
-            fs.readFileSync(path.join(ROOT, 'src/features/together/activities/meeting.js'), 'utf8'),
-        );
+        const source = codeOf(fs.readFileSync(path.join(ROOT, 'src/features/together/activities/meeting.js'), 'utf8'));
         for (const forbidden of ['navigator', 'mediaDevices', 'getDisplayMedia', 'getUserMedia', 'canvas']) {
             expect(`${forbidden}: ${source.includes(forbidden)}`).toBe(`${forbidden}: false`);
         }

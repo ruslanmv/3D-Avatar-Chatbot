@@ -38,15 +38,7 @@ const MeetingActivity = (() => {
     'use strict';
 
     class Meeting {
-        constructor({
-            bus,
-            blackboard,
-            consent,
-            recorder,
-            session,
-            config = {},
-            now = () => Date.now(),
-        } = {}) {
+        constructor({ bus, blackboard, consent, recorder, session, config = {}, now = () => Date.now() } = {}) {
             this.id = 'meeting';
             this.label = 'Record this meeting';
 
@@ -56,9 +48,7 @@ const MeetingActivity = (() => {
             // `undefined` means "find it yourself"; an explicit `null` means "there is none",
             // which `start()` refuses. The same idiom the other activities use.
             this.recorder =
-                recorder === undefined
-                    ? (typeof window !== 'undefined' && window.hpMeetingSense) || null
-                    : recorder;
+                recorder === undefined ? (typeof window !== 'undefined' && window.hpMeetingSense) || null : recorder;
             this.session = session || null;
             this.config = config;
             this.now = now;
@@ -101,7 +91,7 @@ const MeetingActivity = (() => {
             try {
                 result = await this.recorder.startWithStreams(
                     { screen, mic },
-                    { ...options, source: options.source || 'together' },
+                    { ...options, source: options.source || 'together' }
                 );
             } catch (error) {
                 this.stops.failed++;

@@ -78,7 +78,11 @@ const AudioSource = (() => {
             source.connect(analyser);
             analyser.connect(context.destination);
         } catch (error) {
-            try { context.close(); } catch (_) { /* already gone */ }
+            try {
+                context.close();
+            } catch (_) {
+                /* already gone */
+            }
             return { ok: false, why: String((error && error.message) || error) };
         }
 
@@ -97,14 +101,31 @@ const AudioSource = (() => {
             element,
             started,
             stop() {
-                try { element.pause(); } catch (_) { /* nothing playing */ }
-                try { element.removeAttribute('src'); element.load(); } catch (_) { /* fine */ }
+                try {
+                    element.pause();
+                } catch (_) {
+                    /* nothing playing */
+                }
+                try {
+                    element.removeAttribute('src');
+                    element.load();
+                } catch (_) {
+                    /* fine */
+                }
                 // The object URL is ours; leaving it alive holds the whole file in memory
                 // for the life of the tab.
                 if (typeof URL !== 'undefined' && URL.revokeObjectURL && /^blob:/.test(url)) {
-                    try { URL.revokeObjectURL(url); } catch (_) { /* already revoked */ }
+                    try {
+                        URL.revokeObjectURL(url);
+                    } catch (_) {
+                        /* already revoked */
+                    }
                 }
-                try { context.close(); } catch (_) { /* already closed */ }
+                try {
+                    context.close();
+                } catch (_) {
+                    /* already closed */
+                }
                 return true;
             },
         };

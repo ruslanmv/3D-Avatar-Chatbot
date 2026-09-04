@@ -39,10 +39,12 @@ const TogetherPanel = (() => {
      * other. Absent, the panel falls back to B30's behaviour rather than breaking — an
      * install missing a file should lose the fix, not the launcher.
      */
-    const Contract = (typeof require === 'function' ? tryRequire('../activities/contract.js') : null)
-        || (typeof window !== 'undefined' ? window.NEXUS_BD_ACTIVITY_CONTRACT : null);
-    const Failures = (typeof require === 'function' ? tryRequire('./failures.js') : null)
-        || (typeof window !== 'undefined' ? window.NEXUS_BD_TOGETHER_FAILURES : null);
+    const Contract =
+        (typeof require === 'function' ? tryRequire('../activities/contract.js') : null) ||
+        (typeof window !== 'undefined' ? window.NEXUS_BD_ACTIVITY_CONTRACT : null);
+    const Failures =
+        (typeof require === 'function' ? tryRequire('./failures.js') : null) ||
+        (typeof window !== 'undefined' ? window.NEXUS_BD_TOGETHER_FAILURES : null);
 
     function tryRequire(path) {
         try {
@@ -248,7 +250,11 @@ const TogetherPanel = (() => {
             const opener = this.opener;
             this.opener = null;
             if (opener && typeof opener.focus === 'function') {
-                try { opener.focus(); } catch (error) { /* detached from the document */ }
+                try {
+                    opener.focus();
+                } catch (error) {
+                    /* detached from the document */
+                }
             }
             return true;
         }
@@ -333,7 +339,7 @@ const TogetherPanel = (() => {
                 return this._startLegacy(id, legacy, option);
             }
 
-            const input = option || (activity.inputs()[0] || { id: 'start', permission: null });
+            const input = option || activity.inputs()[0] || { id: 'start', permission: null };
             this.lastAttempt = { id, input };
 
             // Availability first, before any dialog. Telling somebody a meeting needs a
@@ -358,7 +364,9 @@ const TogetherPanel = (() => {
                 if (!opened) {
                     return this._fail(
                         activity,
-                        Failures ? Failures.declined(activity.title) : { ok: false, why: this.consent.reason || 'declined' },
+                        Failures
+                            ? Failures.declined(activity.title)
+                            : { ok: false, why: this.consent.reason || 'declined' },
                         { declined: true }
                     );
                 }
@@ -436,8 +444,15 @@ const TogetherPanel = (() => {
         _fail(activity, result, { declined = false } = {}) {
             const name = (activity && activity.title) || 'This activity';
             this.failure = Failures
-                ? (declined ? Failures.declined(name) : Failures.describe(result, { name }))
-                : { id: 'raw', title: `${name} could not start`, body: String((result && result.why) || ''), actions: [] };
+                ? declined
+                    ? Failures.declined(name)
+                    : Failures.describe(result, { name })
+                : {
+                      id: 'raw',
+                      title: `${name} could not start`,
+                      body: String((result && result.why) || ''),
+                      actions: [],
+                  };
             this.view = 'failure';
             // A failure nobody can see is the bug this replaces. Whatever the panel's state,
             // a start that did not work puts the reason on screen.
@@ -626,9 +641,14 @@ const TogetherPanel = (() => {
             // B36. Ordered by user value, not by batch number, and four at a time. Eight
             // equal boxes is a product catalogue; these four are what somebody opens the
             // launcher to do, and the rest are one press away.
-            const all = Contract ? this.choices() : choosable(this.activities).map((a) => ({
-                id: a.id, ...metaFor(a), primary: true, title: metaFor(a).title || a.id,
-            }));
+            const all = Contract
+                ? this.choices()
+                : choosable(this.activities).map((a) => ({
+                      id: a.id,
+                      ...metaFor(a),
+                      primary: true,
+                      title: metaFor(a).title || a.id,
+                  }));
             const primary = all.filter((a) => a.primary);
             const rest = all.filter((a) => !a.primary);
             const shown = this.showAll || !primary.length ? all : primary;
@@ -683,7 +703,7 @@ const TogetherPanel = (() => {
             prompt.textContent = meta.prompt || 'Ready when you are.';
             this.root.appendChild(prompt);
 
-            const inputs = contract ? contract.inputs() : (metaFor(activity).options || [{ label: 'Start' }]);
+            const inputs = contract ? contract.inputs() : metaFor(activity).options || [{ label: 'Start' }];
 
             // A step that wants free text gets a box for it. Copilot's checklist is the only
             // one today, and requiring one was what made the camera's broadest use
@@ -750,8 +770,7 @@ const TogetherPanel = (() => {
             if (own) {
                 status.textContent = own.detail ? `${own.label} · ${own.detail}` : own.label;
             } else {
-                status.textContent =
-                    this.state.state === 'active' ? this.state.label || 'Sharing.' : 'Running.';
+                status.textContent = this.state.state === 'active' ? this.state.label || 'Sharing.' : 'Running.';
             }
             this.root.appendChild(status);
 
@@ -829,13 +848,19 @@ const TogetherPanel = (() => {
         _openSettings() {
             const open = this.config && this.config.onOpenSettings;
             if (typeof open === 'function') {
-                try { open(); } catch (error) { console.warn('[BD] settings did not open', error); }
+                try {
+                    open();
+                } catch (error) {
+                    console.warn('[BD] settings did not open', error);
+                }
                 return;
             }
             if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
                 try {
                     window.dispatchEvent(new CustomEvent('nexus:open-settings'));
-                } catch (error) { /* a shell with no settings is not a failure */ }
+                } catch (error) {
+                    /* a shell with no settings is not a failure */
+                }
             }
         }
 

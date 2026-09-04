@@ -114,7 +114,10 @@ const ActivityContract = (() => {
      */
     const ADAPTERS = {
         focus: {
-            title: 'Focus', icon: '🎯', order: 10, primary: true,
+            title: 'Focus',
+            icon: '🎯',
+            order: 10,
+            primary: true,
             prompt: '25 minutes of focus, then a 5 minute break. Nothing is shared.',
             inputs: () => [{ id: 'start', label: 'Start focus', permission: null }],
             start: (a) => a.start(),
@@ -130,33 +133,46 @@ const ActivityContract = (() => {
         },
 
         watch: {
-            title: 'Watch', icon: '📺', order: 20, primary: true,
+            title: 'Watch',
+            icon: '📺',
+            order: 20,
+            primary: true,
             prompt: 'What are we watching?',
             inputs: () => [
                 // `'self'`: `shareTab()` requests the screen itself and holds the grant for
                 // the whole session. The panel asking first would have it revoked underneath.
-                { id: 'tab', label: 'Share a tab', permission: 'self',
-                  note: 'Your screen stops sharing when you leave Watch.' },
+                {
+                    id: 'tab',
+                    label: 'Share a tab',
+                    permission: 'self',
+                    note: 'Your screen stops sharing when you leave Watch.',
+                },
                 { id: 'file', label: 'Open a video file', permission: null, pick: pickFile('video/*') },
             ],
-            start: (a, { input }) =>
-                input.id === 'file'
-                    ? a.playFile(input.url)
-                    : a.shareTab(),
+            start: (a, { input }) => (input.id === 'file' ? a.playFile(input.url) : a.shareTab()),
             stop: (a, why) => a.stop(why),
             status: (a) => ({ label: 'Watching together', detail: a.sourceLabel || '' }),
         },
 
         copilot: {
-            title: 'Help me with this', icon: '👀', order: 30, primary: true, wide: true,
+            title: 'Help me with this',
+            icon: '👀',
+            order: 30,
+            primary: true,
+            wide: true,
             prompt: 'Point your camera at what you are working on.',
             inputs: () => [
                 // The freeform case first, and with no checklist. B26 refuses to start
                 // without steps, which turned the broadest, most valuable use of the camera —
                 // "look at this and tell me what you think" — into the one it could not do.
                 { id: 'look', label: 'Just look and help', permission: 'self' },
-                { id: 'steps', label: 'Follow a checklist…', permission: 'self', wantsText: true,
-                  placeholder: 'Paste the steps, one per line' },
+                {
+                    id: 'steps',
+                    label: 'Follow a checklist…',
+                    permission: 'self',
+                    wantsText: true,
+                    placeholder: 'Paste the steps, one per line',
+                },
             ],
             start: (a, { input }) => a.start(input.steps && input.steps.length ? input.steps : [FREEFORM_STEP]),
             stop: (a, why) => a.stop(why),
@@ -170,11 +186,18 @@ const ActivityContract = (() => {
         },
 
         coach: {
-            title: 'Coach', icon: '🏋', order: 40, primary: true,
+            title: 'Coach',
+            icon: '🏋',
+            order: 40,
+            primary: true,
             prompt: 'What are we doing? I need the camera to count your movement — nothing is stored.',
-            inputs: (a) => exercisesOf(a).map((id) => ({
-                id, label: titleCase(id), permission: 'self', arg: id,
-            })),
+            inputs: (a) =>
+                exercisesOf(a).map((id) => ({
+                    id,
+                    label: titleCase(id),
+                    permission: 'self',
+                    arg: id,
+                })),
             start: (a, { input }) => a.start(input.arg || input.id),
             stop: (a, why) => a.stop(why),
             status: (a) => ({
@@ -184,7 +207,9 @@ const ActivityContract = (() => {
         },
 
         meeting: {
-            title: 'Meeting', icon: '🎙', order: 50,
+            title: 'Meeting',
+            icon: '🎙',
+            order: 50,
             prompt: 'I will ask for your screen and your microphone, and show a recording badge the whole time.',
             inputs: () => [{ id: 'record', label: 'Start recording', permission: 'self' }],
             // `meeting.start()` takes an options object and asks for the compound grant
@@ -205,11 +230,17 @@ const ActivityContract = (() => {
         },
 
         journey: {
-            title: 'Journey', icon: '🌊', order: 60,
+            title: 'Journey',
+            icon: '🌊',
+            order: 60,
             prompt: 'Where should we go?',
-            inputs: (a) => scenesOf(a).map((scene) => ({
-                id: scene.id, label: `${scene.icon || ''} ${scene.title}`.trim(), permission: null, arg: scene.id,
-            })),
+            inputs: (a) =>
+                scenesOf(a).map((scene) => ({
+                    id: scene.id,
+                    label: `${scene.icon || ''} ${scene.title}`.trim(),
+                    permission: null,
+                    arg: scene.id,
+                })),
             // `enter`/`exit`, not `start`/`stop`. The whole of the Journey bug.
             start: (a, { input }) => a.enter(input.arg || input.id),
             stop: (a, why) => a.exit(why),
@@ -217,11 +248,11 @@ const ActivityContract = (() => {
         },
 
         music: {
-            title: 'Music', icon: '🎧', order: 70,
+            title: 'Music',
+            icon: '🎧',
+            order: 70,
             prompt: 'What are we listening to?',
-            inputs: () => [
-                { id: 'file', label: 'Open an audio file', permission: null, pick: pickFile('audio/*') },
-            ],
+            inputs: () => [{ id: 'file', label: 'Open an audio file', permission: null, pick: pickFile('audio/*') }],
             // B14's `Music.start()` sets a flag; the beat detector reads an `analyser` that
             // was never given a source, so the tile started something that could not hear
             // anything. `attachSource` is this batch's addition — see `audioSource.js`.
@@ -245,7 +276,9 @@ const ActivityContract = (() => {
         },
 
         cohost: {
-            title: 'Play', icon: '🎮', order: 80,
+            title: 'Play',
+            icon: '🎮',
+            order: 80,
             prompt: 'Share your game so I can react with you.',
             inputs: () => [{ id: 'screen', label: 'Share game', permission: 'screen' }],
             /**
@@ -290,14 +323,17 @@ const ActivityContract = (() => {
      * the word, and "Push up" is a different phrase from "Push-up".
      */
     function titleCase(value) {
-        const text = String(value || '').replace(/_+/g, ' ').trim();
+        const text = String(value || '')
+            .replace(/_+/g, ' ')
+            .trim();
         return text ? text[0].toUpperCase() + text.slice(1) : '';
     }
 
     /** The exercises Coach will actually accept, from Coach rather than from a guess here. */
     function exercisesOf(activity) {
         const listed = activity && (activity.exercises || activity.EXERCISES || activity.supported);
-        if (Array.isArray(listed) && listed.length) return listed.map((e) => (typeof e === 'string' ? e : e && e.id)).filter(Boolean);
+        if (Array.isArray(listed) && listed.length)
+            return listed.map((e) => (typeof e === 'string' ? e : e && e.id)).filter(Boolean);
         if (listed && typeof listed === 'object') return Object.keys(listed);
         // B27 refuses an unsupported exercise by name, so a wrong guess here is a refusal
         // the user can read rather than a silent failure. Squat is the one B27 ships.
@@ -310,7 +346,9 @@ const ActivityContract = (() => {
         if (scenes instanceof Map) return [...scenes.values()].map(normaliseScene).filter(Boolean);
         if (Array.isArray(scenes)) return scenes.map(normaliseScene).filter(Boolean);
         if (scenes && typeof scenes === 'object') {
-            return Object.entries(scenes).map(([id, s]) => normaliseScene({ id, ...(s || {}) })).filter(Boolean);
+            return Object.entries(scenes)
+                .map(([id, s]) => normaliseScene({ id, ...(s || {}) }))
+                .filter(Boolean);
         }
         return [];
     }
@@ -396,7 +434,15 @@ const ActivityContract = (() => {
     }
 
     return {
-        adapt, ADAPTERS, OK, clock, titleCase, exercisesOf, scenesOf, pickFile, FREEFORM_STEP,
+        adapt,
+        ADAPTERS,
+        OK,
+        clock,
+        titleCase,
+        exercisesOf,
+        scenesOf,
+        pickFile,
+        FREEFORM_STEP,
     };
 })();
 

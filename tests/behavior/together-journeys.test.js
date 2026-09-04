@@ -57,7 +57,10 @@ function consentMachine() {
             handler({ state: 'idle', reason: why });
             return true;
         },
-        onChange(fn) { handler = fn; return () => {}; },
+        onChange(fn) {
+            handler = fn;
+            return () => {};
+        },
     };
 }
 
@@ -77,7 +80,10 @@ function panelWith(build, { config = {}, context = {} } = {}) {
     document.body.innerHTML = '<div id="host"></div>';
     const consent = consentMachine();
     const panel = TogetherPanel.attach({
-        consent, capture: capture(), config: { ...config, context }, doc: document,
+        consent,
+        capture: capture(),
+        config: { ...config, context },
+        doc: document,
     });
     panel.mount(document.getElementById('host'));
     const activities = typeof build === 'function' ? build(consent) : build;
@@ -98,7 +104,12 @@ function make(id, { consent = null, fail = null } = {}) {
         return { ok: true };
     };
     const surfaces = {
-        focus: { start: () => ok('focus'), stop: (w) => record.stopped.push(w), phase: 'focus', remainingMs: () => 1_458_000 },
+        focus: {
+            start: () => ok('focus'),
+            stop: (w) => record.stopped.push(w),
+            phase: 'focus',
+            remainingMs: () => 1_458_000,
+        },
         watch: {
             sourceLabel: 'YouTube tab',
             playFile: (url) => ok({ file: url }),
@@ -107,7 +118,8 @@ function make(id, { consent = null, fail = null } = {}) {
         },
         copilot: {
             steps: [],
-            start: async (steps) => ((await ask('camera')) ? ok(steps) : { ok: false, why: 'camera consent was declined' }),
+            start: async (steps) =>
+                (await ask('camera')) ? ok(steps) : { ok: false, why: 'camera consent was declined' },
             stop: (w) => record.stopped.push(w),
         },
         coach: {
@@ -117,11 +129,20 @@ function make(id, { consent = null, fail = null } = {}) {
         },
         journey: {
             scenes: new Map([['ocean', { id: 'ocean', title: 'Ocean', icon: '🌊' }]]),
-            enter: (sceneId) => { record.started.push(sceneId); return true; },
-            exit: (w) => { record.stopped.push(w); return true; },
+            enter: (sceneId) => {
+                record.started.push(sceneId);
+                return true;
+            },
+            exit: (w) => {
+                record.stopped.push(w);
+                return true;
+            },
         },
         music: {
-            attachSource: (url, { name } = {}) => { record.started.push({ audio: url, name }); return { ok: true }; },
+            attachSource: (url, { name } = {}) => {
+                record.started.push({ audio: url, name });
+                return { ok: true };
+            },
             detachSource: () => true,
             start: () => record.started.push('music'),
             stop: (w) => record.stopped.push(w),
@@ -148,7 +169,11 @@ const flush = () => new Promise((r) => setTimeout(r, 0));
 
 describe('each tile completes the journey its button promises', () => {
     test('Focus: one press, no permission, and Stop puts it back', async () => {
-        const { panel, consent, activities: [focus] } = panelWith((c) => [make('focus', { consent: c })]);
+        const {
+            panel,
+            consent,
+            activities: [focus],
+        } = panelWith((c) => [make('focus', { consent: c })]);
         panel.open();
         panel.choose('focus');
         await flush();
@@ -160,7 +185,11 @@ describe('each tile completes the journey its button promises', () => {
     });
 
     test('Watch: a tab is asked for exactly once, by exactly one owner', async () => {
-        const { panel, consent, activities: [watch] } = panelWith((c) => [make('watch', { consent: c })]);
+        const {
+            panel,
+            consent,
+            activities: [watch],
+        } = panelWith((c) => [make('watch', { consent: c })]);
         panel.open();
         panel.choose('watch');
         await panel.startActivity('watch', panel.contractFor('watch').inputs()[0]);
@@ -173,8 +202,15 @@ describe('each tile completes the journey its button promises', () => {
     });
 
     test('Watch: a local file asks for nothing at all', async () => {
-        const { panel, consent, activities: [watch] } = panelWith((c) => [make('watch', { consent: c })]);
-        const file = panel.contractFor('watch').inputs().find((i) => i.id === 'file');
+        const {
+            panel,
+            consent,
+            activities: [watch],
+        } = panelWith((c) => [make('watch', { consent: c })]);
+        const file = panel
+            .contractFor('watch')
+            .inputs()
+            .find((i) => i.id === 'file');
         // The picker is the browser's, so the test supplies what it would have returned.
         await panel.startActivity('watch', { ...file, pick: null, url: 'blob:movie' });
         expect(consent.asked).toEqual([]);
@@ -182,7 +218,11 @@ describe('each tile completes the journey its button promises', () => {
     });
 
     test('Journey: start and stop reach enter and exit', async () => {
-        const { panel, consent, activities: [journey] } = panelWith((c) => [make('journey', { consent: c })]);
+        const {
+            panel,
+            consent,
+            activities: [journey],
+        } = panelWith((c) => [make('journey', { consent: c })]);
         const ocean = panel.contractFor('journey').inputs()[0];
         await panel.startActivity('journey', ocean);
         expect(journey.started).toEqual(['ocean']);
@@ -192,8 +232,14 @@ describe('each tile completes the journey its button promises', () => {
     });
 
     test('Help me: "just look and help" starts with no checklist to write first', async () => {
-        const { panel, activities: [copilot] } = panelWith((c) => [make('copilot', { consent: c })]);
-        const look = panel.contractFor('copilot').inputs().find((i) => i.id === 'look');
+        const {
+            panel,
+            activities: [copilot],
+        } = panelWith((c) => [make('copilot', { consent: c })]);
+        const look = panel
+            .contractFor('copilot')
+            .inputs()
+            .find((i) => i.id === 'look');
         await panel.startActivity('copilot', look);
         expect(panel.activeActivity).toBe('copilot');
         expect(copilot.started[0].length).toBeGreaterThan(0);
@@ -201,7 +247,11 @@ describe('each tile completes the journey its button promises', () => {
     });
 
     test('Coach: the exercise comes from Coach, and the camera is asked for once', async () => {
-        const { panel, consent, activities: [coach] } = panelWith((c) => [make('coach', { consent: c })]);
+        const {
+            panel,
+            consent,
+            activities: [coach],
+        } = panelWith((c) => [make('coach', { consent: c })]);
         const inputs = panel.contractFor('coach').inputs();
         expect(inputs.map((i) => i.label)).toEqual(['Squat', 'Push-up']);
         await panel.startActivity('coach', inputs[1]);
@@ -211,14 +261,21 @@ describe('each tile completes the journey its button promises', () => {
 
     test('Meeting: registered, given a conversation, and recording', async () => {
         // MS19 loaded the module and registered nothing, so the tile could not exist.
-        const { panel, activities: [meeting] } = panelWith((c) => [make('meeting', { consent: c })], { context: { conversationId: 'conv-3' } });
+        const {
+            panel,
+            activities: [meeting],
+        } = panelWith((c) => [make('meeting', { consent: c })], { context: { conversationId: 'conv-3' } });
         expect(panel.contractFor('meeting').availability().ok).toBe(true);
         await panel.startActivity('meeting', panel.contractFor('meeting').inputs()[0]);
         expect(meeting.started).toEqual([{ conversationId: 'conv-3' }]);
     });
 
     test('Meeting: without a conversation it says so before any dialog opens', async () => {
-        const { panel, consent, activities: [meeting] } = panelWith((c) => [make('meeting', { consent: c })]);
+        const {
+            panel,
+            consent,
+            activities: [meeting],
+        } = panelWith((c) => [make('meeting', { consent: c })]);
         const result = await panel.startActivity('meeting', panel.contractFor('meeting').inputs()[0]);
         expect(result.ok).toBe(false);
         expect(consent.asked).toEqual([]);
@@ -227,7 +284,10 @@ describe('each tile completes the journey its button promises', () => {
     });
 
     test('Music: a track is chosen, attached, and detached on the way out', async () => {
-        const { panel, activities: [music] } = panelWith((c) => [make('music', { consent: c })]);
+        const {
+            panel,
+            activities: [music],
+        } = panelWith((c) => [make('music', { consent: c })]);
         const file = panel.contractFor('music').inputs()[0];
         await panel.startActivity('music', { ...file, pick: null, url: 'blob:song', name: 'Midnight City' });
         expect(music.started).toEqual([{ audio: 'blob:song', name: 'Midnight City' }, 'music']);
@@ -247,7 +307,9 @@ describe('a failed start never leaves a grant behind', () => {
         // The reachable case: the panel opened the screen, the activity refused, and the old
         // panel went back to the chooser with the capture still live. The consent badge said
         // "sharing your screen" and it was telling the truth.
-        const { panel, consent } = panelWith((c) => [make('cohost', { consent: c, fail: { ok: false, why: 'no play profile — refusing to start' } })]);
+        const { panel, consent } = panelWith((c) => [
+            make('cohost', { consent: c, fail: { ok: false, why: 'no play profile — refusing to start' } }),
+        ]);
         const result = await panel.startActivity('cohost', panel.contractFor('cohost').inputs()[0]);
         expect(result.ok).toBe(false);
         expect(consent.asked).toEqual(['screen']);
@@ -260,7 +322,11 @@ describe('a failed start never leaves a grant behind', () => {
     test('and does not revoke a grant the activity owns', async () => {
         // Watch holds its own screen grant across the session. Revoking here would tear down
         // a capture a still-running activity depends on.
-        const { panel, consent, activities: [watch] } = panelWith((c) => [make('watch', { consent: c })]);
+        const {
+            panel,
+            consent,
+            activities: [watch],
+        } = panelWith((c) => [make('watch', { consent: c })]);
         await panel.startActivity('watch', panel.contractFor('watch').inputs()[0]);
         expect(consent.revoked).toEqual([]);
         expect(consent.state).toBe('active');
@@ -271,12 +337,19 @@ describe('a failed start never leaves a grant behind', () => {
         // screen itself; if it then fails, the panel revoking "the" grant would tear down a
         // capture the panel never opened — and, on a partial failure, one the activity is
         // still using. Only what this call opened is this call's to revoke.
-        const { panel, consent, activities: [watch] } = panelWith((c) => [make('watch', { consent: c })]);
+        const {
+            panel,
+            consent,
+            activities: [watch],
+        } = panelWith((c) => [make('watch', { consent: c })]);
         watch.shareTab = async () => {
             await c(consent);
             return { ok: false, why: 'the tab went away' };
         };
-        async function c(machine) { watch.requests.push('screen'); return machine.request('screen'); }
+        async function c(machine) {
+            watch.requests.push('screen');
+            return machine.request('screen');
+        }
 
         const result = await panel.startActivity('watch', panel.contractFor('watch').inputs()[0]);
         expect(result.ok).toBe(false);
@@ -286,7 +359,11 @@ describe('a failed start never leaves a grant behind', () => {
     });
 
     test('a declined permission leaves nothing running and nothing held', async () => {
-        const { panel, consent, activities: [cohost] } = panelWith((c) => [make('cohost', { consent: c })]);
+        const {
+            panel,
+            consent,
+            activities: [cohost],
+        } = panelWith((c) => [make('cohost', { consent: c })]);
         consent.allow = false;
         const result = await panel.startActivity('cohost', panel.contractFor('cohost').inputs()[0]);
         expect(result.ok).toBe(false);
@@ -327,7 +404,7 @@ describe('why it did not start', () => {
         expect(screen.actions.map((a) => a.id)).toContain('settings');
     });
 
-    test('an unmatched reason still carries the activity\'s own words', () => {
+    test("an unmatched reason still carries the activity's own words", () => {
         const screen = Failures.describe({ ok: false, why: 'the kettle is on fire' }, { name: 'Focus' });
         expect(screen.body).toBe('The kettle is on fire.');
     });
@@ -348,7 +425,11 @@ describe('why it did not start', () => {
     });
 
     test('Try again repeats exactly what was tried', async () => {
-        const { panel, consent, activities: [coach] } = panelWith((c) => [make('coach', { consent: c })]);
+        const {
+            panel,
+            consent,
+            activities: [coach],
+        } = panelWith((c) => [make('coach', { consent: c })]);
         consent.allow = false;
         const inputs = panel.contractFor('coach').inputs();
         await panel.startActivity('coach', inputs[1]);
@@ -362,7 +443,9 @@ describe('why it did not start', () => {
     });
 
     test('Back returns to the chooser with nothing running', async () => {
-        const { panel } = panelWith((c) => [make('cohost', { consent: c, fail: { ok: false, why: 'no play profile — refusing to start' } })]);
+        const { panel } = panelWith((c) => [
+            make('cohost', { consent: c, fail: { ok: false, why: 'no play profile — refusing to start' } }),
+        ]);
         await panel.startActivity('cohost', panel.contractFor('cohost').inputs()[0]);
         optionNamed('Back').click();
         expect(panel.view).toBe('chooser');
@@ -434,8 +517,9 @@ describe('choose → explain → ask, always in that order', () => {
         // B30's shape. A single-input activity starts on the tile press only when that input
         // asks for nothing — `'self'` counts as asking.
         for (const id of ['watch', 'copilot', 'coach', 'meeting', 'cohost', 'music']) {
-            const { panel, consent, activities } = panelWith(
-                (c) => [make(id, { consent: c })], { context: { conversationId: 'c1' } });
+            const { panel, consent, activities } = panelWith((c) => [make(id, { consent: c })], {
+                context: { conversationId: 'c1' },
+            });
             const [activity] = activities;
             panel.open();
             panel.choose(id);

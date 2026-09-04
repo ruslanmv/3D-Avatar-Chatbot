@@ -113,7 +113,10 @@ function activity(id, label, { consent = null } = {}) {
         // No `start`. This is the whole of the Watch bug.
         delete base.start;
         base.sourceLabel = 'YouTube tab';
-        base.playFile = async function playFile(url) { this.started.push({ file: url }); return { ok: true }; };
+        base.playFile = async function playFile(url) {
+            this.started.push({ file: url });
+            return { ok: true };
+        };
         base.shareTab = async function shareTab() {
             const grant = await asksForItself('screen');
             if (!grant) return { ok: false, why: 'declined' };
@@ -129,15 +132,26 @@ function activity(id, label, { consent = null } = {}) {
             ['ocean', { id: 'ocean', title: 'Ocean', icon: '🌊' }],
             ['forest', { id: 'forest', title: 'Forest', icon: '🌲' }],
         ]);
-        base.enter = function enter(sceneId) { this.started.push(sceneId); return true; };
-        base.exit = function exit(why) { this.stopped.push(why); return true; };
+        base.enter = function enter(sceneId) {
+            this.started.push(sceneId);
+            return true;
+        };
+        base.exit = function exit(why) {
+            this.stopped.push(why);
+            return true;
+        };
     }
     if (id === 'music') {
         base.trackName = '';
         base.attachSource = function attachSource(url, { name = '' } = {}) {
-            this.trackName = name; this.started.push({ audio: url }); return { ok: true };
+            this.trackName = name;
+            this.started.push({ audio: url });
+            return { ok: true };
         };
-        base.detachSource = function detachSource() { this.trackName = ''; return true; };
+        base.detachSource = function detachSource() {
+            this.trackName = '';
+            return true;
+        };
     }
     if (id === 'cohost') base.momentSource = {};
     if (id === 'coach') {
@@ -197,7 +211,10 @@ const tiles = () => [...document.querySelectorAll('.nexus-bd-together-tile')];
 const options = () => [...document.querySelectorAll('.nexus-bd-together-option')];
 /** B36: the first screen shows four; the rest are behind "More together". */
 const moreButton = () => document.querySelector('.nexus-bd-together-more');
-const revealAll = () => { const more = moreButton(); if (more) more.click(); };
+const revealAll = () => {
+    const more = moreButton();
+    if (more) more.click();
+};
 const tileNamed = (name) => {
     let found = tiles().find((t) => t.textContent.includes(name));
     if (!found && moreButton()) {
@@ -404,7 +421,9 @@ describe('opening the chooser starts nothing at all', () => {
         harness();
         button().click();
         revealAll();
-        const names = tiles().map((t) => t.querySelector('.nexus-bd-together-name').textContent).join(' ');
+        const names = tiles()
+            .map((t) => t.querySelector('.nexus-bd-together-name').textContent)
+            .join(' ');
         for (const internal of ['Screen Insight', 'Copilot', 'Capture', 'Co-host', 'Pipeline', 'Behavior Director']) {
             expect(names).not.toContain(internal);
         }
@@ -418,7 +437,11 @@ describe('opening the chooser starts nothing at all', () => {
         h.panel.register(activity('screen-insight', 'Screen Insight'));
         button().click();
         revealAll();
-        expect(tiles().map((t) => t.textContent).join(' ')).not.toContain('Screen Insight');
+        expect(
+            tiles()
+                .map((t) => t.textContent)
+                .join(' ')
+        ).not.toContain('Screen Insight');
         expect(tiles()).toHaveLength(7);
     });
 
@@ -428,7 +451,12 @@ describe('opening the chooser starts nothing at all', () => {
         // has chosen is worse than one that was never there.
         document.body.innerHTML = MARKUP;
         const consent = fakeConsent();
-        const panel = TogetherPanel.attach({ consent, capture: { fromGrant: () => ({ stop() {}, stats: {} }) }, config: {}, doc: document });
+        const panel = TogetherPanel.attach({
+            consent,
+            capture: { fromGrant: () => ({ stop() {}, stats: {} }) },
+            config: {},
+            doc: document,
+        });
         panel.register({ id: 'music', start() {}, stop() {} });
         panel.register({ id: 'cohost', start() {}, stop() {} });
         panel.register(activity('focus', 'focus', { consent }));
@@ -541,7 +569,10 @@ describe('permission comes after the choice, never before', () => {
         document.body.innerHTML = MARKUP;
         const consent = fakeConsent();
         const panel = TogetherPanel.attach({
-            consent, capture: { fromGrant: () => ({ stop() {}, stats: {} }) }, config: {}, doc: document,
+            consent,
+            capture: { fromGrant: () => ({ stop() {}, stats: {} }) },
+            config: {},
+            doc: document,
         });
         const cohost = activity('cohost', 'cohost', { consent });
         cohost.start = async () => ({ ok: false, why: 'no play profile — refusing to start' });

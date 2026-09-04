@@ -26,22 +26,59 @@ const codeOf = (text) => text.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:]
 // ── stand-ins with each activity's *real* surface ───────────────────────────
 
 const fakes = {
-    focus: () => ({ id: 'focus', phase: 'focus', start: jest.fn(() => ({ ok: true })), stop: jest.fn(() => true), remainingMs: () => 1_458_000 }),
+    focus: () => ({
+        id: 'focus',
+        phase: 'focus',
+        start: jest.fn(() => ({ ok: true })),
+        stop: jest.fn(() => true),
+        remainingMs: () => 1_458_000,
+    }),
     watch: () => ({
-        id: 'watch', sourceLabel: 'YouTube tab',
+        id: 'watch',
+        sourceLabel: 'YouTube tab',
         playFile: jest.fn(async () => ({ ok: true })),
         shareTab: jest.fn(async () => ({ ok: true })),
         stop: jest.fn(() => true),
     }),
     journey: () => ({
-        id: 'journey', current: 'ocean',
-        scenes: new Map([['ocean', { id: 'ocean', title: 'Ocean', icon: '🌊' }], ['forest', { id: 'forest', title: 'Forest' }]]),
-        enter: jest.fn(() => true), exit: jest.fn(() => true),
+        id: 'journey',
+        current: 'ocean',
+        scenes: new Map([
+            ['ocean', { id: 'ocean', title: 'Ocean', icon: '🌊' }],
+            ['forest', { id: 'forest', title: 'Forest' }],
+        ]),
+        enter: jest.fn(() => true),
+        exit: jest.fn(() => true),
     }),
-    copilot: () => ({ id: 'copilot', steps: [], index: 0, start: jest.fn(async () => ({ ok: true })), stop: jest.fn(() => true) }),
-    coach: () => ({ id: 'coach', exercises: ['squat', 'push-up'], exercise: 'squat', reps: 8, start: jest.fn(async () => ({ ok: true })), stop: jest.fn(() => true) }),
-    meeting: () => ({ id: 'meeting', elapsedMs: 763_000, start: jest.fn(async () => ({ ok: true })), stop: jest.fn(() => true) }),
-    music: () => ({ id: 'music', trackName: 'Midnight City', attachSource: jest.fn(() => ({ ok: true })), detachSource: jest.fn(), start: jest.fn(), stop: jest.fn(() => true) }),
+    copilot: () => ({
+        id: 'copilot',
+        steps: [],
+        index: 0,
+        start: jest.fn(async () => ({ ok: true })),
+        stop: jest.fn(() => true),
+    }),
+    coach: () => ({
+        id: 'coach',
+        exercises: ['squat', 'push-up'],
+        exercise: 'squat',
+        reps: 8,
+        start: jest.fn(async () => ({ ok: true })),
+        stop: jest.fn(() => true),
+    }),
+    meeting: () => ({
+        id: 'meeting',
+        elapsedMs: 763_000,
+        start: jest.fn(async () => ({ ok: true })),
+        stop: jest.fn(() => true),
+    }),
+    music: () => ({
+        id: 'music',
+        trackName: 'Midnight City',
+        attachSource: jest.fn(() => ({ ok: true })),
+        detachSource: jest.fn(),
+        start: jest.fn(),
+        stop: jest.fn(() => true),
+    }),
     cohost: () => ({ id: 'cohost', momentSource: {}, start: jest.fn(() => ({ ok: true })), stop: jest.fn(() => true) }),
 };
 
@@ -108,7 +145,12 @@ describe('the tiles that could not complete', () => {
         // A tile that offers Sunset when no sunset scene is loaded is a tile that fails
         // after the user has chosen.
         const journey = Contract.adapt(fakes.journey());
-        expect(journey.inputs().map((i) => i.id).sort()).toEqual(['forest', 'ocean']);
+        expect(
+            journey
+                .inputs()
+                .map((i) => i.id)
+                .sort()
+        ).toEqual(['forest', 'ocean']);
     });
 
     test('copilot: "just look and help" starts without a checklist', async () => {
@@ -224,7 +266,12 @@ describe('a tile that cannot complete says so', () => {
     });
 
     test('an availability check that throws becomes a reason, not a crash', () => {
-        const angry = { id: 'music', get attachSource() { throw new Error('boom'); } };
+        const angry = {
+            id: 'music',
+            get attachSource() {
+                throw new Error('boom');
+            },
+        };
         const result = Contract.adapt(angry).availability();
         expect(result.ok).toBe(false);
         expect(result.why).toMatch(/boom/);
@@ -245,7 +292,9 @@ describe('a refusal keeps its own words', () => {
 
     test('a throw becomes a reason rather than escaping into the panel', async () => {
         const raw = fakes.focus();
-        raw.start = jest.fn(() => { throw new Error('no profile overlay'); });
+        raw.start = jest.fn(() => {
+            throw new Error('no profile overlay');
+        });
         const result = await Contract.adapt(raw).start({ input: { id: 'start' } });
         expect(result.ok).toBe(false);
         expect(result.why).toMatch(/no profile overlay/);
@@ -265,14 +314,16 @@ describe('a refusal keeps its own words', () => {
 
     test('a stop that throws is survived and reported', () => {
         const raw = fakes.focus();
-        raw.stop = jest.fn(() => { throw new Error('nope'); });
+        raw.stop = jest.fn(() => {
+            throw new Error('nope');
+        });
         expect(Contract.adapt(raw).stop('user')).toBe(false);
     });
 });
 
 // ── the compact running status ─────────────────────────────────────────────
 
-describe('status is the activity\'s own, not a generic line', () => {
+describe("status is the activity's own, not a generic line", () => {
     test('each activity says what it is doing', () => {
         const a = adaptAll({ conversationId: 'c1' });
         expect(a.focus.status()).toEqual({ label: 'Focus', detail: '24:18' });
@@ -294,7 +345,11 @@ describe('status is the activity\'s own, not a generic line', () => {
 
     test('a status that throws is absent, not a crash', () => {
         const raw = fakes.focus();
-        Object.defineProperty(raw, 'phase', { get() { throw new Error('x'); } });
+        Object.defineProperty(raw, 'phase', {
+            get() {
+                throw new Error('x');
+            },
+        });
         expect(Contract.adapt(raw).status()).toBeNull();
     });
 });
