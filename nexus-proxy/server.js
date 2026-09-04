@@ -519,6 +519,10 @@ app.get('/api/vroid-hub-callback', async (req, res) => {
     }
 });
 
+// YouTube helpers (additive — batch YT-5). NON-DESTRUCTIVE: delete these 2 lines and
+// nexus-proxy/youtube-routes.js to remove.
+require('./youtube-routes.js').mountYouTubeRoutes(app);
+
 // SPA fallback: serve index.html for unknown GET routes
 app.get('*', (req, res) => {
     res.sendFile(path.join(REPO_ROOT, 'index.html'));
