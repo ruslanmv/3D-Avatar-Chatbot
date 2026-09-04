@@ -63,4 +63,9 @@ function mountYouTubeRoutes(app) {
     });
 }
 
+// This file is `.cjs` deliberately. `nexus-proxy/package.json` declares `"type": "module"`,
+// so a `.js` here is an ES module and `module.exports` would be a ReferenceError the moment
+// the server started — which is exactly how it shipped. `.cjs` is CommonJS regardless of the
+// package type, Node's ESM can import named bindings from it, and jest (which has no ESM
+// transform configured in this repo) can require it. One extension, three consumers happy.
 module.exports = { mountYouTubeRoutes, isYouTubeUrl, ID_RE };

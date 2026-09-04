@@ -37,10 +37,14 @@ const YouTubeEmbed2D = (() => {
     const MAX_CARDS_PER_MESSAGE = 3;
     const PRECONNECT = ['https://www.youtube-nocookie.com', 'https://www.google.com', 'https://i.ytimg.com'];
 
-    const state = { hooked: false, preconnected: false, active: null, doc: null };
+    const state = { hooked: false, observing: false, preconnected: false, active: null, doc: null };
 
     function YT() {
         return (typeof window !== 'undefined' && window.NEXUS_YT) || null;
+    }
+    /** Optional page config, the same object `YouTubeVRBridge` reads. */
+    function cfg() {
+        return (typeof window !== 'undefined' && window.NEXUS_YT_CONFIG) || {};
     }
     function companion() {
         return (typeof window !== 'undefined' && window.NEXUS_YT_COMPANION) || null;
@@ -161,11 +165,22 @@ const YouTubeEmbed2D = (() => {
         img.loading = 'lazy';
         img.decoding = 'async';
         img.src = Y.thumbnail(video.id, 'hq');
+        // hq → mq → the same-origin proxy. The third step is the one that matters on a
+        // network that will not serve i.ytimg.com at all: `YouTubeVRBridge` already routes
+        // VR thumbnails through `/api/yt/thumb/`, and there is no reason the 2D card should
+        // give up where the VR card recovers. A card with no picture is still a working
+        // card, so each step is a fallback and none is required.
+        const thumbFallbacks = [
+            () => Y.thumbnail(video.id, 'mq'),
+            () => `${cfg().thumbProxy || '/api/yt/thumb/'}${video.id}`,
+        ];
         img.onerror = () => {
-            if (!img.dataset.fallback) {
-                img.dataset.fallback = '1';
-                img.src = Y.thumbnail(video.id, 'mq');
+            const next = thumbFallbacks[Number(img.dataset.fallback || 0)];
+            if (!next) {
+                return;
             }
+            img.dataset.fallback = String(Number(img.dataset.fallback || 0) + 1);
+            img.src = next();
         };
         const play = el(doc, 'span', 'nexus-yt-play');
         play.setAttribute('aria-hidden', 'true');
@@ -269,6 +284,105 @@ const YouTubeEmbed2D = (() => {
         return videos.length;
     }
 
+    /**
+     * The ids the *shipped* `index.html` uses.
+     *
+     * `js/chat-manager.js` is referenced only by `index-old.html` and `index.backup.html`;
+     * the live page has no `ChatManager` singleton and no `#chatMessages`. It builds
+     * `.chat-row > .chat-message > .message-text` inline in `src/main.js` and appends it to
+     * `#chat-history`. A hook on `ChatManager` alone therefore reaches nothing in the app
+     * people actually load — which is what running it, rather than testing it, showed.
+     *
+     * So there are two attachments and both are optional: the hook for the old page, and an
+     * observer for the current one. Neither knows about the other.
+     */
+    const LIVE = { history: 'chat-history', input: 'speech-text', send: 'speak-btn' };
+
+    /** Marks a message we have already looked at, so a re-render cannot double a card. */
+    const SEEN = 'data-nexus-yt-seen';
+
+    /** Decorate one live `.chat-message`, reading the link out of its own text. */
+    function decorateLive(node) {
+        if (!node || node.nodeType !== 1 || node.hasAttribute(SEEN)) {
+            return 0;
+        }
+        node.setAttribute(SEEN, '1');
+        const text = node.querySelector('.message-text');
+        if (!text) {
+            return 0;
+        }
+        return decorate(node, { content: text.textContent || '' });
+    }
+
+    /**
+     * Watch `#chat-history` for messages and give their links cards.
+     *
+     * A `MutationObserver` rather than a wrapper because the live renderer is four separate
+     * inline functions in `src/main.js` — a streaming one, an error one, and two more — and
+     * wrapping all four would be four edits to a file this feature promises not to touch.
+     * It is also the idiom the repository already uses for this exact element: both
+     * `AvatarAliveness` and `CompanionMode` observe `#chat-history` read-only.
+     *
+     * Streaming replies land empty and fill in token by token, so `characterData` is watched
+     * too and the `SEEN` mark is cleared until a link appears — otherwise every bot reply
+     * would be judged on its first empty frame.
+     */
+    function observeChatHistory(doc, { retryMs = 2000, retries = 5 } = {}) {
+        const d = doc || (typeof document !== 'undefined' ? document : null);
+        if (!d || typeof MutationObserver !== 'function') {
+            return () => {};
+        }
+        const host = d.getElementById(LIVE.history);
+        if (!host) {
+            // The chat shell can mount after this script runs. Retry a bounded number of
+            // times and then stop — a permanent interval looking for an element that is not
+            // coming is a leak, not a feature.
+            if (retries <= 0 || typeof setTimeout !== 'function') {
+                return () => {};
+            }
+            let cancelled = false;
+            const timer = setTimeout(() => {
+                if (!cancelled) observeChatHistory(d, { retryMs, retries: retries - 1 });
+            }, retryMs);
+            return () => {
+                cancelled = true;
+                clearTimeout(timer);
+            };
+        }
+        if (host.__nexusYtObserved) {
+            return () => {};
+        }
+
+        const sweep = () => {
+            for (const node of host.querySelectorAll('.chat-message')) {
+                const text = node.querySelector('.message-text');
+                // An empty streaming bubble is not "no link" — it is "not yet". Leave it
+                // unmarked so the next mutation looks again.
+                if (!text || !text.textContent.trim()) {
+                    node.removeAttribute(SEEN);
+                    continue;
+                }
+                try {
+                    decorateLive(node);
+                } catch (err) {
+                    console.warn('[YouTube] card decoration skipped:', err);
+                }
+            }
+        };
+
+        const observer = new MutationObserver(sweep);
+        observer.observe(host, { childList: true, subtree: true, characterData: true });
+        host.__nexusYtObserved = true;
+        state.observing = true;
+        sweep(); // anything already on screen, including restored history
+
+        return () => {
+            observer.disconnect();
+            delete host.__nexusYtObserved;
+            state.observing = false;
+        };
+    }
+
     /** Wrap the singleton's `createMessageElement`. Idempotent; returns an unhook function. */
     function hookChatManager(cm) {
         const target = cm || (typeof window !== 'undefined' ? window.ChatManager : null);
@@ -333,10 +447,18 @@ const YouTubeEmbed2D = (() => {
         return true;
     }
 
+    /**
+     * Catch `/yt` before the app's own send handler does.
+     *
+     * Two id pairs, because the two pages disagree: `index-old.html` has
+     * `#chatInput`/`#sendBtn`, and the shipped `index.html` has
+     * `#speech-text`/`#speak-btn`. Whichever exists is used; on a page with neither, the
+     * command is simply not available and nothing else changes.
+     */
     function hookCommand(doc) {
         const d = doc || document;
-        const input = d.getElementById('chatInput');
-        const send = d.getElementById('sendBtn');
+        const input = d.getElementById('chatInput') || d.getElementById(LIVE.input);
+        const send = d.getElementById('sendBtn') || d.getElementById(LIVE.send);
         if (!input) {
             return;
         }
@@ -370,7 +492,8 @@ const YouTubeEmbed2D = (() => {
             return;
         }
         ensureCss(d);
-        hookChatManager();
+        hookChatManager(); // index-old.html's ChatManager singleton, when there is one
+        observeChatHistory(d); // the shipped index.html, which has neither
         hookCommand(d);
     }
 
@@ -385,6 +508,9 @@ const YouTubeEmbed2D = (() => {
     return {
         init,
         hookChatManager,
+        observeChatHistory,
+        decorateLive,
+        LIVE,
         hookCommand,
         decorate,
         buildCard,

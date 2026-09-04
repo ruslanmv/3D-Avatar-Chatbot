@@ -176,7 +176,27 @@ const YouTubeLink = (() => {
      * same-origin proxy (`/api/yt/oembed`) if the app is served by nexus-proxy. Never
      * throws: a missing title is cosmetic.
      */
-    async function oembed(id, { fetchImpl, proxyPath = '/api/yt/oembed' } = {}) {
+    /** Milliseconds any one oEmbed candidate gets before the next is tried. */
+    const OEMBED_TIMEOUT_MS = 4000;
+
+    /**
+     * An abort signal that fires after `ms`, or `undefined` where the platform has neither
+     * `AbortSignal.timeout` nor `AbortController` — an old browser loses the deadline, not
+     * the feature.
+     */
+    function timeoutSignal(ms) {
+        if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+            return AbortSignal.timeout(ms);
+        }
+        if (typeof AbortController !== 'function' || typeof setTimeout !== 'function') {
+            return undefined;
+        }
+        const c = new AbortController();
+        setTimeout(() => c.abort(), ms);
+        return c.signal;
+    }
+
+    async function oembed(id, { fetchImpl, proxyPath = '/api/yt/oembed', timeoutMs = OEMBED_TIMEOUT_MS } = {}) {
         const f = fetchImpl || (typeof fetch === 'function' ? fetch : null);
         if (!f || !isId(id)) {
             return null;
@@ -185,7 +205,13 @@ const YouTubeLink = (() => {
         const candidates = [`https://www.youtube.com/oembed?format=json&url=${target}`, `${proxyPath}?url=${target}`];
         for (const url of candidates) {
             try {
-                const r = await f(url, { mode: 'cors' });
+                // Each candidate gets its own deadline. Without one, a network that
+                // blackholes youtube.com rather than refusing it — a corporate proxy, a
+                // headset behind a captive portal, the very cases `proxyPath` exists for —
+                // leaves this awaiting the first candidate forever and the same-origin
+                // fallback below is never reached. Found by running the app: a stubbed
+                // `fetchImpl` always answers, so no test could have caught it.
+                const r = await f(url, { mode: 'cors', signal: timeoutSignal(timeoutMs) });
                 if (!r || !r.ok) {
                     continue;
                 }
@@ -203,6 +229,8 @@ const YouTubeLink = (() => {
     return {
         ID_RE,
         URL_RE,
+        OEMBED_TIMEOUT_MS,
+        timeoutSignal,
         isId,
         parseTime,
         extract,

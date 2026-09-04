@@ -344,7 +344,7 @@ describe('YouTubeVRBridge', () => {
 // ── YT-5: proxy routes stay off the stream path ─────────────────────────────
 
 describe('nexus-proxy youtube routes', () => {
-    const { isYouTubeUrl, ID_RE } = require('../nexus-proxy/youtube-routes.js');
+    const { isYouTubeUrl, ID_RE } = require('../nexus-proxy/youtube-routes.cjs');
     test('only https YouTube hosts, only 11-char ids', () => {
         expect(isYouTubeUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ')).toBe(true);
         expect(isYouTubeUrl('https://youtu.be/dQw4w9WgXcQ')).toBe(true);
@@ -352,5 +352,139 @@ describe('nexus-proxy youtube routes', () => {
         expect(isYouTubeUrl('https://evil.example/youtube.com')).toBe(false);
         expect(ID_RE.test('dQw4w9WgXcQ')).toBe(true);
         expect(ID_RE.test('../../etc')).toBe(false);
+    });
+});
+
+// ── YT-6: asking her to put something on ────────────────────────────────────
+
+describe('YouTubeAsk.parseIntent', () => {
+    let Ask;
+    beforeEach(() => {
+        jest.resetModules();
+        window.NEXUS_YT = YT;
+        window.__NEXUS_YT_ASK_NOAUTO__ = true;
+        Ask = require('../src/features/youtube/YouTubeAsk.js');
+    });
+
+    test.each([
+        ['play some lofi hip hop music', 'lofi hip hop music'],
+        ['put on some jazz music', 'jazz music'],
+        ['search youtube for rick astley', 'rick astley'],
+        ['youtube: chillhop essentials', 'chillhop essentials'],
+        ['play tiny desk on youtube', 'tiny desk'],
+        ['/yt lofi', 'lofi'],
+        ['Play the Rick Astley video please', 'Rick Astley video'],
+    ])('“%s” → %s', (said, query) => {
+        expect(Ask.parseIntent(said).query).toBe(query);
+    });
+
+    test.each([
+        'play chess with me',
+        "let's play a game later",
+        'can you play devil’s advocate',
+        'what did you think of that film',
+        'hello',
+        '',
+        'I want to play outside',
+    ])('“%s” is ordinary conversation and reaches the model', (said) => {
+        // The expensive failure is silent: a message the user meant for the assistant never
+        // arrives, and they get a video search instead of an answer.
+        expect(Ask.parseIntent(said)).toBeNull();
+    });
+
+    test('a message that already carries a link is not a search request', () => {
+        // The card for it is about to appear on its own; searching as well would answer a
+        // question nobody asked.
+        expect(Ask.parseIntent('play this https://youtu.be/dQw4w9WgXcQ')).toBeNull();
+    });
+
+    test('a mention mid-sentence is not a request', () => {
+        expect(Ask.parseIntent('we could play something later')).toBeNull();
+        expect(Ask.parseIntent('I saw it on youtube yesterday')).toBeNull();
+    });
+});
+
+describe('YouTubeAsk.fulfil', () => {
+    let Ask;
+    beforeEach(() => {
+        jest.resetModules();
+        window.NEXUS_YT = YT;
+        window.__NEXUS_YT_ASK_NOAUTO__ = true;
+        window.__NEXUS_YT_2D_NOAUTO__ = true;
+        delete window.ChatManager;
+        document.body.innerHTML =
+            '<div id="chat-history"></div><input id="speech-text"><button id="speak-btn"></button>';
+        window.NEXUS_YT_2D = require('../src/features/youtube/YouTubeEmbed2D.js');
+        Ask = require('../src/features/youtube/YouTubeAsk.js');
+    });
+
+    test('speaks into the shape the shipped page renders, not a ChatManager', () => {
+        // `js/chat-manager.js` is loaded only by index-old.html. Anything that needs a
+        // ChatManager singleton is dead in the app people actually open.
+        const node = Ask.say('hello there', 'bot');
+        expect(node.className).toContain('chat-message');
+        expect(node.querySelector('.message-text').textContent).toBe('hello there');
+        expect(document.querySelectorAll('#chat-history .chat-row').length).toBe(1);
+    });
+
+    test('with no key it still gets you to the search, and says how to fix it once', async () => {
+        window.NEXUS_YT_COMPANION = { KEY_STORAGE: 'nexus.yt.apiKey', apiKey: () => '', search: jest.fn() };
+        const res = await Ask.fulfil('lofi');
+        expect(res).toMatchObject({ ok: true, why: 'no key' });
+        const link = document.querySelector('#chat-history a.nexus-yt-open');
+        expect(link.href).toContain('youtube.com/results?search_query=lofi');
+        expect(document.querySelector('.nexus-yt-status').textContent).toContain('nexus.yt.apiKey');
+    });
+
+    test('with a key it draws the results as cards you can press play on', async () => {
+        const results = [
+            { id: 'dQw4w9WgXcQ', start: 0, name: 'Never Gonna Give You Up', author: 'Rick Astley' },
+            { id: 'aBcDeFgHiJk', start: 0, name: 'Lofi beats', author: 'Chillhop' },
+        ];
+        window.NEXUS_YT_COMPANION = { KEY_STORAGE: 'k', apiKey: () => 'yes', search: async () => results };
+        const res = await Ask.fulfil('lofi');
+        expect(res).toMatchObject({ ok: true, why: 'results', count: 2 });
+        const cards = document.querySelectorAll('#chat-history .nexus-yt-card');
+        expect(cards.length).toBe(2);
+        expect(cards[0].dataset.ytId).toBe('dQw4w9WgXcQ');
+        // A facade, not an iframe — the same promise the rest of the feature keeps.
+        expect(cards[0].querySelector('iframe')).toBeNull();
+        expect(cards[0].querySelector('.nexus-yt-facade')).not.toBeNull();
+    });
+
+    test('an empty result and a failed search both say so rather than going quiet', async () => {
+        window.NEXUS_YT_COMPANION = { KEY_STORAGE: 'k', apiKey: () => 'yes', search: async () => [] };
+        expect(await Ask.fulfil('asdkjfh')).toMatchObject({ why: 'empty' });
+        expect(document.body.textContent).toContain('Nothing came back');
+
+        window.NEXUS_YT_COMPANION.search = async () => {
+            throw new Error('offline');
+        };
+        expect(await Ask.fulfil('lofi')).toMatchObject({ ok: false, why: 'search failed' });
+        expect(document.body.textContent).toContain('offline');
+    });
+
+    test('the hook lets ordinary messages through and catches only requests', () => {
+        window.NEXUS_YT_COMPANION = { KEY_STORAGE: 'k', apiKey: () => '', search: jest.fn() };
+        const input = document.getElementById('speech-text');
+        const send = document.getElementById('speak-btn');
+        const appHandler = jest.fn();
+        send.addEventListener('click', appHandler); // the app's own send, in the bubble phase
+        const unhook = Ask.hook(document);
+
+        input.value = 'what is the weather like';
+        send.click();
+        expect(appHandler).toHaveBeenCalledTimes(1); // reached the app untouched
+        expect(input.value).toBe('what is the weather like'); // and was not consumed
+
+        input.value = 'play some lofi music';
+        send.click();
+        expect(appHandler).toHaveBeenCalledTimes(1); // stopped before the app
+        expect(input.value).toBe(''); // consumed
+
+        unhook();
+        input.value = 'play some lofi music';
+        send.click();
+        expect(appHandler).toHaveBeenCalledTimes(2); // unhooked: everything reaches the app
     });
 });

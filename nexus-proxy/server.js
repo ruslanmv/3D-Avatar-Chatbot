@@ -21,6 +21,9 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { isAllowedUrl as isAllowedRemoteUrl } from '../api/_allowlist.js';
+// YouTube helpers (additive). NON-DESTRUCTIVE: delete this import, the mountYouTubeRoutes
+// call below, and nexus-proxy/youtube-routes.js to remove.
+import { mountYouTubeRoutes } from './youtube-routes.cjs';
 
 const app = express();
 
@@ -519,9 +522,8 @@ app.get('/api/vroid-hub-callback', async (req, res) => {
     }
 });
 
-// YouTube helpers (additive — batch YT-5). NON-DESTRUCTIVE: delete these 2 lines and
-// nexus-proxy/youtube-routes.js to remove.
-require('./youtube-routes.js').mountYouTubeRoutes(app);
+// YouTube helpers (additive — batch YT-5). See the import at the top of this file.
+mountYouTubeRoutes(app);
 
 // SPA fallback: serve index.html for unknown GET routes
 app.get('*', (req, res) => {

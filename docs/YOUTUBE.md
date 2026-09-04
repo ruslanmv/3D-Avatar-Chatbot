@@ -2,7 +2,7 @@
 
 Paste a YouTube link — or let the avatar answer with one — and it becomes a video card in the
 2D chat and in the VR chat panel. Playback is always YouTube's own player. Everything is
-additive: four script tags in `index.html`, two lines in `nexus-proxy/server.js`, and the
+additive: five script tags in `index.html`, two lines in `nexus-proxy/server.js`, and the
 folder `src/features/youtube/`. Delete those and the app is what it was.
 
 ## What you get
@@ -12,9 +12,19 @@ folder `src/features/youtube/`. Delete those and the app is what it was.
 | 2D chat (desktop, mobile) | Thumbnail + title card (facade) | Privacy-enhanced `youtube-nocookie` embed, inline, autoplay |
 | VR chat panel | Tappable thumbnail card (the existing image-card renderer) | Companion tab navigates → cinema screen follows; or the pick waits for you in 2D |
 | `/yt <query>` (2D) | Up to 5 result cards, no LLM round trip | Same as above |
+| "play some lofi" (2D) | The same result cards — just ask her | Same as above |
 
 Links in the user's own message, in the LLM reply, in `x_attachments` (`type: "youtube"`), and
 in restored chat history all get cards. Start offsets (`?t=1h2m3s`) are honoured.
+
+## Which page it attaches to
+
+The shipped `index.html` has no `ChatManager` singleton — `js/chat-manager.js` is referenced
+only by `index-old.html` and `index.backup.html`. So there are two attachments and both are
+optional: a wrapper on `ChatManager.createMessageElement` for the old page, and a
+`MutationObserver` on `#chat-history` for the current one, which is the idiom `AvatarAliveness`
+and `CompanionMode` already use for that element. Input ids are tried in the same pairs
+(`#chatInput`/`#sendBtn`, then `#speech-text`/`#speak-btn`).
 
 ## The constraint the VR design rests on
 
@@ -33,6 +43,32 @@ chat when the session ends.
 
 Ripping stream URLs (the VRChat approach) is deliberately not implemented; a test asserts no
 module references stream endpoints.
+
+## Just ask her
+
+`YouTubeAsk` recognises a request to play something and answers with result cards, without a
+round trip to the model:
+
+```
+you    play some lofi hip hop music
+nexus  Here's what I found for "lofi hip hop music". Press play on one, or Watch in VR.
+       [card] [card] [card]
+```
+
+It also takes *"search youtube for X"*, *"youtube: X"*, *"play X on youtube"* and `/yt X`.
+
+**Matching is deliberately narrow.** A bare *play* is never enough — a request qualifies only
+when it names YouTube, or pairs a play verb with something plainly media (song, track, music,
+video, mix, playlist…). *"play chess with me"*, *"let's play a game"* and *"I want to play
+outside"* are ordinary conversation and reach the model untouched; a test pins each one,
+because the expensive failure here is silent — a message meant for the assistant that never
+arrives.
+
+A message that already contains a YouTube link is not treated as a search request: its card is
+about to appear on its own.
+
+Without an API key it still helps — you get a link to the YouTube search for what you asked,
+and the how-to for adding a key, once.
 
 ## Search
 
@@ -61,14 +97,15 @@ src/features/youtube/YouTubeLink.js       parser + URL builders (pure, tested)
 src/features/youtube/YouTubeCompanion.js  companion tab, startParty(), Data API search
 src/features/youtube/YouTubeEmbed2D.js    facade cards, ChatManager hook, /yt command
 src/features/youtube/YouTubeVRBridge.js   VR panel/media-panel wrappers, tap routing
+src/features/youtube/YouTubeAsk.js        intent matching, "play some lofi" → cards
 src/features/youtube/youtube.css          card styles (app tokens only)
-nexus-proxy/youtube-routes.js             optional oEmbed + thumbnail routes
+nexus-proxy/youtube-routes.cjs            optional oEmbed + thumbnail routes
 tests/youtube-everywhere.test.js          24 tests
 ```
 
-Globals: `NEXUS_YT`, `NEXUS_YT_COMPANION`, `NEXUS_YT_2D`, `NEXUS_YT_VR`, `NEXUS_YT_CONFIG` (optional input).
+Globals: `NEXUS_YT`, `NEXUS_YT_COMPANION`, `NEXUS_YT_2D`, `NEXUS_YT_VR`, `NEXUS_YT_ASK`, `NEXUS_YT_CONFIG` (optional input).
 
 ## Removing it
 
-Delete the four `<script>` tags marked `NEXUS_YT` in `index.html`, the two marked lines in
-`nexus-proxy/server.js`, and the folder. No other file references the feature.
+Delete the five `<script>` tags marked `NEXUS_YT` in `index.html`, the two marked lines in
+`nexus-proxy/server.js`, `nexus-proxy/youtube-routes.cjs`, and the folder. No other file references the feature.
