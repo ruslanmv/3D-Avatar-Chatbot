@@ -35,6 +35,8 @@ const YouTubeEmbed2D = (() => {
 
     const CSS_HREF = 'src/features/youtube/youtube.css';
     const MAX_CARDS_PER_MESSAGE = 3;
+    /** How long the skeleton waits before admitting no picture is coming. */
+    const THUMB_TIMEOUT_MS = 6000;
     const PRECONNECT = ['https://www.youtube-nocookie.com', 'https://www.google.com', 'https://i.ytimg.com'];
 
     const state = { hooked: false, observing: false, preconnected: false, active: null, doc: null };
@@ -135,10 +137,34 @@ const YouTubeEmbed2D = (() => {
         frame.setAttribute('allowfullscreen', '');
         frame.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
         frame.setAttribute('loading', 'eager');
+        // The card never disappears because playback failed: it says so and keeps the link.
+        frame.addEventListener('error', () => {
+            card.classList.add('is-error');
+            const status = card.querySelector('.nexus-yt-status');
+            if (status) {
+                status.textContent = "This video couldn't load. Open it on YouTube instead.";
+            }
+        });
+
         const facade = card.querySelector('.nexus-yt-facade');
         if (facade) {
             facade.replaceWith(frame);
         }
+
+        // Expanding was the user's decision, so collapsing has to be one too.
+        const stage = card.querySelector('.nexus-yt-stage');
+        if (stage && !stage.querySelector('.nexus-yt-collapse')) {
+            const back = el(doc, 'button', 'nexus-yt-collapse', '×');
+            back.type = 'button';
+            back.title = 'Back to the preview';
+            back.setAttribute('aria-label', 'Collapse this video back to its preview');
+            back.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deactivate(card);
+            });
+            stage.appendChild(back);
+        }
+
         card.classList.add('is-playing');
         state.active = card;
     }
@@ -149,7 +175,12 @@ const YouTubeEmbed2D = (() => {
         if (frame && card._nexusFacade) {
             frame.replaceWith(card._nexusFacade);
         }
+        const back = card.querySelector('.nexus-yt-collapse');
+        if (back) {
+            back.remove();
+        }
         card.classList.remove('is-playing');
+        card.classList.remove('is-error');
         if (state.active === card) {
             state.active = null;
         }
@@ -174,9 +205,27 @@ const YouTubeEmbed2D = (() => {
             () => Y.thumbnail(video.id, 'mq'),
             () => `${cfg().thumbProxy || '/api/yt/thumb/'}${video.id}`,
         ];
+        // Three settled states, and the box is the same size in all of them:
+        //   pending  the skeleton, while the image is on its way
+        //   ready    the image, faded in
+        //   none     a labelled placeholder — never an unexplained black rectangle
+        img.onload = () => {
+            card.dataset.thumb = 'ready';
+        };
+        // A request that *hangs* fires neither event, and the skeleton would shimmer for the
+        // life of the page. Found by running it on a network with no route to i.ytimg.com —
+        // a shimmer promises something is coming, so it has to be able to give up.
+        if (typeof setTimeout === 'function') {
+            setTimeout(() => {
+                if (card.dataset.thumb === 'pending') {
+                    card.dataset.thumb = 'none';
+                }
+            }, THUMB_TIMEOUT_MS);
+        }
         img.onerror = () => {
             const next = thumbFallbacks[Number(img.dataset.fallback || 0)];
             if (!next) {
+                card.dataset.thumb = 'none';
                 return;
             }
             img.dataset.fallback = String(Number(img.dataset.fallback || 0) + 1);
@@ -184,8 +233,12 @@ const YouTubeEmbed2D = (() => {
         };
         const play = el(doc, 'span', 'nexus-yt-play');
         play.setAttribute('aria-hidden', 'true');
+        const placeholder = el(doc, 'span', 'nexus-yt-placeholder');
+        placeholder.appendChild(play.cloneNode(true));
+        placeholder.appendChild(el(doc, 'span', '', 'Video preview'));
         btn.appendChild(img);
         btn.appendChild(play);
+        btn.appendChild(placeholder);
         btn.addEventListener('pointerenter', () => preconnect(doc), { once: true });
         btn.addEventListener('focus', () => preconnect(doc), { once: true });
         btn.addEventListener('click', () => activate(card, video));
@@ -196,78 +249,242 @@ const YouTubeEmbed2D = (() => {
     /**
      * One card for one video. Pure DOM; safe to call from tests with a jsdom document.
      */
+    /**
+     * One video, compact (YT-7).
+     *
+     * The rest state is a thumbnail, a play glyph and two lines of text — roughly the height
+     * of a normal message. The player is what a *click* buys, not what a recommendation
+     * costs. Two recommendations used to be two full-width players stacked inside a coloured
+     * bubble, which turned a minor answer into a media catalogue and pushed the messages
+     * either side of it off the screen.
+     *
+     * The action hierarchy follows from that: **the thumbnail is Play**, and everything else
+     * is smaller. `YouTube ↗` opens the source; `•••` holds Watch in VR, Copy link and Open
+     * externally. VR leaves the menu and becomes a button only where VR is the actual
+     * context — an exceptional path should not carry the weight of the ordinary one.
+     */
     function buildCard(video, { doc } = {}) {
-        const Y = YT();
         const d = doc || document;
         const card = el(d, 'div', 'nexus-yt-card');
         card.dataset.ytId = video.id;
         if (video.name) {
             card.dataset.title = video.name;
         }
+        // The 16:9 box is reserved from this moment. `pending` becomes `ready` or `none`, and
+        // in every case the card's height is the height it will keep — a thumbnail that
+        // arrives and *then* makes room is how a conversation jumps under a reader.
+        card.dataset.thumb = 'pending';
 
-        card.appendChild(buildFacade(d, video, card));
+        const stage = el(d, 'div', 'nexus-yt-stage');
+        stage.appendChild(buildFacade(d, video, card));
+        card.appendChild(stage);
 
         const meta = el(d, 'div', 'nexus-yt-meta');
         const title = el(d, 'div', 'nexus-yt-title', video.name || 'YouTube');
-        const author = el(d, 'div', 'nexus-yt-author', video.author || '');
+        // "Rick Astley · YouTube" — the source is worth naming when the title is not enough.
+        const author = el(d, 'div', 'nexus-yt-author', video.author ? `${video.author} · YouTube` : 'YouTube');
         const actions = el(d, 'div', 'nexus-yt-actions');
 
-        const open = el(d, 'a', 'nexus-yt-open', 'Open on YouTube');
-        open.href = Y.watchUrl(video.id, video.start);
+        const open = el(d, 'a', 'nexus-yt-open', 'YouTube ↗');
+        open.href = YT().watchUrl(video.id, video.start);
         open.target = '_blank';
         open.rel = 'noopener noreferrer';
+        open.title = 'Open this video on YouTube';
         actions.appendChild(open);
 
+        const status = el(d, 'div', 'nexus-yt-status', '');
         const comp = companion();
         const xrCapable = typeof navigator !== 'undefined' && Boolean(navigator.xr);
-        if (comp && xrCapable) {
+
+        /** Open the companion tab and hand it to Watch. Shared by the menu and the button. */
+        const watchInVr = async (trigger) => {
+            if (trigger) {
+                trigger.disabled = true;
+            }
+            status.textContent = 'Opening a companion tab… pick it in the share dialog, then put the headset on.';
+            const res = await comp.startParty(video.id, video.start);
+            if (!res.companion) {
+                status.textContent =
+                    'The browser blocked the companion tab. Allow pop-ups for this site and try again.';
+            } else if (!res.watch) {
+                status.textContent = 'Companion tab is open. Share it from Together → Watch, then enter VR.';
+            } else {
+                status.textContent =
+                    'Sharing. Enter VR and it is on the cinema screen; later picks in VR reuse this tab.';
+            }
+            if (trigger) {
+                trigger.disabled = false;
+            }
+        };
+
+        // VR is promoted only when VR is the context the user is actually in.
+        if (comp && xrCapable && vrContextActive()) {
             const vr = el(d, 'button', 'nexus-yt-vr', 'Watch in VR');
             vr.type = 'button';
-            vr.title =
-                'Opens this video in a companion tab and asks to share it, so it can play on the VR cinema screen';
-            const status = el(d, 'div', 'nexus-yt-status', '');
-            vr.addEventListener('click', async () => {
-                vr.disabled = true;
-                status.textContent = 'Opening a companion tab… pick it in the share dialog, then put the headset on.';
-                const res = await comp.startParty(video.id, video.start);
-                if (!res.companion) {
-                    status.textContent =
-                        'The browser blocked the companion tab. Allow pop-ups for this site and try again.';
-                } else if (!res.watch) {
-                    status.textContent = 'Companion tab is open. Share it from Together → Watch, then enter VR.';
-                } else {
-                    status.textContent =
-                        'Sharing. Enter VR and it is on the cinema screen; later picks in VR reuse this tab.';
-                }
-                vr.disabled = false;
-            });
+            vr.addEventListener('click', () => void watchInVr(vr));
             actions.appendChild(vr);
-            meta.appendChild(title);
-            meta.appendChild(author);
-            meta.appendChild(actions);
-            meta.appendChild(status);
-        } else {
-            meta.appendChild(title);
-            meta.appendChild(author);
-            meta.appendChild(actions);
         }
+
+        actions.appendChild(buildMenu(d, video, { comp, xrCapable, watchInVr, status }));
+
+        meta.appendChild(title);
+        meta.appendChild(author);
+        meta.appendChild(actions);
+        meta.appendChild(status);
         card.appendChild(meta);
 
-        if (!video.name && Y.oembed) {
+        const Y = YT();
+        if (!video.name && Y && Y.oembed) {
             Y.oembed(video.id).then((info) => {
                 if (!info) {
                     return;
                 }
                 title.textContent = info.title;
-                author.textContent = info.author;
+                author.textContent = `${info.author} · YouTube`;
                 card.dataset.title = info.title;
                 const b = card.querySelector('.nexus-yt-facade');
                 if (b) {
-                    b.setAttribute('aria-label', `Play video: ${info.title}`);
+                    b.setAttribute('aria-label', `Play: ${info.title}`);
                 }
             });
         }
+        if (video.duration) {
+            setDuration(card, video.duration);
+        }
         return card;
+    }
+
+    /** `3:33` in the corner, when the duration is known. Never invented. */
+    function setDuration(card, seconds) {
+        const n = Number(seconds);
+        if (!Number.isFinite(n) || n <= 0) {
+            return;
+        }
+        const facade = card.querySelector('.nexus-yt-facade');
+        if (!facade || facade.querySelector('.nexus-yt-duration')) {
+            return;
+        }
+        const h = Math.floor(n / 3600);
+        const m = Math.floor((n % 3600) / 60);
+        const sec = Math.floor(n % 60);
+        const pad = (v) => String(v).padStart(2, '0');
+        const chip = el(
+            card.ownerDocument,
+            'span',
+            'nexus-yt-duration',
+            h ? `${h}:${pad(m)}:${pad(sec)}` : `${m}:${pad(sec)}`
+        );
+        facade.appendChild(chip);
+    }
+
+    /**
+     * Whether VR is the context right now, rather than merely possible.
+     *
+     * A headset-capable browser is not a person wearing one. `navigator.xr` says the machine
+     * could; an active session, or the launcher reporting one, says the person is.
+     */
+    function vrContextActive() {
+        if (typeof window === 'undefined') {
+            return false;
+        }
+        const cfg = (window.NEXUS_YT_CONFIG || {}).vrActive;
+        if (typeof cfg === 'boolean') {
+            return cfg;
+        }
+        const bd = window.NEXUS_BD;
+        if (bd && bd.xr && typeof bd.xr.isPresenting === 'boolean') {
+            return bd.xr.isPresenting;
+        }
+        const renderer = window.__NEXUS_RENDERER__ || (window.NEXUS && window.NEXUS.renderer);
+        return Boolean(renderer && renderer.xr && renderer.xr.isPresenting);
+    }
+
+    /** The `•••` menu: everything that is not Play and not the source link. */
+    function buildMenu(d, video, { comp, xrCapable, watchInVr, status }) {
+        const wrap = el(d, 'div', 'nexus-yt-menu');
+        const trigger = el(d, 'button', 'nexus-yt-more', '•••');
+        trigger.type = 'button';
+        trigger.setAttribute('aria-haspopup', 'menu');
+        trigger.setAttribute('aria-expanded', 'false');
+        trigger.setAttribute('aria-label', 'More actions for this video');
+        trigger.title = 'More';
+        wrap.appendChild(trigger);
+
+        let sheet = null;
+        const close = () => {
+            if (sheet) {
+                sheet.remove();
+                sheet = null;
+            }
+            trigger.setAttribute('aria-expanded', 'false');
+            d.removeEventListener('mousedown', onDown, true);
+            d.removeEventListener('keydown', onKey, true);
+        };
+        const onDown = (e) => {
+            if (!wrap.contains(e.target)) {
+                close();
+            }
+        };
+        const onKey = (e) => {
+            if (e.key === 'Escape') {
+                close();
+            }
+        };
+        const item = (label, fn) => {
+            const b = el(d, 'button', '', label);
+            b.type = 'button';
+            b.setAttribute('role', 'menuitem');
+            b.addEventListener('click', () => {
+                close();
+                fn(b);
+            });
+            return b;
+        };
+
+        trigger.addEventListener('click', () => {
+            if (sheet) {
+                close();
+                return;
+            }
+            sheet = el(d, 'div', 'nexus-yt-sheet');
+            sheet.setAttribute('role', 'menu');
+            if (comp && xrCapable && !vrContextActive()) {
+                sheet.appendChild(item('Watch in VR', (b) => void watchInVr(b)));
+            }
+            sheet.appendChild(
+                item('Copy link', () => {
+                    const url = YT().watchUrl(video.id, video.start);
+                    const nav = typeof navigator !== 'undefined' ? navigator : null;
+                    if (nav && nav.clipboard && nav.clipboard.writeText) {
+                        nav.clipboard.writeText(url).then(
+                            () => {
+                                status.textContent = 'Link copied.';
+                            },
+                            () => {
+                                status.textContent = url;
+                            }
+                        );
+                    } else {
+                        // No clipboard permission is not a dead end — show the link to copy.
+                        status.textContent = url;
+                    }
+                })
+            );
+            sheet.appendChild(
+                item('Open externally', () => {
+                    const url = YT().watchUrl(video.id, video.start);
+                    if (typeof window !== 'undefined' && window.open) {
+                        window.open(url, '_blank', 'noopener');
+                    }
+                })
+            );
+            wrap.appendChild(sheet);
+            trigger.setAttribute('aria-expanded', 'true');
+            d.addEventListener('mousedown', onDown, true);
+            d.addEventListener('keydown', onKey, true);
+        });
+
+        return wrap;
     }
 
     /** Append cards to an already-built message element. Returns the number added. */
@@ -278,8 +495,15 @@ const YouTubeEmbed2D = (() => {
         }
         const host = messageEl.querySelector('.message-content') || messageEl;
         const doc = messageEl.ownerDocument;
+        // Two recommendations used to be two full-width players stacked down the thread. A
+        // group lays them side by side on a desktop pane and swipes on a phone, so an answer
+        // costs about a message and only the one somebody picks becomes a player.
+        const parent = videos.length > 1 ? el(doc, 'div', 'nexus-yt-group') : host;
         for (const v of videos) {
-            host.appendChild(buildCard(v, { doc }));
+            parent.appendChild(buildCard(v, { doc }));
+        }
+        if (parent !== host) {
+            host.appendChild(parent);
         }
         return videos.length;
     }

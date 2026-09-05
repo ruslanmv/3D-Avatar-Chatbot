@@ -488,3 +488,143 @@ describe('YouTubeAsk.fulfil', () => {
         expect(appHandler).toHaveBeenCalledTimes(2); // unhooked: everything reaches the app
     });
 });
+
+// ── YT-7: compact by default, immersive on demand ───────────────────────────
+
+describe('a video costs a message until somebody asks for a player', () => {
+    let Embed;
+    beforeEach(() => {
+        jest.resetModules();
+        window.NEXUS_YT = YT;
+        window.__NEXUS_YT_2D_NOAUTO__ = true;
+        Embed = require('../src/features/youtube/YouTubeEmbed2D.js');
+        document.body.innerHTML = '<div id="chatMessages"></div>';
+    });
+
+    function msg(content) {
+        const wrap = document.createElement('div');
+        wrap.className = 'message bot';
+        const c = document.createElement('div');
+        c.className = 'message-content';
+        wrap.appendChild(c);
+        return { el: wrap, message: { content } };
+    }
+
+    test('two videos become a side-by-side row, not two stacked players', () => {
+        const { el, message } = msg('https://youtu.be/dQw4w9WgXcQ and https://youtu.be/aBcDeFgHiJk');
+        expect(Embed.decorate(el, message)).toBe(2);
+        const group = el.querySelector('.nexus-yt-group');
+        expect(group).not.toBeNull();
+        expect(group.querySelectorAll('.nexus-yt-card').length).toBe(2);
+        expect(el.querySelectorAll('iframe').length).toBe(0);
+    });
+
+    test('one video needs no row around it', () => {
+        const { el, message } = msg('https://youtu.be/dQw4w9WgXcQ');
+        Embed.decorate(el, message);
+        expect(el.querySelector('.nexus-yt-group')).toBeNull();
+        expect(el.querySelector('.nexus-yt-card')).not.toBeNull();
+    });
+
+    test('the thumbnail box exists before the thumbnail does', () => {
+        // A picture that arrives and *then* makes room is how a conversation jumps under
+        // somebody reading it. The state changes; the height does not.
+        const { el, message } = msg('https://youtu.be/dQw4w9WgXcQ');
+        Embed.decorate(el, message);
+        const card = el.querySelector('.nexus-yt-card');
+        expect(card.dataset.thumb).toBe('pending');
+        card.querySelector('.nexus-yt-thumb').onload();
+        expect(card.dataset.thumb).toBe('ready');
+    });
+
+    test('an unreachable thumbnail becomes a labelled placeholder, not a black rectangle', () => {
+        const { el, message } = msg('https://youtu.be/dQw4w9WgXcQ');
+        Embed.decorate(el, message);
+        const card = el.querySelector('.nexus-yt-card');
+        const img = card.querySelector('.nexus-yt-thumb');
+        img.onerror(); // hq → mq
+        img.onerror(); // mq → proxy
+        img.onerror(); // exhausted
+        expect(card.dataset.thumb).toBe('none');
+        expect(card.querySelector('.nexus-yt-placeholder').textContent).toContain('Video preview');
+    });
+
+    test('the thumbnail is the play control, and VR is not beside it', () => {
+        // Hierarchy: play here → open source → everything else. VR is an exceptional path
+        // and must not carry the weight of the ordinary one.
+        const { el, message } = msg('https://youtu.be/dQw4w9WgXcQ');
+        Embed.decorate(el, message);
+        const card = el.querySelector('.nexus-yt-card');
+        expect(card.querySelector('.nexus-yt-facade')).not.toBeNull();
+        expect(card.querySelector('.nexus-yt-actions .nexus-yt-vr')).toBeNull();
+        expect(card.querySelector('.nexus-yt-open').textContent).toBe('YouTube ↗');
+        expect(card.querySelector('.nexus-yt-more')).not.toBeNull();
+    });
+
+    test('Watch in VR lives in the ••• menu until VR is the context', () => {
+        window.NEXUS_YT_COMPANION = { startParty: jest.fn() };
+        Object.defineProperty(window.navigator, 'xr', { value: {}, configurable: true });
+        const { el, message } = msg('https://youtu.be/dQw4w9WgXcQ');
+        Embed.decorate(el, message);
+        const card = el.querySelector('.nexus-yt-card');
+        expect(card.querySelector('.nexus-yt-vr')).toBeNull(); // not promoted
+        card.querySelector('.nexus-yt-more').click();
+        const items = [...card.querySelectorAll('.nexus-yt-sheet button')].map((b) => b.textContent);
+        expect(items).toEqual(['Watch in VR', 'Copy link', 'Open externally']);
+    });
+
+    test('and is promoted to a button once VR is actually active', () => {
+        window.NEXUS_YT_COMPANION = { startParty: jest.fn() };
+        window.NEXUS_YT_CONFIG = { vrActive: true };
+        Object.defineProperty(window.navigator, 'xr', { value: {}, configurable: true });
+        const { el, message } = msg('https://youtu.be/dQw4w9WgXcQ');
+        Embed.decorate(el, message);
+        const card = el.querySelector('.nexus-yt-card');
+        expect(card.querySelector('.nexus-yt-vr')).not.toBeNull();
+        card.querySelector('.nexus-yt-more').click();
+        expect([...card.querySelectorAll('.nexus-yt-sheet button')].map((b) => b.textContent)).toEqual([
+            'Copy link',
+            'Open externally',
+        ]);
+        delete window.NEXUS_YT_CONFIG;
+    });
+
+    test('playing expands in place, and collapses back on request', () => {
+        const { el, message } = msg('https://youtu.be/dQw4w9WgXcQ');
+        Embed.decorate(el, message);
+        const card = el.querySelector('.nexus-yt-card');
+        card.querySelector('.nexus-yt-facade').click();
+        expect(card.classList.contains('is-playing')).toBe(true);
+        expect(card.querySelector('iframe.nexus-yt-player')).not.toBeNull();
+
+        // Expanding was the user's decision, so collapsing is one too — not a modal, not a
+        // navigation, not a new message.
+        card.querySelector('.nexus-yt-collapse').click();
+        expect(card.classList.contains('is-playing')).toBe(false);
+        expect(card.querySelector('iframe')).toBeNull();
+        expect(card.querySelector('.nexus-yt-facade')).not.toBeNull();
+    });
+
+    test('a player that fails says so and keeps the card', () => {
+        const { el, message } = msg('https://youtu.be/dQw4w9WgXcQ');
+        Embed.decorate(el, message);
+        const card = el.querySelector('.nexus-yt-card');
+        card.querySelector('.nexus-yt-facade').click();
+        card.querySelector('iframe').dispatchEvent(new Event('error'));
+        expect(card.classList.contains('is-error')).toBe(true);
+        expect(card.querySelector('.nexus-yt-status').textContent).toContain("couldn't load");
+        // The card never disappears because playback failed.
+        expect(card.querySelector('.nexus-yt-open')).not.toBeNull();
+    });
+
+    test('a duration is shown when it is known and never invented', () => {
+        const { el, message } = msg('x');
+        Embed.decorate(el, message);
+        const withIt = Embed.buildCard({ id: 'dQw4w9WgXcQ', start: 0, duration: 213 });
+        expect(withIt.querySelector('.nexus-yt-duration').textContent).toBe('3:33');
+        const withHours = Embed.buildCard({ id: 'dQw4w9WgXcQ', start: 0, duration: 3723 });
+        expect(withHours.querySelector('.nexus-yt-duration').textContent).toBe('1:02:03');
+        const without = Embed.buildCard({ id: 'dQw4w9WgXcQ', start: 0 });
+        expect(without.querySelector('.nexus-yt-duration')).toBeNull();
+    });
+});

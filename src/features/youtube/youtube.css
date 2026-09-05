@@ -1,15 +1,69 @@
-/* YouTube cards in the 2D chat (batch YT-3). Loaded by YouTubeEmbed2D.js; nothing in
-   styles/main.css changes. Every colour is one of the app's existing tokens. */
+/* YouTube cards in the 2D chat (YT-3, redesigned YT-7).
+   Loaded by YouTubeEmbed2D.js; nothing in styles/main.css changes. Every colour is one of
+   the app's existing tokens.
 
+   The rule the whole file follows: a video recommendation costs about as much room as a
+   normal message until somebody decides it deserves the room of a player. The conversation
+   pane is roughly 60% of the screen — the avatar has the rest — so desktop-web-sized embeds
+   were never affordable here. */
+
+/* ── the group ───────────────────────────────────────────────────────────────
+   Two compact cards side by side on a desktop pane; a swipeable row when the pane
+   is narrow. Not a stack of players. */
+.nexus-yt-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+@media (max-width: 640px) {
+    .nexus-yt-group {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding-bottom: 2px;
+    }
+    .nexus-yt-group::-webkit-scrollbar {
+        display: none;
+    }
+    .nexus-yt-group > .nexus-yt-card {
+        flex: 0 0 78%;
+        scroll-snap-align: start;
+    }
+}
+
+/* ── the card ────────────────────────────────────────────────────────────── */
 .nexus-yt-card {
     margin-top: 8px;
-    max-width: 360px;
+    flex: 1 1 260px;
+    min-width: 0;
+    max-width: 420px;
     border-radius: var(--border-radius, 12px);
     overflow: hidden;
     background: var(--glass-bg, rgba(15, 25, 35, 0.75));
     border: 1px solid var(--glass-border, rgba(0, 229, 255, 0.3));
+    transition:
+        max-width 220ms ease,
+        border-color 150ms ease;
 }
 
+.nexus-yt-group > .nexus-yt-card {
+    margin-top: 0;
+}
+
+/* Playing takes the whole row: one player, at the size a player deserves. */
+.nexus-yt-card.is-playing {
+    flex-basis: 100%;
+    max-width: 100%;
+}
+
+/* ── the preview ─────────────────────────────────────────────────────────────
+   The 16:9 box exists before the image does. A thumbnail that arrives and *then*
+   creates height is how a conversation jumps under somebody reading it — the same
+   rule MeetingSense's transcript keeps. */
 .nexus-yt-facade {
     position: relative;
     display: block;
@@ -18,9 +72,39 @@
     padding: 0;
     margin: 0;
     border: 0;
-    background: #000;
+    background: linear-gradient(
+            100deg,
+            rgba(255, 255, 255, 0.03) 30%,
+            rgba(255, 255, 255, 0.07) 50%,
+            rgba(255, 255, 255, 0.03) 70%
+        )
+        rgba(8, 14, 20, 0.9);
+    background-size: 300% 100%;
+    animation: nexus-yt-shimmer 1400ms ease-in-out infinite;
     cursor: pointer;
     overflow: hidden;
+}
+
+/* Once a thumbnail (or its placeholder) has settled, stop shimmering. */
+.nexus-yt-card[data-thumb='ready'] .nexus-yt-facade,
+.nexus-yt-card[data-thumb='none'] .nexus-yt-facade {
+    animation: none;
+    background: rgba(8, 14, 20, 0.9);
+}
+
+@keyframes nexus-yt-shimmer {
+    0% {
+        background-position: 100% 0;
+    }
+    100% {
+        background-position: -100% 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .nexus-yt-facade {
+        animation: none;
+    }
 }
 
 .nexus-yt-facade:focus-visible {
@@ -33,41 +117,94 @@
     height: 100%;
     object-fit: cover;
     display: block;
-    transition: transform 200ms ease;
+    opacity: 0;
+    transition:
+        opacity 220ms ease,
+        transform 200ms ease;
+}
+
+.nexus-yt-card[data-thumb='ready'] .nexus-yt-thumb {
+    opacity: 1;
 }
 
 .nexus-yt-facade:hover .nexus-yt-thumb {
     transform: scale(1.03);
 }
 
-/* Play glyph: a rounded lozenge with a white triangle, drawn in CSS so no asset ships. */
+/* An unexplained black rectangle tells nobody anything. */
+.nexus-yt-placeholder {
+    position: absolute;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--text-secondary, rgba(255, 255, 255, 0.45));
+}
+
+.nexus-yt-card[data-thumb='none'] .nexus-yt-placeholder {
+    display: flex;
+}
+
+/* Play glyph: drawn in CSS so no asset ships. */
 .nexus-yt-play {
     position: absolute;
     left: 50%;
     top: 50%;
-    width: 64px;
-    height: 44px;
+    width: 52px;
+    height: 52px;
     transform: translate(-50%, -50%);
-    border-radius: 14px;
-    background: rgba(10, 10, 20, 0.72);
-    border: 1px solid var(--glass-border, rgba(0, 229, 255, 0.3));
-    transition: background 150ms ease;
+    border-radius: 50%;
+    background: rgba(10, 10, 20, 0.66);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    backdrop-filter: blur(2px);
+    transition:
+        background 150ms ease,
+        border-color 150ms ease;
+    pointer-events: none;
+}
+
+.nexus-yt-facade:hover .nexus-yt-play {
+    background: rgba(10, 10, 20, 0.85);
+    border-color: var(--primary, #00e5ff);
 }
 
 .nexus-yt-play::after {
     content: '';
     position: absolute;
-    left: 26px;
-    top: 12px;
+    left: 52%;
+    top: 50%;
+    transform: translate(-50%, -50%);
     border-style: solid;
-    border-width: 10px 0 10px 18px;
-    border-color: transparent transparent transparent var(--text-primary, #e0f7fa);
+    border-width: 9px 0 9px 15px;
+    border-color: transparent transparent transparent #fff;
 }
 
-.nexus-yt-facade:hover .nexus-yt-play {
-    background: var(--primary-dark, #00b8d4);
+.nexus-yt-card[data-thumb='none'] .nexus-yt-play {
+    position: static;
+    transform: none;
+    width: 40px;
+    height: 40px;
 }
 
+.nexus-yt-duration {
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.78);
+    color: #fff;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.5;
+    pointer-events: none;
+}
+
+/* ── the player ──────────────────────────────────────────────────────────── */
 .nexus-yt-player {
     display: block;
     width: 100%;
@@ -76,8 +213,30 @@
     background: #000;
 }
 
+.nexus-yt-collapse {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 2;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(10, 10, 20, 0.72);
+    color: #fff;
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.nexus-yt-stage {
+    position: relative;
+}
+
+/* ── meta ────────────────────────────────────────────────────────────────── */
 .nexus-yt-meta {
-    padding: 8px 10px 10px;
+    padding: 8px 10px 9px;
     display: flex;
     flex-direction: column;
     gap: 2px;
@@ -85,65 +244,116 @@
 
 .nexus-yt-title {
     font-size: 13px;
+    line-height: 1.35;
     font-weight: 600;
-    line-height: 1.3;
-    color: var(--text-primary, #e0f7fa);
-    overflow: hidden;
+    color: var(--text-primary, #e8f4f8);
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 .nexus-yt-author {
     font-size: 11px;
-    color: rgba(224, 247, 250, 0.6);
-}
-
-.nexus-yt-author:empty {
-    display: none;
+    color: var(--text-secondary, rgba(255, 255, 255, 0.5));
 }
 
 .nexus-yt-actions {
-    margin-top: 6px;
     display: flex;
-    gap: 10px;
     align-items: center;
-    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 4px;
 }
 
-.nexus-yt-open,
-.nexus-yt-vr {
-    font: inherit;
+.nexus-yt-open {
     font-size: 11px;
     color: var(--primary, #00e5ff);
     text-decoration: none;
-    background: none;
-    border: 0;
-    padding: 0;
-    cursor: pointer;
 }
 
-.nexus-yt-open:hover,
-.nexus-yt-vr:hover:not(:disabled) {
+.nexus-yt-open:hover {
     text-decoration: underline;
 }
 
-.nexus-yt-vr:disabled {
-    opacity: 0.5;
-    cursor: default;
+/* Secondary by construction: the thumbnail is the primary action. */
+.nexus-yt-more {
+    margin-left: auto;
+    padding: 1px 6px;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: var(--text-secondary, rgba(255, 255, 255, 0.45));
+    font-size: 13px;
+    line-height: 1.2;
+    cursor: pointer;
+}
+
+.nexus-yt-more:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-primary, #e8f4f8);
+}
+
+.nexus-yt-menu {
+    position: relative;
+}
+
+.nexus-yt-sheet {
+    position: absolute;
+    right: 0;
+    bottom: 22px;
+    z-index: 5;
+    min-width: 160px;
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    border-radius: 10px;
+    border: 1px solid var(--glass-border, rgba(0, 229, 255, 0.3));
+    background: var(--bg-elevated, #0d1620);
+    box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.9);
+}
+
+.nexus-yt-sheet button {
+    padding: 6px 8px;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: var(--text-primary, #e8f4f8);
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.nexus-yt-sheet button:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* VR is promoted out of the menu only where VR is actually the context. */
+.nexus-yt-vr {
+    padding: 2px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--glass-border, rgba(0, 229, 255, 0.3));
+    background: rgba(0, 229, 255, 0.1);
+    color: var(--primary, #00e5ff);
+    font-size: 11px;
+    cursor: pointer;
 }
 
 .nexus-yt-status {
     font-size: 11px;
-    color: var(--accent-orange, #ff9100);
-    margin-top: 4px;
+    line-height: 1.45;
+    color: var(--text-secondary, rgba(255, 255, 255, 0.5));
 }
 
 .nexus-yt-status:empty {
     display: none;
 }
 
-/* Inside the message bubble stack the card should never exceed the chat column. */
-.message .nexus-yt-card {
-    width: 100%;
+/* ── error, and it never removes the card ────────────────────────────────── */
+.nexus-yt-card.is-error .nexus-yt-facade {
+    animation: none;
+    background: rgba(40, 12, 16, 0.65);
+}
+
+.nexus-yt-card.is-error .nexus-yt-play {
+    display: none;
 }

@@ -155,9 +155,19 @@ const YouTubeAsk = (() => {
             return 0;
         }
         const d = doc || (typeof document !== 'undefined' ? document : null);
+        const rows = results.slice(0, MAX_RESULTS);
+        // The same compact row `decorate` uses: side by side on a desktop pane, swipeable on
+        // a phone. Search results are exactly the case that turned the thread into a
+        // catalogue, so they must not be the one path that still stacks.
+        let parent = node;
+        if (rows.length > 1 && d) {
+            parent = d.createElement('div');
+            parent.className = 'nexus-yt-group';
+            node.appendChild(parent);
+        }
         let drawn = 0;
-        for (const r of results.slice(0, MAX_RESULTS)) {
-            node.appendChild(embed.buildCard(r, { doc: d }));
+        for (const r of rows) {
+            parent.appendChild(embed.buildCard(r, { doc: d }));
             drawn += 1;
         }
         return drawn;
