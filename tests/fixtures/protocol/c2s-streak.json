@@ -1,0 +1,12 @@
+{
+  "name": "streak",
+  "direction": "client->server",
+  "spec": "v1.2 14.3",
+  "required": ["v", "type", "activity", "value"],
+  "message": {
+    "v": 1,
+    "type": "streak",
+    "activity": "focus",
+    "value": 4
+  }
+}

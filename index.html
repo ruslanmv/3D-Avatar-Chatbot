@@ -1436,6 +1436,241 @@
                         </div>
                     </div>
 
+                    <!-- NEXUS_BD — Behavior Director (spec v1.1 §7, batch B7).
+                         Additive and self-contained: this control writes the single
+                         localStorage key that behaviorEngine.enabled reads at boot. With it
+                         off, no engine file is ever fetched. Deleting this section
+                         removes the toggle and nothing else. -->
+                    <div class="config-section">
+                        <h3 class="config-title">BEHAVIOR ENGINE (BETA)</h3>
+                        <p style="font-size: 0.72rem; color: rgba(255, 255, 255, 0.5); margin-bottom: 12px">
+                            Let her choose her own gestures from the animation library, instead of a fixed mapping.
+                            Takes effect on reload.
+                        </p>
+                        <div class="input-group">
+                            <label class="spicy-toggle-label">
+                                <span>Enable Behavior Director</span>
+                                <div class="spicy-toggle-switch">
+                                    <input type="checkbox" id="behavior-engine-toggle" />
+                                    <span class="spicy-toggle-slider"></span>
+                                </div>
+                            </label>
+                        </div>
+
+                        <!-- Batch B9, reshaped in B35. The two controls that used to live
+                             here — a "Connect HomePilot session" switch and a URL box — asked
+                             the user for something the app can find out: OllaBridge already
+                             knows whether a HomePilot is behind it, and the user has already
+                             linked OllaBridge to get models. So this is now a status line,
+                             and the manual path moved behind a disclosure rather than being
+                             deleted: an install that typed a URL in keeps working, and a
+                             developer can still aim at a box on their bench. -->
+                        <div class="input-group">
+                            <div
+                                id="behavior-session-status"
+                                style="font-size: 0.72rem; color: rgba(255, 255, 255, 0.55); line-height: 1.5"
+                            >
+                                Checking for HomePilot…
+                            </div>
+                        </div>
+
+                        <details id="behavior-session-advanced" style="margin-top: 4px">
+                            <summary
+                                style="
+                                    font-size: 0.68rem;
+                                    letter-spacing: 0.08em;
+                                    text-transform: uppercase;
+                                    color: rgba(255, 255, 255, 0.4);
+                                    cursor: pointer;
+                                    padding: 4px 0;
+                                "
+                            >
+                                Advanced — connect a HomePilot directly
+                            </summary>
+                            <p style="font-size: 0.68rem; color: rgba(255, 255, 255, 0.4); margin: 6px 0 10px">
+                                Only needed when you are not using OllaBridge. The browser must be able to open this
+                                socket itself, so an <code>http://</code> page cannot use a <code>wss://</code> address
+                                and a hosted page cannot reach <code>localhost</code>.
+                            </p>
+                            <div class="input-group">
+                                <label class="spicy-toggle-label">
+                                    <span>Connect HomePilot session</span>
+                                    <div class="spicy-toggle-switch">
+                                        <input type="checkbox" id="behavior-session-toggle" />
+                                        <span class="spicy-toggle-slider"></span>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="input-group">
+                                <label class="input-label" for="behavior-session-url">HOMEPILOT SESSION URL</label>
+                                <input
+                                    type="text"
+                                    id="behavior-session-url"
+                                    class="text-input"
+                                    placeholder="ws://localhost:8000/avatar/session"
+                                />
+                            </div>
+                        </details>
+
+                        <!-- Batch B10. A button rather than a stored flag: the browser's own
+                             permission prompt is the consent, and re-asking on every reload
+                             is the correct behaviour for a microphone. -->
+                        <div class="input-group">
+                            <button id="behavior-voice-btn" class="btn-primary" type="button">
+                                Use microphone with HomePilot
+                            </button>
+                            <div
+                                id="behavior-voice-status"
+                                style="font-size: 0.7rem; color: #888; margin-top: 6px"
+                            ></div>
+                        </div>
+                    </div>
+                    <script>
+                        (function () {
+                            var box = document.getElementById('behavior-engine-toggle');
+                            if (!box) return;
+                            try {
+                                /* Opt-out, matching startBehaviorDirector() in src/main.js:
+                                   anything but the literal 'false' is on. The two must agree
+                                   or the box says one thing and the engine does another. */
+                                box.checked = localStorage.getItem('nexus_bd_enabled') !== 'false';
+                            } catch (e) {
+                                /* Storage disabled: main.js defaults to on for the same
+                                   reason, and the box is already checked by markup. */
+                                box.checked = true;
+                            }
+                            box.addEventListener('change', function () {
+                                try {
+                                    localStorage.setItem('nexus_bd_enabled', box.checked ? 'true' : 'false');
+                                } catch (e) {
+                                    /* nothing to do: without storage the flag cannot persist */
+                                }
+                            });
+
+                            /* Batch B9. Two more keys, read at boot and nowhere else. The
+                               session cannot be switched on without a URL, so a stray click
+                               cannot start something retrying against a placeholder. */
+                            var sessionBox = document.getElementById('behavior-session-toggle');
+                            var sessionUrl = document.getElementById('behavior-session-url');
+                            if (!sessionBox || !sessionUrl) return;
+
+                            function readKey(key) {
+                                try {
+                                    return localStorage.getItem(key) || '';
+                                } catch (e) {
+                                    return '';
+                                }
+                            }
+                            function writeKey(key, value) {
+                                try {
+                                    localStorage.setItem(key, value);
+                                } catch (e) {
+                                    /* without storage neither setting persists */
+                                }
+                            }
+                            function syncSession() {
+                                var hasUrl = sessionUrl.value.trim().length > 0;
+                                sessionBox.disabled = !hasUrl;
+                                if (!hasUrl) sessionBox.checked = false;
+                                writeKey('nexus_bd_session_url', sessionUrl.value.trim());
+                                writeKey('nexus_bd_session_enabled', sessionBox.checked ? 'true' : 'false');
+                            }
+
+                            sessionUrl.value = readKey('nexus_bd_session_url');
+                            sessionBox.checked = readKey('nexus_bd_session_enabled') === 'true';
+                            sessionBox.disabled = sessionUrl.value.trim().length === 0;
+                            sessionUrl.addEventListener('change', syncSession);
+                            sessionBox.addEventListener('change', syncSession);
+
+                            /* Batch B35. The status line, and it is the whole of what most
+                               people will ever read here. Every branch names the *fix*, not
+                               the failure: "no bridge" and "bridge has no HomePilot" and
+                               "bridge too old" are three different problems, and a single
+                               "not connected" would send everyone to the wrong one.
+
+                               Runs on open, not on load: it is one GET, and a Settings panel
+                               nobody opened should not make it. */
+                            var statusEl = document.getElementById('behavior-session-status');
+                            var advanced = document.getElementById('behavior-session-advanced');
+
+                            var MESSAGES = {
+                                'no-bridge':
+                                    'No OllaBridge linked. Add one under Settings ▸ Provider to reach HomePilot ' +
+                                    'without typing an address here.',
+                                'bridge-unreachable':
+                                    'OllaBridge did not answer. Check it is running, then reopen this panel.',
+                                'no-homepilot':
+                                    'OllaBridge is linked, but no HomePilot behind it. Enable HomePilot in ' +
+                                    "OllaBridge's Local Runtimes to connect one.",
+                                'bridge-too-old':
+                                    'OllaBridge is linked and sees HomePilot, but this version cannot relay the ' +
+                                    'session. She will still gesture and show media; she will not speak first. ' +
+                                    'Upgrade OllaBridge.',
+                                'no-fetch': 'This browser blocked the check. Use the manual address below.',
+                            };
+
+                            function paintStatus() {
+                                if (!statusEl) return;
+                                var manual = sessionUrl.value.trim();
+                                if (manual) {
+                                    statusEl.textContent =
+                                        'Using the manual address below. Clear it to go back to automatic.';
+                                    if (advanced) advanced.open = true;
+                                    return;
+                                }
+                                /* The director owns the discovery module, so with the flag
+                                   off there is nothing to ask — and nothing to connect. */
+                                var discovery = window.NEXUS_BD_ENABLED ? window.NEXUS_BD_BRIDGE_DISCOVERY : null;
+                                if (!discovery) {
+                                    statusEl.textContent =
+                                        'Turn the Behavior Director on and reload to check for HomePilot.';
+                                    return;
+                                }
+                                statusEl.textContent = 'Checking for HomePilot…';
+                                discovery.discover().then(function (found) {
+                                    if (found.available) {
+                                        var extra = found.features.length ? ' — ' + found.features.join(', ') : '';
+                                        statusEl.textContent = 'HomePilot connected through OllaBridge' + extra + '.';
+                                        return;
+                                    }
+                                    statusEl.textContent = MESSAGES[found.reason] || 'HomePilot not connected.';
+                                });
+                            }
+
+                            sessionUrl.addEventListener('change', paintStatus);
+                            /* The panel is a modal; `open` is when the answer matters. Fall
+                               back to painting once if the app opens Settings some other way. */
+                            var settingsModal = document.getElementById('settings-modal');
+                            if (settingsModal && typeof MutationObserver === 'function') {
+                                new MutationObserver(function () {
+                                    if (settingsModal.classList.contains('active')) paintStatus();
+                                }).observe(settingsModal, { attributes: true, attributeFilter: ['class'] });
+                            }
+                            paintStatus();
+
+                            /* Batch B10. The one caller of enableVoice(). Guarded on the
+                               same line, and it reports what actually happened: declining
+                               the microphone is an outcome to show, not an error to hide. */
+                            var voiceBtn = document.getElementById('behavior-voice-btn');
+                            var voiceStatus = document.getElementById('behavior-voice-status');
+                            if (!voiceBtn || !voiceStatus) return;
+                            voiceBtn.addEventListener('click', async function () {
+                                var director = window.NEXUS_BD_ENABLED ? window.NEXUS_BD : null;
+                                if (!director) {
+                                    voiceStatus.textContent = 'Turn the Behavior Director on and reload first.';
+                                    return;
+                                }
+                                voiceStatus.textContent = 'Asking for the microphone…';
+                                var result = await director.enableVoice();
+                                var why = director.voice ? director.voice.stats.reason : 'unavailable';
+                                voiceStatus.textContent =
+                                    result === 'listening'
+                                        ? 'Listening. Speak and she will answer.'
+                                        : 'Microphone not in use — ' + why + '. Everything else keeps working.';
+                            });
+                        })();
+                    </script>
+
                     <div class="config-section">
                         <h3 class="config-title">RENDER MODE</h3>
                         <p style="font-size: 0.72rem; color: rgba(255, 255, 255, 0.5); margin-bottom: 12px">
@@ -3233,6 +3468,14 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <script defer src="src/xr/MotionContract.js"></script>
         <script defer src="src/xr/HandContactIK.js"></script>
         <script defer src="src/xr/MotionIntegration.js"></script>
+
+        <!-- YouTube Everywhere (additive — thumbnails + inline player in 2D chat, cards + companion-tab playback in VR) -->
+        <!-- NON-DESTRUCTIVE: To remove, delete these 5 script tags and the src/features/youtube/ folder. Search "NEXUS_YT" -->
+        <script defer src="src/features/youtube/YouTubeLink.js"></script>
+        <script defer src="src/features/youtube/YouTubeCompanion.js"></script>
+        <script defer src="src/features/youtube/YouTubeEmbed2D.js"></script>
+        <script defer src="src/features/youtube/YouTubeVRBridge.js"></script>
+        <script defer src="src/features/youtube/YouTubeAsk.js"></script>
 
         <!-- Pose Studio init (must load after main.js and all Pose modules) -->
         <script defer src="src/PoseStudioInit.js"></script>

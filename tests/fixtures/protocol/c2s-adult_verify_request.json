@@ -1,0 +1,10 @@
+{
+  "name": "adult_verify_request",
+  "direction": "client->server",
+  "spec": "v1.2 14.3",
+  "required": ["v", "type"],
+  "message": {
+    "v": 1,
+    "type": "adult_verify_request"
+  }
+}

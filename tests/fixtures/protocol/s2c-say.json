@@ -1,0 +1,12 @@
+{
+  "name": "say",
+  "direction": "server->client",
+  "spec": "v1.1 6.9",
+  "required": ["v", "type", "text", "source"],
+  "message": {
+    "v": 1,
+    "type": "say",
+    "text": "You mentioned the aquarium trip — how was it?",
+    "source": "curiosity"
+  }
+}

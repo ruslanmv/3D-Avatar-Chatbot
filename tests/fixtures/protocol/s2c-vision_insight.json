@@ -1,0 +1,18 @@
+{
+  "name": "vision_insight",
+  "direction": "server->client",
+  "spec": "v1.1 6.9",
+  "required": ["v", "type", "frameId", "text", "intents"],
+  "message": {
+    "v": 1,
+    "type": "vision_insight",
+    "frameId": "f123",
+    "text": "A bar chart with a broken y-axis.",
+    "intents": [
+      {
+        "name": "thinking",
+        "intensity": 0.5
+      }
+    ]
+  }
+}

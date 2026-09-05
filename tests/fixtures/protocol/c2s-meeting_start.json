@@ -1,0 +1,18 @@
+{
+  "name": "meeting_start",
+  "direction": "client->server",
+  "spec": "MS7",
+  "required": ["v", "type", "conversation_id"],
+  "message": {
+    "v": 1,
+    "type": "meeting_start",
+    "conversation_id": "conv-0001",
+    "title": "Q3 planning",
+    "source": "teams",
+    "audio": {
+      "rate": 16000,
+      "channels": 2,
+      "mode": "system+mic"
+    }
+  }
+}

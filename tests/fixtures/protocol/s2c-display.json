@@ -1,0 +1,24 @@
+{
+  "name": "display",
+  "direction": "server->client",
+  "spec": "v1.2 14.3",
+  "required": ["v", "type", "kind", "data"],
+  "message": {
+    "v": 1,
+    "type": "display",
+    "kind": "agenda",
+    "data": {
+      "title": "Today",
+      "items": [
+        {
+          "at": "09:30",
+          "what": "Standup"
+        },
+        {
+          "at": "14:00",
+          "what": "Dentist"
+        }
+      ]
+    }
+  }
+}

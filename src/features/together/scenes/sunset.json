@@ -1,0 +1,28 @@
+{
+  "id": "sunset",
+  "title": "Late sun",
+  "skybox": "src/features/together/scenes/assets/sunset_8k.ktx2",
+  "ambient": "src/features/together/scenes/assets/sunset_loop.ogg",
+  "fallbackColor": "#3a2436",
+  "lighting": {
+    "exposure": 0.9,
+    "hemi": "#e6a07a"
+  },
+  "anchors": [
+    { "name": "horizon", "dir": [0, -0.05, -1] },
+    { "name": "you", "dir": [0.2, 0, -0.4] }
+  ],
+  "avatarPlacement": {
+    "pos": [0.5, 0, -0.9],
+    "faceUser": true
+  },
+  "profileOverlay": {
+    "idleProfile": "warm-attentive",
+    "commentaryOpenings": ["user:silent>15000"],
+    "initiative": {
+      "budgetPerSession": 2,
+      "minGapMs": 120000
+    }
+  },
+  "guidedScript": null
+}

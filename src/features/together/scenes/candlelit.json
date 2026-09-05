@@ -1,0 +1,25 @@
+{
+  "id": "candlelit",
+  "title": "Candlelit",
+  "skybox": "src/features/together/scenes/assets/candlelit_8k.ktx2",
+  "ambient": "src/features/together/scenes/assets/candlelit_loop.ogg",
+  "fallbackColor": "#1b1310",
+  "lighting": {
+    "exposure": 0.7,
+    "hemi": "#c98a52"
+  },
+  "anchors": [{ "name": "you", "dir": [0.15, 0, -0.35] }],
+  "avatarPlacement": {
+    "pos": [0.4, 0, -0.75],
+    "faceUser": true
+  },
+  "profileOverlay": {
+    "idleProfile": "warm-attentive",
+    "commentaryOpenings": ["user:silent>20000"],
+    "initiative": {
+      "budgetPerSession": 1,
+      "minGapMs": 180000
+    }
+  },
+  "guidedScript": null
+}

@@ -1,0 +1,12 @@
+{
+  "name": "adult_ack",
+  "direction": "server->client",
+  "spec": "v1.2 14.3",
+  "required": ["v", "type", "verified", "exp"],
+  "message": {
+    "v": 1,
+    "type": "adult_ack",
+    "verified": true,
+    "exp": "2026-12-31"
+  }
+}

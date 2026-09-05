@@ -1,0 +1,12 @@
+{
+  "name": "vision_ask",
+  "direction": "client->server",
+  "spec": "v1.1 6.9",
+  "required": ["v", "type", "prompt", "frameId"],
+  "message": {
+    "v": 1,
+    "type": "vision_ask",
+    "prompt": "what do you think of this?",
+    "frameId": "f123"
+  }
+}

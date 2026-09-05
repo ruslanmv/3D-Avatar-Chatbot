@@ -1,0 +1,10 @@
+{
+  "name": "ping",
+  "direction": "server->client",
+  "spec": "v1.1 6.9",
+  "required": ["v", "type"],
+  "message": {
+    "v": 1,
+    "type": "ping"
+  }
+}

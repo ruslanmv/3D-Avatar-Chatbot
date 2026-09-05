@@ -1,0 +1,13 @@
+{
+  "name": "hello",
+  "direction": "client->server",
+  "spec": "v1.1 6.9",
+  "required": ["v", "type", "client", "caps", "auth"],
+  "message": {
+    "v": 1,
+    "type": "hello",
+    "client": "3dac",
+    "caps": ["tier1local", "xr", "capture"],
+    "auth": "<token|pairing>"
+  }
+}

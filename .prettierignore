@@ -21,3 +21,13 @@ docs/
 package-lock.json
 yarn.lock
 pnpm-lock.yaml
+
+# Protocol fixtures (spec v1.1 6.9)
+#
+# These are byte-identical with backend/tests/fixtures/protocol/ in HomePilot and are
+# guarded by CHECKSUMS.txt in both repositories — their bytes ARE the contract, which is
+# the whole point of shipping the same files to two codebases. Prettier would reflow the
+# `required` arrays in the six voice fixtures, breaking that identity and invalidating
+# every checksum, in exchange for nothing a reader gains. A formatter does not get to
+# restyle a wire format.
+tests/fixtures/protocol/

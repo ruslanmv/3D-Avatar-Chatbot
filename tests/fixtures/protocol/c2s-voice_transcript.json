@@ -1,0 +1,20 @@
+{
+  "name": "voice_transcript",
+  "direction": "client->server",
+  "spec": "v1.1 6.10",
+  "required": [
+    "v",
+    "type",
+    "text",
+    "final",
+    "lang"
+  ],
+  "message": {
+    "v": 1,
+    "type": "voice_transcript",
+    "text": "did the parcel arrive?",
+    "final": true,
+    "lang": "en"
+  },
+  "note": "Only final:true runs a turn. Interim text drives the client's own VAD and nothing on the server; answering half a sentence is worse than waiting for the rest of it."
+}

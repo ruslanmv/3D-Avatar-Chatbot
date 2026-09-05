@@ -1,0 +1,34 @@
+{
+  "id": "ocean",
+  "title": "By the sea",
+  "skybox": "src/features/together/scenes/assets/ocean_8k.ktx2",
+  "ambient": "src/features/together/scenes/assets/ocean_loop.ogg",
+  "fallbackColor": "#12333f",
+  "lighting": {
+    "exposure": 1.1,
+    "hemi": "#bfd8e6"
+  },
+  "anchors": [
+    {
+      "name": "waves",
+      "dir": [0.2, -0.05, -1]
+    },
+    {
+      "name": "horizon",
+      "dir": [0, 0.05, -1]
+    }
+  ],
+  "avatarPlacement": {
+    "pos": [0.6, 0, -0.4],
+    "faceUser": true
+  },
+  "profileOverlay": {
+    "idleProfile": "curious-outdoor",
+    "commentaryOpenings": ["anchor:waves", "user:silent>10000"],
+    "initiative": {
+      "budgetPerSession": 6,
+      "minGapMs": 90000
+    }
+  },
+  "guidedScript": null
+}
