@@ -406,6 +406,11 @@ describe('opening the chooser starts nothing at all', () => {
         button().click();
         const names = tiles().map((t) => t.querySelector('.nexus-bd-together-name').textContent);
         expect(names).toEqual(['Watch', 'Journey', 'Music', 'Play', 'Focus', 'Coach', 'Help me with this']);
+        // "Help me with this" is the only wide tile, so it is the only one that leaves the
+        // three-column rhythm — and it is last, below the activities rather than among them.
+        const wide = tiles().filter((t) => t.classList.contains('is-wide'));
+        expect(wide.map((t) => t.querySelector('.nexus-bd-together-name').textContent)).toEqual(['Help me with this']);
+        expect(tiles()[tiles().length - 1]).toBe(wide[0]);
         expect(moreButton()).toBeNull();
     });
 

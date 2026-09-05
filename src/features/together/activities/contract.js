@@ -159,7 +159,10 @@ const ActivityContract = (() => {
         copilot: {
             title: 'Help me with this',
             icon: '👀',
-            order: 70,
+            // Last, and `wide`, so it lands as one full-width secondary action *below* the
+            // activity grid rather than inside it — the reference layout. Ordering only:
+            // the tile, its handler, its id and its styling are untouched.
+            order: 90,
             wide: true,
             prompt: 'Point your camera at what you are working on.',
             inputs: () => [
