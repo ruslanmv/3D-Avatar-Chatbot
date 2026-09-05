@@ -320,8 +320,15 @@ describe('both engine paths start the director', () => {
         expect(body).toContain('if (window.NEXUS_BD_ENABLED !== undefined) return false;');
     });
 
-    test('and it is still opt-in — the flag default is untouched', () => {
-        expect(MAIN_CODE).toContain("localStorage.getItem('nexus_bd_enabled') === 'true'");
+    test('and it is opt-out now — an unset key boots, an explicit false does not', () => {
+        // Flipped deliberately in its own change: opt-in meant the 👥 launcher did not exist
+        // on a fresh install, so every feature behind it was undiscoverable. The kill switch
+        // survives — 'false' still stops the engine before a byte of src/behavior/ is
+        // fetched — and the config key stays false because two CI audits assert it and
+        // nothing at runtime reads it.
+        expect(MAIN_CODE).toContain("localStorage.getItem('nexus_bd_enabled') !== 'false'");
+        expect(MAIN_CODE).not.toContain("localStorage.getItem('nexus_bd_enabled') === 'true'");
+        expect(MAIN_CODE).toContain('if (!window.NEXUS_BD_ENABLED) return false;');
         const config = JSON.parse(fs.readFileSync(path.join(ROOT, 'config/behavior.config.json'), 'utf8'));
         expect(config.behaviorEngine.enabled).toBe(false);
     });

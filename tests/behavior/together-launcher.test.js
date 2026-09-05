@@ -921,13 +921,25 @@ describe('it behaves like a menu for somebody not using a mouse', () => {
         expect(button().getAttribute('aria-controls')).toBe(TogetherPanel.PANEL_ID);
     });
 
-    test('the button is easy to hit on a phone', () => {
-        // 38px visual, 44px target. Apple asks for 44pt, Android for 48dp; the icon stays
-        // the size it was and the hit area grows around it.
+    test('the button is the same square as every other footer control', () => {
+        // B36 set a 44px minimum size inline for the touch target, and inline styles beat
+        // the stylesheet — so the control rendered 44x44 in a row of 38x38 buttons and was
+        // visibly the odd one out. "Disappears into the row" is the whole design of this
+        // control, and a measurement is the only honest way to hold it.
         harness();
-        const target = Number.parseInt(button().style.minWidth || '0', 10);
-        expect(target).toBeGreaterThanOrEqual(44);
-        expect(Number.parseInt(button().style.minHeight || '0', 10)).toBeGreaterThanOrEqual(44);
+        expect(button().style.minWidth).toBe('');
+        expect(button().style.minHeight).toBe('');
+        const css = TogetherLauncher.CSS || '';
+        expect(css).toMatch(/width:\s*38px;\s*height:\s*38px/);
+        expect(css).not.toMatch(/min-width:\s*44px/);
+    });
+
+    test('and still has a 44px touch target, bought without layout', () => {
+        // Apple asks for 44pt and Android for 48dp. An absolutely-positioned child grows
+        // the hit area without growing the box; a child of a button is the button as far as
+        // a click is concerned.
+        const css = TogetherLauncher.CSS || '';
+        expect(css).toMatch(/::before[\s\S]*?position:\s*absolute[\s\S]*?inset:\s*-3px/);
     });
 
     test('document listeners exist only while it is open', () => {

@@ -1530,9 +1530,14 @@
                             var box = document.getElementById('behavior-engine-toggle');
                             if (!box) return;
                             try {
-                                box.checked = localStorage.getItem('nexus_bd_enabled') === 'true';
+                                /* Opt-out, matching startBehaviorDirector() in src/main.js:
+                                   anything but the literal 'false' is on. The two must agree
+                                   or the box says one thing and the engine does another. */
+                                box.checked = localStorage.getItem('nexus_bd_enabled') !== 'false';
                             } catch (e) {
-                                /* storage disabled: the engine stays off, which is the default */
+                                /* Storage disabled: main.js defaults to on for the same
+                                   reason, and the box is already checked by markup. */
+                                box.checked = true;
                             }
                             box.addEventListener('change', function () {
                                 try {

@@ -915,9 +915,19 @@ function setupThreeJS() {
 /* NEXUS_BD — Behavior Director bootstrap (spec v1.1 §7, batch B3; given both engine
    paths in B33).
 
-   Opt-in only: with `nexus_bd_enabled` unset nothing under src/behavior/ is fetched,
-   parsed or evaluated, so the app is byte-for-byte the one that shipped. The settings
-   toggle writes that key; see docs/PATHMAP.md §4.
+   Opt-**out**: `nexus_bd_enabled` is read as "on unless explicitly 'false'". Set to
+   'false' — which the settings toggle writes when unticked — nothing under src/behavior/
+   is fetched, parsed or evaluated and the app is byte-for-byte the one that shipped.
+
+   It shipped opt-in until now, and the cost was that the Together launcher did not exist
+   on a fresh install: the 👥 button people were told to look for was behind a checkbox
+   they had to know to tick first. A companion that needs a hidden setup step before it
+   has any of its features is not opt-in, it is undiscoverable.
+
+   **The default lives here, not in `config/behavior.config.json`.** That file's
+   `behaviorEngine.enabled` is read by nothing at runtime (see docs/ENABLING.md, "Known
+   gap") and by two CI audits which assert it is false; flipping it would break both gates
+   and change no behaviour at all. This key is the ignition, and this line is the switch.
 
    This lived inside setupThreeJS() from B3 until B33, and setupThreeJS() runs only on
    the legacy path — init() calls it in the `!useViewerEngine` branch. Every shipped
@@ -934,9 +944,15 @@ function startBehaviorDirector(options = {}) {
     if (window.NEXUS_BD_ENABLED !== undefined) return false; // idempotent: one boot per page
     window.NEXUS_BD_ENABLED = (() => {
         try {
-            return localStorage.getItem('nexus_bd_enabled') === 'true';
+            // Anything but the literal 'false' is on, so an unset key — a fresh install —
+            // gets the engine.
+            return localStorage.getItem('nexus_bd_enabled') !== 'false';
         } catch (_) {
-            return false;
+            // Storage unavailable (private mode, an embedded webview): there is no stored
+            // opt-out to honour, so the default applies. Returning false here instead would
+            // tick the settings box and boot nothing, which is the one outcome worse than
+            // either default.
+            return true;
         }
     })();
     if (!window.NEXUS_BD_ENABLED) return false;

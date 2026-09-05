@@ -124,15 +124,29 @@ const TogetherLauncher = (() => {
 #${BUTTON_ID} {
   position: relative;
   display: inline-flex; align-items: center; justify-content: center;
-  /* 38px of paint, 44px of target — see the inline min-width/min-height above. */
+  /* Exactly the square its neighbours are. B36 added a 44px minimum size for the touch
+     target and made the control render 44x44 in a row of 38x38 buttons - measurably the odd
+     one out, which is the opposite of "disappears into the row". The target is restored
+     below by a pseudo-element, which costs no layout. */
   width: 38px; height: 38px; padding: 0;
-  min-width: 44px; min-height: 44px;
+  flex: 0 0 38px;
   border-radius: var(--border-radius-sm, 8px); cursor: pointer;
   color: var(--accent-cyan, #22d3ee);
   background: rgba(0, 0, 0, .3);
   border: 1px solid var(--glass-border, rgba(34, 211, 238, .28));
   transition: background .16s ease, border-color .16s ease, color .16s ease;
 }
+/* 44px of target around 38px of paint. Apple asks for 44pt and Android for 48dp; an
+   absolutely-positioned child grows the hit area without growing the box, so the button
+   still measures 38x38 beside its neighbours. A child of the button *is* the button as far
+   as a click is concerned. */
+#${BUTTON_ID}::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: inherit;
+}
+
 #${BUTTON_ID}:hover { background: rgba(34, 211, 238, .12); border-color: var(--primary, #22d3ee); }
 #${BUTTON_ID}:focus-visible { outline: 2px solid var(--accent-cyan, #22d3ee); outline-offset: 2px; }
 #${BUTTON_ID}[data-state='open'] { background: rgba(34, 211, 238, .16); border-color: var(--primary, #22d3ee); }
@@ -188,6 +202,43 @@ const TogetherLauncher = (() => {
   color: #7d8797; font: 500 .76rem/1 inherit; letter-spacing: .04em;
 }
 .nexus-bd-together-cancel:hover { color: #e8ecf2; }
+
+/* B36 added the "More together" disclosure and no rule for it, so it rendered as a browser
+   default button — a white box with black text in a dark panel. It is a quiet disclosure,
+   not a call to action: the four tiles above it are the answer for almost everybody. */
+.nexus-bd-together-more {
+  display: block; width: 100%; margin-top: .55rem; padding: .5rem;
+  background: rgba(255,255,255,.03); cursor: pointer;
+  border: 1px solid rgba(255,255,255,.08); border-radius: 10px;
+  color: #9aa6b8; font: 500 .76rem/1 inherit; letter-spacing: .03em;
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+.nexus-bd-together-more:hover {
+  background: rgba(34,211,238,.1); border-color: rgba(34,211,238,.32); color: #e8ecf2;
+}
+.nexus-bd-together-more:focus-visible {
+  outline: 2px solid var(--accent-cyan, #22d3ee); outline-offset: 2px;
+}
+
+/* The rest of B36's controls, which the standing check above found unstyled too. */
+.nexus-bd-together-steps {
+  display: block; width: 100%; margin: .5rem 0 .1rem; padding: .5rem .6rem;
+  background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.1); border-radius: 10px;
+  color: #e8ecf2; font: 400 .76rem/1.45 inherit; resize: vertical;
+}
+.nexus-bd-together-steps::placeholder { color: #6b7686; }
+.nexus-bd-together-steps:focus-visible {
+  outline: none; border-color: var(--accent-cyan, #22d3ee);
+}
+/* The sentence under an option — "Your screen stops sharing when you leave Watch". */
+.nexus-bd-together-note {
+  display: block; margin-top: .25rem;
+  color: #7d8797; font: 400 .68rem/1.35 inherit; letter-spacing: 0;
+}
+/* What is being captured, kept separate from what is running (§2a). */
+.nexus-bd-together-sharing {
+  margin: .35rem 0 0; color: #9aa6b8; font: 400 .7rem/1.4 inherit;
+}
 
 @media (max-width: 640px) {
   /* A floating card over a narrow avatar is unusable, so the same panel becomes a sheet. */
@@ -286,11 +337,9 @@ const TogetherLauncher = (() => {
             b.setAttribute('aria-haspopup', 'dialog');
             b.setAttribute('aria-controls', PANEL_ID);
             b.setAttribute('aria-expanded', 'false');
-            // 38px of visible button inside a 44px target. The icon stays the size that
-            // makes it disappear into the toolbar row; only the hit area grows, which is
-            // what Apple's 44pt and Android's 48dp guidance are actually about.
-            b.style.minWidth = '44px';
-            b.style.minHeight = '44px';
+            // No inline geometry. B36 set min-width/min-height here and inline styles beat
+            // the stylesheet, so the control rendered 44x44 among 38x38 neighbours. The
+            // touch target is a `::before` in the CSS below, which does not affect layout.
             b.addEventListener('click', () => this.toggle());
             b.appendChild(groupIcon(this.doc, 22));
 
