@@ -67,7 +67,12 @@ const TogetherFailures = (() => {
         {
             match: /homepilot|not connected|session|websocket|bridge/i,
             title: () => 'HomePilot isn’t connected',
-            body: 'Basic avatar behaviour still works. Connect HomePilot for screen understanding.',
+            // The activity's own sentence, which names *what* it needed HomePilot for and
+            // what would link it — a generic line here would throw both away. The reassuring
+            // half is fixed, because it is true of every one of these: almost all of
+            // Together runs with no HomePilot at all.
+            body: (why) =>
+                `${sentence(why)} Everything else — Focus, Journey, Music, Watch and Coach — works without it.`,
             actions: [SETTINGS, BACK],
         },
         {

@@ -161,6 +161,14 @@ function make(id, { consent = null, fail = null } = {}) {
 }
 
 const html = () => document.getElementById(TogetherPanel.PANEL_ID).textContent;
+
+/** Copilot and Meeting need HomePilot; every test touching them must say which world it is in. */
+function homePilotConnected(on = true) {
+    window.NEXUS_BD = { config: { session: { enabled: on, source: on ? 'bridge' : 'no-homepilot' } } };
+}
+afterEach(() => {
+    delete window.NEXUS_BD;
+});
 const optionsOf = () => [...document.querySelectorAll('.nexus-bd-together-option')];
 const optionNamed = (name) => optionsOf().find((o) => o.textContent.startsWith(name));
 const flush = () => new Promise((r) => setTimeout(r, 0));
@@ -232,6 +240,7 @@ describe('each tile completes the journey its button promises', () => {
     });
 
     test('Help me: "just look and help" starts with no checklist to write first', async () => {
+        homePilotConnected();
         const {
             panel,
             activities: [copilot],
@@ -260,6 +269,7 @@ describe('each tile completes the journey its button promises', () => {
     });
 
     test('Meeting: registered, given a conversation, and recording', async () => {
+        homePilotConnected();
         // MS19 loaded the module and registered nothing, so the tile could not exist.
         const {
             panel,
@@ -271,6 +281,7 @@ describe('each tile completes the journey its button promises', () => {
     });
 
     test('Meeting: without a conversation it says so before any dialog opens', async () => {
+        homePilotConnected();
         const {
             panel,
             consent,
@@ -406,9 +417,45 @@ describe('why it did not start', () => {
     });
 
     test('a disconnected HomePilot offers settings, and says what still works', () => {
-        const screen = Failures.describe({ ok: false, why: 'HomePilot is not connected' }, { name: 'Help me' });
-        expect(screen.body).toMatch(/still works/i);
+        const screen = Failures.describe(
+            { ok: false, why: 'Looking at what you are working on needs HomePilot, which is not connected.' },
+            { name: 'Help me' }
+        );
+        // The activity's own sentence survives — it names what HomePilot was needed *for* —
+        // and the reassurance names the five that need none of it.
+        expect(screen.body).toMatch(/needs HomePilot/);
+        expect(screen.body).toMatch(/Focus, Journey, Music, Watch and Coach/);
         expect(screen.actions.map((a) => a.id)).toContain('settings');
+    });
+
+    test('and "Open settings" presses the control the user would', () => {
+        // B36 dispatched an event nothing in the app listens for, so the one way out of this
+        // screen was dead — the worst kind of dead, because it looks like a way out.
+        document.body.innerHTML = '<div id="host"></div><button id="settings-btn"></button>';
+        const opened = jest.fn();
+        document.getElementById('settings-btn').addEventListener('click', opened);
+        const consent = consentMachine();
+        const panel = TogetherPanel.attach({ consent, capture: capture(), config: {}, doc: document });
+        panel.mount(document.getElementById('host'));
+        panel._openSettings();
+        expect(opened).toHaveBeenCalledTimes(1);
+    });
+
+    test('an injected opener still wins over the button', () => {
+        document.body.innerHTML = '<div id="host"></div><button id="settings-btn"></button>';
+        const button = jest.fn();
+        const injected = jest.fn();
+        document.getElementById('settings-btn').addEventListener('click', button);
+        const panel = TogetherPanel.attach({
+            consent: consentMachine(),
+            capture: capture(),
+            config: { onOpenSettings: injected },
+            doc: document,
+        });
+        panel.mount(document.getElementById('host'));
+        panel._openSettings();
+        expect(injected).toHaveBeenCalledTimes(1);
+        expect(button).not.toHaveBeenCalled();
     });
 
     test("an unmatched reason still carries the activity's own words", () => {
@@ -523,6 +570,7 @@ describe('choose → explain → ask, always in that order', () => {
     test('no tile press ever opens a permission dialog', async () => {
         // B30's shape. A single-input activity starts on the tile press only when that input
         // asks for nothing — `'self'` counts as asking.
+        homePilotConnected();
         for (const id of ['watch', 'copilot', 'coach', 'meeting', 'cohost', 'music']) {
             const { panel, consent, activities } = panelWith((c) => [make(id, { consent: c })], {
                 context: { conversationId: 'c1' },

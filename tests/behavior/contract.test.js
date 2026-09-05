@@ -82,6 +82,21 @@ const fakes = {
     cohost: () => ({ id: 'cohost', momentSource: {}, start: jest.fn(() => ({ ok: true })), stop: jest.fn(() => true) }),
 };
 
+/**
+ * Declare the premise. Copilot and Meeting are the only two activities that need HomePilot,
+ * and a test that does not say whether it is connected is testing whatever the environment
+ * happened to hand it.
+ */
+function homePilotConnected(on = true) {
+    window.NEXUS_BD = on
+        ? { config: { session: { enabled: true, source: 'bridge' } } }
+        : { config: { session: { enabled: false, source: 'no-homepilot' } } };
+}
+
+afterEach(() => {
+    delete window.NEXUS_BD;
+});
+
 const adaptAll = (context = {}) =>
     Object.fromEntries(Object.entries(fakes).map(([id, make]) => [id, Contract.adapt(make(), context)]));
 
@@ -89,6 +104,7 @@ const adaptAll = (context = {}) =>
 
 describe('every activity answers the same surface', () => {
     test('all eight adapt', () => {
+        homePilotConnected();
         const adapted = adaptAll({ conversationId: 'c1' });
         for (const [id, activity] of Object.entries(adapted)) {
             expect(activity).not.toBeNull();
@@ -154,6 +170,7 @@ describe('the tiles that could not complete', () => {
     });
 
     test('copilot: "just look and help" starts without a checklist', async () => {
+        homePilotConnected();
         // B26 refuses to start without steps, which turned the broadest and most valuable
         // use of the camera into the one thing it could not do.
         const raw = fakes.copilot();
@@ -169,6 +186,7 @@ describe('the tiles that could not complete', () => {
     });
 
     test('copilot: a supplied checklist is passed through instead', async () => {
+        homePilotConnected();
         const raw = fakes.copilot();
         const copilot = Contract.adapt(raw);
         const steps = [{ title: 'Chop' }, { title: 'Fry' }];
@@ -177,6 +195,7 @@ describe('the tiles that could not complete', () => {
     });
 
     test('meeting: gets the conversation id it has always required', async () => {
+        homePilotConnected();
         const raw = fakes.meeting();
         const meeting = Contract.adapt(raw, { conversationId: 'conv-7' });
         expect(meeting.availability().ok).toBe(true);
@@ -185,6 +204,7 @@ describe('the tiles that could not complete', () => {
     });
 
     test('meeting: says why rather than failing after the permission prompt', () => {
+        homePilotConnected();
         // A meeting has to land in a conversation. Finding that out *after* the screen and
         // microphone dialogs is the worst possible moment.
         const meeting = Contract.adapt(fakes.meeting(), {});
@@ -240,6 +260,65 @@ describe('exactly one permission owner', () => {
 });
 
 // ── availability, honestly ─────────────────────────────────────────────────
+
+describe('what needs HomePilot, and what plainly does not', () => {
+    test('the five local activities are available with no HomePilot at all', () => {
+        // The point of the whole audit: Focus, Journey, Music, Watch and Coach run entirely
+        // in the browser. A missing HomePilot must not cost a single one of them.
+        homePilotConnected(false);
+        const a = adaptAll();
+        for (const id of ['focus', 'journey', 'music', 'watch', 'coach']) {
+            expect({ id, ok: a[id].availability().ok }).toEqual({ id, ok: true });
+        }
+    });
+
+    test('only the two that ask a model about a picture need it', () => {
+        homePilotConnected(false);
+        const a = adaptAll({ conversationId: 'c1' });
+        expect(a.copilot.availability().ok).toBe(false);
+        expect(a.copilot.availability().why).toMatch(/HomePilot/);
+        expect(a.meeting.availability().ok).toBe(false);
+        expect(a.meeting.availability().why).toMatch(/HomePilot/);
+    });
+
+    test('and they come back the moment it is connected', () => {
+        homePilotConnected(true);
+        const a = adaptAll({ conversationId: 'c1' });
+        expect(a.copilot.availability().ok).toBe(true);
+        expect(a.meeting.availability().ok).toBe(true);
+    });
+
+    test('the reason names what would link it, per discovery outcome', () => {
+        // B35's `BridgeDiscovery` already distinguishes these; the user should get the one
+        // that applies rather than a generic "not connected".
+        const cases = {
+            'no-bridge': /Link OllaBridge/i,
+            'no-homepilot': /not enabled behind it/i,
+            'bridge-unreachable': /not answering/i,
+            'bridge-too-old': /too old/i,
+        };
+        for (const [source, pattern] of Object.entries(cases)) {
+            window.NEXUS_BD = { config: { session: { enabled: false, source } } };
+            expect(Contract.needsHomePilot('Doing the thing').why).toMatch(pattern);
+        }
+    });
+
+    test('no NEXUS_BD at all reads as not connected, not as connected', () => {
+        // The engine may not have booted. Defaulting the other way would let two activities
+        // start and silently do nothing, which is what this whole change is about.
+        delete window.NEXUS_BD;
+        expect(Contract.homePilot().connected).toBe(false);
+    });
+
+    test('meeting names HomePilot before it names the conversation', () => {
+        // Order matters: telling somebody to open a conversation, and *then* that HomePilot
+        // was missing all along, wastes the one action they took.
+        homePilotConnected(false);
+        expect(adaptAll({}).meeting.availability().why).toMatch(/HomePilot/);
+        homePilotConnected(true);
+        expect(adaptAll({}).meeting.availability().why).toMatch(/conversation/);
+    });
+});
 
 describe('a tile that cannot complete says so', () => {
     test('music without an audio source refuses, with a reason', () => {

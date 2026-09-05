@@ -165,6 +165,12 @@ const ActivityContract = (() => {
             order: 90,
             wide: true,
             prompt: 'Point your camera at what you are working on.',
+            /**
+             * Without HomePilot this opened the camera, sampled a frame, and returned `null`:
+             * `ScreenInsight._send` throws "no vision endpoint configured", `ask()` catches
+             * it, counts a drop and answers nothing. The user got a live camera and silence.
+             */
+            availability: () => needsHomePilot('Looking at what you are working on') || OK,
             inputs: () => [
                 // The freeform case first, and with no checklist. B26 refuses to start
                 // without steps, which turned the broadest, most valuable use of the camera —
@@ -219,10 +225,14 @@ const ActivityContract = (() => {
             // itself. The conversation id is supplied by whatever mounted the panel — a
             // meeting has to land in a conversation, and the launcher is not where that
             // is decided.
+            // HomePilot first: without it there is no MeetingSense backend to record into,
+            // and finding that out after the screen *and* microphone prompts is the worst
+            // possible moment.
             availability: (a, { conversationId } = {}) =>
-                conversationId || (a && a.conversationId)
+                needsHomePilot('Recording a meeting') ||
+                (conversationId || (a && a.conversationId)
                     ? OK
-                    : no('Open a conversation first — a meeting is recorded into one.'),
+                    : no('Open a conversation first — a meeting is recorded into one.')),
             start: (a, { input, context = {} }) =>
                 a.start({ conversationId: context.conversationId || a.conversationId }),
             stop: (a, why) => a.stop(why),
@@ -306,6 +316,47 @@ const ActivityContract = (() => {
             status: () => ({ label: 'Playing together', detail: '' }),
         },
     };
+
+    /**
+     * Whether HomePilot is reachable, and why not when it is not.
+     *
+     * `boot.js` already resolves this: B35's `BridgeDiscovery` asks the OllaBridge the user
+     * linked to get models whether a HomePilot is behind it, and the answer lands on
+     * `config.session` as `{enabled, source}` where `source` is `bridge`, `manual`, `off`,
+     * or one of the discovery's reasons. Nothing new is fetched here — this only reads it.
+     *
+     * The distinction that matters to a person: **most of Together needs none of this.**
+     * Focus, Journey, Music, Watch and Coach run entirely in the browser. Only the two
+     * activities that ask a model about a picture — "Help me with this" and Meeting — need
+     * HomePilot at all, and they are the only two that may say so.
+     */
+    function homePilot() {
+        const bd = typeof window !== 'undefined' ? window.NEXUS_BD : null;
+        const session = bd && bd.config && bd.config.session;
+        if (!session) {
+            return { connected: false, source: 'off' };
+        }
+        return { connected: Boolean(session.enabled), source: session.source || 'off' };
+    }
+
+    /** Why a HomePilot-only activity cannot run, in words a person can act on. */
+    const LINK_HINTS = {
+        'no-bridge': 'Link OllaBridge in Settings and HomePilot is found through it.',
+        'no-fetch': 'This browser could not reach the bridge to look for HomePilot.',
+        'bridge-unreachable': 'OllaBridge is linked but not answering, so HomePilot cannot be found.',
+        'no-homepilot': 'OllaBridge is linked, but HomePilot is not enabled behind it.',
+        'bridge-too-old': 'This OllaBridge is too old to reach HomePilot — update it.',
+        off: 'Link OllaBridge in Settings and HomePilot is found through it.',
+    };
+
+    function needsHomePilot(what) {
+        const hp = homePilot();
+        if (hp.connected) {
+            return null;
+        }
+        const hint = LINK_HINTS[hp.source] || LINK_HINTS.off;
+        return no(`${what} needs HomePilot, which is not connected. ${hint}`);
+    }
 
     /** What Copilot is given when somebody chose "just look and help". */
     const FREEFORM_STEP = { title: 'Looking with you', text: 'Watching what you are doing and helping when asked.' };
@@ -445,6 +496,9 @@ const ActivityContract = (() => {
         scenesOf,
         pickFile,
         FREEFORM_STEP,
+        homePilot,
+        needsHomePilot,
+        LINK_HINTS,
     };
 })();
 

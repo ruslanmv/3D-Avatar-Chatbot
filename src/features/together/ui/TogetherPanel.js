@@ -826,15 +826,32 @@ const TogetherPanel = (() => {
             this.root.appendChild(list);
         }
 
-        /** Hand off to whatever owns settings in this shell, without knowing what that is. */
+        /**
+         * Open Settings, so "Open settings" is a button that does something.
+         *
+         * B36 dispatched `nexus:open-settings` and nothing in the app has ever listened for
+         * it, so the one recovery action on the HomePilot failure screen was dead — the
+         * worst kind of dead, because it looks like a way out. The shipped page opens
+         * Settings from `#settings-btn`, so that is what this presses.
+         *
+         * Order: an injected opener wins (a host that mounts this knows best), then the
+         * real button, then the event for a shell that has neither. This panel does not
+         * reach into the settings markup itself — it presses the control the user would.
+         */
         _openSettings() {
             const open = this.config && this.config.onOpenSettings;
             if (typeof open === 'function') {
                 try {
                     open();
+                    return;
                 } catch (error) {
                     console.warn('[BD] settings did not open', error);
                 }
+            }
+            const btn = this.doc && this.doc.getElementById('settings-btn');
+            if (btn && typeof btn.click === 'function') {
+                this.close();
+                btn.click();
                 return;
             }
             if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
