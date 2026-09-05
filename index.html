@@ -2948,9 +2948,17 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
                 function openDrawer() {
                     drawer?.classList.add('open');
                     overlay?.classList.remove('hidden');
+                    // The scrim's CSS puts `opacity` and `pointer-events` behind `.open`, and
+                    // only `hidden` was ever toggled — so the overlay was shown as a
+                    // fully transparent, click-through layer. Tapping beside the drawer went
+                    // to the page underneath instead of closing the drawer, which is how a
+                    // panel opened from here could be dismissed by a tap that was meant for
+                    // the drawer.
+                    overlay?.classList.add('open');
                 }
                 function closeDrawer() {
                     drawer?.classList.remove('open');
+                    overlay?.classList.remove('open');
                     overlay?.classList.add('hidden');
                 }
 

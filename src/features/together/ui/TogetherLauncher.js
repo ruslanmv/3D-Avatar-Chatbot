@@ -315,8 +315,21 @@ const TogetherLauncher = (() => {
 }
 
 @media (max-width: 640px) {
-  /* A floating card over a narrow avatar is unusable, so the same panel becomes a sheet. */
+  /* A floating card over a narrow avatar is unusable, so the same panel becomes a sheet.
+
+     position:fixed is the half that was missing. The base rule is absolute, so
+     left/right/bottom:0 resolved against .avatar-card — the sheet was pinned to the bottom of
+     a narrow card somewhere in the page rather than to the phone, which is why it appeared as
+     a clipped strip of tiles instead of a sheet.
+
+     (No backticks in this comment: the whole stylesheet is a JS template literal.)
+
+     The z-index sits above the drawer (1000) rather than at 40, so a panel opened while the
+     drawer is somehow still up is reachable instead of buried. It should not come to that —
+     the drawer entry dismisses the drawer first — but "unreachable" is a bad failure mode to
+     leave one bug away. */
   #nexus-bd-together-panel {
+    position: fixed; z-index: 1001;
     left: 0; right: 0; bottom: 0; width: auto; max-height: 62%; transform: none;
     border-radius: 16px 16px 0 0; border-left: none; border-right: none; border-bottom: none;
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
@@ -447,12 +460,55 @@ const TogetherLauncher = (() => {
             const text = this.doc.createElement('span');
             text.textContent = 'Together';
             item.append(mark, text);
-            item.addEventListener('click', () => this.open());
+            item.addEventListener('click', () => {
+                // Close the drawer first, exactly as every other entry in it does.
+                //
+                // This is the whole of the "I tap Together on my phone and nothing works"
+                // bug. The drawer is `position: fixed; z-index: 1000`; the panel mounts
+                // inside `.avatar-card` at `z-index: 40`. Opening without dismissing the
+                // drawer put the panel a thousand layers underneath it and off to one side —
+                // visible as a sliver, impossible to reach — and the next tap landed outside
+                // the panel, which the document handler reads as "dismiss".
+                this._dismissDrawer();
+                this.open();
+            });
 
             // Appended to the group, so every existing entry keeps its position.
             group.parentNode.appendChild(item);
             this.drawerItem = item;
             return item;
+        }
+
+        /**
+         * Shut the mobile drawer, through the app's own close button where there is one.
+         *
+         * `closeDrawer()` in `index.html` is scoped to a closure this file cannot reach, so
+         * pressing the button it is bound to is how one owner stays one owner — the same way
+         * the drawer's Settings entry reaches Settings. The class fallback exists for a page
+         * that has the drawer markup but not that wiring, and for tests.
+         */
+        _dismissDrawer() {
+            // Both, in this order, and deliberately not one or the other.
+            //
+            // Pressing the app's own close button keeps one owner: whatever else that handler
+            // does — focus, scroll lock, anything added later — still happens. But a button
+            // that exists is not a button that is wired, and the thing this method has to
+            // guarantee is that the drawer is not left covering the panel. Clearing the
+            // classes as well is idempotent with what the handler does, so doing both costs
+            // nothing and removes the case where the guarantee depends on somebody else's
+            // wiring being present.
+            const close = this.doc.getElementById('mobile-drawer-close');
+            if (close && typeof close.click === 'function') close.click();
+
+            const drawer = this.doc.getElementById('mobile-drawer');
+            if (!drawer) return Boolean(close);
+            drawer.classList.remove('open');
+            const overlay = this.doc.getElementById('mobile-drawer-overlay');
+            if (overlay) {
+                overlay.classList.remove('open');
+                overlay.classList.add('hidden');
+            }
+            return true;
         }
 
         /** The overlay lives inside the avatar card, so it scrolls and hides with it. */
