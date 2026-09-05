@@ -3477,6 +3477,15 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <script defer src="src/features/youtube/YouTubeVRBridge.js"></script>
         <script defer src="src/features/youtube/YouTubeAsk.js"></script>
 
+        <!-- Remote screenshot (RS1). "Show me what's on my PC" → one still, taken on that
+             machine, shown here, and every follow-up question answered about that same
+             frame. NON-DESTRUCTIVE: to remove, delete these 4 script tags and the
+             src/features/screen/ folder. Search "NEXUS_SCREEN". -->
+        <script defer src="src/features/screen/frameStore.js"></script>
+        <script defer src="src/features/screen/remoteScreen.js"></script>
+        <script defer src="src/features/screen/ScreenCard.js"></script>
+        <script defer src="src/features/screen/ScreenAsk.js"></script>
+
         <!-- Pose Studio init (must load after main.js and all Pose modules) -->
         <script defer src="src/PoseStudioInit.js"></script>
 
