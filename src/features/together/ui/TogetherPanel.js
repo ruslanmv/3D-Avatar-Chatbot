@@ -168,8 +168,6 @@ const TogetherPanel = (() => {
             this.lastAttempt = null;
             /** The element that opened the chooser, so focus goes back where it came from. */
             this.opener = null;
-            /** Whether "More together" is expanded. */
-            this.showAll = false;
             this.pipeline = null;
             this.root = null;
             this.state = { state: 'idle', label: '' };
@@ -514,20 +512,18 @@ const TogetherPanel = (() => {
         }
 
         /**
-         * Tiles a person can choose right now.
+         * Every registered activity, in the order the chooser has always shown them.
          *
-         * Availability is asked here rather than at registration, because it can change
-         * inside a session — a Meeting becomes choosable the moment a conversation is open.
-         * A tile that cannot complete is hidden rather than shown and then apologised for.
+         * An earlier draft filtered this by `availability()`, so Music and Play simply were
+         * not there — and the grid people know disappeared with them. Hiding a control is
+         * the most confusing way to say "not yet": nothing tells the user the feature
+         * exists, why it is unreachable, or what would fix it.
+         *
+         * Availability is still asked, at the moment of choosing, where it becomes a
+         * sentence with a reason and a way back (`_fail`). The tile stays.
          */
         choices() {
-            const out = [];
-            for (const activity of this.adapted.values()) {
-                const available = activity.availability();
-                if (!available || available.ok === false) continue;
-                out.push(activity);
-            }
-            return out.sort((a, b) => (a.order || 99) - (b.order || 99));
+            return [...this.adapted.values()].sort((a, b) => (a.order || 99) - (b.order || 99));
         }
 
         /**
@@ -638,20 +634,15 @@ const TogetherPanel = (() => {
             const grid = this.doc.createElement('div');
             grid.className = 'nexus-bd-together-grid';
 
-            // B36. Ordered by user value, not by batch number, and four at a time. Eight
-            // equal boxes is a product catalogue; these four are what somebody opens the
-            // launcher to do, and the rest are one press away.
-            const all = Contract
+            // Every activity, in the grid's own order. Nothing is behind a disclosure and
+            // nothing is filtered out: see `choices()`.
+            const shown = Contract
                 ? this.choices()
                 : choosable(this.activities).map((a) => ({
                       id: a.id,
                       ...metaFor(a),
-                      primary: true,
                       title: metaFor(a).title || a.id,
                   }));
-            const primary = all.filter((a) => a.primary);
-            const rest = all.filter((a) => !a.primary);
-            const shown = this.showAll || !primary.length ? all : primary;
 
             for (const activity of shown) {
                 const tile = this._button('', 'nexus-bd-together-tile', () => this.choose(activity.id));
@@ -668,22 +659,13 @@ const TogetherPanel = (() => {
                 grid.appendChild(tile);
             }
 
-            if (!all.length) {
+            if (!shown.length) {
                 const empty = this.doc.createElement('p');
                 empty.className = 'nexus-bd-together-prompt';
                 empty.textContent = 'No activities available in this build.';
                 grid.appendChild(empty);
             }
             this.root.appendChild(grid);
-
-            if (rest.length && !this.showAll) {
-                this.root.appendChild(
-                    this._button(`More together (${rest.length}) ›`, 'nexus-bd-together-more', () => {
-                        this.showAll = true;
-                        this._paint();
-                    })
-                );
-            }
         }
 
         /** One activity's own question — and the only view where permission is ever asked. */

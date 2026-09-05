@@ -356,13 +356,18 @@ describe("status is the activity's own, not a generic line", () => {
 
 // ── the first screen ───────────────────────────────────────────────────────
 
-describe('the chooser is ordered by user value', () => {
-    test('exactly four tiles are primary', () => {
+describe('the chooser shows every activity, in the grid order', () => {
+    test('nothing is marked primary — there is no first-screen subset any more', () => {
         const adapted = Object.values(adaptAll({ conversationId: 'c1' }));
-        const primary = adapted.filter((a) => a.primary).map((a) => a.id);
-        // Eight equal boxes is a product catalogue. These four are the ones somebody opens
-        // the launcher to do.
-        expect(primary.sort()).toEqual(['coach', 'copilot', 'focus', 'watch']);
+        expect(adapted.every((a) => a.primary === undefined)).toBe(true);
+    });
+
+    test('the order is the one the grid has always used', () => {
+        const adapted = adaptAll({ conversationId: 'c1' });
+        const byOrder = Object.values(adapted)
+            .sort((a, b) => a.order - b.order)
+            .map((a) => a.id);
+        expect(byOrder).toEqual(['watch', 'journey', 'music', 'cohost', 'focus', 'coach', 'copilot', 'meeting']);
     });
 
     test('order is stable and has no ties', () => {

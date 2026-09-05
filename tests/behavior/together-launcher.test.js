@@ -214,7 +214,7 @@ const moreButton = () => document.querySelector('.nexus-bd-together-more');
 const revealAll = () => {
     const more = moreButton();
     if (more) more.click();
-};
+}; // no-op now that nothing is hidden
 const tileNamed = (name) => {
     let found = tiles().find((t) => t.textContent.includes(name));
     if (!found && moreButton()) {
@@ -398,23 +398,39 @@ describe('opening the chooser starts nothing at all', () => {
         expect(source).toContain('class Launcher');
     });
 
-    test('the first screen offers four experiences, ordered by user value', () => {
-        // B36. Seven equal boxes was becoming a product catalogue. These four are what
-        // somebody opens the launcher to do; the rest are one press away, and the order is
-        // by value rather than by the batch number that happened to build each one.
+    test('the chooser offers every experience, in the order it has always shown them', () => {
+        // An earlier draft cut this to four tiles with the rest behind "More together" and
+        // hid two more on availability. That removed working features from view to save
+        // space nobody asked to save; the grid is the product's face.
         harness();
         button().click();
         const names = tiles().map((t) => t.querySelector('.nexus-bd-together-name').textContent);
-        expect(names).toEqual(['Focus', 'Watch', 'Help me with this', 'Coach']);
+        expect(names).toEqual(['Watch', 'Journey', 'Music', 'Play', 'Focus', 'Coach', 'Help me with this']);
+        expect(moreButton()).toBeNull();
     });
 
-    test('More together reveals the rest without hiding the four', () => {
-        harness();
+    test('a tile whose activity cannot finish is still on the grid', () => {
+        // Hiding a control is the most confusing way to say "not yet": nothing tells the
+        // user the feature exists, or why it is unreachable. It explains itself on press
+        // instead — see the failure screen tests.
+        document.body.innerHTML = MARKUP;
+        const consent = fakeConsent();
+        const panel = TogetherPanel.attach({
+            consent,
+            capture: { fromGrant: () => ({ stop() {}, stats: {} }) },
+            config: {},
+            doc: document,
+        });
+        panel.register({ id: 'music', start() {}, stop() {} }); // no audio source
+        panel.register({ id: 'cohost', start() {}, stop() {} }); // no moment detector
+        panel.register(activity('focus', 'focus', { consent }));
+        TogetherLauncher.attach({ panel, doc: document, viewer: null });
         button().click();
-        moreButton().click();
-        const names = tiles().map((t) => t.querySelector('.nexus-bd-together-name').textContent);
-        expect(names.slice(0, 4)).toEqual(['Focus', 'Watch', 'Help me with this', 'Coach']);
-        expect(names).toEqual(expect.arrayContaining(['Journey', 'Music', 'Play']));
+        expect(tiles().map((t) => t.querySelector('.nexus-bd-together-name').textContent)).toEqual([
+            'Music',
+            'Play',
+            'Focus',
+        ]);
     });
 
     test('no tile names an implementation concept, on either screen', () => {
@@ -443,28 +459,6 @@ describe('opening the chooser starts nothing at all', () => {
                 .join(' ')
         ).not.toContain('Screen Insight');
         expect(tiles()).toHaveLength(7);
-    });
-
-    test('a tile that cannot complete its journey is not offered at all', () => {
-        // Music with no audio source and Play with no moment detector start something that
-        // cannot work. Hiding them is the honest answer; a tile that fails after the user
-        // has chosen is worse than one that was never there.
-        document.body.innerHTML = MARKUP;
-        const consent = fakeConsent();
-        const panel = TogetherPanel.attach({
-            consent,
-            capture: { fromGrant: () => ({ stop() {}, stats: {} }) },
-            config: {},
-            doc: document,
-        });
-        panel.register({ id: 'music', start() {}, stop() {} });
-        panel.register({ id: 'cohost', start() {}, stop() {} });
-        panel.register(activity('focus', 'focus', { consent }));
-        TogetherLauncher.attach({ panel, doc: document, viewer: null });
-        button().click();
-        revealAll();
-        const names = tiles().map((t) => t.querySelector('.nexus-bd-together-name').textContent);
-        expect(names).toEqual(['Focus']);
     });
 
     test('there is no generic Share Screen button on the first view', () => {

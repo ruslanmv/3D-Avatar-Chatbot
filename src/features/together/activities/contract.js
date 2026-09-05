@@ -107,17 +107,20 @@ const ActivityContract = (() => {
     /**
      * Per-activity adapters.
      *
-     * Each is `{title, icon, order, primary, prompt, inputs, availability, start, stop,
-     * status}`. `primary` is the first-screen four; everything else is behind "More
-     * together". The order is by user value, not by batch number — which is how a catalogue
-     * of eight equal boxes happened in the first place.
+     * Each is `{title, icon, order, prompt, inputs, availability, start, stop, status}`.
+     *
+     * **Every activity is on the first screen**, in the order the chooser has always shown
+     * them. An earlier draft of this batch cut that to four tiles with the rest behind a
+     * "More together" disclosure, and hid two more entirely — which removed working features
+     * from view to save space nobody had asked to save. The grid is the product's face; it
+     * stays, and an activity that cannot finish says so when it is chosen instead of
+     * vanishing before it is.
      */
     const ADAPTERS = {
         focus: {
             title: 'Focus',
             icon: '🎯',
-            order: 10,
-            primary: true,
+            order: 50,
             prompt: '25 minutes of focus, then a 5 minute break. Nothing is shared.',
             inputs: () => [{ id: 'start', label: 'Start focus', permission: null }],
             start: (a) => a.start(),
@@ -135,8 +138,7 @@ const ActivityContract = (() => {
         watch: {
             title: 'Watch',
             icon: '📺',
-            order: 20,
-            primary: true,
+            order: 10,
             prompt: 'What are we watching?',
             inputs: () => [
                 // `'self'`: `shareTab()` requests the screen itself and holds the grant for
@@ -157,8 +159,7 @@ const ActivityContract = (() => {
         copilot: {
             title: 'Help me with this',
             icon: '👀',
-            order: 30,
-            primary: true,
+            order: 70,
             wide: true,
             prompt: 'Point your camera at what you are working on.',
             inputs: () => [
@@ -188,8 +189,7 @@ const ActivityContract = (() => {
         coach: {
             title: 'Coach',
             icon: '🏋',
-            order: 40,
-            primary: true,
+            order: 60,
             prompt: 'What are we doing? I need the camera to count your movement — nothing is stored.',
             inputs: (a) =>
                 exercisesOf(a).map((id) => ({
@@ -209,7 +209,7 @@ const ActivityContract = (() => {
         meeting: {
             title: 'Meeting',
             icon: '🎙',
-            order: 50,
+            order: 80,
             prompt: 'I will ask for your screen and your microphone, and show a recording badge the whole time.',
             inputs: () => [{ id: 'record', label: 'Start recording', permission: 'self' }],
             // `meeting.start()` takes an options object and asks for the compound grant
@@ -232,7 +232,7 @@ const ActivityContract = (() => {
         journey: {
             title: 'Journey',
             icon: '🌊',
-            order: 60,
+            order: 20,
             prompt: 'Where should we go?',
             inputs: (a) =>
                 scenesOf(a).map((scene) => ({
@@ -250,7 +250,7 @@ const ActivityContract = (() => {
         music: {
             title: 'Music',
             icon: '🎧',
-            order: 70,
+            order: 30,
             prompt: 'What are we listening to?',
             inputs: () => [{ id: 'file', label: 'Open an audio file', permission: null, pick: pickFile('audio/*') }],
             // B14's `Music.start()` sets a flag; the beat detector reads an `analyser` that
@@ -278,7 +278,7 @@ const ActivityContract = (() => {
         cohost: {
             title: 'Play',
             icon: '🎮',
-            order: 80,
+            order: 40,
             prompt: 'Share your game so I can react with you.',
             inputs: () => [{ id: 'screen', label: 'Share game', permission: 'screen' }],
             /**
@@ -376,7 +376,6 @@ const ActivityContract = (() => {
             title: spec.title,
             icon: spec.icon,
             order: spec.order,
-            primary: Boolean(spec.primary),
             wide: Boolean(spec.wide),
             prompt: spec.prompt || '',
 

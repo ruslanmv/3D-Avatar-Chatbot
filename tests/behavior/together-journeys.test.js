@@ -294,9 +294,16 @@ describe('each tile completes the journey its button promises', () => {
         expect(panel.activeActivity).toBe('music');
     });
 
-    test('Play: hidden while nothing produces game moments', () => {
+    test('Play: on the grid, and says why when nothing produces game moments', async () => {
+        // The tile stays. CoHost's reactions, tier table and overlay are all real and
+        // tested; what is missing is the detector that feeds them, and a control that
+        // vanishes tells nobody that.
         const { panel } = panelWith([{ id: 'cohost', start: () => ({ ok: true }), stop: () => true }]);
-        expect(panel.choices().map((c) => c.id)).toEqual([]);
+        expect(panel.choices().map((c) => c.id)).toEqual(['cohost']);
+
+        const result = await panel.startActivity('cohost', panel.contractFor('cohost').inputs()[0]);
+        expect(result.ok).toBe(false);
+        expect(html()).toMatch(/moment detection/i);
     });
 });
 
