@@ -427,13 +427,18 @@ describe('YouTubeAsk.fulfil', () => {
         expect(document.querySelectorAll('#chat-history .chat-row').length).toBe(1);
     });
 
-    test('with no key it still gets you to the search, and says how to fix it once', async () => {
+    // D1 changed what the last line of this test asserts, and the change is the point: this
+    // used to demand that the chat print `nexus.yt.apiKey` — the storage key — at somebody who
+    // had asked for a song. Getting them to the search still matters and is still checked; the
+    // how-to is now a button, and lives in Settings and docs/YOUTUBE.md instead.
+    test('with no key it still gets you to the search, and offers a way to connect it', async () => {
         window.NEXUS_YT_COMPANION = { KEY_STORAGE: 'nexus.yt.apiKey', apiKey: () => '', search: jest.fn() };
         const res = await Ask.fulfil('lofi');
         expect(res).toMatchObject({ ok: true, why: 'no key' });
         const link = document.querySelector('#chat-history a.nexus-yt-open');
         expect(link.href).toContain('youtube.com/results?search_query=lofi');
-        expect(document.querySelector('.nexus-yt-status').textContent).toContain('nexus.yt.apiKey');
+        expect(document.querySelector('.nexus-yt-setup')).not.toBeNull();
+        expect(document.querySelector('#chat-history').textContent).not.toContain('nexus.yt.apiKey');
     });
 
     test('with a key it draws the results as cards you can press play on', async () => {

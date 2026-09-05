@@ -62,6 +62,14 @@ const YouTubeAsk = (() => {
         new RegExp(`^(?:search|look|find|browse)\\s+(?:on\\s+)?youtube\\s+(?:for\\s+)?(.+)$`, 'i'),
         // "youtube lofi hip hop"
         new RegExp(`^youtube[:,]?\\s+(.+)$`, 'i'),
+        // "play a video in youtube of music" — what follows the connector is the request.
+        //
+        // Ordered before the pattern below because that one matches this sentence too, and
+        // matches it wrongly: its lazy group stops at the first "in", captures "a video", and
+        // searches for the word *video* while the user plainly asked for music. The
+        // connectors are deliberately only `of|about|with`; `for` is excluded because
+        // "put on jazz on youtube for me" would then search for "me".
+        new RegExp(`^${PLAY}\\s+.+?\\s+(?:on|in|from)\\s+youtube\\b\\s*(?:of|about|with)\\s+(.+)$`, 'i'),
         // "play lofi on youtube" / "put on jazz on youtube"
         new RegExp(`^${PLAY}\\s+(.+?)\\s+(?:on|in|from)\\s+youtube\\b.*$`, 'i'),
         // "play the lofi video" / "put on some jazz music" — a media word makes it a request
@@ -148,6 +156,28 @@ const YouTubeAsk = (() => {
         return msg;
     }
 
+    /**
+     * “Set up YouTube” — the whole of what a user needs to do about a missing key.
+     *
+     * A real `<button>` rather than a styled div, because it does something and has to be
+     * reachable from a keyboard. On a page with no Settings modal it still renders and does
+     * nothing visible, which is better than an affordance that vanishes on some pages.
+     */
+    function setupButton(doc) {
+        const d = doc || (typeof document !== 'undefined' ? document : null);
+        const btn = d.createElement('button');
+        btn.type = 'button';
+        btn.className = 'nexus-yt-setup';
+        btn.textContent = 'Set up YouTube';
+        btn.addEventListener('click', () => {
+            const settings = typeof window !== 'undefined' ? window.NEXUS_YT_SETTINGS : null;
+            if (settings && typeof settings.openSettings === 'function') {
+                settings.openSettings(d);
+            }
+        });
+        return btn;
+    }
+
     /** Draw result cards under a message node, using the 2D card builder. */
     function showResults(node, results, doc) {
         const embed = typeof window !== 'undefined' ? window.NEXUS_YT_2D : null;
@@ -191,12 +221,12 @@ const YouTubeAsk = (() => {
 
         if (!comp.apiKey || !comp.apiKey()) {
             // No key is not a dead end. The search page is one tap away and the request is
-            // still honoured; the how-to is said once, plainly, and never again in this turn.
-            const node = say(
-                `I can't search YouTube without an API key, but here's the search for “${query}”.`,
-                'bot',
-                d
-            );
+            // still honoured — and the way to connect it is a button, not an instruction.
+            //
+            // D1. This used to print `localStorage.setItem('nexus.yt.apiKey', 'YOUR_KEY')`,
+            // which is a line of JavaScript shown to somebody who asked for a song. The
+            // how-to still exists, in docs/YOUTUBE.md, where a developer looks for it.
+            const node = say(`YouTube search isn't connected yet — here's the search for “${query}”.`, 'bot', d);
             if (node) {
                 const link = d.createElement('a');
                 link.className = 'nexus-yt-open';
@@ -205,10 +235,7 @@ const YouTubeAsk = (() => {
                 link.href = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
                 link.textContent = `Search YouTube for “${query}”`;
                 node.appendChild(link);
-                const hint = d.createElement('div');
-                hint.className = 'nexus-yt-status';
-                hint.textContent = `Add a key with localStorage.setItem('${comp.KEY_STORAGE}', 'YOUR_KEY') and I'll show the results here instead.`;
-                node.appendChild(hint);
+                node.appendChild(setupButton(d));
             }
             return { ok: true, why: 'no key', query };
         }
@@ -309,7 +336,7 @@ const YouTubeAsk = (() => {
         }
     }
 
-    return { parseIntent, fulfil, say, showResults, hook, init, PATTERNS, MAX_RESULTS, LIVE };
+    return { parseIntent, fulfil, say, showResults, setupButton, hook, init, PATTERNS, MAX_RESULTS, LIVE };
 })();
 
 if (typeof window !== 'undefined') {

@@ -47,7 +47,19 @@ const YouTubeCompanion = (() => {
         return (typeof window !== 'undefined' && window.NEXUS_YT_CONFIG) || {};
     }
 
+    /**
+     * The Data API key, from whichever source has one (D1).
+     *
+     * `YouTubeSettings` owns the order — Settings, then the host page, then this file's
+     * legacy `localStorage` key — and is asked first so a key typed into Settings wins. It
+     * ships alongside this file; when it is absent (an older page, a test that loads only
+     * this module) the original two sources still answer, unchanged.
+     */
     function apiKey() {
+        const settings = typeof window !== 'undefined' ? window.NEXUS_YT_SETTINGS : null;
+        if (settings && typeof settings.apiKey === 'function') {
+            return settings.apiKey();
+        }
         const c = config();
         if (c.apiKey) {
             return c.apiKey;

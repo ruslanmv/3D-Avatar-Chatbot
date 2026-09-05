@@ -2541,6 +2541,29 @@
                         </div>
                     </div>
 
+                    <!-- D1: where the YouTube key lives now, instead of a localStorage
+                         instruction printed in the chat. Owned by
+                         src/features/youtube/YouTubeSettings.js — main.js's saveSettings()
+                         does not know about this field, so the feature stays deletable. -->
+                    <div class="config-section">
+                        <h3 class="config-title">DISCOVERY &amp; MEDIA</h3>
+                        <div class="input-group">
+                            <label class="input-label" for="yt-api-key">🔎 VIDEO SEARCH — YOUTUBE API KEY</label>
+                            <input
+                                type="password"
+                                id="yt-api-key"
+                                class="text-input"
+                                autocomplete="off"
+                                placeholder="Paste a YouTube Data API v3 key"
+                            />
+                            <p style="font-size: 0.68rem; color: rgba(255, 255, 255, 0.45); margin: 6px 2px 0">
+                                Lets Nexus search YouTube and show results in the chat. Without it she still opens the
+                                search page for whatever you asked for. Get a key from Google Cloud → APIs &amp;
+                                Services → enable <strong>YouTube Data API v3</strong> → Credentials.
+                            </p>
+                        </div>
+                    </div>
+
                     <div class="config-section">
                         <h3 class="config-title">DEVELOPER</h3>
                         <div class="input-group">
@@ -3470,11 +3493,12 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <script defer src="src/xr/MotionIntegration.js"></script>
 
         <!-- YouTube Everywhere (additive — thumbnails + inline player in 2D chat, cards + companion-tab playback in VR) -->
-        <!-- NON-DESTRUCTIVE: To remove, delete these 5 script tags and the src/features/youtube/ folder. Search "NEXUS_YT" -->
+        <!-- NON-DESTRUCTIVE: To remove, delete these 6 script tags and the src/features/youtube/ folder. Search "NEXUS_YT" -->
         <script defer src="src/features/youtube/YouTubeLink.js"></script>
         <script defer src="src/features/youtube/YouTubeCompanion.js"></script>
         <script defer src="src/features/youtube/YouTubeEmbed2D.js"></script>
         <script defer src="src/features/youtube/YouTubeVRBridge.js"></script>
+        <script defer src="src/features/youtube/YouTubeSettings.js"></script>
         <script defer src="src/features/youtube/YouTubeAsk.js"></script>
 
         <!-- Remote screenshot (RS1). "Show me what's on my PC" → one still, taken on that

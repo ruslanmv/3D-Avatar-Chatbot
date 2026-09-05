@@ -68,17 +68,38 @@ A message that already contains a YouTube link is not treated as a search reques
 about to appear on its own.
 
 Without an API key it still helps — you get a link to the YouTube search for what you asked,
-and the how-to for adding a key, once.
+and a **Set up YouTube** button.
 
-## Search
+## Search — connecting it
 
-`/yt lofi` searches with YouTube Data API v3 when a key is configured:
+Search uses YouTube Data API v3, which needs a key.
+
+**Get one:** [Google Cloud Console](https://console.cloud.google.com) → new project → APIs &
+Services → enable **YouTube Data API v3** → Credentials → **Create credentials → API key**.
+Restrict it to that API and to your site's referrer before you use it anywhere public.
+
+**Set it:** Settings → **Discovery & Media** → *Video search — YouTube API key* → SAVE.
+That is the whole of what a user does, and the only thing the app ever tells them to do.
+
+Three sources are read, in this order (`YouTubeSettings.apiKey()`):
+
+| | source | who writes it |
+|---|---|---|
+| 1 | `localStorage['nexus_discovery_settings']` → `youtube.apiKey` | Settings |
+| 2 | `window.NEXUS_YT_CONFIG.apiKey` | a host page shipping its own key |
+| 3 | `localStorage['nexus.yt.apiKey']` | the legacy key — still read, never written |
+
+For a developer or a test, the second and third are still the fast way in:
 
 ```js
-localStorage.setItem('nexus.yt.apiKey', 'YOUR_KEY'); // or window.NEXUS_YT_CONFIG = { apiKey }
+window.NEXUS_YT_CONFIG = { apiKey: 'YOUR_KEY' };
+// or, legacy and still honoured:
+localStorage.setItem('nexus.yt.apiKey', 'YOUR_KEY');
 ```
 
-Without a key the command explains itself and the rest of the feature is unaffected.
+Those lines live here, in the developer documentation, and are no longer printed at users
+who asked for a song. Without a key `/yt` and the natural-language path both still get you to
+the YouTube search page, and the rest of the feature is unaffected.
 
 ## Optional server help
 
