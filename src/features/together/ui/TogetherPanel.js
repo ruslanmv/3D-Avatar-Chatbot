@@ -146,11 +146,14 @@ const TogetherPanel = (() => {
     }
 
     class Panel {
-        constructor({ consent, capture, config = {}, doc } = {}) {
+        constructor({ consent, capture, config = {}, doc, win } = {}) {
             this.consent = consent;
             this.capture = capture || (typeof window !== 'undefined' ? window.NEXUS_BD_CAPTURE : null);
             this.config = config;
             this.doc = doc || (typeof document !== 'undefined' ? document : null);
+            /** D3. Where the optional discovery modules live; injected so a test can supply
+             *  its own without touching the real page's globals. */
+            this.win = win || (typeof window !== 'undefined' ? window : null);
 
             /** Registered by later batches: `{id, label, start, stop}`. */
             this.activities = new Map();
@@ -701,9 +704,27 @@ const TogetherPanel = (() => {
                 this.root.appendChild(textarea);
             }
 
+            // D3. Discovery inputs are not buttons — they are a search box that draws its own
+            // results. Recognised by `kind` rather than by activity id, so Watch and Music
+            // share one implementation and a third activity needs no change here.
+            const finders = inputs.filter((i) => i.kind === 'discovery');
+            const choices = inputs.filter((i) => i.kind !== 'discovery');
+            for (const finder of finders) {
+                const picker = this._discovery(finder);
+                if (picker) this.root.appendChild(picker);
+            }
+            // "──── or ────" only when there is genuinely an alternative below. A divider
+            // above nothing is a smaller version of the same lie.
+            if (finders.length && choices.length) {
+                const or = this.doc.createElement('p');
+                or.className = 'nexus-bd-together-or';
+                or.textContent = 'or';
+                this.root.appendChild(or);
+            }
+
             const list = this.doc.createElement('div');
             list.className = 'nexus-bd-together-options';
-            for (const input of inputs) {
+            for (const input of choices) {
                 const b = this._button(input.label, 'nexus-bd-together-option', () => {
                     const chosen = { ...input };
                     if (input.wantsText && textarea) {
@@ -729,6 +750,39 @@ const TogetherPanel = (() => {
                 list.appendChild(b);
             }
             this.root.appendChild(list);
+        }
+
+        /**
+         * A search box for one discovery input (D3, D4).
+         *
+         * Choosing a result closes Together and hands the media to the conversation. That is
+         * the whole interaction, and the ordering matters: the panel goes *before* the
+         * message is published, so the card appears in a chat the user can already see rather
+         * than behind a dialog they then have to dismiss.
+         *
+         * The activity is deliberately not started. Watch's immersive path still exists, on
+         * the card's own menu; publishing a video to the conversation asks for no permission
+         * and should not quietly acquire one.
+         */
+        _discovery(input) {
+            const picker = this.win && this.win.NEXUS_MEDIA_PICKER;
+            const publisher = this.win && this.win.NEXUS_CONVERSATION_PUBLISHER;
+            if (!picker || typeof picker.build !== 'function') {
+                // Discovery not loaded is not a broken panel: `Share a tab` and
+                // `Open a video file` are below and still work, which is the additive promise.
+                return null;
+            }
+            return picker.build({
+                doc: this.doc,
+                mediaKind: input.mediaKind,
+                capability: input.providerCapability,
+                onChoose: (result) => {
+                    this.close();
+                    if (publisher && typeof publisher.publish === 'function') {
+                        publisher.publish(result, { doc: this.doc, win: this.win });
+                    }
+                },
+            });
         }
 
         /** What is running — in the activity's own words, not the launcher's. */

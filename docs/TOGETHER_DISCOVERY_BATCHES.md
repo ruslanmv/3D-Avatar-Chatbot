@@ -1,6 +1,7 @@
 # Together Media Discovery & Conversation Playback — Batch Plan
 
-**Status:** planning artifact. No product code changes in this document.
+**Status:** D1 is shipped; **D2 (minimal), D3 and D4 are shipped**; D5–D8 are still planning.
+The shipped batches keep their original text and carry a ✅ with what actually landed.
 **Scope:** `ruslanmv/3D-Avatar-Chatbot`, branch `claude/upgrade-feature-batches-3x0z82`.
 **Rule for every batch below:** additive only. New modules plus guarded hooks and one small
 contract extension; `TogetherPanel.js`, `watch.js` and `music.js` are not rewritten, and
@@ -122,6 +123,8 @@ The panel learns `kind: 'discovery'` **once**, generically. No `if (activity.id 
 
 ### D1 — Stop teaching JavaScript, and let Settings hold the key
 
+✅ **Shipped** (`d2732ec`). Key in Settings ▸ Discovery & Media, legacy `localStorage` still read and never written, and the parser fix so *"play a video in youtube of music"* searches for **music**.
+
 The smallest batch, and the one that fixes what the user actually hit.
 
 * Key resolution gains a front entry: **Settings** → `NEXUS_YT_CONFIG` → legacy
@@ -145,6 +148,8 @@ The smallest batch, and the one that fixes what the user actually hit.
 ---
 
 ### D2 — One normalized media result, one provider
+
+✅ **Shipped, at the size D3 needed.** `MediaResult`, `providers/youtube.js` wrapping `NEXUS_YT_COMPANION.search()`, and a registry asked by capability. No priority configuration and no fallback chain — those are D6, when there is something to order.
 
 `src/features/discovery/` — `ProviderRegistry.js`, `MediaResult.js`,
 `providers/youtube.js`. The YouTube provider **wraps** `NEXUS_YT_COMPANION.search()`; the
@@ -172,6 +177,8 @@ SearXNG, no Brave in this batch.
 ---
 
 ### D3 — The Watch picker
+
+✅ **Shipped.** A `kind: 'discovery'` input the panel recognises generically, so Watch and Music share one implementation. Search-on-submit only, epoch-guarded against stale results, `aria-live` status, real `<button>` rows. Verified in a browser: opening Together, opening Watch and searching each reach the consent machine zero times.
 
 `contract.js` gains the `search` input above `Share a tab`. `TogetherPanel.js` learns
 `kind: 'discovery'` and renders `src/features/together/ui/MediaSearchPicker.js`.
@@ -211,6 +218,8 @@ Open a video file            Back
 ---
 
 ### D4 — Selection publishes into the Conversation
+
+✅ **Shipped.** Together closes *first*, then an ordinary assistant message carrying the canonical URL goes through `YouTubeAsk.say` plus the app's own `_persistChat`. `NEXUS_YT_2D` decorates it into the card that already existed. Verified in a browser, end to end.
 
 The batch the whole plan exists for.
 
@@ -344,3 +353,43 @@ Recorded so the disagreements are decisions rather than drift.
 3. **The reported failure has a second cause the brief does not mention:** the intent parser
    captured `"video"` from `play a video in youtube of music`. Fixed in D1, or the search is
    connected and still returns the wrong thing.
+
+
+---
+
+## 6. What D3/D4 shipped, and what they did not
+
+**Class names live in the Together namespace.** The picker started as `nexus-bd-discovery-*`
+and the launcher's standing stylesheet audit rejected it: every selector in that stylesheet
+must contain `nexus-bd-together`, so the launcher cannot style anything outside its own world.
+Renaming was the right answer — loosening the audit would have traded a real guarantee for a
+shorter class name.
+
+**Two standing audits were rewritten, not relaxed.** `contract.test.js` destructured Watch's
+inputs positionally (`const [tab, file] = watch.inputs()`) and compared permission arrays by
+length. Both broke on an insertion that had nothing to do with what they assert, so both now
+key by input id — and a new one checks that *every* `search` input, on every activity, asks
+for no permission.
+
+**One mutation survived the first pass.** The test for "choosing a result does not start
+Watch" watched `navigator.mediaDevices.getDisplayMedia`, which the panel never calls —
+`ConsentMachine` owns it. A mutation that started the activity on selection walked straight
+past. It now asserts at the consent gate, which is the boundary that actually matters.
+
+### Known limitation
+
+The published message shows the URL beside the title (`Playing "…" — https://…`), because
+`.message-text` is the only thing `_persistChat` keeps. That is exactly what a user sees when
+they paste a link, so it is consistent — but it is not pretty, and hiding the URL once a card
+has been drawn changes how *every* YouTube message renders. That belongs to its own batch, not
+to D4.
+
+### Still to do here
+
+D5 (Music rows), D6 (Settings, with `Auto`), D7 (tab-audio adapter), D8 (the invariants as
+tests). And a larger direction raised after this plan was written: moving provider secrets and
+search behind **HomePilot** as a discovery broker, with SearXNG as a no-key fallback and a
+`discovery` capability block on the bridge. That is a HomePilot-side service plus an
+avatar-side `HomePilotDiscoveryProvider` registered *ahead* of the browser YouTube provider —
+which the registry already supports, because it asks by capability and takes the first ready
+one. It is a batch of its own; nothing in D3/D4 blocks it.

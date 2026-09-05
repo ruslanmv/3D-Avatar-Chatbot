@@ -220,6 +220,80 @@ const TogetherLauncher = (() => {
   outline: 2px solid var(--accent-cyan, #22d3ee); outline-offset: 2px;
 }
 
+/* D3. The search box and its results, inside Watch and Music setup.
+
+   A picker, styled as one: rows the size of a line of text, not cards. The whole point of
+   this block is that it must never look like a place to watch something — the conversation
+   is where that happens, and a result row that grew a play button would start competing with
+   it. Every colour is one Together already uses. */
+.nexus-bd-together-search { margin: .1rem 0 .55rem; }
+.nexus-bd-together-searchform { display: flex; gap: .35rem; }
+.nexus-bd-together-searchinput {
+  flex: 1; min-width: 0; padding: .5rem .65rem;
+  background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.1); border-radius: 10px;
+  color: #e8ecf2; font: 400 .8rem/1.2 inherit;
+}
+.nexus-bd-together-searchinput::placeholder { color: #6b7686; }
+.nexus-bd-together-searchinput:focus-visible {
+  outline: 2px solid var(--accent-cyan, #22d3ee); outline-offset: 1px;
+}
+.nexus-bd-together-searchgo {
+  flex: 0 0 auto; width: 2.3rem; border-radius: 10px; cursor: pointer;
+  background: rgba(34,211,238,.12); border: 1px solid rgba(34,211,238,.32);
+  color: #e8ecf2; font: 500 .9rem/1 inherit;
+}
+.nexus-bd-together-searchgo:hover { background: rgba(34,211,238,.2); }
+.nexus-bd-together-searchgo:focus-visible {
+  outline: 2px solid var(--accent-cyan, #22d3ee); outline-offset: 2px;
+}
+.nexus-bd-together-searchstatus {
+  margin: .4rem .15rem .1rem; color: #9aa6b8; font: 400 .72rem/1.35 inherit; min-height: 1em;
+}
+.nexus-bd-together-searchstatus[data-tone='weak'] { color: #7d8797; }
+.nexus-bd-together-results { display: flex; flex-direction: column; gap: .3rem; }
+.nexus-bd-together-result {
+  display: flex; align-items: center; gap: .55rem; width: 100%; padding: .35rem;
+  border-radius: 9px; cursor: pointer; text-align: left;
+  background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.08);
+  color: #e8ecf2; font: inherit;
+}
+.nexus-bd-together-result:hover { background: rgba(34,211,238,.12); border-color: rgba(34,211,238,.32); }
+.nexus-bd-together-result:focus-visible {
+  outline: 2px solid var(--accent-cyan, #22d3ee); outline-offset: 2px;
+}
+/* The box exists before the picture does, so a thumbnail arriving does not shift the row
+   under a finger that is already moving towards it. */
+.nexus-bd-together-resultthumb {
+  flex: 0 0 auto; width: 4rem; aspect-ratio: 16 / 9; border-radius: 6px; overflow: hidden;
+  background: rgba(0,0,0,.4);
+}
+.nexus-bd-together-resultthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.nexus-bd-together-resultmeta { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
+.nexus-bd-together-resulttitle {
+  font: 500 .78rem/1.25 inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.nexus-bd-together-resultby {
+  color: #9aa6b8; font: 400 .7rem/1.2 inherit;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.nexus-bd-together-connect {
+  align-self: flex-start; padding: .45rem .75rem; border-radius: 999px; cursor: pointer;
+  background: rgba(34,211,238,.12); border: 1px solid rgba(34,211,238,.4);
+  color: #e8ecf2; font: 600 .75rem/1 inherit;
+}
+.nexus-bd-together-connect:hover { background: rgba(34,211,238,.22); }
+.nexus-bd-together-connect:focus-visible {
+  outline: 2px solid var(--accent-cyan, #22d3ee); outline-offset: 2px;
+}
+/* Drawn only when there is something below it to be an alternative to. */
+.nexus-bd-together-or {
+  display: flex; align-items: center; gap: .5rem;
+  margin: .1rem 0 .5rem; color: #6b7686; font: 400 .68rem/1 inherit; letter-spacing: .06em;
+}
+.nexus-bd-together-or::before, .nexus-bd-together-or::after {
+  content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.09);
+}
+
 /* The rest of B36's controls, which the standing check above found unstyled too. */
 .nexus-bd-together-steps {
   display: block; width: 100%; margin: .5rem 0 .1rem; padding: .5rem .6rem;

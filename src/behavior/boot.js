@@ -63,6 +63,15 @@
         'src/features/together/ui/ConsentIndicator.js',
         // B36. The one activity contract and its failure copy, both read by the panel when
         // it is constructed, so they load before it.
+        // D2/D3. Discovery: one normalized result shape, one provider wrapping the YouTube
+        // search that already exists, and the registry Together asks by capability rather
+        // than by provider name. Loaded before the panel, which reads them when it paints a
+        // setup screen; absent, the panel simply draws the options it always had.
+        'src/features/discovery/MediaResult.js',
+        'src/features/discovery/providers/youtube.js',
+        'src/features/discovery/ProviderRegistry.js',
+        'src/features/together/ui/MediaSearchPicker.js',
+        'src/features/together/ui/ConversationPublisher.js',
         'src/features/together/activities/contract.js',
         'src/features/together/ui/failures.js',
         'src/features/together/ui/TogetherPanel.js',
