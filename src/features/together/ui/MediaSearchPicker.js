@@ -71,6 +71,12 @@ const MediaSearchPicker = (() => {
         const noun = mediaKind === 'music' ? 'music' : 'videos';
 
         const root = el(doc, 'div', 'nexus-bd-together-search');
+        if (mediaKind === 'music') {
+            // D5. One component, one modifier. A track is a title and an artist against a
+            // square sleeve; a video is a title and a channel against a 16:9 still. Two
+            // components for that difference would be two places to fix the next bug.
+            root.classList.add('is-music');
+        }
 
         const form = el(doc, 'form', 'nexus-bd-together-searchform');
         // A form, so Enter submits without a keydown handler and the browser's own
@@ -97,6 +103,15 @@ const MediaSearchPicker = (() => {
 
         const list = el(doc, 'div', 'nexus-bd-together-results');
         root.appendChild(list);
+
+        // D5. Said once, quietly, and only where it is true. YouTube plays in a cross-origin
+        // iframe, so its audio cannot reach the analyser the beat detector reads — she will
+        // not dance to it. Without this line that reads as dancing being broken; with it, the
+        // local-audio option below is visibly the one that does more, rather than the older
+        // one nobody has got round to removing.
+        if (opts.note) {
+            root.appendChild(el(doc, 'p', 'nexus-bd-together-searchnote', opts.note));
+        }
 
         let epoch = 0;
 

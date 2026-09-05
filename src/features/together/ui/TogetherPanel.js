@@ -776,6 +776,10 @@ const TogetherPanel = (() => {
                 doc: this.doc,
                 mediaKind: input.mediaKind,
                 capability: input.providerCapability,
+                placeholder: input.placeholder,
+                // The activity's own caveat, if it has one, rather than the picker inventing
+                // copy about a feature it knows nothing about.
+                note: input.note,
                 onChoose: (result) => {
                     this.close();
                     if (publisher && typeof publisher.publish === 'function') {

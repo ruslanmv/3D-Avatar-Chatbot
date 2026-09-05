@@ -289,6 +289,12 @@ const ActivityContract = (() => {
                     mediaKind: 'music',
                     providerCapability: 'music.search',
                     permission: null,
+                    // D5. The one thing a person would otherwise report as a bug. A YouTube
+                    // iframe is cross-origin, so its audio never reaches the analyser the
+                    // beat detector reads — she cannot dance to it, and only the local file
+                    // path can. Said here, on the input, rather than in the picker, which
+                    // knows nothing about dancing.
+                    note: 'She dances to audio files — YouTube plays in the chat, without the dancing.',
                 },
                 { id: 'file', label: 'Open an audio file', permission: null, pick: pickFile('audio/*') },
             ],

@@ -465,3 +465,100 @@ describe('Watch setup, in the real panel', () => {
         expect(panel.view).not.toBe('running');
     });
 });
+
+// ── Music (D5) ──────────────────────────────────────────────────────────────
+
+describe('Music setup', () => {
+    const TogetherPanel = require('../src/features/together/ui/TogetherPanel.js');
+
+    function musicActivity() {
+        return {
+            id: 'music',
+            label: 'Music',
+            attachSource: () => {},
+            analyser: {},
+            start: async () => ({ ok: true }),
+            stop() {},
+        };
+    }
+
+    function openMusic() {
+        document.body.innerHTML = '<div id="chat-history"></div><div id="app"></div>';
+        const consent = { state: { state: 'idle' }, onChange: () => () => {}, request: jest.fn() };
+        const win = {
+            NEXUS_MEDIA_PICKER: Picker,
+            NEXUS_CONVERSATION_PUBLISHER: Publisher,
+            NEXUS_YT_ASK: window.NEXUS_YT_ASK,
+        };
+        const panel = TogetherPanel.attach({ consent, capture: {}, config: {}, doc: document, win });
+        panel.mount(document.body);
+        panel.register(musicActivity());
+        panel.open();
+        panel.choose('music');
+        return panel;
+    }
+
+    test('offers search, and keeps local audio — the path that needs nothing', () => {
+        Registry.register(fakeProvider());
+        openMusic();
+        expect(document.querySelector('.nexus-bd-together-searchinput')).not.toBeNull();
+        const labels = [...document.querySelectorAll('.nexus-bd-together-option')].map((b) =>
+            b.textContent.replace(/\s+/g, ' ').trim()
+        );
+        // No internet, no key, no HomePilot — and the only path that feeds the beat detector.
+        expect(labels.some((l) => l.startsWith('Open an audio file'))).toBe(true);
+    });
+
+    test('draws tracks in the music shape, not the video one', async () => {
+        Registry.register(fakeProvider());
+        openMusic();
+        const picker = document.querySelector('.nexus-bd-together-search');
+        expect(picker.classList.contains('is-music')).toBe(true);
+        await picker.search('daft punk');
+        expect(picker.querySelectorAll('.nexus-bd-together-result').length).toBeGreaterThan(0);
+    });
+
+    test('says once that she will not dance to YouTube', () => {
+        // The alternative is somebody reporting dancing as broken, which is what happens
+        // when a limitation is real, invisible and undocumented in the place it applies.
+        Registry.register(fakeProvider());
+        openMusic();
+        const note = document.querySelector('.nexus-bd-together-searchnote');
+        expect(note).not.toBeNull();
+        expect(note.textContent).toMatch(/audio files/i);
+    });
+
+    test('Watch says no such thing, because it is not true there', () => {
+        Registry.register(fakeProvider());
+        document.body.innerHTML = '<div id="chat-history"></div>';
+        const consent = { state: { state: 'idle' }, onChange: () => () => {}, request: jest.fn() };
+        const panel = TogetherPanel.attach({
+            consent,
+            capture: {},
+            config: {},
+            doc: document,
+            win: { NEXUS_MEDIA_PICKER: Picker, NEXUS_CONVERSATION_PUBLISHER: Publisher },
+        });
+        panel.mount(document.body);
+        panel.register({
+            id: 'watch',
+            label: 'Watch',
+            playFile: async () => ({ ok: true }),
+            shareTab: async () => ({ ok: true }),
+            stop() {},
+        });
+        panel.open();
+        panel.choose('watch');
+        expect(document.querySelector('.nexus-bd-together-searchnote')).toBeNull();
+    });
+
+    test('choosing a track publishes it the same way a video does', async () => {
+        Registry.register(fakeProvider());
+        openMusic();
+        const picker = document.querySelector('.nexus-bd-together-search');
+        await picker.search('daft punk');
+        picker.querySelector('.nexus-bd-together-result').click();
+        // One publishing path for both activities: one renderer, one history model.
+        expect(document.querySelector('#chat-history .message-text').textContent).toContain('watch?v=aaa');
+    });
+});

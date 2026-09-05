@@ -285,6 +285,19 @@ const TogetherLauncher = (() => {
 .nexus-bd-together-connect:focus-visible {
   outline: 2px solid var(--accent-cyan, #22d3ee); outline-offset: 2px;
 }
+/* D5. Music results are a tighter row against a square sleeve: a track is a title and an
+   artist, and giving it a 16:9 still would be showing a video's shape for something nobody
+   is going to watch. Same component, one modifier. */
+.nexus-bd-together-search.is-music .nexus-bd-together-resultthumb {
+  width: 2.6rem; aspect-ratio: 1 / 1;
+}
+.nexus-bd-together-search.is-music .nexus-bd-together-result { padding: .3rem; }
+
+/* The activity's own caveat, under the results it applies to. Quiet enough to skip. */
+.nexus-bd-together-searchnote {
+  margin: .45rem .15rem 0; color: #6b7686; font: 400 .68rem/1.4 inherit;
+}
+
 /* Drawn only when there is something below it to be an alternative to. */
 .nexus-bd-together-or {
   display: flex; align-items: center; gap: .5rem;

@@ -1,6 +1,6 @@
 # Together Media Discovery & Conversation Playback — Batch Plan
 
-**Status:** D1 is shipped; **D2 (minimal), D3 and D4 are shipped**; D5–D8 are still planning.
+**Status:** **D1–D5 are shipped**; D6–D8 are still planning.
 The shipped batches keep their original text and carry a ✅ with what actually landed.
 **Scope:** `ruslanmv/3D-Avatar-Chatbot`, branch `claude/upgrade-feature-batches-3x0z82`.
 **Rule for every batch below:** additive only. New modules plus guarded hooks and one small
@@ -248,6 +248,8 @@ zero `getDisplayMedia` in the whole flow.
 ---
 
 ### D5 — Music, same pattern, compact rows
+
+✅ **Shipped.** One component with an `is-music` modifier — square sleeve, tighter row — rather than a second picker. The cross-origin limitation is said once, on the Music input itself, so Watch never shows it: *"She dances to audio files — YouTube plays in the chat, without the dancing."* Local audio is untouched and is still the only path that feeds the beat detector.
 
 `Search music` above `Open an audio file`; results are one-line rows (art · title · creator),
 never 16:9 players. Selection publishes to Conversation exactly as D4.
