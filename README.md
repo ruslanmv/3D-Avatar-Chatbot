@@ -101,16 +101,24 @@ framework dependencies — runs on vanilla JavaScript, Three.js, and WebXR.
 - **Privacy-first** — API keys stored in browser localStorage, zero server-side
   data collection
 
-### Behavior Director (opt-in)
+### Behavior Director
 
 An animation and companion engine that decides what she does, in three tiers:
 reflexes every frame, a semantic clip selector under 50 ms, and — when paired
 with [HomePilot](https://github.com/ruslanmv/HomePilot) — turn-level
-orchestration. It ships **off**: turn it on in **Settings ▸ Behavior Director**,
-then tune it in `config/behavior.config.json`.
+orchestration. It ships **on**, so the launcher is there on a fresh install;
+**Settings ▸ Behavior Director** is the kill switch, and turning it off means
+nothing under `src/behavior/` is fetched at all. Tune it in
+`config/behavior.config.json`.
 
-Once it is on, a **two-person button** joins the avatar toolbar — one entry
-point to every experience below. Nothing else in the toolbar moves.
+A **two-person button** in the avatar toolbar is the one entry point to every
+experience below. Nothing else in the toolbar moves.
+
+**Most of it needs no server.** Focus, Journey, Music, Watch and Coach run
+entirely in the browser. Only _Help me with this_ and _Meeting_ need HomePilot —
+they ask a model about a picture — and when it is not linked they say so and
+point at Settings rather than starting and going quiet. See
+[docs/ENABLING.md](docs/ENABLING.md).
 
 ![The Together chooser open over the avatar: Watch, Journey, Music, Play, Focus, Coach, and Help me with this](assets/together-mode.png)
 

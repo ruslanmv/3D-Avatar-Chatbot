@@ -1,11 +1,35 @@
-# Turning the Behavior Director on
+# Behavior Director: the switch, and what needs what
 
-Everything in this document ships **off**. That is deliberate, and it is not a rollout plan
-in disguise: the engine is opt-in because a companion that starts moving on its own the day
-you `git pull` is a companion nobody asked for.
+The engine ships **on**, so the 👥 launcher is on the toolbar of a fresh install. It shipped
+opt-in until the rollout, and the cost was that every feature behind that button was
+undiscoverable: you had to know to tick a checkbox before the button existed at all.
+
+**Settings ▸ Behavior Director** is now a kill switch rather than an ignition. Unticked,
+nothing under `src/behavior/` is fetched, parsed or evaluated and the app is the one that
+shipped before any of this — which `scripts/behavior-parity-baseline.mjs --check` proves.
+
+Everything *underneath* the engine still ships off: camera, microphone, the HomePilot
+session, the adult tier. Turning the engine on grants nothing.
 
 This page is the whole configuration surface, and the recipe for exercising each feature so
 you can see it work rather than take a test's word for it.
+
+## What needs HomePilot, and what does not
+
+Most of Together is local. Only the two activities that ask a model about a picture need a
+server at all:
+
+| Activity | Needs HomePilot | What it uses |
+|---|---|---|
+| Focus, Journey, Music, Watch, Coach | **no** | timers, scenes, WebAudio, a video element, MediaPipe pose — all in the browser |
+| Help me with this | **yes** | a vision model, to answer about what the camera sees |
+| Meeting | **yes** | MeetingSense, to record and transcribe into a conversation |
+
+When HomePilot is not reachable the two tiles stay on the grid and explain themselves when
+chosen, naming what B35's discovery actually found — no bridge, bridge unreachable, bridge
+too old, or a bridge with HomePilot not enabled behind it — with **Open settings** beside it.
+They never open a camera first: a live camera and silence was the old behaviour and is the
+thing this replaced.
 
 ## The master flag
 
@@ -29,6 +53,10 @@ already running:
 > operator can disable the engine for an install whose users have already ticked the box) is
 > an open decision, not an oversight to paper over; until it is taken, treat the key as
 > documentation of intent and the toggle as the truth.
+>
+> It is deliberately still `false` even though the engine ships on: two CI audits assert that
+> it is, nothing at runtime reads it, so flipping it would break a gate and change no
+> behaviour. The default lives in `startBehaviorDirector()` in `src/main.js`.
 
 Add `?behaviorDebug=1` to the URL (or set `behaviorEngine.debug`) for the on-screen HUD and
 the 16-entry pick log — including the refusals, because "she did nothing" is the hardest
@@ -38,7 +66,7 @@ behaviour to debug.
 
 | Flag | Default | Turns on | Needs |
 |---|---|---|---|
-| **Settings ▸ Behavior Director** (`nexus_bd_enabled`) | off | the engine at all | — |
+| **Settings ▸ Behavior Director** (`nexus_bd_enabled`) | **on** | the engine and the 👥 launcher; untick to turn everything off | — |
 | the HomePilot session | auto | server intents, curiosity, vision, MCP | an OllaBridge with HomePilot enabled — see below |
 | `session.tier1Remote` | `false` | clip selection on the server, for weak devices | as above |
 | `nsfwAllowed` | `false` | the user half of the adult gate | — |
