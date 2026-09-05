@@ -71,6 +71,7 @@ beforeEach(() => {
     window.NEXUS_DISCOVERY_YOUTUBE = YouTube;
     Registry = require('../src/features/discovery/ProviderRegistry.js');
     window.NEXUS_DISCOVERY = Registry;
+    localStorage.removeItem(Registry.SETTINGS_KEY);
     Picker = require('../src/features/together/ui/MediaSearchPicker.js');
     window.NEXUS_MEDIA_PICKER = Picker;
     Publisher = require('../src/features/together/ui/ConversationPublisher.js');
@@ -272,6 +273,22 @@ describe('the picker', () => {
         await node.search('lofi');
         expect(node.querySelector('.nexus-bd-together-connect')).not.toBeNull();
         expect(node.textContent).not.toMatch(/localStorage|setItem/);
+    });
+
+    test('honours the provider the user chose in Settings (D6)', async () => {
+        // The picker passes no preference of its own — `forCapability` reads it. Wiring D6
+        // in was one default argument, and this is the test that says so.
+        const chosen = fakeProvider({
+            ID: 'searxng',
+            search: async () =>
+                MediaResult.many([{ id: 'sx', url: 'https://www.youtube.com/watch?v=sx', title: 'FROM SEARXNG' }]),
+        });
+        Registry.register(fakeProvider());
+        Registry.register(chosen);
+        Registry.setPreference('video', 'searxng');
+        const { node } = mount();
+        await node.search('lofi');
+        expect(node.textContent).toContain('FROM SEARXNG');
     });
 
     test('choosing a row hands back the normalized result', async () => {

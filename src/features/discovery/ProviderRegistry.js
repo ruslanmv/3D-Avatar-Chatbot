@@ -14,8 +14,69 @@
 const ProviderRegistry = (() => {
     'use strict';
 
-    /** Registration order is preference order, until D6 gives the user a say. */
+    /** Registration order is the fallback order; D6 lets the user name one instead. */
     const providers = [];
+
+    /** The one object every discovery setting lives in. `YouTubeSettings` shares it. */
+    const SETTINGS_KEY = 'nexus_discovery_settings';
+
+    function store(storage) {
+        if (storage !== undefined) {
+            return storage;
+        }
+        try {
+            return typeof localStorage !== 'undefined' ? localStorage : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /**
+     * Which provider the user picked, per capability group. `auto` everywhere by default.
+     *
+     * Keyed by the part before the dot — `video.search` and `video.play` are one choice, not
+     * two, because "which video provider" is one question a person answers once.
+     */
+    function preferences(storage) {
+        const s = store(storage);
+        if (!s) {
+            return {};
+        }
+        try {
+            const parsed = JSON.parse(s.getItem(SETTINGS_KEY) || 'null');
+            const prefs = parsed && parsed.preferences;
+            return prefs && typeof prefs === 'object' ? prefs : {};
+        } catch (_) {
+            return {};
+        }
+    }
+
+    /** Record a choice. `auto` (or anything unknown) means "you decide". */
+    function setPreference(group, providerId, storage) {
+        const s = store(storage);
+        let parsed = {};
+        if (s) {
+            try {
+                parsed = JSON.parse(s.getItem(SETTINGS_KEY) || 'null') || {};
+            } catch (_) {
+                parsed = {};
+            }
+        }
+        const next = Object.assign({}, parsed.preferences, { [group]: String(providerId || 'auto') });
+        parsed.preferences = next;
+        if (s) {
+            try {
+                s.setItem(SETTINGS_KEY, JSON.stringify(parsed));
+            } catch (_) {
+                // Storage disabled. The choice applies to this session through `parsed`.
+            }
+        }
+        return next;
+    }
+
+    function groupOf(capability) {
+        return String(capability || '').split('.')[0];
+    }
 
     function register(provider) {
         if (!provider || !provider.ID) {
@@ -30,9 +91,31 @@ const ProviderRegistry = (() => {
         return providers.length;
     }
 
+    /**
+     * One provider's readiness, and never an exception (D8).
+     *
+     * `all()` and `forCapability` walk every registered provider, so a single one whose
+     * `status()` throws would take down search for the others — a third-party provider
+     * breaking the two that work. A provider that cannot say how it is, is not available.
+     */
+    function statusOf(provider) {
+        try {
+            const s = provider.status();
+            return {
+                id: provider.ID,
+                configured: Boolean(s && s.configured),
+                available: Boolean(s && s.available),
+                capabilities: Array.isArray(s && s.capabilities) ? s.capabilities : [],
+                reason: (s && s.reason) || 'unknown',
+            };
+        } catch (_) {
+            return { id: provider.ID, configured: false, available: false, capabilities: [], reason: 'broken' };
+        }
+    }
+
     /** Everything registered, with its readiness. What a Settings page would list. */
     function all() {
-        return providers.map((p) => Object.assign({ provider: p }, p.status()));
+        return providers.map((p) => Object.assign({ provider: p }, statusOf(p)));
     }
 
     /**
@@ -41,14 +124,25 @@ const ProviderRegistry = (() => {
      * Ready, not merely registered: showing a dead provider as if it worked is the failure
      * this returns `null` to avoid. The caller then asks `why` for a sentence.
      */
-    function forCapability(capability) {
-        for (const p of providers) {
-            const s = p.status();
-            if (s.available && s.capabilities.includes(capability)) {
-                return p;
+    function forCapability(capability, opts = {}) {
+        const ready = providers.filter((p) => {
+            const s = statusOf(p);
+            return s.available && s.capabilities.includes(capability);
+        });
+        if (!ready.length) {
+            return null;
+        }
+        // A named choice wins — but only while it is ready. Honouring a preference for a
+        // provider that has since lost its key would turn "I picked that one" into "search
+        // is broken", which is the failure `available` exists to prevent.
+        const wanted = opts.prefer || preferences(opts.storage)[groupOf(capability)] || 'auto';
+        if (wanted && wanted !== 'auto') {
+            const named = ready.find((p) => p.ID === wanted);
+            if (named) {
+                return named;
             }
         }
-        return null;
+        return ready[0];
     }
 
     /**
@@ -63,7 +157,7 @@ const ProviderRegistry = (() => {
         }
         let reason = 'no-provider';
         for (const p of providers) {
-            const s = p.status();
+            const s = statusOf(p);
             if (!s.capabilities.length || s.capabilities.includes(capability)) {
                 reason = s.reason || reason;
                 if (s.reason === 'no-key') {
@@ -84,7 +178,7 @@ const ProviderRegistry = (() => {
         register(window.NEXUS_DISCOVERY_YOUTUBE);
     }
 
-    return { register, all, forCapability, why, reset };
+    return { register, all, forCapability, why, reset, preferences, setPreference, groupOf, SETTINGS_KEY };
 })();
 
 if (typeof window !== 'undefined') {

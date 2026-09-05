@@ -2562,6 +2562,12 @@
                                 Services → enable <strong>YouTube Data API v3</strong> → Credentials.
                             </p>
                         </div>
+                        <!-- D6: which engine powers search, and whether it is actually working.
+                             Filled by src/features/discovery/DiscoverySettings.js when Settings
+                             opens; empty and harmless when that folder is deleted. -->
+                        <div class="input-group">
+                            <div id="discovery-providers"></div>
+                        </div>
                     </div>
 
                     <div class="config-section">
@@ -3507,6 +3513,8 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <script defer src="src/features/youtube/YouTubeEmbed2D.js"></script>
         <script defer src="src/features/youtube/YouTubeVRBridge.js"></script>
         <script defer src="src/features/youtube/YouTubeSettings.js"></script>
+        <!-- D6: the Discovery & Media section. Inert without the container above. -->
+        <script defer src="src/features/discovery/DiscoverySettings.js"></script>
         <script defer src="src/features/youtube/YouTubeAsk.js"></script>
 
         <!-- Remote screenshot (RS1). "Show me what's on my PC" → one still, taken on that

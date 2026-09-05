@@ -83,6 +83,9 @@
         // B36. What Music listens to. B14 shipped a beat detector reading an analyser
         // nothing supplied, so the tile started and could not hear anything.
         'src/features/together/activities/audioSource.js',
+        // D7. The other thing Music can listen to: the audio already inside a screen grant.
+        // Loaded beside the file source; it asks for no permission of its own.
+        'src/features/together/activities/mediaTabAudioSource.js',
         'src/features/together/activities/scene-journey.js',
         'src/features/together/activities/screen-insight.js',
         // B26 holds the B15 activity above rather than describing its round trip again.
