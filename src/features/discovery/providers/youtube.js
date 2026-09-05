@@ -150,6 +150,8 @@ const YouTubeProvider = (() => {
             kind: kind === 'music' || kind === 'track' ? 'track' : 'video',
             title: item.name || '',
             creator: item.author || '',
+            description: item.description || '',
+            publishedAt: item.publishedAt || '',
             // The facade thumbnail YouTube serves for every video. `hqdefault` rather than
             // `maxres`, which is absent for a large share of videos and yields a broken image
             // in a row of otherwise fine ones.

@@ -58,6 +58,17 @@ const ConversationPublisher = (() => {
             return null;
         }
 
+        // D9. Before the message, so a model answering the very next turn already knows.
+        // Guarded: an install without the context module publishes exactly as it did before.
+        try {
+            const media = w && w.NEXUS_CURRENT_MEDIA;
+            if (media && typeof media.set === 'function') {
+                media.set(result);
+            }
+        } catch (_) {
+            // Knowing what is playing is never worth losing the card over.
+        }
+
         // `say` writes in whichever shape this page uses — ChatManager where there is one,
         // the `.chat-row > .chat-message > .message-text` `main.js` builds otherwise. Reused
         // rather than reimplemented so there is one answer to "what does a message look

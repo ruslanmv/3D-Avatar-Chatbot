@@ -256,7 +256,11 @@ describe('YouTubeCompanion', () => {
             }),
         }));
         const r = await Companion.search('lofi', { key: 'K', fetchImpl });
-        expect(r).toEqual([{ id: 'dQw4w9WgXcQ', start: 0, name: 'T', author: 'C' }]);
+        // D9 added `description` and `publishedAt`, which `snippet` has always carried and
+        // nothing read — the model had a title and no idea what the video was about. Matched
+        // rather than compared whole, so the next field to be carried does not fail this.
+        expect(r).toHaveLength(1);
+        expect(r[0]).toMatchObject({ id: 'dQw4w9WgXcQ', start: 0, name: 'T', author: 'C' });
         expect(fetchImpl.mock.calls[0][0]).toContain('videoEmbeddable=true');
     });
 });

@@ -3521,7 +3521,10 @@ async function _handleStreamingResponse(text) {
         const history = window.chatHistory.getHistory();
         const systemPrompt =
             (config.systemPrompt || 'You are a helpful AI assistant named Nexus.') +
-            (window.NEXUS_MOTION?.systemPromptSuffix?.() || '');
+            (window.NEXUS_MOTION?.systemPromptSuffix?.() || '') +
+            // D9. What Together is playing, if anything. Empty string when nothing is, so a
+            // chat with no media selected sends the prompt it has always sent.
+            (window.NEXUS_CURRENT_MEDIA?.systemPromptSuffix?.() || '');
         let accumulated = '';
 
         const fullText = await window._nexusLLM.sendMessageStream(text, systemPrompt, history, (token) => {
@@ -3713,7 +3716,10 @@ async function callLLM(userMessage) {
         const history = window.chatHistory.getHistory();
         const systemPrompt =
             (config.systemPrompt || 'You are a helpful AI assistant named Nexus.') +
-            (window.NEXUS_MOTION?.systemPromptSuffix?.() || '');
+            (window.NEXUS_MOTION?.systemPromptSuffix?.() || '') +
+            // D9. What Together is playing, if anything. Empty string when nothing is, so a
+            // chat with no media selected sends the prompt it has always sent.
+            (window.NEXUS_CURRENT_MEDIA?.systemPromptSuffix?.() || '');
 
         // Use structured response for OllaBridge to get attachments
         if (config.provider === 'ollabridge' && typeof window._nexusLLM.sendMessageStructured === 'function') {
@@ -5182,6 +5188,18 @@ async function __getWatsonxBearer(apiKeyOrToken) {
 /**
  * Override: OpenAI via proxy.
  */
+/**
+ * What Together is playing, for the two AR-mode callers that compose no suffix of their own
+ * (D9). Empty string when nothing is playing, or when the feature is not loaded.
+ */
+function __nexusMediaSuffix() {
+    try {
+        return window.NEXUS_CURRENT_MEDIA?.systemPromptSuffix?.() || '';
+    } catch (_) {
+        return '';
+    }
+}
+
 async function callOpenAI(userMessage) {
     const upstreamUrl = 'https://api.openai.com/v1/chat/completions';
     const res = await __nexusProxyFetch(upstreamUrl, {
@@ -5190,7 +5208,7 @@ async function callOpenAI(userMessage) {
         body: JSON.stringify({
             model: config.model,
             messages: [
-                { role: 'system', content: config.systemPrompt },
+                { role: 'system', content: config.systemPrompt + __nexusMediaSuffix() },
                 { role: 'user', content: userMessage },
             ],
             max_tokens: 500,
@@ -5214,7 +5232,7 @@ async function callClaude(userMessage) {
         body: JSON.stringify({
             model: config.model,
             max_tokens: 500,
-            system: config.systemPrompt,
+            system: config.systemPrompt + __nexusMediaSuffix(),
             messages: [{ role: 'user', content: userMessage }],
         }),
     });

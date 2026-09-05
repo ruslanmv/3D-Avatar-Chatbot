@@ -59,6 +59,10 @@ export default async function handler(req, res) {
                 start: 0,
                 name: (it.snippet && it.snippet.title) || '',
                 author: (it.snippet && it.snippet.channelTitle) || '',
+                // D9. Carried here too, or a deployment-key search would tell the model less
+                // than a visitor's own key does.
+                description: (it.snippet && it.snippet.description) || '',
+                publishedAt: (it.snippet && it.snippet.publishedAt) || '',
             }));
         res.setHeader('Cache-Control', 'public, max-age=300');
         return res.status(200).json({ results });

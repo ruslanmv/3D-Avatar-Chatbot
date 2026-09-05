@@ -42,6 +42,11 @@ const MediaResult = (() => {
             kind,
             title: text(raw.title),
             creator: text(raw.creator),
+            // D9. Not rendered anywhere — the picker shows a title and a creator — but the
+            // model reads them, which is the difference between "I cannot know what you are
+            // watching" and an answer.
+            description: text(raw.description),
+            publishedAt: text(raw.publishedAt),
             // One field, whatever the kind calls it. A music picker showing `artwork` and a
             // video picker showing `thumbnail` would be two components for one job.
             thumbnail: text(raw.thumbnail),

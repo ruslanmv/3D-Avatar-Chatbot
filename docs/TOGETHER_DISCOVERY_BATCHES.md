@@ -1,6 +1,6 @@
 # Together Media Discovery & Conversation Playback — Batch Plan
 
-**Status:** **D1–D8 and D13 are shipped**. D9–D12 (media awareness, §7) are design only.
+**Status:** **D1–D10 and D13 are shipped**. D11–D12 (§7) are design only.
 The shipped batches keep their original text and carry a ✅ with what actually landed.
 **Scope:** `ruslanmv/3D-Avatar-Chatbot`, branch `claude/upgrade-feature-batches-3x0z82`.
 **Rule for every batch below:** additive only. New modules plus guarded hooks and one small
@@ -485,6 +485,8 @@ the original bug, on a slower fuse.
 
 ### D9 — She knows what is playing
 
+✅ **Shipped, with D10 folded in.** Splitting them would have left one release containing the injection sink D10 removes.
+
 `src/features/together/CurrentMediaContext.js`: title, creator, url, kind, provider, and
 (after fix 2) description and published date. Set from `ConversationPublisher`. Read through
 `systemPromptSuffix()`, appended beside the motion suffix at both `main.js` call sites and the
@@ -503,6 +505,8 @@ title in the prompt; with none, the suffix is exactly `''` and the prompt is byt
 today's. A test asserts the second — this feature must be invisible when nothing is playing.
 
 ### D10 — Untrusted text, handled as untrusted
+
+✅ **Shipped with D9**, for the reason above.
 
 Delimit creator-supplied fields, put the instruction before the data, and cap each field.
 
@@ -584,3 +588,31 @@ consulted first now.
 
 Three test assertions written before D13 named the old single `Ready` label or the old
 two-state readiness; each was updated to assert the state rather than the wording.
+
+
+---
+
+## 9. D9 + D10 as shipped
+
+The three fixes the proposal needed, done:
+
+* **`description` and `publishedAt` now exist.** They were read by the provider and produced
+  by nothing — `YouTubeCompanion.search()` mapped only `id`, `start`, `name`, `author`. All
+  three search paths carry them now, including both server routes, or a deployment-key search
+  would tell the model less than a visitor's own key does.
+* **The instruction sits above the data**, and uploader text is fenced, single-lined and
+  capped. A description cannot open a row of its own, and cannot close the fence.
+* **Empty means empty.** With nothing playing the suffix is `''`, so the prompt is byte-identical
+  to what it was before this batch — verified in a browser, not only asserted.
+
+Wired at four prompt sites: the two `main.js` paths that already compose the motion suffix,
+and the two AR-mode callers that composed none. `watch.js` sets the same context for a local
+file — a filename is thin, and it is what there is.
+
+**A mutation survived and was worth it.** Stripping `\r\n` explicitly and then collapsing
+`\s+` is the same guarantee twice; removing the first changed nothing. The redundant line is
+gone and the comment says why, which is more useful than a second replace nobody can justify.
+
+Still open here: **D11** (contents — blocked on a caption route that works; the proposed one
+returns 200 with an empty body on every video) and **D12** (rehydrate after a reload, so a
+refresh does not return her to denying it).

@@ -71,6 +71,8 @@
         'src/features/discovery/providers/youtube.js',
         'src/features/discovery/ProviderRegistry.js',
         'src/features/together/ui/MediaSearchPicker.js',
+        // D9. What is playing, for the model. Loaded before the publisher that sets it.
+        'src/features/together/CurrentMediaContext.js',
         'src/features/together/ui/ConversationPublisher.js',
         'src/features/together/activities/contract.js',
         'src/features/together/ui/failures.js',

@@ -259,6 +259,10 @@ const YouTubeCompanion = (() => {
                     start: 0,
                     name: (it.snippet && it.snippet.title) || '',
                     author: (it.snippet && it.snippet.channelTitle) || '',
+                    // D9. `snippet` has carried these all along; nothing read them, so the
+                    // model had a title and no idea what the video was about.
+                    description: (it.snippet && it.snippet.description) || '',
+                    publishedAt: (it.snippet && it.snippet.publishedAt) || '',
                 }));
         } catch {
             return [];
