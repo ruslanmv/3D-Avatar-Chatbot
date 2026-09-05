@@ -26,29 +26,84 @@ const YouTubeProvider = (() => {
     }
 
     /**
-     * Readiness, as four separate facts rather than one boolean.
+     * Does this deployment search on its own key? (D13)
      *
-     * `configured` and `available` are different questions and have different answers in the
-     * UI: a provider whose code is missing needs a bug report, and one with no key needs a
-     * button. Collapsing them is how "YouTube search isn't connected" ends up shown to
-     * somebody whose page simply failed to load a script.
+     * Tri-state and cached: `null` until the probe answers. `status()` is synchronous — the
+     * registry and Settings both call it — so the fact has to be known by then, which is what
+     * `ready()` is for. Reporting "available" before the probe returns would be the
+     * dead-provider-shown-as-working failure the whole readiness model exists to prevent.
+     */
+    let deployment = null;
+    let probe = null;
+
+    /**
+     * Resolve the deployment probe once, then answer from cache.
+     *
+     * Awaited through the registry's `warm()` before anything asks `status()` in earnest. A
+     * host with no such route answers `false` and this costs one 404 for the life of the page.
+     */
+    function ready(deps = {}) {
+        if (deployment !== null && !deps.force) {
+            return Promise.resolve(status());
+        }
+        const comp = companion();
+        if (!comp || typeof comp.serverConfigured !== 'function') {
+            deployment = false;
+            return Promise.resolve(status());
+        }
+        if (!probe || deps.force) {
+            probe = comp
+                .serverConfigured(deps)
+                .then((answer) => {
+                    deployment = Boolean(answer);
+                })
+                .catch(() => {
+                    deployment = false;
+                });
+        }
+        return probe.then(() => status());
+    }
+
+    /** The key the user typed, wherever they typed it. `''` when there is none. */
+    function ownKey(comp) {
+        const set = settings();
+        return set && typeof set.apiKey === 'function' ? set.apiKey() : comp.apiKey();
+    }
+
+    /**
+     * Readiness, as separate facts rather than one boolean.
+     *
+     * `configured` and `available` are different questions with different answers in the UI:
+     * a provider whose code is missing needs a bug report, and one with no key needs a button.
+     * Collapsing them is how "YouTube search isn't connected" ends up shown to somebody whose
+     * page simply failed to load a script.
+     *
+     * D13 adds a third state between those. `deployment` means the site searches on its own
+     * key and the visitor needs nothing — reported as its own reason so Settings can say so
+     * rather than showing a key field that nobody has to fill in.
      */
     function status() {
         const comp = companion();
         if (!comp) {
             return { id: ID, configured: false, available: false, capabilities: [], reason: 'not-loaded' };
         }
-        const set = settings();
-        const key = set && typeof set.apiKey === 'function' ? set.apiKey() : comp.apiKey();
-        if (!key) {
-            return { id: ID, configured: false, available: false, capabilities: [], reason: 'no-key' };
+        const key = ownKey(comp);
+        if (!key && !deployment) {
+            return {
+                id: ID,
+                configured: false,
+                available: false,
+                capabilities: [],
+                reason: deployment === null ? 'checking' : 'no-key',
+            };
         }
         return {
             id: ID,
             configured: true,
             available: true,
             capabilities: ['video.search', 'music.search', 'video.play'],
-            reason: 'ok',
+            // Which key is doing the work, so the UI can stop asking for one that is not needed.
+            reason: key ? 'ok' : 'deployment',
         };
     }
 
@@ -105,7 +160,7 @@ const YouTubeProvider = (() => {
         };
     }
 
-    return { ID, status, available, search, normalize };
+    return { ID, status, available, ready, search, normalize };
 })();
 
 if (typeof window !== 'undefined') {

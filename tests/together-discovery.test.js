@@ -106,9 +106,19 @@ describe('MediaResult', () => {
 // ── the provider, and the registry that asks by capability ──────────────────
 
 describe('the YouTube provider', () => {
-    test('with no key it is configured: false, with a reason a UI can act on', () => {
-        window.NEXUS_YT_COMPANION = { apiKey: () => '' };
+    test('with no key it is configured: false, with a reason a UI can act on', async () => {
+        // D13 added a state before this one: until the deployment probe answers, "no key" is
+        // not yet known to be true. Resolving it first is what the picker does through
+        // `warm()`, and what this test now does explicitly.
+        window.NEXUS_YT_COMPANION = { apiKey: () => '', serverConfigured: async () => false };
+        await YouTube.ready();
         expect(YouTube.status()).toMatchObject({ configured: false, available: false, reason: 'no-key' });
+    });
+
+    test('and says so as "checking" until the probe has answered', () => {
+        window.NEXUS_YT_COMPANION = { apiKey: () => '', serverConfigured: async () => false };
+        expect(YouTube.status().reason).toBe('checking');
+        expect(YouTube.status().available).toBe(false);
     });
 
     test('a page where the YouTube feature never loaded is a different answer', () => {

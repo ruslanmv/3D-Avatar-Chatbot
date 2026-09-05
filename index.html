@@ -2548,18 +2548,21 @@
                     <div class="config-section">
                         <h3 class="config-title">DISCOVERY &amp; MEDIA</h3>
                         <div class="input-group">
-                            <label class="input-label" for="yt-api-key">🔎 VIDEO SEARCH — YOUTUBE API KEY</label>
+                            <label class="input-label" for="yt-api-key"
+                                >🔎 VIDEO SEARCH — YOUR OWN YOUTUBE KEY (OPTIONAL)</label
+                            >
                             <input
                                 type="password"
                                 id="yt-api-key"
                                 class="text-input"
                                 autocomplete="off"
-                                placeholder="Paste a YouTube Data API v3 key"
+                                placeholder="Leave empty unless you want to use your own quota"
                             />
                             <p style="font-size: 0.68rem; color: rgba(255, 255, 255, 0.45); margin: 6px 2px 0">
-                                Lets Nexus search YouTube and show results in the chat. Without it she still opens the
-                                search page for whatever you asked for. Get a key from Google Cloud → APIs &amp;
-                                Services → enable <strong>YouTube Data API v3</strong> → Credentials.
+                                Search works without this wherever the site has been set up with a key of its own — the
+                                state below says which. Add one only to search on your own quota; it wins over the
+                                site's. Get a key from Google Cloud → APIs &amp; Services → enable
+                                <strong>YouTube Data API v3</strong> → Credentials.
                             </p>
                         </div>
                         <!-- D6: which engine powers search, and whether it is actually working.

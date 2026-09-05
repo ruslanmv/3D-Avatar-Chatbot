@@ -1,6 +1,6 @@
 # Together Media Discovery & Conversation Playback — Batch Plan
 
-**Status:** **D1–D8 are shipped**. D9–D12 (media awareness, §7) are design only.
+**Status:** **D1–D8 and D13 are shipped**. D9–D12 (media awareness, §7) are design only.
 The shipped batches keep their original text and carry a ✅ with what actually landed.
 **Scope:** `ruslanmv/3D-Avatar-Chatbot`, branch `claude/upgrade-feature-batches-3x0z82`.
 **Rule for every batch below:** additive only. New modules plus guarded hooks and one small
@@ -548,3 +548,39 @@ Metadata about what somebody is watching goes to whatever model is configured �
 cloud provider. It is a small leak and a real one, and it should be a line in Settings rather
 than a surprise. `Together ▸ tell the assistant what I am playing`, on by default, off in one
 tap.
+
+
+---
+
+## 8. D13 — a key the deployment owns
+
+Shipped. Asking every visitor for a YouTube key is the right default for somebody
+self-hosting and the wrong one for a site somebody publishes: the operator has a key, and
+asking each visitor for one turns a working feature into a form.
+
+**The load-bearing decision is where the key lives.** The obvious shortcut is a config
+endpoint that hands `YOUTUBE_API_KEY` to the page, and it publishes the key: a Data API key in
+client JavaScript is readable by anyone who opens the site, and Google's HTTP-referrer
+restriction binds browsers and nothing else. So the browser never receives it — it calls
+`GET /api/yt/search?q=…` and gets results back.
+
+* `nexus-proxy/youtube-routes.cjs` and `api/yt-search.js` serve the same path, so the client
+  has one. A plain (private) Vercel environment variable reaches the function and not the page.
+* `GET /api/yt/search` with no query answers `{configured: bool}` — readiness without spending
+  a unit of the operator's daily quota, because Settings asks on every open.
+* Upstream errors are relayed as a status, never a body: Google's quota errors name the
+  project and the key, and this response is public.
+* **A key in Settings wins.** Somebody who typed one meant to use their own quota; silently
+  preferring the site's would make that field decorative.
+* Readiness gained a state *before* "no key": `checking`, until the probe answers. Claiming
+  available early is the dead-provider-shown-as-working failure the readiness model exists to
+  prevent, and claiming unavailable early would make a working site read as broken on first
+  open and fine on the second.
+
+**It found a bug in D6.** `stateLabel` was written as "available → Ready, otherwise look up the
+reason", which collapsed every working state into one word — so D13's second working state,
+*the site holds the key*, could never render. Being available is not one fact. The reason is
+consulted first now.
+
+Three test assertions written before D13 named the old single `Ready` label or the old
+two-state readiness; each was updated to assert the state rather than the wording.

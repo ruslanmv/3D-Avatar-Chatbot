@@ -114,7 +114,7 @@ describe('the Settings section', () => {
     test('states each provider live, not from what was typed', () => {
         Registry.register(provider('youtube'));
         Settings.render(document);
-        expect(document.querySelector('.nexus-discovery-status').textContent).toBe('Ready');
+        expect(document.querySelector('.nexus-discovery-status').textContent).toMatch(/^Ready\b/);
         expect(document.querySelector('.nexus-discovery-status').dataset.ready).toBe('yes');
     });
 
@@ -144,7 +144,7 @@ describe('the Settings section', () => {
         expect(document.querySelector('.nexus-discovery-status').textContent).toBe('API key required');
         ready = true;
         document.getElementById('settings-btn').click();
-        expect(document.querySelector('.nexus-discovery-status').textContent).toBe('Ready');
+        expect(document.querySelector('.nexus-discovery-status').textContent).toMatch(/^Ready\b/);
     });
 
     test('a group nothing can serve is not offered at all', () => {

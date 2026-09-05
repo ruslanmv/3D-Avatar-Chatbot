@@ -78,8 +78,42 @@ Search uses YouTube Data API v3, which needs a key.
 Services → enable **YouTube Data API v3** → Credentials → **Create credentials → API key**.
 Restrict it to that API and to your site's referrer before you use it anywhere public.
 
-**Set it:** Settings → **Discovery & Media** → *Video search — YouTube API key* → SAVE.
-That is the whole of what a user does, and the only thing the app ever tells them to do.
+### For a deployment — one key, nobody types anything (D13)
+
+Set a **private** environment variable on the host and every visitor can search without a key
+of their own:
+
+```sh
+YOUTUBE_API_KEY=AIza…
+```
+
+* **Vercel** — Project → Settings → Environment Variables. A plain variable, *not* a
+  `NEXT_PUBLIC_` one: this is a static site with serverless functions, so a plain variable is
+  readable only by `api/yt-search.js` and never reaches the browser. Redeploy to apply it.
+* **Local / self-hosted** — the same name in the environment `nexus-proxy` starts with;
+  `nexus-proxy/youtube-routes.cjs` serves the identical path.
+
+**The key never reaches the browser, and that is the point.** The obvious shortcut — a config
+endpoint that hands the key to the page — publishes it: a Data API key in client JavaScript is
+readable by anyone who opens the site, and Google's HTTP-referrer restriction binds browsers
+and nothing else. So the browser calls `GET /api/yt/search?q=…` and gets results back; the key
+stays on the server.
+
+Two paths, one client:
+
+| | route | key |
+|---|---|---|
+| Readiness | `GET /api/yt/search` | none spent — answers `{configured: bool}` |
+| Search | `GET /api/yt/search?q=lofi&max=4` | the deployment's |
+
+Still restrict the key in Google Cloud to the YouTube Data API. A server-side key cannot be
+read from the page, but it can still be lost some other day.
+
+### For one person — your own key
+
+**Set it:** Settings → **Discovery & Media** → *Video search — your own YouTube key* → SAVE.
+Optional wherever the deployment has its own; it wins when set, because somebody who typed a
+key meant to use their quota, not the site's.
 
 Three sources are read, in this order (`YouTubeSettings.apiKey()`):
 
@@ -88,6 +122,10 @@ Three sources are read, in this order (`YouTubeSettings.apiKey()`):
 | 1 | `localStorage['nexus_discovery_settings']` → `youtube.apiKey` | Settings |
 | 2 | `window.NEXUS_YT_CONFIG.apiKey` | a host page shipping its own key |
 | 3 | `localStorage['nexus.yt.apiKey']` | the legacy key — still read, never written |
+| 4 | `GET /api/yt/search` on the deployment's `YOUTUBE_API_KEY` | the operator (D13) |
+
+The first three are keys the browser holds and sends itself. The fourth is not a key at all
+from the browser's side — it is a route that answers with results.
 
 For a developer or a test, the second and third are still the fast way in:
 

@@ -180,6 +180,13 @@ const MediaSearchPicker = (() => {
                 return { ok: false, why: 'empty' };
             }
             const reg = registry();
+            // D13. A provider may still be finding out whether this deployment holds a key.
+            // `forCapability` is synchronous, so the async path waits here once — otherwise a
+            // site that searches perfectly well would report "not connected" on first open and
+            // work on the second, which reads as flakiness rather than a probe.
+            if (reg && typeof reg.warm === 'function') {
+                await reg.warm();
+            }
             const provider = reg ? reg.forCapability(capability) : null;
             if (!provider) {
                 list.textContent = '';

@@ -29,7 +29,11 @@ const DiscoverySettings = (() => {
 
     /** A reason code from a provider → what to show beside its name. */
     const STATE = {
-        ok: 'Ready',
+        ok: 'Ready · your key',
+        // D13. The state most visitors will be in: the site holds the key, they need nothing.
+        // Named rather than folded into "Ready" so the section can stop asking for a key.
+        deployment: 'Ready · provided by this site',
+        checking: 'Checking…',
         'no-key': 'API key required',
         'not-loaded': 'Not available on this page',
         unreachable: 'Not responding',
@@ -46,12 +50,20 @@ const DiscoverySettings = (() => {
         return node;
     }
 
-    /** What a provider's status reads as. Unknown reasons say so rather than guessing. */
+    /**
+     * What a provider's status reads as. Unknown reasons say so rather than guessing.
+     *
+     * The reason is consulted first, including when the provider is available. D6 shipped this
+     * as "available → Ready, otherwise look up the reason", which collapsed every working
+     * state into one word — and D13 then added a second working state, "the site holds the
+     * key", that could never render. Being available is not one fact.
+     */
     function stateLabel(status) {
-        if (status.available) {
-            return STATE.ok;
+        const named = STATE[status.reason];
+        if (named) {
+            return named;
         }
-        return STATE[status.reason] || 'Unavailable';
+        return status.available ? STATE.ok : 'Unavailable';
     }
 
     /**
@@ -66,6 +78,20 @@ const DiscoverySettings = (() => {
             return null;
         }
         host.textContent = '';
+
+        // D13. The probe may not have run yet on a first open. Repaint when it lands, so the
+        // list settles on the truth rather than freezing at "Checking…".
+        if (typeof reg.warm === 'function' && !render._warming) {
+            render._warming = true;
+            Promise.resolve(reg.warm())
+                .catch(() => null)
+                .then(() => {
+                    render._warming = false;
+                    if (d.getElementById(HOST_ID)) {
+                        render(d);
+                    }
+                });
+        }
 
         const providers = reg.all();
         if (!providers.length) {

@@ -119,6 +119,32 @@ const ProviderRegistry = (() => {
     }
 
     /**
+     * Let every provider finish finding out what it can do (D13).
+     *
+     * `status()` has to be synchronous — the registry and the Settings list both call it in
+     * render paths — but "does this deployment hold a key?" is a network question. So a
+     * provider may expose `ready()`, and callers on an async path await this once before
+     * asking. Providers without one are already sure of themselves and cost nothing.
+     *
+     * Never rejects: a provider that cannot decide is simply not ready, which `statusOf`
+     * already reports.
+     */
+    function warm(deps = {}) {
+        return Promise.all(
+            providers.map((p) => {
+                if (typeof p.ready !== 'function') {
+                    return Promise.resolve(null);
+                }
+                try {
+                    return Promise.resolve(p.ready(deps)).catch(() => null);
+                } catch (_) {
+                    return Promise.resolve(null);
+                }
+            })
+        ).then(() => all());
+    }
+
+    /**
      * The first ready provider for a capability, or `null`.
      *
      * Ready, not merely registered: showing a dead provider as if it worked is the failure
@@ -178,7 +204,7 @@ const ProviderRegistry = (() => {
         register(window.NEXUS_DISCOVERY_YOUTUBE);
     }
 
-    return { register, all, forCapability, why, reset, preferences, setPreference, groupOf, SETTINGS_KEY };
+    return { register, all, warm, forCapability, why, reset, preferences, setPreference, groupOf, SETTINGS_KEY };
 })();
 
 if (typeof window !== 'undefined') {

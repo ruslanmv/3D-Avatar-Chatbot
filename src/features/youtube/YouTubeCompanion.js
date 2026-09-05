@@ -171,14 +171,67 @@ const YouTubeCompanion = (() => {
     }
 
     /**
-     * YouTube Data API v3 search. Returns `null` when no key is configured so callers can
-     * hide the affordance; returns `[]` on an API error so callers can say "nothing found".
+     * Ask the deployment's own search route (D13).
+     *
+     * `null` when this host has none — an older build, a static file server, a page opened
+     * from disk. `[]` when it has one and found nothing, which is a different answer.
+     *
+     * The key behind this route stays on the server. That is the whole reason the route
+     * exists rather than a config endpoint handing the operator's key to the page: a Data API
+     * key in client JavaScript is a public key, and referrer restrictions only bind browsers.
+     */
+    async function serverSearch(query, { max = 5, fetchImpl } = {}) {
+        const f = fetchImpl || (typeof fetch === 'function' ? fetch : null);
+        if (!f || !query) {
+            return null;
+        }
+        try {
+            const r = await f(`/api/yt/search?q=${encodeURIComponent(query)}&max=${encodeURIComponent(max)}`);
+            if (!r || !r.ok) {
+                return null;
+            }
+            const body = await r.json();
+            return Array.isArray(body && body.results) ? body.results : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /** Does this deployment search on its own key? `null` while unknown. */
+    async function serverConfigured({ fetchImpl } = {}) {
+        const f = fetchImpl || (typeof fetch === 'function' ? fetch : null);
+        if (!f) {
+            return false;
+        }
+        try {
+            const r = await f('/api/yt/search');
+            if (!r || !r.ok) {
+                return false;
+            }
+            const body = await r.json();
+            return Boolean(body && body.configured);
+        } catch (_) {
+            return false;
+        }
+    }
+
+    /**
+     * YouTube Data API v3 search. Returns `null` when nothing can search so callers can hide
+     * the affordance; returns `[]` on an API error so callers can say "nothing found".
+     *
+     * Two paths, and the user's own key wins (D13). Somebody who typed a key meant to use it —
+     * their quota, their restrictions — and silently preferring the deployment's would make
+     * that field decorative. With no key of their own, the deployment's route answers and they
+     * never learn that keys exist, which is the point.
      */
     async function search(query, { max = 5, key, fetchImpl } = {}) {
         const YT = link();
         const k = key || apiKey();
-        if (!k || !query || !YT) {
+        if (!query || !YT) {
             return null;
+        }
+        if (!k) {
+            return serverSearch(query, { max, fetchImpl });
         }
         const f = fetchImpl || (typeof fetch === 'function' ? fetch : null);
         if (!f) {
@@ -220,6 +273,8 @@ const YouTubeCompanion = (() => {
         Companion,
         apiKey,
         search,
+        serverSearch,
+        serverConfigured,
         // convenience bindings to the shared instance
         isOpen: () => shared.isOpen(),
         open: (id, start) => shared.open(id, start),
