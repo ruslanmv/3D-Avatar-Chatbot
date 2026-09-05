@@ -1,0 +1,172 @@
+{
+  "$comment": "Recorded by scripts/behavior-parity-baseline.mjs. Re-record deliberately with --write; the diff is the review surface for every new §7 touch.",
+  "engineBootScripts": [],
+  "strayReferences": [],
+  "allowlistReferences": [
+    {
+      "file": "index.html",
+      "line": 1439,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "index.html",
+      "line": 1623,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "index.html",
+      "line": 1658,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "src/main.js",
+      "line": 915,
+      "guarded": false,
+      "comment": true
+    },
+    {
+      "file": "src/main.js",
+      "line": 919,
+      "guarded": false,
+      "comment": true
+    },
+    {
+      "file": "src/main.js",
+      "line": 927,
+      "guarded": true,
+      "comment": true
+    },
+    {
+      "file": "src/main.js",
+      "line": 944,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "src/main.js",
+      "line": 945,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "src/main.js",
+      "line": 958,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "src/main.js",
+      "line": 960,
+      "guarded": true,
+      "comment": true
+    },
+    {
+      "file": "src/main.js",
+      "line": 962,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "src/main.js",
+      "line": 965,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "src/main.js",
+      "line": 968,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "src/main.js",
+      "line": 976,
+      "guarded": true,
+      "comment": true
+    },
+    {
+      "file": "src/main.js",
+      "line": 985,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "src/main.js",
+      "line": 995,
+      "guarded": true,
+      "comment": true
+    },
+    {
+      "file": "src/main.js",
+      "line": 996,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "src/main.js",
+      "line": 4772,
+      "guarded": false,
+      "comment": true
+    },
+    {
+      "file": "src/PoseStudioPanel.js",
+      "line": 287,
+      "guarded": true,
+      "comment": true
+    },
+    {
+      "file": "src/PoseStudioPanel.js",
+      "line": 289,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "src/PoseStudioPanel.js",
+      "line": 582,
+      "guarded": true,
+      "comment": true
+    },
+    {
+      "file": "src/PoseStudioPanel.js",
+      "line": 587,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "src/PoseStudioPanel.js",
+      "line": 589,
+      "guarded": true,
+      "comment": false
+    }
+  ],
+  "configKeys": [
+    "adult",
+    "antiRepeatWindow",
+    "assistant",
+    "behaviorEngine",
+    "budgets",
+    "capture",
+    "clips",
+    "coach",
+    "emoteRateLimit",
+    "emoteWhitelist",
+    "nsfwAllowed",
+    "session",
+    "topK",
+    "weights"
+  ],
+  "masterFlagsOff": {
+    "behaviorEngine.enabled": true,
+    "behaviorEngine.debug": true,
+    "nsfwAllowed": true,
+    "session.enabled": true,
+    "session.tier1Remote": true,
+    "adult.available": true
+  },
+  "informational": {
+    "totalBootScripts": 83
+  }
+}

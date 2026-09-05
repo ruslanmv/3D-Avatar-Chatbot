@@ -1,0 +1,16 @@
+{
+  "name": "voice_ice",
+  "direction": "client->server",
+  "spec": "v1.1 6.10",
+  "required": [
+    "v",
+    "type",
+    "candidate"
+  ],
+  "message": {
+    "v": 1,
+    "type": "voice_ice",
+    "candidate": "candidate:1 1 UDP 2130706431 192.0.2.1 54321 typ host"
+  },
+  "note": "Trickled ICE. A server with no media terminus ignores these rather than erroring per candidate."
+}

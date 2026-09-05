@@ -1,0 +1,21 @@
+{
+  "name": "meeting",
+  "direction": "server->client",
+  "spec": "MS7",
+  "note": "One outbound type carrying a MeetingSense frame verbatim under `meeting`, rather than a flattened family of meeting_segment / meeting_status / meeting_final. A frame added by a later wave needs no change to this contract.",
+  "required": ["v", "type", "meeting"],
+  "message": {
+    "v": 1,
+    "type": "meeting",
+    "meeting": {
+      "type": "segment",
+      "id": "5f2c1e",
+      "seq": 1,
+      "t0": 1000,
+      "t1": 3400,
+      "speaker": "them",
+      "text": "the launch moves to October",
+      "conf": 0.91
+    }
+  }
+}

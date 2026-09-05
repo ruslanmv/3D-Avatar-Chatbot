@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ruslanmv.com/3d-avatar-chatbot/kb/animation.schema.json",
+  "title": "Animation KB record",
+  "description": "One record per selectable animation. Spec v1.1 §6.1 — the field set is a contract: no renames, no invented keys. `additionalProperties: false` is what enforces that. Semantic fields (description, tags, intents, valence, energy) must be present from B1 but may be empty drafts; B2 fills them and `validate-manifest.mjs --level semantic` is what requires them to be real.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "kind",
+    "description",
+    "tags",
+    "intents",
+    "valence",
+    "energy",
+    "stats",
+    "layer",
+    "loop",
+    "priority",
+    "interruptible",
+    "cooldownMs",
+    "nsfw",
+    "quality",
+    "source",
+    "license",
+    "version"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(_[a-z0-9]+)*$",
+      "description": "Stable, unique, derived from the asset path so a re-harvest reproduces it exactly."
+    },
+    "kind": { "enum": ["vrma", "bvh", "procedural", "pose"] },
+    "file": {
+      "type": "string",
+      "description": "Repo-relative path. Required for vrma, bvh and pose; forbidden for procedural."
+    },
+    "behaviorRef": {
+      "type": "string",
+      "description": "An AnimationPresets emotion id. Required for procedural; forbidden otherwise."
+    },
+    "description": {
+      "type": "string",
+      "description": "action + body focus + tempo + emotion. Empty until B2."
+    },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "intents": { "type": "array", "items": { "type": "string" } },
+    "valence": { "type": "number", "minimum": -1, "maximum": 1 },
+    "energy": { "type": "number", "minimum": 0, "maximum": 1 },
+    "stats": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["duration"],
+      "properties": {
+        "duration": { "type": ["number", "null"], "minimum": 0 },
+        "rootMotion": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "description": "Horizontal travel in body heights — avatar-independent, so it survives retargeting."
+        },
+        "meanJointVel": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "description": "Mean absolute joint angular velocity, rad/s. The energy proxy of §5.P0."
+        }
+      }
+    },
+    "layer": { "enum": ["fullBody", "upperBody", "face"] },
+    "loop": { "type": "boolean" },
+    "priority": { "type": "integer", "minimum": 0, "maximum": 10 },
+    "interruptible": { "type": "boolean" },
+    "cooldownMs": { "type": "integer", "minimum": 0 },
+    "nsfw": { "type": "boolean" },
+    "quality": { "enum": ["production", "experimental"] },
+    "retarget": {
+      "type": "string",
+      "description": "Why this clip needs care on a VRM rig. Present when quality is experimental."
+    },
+    "source": { "type": "string" },
+    "license": { "type": "string" },
+    "version": { "type": "integer", "minimum": 1 }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "kind": { "const": "procedural" } }, "required": ["kind"] },
+      "then": { "required": ["behaviorRef"], "not": { "required": ["file"] } },
+      "else": { "required": ["file"], "not": { "required": ["behaviorRef"] } }
+    },
+    {
+      "if": { "properties": { "quality": { "const": "experimental" } }, "required": ["quality"] },
+      "then": { "required": ["retarget"] }
+    }
+  ]
+}

@@ -284,6 +284,11 @@
             '    <input id="poseSaveName" class="pose-studio-input" type="text" placeholder="Pose name..." />' +
             '    <div class="pose-studio-actions">' +
             '      <button id="poseSaveBtn" class="primary-btn small-btn">Save Pose</button>' +
+            /* NEXUS_BD (UC-11) — publish a saved pose to the animation KB. Rendered
+               only when behaviorEngine.enabled put the engine on the page. */
+            (window.NEXUS_BD_ENABLED
+                ? '      <button id="posePublishKbBtn" class="small-btn" title="Make this pose selectable by the Behavior Director">Publish to KB</button>'
+                : '') +
             '      <button id="poseUndoBtn" class="secondary-btn small-btn">Undo</button>' +
             '      <button id="poseRedoBtn" class="secondary-btn small-btn">Redo</button>' +
             '    </div>' +
@@ -571,6 +576,19 @@
                 self.editor.saveCurrentPose(name);
                 self.saveInput.value = '';
                 self.refresh();
+            });
+        }
+
+        /* NEXUS_BD (UC-11) — Publish to KB. Additive: absent unless behaviorEngine.enabled
+           loaded the engine, and it only ever writes the engine's own storage. */
+        const publishBtn = this.rootEl.querySelector('#posePublishKbBtn');
+        if (publishBtn) {
+            publishBtn.addEventListener('click', () => {
+                if (!window.NEXUS_BD_ENABLED) return;
+                const pose = self.editor?.getCurrentPoseRecord?.() || self._selectedPose;
+                const result = window.NEXUS_BD_POSE_PUBLISHER?.publish(pose);
+                if (result && result.ok) console.log('[BD] published pose to the KB:', result.record.id);
+                else console.warn('[BD] could not publish this pose:', result && result.why);
             });
         }
 

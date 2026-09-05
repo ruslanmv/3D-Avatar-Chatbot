@@ -1,0 +1,11 @@
+{
+  "name": "scene",
+  "direction": "server->client",
+  "spec": "v1.1 6.9",
+  "required": ["v", "type", "id"],
+  "message": {
+    "v": 1,
+    "type": "scene",
+    "id": "ocean"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "unknown_type",
+  "direction": "server->client",
+  "spec": "v1.1 6.9 forward-compatibility",
+  "required": ["v", "type"],
+  "message": {
+    "v": 1,
+    "type": "not_a_type_either_peer_knows",
+    "payload": {
+      "anything": "at all"
+    }
+  },
+  "note": "Forward-compatibility case. Neither peer knows this type; both MUST ignore it silently and keep the session open. Adding a message type is never a version bump."
+}

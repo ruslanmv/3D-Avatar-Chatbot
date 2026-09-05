@@ -1,0 +1,785 @@
+# Behavior Director & Together Mode — Specification
+
+**This file is the working copy of the specification for this repository.** It is the
+document Appendix A's kickoff prompts refer to ("Read docs/BEHAVIOR_DIRECTOR.md fully").
+
+- Execution plan (batches, dependencies, acceptance criteria): `docs/BEHAVIOR_DIRECTOR_BATCHES.md`
+- Spec path → real repository path mapping: `docs/PATHMAP.md`
+- Server-lane extract: HomePilot `docs/AVATAR_DIRECTOR_BATCHES.md`
+
+The two specification texts below are reproduced verbatim. Where a path in them does not
+exist in this repository, PATHMAP records the file that plays that role — the spec text is
+never edited to match the repo, the mapping is recorded instead.
+
+---
+
+## Changelog
+
+| Batch | Date | Change |
+|---|---|---|
+| B36 | 2026-09-04 | **One activity execution contract**, client. The chooser looked finished and four of its eight tiles could not complete the journey their button promised: `TogetherPanel` called `activity.start(option.arg)` for all eight, while `watch` has `playFile`/`shareTab` and no `start`, `journey` has `enter`/`exit`, `copilot` refused without a checklist the panel never passed, and `meeting` had been loaded since MS19 and registered nowhere. `activities/contract.js` normalises all of it through adapters, so no activity file is edited and each keeps the surface its own tests were written against. **The P0 was permission ownership**: `ConsentMachine.request()` revokes a live grant before asking again, and the panel requested one and then called activities that request their own — two owners, one machine, the user prompted twice; worse, a panel-opened grant survived an activity's refusal, leaving the camera on with nothing running. The contract names an owner per input (`null`, `'self'`, a source); the panel asks only for the last and revokes only what it opened. Availability is checked before any dialog, so Meeting names its missing conversation first rather than after two prompts. Tiles that cannot complete are hidden with a reason: Music now takes an audio file (`audioSource.js`) because B14's beat detector read an analyser nothing supplied, and Play stays hidden because its reactions are real and its moment detector does not exist. `ui/failures.js` gives every refusal a sentence and a recovery action, never "Something went wrong". Four tiles on the first screen with **More together** behind them, activity-specific running status, and one accessibility model instead of two — `aria-haspopup="dialog"` matching what opens, `aria-modal` matching B34's focus containment, and focus returned to whichever control opened the panel |
+| B35 | 2026-09-02 | Find HomePilot through OllaBridge, client. Reaching HomePilot meant typing a `wss://` into Settings — an address the browser must be able to open itself, which is true on one machine and false everywhere the app is served: an HTTPS page cannot open `ws://localhost`, and a hosted page's `localhost` is not the user's PC. It also needed a HomePilot credential the client had no field for, so it sent `''` and the server rejected it — the direct path did not work as shipped. New `BridgeDiscovery.js` asks the bridge the user already linked for models: `GET /health` has answered `homepilot_enabled` since long before this batch, and an added `avatar` block names the session path. **Absence means no** — every OllaBridge deployed today omits the block and reads as `bridge-too-old`, which is not an error: the chat path already carries `x_directives`, so she still gestures; she just cannot speak first. The credential is the bridge's own token, and the bridge holds HomePilot's key: one secret, one origin. The two Settings controls moved behind an **Advanced** disclosure rather than being deleted — a typed URL still wins, because an override a discovery can silently beat is useless exactly when it is needed — and a status line replaces them that names the *fix* for each of six states rather than reporting one flat failure. The parity harness's `ENGINE_GLOBALS` was a list of three names and could not see the new global at all; it is a `NEXUS_BD*` prefix now, which is the property the list was a snapshot of. |
+| B34 | 2026-09-02 | The launcher becomes an icon button, client. B30's `✦ TOGETHER` pill made the newest control the loudest thing in a row of five, and its label was the only reason it needed a media query to survive a narrow avatar. It is now the two-person glyph every major icon set spells "group" — SF Symbols `person.2`, Material `group`, Fluent `people`, Font Awesome `user-group`, Lucide `UsersRound` — in the same 38×38 square as 🎯 🎭 👤 🪟 📞. The word was carrying nothing the picture did not, and the glyph earns its meaning from the button already in the row: one person → me, two people → together, a distinction the user learned in some other application years ago. Drawn with `createElementNS` rather than typed: an emoji is a different picture on every platform and usually in colour, while an outlined path inherits `currentColor` and follows the button into its running state; an `<svg>` built with `createElement` renders nothing at all, which a test asserts against because it looks right in source. Running is a colour and a corner dot — the icon never changes shape, since a button that becomes a different picture at the moment it matters most is one you have to find again. The cost is paid in the accessible name, now the only place state has words: "Together — Focus running", and `titleOf` stopped upper-casing, because a screen reader may spell `FOCUS` out letter by letter. Position is anchored on Companion's window button, so the row reads 🎯 🎭 👤 👥 🪟 📞 whichever feature injects first — both orders tested. |
+| B33 | 2026-09-02 | **The engine had never started in a shipped build.** Client. B3 put the bootstrap inside `setupThreeJS()`, and `init()` calls that only in its `!useViewerEngine` branch — while `index.html` sets `__USE_GLTF_VIEWER_ENGINE__ = true` unconditionally. So from B3 to B32 the Settings toggle wrote `nexus_bd_enabled` and nothing read it: no batch of this plan ran in a browser, and every gate stayed green because every gate tests the engine rather than its ignition. Found by loading the app to take a screenshot. The bootstrap is now `startBehaviorDirector()`, idempotent, called by both paths; the ViewerEngine path brings its own rAF tick because `src/gltf-viewer/viewer.js` is vendored upstream and offers no update hook. The flag default is untouched — it is still off, and this is the fix that makes turning it on do something. Both guard checks had to learn the new shape: proximity to an inline `if` was a fair proxy while every hook was two lines long, and it stopped being one when the guard became a single early return, so the parity harness now computes the regions the flag makes unreachable and `parity.smoke` asks the harness rather than keeping a second copy of the rule. |
+| B32 | 2026-09-02 | Keyboard and focus on the Together chooser, client. Escape closes, a click outside closes, focus enters the first tile on open and **returns to the button** on close — a keyboard user dropped at the top of the document on every dismissal is the most common way a home-grown overlay fails an audit. Focus is trapped while open, because a menu you can Tab out of but not see is worse than one that holds you. Escape never stops a running activity: dismissing and leaving stay different. `role="dialog"` and deliberately not `aria-modal`, since the page behind stays live. Document listeners are bound only while it is open. |
+| B31 | 2026-09-02 | Wired the mode system, client — the delivery audit's finding 1. `src/behavior/modes/` had never been in boot's MODULES, so `ModeManager` was constructed **zero times**, `blackboard.mode` was `undefined` at runtime, `watch.js` ran on a null profile (B12's silence held by accident, not by the profile), and `ConsentFlow` never received `modes`, so B29's hard exit did nothing. Five entries, ordered before their consumers, plus construction before the wiring loop and `companion` activated. The new composition suite found **a second instance on its first run**: `PosePublisher.js` was orphaned too, so B7's "Publish to KB" was dead in a browser while passing under Jest via a `require()` fallback. The suite sweeps generically for anything publishing a `NEXUS_BD_*` global that MODULES omits, so it will catch the next one unprompted. |
+| B30 | 2026-09-02 | The way in, client. One `✦ Together` pill inserted before `.avatar-footer-right` and one drawer entry appended to EXPERIENCE — self-injected the way `CompanionMode` does its own, with the stylesheet injected too, so **`index.html` is not touched at all** and a test requires `document.body.innerHTML` to come back byte-identical after detach. Opening the chooser starts nothing: no camera, no microphone, no capture, no mode change, and the file is grepped for all of them. Permission is activity-scoped and arrives after the choice — Journey, Focus and Music never reach the consent machine; Watch asks only for *Share a tab*. `share()` is unchanged from B11; only `_paint` was rewritten, so the bare "Share screen" button that named the capture system before asking what you wanted is gone from the first view. Closing the menu never stops a running activity. Desktop overlay and mobile sheet are one id and two rules; **VR renders the same list through B20's `PanelRenderer`** because the DOM is invisible in an immersive session, with voice as the input — controller raycast is a documented limit, not an omission. |
+| B29 | 2026-09-01 | The consent arc, client. `ConsentFlow` owns `escalationLevel`: a level advances only on an explicit affirmative to a check-in she asked or unmistakable user initiation, and never before two minutes — the fastest path from 1 to 4 is six minutes and three explicit yeses, and a hundred ambiguous answers stay at level 1. A pending check-in blocks advancement, ambiguity is a not-now that is never re-asked, and negatives classify before affirmatives so "no, keep going" is a no. Exits work from every level including mid-check-in, synchronously (no `await`, no `async` in the file), and **neither says a word about it**. `tick()` only ever decays. The recorder is stopped and dropped on entry, not hidden. `adult.available` ships false and boot does not construct the flow while it is. |
+| B28 | 2026-09-01 | Adult-tier gates, both repos. **Found the defect the wave existed to prevent:** the ranker's first gate read `nsfwAllowed && modeAllowsNsfw` — two of §16.1's three — so `adultVerified` was decorative and the user setting alone opened the tier. One word fixes it, and it is the most important word in the wave. Server: `verification.py` produces the only `adult_ack` there is (a test counts the occurrences), session-scoped, expiring, re-asked on reconnect, carrying no identity and written nowhere; owner-attest **raises** on a multi-user instance rather than degrading, a store that will not answer is not a yes, and an unknown provider name is refused rather than defaulted. `redaction.py` allow-lists the shape rather than scrubbing text — a scrubber must be right about every phrasing forever, an allow-list once — with a `leaks()` test that asserts nothing from the input survives rather than that particular phrases were removed. With the tier disabled the factory never consults the named provider at all. |
+| B27 | 2026-09-01 | Coach mode, client. `PoseLandmarker` joins the tasks-vision 0.10.14 loader `FaceTracker` and `HandTracker` already fill — a test asserts the warm path imports zero times — throttled to 20/15 fps. Fidgets pause through §6.5's one gate rather than a new flag, which turned up two defects of mine from B23: `modeAllows` called `mode.allows(clip)` with one argument so the play profile's rootMotion rule had never fired, and `derive` dropped `allows` from its overlay fields so both overlays were merged away. Both fixed; the manifest rule that JSON may not change what may play is preserved by admitting only a function. `RepCounter` is a Schmitt trigger plus a refractory period and never sees a landmark. The fixture is **synthesised and says so in its own provenance field** — there is no video here and a real capture is personal data — but encodes the four shapes that break rep counters, and the counter reads exactly its ground truth of 12. A KB content pass gives each exercise clip the specific intent it depicts, because `exercise` alone made demo selection luck; nothing is invented, so a squat with no asset is refused out loud. New `coach-frame` budget row at 0.0009 ms for the engine half, with a `reps > 0` vacuity guard. |
+| B26 | 2026-09-01 | Hands-busy copilot, client. On-demand snapshots only, and the absence of a periodic path is structural: the file **names no timer primitive at all**, so the proving timer is a deadline compared against the clock on each render-loop `tick()` and a poll cannot appear without a new primitive showing up in a diff. Checked in the tests and as the privacy audit's eighth claim `copilot-on-demand`, which also forbids B15's `watch(` — reaching for that is the temptation. It holds the B15 activity rather than describing the round trip again, so B11's consent machine is the only door and `copilot.sharing` is whatever the consent-holding activity says it is. Round trip measured as a p95 against a 3 s budget, with misses reported rather than hidden. Nine spoken phrases; unrecognised speech is counted and left alone, and "set a timer" with no number is answered "How long?" — a misheard "next" that skips a step in a recipe is worse than silence. `VoiceAdapter` gained one guarded `voice:final` emit so consumers do not hook the recogniser a second time. |
+| B25 | 2026-09-01 | The two distribution loops, client. One tap saves the last thirty seconds through `createObjectURL` + a download anchor + a revoke on the next tick — never a request, and the whole `src/features/clips/` tree is audited for the absence of one. The "clip that?" nudge is a `role="status"` toast, at most once a minute, fired only by a **macro event** from B23 and never by the heuristic's `surge`; "never blocks" is checked as the absence of `await`, `confirm`, `alert`, `showModal` and `aria-modal`. The "she remembered" card renders a real curiosity record and refuses one without a quote — a generated callback would be a fabrication of the user's own relationship with the thing, printed and shareable. Both loops **stop the recorder** in the adult tier rather than hiding a button, because hiding it would leave thirty seconds of the session buffered. |
+| B24 | 2026-09-01 | Clip recorder, client. A 35-second chunk ring trimmed to 30, proven by test before any UI existed — `ChunkRing` is separate from `Recorder` exactly so the trim could be driven by a scripted sequence of chunk durations with no browser, canvas or codec. The batch is mostly the header problem: the first `MediaRecorder` blob carries the EBML header and every one after it is a bare cluster, so concatenating a trim without it produces a file that is exactly the right size and unopenable. The header is kept outside the ring and prepended unless it is still resident — a distinction that reported a four-second clip as five before it was named. Immersive XR framebuffers cannot be captured on any platform by design, so the mirror view *is* the clip and says so in `source`. New privacy claim `clips-offline` walks the directory rather than naming today's files; new `clip-frame` budget row measured at 0.0000094 ms with a `draws > 0` guard against a vacuous pass. |
+| B23 | 2026-09-01 | Gaming co-host, client. `play.profile.js` promoted from optional to written: three reaction tiers as data, with `mayReact()` as the single place the etiquette lives — the co-host asks and does not decide, asserted by grepping it for `0.8`. The distinction the batch turns on is that a macro *event* is not a macro *tier*: the heuristic's top inference is `surge` ("something big happened"), which cannot interrupt a player who is locked in, while `win` and `loss` come only from a real game hook's `mark()`. `ExcitementDetector` reads `MediaAdapter`'s scalars rather than pixels, so it inherits B11's consent gating instead of adding a second reader to audit. Two rolling baselines, audio and flash: with a bare flash threshold a permanently strobing shooter was a permanent nod. Macro pacing at 1/30 s lives in the detector so B24's clip engine sees the same moments the reactions do. |
+| B22 | 2026-09-01 | Body-doubling focus, both repos. A pomodoro machine whose silence is structural: a focus block installs an overlay with `initiative.budgetPerSession: 0`, and B12's `CommentaryGate` checks the budget before openings and before attention, so every path through `may()` returns false. The acceptance test drives a real gate through a real twenty-five minutes — 1500 seconds, three openings fired at each — and requires `allowed === 0`, then fires the same openings during the break and requires a yes. She refuses to start a block she cannot keep quiet in. Instead of talking she mirrors from `user:idle`/`user:active`, as intents, with a minute's cooldown. Streaks are `focus_streak` rows in the existing LTM: pure arithmetic that takes the date as an argument (grepped for `date.today` and friends), counting days shown up rather than work done, alive on the day after so a Tuesday morning does not show a zero. `ProtocolHandler` gains one optional `streaks=`; without it `streak` behaves exactly as before. |
+| B21 | 2026-09-01 | Embodied HomePilot, both repos. A presentation batch over tools that already existed: `assistant.py` composes a brief — an agenda panel, one short sentence, and **at most one** thing to approve — and cannot act, structurally. It takes no executor, `Proposal`'s only public method is `as_directive()`, and a source grep for `httpx`/`requests`/`subprocess`/`smtplib` and six more fails the build if any appears. `gate()` reads the two existing safety tables (`safety.TOOL_SAFETY` and the bridge's `CAPABILITIES`, by reference, not copied) and refuses a name in neither rather than defaulting it to confirm. Extra actions are deferred, not dropped, and deferred ones are absent from the directive block. Client side is attention only: `activityTarget` snapshotted and restored by reference, one `point` per presented panel, drifting back after 12 s — and it never speaks. The strong negative: the protocol carries no frame that could be an action, checked by feeding the adapter six invented action types and getting `ignored / unknown type` for each. |
+| B20 | 2026-08-31 | Panel channel, both repos. `PanelRenderer` draws five kinds onto a canvas texture — not DOM, so VR, AR and 2D are the same code and the same appearance. Legibility is arithmetic rather than a screenshot: 1.76 arc-minutes per canvas pixel, every style clearing the 20 arc-minute floor with 1.5× headroom, and the canvas out-resolving a Quest 3 so the headset is the limit. Server-side `panels.py` rejects an oversized payload with its size named and truncates nothing — asserted by checking the caller's object is untouched. A client without a renderer ignores `display` cleanly and counts it. `panel:shown`/`panel:closed` added to the bus. |
+| B19 | 2026-08-31 | QA and the audits: pick-log ring buffer, `?behaviorDebug=1` HUD (both asserted read-only), `scripts/audit-budgets.mjs` and `scripts/audit-privacy.mjs` in CI, and `docs/QA_CHECKLIST.md`. Budgets measured at 0.19 ms/frame and 0.23 ms/pick and required to sit inside 25% of budget, because Node is not a Quest and the margin is the point. Privacy audit green on all six claims and signed — it reads source, so it is the whole client-side story. The visual checklist is a person and is deliberately unsigned. **The default did not flip**; that is its own PR. |
+| B17 | 2026-08-31 | MCP `avatar_control`, HomePilot side: nine tools registered through the existing Context Forge registry, one per row of §6.14's safety table. Tools name **intents**, never clips — Tier 1 still chooses, and `source: "tool"` keeps §6.5 holding. Capture tools need two yeses: the operator's confirm and a live client consent. "Killing the server changes nothing locally" is checked as the architectural claim it is: the bridge holds no avatar state, decides no timing, and reaches the session through exactly one method. Client side: `mcp-server/README.md` specifies the standalone fallback rather than shipping an unused second implementation. |
+| B15 | 2026-08-31 | Vision & Screen Insight, both repos. Server: `POST /avatar/vision/insight` with retention 0 enforced by having nowhere to put a frame — no `open`, no `Path`, no `tempfile` — proved by a request run with the filesystem and root logger under process-wide observation. The 768 px cap is read from the image header, never decoded, because decoding a hostile 20000×20000 JPEG to reject it is the attack. Client: on-demand by default, no `navigator` in the file, and an answer arriving after consent went is dropped unspoken. Intents whitelist-checked on both sides with B10's splitter. One additive touch: `multimodal.analyze_image` gains an optional `image_b64=` so bytes never stage through disk. |
+| B14 | 2026-08-31 | Journeys: forest, ocean and meditation as §6.11 manifests, with a snapshot-and-restore overlay that the ten-cycle test checks by object **identity** rather than equality. Anchors travel as one typed `scene:anchor` event so the bus vocabulary stays closed while manifests keep the `anchor:waves` spelling. Meditation's zero initiative budget is now a rule in the one commentary gate, and the negative test fires every opening ten times over and requires every refusal. The skybox art is not in the repo by design — every manifest has a fallback colour and the missing-asset path is a tested case. AR keeps profile and anchors, skips the sky. |
+| B13 | 2026-08-31 | Listen Together: spectral-flux beat detection in the bass band, `media:beat` with a recovered BPM, and energy pushed onto the blackboard — pushed only, since decay is the blackboard's own. A beat streak asks for a `dance` **intent**; the file contains no clip id and no route to `scheduler.request`, so which of the 31 dance clips plays is Tier 1's answer and follows the track's energy for free. Silence is caught by a watchdog four beat periods wide, independent of and faster than the mood decay. No timers: a backgrounded tab stops analysing. |
+| B12 | 2026-08-31 | Watch Together: curved cinema screen on a zero-copy `VideoTexture`, both sources (local file and shared tab — which is how YouTube reaches the screen) ending at one frame path. Placement reuses the running systems: VR into the existing scene, AR pinned at `ARSupport`'s existing reticle, no second hit-test source. Joint attention writes the mixer's head layer, before the blend. `MediaAdapter` emits `media:playing`/`paused`/`cut` from a 32×18 luma probe plus audio RMS, gated on the grant when the source is a capture. `CommentaryGate` reads the openings from the profile — the negative test runs 200 mid-scene checks and requires every one to refuse. |
+| B11 | 2026-08-31 | Consent machine, capture pipeline and the 2D + XR indicator — Together Mode's gate, landed before any consumer. `ConsentMachine` is the only engine file naming `getDisplayMedia`/`getUserMedia` and a test walks both trees to keep it that way; `CapturePipeline` has no `navigator` and is constructed from a grant, so consent is the shape of the API. Revocation bumps an epoch before anything can yield, so an in-flight sample dies mid-encode. §6.2's caps enforced once, as ceilings clamped in both directions. Source enum (screen · camera · game) complete from the first batch. |
+| B10 | 2026-08-31 | Voice uplink, both repos. Integration only: `rtc.py` reuses `voice_call.turn` for the turn, `voice_call.barge_in` for cancellation and `app.voice.providers` as the only ASR; `VoiceAdapter` chains onto the recogniser `js/speech-service.js` already owns and builds none of its own. Six new §6.10 message types, fixtures in both repos. `user:speaking`/`user:silent` finally have an emitter. Server replies come back as `intent` + `say` marked `source:"voice"` — not `"user"`, so §6.5 still holds. Declining the microphone is a status, not an error. |
+| B9 | 2026-08-31 | Client session adapter: the §6.9 protocol against the shared fixtures, server intents held to the same §6.2 whitelist and the same §6.5 gates as a local tag, forward-compatible ignoring of unknown types. Two disconnect shapes handled — a clean close, and a stranded socket detected by heartbeat silence — with 1 s → 30 s backoff; Tier 1 keeps resolving through both. Third guarded seam in `src/main.js` (`NEXUS_BD_SAY`), so a server-started line is spoken by the app's own `speakText`; a "Connect HomePilot session" switch in the settings panel that stays off until a URL is entered. |
+| B7 | 2026-08-30 | Modes: `ModeManager` plus companion/together/showcase profiles, restore-by-snapshot so a round trip is exact; showcase cycles the whole KB in a stable order. "Publish to KB" in Pose Studio (UC-11) and the settings toggle in `index.html`. |
+| B6 | 2026-08-30 | Executor: pose buffers, bone masks, `LayerMixer`, the three layer adapters over the existing loaders/animator/pose library, `TransitionRules` and `Scheduler`. Crossfades measured pop-free frame by frame; head layer keeps lipsync alive under a full-body clip; blend measured at ~0.03 ms/frame over every humanoid bone. Single-owner rule: every approved request goes through `AnimationResolver`. |
+| B5 | 2026-08-30 | Tier 1: `SemanticSelector`, `UtilityRanker` (the single gate), `AntiRepeatMemory`. Client vectors proven identical to the shipped offline index. B28's source rule enforced from here. |
+| B4 | 2026-08-30 | Sense adapters: streaming `[[emote:…]]` parser, speech, idle, gaze, and a sentiment fallback that delegates to the existing `EmotionEngine`. **No pre-existing file touched** — the tag channel decorates `window.NEXUS_MOTION`, so both LLM→body channels are masked in one pass and the `src/xr/` suites cannot regress. |
+| B3 | 2026-08-30 | Runtime spine: `EventBus`, `ContextBlackboard`, `AnimationRegistry` + fail-soft runtime `validate`, and `boot.js`. One seam — a guarded boot and a guarded `update(dt)` in `src/main.js`; `index.html` proved unnecessary because main.js injects the engine only when the flag is on. Parity harness hardened to see reaches made through the `NEXUS_BD` global. |
+| B2 | 2026-08-30 | Content pass: authored lexicon fills description/tags/intents/valence/energy for all 166 records; `bootstrap-lexical-v1` TF-IDF index over an explicit 3641-term vocabulary (`index.f32`, `index.vocab.tsv`, `index.meta.json`); review ledger + `--require-approval` gate; CI raised to `--level semantic`. MiniLM deferred to B5 (no bundler, and `package.json` is not on the §7 allowlist). No app code. |
+| B1 | 2026-08-30 | KB harvested from the repo's own records: `kb/schema/animation.schema.json`, `harvest-existing.mjs`, `extract-bvh-stats.mjs`, `extract-vrma-stats.mjs`, `validate-manifest.mjs`, and a 166-record manifest (107 BVH + 44 VRMA + 15 procedural) covering every shipped asset exactly once. Semantic fields left as drafts for B2. No app code. |
+| B0 | 2026-08-30 | Spec v1.1 + addendum v1.2 vendored into the repo; names frozen (`src/behavior/**`, `window.NEXUS_BD`, `avatar_director`); §7 allowlist amended (see PATHMAP §4); `config/behavior.config.json` added flags-off; shared protocol fixtures + parity harness landed. No product code. |
+
+---
+
+# Behavior Director & Together Mode — Implementation Spec v1.1
+
+**Repos:**
+- Client: `ruslanmv/3D-Avatar-Chatbot` — three.js/VRM avatar app; multi-provider LLM (OpenAI, Claude, Watsonx, Ollama, OllaBridge); Piper WASM TTS; WebXR VR (Quest 2/3, Pico) + passthrough AR; Pose Studio; MediaPipe face/gaze tracking; privacy-first (keys in localStorage).
+- Server: `ruslanmv/HomePilot` — local-first AI backend (`:8000`, Python 3.11+, Makefile); Personas with long-term memory; Context Forge gateway (tool servers, MCP, A2A); three-level safety model (read-only / confirm / autonomous). Chat already flows **Avatar → OllaBridge (`:11435`) → HomePilot persona**.
+
+**Design version:** 1.1 (supersedes v1.0; the game Play Mode is demoted to an optional sample — the flagship mode is **Together Mode**).
+**Nature of change:** 100% additive / non-destructive in both repos. All new code in new directories, guarded by flags; the exhaustive list of touched existing files is in §7.
+
+---
+
+## 0. How to use this spec with an AI coder (Claude Code)
+
+1. **One phase = one session = one PR.** Phases (§5) are ordered by dependency; do not start P(n+1) before P(n)'s acceptance criteria (AC) pass.
+2. **Read §7 first, every session.** The modified-files list there is exhaustive. Any change to an existing file not listed in §7 is a spec violation — stop and flag instead.
+3. **Contracts are law.** Schemas, event names, protocol messages, and config keys in §6 are exact. Do not rename, do not invent animation ids or intent names — the whitelist in §6.2 and the manifest in `kb/` are the only sources.
+4. **Gates per phase:** `npm test` (client) / `make test` or `pytest` (HomePilot) green; `node kb/scripts/validate-manifest.mjs` green; app boots with `behaviorEngine.enabled=false` behaving byte-for-byte as before (smoke script §8).
+5. **Flags default off.** Ship dark. Never flip a default in the same PR that introduces the feature.
+6. **When the repo layout differs** from paths assumed here (e.g., the bootstrap file is not `src/main.js`), keep the *role* and adapt the path; record the mapping in `docs/PATHMAP.md` (new file) so later phases stay consistent.
+
+Kickoff prompt template (Appendix A) is provided for each phase.
+
+---
+
+## 1. Goals and principles
+
+The upgrade adds (a) an agentic animation brain — the **Behavior Director** — that selects and plays the right animation (procedural behavior, VRMA clip, BVH clip, saved pose) from context; and (b) **Together Mode** — shared activities (watch, music, screen insight, journeys) with a companion that takes genuine initiative via a **Curiosity Engine**, with heavy compute on HomePilot and a thin client that runs on any phone or standalone VR headset.
+
+1. **Data-driven** — logic never hardcodes animation names; everything is selected from a tagged knowledge base (KB).
+2. **Latency-tiered** — Tier 0 reflexes (every frame, client), Tier 1 semantic selector (<50 ms, client worker or HomePilot fallback), Tier 2 orchestration (turn-level, HomePilot). Nothing above Tier 0 ever blocks a frame.
+3. **Intent, not clips** — LLM, activities, and server emit semantic intents; the KB resolves concrete clips. Whitelisted, rate-limited.
+4. **Additive plugins** — modes and activities are data + plugin files. Adding one = adding files.
+5. **Adapter pattern for legacy** — existing managers (LLMManager, SpeechService, face/gaze tracking, VR system) are *wrapped*, never rewritten. Chat keeps flowing through the existing OllaBridge → persona chain; Together Mode adds a parallel realtime session channel, it does not replace chat transport.
+6. **Thin client** — client budget ≤2 ms/frame for the whole engine; media as textures, scenes as equirect skyboxes; anything heavier (LLM, ASR, vision, memory, TTS synthesis beyond local Piper) is HomePilot's job.
+7. **Kill switches** — client `behaviorEngine.enabled=false` and HomePilot `avatar.enabled=false` make every new code path inert.
+
+---
+
+## 2. Use cases
+
+**UC-1 · Emotional companion chat.** LLM streams reply with inline tags `[[emote:happy 0.8]]`; parser fires the intent mid-stream; Tier-1 picks a clip; the avatar gestures while TTS speaks. ~0 added latency.
+
+**UC-2 · Idle liveliness.** No input for N seconds → base idle + randomized fidget micro-animations, anti-repeat, never a visible loop.
+
+**UC-3 · Spicy gating.** Every Spicy behavior/clip carries `nsfw:true`. Eligible only when the user setting allows it AND the active mode/scene profile allows it. Enforced in exactly one place: the ranker (§6.5).
+
+**UC-4 · Watch Together.** A curved cinema screen appears in VR (or pinned in AR passthrough). Sources: (a) direct media — file/HLS URL → `<video>` → `THREE.VideoTexture` (preferred, smoothest); (b) YouTube/any tab — `getDisplayMedia()` tab capture → same VideoTexture. The avatar sits beside the user in joint attention: gaze on screen, occasional glances at the user, commentary only at openings (pause, detected scene cut via luma/audio delta, user looks at her >1.5 s).
+
+**UC-5 · Music Together.** Audio element + WebAudio `AnalyserNode` → beat/energy onto the blackboard → she genuinely grooves in time using the existing dance/behavior library; energy escalates with the track.
+
+**UC-6 · Screen Insight (second screen).** User shares a screen/tab (same capture pipeline as UC-4). Frames are sent to HomePilot vision **only on demand** ("what do you think of this?") or at ≤1 fps while explicitly enabled. She answers with insight + matching gesture. Visible "sharing" indicator at all times.
+
+**UC-7 · Journeys.** Forest, ocean, romantic meditation space: 8K equirect skybox scenes with ambient audio, gaze anchors, and a scene behavior profile (meditation → initiative≈0, breathing-synced idle, optional guided script; ocean → curious, pointing, commenting). AR variant: avatar in the user's real room via existing passthrough. Phone camera can feed the vision pipeline so "see what I see" works on a walk.
+
+**UC-8 · Curiosity (takes interest in you).** HomePilot keeps a per-user interest graph on top of the existing persona memory. An initiative scheduler spends a per-session budget at polite openings to ask about unfinished threads or share observations. Arrives at the client as a normal `intent` + spoken line.
+
+**UC-9 · External agent control.** Avatar-control tools are registered as a Context Forge tool server (MCP), so any persona/agent — or an external MCP client — can `search_animations` and `play_animation`. Safety level: animation playback = *autonomous*; vision/screen = *confirm* + client opt-in.
+
+**UC-10 · Showcase mode.** A profile that cycles the entire KB with max novelty — demos, retarget QA, exercises all animations.
+
+**UC-11 · Pose Studio interop.** "Save Pose" gains an optional "Publish to KB" action → a `kind:"pose"` KB entry, selectable by the same brain.
+
+---
+
+## 3. Architecture
+
+### 3.1 Three tiers
+
+```
+Tier 2  HomePilot: persona LLM · curiosity · vision · MCP tools   (0.5–3 s, turn-level)
+Tier 1  Semantic selector: embeddings + utility ranker            (<50 ms, per event)
+Tier 0  Reflexes: idle, breathing, look-at, lipsync, mixer        (every frame)
+```
+
+### 3.2 Topology
+
+```
+┌──────────────────── Thin client (phone / Quest / Pico) ───────────────────┐
+│ VRM render + LayerMixer (Tier 0) · Tier-1 worker (optional) · UI panels   │
+│ Virtual screen (VideoTexture) · WebXR VR/AR · Piper WASM TTS · MediaPipe  │
+└──────┬──────────────────────────────┬─────────────────────────────────────┘
+       │ chat (unchanged)             │ NEW realtime session
+       ▼                              ▼
+  OllaBridge :11435  ──────►  HomePilot :8000
+  (persona:* routing)         ├─ /avatar/session   WS  (intents, curiosity, events)
+                              ├─ /avatar/rtc       WebRTC (mic ↑, screen/camera frames ↑)
+                              ├─ services/avatar/  vision · curiosity · kb_search
+                              └─ Context Forge     avatar_control tool server (MCP)
+```
+
+### 3.3 What runs where
+
+| Concern | Client | HomePilot |
+|---|---|---|
+| Rendering, mixer, Tier 0 | ✅ always | — |
+| Tier-1 KB search | ✅ MiniLM worker (default) | ✅ `kb_search` fallback for weakest devices |
+| Chat LLM, persona memory | — | ✅ (existing, via OllaBridge) |
+| ASR (streaming mic) | — | ✅ |
+| TTS | ✅ Piper WASM (default, offline) | ✅ optional higher-quality voices |
+| Vision (screen/camera) | capture + downsample only | ✅ model inference |
+| Curiosity Engine | — | ✅ (extends persona memory) |
+| MCP avatar tools | standalone fallback (`mcp-server/`, Node) | ✅ primary (Context Forge tool server) |
+
+---
+
+## 4. File trees
+
+`[gen]` = generated. `(opt)` = optional. Trees are additive; §7 lists the only touched existing files.
+
+### 4A. Client — `3D-Avatar-Chatbot`
+
+```
+├─ kb/                                        NEW  Animation knowledge base
+│  ├─ animations.manifest.jsonl               NEW  Source of truth: 1 JSON record per clip
+│  ├─ schema/animation.schema.json            NEW  JSON Schema (CI + runtime validation)
+│  ├─ embeddings/index.f32                    NEW  [gen] Float32 embedding matrix
+│  ├─ embeddings/index.meta.json              NEW  [gen] row↔id map, model, dims
+│  └─ scripts/
+│     ├─ extract-bvh-stats.mjs                NEW  BVH text → duration, rootMotion, energy
+│     ├─ draft-descriptions.mjs               NEW  LLM drafts descriptions (human-approved)
+│     ├─ build-embeddings.mjs                 NEW  MiniLM (transformers.js) → index.f32
+│     └─ validate-manifest.mjs                NEW  Schema + uniqueness + file-exists (CI)
+│
+├─ src/behavior/                              NEW  The Director (pure JS, framework-agnostic)
+│  ├─ boot.js                                 NEW  One-call bootstrap; wires adapters; returns director
+│  ├─ BehaviorDirector.js                     NEW  sense→decide→act loop; public API (§6.4)
+│  ├─ ContextBlackboard.js                    NEW  mood, energy, mode, timers, flags
+│  ├─ EventBus.js                             NEW  Tiny typed pub/sub (no deps)
+│  ├─ registry/AnimationRegistry.js           NEW  Manifest load + index by intent/tag/kind
+│  ├─ registry/validate.js                    NEW  Runtime schema check (fail-soft, logs)
+│  ├─ selector/SemanticSelector.js            NEW  Embed query, cosine top-k over index.f32
+│  ├─ selector/UtilityRanker.js               NEW  Scoring + gates (§6.5)
+│  ├─ selector/AntiRepeatMemory.js            NEW  Ring buffer of last N picks
+│  ├─ selector/embedding.worker.js            NEW  transformers.js MiniLM in a Web Worker
+│  ├─ scheduler/Scheduler.js                  NEW  Priority preemption, interruptibility, queue
+│  ├─ scheduler/TransitionRules.js            NEW  Fade matrix, exit times, min-play
+│  ├─ mixer/LayerMixer.js                     NEW  Layer stack, per-masked-bone slerp
+│  ├─ mixer/ClipLayer.js                      NEW  VRMA/BVH via THREE.AnimationMixer
+│  ├─ mixer/ProceduralLayer.js                NEW  Wraps EXISTING behavior fns → pose buffer
+│  ├─ mixer/PoseLayer.js                      NEW  Saved poses as 1-frame clips
+│  ├─ mixer/BoneMasks.js                      NEW  fullBody/upperBody/face/head (VRM humanoid)
+│  ├─ adapters/LLMTagAdapter.js               NEW  Streaming [[emote:...]] parser, strips for TTS/UI
+│  ├─ adapters/SpeechAdapter.js               NEW  tts:start/end → Talk state, lipsync gate
+│  ├─ adapters/IdleAdapter.js                 NEW  Activity timers → user:idle/active
+│  ├─ adapters/SentimentFallback.js           NEW  Keyword valence when no tags arrive
+│  ├─ adapters/GazeAdapter.js                 NEW  Wraps existing MediaPipe gaze/XR pose → gaze:* events
+│  ├─ adapters/MediaAdapter.js                NEW  play/pause/cut/track-beat → conversation beats
+│  ├─ adapters/SessionAdapter.js              NEW  WS client to HomePilot /avatar/session (§6.9)
+│  └─ modes/ModeManager.js                    NEW  register(profile)/activate(id)/gates
+│  └─ modes/companion.profile.js              NEW  Default behavior, formalized
+│  └─ modes/together.profile.js               NEW  Joint attention, initiative rules (§6.7)
+│  └─ modes/showcase.profile.js               NEW  Max novelty, cycles full KB
+│  └─ modes/play.profile.js                   NEW (opt) Sample game mode from v1.0
+│
+├─ src/features/together/                     NEW  Together Mode (flagship)
+│  ├─ TogetherMode.js                         NEW  Activity manager: mount/unmount lifecycle
+│  ├─ activities/watch.js                     NEW  Cinema screen, sources, sync, cut detection
+│  ├─ activities/music.js                     NEW  Audio + AnalyserNode → beat/energy events
+│  ├─ activities/screen-insight.js            NEW  Capture, sampler, on-demand vision asks
+│  ├─ activities/scene-journey.js             NEW  Skybox scenes, anchors, scene profiles
+│  ├─ capture/CapturePipeline.js              NEW  getDisplayMedia/camera → VideoTexture + frame sampler
+│  ├─ scenes/forest.json                      NEW  Scene manifest (§6.11)
+│  ├─ scenes/ocean.json                       NEW
+│  ├─ scenes/meditation.json                  NEW
+│  └─ ui/TogetherPanel.js                     NEW  Activity picker, sharing indicator, consent
+│
+├─ src/features/playmode/                     NEW (opt) v1.0 game demo, unchanged
+├─ mcp-server/                                NEW (opt) Standalone Node MCP fallback (v1.0 §6.9 tools)
+├─ config/behavior.config.json                NEW  Flags, weights, whitelist, session, privacy (§6.2)
+├─ tests/behavior/                            NEW  registry/ranker/scheduler/tagparser/
+│                                                  session-protocol/capture/scene tests
+└─ docs/BEHAVIOR_DIRECTOR.md + PATHMAP.md     NEW  This spec + path mapping
+```
+
+### 4B. Server — `HomePilot`
+
+```
+├─ services/avatar/                           NEW  Python package (FastAPI-style, mounted at /avatar)
+│  ├─ __init__.py                             NEW  register(app, config): mounts routes if avatar.enabled
+│  ├─ session.py                              NEW  WS /avatar/session — auth, heartbeat, protocol §6.9
+│  ├─ rtc.py                                  NEW  /avatar/rtc — WebRTC signaling; mic→ASR; frame intake
+│  ├─ vision.py                               NEW  POST /avatar/vision/insight (§6.13); model adapter
+│  ├─ curiosity.py                            NEW  Interest graph + initiative scheduler (§6.12)
+│  ├─ kb_search.py                            NEW  Server-side Tier-1: embeds query, cosine over KB
+│  ├─ kb_store.py                             NEW  Loads/serves kb manifest + index (synced from client repo)
+│  └─ safety.py                               NEW  Maps tools → HomePilot safety levels (§6.14)
+├─ context_forge/tool_servers/avatar_control/ NEW  MCP tool server: search/get/play/queue/set_mood/scene
+│  └─ server.py, manifest.(json|yaml)         NEW  Registered like the 5 built-in tool servers
+├─ config: avatar section in existing config  NEW keys only (avatar.enabled=false default, model ids,
+│                                              frame limits, retention=0)
+└─ tests/avatar/                              NEW  protocol, curiosity scoring, vision mock, safety map
+```
+
+Curiosity **extends** the existing persona memory store (new record *types*, same store) — it does not introduce a parallel memory system.
+
+---
+
+## 5. Phases
+
+Client phases P0–P5 are carried from v1.0 (complete here, self-contained). Server and activity phases are new.
+
+### P0 — Knowledge base authoring (no app code)
+Tasks: create `kb/schema/animation.schema.json` (§6.1) and `animations.manifest.jsonl`; run `extract-bvh-stats.mjs` on the 11 BVH dances (BVH is plain text: `Frames`, `Frame Time`, root deltas → duration/rootMotion; mean joint angular velocity → energy proxy); run `draft-descriptions.mjs` (LLM drafts `description/tags/valence/energy` from clip name + preview; human approves; description formula = **action + body focus + tempo + emotion**); author entries for the 15 procedural behaviors (Idle, Waiting, Happy, Thinking, Dance, Talk, Sad, Angry, Surprised, Flirt, Tease, Intimate, Sensual Sway, Beckon, Slow Burn — last six `nsfw:true`) and every VRMA clip; `build-embeddings.mjs`; wire `validate-manifest.mjs` into CI.
+**AC:** manifest validates; every asset has an entry; embeddings reproducible; script-level test: `search("energetic celebration dance")` returns a BVH dance in top-3.
+
+### P1 — Registry, event bus, blackboard, bootstrap
+Tasks: `EventBus`, `ContextBlackboard`, `AnimationRegistry`(+`validate`), `boot.js` stub, `config/behavior.config.json`; add the guarded bootstrap hook in `src/main.js` (§7).
+**AC:** flag on → registry loads, logs counts by kind; flag off → zero new code executes (coverage-verified).
+
+### P2 — Signal adapters (sense)
+Tasks: `LLMTagAdapter` (parses `[[emote:name intensity]]` from the token stream across chunk boundaries; strips tags before TTS/UI), `SpeechAdapter`, `IdleAdapter`, `SentimentFallback`; add the guarded emit hooks in `LLMManager` and `SpeechService` (§7); extend the persona/system prompt with the tag contract (§6.8).
+**AC:** a reply containing `[[emote:happy 0.8]]` produces an `intent` event mid-stream; tags never appear in chat text or TTS audio; malformed tags dropped silently (tests).
+
+### P3 — Tier-1 brain (decide)
+Tasks: `embedding.worker.js` (lazy MiniLM via transformers.js, IndexedDB cache), `SemanticSelector`, `UtilityRanker`, `AntiRepeatMemory`.
+**AC:** intent → clip id <50 ms warm (perf test); nsfw never selected when gated; same intent twice → different clips (anti-repeat test).
+
+### P4 — Executor (act)
+Tasks: `BoneMasks`; `ClipLayer` (VRMA via `@pixiv/three-vrm-animation`, existing BVH retarget path); `ProceduralLayer` — wraps the existing behavior functions **unchanged**, capturing output into a pose buffer only when the engine is on; `PoseLayer`; `LayerMixer` (per-masked-bone quaternion slerp between layer buffers on VRM **normalized** humanoid bones; weights animated by `Scheduler`+`TransitionRules`); `Scheduler` (priority Reaction > Talk > Emote > Idle; respects `interruptible`, min-play, queue). T-pose correction + Natural Pose Style remain the base offset under all layers.
+**AC:** Happy(procedural) → BVH dance → VRMA wave crossfades with no pops (visual checklist); lipsync + look-at continue during full-body clips; whole engine <2 ms/frame on reference device.
+
+### P5 — Modes + Together shell + Pose Studio publish
+Tasks: `ModeManager`; companion/together/showcase profiles (+optional play); `src/features/together/TogetherMode.js` + `ui/TogetherPanel.js` (activity picker only; activities land in P7–P9); optional "Publish to KB" button in Pose Studio (additive UI hook).
+**AC:** mode toggle swaps intent maps and gates; toggling back restores companion exactly; companion regression suite green flag-on and flag-off.
+
+### P6 — HomePilot session gateway + client SessionAdapter + WebRTC
+Server: `services/avatar/{__init__,session,rtc}.py` mounted only when `avatar.enabled`; WS auth reuses HomePilot's existing auth/pairing; heartbeat 15 s; protocol §6.9. Mic upstream via WebRTC audio track → existing/added ASR path → persona chat as if typed (marked `source:"voice"`). Frame intake endpoint enforces limits (§6.10) and `retention=0`.
+Client: `SessionAdapter` (auto-reconnect, backoff, offline-degrade: engine keeps working locally), config `session.url`.
+**AC:** protocol contract tests pass against the real server and against the mock (client repo); pulling the network mid-session degrades gracefully (local Tier-1 continues); zero server code runs when `avatar.enabled=false`.
+
+### P7 — Activities: Watch Together + Music Together
+Tasks: `CapturePipeline` (getDisplayMedia **and** direct `<video>` sources → VideoTexture; camera variant for phones); `watch.js` (curved screen mesh placed via existing VR system, AR pin via existing hit-test; positional audio; play/pause/seek UI; scene-cut detector = luma+audio delta threshold; `MediaAdapter` emits `media:*`); `music.js` (AnalyserNode → `media:beat`, energy drift on blackboard). Commentary etiquette per together.profile (§6.7).
+**AC:** a local mp4 and a captured YouTube tab both display on the VR screen ≥30 fps at 1080p on Quest-class hardware; avatar comments only at openings (test: no `intent(source:commentary)` while `media:playing` high-attention unless opening event preceded within 2 s); music makes energy climb and dance clips fire on `media:beat` streaks.
+
+### P8 — Vision + Screen Insight (+ camera "see what I see")
+Server: `vision.py` — POST `/avatar/vision/insight` (§6.13) with pluggable model adapter (local VLM via existing model runner, or configured API); responses may include suggested intents (whitelist-checked server-side too).
+Client: `screen-insight.js` — explicit start/stop, persistent on-screen indicator, on-demand snapshot ("what do you think?") or ≤1 fps while enabled; 512 px JPEG, quality 0.7.
+**AC:** insight round-trip ≤3 s on reference hardware; no frame leaves the device without active consent state; indicator visible in 2D and XR; disabling capture cancels in-flight sampling; server stores nothing (retention test).
+
+### P9 — Journeys (scene system)
+Tasks: `scene-journey.js` loads scene manifests (§6.11): 8K equirect skybox (KTX2), ambient loop, gaze anchors, scene profile overlay; `forest/ocean/meditation` manifests; meditation includes optional guided script (timed `say`+`intent` list executed via session or local TTS); AR variant skips skybox and keeps profile+anchors.
+**AC:** each scene loads <3 s after first cache; scene profile overlays apply and revert cleanly; meditation sets initiative budget 0 (curiosity silent) except script lines; romantic/intimate anchors respect the nsfw gate.
+
+### P10 — Curiosity Engine
+Server: `curiosity.py` per §6.12 — interest records as new types in existing persona memory; scoring updates on every chat turn; initiative scheduler subscribed to session context events; output = `intent` + `say` over WS.
+**AC:** unit tests for scoring/decay/budget; etiquette gates verified (never during `user:speaking`, `media:playing` high-attention, or meditation); a seeded memory produces a relevant proactive question at the next opening in an integration test.
+
+### P11 — MCP avatar_control tool server (Context Forge)
+Server: register `avatar_control` beside the built-in tool servers; tools = `search_animations(query, filters)`, `get_animation(id)`, `play_animation(id, layer?, fade?, loop?)`, `queue_sequence(ids[])`, `set_mood(valence, energy)`, `set_scene(sceneId)`; safety mapping per §6.14; commands route to the user's live session via `session.py` (error if no session). Keep client-repo `mcp-server/` as documented standalone fallback.
+**AC:** an MCP client (Claude / MCP Inspector) searches the KB and executes a 3-clip queued sequence on the live avatar; `play_animation` runs at *autonomous* level, vision-related tools require *confirm*; killing the tool server has zero effect on local behavior.
+
+### P12 — QA, performance, privacy, rollout
+Tasks: debug HUD (`?behaviorDebug=1`: layer weights, last 5 picks with score breakdown, session state); pick-logging ring buffer; docs; visual QA checklist run on the main avatar set; budgets audit (§9); privacy audit (§10); then flip client flag default; HomePilot `avatar.enabled` stays opt-in.
+
+---
+
+## 6. Contracts and schemas
+
+### 6.1 Manifest record (JSON Schema enforced)
+
+```json
+{ "id": "bvh_dance_07", "kind": "bvh",
+  "file": "motions/dance_07.bvh",
+  "description": "An energetic hip-hop groove: bouncing knees, alternating arm waves, head bobbing on beat. Confident, playful, high energy.",
+  "tags": ["dance","hiphop","celebrate"],
+  "intents": ["celebrate","happy","party"],
+  "valence": 0.9, "energy": 0.9,
+  "stats": { "duration": 8.2, "rootMotion": 0.3, "meanJointVel": 1.7 },
+  "layer": "fullBody", "loop": true,
+  "priority": 4, "interruptible": true,
+  "cooldownMs": 20000, "nsfw": false,
+  "quality": "experimental", "retarget": "hips offset -4cm on VRM0",
+  "source": "mixamo", "license": "standard", "version": 2 }
+```
+`kind ∈ vrma|bvh|procedural|pose` (procedural uses `behaviorRef` instead of `file`). `layer ∈ fullBody|upperBody|face`. `quality ∈ production|experimental`.
+
+### 6.2 `config/behavior.config.json` (client)
+
+```json
+{ "behaviorEngine": { "enabled": false, "debug": false },
+  "nsfwAllowed": false,
+  "weights": { "semantic": 0.5, "energy": 0.2, "valence": 0.1,
+               "quality": 0.1, "novelty": 0.1 },
+  "antiRepeatWindow": 5, "topK": 3,
+  "emoteWhitelist": ["happy","sad","angry","surprised","thinking","celebrate",
+    "dance","wave","flirt","tease","shy","agree","disagree","idle",
+    "point","lean_in","nod_along","breathe","console"],
+  "emoteRateLimit": { "maxPerReply": 3, "minGapMs": 1500 },
+  "session": { "enabled": false, "url": "wss://<homepilot>/avatar/session",
+               "tier1Remote": false },
+  "capture":  { "maxFps": 1, "frameLongEdgePx": 512, "jpegQuality": 0.7 },
+  "budgets":  { "tier1Ms": 50, "frameMs": 2 } }
+```
+HomePilot config adds an `avatar:` section — `enabled: false`, `vision.model`, `vision.max_image_px: 768`, `frames.retention: 0`, `curiosity.session_budget: 4`.
+
+### 6.3 Event bus contract (client)
+
+| event | payload | producer |
+|---|---|---|
+| `llm:token` | `{text}` | LLMManager hook |
+| `intent` | `{name,intensity,source}` | tag parser · adapters · session · MCP |
+| `tts:start` / `tts:end` | `{}` | SpeechService hook |
+| `user:idle` / `user:active` | `{ms}` | IdleAdapter |
+| `user:speaking` / `user:silent` | `{}` | mic VAD (SessionAdapter) |
+| `gaze:user-look-avatar` / `gaze:user-look-away` | `{ms}` | GazeAdapter (MediaPipe / XR pose) |
+| `media:playing` / `media:paused` / `media:cut` / `media:beat` | `{...}` | MediaAdapter |
+| `scene:enter` / `scene:exit` | `{id}` | scene-journey |
+| `vision:insight` | `{text,intents[]}` | SessionAdapter |
+| `session:up` / `session:down` | `{}` | SessionAdapter |
+| `mode:changed` | `{id}` | ModeManager |
+| `anim:started` / `anim:ended` | `{id,layer}` | LayerMixer |
+
+### 6.4 `BehaviorDirector` public API (skeleton)
+
+```js
+export class BehaviorDirector {
+  constructor({ vrm, bus, config }) { /* bb, registry, selector, ranker,
+    scheduler, mixer, modes; bus.on('intent', i => this.handleIntent(i)) */ }
+  async init(manifestUrl) { /* registry.load + validate; selector.warmup();
+    modes.register(companionProfile).activate('companion') */ }
+  handleIntent(intent) {
+    const c = this.selector.topK(intent, this.bb);     // semantic (local or remote)
+    const pick = this.ranker.best(c, intent, this.bb); // utility + gates
+    if (pick) this.scheduler.request(pick, intent);
+  }
+  update(dt) { this.bb.tick(dt); this.scheduler.tick(dt, this.mixer);
+               this.mixer.update(dt); }                // Tier 0
+  setMode(id) {} registerMode(profile) {}              // plugins
+  say(text) {}                                         // route to TTS pipeline
+}
+```
+
+### 6.5 `UtilityRanker.score()` — single enforcement point
+
+```js
+score(clip, intent, bb) {
+  if (clip.nsfw && !(bb.nsfwAllowed && bb.mode.allowNsfw)) return -Infinity;
+  if (!bb.mode.allows(clip)) return -Infinity;
+  if (Date.now() - this.lastPlayed(clip.id) < clip.cooldownMs) return -Infinity;
+  const w = this.weights;
+  return w.semantic * intent.similarity(clip)
+       + w.energy   * (1 - Math.abs(clip.energy  - bb.energy))
+       + w.valence  * (1 - Math.abs(clip.valence - bb.valence))
+       + w.quality  * (clip.quality === 'production' ? 1 : 0.4)
+       + w.novelty  * this.antiRepeat.novelty(clip.id);
+}
+// Final pick: softmax-weighted random among topK — variety, not argmax.
+```
+
+### 6.6 Mixer notes (the one hard problem)
+Existing procedural behaviors write bones directly. Under the engine, `ProceduralLayer` calls the same functions but captures output into a pose buffer; `ClipLayer` samples `THREE.AnimationMixer` into another; `LayerMixer` blends buffers per masked bone with quaternion slerp using scheduler-animated weights. Use `humanoid.getNormalizedBoneNode` so masks/retargets are avatar-independent. Face, lipsync, and look-at are always-on layers with their own masks; look-at target is set by joint attention (screen mesh, gaze anchor, or user camera).
+
+### 6.7 Profiles
+
+```js
+// together.profile.js
+export default {
+  id: 'together', label: 'Together mode',
+  adapters: ['gaze','media','session'],
+  attention: { primary: 'activityTarget', glanceUserEveryMs: [8000, 20000] },
+  commentaryOpenings: ['media:paused','media:cut',
+                       'gaze:user-look-avatar>1500','user:silent>12000'],
+  initiative: { budgetPerSession: 4, minGapMs: 90000 },
+  allowNsfw: 'inherit',            // user setting decides; scenes may narrow
+  idleProfile: 'relaxed-attentive'
+};
+// Scene manifests overlay fields onto the active profile (§6.11) and revert on scene:exit.
+```
+`play.profile.js` (optional sample) keeps the v1.0 reaction tiers.
+
+### 6.8 LLM tag contract (appended to persona/system prompt)
+
+```
+When emotionally relevant, append at most one tag per sentence, max 3 per
+reply: [[emote:<name> <intensity 0..1>]]
+Allowed names: happy, sad, angry, surprised, thinking, celebrate, dance,
+wave, flirt, tease, shy, agree, disagree, idle, point, lean_in, nod_along,
+console. Never invent names. Tags are invisible to the user and stripped
+before TTS.
+```
+Parser: unknown name or rate limit exceeded → drop tag, keep text. `SentimentFallback` covers models that ignore the contract. Server-initiated intents (curiosity, vision, MCP) arrive over the session channel and pass the same whitelist + ranker gates — no special powers.
+
+### 6.9 Session protocol — WS `/avatar/session` (JSON lines, `v:1`)
+
+Client → server:
+```json
+{"v":1,"type":"hello","client":"3dac","caps":["tier1local","xr","capture"],"auth":"<token|pairing>"}
+{"v":1,"type":"ctx","mode":"together","activity":"watch","attention":0.8}
+{"v":1,"type":"user_event","name":"media:paused"}
+{"v":1,"type":"vision_ask","prompt":"what do you think of this?","frameId":"f123"}
+{"v":1,"type":"chat_meta","msgId":"...","source":"voice"}
+{"v":1,"type":"pong"}
+```
+Server → client:
+```json
+{"v":1,"type":"intent","name":"lean_in","intensity":0.6,"source":"curiosity"}
+{"v":1,"type":"say","text":"You mentioned the aquarium trip — how was it?","source":"curiosity"}
+{"v":1,"type":"vision_insight","frameId":"f123","text":"...","intents":[{"name":"thinking","intensity":0.5}]}
+{"v":1,"type":"scene","id":"ocean"}
+{"v":1,"type":"error","code":"...","msg":"..."}
+{"v":1,"type":"ping"}
+```
+Rules: heartbeat 15 s, reconnect with exponential backoff (max 30 s); unknown `type` ignored (forward-compatible); all server intents pass client whitelist + ranker; `say` routes through the normal TTS pipeline so `tts:*` events and Talk behavior fire as usual.
+
+### 6.10 WebRTC media plan
+One `RTCPeerConnection` per session, signaled over the WS. Tracks: mic audio upstream (opt-in, VAD gates `user:speaking`); screen/camera video upstream **only** while consent state active — and even then the server samples at most `capture.maxFps`; client additionally sends discrete snapshots (`vision_ask` + JPEG data channel message ≤512 px long edge) for on-demand asks, which is the default mode. No downstream video. TTS audio may come as data-channel chunks when server voices are enabled; otherwise client Piper synthesizes locally from `say`.
+
+### 6.11 Scene manifest schema + examples
+
+```json
+{ "id": "ocean", "title": "By the sea",
+  "skybox": "scenes/ocean_8k.ktx2", "ambient": "scenes/ocean_loop.ogg",
+  "lighting": { "exposure": 1.1, "hemi": "#bfd8e6" },
+  "anchors": [ { "name": "waves", "dir": [0.2,-0.05,-1] },
+               { "name": "horizon", "dir": [0,0.05,-1] } ],
+  "avatarPlacement": { "pos": [0.6,0,-0.4], "faceUser": true },
+  "profileOverlay": { "idleProfile": "curious-outdoor",
+    "commentaryOpenings": ["anchor:waves","user:silent>10000"],
+    "initiative": { "budgetPerSession": 6 } },
+  "guidedScript": null }
+```
+`meditation.json`: `profileOverlay.initiative.budgetPerSession: 0`, `idleProfile:"breath-sync"`, optional `guidedScript:[{"t":0,"say":"...","intent":"breathe"},...]`. `forest.json`: calm-curious overlay. Romantic anchors/lines carry `nsfw:true` and ride the same gate.
+
+### 6.12 Curiosity Engine spec (HomePilot)
+
+Interest record (stored as a new type in the existing persona memory):
+```json
+{ "type": "interest", "topic": "user.hobby.aquarium",
+  "summary": "Planning a visit to the new aquarium",
+  "curiosity": 0.72, "lastTouched": "2026-08-28T18:20:00Z",
+  "openThread": true, "sourceMsgIds": ["..."] }
+```
+Scoring per chat turn: `curiosity += 0.15` when the user responds to the topic with length above their median and positive valence; `−0.10` on short/negative response; global decay `×0.98`/day; clamp [0,1]; `openThread` set by unresolved questions/plans. Initiative scheduler: on each polite opening event from `ctx`/`user_event` (openings = the active profile's `commentaryOpenings` minus anything during `user:speaking`), if `sessionBudget > 0` and `now − lastInitiative > minGapMs`, pick argmax-curiosity `openThread` record, generate one question/observation via the persona LLM (grounded on `summary`), emit `say` + one whitelisted `intent`, decrement budget. Hard mutes: meditation scenes, `attention ≥ 0.9`, user opt-out flag.
+
+### 6.13 Vision service API (HomePilot)
+
+`POST /avatar/vision/insight` → `{ text, intents:[{name,intensity}] }`
+Body: `{ image_b64, prompt, ctx:{activity,scene,lastUserMsg} }`.
+Rules: max input 768 px long edge (server re-checks), model via config (local VLM through HomePilot's model runner, or configured API), **no persistence** (`frames.retention:0` enforced + tested), intents whitelist-checked server-side, p95 latency target ≤3 s local.
+
+### 6.14 MCP `avatar_control` tools ↔ safety levels
+
+| tool | HomePilot safety level |
+|---|---|
+| `search_animations`, `get_animation` | read-only |
+| `play_animation`, `queue_sequence`, `set_mood`, `set_scene` | autonomous (low-risk output) |
+| anything touching capture/vision | confirm + requires active client consent state |
+
+Bridge invariant: MCP/persona tools speak intents at turn cadence; client Tier-1 resolves; nothing on the frame path.
+
+---
+
+## 7. Non-destructive contract — the ONLY existing files touched
+
+**Client (4 hooks + 1 optional):**
+```js
+// src/main.js — after managers constructed:
+import { bootBehavior } from './behavior/boot.js';
+if (appConfig.behaviorEngine?.enabled) app.behavior = await bootBehavior(app); // NEW
+// render loop:
+app.behavior?.update(dt); // NEW
+
+// src/managers/LLMManager.js — where stream chunks arrive:
+this.bus?.emit('llm:token', { text: chunk }); // NEW — no-op when bus absent
+
+// src/managers/SpeechService.js — around playback:
+this.bus?.emit('tts:start'); // NEW
+this.bus?.emit('tts:end');   // NEW
+
+// SettingsPanel (or equivalent): one "Behavior engine (beta)" toggle
+//   + one "Connect HomePilot session" toggle bound to session.enabled.
+
+// OPTIONAL hook 5 — face/gaze tracking module, only if it exposes no event:
+this.bus?.emit('gaze:user-look-avatar', { ms }); // NEW, guarded
+```
+
+**HomePilot (1 registration + config):**
+```python
+# app startup (where existing services/routers are mounted):
+from services.avatar import register as register_avatar
+register_avatar(app, config)   # NEW — mounts nothing when avatar.enabled is false
+# + `avatar:` keys in config (new keys only)
+# + avatar_control added to the Context Forge tool-server registry (new entry only)
+```
+
+**Rollback:** client flag off → emits fire into nothing, no `src/behavior/**` import, byte-for-byte today's app. HomePilot `avatar.enabled=false` → no routes mounted, no tool server registered. Deleting the new directories in either repo is a clean uninstall. Chat via OllaBridge is untouched in all states.
+
+---
+
+## 8. Testing strategy
+
+Client unit: schema validation; ranker math (gates, cooldowns, anti-repeat, overlays); scheduler preemption matrix; streaming tag parser (split-across-chunks, malformed, rate limit); capture sampler (fps/size caps, consent cancel); scene manifest loader. Client integration (headless three.js): intent → `anim:started` within budget; mode/scene overlay idempotency; session mock server (protocol fixtures shared between repos in `tests/fixtures/protocol/*.json`). Server: pytest for protocol, curiosity scoring/decay/budget/etiquette, vision retention=0, safety mapping. E2E smoke script: boot both, pair, run a scripted session (chat with tags → watch → snapshot ask → scene → curiosity prompt), assert event log. Golden rule: companion regression suite passes with flags **on and off**; HomePilot's own test suite untouched and green.
+
+## 9. Performance & device budgets
+
+Client engine (Tier 0 + mixer + adapters): <2 ms/frame on Quest-class hardware. Tier-1 pick <50 ms warm (MiniLM in worker; brute-force cosine over ~200 clips <1 ms); MiniLM ~25 MB lazy + IndexedDB cache; `session.tier1Remote=true` moves selection to `kb_search` for the weakest devices with a keyword fallback offline. Video texture ≤1080p on mobile/XR. Skyboxes 8K equirect as KTX2 (GPU-compressed), <3 s warm load. Frames to vision: ≤512 px JPEG q0.7, ≤1 fps or on-demand. Zero cost anywhere when flags are off.
+
+## 10. Privacy & safety
+
+Screen/camera sharing is per-session opt-in with a persistent visible indicator (2D + XR); frames are ephemeral (server retention 0, tested); mic streaming opt-in with VAD; the existing privacy posture (keys in localStorage, no data collection) is unchanged until the user connects their **own** HomePilot. Spicy content: single gate in the ranker; Together default `allowNsfw:'inherit'`; meditation/guided content stays neutral; Play sample forces off. MCP tools mapped to HomePilot's read-only/confirm/autonomous levels per §6.14. Curiosity respects a user opt-out flag and per-session budget — a companion that takes interest, never one that nags.
+
+## 11. Rollout & PR plan
+
+One branch per phase: `feat/bd-p0-kb` … `feat/bd-p12-rollout` (client) and `feat/avatar-p6-session` … (HomePilot). Conventional commits; each PR updates `docs/BEHAVIOR_DIRECTOR.md` changelog + `PATHMAP.md`. Flag-flip criteria: visual QA checklist green on the main avatar set, budgets audit green, privacy audit green. HomePilot `avatar.enabled` remains opt-in documentation-first.
+
+---
+
+## Appendix A — Claude Code kickoff prompts
+
+Template:
+```
+Read docs/BEHAVIOR_DIRECTOR.md fully. Implement Phase P<N> exactly as
+specified in §5.P<N>, using the contracts in §6 verbatim. You may create
+only files listed for this phase in §4; you may modify only files listed
+in §7. Do not rename events, config keys, or protocol fields. Definition
+of done = the phase's AC plus: npm test green, validate-manifest green,
+app byte-identical with behaviorEngine.enabled=false. If a path in the
+spec doesn't exist in this repo, find the file playing that role, use it,
+and record the mapping in docs/PATHMAP.md.
+```
+Per-phase first lines: P0 "Author the KB per §5.P0/§6.1; touch no app code." · P4 "The only hard problem is §6.6 — implement pose-buffer blending before anything else." · P6 "Build the mock server + contract tests from tests/fixtures/protocol before the real endpoints." · P8 "Consent state machine first; no capture code path may exist outside it." · P10 "Pure functions for scoring; the scheduler consumes events only."
+
+*End of spec v1.1.*
+
+---
+
+# Addendum v1.2 — UC-12…UC-18, Viral Clip Engine, Adult Tier
+
+**Extends:** `BEHAVIOR_DIRECTOR_SPEC_v1.1.md`. All rules from v1.1 §0 (AI-coder working rules), §6 (contracts), and §7 (non-destructive contract) remain law. This addendum adds sections §12–§17 and phases P13–P15. Nothing here modifies any existing file beyond what §7 already allows; every addition below is a new file, a new config key, a new event, or a new protocol message type (forward-compatible by v1.1 §6.9 "unknown type ignored").
+
+---
+
+## 12. New use cases
+
+### UC-12 · Embodied HomePilot (assistant face)
+**Story:** "Good morning" → she greets you, your agenda fades onto the virtual screen, she walks you through it while pointing, and "dim the lights, movie time" executes through her tools with a gesture.
+**Reuse:** the persona already owns calendar/email/home-automation via Context Forge; the avatar adds a body. Tool actions keep HomePilot safety levels (act = *confirm* unless the owner sets *autonomous*).
+**New:** `activities/assistant.js`; session message `display` (§14.3) renders structured panels (agenda, tool results) onto the virtual screen as a canvas texture; intents used: `point`, `nod_along`, `talk`.
+**AC:** scripted e2e — "good morning" produces panel + spoken summary + one *confirm*-level tool call; no tool ever invoked without the persona's safety layer.
+
+### UC-13 · Gaming co-host
+**Story:** You play; she watches via the existing capture pipeline and reacts with the Play reaction tiers — micro head-bobs on hits, a gasp-lean on near-deaths, a BVH dance on the clutch win, consoling on defeat. Curiosity remembers your games ("still stuck on that boss?").
+**Reuse:** `CapturePipeline` + `play.profile` reaction tiers as an overlay; no game API needed — an excitement heuristic (audio RMS spikes + luma flash deltas) emits synthetic `game:*` events; real hooks can replace it later.
+**New:** `activities/cohost.js`, `heuristics/ExcitementDetector.js`.
+**AC:** reaction tiers fire correctly from a synthetic event script; no full-body reaction while `attention ≥ 0.8` except macro events; detector never emits >1 macro/30 s (coalescing per v1.0 pacing).
+
+### UC-14 · Coach mode (workout & practice partner)
+**Story:** Phone camera watches your squats (MediaPipe Pose), she counts reps aloud, demos the movement from the KB, mirrors your pace, celebrates the final set. Same skeleton = language practice inside a journey scene ("we're at the sea in Spain — solo español"), with vocabulary living in the interest graph.
+**Reuse:** MediaPipe already ships in the app (face tracking); Pose is a lazy-loaded optional module at 15–20 fps, and avatar extras (fidgets) pause while it runs to hold the frame budget.
+**New:** `activities/coach.js`, `heuristics/RepCounter.js`; KB extension: exercise demo clips tagged `exercise` (new manifest entries, P0 pipeline reused).
+**AC:** rep events from a recorded video fixture match ground truth ±1; demo clip selected by exercise intent; total frame cost within §9 budget with Pose active.
+
+### UC-15 · Hands-busy copilot (kitchen, DIY, repairs)
+**Story:** Phone propped up, camera feeding the vision pipeline: "does the sauce look right?" → snapshot to your HomePilot → she leans in, points, gives her take; timers and next-step nudges; a wince when it breaks.
+**Reuse:** camera variant of `CapturePipeline` + `vision_ask` (v1.1 §6.9/§6.13), consent indicator in phone UI.
+**New:** `activities/copilot.js` (checklist state machine + timers via existing alarm/timer UX if present, else internal).
+**AC:** camera snapshot round trip ≤3 s; timer flow works hands-free by voice; indicator visible whenever camera consent is active; snapshots on-demand only (no periodic frames in this activity).
+
+### UC-16 · Body-doubling focus sessions
+**Story:** "Study with me" → pomodoro cycles; she sits quietly alive, stretches when you stretch, nods when you refocus after drifting (idle/gaze signals), celebrates session end, and remembers your streak tomorrow.
+**Reuse:** `IdleAdapter` + `GazeAdapter`; curiosity memory stores streaks.
+**New:** `activities/focus.js` (pomodoro state machine + quiet profile overlay: initiative ~0 except block boundaries).
+**AC:** full 25/5 cycle scripted test; zero `say` during focus blocks except boundaries; streak record persisted server-side and recalled next session.
+
+### UC-17 · Date night (adult tier) — see §16.
+### UC-18 · Intimate wind-down (adult tier) — see §16.
+
+---
+
+## 13. File tree delta
+
+### Client
+```
+src/features/together/activities/assistant.js     NEW  UC-12
+src/features/together/activities/cohost.js        NEW  UC-13
+src/features/together/activities/coach.js         NEW  UC-14
+src/features/together/activities/copilot.js       NEW  UC-15
+src/features/together/activities/focus.js         NEW  UC-16
+src/features/together/heuristics/ExcitementDetector.js  NEW
+src/features/together/heuristics/RepCounter.js    NEW  (MediaPipe Pose, lazy)
+src/features/together/panels/PanelRenderer.js     NEW  display→canvas texture (UC-12)
+src/features/clips/ClipRecorder.js                NEW  §15 rolling buffer
+src/features/clips/ShareCard.js                   NEW  §15 "she remembered" cards
+src/features/clips/ui/ClipButton.js               NEW  one-tap save + suggest toast
+src/behavior/modes/adult.profile.js               NEW  §16
+src/behavior/ConsentFlow.js                       NEW  §16 check-ins, exits, level state
+src/features/together/scenes/sunset.json          NEW  §16 (nsfw-capable anchors)
+src/features/together/scenes/candlelit.json       NEW  §16
+tests/behavior/{consent,cliprecorder,detectors}.test.js  NEW
+```
+### HomePilot
+```
+services/avatar/verification.py                   NEW  adult attestation (§16.2)
+services/avatar/redaction.py                      NEW  memory redaction rules (§16.5)
+tests/avatar/{verification,redaction,streaks}.py  NEW
+```
+All additive. The one in-family change: `UtilityRanker.js` (a file this project created in P3, not a legacy file) gains the two adult-source gate lines in §16.4 — permitted because §7 governs *pre-existing* repo files only.
+
+---
+
+## 14. Contract deltas
+
+### 14.1 Config (client `behavior.config.json`, new keys only)
+```json
+{ "clips":  { "enabled": true, "bufferSec": 30, "suggestOnMacro": true },
+  "adult":  { "available": false },
+  "coach":  { "poseFps": 15 },
+  "assistant": { "panelMaxKb": 64 } }
+```
+HomePilot config: `avatar.adult.enabled: false`, `avatar.adult.provider: "owner-attest" | "<plugin>"`, `avatar.redaction.enabled: true`.
+
+### 14.2 Event bus (new events)
+| event | payload | producer |
+|---|---|---|
+| `game:*` (synthetic) | `{...}` | ExcitementDetector |
+| `coach:rep` / `coach:set_end` | `{count}` | RepCounter |
+| `focus:block_start` / `focus:block_end` | `{kind}` | focus.js |
+| `clip:saved` | `{file,durSec}` | ClipRecorder |
+| `escalation:level` | `{level}` | ConsentFlow |
+| `panel:shown` / `panel:closed` | `{kind}` | PanelRenderer |
+
+### 14.3 Session protocol (new message types, `v:1`, ignored by older peers)
+```json
+S→C {"v":1,"type":"display","kind":"agenda|card|toolresult","data":{...}}
+S→C {"v":1,"type":"adult_ack","verified":true,"exp":"2026-12-31"}
+C→S {"v":1,"type":"adult_verify_request"}
+C→S {"v":1,"type":"streak","activity":"focus","value":4}
+```
+`adult_ack` is the **only** way `adultVerified` becomes true on the client (never a local setting), is session-scoped, and is re-checked on every reconnect.
+
+---
+
+## 15. Viral Clip Engine
+
+**Mechanism:** `ClipRecorder` keeps a rolling ~35 s buffer: `canvas.captureStream(30)` of the render canvas (2D and the XR mirror view — immersive framebuffers can't be captured directly, the mirror is the documented fallback) mixed with a WebAudio graph (TTS + activity audio; mic only if the user enables it). Implementation: `MediaRecorder` with 1 s timeslices into a ring of chunks; on save, concatenate the last 30 s of chunks into a `.webm` and download locally. **Never auto-uploads.**
+**Triggers:** the ClipButton always; plus, when `clips.suggestOnMacro` and a macro moment fires (`game:win`, `coach:set_end`, `anim:started` on a `priority ≥ 4` clip), a small non-blocking toast: "Clip that?"
+**Share cards:** `ShareCard.js` renders a PNG (canvas) of a curiosity callback — her quote, timestamp, avatar portrait frame — the "she remembered" loop.
+**Hard rules:** disabled in adult mode (§16); indicator while mic is in the mix; nothing persists unless the user taps save.
+**AC:** saved webm is 30±1 s and contains avatar + activity composite in 2D; XR path saves the mirror view; toast never appears more than once per 60 s; adult mode → recorder fully torn down (test).
+
+---
+
+## 16. Adult Tier (UC-17 Date night · UC-18 Intimate wind-down)
+
+Professional, consent-first design. Nothing in this tier changes the animation system — it is gating, pacing, and UX around behaviors the app already ships (Flirt, Tease, Intimate, Sensual Sway, Beckon, Slow Burn).
+
+### 16.1 Triple gate (all three required, checked every selection)
+1. **`adultVerified`** — server attestation only (§16.2), delivered via `adult_ack`.
+2. **`nsfwAllowed`** — the existing user setting.
+3. **Active mode/scene `allowNsfw: true`** — only `adult.profile` sets it true by default.
+
+Enforcement stays the v1.1 single point — the ranker — plus the source rule in §16.4.
+
+### 16.2 Verification (`services/avatar/verification.py`)
+Self-host default: **owner attestation** — the HomePilot instance owner flips `avatar.adult.enabled` and confirms age on their own server; the server then answers `adult_verify_request` with a signed, expiring `adult_ack`. Distribution builds **must** configure a real verification provider via `avatar.adult.provider` (pluggable interface: `verify(user) -> {verified, exp}`); the owner-attest provider refuses to load when the instance is multi-user. A "click yes" client dialog is never sufficient and must not be implemented. Compliance requirements vary by jurisdiction; the provider hook is where deployments meet their local obligations.
+
+### 16.3 `adult.profile.js`
+```js
+export default {
+  id: 'adult', label: 'Date night / wind-down',
+  requires: ['adultVerified', 'nsfwAllowed'],   // ModeManager refuses activation otherwise
+  adapters: ['gaze', 'media', 'session'],
+  allowNsfw: true,
+  proactiveNsfw: false,                         // she NEVER initiates — invariant
+  escalation: {
+    levels: 4, start: 1,
+    advance: 'user-affirmative-or-checkin-yes', // §16.4
+    checkInEveryLevel: true,
+    perLevelMinMs: 120000,                      // earned, never rushed
+    decayToLevel: 1,                            // cools down on inactivity
+    softExitWord: 'cozy',                       // configurable; crossfade to warm companion
+    hardExit: ['stop', 'exit']                  // immediate mode exit, neutral idle
+  },
+  intensityCeilingByLevel: {
+    1: ['flirt'],
+    2: ['flirt', 'tease', 'beckon'],
+    3: ['sensual_sway', 'slow_burn'],
+    4: ['intimate']
+  },
+  scenes: ['sunset', 'candlelit'],
+  idleProfile: 'warm-attentive',
+  initiative: { budgetPerSession: 3 },          // curiosity = relationship talk only (§16.5)
+  privacy: { clipEngine: false, telemetry: false }
+};
+```
+
+### 16.4 Consent mechanics (`ConsentFlow.js` + two ranker lines)
+Blackboard gains `escalationLevel`. `ConsentFlow` owns it: level advances only on (a) an explicit user-affirmative to a check-in (`say` question → local yes/no keyword classifier, LLM-confirmed on ambiguity), or (b) unmistakable user initiation — and never before `perLevelMinMs`. Soft-exit word → level 1 + gentle crossfade, no commentary. Hard exit → mode exits to companion, neutral idle, no comment. Ranker additions (in this project's own `UtilityRanker.js`):
+```js
+if (clip.nsfw && intent.source !== 'user') return -Infinity;          // never proactive
+if (clip.nsfw && !bb.mode.tierAllowed(clip, bb.escalationLevel)) return -Infinity;
+```
+`tierAllowed` maps clip intents/tags against `intensityCeilingByLevel`.
+
+### 16.5 Privacy & memory in adult mode
+Clip engine and any telemetry are disabled (profile `privacy`). `redaction.py`: curiosity/memory may store relationship warmth signals (e.g., "enjoyed date night, prefers slow pacing") but **never explicit content details** — a server-side redaction pass on memory writes while `mode==='adult'`, unit-tested with fixtures. Everything runs on the user's own HomePilot; nothing leaves their hardware.
+
+### 16.6 UX arcs
+**UC-17 Date night:** sunset/candlelit scene, her music, level starts at 1, warmth escalates only as earned (blackboard escalation meter), curiosity recalls *your* shared history so it feels like a relationship, not a script. **UC-18 Intimate wind-down:** the Slow Burn arc — dimmed scene, slower voice rate, breathing-adjacent idle, check-ins before every escalation, the user controls tempo, and the soft-exit word lands her back as a cozy companion with zero awkwardness.
+
+### 16.7 Invariants (test-enforced)
+1. No path sets `adultVerified` client-side.
+2. `clip.nsfw` is selectable only when all three gates pass AND `intent.source==='user'` AND the tier ceiling allows it.
+3. Curiosity/MCP/vision sources can never trigger nsfw clips (source rule).
+4. Recorder torn down in adult mode.
+5. Exits (soft and hard) work from any state within one scheduler tick.
+6. The avatar and all adult-tier content are adult-presenting only; minors are excluded by verification, not honor.
+
+---
+
+## 17. Phases P13–P15
+
+### P13 — Activities pack (UC-12…UC-16)
+Order inside the phase: assistant (needs `display` + PanelRenderer) → cohost (detector) → focus → copilot → coach (heaviest, Pose module). Each sub-activity ships with its AC from §12 plus: mounts/unmounts cleanly via `TogetherMode`, and no activity code loads unless selected (dynamic import).
+**Gate:** all §12 ACs; §9 budgets hold with each activity active; flag-off byte-identical.
+
+### P14 — Viral Clip Engine
+§15 as specified. **Gate:** §15 ACs; recorder adds <1 ms/frame while buffering; zero network calls from `src/features/clips/**` (static check).
+
+### P15 — Adult Tier
+Server first (`verification.py`, `redaction.py`, `adult_ack`), then `ConsentFlow` + profile + ranker lines + scenes.
+**Gate:** §16.7 invariants as automated tests; check-in flow e2e with scripted affirmatives/negatives; soft/hard exits from every level; redaction fixtures pass; with `avatar.adult.enabled=false` the mode is invisible in UI and unactivatable via MCP/session (negative tests).
+
+### Appendix A additions (kickoff prompt first lines)
+P13: "Implement activities in the order listed in §17; PanelRenderer before assistant; dynamic-import every activity."
+P14: "Ring-buffer MediaRecorder with 1 s timeslices; prove the 30 s trim with a test before wiring UI; no network imports."
+P15: "Server attestation and the two ranker gate lines come first; write the §16.7 invariant tests before ConsentFlow; nothing in this phase may weaken a v1.1 gate."
+
+*End of addendum v1.2.*

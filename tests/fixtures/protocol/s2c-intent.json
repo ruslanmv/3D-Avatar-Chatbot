@@ -1,0 +1,13 @@
+{
+  "name": "intent",
+  "direction": "server->client",
+  "spec": "v1.1 6.9",
+  "required": ["v", "type", "name", "intensity", "source"],
+  "message": {
+    "v": 1,
+    "type": "intent",
+    "name": "lean_in",
+    "intensity": 0.6,
+    "source": "curiosity"
+  }
+}

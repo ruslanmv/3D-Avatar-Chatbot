@@ -101,6 +101,51 @@ framework dependencies — runs on vanilla JavaScript, Three.js, and WebXR.
 - **Privacy-first** — API keys stored in browser localStorage, zero server-side
   data collection
 
+### Behavior Director
+
+An animation and companion engine that decides what she does, in three tiers:
+reflexes every frame, a semantic clip selector under 50 ms, and — when paired
+with [HomePilot](https://github.com/ruslanmv/HomePilot) — turn-level
+orchestration. It ships **on**, so the launcher is there on a fresh install;
+**Settings ▸ Behavior Director** is the kill switch, and turning it off means
+nothing under `src/behavior/` is fetched at all. Tune it in
+`config/behavior.config.json`.
+
+A **two-person button** in the avatar toolbar is the one entry point to every
+experience below. Nothing else in the toolbar moves.
+
+**Most of it needs no server.** Focus, Journey, Music, Watch and Coach run
+entirely in the browser. Only _Help me with this_ and _Meeting_ need HomePilot —
+they ask a model about a picture — and when it is not linked they say so and
+point at Settings rather than starting and going quiet. See
+[docs/ENABLING.md](docs/ENABLING.md).
+
+![The Together chooser open over the avatar: Watch, Journey, Music, Play, Focus, Coach, and Help me with this](assets/together-mode.png)
+
+- **Together Mode** — watch a film, listen to music, or sit in a guided scene
+  with her. Her silence is the feature: she comments only at openings
+- **Body doubling** — 25/5 focus blocks with a quiet profile and streaks stored
+  in her long-term memory. Zero spoken lines inside a block, enforced by the
+  same gate that runs everything else
+- **Hands-busy copilot & coach** — a checklist and timers by voice while your
+  hands are covered in dough, and rep counting from the camera. **On-demand
+  snapshots only** — there is no periodic-frame code path, and the privacy audit
+  checks that by reading source
+- **Clips & share cards** — a rolling 30-second buffer, one tap to save. Nothing
+  under `src/features/clips/` can reach the network, and a static check holds
+  that for files nobody has written yet
+- **Consent-first capture** — one file may open a camera or a screen, the
+  indicator shows in 2D _and_ in XR, and revoking cancels in-flight sampling
+  within a frame
+
+Four gates run in CI and are all green: the engine is provably inert with the
+flag off, eight privacy claims hold as properties of the source, the frame and
+pick budgets sit inside 25% headroom, and the knowledge base regenerates itself
+byte for byte.
+
+Setup, browser requirements and a per-feature test recipe:
+**[docs/ENABLING.md](docs/ENABLING.md)**.
+
 ---
 
 ## Quick Start
@@ -124,6 +169,12 @@ npm run dev          # http://localhost:8080
 make test            # Avatar health check + unit tests
 make test-avatars    # Avatar file validation only
 npm run validate     # Lint + format + tests
+
+# Behavior Director gates — the four CI runs
+node scripts/behavior-parity-baseline.mjs --check   # inert with the flag off
+node scripts/audit-privacy.mjs --check              # eight privacy claims
+node scripts/audit-budgets.mjs --check              # frame / pick / clip / pose cost
+node kb/scripts/validate-manifest.mjs --level semantic
 ```
 
 ---
@@ -133,7 +184,12 @@ npm run validate     # Lint + format + tests
 Pop the live avatar out into a small floating window and keep it beside you
 while you work — talk to it hands-free, or type.
 
-![Companion Mode — the avatar floating over the app with voice and text chat](assets/companion-mode.png)
+![Companion Mode — the live avatar in a small floating window over the app, with the call, push-to-talk and "Talk or type…" bar along its bottom edge](assets/companion-mode.png)
+
+_Above: the in-page window, which is what you get on Firefox, Safari and mobile.
+On a browser with Document Picture-in-Picture (Chrome, Edge) the same button
+pops the avatar into a real OS window you can park outside the browser — same
+controls, same canvas, no second copy of the avatar._
 
 **How to use**
 
