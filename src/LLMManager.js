@@ -1258,6 +1258,66 @@
          * @param {string} id
          * @returns {string}
          */
+        /**
+         * Which model to start on once a device is paired.
+         *
+         * The ladder is local first, HomePilot second, cloud last, and each rung is there for a
+         * reason rather than for tidiness:
+         *
+         * **Local first** — a `shared_device` model runs on the user's own machine, over their
+         * own relay. It costs nothing, it is private, and it is the thing they connected a PC in
+         * order to use. Landing on a cloud route while their own GPU sits idle is the wrong
+         * default even when the cloud route is faster.
+         *
+         * **HomePilot second** — a persona agent is somebody's configured identity with memory
+         * behind it, which is a better answer than a bare model, but it is a heavier thing to
+         * start on than a model they own outright.
+         *
+         * **Cloud last** — always reachable, and the right answer when the first two rungs are
+         * empty. `route_alias` before `cloud_catalog`: a smart route picks among candidates and
+         * degrades, where a catalog entry is one fixed model on the gateway's own box.
+         *
+         * Only `available` entries are eligible. Advertising an unavailable model as the default
+         * would make the first message after pairing fail, which is the worst possible moment.
+         *
+         * Pure and exported so the order is a testable fact rather than a comment: the ladder is
+         * the sort of thing that gets quietly reordered by a later change to the selector's
+         * grouping, and nothing about the UI would look wrong if it did.
+         */
+        static get MODEL_PREFERENCE() {
+            return ['shared_device', 'homepilot', 'persona', 'route_alias', 'route', 'cloud_catalog'];
+        }
+
+        /**
+         * The best entry to select, or `null` when nothing is usable.
+         *
+         * @param {Array<{id: string, source: string, available: boolean}>} entries
+         * @returns {string|null}
+         */
+        static pickPreferredModel(entries) {
+            const usable = (Array.isArray(entries) ? entries : []).filter((e) => e && e.id && e.available !== false);
+            if (!usable.length) {
+                return null;
+            }
+            for (const source of LLMManager.MODEL_PREFERENCE) {
+                // First match within a rung, which is the server's own ordering — it lists the
+                // caller's devices in the order they are meant to be tried, and re-sorting them
+                // here would second-guess the only party that knows.
+                const hit = usable.find((e) => e.source === source);
+                if (hit) {
+                    return hit.id;
+                }
+            }
+            // A source this build has never heard of is still a model that works. Better to start
+            // on it than to leave the user on `default` because the taxonomy grew.
+            return usable[0].id;
+        }
+
+        /** Instance form, for callers holding a manager rather than the class. */
+        pickPreferredModel(entries) {
+            return LLMManager.pickPreferredModel(entries);
+        }
+
         _prettyModelName(id) {
             if (typeof id !== 'string') return String(id);
             if (id.startsWith('personality:')) {

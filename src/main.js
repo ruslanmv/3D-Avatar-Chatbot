@@ -2842,6 +2842,46 @@ function populateGroupedModels(selectElement, entries) {
 }
 
 /**
+ * Choose the model a freshly paired device should start on, and save it.
+ *
+ * The ladder itself lives in `LLMManager.pickPreferredModel` — local, then HomePilot, then
+ * cloud — so it is one testable fact rather than an order implied by the selector's grouping.
+ * This is the part that has to touch the DOM: pick, reflect it in the dropdown, persist it, and
+ * say which one it landed on, because "paired" and "paired and pointed at your own GPU" are
+ * different pieces of news.
+ *
+ * Returns the chosen id, or `null` when nothing usable came back.
+ */
+function __nexusSelectPreferredOllaBridgeModel(selectElement, statusDiv) {
+    const manager = window._nexusLLM;
+    const Manager = window.LLMManager;
+    const entries = window.__nexusLastOllaBridgeEntries;
+    if (!manager || !Manager || !Array.isArray(entries) || !entries.length) {
+        return null;
+    }
+    const chosen = Manager.pickPreferredModel(entries);
+    if (!chosen) {
+        return null;
+    }
+    if (selectElement) {
+        selectElement.value = chosen;
+    }
+    manager.updateSettings({ ollabridge: { model: chosen } });
+
+    const entry = entries.find((e) => e.id === chosen) || {};
+    const WHERE = {
+        shared_device: 'your own computer',
+        homepilot: 'HomePilot',
+        persona: 'HomePilot',
+    };
+    const where = WHERE[entry.source] || 'the cloud';
+    if (statusDiv) {
+        statusDiv.textContent = `${statusDiv.textContent} Starting on ${entry.displayName || chosen} — ${where}.`;
+    }
+    return chosen;
+}
+
+/**
  * Fetch available models from LLMManager and populate dropdown
  * @param {string} provider - Provider name (openai, claude, etc.)
  * @param {HTMLSelectElement} selectElement - The select element to populate
@@ -2902,6 +2942,10 @@ async function fetchAndPopulateModels(provider, selectElement) {
         }
 
         selectElement.innerHTML = '<option value="">Select a model...</option>';
+
+        // Kept so the post-pairing picker can choose without a second round trip. Written on
+        // every populate, so it can never describe an older list than the one on screen.
+        window.__nexusLastOllaBridgeEntries = result.modelEntries || [];
 
         if (result.modelEntries && result.modelEntries.length > 0) {
             // Grouped rendering for OllaBridge: keep the server's ordering and
@@ -5522,10 +5566,18 @@ function __nexusWireOllaBridgePairButton() {
                 // invite a second, wasted pairing.
                 _updateOllaBridgePairUI();
 
-                // Refresh models now that we have a token
+                // Refresh models now that we have a token, then start on the best one.
+                //
+                // A device that has just paired has no model chosen — it sits on `default`, and
+                // the first thing the user does is send a message. So the ladder runs here:
+                // their own local model first, then a HomePilot persona, then the cloud. Landing
+                // on a cloud route while the PC they just linked sits idle is the wrong default
+                // even when the cloud is faster; that PC is what they paired.
                 const modelSelect = document.getElementById('model-select');
                 if (modelSelect) {
-                    fetchAndPopulateModels('ollabridge', modelSelect);
+                    fetchAndPopulateModels('ollabridge', modelSelect).then(() => {
+                        __nexusSelectPreferredOllaBridgeModel(modelSelect, statusDiv);
+                    });
                 }
             } else {
                 if (statusDiv) {
