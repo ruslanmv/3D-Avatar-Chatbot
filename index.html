@@ -1475,6 +1475,29 @@
                             </p>
                         </div>
 
+                        <!-- Batch T7. Opt-in, and it stays that way. Unlike the switch above,
+                             which turns itself on the first time somebody taps a tile because
+                             tapping the tile is the request, nothing a user does implies "and
+                             also dim the interface at me". An app that quietly faded its own
+                             chrome part-way through a song reads as a fault long before it
+                             reads as a feature, and the person it happened to would have no
+                             idea what caused it. So: off unless this box is ticked, and this
+                             box is the only thing that ever writes the setting. -->
+                        <div class="input-group">
+                            <label class="spicy-toggle-label">
+                                <span>Calm mode — dim the interface while something is playing</span>
+                                <div class="spicy-toggle-switch">
+                                    <input type="checkbox" id="ambient-enabled-toggle" />
+                                    <span class="spicy-toggle-slider"></span>
+                                </div>
+                            </label>
+                            <p style="font-size: 0.7rem; color: #888; margin: 6px 0 0">
+                                For when you would rather just watch or listen. Off by default — with this unticked
+                                nothing changes. On, the chat and buttons fade after about half a minute of quiet; any
+                                tap, key or scroll brings them straight back, and the recording indicator never dims.
+                            </p>
+                        </div>
+
                         <!-- Batch B9, reshaped in B35. The two controls that used to live
                              here — a "Connect HomePilot session" switch and a URL box — asked
                              the user for something the app can find out: OllaBridge already
@@ -1567,6 +1590,27 @@
                                     if (!sw) return;
                                     if (together.checked) sw.enable('settings');
                                     else sw.disable('settings');
+                                });
+                            }
+
+                            /* Batch T7. Same shape as the row above and for the same reason:
+                               NEXUS_AMBIENT owns the state, the box is a view of it. The
+                               difference is the default — this one is off until ticked, so an
+                               absent module reads as off rather than as on. */
+                            var ambient = document.getElementById('ambient-enabled-toggle');
+                            if (ambient) {
+                                var readAmbient = function () {
+                                    var am = window.NEXUS_AMBIENT;
+                                    ambient.checked = !!(am && am.isEnabled && am.isEnabled());
+                                };
+                                readAmbient();
+                                /* It arrives with the director's module list, which may not
+                                   have loaded when this inline script runs. */
+                                setTimeout(readAmbient, 1500);
+                                ambient.addEventListener('change', function () {
+                                    var am = window.NEXUS_AMBIENT;
+                                    if (!am || !am.setEnabled) return;
+                                    am.setEnabled(ambient.checked);
                                 });
                             }
 

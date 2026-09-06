@@ -244,13 +244,39 @@ That is the test — the whole design exists to change that transcript's ending.
 
 ---
 
-### T7 — Eyes closed
+### T7 — Eyes closed ✅
 
-Once something is playing and nobody has typed for a while: she settles, her idle motion takes
-the beat where the audio is local, and the chat quietens. One tap or one word brings her back.
+Once something is playing and nobody has typed for a while: she settles, and the chat quietens.
+One tap, one key or one scroll brings it back.
 
-**Acceptance.** No new permission, no new consent surface — this is the audio the user already
-started, and the recording indicator rules (§2a) are untouched.
+**Shipped as an opt-in preference, off by default.** This is the one change from the plan as
+written, and it was the right one. Every other batch here fixes something that was wrong;
+this one is a matter of taste. Plenty of people put a track on precisely so they can keep
+typing over the top of it, and for them an interface that fades is a fault they cannot explain
+and would not know how to search for. So it is a box in Settings — *"Calm mode — dim the
+interface while something is playing"* — and with that box unticked the app is the T6 app:
+no attribute on the root element, no stylesheet in the page, no timer running, nothing.
+`tests/together-ambient.test.js` asserts exactly that rather than leaving it to inspection.
+
+**How it behaves once it is on.** Twenty-five seconds of quiet with something playing, and the
+root element gets `data-nexus-ambient="on"`; CSS fades the topbar, the chat header, the avatar
+footer, the launcher and the composer. Nothing moves, nothing is hidden, and nothing loses its
+clicks — a dimmed composer is still a composer, and the tap that reaches for it wakes the page
+on `pointerdown` before the `click` lands, so the control the finger arrives at is already at
+full strength. Waking is instant: the transition is declared inside the settled rule, so it
+fades on the way down and never on the way back. And a wake disarms for the current track —
+settling once is atmosphere, settling again half a minute after somebody deliberately woke it
+is the interface arguing with them.
+
+**Acceptance, met.** No new permission and no new consent surface: this is the audio the user
+already started. §2a is untouched, and loudly so — the recording indicator carries
+`opacity: 1 !important` in the settled state, and both a unit test and a live browser check
+assert it. The module contains no capture API at all, which is also asserted.
+
+**One supporting change.** `CurrentMediaContext.set()` now dispatches `nexus:media`, because
+T7 needs to know the moment something starts and polling for it would mean a timer running for
+the whole life of every session to catch an event that happens twice an hour. It is guarded to
+nothing and does not change what the model reads.
 
 ---
 

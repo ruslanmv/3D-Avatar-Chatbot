@@ -83,6 +83,9 @@
         'src/features/together/PlayDirective.js',
         // T6. One topic, two turns, so "yes" and "play it" point at something.
         'src/features/together/PlayFollowUp.js',
+        // T7. The quiet after something starts playing. Loaded before the launcher, which
+        // arms it; on its own it does nothing at all until armed.
+        'src/features/together/AmbientMode.js',
         'src/features/together/ui/MediaSearchPicker.js',
         // D9. What is playing, for the model. Loaded before the publisher that sets it.
         'src/features/together/CurrentMediaContext.js',

@@ -66,6 +66,34 @@ const CurrentMediaContext = (() => {
     }
 
     /**
+     * Say, once, that what is playing has changed.
+     *
+     * T7 needs to know the moment something starts, and polling for it would mean a timer
+     * running for the entire life of every session to catch an event that happens twice an
+     * hour. So the one place that already knows announces it.
+     *
+     * Guarded to nothing: a document that cannot dispatch, a runtime without `CustomEvent`,
+     * a listener that throws — none of them are worth losing the media context over, which is
+     * the thing the model actually reads.
+     */
+    function announce() {
+        if (typeof window === 'undefined' || !window.document) {
+            return false;
+        }
+        if (typeof window.CustomEvent !== 'function' || typeof window.document.dispatchEvent !== 'function') {
+            return false;
+        }
+        try {
+            window.document.dispatchEvent(
+                new window.CustomEvent('nexus:media', { detail: { playing: Boolean(current) } })
+            );
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    /**
      * Remember what is playing. `null` clears it.
      *
      * Takes a `MediaResult` — or anything shaped like one, which is what `watch.js` hands over
@@ -74,6 +102,7 @@ const CurrentMediaContext = (() => {
     function set(result) {
         if (!result) {
             current = null;
+            announce();
             return null;
         }
         current = {
@@ -87,6 +116,7 @@ const CurrentMediaContext = (() => {
             url: clean(result.url, CAPS.url),
             startedAt: Date.now(),
         };
+        announce();
         return get();
     }
 

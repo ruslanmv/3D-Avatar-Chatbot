@@ -401,6 +401,7 @@ const TogetherLauncher = (() => {
             this._unsubscribe = null;
             this._stopInsetWatch = null;
             this._stopSwitchWatch = null;
+            this._stopAmbient = null;
             this._onKey = (event) => this._key(event);
             this._onPointer = (event) => this._pointer(event);
             this._bound = false;
@@ -439,7 +440,30 @@ const TogetherLauncher = (() => {
             if (sw && typeof sw.onChange === 'function') {
                 this._stopSwitchWatch = sw.onChange(() => this._reflectSwitch());
             }
+            this._armAmbient();
             return this;
+        }
+
+        /**
+         * Let the page settle once something is playing and nobody is typing (T7).
+         *
+         * Armed from here rather than from boot because this is the object with a lifetime
+         * that matches: the launcher is what mounts when Together's chrome exists, and
+         * `detach` is what takes it away again. Armed unconditionally — the module itself
+         * checks whether Together is on and whether anything is playing before it settles,
+         * and duplicating that judgement in two places is how the two come to disagree.
+         *
+         * Guarded, because the launcher attaching is not worth failing over atmosphere.
+         */
+        _armAmbient() {
+            const ambient = typeof window !== 'undefined' ? window.NEXUS_AMBIENT : null;
+            if (!ambient || typeof ambient.arm !== 'function') return null;
+            try {
+                this._stopAmbient = ambient.arm({ doc: this.doc, win: window });
+            } catch (_) {
+                this._stopAmbient = null;
+            }
+            return this._stopAmbient;
         }
 
         /**
@@ -758,6 +782,10 @@ const TogetherLauncher = (() => {
             this._stopInsetWatch = null;
             if (this._stopSwitchWatch) this._stopSwitchWatch();
             this._stopSwitchWatch = null;
+            // Leaving the ambient watcher armed after detach would settle a page whose
+            // Together chrome no longer exists.
+            if (this._stopAmbient) this._stopAmbient();
+            this._stopAmbient = null;
             this._listen(false);
             for (const node of [this.button, this.drawerItem, this.style]) {
                 if (node && node.parentNode) node.parentNode.removeChild(node);
