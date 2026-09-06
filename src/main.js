@@ -2842,59 +2842,6 @@ function populateGroupedModels(selectElement, entries) {
 }
 
 /**
- * Choose the model a freshly paired device should start on, and save it.
- *
- * The ladder itself lives in `LLMManager.pickPreferredModel` — local, then HomePilot, then
- * cloud — so it is one testable fact rather than an order implied by the selector's grouping.
- * This is the part that has to touch the DOM: pick, reflect it in the dropdown, persist it, and
- * say which one it landed on, because "paired" and "paired and pointed at your own GPU" are
- * different pieces of news.
- *
- * Returns the chosen id, or `null` when nothing usable came back.
- */
-function __nexusSelectPreferredOllaBridgeModel(selectElement, statusDiv) {
-    const manager = window._nexusLLM;
-    const Manager = window.LLMManager;
-    const entries = window.__nexusLastOllaBridgeEntries;
-    if (!manager || !Manager || !Array.isArray(entries) || !entries.length) {
-        return null;
-    }
-    const chosen = Manager.pickPreferredModel(entries);
-    if (!chosen) {
-        return null;
-    }
-    if (selectElement) {
-        selectElement.value = chosen;
-    }
-    // BOTH of the places this app keeps the model, because it keeps it in two.
-    //
-    // `_nexusLLM` is what actually sends the request. `config` is the in-memory copy read from
-    // localStorage once at load, and it is what the model dropdown restores from and what SAVE
-    // writes back. Setting only the first was the whole of the regression: the pick worked and
-    // chat worked, and then pressing Fetch reset the dropdown to "Select a model…" — because the
-    // restore reads `config.model`, which was still empty — and pressing SAVE then wrote that
-    // empty value over the good one. The next message went out as `default`, which this gateway
-    // answers with an empty string, which the app shows as "Sorry, I encountered an error."
-    //
-    // Two stores, one write. Leaving them to converge on the next page load is not enough: the
-    // window between pairing and reloading is exactly the window somebody uses the app in.
-    config.model = chosen;
-    manager.updateSettings({ ollabridge: { model: chosen } });
-
-    const entry = entries.find((e) => e.id === chosen) || {};
-    const WHERE = {
-        shared_device: 'your own computer',
-        homepilot: 'HomePilot',
-        persona: 'HomePilot',
-    };
-    const where = WHERE[entry.source] || 'the cloud';
-    if (statusDiv) {
-        statusDiv.textContent = `${statusDiv.textContent} Starting on ${entry.displayName || chosen} — ${where}.`;
-    }
-    return chosen;
-}
-
-/**
  * Fetch available models from LLMManager and populate dropdown
  * @param {string} provider - Provider name (openai, claude, etc.)
  * @param {HTMLSelectElement} selectElement - The select element to populate
@@ -2956,10 +2903,6 @@ async function fetchAndPopulateModels(provider, selectElement) {
 
         selectElement.innerHTML = '<option value="">Select a model...</option>';
 
-        // Kept so the post-pairing picker can choose without a second round trip. Written on
-        // every populate, so it can never describe an older list than the one on screen.
-        window.__nexusLastOllaBridgeEntries = result.modelEntries || [];
-
         if (result.modelEntries && result.modelEntries.length > 0) {
             // Grouped rendering for OllaBridge: keep the server's ordering and
             // separate "My Private Models" (shared local devices) from cloud
@@ -3003,24 +2946,9 @@ async function fetchAndPopulateModels(provider, selectElement) {
             selectElement.innerHTML = '<option value="">No models available</option>';
         }
 
-        // Restore current selection if it exists.
-        //
-        // `config.model` first — it is what SAVE writes and what the user last chose. When it is
-        // empty, fall back to what the manager has stored for this provider, so a model chosen
-        // by something other than the form (the post-pairing picker) survives a Fetch instead of
-        // silently reverting to the placeholder.
-        let restore = config.model;
-        if (!restore) {
-            try {
-                const stored = window._nexusLLM.getSettings()[provider];
-                restore = (stored && stored.model) || '';
-            } catch (_) {
-                restore = '';
-            }
-        }
-        if (restore && result.models.includes(restore)) {
-            selectElement.value = restore;
-            config.model = restore;
+        // Restore current selection if it exists
+        if (config.model && result.models.includes(config.model)) {
+            selectElement.value = config.model;
         }
     } catch (e) {
         console.error('[Main] Failed to fetch models:', e);
@@ -5594,18 +5522,10 @@ function __nexusWireOllaBridgePairButton() {
                 // invite a second, wasted pairing.
                 _updateOllaBridgePairUI();
 
-                // Refresh models now that we have a token, then start on the best one.
-                //
-                // A device that has just paired has no model chosen — it sits on `default`, and
-                // the first thing the user does is send a message. So the ladder runs here:
-                // their own local model first, then a HomePilot persona, then the cloud. Landing
-                // on a cloud route while the PC they just linked sits idle is the wrong default
-                // even when the cloud is faster; that PC is what they paired.
+                // Refresh models now that we have a token
                 const modelSelect = document.getElementById('model-select');
                 if (modelSelect) {
-                    fetchAndPopulateModels('ollabridge', modelSelect).then(() => {
-                        __nexusSelectPreferredOllaBridgeModel(modelSelect, statusDiv);
-                    });
+                    fetchAndPopulateModels('ollabridge', modelSelect);
                 }
             } else {
                 if (statusDiv) {
