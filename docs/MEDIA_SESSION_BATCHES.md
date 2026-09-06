@@ -253,6 +253,49 @@ directly, so a mutation stopping `normalize` from using it passed the whole suit
 
 ---
 
+## M7 — the model sees what the person sees ✅
+
+    YOU    can you dance
+    NEXUS  It seems you're trying to play a video, but the user has not specified which
+           video they want to watch...
+
+Talking about "the user" in the third person, in reply to a question addressed to her. That is
+what a model does when the transcript stops looking like a conversation it is part of — and
+this one had holes in it.
+
+`say` drew messages and recorded nothing. Every turn the media interceptor handled — "stop",
+"play the first one", "can you search top music about love", and the app's replies to each —
+was on screen and absent from the history. Meanwhile `ConversationPublisher` *did* record its
+cards. So the model received:
+
+    user       hello there
+    assistant  Hello! Welcome...
+    assistant  Playing “Relaxing music…” — url
+    assistant  Playing “TOP10 LOVE SONGS…” — url
+    assistant  Playing “New Love Songs 2020…” — url
+    user       can you dance
+
+Three assistant turns in a row with nothing from the user between them, because the cards were
+recorded and the requests that caused them were not.
+
+Now the screen and the transcript are written together, in the one function every path in this
+file goes through. The publisher's own entry is gone — with `say` recording, writing it again
+would put the card in twice, and a transcript that repeats itself is its own kind of confusion.
+A page whose `ChatManager` keeps its own history is left alone, for the same reason.
+
+### Verified by replaying the conversation
+
+Same seven turns against the live model. The transcript alternates user/assistant throughout —
+**longest run of same-role turns: 1**, where it had been three — and the question that broke it
+now answers as herself:
+
+> *"I can't dance physically, but I can definitely pick some fun dance music for you! Want me
+> to search for some upbeat tracks? 💃"*
+
+Five mutants, all killed.
+
+---
+
 ## Not done here
 
 **The conversational router** — "the first one", "number three", "pause it" as spoken commands,
