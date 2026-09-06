@@ -343,9 +343,34 @@ const TogetherLauncher = (() => {
      leave one bug away. */
   #nexus-bd-together-panel {
     position: fixed; z-index: 1001;
-    left: 0; right: 0; bottom: 0; width: auto; max-height: 62%; transform: none;
+    left: 0; right: 0; width: auto; transform: none;
+    /* The composer's strip is reserved, not overlapped. Measured on a 412x915 phone, the sheet
+       ended at 915 and the composer began at 839: 76 pixels of the sheet - Music's "Open an
+       audio file" button among them - were underneath a bar that takes the tap. The panel was
+       not even scrolling; its content fitted. Nothing looked wrong, and the button did nothing.
+
+       --nexus-composer-inset is measured by composerInset.js from the top of the composer to
+       the bottom of the visual viewport, so it already contains the safe-area padding the
+       composer carries and it tracks the collapsed bar, the expanded overlay and the keyboard.
+       The literal fallback is for the frames before that runs, and for a document where it
+       never does.
+
+       This is layout, not z-index. Raising the sheet over the composer would have hidden the
+       chat bar instead of the button - the same collision, wearing the other hat. */
+    bottom: var(--nexus-composer-inset, calc(88px + env(safe-area-inset-bottom, 0px)));
+    /* Two declarations: dvh is what tracks mobile browser chrome, vh is what older phones have.
+       62% of the usable height keeps the avatar in view - it was the previous cap and it was
+       the right one - and the calc is the floor that guarantees the sheet clears the composer
+       even when the keyboard has taken most of the screen. */
+    max-height: min(62vh, calc(100vh - var(--nexus-composer-inset, calc(88px + env(safe-area-inset-bottom, 0px))) - 4.5rem));
+    max-height: min(62dvh, calc(100dvh - var(--nexus-composer-inset, calc(88px + env(safe-area-inset-bottom, 0px))) - 4.5rem));
+    overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
     border-radius: 16px 16px 0 0; border-left: none; border-right: none; border-bottom: none;
-    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    /* Kept as a max() rather than dropped: when there is no composer at all the inset is 0 and
+       this is the only thing between the last button and the home indicator. Where a composer
+       does exist it is a little extra room under the final action, which is the right side to
+       err on. */
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
   }
   .nexus-bd-together-grid { grid-template-columns: repeat(2, 1fr); }
 }
@@ -368,6 +393,7 @@ const TogetherLauncher = (() => {
             this.style = null;
             this.opens = 0;
             this._unsubscribe = null;
+            this._stopInsetWatch = null;
             this._onKey = (event) => this._key(event);
             this._onPointer = (event) => this._pointer(event);
             this._bound = false;
@@ -388,6 +414,7 @@ const TogetherLauncher = (() => {
         attach() {
             if (!this.doc || !this.panel) return this;
             this._injectStyle();
+            this._watchComposer();
             this._injectButton();
             this._injectDrawerItem();
             this._mountPanel();
@@ -399,6 +426,25 @@ const TogetherLauncher = (() => {
             }
             this._reflect();
             return this;
+        }
+
+        /**
+         * Start measuring how much of the bottom the chat composer owns.
+         *
+         * The stylesheet above reserves `--nexus-composer-inset`; this is what puts a number in
+         * it. Guarded twice over — the module may not be loaded, and a document without a
+         * composer measures 0 — because the launcher attaching is not worth failing over a
+         * measurement that only matters on a phone.
+         */
+        _watchComposer() {
+            const inset = (typeof window !== 'undefined' && window.NEXUS_COMPOSER_INSET) || null;
+            if (!inset || typeof inset.watch !== 'function') return null;
+            try {
+                this._stopInsetWatch = inset.watch({ doc: this.doc });
+            } catch (_) {
+                this._stopInsetWatch = null;
+            }
+            return this._stopInsetWatch;
         }
 
         _injectStyle() {
@@ -674,6 +720,10 @@ const TogetherLauncher = (() => {
         detach() {
             if (this._unsubscribe) this._unsubscribe();
             this._unsubscribe = null;
+            // The inset watcher holds listeners on the window and the visual viewport; leaving
+            // them behind after detach would keep writing a property nothing reads.
+            if (this._stopInsetWatch) this._stopInsetWatch();
+            this._stopInsetWatch = null;
             this._listen(false);
             for (const node of [this.button, this.drawerItem, this.style]) {
                 if (node && node.parentNode) node.parentNode.removeChild(node);

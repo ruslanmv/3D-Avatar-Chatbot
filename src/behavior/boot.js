@@ -77,6 +77,9 @@
         'src/features/together/activities/contract.js',
         'src/features/together/ui/failures.js',
         'src/features/together/ui/TogetherPanel.js',
+        // How much of the bottom of the phone the chat composer already owns. Loaded before
+        // the launcher, which starts the measurement when it attaches.
+        'src/features/together/ui/composerInset.js',
         // B30. The way in. Loaded here rather than from index.html, so the feature adds no
         // script tag and the flag-off DOM is unchanged.
         'src/features/together/ui/TogetherLauncher.js',
