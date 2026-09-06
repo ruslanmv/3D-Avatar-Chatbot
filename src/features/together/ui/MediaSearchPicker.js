@@ -61,8 +61,7 @@ const MediaSearchPicker = (() => {
      * @param {string} [opts.capability] defaults from `mediaKind`
      * @param {string} [opts.placeholder]
      * @param {function} opts.onChoose called with the chosen `MediaResult`
-     * @param {function} [opts.onPlay] called with a `MediaResult` to start now. Absent, no ▶
-     *   button is drawn at all — a control that cannot do anything is worse than no control.
+     *   Tapping a row means "play this": there is no second action and no second button.
      * @param {function} [opts.onSetup] pressed the connect button
      * @param {function} [opts.search] injected for tests
      * @returns {HTMLElement} the whole block, with `.focusInput()` attached
@@ -167,6 +166,17 @@ const MediaSearchPicker = (() => {
                 list.textContent = '';
             }
             const M = media();
+            // M4. The same list the user is looking at, remembered — so "play the first one"
+            // means this list rather than a fresh search for those words.
+            const session = typeof window !== 'undefined' ? window.NEXUS_MEDIA_SESSION : null;
+            if (session && typeof session.setResults === 'function') {
+                try {
+                    session.setResults(results.slice(0, MAX_RESULTS), { source: 'together' });
+                } catch (_) {
+                    // Results on screen matter more than the ability to name them.
+                }
+            }
+
             for (const result of results.slice(0, MAX_RESULTS)) {
                 const row = el(doc, 'button', 'nexus-bd-together-result');
                 row.type = 'button';
@@ -203,35 +213,21 @@ const MediaSearchPicker = (() => {
                     }
                 });
 
-                // M3. Two meanings for one row, which is what the old design was missing:
-                // the row *chooses* (publishes the card, as it always has), and ▶ Play says
-                // start it now. Before this, choosing was the only verb the panel had, and
-                // "Playing…" appeared on a card that had never played anything.
+                // M4. One meaning for one row.
                 //
-                // A sibling rather than a child: the row is a <button>, and a button inside a
-                // button is invalid HTML that browsers resolve by dropping one of them. The
-                // wrapper carries the flex row, so every existing rule on
-                // `.nexus-bd-together-result` still applies to the same element it always did.
-                const wrap = el(doc, 'div', 'nexus-bd-together-resultrow');
-                wrap.appendChild(row);
-                if (typeof opts.onPlay === 'function') {
-                    const play = el(doc, 'button', 'nexus-bd-together-play', '▶');
-                    play.type = 'button';
-                    play.title = 'Play now';
-                    play.setAttribute(
-                        'aria-label',
-                        `Play ${result.title || 'this'}${result.creator ? ` by ${result.creator}` : ''} now`
-                    );
-                    play.dataset.mediaId = result.id;
-                    play.addEventListener('click', (event) => {
-                        // The row behind it must not also fire: choosing and playing are
-                        // different requests, and doing both would publish two cards.
-                        event.stopPropagation();
-                        opts.onPlay(result);
-                    });
-                    wrap.appendChild(play);
-                }
-                list.appendChild(wrap);
+                // M3 gave the row two: tapping it chose, and a separate ▶ played. In use that
+                // is one control too many — "choose this music but do not start it" is not a
+                // thing anybody wants inside a panel called Watch, and offering it made every
+                // result carry two competing actions with no way to tell which was the
+                // ordinary one.
+                //
+                // So the ▶ moves *into* the row as an affordance rather than a second button:
+                // it says what the row will do, and there is one mental model — I tap the
+                // thing I want to hear, and it starts.
+                const cue = el(doc, 'span', 'nexus-bd-together-playcue', '▶');
+                cue.setAttribute('aria-hidden', 'true');
+                row.appendChild(cue);
+                list.appendChild(row);
             }
         }
 

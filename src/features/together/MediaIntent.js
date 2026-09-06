@@ -143,14 +143,41 @@
         }
     }
 
-    /** Put it in the chat, through the one publisher that already knows how. */
+    /**
+     * Put it in the chat **and start it**.
+     *
+     * The `play: true` was missing, and it is the whole bug behind this exchange:
+     *
+     *     YOU    execute relaxation music, choose the best one, I want to listen
+     *     NEXUS  I'll put on some calming music for you.
+     *     NEXUS  I found “10 Hours of Relaxing Music…” — tap it to play
+     *
+     * Every layer above this did its job. The model understood, chose search terms, emitted
+     * the directive; the directive reached `fulfil`; `fulfil` searched and picked one and
+     * called this. And the function named `play` published a card and stopped, because the
+     * publisher only starts playback when told to and nothing told it. So the one function in
+     * the app whose name is the verb was the one place the verb was not carried out.
+     *
+     * The session is told first, so anything reading state during the same tick — the prompt
+     * among them — sees `loading` rather than a stale `selected`.
+     */
     function play(result, source) {
         const publisher = pick('NEXUS_CONVERSATION_PUBLISHER');
         if (!publisher || typeof publisher.publish !== 'function') {
             return null;
         }
+        // Two guards, not one. Sharing a `try` would let a broken session take the card down
+        // with it, and the card is the point — knowing what is playing is bookkeeping.
         try {
-            return publisher.publish(result, { source }) || null;
+            const session = pick('NEXUS_MEDIA_SESSION');
+            if (session && typeof session.requestPlay === 'function') {
+                session.requestPlay(result, { source });
+            }
+        } catch (_) {
+            // Recorded or not, it still plays.
+        }
+        try {
+            return publisher.publish(result, { source, play: true }) || null;
         } catch (_) {
             return null;
         }

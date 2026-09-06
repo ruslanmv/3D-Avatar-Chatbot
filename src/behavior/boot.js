@@ -80,6 +80,9 @@
         // T3/T5. The one function that finds and plays, and the parser that lets her ask for
         // it. After the publisher's dependencies, before the launcher.
         'src/features/together/MediaIntent.js',
+        // M4. Show me choices / start it now / that one. Loaded beside MediaIntent, which is
+        // what it hands an execute or a pointer to.
+        'src/features/together/MediaCommand.js',
         'src/features/together/PlayDirective.js',
         // T6. One topic, two turns, so "yes" and "play it" point at something.
         'src/features/together/PlayFollowUp.js',

@@ -139,6 +139,12 @@ const CurrentMediaContext = (() => {
         if (!current) {
             return '';
         }
+        // M4. The `selected` line used to end "tell them to tap the card", which directly
+        // contradicted the capability paragraph telling her to choose something and play it.
+        // A model handed both instructions will follow one of them, and the one it followed
+        // made the app look incapable of the thing it had just been told it could do. Only
+        // `blocked` says "tap" now, because there it is true.
+        //
         // M1. What the app actually knows, rather than the one sentence it used to say in
         // every case. Publishing a card and playing a video were the same fact here, so she
         // told people they were watching something that had never started — and then, asked
@@ -159,8 +165,8 @@ const CurrentMediaContext = (() => {
         const listening = current.kind === 'track' || current.kind === 'music';
         const STATE = {
             selected: listening
-                ? 'The user has chosen this track. It is on screen and ready, but it is NOT playing yet — nothing is coming out of their speakers. If they ask you to play it, tell them to tap the card.'
-                : 'The user has chosen this video. It is on screen and ready, but it is NOT playing yet. If they ask you to play it, tell them to tap the card.',
+                ? 'The user has chosen this track. It is on screen and ready, but it is NOT playing yet — nothing is coming out of their speakers. If they ask you to play it, play it, using the tag above. Do not tell them to tap anything.'
+                : 'The user has chosen this video. It is on screen and ready, but it is NOT playing yet. If they ask you to play it, play it, using the tag above. Do not tell them to tap anything.',
             loading: 'The app has asked the player to start this. It has not confirmed yet.',
             playing: listening
                 ? 'The app reports that this track is playing right now.'

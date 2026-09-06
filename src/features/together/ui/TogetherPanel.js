@@ -793,21 +793,15 @@ const TogetherPanel = (() => {
                 // The activity's own caveat, if it has one, rather than the picker inventing
                 // copy about a feature it knows nothing about.
                 note: input.note,
-                onChoose: (result) => {
-                    this.close();
-                    this._session('select', result);
-                    if (publisher && typeof publisher.publish === 'function') {
-                        publisher.publish(result, { doc: this.doc, win: this.win });
-                    }
-                },
-                // M3. ▶ Play. Publishes the same card and then asks for playback — which
-                // choosing never did, and which is why the card used to say "Playing…" over
-                // a video nobody had started.
+                // M4. One action. Tapping a result publishes the card and starts it, in
+                // this same click — see `ConversationPublisher.start`, which is synchronous
+                // precisely so the browser still counts this as a user gesture and allows the
+                // sound. A separate "choose without playing" is not a thing anybody wanted.
                 //
-                // No capture is started here, deliberately. Playing a video in the chat needs
-                // no `getDisplayMedia`: that belongs to Watch and the share-a-tab path, and
-                // §2a's consent machine stays the only owner of it.
-                onPlay: (result) => {
+                // No capture is started here. Playing a video in the chat needs no
+                // `getDisplayMedia`: that belongs to Watch and the share-a-tab path, and §2a's
+                // consent machine stays its only owner.
+                onChoose: (result) => {
                     this.close();
                     this._session('requestPlay', result);
                     if (publisher && typeof publisher.publish === 'function') {

@@ -107,6 +107,55 @@ Eight mutants, all killed — including the original bug itself (`select` markin
 playing), optimistic `requestPlay`, `isPlaying` counting `loading`, and the prompt describing a
 session about a different video.
 
+## M4 — the verb is carried out ✅
+
+Three transcripts, one root cause each.
+
+**`play()` did not play.** The whole chain worked — the model understood, chose search terms,
+emitted the directive; the directive reached `fulfil`; `fulfil` searched, picked one, called
+`play()` — and `play()` published a card without the flag that starts it. The one function in
+the app whose name is the verb was the single place the verb was not carried out. It is a
+one-line fix and it was the entire third transcript.
+
+**"play music please" listed five videos.** `play` and `find` were in the same verb list, so a
+request to *start* something was answered with a catalogue and four more steps. Split into
+`execute` (play, put on, start, execute, reproduce) and `discover` (find, search, show me,
+list). The two sets are disjoint and a test asserts that, because the order of the checks is
+only safe while it is true.
+
+**"play the fist song of the list" searched YouTube for those words.** The app was holding the
+list — `MediaSession` keeps it precisely so "the first one" can mean something — and nothing
+was reading it. References now resolve *before* anything treats the sentence as a query, and
+both search paths record what they drew. `fist` is in the pattern on purpose: it is what the
+user typed and what dictation produces, and a parser that is right about English and wrong
+about the sentence in front of it has failed.
+
+**One action per Together row.** M3's second ▶ button is gone; the ▶ is now a cue inside the
+row. "Choose this music but do not start it" is not a thing anybody wants inside a panel called
+Watch, and offering it made every result carry two competing actions.
+
+**Playback starts synchronously.** The first version polled — publish, wait 120 ms, hunt the
+document, synthesise a click. That spent the user activation a browser grants for a short
+window after a real tap, so the path most likely to be *allowed* to play was the one throwing
+the permission away. It also fixed a real bug: the document-wide lookup would start an older
+card for the same video further up the conversation.
+
+**The prompt stopped contradicting itself.** `TogetherCapability` says "choose something and
+play it"; `CurrentMediaContext` said "tell them to tap the card". Handed both, the model
+followed the second — which is why "play it please" got "tap it to play" from an app that had
+just been told it could play things. Only `blocked` says tap now, because there it is true.
+
+Verified live at 412×915: `play: true` reaches the publisher, the session goes to `loading`,
+and an `<iframe>` carrying `enablejsapi=1` is actually created; "play the fist song of the
+list" resolves to index 0 with no provider call; execute and discover classify correctly.
+
+Seven mutants; five died immediately. Of the two survivors, one exposed an untested branch
+(every prompt test used a video, so a mutation to the music sentence survived the whole suite)
+and one was provably equivalent — the verb sets are disjoint, so the check order cannot matter
+today, and the test now asserts that invariant rather than the order.
+
+---
+
 ## Not done here
 
 **The conversational router** — "the first one", "number three", "pause it" as spoken commands,

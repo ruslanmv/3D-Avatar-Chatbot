@@ -59,7 +59,32 @@ describe('what she is told about it', () => {
         Session.select(RESULT);
         const suffix = Context.systemPromptSuffix();
         expect(suffix).toMatch(/NOT playing/);
-        expect(suffix).toMatch(/tap the card/i);
+    });
+
+    test('for a track as well as a video — both branches, or the mutation hides in one', () => {
+        // A mutation that reworded only the music branch survived the whole suite, because
+        // every test here used a video. Two sentences means two tests.
+        const TRACK = { ...RESULT, id: 'fJ9rUzIMcZQ', kind: 'music', title: 'Bohemian Rhapsody' };
+        Context.set(TRACK);
+        Session.select(TRACK);
+        const suffix = Context.systemPromptSuffix();
+        expect(suffix).toMatch(/NOT playing/);
+        expect(suffix).toMatch(/play it, using the tag/i);
+        expect(suffix).not.toMatch(/tap the card/i);
+        // And it is described as listening, not watching.
+        expect(suffix).toMatch(/speakers/i);
+    });
+
+    test('and is told to play it rather than to send the user tapping', () => {
+        // M4 fixed a contradiction: `TogetherCapability` tells her to choose something and
+        // play it, while this line used to say "tell them to tap the card". Handed both, the
+        // model followed the second — which is why "play it please" got "tap it to play" from
+        // an app that had just been told it could play things.
+        Context.set(RESULT);
+        Session.select(RESULT);
+        const suffix = Context.systemPromptSuffix();
+        expect(suffix).toMatch(/play it, using the tag/i);
+        expect(suffix).not.toMatch(/tap the card/i);
     });
 
     test('playing: she can say it is playing, because it is', () => {
@@ -84,6 +109,7 @@ describe('what she is told about it', () => {
         Session.markBlocked();
         const suffix = Context.systemPromptSuffix();
         expect(suffix).toMatch(/NOT playing/);
+        // The one state where "tap" is honest, and so the only one that says it.
         expect(suffix).toMatch(/tap the card/i);
         expect(suffix).not.toMatch(/error|wrong|failed/i);
     });
@@ -166,56 +192,48 @@ describe('the ▶ button in Together', () => {
         return node;
     }
 
-    test('is drawn beside each row', async () => {
-        const root = mount({ onPlay: () => {} });
+    test('one action per row: tapping it plays', async () => {
+        // M3 gave a row two meanings — the row chose, a separate ▶ played. That is one
+        // control too many: "choose this music but do not start it" is not a thing anybody
+        // wants inside a panel called Watch, and it made every result carry two competing
+        // actions with no way to tell which was the ordinary one.
+        const activated = [];
+        const root = mount({ onChoose: (r) => activated.push(r) });
         await root.search('relaxing');
-        expect(root.querySelectorAll('.nexus-bd-together-play')).toHaveLength(2);
+
+        expect(root.querySelectorAll('.nexus-bd-together-result')).toHaveLength(2);
+        expect(root.querySelectorAll('.nexus-bd-together-play')).toHaveLength(0);
+
+        root.querySelector('.nexus-bd-together-result').click();
+        expect(activated).toHaveLength(1);
+        expect(activated[0].id).toBe('1ZYbU82GVz4');
     });
 
-    test('and is not drawn at all when nothing can act on it', async () => {
-        // A control that cannot do anything is worse than no control.
+    test('the ▶ is a cue inside the row, not a rival control', async () => {
         const root = mount();
         await root.search('relaxing');
-        expect(root.querySelectorAll('.nexus-bd-together-play')).toHaveLength(0);
-        expect(root.querySelectorAll('.nexus-bd-together-result')).toHaveLength(2);
+        const cue = root.querySelector('.nexus-bd-together-playcue');
+        expect(cue).not.toBeNull();
+        // Inside the row, so one tap anywhere on it does the one thing.
+        expect(cue.closest('.nexus-bd-together-result')).not.toBeNull();
+        // And silent to a screen reader: the row's own label already names what will play.
+        expect(cue.getAttribute('aria-hidden')).toBe('true');
     });
 
-    test('play and choose are different requests', async () => {
-        // Both firing would publish two cards for one tap.
-        const chosen = [];
-        const played = [];
-        const root = mount({ onChoose: (r) => chosen.push(r), onPlay: (r) => played.push(r) });
+    test('the row still names what it will play', async () => {
+        const root = mount();
         await root.search('relaxing');
-
-        root.querySelector('.nexus-bd-together-play').click();
-
-        expect(played).toHaveLength(1);
-        expect(chosen).toHaveLength(0);
-        expect(played[0].id).toBe('1ZYbU82GVz4');
-    });
-
-    test('the row still chooses, exactly as it did', async () => {
-        const chosen = [];
-        const root = mount({ onChoose: (r) => chosen.push(r), onPlay: () => {} });
-        await root.search('relaxing');
-        root.querySelector('.nexus-bd-together-result').click();
-        expect(chosen).toHaveLength(1);
-    });
-
-    test('the button names what it will play, for a screen reader', async () => {
-        const root = mount({ onPlay: () => {} });
-        await root.search('relaxing');
-        const label = root.querySelector('.nexus-bd-together-play').getAttribute('aria-label');
+        const label = root.querySelector('.nexus-bd-together-result').getAttribute('aria-label');
         expect(label).toMatch(/Flying/);
         expect(label).toMatch(/Soothing Relaxation/);
     });
 
-    test('a button inside a button would be invalid, so it is a sibling', async () => {
-        // Browsers resolve nested buttons by dropping one of them, silently.
-        const root = mount({ onPlay: () => {} });
+    test('one tap is one request, never two', async () => {
+        // Two handlers firing would publish two cards for one finger.
+        const activated = [];
+        const root = mount({ onChoose: (r) => activated.push(r) });
         await root.search('relaxing');
-        const play = root.querySelector('.nexus-bd-together-play');
-        expect(play.closest('.nexus-bd-together-result')).toBeNull();
-        expect(play.parentElement.querySelector('.nexus-bd-together-result')).not.toBeNull();
+        root.querySelector('.nexus-bd-together-playcue').click();
+        expect(activated).toHaveLength(1);
     });
 });

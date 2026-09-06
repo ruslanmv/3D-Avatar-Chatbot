@@ -257,20 +257,13 @@ const TogetherLauncher = (() => {
   background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.08);
   color: #e8ecf2; font: inherit;
 }
-/* M3. The row and its ▶ sit side by side; the row keeps every rule it had, and takes the
-   space the button does not. */
-.nexus-bd-together-resultrow { display: flex; align-items: stretch; gap: .3rem; }
-.nexus-bd-together-resultrow .nexus-bd-together-result { flex: 1 1 auto; min-width: 0; }
-.nexus-bd-together-play {
-  flex: 0 0 auto; width: 40px; min-height: 40px; border-radius: 9px; cursor: pointer;
-  background: rgba(34,211,238,.10); border: 1px solid rgba(34,211,238,.28);
-  color: var(--accent-cyan, #22d3ee); font: inherit; font-size: .78rem; line-height: 1;
-  display: flex; align-items: center; justify-content: center;
+/* M4. The ▶ lives inside the row as a cue, not beside it as a rival control. It sits at the
+   end and takes no space from the title. */
+.nexus-bd-together-playcue {
+  margin-left: auto; flex: 0 0 auto; padding-left: .4rem;
+  color: var(--accent-cyan, #22d3ee); font-size: .72rem; opacity: .55;
 }
-.nexus-bd-together-play:hover { background: rgba(34,211,238,.2); border-color: rgba(34,211,238,.5); }
-.nexus-bd-together-play:focus-visible {
-  outline: 2px solid var(--accent-cyan, #22d3ee); outline-offset: 2px;
-}
+.nexus-bd-together-result:hover .nexus-bd-together-playcue { opacity: 1; }
 .nexus-bd-together-result:hover { background: rgba(34,211,238,.12); border-color: rgba(34,211,238,.32); }
 .nexus-bd-together-result:focus-visible {
   outline: 2px solid var(--accent-cyan, #22d3ee); outline-offset: 2px;

@@ -126,55 +126,53 @@ const ConversationPublisher = (() => {
         }
 
         if (play) {
-            start(result, d, w);
+            start(result, node, w);
         }
         return node;
     }
 
     /**
-     * Actually start it — the step ▶ Play adds and choosing never had.
+     * Actually start it, in the same tick.
      *
-     * The card is built by `YouTubeEmbed2D` when it scans the message, which happens after
-     * `say` returns, so there is nothing to press yet at this point. Rather than reach into
-     * the embed's internals or guess at a delay, this waits for the card carrying this id to
-     * appear and clicks its facade — the same thing a finger does, through the same code path,
-     * so playback, the collapse button and the session reporting all behave identically
-     * whether a person or the app started it.
+     * The first version polled: publish, wait 120 ms, look for the card, synthesise a click,
+     * retry for four seconds. It worked, and it was the wrong shape for one reason that
+     * matters more than the tidiness — **user activation**. A browser will only let a page
+     * make noise on its own for a short window after a real tap, and a `setTimeout` chain
+     * spends that window waiting. So the path most likely to be allowed to play, a finger
+     * landing on a Together row, was the path that threw the permission away.
      *
-     * Gives up quietly after a short window. A card that never arrived means the message had
-     * no embeddable link in it, and the published line still stands with its URL.
+     * Doing it synchronously keeps the tap and the playback in one event chain. It also
+     * removes a real bug the polling had: `querySelector` searched the whole document, so a
+     * card for the same video further up the conversation would be found and started instead
+     * of the one just published.
+     *
+     * The embed is asked to decorate this node specifically, which turns the URL in the
+     * message into a card; then the card is activated. If either step is unavailable the
+     * message still stands with its link, and the observer that watches the chat will build
+     * the card a moment later exactly as it always has — the user just has to press it.
      */
-    function start(result, d, w) {
+    function start(result, node, w) {
         const id = String((result && result.id) || '').trim();
-        if (!id || !d || !w || typeof w.setTimeout !== 'function') {
+        const embed = w && w.NEXUS_YT_2D;
+        if (!id || !node || !embed || typeof embed.activate !== 'function') {
             return false;
         }
-        const deadline = 4000;
-        const step = 120;
-        let waited = 0;
-        const tick = () => {
-            let facade = null;
-            try {
-                const card = d.querySelector(`.nexus-yt-card[data-yt-id="${id}"]`);
-                facade = card ? card.querySelector('.nexus-yt-facade') : null;
-            } catch (_) {
-                return;
+        try {
+            if (typeof embed.decorateLive === 'function') {
+                embed.decorateLive(node);
             }
-            if (facade && typeof facade.click === 'function') {
-                try {
-                    facade.click();
-                } catch (_) {
-                    /* a card that went away mid-wait is not a failure worth reporting */
-                }
-                return;
+            // Scoped to the node just published. The old whole-document lookup would happily
+            // start an older card for the same video sitting further up the conversation.
+            const card = node.querySelector(`.nexus-yt-card[data-yt-id="${id}"]`);
+            if (!card) {
+                return false;
             }
-            waited += step;
-            if (waited < deadline) {
-                w.setTimeout(tick, step);
-            }
-        };
-        w.setTimeout(tick, step);
-        return true;
+            embed.activate(card, { id, start: Number(result.start) || 0, name: result.title || '' });
+            return true;
+        } catch (_) {
+            // A card that will not start is not a reason to lose the message it came with.
+            return false;
+        }
     }
 
     return { publish, line, start };

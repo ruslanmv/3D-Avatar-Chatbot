@@ -221,6 +221,31 @@ const YouTubeAsk = (() => {
             parent.appendChild(embed.buildCard(r, { doc: d }));
             drawn += 1;
         }
+
+        // M4. Remember what was shown, so "play the first one" has something to point at.
+        //
+        // Without this the reference resolver has an empty list and the sentence falls
+        // through to the search parser, which is exactly the bug: "play the fist song of the
+        // list" became a YouTube query for those words. Drawing cards and recording them are
+        // one act — a list on screen that the app cannot name is a list nobody can refer to.
+        const session = typeof window !== 'undefined' ? window.NEXUS_MEDIA_SESSION : null;
+        if (session && typeof session.setResults === 'function') {
+            try {
+                session.setResults(
+                    rows.map((r) => ({
+                        id: r.id,
+                        provider: 'youtube',
+                        kind: 'video',
+                        title: r.name || r.title || '',
+                        creator: r.channel || r.creator || '',
+                        url: `https://www.youtube.com/watch?v=${r.id}`,
+                    })),
+                    { source: 'search' }
+                );
+            } catch (_) {
+                // Cards on screen are worth more than the ability to name them.
+            }
+        }
         return drawn;
     }
 
@@ -310,6 +335,43 @@ const YouTubeAsk = (() => {
         }
 
         const intercept = (e) => {
+            const said0 = input.value;
+            const w = typeof window !== 'undefined' ? window : null;
+            const command = w && w.NEXUS_MEDIA_COMMAND;
+            const intents = w && w.NEXUS_MEDIA_INTENT;
+
+            // M4. A pointer at results already on screen, resolved before anything treats the
+            // sentence as search terms.
+            //
+            //     YOU  play the fist song of the list
+            //          → five videos about first songs
+            //
+            // The app was holding the list. `MediaSession` keeps it precisely so "the first
+            // one" can mean something, and this is where that becomes true — no provider call,
+            // no second catalogue, just the thing they pointed at.
+            if (command && typeof command.resolve === 'function' && intents) {
+                let pointed = null;
+                try {
+                    pointed = command.resolve(said0);
+                } catch (_) {
+                    pointed = null;
+                }
+                if (pointed && pointed.result) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    input.value = '';
+                    say(said0, 'user', d);
+                    try {
+                        if (typeof intents.play === 'function') {
+                            intents.play(pointed.result, 'reference');
+                        }
+                    } catch (_) {
+                        /* a pointer that cannot play is not worth losing the message over */
+                    }
+                    return;
+                }
+            }
+
             const intent = parseIntent(input.value);
             const follow = typeof window !== 'undefined' ? window.NEXUS_PLAY_FOLLOWUP : null;
 
@@ -342,6 +404,19 @@ const YouTubeAsk = (() => {
             const asked = input.value;
             input.value = '';
             say(asked, 'user', d);
+
+            // M4. "Play" and "find" were the same verb list, so a request to *start* something
+            // was answered with a catalogue and four more steps:
+            //
+            //     YOU    play music please
+            //     NEXUS  Here's what I found for “music”. Press play on one…
+            //
+            // Now an execute verb takes the execute path: one result, published and started.
+            // Discover keeps the list, because a list is what was asked for.
+            if (command && intents && command.action(asked) === 'execute' && typeof intents.fulfil === 'function') {
+                void intents.fulfil({ query: intent.query, kind: intent.kind || 'video', source: 'pattern' });
+                return;
+            }
             void fulfil(intent.query, { doc: d });
         };
         const onKey = (e) => {
