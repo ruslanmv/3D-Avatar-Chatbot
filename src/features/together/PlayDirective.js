@@ -39,6 +39,18 @@
     /** A tag left unclosed by a truncated reply. Removed from display, never executed. */
     const ORPHAN = /<play(?:\s[^>]{0,80})?>[\s\S]*$/i;
 
+    /**
+     * The tag with its angle brackets missing, which a real reply did:
+     *
+     *     play kind="video" tag="video"
+     *
+     * That was the whole message. It is not executable — there is no query in it — but it must
+     * never be *displayed*, and before T8 it was: the user's answer to "I want to watch a
+     * romantic video" was a line of broken markup. Stripped here so the reply falls back to
+     * whatever prose surrounds it, and the claim backstop plays what they asked for.
+     */
+    const BARE = /(?:^|\n)\s*play\s+kind\s*=\s*["'][a-z]+["'][^\n]{0,80}/gi;
+
     function kindOf(raw) {
         return String(raw || '').toLowerCase() === 'music' ? 'music' : 'video';
     }
@@ -51,8 +63,13 @@
         const source = String(text == null ? '' : text);
         const match = source.match(TAG);
         if (!match) {
-            // Still strip an unclosed tag: a truncated reply should not end in visible markup.
-            const clean = source.replace(ORPHAN, '').trim();
+            // Still strip an unclosed or bracket-less tag: a mangled reply should not end in
+            // visible markup, even though there is nothing in it to run.
+            const clean = source
+                .replace(ORPHAN, '')
+                .replace(BARE, ' ')
+                .replace(/[ \t]{2,}/g, ' ')
+                .trim();
             return { clean, directive: null, extra: 0 };
         }
 
@@ -67,6 +84,7 @@
         }
         clean = clean
             .replace(ORPHAN, '')
+            .replace(BARE, ' ')
             .replace(/[ \t]{2,}/g, ' ')
             .trim();
 
@@ -90,8 +108,33 @@
      * right outcome — she said something true, and the media simply did not arrive.
      */
     function consume(text, options = {}) {
-        const { clean, directive } = extract(text);
+        const extracted = extract(text);
+        const directive = extracted.directive;
+        // T8. Take out any media URL she wrote before anything downstream can show it. She has
+        // never searched, so a link she produced is eleven plausible characters, not a fact —
+        // and once it is in the bubble it is indistinguishable from the app's real card.
+        const links = options.links || (global && global.NEXUS_INVENTED_LINKS) || null;
+        let clean = extracted.clean;
+        if (links && typeof links.strip === 'function') {
+            try {
+                clean = links.strip(clean).text;
+            } catch (_) {
+                // Never lose the reply over a tidy-up.
+            }
+        }
         if (!directive) {
+            // T8. No tag — but she may have said she was playing something anyway, and a reply
+            // that claims to act and then does not is worse than the apology T2 removed.
+            // `honour` returns false for every reply that made no claim, which is nearly all
+            // of them, so the common path is one regex and out.
+            const claim = options.claim || (global && global.NEXUS_PLAY_CLAIM) || null;
+            if (claim && typeof claim.honour === 'function') {
+                try {
+                    claim.honour(clean, options);
+                } catch (_) {
+                    // A backstop is not worth losing the reply over.
+                }
+            }
             return clean;
         }
         const intent = options.intent || (global && global.NEXUS_MEDIA_INTENT) || null;
@@ -107,7 +150,7 @@
         return clean;
     }
 
-    const api = { TAG, extract, has, consume };
+    const api = { TAG, BARE, extract, has, consume };
 
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;

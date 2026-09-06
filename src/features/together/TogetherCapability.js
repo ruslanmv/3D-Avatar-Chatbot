@@ -81,8 +81,19 @@
         '"I need to focus" — choose something and play it by writing, on its own line:',
         '  <play kind="music">search terms</play>',
         'Use kind="video" for something to watch. Say one short sentence about what you are',
-        'putting on, and write the tag. Do not ask permission first, and do not list options',
-        'unless you were asked for options. Write at most one tag per reply.',
+        'putting on, and write the tag. Choose something yourself and play it: do not ask',
+        'permission, do not ask what mood or genre they want, and do not propose ("how about',
+        'some acoustic guitar?") — proposing is asking. If the request is vague, pick something',
+        'that fits and play it; they will tell you if they wanted something else. Do not list',
+        'options unless you were asked for options. Write at most one tag per reply.',
+        '',
+        'NEVER write a URL, a link, or a video ID yourself, and never name a specific track or',
+        'video as though you had already found it. You have not searched — the app does that',
+        'when it reads your tag, and it shows the real result it found. A link you write is a',
+        'guess that looks like a fact, and it will be wrong.',
+        'Earlier messages in this chat include cards the app itself posted, which name a real',
+        'track and its link. Those are the app speaking, not you. Never copy or imitate their',
+        'wording — writing one yourself produces a card that looks official and is invented.',
     ].join('\n');
 
     /**

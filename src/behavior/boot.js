@@ -83,6 +83,12 @@
         'src/features/together/PlayDirective.js',
         // T6. One topic, two turns, so "yes" and "play it" point at something.
         'src/features/together/PlayFollowUp.js',
+        // T8. She has never searched, so any URL in a reply was invented — this takes it out
+        // before anything can display it. Loaded before the parser that calls it.
+        'src/features/together/InventedLinks.js',
+        // T8. When she says she is playing something, make it true. After PlayFollowUp,
+        // whose held topic is the only thing it will ever search for.
+        'src/features/together/PlayClaim.js',
         // T7. The quiet after something starts playing. Loaded before the launcher, which
         // arms it; on its own it does nothing at all until armed.
         'src/features/together/AmbientMode.js',

@@ -108,17 +108,36 @@
         if (!provider || typeof provider.search !== 'function') {
             // No key anywhere. The samples are a real answer rather than a placeholder: they
             // play through this same path, so "she can play something" stays true.
-            const samples = pick('NEXUS_DISCOVERY_SAMPLES');
-            if (samples && typeof samples.forCapability === 'function') {
-                const fallback = samples.forCapability(capability) || [];
-                return fallback.length ? fallback : null;
-            }
-            return null;
+            return samplesFor(capability);
         }
 
         try {
             const found = await provider.search(query, { max: 4, kind });
-            return Array.isArray(found) ? found : [];
+            if (Array.isArray(found) && found.length) {
+                return found;
+            }
+            // A search that ran and came back empty used to end here, and the user was told
+            // "I didn't find a playable result for that" — measured live, that was three of
+            // five remaining failures. Empty-handed is never the better answer when there is
+            // something real that will play: the sample is honest about being a sample (the
+            // publisher's card says so in as many words), and it beats a dead end.
+            return samplesFor(capability) || [];
+        } catch (_) {
+            // A search that could not run is a different fact from one that found nothing —
+            // but the person asking does not care, and a sample is still better than nothing.
+            return samplesFor(capability);
+        }
+    }
+
+    /** The keyless samples for a capability, or `null` when there are none. */
+    function samplesFor(capability) {
+        const samples = pick('NEXUS_DISCOVERY_SAMPLES');
+        if (!samples || typeof samples.forCapability !== 'function') {
+            return null;
+        }
+        try {
+            const fallback = samples.forCapability(capability) || [];
+            return fallback.length ? fallback : null;
         } catch (_) {
             return null;
         }
@@ -137,7 +156,7 @@
         }
     }
 
-    const api = { WHY, CAPABILITY, fulfil, search, play };
+    const api = { WHY, CAPABILITY, fulfil, search, play, samplesFor };
 
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;

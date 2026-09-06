@@ -116,8 +116,23 @@ describe('she is told what she can do', () => {
     test('and tells her not to ask first, which is what the transcript did wrong', () => {
         // Her second turn was asking whether to search, getting "yes", and then listing genres
         // instead of playing anything. Every extra turn is a chance to lose the thread.
+        //
+        // Asserted by intent rather than by sentence. An earlier version pinned the exact
+        // string "Do not ask permission first", so rewording the paragraph broke a test whose
+        // claim was still true — the test was measuring the prose, not the instruction.
         Switch.enable('tile');
-        expect(Capability.systemPromptSuffix()).toContain('Do not ask permission first');
+        const suffix = Capability.systemPromptSuffix();
+        // `\s+`, not a space: the paragraph is hard-wrapped, so the phrase spans a line break.
+        expect(suffix).toMatch(/do not ask\s+permission/i);
+        expect(suffix).toMatch(/choose something\s+yourself/i);
+    });
+
+    test('and that proposing is a way of asking', () => {
+        // Observed live: "How about some soothing acoustic guitar to help you unwind? 🎶" —
+        // no tag, nothing played. It obeys "do not ask permission" to the letter and still
+        // leaves the person waiting, so the instruction has to name it.
+        Switch.enable('tile');
+        expect(Capability.systemPromptSuffix()).toMatch(/do not\s+propose/i);
     });
 
     test('and that an indirect request is still a request', () => {

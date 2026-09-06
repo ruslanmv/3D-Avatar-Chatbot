@@ -35,8 +35,26 @@ const ConversationPublisher = (() => {
     }
 
     /** What she says above the card. The title in quotes, because it is what you picked. */
+    /**
+     * What the card says it is doing.
+     *
+     * A sample gets a different sentence, and that is not decoration. With no YouTube key
+     * configured the app cannot search, so it plays the one keyless sample it ships — which
+     * has nothing to do with what was asked for. Announcing that as `Playing “…”` told the
+     * user their request had been fulfilled when it had not: someone asking for a romantic
+     * video was shown a video about autonomous agents, phrased as though it were the answer.
+     *
+     * Saying so costs one clause and turns a wrong answer into an honest one, with the fix
+     * named. The media still plays — there is something to watch either way — but nobody is
+     * misled about what they are looking at.
+     */
     function line(result) {
         const title = String((result && result.title) || '').trim();
+        if (result && result.sample) {
+            return title
+                ? `Search isn't set up here yet, so here's a sample instead — “${title}”`
+                : "Search isn't set up here yet, so here's a sample instead";
+        }
         return title ? `Playing “${title}”` : 'Here you go';
     }
 

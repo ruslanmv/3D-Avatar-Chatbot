@@ -278,6 +278,53 @@ T7 needs to know the moment something starts and polling for it would mean a tim
 the whole life of every session to catch an event that happens twice an hour. It is guarded to
 nothing and does not change what the model reads.
 
+
+---
+
+### T8 — She does what she says ✅
+
+Found by running the shipped app against the live OllaBridge cloud gateway, not by reasoning
+about it. Twelve turns of *"I want to relax play music"*, *"I want watch a very romantic
+video"*, *"suggest me a music"*: **four played, eight did not**. The tag itself was fine — the
+model emitted a usable `<play>` in 18 replies out of 20. Everything that went wrong went wrong
+around it, and each failure was worse than the apology T2 removed, because each one *claimed
+success*:
+
+| what she said | what happened | fix |
+|---|---|---|
+| *"Playing a romantic video for you. 💕"* | no tag, nothing played | **claim backstop** |
+| *"I'll put on some calming music for you."* | no tag, nothing played | claim backstop, immediate promises |
+| *"Pulling up a sweet, romantic video for you."* | no tag, nothing played | claim backstop, verb found live |
+| `play kind="video" tag="video"` | raw markup shown to the user | **bracket-less tag stripped** |
+| *"Playing \"Ed Sheeran - Perfect\" — youtube.com/watch?v=2Vv-BfVoq4g"* | invented link, nothing played | **invented links stripped** |
+| *"…here's a sample instead — “The Beatles — Here Comes the Sun”"* | invented card in the app's own voice | **fabricated cards stripped** |
+| *(empty reply)* | empty bubble, nothing played | **silence is a backstop trigger** |
+| *"I didn't find a playable result for that."* | search ran, found nothing, gave up | **samples on an empty search** |
+
+**The claim backstop.** If a reply claims to be playing something and no directive ran, play
+what the user asked for. Every word is load-bearing: *claims* (not "mentions music" — a reply
+discussing a band starts nothing); *no directive ran* (this never competes with T5, so nothing
+plays twice); *what the user asked for* (the query is the topic `PlayFollowUp` already holds,
+never invented from her prose — no held request means nothing plays, whatever the reply says).
+The verb list is an enumeration and enumerations are never complete; every verb in it was
+added because a real reply used it, and none on speculation. This is a net under T5, not a
+replacement for it.
+
+**She does not know any URLs, so she must not write any.** She has never searched — a link she
+writes is eleven plausible characters, and once it is in the bubble it is indistinguishable
+from the app's real card. Worse, the app's own cards are in her context and she learned to
+imitate them, titles and all. Both are stripped, and the prompt now forbids both. A guarantee
+about what reaches the user cannot rest on the model choosing to comply.
+
+**A search that found nothing is not a dead end.** The keyless samples were only ever consulted
+when there was *no provider at all*, so a provider that registered and returned an empty list
+skipped them and left the person with nothing. That was three of five remaining failures. The
+card says in as many words that it is a sample, so nobody is misled — and something honest
+beats a dead end.
+
+**Result, same twelve turns against the same live gateway: 12/12.** No leaked markup, no
+invented link, no fabricated card.
+
 ---
 
 ## 5. What we are deliberately not doing
