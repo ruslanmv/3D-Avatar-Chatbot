@@ -1457,6 +1457,24 @@
                             </label>
                         </div>
 
+                        <!-- Batch T1. One switch for the whole of Together, and the only place
+                             the question is asked twice. It turns itself on the first time
+                             somebody taps a tile, so this box exists to turn it *off* — which
+                             is why there is one row here and not seven. -->
+                        <div class="input-group">
+                            <label class="spicy-toggle-label">
+                                <span>Together — watch, listen and focus with her</span>
+                                <div class="spicy-toggle-switch">
+                                    <input type="checkbox" id="together-enabled-toggle" />
+                                    <span class="spicy-toggle-slider"></span>
+                                </div>
+                            </label>
+                            <p style="font-size: 0.7rem; color: #888; margin: 6px 0 0">
+                                Turns on by itself the first time you open Together. Off hides it and stops her offering
+                                to play anything.
+                            </p>
+                        </div>
+
                         <!-- Batch B9, reshaped in B35. The two controls that used to live
                              here — a "Connect HomePilot session" switch and a URL box — asked
                              the user for something the app can find out: OllaBridge already
@@ -1527,6 +1545,31 @@
                     </div>
                     <script>
                         (function () {
+                            /* Batch T1. Reads and writes NEXUS_TOGETHER_SWITCH rather than
+                               localStorage directly, so the launcher hears about the change
+                               immediately instead of on the next reload — the switch is the
+                               one owner of that state and the box is a view of it. */
+                            var together = document.getElementById('together-enabled-toggle');
+                            if (together) {
+                                var readTogether = function () {
+                                    var sw = window.NEXUS_TOGETHER_SWITCH;
+                                    /* Never touched reads as off here: the box answers "is it
+                                       on", and a fresh profile has not turned it on yet. */
+                                    together.checked = !!(sw && sw.isOn && sw.isOn());
+                                };
+                                readTogether();
+                                /* The switch may load after this inline script — it comes in
+                                   with the director's module list — so read once more when it
+                                   is there rather than leaving the box stale. */
+                                setTimeout(readTogether, 1500);
+                                together.addEventListener('change', function () {
+                                    var sw = window.NEXUS_TOGETHER_SWITCH;
+                                    if (!sw) return;
+                                    if (together.checked) sw.enable('settings');
+                                    else sw.disable('settings');
+                                });
+                            }
+
                             var box = document.getElementById('behavior-engine-toggle');
                             if (!box) return;
                             try {

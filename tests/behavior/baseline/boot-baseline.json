@@ -11,13 +11,13 @@
     },
     {
       "file": "index.html",
-      "line": 1623,
+      "line": 1666,
       "guarded": true,
       "comment": false
     },
     {
       "file": "index.html",
-      "line": 1658,
+      "line": 1701,
       "guarded": true,
       "comment": false
     },
@@ -107,7 +107,7 @@
     },
     {
       "file": "src/main.js",
-      "line": 4778,
+      "line": 4796,
       "guarded": false,
       "comment": true
     },

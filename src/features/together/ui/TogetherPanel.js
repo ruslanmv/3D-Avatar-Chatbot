@@ -269,6 +269,19 @@ const TogetherPanel = (() => {
             const contract = this.contractFor(id);
             if (!contract && !this.activities.has(id)) return { ok: false, why: `no activity ${id}` };
 
+            // T1. Using it is how you turn it on. Somebody who has just pressed Music has
+            // answered the question more clearly than any dialog could ask it, so there is no
+            // dialog — one silent, idempotent call on every tile press, and from here on she
+            // can also play media from conversation. Guarded because the switch is a separate
+            // module and a panel that failed to open over a missing one would be a worse
+            // trade than a switch that stays where it was.
+            try {
+                const sw = typeof window !== 'undefined' ? window.NEXUS_TOGETHER_SWITCH : null;
+                if (sw && typeof sw.enable === 'function') sw.enable('tile');
+            } catch (_) {
+                /* the activity still opens */
+            }
+
             if (contract) {
                 const inputs = contract.inputs();
                 // One input that asks nothing is not a question, and a setup screen showing a

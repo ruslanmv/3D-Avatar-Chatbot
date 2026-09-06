@@ -400,6 +400,7 @@ const TogetherLauncher = (() => {
             this.opens = 0;
             this._unsubscribe = null;
             this._stopInsetWatch = null;
+            this._stopSwitchWatch = null;
             this._onKey = (event) => this._key(event);
             this._onPointer = (event) => this._pointer(event);
             this._bound = false;
@@ -431,6 +432,13 @@ const TogetherLauncher = (() => {
                 });
             }
             this._reflect();
+            this._reflectSwitch();
+            // Settings can flip it while the launcher is mounted, and the two must never
+            // disagree about whether Together exists.
+            const sw = typeof window !== 'undefined' ? window.NEXUS_TOGETHER_SWITCH : null;
+            if (sw && typeof sw.onChange === 'function') {
+                this._stopSwitchWatch = sw.onChange(() => this._reflectSwitch());
+            }
             return this;
         }
 
@@ -442,6 +450,24 @@ const TogetherLauncher = (() => {
          * composer measures 0 — because the launcher attaching is not worth failing over a
          * measurement that only matters on a phone.
          */
+        /**
+         * Hide every way in when Together is switched off (T1).
+         *
+         * Off has to mean off everywhere. Leaving the button while the capabilities are gone
+         * would give somebody a control that opens a panel whose activities cannot reach the
+         * model, and leaving the capabilities while hiding the button would have her offering
+         * to play music with no way to show it.
+         */
+        _reflectSwitch() {
+            const sw = typeof window !== 'undefined' ? window.NEXUS_TOGETHER_SWITCH : null;
+            const visible = !sw || typeof sw.isVisible !== 'function' || sw.isVisible();
+            for (const node of [this.button, this.drawerItem]) {
+                if (node) node.hidden = !visible;
+            }
+            if (!visible && this.panel && this.panel.isOpen) this.close({ restoreFocus: false });
+            return visible;
+        }
+
         _watchComposer() {
             const inset = (typeof window !== 'undefined' && window.NEXUS_COMPOSER_INSET) || null;
             if (!inset || typeof inset.watch !== 'function') return null;
@@ -730,6 +756,8 @@ const TogetherLauncher = (() => {
             // them behind after detach would keep writing a property nothing reads.
             if (this._stopInsetWatch) this._stopInsetWatch();
             this._stopInsetWatch = null;
+            if (this._stopSwitchWatch) this._stopSwitchWatch();
+            this._stopSwitchWatch = null;
             this._listen(false);
             for (const node of [this.button, this.drawerItem, this.style]) {
                 if (node && node.parentNode) node.parentNode.removeChild(node);

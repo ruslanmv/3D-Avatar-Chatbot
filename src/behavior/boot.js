@@ -73,6 +73,14 @@
         // Three videos and three songs that need no key, so the feature can be tried before it
         // is configured. Not a provider: samples answer no queries.
         'src/features/discovery/samples.js',
+        // T1/T2. The one switch, and the paragraph that stops her apologising. Before the
+        // launcher that flips the switch and before anything that reads it.
+        'src/features/together/TogetherSwitch.js',
+        'src/features/together/TogetherCapability.js',
+        // T3/T5. The one function that finds and plays, and the parser that lets her ask for
+        // it. After the publisher's dependencies, before the launcher.
+        'src/features/together/MediaIntent.js',
+        'src/features/together/PlayDirective.js',
         'src/features/together/ui/MediaSearchPicker.js',
         // D9. What is playing, for the model. Loaded before the publisher that sets it.
         'src/features/together/CurrentMediaContext.js',
