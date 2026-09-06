@@ -3598,6 +3598,10 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
 
         <!-- YouTube Everywhere (additive — thumbnails + inline player in 2D chat, cards + companion-tab playback in VR) -->
         <!-- NON-DESTRUCTIVE: To remove, delete these 7 script tags and the src/features/youtube/ folder. Search "NEXUS_YT" -->
+        <!-- M11. The staged connection check. Loaded here rather than with the behavior
+             director because Test Connection lives in Settings and must work whether or not
+             the director is switched on. -->
+        <script defer src="src/features/diagnostics/ConnectionCheck.js"></script>
         <script defer src="src/features/youtube/YouTubeLink.js"></script>
         <!-- M2. Hears back from the YouTube player, so "playing" means the player said so
              rather than the app having asked. Loads no network script of its own until

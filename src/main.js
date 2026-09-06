@@ -5372,15 +5372,102 @@ async function __nexusTestConnection() {
 
     const ping = 'Respond with the single word: OK';
 
+    // M11. Walk the stages a round trip actually passes through, rather than reporting the
+    // whole journey as one boolean. `✅ Connected. Reply: [object Object]` was the old best
+    // case — a success that could not show what came back — and every failure, from being
+    // offline to a model answering with nothing, arrived as the same red sentence.
+    const check = typeof window !== 'undefined' ? window.NEXUS_CONNECTION_CHECK : null;
+    if (check && typeof check.run === 'function') {
+        const stored = __nexusOllaBridgeStored();
+        const report = await check.run({
+            provider: config.provider,
+            baseUrl: config.baseUrl,
+            model: config.model,
+            credential: __nexusCredentialShape(stored),
+            // The app's own calls, injected rather than reimplemented: a check that used its
+            // own client could pass while the app fails, which is worse than no check.
+            listModels: __nexusListModelsForTest(),
+            complete: (prompt) => callLLM(prompt),
+            prompt: ping,
+        });
+        // The full stage-by-stage report goes to the console, where it can be copied into a
+        // bug thread; the summary is what fits on one line in Settings.
+        console[report.ok ? 'log' : 'warn']('[Nexus] connection check\n' + report.report);
+        __nexusLastConnectionReport = report;
+        return { ok: report.ok, message: `${report.ok ? '✅' : '❌'} ${report.summary}`, report };
+    }
+
     try {
         const reply = await callLLM(ping);
-        const short = String(reply || '')
-            .trim()
-            .slice(0, 120);
+        const short = (check ? check.textOf(reply) : String(reply || '')).trim().slice(0, 120);
         return { ok: true, message: `✅ Connected. Reply: ${short || 'OK'}` };
     } catch (e) {
         return { ok: false, message: `❌ ${e.message || e}` };
     }
+}
+
+/** The last report, so the Copy button and a console reader can reach it. */
+let __nexusLastConnectionReport = null;
+
+/** OllaBridge's stored block, or `{}`. Shared by the credential shape and the model list. */
+function __nexusOllaBridgeStored() {
+    try {
+        return JSON.parse(localStorage.getItem('nexus_llm_settings') || '{}').ollabridge || {};
+    } catch (_) {
+        return {};
+    }
+}
+
+/**
+ * What kind of credential this provider needs, and whether one is present.
+ *
+ * The *kind* matters as much as the presence: "pair this device again" and "enter an API key"
+ * are different instructions, and a check that says only "credential missing" leaves the
+ * person to work out which.
+ */
+function __nexusCredentialShape(stored) {
+    const provider = config && config.provider;
+    if (provider === 'ollama') {
+        return { kind: 'none', required: false, present: true };
+    }
+    if (provider === 'ollabridge') {
+        const paired = !!String(stored.pair_token || '').trim();
+        const key = !!String(config.apiKey || stored.api_key || '').trim();
+        return {
+            kind: stored.auth_mode === 'apikey' ? 'API key' : 'pairing token',
+            required: true,
+            present: paired || key,
+        };
+    }
+    return { kind: 'API key', required: true, present: !!String(config.apiKey || '').trim() };
+}
+
+/**
+ * A model lister for the check, or `null` where the provider has no catalog to ask for.
+ *
+ * Only OllaBridge is wired here on purpose. For the others the check simply skips `reach`,
+ * `auth` and `model` and goes straight to the completion — which still distinguishes an
+ * error from an empty answer, and is honest about having checked less.
+ */
+function __nexusListModelsForTest() {
+    if (!config || config.provider !== 'ollabridge') {
+        return null;
+    }
+    const manager = typeof window !== 'undefined' ? window._nexusLLM : null;
+    if (!manager || typeof manager.fetchAvailableModels !== 'function') {
+        return null;
+    }
+    // `fetchAvailableModels` swallows its own failures and returns `{ models: [], error }`,
+    // which is right for a dropdown — a list that cannot load should not take the panel down
+    // — and wrong for a diagnosis, where the error *is* the answer. Translated back into a
+    // throw so the check can tell "the host refused" from "the host has no models".
+    return async () => {
+        const out = await manager.fetchAvailableModels();
+        if (out && out.error) {
+            throw new Error(out.error);
+        }
+        return (out && out.models) || [];
+    };
 }
 
 function __nexusWireTestButton() {
