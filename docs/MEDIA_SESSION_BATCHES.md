@@ -201,6 +201,58 @@ and `control()` had no tests at all, and the stop pattern's anchor was untested.
 
 ---
 
+## M6 — finding is not playing ✅
+
+    YOU    search music about dance
+    NEXUS  Playing “70s & 80s Party Classics!…”
+
+They asked to look. The app chose for them and started it — which is not a smaller version of
+what was asked for, it is the opposite, and it cannot be walked back by saying "no, the other
+one", because something is already making noise.
+
+**The phrasings missed the patterns entirely.** `search music about dance`, `show me dance
+videos`, `list me the top 3 dance songs` matched nothing, so they fell through to the model —
+which had only ever been told *"choose something and play it"*, and did. The verb list now
+covers them and they classify as `discover`.
+
+**"The top 3" says how many, not what.** It was being left in the query, so a request for three
+songs searched YouTube for the words *top 3* and came back with compilations called "Top 3".
+The count is read out, capped, and honoured.
+
+**A connector leaked.** Widening the verbs made `search` match before `search for`, so
+`search for dance music` asked YouTube for *"for dance music"*.
+
+**The model gets its own verb.** `<find kind="music">terms</find>` shows results and starts
+nothing, with the prompt saying not to name titles it has not searched for. A reply carrying
+both tags lists rather than plays — the less destructive of the two, since a list can be
+followed by "play the first one" and something playing cannot be un-played.
+
+**The rows are the panel's rows.** Same markup, same classes, in a chat message: one thing to
+keep in step, one answer to "what does a result look like". One tap plays, through
+`MediaIntent.play`, so the card, session and prompt behave as they do on every other route.
+
+**Titles arrive readable.** The Data API escapes them, and the app renders titles as text —
+correctly, since a title is untrusted uploader text that must never be parsed as markup. So
+`Drake - One Dance ft. Wizkid &amp; Kyla` reached the screen with the entity intact. Decoded by
+a five-entry table rather than by an HTML parser, for the same reason.
+
+### Verified against a real YouTube search
+
+The first time this has been possible — a real Data API key, held only in the dev server's
+environment and never written to the repo (checked).
+
+| | |
+|---|---|
+| `search music about dance` | 4 real rows listed, **nothing playing** |
+| `can you list top 3 dance songs` | exactly 3 rows, nothing playing |
+| `play the first one` | plays row 1, no new search |
+| `play music about dance` | plays immediately, as before |
+
+Seven mutants. One survived and named a real gap: every entity assertion called the helper
+directly, so a mutation stopping `normalize` from using it passed the whole suite.
+
+---
+
 ## Not done here
 
 **The conversational router** — "the first one", "number three", "pause it" as spoken commands,

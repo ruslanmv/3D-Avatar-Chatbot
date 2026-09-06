@@ -101,6 +101,9 @@
         'src/features/together/MediaSession.js',
         // D9. What is playing, for the model. Loaded before the publisher that sets it.
         'src/features/together/CurrentMediaContext.js',
+        // M6. A short list in the chat for a request to find, so nothing plays until they
+        // pick one. Beside the publisher, which is what its rows call.
+        'src/features/together/ui/MediaResultList.js',
         'src/features/together/ui/ConversationPublisher.js',
         'src/features/together/activities/contract.js',
         'src/features/together/ui/failures.js',

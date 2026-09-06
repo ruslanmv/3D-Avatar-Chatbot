@@ -46,7 +46,19 @@ const YouTubeAsk = (() => {
     // ── the intent ──────────────────────────────────────────────────────────
 
     /** Verbs that can begin a request to play something. */
-    const PLAY = '(?:play|put on|start|queue up|pon|find|find me|search for|look for|get me)';
+    const PLAY =
+        '(?:play|put on|start|queue up|pon|execute|reproduce|find|find me|search|search for|look for|look up|get me|show me|list|list me|suggest|recommend)';
+
+    /**
+     * How many results a "top N" request asks for.
+     *
+     * "list the top 3 dance songs" is a request for three, and answering with four is the
+     * kind of small carelessness that makes an interface feel like it was not listening.
+     */
+    const HOW_MANY = /\btop\s+(\d{1,2})\b|\b(\d{1,2})\s+(?:best|songs?|tracks?|videos?)\b/i;
+
+    /** The counting words that are part of the ask, not part of what to search for. */
+    const COUNT_WORDS = /\b(?:the\s+)?top\s+\d{1,2}\s*|\b\d{1,2}\s+(?=best\b)|\bbest\s+(?=\d)/gi;
 
     /**
      * The politeness people actually put in front of a request (T4).
@@ -123,9 +135,18 @@ const YouTubeAsk = (() => {
             if (!m) {
                 continue;
             }
-            const q = m[1].replace(TRIM, '').replace(/\s+/g, ' ').trim();
+            let q = m[1].replace(TRIM, '').replace(/\s+/g, ' ').trim();
+            // Widening the verbs made `search` match before `search for`, so the connector
+            // leaked into the query and YouTube was asked for "for dance music".
+            q = q.replace(/^(?:for|about|of)\s+/i, '').trim();
+            // "top 3" says how many, not what — leaving it in searches YouTube for the words
+            // "top 3", which is how "list the top 3 dance songs" returns compilations called
+            // "Top 3".
+            const many = HOW_MANY.exec(t);
+            const count = many ? Number(many[1] || many[2]) : 0;
+            q = q.replace(COUNT_WORDS, '').replace(/\s+/g, ' ').trim();
             if (q) {
-                return { query: q, matched: re.source };
+                return { query: q, matched: re.source, count: count > 0 ? Math.min(count, 8) : 0 };
             }
         }
         return null;
@@ -442,8 +463,20 @@ const YouTubeAsk = (() => {
             //
             // Now an execute verb takes the execute path: one result, published and started.
             // Discover keeps the list, because a list is what was asked for.
-            if (command && intents && command.action(asked) === 'execute' && typeof intents.fulfil === 'function') {
+            const move = command ? command.action(asked) : null;
+            if (command && intents && move === 'execute' && typeof intents.fulfil === 'function') {
                 void intents.fulfil({ query: intent.query, kind: intent.kind || 'video', source: 'pattern' });
+                return;
+            }
+            // M6. A request to find ends in a list they can pick from — not in something
+            // playing that nobody chose. `count` honours "the top 3".
+            if (command && intents && move === 'discover' && typeof intents.list === 'function') {
+                void intents.list({
+                    query: intent.query,
+                    kind: intent.kind || 'video',
+                    count: intent.count || 4,
+                    source: 'pattern',
+                });
                 return;
             }
             void fulfil(intent.query, { doc: d });

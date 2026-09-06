@@ -264,6 +264,9 @@ const TogetherLauncher = (() => {
   color: var(--accent-cyan, #22d3ee); font-size: .72rem; opacity: .55;
 }
 .nexus-bd-together-result:hover .nexus-bd-together-playcue { opacity: 1; }
+/* M6. The same rows, in the chat rather than the panel: a little breathing room above them
+   and a cap so a list never becomes the whole thread. */
+.nexus-bd-together-chatlist { margin-top: .5rem; max-height: 15rem; overflow-y: auto; overscroll-behavior: contain; }
 .nexus-bd-together-result:hover { background: rgba(34,211,238,.12); border-color: rgba(34,211,238,.32); }
 .nexus-bd-together-result:focus-visible {
   outline: 2px solid var(--accent-cyan, #22d3ee); outline-offset: 2px;

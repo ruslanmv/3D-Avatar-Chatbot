@@ -36,6 +36,16 @@
      */
     const TAG = /<play(?:\s+kind\s*=\s*["']?([a-z]+)["']?)?\s*>([\s\S]{0,300}?)<\/play\s*>/i;
 
+    /**
+     * The other request: show me what there is (batch M6).
+     *
+     * "Search music about dance" was being answered by playing something, because the only
+     * verb the model had was play. Asking to *find* is asking to choose, and answering it by
+     * choosing on their behalf takes the choice away — so it gets its own tag, parsed by the
+     * same machinery and stripped by the same rules.
+     */
+    const FIND = /<find(?:\s+kind\s*=\s*["']?([a-z]+)["']?)?\s*>([\s\S]{0,300}?)<\/find\s*>/i;
+
     /** A tag left unclosed by a truncated reply. Removed from display, never executed. */
     const ORPHAN = /<play(?:\s[^>]{0,80})?>[\s\S]*$/i;
 
@@ -61,6 +71,20 @@
      */
     function extract(text) {
         const source = String(text == null ? '' : text);
+        // A `<find>` is checked first only so that a reply carrying both does the less
+        // destructive thing: showing options can be followed by "play the first one", while
+        // playing something cannot be un-played.
+        const found = source.match(FIND);
+        if (found) {
+            const q = String(found[2] || '').trim();
+            const clean = source
+                .replace(FIND, ' ')
+                .replace(ORPHAN, '')
+                .replace(BARE, ' ')
+                .replace(/[ \t]{2,}/g, ' ')
+                .trim();
+            return { clean, directive: null, find: q ? { kind: kindOf(found[1]), query: q } : null, extra: 0 };
+        }
         const match = source.match(TAG);
         if (!match) {
             // Still strip an unclosed or bracket-less tag: a mangled reply should not end in
@@ -70,7 +94,7 @@
                 .replace(BARE, ' ')
                 .replace(/[ \t]{2,}/g, ' ')
                 .trim();
-            return { clean, directive: null, extra: 0 };
+            return { clean, directive: null, find: null, extra: 0 };
         }
 
         const query = String(match[2] || '').trim();
@@ -91,6 +115,7 @@
         return {
             clean,
             directive: query ? { kind: kindOf(match[1]), query } : null,
+            find: null,
             extra,
         };
     }
@@ -110,6 +135,7 @@
     function consume(text, options = {}) {
         const extracted = extract(text);
         const directive = extracted.directive;
+        const find = extracted.find;
         // T8. Take out any media URL she wrote before anything downstream can show it. She has
         // never searched, so a link she produced is eleven plausible characters, not a fact —
         // and once it is in the bubble it is indistinguishable from the app's real card.
@@ -122,6 +148,22 @@
                 // Never lose the reply over a tidy-up.
             }
         }
+        if (find) {
+            // M6. Show them what there is. Not awaited, for the same reason a play is not:
+            // the sentence should appear when she says it, not after a search round trip.
+            const intent = options.intent || (global && global.NEXUS_MEDIA_INTENT) || null;
+            if (intent && typeof intent.list === 'function') {
+                try {
+                    Promise.resolve(intent.list({ query: find.query, kind: find.kind, source: 'model' })).catch(
+                        () => null
+                    );
+                } catch (_) {
+                    // A search that cannot run must not take the reply down with it.
+                }
+            }
+            return clean;
+        }
+
         if (!directive) {
             // T8. No tag — but she may have said she was playing something anyway, and a reply
             // that claims to act and then does not is worse than the apology T2 removed.
@@ -150,7 +192,7 @@
         return clean;
     }
 
-    const api = { TAG, BARE, extract, has, consume };
+    const api = { TAG, FIND, BARE, extract, has, consume };
 
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;
