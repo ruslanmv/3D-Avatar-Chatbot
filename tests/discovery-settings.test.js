@@ -188,3 +188,124 @@ describe('the Settings section', () => {
         }
     });
 });
+
+/**
+ * Opening Settings must not freeze the tab.
+ *
+ * D13 wanted one repaint after the readiness probe lands, so the provider list settles on the
+ * truth instead of sitting at "Checking…". The repaint is itself a `render` call, so the second
+ * one must not start another probe — and the guard that was supposed to ensure this cleared its
+ * flag *before* calling `render`, so the guard was already open by the time the guarded code
+ * ran. Every repaint warmed again.
+ *
+ * That froze the tab outright rather than merely wasting work. Once each provider's `ready()`
+ * has cached its answer, `warm()` resolves with no I/O, so the loop is pure microtasks — and the
+ * microtask queue is drained to empty before the browser paints, dispatches a click, or fires a
+ * timer. Measured in Chromium at 412×915: responsive for 46 ms after the Settings tap, then a
+ * freeze the CPU profiler could not even be stopped from. `Debugger.pause` named the line.
+ *
+ * These tests are written so the old code *fails* rather than hanging the suite: `warm()` stops
+ * resolving after a handful of calls, so a runaway loop shows up as a count, not as a test run
+ * that never ends.
+ */
+describe('opening Settings does not freeze the tab', () => {
+    /** `all()` yields the *status* shape the registry returns, not the provider itself. */
+    const status = (id, extra = {}) => provider(id, extra).status();
+
+    function countingRegistry({ stopAfter = 6 } = {}) {
+        const calls = { warm: 0 };
+        return {
+            calls,
+            all: () => [status('youtube')],
+            preferences: () => ({}),
+            setPreference: () => {},
+            warm() {
+                calls.warm += 1;
+                // A promise that never settles caps a runaway loop, so the failure is a wrong
+                // count instead of a test that never returns.
+                return calls.warm >= stopAfter ? new Promise(() => {}) : Promise.resolve([]);
+            },
+        };
+    }
+
+    /** Let every queued microtask run — which is exactly what the buggy loop never allowed. */
+    const drain = async () => {
+        for (let i = 0; i < 50; i += 1) {
+            await Promise.resolve();
+        }
+    };
+
+    beforeEach(() => {
+        document.body.innerHTML = MARKUP;
+    });
+
+    test('the probe runs once per open, not once per repaint', async () => {
+        const reg = countingRegistry();
+        window.NEXUS_DISCOVERY = reg;
+        Settings.render(document);
+        await drain();
+        expect(reg.calls.warm).toBe(1);
+    });
+
+    test('the repaint after the probe cannot start another probe', async () => {
+        // The stop condition is a parameter, so it is visible in the call rather than depending
+        // on when a shared field happens to be reset.
+        const reg = countingRegistry();
+        window.NEXUS_DISCOVERY = reg;
+        Settings.render(document, { warm: false });
+        await drain();
+        expect(reg.calls.warm).toBe(0);
+    });
+
+    test('and the repaint still happens, so the list settles on the truth', async () => {
+        // The whole point of warming: a provider that reports "checking" first and "ok" once
+        // the probe lands must end up reading Ready.
+        let ready = false;
+        const reg = {
+            all: () => [status('youtube', { available: ready, reason: ready ? 'ok' : 'checking' })],
+            preferences: () => ({}),
+            setPreference: () => {},
+            // Flipped when the probe *resolves*, not when it is called: `render` warms before
+            // it reads the provider list, so a synchronous flip here would be true by the time
+            // the first paint happens and the test would prove nothing about the repaint.
+            warm: () =>
+                Promise.resolve([]).then(() => {
+                    ready = true;
+                }),
+        };
+        window.NEXUS_DISCOVERY = reg;
+        Settings.render(document);
+        expect(document.getElementById('discovery-providers').textContent).toContain(Settings.STATE.checking);
+        await drain();
+        expect(document.getElementById('discovery-providers').textContent).toContain(Settings.STATE.ok);
+    });
+
+    test('a second open warms again, so a key added meanwhile shows up', async () => {
+        // Terminating must not mean "never probe again": somebody who pastes a key and reopens
+        // Settings has to see it take effect.
+        const reg = countingRegistry();
+        window.NEXUS_DISCOVERY = reg;
+        Settings.render(document);
+        await drain();
+        Settings.render(document);
+        await drain();
+        expect(reg.calls.warm).toBe(2);
+    });
+
+    test('a probe that rejects still repaints and still stops', async () => {
+        const calls = { warm: 0 };
+        window.NEXUS_DISCOVERY = {
+            all: () => [status('youtube')],
+            preferences: () => ({}),
+            setPreference: () => {},
+            warm() {
+                calls.warm += 1;
+                return calls.warm >= 6 ? new Promise(() => {}) : Promise.reject(new Error('offline'));
+            },
+        };
+        Settings.render(document);
+        await drain();
+        expect(calls.warm).toBe(1);
+        expect(document.getElementById('discovery-providers').textContent).toBeTruthy();
+    });
+});

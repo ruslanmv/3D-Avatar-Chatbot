@@ -69,9 +69,26 @@ const DiscoverySettings = (() => {
     /**
      * Draw the section. Called on every Settings open, so a key added on one visit shows as
      * Ready on the next without a reload.
+     *
+     * `warm` is what stops this recursing. D13 wanted one repaint after the readiness probe
+     * lands, so the list settles on the truth rather than sitting at "Checking…" — and the
+     * repaint is a `render` call, so the second one must not start another probe. It was
+     * guarded by a `render._warming` flag that the repaint cleared *before* calling `render`,
+     * which meant the guard was already open by the time the guarded code ran: every repaint
+     * warmed again, and warmed again, forever.
+     *
+     * That is worse than it sounds. Once each provider's `ready()` has cached its answer,
+     * `warm()` resolves with no I/O at all, so the loop is pure microtasks — and the microtask
+     * queue is drained to empty before the browser does anything else. No paint, no clicks, no
+     * timers. Opening Settings froze the tab outright, about one turn after it opened.
+     *
+     * So the stop condition is a parameter rather than a flag. The repaint passes
+     * `{ warm: false }` and *cannot* start another one; termination is visible in the call
+     * itself instead of depending on when some shared field happens to be reset.
      */
-    function render(doc) {
+    function render(doc, options) {
         const d = doc || (typeof document !== 'undefined' ? document : null);
+        const shouldWarm = !options || options.warm !== false;
         const host = d && d.getElementById(HOST_ID);
         const reg = registry();
         if (!host || !reg) {
@@ -79,16 +96,12 @@ const DiscoverySettings = (() => {
         }
         host.textContent = '';
 
-        // D13. The probe may not have run yet on a first open. Repaint when it lands, so the
-        // list settles on the truth rather than freezing at "Checking…".
-        if (typeof reg.warm === 'function' && !render._warming) {
-            render._warming = true;
+        if (shouldWarm && typeof reg.warm === 'function') {
             Promise.resolve(reg.warm())
                 .catch(() => null)
                 .then(() => {
-                    render._warming = false;
                     if (d.getElementById(HOST_ID)) {
-                        render(d);
+                        render(d, { warm: false });
                     }
                 });
         }
