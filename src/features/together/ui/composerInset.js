@@ -161,12 +161,16 @@
             for (const [target, event] of listeners) {
                 try {
                     target.removeEventListener(event, update);
-                } catch (_) { /* a detached window is not an error worth raising */ }
+                } catch (_) {
+                    /* a detached window is not an error worth raising */
+                }
             }
             if (observer) {
                 try {
                     observer.disconnect();
-                } catch (_) { /* same */ }
+                } catch (_) {
+                    /* same */
+                }
             }
         };
     }
@@ -175,4 +179,4 @@
 
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_COMPOSER_INSET = api;
-})(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : null));
+})(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);

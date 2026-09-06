@@ -38,16 +38,26 @@ function screen({ height = 915, width = 412, composerTop = 839, visual = null } 
         documentElement: {
             style: {
                 _values: {},
-                setProperty(name, value) { this._values[name] = value; },
-                removeProperty(name) { delete this._values[name]; },
-                getPropertyValue(name) { return this._values[name] || ''; },
+                setProperty(name, value) {
+                    this._values[name] = value;
+                },
+                removeProperty(name) {
+                    delete this._values[name];
+                },
+                getPropertyValue(name) {
+                    return this._values[name] || '';
+                },
             },
         },
         querySelector(selector) {
             if (selector !== '.chat-input-shell') return null;
             return {
                 getBoundingClientRect: () => ({
-                    top: composerTop, bottom: height, height: height - composerTop, left: 0, right: width,
+                    top: composerTop,
+                    bottom: height,
+                    height: height - composerTop,
+                    left: 0,
+                    right: width,
                 }),
             };
         },
@@ -66,14 +76,17 @@ describe('measuring what the composer already owns', () => {
         expect(inset.measure(doc, win)).toBe(76);
     });
 
-    test('it reserves what is on screen, not the composer\'s whole box', () => {
+    test("it reserves what is on screen, not the composer's whole box", () => {
         // A bar can extend past the fold — iOS draws it through the home-indicator area, and a
         // partially scrolled container does the same. Reserving its full height then takes room
         // for pixels nobody can see, and the sheet shrinks for no reason.
         const { doc, win } = screen();
-        doc.querySelector = (selector) => (selector !== '.chat-input-shell' ? null : {
-            getBoundingClientRect: () => ({ top: 839, bottom: 940, height: 101, left: 0, right: 412 }),
-        });
+        doc.querySelector = (selector) =>
+            selector !== '.chat-input-shell'
+                ? null
+                : {
+                      getBoundingClientRect: () => ({ top: 839, bottom: 940, height: 101, left: 0, right: 412 }),
+                  };
         expect(inset.measure(doc, win)).toBe(76);
     });
 
@@ -108,7 +121,9 @@ describe('measuring what the composer already owns', () => {
 
     test('a selector the document rejects is not an error', () => {
         const { doc, win } = screen();
-        doc.querySelector = () => { throw new Error('bad selector'); };
+        doc.querySelector = () => {
+            throw new Error('bad selector');
+        };
         expect(() => inset.measure(doc, win)).not.toThrow();
         expect(inset.measure(doc, win)).toBe(0);
     });
@@ -153,7 +168,12 @@ describe('keeping it current', () => {
             const index = listeners.findIndex(([e, f]) => e === event && f === fn);
             if (index >= 0) listeners.splice(index, 1);
         };
-        win.visualViewport = { height: overrides.height || 915, offsetTop: 0, addEventListener: win.addEventListener, removeEventListener: win.removeEventListener };
+        win.visualViewport = {
+            height: overrides.height || 915,
+            offsetTop: 0,
+            addEventListener: win.addEventListener,
+            removeEventListener: win.removeEventListener,
+        };
         return { doc, win, listeners };
     }
 
@@ -245,7 +265,7 @@ describe('the sheet spends the number', () => {
         // chat bar instead of the button — the same collision, wearing the other hat.
         const before = fs.readFileSync(
             path.join(__dirname, '..', 'src', 'features', 'together', 'ui', 'TogetherLauncher.js'),
-            'utf8',
+            'utf8'
         );
         expect(before).toContain('This is layout, not z-index');
     });
@@ -265,14 +285,21 @@ describe('the launcher starts and stops the measuring', () => {
                 host.appendChild(this.root);
                 return this.root;
             },
-            open() { this.isOpen = true; return true; },
-            close() { this.isOpen = false; return true; },
+            open() {
+                this.isOpen = true;
+                return true;
+            },
+            close() {
+                this.isOpen = false;
+                return true;
+            },
         };
     }
 
     beforeEach(() => {
-        document.body.innerHTML = '<div class="avatar-card"><div class="avatar-footer-actions">'
-            + '<div class="avatar-footer-right"></div></div></div>';
+        document.body.innerHTML =
+            '<div class="avatar-card"><div class="avatar-footer-actions">' +
+            '<div class="avatar-footer-right"></div></div></div>';
         delete global.window.NEXUS_COMPOSER_INSET;
     });
 
@@ -281,7 +308,12 @@ describe('the launcher starts and stops the measuring', () => {
         // viewport, writing a property nothing reads.
         const calls = { started: 0, stopped: 0 };
         global.window.NEXUS_COMPOSER_INSET = {
-            watch() { calls.started += 1; return () => { calls.stopped += 1; }; },
+            watch() {
+                calls.started += 1;
+                return () => {
+                    calls.stopped += 1;
+                };
+            },
         };
         const launcher = TogetherLauncher.attach({ panel: fakePanel(), doc: document, viewer: null });
         expect(calls.started).toBe(1);
@@ -292,15 +324,15 @@ describe('the launcher starts and stops the measuring', () => {
     test('and attaching without the module is not an error', () => {
         // The sheet then falls back to the static reservation in the stylesheet, which is worse
         // than a measurement and much better than the launcher failing to attach at all.
-        expect(() =>
-            TogetherLauncher.attach({ panel: fakePanel(), doc: document, viewer: null }),
-        ).not.toThrow();
+        expect(() => TogetherLauncher.attach({ panel: fakePanel(), doc: document, viewer: null })).not.toThrow();
     });
 
     test('a watcher that throws on start does not take the launcher with it', () => {
-        global.window.NEXUS_COMPOSER_INSET = { watch() { throw new Error('no viewport'); } };
-        expect(() =>
-            TogetherLauncher.attach({ panel: fakePanel(), doc: document, viewer: null }),
-        ).not.toThrow();
+        global.window.NEXUS_COMPOSER_INSET = {
+            watch() {
+                throw new Error('no viewport');
+            },
+        };
+        expect(() => TogetherLauncher.attach({ panel: fakePanel(), doc: document, viewer: null })).not.toThrow();
     });
 });
