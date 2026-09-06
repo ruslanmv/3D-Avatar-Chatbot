@@ -21,11 +21,20 @@ const samples = require('../src/features/discovery/samples.js');
 const Picker = require('../src/features/together/ui/MediaSearchPicker.js');
 
 describe('the sample set itself', () => {
-    test('one video and three songs — enough to show, few enough to keep true', () => {
-        // One video, because it is this project's own and one demonstration does not need
-        // three things kept alive to make its point.
+    test('one video and one song — enough to show, few enough to keep true', () => {
+        // A list exists to spread the risk of any single id dying. Both picks are ones that are
+        // not going anywhere, so there is no risk left to spread and one of each is the honest
+        // size: fewer things to keep alive for the same demonstration.
         expect(samples.videos()).toHaveLength(1);
-        expect(samples.music()).toHaveLength(3);
+        expect(samples.music()).toHaveLength(1);
+    });
+
+    test('the song is on the band own channel, not a label', () => {
+        // Embedding on a label's upload is a licensing decision somebody can revisit; on the
+        // band's own channel it is not.
+        const [only] = samples.MUSIC;
+        expect(only.id).toBe('fJ9rUzIMcZQ');
+        expect(only.creator).toBe('Queen Official');
     });
 
     test('the video is the project own, which is why it can be the only one', () => {
@@ -79,7 +88,7 @@ describe('the sample set itself', () => {
         expect(samples.forCapability('screen.share')).toEqual([]);
         expect(samples.forCapability('')).toEqual([]);
         expect(samples.forCapability('video.search')).toHaveLength(1);
-        expect(samples.forCapability('music.search')).toHaveLength(3);
+        expect(samples.forCapability('music.search')).toHaveLength(1);
     });
 });
 

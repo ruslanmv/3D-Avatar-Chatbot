@@ -85,14 +85,14 @@ where there is no search to do:
 
 | Watch | Music |
 |---|---|
-| Agent Matrix — this project's own channel | lofi hip hop radio — Lofi Girl |
-| | Queen — Bohemian Rhapsody |
-| | Alan Walker — Faded |
+| Agent Matrix — this project's own channel | Queen — Bohemian Rhapsody |
 
-One video, because it is ours: embedding, availability and takedown risk sit in the same hands
+One of each. The video is ours: embedding, availability and takedown risk sit in the same hands
 as the app, so the first thing a visitor sees cannot be switched off by somebody with no stake
-in it. That is a stronger guarantee than any third-party pick, and it is why one is enough —
-three would be three things to keep alive for the same demonstration.
+in it. The song is on the band's own channel rather than a label's, so embedding is not
+somebody's licensing decision. A list exists to spread the risk of any single id dying — with
+picks that are not going anywhere there is no risk left to spread, and a longer list would only
+be more things to keep alive for the same demonstration.
 
 A product that cannot be tried until it is configured mostly does not get tried. These play
 through exactly the code path a real result takes, so one tap on a fresh deployment shows what
@@ -105,10 +105,7 @@ moment a key is set. Handing somebody a fixed video labelled as a match for what
 lie they cannot detect, and worse than an empty state. `tests/discovery-samples.test.js` holds
 that rule directly.
 
-They are chosen for **durability, not taste**. The songs are on channels whose whole purpose is
-being embedded on other people's pages — a stream meant to be left playing in other tabs, and
-two artist-owned channels rather than a label's, so embedding is not somebody's licensing
-decision. Each id was checked against YouTube's oEmbed endpoint and exists; embeddability was
+They are chosen for **durability, not taste**. Each id was checked against YouTube's oEmbed endpoint and exists; embeddability was
 not verified, because the sandbox this was written in blocks the browser from reaching
 youtube.com. Nothing depends on all of them surviving — a dead one is a single card that says
 so, and the fix is one line in `src/features/discovery/samples.js`.

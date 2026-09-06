@@ -1,5 +1,5 @@
 /**
- * One video and three songs that work with no key at all.
+ * One video and one song that work with no key at all.
  *
  * Search needs a YouTube Data API key. Without one the Watch and Music setup screens could
  * offer nothing but a link to Settings and an invitation to go and get an API key from Google
@@ -29,14 +29,16 @@
  * one sample everybody sees first cannot be turned off by somebody with no stake in it. One is
  * enough — three would be three things to keep alive for the same demonstration.
  *
- * The songs are on channels whose entire purpose is being embedded on other people's pages: a
- * stream that exists to be left playing in other tabs, and two artist-owned channels rather
- * than a label's, so embedding is not somebody's licensing decision.
+ * The song is on the band's own channel rather than a label's, so embedding is not somebody's
+ * licensing decision — and fifty years of being embedded on other people's pages is the only
+ * durability evidence that actually means anything. One again, for the same reason: a list
+ * exists to spread the risk of any single id dying, and a pick that is not going anywhere has
+ * no risk to spread.
  *
  * ## What was actually verified, and what was not
  *
  * Each id was checked against YouTube's oEmbed endpoint and returned 200 with the title and
- * channel recorded below, so all four exist and are public. **Embeddability was not verified**:
+ * channel recorded below, so both exist and are public. **Embeddability was not verified**:
  * the sandbox this was written in blocks the browser from reaching youtube.com, so the one test
  * that would settle it could not be run. `tests/discovery-samples.test.js` re-checks existence
  * against oEmbed when the network allows and skips itself when it does not.
@@ -72,22 +74,10 @@
     /** @type {Sample[]} */
     const MUSIC = [
         {
-            id: 'jfKfPfyJRdk',
-            title: 'lofi hip hop radio — beats to relax/study to',
-            creator: 'Lofi Girl',
-            why: 'a stream that exists to be left playing in other people’s tabs',
-        },
-        {
             id: 'fJ9rUzIMcZQ',
             title: 'Queen — Bohemian Rhapsody',
             creator: 'Queen Official',
-            why: 'the first music video, on the band’s own channel',
-        },
-        {
-            id: '60ItHLz5WEA',
-            title: 'Alan Walker — Faded',
-            creator: 'Alan Walker',
-            why: 'an artist-owned channel rather than a label’s, so embedding is not a licensing decision',
+            why: "widely held to be the first true music video, on the band's own channel rather than a label's — so embedding is not somebody's licensing decision, and fifty years of being embedded everywhere is the only durability evidence that actually means anything",
         },
     ];
 
