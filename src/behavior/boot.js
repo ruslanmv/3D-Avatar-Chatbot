@@ -78,6 +78,10 @@
         'src/features/research/providers/wikipedia.js',
         'src/features/research/providers/websearch.js',
         'src/features/research/ResearchRegistry.js',
+        // S4. Web search the user can drive from Settings, and the lookup she runs mid
+        // conversation for news, today and the weather.
+        'src/features/research/WebSearchSettings.js',
+        'src/features/research/LookUp.js',
         'src/features/study/StudySession.js',
         'src/features/study/StudyPrompt.js',
         'src/features/study/StudyDirective.js',

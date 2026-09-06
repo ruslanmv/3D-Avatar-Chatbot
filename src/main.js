@@ -3565,6 +3565,7 @@ async function _handleStreamingResponse(text) {
             // chat with no media selected sends the prompt it has always sent.
             (window.NEXUS_CURRENT_MEDIA?.systemPromptSuffix?.() || '') +
             (window.NEXUS_STUDY_PROMPT?.systemPromptSuffix?.() || '') +
+            (window.NEXUS_LOOKUP?.systemPromptSuffix?.() || '') +
             // T2. What she can *do* about media, as opposed to D9's what is playing. Empty
             // unless Together is on and something can actually search, so a promise is never
             // made that nothing can keep.
@@ -3593,6 +3594,10 @@ async function _handleStreamingResponse(text) {
         // that reached the synthesiser would be her reading XML aloud.
         displayText = window.NEXUS_PLAY_DIRECTIVE ? window.NEXUS_PLAY_DIRECTIVE.consume(displayText) : displayText;
         displayText = window.NEXUS_STUDY_DIRECTIVE ? window.NEXUS_STUDY_DIRECTIVE.consume(displayText) : displayText;
+        // S4. She asked to look something up. Strip the tag, run the search, then ask her
+        // again — the second call carries the results, so the answer comes from her having
+        // read them rather than from the app pasting snippets into the chat.
+        displayText = __nexusRunLookup(displayText);
         textDiv.textContent = displayText;
 
         // Mirror to AR overlay
@@ -3651,6 +3656,10 @@ async function _handleNonStreamingResponse(text) {
         // that reached the synthesiser would be her reading XML aloud.
         displayText = window.NEXUS_PLAY_DIRECTIVE ? window.NEXUS_PLAY_DIRECTIVE.consume(displayText) : displayText;
         displayText = window.NEXUS_STUDY_DIRECTIVE ? window.NEXUS_STUDY_DIRECTIVE.consume(displayText) : displayText;
+        // S4. She asked to look something up. Strip the tag, run the search, then ask her
+        // again — the second call carries the results, so the answer comes from her having
+        // read them rather than from the app pasting snippets into the chat.
+        displayText = __nexusRunLookup(displayText);
 
         addMessageToHistory('avatar', displayText, attachments);
 
@@ -3766,6 +3775,64 @@ function getSimpleResponse(text) {
     return "That's interesting! Could you tell me more about that?";
 }
 
+/**
+ * Run a `<lookup>` if the reply asked for one, and answer from what comes back (S4).
+ *
+ * Two passes, which is what a tool call is. The first reply says "let me check" and carries
+ * the tag; this strips it, searches, and asks again with the results in the prompt. The
+ * holding sentence stays on screen in between, because a search takes a second and a silent
+ * pause reads as the app having stopped.
+ *
+ * Everything here is guarded to a no-op. A missing module, a missing key, a failed search:
+ * the first reply stands as written, which is a sentence saying she will check — not ideal,
+ * and much better than an error where an answer was expected.
+ */
+function __nexusRunLookup(displayText) {
+    const lookup = window.NEXUS_LOOKUP;
+    if (!lookup || typeof lookup.extract !== 'function') {
+        return displayText;
+    }
+    const { clean, query } = lookup.extract(displayText);
+    if (!query) {
+        return displayText;
+    }
+    Promise.resolve(lookup.run(query))
+        .then((out) => {
+            if (!out || !out.ok) {
+                // Say why, once. Silence after "let me check" is the worst of both.
+                const why = {
+                    'no-key': "I can't search the web here — no search key is set up in Settings.",
+                    'no-provider': "Web search isn't available in this build.",
+                    failed: "I couldn't reach the search just now.",
+                    nothing: "I couldn't find anything on that.",
+                }[out && out.why];
+                if (why && window.NEXUS_YT_ASK) {
+                    window.NEXUS_YT_ASK.say(why, 'bot', document);
+                }
+                return null;
+            }
+            // The second pass. The results reach the prompt via
+            // `NEXUS_LOOKUP.systemPromptSuffix`, and are cleared afterwards so they cannot
+            // answer a later, unrelated question.
+            return callLLM(`Answer what I just asked, using what you found about "${out.query}".`);
+        })
+        .then((answer) => {
+            lookup.clear();
+            if (!answer || !window.NEXUS_YT_ASK) {
+                return;
+            }
+            const check = window.NEXUS_CONNECTION_CHECK;
+            const text = (check ? check.textOf(answer) : String(answer || '')).trim();
+            if (text) {
+                window.NEXUS_YT_ASK.say(text, 'bot', document);
+            }
+        })
+        .catch(() => {
+            lookup.clear();
+        });
+    return clean;
+}
+
 async function callLLM(userMessage) {
     // ✅ Use LLMManager with conversation history if available
     if (window._nexusLLM && config.provider !== 'none') {
@@ -3777,6 +3844,7 @@ async function callLLM(userMessage) {
             // chat with no media selected sends the prompt it has always sent.
             (window.NEXUS_CURRENT_MEDIA?.systemPromptSuffix?.() || '') +
             (window.NEXUS_STUDY_PROMPT?.systemPromptSuffix?.() || '') +
+            (window.NEXUS_LOOKUP?.systemPromptSuffix?.() || '') +
             // T2. What she can *do* about media, as opposed to D9's what is playing. Empty
             // unless Together is on and something can actually search, so a promise is never
             // made that nothing can keep.
@@ -5258,6 +5326,7 @@ function __nexusMediaSuffix() {
         return (
             (window.NEXUS_CURRENT_MEDIA?.systemPromptSuffix?.() || '') +
             (window.NEXUS_STUDY_PROMPT?.systemPromptSuffix?.() || '') +
+            (window.NEXUS_LOOKUP?.systemPromptSuffix?.() || '') +
             (window.NEXUS_TOGETHER_CAPABILITY?.systemPromptSuffix?.() || '')
         );
     } catch (_) {

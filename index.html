@@ -2652,6 +2652,38 @@
                                 <strong>YouTube Data API v3</strong> → Credentials.
                             </p>
                         </div>
+                        <!-- S4. Web search: news, what is happening today, weather, and the
+                             material for a study session when Wikipedia has nothing. Owned by
+                             src/features/research/WebSearchSettings.js — main.js's
+                             saveSettings() does not know about these fields either, so the
+                             feature stays deletable in one move. -->
+                        <div class="input-group">
+                            <label class="input-label" for="web-search-provider"
+                                >🌐 WEB SEARCH — NEWS, TODAY, WEATHER</label
+                            >
+                            <select id="web-search-provider" class="select-input">
+                                <option value="">Use this site's setup (default)</option>
+                                <option value="brave">Brave Search — my own key</option>
+                                <option value="serper">Serper (Google) — my own key</option>
+                            </select>
+                            <input
+                                type="password"
+                                id="web-search-key"
+                                class="text-input"
+                                autocomplete="off"
+                                placeholder="Your search API key"
+                                style="margin-top: 8px; display: none"
+                            />
+                            <p
+                                id="web-search-hint"
+                                style="font-size: 0.68rem; color: rgba(255, 255, 255, 0.45); margin: 6px 2px 0"
+                            >
+                                Lets her look things up — headlines, today's weather, anything Wikipedia does not carry.
+                                Wikipedia is always used first and needs no key. Add one here only to search on your own
+                                quota; it wins over the site's.
+                            </p>
+                        </div>
+
                         <!-- D6: which engine powers search, and whether it is actually working.
                              Filled by src/features/discovery/DiscoverySettings.js when Settings
                              opens; empty and harmless when that folder is deleted. -->

@@ -99,6 +99,52 @@ Local, capped at 20 sessions, one entry per topic so a second session supersedes
 This is the thing a plain chat structurally cannot do, and the only part of the feature a general
 chatbot cannot copy.
 
+## Web search in Settings, and looking things up mid-conversation (S4)
+
+**Settings → Discovery & Media**, under the YouTube key: a provider dropdown (Brave or Serper)
+and a key box. The box stays hidden until a provider is chosen, because an empty field labelled
+"API key" under a dropdown reading *"use this site's setup"* invites somebody to fill in
+something that will be ignored.
+
+**Whose key wins is the user's** — the rule D13 settled for YouTube. Somebody who typed a key
+meant to use it; silently preferring the deployment's would make the field decorative. With no
+key of their own the site's route answers and they never learn keys exist.
+
+A user key travels **browser → their own deployment's proxy → the API**, because neither Brave
+nor Serper sends CORS headers. That is the path an OpenAI or Anthropic key already takes through
+the same allowlist, to the same deployment already trusted with those, so it adds no new trust.
+The deployment's *own* key never comes this way — it stays server-side in
+`api/research/search.js`. A user key that fails falls back to the site's route rather than
+failing outright: the site may still have one, and the person asked a question either way.
+
+### Looking things up
+
+Together now tells her she can search: `<lookup>search terms</lookup>` for anything she cannot
+know from training — today's news, the weather, whether something has happened — and *not* for
+things she already knows, which wastes a second, or for opinions.
+
+It runs in two passes, which is what a tool call is. The first reply says "let me check" and
+carries the tag; the app strips it, searches, and asks again with the results in the prompt. The
+holding sentence stays on screen in between, because a search takes a second and a silent pause
+reads as the app having stopped.
+
+**The app never pastes snippets into the chat.** Results are held for the next prompt and
+cleared once used, so they cannot answer a later question. Printing them would make this a
+search engine with an avatar; the thing being built is somebody who read them and can be asked
+a follow-up.
+
+The honesty rules are the point: answer *from* the results, name where it came from, say when
+they disagree, and say when they do not settle the question rather than picking the most
+confident-sounding one. **A wrong answer assembled from three headlines is worse than admitting
+it is unclear, because from the outside they look the same.**
+
+Why a tag rather than a pattern: the app cannot tell from the words alone. *"What is the
+weather"* plainly needs looking up; *"is that still true?"* depends entirely on what came
+before. A pattern list would be wrong in both directions, so the model — which has the
+conversation — decides.
+
+---
+
 ## Verified
 
 Live against Wikipedia: `photosynthesis` and `quantum entanglement` both read and sufficient,
