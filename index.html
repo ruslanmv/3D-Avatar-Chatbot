@@ -1457,6 +1457,47 @@
                             </label>
                         </div>
 
+                        <!-- Batch T1. One switch for the whole of Together, and the only place
+                             the question is asked twice. It turns itself on the first time
+                             somebody taps a tile, so this box exists to turn it *off* — which
+                             is why there is one row here and not seven. -->
+                        <div class="input-group">
+                            <label class="spicy-toggle-label">
+                                <span>Together — watch, listen and focus with her</span>
+                                <div class="spicy-toggle-switch">
+                                    <input type="checkbox" id="together-enabled-toggle" />
+                                    <span class="spicy-toggle-slider"></span>
+                                </div>
+                            </label>
+                            <p style="font-size: 0.7rem; color: #888; margin: 6px 0 0">
+                                Turns on by itself the first time you open Together. Off hides it and stops her offering
+                                to play anything.
+                            </p>
+                        </div>
+
+                        <!-- Batch T7. Opt-in, and it stays that way. Unlike the switch above,
+                             which turns itself on the first time somebody taps a tile because
+                             tapping the tile is the request, nothing a user does implies "and
+                             also dim the interface at me". An app that quietly faded its own
+                             chrome part-way through a song reads as a fault long before it
+                             reads as a feature, and the person it happened to would have no
+                             idea what caused it. So: off unless this box is ticked, and this
+                             box is the only thing that ever writes the setting. -->
+                        <div class="input-group">
+                            <label class="spicy-toggle-label">
+                                <span>Calm mode — dim the interface while something is playing</span>
+                                <div class="spicy-toggle-switch">
+                                    <input type="checkbox" id="ambient-enabled-toggle" />
+                                    <span class="spicy-toggle-slider"></span>
+                                </div>
+                            </label>
+                            <p style="font-size: 0.7rem; color: #888; margin: 6px 0 0">
+                                For when you would rather just watch or listen. Off by default — with this unticked
+                                nothing changes. On, the chat and buttons fade after about half a minute of quiet; any
+                                tap, key or scroll brings them straight back, and the recording indicator never dims.
+                            </p>
+                        </div>
+
                         <!-- Batch B9, reshaped in B35. The two controls that used to live
                              here — a "Connect HomePilot session" switch and a URL box — asked
                              the user for something the app can find out: OllaBridge already
@@ -1527,6 +1568,52 @@
                     </div>
                     <script>
                         (function () {
+                            /* Batch T1. Reads and writes NEXUS_TOGETHER_SWITCH rather than
+                               localStorage directly, so the launcher hears about the change
+                               immediately instead of on the next reload — the switch is the
+                               one owner of that state and the box is a view of it. */
+                            var together = document.getElementById('together-enabled-toggle');
+                            if (together) {
+                                var readTogether = function () {
+                                    var sw = window.NEXUS_TOGETHER_SWITCH;
+                                    /* Never touched reads as off here: the box answers "is it
+                                       on", and a fresh profile has not turned it on yet. */
+                                    together.checked = !!(sw && sw.isOn && sw.isOn());
+                                };
+                                readTogether();
+                                /* The switch may load after this inline script — it comes in
+                                   with the director's module list — so read once more when it
+                                   is there rather than leaving the box stale. */
+                                setTimeout(readTogether, 1500);
+                                together.addEventListener('change', function () {
+                                    var sw = window.NEXUS_TOGETHER_SWITCH;
+                                    if (!sw) return;
+                                    if (together.checked) sw.enable('settings');
+                                    else sw.disable('settings');
+                                });
+                            }
+
+                            /* Batch T7. Same shape as the row above and for the same reason:
+                               NEXUS_AMBIENT owns the state, the box is a view of it. The
+                               difference is the default — this one is off until ticked, so an
+                               absent module reads as off rather than as on. */
+                            var ambient = document.getElementById('ambient-enabled-toggle');
+                            if (ambient) {
+                                var readAmbient = function () {
+                                    var am = window.NEXUS_AMBIENT;
+                                    ambient.checked = !!(am && am.isEnabled && am.isEnabled());
+                                };
+                                readAmbient();
+                                /* It arrives with the director's module list, which may not
+                                   have loaded when this inline script runs. */
+                                setTimeout(readAmbient, 1500);
+                                ambient.addEventListener('change', function () {
+                                    var am = window.NEXUS_AMBIENT;
+                                    if (!am || !am.setEnabled) return;
+                                    am.setEnabled(ambient.checked);
+                                });
+                            }
+
                             var box = document.getElementById('behavior-engine-toggle');
                             if (!box) return;
                             try {
@@ -3510,8 +3597,12 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <script defer src="src/xr/MotionIntegration.js"></script>
 
         <!-- YouTube Everywhere (additive — thumbnails + inline player in 2D chat, cards + companion-tab playback in VR) -->
-        <!-- NON-DESTRUCTIVE: To remove, delete these 6 script tags and the src/features/youtube/ folder. Search "NEXUS_YT" -->
+        <!-- NON-DESTRUCTIVE: To remove, delete these 7 script tags and the src/features/youtube/ folder. Search "NEXUS_YT" -->
         <script defer src="src/features/youtube/YouTubeLink.js"></script>
+        <!-- M2. Hears back from the YouTube player, so "playing" means the player said so
+             rather than the app having asked. Loads no network script of its own until
+             somebody actually presses play. -->
+        <script defer src="src/features/youtube/YouTubePlaybackAdapter.js"></script>
         <script defer src="src/features/youtube/YouTubeCompanion.js"></script>
         <script defer src="src/features/youtube/YouTubeEmbed2D.js"></script>
         <script defer src="src/features/youtube/YouTubeVRBridge.js"></script>

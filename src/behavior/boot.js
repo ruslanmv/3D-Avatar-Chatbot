@@ -73,7 +73,32 @@
         // Three videos and three songs that need no key, so the feature can be tried before it
         // is configured. Not a provider: samples answer no queries.
         'src/features/discovery/samples.js',
+        // T1/T2. The one switch, and the paragraph that stops her apologising. Before the
+        // launcher that flips the switch and before anything that reads it.
+        'src/features/together/TogetherSwitch.js',
+        'src/features/together/TogetherCapability.js',
+        // T3/T5. The one function that finds and plays, and the parser that lets her ask for
+        // it. After the publisher's dependencies, before the launcher.
+        'src/features/together/MediaIntent.js',
+        // M4. Show me choices / start it now / that one. Loaded beside MediaIntent, which is
+        // what it hands an execute or a pointer to.
+        'src/features/together/MediaCommand.js',
+        'src/features/together/PlayDirective.js',
+        // T6. One topic, two turns, so "yes" and "play it" point at something.
+        'src/features/together/PlayFollowUp.js',
+        // T8. She has never searched, so any URL in a reply was invented — this takes it out
+        // before anything can display it. Loaded before the parser that calls it.
+        'src/features/together/InventedLinks.js',
+        // T8. When she says she is playing something, make it true. After PlayFollowUp,
+        // whose held topic is the only thing it will ever search for.
+        'src/features/together/PlayClaim.js',
+        // T7. The quiet after something starts playing. Loaded before the launcher, which
+        // arms it; on its own it does nothing at all until armed.
+        'src/features/together/AmbientMode.js',
         'src/features/together/ui/MediaSearchPicker.js',
+        // M1. What is selected and what is actually playing — two facts the app used to hold
+        // in one field. Before CurrentMediaContext, which reads its status.
+        'src/features/together/MediaSession.js',
         // D9. What is playing, for the model. Loaded before the publisher that sets it.
         'src/features/together/CurrentMediaContext.js',
         'src/features/together/ui/ConversationPublisher.js',

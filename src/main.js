@@ -3524,7 +3524,11 @@ async function _handleStreamingResponse(text) {
             (window.NEXUS_MOTION?.systemPromptSuffix?.() || '') +
             // D9. What Together is playing, if anything. Empty string when nothing is, so a
             // chat with no media selected sends the prompt it has always sent.
-            (window.NEXUS_CURRENT_MEDIA?.systemPromptSuffix?.() || '');
+            (window.NEXUS_CURRENT_MEDIA?.systemPromptSuffix?.() || '') +
+            // T2. What she can *do* about media, as opposed to D9's what is playing. Empty
+            // unless Together is on and something can actually search, so a promise is never
+            // made that nothing can keep.
+            (window.NEXUS_TOGETHER_CAPABILITY?.systemPromptSuffix?.() || '');
         let accumulated = '';
 
         const fullText = await window._nexusLLM.sendMessageStream(text, systemPrompt, history, (token) => {
@@ -3543,6 +3547,11 @@ async function _handleStreamingResponse(text) {
         let displayText = fullText || accumulated || 'No response';
         // Living NPC: execute the ```motion plan and strip it from display/TTS
         displayText = window.NEXUS_MOTION ? window.NEXUS_MOTION.processReply(displayText) : displayText;
+        // T5. Take the <play> tag out and act on it. Here, beside the motion seam, because
+        // everything downstream reads `displayText` — the bubble, the transcript, the VR
+        // forward and `speakText` — so stripping once covers the screen *and* the voice. A tag
+        // that reached the synthesiser would be her reading XML aloud.
+        displayText = window.NEXUS_PLAY_DIRECTIVE ? window.NEXUS_PLAY_DIRECTIVE.consume(displayText) : displayText;
         textDiv.textContent = displayText;
 
         // Mirror to AR overlay
@@ -3595,6 +3604,11 @@ async function _handleNonStreamingResponse(text) {
 
         // Living NPC: execute the ```motion plan and strip it from display/TTS
         displayText = window.NEXUS_MOTION ? window.NEXUS_MOTION.processReply(displayText) : displayText;
+        // T5. Take the <play> tag out and act on it. Here, beside the motion seam, because
+        // everything downstream reads `displayText` — the bubble, the transcript, the VR
+        // forward and `speakText` — so stripping once covers the screen *and* the voice. A tag
+        // that reached the synthesiser would be her reading XML aloud.
+        displayText = window.NEXUS_PLAY_DIRECTIVE ? window.NEXUS_PLAY_DIRECTIVE.consume(displayText) : displayText;
 
         addMessageToHistory('avatar', displayText, attachments);
 
@@ -3719,7 +3733,11 @@ async function callLLM(userMessage) {
             (window.NEXUS_MOTION?.systemPromptSuffix?.() || '') +
             // D9. What Together is playing, if anything. Empty string when nothing is, so a
             // chat with no media selected sends the prompt it has always sent.
-            (window.NEXUS_CURRENT_MEDIA?.systemPromptSuffix?.() || '');
+            (window.NEXUS_CURRENT_MEDIA?.systemPromptSuffix?.() || '') +
+            // T2. What she can *do* about media, as opposed to D9's what is playing. Empty
+            // unless Together is on and something can actually search, so a promise is never
+            // made that nothing can keep.
+            (window.NEXUS_TOGETHER_CAPABILITY?.systemPromptSuffix?.() || '');
 
         // Use structured response for OllaBridge to get attachments
         if (config.provider === 'ollabridge' && typeof window._nexusLLM.sendMessageStructured === 'function') {
@@ -5194,7 +5212,10 @@ async function __getWatsonxBearer(apiKeyOrToken) {
  */
 function __nexusMediaSuffix() {
     try {
-        return window.NEXUS_CURRENT_MEDIA?.systemPromptSuffix?.() || '';
+        return (
+            (window.NEXUS_CURRENT_MEDIA?.systemPromptSuffix?.() || '') +
+            (window.NEXUS_TOGETHER_CAPABILITY?.systemPromptSuffix?.() || '')
+        );
     } catch (_) {
         return '';
     }

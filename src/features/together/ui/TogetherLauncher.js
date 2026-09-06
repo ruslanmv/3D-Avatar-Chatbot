@@ -257,6 +257,13 @@ const TogetherLauncher = (() => {
   background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.08);
   color: #e8ecf2; font: inherit;
 }
+/* M4. The ▶ lives inside the row as a cue, not beside it as a rival control. It sits at the
+   end and takes no space from the title. */
+.nexus-bd-together-playcue {
+  margin-left: auto; flex: 0 0 auto; padding-left: .4rem;
+  color: var(--accent-cyan, #22d3ee); font-size: .72rem; opacity: .55;
+}
+.nexus-bd-together-result:hover .nexus-bd-together-playcue { opacity: 1; }
 .nexus-bd-together-result:hover { background: rgba(34,211,238,.12); border-color: rgba(34,211,238,.32); }
 .nexus-bd-together-result:focus-visible {
   outline: 2px solid var(--accent-cyan, #22d3ee); outline-offset: 2px;
@@ -400,6 +407,8 @@ const TogetherLauncher = (() => {
             this.opens = 0;
             this._unsubscribe = null;
             this._stopInsetWatch = null;
+            this._stopSwitchWatch = null;
+            this._stopAmbient = null;
             this._onKey = (event) => this._key(event);
             this._onPointer = (event) => this._pointer(event);
             this._bound = false;
@@ -431,7 +440,37 @@ const TogetherLauncher = (() => {
                 });
             }
             this._reflect();
+            this._reflectSwitch();
+            // Settings can flip it while the launcher is mounted, and the two must never
+            // disagree about whether Together exists.
+            const sw = typeof window !== 'undefined' ? window.NEXUS_TOGETHER_SWITCH : null;
+            if (sw && typeof sw.onChange === 'function') {
+                this._stopSwitchWatch = sw.onChange(() => this._reflectSwitch());
+            }
+            this._armAmbient();
             return this;
+        }
+
+        /**
+         * Let the page settle once something is playing and nobody is typing (T7).
+         *
+         * Armed from here rather than from boot because this is the object with a lifetime
+         * that matches: the launcher is what mounts when Together's chrome exists, and
+         * `detach` is what takes it away again. Armed unconditionally — the module itself
+         * checks whether Together is on and whether anything is playing before it settles,
+         * and duplicating that judgement in two places is how the two come to disagree.
+         *
+         * Guarded, because the launcher attaching is not worth failing over atmosphere.
+         */
+        _armAmbient() {
+            const ambient = typeof window !== 'undefined' ? window.NEXUS_AMBIENT : null;
+            if (!ambient || typeof ambient.arm !== 'function') return null;
+            try {
+                this._stopAmbient = ambient.arm({ doc: this.doc, win: window });
+            } catch (_) {
+                this._stopAmbient = null;
+            }
+            return this._stopAmbient;
         }
 
         /**
@@ -442,6 +481,24 @@ const TogetherLauncher = (() => {
          * composer measures 0 — because the launcher attaching is not worth failing over a
          * measurement that only matters on a phone.
          */
+        /**
+         * Hide every way in when Together is switched off (T1).
+         *
+         * Off has to mean off everywhere. Leaving the button while the capabilities are gone
+         * would give somebody a control that opens a panel whose activities cannot reach the
+         * model, and leaving the capabilities while hiding the button would have her offering
+         * to play music with no way to show it.
+         */
+        _reflectSwitch() {
+            const sw = typeof window !== 'undefined' ? window.NEXUS_TOGETHER_SWITCH : null;
+            const visible = !sw || typeof sw.isVisible !== 'function' || sw.isVisible();
+            for (const node of [this.button, this.drawerItem]) {
+                if (node) node.hidden = !visible;
+            }
+            if (!visible && this.panel && this.panel.isOpen) this.close({ restoreFocus: false });
+            return visible;
+        }
+
         _watchComposer() {
             const inset = (typeof window !== 'undefined' && window.NEXUS_COMPOSER_INSET) || null;
             if (!inset || typeof inset.watch !== 'function') return null;
@@ -730,6 +787,12 @@ const TogetherLauncher = (() => {
             // them behind after detach would keep writing a property nothing reads.
             if (this._stopInsetWatch) this._stopInsetWatch();
             this._stopInsetWatch = null;
+            if (this._stopSwitchWatch) this._stopSwitchWatch();
+            this._stopSwitchWatch = null;
+            // Leaving the ambient watcher armed after detach would settle a page whose
+            // Together chrome no longer exists.
+            if (this._stopAmbient) this._stopAmbient();
+            this._stopAmbient = null;
             this._listen(false);
             for (const node of [this.button, this.drawerItem, this.style]) {
                 if (node && node.parentNode) node.parentNode.removeChild(node);
