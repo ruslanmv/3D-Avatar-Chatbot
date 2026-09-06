@@ -10,7 +10,30 @@
  * ✅ Preserves ViewerEngine + Proxy + Test Connection patch logic
  */
 
-'use strict';
+/**
+ * Where OllaBridge lives when nobody has said otherwise.
+ *
+ * The BASE URL box in Settings carries this as a *placeholder*, so on a fresh profile it looks
+ * filled in and reads as empty. Every other provider already had a default at each of these
+ * sites — Ollama falls back to localhost, WatsonX to its region host — and OllaBridge alone
+ * fell back to `''`, which is how this happened:
+ *
+ *     ✅ Paired successfully! Device: dev_PqaOCOHoCVKg
+ *     BASE URL   https://app.ollabridge.com        ← a placeholder, not a value
+ *     🔌 TEST CONNECTION
+ *     ❌ OllaBridge: Missing Base URL. Enter the OllaBridge URL in Settings…
+ *
+ * Pairing worked because `LLMManager` defaults the URL in its own settings. Then the first
+ * save or connection test read the empty box, wrote `''` over that default, and the provider
+ * that had just paired could no longer be reached — no models in the list, and every message
+ * answered "Sorry, I encountered an error."
+ *
+ * An empty box means "use the default", exactly as it does for Ollama. It never means "no
+ * URL", because there is no such thing as OllaBridge without one.
+ */
+const OLLABRIDGE_DEFAULT_BASE_URL = 'https://app.ollabridge.com';
+
+('use strict');
 
 /* =========================================================
    Device Detection — early, before any DOM mutation
@@ -186,7 +209,7 @@ function loadConfig() {
             } else if (settings.provider === 'ollabridge' && settings.ollabridge) {
                 apiKey = settings.ollabridge.api_key || '';
                 model = settings.ollabridge.model || 'default';
-                baseUrl = settings.ollabridge.base_url || '';
+                baseUrl = settings.ollabridge.base_url || OLLABRIDGE_DEFAULT_BASE_URL;
             }
 
             return {
@@ -276,7 +299,7 @@ const config = loadConfig();
             } else if (config.provider === 'ollabridge') {
                 patch.ollabridge = {
                     api_key: config.apiKey,
-                    base_url: config.baseUrl || '',
+                    base_url: config.baseUrl || OLLABRIDGE_DEFAULT_BASE_URL,
                     model: config.model || 'default',
                 };
             }
@@ -2991,22 +3014,32 @@ function updateProviderFields() {
             } else if (provider === 'ollabridge' && settings.ollabridge) {
                 apiKeyInput.value = settings.ollabridge.api_key || '';
                 if (baseUrlInput) {
-                    baseUrlInput.value = settings.ollabridge?.base_url || '';
+                    // The same default Ollama and WatsonX already had on this line. Without
+                    // it the box showed a placeholder that read as empty, and the next save
+                    // wrote that emptiness over a URL that was working.
+                    baseUrlInput.value = settings.ollabridge?.base_url || OLLABRIDGE_DEFAULT_BASE_URL;
                 }
             } else {
-                // No key saved for this provider, clear the field
+                // No key saved for this provider, clear the field — except the one provider
+                // that has a single well-known home. An empty box for OllaBridge is not a
+                // blank slate, it is a broken configuration waiting to be saved.
                 apiKeyInput.value = '';
-                if (baseUrlInput) baseUrlInput.value = '';
+                if (baseUrlInput) {
+                    baseUrlInput.value = provider === 'ollabridge' ? OLLABRIDGE_DEFAULT_BASE_URL : '';
+                }
             }
         } else if (apiKeyInput && !unified) {
-            // No unified settings, check if current config matches this provider
+            // No unified settings at all — the incognito case, and the one where this went
+            // wrong. Same rule on both branches: OllaBridge has one home, so an empty box
+            // shows it rather than nothing.
+            const fallback = provider === 'ollabridge' ? OLLABRIDGE_DEFAULT_BASE_URL : '';
             if (config.provider === provider) {
                 apiKeyInput.value = config.apiKey || '';
-                if (baseUrlInput) baseUrlInput.value = config.baseUrl || '';
+                if (baseUrlInput) baseUrlInput.value = config.baseUrl || fallback;
             } else {
                 // Different provider, clear the field
                 apiKeyInput.value = '';
-                if (baseUrlInput) baseUrlInput.value = '';
+                if (baseUrlInput) baseUrlInput.value = fallback;
             }
         }
     } catch (e) {
@@ -3255,7 +3288,13 @@ function loadConfigIntoUI() {
     if ($('model-select')) $('model-select').value = config.model;
     if ($('system-prompt')) $('system-prompt').value = config.systemPrompt;
     if ($('watsonx-project-id')) $('watsonx-project-id').value = config.watsonxProjectId;
-    if ($('base-url')) $('base-url').value = config.baseUrl;
+    if ($('base-url')) {
+        // Show what will actually be used, not an empty box wearing a placeholder. The two
+        // looked identical and were not: the placeholder made a fresh profile look configured
+        // while every read of `.value` came back empty, and the first save wrote that
+        // emptiness over a working default.
+        $('base-url').value = config.baseUrl || (config.provider === 'ollabridge' ? OLLABRIDGE_DEFAULT_BASE_URL : '');
+    }
 }
 
 function saveSettings() {

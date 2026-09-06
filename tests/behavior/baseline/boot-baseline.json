@@ -23,55 +23,25 @@
     },
     {
       "file": "src/main.js",
-      "line": 915,
+      "line": 938,
       "guarded": false,
       "comment": true
     },
     {
       "file": "src/main.js",
-      "line": 919,
+      "line": 942,
       "guarded": false,
       "comment": true
     },
     {
       "file": "src/main.js",
-      "line": 927,
+      "line": 950,
       "guarded": true,
       "comment": true
     },
     {
       "file": "src/main.js",
-      "line": 944,
-      "guarded": true,
-      "comment": false
-    },
-    {
-      "file": "src/main.js",
-      "line": 945,
-      "guarded": true,
-      "comment": false
-    },
-    {
-      "file": "src/main.js",
-      "line": 958,
-      "guarded": true,
-      "comment": false
-    },
-    {
-      "file": "src/main.js",
-      "line": 960,
-      "guarded": true,
-      "comment": true
-    },
-    {
-      "file": "src/main.js",
-      "line": 962,
-      "guarded": true,
-      "comment": false
-    },
-    {
-      "file": "src/main.js",
-      "line": 965,
+      "line": 967,
       "guarded": true,
       "comment": false
     },
@@ -83,7 +53,13 @@
     },
     {
       "file": "src/main.js",
-      "line": 976,
+      "line": 981,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "src/main.js",
+      "line": 983,
       "guarded": true,
       "comment": true
     },
@@ -95,19 +71,43 @@
     },
     {
       "file": "src/main.js",
-      "line": 995,
-      "guarded": true,
-      "comment": true
-    },
-    {
-      "file": "src/main.js",
-      "line": 996,
+      "line": 988,
       "guarded": true,
       "comment": false
     },
     {
       "file": "src/main.js",
-      "line": 4796,
+      "line": 991,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "src/main.js",
+      "line": 999,
+      "guarded": true,
+      "comment": true
+    },
+    {
+      "file": "src/main.js",
+      "line": 1008,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "src/main.js",
+      "line": 1018,
+      "guarded": true,
+      "comment": true
+    },
+    {
+      "file": "src/main.js",
+      "line": 1019,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "src/main.js",
+      "line": 4835,
       "guarded": false,
       "comment": true
     },
@@ -167,6 +167,6 @@
     "adult.available": true
   },
   "informational": {
-    "totalBootScripts": 89
+    "totalBootScripts": 90
   }
 }
