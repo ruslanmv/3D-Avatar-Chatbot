@@ -317,6 +317,12 @@ const TogetherLauncher = (() => {
 .nexus-bd-together-steps:focus-visible {
   outline: none; border-color: var(--accent-cyan, #22d3ee);
 }
+/* The heading over the keyless examples. Quieter than a result and clearly not one: these are
+   offered where there is no search to do, and calling them matches would be a lie. */
+.nexus-bd-together-samplehead {
+  margin: .55rem 0 .35rem; color: #7d8797; font: 600 .66rem/1.3 inherit;
+  letter-spacing: .1em; text-transform: uppercase;
+}
 /* The sentence under an option — "Your screen stops sharing when you leave Watch". */
 .nexus-bd-together-note {
   display: block; margin-top: .25rem;

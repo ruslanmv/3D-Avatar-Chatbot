@@ -70,6 +70,9 @@
         'src/features/discovery/MediaResult.js',
         'src/features/discovery/providers/youtube.js',
         'src/features/discovery/ProviderRegistry.js',
+        // Three videos and three songs that need no key, so the feature can be tried before it
+        // is configured. Not a provider: samples answer no queries.
+        'src/features/discovery/samples.js',
         'src/features/together/ui/MediaSearchPicker.js',
         // D9. What is playing, for the model. Loaded before the publisher that sets it.
         'src/features/together/CurrentMediaContext.js',

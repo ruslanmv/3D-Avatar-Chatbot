@@ -37,6 +37,10 @@ const MediaSearchPicker = (() => {
     function media() {
         return (typeof window !== 'undefined' && window.NEXUS_MEDIA_RESULT) || null;
     }
+    function samples() {
+        return typeof window !== 'undefined' ? window.NEXUS_DISCOVERY_SAMPLES : null;
+    }
+
     function settings() {
         return (typeof window !== 'undefined' && window.NEXUS_YT_SETTINGS) || null;
     }
@@ -137,13 +141,39 @@ const MediaSearchPicker = (() => {
             list.appendChild(btn);
         }
 
-        function draw(results) {
-            list.textContent = '';
+        /**
+         * The examples, under their own heading, when there is no search to do.
+         *
+         * The heading is not decoration. These are not results — nobody searched for them — and
+         * presenting them as matches for whatever was typed would be a lie the user cannot
+         * detect. `draw` marks each row `data-sample` so the distinction survives in the DOM,
+         * where a test can hold it.
+         */
+        function offerSamples() {
+            const bank = samples();
+            const picks = bank && typeof bank.forCapability === 'function' ? bank.forCapability(capability) : [];
+            if (!picks.length) {
+                return 0;
+            }
+            list.appendChild(el(doc, 'p', 'nexus-bd-together-samplehead', 'Or try one of these — no setup needed'));
+            draw(picks, { append: true });
+            return picks.length;
+        }
+
+        function draw(results, drawOpts) {
+            if (!drawOpts || !drawOpts.append) {
+                list.textContent = '';
+            }
             const M = media();
             for (const result of results.slice(0, MAX_RESULTS)) {
                 const row = el(doc, 'button', 'nexus-bd-together-result');
                 row.type = 'button';
                 row.dataset.mediaId = result.id;
+                if (result.sample) {
+                    // Kept in the DOM so "this was an example, not a match" is checkable rather
+                    // than a matter of where it happened to be rendered.
+                    row.dataset.sample = 'true';
+                }
 
                 const thumb = el(doc, 'span', 'nexus-bd-together-resultthumb');
                 if (result.thumbnail) {
@@ -197,6 +227,11 @@ const MediaSearchPicker = (() => {
                 } else {
                     say(`Searching for ${noun} isn't available right now.`, 'weak');
                 }
+                // A product that cannot be tried until it is configured mostly does not get
+                // tried. Playback needs no key — only search does — so a handful of fixed
+                // examples make the feature work on a fresh deployment, in one tap, through
+                // exactly the same code path a real result takes.
+                offerSamples();
                 return { ok: false, why: reason };
             }
 

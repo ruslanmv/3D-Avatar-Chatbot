@@ -78,6 +78,34 @@ Search uses YouTube Data API v3, which needs a key.
 Services → enable **YouTube Data API v3** → Credentials → **Create credentials → API key**.
 Restrict it to that API and to your site's referrer before you use it anywhere public.
 
+### Before any of that — it works with no key at all
+
+Search needs a key. **Playback does not.** So Watch and Music each carry three fixed examples,
+offered only where there is no search to do:
+
+| Watch | Music |
+|---|---|
+| Me at the zoo — the first video ever uploaded | lofi hip hop radio — Lofi Girl |
+| Rick Astley — Never Gonna Give You Up | Queen — Bohemian Rhapsody |
+| PSY — GANGNAM STYLE | Alan Walker — Faded |
+
+A product that cannot be tried until it is configured mostly does not get tried. These play
+through exactly the code path a real result takes, so one tap on a fresh deployment shows what
+the feature does — and **Set up YouTube** is still on screen, so they are a floor and not a
+ceiling.
+
+**A sample is never a search result.** They appear under their own heading — *"Or try one of
+these — no setup needed"* — carry `sample: true` and `data-sample` in the DOM, and vanish the
+moment a key is set. Handing somebody a fixed video labelled as a match for what they typed is a
+lie they cannot detect, and worse than an empty state. `tests/discovery-samples.test.js` holds
+that rule directly.
+
+They are chosen for **durability, not taste**: every one is on a channel whose whole purpose is
+being embedded on other people's pages. Each id was checked against YouTube's oEmbed endpoint
+and exists; embeddability was not verified, because the sandbox this was written in blocks the
+browser from reaching youtube.com. Nothing depends on all six surviving — a dead one is a single
+card that says so, and the fix is one line in `src/features/discovery/samples.js`.
+
 ### For a deployment — one key, nobody types anything (D13)
 
 Set a **private** environment variable on the host and every visitor can search without a key
