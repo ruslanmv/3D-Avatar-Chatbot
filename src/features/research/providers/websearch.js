@@ -54,6 +54,34 @@
     }
 
     /**
+     * A fetch that is guaranteed to settle (batch S5).
+     *
+     * The same guard the Wikipedia provider carries, and for the same reason: every error is
+     * handled here, and a request that is accepted and then left open is not an error. It
+     * produced a study session stuck in `researching` with nothing on screen to explain it.
+     * `catch` never runs, because nothing throws — so the deadline is the only thing that can
+     * turn a hang back into an answer.
+     */
+    const DEADLINE_MS = 8000;
+
+    function within(f, url, init, ms = DEADLINE_MS) {
+        let timer = null;
+        const controller = typeof AbortController === 'function' ? new AbortController() : null;
+        const request = f(url, controller ? { ...init, signal: controller.signal } : init);
+        const deadline = new Promise((resolve) => {
+            timer = setTimeout(() => {
+                try {
+                    if (controller) controller.abort();
+                } catch (_) {
+                    /* best-effort; the race is what guarantees an answer */
+                }
+                resolve(null);
+            }, ms);
+        });
+        return Promise.race([request, deadline]).finally(() => clearTimeout(timer));
+    }
+
+    /**
      * Does this deployment hold a search key?
      *
      * Answered by the route, once, and never by asking the page for a key it should not have.
@@ -76,7 +104,7 @@
             return status();
         }
         try {
-            const r = await f(ROUTE, { redirect: 'manual' });
+            const r = await within(f, ROUTE, { redirect: 'manual' });
             if (!r || !r.ok || r.type === 'opaqueredirect') {
                 configured = false;
                 return status();
@@ -110,7 +138,7 @@
             body: spec.body ? spec.body(query, max) : undefined,
         };
         try {
-            const r = await f('/api/proxy', {
+            const r = await within(f, '/api/proxy', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(proxied),
@@ -151,7 +179,7 @@
         }
 
         try {
-            const r = await f(`${ROUTE}?q=${encodeURIComponent(q)}&max=${encodeURIComponent(max)}`);
+            const r = await within(f, `${ROUTE}?q=${encodeURIComponent(q)}&max=${encodeURIComponent(max)}`);
             if (!r || !r.ok) {
                 return null;
             }

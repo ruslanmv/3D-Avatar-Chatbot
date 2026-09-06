@@ -19,7 +19,7 @@ The silence was the best-engineered part — a profile overlay with `budgetPerSe
 Name a topic. She reads up on it **first**, then works through it in questions.
 
 ```
-Focus  →  "What shall we understand today?"
+Focus  →  "What would you like to understand?"      the tile's own screen, with a box
               ↓  topic
           researching   she reads before saying anything about it
               ↓
@@ -40,6 +40,38 @@ exposition because being asked to recall beats being told twice. `checking` is t
 
 **Body doubling survives as a branch, not a deletion.** *"Just sit with me"* still gets the
 silent block, unchanged.
+
+## The topic is asked for in the panel (S5)
+
+It used to be asked in the chat: the tile opened, the panel closed itself, and the question
+arrived in the conversation at the exact moment the user had finished dismissing a panel. Every
+other activity that needs something from you collects it before it starts — Copilot takes its
+checklist that way, Watch takes a file or a tab — and Focus asking afterwards was the odd one
+out, with the extra step doing nothing.
+
+So the question is now the setup screen's prompt, the answer is a two-row box, and *"just sit
+with me"* is the button beside it.
+
+```
+tile press  →  "What would you like to understand?"   [ box ]  [ Start ]  [ Just sit with me ]
+                    ↓  Start
+               the topic goes into the transcript as the user's line, because it is one
+                    ↓
+               she reads, and the app says where the material came from
+                    ↓
+               she speaks — through the app's ordinary reply path, so it is said out loud
+```
+
+The order is the point. The topic is recorded **first** so the model can see what the next turn
+is an answer to; the reading happens **before** she says anything about it; and the hand-off goes
+through `_handleNonStreamingResponse` rather than `handleUserMessage`, because that function's
+first act is to record the user turn and step one has already done it. Anything that rendered a
+bot line directly would be text on a screen with no voice, no lipsync and no tag stripping.
+
+**Stop ends whichever of the two is running.** The tile reports *"Studying photosynthesis"* while
+a session is open; a Stop that only stopped the pomodoro would take that line off the screen and
+leave the session behind it, still in the prompt, still expecting answers. It calls `finish()`
+rather than `end()`, so the summary is written and what stayed shaky is remembered.
 
 ## Wikipedia first, the web only when it is genuinely not there
 
@@ -71,6 +103,15 @@ answered 200 while every search returned 429. Most study topics are *already* ar
 it now **reads first and searches only on a miss** — one cheap call instead of two on the common
 path, and the throttled endpoint reached only for genuinely ambiguous topics like "mercury",
 which comes back as a disambiguation page and is rejected.
+
+**A hung request is not an error, and `catch` cannot see it.** Driving the real page found one
+request reset and the next accepted and then left open. Every error path in the research layer
+was covered and none of them ran, because nothing threw — so `read()` never settled, and the
+session sat in `researching` with the topic on screen, no citation, no sentence saying why, and
+nothing to press. Every request now carries an 8-second deadline (`AbortController` where it
+exists, a race in every case, because the one promise that layer must never return is a pending
+one). The same run afterwards ends with *"I couldn't reach Wikipedia just now"*, said out loud,
+and the session back in `topic` so a second try costs one sentence.
 
 ## Against the two failure modes of AI tutors
 
@@ -148,11 +189,20 @@ conversation — decides.
 ## Verified
 
 Live against Wikipedia: `photosynthesis` and `quantum entanglement` both read and sufficient,
-nonsense correctly `not-in-wikipedia`. Eight mutants across both layers, all killed. 110 suites,
-3,090 tests.
+nonsense correctly `not-in-wikipedia`. Eight mutants across both layers, all killed.
+
+S5, in Chromium against the real page: the Focus tile opens *"What would you like to
+understand?"* with a two-row box and *"Just sit with me"* beside it; typing `photosynthesis` and
+pressing Start closes the panel, puts the topic in the transcript as the user's line, then the
+citation with its URL, then her first question — spoken, with lipsync firing; the launcher reads
+*"Together — Focus running"*; Stop writes the summary and returns the tile to idle. With
+Wikipedia unreachable from the sandbox, the same run ends in the honest sentence instead, also
+spoken. 25 mutants across the wizard, the loop, the Stop path and the deadlines, all killed.
+112 suites, 3,150 tests.
 
 ## Not done here
 
-The topic answer is routed through the DOM interceptor, so **spoken** answers still bypass it —
-the same known gap as the media commands. The session has no clock, deliberately; if a timer
+The typed topic answer is still routed through the DOM interceptor, so a topic given **by voice**
+in the chat bypasses it — the same known gap as the media commands. The wizard sidesteps it for
+the way most sessions now start, but does not close it. The session has no clock, deliberately; if a timer
 turns out to be wanted it belongs beside the study loop, not inside it.

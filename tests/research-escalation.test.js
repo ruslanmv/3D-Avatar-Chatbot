@@ -9,6 +9,7 @@
 
 const Source = require('../src/features/research/ResearchSource.js');
 const Wikipedia = require('../src/features/research/providers/wikipedia.js');
+const Web = require('../src/features/research/providers/websearch.js');
 
 let Registry;
 let asked;
@@ -236,5 +237,93 @@ describe('Wikipedia is asked politely', () => {
     test('and a 429 is reported as such rather than as a failure', async () => {
         const out = await Wikipedia.search('x', { fetchImpl: async () => ({ ok: false, status: 429 }) });
         expect(out).toEqual({ rateLimited: true });
+    });
+});
+
+// ── a request that never answers ─────────────────────────────────────────────
+
+describe('a hung request is an answer too (batch S5)', () => {
+    // Found by driving the real page: one request was reset, the next was accepted and then
+    // left open. Every error path was covered and none of them ran, because nothing threw —
+    // so `read()` never settled, and a study session sat in `researching` with the topic on
+    // screen, no citation, no sentence saying why, and nothing to press.
+    const never = () => new Promise(() => {});
+
+    beforeEach(() => {
+        jest.useFakeTimers();
+    });
+    afterEach(() => {
+        jest.useRealTimers();
+    });
+
+    /**
+     * Run `work`, letting every deadline inside it expire.
+     *
+     * Looped rather than advanced once: the registry's calls are sequential, so the timer for
+     * the web search does not exist until the Wikipedia one has already given up.
+     */
+    async function past(work) {
+        let done = false;
+        const p = work().then((value) => {
+            done = true;
+            return value;
+        });
+        for (let i = 0; i < 10 && !done; i += 1) {
+            await Promise.resolve();
+            await Promise.resolve();
+            jest.advanceTimersByTime(30000);
+        }
+        return p;
+    }
+
+    test('Wikipedia: a summary that never answers gives up instead of hanging', async () => {
+        const out = await past(() => Wikipedia.read('photosynthesis', { fetchImpl: never }));
+        expect(out).toBeNull();
+    });
+
+    test('Wikipedia: and so does the search behind it', async () => {
+        const out = await past(() => Wikipedia.search('photosynthesis', { fetchImpl: never }));
+        expect(out).toBeNull();
+    });
+
+    test('the web provider gives up on its readiness probe', async () => {
+        Web.reset();
+        const out = await past(() => Web.ready({ fetchImpl: never, force: true }));
+        expect(out.available).toBe(false);
+    });
+
+    test('and on the search itself', async () => {
+        const out = await past(() => Web.research('what happened today', { fetchImpl: never }));
+        expect(out).toBeNull();
+    });
+
+    test('so the session is told nothing was reachable, rather than told nothing at all', async () => {
+        // The registry's own answer is what a study session acts on. A pending promise is the
+        // one thing it cannot report, explain or recover from.
+        Web.reset();
+        window.NEXUS_RESEARCH_WIKIPEDIA = Wikipedia;
+        window.NEXUS_RESEARCH_WEB = Web;
+        const out = await past(() => Registry.read('photosynthesis', { fetchImpl: never }));
+        expect(out.ok).toBe(false);
+        expect(out.reason).toBeTruthy();
+    });
+
+    test('a request that answers in time is untouched by the deadline', async () => {
+        const out = await Wikipedia.search('photosynthesis', {
+            fetchImpl: async () => ({
+                ok: true,
+                json: async () => ({ query: { search: [{ title: 'Photosynthesis' }] } }),
+            }),
+        });
+        expect(out).toEqual([{ title: 'Photosynthesis', snippet: '' }]);
+    });
+
+    test('and the deadline does not leave a timer running behind it', async () => {
+        await Wikipedia.search('photosynthesis', {
+            fetchImpl: async () => ({ ok: true, json: async () => ({ query: { search: [] } }) }),
+        });
+        // A per-request timer that outlives its request keeps the page awake for as long as
+        // somebody keeps asking questions.
+        expect(jest.getTimerCount()).toBe(0);
     });
 });

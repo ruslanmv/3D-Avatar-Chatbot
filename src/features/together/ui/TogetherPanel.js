@@ -711,7 +711,9 @@ const TogetherPanel = (() => {
             if (wantsText) {
                 textarea = this.doc.createElement('textarea');
                 textarea.className = 'nexus-bd-together-steps';
-                textarea.rows = 4;
+                // A checklist needs room; a topic needs one line. Four rows for a single
+                // question looks like it is asking for an essay.
+                textarea.rows = wantsText.rows || 4;
                 textarea.placeholder = wantsText.placeholder || '';
                 textarea.setAttribute('aria-label', wantsText.placeholder || 'Steps');
                 this.root.appendChild(textarea);
@@ -741,6 +743,12 @@ const TogetherPanel = (() => {
                 const b = this._button(input.label, 'nexus-bd-together-option', () => {
                     const chosen = { ...input };
                     if (input.wantsText && textarea) {
+                        // The raw value as well as the split lines. Copilot wants a checklist;
+                        // Focus wants one topic, and splitting a topic on newlines would give
+                        // it a list of one that it then has to reassemble. Untrimmed on
+                        // purpose — this is the box's contents, and what counts as tidy is the
+                        // reader's business, not the panel's.
+                        chosen.text = String(textarea.value || '');
                         chosen.steps = String(textarea.value || '')
                             .split(/\r?\n/)
                             .map((line) => line.trim())

@@ -176,7 +176,11 @@ const flush = () => new Promise((r) => setTimeout(r, 0));
 // ── every tile, all the way through ─────────────────────────────────────────
 
 describe('each tile completes the journey its button promises', () => {
-    test('Focus: one press, no permission, and Stop puts it back', async () => {
+    test('Focus: a topic is asked for, nothing is asked permission for, and Stop puts it back', async () => {
+        // S5. The tile opens a question — "what would you like to understand?" — with a box
+        // for a topic and the old body-doubling block beside it. This drives the second,
+        // which is the branch that reaches the activity itself; the topic branch belongs to
+        // the study session and is tested where that lives.
         const {
             panel,
             consent,
@@ -184,7 +188,11 @@ describe('each tile completes the journey its button promises', () => {
         } = panelWith((c) => [make('focus', { consent: c })]);
         panel.open();
         panel.choose('focus');
-        await flush();
+        const sit = panel
+            .contractFor('focus')
+            .inputs()
+            .find((i) => i.id === 'sit');
+        await panel.startActivity('focus', sit);
         expect(panel.activeActivity).toBe('focus');
         expect(consent.asked).toEqual([]);
         panel.stopActivity('user');
@@ -540,7 +548,13 @@ describe('the running view says what the activity is doing', () => {
         const { panel } = panelWith((c) => [make('focus', { consent: c })]);
         panel.open();
         panel.choose('focus');
-        await flush();
+        await panel.startActivity(
+            'focus',
+            panel
+                .contractFor('focus')
+                .inputs()
+                .find((i) => i.id === 'sit')
+        );
         panel.open();
         expect(html()).toContain('Focus · 24:18');
         expect(html()).not.toContain('nothing is being shared');

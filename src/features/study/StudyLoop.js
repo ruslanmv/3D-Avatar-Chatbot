@@ -26,13 +26,13 @@
     }
 
     /** The app's own way of putting a line in the chat, whichever shape this page uses. */
-    function say(text) {
+    function say(text, who = 'bot') {
         const ask = pick('NEXUS_YT_ASK');
         if (!ask || typeof ask.say !== 'function') {
             return null;
         }
         try {
-            return ask.say(text, 'bot', global && global.document) || null;
+            return ask.say(text, who, global && global.document) || null;
         } catch (_) {
             return null;
         }
@@ -91,6 +91,69 @@
             found.used === 'wikipedia' ? 'Wikipedia' : found.used === 'web' ? 'the web' : 'Wikipedia and the web';
         say(`I've read up on ${first.title || session.get().topic} — from ${where}. ${first.url || ''}`.trim());
         return { ok: true, sources: found.sources, used: found.used };
+    }
+
+    /**
+     * The topic arrived from the Focus wizard rather than from the chat (batch S5).
+     *
+     * `open()` + the interceptor in `YouTubeAsk` is the typed route: she asks in the chat,
+     * the next message is caught before the media parser sees it, and `study()` runs. That
+     * route stays. This is the same three steps for a topic that was typed into the panel
+     * instead, and the order of those steps is the whole point:
+     *
+     *   1. the topic goes into the transcript as the user's line, because it is one —
+     *      typed by them, and the thing the next turn is an answer to. A model that cannot
+     *      see it is being asked to teach a topic nobody mentioned;
+     *   2. the reading happens, and the app says where the material came from;
+     *   3. only then does she speak, and she speaks through the app's ordinary reply path,
+     *      so the first thing said in a study session is spoken aloud, lipsynced, persisted
+     *      and stripped of tags exactly like every other reply.
+     *
+     * Step 3 deliberately does not call `handleUserMessage`: that function's first act is to
+     * record the user turn, and step 1 has already done it. `_handleNonStreamingResponse` is
+     * the reply half on its own — the fallback path, so it works for every provider including
+     * the ones that cannot stream.
+     */
+    async function startWithTopic(topic) {
+        const session = pick('NEXUS_STUDY_SESSION');
+        const clean = String(topic || '').trim();
+        if (!clean) {
+            return { ok: false, why: 'no-topic' };
+        }
+        if (!session || typeof session.begin !== 'function') {
+            return { ok: false, why: 'not-loaded' };
+        }
+        session.begin();
+        say(clean, 'user');
+        const found = await study(clean);
+        if (!found || !found.ok) {
+            // The sentence saying why is already on screen. Handing a failed lookup to her
+            // would get an answer invented from nothing, which is the one thing a study
+            // session must not do.
+            return found || { ok: false, why: 'not-loaded' };
+        }
+        await handOver(clean);
+        return found;
+    }
+
+    /**
+     * Ask her for the first turn, out loud.
+     *
+     * Never throws: a hand-off that fails leaves a session with a topic, sources and a
+     * citation on screen, which the user can carry on with by typing. Losing the whole start
+     * over a missing global would be worse.
+     */
+    async function handOver(text) {
+        const reply = global && global._handleNonStreamingResponse;
+        if (typeof reply !== 'function') {
+            return false;
+        }
+        try {
+            await reply(text);
+            return true;
+        } catch (_) {
+            return false;
+        }
     }
 
     /** Why nothing came back, in a sentence that says what to do about it. */
@@ -155,7 +218,7 @@
         return parts.join(' ');
     }
 
-    const api = { open, study, finish, summarise, explainMiss };
+    const api = { open, study, startWithTopic, handOver, finish, summarise, explainMiss };
 
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;

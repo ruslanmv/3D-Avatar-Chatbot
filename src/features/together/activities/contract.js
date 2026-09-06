@@ -126,22 +126,84 @@ const ActivityContract = (() => {
             // first, then works through it in questions. Body doubling survives inside it —
             // "just sit with me" still gets the silent block, which is the best-engineered
             // part of the old feature and not worth deleting.
-            prompt: 'Learn something together. Name a topic and I will read up on it first.',
-            inputs: () => [{ id: 'start', label: 'Start a session', permission: null }],
-            start: (a) => {
+            prompt: 'What would you like to understand?',
+            // S5. The topic is asked for here rather than in the chat.
+            //
+            // It used to open the tile, close the panel, and ask in the conversation — which
+            // works, and puts a question on screen at the exact moment the user has just
+            // finished dismissing a panel. Every other activity that needs something from you
+            // collects it before it starts; Copilot takes its checklist this way. Focus asking
+            // afterwards was the odd one out, and the extra step was doing nothing.
+            //
+            // The second option is the old Focus, kept: body doubling is the best-engineered
+            // part of what this used to be, and "just sit with me" is a real answer to "what
+            // would you like to understand?".
+            inputs: () => [
+                {
+                    id: 'study',
+                    label: 'Start',
+                    permission: null,
+                    wantsText: true,
+                    rows: 2,
+                    placeholder: 'A topic — say, how photosynthesis works',
+                },
+                { id: 'sit', label: 'Just sit with me', permission: null, note: 'No talking, no topic' },
+            ],
+            start: (a, { input } = {}) => {
                 const loop = typeof window !== 'undefined' ? window.NEXUS_STUDY_LOOP : null;
-                if (loop && typeof loop.open === 'function') {
+                const topic = input && input.id === 'study' ? String(input.text || '').trim() : '';
+                if (topic && loop && typeof loop.startWithTopic === 'function') {
                     try {
-                        loop.open();
-                        return { ok: true, mode: 'study' };
+                        // Not awaited: the panel should close on the tap rather than sitting
+                        // open through a network round trip. Caught all the same — an
+                        // unhandled rejection here would be a session that failed in silence,
+                        // which is the exact failure S5 spent a deadline fixing upstream.
+                        Promise.resolve(loop.startWithTopic(topic)).catch((error) => {
+                            console.warn('[BD] study session could not start', error);
+                        });
+                        return { ok: true, mode: 'study', topic };
                     } catch (_) {
                         // A study session that will not open falls back to the thing that
                         // always worked rather than leaving the tile dead.
                     }
                 }
+                if (input && input.id === 'study' && loop && typeof loop.open === 'function') {
+                    // They pressed Start with an empty box. Asking in the chat is the right
+                    // recovery — better than refusing the tap.
+                    try {
+                        loop.open();
+                        return { ok: true, mode: 'study' };
+                    } catch (_) {
+                        /* fall through to body doubling */
+                    }
+                }
                 return a.start();
             },
-            stop: (a, why) => a.stop(why),
+            // Stop has to end whichever of the two is running. The tile reports "Studying
+            // photosynthesis" while a session is open, and a Stop that only stopped the
+            // pomodoro would take that line off the screen and leave the session behind it —
+            // still in the prompt, still expecting answers, with no way back to it.
+            //
+            // `finish()` rather than `end()`: it is the same close a session gets when it runs
+            // its course, so the summary is written and what stayed shaky is remembered.
+            stop: (a, why) => {
+                const study = typeof window !== 'undefined' ? window.NEXUS_STUDY_SESSION : null;
+                const loop = typeof window !== 'undefined' ? window.NEXUS_STUDY_LOOP : null;
+                if (study && typeof study.isRunning === 'function' && study.isRunning()) {
+                    try {
+                        if (loop && typeof loop.finish === 'function') {
+                            loop.finish();
+                        } else if (typeof study.end === 'function') {
+                            study.end();
+                        }
+                        return true;
+                    } catch (_) {
+                        // Falling through stops the block underneath, which is still better
+                        // than a tile that will not turn off.
+                    }
+                }
+                return a.stop(why);
+            },
             status: (a) => {
                 // A study session and a focus block are different things running under one
                 // tile, so the line says which. Reporting a countdown for a session that has

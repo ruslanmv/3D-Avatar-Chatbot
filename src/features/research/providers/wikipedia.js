@@ -40,6 +40,39 @@
 
     const HEADERS = { 'Api-User-Agent': UA, Accept: 'application/json' };
 
+    /**
+     * A fetch that is guaranteed to settle (batch S5).
+     *
+     * Every error path here was already handled — a 429, a 404, a thrown `TypeError` from a
+     * blocked request all return something the registry can escalate on. What was not handled
+     * is the request that does neither: a connection accepted and then left open. Driving the
+     * real page found one, and the symptom was the worst kind — a study session sitting in
+     * `researching` with the topic on screen, no citation, no sentence saying why, and nothing
+     * to press. `catch` cannot see that, because nothing was thrown.
+     *
+     * So every request carries a deadline. `AbortController` is the mechanism where it exists;
+     * the race is there because a signal only helps if the environment honours it, and the one
+     * promise this function must never return is a pending one.
+     */
+    const DEADLINE_MS = 8000;
+
+    function within(f, url, init, ms = DEADLINE_MS) {
+        let timer = null;
+        const controller = typeof AbortController === 'function' ? new AbortController() : null;
+        const request = f(url, controller ? { ...init, signal: controller.signal } : init);
+        const deadline = new Promise((resolve) => {
+            timer = setTimeout(() => {
+                try {
+                    if (controller) controller.abort();
+                } catch (_) {
+                    /* aborting is best-effort; the race below is what guarantees the answer */
+                }
+                resolve(null);
+            }, ms);
+        });
+        return Promise.race([request, deadline]).finally(() => clearTimeout(timer));
+    }
+
     /** Rate limiting is its own answer, not a failure to reach anything. */
     const RATE_LIMITED = 429;
 
@@ -84,7 +117,7 @@
             return null;
         }
         try {
-            const r = await f(searchUrl(q, max), { headers: HEADERS });
+            const r = await within(f, searchUrl(q, max), { headers: HEADERS });
             if (!r || !r.ok) {
                 // 429 means "ask again shortly", not "this does not exist". The caller
                 // escalates either way, but only one of them is worth saying out loud.
@@ -110,7 +143,7 @@
             return null;
         }
         try {
-            const r = await f(summaryUrl(title), { headers: HEADERS });
+            const r = await within(f, summaryUrl(title), { headers: HEADERS });
             if (!r || !r.ok) {
                 return null;
             }
