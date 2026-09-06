@@ -106,15 +106,10 @@ const ConversationPublisher = (() => {
         // like", and it is not this file's.
         const node = A.say(`${line(result, { play })} — ${result.url}`, 'bot', d);
 
-        try {
-            // The model's own context, so a follow-up question ("what is this?") is about
-            // something she can see she said.
-            if (w && w.chatHistory && typeof w.chatHistory.addMessage === 'function') {
-                w.chatHistory.addMessage('assistant', `${line(result, { play })} — ${result.url}`);
-            }
-        } catch (_) {
-            // A full history is not a reason to lose the card.
-        }
+        // M7. The transcript entry used to be written here as well as by `say`. `say` now
+        // records everything it draws — that is what stopped intercepted turns being invisible
+        // to the model — so writing it again here would put the card in twice, and a
+        // transcript that repeats itself is its own kind of confusion.
         try {
             // The same function the app calls after its own messages. Without it the card is
             // there until reload and then silently is not.
