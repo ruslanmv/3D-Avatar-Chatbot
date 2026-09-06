@@ -61,6 +61,8 @@ const MediaSearchPicker = (() => {
      * @param {string} [opts.capability] defaults from `mediaKind`
      * @param {string} [opts.placeholder]
      * @param {function} opts.onChoose called with the chosen `MediaResult`
+     * @param {function} [opts.onPlay] called with a `MediaResult` to start now. Absent, no ▶
+     *   button is drawn at all — a control that cannot do anything is worse than no control.
      * @param {function} [opts.onSetup] pressed the connect button
      * @param {function} [opts.search] injected for tests
      * @returns {HTMLElement} the whole block, with `.focusInput()` attached
@@ -200,7 +202,36 @@ const MediaSearchPicker = (() => {
                         opts.onChoose(result);
                     }
                 });
-                list.appendChild(row);
+
+                // M3. Two meanings for one row, which is what the old design was missing:
+                // the row *chooses* (publishes the card, as it always has), and ▶ Play says
+                // start it now. Before this, choosing was the only verb the panel had, and
+                // "Playing…" appeared on a card that had never played anything.
+                //
+                // A sibling rather than a child: the row is a <button>, and a button inside a
+                // button is invalid HTML that browsers resolve by dropping one of them. The
+                // wrapper carries the flex row, so every existing rule on
+                // `.nexus-bd-together-result` still applies to the same element it always did.
+                const wrap = el(doc, 'div', 'nexus-bd-together-resultrow');
+                wrap.appendChild(row);
+                if (typeof opts.onPlay === 'function') {
+                    const play = el(doc, 'button', 'nexus-bd-together-play', '▶');
+                    play.type = 'button';
+                    play.title = 'Play now';
+                    play.setAttribute(
+                        'aria-label',
+                        `Play ${result.title || 'this'}${result.creator ? ` by ${result.creator}` : ''} now`
+                    );
+                    play.dataset.mediaId = result.id;
+                    play.addEventListener('click', (event) => {
+                        // The row behind it must not also fire: choosing and playing are
+                        // different requests, and doing both would publish two cards.
+                        event.stopPropagation();
+                        opts.onPlay(result);
+                    });
+                    wrap.appendChild(play);
+                }
+                list.appendChild(wrap);
             }
         }
 

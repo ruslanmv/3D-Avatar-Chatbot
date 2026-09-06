@@ -48,8 +48,21 @@ const ConversationPublisher = (() => {
      * named. The media still plays — there is something to watch either way — but nobody is
      * misled about what they are looking at.
      */
-    function line(result) {
+    function line(result, { play = false } = {}) {
         const title = String((result && result.title) || '').trim();
+        // M1. "Playing" was a lie on every path but this one. Publishing a card puts a
+        // thumbnail on screen; it starts nothing. The transcript that made this obvious:
+        //
+        //     NEXUS  Playing “Flying: Relaxing Sleep Music…”
+        //     YOU    play it please
+        //     NEXUS  I don't have the capability to play videos…
+        //
+        // She was not confused. She had been told a card was published and reported it as
+        // playback, and then had nothing to act on when asked to do the thing she had just
+        // claimed to be doing. So the word now depends on what was actually asked for.
+        if (!play && !(result && result.sample)) {
+            return title ? `I found “${title}” — tap it to play` : 'I found something — tap it to play';
+        }
         if (result && result.sample) {
             return title
                 ? `Search isn't set up here yet, so here's a sample instead — “${title}”`
@@ -65,7 +78,7 @@ const ConversationPublisher = (() => {
      * Never throws: this runs from a click in the launcher, and a failure here must close the
      * panel and leave the app alone rather than taking the click down with it.
      */
-    function publish(result, { doc, win } = {}) {
+    function publish(result, { doc, win, play = false } = {}) {
         const d = doc || (typeof document !== 'undefined' ? document : null);
         const w = win || (typeof window !== 'undefined' ? window : null);
         if (!result || !result.url || !d) {
@@ -91,13 +104,13 @@ const ConversationPublisher = (() => {
         // the `.chat-row > .chat-message > .message-text` `main.js` builds otherwise. Reused
         // rather than reimplemented so there is one answer to "what does a message look
         // like", and it is not this file's.
-        const node = A.say(`${line(result)} — ${result.url}`, 'bot', d);
+        const node = A.say(`${line(result, { play })} — ${result.url}`, 'bot', d);
 
         try {
             // The model's own context, so a follow-up question ("what is this?") is about
             // something she can see she said.
             if (w && w.chatHistory && typeof w.chatHistory.addMessage === 'function') {
-                w.chatHistory.addMessage('assistant', `${line(result)} — ${result.url}`);
+                w.chatHistory.addMessage('assistant', `${line(result, { play })} — ${result.url}`);
             }
         } catch (_) {
             // A full history is not a reason to lose the card.
@@ -111,10 +124,60 @@ const ConversationPublisher = (() => {
         } catch (_) {
             // Storage full or disabled. The card is live either way.
         }
+
+        if (play) {
+            start(result, d, w);
+        }
         return node;
     }
 
-    return { publish, line };
+    /**
+     * Actually start it — the step ▶ Play adds and choosing never had.
+     *
+     * The card is built by `YouTubeEmbed2D` when it scans the message, which happens after
+     * `say` returns, so there is nothing to press yet at this point. Rather than reach into
+     * the embed's internals or guess at a delay, this waits for the card carrying this id to
+     * appear and clicks its facade — the same thing a finger does, through the same code path,
+     * so playback, the collapse button and the session reporting all behave identically
+     * whether a person or the app started it.
+     *
+     * Gives up quietly after a short window. A card that never arrived means the message had
+     * no embeddable link in it, and the published line still stands with its URL.
+     */
+    function start(result, d, w) {
+        const id = String((result && result.id) || '').trim();
+        if (!id || !d || !w || typeof w.setTimeout !== 'function') {
+            return false;
+        }
+        const deadline = 4000;
+        const step = 120;
+        let waited = 0;
+        const tick = () => {
+            let facade = null;
+            try {
+                const card = d.querySelector(`.nexus-yt-card[data-yt-id="${id}"]`);
+                facade = card ? card.querySelector('.nexus-yt-facade') : null;
+            } catch (_) {
+                return;
+            }
+            if (facade && typeof facade.click === 'function') {
+                try {
+                    facade.click();
+                } catch (_) {
+                    /* a card that went away mid-wait is not a failure worth reporting */
+                }
+                return;
+            }
+            waited += step;
+            if (waited < deadline) {
+                w.setTimeout(tick, step);
+            }
+        };
+        w.setTimeout(tick, step);
+        return true;
+    }
+
+    return { publish, line, start };
 })();
 
 if (typeof window !== 'undefined') {

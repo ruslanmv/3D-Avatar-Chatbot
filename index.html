@@ -3597,8 +3597,12 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <script defer src="src/xr/MotionIntegration.js"></script>
 
         <!-- YouTube Everywhere (additive — thumbnails + inline player in 2D chat, cards + companion-tab playback in VR) -->
-        <!-- NON-DESTRUCTIVE: To remove, delete these 6 script tags and the src/features/youtube/ folder. Search "NEXUS_YT" -->
+        <!-- NON-DESTRUCTIVE: To remove, delete these 7 script tags and the src/features/youtube/ folder. Search "NEXUS_YT" -->
         <script defer src="src/features/youtube/YouTubeLink.js"></script>
+        <!-- M2. Hears back from the YouTube player, so "playing" means the player said so
+             rather than the app having asked. Loads no network script of its own until
+             somebody actually presses play. -->
+        <script defer src="src/features/youtube/YouTubePlaybackAdapter.js"></script>
         <script defer src="src/features/youtube/YouTubeCompanion.js"></script>
         <script defer src="src/features/youtube/YouTubeEmbed2D.js"></script>
         <script defer src="src/features/youtube/YouTubeVRBridge.js"></script>

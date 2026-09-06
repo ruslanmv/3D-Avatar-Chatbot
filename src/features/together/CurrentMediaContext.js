@@ -139,7 +139,39 @@ const CurrentMediaContext = (() => {
         if (!current) {
             return '';
         }
-        const what = current.kind === 'track' ? 'listening to' : 'watching';
+        // M1. What the app actually knows, rather than the one sentence it used to say in
+        // every case. Publishing a card and playing a video were the same fact here, so she
+        // told people they were watching something that had never started — and then, asked
+        // to play it, correctly said she could not, because nothing had.
+        const session = typeof window !== 'undefined' ? window.NEXUS_MEDIA_SESSION : null;
+        let status = null;
+        try {
+            if (session && typeof session.status === 'function' && typeof session.current === 'function') {
+                const live = session.current();
+                if (live && live.id && live.id === current.id) {
+                    status = session.status();
+                }
+            }
+        } catch (_) {
+            // No session, or a session about something else: fall through to the old wording,
+            // which is what an install without the module has always sent.
+        }
+        const listening = current.kind === 'track' || current.kind === 'music';
+        const STATE = {
+            selected: listening
+                ? 'The user has chosen this track. It is on screen and ready, but it is NOT playing yet — nothing is coming out of their speakers. If they ask you to play it, tell them to tap the card.'
+                : 'The user has chosen this video. It is on screen and ready, but it is NOT playing yet. If they ask you to play it, tell them to tap the card.',
+            loading: 'The app has asked the player to start this. It has not confirmed yet.',
+            playing: listening
+                ? 'The app reports that this track is playing right now.'
+                : 'The app reports that this video is playing right now.',
+            paused: 'This is open and playback is paused.',
+            ended: 'Playback of this has finished.',
+            blocked:
+                'The browser refused to start playback on its own — this happens when nothing was tapped first. It is NOT playing. Tell them to tap the card to start it.',
+        };
+        const stateLine = status && STATE[status] ? STATE[status] : null;
+        const what = listening ? 'listening to' : 'watching';
         const rows = [
             ['title', current.title],
             ['creator', current.creator],
@@ -151,7 +183,7 @@ const CurrentMediaContext = (() => {
         return [
             '',
             '',
-            `The user is ${what} something right now, and the app has told you what it is.`,
+            stateLine || `The user is ${what} something right now, and the app has told you what it is.`,
             'These are facts you were given. You did not watch or listen to it: you have no',
             'frames, no audio and no captions. Answer about it from the facts below, and say',
             'plainly when a question needs more than they contain. Do not say you cannot know',

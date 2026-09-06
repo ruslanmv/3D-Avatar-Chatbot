@@ -795,11 +795,45 @@ const TogetherPanel = (() => {
                 note: input.note,
                 onChoose: (result) => {
                     this.close();
+                    this._session('select', result);
                     if (publisher && typeof publisher.publish === 'function') {
                         publisher.publish(result, { doc: this.doc, win: this.win });
                     }
                 },
+                // M3. ▶ Play. Publishes the same card and then asks for playback — which
+                // choosing never did, and which is why the card used to say "Playing…" over
+                // a video nobody had started.
+                //
+                // No capture is started here, deliberately. Playing a video in the chat needs
+                // no `getDisplayMedia`: that belongs to Watch and the share-a-tab path, and
+                // §2a's consent machine stays the only owner of it.
+                onPlay: (result) => {
+                    this.close();
+                    this._session('requestPlay', result);
+                    if (publisher && typeof publisher.publish === 'function') {
+                        publisher.publish(result, { doc: this.doc, win: this.win, play: true });
+                    }
+                },
             });
+        }
+
+        /**
+         * Tell the media session what the user just did, if it is loaded.
+         *
+         * One guarded call rather than two, because the two paths differ only in the verb and
+         * an install without the session module must behave exactly as it did before.
+         */
+        _session(method, result) {
+            const session = this.win && this.win.NEXUS_MEDIA_SESSION;
+            if (!session || typeof session[method] !== 'function') {
+                return null;
+            }
+            try {
+                return session[method](result, { source: 'together' });
+            } catch (_) {
+                // Knowing what was chosen is never worth losing the choice over.
+                return null;
+            }
         }
 
         /** What is running — in the activity's own words, not the launcher's. */

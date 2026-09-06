@@ -93,6 +93,9 @@
         // arms it; on its own it does nothing at all until armed.
         'src/features/together/AmbientMode.js',
         'src/features/together/ui/MediaSearchPicker.js',
+        // M1. What is selected and what is actually playing — two facts the app used to hold
+        // in one field. Before CurrentMediaContext, which reads its status.
+        'src/features/together/MediaSession.js',
         // D9. What is playing, for the model. Loaded before the publisher that sets it.
         'src/features/together/CurrentMediaContext.js',
         'src/features/together/ui/ConversationPublisher.js',
