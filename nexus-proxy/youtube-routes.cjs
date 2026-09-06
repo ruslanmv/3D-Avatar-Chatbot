@@ -23,6 +23,69 @@ function isYouTubeUrl(raw) {
 }
 
 function mountYouTubeRoutes(app) {
+    /**
+     * Search on the deployment's own key (batch D13).
+     *
+     *   GET /api/yt/search            → { configured: bool }   readiness, no quota spent
+     *   GET /api/yt/search?q=lofi     → { results: [...] }
+     *
+     * The key lives in `YOUTUBE_API_KEY` and **never reaches the browser**. That is the whole
+     * reason this route exists rather than a config endpoint handing the key to the page: a
+     * Data API key in client JavaScript is a public key, readable by anyone who opens the
+     * page, and spending an operator's quota is the least of what they could then do with it.
+     * Referrer restrictions help in a browser and are trivially skipped outside one.
+     *
+     * The response shape is the one `YouTubeCompanion.search` already returns, so the client
+     * treats the two paths identically.
+     */
+    app.get('/api/yt/search', async (req, res) => {
+        const key = (process.env.YOUTUBE_API_KEY || '').trim();
+        const q = String(req.query.q || '').trim();
+        if (!q) {
+            // A readiness probe. Answers whether search is available here without spending a
+            // unit of quota to find out, so Settings can say "Ready" on every page load.
+            return res.json({ configured: Boolean(key) });
+        }
+        if (!key) {
+            return res.status(503).json({ error: 'This deployment has no YouTube key configured.' });
+        }
+        const max = Math.max(1, Math.min(10, Number(req.query.max) || 4));
+        const params = new URLSearchParams({
+            part: 'snippet',
+            type: 'video',
+            videoEmbeddable: 'true',
+            safeSearch: 'moderate',
+            maxResults: String(max),
+            q,
+            key,
+        });
+        try {
+            const upstream = await fetch(`https://www.googleapis.com/youtube/v3/search?${params.toString()}`);
+            if (!upstream.ok) {
+                // The upstream status, never its body: a quota error from Google names the
+                // project and the key's identifier, and this response is public.
+                return res.status(upstream.status === 403 ? 429 : 502).json({ error: `Upstream: ${upstream.status}` });
+            }
+            const body = await upstream.json();
+            const results = (body.items || [])
+                .filter((it) => it.id && ID_RE.test(it.id.videoId || ''))
+                .map((it) => ({
+                    id: it.id.videoId,
+                    start: 0,
+                    name: (it.snippet && it.snippet.title) || '',
+                    author: (it.snippet && it.snippet.channelTitle) || '',
+                    // D9. Carried here too, or a deployment-key search would tell the model
+                    // less than a visitor's own key does.
+                    description: (it.snippet && it.snippet.description) || '',
+                    publishedAt: (it.snippet && it.snippet.publishedAt) || '',
+                }));
+            res.setHeader('Cache-Control', 'public, max-age=300');
+            return res.json({ results });
+        } catch (err) {
+            return res.status(502).json({ error: 'search failed' });
+        }
+    });
+
     app.get('/api/yt/oembed', async (req, res) => {
         const url = req.query.url;
         if (!url || !isYouTubeUrl(url)) {

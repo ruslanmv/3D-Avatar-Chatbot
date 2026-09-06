@@ -2170,6 +2170,58 @@ html.is-android-phone .xr-btn--vr {
    Utility Classes
    ============================================ */
 
+/* Settings ▸ Discovery & Media (D6). Which engine powers search, and whether it works.
+   Rendered by src/features/discovery/DiscoverySettings.js. */
+.nexus-discovery-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.nexus-discovery-label {
+    flex: 0 0 9rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.75rem;
+}
+
+.nexus-discovery-select {
+    flex: 1;
+    min-width: 0;
+}
+
+.nexus-discovery-states {
+    margin-top: 10px;
+    display: grid;
+    gap: 4px;
+}
+
+.nexus-discovery-state {
+    display: flex;
+    gap: 10px;
+    font-size: 0.7rem;
+}
+
+.nexus-discovery-name {
+    flex: 0 0 9rem;
+    color: rgba(255, 255, 255, 0.55);
+}
+
+/* Ready is stated in colour as well as words: a list where every row reads the same is a
+   list nobody scans. */
+.nexus-discovery-status[data-ready='yes'] {
+    color: var(--accent-green, #00ff88);
+}
+
+.nexus-discovery-status[data-ready='no'] {
+    color: var(--accent-orange, #ff9100);
+}
+
+.nexus-discovery-empty {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.7rem;
+}
+
 .hidden {
     display: none !important;
 }

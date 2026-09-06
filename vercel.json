@@ -3,72 +3,133 @@
   "buildCommand": "npm run build",
   "installCommand": "npm install --legacy-peer-deps || npm install || true",
   "outputDirectory": ".",
-
   "functions": {
     "api/proxy.js": {
       "maxDuration": 60
     },
     "api/rpm-guest.js": {
       "maxDuration": 10
+    },
+    "api/yt-search.js": {
+      "maxDuration": 10
     }
   },
-
   "headers": [
     {
       "source": "/vendor/(.*)\\.js",
       "headers": [
-        { "key": "Content-Type", "value": "application/javascript; charset=utf-8" },
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
       ]
     },
     {
       "source": "/src/(.*)\\.js",
       "headers": [
-        { "key": "Content-Type", "value": "application/javascript; charset=utf-8" },
-        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+        {
+          "key": "Content-Type",
+          "value": "application/javascript; charset=utf-8"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
       ]
     },
     {
       "source": "/(.*)\\.wasm",
       "headers": [
-        { "key": "Content-Type", "value": "application/wasm" },
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+        {
+          "key": "Content-Type",
+          "value": "application/wasm"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
       ]
     },
     {
       "source": "/(.*)\\.(glb|gltf|vrm)",
       "headers": [
-        { "key": "Content-Type", "value": "model/gltf-binary" },
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" },
-        { "key": "Access-Control-Allow-Origin", "value": "*" }
+        {
+          "key": "Content-Type",
+          "value": "model/gltf-binary"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        }
       ]
     },
     {
       "source": "/(.*)\\.(vrma|bvh)",
       "headers": [
-        { "key": "Content-Type", "value": "application/octet-stream" },
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" },
-        { "key": "Access-Control-Allow-Origin", "value": "*" }
+        {
+          "key": "Content-Type",
+          "value": "application/octet-stream"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        }
       ]
     },
     {
       "source": "/styles/(.*)\\.css",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
     },
     {
       "source": "/(.*)\\.(png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf|eot|bin|json)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
     },
     {
       "source": "/(.*)\\.(html)",
-      "headers": [{ "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }]
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
     },
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
         {
           "key": "Permissions-Policy",
           "value": "microphone=(self), camera=(self), xr-spatial-tracking=(self), geolocation=(), fullscreen=(self), display-capture=(self)"
@@ -76,24 +137,58 @@
       ]
     }
   ],
-
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/demo", "destination": "/demo.html" },
-    { "source": "/vrm-manager", "destination": "/vrm-manager.html" },
-    { "source": "/vendor/(.*)", "destination": "/vendor/$1" },
-    { "source": "/addons/(.*)", "destination": "/addons/$1" },
-    { "source": "/assets/(.*)", "destination": "/assets/$1" },
-    { "source": "/src/(.*)", "destination": "/src/$1" },
-    { "source": "/css/(.*)", "destination": "/css/$1" },
-    { "source": "/js/(.*)", "destination": "/js/$1" },
-    { "source": "/matrix/(.*)", "destination": "/matrix/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/api/yt/search",
+      "destination": "/api/yt-search"
+    },
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/demo",
+      "destination": "/demo.html"
+    },
+    {
+      "source": "/vrm-manager",
+      "destination": "/vrm-manager.html"
+    },
+    {
+      "source": "/vendor/(.*)",
+      "destination": "/vendor/$1"
+    },
+    {
+      "source": "/addons/(.*)",
+      "destination": "/addons/$1"
+    },
+    {
+      "source": "/assets/(.*)",
+      "destination": "/assets/$1"
+    },
+    {
+      "source": "/src/(.*)",
+      "destination": "/src/$1"
+    },
+    {
+      "source": "/css/(.*)",
+      "destination": "/css/$1"
+    },
+    {
+      "source": "/js/(.*)",
+      "destination": "/js/$1"
+    },
+    {
+      "source": "/matrix/(.*)",
+      "destination": "/matrix/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ],
-
   "cleanUrls": true,
   "trailingSlash": false,
-
   "github": {
     "enabled": true,
     "silent": true

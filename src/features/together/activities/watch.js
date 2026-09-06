@@ -426,6 +426,22 @@ const WatchActivity = (() => {
             const video = (makeVideo || defaultVideo)();
             video.src = typeof url === 'string' ? url : URL.createObjectURL(url);
             video.crossOrigin = 'anonymous';
+            // D9. A filename is thin, and it is what there is: a local file has no metadata
+            // and nothing has watched it. Saying so beats her denying a video is playing.
+            try {
+                const media = typeof window !== 'undefined' && window.NEXUS_CURRENT_MEDIA;
+                if (media && typeof media.set === 'function') {
+                    const name = typeof url === 'string' ? url.split('/').pop() : url && url.name;
+                    media.set({
+                        provider: 'local',
+                        kind: 'video',
+                        title: name || 'a video file',
+                        url: typeof url === 'string' && !/^blob:/.test(url) ? url : '',
+                    });
+                }
+            } catch (_) {
+                // Never worth failing playback over.
+            }
             return this._start(video, null, 'file');
         }
 

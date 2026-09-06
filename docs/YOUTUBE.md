@@ -68,17 +68,108 @@ A message that already contains a YouTube link is not treated as a search reques
 about to appear on its own.
 
 Without an API key it still helps — you get a link to the YouTube search for what you asked,
-and the how-to for adding a key, once.
+and a **Set up YouTube** button.
 
-## Search
+## Search — connecting it
 
-`/yt lofi` searches with YouTube Data API v3 when a key is configured:
+Search uses YouTube Data API v3, which needs a key.
 
-```js
-localStorage.setItem('nexus.yt.apiKey', 'YOUR_KEY'); // or window.NEXUS_YT_CONFIG = { apiKey }
+**Get one:** [Google Cloud Console](https://console.cloud.google.com) → new project → APIs &
+Services → enable **YouTube Data API v3** → Credentials → **Create credentials → API key**.
+Restrict it to that API and to your site's referrer before you use it anywhere public.
+
+### Before any of that — it works with no key at all
+
+Search needs a key. **Playback does not.** So Watch and Music carry fixed examples, offered only
+where there is no search to do:
+
+| Watch | Music |
+|---|---|
+| Agent Matrix — this project's own channel | Queen — Bohemian Rhapsody |
+
+One of each. The video is ours: embedding, availability and takedown risk sit in the same hands
+as the app, so the first thing a visitor sees cannot be switched off by somebody with no stake
+in it. The song is on the band's own channel rather than a label's, so embedding is not
+somebody's licensing decision. A list exists to spread the risk of any single id dying — with
+picks that are not going anywhere there is no risk left to spread, and a longer list would only
+be more things to keep alive for the same demonstration.
+
+A product that cannot be tried until it is configured mostly does not get tried. These play
+through exactly the code path a real result takes, so one tap on a fresh deployment shows what
+the feature does — and **Set up YouTube** is still on screen, so they are a floor and not a
+ceiling.
+
+**A sample is never a search result.** They appear under their own heading — *"Or try one of
+these — no setup needed"* — carry `sample: true` and `data-sample` in the DOM, and vanish the
+moment a key is set. Handing somebody a fixed video labelled as a match for what they typed is a
+lie they cannot detect, and worse than an empty state. `tests/discovery-samples.test.js` holds
+that rule directly.
+
+They are chosen for **durability, not taste**. Each id was checked against YouTube's oEmbed endpoint and exists; embeddability was
+not verified, because the sandbox this was written in blocks the browser from reaching
+youtube.com. Nothing depends on all of them surviving — a dead one is a single card that says
+so, and the fix is one line in `src/features/discovery/samples.js`.
+
+### For a deployment — one key, nobody types anything (D13)
+
+Set a **private** environment variable on the host and every visitor can search without a key
+of their own:
+
+```sh
+YOUTUBE_API_KEY=AIza…
 ```
 
-Without a key the command explains itself and the rest of the feature is unaffected.
+* **Vercel** — Project → Settings → Environment Variables. A plain variable, *not* a
+  `NEXT_PUBLIC_` one: this is a static site with serverless functions, so a plain variable is
+  readable only by `api/yt-search.js` and never reaches the browser. Redeploy to apply it.
+* **Local / self-hosted** — the same name in the environment `nexus-proxy` starts with;
+  `nexus-proxy/youtube-routes.cjs` serves the identical path.
+
+**The key never reaches the browser, and that is the point.** The obvious shortcut — a config
+endpoint that hands the key to the page — publishes it: a Data API key in client JavaScript is
+readable by anyone who opens the site, and Google's HTTP-referrer restriction binds browsers
+and nothing else. So the browser calls `GET /api/yt/search?q=…` and gets results back; the key
+stays on the server.
+
+Two paths, one client:
+
+| | route | key |
+|---|---|---|
+| Readiness | `GET /api/yt/search` | none spent — answers `{configured: bool}` |
+| Search | `GET /api/yt/search?q=lofi&max=4` | the deployment's |
+
+Still restrict the key in Google Cloud to the YouTube Data API. A server-side key cannot be
+read from the page, but it can still be lost some other day.
+
+### For one person — your own key
+
+**Set it:** Settings → **Discovery & Media** → *Video search — your own YouTube key* → SAVE.
+Optional wherever the deployment has its own; it wins when set, because somebody who typed a
+key meant to use their quota, not the site's.
+
+Three sources are read, in this order (`YouTubeSettings.apiKey()`):
+
+| | source | who writes it |
+|---|---|---|
+| 1 | `localStorage['nexus_discovery_settings']` → `youtube.apiKey` | Settings |
+| 2 | `window.NEXUS_YT_CONFIG.apiKey` | a host page shipping its own key |
+| 3 | `localStorage['nexus.yt.apiKey']` | the legacy key — still read, never written |
+| 4 | `GET /api/yt/search` on the deployment's `YOUTUBE_API_KEY` | the operator (D13) |
+
+The first three are keys the browser holds and sends itself. The fourth is not a key at all
+from the browser's side — it is a route that answers with results.
+
+For a developer or a test, the second and third are still the fast way in:
+
+```js
+window.NEXUS_YT_CONFIG = { apiKey: 'YOUR_KEY' };
+// or, legacy and still honoured:
+localStorage.setItem('nexus.yt.apiKey', 'YOUR_KEY');
+```
+
+Those lines live here, in the developer documentation, and are no longer printed at users
+who asked for a song. Without a key `/yt` and the natural-language path both still get you to
+the YouTube search page, and the rest of the feature is unaffected.
 
 ## Optional server help
 

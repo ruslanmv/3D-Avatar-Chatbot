@@ -135,7 +135,12 @@ describe('the tiles that could not complete', () => {
     test('watch: a shared tab goes to shareTab, a file goes to playFile', async () => {
         const raw = fakes.watch();
         const watch = Contract.adapt(raw);
-        const [tab, file] = watch.inputs();
+        // By id, not by position. D3 added a search input above these two, and a test that
+        // destructures the array asserts the order of a list rather than the routing it is
+        // about — it breaks on every insertion and says nothing about what went wrong.
+        const byId = Object.fromEntries(watch.inputs().map((i) => [i.id, i]));
+        const tab = byId.tab;
+        const file = byId.file;
 
         await watch.start({ input: tab });
         expect(raw.shareTab).toHaveBeenCalled();
@@ -221,7 +226,11 @@ describe('exactly one permission owner', () => {
         const adapted = adaptAll({ conversationId: 'c1' });
         const out = {};
         for (const [id, activity] of Object.entries(adapted)) {
-            out[id] = activity.inputs().map((i) => i.permission);
+            // Keyed by input id rather than positional, so adding an input to an activity
+            // cannot make this audit fail for a reason that has nothing to do with
+            // permissions — which is what happened when D3 put a search box above Watch's
+            // two options.
+            out[id] = Object.fromEntries(activity.inputs().map((i) => [i.id, i.permission]));
         }
         return out;
     };
@@ -232,29 +241,41 @@ describe('exactly one permission owner', () => {
         // coach/copilot through ScreenInsight.start('camera') — must be `'self'`, or the
         // panel's grant is destroyed and the user is prompted a second time.
         const table = owners();
-        expect(table.watch).toEqual(['self', null]);
-        expect(table.meeting).toEqual(['self']);
-        expect(new Set(table.coach)).toEqual(new Set(['self']));
-        expect(new Set(table.copilot)).toEqual(new Set(['self']));
+        expect(table.watch.tab).toBe('self');
+        expect(table.watch.file).toBeNull();
+        expect(Object.values(table.meeting)).toEqual(['self']);
+        expect(new Set(Object.values(table.coach))).toEqual(new Set(['self']));
+        expect(new Set(Object.values(table.copilot))).toEqual(new Set(['self']));
     });
 
     test('activities that capture nothing ask for nothing', () => {
         const table = owners();
-        expect(table.focus).toEqual([null]);
-        expect(table.journey.every((p) => p === null)).toBe(true);
-        expect(table.music).toEqual([null]);
+        for (const id of ['focus', 'journey', 'music']) {
+            expect(Object.values(table[id]).every((p) => p === null)).toBe(true);
+        }
+    });
+
+    test('a search asks for nothing, on every activity that offers one', () => {
+        // D3. Looking for something to watch is not a decision to share a screen, and a
+        // discovery input that ever acquired a permission would make opening Watch cost one.
+        const table = owners();
+        for (const [id, inputs] of Object.entries(table)) {
+            if ('search' in inputs) {
+                expect(`${id}.search :: ${inputs.search}`).toBe(`${id}.search :: null`);
+            }
+        }
     });
 
     test('the one panel-owned grant is the one whose activity never requests', () => {
         // CoHost takes a pipeline and never touches the consent machine, so the panel is
         // the right owner there and only there.
-        expect(owners().cohost).toEqual(['screen']);
+        expect(Object.values(owners().cohost)).toEqual(['screen']);
     });
 
     test('a permission value is always null, self, or a consent source', () => {
         const valid = new Set([null, 'self', 'screen', 'camera', 'meeting']);
         for (const permissions of Object.values(owners())) {
-            for (const permission of permissions) expect(valid.has(permission)).toBe(true);
+            for (const permission of Object.values(permissions)) expect(valid.has(permission)).toBe(true);
         }
     });
 });

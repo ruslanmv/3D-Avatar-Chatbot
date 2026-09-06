@@ -63,9 +63,26 @@
         'src/features/together/ui/ConsentIndicator.js',
         // B36. The one activity contract and its failure copy, both read by the panel when
         // it is constructed, so they load before it.
+        // D2/D3. Discovery: one normalized result shape, one provider wrapping the YouTube
+        // search that already exists, and the registry Together asks by capability rather
+        // than by provider name. Loaded before the panel, which reads them when it paints a
+        // setup screen; absent, the panel simply draws the options it always had.
+        'src/features/discovery/MediaResult.js',
+        'src/features/discovery/providers/youtube.js',
+        'src/features/discovery/ProviderRegistry.js',
+        // Three videos and three songs that need no key, so the feature can be tried before it
+        // is configured. Not a provider: samples answer no queries.
+        'src/features/discovery/samples.js',
+        'src/features/together/ui/MediaSearchPicker.js',
+        // D9. What is playing, for the model. Loaded before the publisher that sets it.
+        'src/features/together/CurrentMediaContext.js',
+        'src/features/together/ui/ConversationPublisher.js',
         'src/features/together/activities/contract.js',
         'src/features/together/ui/failures.js',
         'src/features/together/ui/TogetherPanel.js',
+        // How much of the bottom of the phone the chat composer already owns. Loaded before
+        // the launcher, which starts the measurement when it attaches.
+        'src/features/together/ui/composerInset.js',
         // B30. The way in. Loaded here rather than from index.html, so the feature adds no
         // script tag and the flag-off DOM is unchanged.
         'src/features/together/ui/TogetherLauncher.js',
@@ -74,6 +91,9 @@
         // B36. What Music listens to. B14 shipped a beat detector reading an analyser
         // nothing supplied, so the tile started and could not hear anything.
         'src/features/together/activities/audioSource.js',
+        // D7. The other thing Music can listen to: the audio already inside a screen grant.
+        // Loaded beside the file source; it asks for no permission of its own.
+        'src/features/together/activities/mediaTabAudioSource.js',
         'src/features/together/activities/scene-journey.js',
         'src/features/together/activities/screen-insight.js',
         // B26 holds the B15 activity above rather than describing its round trip again.
