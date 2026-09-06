@@ -88,6 +88,68 @@
         return { ok: true, result, source, kind };
     }
 
+    /**
+     * Show them what there is, and start nothing (batch M6).
+     *
+     * The complement of `fulfil`, and the reason it has to exist separately:
+     *
+     *     YOU    search music about dance
+     *     NEXUS  Playing “70s & 80s Party Classics!…”
+     *
+     * They asked to look. Answering by choosing on their behalf takes the choice away — and
+     * it is not recoverable, because something is now playing that nobody picked. So a request
+     * to find ends here: results on screen, nothing started, and the list recorded so "play
+     * the first one" means this list.
+     *
+     * `count` honours "the top 3". Answering a request for three with four is the sort of
+     * small carelessness that makes an interface feel like it was not listening.
+     */
+    async function list(request = {}) {
+        const kind = kindOf(request.kind);
+        const query = String(request.query || '').trim();
+        const source = String(request.source || 'unknown');
+        const count = Math.max(1, Math.min(Number(request.count) || 4, 8));
+
+        const sw = pick('NEXUS_TOGETHER_SWITCH');
+        if (sw && typeof sw.isOn === 'function' && !sw.isOn()) {
+            return { ok: false, why: WHY.OFF };
+        }
+        if (!query) {
+            return { ok: false, why: WHY.EMPTY };
+        }
+
+        const found = await search(query, kind);
+        if (found === null) {
+            return { ok: false, why: WHY.FAILED };
+        }
+        if (!found.length) {
+            return { ok: false, why: WHY.NOTHING };
+        }
+
+        const results = found.slice(0, count);
+
+        // Record before rendering. A list on screen the app cannot name is a list nobody can
+        // refer to, and "play the first one" is the whole point of showing it.
+        const session = pick('NEXUS_MEDIA_SESSION');
+        if (session && typeof session.setResults === 'function') {
+            try {
+                session.setResults(results, { mode: kind === 'music' ? 'music' : 'watch', source });
+            } catch (_) {
+                // Results on screen matter more than the ability to name them.
+            }
+        }
+
+        const renderer = pick('NEXUS_MEDIA_RESULT_LIST');
+        if (!renderer || typeof renderer.publish !== 'function') {
+            return { ok: false, why: WHY.NO_CHAT, results };
+        }
+        const node = renderer.publish(results, { query, kind });
+        if (!node) {
+            return { ok: false, why: WHY.NO_CHAT, results };
+        }
+        return { ok: true, results, source, kind, query };
+    }
+
     /** `[]` for nothing found, `null` for a search that could not run. The two differ. */
     async function search(query, kind) {
         const registry = pick('NEXUS_DISCOVERY');
@@ -183,7 +245,7 @@
         }
     }
 
-    const api = { WHY, CAPABILITY, fulfil, search, play, samplesFor };
+    const api = { WHY, CAPABILITY, fulfil, list, search, play, samplesFor };
 
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;

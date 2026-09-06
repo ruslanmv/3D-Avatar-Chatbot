@@ -42,7 +42,7 @@
     'use strict';
 
     /** Every state the session can hold. Ordered roughly as a session moves through them. */
-    const STATES = ['idle', 'results', 'selected', 'loading', 'playing', 'paused', 'ended', 'blocked'];
+    const STATES = ['idle', 'results', 'selected', 'loading', 'playing', 'paused', 'ended', 'blocked', 'unconfirmed'];
 
     /** The states in which sound is, or should be, coming out. */
     const LIVE = ['playing'];
@@ -223,10 +223,36 @@
     }
 
     /**
+     * The player never said anything, and we do not know why.
+     *
+     * This is **not** `blocked`, and the difference cost a real user a real lie:
+     *
+     *     YOU    I like this song thank you
+     *     NEXUS  ...it looks like the playback hasn't started yet. Please tap the card!
+     *
+     * The song was playing. What had actually happened is that the IFrame API never attached —
+     * a blocked script, a slow network, an origin mismatch — so no PLAYING event arrived, and
+     * the app treated silence as proof of refusal. It is not proof of anything. `blocked` is a
+     * conclusion drawn from evidence (the player reported ready and then did not start);
+     * this is the absence of evidence, and the only honest thing to say about it is nothing.
+     */
+    function markUnconfirmed() {
+        if (!state.current || state.status !== 'loading') {
+            return snapshot();
+        }
+        state.status = 'unconfirmed';
+        announce('unconfirmed');
+        return snapshot();
+    }
+
+    /**
      * The browser refused to start it.
      *
      * Kept distinct from an error: nothing is broken, the page simply has not earned the right
      * to make noise yet. The copy that goes with it is "tap Play", not "something went wrong".
+     *
+     * Only ever set from positive evidence — the player said it was ready and then did not
+     * start. Silence goes to `unconfirmed` above.
      */
     function markBlocked() {
         if (!state.current) {
@@ -294,6 +320,7 @@
         markPaused,
         markEnded,
         markBlocked,
+        markUnconfirmed,
         stop,
         clear,
         get,

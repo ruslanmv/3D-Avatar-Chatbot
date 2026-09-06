@@ -186,3 +186,46 @@ describe('it never throws on the shapes real input takes', () => {
         expect(Command.resolve('play the first one')).toBeNull();
     });
 });
+
+describe('stopping what is playing', () => {
+    // Until now the only way to stop a video was the × on the card — fine with a mouse, and
+    // useless to somebody who has just said "stop the music" out loud.
+    test.each([
+        ['stop', 'stop'],
+        ['stop it', 'stop'],
+        ['stop the music', 'stop'],
+        ['please stop the video', 'stop'],
+        ['can you stop it please', 'stop'],
+        ['turn it off', 'stop'],
+        ['pause', 'pause'],
+        ['pause it', 'pause'],
+        ['pause the music please', 'pause'],
+        ['resume', 'resume'],
+        ['continue', 'resume'],
+        ['keep going', 'resume'],
+        ['carry on', 'resume'],
+    ])('%s → %s', (said, expected) => {
+        expect(Command.transport(said)).toBe(expected);
+    });
+
+    test.each([
+        ['stop talking about that'],
+        ['I had to stop at the shop on the way home'],
+        ['can you pause and think about this for a second'],
+        ['continue the story you were telling me'],
+        ['play something'],
+        ['what should we stop doing'],
+        [''],
+    ])('%s is not a transport command', (said) => {
+        // Misreading a sentence as "stop" cuts off music somebody is enjoying. Missing a
+        // phrasing only means the model handles it, which is a far cheaper failure.
+        expect(Command.transport(said)).toBeNull();
+    });
+
+    test('and it never throws on the shapes real input takes', () => {
+        for (const bad of [null, undefined, 42, {}, []]) {
+            expect(() => Command.transport(bad)).not.toThrow();
+            expect(Command.transport(bad)).toBeNull();
+        }
+    });
+});

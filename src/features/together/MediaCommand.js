@@ -71,6 +71,49 @@
     const EXECUTE =
         /^(?:(?:can|could|would|will)\s+(?:you|u)\s+)?(?:please\s+)?(?:play|put on|start|queue up|execute|reproduce|listen to)\b/i;
 
+    /**
+     * Transport commands, and the states they mean.
+     *
+     * Anchored like everything else here, and required to be about *this* — "stop the music",
+     * "pause it". A bare "stop" counts because in a chat where something is playing there is
+     * nothing else it could mean; "stop talking about that" does not, because the sentence
+     * carries on.
+     */
+    const TRANSPORT = [
+        [
+            /^(?:(?:can|could|would|will)\s+(?:you|u)\s+)?(?:please\s+)?(?:stop|turn (?:it|the \w+) off|shut it off|silence|end)(?:\s+(?:it|this|that|the\s+\w+))?\s*(?:please)?[.!]?$/i,
+            'stop',
+        ],
+        [
+            /^(?:(?:can|could|would|will)\s+(?:you|u)\s+)?(?:please\s+)?(?:pause|hold on|wait)(?:\s+(?:it|this|that|the\s+\w+))?\s*(?:please)?[.!]?$/i,
+            'pause',
+        ],
+        [
+            /^(?:(?:can|could|would|will)\s+(?:you|u)\s+)?(?:please\s+)?(?:resume|continue|carry on|keep going|unpause|go on)(?:\s+(?:it|this|that|playing))?\s*(?:please)?[.!]?$/i,
+            'resume',
+        ],
+    ];
+
+    /**
+     * `'stop'`, `'pause'`, `'resume'` or `null`.
+     *
+     * Deliberately narrow and whole-message anchored. Misreading a sentence as "stop" cuts
+     * off music somebody is enjoying, which is a worse failure than missing a phrasing and
+     * letting the model handle it.
+     */
+    function transport(text) {
+        const t = String(text === null || text === undefined ? '' : text).trim();
+        if (!t) {
+            return null;
+        }
+        for (const [re, name] of TRANSPORT) {
+            if (re.test(t)) {
+                return name;
+            }
+        }
+        return null;
+    }
+
     /** Verbs that mean *give me choices*. */
     const DISCOVER =
         /^(?:(?:can|could|would|will)\s+(?:you|u)\s+)?(?:please\s+)?(?:find|search|search for|look for|look up|show me|list|browse|suggest|recommend)\b/i;
@@ -158,7 +201,19 @@
         return null;
     }
 
-    const api = { ORDINALS, NUMBERED, THE_SET, BARE, EXECUTE, DISCOVER, referenceIndex, resolve, action };
+    const api = {
+        ORDINALS,
+        NUMBERED,
+        THE_SET,
+        BARE,
+        EXECUTE,
+        DISCOVER,
+        TRANSPORT,
+        referenceIndex,
+        resolve,
+        action,
+        transport,
+    };
 
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;
