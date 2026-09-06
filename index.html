@@ -2541,6 +2541,38 @@
                         </div>
                     </div>
 
+                    <!-- D1: where the YouTube key lives now, instead of a localStorage
+                         instruction printed in the chat. Owned by
+                         src/features/youtube/YouTubeSettings.js — main.js's saveSettings()
+                         does not know about this field, so the feature stays deletable. -->
+                    <div class="config-section">
+                        <h3 class="config-title">DISCOVERY &amp; MEDIA</h3>
+                        <div class="input-group">
+                            <label class="input-label" for="yt-api-key"
+                                >🔎 VIDEO SEARCH — YOUR OWN YOUTUBE KEY (OPTIONAL)</label
+                            >
+                            <input
+                                type="password"
+                                id="yt-api-key"
+                                class="text-input"
+                                autocomplete="off"
+                                placeholder="Leave empty unless you want to use your own quota"
+                            />
+                            <p style="font-size: 0.68rem; color: rgba(255, 255, 255, 0.45); margin: 6px 2px 0">
+                                Search works without this wherever the site has been set up with a key of its own — the
+                                state below says which. Add one only to search on your own quota; it wins over the
+                                site's. Get a key from Google Cloud → APIs &amp; Services → enable
+                                <strong>YouTube Data API v3</strong> → Credentials.
+                            </p>
+                        </div>
+                        <!-- D6: which engine powers search, and whether it is actually working.
+                             Filled by src/features/discovery/DiscoverySettings.js when Settings
+                             opens; empty and harmless when that folder is deleted. -->
+                        <div class="input-group">
+                            <div id="discovery-providers"></div>
+                        </div>
+                    </div>
+
                     <div class="config-section">
                         <h3 class="config-title">DEVELOPER</h3>
                         <div class="input-group">
@@ -2925,9 +2957,17 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
                 function openDrawer() {
                     drawer?.classList.add('open');
                     overlay?.classList.remove('hidden');
+                    // The scrim's CSS puts `opacity` and `pointer-events` behind `.open`, and
+                    // only `hidden` was ever toggled — so the overlay was shown as a
+                    // fully transparent, click-through layer. Tapping beside the drawer went
+                    // to the page underneath instead of closing the drawer, which is how a
+                    // panel opened from here could be dismissed by a tap that was meant for
+                    // the drawer.
+                    overlay?.classList.add('open');
                 }
                 function closeDrawer() {
                     drawer?.classList.remove('open');
+                    overlay?.classList.remove('open');
                     overlay?.classList.add('hidden');
                 }
 
@@ -3470,12 +3510,24 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <script defer src="src/xr/MotionIntegration.js"></script>
 
         <!-- YouTube Everywhere (additive — thumbnails + inline player in 2D chat, cards + companion-tab playback in VR) -->
-        <!-- NON-DESTRUCTIVE: To remove, delete these 5 script tags and the src/features/youtube/ folder. Search "NEXUS_YT" -->
+        <!-- NON-DESTRUCTIVE: To remove, delete these 6 script tags and the src/features/youtube/ folder. Search "NEXUS_YT" -->
         <script defer src="src/features/youtube/YouTubeLink.js"></script>
         <script defer src="src/features/youtube/YouTubeCompanion.js"></script>
         <script defer src="src/features/youtube/YouTubeEmbed2D.js"></script>
         <script defer src="src/features/youtube/YouTubeVRBridge.js"></script>
+        <script defer src="src/features/youtube/YouTubeSettings.js"></script>
+        <!-- D6: the Discovery & Media section. Inert without the container above. -->
+        <script defer src="src/features/discovery/DiscoverySettings.js"></script>
         <script defer src="src/features/youtube/YouTubeAsk.js"></script>
+
+        <!-- Remote screenshot (RS1). "Show me what's on my PC" → one still, taken on that
+             machine, shown here, and every follow-up question answered about that same
+             frame. NON-DESTRUCTIVE: to remove, delete these 4 script tags and the
+             src/features/screen/ folder. Search "NEXUS_SCREEN". -->
+        <script defer src="src/features/screen/frameStore.js"></script>
+        <script defer src="src/features/screen/remoteScreen.js"></script>
+        <script defer src="src/features/screen/ScreenCard.js"></script>
+        <script defer src="src/features/screen/ScreenAsk.js"></script>
 
         <!-- Pose Studio init (must load after main.js and all Pose modules) -->
         <script defer src="src/PoseStudioInit.js"></script>

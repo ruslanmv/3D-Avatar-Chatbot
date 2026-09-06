@@ -1,0 +1,350 @@
+/* The remote screenshot card (batch RS1).
+   Loaded by ScreenAsk.js; nothing in styles/main.css changes, and every colour is one of the
+   app's existing tokens.
+
+   The rule the file follows: the picture is the answer, so the picture gets the room and
+   everything else gets a thin foot under it. Chat first, visual evidence second — not a
+   remote-desktop console living inside a conversation. The sophistication is meant to come
+   from the micro-interactions (a pulse while she looks, a soft resolve as the frame lands, a
+   citation that flashes the card it belongs to) rather than from glass and glow. */
+
+/* ── the card ──────────────────────────────────────────────────────────────
+   Full width of a message, because a screenshot at thumbnail size is a screenshot nobody
+   can read. One radius, one border, no shadow: it is evidence, not a floating object. */
+.nexus-screen-card {
+    margin: 10px 0 0;
+    border-radius: var(--border-radius, 12px);
+    overflow: hidden;
+    background: var(--glass-bg, rgba(15, 25, 35, 0.75));
+    border: 1px solid var(--glass-border, rgba(0, 229, 255, 0.3));
+    animation: nexus-screen-arrive 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes nexus-screen-arrive {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* ── the still ─────────────────────────────────────────────────────────────
+   A button, not a div with a click handler: enlarging is an action, and it has to be
+   reachable from a keyboard like every other action here. */
+.nexus-screen-shot {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: var(--bg-darker, #050810);
+    cursor: zoom-in;
+    line-height: 0;
+}
+
+.nexus-screen-shot:disabled {
+    cursor: default;
+}
+
+.nexus-screen-shot img {
+    display: block;
+    width: 100%;
+    height: auto;
+    /* The frame is a screenshot of text. Smoothing it on the way in would blur the one
+       thing somebody is trying to read, so it resolves by opacity alone. */
+    animation: nexus-screen-resolve 420ms ease both;
+}
+
+@keyframes nexus-screen-resolve {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.nexus-screen-missing {
+    padding: 28px 16px;
+    color: var(--text-muted, #4dd0e1);
+    font: 400 13px/1.5 var(--font-body, sans-serif);
+    text-align: center;
+    line-height: 1.5;
+}
+
+/* ── the foot ──────────────────────────────────────────────────────────────
+   Device, freshness, actions. Three things, and the brief is that a fourth would start
+   turning this back into a control panel. */
+.nexus-screen-foot {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-top: 1px solid var(--glass-highlight, rgba(255, 255, 255, 0.1));
+    font: 500 12px/1.2 var(--font-body, sans-serif);
+}
+
+.nexus-screen-device {
+    color: var(--text-primary, #e0f7fa);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Freshness sits next to the device name and takes the leftover room, which pushes the
+   actions to the right edge without a spacer element. */
+.nexus-screen-age {
+    flex: 1;
+    color: var(--text-muted, #4dd0e1);
+    /* Tabular figures so "18 sec ago" ticking to "19 sec ago" does not shift the row. */
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.nexus-screen-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.nexus-screen-ask,
+.nexus-screen-refresh {
+    position: relative;
+    padding: 6px 11px;
+    border-radius: 999px;
+    font: 600 12px/1 var(--font-body, sans-serif);
+    cursor: pointer;
+    transition:
+        background 140ms ease,
+        border-color 140ms ease,
+        color 140ms ease;
+}
+
+/* One primary action, per the brief. Refresh is available, not advertised. */
+.nexus-screen-ask {
+    border: 1px solid var(--primary, #00e5ff);
+    background: color-mix(in srgb, var(--primary, #00e5ff) 16%, transparent);
+    color: var(--text-primary, #e0f7fa);
+}
+
+.nexus-screen-ask:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--primary, #00e5ff) 28%, transparent);
+}
+
+.nexus-screen-refresh {
+    border: 1px solid var(--glass-border, rgba(0, 229, 255, 0.3));
+    background: transparent;
+    color: var(--text-secondary, #80deea);
+}
+
+.nexus-screen-refresh:hover {
+    border-color: var(--primary, #00e5ff);
+    color: var(--text-primary, #e0f7fa);
+}
+
+.nexus-screen-ask:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+/* The buttons read at 12px but have to be pressable on a phone. A pseudo-element grows the
+   hit area to 44px without changing a single measurement in the row. */
+.nexus-screen-ask::before,
+.nexus-screen-refresh::before {
+    content: '';
+    position: absolute;
+    inset: -8px -4px;
+}
+
+/* ── expired ───────────────────────────────────────────────────────────────
+   The file is deleted on the user's machine; the card says so rather than offering an
+   action that would fail a round trip after being pressed. */
+.nexus-screen-card.is-expired {
+    opacity: 0.72;
+    border-color: var(--glass-highlight, rgba(255, 255, 255, 0.1));
+}
+
+.nexus-screen-card.is-expired .nexus-screen-refresh {
+    border-color: var(--primary, #00e5ff);
+    color: var(--text-primary, #e0f7fa);
+}
+
+/* ── cited ─────────────────────────────────────────────────────────────────
+   Pressing "↳ Screenshot · 10:42:18" under an answer brings this card back and marks it,
+   so the evidence and the claim are visibly the same thing. */
+.nexus-screen-card.is-cited {
+    animation: nexus-screen-cited 1100ms ease;
+}
+
+@keyframes nexus-screen-cited {
+    0%,
+    100% {
+        border-color: var(--glass-border, rgba(0, 229, 255, 0.3));
+    }
+    18%,
+    62% {
+        border-color: var(--primary, #00e5ff);
+    }
+}
+
+/* ── privacy ───────────────────────────────────────────────────────────────
+   One quiet line, closed. A security notice on every capture is a security notice nobody
+   reads; no notice at all on a feature that photographs a desk is worse. */
+.nexus-screen-privacy {
+    border-top: 1px solid var(--glass-highlight, rgba(255, 255, 255, 0.1));
+}
+
+.nexus-screen-privacy-head {
+    padding: 7px 12px;
+    color: var(--text-muted, #4dd0e1);
+    font: 500 11px/1.3 var(--font-body, sans-serif);
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    list-style: none;
+}
+
+.nexus-screen-privacy-head::before {
+    content: '🔒 ';
+}
+
+.nexus-screen-privacy-head::-webkit-details-marker {
+    display: none;
+}
+
+.nexus-screen-privacy-body {
+    padding: 2px 12px 10px;
+    display: grid;
+    gap: 3px;
+}
+
+.nexus-screen-privacy-row {
+    display: flex;
+    gap: 10px;
+    font: 400 11px/1.4 var(--font-body, sans-serif);
+}
+
+.nexus-screen-privacy-key {
+    flex: 0 0 84px;
+    color: var(--text-muted, #4dd0e1);
+}
+
+.nexus-screen-privacy-value {
+    color: var(--text-secondary, #80deea);
+}
+
+/* ── the citation ──────────────────────────────────────────────────────────
+   Under the answer, not inside it. Quiet enough to skip, present enough to trust. */
+.nexus-screen-cite {
+    display: block;
+    margin-top: 6px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text-muted, #4dd0e1);
+    font: 500 11px/1.4 var(--font-body, sans-serif);
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    text-align: left;
+}
+
+.nexus-screen-cite:hover {
+    color: var(--primary, #00e5ff);
+}
+
+/* ── looking ───────────────────────────────────────────────────────────────
+   The transient state while she is away. One slow pulse on the message itself: the round
+   trip is measured in seconds and a spinner would suggest it is measured in milliseconds. */
+.nexus-screen-thinking .message-text {
+    animation: nexus-screen-pulse 1600ms ease-in-out infinite;
+}
+
+@keyframes nexus-screen-pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.55;
+    }
+}
+
+/* ── the lightbox ──────────────────────────────────────────────────────────
+   Level 3 of the brief: inspect. Click to zoom, Escape or the backdrop to leave. */
+.nexus-screen-lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 24px;
+    background: rgba(3, 6, 14, 0.94);
+    animation: nexus-screen-resolve 160ms ease both;
+}
+
+.nexus-screen-lightbox-img {
+    max-width: 100%;
+    max-height: calc(100vh - 96px);
+    object-fit: contain;
+    /* Nearest-neighbour when zoomed past 1:1: this is text on a screen, and a smoothed
+       error message is a less readable error message. */
+    image-rendering: -webkit-optimize-contrast;
+    border-radius: 6px;
+    cursor: zoom-in;
+    transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nexus-screen-lightbox-img.is-zoomed {
+    transform: scale(2);
+    cursor: zoom-out;
+}
+
+.nexus-screen-lightbox-close {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    border: 1px solid var(--glass-border, rgba(0, 229, 255, 0.3));
+    background: var(--glass-bg, rgba(15, 25, 35, 0.75));
+    color: var(--text-primary, #e0f7fa);
+    font: 400 20px/1 var(--font-body, sans-serif);
+    cursor: pointer;
+}
+
+.nexus-screen-lightbox-foot {
+    color: var(--text-muted, #4dd0e1);
+    font: 500 12px/1.3 var(--font-body, sans-serif);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── narrow panes ──────────────────────────────────────────────────────────
+   The actions wrap under the device line rather than squeezing the freshness label out. */
+@media (max-width: 480px) {
+    .nexus-screen-foot {
+        flex-wrap: wrap;
+    }
+    .nexus-screen-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
+
+/* Somebody who has asked for less motion gets the card, not the choreography. */
+@media (prefers-reduced-motion: reduce) {
+    .nexus-screen-card,
+    .nexus-screen-shot img,
+    .nexus-screen-lightbox,
+    .nexus-screen-lightbox-img,
+    .nexus-screen-card.is-cited,
+    .nexus-screen-thinking .message-text {
+        animation: none;
+        transition: none;
+    }
+}

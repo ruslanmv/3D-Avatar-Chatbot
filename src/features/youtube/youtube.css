@@ -348,6 +348,37 @@
     display: none;
 }
 
+/* ── connecting search (D1) ──────────────────────────────────────────────────
+   What used to be a line of JavaScript printed in the chat. One button, sized like
+   the card actions it sits under, with the 44px hit area a phone needs. */
+.nexus-yt-setup {
+    position: relative;
+    /* Block, not inline-block: the search link above it is an `<a>` and therefore inline, so
+       an inline-block button lands on the same line and sits on top of it. `fit-content`
+       keeps the button the width of its label rather than the width of the message. */
+    display: block;
+    width: fit-content;
+    margin-top: 10px;
+    padding: 6px 12px;
+    border: 1px solid var(--primary, #00e5ff);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--primary, #00e5ff) 14%, transparent);
+    color: var(--text-primary, #e0f7fa);
+    font: 600 12px/1 var(--font-body, sans-serif);
+    cursor: pointer;
+    transition: background 140ms ease;
+}
+
+.nexus-yt-setup:hover {
+    background: color-mix(in srgb, var(--primary, #00e5ff) 26%, transparent);
+}
+
+.nexus-yt-setup::before {
+    content: '';
+    position: absolute;
+    inset: -8px -4px;
+}
+
 /* ── error, and it never removes the card ────────────────────────────────── */
 .nexus-yt-card.is-error .nexus-yt-facade {
     animation: none;

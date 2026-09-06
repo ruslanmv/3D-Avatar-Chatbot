@@ -141,6 +141,18 @@ const ActivityContract = (() => {
             order: 10,
             prompt: 'What are we watching?',
             inputs: () => [
+                // D3. Searching is not starting Watch, and this input is not a way in to it:
+                // `kind: 'discovery'` tells the panel to draw a picker, and choosing a result
+                // publishes it into the conversation rather than calling `start`. No
+                // permission, because looking for something to watch asks for nothing.
+                {
+                    id: 'search',
+                    label: 'Search videos',
+                    kind: 'discovery',
+                    mediaKind: 'video',
+                    providerCapability: 'video.search',
+                    permission: null,
+                },
                 // `'self'`: `shareTab()` requests the screen itself and holds the grant for
                 // the whole session. The panel asking first would have it revoked underneath.
                 {
@@ -265,7 +277,27 @@ const ActivityContract = (() => {
             icon: '🎧',
             order: 30,
             prompt: 'What are we listening to?',
-            inputs: () => [{ id: 'file', label: 'Open an audio file', permission: null, pick: pickFile('audio/*') }],
+            inputs: () => [
+                // D3, and the same rule as Watch: a search is a picker, not a start. Local
+                // audio stays first-class below it — it is the path that needs no internet,
+                // no key and no HomePilot, and it is the only one that feeds the beat
+                // detector, because a cross-origin YouTube iframe cannot be analysed.
+                {
+                    id: 'search',
+                    label: 'Search music',
+                    kind: 'discovery',
+                    mediaKind: 'music',
+                    providerCapability: 'music.search',
+                    permission: null,
+                    // D5. The one thing a person would otherwise report as a bug. A YouTube
+                    // iframe is cross-origin, so its audio never reaches the analyser the
+                    // beat detector reads — she cannot dance to it, and only the local file
+                    // path can. Said here, on the input, rather than in the picker, which
+                    // knows nothing about dancing.
+                    note: 'She dances to audio files — YouTube plays in the chat, without the dancing.',
+                },
+                { id: 'file', label: 'Open an audio file', permission: null, pick: pickFile('audio/*') },
+            ],
             // B14's `Music.start()` sets a flag; the beat detector reads an `analyser` that
             // was never given a source, so the tile started something that could not hear
             // anything. `attachSource` is this batch's addition — see `audioSource.js`.

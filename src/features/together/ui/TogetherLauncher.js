@@ -220,6 +220,93 @@ const TogetherLauncher = (() => {
   outline: 2px solid var(--accent-cyan, #22d3ee); outline-offset: 2px;
 }
 
+/* D3. The search box and its results, inside Watch and Music setup.
+
+   A picker, styled as one: rows the size of a line of text, not cards. The whole point of
+   this block is that it must never look like a place to watch something — the conversation
+   is where that happens, and a result row that grew a play button would start competing with
+   it. Every colour is one Together already uses. */
+.nexus-bd-together-search { margin: .1rem 0 .55rem; }
+.nexus-bd-together-searchform { display: flex; gap: .35rem; }
+.nexus-bd-together-searchinput {
+  flex: 1; min-width: 0; padding: .5rem .65rem;
+  background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.1); border-radius: 10px;
+  color: #e8ecf2; font: 400 .8rem/1.2 inherit;
+}
+.nexus-bd-together-searchinput::placeholder { color: #6b7686; }
+.nexus-bd-together-searchinput:focus-visible {
+  outline: 2px solid var(--accent-cyan, #22d3ee); outline-offset: 1px;
+}
+.nexus-bd-together-searchgo {
+  flex: 0 0 auto; width: 2.3rem; border-radius: 10px; cursor: pointer;
+  background: rgba(34,211,238,.12); border: 1px solid rgba(34,211,238,.32);
+  color: #e8ecf2; font: 500 .9rem/1 inherit;
+}
+.nexus-bd-together-searchgo:hover { background: rgba(34,211,238,.2); }
+.nexus-bd-together-searchgo:focus-visible {
+  outline: 2px solid var(--accent-cyan, #22d3ee); outline-offset: 2px;
+}
+.nexus-bd-together-searchstatus {
+  margin: .4rem .15rem .1rem; color: #9aa6b8; font: 400 .72rem/1.35 inherit; min-height: 1em;
+}
+.nexus-bd-together-searchstatus[data-tone='weak'] { color: #7d8797; }
+.nexus-bd-together-results { display: flex; flex-direction: column; gap: .3rem; }
+.nexus-bd-together-result {
+  display: flex; align-items: center; gap: .55rem; width: 100%; padding: .35rem;
+  border-radius: 9px; cursor: pointer; text-align: left;
+  background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.08);
+  color: #e8ecf2; font: inherit;
+}
+.nexus-bd-together-result:hover { background: rgba(34,211,238,.12); border-color: rgba(34,211,238,.32); }
+.nexus-bd-together-result:focus-visible {
+  outline: 2px solid var(--accent-cyan, #22d3ee); outline-offset: 2px;
+}
+/* The box exists before the picture does, so a thumbnail arriving does not shift the row
+   under a finger that is already moving towards it. */
+.nexus-bd-together-resultthumb {
+  flex: 0 0 auto; width: 4rem; aspect-ratio: 16 / 9; border-radius: 6px; overflow: hidden;
+  background: rgba(0,0,0,.4);
+}
+.nexus-bd-together-resultthumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.nexus-bd-together-resultmeta { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
+.nexus-bd-together-resulttitle {
+  font: 500 .78rem/1.25 inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.nexus-bd-together-resultby {
+  color: #9aa6b8; font: 400 .7rem/1.2 inherit;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.nexus-bd-together-connect {
+  align-self: flex-start; padding: .45rem .75rem; border-radius: 999px; cursor: pointer;
+  background: rgba(34,211,238,.12); border: 1px solid rgba(34,211,238,.4);
+  color: #e8ecf2; font: 600 .75rem/1 inherit;
+}
+.nexus-bd-together-connect:hover { background: rgba(34,211,238,.22); }
+.nexus-bd-together-connect:focus-visible {
+  outline: 2px solid var(--accent-cyan, #22d3ee); outline-offset: 2px;
+}
+/* D5. Music results are a tighter row against a square sleeve: a track is a title and an
+   artist, and giving it a 16:9 still would be showing a video's shape for something nobody
+   is going to watch. Same component, one modifier. */
+.nexus-bd-together-search.is-music .nexus-bd-together-resultthumb {
+  width: 2.6rem; aspect-ratio: 1 / 1;
+}
+.nexus-bd-together-search.is-music .nexus-bd-together-result { padding: .3rem; }
+
+/* The activity's own caveat, under the results it applies to. Quiet enough to skip. */
+.nexus-bd-together-searchnote {
+  margin: .45rem .15rem 0; color: #6b7686; font: 400 .68rem/1.4 inherit;
+}
+
+/* Drawn only when there is something below it to be an alternative to. */
+.nexus-bd-together-or {
+  display: flex; align-items: center; gap: .5rem;
+  margin: .1rem 0 .5rem; color: #6b7686; font: 400 .68rem/1 inherit; letter-spacing: .06em;
+}
+.nexus-bd-together-or::before, .nexus-bd-together-or::after {
+  content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.09);
+}
+
 /* The rest of B36's controls, which the standing check above found unstyled too. */
 .nexus-bd-together-steps {
   display: block; width: 100%; margin: .5rem 0 .1rem; padding: .5rem .6rem;
@@ -229,6 +316,12 @@ const TogetherLauncher = (() => {
 .nexus-bd-together-steps::placeholder { color: #6b7686; }
 .nexus-bd-together-steps:focus-visible {
   outline: none; border-color: var(--accent-cyan, #22d3ee);
+}
+/* The heading over the keyless examples. Quieter than a result and clearly not one: these are
+   offered where there is no search to do, and calling them matches would be a lie. */
+.nexus-bd-together-samplehead {
+  margin: .55rem 0 .35rem; color: #7d8797; font: 600 .66rem/1.3 inherit;
+  letter-spacing: .1em; text-transform: uppercase;
 }
 /* The sentence under an option — "Your screen stops sharing when you leave Watch". */
 .nexus-bd-together-note {
@@ -241,11 +334,49 @@ const TogetherLauncher = (() => {
 }
 
 @media (max-width: 640px) {
-  /* A floating card over a narrow avatar is unusable, so the same panel becomes a sheet. */
+  /* A floating card over a narrow avatar is unusable, so the same panel becomes a sheet.
+
+     position:fixed is the half that was missing. The base rule is absolute, so
+     left/right/bottom:0 resolved against .avatar-card — the sheet was pinned to the bottom of
+     a narrow card somewhere in the page rather than to the phone, which is why it appeared as
+     a clipped strip of tiles instead of a sheet.
+
+     (No backticks in this comment: the whole stylesheet is a JS template literal.)
+
+     The z-index sits above the drawer (1000) rather than at 40, so a panel opened while the
+     drawer is somehow still up is reachable instead of buried. It should not come to that —
+     the drawer entry dismisses the drawer first — but "unreachable" is a bad failure mode to
+     leave one bug away. */
   #nexus-bd-together-panel {
-    left: 0; right: 0; bottom: 0; width: auto; max-height: 62%; transform: none;
+    position: fixed; z-index: 1001;
+    left: 0; right: 0; width: auto; transform: none;
+    /* The composer's strip is reserved, not overlapped. Measured on a 412x915 phone, the sheet
+       ended at 915 and the composer began at 839: 76 pixels of the sheet - Music's "Open an
+       audio file" button among them - were underneath a bar that takes the tap. The panel was
+       not even scrolling; its content fitted. Nothing looked wrong, and the button did nothing.
+
+       --nexus-composer-inset is measured by composerInset.js from the top of the composer to
+       the bottom of the visual viewport, so it already contains the safe-area padding the
+       composer carries and it tracks the collapsed bar, the expanded overlay and the keyboard.
+       The literal fallback is for the frames before that runs, and for a document where it
+       never does.
+
+       This is layout, not z-index. Raising the sheet over the composer would have hidden the
+       chat bar instead of the button - the same collision, wearing the other hat. */
+    bottom: var(--nexus-composer-inset, calc(88px + env(safe-area-inset-bottom, 0px)));
+    /* Two declarations: dvh is what tracks mobile browser chrome, vh is what older phones have.
+       62% of the usable height keeps the avatar in view - it was the previous cap and it was
+       the right one - and the calc is the floor that guarantees the sheet clears the composer
+       even when the keyboard has taken most of the screen. */
+    max-height: min(62vh, calc(100vh - var(--nexus-composer-inset, calc(88px + env(safe-area-inset-bottom, 0px))) - 4.5rem));
+    max-height: min(62dvh, calc(100dvh - var(--nexus-composer-inset, calc(88px + env(safe-area-inset-bottom, 0px))) - 4.5rem));
+    overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
     border-radius: 16px 16px 0 0; border-left: none; border-right: none; border-bottom: none;
-    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    /* Kept as a max() rather than dropped: when there is no composer at all the inset is 0 and
+       this is the only thing between the last button and the home indicator. Where a composer
+       does exist it is a little extra room under the final action, which is the right side to
+       err on. */
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
   }
   .nexus-bd-together-grid { grid-template-columns: repeat(2, 1fr); }
 }
@@ -268,6 +399,7 @@ const TogetherLauncher = (() => {
             this.style = null;
             this.opens = 0;
             this._unsubscribe = null;
+            this._stopInsetWatch = null;
             this._onKey = (event) => this._key(event);
             this._onPointer = (event) => this._pointer(event);
             this._bound = false;
@@ -288,6 +420,7 @@ const TogetherLauncher = (() => {
         attach() {
             if (!this.doc || !this.panel) return this;
             this._injectStyle();
+            this._watchComposer();
             this._injectButton();
             this._injectDrawerItem();
             this._mountPanel();
@@ -299,6 +432,25 @@ const TogetherLauncher = (() => {
             }
             this._reflect();
             return this;
+        }
+
+        /**
+         * Start measuring how much of the bottom the chat composer owns.
+         *
+         * The stylesheet above reserves `--nexus-composer-inset`; this is what puts a number in
+         * it. Guarded twice over — the module may not be loaded, and a document without a
+         * composer measures 0 — because the launcher attaching is not worth failing over a
+         * measurement that only matters on a phone.
+         */
+        _watchComposer() {
+            const inset = (typeof window !== 'undefined' && window.NEXUS_COMPOSER_INSET) || null;
+            if (!inset || typeof inset.watch !== 'function') return null;
+            try {
+                this._stopInsetWatch = inset.watch({ doc: this.doc });
+            } catch (_) {
+                this._stopInsetWatch = null;
+            }
+            return this._stopInsetWatch;
         }
 
         _injectStyle() {
@@ -373,12 +525,55 @@ const TogetherLauncher = (() => {
             const text = this.doc.createElement('span');
             text.textContent = 'Together';
             item.append(mark, text);
-            item.addEventListener('click', () => this.open());
+            item.addEventListener('click', () => {
+                // Close the drawer first, exactly as every other entry in it does.
+                //
+                // This is the whole of the "I tap Together on my phone and nothing works"
+                // bug. The drawer is `position: fixed; z-index: 1000`; the panel mounts
+                // inside `.avatar-card` at `z-index: 40`. Opening without dismissing the
+                // drawer put the panel a thousand layers underneath it and off to one side —
+                // visible as a sliver, impossible to reach — and the next tap landed outside
+                // the panel, which the document handler reads as "dismiss".
+                this._dismissDrawer();
+                this.open();
+            });
 
             // Appended to the group, so every existing entry keeps its position.
             group.parentNode.appendChild(item);
             this.drawerItem = item;
             return item;
+        }
+
+        /**
+         * Shut the mobile drawer, through the app's own close button where there is one.
+         *
+         * `closeDrawer()` in `index.html` is scoped to a closure this file cannot reach, so
+         * pressing the button it is bound to is how one owner stays one owner — the same way
+         * the drawer's Settings entry reaches Settings. The class fallback exists for a page
+         * that has the drawer markup but not that wiring, and for tests.
+         */
+        _dismissDrawer() {
+            // Both, in this order, and deliberately not one or the other.
+            //
+            // Pressing the app's own close button keeps one owner: whatever else that handler
+            // does — focus, scroll lock, anything added later — still happens. But a button
+            // that exists is not a button that is wired, and the thing this method has to
+            // guarantee is that the drawer is not left covering the panel. Clearing the
+            // classes as well is idempotent with what the handler does, so doing both costs
+            // nothing and removes the case where the guarantee depends on somebody else's
+            // wiring being present.
+            const close = this.doc.getElementById('mobile-drawer-close');
+            if (close && typeof close.click === 'function') close.click();
+
+            const drawer = this.doc.getElementById('mobile-drawer');
+            if (!drawer) return Boolean(close);
+            drawer.classList.remove('open');
+            const overlay = this.doc.getElementById('mobile-drawer-overlay');
+            if (overlay) {
+                overlay.classList.remove('open');
+                overlay.classList.add('hidden');
+            }
+            return true;
         }
 
         /** The overlay lives inside the avatar card, so it scrolls and hides with it. */
@@ -531,6 +726,10 @@ const TogetherLauncher = (() => {
         detach() {
             if (this._unsubscribe) this._unsubscribe();
             this._unsubscribe = null;
+            // The inset watcher holds listeners on the window and the visual viewport; leaving
+            // them behind after detach would keep writing a property nothing reads.
+            if (this._stopInsetWatch) this._stopInsetWatch();
+            this._stopInsetWatch = null;
             this._listen(false);
             for (const node of [this.button, this.drawerItem, this.style]) {
                 if (node && node.parentNode) node.parentNode.removeChild(node);
