@@ -2866,6 +2866,19 @@ function __nexusSelectPreferredOllaBridgeModel(selectElement, statusDiv) {
     if (selectElement) {
         selectElement.value = chosen;
     }
+    // BOTH of the places this app keeps the model, because it keeps it in two.
+    //
+    // `_nexusLLM` is what actually sends the request. `config` is the in-memory copy read from
+    // localStorage once at load, and it is what the model dropdown restores from and what SAVE
+    // writes back. Setting only the first was the whole of the regression: the pick worked and
+    // chat worked, and then pressing Fetch reset the dropdown to "Select a model…" — because the
+    // restore reads `config.model`, which was still empty — and pressing SAVE then wrote that
+    // empty value over the good one. The next message went out as `default`, which this gateway
+    // answers with an empty string, which the app shows as "Sorry, I encountered an error."
+    //
+    // Two stores, one write. Leaving them to converge on the next page load is not enough: the
+    // window between pairing and reloading is exactly the window somebody uses the app in.
+    config.model = chosen;
     manager.updateSettings({ ollabridge: { model: chosen } });
 
     const entry = entries.find((e) => e.id === chosen) || {};
@@ -2990,9 +3003,24 @@ async function fetchAndPopulateModels(provider, selectElement) {
             selectElement.innerHTML = '<option value="">No models available</option>';
         }
 
-        // Restore current selection if it exists
-        if (config.model && result.models.includes(config.model)) {
-            selectElement.value = config.model;
+        // Restore current selection if it exists.
+        //
+        // `config.model` first — it is what SAVE writes and what the user last chose. When it is
+        // empty, fall back to what the manager has stored for this provider, so a model chosen
+        // by something other than the form (the post-pairing picker) survives a Fetch instead of
+        // silently reverting to the placeholder.
+        let restore = config.model;
+        if (!restore) {
+            try {
+                const stored = window._nexusLLM.getSettings()[provider];
+                restore = (stored && stored.model) || '';
+            } catch (_) {
+                restore = '';
+            }
+        }
+        if (restore && result.models.includes(restore)) {
+            selectElement.value = restore;
+            config.model = restore;
         }
     } catch (e) {
         console.error('[Main] Failed to fetch models:', e);
