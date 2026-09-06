@@ -12,6 +12,9 @@
     },
     "api/yt-search.js": {
       "maxDuration": 10
+    },
+    "api/research/search.js": {
+      "maxDuration": 15
     }
   },
   "headers": [
@@ -141,6 +144,10 @@
     {
       "source": "/api/yt/search",
       "destination": "/api/yt-search"
+    },
+    {
+      "source": "/api/research/search",
+      "destination": "/api/research/search"
     },
     {
       "source": "/api/(.*)",

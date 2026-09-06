@@ -121,11 +121,40 @@ const ActivityContract = (() => {
             title: 'Focus',
             icon: '🎯',
             order: 50,
-            prompt: '25 minutes of focus, then a 5 minute break. Nothing is shared.',
-            inputs: () => [{ id: 'start', label: 'Start focus', permission: null }],
-            start: (a) => a.start(),
+            // S3. Focus was a pomodoro clock behind a panel you close in order to work, and a
+            // streak nobody read. It is now a study session: name a topic, she reads up on it
+            // first, then works through it in questions. Body doubling survives inside it —
+            // "just sit with me" still gets the silent block, which is the best-engineered
+            // part of the old feature and not worth deleting.
+            prompt: 'Learn something together. Name a topic and I will read up on it first.',
+            inputs: () => [{ id: 'start', label: 'Start a session', permission: null }],
+            start: (a) => {
+                const loop = typeof window !== 'undefined' ? window.NEXUS_STUDY_LOOP : null;
+                if (loop && typeof loop.open === 'function') {
+                    try {
+                        loop.open();
+                        return { ok: true, mode: 'study' };
+                    } catch (_) {
+                        // A study session that will not open falls back to the thing that
+                        // always worked rather than leaving the tile dead.
+                    }
+                }
+                return a.start();
+            },
             stop: (a, why) => a.stop(why),
             status: (a) => {
+                // A study session and a focus block are different things running under one
+                // tile, so the line says which. Reporting a countdown for a session that has
+                // no clock would be the panel inventing a fact.
+                const study = typeof window !== 'undefined' ? window.NEXUS_STUDY_SESSION : null;
+                if (study && typeof study.isRunning === 'function' && study.isRunning()) {
+                    const s = study.get();
+                    const settled = s.concepts.filter((c) => c.verdict === 'solid').length;
+                    return {
+                        label: s.topic ? `Studying ${s.topic}` : 'Studying',
+                        detail: settled ? `${settled} settled` : s.phase,
+                    };
+                }
                 const left = typeof a.remainingMs === 'function' ? a.remainingMs() : null;
                 const phase = a.phase || (a.onBreak ? 'break' : 'focus');
                 return {

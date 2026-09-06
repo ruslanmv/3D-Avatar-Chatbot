@@ -3564,6 +3564,7 @@ async function _handleStreamingResponse(text) {
             // D9. What Together is playing, if anything. Empty string when nothing is, so a
             // chat with no media selected sends the prompt it has always sent.
             (window.NEXUS_CURRENT_MEDIA?.systemPromptSuffix?.() || '') +
+            (window.NEXUS_STUDY_PROMPT?.systemPromptSuffix?.() || '') +
             // T2. What she can *do* about media, as opposed to D9's what is playing. Empty
             // unless Together is on and something can actually search, so a promise is never
             // made that nothing can keep.
@@ -3591,6 +3592,7 @@ async function _handleStreamingResponse(text) {
         // forward and `speakText` — so stripping once covers the screen *and* the voice. A tag
         // that reached the synthesiser would be her reading XML aloud.
         displayText = window.NEXUS_PLAY_DIRECTIVE ? window.NEXUS_PLAY_DIRECTIVE.consume(displayText) : displayText;
+        displayText = window.NEXUS_STUDY_DIRECTIVE ? window.NEXUS_STUDY_DIRECTIVE.consume(displayText) : displayText;
         textDiv.textContent = displayText;
 
         // Mirror to AR overlay
@@ -3648,6 +3650,7 @@ async function _handleNonStreamingResponse(text) {
         // forward and `speakText` — so stripping once covers the screen *and* the voice. A tag
         // that reached the synthesiser would be her reading XML aloud.
         displayText = window.NEXUS_PLAY_DIRECTIVE ? window.NEXUS_PLAY_DIRECTIVE.consume(displayText) : displayText;
+        displayText = window.NEXUS_STUDY_DIRECTIVE ? window.NEXUS_STUDY_DIRECTIVE.consume(displayText) : displayText;
 
         addMessageToHistory('avatar', displayText, attachments);
 
@@ -3773,6 +3776,7 @@ async function callLLM(userMessage) {
             // D9. What Together is playing, if anything. Empty string when nothing is, so a
             // chat with no media selected sends the prompt it has always sent.
             (window.NEXUS_CURRENT_MEDIA?.systemPromptSuffix?.() || '') +
+            (window.NEXUS_STUDY_PROMPT?.systemPromptSuffix?.() || '') +
             // T2. What she can *do* about media, as opposed to D9's what is playing. Empty
             // unless Together is on and something can actually search, so a promise is never
             // made that nothing can keep.
@@ -5253,6 +5257,7 @@ function __nexusMediaSuffix() {
     try {
         return (
             (window.NEXUS_CURRENT_MEDIA?.systemPromptSuffix?.() || '') +
+            (window.NEXUS_STUDY_PROMPT?.systemPromptSuffix?.() || '') +
             (window.NEXUS_TOGETHER_CAPABILITY?.systemPromptSuffix?.() || '')
         );
     } catch (_) {

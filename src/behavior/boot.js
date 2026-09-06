@@ -70,6 +70,19 @@
         'src/features/discovery/MediaResult.js',
         'src/features/discovery/providers/youtube.js',
         'src/features/discovery/ProviderRegistry.js',
+        // S1/S2/S3. Studying a topic together: the sources she reads, the session that tracks
+        // what was understood, the prompt that keeps her inside the material, and what she
+        // remembers between sessions. Wikipedia needs no key, so this works on a fresh
+        // deployment; web search is an upgrade when one is configured.
+        'src/features/research/ResearchSource.js',
+        'src/features/research/providers/wikipedia.js',
+        'src/features/research/providers/websearch.js',
+        'src/features/research/ResearchRegistry.js',
+        'src/features/study/StudySession.js',
+        'src/features/study/StudyPrompt.js',
+        'src/features/study/StudyDirective.js',
+        'src/features/study/StudyMemory.js',
+        'src/features/study/StudyLoop.js',
         // Three videos and three songs that need no key, so the feature can be tried before it
         // is configured. Not a provider: samples answer no queries.
         'src/features/discovery/samples.js',

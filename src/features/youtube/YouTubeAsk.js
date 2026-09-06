@@ -45,6 +45,17 @@ const YouTubeAsk = (() => {
 
     // ── the intent ──────────────────────────────────────────────────────────
 
+    /**
+     * "Just work alongside me" — the old Focus, kept.
+     *
+     * Body doubling is the best-engineered part of what Focus used to be: the silence is
+     * structural rather than disciplined, enforced by a profile overlay with no speech budget.
+     * Deleting that to make room for studying would have thrown away the one thing that
+     * already worked.
+     */
+    const SIT_WITH_ME =
+        /^(?:(?:just|only)\s+)?(?:sit|stay|work|be)\s+(?:with|near|beside|alongside)\s+me\b|^nothing[,.]?\s*(?:just|only)?\s*(?:sit|stay|work)\b|^(?:just )?(?:body[- ]?doubl\w*|work quietly|quiet company)\b/i;
+
     /** Verbs that can begin a request to play something. */
     const PLAY =
         '(?:play|put on|start|queue up|pon|execute|reproduce|find|find me|search|search for|look for|look up|get me|show me|list|list me|suggest|recommend)';
@@ -446,6 +457,35 @@ const YouTubeAsk = (() => {
             const w = typeof window !== 'undefined' ? window : null;
             const command = w && w.NEXUS_MEDIA_COMMAND;
             const intents = w && w.NEXUS_MEDIA_INTENT;
+
+            // S3. A study session has just asked what to learn, so this message is the answer
+            // — before any media parsing, or "play me some music theory" gets treated as a
+            // request to play music rather than as the topic.
+            const study = w && w.NEXUS_STUDY_SESSION;
+            const loop = w && w.NEXUS_STUDY_LOOP;
+            if (study && loop && typeof study.get === 'function' && study.get().phase === 'topic' && said0.trim()) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                input.value = '';
+                say(said0, 'user', d);
+                // "Just sit with me" is still a real answer. Body doubling is the best part of
+                // the old Focus and survives as a branch rather than a deletion.
+                if (SIT_WITH_ME.test(said0)) {
+                    study.end();
+                    const focus = w.NEXUS_BD_FOCUS;
+                    if (focus && typeof focus.start === 'function') {
+                        try {
+                            focus.start();
+                            say("Alright — I'll be here. No talking.", 'bot', d);
+                            return;
+                        } catch (_) {
+                            /* fall through to studying, which is better than nothing */
+                        }
+                    }
+                }
+                void Promise.resolve(loop.study(said0)).catch(() => null);
+                return;
+            }
 
             // M5. "Stop the music" — before anything else, because a request to stop must
             // never be answered by starting something. Only acted on when something is
