@@ -21,9 +21,19 @@ const samples = require('../src/features/discovery/samples.js');
 const Picker = require('../src/features/together/ui/MediaSearchPicker.js');
 
 describe('the sample set itself', () => {
-    test('three videos and three songs, which is enough to show and few enough to keep true', () => {
-        expect(samples.videos()).toHaveLength(3);
+    test('one video and three songs — enough to show, few enough to keep true', () => {
+        // One video, because it is this project's own and one demonstration does not need
+        // three things kept alive to make its point.
+        expect(samples.videos()).toHaveLength(1);
         expect(samples.music()).toHaveLength(3);
+    });
+
+    test('the video is the project own, which is why it can be the only one', () => {
+        // Embedding, availability and takedown risk sit in the same hands as the app. That is a
+        // stronger guarantee than any third-party pick, and it is the whole reason one suffices.
+        const [only] = samples.VIDEOS;
+        expect(only.id).toBe('XarKqjNoE7A');
+        expect(only.creator).toContain('ruslanmv');
     });
 
     test('every id is a real YouTube id, because a typo is a 404', () => {
@@ -68,7 +78,7 @@ describe('the sample set itself', () => {
         // Three videos borrowed from a different feature is worse than the ordinary empty state.
         expect(samples.forCapability('screen.share')).toEqual([]);
         expect(samples.forCapability('')).toEqual([]);
-        expect(samples.forCapability('video.search')).toHaveLength(3);
+        expect(samples.forCapability('video.search')).toHaveLength(1);
         expect(samples.forCapability('music.search')).toHaveLength(3);
     });
 });
@@ -96,8 +106,9 @@ describe('where they are offered', () => {
         const picker = harness();
         await picker.run('anything');
         const rows = [...document.querySelectorAll('.nexus-bd-together-result')];
-        expect(rows).toHaveLength(3);
+        expect(rows).toHaveLength(samples.VIDEOS.length);
         expect(rows.every((r) => r.dataset.sample === 'true')).toBe(true);
+        expect(rows[0].dataset.mediaId).toBe('XarKqjNoE7A');
     });
 
     test('and they are labelled as examples rather than passed off as matches', async () => {

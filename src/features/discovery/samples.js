@@ -1,5 +1,5 @@
 /**
- * Three videos and three songs that work with no key at all.
+ * One video and three songs that work with no key at all.
  *
  * Search needs a YouTube Data API key. Without one the Watch and Music setup screens could
  * offer nothing but a link to Settings and an invitation to go and get an API key from Google
@@ -20,25 +20,30 @@
  * provider registered with `ProviderRegistry`: a provider would make them answer queries, and
  * the registry is for things that actually search.
  *
- * ## Why these six
+ * ## Why these
  *
- * Every one is on a channel whose entire purpose is being embedded on other people's pages —
- * the first video ever uploaded to YouTube, the most-embedded video in the history of the
- * internet, and the record-breakers everybody recognises. Not a taste recommendation: the
- * quality being selected for is *durability*. These are the least likely six ids on YouTube to
- * be deleted, go private, or turn off embedding.
+ * The quality being selected for is *durability*, not taste.
+ *
+ * The video is this project's own, on its own channel. That is the strongest guarantee
+ * available: embedding, availability and takedown risk sit in the same hands as the app, so the
+ * one sample everybody sees first cannot be turned off by somebody with no stake in it. One is
+ * enough — three would be three things to keep alive for the same demonstration.
+ *
+ * The songs are on channels whose entire purpose is being embedded on other people's pages: a
+ * stream that exists to be left playing in other tabs, and two artist-owned channels rather
+ * than a label's, so embedding is not somebody's licensing decision.
  *
  * ## What was actually verified, and what was not
  *
  * Each id was checked against YouTube's oEmbed endpoint and returned 200 with the title and
- * channel recorded below, so all six exist and are public. **Embeddability was not verified**:
+ * channel recorded below, so all four exist and are public. **Embeddability was not verified**:
  * the sandbox this was written in blocks the browser from reaching youtube.com, so the one test
  * that would settle it could not be run. `tests/discovery-samples.test.js` re-checks existence
  * against oEmbed when the network allows and skips itself when it does not.
  *
  * Which is why nothing here is load-bearing. A sample that has died since is one card that says
- * so; the other five still play, search still works once a key is set, and the fix is one line
- * of data in this file.
+ * so; the rest still play, search still works once a key is set, and the fix is one line of data
+ * in this file.
  */
 (function (global) {
     'use strict';
@@ -57,22 +62,10 @@
     /** @type {Sample[]} */
     const VIDEOS = [
         {
-            id: 'jNQXAC9IVRw',
-            title: 'Me at the zoo',
-            creator: 'jawed',
-            why: 'the first video ever uploaded to YouTube, April 2005 — 19 seconds, and it will outlive this app',
-        },
-        {
-            id: 'dQw4w9WgXcQ',
-            title: 'Rick Astley — Never Gonna Give You Up',
-            creator: 'Rick Astley',
-            why: 'the most-embedded video on the internet; the entire rickroll depends on embedding working',
-        },
-        {
-            id: '9bZkp7q19f0',
-            title: 'PSY — GANGNAM STYLE',
-            creator: 'officialpsy',
-            why: 'the first video to pass a billion views, and the reason YouTube had to widen its counter',
+            id: 'XarKqjNoE7A',
+            title: 'Agent Matrix Revolutionizing AI with the First Alive Autonomous System',
+            creator: 'Ruslan Magana Vsevolodovna (ruslanmv)',
+            why: "this project's own channel — the only entry here whose embedding, availability and takedown risk are under the same hands as the app, which is a stronger guarantee than any third-party pick could offer",
         },
     ];
 

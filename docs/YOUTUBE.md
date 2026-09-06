@@ -80,14 +80,19 @@ Restrict it to that API and to your site's referrer before you use it anywhere p
 
 ### Before any of that — it works with no key at all
 
-Search needs a key. **Playback does not.** So Watch and Music each carry three fixed examples,
-offered only where there is no search to do:
+Search needs a key. **Playback does not.** So Watch and Music carry fixed examples, offered only
+where there is no search to do:
 
 | Watch | Music |
 |---|---|
-| Me at the zoo — the first video ever uploaded | lofi hip hop radio — Lofi Girl |
-| Rick Astley — Never Gonna Give You Up | Queen — Bohemian Rhapsody |
-| PSY — GANGNAM STYLE | Alan Walker — Faded |
+| Agent Matrix — this project's own channel | lofi hip hop radio — Lofi Girl |
+| | Queen — Bohemian Rhapsody |
+| | Alan Walker — Faded |
+
+One video, because it is ours: embedding, availability and takedown risk sit in the same hands
+as the app, so the first thing a visitor sees cannot be switched off by somebody with no stake
+in it. That is a stronger guarantee than any third-party pick, and it is why one is enough —
+three would be three things to keep alive for the same demonstration.
 
 A product that cannot be tried until it is configured mostly does not get tried. These play
 through exactly the code path a real result takes, so one tap on a fresh deployment shows what
@@ -100,11 +105,13 @@ moment a key is set. Handing somebody a fixed video labelled as a match for what
 lie they cannot detect, and worse than an empty state. `tests/discovery-samples.test.js` holds
 that rule directly.
 
-They are chosen for **durability, not taste**: every one is on a channel whose whole purpose is
-being embedded on other people's pages. Each id was checked against YouTube's oEmbed endpoint
-and exists; embeddability was not verified, because the sandbox this was written in blocks the
-browser from reaching youtube.com. Nothing depends on all six surviving — a dead one is a single
-card that says so, and the fix is one line in `src/features/discovery/samples.js`.
+They are chosen for **durability, not taste**. The songs are on channels whose whole purpose is
+being embedded on other people's pages — a stream meant to be left playing in other tabs, and
+two artist-owned channels rather than a label's, so embedding is not somebody's licensing
+decision. Each id was checked against YouTube's oEmbed endpoint and exists; embeddability was
+not verified, because the sandbox this was written in blocks the browser from reaching
+youtube.com. Nothing depends on all of them surviving — a dead one is a single card that says
+so, and the fix is one line in `src/features/discovery/samples.js`.
 
 ### For a deployment — one key, nobody types anything (D13)
 
