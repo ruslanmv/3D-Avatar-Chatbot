@@ -81,6 +81,8 @@
         // it. After the publisher's dependencies, before the launcher.
         'src/features/together/MediaIntent.js',
         'src/features/together/PlayDirective.js',
+        // T6. One topic, two turns, so "yes" and "play it" point at something.
+        'src/features/together/PlayFollowUp.js',
         'src/features/together/ui/MediaSearchPicker.js',
         // D9. What is playing, for the model. Loaded before the publisher that sets it.
         'src/features/together/CurrentMediaContext.js',

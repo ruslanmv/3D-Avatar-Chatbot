@@ -1,6 +1,7 @@
 # Together: one switch, and she can actually do it
 
-**Status:** design. Nothing here is built yet.
+**Status:** T1–T6 are **shipped**; T7 is still planning.
+Below, the shipped batches keep their original text and carry a ✅ with what actually landed.
 
 ---
 
@@ -127,7 +128,13 @@ appears on screen or in the TTS.
 
 ## 4. The batches
 
-### T1 — One switch
+### T1 — One switch ✅
+
+**Shipped.** `TogetherSwitch` with three states rather than two, because "never touched" and
+"deliberately off" are different facts: a fresh profile sees the launcher with the capabilities
+off, any tile tap turns everything on for good, Settings turns it off. Off hides the launcher
+**and** empties the prompt suffix.
+
 
 `TogetherSwitch`: `isOn()`, `enable(reason)`, `disable()`, `onChange()`, persisted in one key.
 
@@ -143,7 +150,13 @@ switch that hides the button but leaves her claiming she can play music is worse
 
 ---
 
-### T2 — She knows what she can do
+### T2 — She knows what she can do ✅
+
+**Shipped.** `TogetherCapability.systemPromptSuffix()` at the four sites that already append the
+motion and now-playing suffixes. Empty when Together is off *or* when nothing can search, so no
+promise is made that nothing can keep — and the keyless samples count as being able to play
+something, because they are.
+
 
 The prompt suffix above, added at the four existing call sites. `''` when Together is off or
 the provider has no search, so a chat with Together off is byte-for-byte unchanged.
@@ -154,7 +167,11 @@ being tested is that the capability reaches the prompt, not that a model behaves
 
 ---
 
-### T3 — One function that finds and plays
+### T3 — One function that finds and plays ✅
+
+**Shipped.** `MediaIntent.fulfil`. First result rather than a list, empty query refused rather
+than searched for, and `nothing-found` kept distinct from `search-failed`.
+
 
 `MediaIntent.fulfil({ query, kind, source })`:
 
@@ -171,7 +188,17 @@ drives all three.
 
 ---
 
-### T4 — The fast path, unanchored
+### T4 — The fast path, unanchored ✅
+
+**Shipped, with one deliberate change of plan.** The anchor is *kept* and an optional polite
+lead-in matched at it — dropping `^` outright would have made "we could play something later" a
+request. The modal requires a following "you", so "could we play music" is not addressed to her.
+Verbs widened to `find`, `search for`, `look for`, `get me`; a play verb alone is still never
+enough, which is what keeps "find my keys" out.
+
+`play some jazz` still misses, on purpose: a bare genre has no media noun, and adding genres
+would admit "play some football". The model path answers it in one round trip.
+
 
 Drop `^`. Add the polite forms — *can you*, *could you*, *would you*, *please* — and the
 non-YouTube verbs *find*, *put on*, *play me*. Keep it narrow: a play verb **and** a media noun,
@@ -183,7 +210,13 @@ under test.
 
 ---
 
-### T5 — The model path
+### T5 — The model path ✅
+
+**Shipped.** `PlayDirective`, stripped beside the existing motion seam on `displayText` — which
+covers the bubble, the transcript, the VR forward and `speakText` at once, because display and
+speech are separate paths and "strip it" has to mean both. One directive runs however many she
+writes; an unclosed tag from a truncated reply is hidden and never executed.
+
 
 Parse `<play kind="…">…</play>` out of her reply, strip it before display and TTS, call
 `MediaIntent.fulfil`. Cap it: **one directive per reply**, ignored entirely when Together is off,
@@ -195,7 +228,13 @@ shows nothing.
 
 ---
 
-### T6 — "yes" means something
+### T6 — "yes" means something ✅
+
+**Shipped.** `PlayFollowUp`: one topic, two turns, taken from what the *user* typed and never
+from what the assistant suggested — a model that offered five genres has not been chosen from.
+The affirmative list is short by design; words that only sometimes mean yes are left out,
+because a false positive here starts music at somebody mid-sentence.
+
 
 A one-turn memory: when she has just offered to find something, the next affirmative fulfils it.
 Expires after one turn, so a "yes" two minutes later about something else never plays music.

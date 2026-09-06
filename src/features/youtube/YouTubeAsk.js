@@ -46,20 +46,38 @@ const YouTubeAsk = (() => {
     // ── the intent ──────────────────────────────────────────────────────────
 
     /** Verbs that can begin a request to play something. */
-    const PLAY = '(?:play|put on|start|queue up|pon)';
+    const PLAY = '(?:play|put on|start|queue up|pon|find|find me|search for|look for|get me)';
+
+    /**
+     * The politeness people actually put in front of a request (T4).
+     *
+     * Every pattern here is anchored at the start, and that anchor is load-bearing: without it
+     * "we could play something later" is a request to play something. But *with* it, "can you
+     * play some jazz" was not a request either — and "can you" is how most people ask. So the
+     * lead-in is optional and matched at the anchor, which keeps the guarantee (the request has
+     * to start the message) while accepting the phrasing.
+     *
+     * `(?:you|u)` is required after the modal on purpose. "could we", "should I", "we could"
+     * are not requests to this assistant, and dropping the pronoun would let all three in.
+     */
+    const LEAD = '(?:(?:can|could|would|will)\\s+(?:you|u)\\s+)?(?:please\\s+)?';
     /** Words that make a play verb unambiguously about media rather than a game. */
     const MEDIA = '(?:song|songs|music|track|tune|album|playlist|video|videos|mix|radio|podcast|beats|ost|soundtrack)';
 
     /**
      * Patterns, tried in order. Each captures the query in group 1.
      *
-     * Anchored at the start so a passing mention mid-sentence ("we could play something
-     * later") is not a request. `search youtube` comes first because it is the least
-     * ambiguous phrasing anybody uses.
+     * Anchored at the start — after an optional polite lead-in — so a passing mention
+     * mid-sentence ("we could play something later") is not a request. `search youtube` comes
+     * first because it is the least ambiguous phrasing anybody uses.
+     *
+     * A play verb alone is never enough: every pattern also needs either the word *youtube* or
+     * a media noun. That is what keeps "find my keys" and "start the timer" out, and it is why
+     * widening the verbs was safe.
      */
     const PATTERNS = [
         // "search youtube for lofi" / "look on youtube for lofi"
-        new RegExp(`^(?:search|look|find|browse)\\s+(?:on\\s+)?youtube\\s+(?:for\\s+)?(.+)$`, 'i'),
+        new RegExp(`^${LEAD}(?:search|look|find|browse)\\s+(?:on\\s+)?youtube\\s+(?:for\\s+)?(.+)$`, 'i'),
         // "youtube lofi hip hop"
         new RegExp(`^youtube[:,]?\\s+(.+)$`, 'i'),
         // "play a video in youtube of music" — what follows the connector is the request.
@@ -69,12 +87,15 @@ const YouTubeAsk = (() => {
         // searches for the word *video* while the user plainly asked for music. The
         // connectors are deliberately only `of|about|with`; `for` is excluded because
         // "put on jazz on youtube for me" would then search for "me".
-        new RegExp(`^${PLAY}\\s+.+?\\s+(?:on|in|from)\\s+youtube\\b\\s*(?:of|about|with)\\s+(.+)$`, 'i'),
+        new RegExp(`^${LEAD}${PLAY}\\s+.+?\\s+(?:on|in|from)\\s+youtube\\b\\s*(?:of|about|with)\\s+(.+)$`, 'i'),
         // "play lofi on youtube" / "put on jazz on youtube"
-        new RegExp(`^${PLAY}\\s+(.+?)\\s+(?:on|in|from)\\s+youtube\\b.*$`, 'i'),
+        new RegExp(`^${LEAD}${PLAY}\\s+(.+?)\\s+(?:on|in|from)\\s+youtube\\b.*$`, 'i'),
         // "play the lofi video" / "put on some jazz music" — a media word makes it a request
-        new RegExp(`^${PLAY}\\s+(?:me\\s+)?(?:some\\s+|the\\s+|a\\s+|an\\s+)?(.*\\b${MEDIA}\\b.*)$`, 'i'),
-        new RegExp(`^${PLAY}\\s+(?:me\\s+)?(?:some\\s+|the\\s+|a\\s+|an\\s+)?${MEDIA}\\s+(?:by|from|of)\\s+(.+)$`, 'i'),
+        new RegExp(`^${LEAD}${PLAY}\\s+(?:me\\s+)?(?:some\\s+|the\\s+|a\\s+|an\\s+)?(.*\\b${MEDIA}\\b.*)$`, 'i'),
+        new RegExp(
+            `^${LEAD}${PLAY}\\s+(?:me\\s+)?(?:some\\s+|the\\s+|a\\s+|an\\s+)?${MEDIA}\\s+(?:by|from|of)\\s+(.+)$`,
+            'i'
+        ),
         // "/yt lofi", kept so the command and the sentence share one implementation
         new RegExp(`^/(?:yt|youtube)\\s+(.+)$`, 'i'),
     ];
@@ -290,6 +311,29 @@ const YouTubeAsk = (() => {
 
         const intercept = (e) => {
             const intent = parseIntent(input.value);
+            const follow = typeof window !== 'undefined' ? window.NEXUS_PLAY_FOLLOWUP : null;
+
+            // T6. A pattern is a function of one message, so "yes" and "can you play it" are
+            // unreachable to it — they are only requests given the message before. The memory
+            // is one topic, two turns, taken from what the *user* typed and never from what the
+            // assistant suggested: a model that offered five genres has not been chosen from.
+            if (!intent && follow) {
+                const carried = follow.resolve(input.value);
+                if (carried) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    const said = input.value;
+                    input.value = '';
+                    say(said, 'user', d);
+                    follow.clear();
+                    void fulfil(carried.query, { doc: d });
+                    return;
+                }
+            }
+            if (follow) {
+                follow.note(input.value, { handled: Boolean(intent) });
+            }
+
             if (!intent) {
                 return; // ordinary conversation, and the model gets it
             }
