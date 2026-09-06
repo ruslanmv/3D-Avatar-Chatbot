@@ -139,6 +139,27 @@ const YouTubeProvider = (() => {
         return R.many((raw || []).map((item) => normalize(item, kind)));
     }
 
+    /**
+     * The five entities YouTube's Data API escapes in titles and descriptions.
+     *
+     * It returns `Drake - One Dance ft. Wizkid &amp; Kyla`, and the app renders titles as
+     * text — correctly, because a title is untrusted text from an uploader and must never be
+     * parsed as markup. So the ampersand arrived on screen as `&amp;` and stayed there.
+     *
+     * Decoded by table rather than by a parser or an off-screen element: the whole point of
+     * setting these as `textContent` is that nothing uploader-supplied is ever handed to an
+     * HTML parser, and `innerHTML = title` to read it back would hand it to one.
+     */
+    const ENTITIES = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&apos;': "'" };
+
+    /** Undo the API's escaping, and nothing else. */
+    function unescapeText(value) {
+        return String(value === null || value === undefined ? '' : value).replace(
+            /&(?:amp|lt|gt|quot|#39|apos);/g,
+            (m) => ENTITIES[m] || m
+        );
+    }
+
     /** One companion result → one `MediaResult`. */
     function normalize(item, kind = 'video') {
         if (!item || !item.id) {
@@ -148,9 +169,9 @@ const YouTubeProvider = (() => {
             id: item.id,
             provider: ID,
             kind: kind === 'music' || kind === 'track' ? 'track' : 'video',
-            title: item.name || '',
-            creator: item.author || '',
-            description: item.description || '',
+            title: unescapeText(item.name),
+            creator: unescapeText(item.author),
+            description: unescapeText(item.description),
             publishedAt: item.publishedAt || '',
             // The facade thumbnail YouTube serves for every video. `hqdefault` rather than
             // `maxres`, which is absent for a large share of videos and yields a broken image
@@ -162,7 +183,7 @@ const YouTubeProvider = (() => {
         };
     }
 
-    return { ID, status, available, ready, search, normalize };
+    return { ID, status, available, ready, search, normalize, unescapeText };
 })();
 
 if (typeof window !== 'undefined') {

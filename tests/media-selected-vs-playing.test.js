@@ -237,3 +237,62 @@ describe('the ▶ button in Together', () => {
         expect(activated).toHaveLength(1);
     });
 });
+
+describe('not hearing the player is not proof it did not start', () => {
+    // The transcript this exists for:
+    //
+    //     YOU    play a song about relaxation
+    //     NEXUS  Playing “Relaxing music Relieves stress…”
+    //     YOU    I like this song thank you
+    //     NEXUS  ...it looks like the playback hasn't started yet. Please tap the card!
+    //
+    // It was playing. The IFrame API had not attached, so no PLAYING event arrived, and the
+    // app treated silence as a refusal.
+    test('silence is its own state, not blocked', () => {
+        Session.requestPlay(RESULT);
+        Session.markUnconfirmed();
+        expect(Session.status()).toBe('unconfirmed');
+    });
+
+    test('and she is told not to claim it has not started', () => {
+        Context.set(RESULT);
+        Session.requestPlay(RESULT);
+        Session.markUnconfirmed();
+        const suffix = Context.systemPromptSuffix();
+        expect(suffix).toMatch(/cannot tell whether it is playing/i);
+        expect(suffix).toMatch(/most likely playing/i);
+        // The word "tap" does appear — inside a prohibition. What must not appear is the
+        // *instruction*, which is the sentence `blocked` carries.
+        expect(suffix).toMatch(/do NOT tell them to tap/i);
+        expect(suffix).not.toMatch(/tap the card to start it/i);
+        expect(suffix).not.toMatch(/It is NOT playing/);
+    });
+
+    test('a real PLAYING afterwards still wins', () => {
+        // Unconfirmed is provisional. Evidence, when it arrives, replaces a guess.
+        Session.requestPlay(RESULT);
+        Session.markUnconfirmed();
+        Session.markPlaying();
+        expect(Session.status()).toBe('playing');
+    });
+
+    test('and it never overwrites a state that was actually observed', () => {
+        // The backstop fires on a timer. By then the player may have reported anything, and
+        // a timer must not talk over evidence.
+        for (const observed of ['markPlaying', 'markPaused', 'markEnded', 'markBlocked']) {
+            Session.reset();
+            Session.requestPlay(RESULT);
+            Session[observed]();
+            const before = Session.status();
+            Session.markUnconfirmed();
+            expect(Session.status()).toBe(before);
+        }
+    });
+
+    test('blocked still says tap, because there it is true', () => {
+        Context.set(RESULT);
+        Session.requestPlay(RESULT);
+        Session.markBlocked();
+        expect(Context.systemPromptSuffix()).toMatch(/tap the card/i);
+    });
+});

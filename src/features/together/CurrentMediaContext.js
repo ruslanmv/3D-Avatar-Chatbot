@@ -169,12 +169,18 @@ const CurrentMediaContext = (() => {
                 : 'The user has chosen this video. It is on screen and ready, but it is NOT playing yet. If they ask you to play it, play it, using the tag above. Do not tell them to tap anything.',
             loading: 'The app has asked the player to start this. It has not confirmed yet.',
             playing: listening
-                ? 'The app reports that this track is playing right now.'
-                : 'The app reports that this video is playing right now.',
-            paused: 'This is open and playback is paused.',
+                ? 'The app reports that this track is playing right now. If they ask you to stop or pause it, say you have — the app handles "stop", "pause" and "continue" itself.'
+                : 'The app reports that this video is playing right now. If they ask you to stop or pause it, say you have — the app handles "stop", "pause" and "continue" itself.',
+            paused: 'This is open and playback is paused. They can say "continue" to resume it.',
             ended: 'Playback of this has finished.',
             blocked:
                 'The browser refused to start playback on its own — this happens when nothing was tapped first. It is NOT playing. Tell them to tap the card to start it.',
+            // The state that cost a real user a real lie. She was told her music had not
+            // started, while it played, because the app could not hear the player and treated
+            // that silence as proof. There is no honest sentence about whether it is playing
+            // here, so she is told to say nothing about it and to answer what was asked.
+            unconfirmed:
+                'This was started and the app cannot tell whether it is playing — the player did not report back. It is most likely playing. Do NOT say it has not started, do NOT tell them to tap anything, and do not raise playback at all unless they ask. If they say they can hear it, they can.',
         };
         const stateLine = status && STATE[status] ? STATE[status] : null;
         const what = listening ? 'listening to' : 'watching';

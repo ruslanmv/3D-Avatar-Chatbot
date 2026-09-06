@@ -120,10 +120,12 @@ const YouTubeEmbed2D = (() => {
     }
 
     /**
-     * How long the app will wait for the player to say anything before concluding it will not.
+     * How long the app will wait for the player to say anything before admitting it does not
+     * know.
      *
      * Longer than the adapter's own blocked timer, because this is the backstop for the case
-     * where the adapter never attached at all.
+     * where the adapter never attached at all — and it ends in `unconfirmed`, not `blocked`,
+     * because not hearing a player is not the same as watching one refuse.
      */
     const UNCONFIRMED_MS = 9000;
 
@@ -229,7 +231,11 @@ const YouTubeEmbed2D = (() => {
             window.setTimeout(() => {
                 try {
                     if (state.active === card && session.status() === 'loading') {
-                        session.markBlocked();
+                        // `markUnconfirmed`, not `markBlocked`. Nothing here observed a
+                        // refusal — the player simply never spoke, which happens when the
+                        // IFrame API cannot load at all. Calling that "blocked" told a user
+                        // their music had not started while it was playing.
+                        session.markUnconfirmed();
                     }
                 } catch (_) {
                     /* nothing to do about it either way */
@@ -258,6 +264,57 @@ const YouTubeEmbed2D = (() => {
                 /* no observation, same playback */
             }
         }
+    }
+
+    /**
+     * Stop, pause or resume whatever is playing (batch M5).
+     *
+     * Until now the only way to stop a video was to find the × on the card, which is fine
+     * with a mouse and useless to somebody who has just said "stop the music" out loud. The
+     * player handle has been sitting on the card since M2; this is the door to it.
+     *
+     * Two routes, and the order matters. The IFrame API handle is preferred because it stops
+     * the audio and leaves the card where it is — the user asked for silence, not for the
+     * thing to vanish. Collapsing back to the thumbnail is the fallback for a player the API
+     * never attached to, which is the same situation `unconfirmed` describes: it is cruder,
+     * it loses the position, and it is much better than being unable to stop a noise.
+     *
+     * Returns whether anything was actually done, so a caller can say "nothing is playing"
+     * rather than claiming to have stopped something that was not.
+     */
+    function control(action) {
+        const card = state.active;
+        if (!card) {
+            return false;
+        }
+        const handle = card._nexusPlayback;
+        if (handle) {
+            if (action === 'pause' && typeof handle.pause === 'function') {
+                return Boolean(handle.pause());
+            }
+            if (action === 'resume' && typeof handle.resume === 'function') {
+                return Boolean(handle.resume());
+            }
+            if (action === 'stop' && typeof handle.stopVideo === 'function' && handle.stopVideo()) {
+                // The card stays. They asked for it to stop, not to disappear.
+                const session = typeof window !== 'undefined' ? window.NEXUS_MEDIA_SESSION : null;
+                if (session && typeof session.stop === 'function') {
+                    try {
+                        session.stop();
+                    } catch (_) {
+                        /* stopped either way */
+                    }
+                }
+                return true;
+            }
+        }
+        if (action === 'stop') {
+            // No handle to talk to. Collapsing the player is the blunt instrument that
+            // definitely silences it, and silence is what was asked for.
+            deactivate(card);
+            return true;
+        }
+        return false;
     }
 
     /** Back to the facade (used when another card starts). */
@@ -855,6 +912,7 @@ const YouTubeEmbed2D = (() => {
         videosFor,
         activate,
         deactivate,
+        control,
         parseCommand,
         runSearch,
         MAX_CARDS_PER_MESSAGE,

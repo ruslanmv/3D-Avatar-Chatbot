@@ -156,6 +156,103 @@ today, and the test now asserts that invariant rather than the order.
 
 ---
 
+## M5 — knowing it is playing, and being able to stop it ✅
+
+    YOU    play a song about relaxation
+    NEXUS  Playing “Relaxing music Relieves stress, Anxiety and Depression…”
+    YOU    I like this song thank you
+    NEXUS  ...it looks like the playback hasn't started yet. Please tap the card!
+
+It was playing. The user could hear it.
+
+**Silence was being read as refusal.** M2 added a nine-second backstop for the case where the
+IFrame API never attaches — a blocked script, a slow network, an origin mismatch — and it
+called that state `blocked`. But `blocked` means *the player reported ready and then did not
+start*, which is evidence. Not hearing a player is the absence of evidence, and the app was
+treating one as the other, then putting a flat contradiction of the user's own ears into her
+mouth.
+
+So there is a new state, `unconfirmed`, and its prompt says what is actually true: *"the app
+cannot tell whether it is playing — it is most likely playing. Do NOT say it has not started,
+do NOT tell them to tap anything."* `blocked` still says tap, because there it is honest.
+`unconfirmed` is provisional and never overwrites something observed: a PLAYING that arrives
+late still wins, and the timer cannot talk over a state the player actually reported.
+
+**Stop, pause and continue.** Until now the only way to stop a video was the × on the card,
+which is fine with a mouse and useless to somebody who has just said "stop the music" out
+loud. The player handle has been on the card since M2; `control()` is the door to it, and the
+transport patterns are whole-message anchored — *"stop talking about that"* and *"I had to stop
+at the shop"* are not commands. Misreading a sentence as "stop" cuts off music somebody is
+enjoying; missing a phrasing only means the model handles it.
+
+Stop prefers the API, which silences the audio and **leaves the card where it is** — they asked
+for it to stop, not to vanish, and *"what did we just listen to?"* is a question asked after the
+music stops. With no player to talk to it collapses the iframe instead: cruder, loses the
+position, and definitely works. There is no crude equivalent of pause, so pause without a
+player returns false rather than claiming to have paused something.
+
+Verified live: the backstop lands on `unconfirmed` rather than `blocked`; the prompt says
+"most likely playing" and never "tap the card to start it"; "stop the music" classifies while
+"stop talking about that" does not; and `control('stop')` removes the player element while the
+session still knows what was playing.
+
+Seven mutants. Three survived the first pass and each named a real gap — the embed's backstop
+and `control()` had no tests at all, and the stop pattern's anchor was untested. All die now.
+
+---
+
+## M6 — finding is not playing ✅
+
+    YOU    search music about dance
+    NEXUS  Playing “70s & 80s Party Classics!…”
+
+They asked to look. The app chose for them and started it — which is not a smaller version of
+what was asked for, it is the opposite, and it cannot be walked back by saying "no, the other
+one", because something is already making noise.
+
+**The phrasings missed the patterns entirely.** `search music about dance`, `show me dance
+videos`, `list me the top 3 dance songs` matched nothing, so they fell through to the model —
+which had only ever been told *"choose something and play it"*, and did. The verb list now
+covers them and they classify as `discover`.
+
+**"The top 3" says how many, not what.** It was being left in the query, so a request for three
+songs searched YouTube for the words *top 3* and came back with compilations called "Top 3".
+The count is read out, capped, and honoured.
+
+**A connector leaked.** Widening the verbs made `search` match before `search for`, so
+`search for dance music` asked YouTube for *"for dance music"*.
+
+**The model gets its own verb.** `<find kind="music">terms</find>` shows results and starts
+nothing, with the prompt saying not to name titles it has not searched for. A reply carrying
+both tags lists rather than plays — the less destructive of the two, since a list can be
+followed by "play the first one" and something playing cannot be un-played.
+
+**The rows are the panel's rows.** Same markup, same classes, in a chat message: one thing to
+keep in step, one answer to "what does a result look like". One tap plays, through
+`MediaIntent.play`, so the card, session and prompt behave as they do on every other route.
+
+**Titles arrive readable.** The Data API escapes them, and the app renders titles as text —
+correctly, since a title is untrusted uploader text that must never be parsed as markup. So
+`Drake - One Dance ft. Wizkid &amp; Kyla` reached the screen with the entity intact. Decoded by
+a five-entry table rather than by an HTML parser, for the same reason.
+
+### Verified against a real YouTube search
+
+The first time this has been possible — a real Data API key, held only in the dev server's
+environment and never written to the repo (checked).
+
+| | |
+|---|---|
+| `search music about dance` | 4 real rows listed, **nothing playing** |
+| `can you list top 3 dance songs` | exactly 3 rows, nothing playing |
+| `play the first one` | plays row 1, no new search |
+| `play music about dance` | plays immediately, as before |
+
+Seven mutants. One survived and named a real gap: every entity assertion called the helper
+directly, so a mutation stopping `normalize` from using it passed the whole suite.
+
+---
+
 ## Not done here
 
 **The conversational router** — "the first one", "number three", "pause it" as spoken commands,
