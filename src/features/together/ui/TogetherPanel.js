@@ -269,6 +269,19 @@ const TogetherPanel = (() => {
             const contract = this.contractFor(id);
             if (!contract && !this.activities.has(id)) return { ok: false, why: `no activity ${id}` };
 
+            // T1. Using it is how you turn it on. Somebody who has just pressed Music has
+            // answered the question more clearly than any dialog could ask it, so there is no
+            // dialog — one silent, idempotent call on every tile press, and from here on she
+            // can also play media from conversation. Guarded because the switch is a separate
+            // module and a panel that failed to open over a missing one would be a worse
+            // trade than a switch that stays where it was.
+            try {
+                const sw = typeof window !== 'undefined' ? window.NEXUS_TOGETHER_SWITCH : null;
+                if (sw && typeof sw.enable === 'function') sw.enable('tile');
+            } catch (_) {
+                /* the activity still opens */
+            }
+
             if (contract) {
                 const inputs = contract.inputs();
                 // One input that asks nothing is not a question, and a setup screen showing a
@@ -780,13 +793,41 @@ const TogetherPanel = (() => {
                 // The activity's own caveat, if it has one, rather than the picker inventing
                 // copy about a feature it knows nothing about.
                 note: input.note,
+                // M4. One action. Tapping a result publishes the card and starts it, in
+                // this same click — see `ConversationPublisher.start`, which is synchronous
+                // precisely so the browser still counts this as a user gesture and allows the
+                // sound. A separate "choose without playing" is not a thing anybody wanted.
+                //
+                // No capture is started here. Playing a video in the chat needs no
+                // `getDisplayMedia`: that belongs to Watch and the share-a-tab path, and §2a's
+                // consent machine stays its only owner.
                 onChoose: (result) => {
                     this.close();
+                    this._session('requestPlay', result);
                     if (publisher && typeof publisher.publish === 'function') {
-                        publisher.publish(result, { doc: this.doc, win: this.win });
+                        publisher.publish(result, { doc: this.doc, win: this.win, play: true });
                     }
                 },
             });
+        }
+
+        /**
+         * Tell the media session what the user just did, if it is loaded.
+         *
+         * One guarded call rather than two, because the two paths differ only in the verb and
+         * an install without the session module must behave exactly as it did before.
+         */
+        _session(method, result) {
+            const session = this.win && this.win.NEXUS_MEDIA_SESSION;
+            if (!session || typeof session[method] !== 'function') {
+                return null;
+            }
+            try {
+                return session[method](result, { source: 'together' });
+            } catch (_) {
+                // Knowing what was chosen is never worth losing the choice over.
+                return null;
+            }
         }
 
         /** What is running — in the activity's own words, not the launcher's. */

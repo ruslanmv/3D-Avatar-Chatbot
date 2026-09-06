@@ -119,6 +119,14 @@ const YouTubeEmbed2D = (() => {
         }
     }
 
+    /**
+     * How long the app will wait for the player to say anything before concluding it will not.
+     *
+     * Longer than the adapter's own blocked timer, because this is the backstop for the case
+     * where the adapter never attached at all.
+     */
+    const UNCONFIRMED_MS = 9000;
+
     /** Swap the facade for the real player. Only one card plays at a time. */
     function activate(card, video) {
         const Y = YT();
@@ -128,7 +136,15 @@ const YouTubeEmbed2D = (() => {
         }
         const frame = doc.createElement('iframe');
         frame.className = 'nexus-yt-player';
-        frame.src = Y.embedUrl(video.id, { start: video.start, autoplay: true, origin: pageOrigin() });
+        // M2. `jsapi` is what lets the IFrame API attach below and tell us what the player is
+        // really doing. Without it this function could only ever report that it *asked* for
+        // playback, which is the assumption this batch exists to remove.
+        frame.src = Y.embedUrl(video.id, {
+            start: video.start,
+            autoplay: true,
+            origin: pageOrigin(),
+            jsapi: true,
+        });
         frame.title = card.dataset.title || 'YouTube video player';
         frame.setAttribute(
             'allow',
@@ -167,10 +183,108 @@ const YouTubeEmbed2D = (() => {
 
         card.classList.add('is-playing');
         state.active = card;
+
+        // M1/M2. Tapping a card is a choice, and it is the moment the app stops guessing what
+        // the user is doing. `requestPlay` is deliberately not `markPlaying`: nothing has
+        // confirmed anything yet, and the browser may still refuse to make noise.
+        const session = typeof window !== 'undefined' ? window.NEXUS_MEDIA_SESSION : null;
+        if (session && typeof session.requestPlay === 'function') {
+            try {
+                // A card built from a bare URL has no title — the link carried none. But the
+                // app very often knows one anyway, because the publisher put the card there
+                // from a real search result. Preferring what is already known keeps "what am
+                // I listening to?" answerable for a card the user tapped rather than chose.
+                const known =
+                    (typeof session.current === 'function' && session.current()) ||
+                    (window.NEXUS_CURRENT_MEDIA &&
+                        typeof window.NEXUS_CURRENT_MEDIA.get === 'function' &&
+                        window.NEXUS_CURRENT_MEDIA.get()) ||
+                    null;
+                const same = known && known.id === video.id ? known : null;
+                session.requestPlay(
+                    {
+                        id: video.id,
+                        provider: 'youtube',
+                        kind: (same && same.kind) || card.dataset.kind || 'video',
+                        title: card.dataset.title || (same && same.title) || '',
+                        creator: (same && same.creator) || card.dataset.creator || '',
+                        url: `https://www.youtube.com/watch?v=${video.id}`,
+                    },
+                    { source: 'card' }
+                );
+            } catch (_) {
+                // Knowing what is playing is never worth losing the playback over.
+            }
+        }
+
+        // Then listen for what actually happens. Every failure path here degrades to the
+        // behaviour this card had before the adapter existed: it plays, and the app goes back
+        // to not knowing. Nothing in here may be the reason a video does not start.
+        // If nothing ever reports back — the API script blocked, an old browser, a network
+        // that will not serve youtube.com — the session would otherwise sit at `loading`
+        // forever, and the prompt would keep saying "asked, not confirmed yet" for the rest of
+        // the session. Silence for this long is indistinguishable from a refusal, and saying
+        // "tap Play" is the right answer to both.
+        if (session && typeof session.status === 'function' && typeof window.setTimeout === 'function') {
+            window.setTimeout(() => {
+                try {
+                    if (state.active === card && session.status() === 'loading') {
+                        session.markBlocked();
+                    }
+                } catch (_) {
+                    /* nothing to do about it either way */
+                }
+            }, UNCONFIRMED_MS);
+        }
+
+        const playback = typeof window !== 'undefined' ? window.NEXUS_YT_PLAYBACK : null;
+        if (playback && typeof playback.attach === 'function') {
+            try {
+                Promise.resolve(playback.attach(frame))
+                    .then((handle) => {
+                        if (!handle) {
+                            return;
+                        }
+                        // A card that was replaced while the API was loading must not leave a
+                        // player reporting state for a video nobody is watching.
+                        if (state.active !== card) {
+                            handle.stop();
+                            return;
+                        }
+                        card._nexusPlayback = handle;
+                    })
+                    .catch(() => null);
+            } catch (_) {
+                /* no observation, same playback */
+            }
+        }
     }
 
     /** Back to the facade (used when another card starts). */
     function deactivate(card) {
+        // Let go of the player first: destroying the iframe out from under a live listener is
+        // how a state change arrives for a video that is no longer on screen.
+        if (card._nexusPlayback) {
+            try {
+                card._nexusPlayback.stop();
+            } catch (_) {
+                /* already gone */
+            }
+            card._nexusPlayback = null;
+        }
+        // The choice survives, the playback does not. `stop()` keeps `current` so "what did we
+        // just listen to?" still has an answer; only an explicit clear takes that away.
+        const session = typeof window !== 'undefined' ? window.NEXUS_MEDIA_SESSION : null;
+        if (session && typeof session.stop === 'function') {
+            try {
+                const now = typeof session.current === 'function' ? session.current() : null;
+                if (now && card.dataset.ytId && now.id === card.dataset.ytId) {
+                    session.stop();
+                }
+            } catch (_) {
+                /* not worth failing a collapse over */
+            }
+        }
         const frame = card.querySelector('.nexus-yt-player');
         if (frame && card._nexusFacade) {
             frame.replaceWith(card._nexusFacade);

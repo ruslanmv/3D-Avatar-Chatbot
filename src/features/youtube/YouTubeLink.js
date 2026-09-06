@@ -102,14 +102,25 @@ const YouTubeLink = (() => {
      * Privacy-enhanced embed URL. `rel=0` keeps related videos to the same channel,
      * `playsinline` keeps iOS from going fullscreen on tap. `origin` lets YouTube's IFrame
      * API verify the host page; harmless when the API is not used.
+     *
+     * `jsapi` opts into `enablejsapi=1`, which is what lets the IFrame API attach and report
+     * real player state. Off by default so nothing that embeds a video for display alone
+     * changes shape, and so a caller has to mean it.
      */
-    function embedUrl(id, { start = 0, autoplay = true, origin = '' } = {}) {
+    function embedUrl(id, { start = 0, autoplay = true, origin = '', jsapi = false } = {}) {
         const p = new URLSearchParams();
         if (autoplay) {
             p.set('autoplay', '1');
         }
         p.set('rel', '0');
         p.set('playsinline', '1');
+        // M2. Without this the player is a black box: it either works or it does not, and the
+        // page cannot tell which. With it the IFrame API can attach and report PLAYING,
+        // PAUSED and ENDED — which is the difference between the app knowing something is
+        // playing and the app assuming it because it asked.
+        if (jsapi) {
+            p.set('enablejsapi', '1');
+        }
         if (start > 0) {
             p.set('start', String(Math.floor(start)));
         }
