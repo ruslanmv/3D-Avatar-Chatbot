@@ -162,11 +162,64 @@ const YouTubeAsk = (() => {
      * the running app rather than guessed, and the same shape `AvatarAliveness` and
      * `CompanionMode` already observe. Returns the node so a caller can decorate it.
      */
+    /**
+     * Put what was just said into the model's transcript, not only on the screen (batch M7).
+     *
+     * `say` drew a message and stopped there, so every turn this file handles — the user's
+     * "stop", their "play the first one", their "search top music about love", and the app's
+     * replies to each — was visible to the person and invisible to the model. What the model
+     * actually received was this:
+     *
+     *     user       hello there
+     *     assistant  Hello! Welcome...
+     *     assistant  Playing “Relaxing music…” — url
+     *     assistant  Playing “TOP10 LOVE SONGS…” — url
+     *     assistant  Playing “New Love Songs 2020…” — url
+     *     user       can you dance
+     *
+     * Three assistant turns in a row with nothing from the user between them, because the
+     * cards were recorded and the requests that caused them were not. Asked "can you dance",
+     * it answered *"It seems you're trying to play a video, but the user has not specified
+     * which video they want to watch"* — talking about the user in the third person, which is
+     * what a model does when the transcript stops looking like a conversation it is part of.
+     *
+     * So the screen and the transcript are written together, here, in the one function that
+     * every path in this file goes through. `ChatManager` keeps its own history, so that
+     * branch is left alone rather than recorded twice.
+     */
+    function remember(text, who) {
+        const w = typeof window !== 'undefined' ? window : null;
+        if (!w || (w.ChatManager && typeof w.ChatManager.addMessage === 'function')) {
+            return false;
+        }
+        const history = w.chatHistory;
+        if (!history || typeof history.addMessage !== 'function') {
+            return false;
+        }
+        try {
+            history.addMessage(who === 'user' ? 'user' : 'assistant', String(text || ''));
+        } catch (_) {
+            // A message on screen is worth more than a tidy transcript.
+            return false;
+        }
+        try {
+            // The same call the app makes after its own messages, so an intercepted turn
+            // survives a reload exactly as an ordinary one does.
+            if (typeof w._persistChat === 'function') {
+                w._persistChat();
+            }
+        } catch (_) {
+            // Storage full or disabled.
+        }
+        return true;
+    }
+
     function say(text, who = 'bot', doc) {
         const d = doc || (typeof document !== 'undefined' ? document : null);
         if (!d) {
             return null;
         }
+        remember(text, who);
         const cm = typeof window !== 'undefined' ? window.ChatManager : null;
         if (cm && typeof cm.addMessage === 'function') {
             cm.addMessage(text, who);
@@ -517,7 +570,7 @@ const YouTubeAsk = (() => {
         }
     }
 
-    return { parseIntent, fulfil, say, showResults, setupButton, hook, init, PATTERNS, MAX_RESULTS, LIVE };
+    return { parseIntent, fulfil, say, remember, showResults, setupButton, hook, init, PATTERNS, MAX_RESULTS, LIVE };
 })();
 
 if (typeof window !== 'undefined') {
