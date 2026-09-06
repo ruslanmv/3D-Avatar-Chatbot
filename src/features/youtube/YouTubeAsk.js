@@ -340,6 +340,35 @@ const YouTubeAsk = (() => {
             const command = w && w.NEXUS_MEDIA_COMMAND;
             const intents = w && w.NEXUS_MEDIA_INTENT;
 
+            // M5. "Stop the music" — before anything else, because a request to stop must
+            // never be answered by starting something. Only acted on when something is
+            // actually playing: with nothing on, "stop" belongs to the conversation, and
+            // intercepting it would swallow an ordinary sentence.
+            if (command && typeof command.transport === 'function') {
+                const move = command.transport(said0);
+                const embed = w && w.NEXUS_YT_2D;
+                if (move && embed && typeof embed.control === 'function') {
+                    let acted = false;
+                    try {
+                        acted = embed.control(move);
+                    } catch (_) {
+                        acted = false;
+                    }
+                    if (acted) {
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
+                        input.value = '';
+                        say(said0, 'user', d);
+                        say(
+                            { stop: 'Stopped.', pause: 'Paused.', resume: 'Playing again.' }[move] || 'Done.',
+                            'bot',
+                            d
+                        );
+                        return;
+                    }
+                }
+            }
+
             // M4. A pointer at results already on screen, resolved before anything treats the
             // sentence as search terms.
             //

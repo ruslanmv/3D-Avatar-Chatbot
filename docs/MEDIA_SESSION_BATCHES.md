@@ -156,6 +156,51 @@ today, and the test now asserts that invariant rather than the order.
 
 ---
 
+## M5 — knowing it is playing, and being able to stop it ✅
+
+    YOU    play a song about relaxation
+    NEXUS  Playing “Relaxing music Relieves stress, Anxiety and Depression…”
+    YOU    I like this song thank you
+    NEXUS  ...it looks like the playback hasn't started yet. Please tap the card!
+
+It was playing. The user could hear it.
+
+**Silence was being read as refusal.** M2 added a nine-second backstop for the case where the
+IFrame API never attaches — a blocked script, a slow network, an origin mismatch — and it
+called that state `blocked`. But `blocked` means *the player reported ready and then did not
+start*, which is evidence. Not hearing a player is the absence of evidence, and the app was
+treating one as the other, then putting a flat contradiction of the user's own ears into her
+mouth.
+
+So there is a new state, `unconfirmed`, and its prompt says what is actually true: *"the app
+cannot tell whether it is playing — it is most likely playing. Do NOT say it has not started,
+do NOT tell them to tap anything."* `blocked` still says tap, because there it is honest.
+`unconfirmed` is provisional and never overwrites something observed: a PLAYING that arrives
+late still wins, and the timer cannot talk over a state the player actually reported.
+
+**Stop, pause and continue.** Until now the only way to stop a video was the × on the card,
+which is fine with a mouse and useless to somebody who has just said "stop the music" out
+loud. The player handle has been on the card since M2; `control()` is the door to it, and the
+transport patterns are whole-message anchored — *"stop talking about that"* and *"I had to stop
+at the shop"* are not commands. Misreading a sentence as "stop" cuts off music somebody is
+enjoying; missing a phrasing only means the model handles it.
+
+Stop prefers the API, which silences the audio and **leaves the card where it is** — they asked
+for it to stop, not to vanish, and *"what did we just listen to?"* is a question asked after the
+music stops. With no player to talk to it collapses the iframe instead: cruder, loses the
+position, and definitely works. There is no crude equivalent of pause, so pause without a
+player returns false rather than claiming to have paused something.
+
+Verified live: the backstop lands on `unconfirmed` rather than `blocked`; the prompt says
+"most likely playing" and never "tap the card to start it"; "stop the music" classifies while
+"stop talking about that" does not; and `control('stop')` removes the player element while the
+session still knows what was playing.
+
+Seven mutants. Three survived the first pass and each named a real gap — the embed's backstop
+and `control()` had no tests at all, and the stop pattern's anchor was untested. All die now.
+
+---
+
 ## Not done here
 
 **The conversational router** — "the first one", "number three", "pause it" as spoken commands,
