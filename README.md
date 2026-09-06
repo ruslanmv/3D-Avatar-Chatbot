@@ -123,7 +123,9 @@ point at Settings rather than starting and going quiet. See
 ![The Together chooser open over the avatar: Watch, Journey, Music, Play, Focus, Coach, and Help me with this](assets/together-mode.png)
 
 - **Together Mode** — watch a film, listen to music, or sit in a guided scene
-  with her. Her silence is the feature: she comments only at openings
+  with her. Her silence is the feature: she comments only at openings. On a
+  phone the sheet reserves the composer's strip so its buttons stay tappable
+  ([docs/TOGETHER_MOBILE_LAYOUT.md](docs/TOGETHER_MOBILE_LAYOUT.md))
 - **Body doubling** — 25/5 focus blocks with a quiet profile and streaks stored
   in her long-term memory. Zero spoken lines inside a block, enforced by the
   same gate that runs everything else
