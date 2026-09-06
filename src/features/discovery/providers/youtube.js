@@ -42,23 +42,40 @@ const YouTubeProvider = (() => {
      * Awaited through the registry's `warm()` before anything asks `status()` in earnest. A
      * host with no such route answers `false` and this costs one 404 for the life of the page.
      */
+    /**
+     * Why the deployment route could not answer, when it could not.
+     *
+     * Held beside `deployment` rather than folded into it, because a boolean cannot tell
+     * somebody whose key is set that the problem is a login wall in front of the route.
+     */
+    let deploymentReason = null;
+
     function ready(deps = {}) {
         if (deployment !== null && !deps.force) {
             return Promise.resolve(status());
         }
         const comp = companion();
-        if (!comp || typeof comp.serverConfigured !== 'function') {
+        if (!comp || typeof (comp.serverStatus || comp.serverConfigured) !== 'function') {
             deployment = false;
             return Promise.resolve(status());
         }
         if (!probe || deps.force) {
-            probe = comp
-                .serverConfigured(deps)
+            // `serverStatus` where it exists, because *why* the deployment cannot search is
+            // the difference between "add a key" and "your preview is behind a login wall".
+            const ask =
+                typeof comp.serverStatus === 'function'
+                    ? comp.serverStatus(deps)
+                    : comp
+                          .serverConfigured(deps)
+                          .then((c) => ({ configured: Boolean(c), reason: c ? 'ok' : 'no-key' }));
+            probe = ask
                 .then((answer) => {
-                    deployment = Boolean(answer);
+                    deployment = Boolean(answer && answer.configured);
+                    deploymentReason = (answer && answer.reason) || (deployment ? 'ok' : 'no-key');
                 })
                 .catch(() => {
                     deployment = false;
+                    deploymentReason = 'unreachable';
                 });
         }
         return probe.then(() => status());
@@ -94,7 +111,15 @@ const YouTubeProvider = (() => {
                 configured: false,
                 available: false,
                 capabilities: [],
-                reason: deployment === null ? 'checking' : 'no-key',
+                // The route answering with a redirect or a login page is not a missing key,
+                // and telling somebody to add one they already added sends them to the one
+                // place the problem is not.
+                reason:
+                    deployment === null
+                        ? 'checking'
+                        : deploymentReason && deploymentReason !== 'ok'
+                          ? deploymentReason
+                          : 'no-key',
             };
         }
         return {

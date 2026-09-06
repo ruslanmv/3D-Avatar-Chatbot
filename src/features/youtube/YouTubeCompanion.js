@@ -197,22 +197,64 @@ const YouTubeCompanion = (() => {
         }
     }
 
-    /** Does this deployment search on its own key? `null` while unknown. */
-    async function serverConfigured({ fetchImpl } = {}) {
+    /**
+     * Does this deployment search on its own key?
+     *
+     * Returns `{ configured, reason }`, because "no" has more than one cause and they need
+     * different sentences. The one that made this necessary, from a real deployment:
+     *
+     *     GET /api/yt/search  →  302  https://vercel.com/sso-api?url=…
+     *
+     * The key was set. The route was correct. Vercel's Deployment Protection was on for that
+     * preview, so every request to it — including this probe — was redirected to an SSO page
+     * on another origin, which the browser then refused to read. The probe saw an exception
+     * and reported "not configured", so the app told the operator to set up a key they had
+     * already set up, and pointed them at the one thing that was not the problem.
+     *
+     * It also explains a symptom that looks impossible: it worked on their desktop, where
+     * they were signed into Vercel and the cookie rode along, and failed on their phone,
+     * where they were not.
+     *
+     * `redirect: 'manual'` is what makes this legible. Following the redirect turns a
+     * knowable state into a CORS exception indistinguishable from a network failure; refusing
+     * to follow leaves an opaque response whose very opacity is the answer.
+     */
+    async function serverStatus({ fetchImpl } = {}) {
         const f = fetchImpl || (typeof fetch === 'function' ? fetch : null);
         if (!f) {
-            return false;
+            return { configured: false, reason: 'no-fetch' };
+        }
+        let r;
+        try {
+            r = await f('/api/yt/search', { redirect: 'manual' });
+        } catch (_) {
+            return { configured: false, reason: 'unreachable' };
+        }
+        if (!r) {
+            return { configured: false, reason: 'unreachable' };
+        }
+        // An opaque redirect, or a 3xx we were allowed to see: something in front of the app
+        // answered instead of the app. On Vercel that is Deployment Protection.
+        if (r.type === 'opaqueredirect' || (r.status >= 300 && r.status < 400)) {
+            return { configured: false, reason: 'protected' };
+        }
+        if (!r.ok) {
+            // 404 means the route is not deployed at all, which is a different fix from a
+            // missing key and from a login wall.
+            return { configured: false, reason: r.status === 404 ? 'no-route' : 'unreachable' };
         }
         try {
-            const r = await f('/api/yt/search');
-            if (!r || !r.ok) {
-                return false;
-            }
             const body = await r.json();
-            return Boolean(body && body.configured);
+            return { configured: Boolean(body && body.configured), reason: body && body.configured ? 'ok' : 'no-key' };
         } catch (_) {
-            return false;
+            // A 200 that is not JSON is a login page or an error page wearing the route's URL.
+            return { configured: false, reason: 'protected' };
         }
+    }
+
+    /** The old shape, for callers that only want the boolean. */
+    async function serverConfigured(options) {
+        return (await serverStatus(options)).configured;
     }
 
     /**
@@ -279,6 +321,7 @@ const YouTubeCompanion = (() => {
         search,
         serverSearch,
         serverConfigured,
+        serverStatus,
         // convenience bindings to the shared instance
         isOpen: () => shared.isOpen(),
         open: (id, start) => shared.open(id, start),
