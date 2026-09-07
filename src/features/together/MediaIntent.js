@@ -55,15 +55,54 @@
      *   acted on, so an unexpected autoplay can be traced to the path that caused it.
      * @returns {Promise<{ok: boolean, why?: string, result?: object}>}
      */
+    /**
+     * Together being off, when somebody has just asked for music (batch M9).
+     *
+     * Reported as: works on the PC, does nothing on the phone, same URL, same key. It was
+     * neither the key nor the deployment. The switch lives in `localStorage`, so it is *per
+     * browser* — a tile had been tapped on the desktop months ago and never on the phone, and
+     * on the phone every media request returned `{ ok: false, why: 'off' }` and said nothing
+     * at all.
+     *
+     * T1's rule was that tapping a tile turns Together on, because tapping the tile *is* the
+     * request. Typing "play music" is the same request in words, and it deserves the same
+     * answer. So a request that came from the user's own sentence turns it on and proceeds.
+     *
+     * The one thing this must not do is override somebody who switched it **off** on purpose.
+     * `TogetherSwitch` keeps those apart — `null` is "never touched", `'off'` is a decision —
+     * and only the first is treated as consent. A deliberate off stays off, and gets a
+     * sentence rather than silence.
+     *
+     * The model's own directives are excluded: the capability paragraph only exists while
+     * Together is on, so a model request can never arrive with it off except as a leftover
+     * from an earlier turn, and honouring that would let a stale reply switch a feature on.
+     */
+    function allowedToRun(source) {
+        const sw = pick('NEXUS_TOGETHER_SWITCH');
+        if (!sw || typeof sw.isOn !== 'function' || sw.isOn()) {
+            return true;
+        }
+        const asked = source === 'pattern' || source === 'reference' || source === 'list';
+        const untouched = typeof sw.state === 'function' ? sw.state() === null : false;
+        if (asked && untouched && typeof sw.enable === 'function') {
+            try {
+                sw.enable('asked');
+                return true;
+            } catch (_) {
+                return false;
+            }
+        }
+        return false;
+    }
+
     async function fulfil(request = {}) {
         const kind = kindOf(request.kind);
         const query = String(request.query || '').trim();
         const source = String(request.source || 'unknown');
 
-        const sw = pick('NEXUS_TOGETHER_SWITCH');
-        if (sw && typeof sw.isOn === 'function' && !sw.isOn()) {
-            // Off means off. A directive left over in a reply, or a pattern that fires while
-            // the switch is off, must not play anything.
+        if (!allowedToRun(source)) {
+            // Off means off. A directive left over in a reply, or a request while somebody has
+            // deliberately switched Together off, must not play anything.
             return { ok: false, why: WHY.OFF };
         }
         if (!query) {
@@ -110,8 +149,7 @@
         const source = String(request.source || 'unknown');
         const count = Math.max(1, Math.min(Number(request.count) || 4, 8));
 
-        const sw = pick('NEXUS_TOGETHER_SWITCH');
-        if (sw && typeof sw.isOn === 'function' && !sw.isOn()) {
+        if (!allowedToRun(source)) {
             return { ok: false, why: WHY.OFF };
         }
         if (!query) {
@@ -245,7 +283,7 @@
         }
     }
 
-    const api = { WHY, CAPABILITY, fulfil, list, search, play, samplesFor };
+    const api = { WHY, CAPABILITY, fulfil, list, search, play, samplesFor, allowedToRun };
 
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;

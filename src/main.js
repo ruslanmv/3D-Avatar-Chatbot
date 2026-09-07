@@ -10,7 +10,30 @@
  * ✅ Preserves ViewerEngine + Proxy + Test Connection patch logic
  */
 
-'use strict';
+/**
+ * Where OllaBridge lives when nobody has said otherwise.
+ *
+ * The BASE URL box in Settings carries this as a *placeholder*, so on a fresh profile it looks
+ * filled in and reads as empty. Every other provider already had a default at each of these
+ * sites — Ollama falls back to localhost, WatsonX to its region host — and OllaBridge alone
+ * fell back to `''`, which is how this happened:
+ *
+ *     ✅ Paired successfully! Device: dev_PqaOCOHoCVKg
+ *     BASE URL   https://app.ollabridge.com        ← a placeholder, not a value
+ *     🔌 TEST CONNECTION
+ *     ❌ OllaBridge: Missing Base URL. Enter the OllaBridge URL in Settings…
+ *
+ * Pairing worked because `LLMManager` defaults the URL in its own settings. Then the first
+ * save or connection test read the empty box, wrote `''` over that default, and the provider
+ * that had just paired could no longer be reached — no models in the list, and every message
+ * answered "Sorry, I encountered an error."
+ *
+ * An empty box means "use the default", exactly as it does for Ollama. It never means "no
+ * URL", because there is no such thing as OllaBridge without one.
+ */
+const OLLABRIDGE_DEFAULT_BASE_URL = 'https://app.ollabridge.com';
+
+('use strict');
 
 /* =========================================================
    Device Detection — early, before any DOM mutation
@@ -186,7 +209,7 @@ function loadConfig() {
             } else if (settings.provider === 'ollabridge' && settings.ollabridge) {
                 apiKey = settings.ollabridge.api_key || '';
                 model = settings.ollabridge.model || 'default';
-                baseUrl = settings.ollabridge.base_url || '';
+                baseUrl = settings.ollabridge.base_url || OLLABRIDGE_DEFAULT_BASE_URL;
             }
 
             return {
@@ -276,7 +299,7 @@ const config = loadConfig();
             } else if (config.provider === 'ollabridge') {
                 patch.ollabridge = {
                     api_key: config.apiKey,
-                    base_url: config.baseUrl || '',
+                    base_url: config.baseUrl || OLLABRIDGE_DEFAULT_BASE_URL,
                     model: config.model || 'default',
                 };
             }
@@ -2991,22 +3014,32 @@ function updateProviderFields() {
             } else if (provider === 'ollabridge' && settings.ollabridge) {
                 apiKeyInput.value = settings.ollabridge.api_key || '';
                 if (baseUrlInput) {
-                    baseUrlInput.value = settings.ollabridge?.base_url || '';
+                    // The same default Ollama and WatsonX already had on this line. Without
+                    // it the box showed a placeholder that read as empty, and the next save
+                    // wrote that emptiness over a URL that was working.
+                    baseUrlInput.value = settings.ollabridge?.base_url || OLLABRIDGE_DEFAULT_BASE_URL;
                 }
             } else {
-                // No key saved for this provider, clear the field
+                // No key saved for this provider, clear the field — except the one provider
+                // that has a single well-known home. An empty box for OllaBridge is not a
+                // blank slate, it is a broken configuration waiting to be saved.
                 apiKeyInput.value = '';
-                if (baseUrlInput) baseUrlInput.value = '';
+                if (baseUrlInput) {
+                    baseUrlInput.value = provider === 'ollabridge' ? OLLABRIDGE_DEFAULT_BASE_URL : '';
+                }
             }
         } else if (apiKeyInput && !unified) {
-            // No unified settings, check if current config matches this provider
+            // No unified settings at all — the incognito case, and the one where this went
+            // wrong. Same rule on both branches: OllaBridge has one home, so an empty box
+            // shows it rather than nothing.
+            const fallback = provider === 'ollabridge' ? OLLABRIDGE_DEFAULT_BASE_URL : '';
             if (config.provider === provider) {
                 apiKeyInput.value = config.apiKey || '';
-                if (baseUrlInput) baseUrlInput.value = config.baseUrl || '';
+                if (baseUrlInput) baseUrlInput.value = config.baseUrl || fallback;
             } else {
                 // Different provider, clear the field
                 apiKeyInput.value = '';
-                if (baseUrlInput) baseUrlInput.value = '';
+                if (baseUrlInput) baseUrlInput.value = fallback;
             }
         }
     } catch (e) {
@@ -3255,7 +3288,13 @@ function loadConfigIntoUI() {
     if ($('model-select')) $('model-select').value = config.model;
     if ($('system-prompt')) $('system-prompt').value = config.systemPrompt;
     if ($('watsonx-project-id')) $('watsonx-project-id').value = config.watsonxProjectId;
-    if ($('base-url')) $('base-url').value = config.baseUrl;
+    if ($('base-url')) {
+        // Show what will actually be used, not an empty box wearing a placeholder. The two
+        // looked identical and were not: the placeholder made a fresh profile look configured
+        // while every read of `.value` came back empty, and the first save wrote that
+        // emptiness over a working default.
+        $('base-url').value = config.baseUrl || (config.provider === 'ollabridge' ? OLLABRIDGE_DEFAULT_BASE_URL : '');
+    }
 }
 
 function saveSettings() {
@@ -3525,6 +3564,8 @@ async function _handleStreamingResponse(text) {
             // D9. What Together is playing, if anything. Empty string when nothing is, so a
             // chat with no media selected sends the prompt it has always sent.
             (window.NEXUS_CURRENT_MEDIA?.systemPromptSuffix?.() || '') +
+            (window.NEXUS_STUDY_PROMPT?.systemPromptSuffix?.() || '') +
+            (window.NEXUS_LOOKUP?.systemPromptSuffix?.() || '') +
             // T2. What she can *do* about media, as opposed to D9's what is playing. Empty
             // unless Together is on and something can actually search, so a promise is never
             // made that nothing can keep.
@@ -3552,6 +3593,11 @@ async function _handleStreamingResponse(text) {
         // forward and `speakText` — so stripping once covers the screen *and* the voice. A tag
         // that reached the synthesiser would be her reading XML aloud.
         displayText = window.NEXUS_PLAY_DIRECTIVE ? window.NEXUS_PLAY_DIRECTIVE.consume(displayText) : displayText;
+        displayText = window.NEXUS_STUDY_DIRECTIVE ? window.NEXUS_STUDY_DIRECTIVE.consume(displayText) : displayText;
+        // S4. She asked to look something up. Strip the tag, run the search, then ask her
+        // again — the second call carries the results, so the answer comes from her having
+        // read them rather than from the app pasting snippets into the chat.
+        displayText = __nexusRunLookup(displayText);
         textDiv.textContent = displayText;
 
         // Mirror to AR overlay
@@ -3609,6 +3655,11 @@ async function _handleNonStreamingResponse(text) {
         // forward and `speakText` — so stripping once covers the screen *and* the voice. A tag
         // that reached the synthesiser would be her reading XML aloud.
         displayText = window.NEXUS_PLAY_DIRECTIVE ? window.NEXUS_PLAY_DIRECTIVE.consume(displayText) : displayText;
+        displayText = window.NEXUS_STUDY_DIRECTIVE ? window.NEXUS_STUDY_DIRECTIVE.consume(displayText) : displayText;
+        // S4. She asked to look something up. Strip the tag, run the search, then ask her
+        // again — the second call carries the results, so the answer comes from her having
+        // read them rather than from the app pasting snippets into the chat.
+        displayText = __nexusRunLookup(displayText);
 
         addMessageToHistory('avatar', displayText, attachments);
 
@@ -3724,6 +3775,64 @@ function getSimpleResponse(text) {
     return "That's interesting! Could you tell me more about that?";
 }
 
+/**
+ * Run a `<lookup>` if the reply asked for one, and answer from what comes back (S4).
+ *
+ * Two passes, which is what a tool call is. The first reply says "let me check" and carries
+ * the tag; this strips it, searches, and asks again with the results in the prompt. The
+ * holding sentence stays on screen in between, because a search takes a second and a silent
+ * pause reads as the app having stopped.
+ *
+ * Everything here is guarded to a no-op. A missing module, a missing key, a failed search:
+ * the first reply stands as written, which is a sentence saying she will check — not ideal,
+ * and much better than an error where an answer was expected.
+ */
+function __nexusRunLookup(displayText) {
+    const lookup = window.NEXUS_LOOKUP;
+    if (!lookup || typeof lookup.extract !== 'function') {
+        return displayText;
+    }
+    const { clean, query } = lookup.extract(displayText);
+    if (!query) {
+        return displayText;
+    }
+    Promise.resolve(lookup.run(query))
+        .then((out) => {
+            if (!out || !out.ok) {
+                // Say why, once. Silence after "let me check" is the worst of both.
+                const why = {
+                    'no-key': "I can't search the web here — no search key is set up in Settings.",
+                    'no-provider': "Web search isn't available in this build.",
+                    failed: "I couldn't reach the search just now.",
+                    nothing: "I couldn't find anything on that.",
+                }[out && out.why];
+                if (why && window.NEXUS_YT_ASK) {
+                    window.NEXUS_YT_ASK.say(why, 'bot', document);
+                }
+                return null;
+            }
+            // The second pass. The results reach the prompt via
+            // `NEXUS_LOOKUP.systemPromptSuffix`, and are cleared afterwards so they cannot
+            // answer a later, unrelated question.
+            return callLLM(`Answer what I just asked, using what you found about "${out.query}".`);
+        })
+        .then((answer) => {
+            lookup.clear();
+            if (!answer || !window.NEXUS_YT_ASK) {
+                return;
+            }
+            const check = window.NEXUS_CONNECTION_CHECK;
+            const text = (check ? check.textOf(answer) : String(answer || '')).trim();
+            if (text) {
+                window.NEXUS_YT_ASK.say(text, 'bot', document);
+            }
+        })
+        .catch(() => {
+            lookup.clear();
+        });
+    return clean;
+}
+
 async function callLLM(userMessage) {
     // ✅ Use LLMManager with conversation history if available
     if (window._nexusLLM && config.provider !== 'none') {
@@ -3734,6 +3843,8 @@ async function callLLM(userMessage) {
             // D9. What Together is playing, if anything. Empty string when nothing is, so a
             // chat with no media selected sends the prompt it has always sent.
             (window.NEXUS_CURRENT_MEDIA?.systemPromptSuffix?.() || '') +
+            (window.NEXUS_STUDY_PROMPT?.systemPromptSuffix?.() || '') +
+            (window.NEXUS_LOOKUP?.systemPromptSuffix?.() || '') +
             // T2. What she can *do* about media, as opposed to D9's what is playing. Empty
             // unless Together is on and something can actually search, so a promise is never
             // made that nothing can keep.
@@ -5214,6 +5325,8 @@ function __nexusMediaSuffix() {
     try {
         return (
             (window.NEXUS_CURRENT_MEDIA?.systemPromptSuffix?.() || '') +
+            (window.NEXUS_STUDY_PROMPT?.systemPromptSuffix?.() || '') +
+            (window.NEXUS_LOOKUP?.systemPromptSuffix?.() || '') +
             (window.NEXUS_TOGETHER_CAPABILITY?.systemPromptSuffix?.() || '')
         );
     } catch (_) {
@@ -5333,15 +5446,102 @@ async function __nexusTestConnection() {
 
     const ping = 'Respond with the single word: OK';
 
+    // M11. Walk the stages a round trip actually passes through, rather than reporting the
+    // whole journey as one boolean. `✅ Connected. Reply: [object Object]` was the old best
+    // case — a success that could not show what came back — and every failure, from being
+    // offline to a model answering with nothing, arrived as the same red sentence.
+    const check = typeof window !== 'undefined' ? window.NEXUS_CONNECTION_CHECK : null;
+    if (check && typeof check.run === 'function') {
+        const stored = __nexusOllaBridgeStored();
+        const report = await check.run({
+            provider: config.provider,
+            baseUrl: config.baseUrl,
+            model: config.model,
+            credential: __nexusCredentialShape(stored),
+            // The app's own calls, injected rather than reimplemented: a check that used its
+            // own client could pass while the app fails, which is worse than no check.
+            listModels: __nexusListModelsForTest(),
+            complete: (prompt) => callLLM(prompt),
+            prompt: ping,
+        });
+        // The full stage-by-stage report goes to the console, where it can be copied into a
+        // bug thread; the summary is what fits on one line in Settings.
+        console[report.ok ? 'log' : 'warn']('[Nexus] connection check\n' + report.report);
+        __nexusLastConnectionReport = report;
+        return { ok: report.ok, message: `${report.ok ? '✅' : '❌'} ${report.summary}`, report };
+    }
+
     try {
         const reply = await callLLM(ping);
-        const short = String(reply || '')
-            .trim()
-            .slice(0, 120);
+        const short = (check ? check.textOf(reply) : String(reply || '')).trim().slice(0, 120);
         return { ok: true, message: `✅ Connected. Reply: ${short || 'OK'}` };
     } catch (e) {
         return { ok: false, message: `❌ ${e.message || e}` };
     }
+}
+
+/** The last report, so the Copy button and a console reader can reach it. */
+let __nexusLastConnectionReport = null;
+
+/** OllaBridge's stored block, or `{}`. Shared by the credential shape and the model list. */
+function __nexusOllaBridgeStored() {
+    try {
+        return JSON.parse(localStorage.getItem('nexus_llm_settings') || '{}').ollabridge || {};
+    } catch (_) {
+        return {};
+    }
+}
+
+/**
+ * What kind of credential this provider needs, and whether one is present.
+ *
+ * The *kind* matters as much as the presence: "pair this device again" and "enter an API key"
+ * are different instructions, and a check that says only "credential missing" leaves the
+ * person to work out which.
+ */
+function __nexusCredentialShape(stored) {
+    const provider = config && config.provider;
+    if (provider === 'ollama') {
+        return { kind: 'none', required: false, present: true };
+    }
+    if (provider === 'ollabridge') {
+        const paired = !!String(stored.pair_token || '').trim();
+        const key = !!String(config.apiKey || stored.api_key || '').trim();
+        return {
+            kind: stored.auth_mode === 'apikey' ? 'API key' : 'pairing token',
+            required: true,
+            present: paired || key,
+        };
+    }
+    return { kind: 'API key', required: true, present: !!String(config.apiKey || '').trim() };
+}
+
+/**
+ * A model lister for the check, or `null` where the provider has no catalog to ask for.
+ *
+ * Only OllaBridge is wired here on purpose. For the others the check simply skips `reach`,
+ * `auth` and `model` and goes straight to the completion — which still distinguishes an
+ * error from an empty answer, and is honest about having checked less.
+ */
+function __nexusListModelsForTest() {
+    if (!config || config.provider !== 'ollabridge') {
+        return null;
+    }
+    const manager = typeof window !== 'undefined' ? window._nexusLLM : null;
+    if (!manager || typeof manager.fetchAvailableModels !== 'function') {
+        return null;
+    }
+    // `fetchAvailableModels` swallows its own failures and returns `{ models: [], error }`,
+    // which is right for a dropdown — a list that cannot load should not take the panel down
+    // — and wrong for a diagnosis, where the error *is* the answer. Translated back into a
+    // throw so the check can tell "the host refused" from "the host has no models".
+    return async () => {
+        const out = await manager.fetchAvailableModels();
+        if (out && out.error) {
+            throw new Error(out.error);
+        }
+        return (out && out.models) || [];
+    };
 }
 
 function __nexusWireTestButton() {

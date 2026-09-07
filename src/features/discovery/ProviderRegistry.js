@@ -186,8 +186,15 @@ const ProviderRegistry = (() => {
             const s = statusOf(p);
             if (!s.capabilities.length || s.capabilities.includes(capability)) {
                 reason = s.reason || reason;
+                // A transport reason outranks `no-key`, because it is the more actionable of
+                // the two and the one a key cannot fix: telling somebody to add a key when
+                // the route is behind a login wall sends them to the only place the problem
+                // is not.
+                if (s.reason === 'protected' || s.reason === 'no-route' || s.reason === 'unreachable') {
+                    return s.reason;
+                }
                 if (s.reason === 'no-key') {
-                    return 'no-key';
+                    reason = 'no-key';
                 }
             }
         }

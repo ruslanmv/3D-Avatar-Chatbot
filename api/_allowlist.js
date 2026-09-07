@@ -29,6 +29,17 @@ const ALLOW = [
     'https://ruslanmv-ollabridge.hf.space',
     'https://ollabridge.com',
     'https://cloud.ollabridge.com',
+    // Web search, for the study session and for answering "what's happening today".
+    //
+    // Neither API allows a browser to call it directly — no CORS headers — so a user's own
+    // search key has to travel browser → their own deployment's proxy → the API. That is the
+    // same path an OpenAI or Anthropic key already takes through this file, to the same
+    // deployment the user is already trusting with those, so it adds no new trust.
+    //
+    // The deployment's *own* key never comes this way: it stays server-side in
+    // `api/research/search.js` and the browser never sees it.
+    'https://api.search.brave.com',
+    'https://google.serper.dev',
 ];
 
 /**
