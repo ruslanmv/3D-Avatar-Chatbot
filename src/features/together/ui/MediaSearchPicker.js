@@ -248,7 +248,19 @@ const MediaSearchPicker = (() => {
             if (!provider) {
                 list.textContent = '';
                 const reason = reg ? reg.why(capability) : 'no-provider';
-                if (reason === 'no-key') {
+                if (reason === 'protected') {
+                    // The key is set and the route exists; something in front of the app
+                    // answered instead of it. Sending them to the key field here is the one
+                    // instruction guaranteed not to help.
+                    say(
+                        "This deployment's search can't be reached — it looks like it's behind a login wall. Turn off Deployment Protection for this URL, or open the production site.",
+                        'weak'
+                    );
+                } else if (reason === 'no-route') {
+                    say('This deployment has no search route. It needs redeploying with the api/ folder.', 'weak');
+                } else if (reason === 'unreachable') {
+                    say("Couldn't reach this deployment's search just now.", 'weak');
+                } else if (reason === 'no-key') {
                     say("YouTube search isn't connected.", 'weak');
                     offerSetup();
                 } else {

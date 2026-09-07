@@ -45,6 +45,17 @@ const YouTubeAsk = (() => {
 
     // ── the intent ──────────────────────────────────────────────────────────
 
+    /**
+     * "Just work alongside me" — the old Focus, kept.
+     *
+     * Body doubling is the best-engineered part of what Focus used to be: the silence is
+     * structural rather than disciplined, enforced by a profile overlay with no speech budget.
+     * Deleting that to make room for studying would have thrown away the one thing that
+     * already worked.
+     */
+    const SIT_WITH_ME =
+        /^(?:(?:just|only)\s+)?(?:sit|stay|work|be)\s+(?:with|near|beside|alongside)\s+me\b|^nothing[,.]?\s*(?:just|only)?\s*(?:sit|stay|work)\b|^(?:just )?(?:body[- ]?doubl\w*|work quietly|quiet company)\b/i;
+
     /** Verbs that can begin a request to play something. */
     const PLAY =
         '(?:play|put on|start|queue up|pon|execute|reproduce|find|find me|search|search for|look for|look up|get me|show me|list|list me|suggest|recommend)';
@@ -397,6 +408,39 @@ const YouTubeAsk = (() => {
      * `parseIntent` does not claim passes straight through, untouched — which is the whole of
      * the additive promise.
      */
+    /**
+     * What to say when a media request produced nothing (batch M9).
+     *
+     * Every one of these used to be silence: `void intents.list(...)` discarded the result, so
+     * an off switch, an empty query, a failed search and a missing renderer all looked
+     * identical from the user's side — they typed a sentence and the app did nothing. That is
+     * the worst possible answer, because there is nothing to act on and no reason to believe
+     * anything is wrong rather than slow.
+     */
+    const WHY_COPY = {
+        'together-off': "Together is switched off, so I can't play media. You can turn it back on in Settings.",
+        'empty-query': "I didn't catch what to look for.",
+        'no-provider': "Search isn't set up on this deployment yet.",
+        'search-failed': "I couldn't reach the search just now — worth trying again in a moment.",
+        'nothing-found': "I couldn't find anything for that.",
+        'no-chat': 'Something went wrong putting that in the chat.',
+    };
+
+    /** Run a media request and say something if it comes back empty-handed. */
+    function announce(promise, d) {
+        return Promise.resolve(promise)
+            .then((out) => {
+                if (out && out.ok === false) {
+                    say(WHY_COPY[out.why] || "That didn't work, sorry.", 'bot', d);
+                }
+                return out;
+            })
+            .catch(() => {
+                say(WHY_COPY['search-failed'], 'bot', d);
+                return null;
+            });
+    }
+
     function hook(doc) {
         const d = doc || (typeof document !== 'undefined' ? document : null);
         if (!d) {
@@ -413,6 +457,35 @@ const YouTubeAsk = (() => {
             const w = typeof window !== 'undefined' ? window : null;
             const command = w && w.NEXUS_MEDIA_COMMAND;
             const intents = w && w.NEXUS_MEDIA_INTENT;
+
+            // S3. A study session has just asked what to learn, so this message is the answer
+            // — before any media parsing, or "play me some music theory" gets treated as a
+            // request to play music rather than as the topic.
+            const study = w && w.NEXUS_STUDY_SESSION;
+            const loop = w && w.NEXUS_STUDY_LOOP;
+            if (study && loop && typeof study.get === 'function' && study.get().phase === 'topic' && said0.trim()) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                input.value = '';
+                say(said0, 'user', d);
+                // "Just sit with me" is still a real answer. Body doubling is the best part of
+                // the old Focus and survives as a branch rather than a deletion.
+                if (SIT_WITH_ME.test(said0)) {
+                    study.end();
+                    const focus = w.NEXUS_BD_FOCUS;
+                    if (focus && typeof focus.start === 'function') {
+                        try {
+                            focus.start();
+                            say("Alright — I'll be here. No talking.", 'bot', d);
+                            return;
+                        } catch (_) {
+                            /* fall through to studying, which is better than nothing */
+                        }
+                    }
+                }
+                void Promise.resolve(loop.study(said0)).catch(() => null);
+                return;
+            }
 
             // M5. "Stop the music" — before anything else, because a request to stop must
             // never be answered by starting something. Only acted on when something is
@@ -518,18 +591,24 @@ const YouTubeAsk = (() => {
             // Discover keeps the list, because a list is what was asked for.
             const move = command ? command.action(asked) : null;
             if (command && intents && move === 'execute' && typeof intents.fulfil === 'function') {
-                void intents.fulfil({ query: intent.query, kind: intent.kind || 'video', source: 'pattern' });
+                void announce(
+                    intents.fulfil({ query: intent.query, kind: intent.kind || 'video', source: 'pattern' }),
+                    d
+                );
                 return;
             }
             // M6. A request to find ends in a list they can pick from — not in something
             // playing that nobody chose. `count` honours "the top 3".
             if (command && intents && move === 'discover' && typeof intents.list === 'function') {
-                void intents.list({
-                    query: intent.query,
-                    kind: intent.kind || 'video',
-                    count: intent.count || 4,
-                    source: 'pattern',
-                });
+                void announce(
+                    intents.list({
+                        query: intent.query,
+                        kind: intent.kind || 'video',
+                        count: intent.count || 4,
+                        source: 'pattern',
+                    }),
+                    d
+                );
                 return;
             }
             void fulfil(intent.query, { doc: d });
@@ -570,7 +649,21 @@ const YouTubeAsk = (() => {
         }
     }
 
-    return { parseIntent, fulfil, say, remember, showResults, setupButton, hook, init, PATTERNS, MAX_RESULTS, LIVE };
+    return {
+        parseIntent,
+        fulfil,
+        say,
+        remember,
+        announce,
+        WHY_COPY,
+        showResults,
+        setupButton,
+        hook,
+        init,
+        PATTERNS,
+        MAX_RESULTS,
+        LIVE,
+    };
 })();
 
 if (typeof window !== 'undefined') {

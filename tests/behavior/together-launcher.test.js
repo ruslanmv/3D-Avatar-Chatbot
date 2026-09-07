@@ -488,13 +488,17 @@ describe('permission comes after the choice, never before', () => {
         expect(h.activities.journey.started).toEqual(['ocean']);
     });
 
-    test('Focus never asks for anything, and needs no setup screen at all', async () => {
-        // B36. One input with nothing to pick and nothing to type is not a question, so the
-        // tile starts it. A setup screen showing a single button labelled "Start" is a step
-        // that exists only to be got past.
+    test('Focus asks what to understand, and still asks for no permission', async () => {
+        // S5. Focus does have a question now — the topic — so it has a setup screen, which
+        // B36's rule already allowed for: a screen exists when there is something to type or
+        // choose. What has not changed is the permission, which is still nothing at all, on
+        // either answer.
         const h = harness();
         button().click();
         tileNamed('Focus').click();
+        expect(overlay().textContent).toContain('What would you like to understand?');
+        expect(h.consent.asked).toEqual([]);
+        optionNamed('Just sit with me').click();
         await flush();
         expect(h.consent.asked).toEqual([]);
         expect(h.activities.focus.started).toHaveLength(1);
@@ -604,10 +608,14 @@ describe('permission comes after the choice, never before', () => {
 // ── closing is not stopping ──────────────────────────────────────────────────
 
 describe('dismissing the menu and leaving the activity are different', () => {
+    // S5. Focus now asks what to understand before it starts, so getting it running takes
+    // the second answer — "just sit with me", which is the body-doubling block these tests
+    // are about and the one branch that needs nothing loaded to reach the activity.
     async function running() {
         const h = harness();
         button().click();
         tileNamed('Focus').click();
+        optionNamed('Just sit with me').click();
         await flush();
         return h;
     }
@@ -685,6 +693,7 @@ describe('the button says one of three things', () => {
         expect(button().getAttribute('aria-expanded')).toBe('true');
 
         tileNamed('Focus').click();
+        optionNamed('Just sit with me').click();
         await flush();
         expect(button().dataset.state).toBe('running');
         expect(h.panel.activeActivity).toBe('focus');
@@ -697,6 +706,7 @@ describe('the button says one of three things', () => {
         const h = harness();
         button().click();
         tileNamed('Focus').click();
+        optionNamed('Just sit with me').click();
         await flush();
         expect(button().getAttribute('aria-label')).toBe('Together — Focus running');
         // The tooltip a sighted user gets says the same thing, rather than going stale.
@@ -708,6 +718,7 @@ describe('the button says one of three things', () => {
         const h = harness();
         button().click();
         tileNamed('Focus').click();
+        optionNamed('Just sit with me').click();
         await flush();
         await h.panel.stopActivity();
         expect(button().dataset.state).not.toBe('running');
@@ -718,6 +729,7 @@ describe('the button says one of three things', () => {
         const h = harness();
         button().click();
         tileNamed('Focus').click();
+        optionNamed('Just sit with me').click();
         await flush();
         expect(h.activities.focus.started).toHaveLength(1);
         h.launcher.close();
@@ -726,13 +738,20 @@ describe('the button says one of three things', () => {
         expect(h.activities.focus.stopped).toEqual([]);
     });
 
-    test('Focus starts straight away, because it asks nothing at all', async () => {
-        // B36 replaced B30's `direct` flag with a rule: an activity whose single input has
-        // no permission, no picker and nothing to type has no question to ask. Music used to
-        // be the direct one and now has a source to choose, which is what made it work.
+    test('Focus asks for a topic first, and does not start until one of the two is answered', async () => {
+        // B36's rule is unchanged — a single input with no permission, no picker and nothing
+        // to type starts on the tile press. Focus no longer meets it, and that is the point
+        // of S5: the topic is a question, so it gets asked here rather than in the chat a
+        // moment after the panel has closed itself.
         const h = harness();
         button().click();
         tileNamed('Focus').click();
+        await flush();
+        expect(h.panel.activeActivity).toBeNull();
+        expect(overlay().textContent).toContain('What would you like to understand?');
+        // Both answers are on the screen: a topic to type, and the old body-doubling block.
+        expect(overlay().querySelector('.nexus-bd-together-steps')).not.toBeNull();
+        optionNamed('Just sit with me').click();
         await flush();
         expect(h.panel.activeActivity).toBe('focus');
     });
@@ -849,6 +868,7 @@ describe('it behaves like a menu for somebody not using a mouse', () => {
         const h = harness();
         button().click();
         tileNamed('Focus').click();
+        optionNamed('Just sit with me').click();
         await flush();
         h.launcher.open();
         press('Escape');
