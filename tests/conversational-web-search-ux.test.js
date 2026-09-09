@@ -80,7 +80,12 @@ test('search query keeps the subject and removes UI instructions', () => {
 
 test('a search acknowledgement appears before retrieval finishes', async () => {
     let releaseSearch;
-    window.NEXUS_RESEARCH_WEB.research = jest.fn(() => new Promise((resolve) => { releaseSearch = resolve; }));
+    let researchStarted;
+    const started = new Promise((resolve) => { researchStarted = resolve; });
+    window.NEXUS_RESEARCH_WEB.research = jest.fn(() => {
+        researchStarted();
+        return new Promise((resolve) => { releaseSearch = resolve; });
+    });
 
     const pending = SearchUX.executeSearchTurn(
         'can you search the news today in Genova on internet',
@@ -91,7 +96,7 @@ test('a search acknowledgement appears before retrieval finishes', async () => {
     expect(document.querySelector('[data-nexus-search-status="searching"]')).not.toBeNull();
     expect(document.querySelector('[data-nexus-search-status] .message-text').textContent).toMatch(/Searching current web sources/i);
 
-    await Promise.resolve();
+    await started;
     releaseSearch(RESULTS);
     await pending;
 });
