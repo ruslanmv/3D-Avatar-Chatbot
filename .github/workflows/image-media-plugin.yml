@@ -60,7 +60,6 @@ jobs:
           tests/image-plugin.test.js
           src/features/discovery/DiscoverySettings.js
           api/_allowlist.js
-          .env.example
           vercel.json
           docs/IMAGE_PLUGIN.md
           .github/workflows/image-media-plugin.yml
