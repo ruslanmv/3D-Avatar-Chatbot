@@ -23,7 +23,16 @@
     'use strict';
 
     /** Per-field ceilings. An article body is unbounded; a prompt is not. */
-    const CAPS = { title: 200, extract: 2400, snippet: 600, description: 200, url: 600, source: 24 };
+    const CAPS = {
+        title: 200,
+        extract: 2400,
+        snippet: 600,
+        description: 200,
+        url: 600,
+        source: 24,
+        siteName: 100,
+        published: 80,
+    };
 
     /** The markers `StudyPrompt` fences with. Stripped here so no text can forge one. */
     const FENCE = /<<<[^>]*>>>/g;
@@ -46,6 +55,7 @@
         if (!raw || typeof raw !== 'object') {
             return null;
         }
+        const rankNumber = Number(raw.rank || raw.position || 0);
         const out = {
             id: clean(raw.id || raw.title, 120),
             source: clean(raw.source || source, CAPS.source),
@@ -54,6 +64,9 @@
             extract: clean(raw.extract, CAPS.extract),
             snippet: clean(raw.snippet, CAPS.snippet),
             url: clean(raw.url, CAPS.url),
+            siteName: clean(raw.siteName || raw.site_name || raw.publisher, CAPS.siteName),
+            published: clean(raw.published || raw.date || raw.age || raw.page_age, CAPS.published),
+            rank: Number.isFinite(rankNumber) && rankNumber > 0 ? rankNumber : null,
         };
         if (!out.title && !out.extract && !out.snippet) {
             return null;
