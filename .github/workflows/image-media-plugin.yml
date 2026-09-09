@@ -1,82 +1,65 @@
 name: Image Media Plugin
 
 on:
-  pull_request:
-    paths:
-      - "src/features/images/**"
-      - "api/images/**"
-      - "tests/image-plugin.test.js"
-      - "src/features/discovery/DiscoverySettings.js"
-      - "api/_allowlist.js"
-      - ".env.example"
-      - "vercel.json"
-      - "docs/IMAGE_PLUGIN.md"
-      - ".github/workflows/image-media-plugin.yml"
-  push:
-    branches: [master]
-    paths:
-      - "src/features/images/**"
-      - "api/images/**"
-      - "tests/image-plugin.test.js"
-      - "src/features/discovery/DiscoverySettings.js"
-      - "api/_allowlist.js"
-      - ".env.example"
-      - "vercel.json"
-      - "docs/IMAGE_PLUGIN.md"
-      - ".github/workflows/image-media-plugin.yml"
+    pull_request:
+        paths:
+            - 'src/features/images/**'
+            - 'api/images/**'
+            - 'tests/image-plugin.test.js'
+            - 'src/features/discovery/DiscoverySettings.js'
+            - 'api/_allowlist.js'
+            - '.env.example'
+            - 'vercel.json'
+            - 'docs/IMAGE_PLUGIN.md'
+            - '.github/workflows/image-media-plugin.yml'
+    push:
+        branches: [master]
+        paths:
+            - 'src/features/images/**'
+            - 'api/images/**'
+            - 'tests/image-plugin.test.js'
+            - 'src/features/discovery/DiscoverySettings.js'
+            - 'api/_allowlist.js'
+            - '.env.example'
+            - 'vercel.json'
+            - 'docs/IMAGE_PLUGIN.md'
+            - '.github/workflows/image-media-plugin.yml'
 
 jobs:
-  validate:
-    name: Image plugin tests & format
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    validate:
+        name: Image plugin tests & format
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '20'
+                  cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
+            - name: Install dependencies
+              run: npm ci
 
-      - name: Syntax check
-        run: |
-          node --check src/features/images/ImagePlugin.js
-          node --check api/images/search.js
-          node --check src/features/discovery/DiscoverySettings.js
-          node --check api/_allowlist.js
+            - name: Syntax check
+              run: |
+                  node --check src/features/images/ImagePlugin.js
+                  node --check api/images/search.js
+                  node --check src/features/discovery/DiscoverySettings.js
+                  node --check api/_allowlist.js
 
-      - name: Image plugin tests
-        run: npx jest tests/image-plugin.test.js --ci --runInBand
+            - name: Image plugin tests
+              run: npx jest tests/image-plugin.test.js --ci --runInBand
 
-      - name: Produce canonical Prettier output
-        run: >-
-          npx prettier --write
-          api/images/search.js
-          tests/image-plugin.test.js
-          .github/workflows/image-media-plugin.yml
-
-      - name: Upload canonical formatting
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: image-plugin-prettier
-          path: |
-            api/images/search.js
-            tests/image-plugin.test.js
-            .github/workflows/image-media-plugin.yml
-
-      - name: Verify all plugin formatting
-        run: >-
-          npx prettier --check
-          src/features/images/ImagePlugin.js
-          api/images/search.js
-          tests/image-plugin.test.js
-          src/features/discovery/DiscoverySettings.js
-          api/_allowlist.js
-          vercel.json
-          docs/IMAGE_PLUGIN.md
-          .github/workflows/image-media-plugin.yml
+            - name: Format check
+              run: >-
+                  npx prettier --check
+                  src/features/images/ImagePlugin.js
+                  api/images/search.js
+                  tests/image-plugin.test.js
+                  src/features/discovery/DiscoverySettings.js
+                  api/_allowlist.js
+                  vercel.json
+                  docs/IMAGE_PLUGIN.md
+                  .github/workflows/image-media-plugin.yml
