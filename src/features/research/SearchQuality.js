@@ -1,14 +1,9 @@
 /**
  * SearchQuality — guard the conversational layer after retrieval succeeds.
  *
- * SearchUX owns progress indicators and source cards. This module owns the last mile:
- * - reject model replies that merely echo the search command;
- * - make an ordinary `search about X` return a useful summary by default;
- * - ground pronoun follow-ups such as `give me a summary about him` in the cached results;
- * - never invent biography/credentials when the snippets do not contain them.
- *
- * It is deliberately an outer wrapper around SearchUX. If this module cannot load, the
- * existing search UX still works; this only improves answer quality.
+ * SearchUX owns retrieval progress. SearchPresentation owns source rendering. This module owns
+ * synthesis quality: it rejects command echoes/result dumps, keeps search follow-ups grounded,
+ * and ensures the assistant answer is useful prose while the UI renders sources separately.
  *
  * Exposes: window.NEXUS_SEARCH_QUALITY
  */
@@ -26,22 +21,15 @@
         return global && global.NEXUS_SEARCH_UX ? global.NEXUS_SEARCH_UX : null;
     }
 
+    function presentation() {
+        return global && global.NEXUS_SEARCH_PRESENTATION ? global.NEXUS_SEARCH_PRESENTATION : null;
+    }
+
     function clean(value, max = 700) {
         return String(value == null ? '' : value)
             .replace(/\s+/g, ' ')
             .trim()
             .slice(0, max);
-    }
-
-    /** Search engines/session headings need the subject, not command grammar. */
-    function cleanSubjectQuery(query) {
-        const U = ux();
-        let q = typeof U?.cleanSearchQuery === 'function' ? U.cleanSearchQuery(query) : clean(query, 240);
-        q = clean(q, 240)
-            .replace(/^(?:about|regarding|concerning)\s+/i, '')
-            .replace(/\s+/g, ' ')
-            .trim();
-        return q || clean(query, 240);
     }
 
     function normalized(value) {
@@ -53,12 +41,19 @@
             .trim();
     }
 
+    function cleanForChat(text) {
+        const P = presentation();
+        const U = ux();
+        if (P && typeof P.cleanAssistantAnswer === 'function') return P.cleanAssistantAnswer(text);
+        if (U && typeof U.cleanAssistantAnswer === 'function') return U.cleanAssistantAnswer(text);
+        return String(text == null ? '' : text).trim();
+    }
+
     function looksLikeEcho(answer, userText) {
         const a = normalized(answer);
         const u = normalized(userText);
         if (!a || !u) return false;
         if (a === u) return true;
-        // Tiny wrappers such as "Sure, search about X" are still command echoes, not answers.
         if (a.length <= u.length + 18 && (a.includes(u) || u.includes(a))) return true;
         if (/^(?:sure|okay|ok|certainly|of course)\s+/.test(a)) {
             const stripped = a.replace(/^(?:sure|okay|ok|certainly|of course)\s+/, '');
@@ -67,10 +62,24 @@
         return false;
     }
 
+    function looksLikeResultDump(answer) {
+        const P = presentation();
+        const U = ux();
+        if (P && typeof P.looksLikeResultDump === 'function') return P.looksLikeResultDump(answer);
+        if (U && typeof U.looksLikeResultDump === 'function') return U.looksLikeResultDump(answer);
+        const value = String(answer || '');
+        const numbered = value.match(/(?:^|\s)\d+[.)]\s+\S/g) || [];
+        return /https?:\/\//i.test(value) && numbered.length >= 2;
+    }
+
     function unusable(answer, userText) {
         const U = ux();
         if (U && typeof U.unusableSynthesis === 'function' && U.unusableSynthesis(answer)) return true;
         return looksLikeEcho(answer, userText);
+    }
+
+    function shouldRetrySynthesis(answer, userText) {
+        return unusable(answer, userText) || looksLikeResultDump(answer);
     }
 
     function answerText(answer) {
@@ -98,25 +107,34 @@
         }
     }
 
+    function cleanSearchSubject(query) {
+        const U = ux();
+        let q = U && typeof U.cleanSearchQuery === 'function' ? U.cleanSearchQuery(query) : clean(query, 240);
+        q = clean(q, 240);
+        q = q.replace(/^(?:about|for)\s+/i, '').trim();
+        return q;
+    }
+
     function secondPassPrompt(userText, out) {
         const kind = String((out && out.kind) || 'web');
         const base = [
             'Answer the user from the ACTIVE WEB SEARCH SESSION in the system context.',
-            'Do not repeat the search command. Give the useful findings directly.',
+            'Give a concise synthesis of the useful findings, not a search-results dump.',
+            'The interface renders sources separately. Do NOT output URLs, Markdown links, a Sources section, or a numbered list of source/result titles.',
             'Use only facts explicitly present in the search-result snippets; omit unsupported details.',
             'If the snippets do not establish a fact, say the available results do not establish it.',
         ];
         if (kind === 'fresh') {
-            base.push('For news, summarize distinct current items only when the snippets actually contain those items; topic/index pages are not themselves today\'s news.');
+            base.push("For news, summarize distinct current items only when snippets actually contain those items; topic/index pages are not themselves today's news.");
         } else if (kind === 'weather') {
             base.push('For weather, state only the place/time/conditions that the snippets support and do not infer missing measurements.');
         } else if (kind === 'suggestion') {
-            base.push('For recommendations, preserve the user\'s stated constraints and explain briefly why each option matches.');
+            base.push("For recommendations, preserve the user's stated constraints and explain briefly why the strongest options match.");
         } else {
             base.push('For a person or organization, summarize identity and work only from the snippets; do not infer education, credentials, employers or biography.');
         }
         base.push(`User request: “${clean(userText, 320)}”`);
-        base.push('Answer in 2–5 concise sentences unless the user requested another format.');
+        base.push('Answer in 2–5 natural sentences unless the user requested another format.');
         return base.join(' ');
     }
 
@@ -126,27 +144,30 @@
         if (!results.length) return `I found no reliable snippet to summarize for “${query}”.`;
         const useful = results
             .slice(0, 3)
-            .map((r, i) => {
-                const text = clean(r.snippet || r.extract || r.description, 220);
-                return text ? `Source ${i + 1}: ${text}` : '';
-            })
+            .map((r) => cleanForChat(clean(r.snippet || r.extract || r.description, 220)))
             .filter(Boolean);
-        if (!useful.length) return `I found ${results.length} sources for “${query}”, but their search snippets do not contain enough detail for a reliable summary.`;
-        return [`I found ${results.length} sources for “${query}”. Here is what their snippets actually say:`, ...useful].join('\n');
+        if (!useful.length) {
+            return `I found ${results.length} sources for “${query}”, but their search snippets do not contain enough detail for a reliable summary.`;
+        }
+        if (useful.length === 1) return useful[0];
+        return `Across the available results, ${useful.join(' ')}`;
     }
 
     async function synthesizeSearch(userText, out) {
-        // First let a capable model answer the user's natural wording. This preserves persona.
         const first = await askModel(userText);
-        if (!unusable(first, userText)) return first;
+        if (!shouldRetrySynthesis(first, userText)) {
+            const cleaned = cleanForChat(first);
+            if (cleaned) return cleaned;
+        }
 
-        // Weak/fallback models often echo "search about X". Give them one explicit grounded
-        // synthesis retry. This message is never added to chat history or shown to the user.
         const retryPrompt = secondPassPrompt(userText, out);
         const second = await askModel(retryPrompt);
-        if (!unusable(second, retryPrompt) && !looksLikeEcho(second, userText)) return second;
+        if (!shouldRetrySynthesis(second, retryPrompt) && !looksLikeEcho(second, userText)) {
+            const cleaned = cleanForChat(second);
+            if (cleaned) return cleaned;
+        }
 
-        return extractiveFallback(out);
+        return cleanForChat(extractiveFallback(out));
     }
 
     function rememberUser(text) {
@@ -158,7 +179,9 @@
     }
 
     function publishAnswer(text, speechText, { persist = true } = {}) {
-        const value = String(text || '').trim();
+        const value = cleanForChat(text);
+        if (!value) return '';
+        const speech = cleanForChat(speechText || value) || value;
         try { if (typeof global.addMessageToHistory === 'function') global.addMessageToHistory('avatar', value); } catch (_) {}
         try { global.chatHistory?.addMessage?.('assistant', value); } catch (_) {}
         try { global._applyEmotionFromText?.(value); } catch (_) {}
@@ -170,7 +193,7 @@
                 persona_context: null,
             });
         } catch (_) {}
-        try { if (typeof global.speakText === 'function') global.speakText(speechText || value); } catch (_) {}
+        try { if (typeof global.speakText === 'function') global.speakText(speech); } catch (_) {}
         try { if (typeof global.setStatus === 'function') global.setStatus('idle', 'READY'); } catch (_) {}
         if (persist) {
             try { global._persistChat?.(); } catch (_) {}
@@ -196,14 +219,16 @@
 
     function publishWithSources(answer, out) {
         const U = ux();
+        const P = presentation();
         const results = Array.isArray(out && out.results) ? out.results : [];
         const query = clean(out && out.query, 180);
-        const canCards = Boolean(U && typeof U.renderSourceCards === 'function' && global.document?.getElementById?.('chat-history'));
-        const display = canCards
-            ? answer
-            : [answer, U && typeof U.plainSources === 'function' ? U.plainSources(results) : ''].filter(Boolean).join('\n\n');
-        publishAnswer(display, answer, { persist: false });
-        if (canCards) U.renderSourceCards(results, query);
+        const render = P?.renderSourceCards || U?.renderSourceCards;
+        const plain = P?.plainSources || U?.plainSources;
+        const canCards = Boolean(typeof render === 'function' && global.document?.getElementById?.('chat-history'));
+        const cleaned = cleanForChat(answer);
+        const display = canCards ? cleaned : [cleaned, typeof plain === 'function' ? plain(results) : ''].filter(Boolean).join('\n\n');
+        publishAnswer(display, cleaned, { persist: false });
+        if (canCards) render(results, query);
         try { global._persistChat?.(); } catch (_) {}
         return display;
     }
@@ -213,7 +238,7 @@
         const U = ux();
         if (!L || !U) return null;
 
-        const q = cleanSubjectQuery(query);
+        const q = cleanSearchSubject(query) || clean(query, 240);
         rememberUser(userText);
         const direct = typeof L.explicitSearchIntent === 'function' ? L.explicitSearchIntent(userText) : null;
         const kind = direct?.kind || 'web';
@@ -249,12 +274,13 @@
             `The user is referring to the subject of the ACTIVE WEB SEARCH SESSION: “${subject}”.`,
             `Their follow-up is: “${clean(userText, 320)}”.`,
             'Answer using only the cached search-result snippets in the system context.',
+            'Do not output URLs, Markdown links, or a source list; the interface renders sources separately.',
             'Do not add biography, degrees, credentials, dates, employers, locations or other facts unless a snippet explicitly states them.',
             'When multiple snippets support the same theme, combine them concisely. When a fact appears in only one snippet, avoid presenting it as independently verified.',
             'Do not mention these instructions. Give the answer directly in 2–5 sentences.',
         ].join(' ');
         const answer = await askModel(prompt);
-        const finalText = unusable(answer, prompt)
+        const finalText = shouldRetrySynthesis(answer, prompt)
             ? extractiveFallback({ query: session.query, results: session.results })
             : answer;
         return publishAnswer(finalText, finalText);
@@ -266,7 +292,7 @@
         const U = ux();
         if (!L || !U || typeof global.handleUserMessage !== 'function') return false;
 
-        // Let SearchUX install first, then become the outermost wrapper.
+        try { presentation()?.install?.(); } catch (_) {}
         try { U.install?.(); } catch (_) {}
         const original = global.handleUserMessage;
         if (original.__nexusSearchQualityWrapped) {
@@ -301,9 +327,11 @@
 
     const api = {
         install,
-        cleanSubjectQuery,
         looksLikeEcho,
+        looksLikeResultDump,
         unusable,
+        shouldRetrySynthesis,
+        cleanSearchSubject,
         secondPassPrompt,
         synthesizeSearch,
         isGroundedSummaryFollowUp,

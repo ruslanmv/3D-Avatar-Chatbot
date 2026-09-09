@@ -1,0 +1,151 @@
+/* Compact web-source citations for Nexus chat.
+ * URLs remain navigation metadata; they are never rendered as visible chat text. */
+.nexus-search-results-row {
+    width: 100%;
+    justify-content: flex-start;
+}
+
+.nexus-search-results {
+    width: min(100%, 720px);
+    margin: 2px 0 12px 0;
+    padding: 0 2px;
+    color: inherit;
+}
+
+.nexus-search-results-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 0 0 2px 0;
+}
+
+.nexus-search-results-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.72;
+}
+
+.nexus-search-results-count {
+    font-size: 0.76rem;
+    opacity: 0.55;
+}
+
+.nexus-search-results-subject {
+    margin-bottom: 8px;
+    font-size: 0.78rem;
+    line-height: 1.25;
+    opacity: 0.58;
+}
+
+.nexus-search-results-list {
+    display: grid;
+    gap: 7px;
+}
+
+.nexus-search-result-card {
+    appearance: none;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 9px 11px;
+    border: 1px solid color-mix(in srgb, currentColor 13%, transparent);
+    border-radius: 12px;
+    background: color-mix(in srgb, currentColor 5%, transparent);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+}
+
+button.nexus-search-result-card {
+    cursor: pointer;
+}
+
+button.nexus-search-result-card:hover {
+    background: color-mix(in srgb, currentColor 8%, transparent);
+    border-color: color-mix(in srgb, currentColor 22%, transparent);
+}
+
+button.nexus-search-result-card:focus-visible {
+    outline: 2px solid color-mix(in srgb, currentColor 48%, transparent);
+    outline-offset: 2px;
+}
+
+.nexus-search-result-topline {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 7px;
+}
+
+.nexus-search-result-index {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    background: color-mix(in srgb, currentColor 9%, transparent);
+    font-size: 0.7rem;
+    font-weight: 700;
+    opacity: 0.78;
+}
+
+.nexus-search-result-title {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 0.9rem;
+    font-weight: 650;
+    line-height: 1.3;
+    text-overflow: ellipsis;
+}
+
+.nexus-search-result-open {
+    padding-top: 1px;
+    font-size: 0.78rem;
+    opacity: 0.55;
+}
+
+.nexus-search-result-meta {
+    margin: 3px 0 0 29px;
+    overflow: hidden;
+    font-size: 0.72rem;
+    line-height: 1.25;
+    opacity: 0.56;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nexus-search-result-snippet {
+    display: -webkit-box;
+    margin: 5px 0 0 29px;
+    overflow: hidden;
+    font-size: 0.8rem;
+    line-height: 1.35;
+    opacity: 0.78;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+@media (max-width: 640px) {
+    .nexus-search-results {
+        width: 100%;
+    }
+
+    .nexus-search-result-card {
+        padding: 9px 10px;
+        border-radius: 10px;
+    }
+
+    .nexus-search-result-snippet {
+        -webkit-line-clamp: 2;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    button.nexus-search-result-card {
+        transition: none;
+    }
+}
