@@ -65,7 +65,8 @@ async function searchPexels(query, max) {
     });
     if (!response.ok) {
         return {
-            error: response.status === 401 || response.status === 403 || response.status === 429 ? response.status : 502,
+            error:
+                response.status === 401 || response.status === 403 || response.status === 429 ? response.status : 502,
             message: `Pexels upstream returned ${response.status}.`,
         };
     }
@@ -106,12 +107,16 @@ async function generatePollinations(prompt, width, height, seed) {
 
     if (!response.ok) {
         return {
-            error: response.status === 401 || response.status === 403 || response.status === 429 ? response.status : 502,
+            error:
+                response.status === 401 || response.status === 403 || response.status === 429 ? response.status : 502,
             message: `Pollinations upstream returned ${response.status}.`,
         };
     }
 
-    const contentType = String(response.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+    const contentType = String(response.headers.get('content-type') || '')
+        .split(';')[0]
+        .trim()
+        .toLowerCase();
     if (!contentType.startsWith('image/')) return { error: 502, message: 'AI provider returned a non-image response.' };
     const declared = Number(response.headers.get('content-length') || 0);
     if (declared > MAX_IMAGE_BYTES) return { error: 413, message: 'Generated image is too large.' };
@@ -162,7 +167,8 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-        if (provider !== 'pollinations') return res.status(405).json({ error: 'POST is only used for AI image generation.' });
+        if (provider !== 'pollinations')
+            return res.status(405).json({ error: 'POST is only used for AI image generation.' });
         const prompt = cleanText(req.body && req.body.prompt, MAX_PROMPT);
         if (!prompt) return res.status(400).json({ error: 'prompt is required' });
         const width = clampInteger(req.body && req.body.width, 256, 2048, 1024);
