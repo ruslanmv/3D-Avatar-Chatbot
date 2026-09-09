@@ -172,15 +172,43 @@
         return snapshot();
     }
 
+    function appendScript(src, marker, onload) {
+        try {
+            if (!global || !global.document) return false;
+            if (global.document.querySelector(`script[${marker}]`)) {
+                if (typeof onload === 'function') onload();
+                return true;
+            }
+            const script = global.document.createElement('script');
+            script.src = src;
+            script.async = false;
+            script.setAttribute(marker, '1');
+            if (typeof onload === 'function') script.onload = onload;
+            global.document.head.appendChild(script);
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function ensureSearchQuality() {
+        if (!global || global.NEXUS_SEARCH_QUALITY) return;
+        appendScript('src/features/research/SearchQuality.js', 'data-nexus-search-quality');
+    }
+
     function ensureSearchUX() {
         try {
-            if (!global || !global.document || global.NEXUS_SEARCH_UX) return;
-            if (global.document.querySelector('script[data-nexus-search-ux]')) return;
-            const script = global.document.createElement('script');
-            script.src = 'src/features/research/SearchUX.js';
-            script.async = false;
-            script.setAttribute('data-nexus-search-ux', '1');
-            global.document.head.appendChild(script);
+            if (!global || !global.document) return;
+            if (global.NEXUS_SEARCH_UX) {
+                ensureSearchQuality();
+                return;
+            }
+            if (global.document.querySelector('script[data-nexus-search-ux]')) {
+                // SearchUX may still be evaluating; SearchQuality retries installation itself.
+                if (typeof global.setTimeout === 'function') global.setTimeout(ensureSearchQuality, 25);
+                return;
+            }
+            appendScript('src/features/research/SearchUX.js', 'data-nexus-search-ux', ensureSearchQuality);
         } catch (_) {
             /* Search state still works even when the optional presentation layer cannot load. */
         }
