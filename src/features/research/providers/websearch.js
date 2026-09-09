@@ -47,21 +47,10 @@
             configured: usable,
             available: usable && Boolean(shape()),
             capabilities: ['topic.search'],
-            // A user key is an answer on its own: the site's readiness is irrelevant once
-            // somebody has supplied one, so `checking` must not mask it.
             reason: own ? 'own-key' : configured === null ? 'checking' : configured ? 'ok' : 'no-key',
         };
     }
 
-    /**
-     * A fetch that is guaranteed to settle (batch S5).
-     *
-     * The same guard the Wikipedia provider carries, and for the same reason: every error is
-     * handled here, and a request that is accepted and then left open is not an error. It
-     * produced a study session stuck in `researching` with nothing on screen to explain it.
-     * `catch` never runs, because nothing throws — so the deadline is the only thing that can
-     * turn a hang back into an answer.
-     */
     const DEADLINE_MS = 8000;
 
     function within(f, url, init, ms = DEADLINE_MS) {
@@ -72,32 +61,17 @@
             timer = setTimeout(() => {
                 try {
                     if (controller) controller.abort();
-                } catch (_) {
-                    /* best-effort; the race is what guarantees an answer */
-                }
+                } catch (_) {}
                 resolve(null);
             }, ms);
         });
         return Promise.race([request, deadline]).finally(() => clearTimeout(timer));
     }
 
-    /**
-     * Does this deployment hold a search key?
-     *
-     * Answered by the route, once, and never by asking the page for a key it should not have.
-     * `redirect: 'manual'` for the reason M8 established: a login wall in front of the app
-     * answers with a redirect, and following it turns a knowable state into a CORS exception
-     * indistinguishable from being offline.
-     */
     async function ready({ fetchImpl, force = false } = {}) {
         const set = settings();
-        if (set && typeof set.own === 'function' && set.own()) {
-            // No need to ask the site whether it has a key when the user has supplied one.
-            return status();
-        }
-        if (configured !== null && !force) {
-            return status();
-        }
+        if (set && typeof set.own === 'function' && set.own()) return status();
+        if (configured !== null && !force) return status();
         const f = fetchImpl || (typeof fetch === 'function' ? fetch : null);
         if (!f) {
             configured = false;
@@ -121,14 +95,6 @@
         return (global && global.NEXUS_WEB_SEARCH_SETTINGS) || null;
     }
 
-    /**
-     * Search on the user's own key, through their own deployment's proxy.
-     *
-     * Neither Brave nor Serper sends CORS headers, so this cannot be a direct call however
-     * good the key is. The proxy is the same one an OpenAI or Anthropic key already goes
-     * through — same deployment, already trusted with those — and both origins are on its
-     * allowlist, which is matched by origin rather than by string prefix.
-     */
     async function ownSearch(own, query, max, f) {
         const spec = own.spec;
         const proxied = {
@@ -143,9 +109,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(proxied),
             });
-            if (!r || !r.ok) {
-                return null;
-            }
+            if (!r || !r.ok) return null;
             const body = await r.json();
             return spec.results(body);
         } catch (_) {
@@ -153,36 +117,35 @@
         }
     }
 
+    function metadataOf(result, index) {
+        const profile = result && result.profile && typeof result.profile === 'object' ? result.profile : null;
+        return {
+            title: result && result.title,
+            snippet: result && (result.description || result.snippet),
+            url: result && (result.url || result.link),
+            siteName: result && (result.siteName || result.source || (profile && profile.long_name)),
+            published: result && (result.published || result.date || result.age || result.page_age),
+            rank: result && (result.rank || result.position || index + 1),
+        };
+    }
+
     /** Search the web. `null` when it could not run, `[]` when it found nothing. */
     async function research(query, { max = 4, fetchImpl } = {}) {
         const f = fetchImpl || (typeof fetch === 'function' ? fetch : null);
         const S = shape();
         const q = String(query || '').trim();
-        if (!f || !S || !q) {
-            return null;
-        }
-        // The user's own key wins. Somebody who typed one meant to use it — their quota,
-        // their restrictions — and silently preferring the site's would make the field
-        // decorative.
+        if (!f || !S || !q) return null;
+
         const set = settings();
         const own = set && typeof set.own === 'function' ? set.own() : null;
         if (own) {
             const raw = await ownSearch(own, q, max, f);
-            if (raw) {
-                return S.many(
-                    raw.map((r) => ({ title: r.title, snippet: r.description || r.snippet, url: r.url || r.link })),
-                    { source: ID }
-                );
-            }
-            // A key that does not work is worth falling back from, not failing on: the site
-            // may still have one, and the person asked a question either way.
+            if (raw) return S.many(raw.map(metadataOf), { source: ID });
         }
 
         try {
             const r = await within(f, `${ROUTE}?q=${encodeURIComponent(q)}&max=${encodeURIComponent(max)}`);
-            if (!r || !r.ok) {
-                return null;
-            }
+            if (!r || !r.ok) return null;
             const body = await r.json();
             return S.many((body && body.results) || [], { source: ID });
         } catch (_) {
@@ -190,17 +153,12 @@
         }
     }
 
-    /** For tests, and for a page that wants the readiness probe run again. */
     function reset() {
         configured = null;
     }
 
     const api = { ID, ROUTE, status, ready, research, ownSearch, reset };
 
-    if (typeof module !== 'undefined' && module.exports) {
-        module.exports = api;
-    }
-    if (global) {
-        global.NEXUS_RESEARCH_WEB = api;
-    }
+    if (typeof module !== 'undefined' && module.exports) module.exports = api;
+    if (global) global.NEXUS_RESEARCH_WEB = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);
