@@ -32,8 +32,7 @@ beforeEach(() => {
         forCapability(capability) {
             return (
                 providers.find(
-                    (provider) =>
-                        provider.status().available && provider.status().capabilities.includes(capability)
+                    (provider) => provider.status().available && provider.status().capabilities.includes(capability)
                 ) || null
             );
         },
