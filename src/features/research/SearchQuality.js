@@ -33,6 +33,17 @@
             .slice(0, max);
     }
 
+    /** Search engines/session headings need the subject, not command grammar. */
+    function cleanSubjectQuery(query) {
+        const U = ux();
+        let q = typeof U?.cleanSearchQuery === 'function' ? U.cleanSearchQuery(query) : clean(query, 240);
+        q = clean(q, 240)
+            .replace(/^(?:about|regarding|concerning)\s+/i, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        return q || clean(query, 240);
+    }
+
     function normalized(value) {
         return String(value == null ? '' : value)
             .toLowerCase()
@@ -202,7 +213,7 @@
         const U = ux();
         if (!L || !U) return null;
 
-        const q = (typeof U.cleanSearchQuery === 'function' ? U.cleanSearchQuery(query) : clean(query, 240)) || clean(query, 240);
+        const q = cleanSubjectQuery(query);
         rememberUser(userText);
         const direct = typeof L.explicitSearchIntent === 'function' ? L.explicitSearchIntent(userText) : null;
         const kind = direct?.kind || 'web';
@@ -290,6 +301,7 @@
 
     const api = {
         install,
+        cleanSubjectQuery,
         looksLikeEcho,
         unusable,
         secondPassPrompt,
