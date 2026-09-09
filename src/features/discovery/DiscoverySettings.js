@@ -203,3 +203,23 @@ if (typeof window !== 'undefined') {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = DiscoverySettings;
 }
+
+// Image media is an optional additive plugin. Discovery owns the loader because index.html
+// already loads this file on every supported page. If the plugin file is removed or fails to
+// load, video/music discovery continues unchanged.
+if (typeof window !== 'undefined' && typeof document !== 'undefined' && !window.__NEXUS_IMAGE_PLUGIN_NOLOAD__) {
+    const loadImagePlugin = () => {
+        if (window.NEXUS_IMAGE_MEDIA || document.querySelector('script[data-nexus-image-plugin]')) return;
+        const script = document.createElement('script');
+        script.src = 'src/features/images/ImagePlugin.js';
+        script.defer = true;
+        script.dataset.nexusImagePlugin = '1';
+        script.onerror = () => console.warn('[DiscoverySettings] Optional image plugin did not load.');
+        (document.head || document.documentElement).appendChild(script);
+    };
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', loadImagePlugin, { once: true });
+    } else {
+        loadImagePlugin();
+    }
+}
