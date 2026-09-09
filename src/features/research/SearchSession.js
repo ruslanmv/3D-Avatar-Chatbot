@@ -172,6 +172,20 @@
         return snapshot();
     }
 
+    function ensureSearchUX() {
+        try {
+            if (!global || !global.document || global.NEXUS_SEARCH_UX) return;
+            if (global.document.querySelector('script[data-nexus-search-ux]')) return;
+            const script = global.document.createElement('script');
+            script.src = 'src/features/research/SearchUX.js';
+            script.async = false;
+            script.setAttribute('data-nexus-search-ux', '1');
+            global.document.head.appendChild(script);
+        } catch (_) {
+            /* Search state still works even when the optional presentation layer cannot load. */
+        }
+    }
+
     const api = {
         STATES,
         MAX_RESULTS,
@@ -192,5 +206,8 @@
     };
 
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
-    if (global) global.NEXUS_SEARCH_SESSION = api;
+    if (global) {
+        global.NEXUS_SEARCH_SESSION = api;
+        if (typeof global.setTimeout === 'function') global.setTimeout(ensureSearchUX, 0);
+    }
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);
