@@ -52,7 +52,24 @@ jobs:
       - name: Image plugin tests
         run: npx jest tests/image-plugin.test.js --ci --runInBand
 
-      - name: Format check
+      - name: Produce canonical Prettier output
+        run: >-
+          npx prettier --write
+          api/images/search.js
+          tests/image-plugin.test.js
+          .github/workflows/image-media-plugin.yml
+
+      - name: Upload canonical formatting
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-plugin-prettier
+          path: |
+            api/images/search.js
+            tests/image-plugin.test.js
+            .github/workflows/image-media-plugin.yml
+
+      - name: Verify all plugin formatting
         run: >-
           npx prettier --check
           src/features/images/ImagePlugin.js
