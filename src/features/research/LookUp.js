@@ -70,6 +70,9 @@
 
     function begin(query) {
         generation += 1;
+        // A new top-level search owns the referent. Never let an older fallback
+        // result set leak into a failed/new search.
+        fallback = null;
         const s = searchSession();
         if (s && typeof s.begin === 'function') {
             const state = s.begin(query, { kind: classify(query) });
@@ -327,25 +330,202 @@
         return null;
     }
 
+    /**
+     * Normalize only command words that speech recognition commonly mangles. The query itself
+     * is deliberately left alone: correcting a person's/place's name is how search drift starts.
+     */
+    function normalizeSearchSpeech(text) {
+        return String(text || '')
+            .replace(/\b(?:seaech|serach|seach|sarch)\b/gi, 'search')
+            .replace(/\b(?:interne|internte|internt)\b/gi, 'internet')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    /**
+     * High-confidence intents that must never be delegated to the LLM to decide whether it can
+     * browse. This is the missing first-turn seam: explicit web commands, current news/weather,
+     * and local recommendation requests go to the provider before any model response exists.
+     */
+    function explicitSearchIntent(text) {
+        const raw = normalizeSearchSpeech(text);
+        if (!raw) return null;
+        const lower = raw.toLowerCase();
+
+        const explicit = /\b(?:search|look\s*up|lookup)\b/.test(lower) ||
+            /\b(?:find|check)\b.{0,32}\b(?:web|internet|online)\b/.test(lower);
+        const freshNews = /\b(?:news|headlines?)\b/.test(lower) &&
+            /\b(?:today|latest|current|recent|now|this\s+(?:morning|afternoon|evening|week|month))\b/.test(lower);
+        const weather = /\b(?:weather|forecast|temperature|rain|snow|wind|humidity)\b/.test(lower);
+        const localSuggestion = /\b(?:recommend|suggest|best|top)\b/.test(lower) &&
+            /\b(?:restaurants?|hotels?|cafes?|coffee|bars?|shops?|places?|events?|things\s+to\s+do|attractions?)\b/.test(lower);
+
+        if (!explicit && !freshNews && !weather && !localSuggestion) return null;
+
+        let query = raw
+            .replace(/^(?:hey\s+|hi\s+)?(?:(?:can|could|would|will)\s+you\s+|please\s+)+/i, '')
+            .replace(/^(?:please\s+)?(?:search|look\s*up|lookup|find|check)\s*(?:for\s+)?(?:(?:on|in)\s+)?(?:the\s+)?(?:internet|web|online)?\s*(?:for\s+)?/i, '')
+            .replace(/^the\s+/i, '')
+            .trim();
+        if (!query) query = raw;
+        return { action: 'search', query, kind: classify(query), original: raw };
+    }
+
+    function refineFollowUpQuery(text, active) {
+        const follow = normalizeSearchSpeech(text);
+        let base = String((active && active.query) || '').trim();
+        if (!base) return follow;
+        if (active.kind === 'weather') {
+            if (/\btomorrow\b/i.test(follow)) {
+                base = base.replace(/\b(today|tonight|now|this\s+(?:morning|afternoon|evening))\b/gi, '').replace(/\s+/g, ' ').trim();
+                return `${base} tomorrow`.trim();
+            }
+            if (/\bweekend\b/i.test(follow)) {
+                base = base.replace(/\b(today|tonight|now|tomorrow)\b/gi, '').replace(/\s+/g, ' ').trim();
+                return `${base} this weekend`.trim();
+            }
+        }
+        return `${base} ${follow}`.replace(/\s+/g, ' ').trim();
+    }
+
+    function refusalFromModel(text) {
+        const t = String(text || '').toLowerCase();
+        return /(?:cannot|can't|unable to|don't|do not)\s+(?:perform|do|access|browse|search|use).{0,45}(?:internet|web|real[- ]?time)/.test(t) ||
+            /knowledge\s+cut[- ]?off|don't have access to (?:the )?(?:latest|internet|web|real[- ]?time)/.test(t);
+    }
+
+    function answerText(answer) {
+        if (answer && typeof answer === 'object') {
+            if (typeof answer.text === 'string') return answer.text;
+            if (typeof answer.choices?.[0]?.message?.content === 'string') return answer.choices[0].message.content;
+        }
+        return String(answer == null ? '' : answer);
+    }
+
+    function sourceSummary(results, max = 4) {
+        const rows = (results || []).slice(0, max);
+        if (!rows.length) return '';
+        return ['Sources:', ...rows.map((r, i) => {
+            const domain = domainOf(r.url);
+            return `${i + 1}. ${r.title || 'Untitled'}${domain ? ` — ${domain}` : ''}${r.url ? `\n   ${r.url}` : ''}`;
+        })].join('\n');
+    }
+
+    function processAssistantText(text) {
+        let out = String(text || '').trim();
+        try { if (pick('NEXUS_MOTION')?.processReply) out = pick('NEXUS_MOTION').processReply(out); } catch (_) {}
+        try { if (pick('NEXUS_PLAY_DIRECTIVE')?.consume) out = pick('NEXUS_PLAY_DIRECTIVE').consume(out); } catch (_) {}
+        try { if (pick('NEXUS_STUDY_DIRECTIVE')?.consume) out = pick('NEXUS_STUDY_DIRECTIVE').consume(out); } catch (_) {}
+        return String(out || '').trim();
+    }
+
+    function rememberUser(text) {
+        const value = String(text || '').trim();
+        try { if (typeof global.addMessageToHistory === 'function') global.addMessageToHistory('user', value); } catch (_) {}
+        try { pick('NEXUS_MOTION')?.onUserUtterance?.(value); } catch (_) {}
+        try { global.chatHistory?.addMessage?.('user', value); } catch (_) {}
+        try { global._persistChat?.(); } catch (_) {}
+    }
+
+    function publishAssistant(text, speechText) {
+        const value = String(text || '').trim();
+        try { if (typeof global.addMessageToHistory === 'function') global.addMessageToHistory('avatar', value); } catch (_) {}
+        try { global.chatHistory?.addMessage?.('assistant', value); } catch (_) {}
+        try { global._persistChat?.(); } catch (_) {}
+        try { global._applyEmotionFromText?.(value); } catch (_) {}
+        try { if (typeof global.speakText === 'function') global.speakText(speechText || value); } catch (_) {}
+        try { if (typeof global.setStatus === 'function') global.setStatus('idle', 'READY'); } catch (_) {}
+        return value;
+    }
+
+    function failureText(why) {
+        return {
+            'no-key': "I can't search the web yet because no web-search key is configured in Settings.",
+            'no-provider': "Web search isn't available in this build.",
+            failed: "I couldn't reach web search just now. Please try again.",
+            nothing: "I searched the web but couldn't find useful results for that query.",
+            stale: 'A newer search replaced that request.',
+        }[why] || "I couldn't complete that web search.";
+    }
+
+    async function executeSearchTurn(userText, query) {
+        const q = String(query || '').trim();
+        rememberUser(userText);
+        try { if (typeof global.setStatus === 'function') global.setStatus('listening', 'SEARCHING...'); } catch (_) {}
+
+        let out;
+        try { out = await run(q); } catch (_) { out = { ok: false, why: 'failed' }; }
+        if (!out || !out.ok) {
+            const msg = failureText(out && out.why);
+            clear();
+            return publishAssistant(msg);
+        }
+
+        // Results exist before the model is called. Even a weak/fallback model therefore cannot
+        // turn an explicit search into "I cannot browse" — that response is rejected below.
+        let synthesized = '';
+        if (typeof global.callLLM === 'function') {
+            try {
+                const prompt = [
+                    'The application has ALREADY completed a live web search.',
+                    `The user asked: "${String(userText || '').replace(/"/g, '\\"')}"`,
+                    `The completed search query was: "${out.query}".`,
+                    'Answer using ONLY the supplied search-result snippets in the system context.',
+                    'Do not discuss browsing limitations or knowledge cutoffs: the search is already done.',
+                    'For news, summarize the most important distinct items and identify their sources.',
+                    'For weather, answer the requested place/time and say when snippets are insufficient.',
+                    'For recommendations, preserve the user constraints and give concrete options.',
+                ].join(' ');
+                synthesized = processAssistantText(answerText(await global.callLLM(prompt)));
+            } catch (_) { synthesized = ''; }
+        }
+
+        const sources = sourceSummary(out.results);
+        let finalText;
+        if (!synthesized || refusalFromModel(synthesized)) {
+            finalText = formatResults({ query: out.query, results: out.results });
+        } else {
+            finalText = sources ? `${synthesized}\n\n${sources}` : synthesized;
+        }
+        clear(); // releases the turn lock but preserves the successful SearchSession.
+        return publishAssistant(finalText, synthesized && !refusalFromModel(synthesized) ? synthesized : `I found ${out.results.length} web results.`);
+    }
+
+    async function answerSelectedTurn(userText, intent) {
+        rememberUser(userText);
+        const r = intent.result || {};
+        const fallbackAnswer = [r.title || `Result ${intent.index + 1}`, clean(r.snippet || r.extract, 700), r.url || ''].filter(Boolean).join('\n');
+        if (typeof global.callLLM !== 'function') return publishAssistant(fallbackAnswer);
+        try {
+            const prompt = `Answer the user's request about cached web result ${intent.index + 1}. Use only the active search results in the system context. The user said: "${String(userText || '').replace(/"/g, '\\"')}".`;
+            const answer = processAssistantText(answerText(await global.callLLM(prompt)));
+            return publishAssistant(!answer || refusalFromModel(answer) ? fallbackAnswer : answer);
+        } catch (_) { return publishAssistant(fallbackAnswer); }
+    }
+
     function installFollowUpHook() {
         if (hookInstalled || !global || typeof global.handleUserMessage !== 'function') return false;
         const original = global.handleUserMessage;
         if (original.__nexusSearchWrapped) { hookInstalled = true; return true; }
         async function wrapped(text) {
             if (locked) await waitUntilReleased();
+
+            // FIRST TURN: deterministic tool routing before the LLM. This is intentionally
+            // checked before follow-ups and before original(), because original() calls the model.
+            const direct = explicitSearchIntent(text);
+            if (direct) return executeSearchTurn(text, direct.query);
+
             const intent = followUpIntent(text);
             if (intent && intent.action === 'show') {
-                const ask = pick('NEXUS_YT_ASK');
-                if (ask && typeof ask.say === 'function') {
-                    try {
-                        ask.say(String(text || ''), 'user', global.document);
-                        const rendered = formatResults(intent.session);
-                        ask.say(rendered, 'bot', global.document);
-                        if (typeof global.speakText === 'function') global.speakText(`I found ${intent.session.results.length} results. I listed them in the chat.`);
-                        if (typeof global.setStatus === 'function') global.setStatus('idle', 'READY');
-                        return rendered;
-                    } catch (_) { /* normal LLM path below still has active-search context */ }
-                }
+                rememberUser(text);
+                const rendered = formatResults(intent.session);
+                return publishAssistant(rendered, `I found ${intent.session.results.length} results. I listed them in the chat.`);
+            }
+            if (intent && intent.action === 'refine') {
+                return executeSearchTurn(text, refineFollowUpQuery(text, intent.session));
+            }
+            if (intent && intent.action === 'select') {
+                return answerSelectedTurn(text, intent);
             }
             return original.apply(this, arguments);
         }
@@ -359,7 +539,7 @@
     ensureSessionScript();
     try { if (global && typeof global.setTimeout === 'function') global.setTimeout(installFollowUpHook, 0); } catch (_) { /* noop */ }
 
-    const api = { TAG, ANY, OPEN, CLOSE, MAX, extract, run, take, peek, systemPromptSuffix, clear, reset, isBusy, waitUntilReleased, currentSession, followUpIntent, formatResults, installFollowUpHook, mergeResults, quality, refinement };
+    const api = { TAG, ANY, OPEN, CLOSE, MAX, extract, run, take, peek, systemPromptSuffix, clear, reset, isBusy, waitUntilReleased, currentSession, followUpIntent, formatResults, installFollowUpHook, mergeResults, quality, refinement, explicitSearchIntent, normalizeSearchSpeech, refineFollowUpQuery, executeSearchTurn };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_LOOKUP = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);
