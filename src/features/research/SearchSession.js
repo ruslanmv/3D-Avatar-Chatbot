@@ -193,11 +193,29 @@
         appendScript('src/features/research/SearchQuality.js', 'data-nexus-search-quality');
     }
 
+    function ensureConversationPresentation() {
+        if (!global || !global.document) return;
+        if (global.NEXUS_CONVERSATION_PRESENTATION) {
+            try { global.NEXUS_CONVERSATION_PRESENTATION.install?.(); } catch (_) {}
+            ensureSearchQuality();
+            return;
+        }
+        if (global.document.querySelector('script[data-nexus-conversation-presentation]')) {
+            if (typeof global.setTimeout === 'function') global.setTimeout(ensureConversationPresentation, 25);
+            return;
+        }
+        appendScript(
+            'src/features/chat/ConversationPresentation.js',
+            'data-nexus-conversation-presentation',
+            ensureSearchQuality
+        );
+    }
+
     function ensureSearchPresentation() {
         if (!global || !global.document) return;
         if (global.NEXUS_SEARCH_PRESENTATION) {
             try { global.NEXUS_SEARCH_PRESENTATION.install?.(); } catch (_) {}
-            ensureSearchQuality();
+            ensureConversationPresentation();
             return;
         }
         if (global.document.querySelector('script[data-nexus-search-presentation]')) {
@@ -207,7 +225,7 @@
         appendScript(
             'src/features/research/SearchPresentation.js',
             'data-nexus-search-presentation',
-            ensureSearchQuality
+            ensureConversationPresentation
         );
     }
 
