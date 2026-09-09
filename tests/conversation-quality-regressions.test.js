@@ -38,28 +38,36 @@ test('a search-command echo is rejected and retried as a grounded summary', asyn
         );
 
     const answer = await SearchQuality.synthesizeSearch(request, {
-        query: 'about Ruslan Magana',
+        query: 'Ruslan Magana',
         kind: 'web',
         results: PERSON_RESULTS,
     });
 
     expect(window.callLLM).toHaveBeenCalledTimes(2);
-    expect(SearchQuality.looksLikeEcho(window.callLLM.mock.results[0].value ? 'search about Ruslan Magana on internet.' : '', request)).toBe(true);
+    expect(SearchQuality.looksLikeEcho('search about Ruslan Magana on internet.', request)).toBe(true);
     expect(window.callLLM.mock.calls[1][0]).toMatch(/ACTIVE WEB SEARCH SESSION/);
     expect(window.callLLM.mock.calls[1][0]).toMatch(/do not infer education, credentials, employers or biography/i);
     expect(answer).toMatch(/senior AI engineer/i);
     expect(answer).not.toMatch(/^search about/i);
 });
 
+test('the search subject drops command grammar such as leading "about"', () => {
+    window.NEXUS_SEARCH_UX = {
+        cleanSearchQuery: (q) => String(q).replace(/\s+on internet$/i, ''),
+        unusableSynthesis: () => false,
+    };
+    expect(SearchQuality.cleanSubjectQuery('about Ruslan Magana on internet')).toBe('Ruslan Magana');
+});
+
 test('the real typo follow-up "give me asummary about him" is recognized as grounded search context', () => {
-    const session = { query: 'about Ruslan Magana', results: PERSON_RESULTS };
+    const session = { query: 'Ruslan Magana', results: PERSON_RESULTS };
     expect(SearchQuality.isGroundedSummaryFollowUp('give me asummary about him', session)).toBe(true);
     expect(SearchQuality.isGroundedSummaryFollowUp('give me a summary about him', session)).toBe(true);
 });
 
 test('search retry prompt forbids unsupported biography and credentials', () => {
     const prompt = SearchQuality.secondPassPrompt('search about Ruslan Magana on internet', {
-        query: 'about Ruslan Magana',
+        query: 'Ruslan Magana',
         kind: 'web',
         results: PERSON_RESULTS,
     });
