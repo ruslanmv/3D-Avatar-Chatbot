@@ -67,12 +67,8 @@
 
     function classify(query) {
         const q = String(query || '').toLowerCase();
-        if (/\b(weather|forecast|temperature|rain|snow|wind|humidity|sunrise|sunset)\b/.test(q)) {
-            return 'weather';
-        }
-        if (/\b(news|today|latest|recent|current|now|this week|this month)\b/.test(q)) {
-            return 'fresh';
-        }
+        if (/\b(weather|forecast|temperature|rain|snow|wind|humidity|sunrise|sunset)\b/.test(q)) return 'weather';
+        if (/\b(news|today|latest|recent|current|now|this week|this month)\b/.test(q)) return 'fresh';
         if (/\b(best|recommend|recommendation|suggest|suggestion|ideas?|options?|where should|what should)\b/.test(q)) {
             return 'suggestion';
         }
@@ -172,17 +168,81 @@
         return snapshot();
     }
 
+    function appendScript(src, marker, onload) {
+        try {
+            if (!global || !global.document) return false;
+            if (global.document.querySelector(`script[${marker}]`)) {
+                if (typeof onload === 'function') onload();
+                return true;
+            }
+            const script = global.document.createElement('script');
+            script.src = src;
+            script.async = false;
+            script.setAttribute(marker, '1');
+            if (typeof onload === 'function') script.onload = onload;
+            global.document.head.appendChild(script);
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function ensureSearchQuality() {
+        if (!global || global.NEXUS_SEARCH_QUALITY) return;
+        if (global.document?.querySelector('script[data-nexus-search-quality]')) return;
+        appendScript('src/features/research/SearchQuality.js', 'data-nexus-search-quality');
+    }
+
+    function ensureConversationPresentation() {
+        if (!global || !global.document) return;
+        if (global.NEXUS_CONVERSATION_PRESENTATION) {
+            try { global.NEXUS_CONVERSATION_PRESENTATION.install?.(); } catch (_) {}
+            ensureSearchQuality();
+            return;
+        }
+        if (global.document.querySelector('script[data-nexus-conversation-presentation]')) {
+            if (typeof global.setTimeout === 'function') global.setTimeout(ensureConversationPresentation, 25);
+            return;
+        }
+        appendScript(
+            'src/features/chat/ConversationPresentation.js',
+            'data-nexus-conversation-presentation',
+            ensureSearchQuality
+        );
+    }
+
+    function ensureSearchPresentation() {
+        if (!global || !global.document) return;
+        if (global.NEXUS_SEARCH_PRESENTATION) {
+            try { global.NEXUS_SEARCH_PRESENTATION.install?.(); } catch (_) {}
+            ensureConversationPresentation();
+            return;
+        }
+        if (global.document.querySelector('script[data-nexus-search-presentation]')) {
+            if (typeof global.setTimeout === 'function') global.setTimeout(ensureSearchPresentation, 25);
+            return;
+        }
+        appendScript(
+            'src/features/research/SearchPresentation.js',
+            'data-nexus-search-presentation',
+            ensureConversationPresentation
+        );
+    }
+
     function ensureSearchUX() {
         try {
-            if (!global || !global.document || global.NEXUS_SEARCH_UX) return;
-            if (global.document.querySelector('script[data-nexus-search-ux]')) return;
-            const script = global.document.createElement('script');
-            script.src = 'src/features/research/SearchUX.js';
-            script.async = false;
-            script.setAttribute('data-nexus-search-ux', '1');
-            global.document.head.appendChild(script);
+            if (!global || !global.document) return;
+            if (global.NEXUS_SEARCH_UX) {
+                ensureSearchPresentation();
+                return;
+            }
+            if (global.document.querySelector('script[data-nexus-search-ux]')) {
+                if (typeof global.setTimeout === 'function') global.setTimeout(ensureSearchPresentation, 25);
+                return;
+            }
+            appendScript('src/features/research/SearchUX.js', 'data-nexus-search-ux', ensureSearchPresentation);
         } catch (_) {
-            /* Search state still works even when the optional presentation layer cannot load. */
+            /* Search state still works even when optional presentation modules cannot load. */
         }
     }
 
