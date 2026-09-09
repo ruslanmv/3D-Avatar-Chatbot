@@ -1,0 +1,66 @@
+name: Image Media Plugin
+
+on:
+  pull_request:
+    paths:
+      - "src/features/images/**"
+      - "api/images/**"
+      - "tests/image-plugin.test.js"
+      - "src/features/discovery/DiscoverySettings.js"
+      - "api/_allowlist.js"
+      - ".env.example"
+      - "vercel.json"
+      - "docs/IMAGE_PLUGIN.md"
+      - ".github/workflows/image-media-plugin.yml"
+  push:
+    branches: [master]
+    paths:
+      - "src/features/images/**"
+      - "api/images/**"
+      - "tests/image-plugin.test.js"
+      - "src/features/discovery/DiscoverySettings.js"
+      - "api/_allowlist.js"
+      - ".env.example"
+      - "vercel.json"
+      - "docs/IMAGE_PLUGIN.md"
+      - ".github/workflows/image-media-plugin.yml"
+
+jobs:
+  validate:
+    name: Image plugin tests & format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Syntax check
+        run: |
+          node --check src/features/images/ImagePlugin.js
+          node --check api/images/search.js
+          node --check src/features/discovery/DiscoverySettings.js
+          node --check api/_allowlist.js
+
+      - name: Image plugin tests
+        run: npx jest tests/image-plugin.test.js --ci --runInBand
+
+      - name: Format check
+        run: >-
+          npx prettier --check
+          src/features/images/ImagePlugin.js
+          api/images/search.js
+          tests/image-plugin.test.js
+          src/features/discovery/DiscoverySettings.js
+          api/_allowlist.js
+          .env.example
+          vercel.json
+          docs/IMAGE_PLUGIN.md
+          .github/workflows/image-media-plugin.yml
