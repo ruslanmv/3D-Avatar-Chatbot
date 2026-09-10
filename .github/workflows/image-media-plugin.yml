@@ -25,13 +25,19 @@ on:
             - 'docs/IMAGE_PLUGIN.md'
             - '.github/workflows/image-media-plugin.yml'
 
+permissions:
+    contents: write
+
 jobs:
     validate:
         name: Image plugin tests & format
         runs-on: ubuntu-latest
         steps:
-            - name: Checkout code
+            - name: Checkout PR head
               uses: actions/checkout@v4
+              with:
+                  ref: ${{ github.event.pull_request.head.sha }}
+                  fetch-depth: 0
 
             - name: Setup Node.js
               uses: actions/setup-node@v4
@@ -52,19 +58,22 @@ jobs:
             - name: Image plugin tests
               run: npx jest tests/image-plugin.test.js --ci --runInBand
 
-            - name: Format changed files
+            - name: Apply canonical formatting
               run: >-
                   npx prettier --write
                   src/features/images/ImagePlugin.js
                   tests/image-plugin.test.js
 
-            - name: Upload formatted files
-              uses: actions/upload-artifact@v4
-              with:
-                  name: formatted-image-plugin
-                  path: |
-                      src/features/images/ImagePlugin.js
-                      tests/image-plugin.test.js
+            - name: Commit formatting to this same-repository PR
+              if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+              run: |
+                  git config user.name 'github-actions[bot]'
+                  git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+                  git add src/features/images/ImagePlugin.js tests/image-plugin.test.js
+                  if ! git diff --cached --quiet; then
+                    git commit -m 'Format image provider updates'
+                    git push origin HEAD:${{ github.head_ref }}
+                  fi
 
             - name: Format check
               run: >-
