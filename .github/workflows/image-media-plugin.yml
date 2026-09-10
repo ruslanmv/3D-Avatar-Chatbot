@@ -52,6 +52,20 @@ jobs:
             - name: Image plugin tests
               run: npx jest tests/image-plugin.test.js --ci --runInBand
 
+            - name: Format changed files
+              run: >-
+                  npx prettier --write
+                  src/features/images/ImagePlugin.js
+                  tests/image-plugin.test.js
+
+            - name: Upload formatted files
+              uses: actions/upload-artifact@v4
+              with:
+                  name: formatted-image-plugin
+                  path: |
+                      src/features/images/ImagePlugin.js
+                      tests/image-plugin.test.js
+
             - name: Format check
               run: >-
                   npx prettier --check
@@ -62,4 +76,3 @@ jobs:
                   api/_allowlist.js
                   vercel.json
                   docs/IMAGE_PLUGIN.md
-                  .github/workflows/image-media-plugin.yml
