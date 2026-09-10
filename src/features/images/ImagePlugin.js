@@ -608,7 +608,10 @@
             if (typeof reg.forCapability === 'function') {
                 return reg.forCapability('image.generate', Object.assign({}, options, { prefer }));
             }
-            const ordered = prefer && prefer !== 'auto' ? [prefer, 'pollinations', 'homepilot-remote'] : ['pollinations', 'homepilot-remote'];
+            const ordered =
+                prefer && prefer !== 'auto'
+                    ? [prefer, 'pollinations', 'homepilot-remote']
+                    : ['pollinations', 'homepilot-remote'];
             for (const id of ordered) {
                 const provider = namedProvider(id);
                 if (provider && provider.status().available) return provider;
@@ -820,7 +823,14 @@
             if (global && global.console) console.warn('[NEXUS_IMAGE_MEDIA] request failed:', error);
         }
         if (!results.length) {
-            say(isGenerated ? 'I could not generate that image right now.' : 'I could not find matching photos right now.', 'bot', d, true);
+            say(
+                isGenerated
+                    ? 'I could not generate that image right now.'
+                    : 'I could not find matching photos right now.',
+                'bot',
+                d,
+                true
+            );
             return true;
         }
         let summary;
