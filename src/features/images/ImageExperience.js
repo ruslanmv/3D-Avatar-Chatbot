@@ -507,7 +507,11 @@
         const index = selection.index === 'last' ? recentResults.length - 1 : Number(selection.index);
         say(originalText, 'user', d);
         if (!Number.isInteger(index) || index < 0 || index >= recentResults.length) {
-            say(`I only have ${recentResults.length} recent image${recentResults.length === 1 ? '' : 's'} to display.`, 'bot', d);
+            say(
+                `I only have ${recentResults.length} recent image${recentResults.length === 1 ? '' : 's'} to display.`,
+                'bot',
+                d
+            );
             return true;
         }
         const item = recentResults[index];
