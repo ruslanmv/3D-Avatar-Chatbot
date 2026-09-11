@@ -204,7 +204,10 @@
             if (!key) return originalSearch(query, options);
             if (imagePreference('imageGenerator', options.storage) === 'disabled') return [];
 
-            const prompt = String(query || '').replace(/\s+/g, ' ').trim().slice(0, 1200);
+            const prompt = String(query || '')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .slice(0, 1200);
             if (!prompt) return [];
             const f = fetcher(options.fetch);
             if (!f) return [];
@@ -241,6 +244,16 @@
         };
 
         Images.PollinationsProvider.__nexusCredentialAdapter = true;
+    }
+
+    // HomePilot Remote does not expose a new key field: it reuses the user's already-owned
+    // OllaBridge credential. Marking that credential as present makes an explicit HomePilot
+    // preference strict in ProviderRegistry. If the bridge/HomePilot capability is unavailable,
+    // generation reports that state instead of silently falling back to Pollinations. Auto is
+    // still free to choose Pollinations when HomePilot is offline.
+    if (Images.HomePilotProvider && !Images.HomePilotProvider.__nexusCredentialAdapter) {
+        Images.HomePilotProvider.credentialStatus = () => ({ supportsOwnKey: true, hasOwnKey: true });
+        Images.HomePilotProvider.__nexusCredentialAdapter = true;
     }
 
     function cleanup() {
