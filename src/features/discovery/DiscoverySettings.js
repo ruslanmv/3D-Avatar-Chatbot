@@ -205,15 +205,30 @@ if (typeof module !== 'undefined' && module.exports) {
 }
 
 // Image media is an optional additive plugin. Discovery owns the loader because index.html
-// already loads this file on every supported page. If the plugin file is removed or fails to
+// already loads this file on every supported page. If either image file is removed or fails to
 // load, video/music discovery continues unchanged.
 if (typeof window !== 'undefined' && typeof document !== 'undefined' && !window.__NEXUS_IMAGE_PLUGIN_NOLOAD__) {
+    const loadImageExperience = () => {
+        if (window.NEXUS_IMAGE_EXPERIENCE || document.querySelector('script[data-nexus-image-experience]')) return;
+        const experience = document.createElement('script');
+        experience.src = 'src/features/images/ImageExperience.js';
+        experience.defer = true;
+        experience.dataset.nexusImageExperience = '1';
+        experience.onerror = () => console.warn('[DiscoverySettings] Optional image experience did not load.');
+        (document.head || document.documentElement).appendChild(experience);
+    };
+
     const loadImagePlugin = () => {
-        if (window.NEXUS_IMAGE_MEDIA || document.querySelector('script[data-nexus-image-plugin]')) return;
+        if (window.NEXUS_IMAGE_MEDIA) {
+            loadImageExperience();
+            return;
+        }
+        if (document.querySelector('script[data-nexus-image-plugin]')) return;
         const script = document.createElement('script');
         script.src = 'src/features/images/ImagePlugin.js';
         script.defer = true;
         script.dataset.nexusImagePlugin = '1';
+        script.onload = loadImageExperience;
         script.onerror = () => console.warn('[DiscoverySettings] Optional image plugin did not load.');
         (document.head || document.documentElement).appendChild(script);
     };
