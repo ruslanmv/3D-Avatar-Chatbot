@@ -87,7 +87,26 @@ jobs:
                   tests/web-search-settings-capability.test.js
                   --ci --runInBand
 
-            - name: Format canonical diff
-              run: |
-                  npx prettier --write src/features/images/ImageExperience.js
-                  git diff --exit-code -- src/features/images/ImageExperience.js
+            - name: Format check
+              run: >-
+                  npx prettier --check
+                  src/features/images/ImagePlugin.js
+                  src/features/images/ImageProviderSettings.js
+                  src/features/images/ImageExperience.js
+                  api/images/search.js
+                  tests/image-plugin.test.js
+                  tests/image-provider-settings.test.js
+                  tests/image-experience.test.js
+                  tests/discovery-settings.test.js
+                  tests/discovery-settings-browser.test.js
+                  tests/web-search-settings-capability.test.js
+                  src/features/discovery/DiscoverySettings.js
+                  src/features/discovery/ProviderRegistry.js
+                  src/features/discovery/providers/youtube.js
+                  src/features/research/WebSearchSettings.js
+                  src/features/research/providers/websearch.js
+                  api/research/search.js
+                  api/_allowlist.js
+                  vercel.json
+                  docs/IMAGE_PLUGIN.md
+                  .github/workflows/image-media-plugin.yml
