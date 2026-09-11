@@ -1,21 +1,87 @@
 # Image Media Plugin
 
-The image media plugin adds image search and generation to the chatbot without changing the existing chat pipeline:
+The image media plugin adds existing-image search and AI image generation to the chatbot while keeping provider details behind a consumer-facing **Discovery & Media** settings surface.
 
-- **Pexels** — searches real stock photography.
-- **Pollinations.ai** — hosted AI image generation through the Vercel/serverless gateway.
-- **HomePilot Remote** — private AI image generation through the user's existing OllaBridge/HomePilot connection when that remote capability is enabled.
+Providers currently used by the image capabilities are:
 
-It extends **Settings → Discovery & Media** with two independent choices:
+- **Pexels** — existing photography / image search.
+- **Pollinations.ai** — hosted AI image generation.
+- **HomePilot Remote** — private AI image generation through the user's existing OllaBridge/HomePilot connection when that capability is available.
 
-1. **Image source** — controls generic requests such as “show me a picture of Rome”.
-2. **AI image generator** — controls explicit generation requests such as “generate an image of a moon base”.
+## Settings model
 
-Both selectors default to **Auto — recommended**. The AI generator list contains Pollinations and HomePilot Remote. HomePilot Remote is disabled in the selector until the paired bridge reports that remote image generation is available.
+Discovery & Media follows one grammar across web, image, video, music, and image generation:
 
-## Vercel environment variables
+```text
+capability → preference → resolved provider → credentials only when necessary
+```
 
-For a normal Vercel deployment, these are the only image-plugin secrets:
+The normal controls are:
+
+```text
+SEARCH & DISCOVERY
+🌐 Web search
+🖼 Image search
+🎬 Video search
+🎵 Music search
+
+CREATION
+✨ Image generation
+```
+
+Each capability starts with **Auto — recommended** and shows the resolved provider underneath, for example:
+
+```text
+🖼 IMAGE SEARCH
+[ Auto — recommended                         ▾ ]
+Ready · Pexels · provided by this site
+```
+
+or:
+
+```text
+✨ IMAGE GENERATION
+[ Auto — recommended                         ▾ ]
+Ready · Pollinations · provided by this site
+```
+
+Provider/API-key fields are progressively disclosed. A visitor sees a key field only after explicitly choosing an own-key option such as:
+
+```text
+Pexels — my own key
+Pollinations — my own key
+YouTube — my own key
+Brave Search — my own key
+Serper — my own key
+```
+
+Every capability also has **Disabled**. Search and generation are intentionally separate so someone can allow existing-image search while disabling generative imagery.
+
+The old always-visible Pexels/Pollinations developer-style blocks are not part of the consumer UI.
+
+## Image request routing
+
+The two image capabilities are independent:
+
+- **Image search** handles requests such as “find a picture of a cat” and uses Pexels.
+- **Image generation** handles requests such as “generate a picture of a cat” and uses Pollinations or HomePilot Remote.
+
+Pollinations advertises only `image.generate`; it is never selected to satisfy an existing-image search.
+
+Examples:
+
+- `Image search = Auto`, deployment Pexels key present → Pexels through the site gateway.
+- `Image search = Pexels — my own key` → the personal Pexels key is used through the same-origin proxy.
+- `Image generation = Auto`, deployment Pollinations key present → Pollinations through the site gateway.
+- `Image generation = Pollinations — my own key` → the personal Pollinations key is sent only in the same-origin generation request header.
+- `Image generation = HomePilot Remote` → generation goes through the paired OllaBridge/HomePilot path.
+- either capability = `Disabled` → that capability does not silently fall back to another provider.
+
+Explicit `real` / `stock` photo requests continue to force Pexels, subject to the Image search enabled/configured state.
+
+## Deployment configuration
+
+For a normal Vercel deployment, image provider credentials can be supplied server-side:
 
 ```bash
 PEXELS_API_KEY=your_pexels_key
@@ -24,52 +90,53 @@ POLLINATIONS_API_KEY=sk_your_pollinations_server_side_key
 
 Both are optional independently:
 
-- `PEXELS_API_KEY` is needed only for deployment-owned Pexels search. A visitor can instead enter their own Pexels key in Settings.
-- `POLLINATIONS_API_KEY` is needed only when Pollinations should be available as an AI image generator.
-- If the deployment uses HomePilot Remote for AI generation, **no HomePilot or OllaBridge credential is added to Vercel**. The browser reuses the user's already-paired OllaBridge connection, and OllaBridge keeps the HomePilot credential server-side.
+- `PEXELS_API_KEY` enables site-provided Pexels search.
+- `POLLINATIONS_API_KEY` enables site-provided Pollinations generation.
+- A visitor can instead choose the matching **my own key** mode in Settings.
+- HomePilot Remote needs no HomePilot/OllaBridge secret in Vercel. The browser reuses the existing paired OllaBridge connection and OllaBridge owns the HomePilot credential.
 
-Add the secrets in **Vercel → Project → Settings → Environment Variables**, normally for Production and Preview, then redeploy so the serverless functions receive the new values.
+Readiness responses use `Cache-Control: private, no-store` so adding/changing a deployment key does not leave a stale “not configured” answer cached in the browser/CDN.
 
-## Pexels — real photos
+## Pexels personal key
 
-Preferred deployment setup:
+A personal Pexels key is stored only in that browser under the image plugin's local setting. It is sent to the application's same-origin `/api/proxy`, whose allowlist permits exactly the Pexels API origin used by this feature.
 
-```bash
-PEXELS_API_KEY=your_pexels_key
+The key is placed in the upstream `Authorization` header; it is not put into the image URL and is never committed to the repository.
+
+Pexels attribution is preserved on every rendered result card: **Photo by … on Pexels**, linked to the source photo.
+
+## Pollinations personal key
+
+The serverless image gateway already supports a per-request Pollinations credential through:
+
+```text
+X-Nexus-Pollinations-Key: <personal key>
 ```
 
-A user may also paste their own Pexels key in Settings. That personal key takes priority over the deployment key, is stored in the browser, and is sent only to the application's same-origin `/api/proxy`, which is explicitly allowlisted for `https://api.pexels.com`. It is never committed to the repository.
+The capability settings adapter exposes that path to the user. The key is:
 
-Pexels requires attribution. Result cards therefore show **Photo by … on Pexels** and link back to the Pexels photo page.
+- stored only in the user's browser,
+- sent only to the same-origin `/api/images/search` endpoint,
+- forwarded by the serverless route to Pollinations in an upstream bearer header,
+- never placed in the request URL or generation JSON body,
+- never returned by the server.
 
-## Pollinations.ai — hosted AI generation
+When no personal key is selected, Auto may use the deployment's `POLLINATIONS_API_KEY` instead.
 
-```bash
-POLLINATIONS_API_KEY=sk_your_server_side_key
-```
+## HomePilot Remote
 
-Pollinations' current generation API requires authentication. Secret `sk_` keys are server-side credentials, so the plugin deliberately does **not** provide a browser field for them. The same-origin `/api/images/search` function adds the bearer token upstream and returns only the generated image bytes.
+HomePilot Remote reuses the OllaBridge link already stored under `nexus_llm_settings.ollabridge`, the same ownership model used by Remote Screen.
 
-## HomePilot Remote — private AI generation
-
-HomePilot Remote deliberately does not introduce `HOMEPILOT_*` Vercel variables. It reuses the OllaBridge link already stored under `nexus_llm_settings.ollabridge`, the same ownership model used by Remote Screen.
-
-The provider is capability-gated. A compatible OllaBridge exposes:
+A compatible OllaBridge exposes:
 
 ```text
 GET  /v1/media/homepilot/capability
 POST /v1/media/homepilot/generate
 ```
 
-The capability route should report whether HomePilot image generation is currently enabled and ready. The generation route forwards the request to HomePilot's Imagine/ComfyUI pipeline and returns either image bytes or normalized image references. Returned HomePilot media should be rewritten through the existing authenticated `/v1/media/proxy/...` path.
+The capability route reports whether HomePilot generation is currently available. The generation route maps the normalized browser request to HomePilot's Imagine pipeline, fetches generated media server-side, and returns image bytes or a normalized reference.
 
-The browser never puts the bridge token in an image URL. It fetches remote media with `Authorization: Bearer …` and converts the bytes to a temporary object URL, matching the Remote Screen pattern.
-
-If the bridge is not paired, HomePilot is offline, generation is disabled, or the OllaBridge version does not expose the remote image routes, **HomePilot Remote stays unavailable** in Settings. Pexels and Pollinations continue to work independently.
-
-### Expected generation request
-
-The browser sends a compact normalized request to OllaBridge:
+Expected request shape:
 
 ```json
 {
@@ -83,110 +150,97 @@ The browser sends a compact normalized request to OllaBridge:
 }
 ```
 
-OllaBridge owns the mapping from that request to HomePilot `/chat` Imagine mode and owns all HomePilot credentials.
+The browser never receives the HomePilot API key. Remote image bytes are converted into temporary object URLs for rendering and revoked when the page unloads.
 
 ## Chat usage
 
-The interception is deliberately narrow so ordinary conversation still reaches the LLM.
+Intent interception is deliberately narrow so ordinary conversation still reaches the LLM.
 
 ```text
 show me a picture of New York
-find me some images of a modern office
+find a picture of a cat
 find me a real photo of the Colosseum
+generate a picture of a cat
 generate an image of a robot drinking coffee
 /image northern lights
 /photo Tokyo skyline
 /aiimage watercolor moon base
 ```
 
-Generic show/find requests use **Image source**. Explicit generate/create/render/draw requests use **AI image generator**. Requests for a **real** or **stock** photo force Pexels.
-
-Examples:
-
-- `Image source = Pexels`, `AI image generator = HomePilot Remote` → “show me a photo…” searches Pexels, while “generate an image…” runs remotely through HomePilot.
-- `AI image generator = Pollinations` → explicit generation uses the Vercel-side Pollinations key.
-- `AI image generator = Auto` → the first ready generator is used; Pollinations remains the default when both are ready, preserving existing behavior.
-
-## Architecture
+The important boundary is:
 
 ```text
-src/features/images/ImagePlugin.js
-    Pexels + Pollinations + HomePilot Remote adapters
-    independent source/generator settings groups
-    chat intent + result cards
-
-api/images/search.js
-    same-origin hosted-provider gateway
-    GET  -> readiness / Pexels search
-    POST -> Pollinations image generation
-
-existing OllaBridge link
-    browser -> paired OllaBridge -> HomePilot Imagine/ComfyUI
-    HomePilot credentials remain server-side
-
-api/_allowlist.js
-    api.pexels.com for an optional user-owned Pexels key through /api/proxy
-
-tests/image-plugin.test.js
-    intent, normalization, registry, independent settings and remote-auth invariants
+show / find / search image   → image.search
+create / generate / draw     → image.generate
 ```
 
-The plugin is loaded by the already-existing `DiscoverySettings.js`. The loader is guarded and optional: if `src/features/images/ImagePlugin.js` is deleted or fails to load, video and music discovery keep working exactly as before.
+That prevents an AI generator from being used when the user asked to find an existing image.
 
 ## Provider contract
 
-All image providers expose the same discovery-provider surface used elsewhere in the repository:
+Image providers use the repository's existing discovery-provider surface:
 
 ```js
 {
   ID,
   ready(),
   status(),
-  search(query, options)
+  search(query, options),
+  credentialStatus?()
 }
 ```
 
-Capabilities separate search from generation:
+Current image capabilities are:
 
 ```text
 pexels            -> image.search
-pollinations      -> image.search, image.generate
+pollinations      -> image.generate
 homepilot-remote  -> image.generate
 ```
 
-Results use one image-specific shape:
+`credentialStatus()` is optional. Providers that expose it can tell the generic Settings renderer whether an explicit provider choice supports/has a personal key without teaching the central registry where that credential is stored.
 
-```js
-{
-  id,
-  provider,
-  kind: 'image',
-  type: 'real' | 'ai',
-  title,
-  creator,
-  alt,
-  width,
-  height,
-  url,
-  thumbnail,
-  sourceUrl
-}
+## Files
+
+```text
+src/features/images/ImagePlugin.js
+    provider transport, image intents and result cards
+
+src/features/images/ImageProviderSettings.js
+    personal Pollinations credential path
+    image-provider credential metadata
+    strict own-key / disabled image preference behavior
+
+src/features/discovery/DiscoverySettings.js
+    capability-first consumer settings UI
+
+src/features/discovery/ProviderRegistry.js
+    Auto / named provider / Disabled preference semantics
+
+api/images/search.js
+    site-key readiness, Pexels search, Pollinations generation
+
+api/_allowlist.js
+    exact Pexels origin for optional personal-key proxying
+
+tests/image-provider-settings.test.js
+    personal-key, capability-boundary, Disabled and Settings regressions
 ```
 
-## Maintenance and safety decisions
+## Safety and maintenance decisions
 
-- Native `fetch`; no new runtime dependencies.
-- Provider secrets are not hardcoded or committed.
-- Pollinations secret keys never enter localStorage or a public URL.
-- HomePilot/OllaBridge credentials are not copied into Vercel variables.
-- HomePilot media is fetched with an Authorization header and converted to object URLs instead of putting credentials in query strings.
-- Pexels user keys go only through the same-origin proxy and only to an exact allowlisted origin.
-- Provider failures resolve to an empty result or a readable chat message rather than crashing the chatbot.
-- Generated blob URLs are revoked on page unload.
-- Remote text is rendered with `textContent`, not `innerHTML`.
-- Image result cards use lazy loading and explicit attribution.
-- Pexels result counts are capped, and the server endpoint is cache-friendly for repeated searches.
+- Native `fetch`; no new runtime dependency.
+- No provider key is hardcoded or committed.
+- Deployment keys remain server-side.
+- Personal keys are progressively disclosed and stored only in the user's browser.
+- Personal Pollinations credentials travel only in a same-origin request header.
+- HomePilot credentials never enter Vercel or the browser.
+- Existing-image search and AI generation are separate capabilities.
+- Provider failures become empty results/readable chat messages instead of crashing the chatbot.
+- Generated object URLs are revoked on unload.
+- Remote/provider text is rendered as text, not parsed as HTML.
+- Pexels result counts are capped and result searches remain cache-friendly; readiness itself is not cached.
 
-## Removing the plugin
+## Removing the image feature
 
-Delete `src/features/images/`, `api/images/search.js`, and `tests/image-plugin.test.js`, remove the Pexels allowlist entry, and remove the small optional loader block at the bottom of `DiscoverySettings.js`. No central chat or settings save function needs to be restored.
+Remove `src/features/images/`, `api/images/search.js`, the image tests, the Pexels allowlist entry, and the small optional image loader at the bottom of `DiscoverySettings.js`. The central chat/LLM settings save path does not need to be restored.
