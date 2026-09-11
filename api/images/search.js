@@ -142,19 +142,23 @@ export default async function handler(req, res) {
 
     if (req.method === 'GET') {
         if (provider === 'pollinations') {
+            res.setHeader('Cache-Control', 'private, no-store');
             return res.status(200).json({
                 provider,
                 configured: Boolean(pollinationsKey()),
                 reason: pollinationsKey() ? 'deployment' : 'no-key',
+                supportsPersonalKey: true,
             });
         }
 
         const query = cleanText(req.query && req.query.q, 240);
         if (!query) {
+            res.setHeader('Cache-Control', 'private, no-store');
             return res.status(200).json({
                 provider,
                 configured: Boolean(pexelsKey()),
                 reason: pexelsKey() ? 'deployment' : 'no-key',
+                supportsPersonalKey: true,
             });
         }
 
