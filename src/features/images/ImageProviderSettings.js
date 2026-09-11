@@ -121,7 +121,9 @@
             provider: 'pollinations',
             kind: 'image',
             type: 'ai',
-            title: String(prompt || '').trim().slice(0, 220),
+            title: String(prompt || '')
+                .trim()
+                .slice(0, 220),
             creator: 'Pollinations.ai',
             alt: `AI-generated image: ${String(prompt || '').trim()}`.slice(0, 300),
             width: options.width || null,

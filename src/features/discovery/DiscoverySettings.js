@@ -273,7 +273,9 @@ const DiscoverySettings = (() => {
             const provider = row.provider;
             const repaint = () => render(doc, { warm: false });
             if (provider && typeof provider.ready === 'function') {
-                Promise.resolve(provider.ready({ force: true })).catch(() => null).then(repaint);
+                Promise.resolve(provider.ready({ force: true }))
+                    .catch(() => null)
+                    .then(repaint);
             } else {
                 repaint();
             }
@@ -308,7 +310,9 @@ const DiscoverySettings = (() => {
     }
 
     function drawRegistryCard(doc, host, group, providers, prefs) {
-        const able = providers.filter((p) => Array.isArray(p.capabilities) && p.capabilities.includes(group.capability));
+        const able = providers.filter(
+            (p) => Array.isArray(p.capabilities) && p.capabilities.includes(group.capability)
+        );
         if (!able.length) return false;
 
         const row = el(doc, 'div', 'nexus-discovery-row');
@@ -537,10 +541,12 @@ const DiscoverySettings = (() => {
             }
             const before = host.children.length;
             const made =
-                item.type === 'web'
-                    ? drawWebCard(d, host)
-                    : drawRegistryCard(d, host, item.group, providers, prefs);
-            if (!made && host.children.length === before && host.lastElementChild?.className === 'nexus-capability-section') {
+                item.type === 'web' ? drawWebCard(d, host) : drawRegistryCard(d, host, item.group, providers, prefs);
+            if (
+                !made &&
+                host.children.length === before &&
+                host.lastElementChild?.className === 'nexus-capability-section'
+            ) {
                 // Remove an empty section heading when no capability under it is loaded.
                 host.lastElementChild.remove();
                 currentSection = '';

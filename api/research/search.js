@@ -11,7 +11,10 @@
 const MAX_RESULTS = 8;
 
 function text(value, max) {
-    return String(value || '').replace(/\s+/g, ' ').trim().slice(0, max);
+    return String(value || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, max);
 }
 
 function normalise(items) {

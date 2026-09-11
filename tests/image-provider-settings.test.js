@@ -186,7 +186,8 @@ test('image settings use capability-first choices and reveal credentials only fo
 test('Auto keeps credentials hidden and reports the resolved site provider separately from the preference', async () => {
     const fetch = jest.fn(async (url) => {
         if (String(url).includes('provider=pexels')) return jsonResponse({ configured: true, reason: 'deployment' });
-        if (String(url).includes('provider=pollinations')) return jsonResponse({ configured: true, reason: 'deployment' });
+        if (String(url).includes('provider=pollinations'))
+            return jsonResponse({ configured: true, reason: 'deployment' });
         return jsonResponse({ available: false, reason: 'disabled' });
     });
     await Registry.warm({ fetch, force: true });
