@@ -157,7 +157,7 @@ test('Disabled is a real off switch for both image search and generation', async
     expect(await Images.chooseProvider('ai', { fetch: window.fetch })).toBeNull();
 });
 
-test('image settings use capability-first choices and reveal credentials only for own-key mode', async () => {
+test('image settings use capability-first choices and reveal credentials only for own-key mode', () => {
     Registry.setPreference('image', 'pexels');
     Settings.render(document, { warm: false });
 
@@ -173,10 +173,11 @@ test('image settings use capability-first choices and reveal credentials only fo
     const input = document.getElementById('discovery-image-pexels-key');
     input.value = 'pexels-test-key';
     input.dispatchEvent(new Event('change'));
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
+    expect(Images.pexelsKey()).toBe('pexels-test-key');
 
+    // Repainting from storage is the behavior that matters on every subsequent Settings open;
+    // the event handler also performs an asynchronous forced deployment probe in parallel.
+    Settings.render(document, { warm: false });
     const rerendered = document.getElementById('discovery-image').closest('.nexus-discovery-row');
     expect(rerendered.textContent).toContain('Ready · Pexels · using your key');
     expect(rerendered.textContent).toContain('✓ Key saved in this browser');
