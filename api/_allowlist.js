@@ -40,6 +40,9 @@ const ALLOW = [
     // `api/research/search.js` and the browser never sees it.
     'https://api.search.brave.com',
     'https://google.serper.dev',
+    // User-supplied Pexels keys follow the same same-origin proxy path. Deployment-owned
+    // PEXELS_API_KEY stays server-side in api/images/search.js.
+    'https://api.pexels.com',
 ];
 
 /**

@@ -15,6 +15,9 @@
     },
     "api/research/search.js": {
       "maxDuration": 15
+    },
+    "api/images/search.js": {
+      "maxDuration": 60
     }
   },
   "headers": [

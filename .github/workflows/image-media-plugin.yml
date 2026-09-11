@@ -1,0 +1,112 @@
+name: Image Media Plugin
+
+on:
+    pull_request:
+        paths:
+            - 'src/features/images/**'
+            - 'api/images/**'
+            - 'tests/image-plugin.test.js'
+            - 'tests/image-experience.test.js'
+            - 'tests/image-provider-settings.test.js'
+            - 'tests/discovery-settings.test.js'
+            - 'tests/discovery-settings-browser.test.js'
+            - 'tests/web-search-settings-capability.test.js'
+            - 'src/features/discovery/DiscoverySettings.js'
+            - 'src/features/discovery/ProviderRegistry.js'
+            - 'src/features/discovery/providers/youtube.js'
+            - 'src/features/research/WebSearchSettings.js'
+            - 'src/features/research/providers/websearch.js'
+            - 'api/research/search.js'
+            - 'api/_allowlist.js'
+            - '.env.example'
+            - 'vercel.json'
+            - 'docs/IMAGE_PLUGIN.md'
+            - '.github/workflows/image-media-plugin.yml'
+    push:
+        branches: [master]
+        paths:
+            - 'src/features/images/**'
+            - 'api/images/**'
+            - 'tests/image-plugin.test.js'
+            - 'tests/image-experience.test.js'
+            - 'tests/image-provider-settings.test.js'
+            - 'tests/discovery-settings.test.js'
+            - 'tests/discovery-settings-browser.test.js'
+            - 'tests/web-search-settings-capability.test.js'
+            - 'src/features/discovery/DiscoverySettings.js'
+            - 'src/features/discovery/ProviderRegistry.js'
+            - 'src/features/discovery/providers/youtube.js'
+            - 'src/features/research/WebSearchSettings.js'
+            - 'src/features/research/providers/websearch.js'
+            - 'api/research/search.js'
+            - 'api/_allowlist.js'
+            - '.env.example'
+            - 'vercel.json'
+            - 'docs/IMAGE_PLUGIN.md'
+            - '.github/workflows/image-media-plugin.yml'
+
+jobs:
+    validate:
+        name: Image plugin tests & format
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '20'
+                  cache: 'npm'
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Syntax check
+              run: |
+                  node --check src/features/images/ImagePlugin.js
+                  node --check src/features/images/ImageProviderSettings.js
+                  node --check src/features/images/ImageExperience.js
+                  node --check api/images/search.js
+                  node --check src/features/discovery/DiscoverySettings.js
+                  node --check src/features/discovery/ProviderRegistry.js
+                  node --check src/features/discovery/providers/youtube.js
+                  node --check src/features/research/WebSearchSettings.js
+                  node --check src/features/research/providers/websearch.js
+                  node --check api/research/search.js
+                  node --check api/_allowlist.js
+
+            - name: Discovery and image regression tests
+              run: >-
+                  npx jest
+                  tests/image-plugin.test.js
+                  tests/image-provider-settings.test.js
+                  tests/image-experience.test.js
+                  tests/discovery-settings.test.js
+                  tests/discovery-settings-browser.test.js
+                  tests/web-search-settings-capability.test.js
+                  --ci --runInBand
+
+            - name: Format check
+              run: >-
+                  npx prettier --check
+                  src/features/images/ImagePlugin.js
+                  src/features/images/ImageProviderSettings.js
+                  src/features/images/ImageExperience.js
+                  api/images/search.js
+                  tests/image-plugin.test.js
+                  tests/image-provider-settings.test.js
+                  tests/image-experience.test.js
+                  tests/discovery-settings.test.js
+                  tests/discovery-settings-browser.test.js
+                  tests/web-search-settings-capability.test.js
+                  src/features/discovery/DiscoverySettings.js
+                  src/features/discovery/ProviderRegistry.js
+                  src/features/discovery/providers/youtube.js
+                  src/features/research/WebSearchSettings.js
+                  src/features/research/providers/websearch.js
+                  api/research/search.js
+                  api/_allowlist.js
+                  vercel.json
+                  docs/IMAGE_PLUGIN.md
+                  .github/workflows/image-media-plugin.yml

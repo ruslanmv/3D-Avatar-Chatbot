@@ -14,6 +14,7 @@ const YouTubeProvider = (() => {
     'use strict';
 
     const ID = 'youtube';
+    const CAPABILITIES = ['video.search', 'music.search', 'video.play'];
 
     function companion() {
         return (typeof window !== 'undefined' && window.NEXUS_YT_COMPANION) || null;
@@ -36,12 +37,6 @@ const YouTubeProvider = (() => {
     let deployment = null;
     let probe = null;
 
-    /**
-     * Resolve the deployment probe once, then answer from cache.
-     *
-     * Awaited through the registry's `warm()` before anything asks `status()` in earnest. A
-     * host with no such route answers `false` and this costs one 404 for the life of the page.
-     */
     /**
      * Why the deployment route could not answer, when it could not.
      *
@@ -84,7 +79,28 @@ const YouTubeProvider = (() => {
     /** The key the user typed, wherever they typed it. `''` when there is none. */
     function ownKey(comp) {
         const set = settings();
-        return set && typeof set.apiKey === 'function' ? set.apiKey() : comp.apiKey();
+        if (set && typeof set.apiKey === 'function') return set.apiKey();
+        return comp && typeof comp.apiKey === 'function' ? comp.apiKey() : '';
+    }
+
+    /**
+     * Tell the generic capability picker whether an explicit YouTube choice can use a client
+     * credential. Auto is allowed to use the site's deployment route; choosing YouTube in the
+     * capability selector means "use my key" and must not silently spend the site's quota.
+     *
+     * `apiKey()` intentionally includes the legacy key path so existing installations that
+     * explicitly selected YouTube keep working. The Settings renderer still only *shows* the
+     * key it owns, so a legacy key is never copied into a new field without the user touching it.
+     */
+    function credentialStatus(storage) {
+        const set = settings();
+        let key = '';
+        try {
+            key = set && typeof set.apiKey === 'function' ? set.apiKey(storage) : ownKey(companion());
+        } catch (_) {
+            key = '';
+        }
+        return { supportsOwnKey: true, hasOwnKey: Boolean(String(key || '').trim()) };
     }
 
     /**
@@ -110,7 +126,9 @@ const YouTubeProvider = (() => {
                 id: ID,
                 configured: false,
                 available: false,
-                capabilities: [],
+                // Keep the declared capability visible even while setup is missing. Settings
+                // needs to offer "YouTube — my own key" precisely when no key exists yet.
+                capabilities: CAPABILITIES.slice(),
                 // The route answering with a redirect or a login page is not a missing key,
                 // and telling somebody to add one they already added sends them to the one
                 // place the problem is not.
@@ -126,7 +144,7 @@ const YouTubeProvider = (() => {
             id: ID,
             configured: true,
             available: true,
-            capabilities: ['video.search', 'music.search', 'video.play'],
+            capabilities: CAPABILITIES.slice(),
             // Which key is doing the work, so the UI can stop asking for one that is not needed.
             reason: key ? 'ok' : 'deployment',
         };
@@ -208,7 +226,7 @@ const YouTubeProvider = (() => {
         };
     }
 
-    return { ID, status, available, ready, search, normalize, unescapeText };
+    return { ID, status, available, ready, credentialStatus, search, normalize, unescapeText };
 })();
 
 if (typeof window !== 'undefined') {

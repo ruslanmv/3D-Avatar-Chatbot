@@ -31,8 +31,6 @@ beforeEach(() => {
     window.NEXUS_DISCOVERY = Registry;
 });
 
-// ── the preference ──────────────────────────────────────────────────────────
-
 describe('Auto, and naming one instead', () => {
     test('with no choice recorded, the first ready provider answers', () => {
         Registry.register(provider('youtube'));
@@ -42,8 +40,6 @@ describe('Auto, and naming one instead', () => {
     });
 
     test('a named provider wins for its whole group, not just one capability', () => {
-        // "Which video provider" is one question a person answers once — `video.search` and
-        // `video.play` are the same choice.
         Registry.register(provider('youtube'));
         Registry.register(provider('searxng', { capabilities: ['video.search', 'video.play'] }));
         Registry.setPreference('video', 'searxng');
@@ -59,8 +55,6 @@ describe('Auto, and naming one instead', () => {
     });
 
     test('a named provider that has lost its key falls back rather than failing', () => {
-        // Honouring a dead preference would read as "search is broken" and nothing on screen
-        // would say the choice was the cause.
         Registry.register(provider('youtube'));
         Registry.register(provider('searxng', { available: false, reason: 'no-key' }));
         Registry.setPreference('video', 'searxng');
@@ -81,7 +75,6 @@ describe('Auto, and naming one instead', () => {
     });
 
     test('setting a preference leaves the rest of the discovery settings alone', () => {
-        // The API key lives in the same object. A write here must not eat it.
         localStorage.setItem(Registry.SETTINGS_KEY, JSON.stringify({ youtube: { apiKey: 'k' } }));
         Registry.setPreference('video', 'youtube');
         const stored = JSON.parse(localStorage.getItem(Registry.SETTINGS_KEY));
@@ -89,8 +82,6 @@ describe('Auto, and naming one instead', () => {
         expect(stored.preferences.video).toBe('youtube');
     });
 });
-
-// ── what Settings shows ─────────────────────────────────────────────────────
 
 describe('the Settings section', () => {
     test('offers Auto first, and it is what is selected', () => {
@@ -102,13 +93,15 @@ describe('the Settings section', () => {
     });
 
     test('lists an unconfigured provider, and will not let you pick it', () => {
-        // Hiding it would make "why can I not choose YouTube?" unanswerable.
         Registry.register(provider('youtube', { available: false, reason: 'no-key' }));
         Settings.render(document);
         const option = [...document.getElementById('discovery-video').options].find((o) => o.value === 'youtube');
         expect(option).toBeTruthy();
         expect(option.disabled).toBe(true);
-        expect(option.textContent).toContain('API key required');
+        // Provider choice and provider state are separate in the capability-first UI. The
+        // dropdown names the implementation; the line below it explains why it cannot run.
+        expect(option.textContent).toBe('YouTube');
+        expect(document.querySelector('.nexus-discovery-status').textContent).toBe('API key required');
     });
 
     test('states each provider live, not from what was typed', () => {
@@ -166,8 +159,6 @@ describe('the Settings section', () => {
     });
 
     test('every class it draws is styled', () => {
-        // The same standing rule the launcher keeps: a class with no CSS renders as a
-        // browser default in a dark panel, which is how B36 shipped four white boxes.
         const fs = require('fs');
         const path = require('path');
         const css = fs.readFileSync(path.join(__dirname, '..', 'styles', 'main.css'), 'utf8');
@@ -189,27 +180,7 @@ describe('the Settings section', () => {
     });
 });
 
-/**
- * Opening Settings must not freeze the tab.
- *
- * D13 wanted one repaint after the readiness probe lands, so the provider list settles on the
- * truth instead of sitting at "Checking…". The repaint is itself a `render` call, so the second
- * one must not start another probe — and the guard that was supposed to ensure this cleared its
- * flag *before* calling `render`, so the guard was already open by the time the guarded code
- * ran. Every repaint warmed again.
- *
- * That froze the tab outright rather than merely wasting work. Once each provider's `ready()`
- * has cached its answer, `warm()` resolves with no I/O, so the loop is pure microtasks — and the
- * microtask queue is drained to empty before the browser paints, dispatches a click, or fires a
- * timer. Measured in Chromium at 412×915: responsive for 46 ms after the Settings tap, then a
- * freeze the CPU profiler could not even be stopped from. `Debugger.pause` named the line.
- *
- * These tests are written so the old code *fails* rather than hanging the suite: `warm()` stops
- * resolving after a handful of calls, so a runaway loop shows up as a count, not as a test run
- * that never ends.
- */
 describe('opening Settings does not freeze the tab', () => {
-    /** `all()` yields the *status* shape the registry returns, not the provider itself. */
     const status = (id, extra = {}) => provider(id, extra).status();
 
     function countingRegistry({ stopAfter = 6 } = {}) {
@@ -221,14 +192,11 @@ describe('opening Settings does not freeze the tab', () => {
             setPreference: () => {},
             warm() {
                 calls.warm += 1;
-                // A promise that never settles caps a runaway loop, so the failure is a wrong
-                // count instead of a test that never returns.
                 return calls.warm >= stopAfter ? new Promise(() => {}) : Promise.resolve([]);
             },
         };
     }
 
-    /** Let every queued microtask run — which is exactly what the buggy loop never allowed. */
     const drain = async () => {
         for (let i = 0; i < 50; i += 1) {
             await Promise.resolve();
@@ -248,8 +216,6 @@ describe('opening Settings does not freeze the tab', () => {
     });
 
     test('the repaint after the probe cannot start another probe', async () => {
-        // The stop condition is a parameter, so it is visible in the call rather than depending
-        // on when a shared field happens to be reset.
         const reg = countingRegistry();
         window.NEXUS_DISCOVERY = reg;
         Settings.render(document, { warm: false });
@@ -258,16 +224,11 @@ describe('opening Settings does not freeze the tab', () => {
     });
 
     test('and the repaint still happens, so the list settles on the truth', async () => {
-        // The whole point of warming: a provider that reports "checking" first and "ok" once
-        // the probe lands must end up reading Ready.
         let ready = false;
         const reg = {
             all: () => [status('youtube', { available: ready, reason: ready ? 'ok' : 'checking' })],
             preferences: () => ({}),
             setPreference: () => {},
-            // Flipped when the probe *resolves*, not when it is called: `render` warms before
-            // it reads the provider list, so a synchronous flip here would be true by the time
-            // the first paint happens and the test would prove nothing about the repaint.
             warm: () =>
                 Promise.resolve([]).then(() => {
                     ready = true;
@@ -281,8 +242,6 @@ describe('opening Settings does not freeze the tab', () => {
     });
 
     test('a second open warms again, so a key added meanwhile shows up', async () => {
-        // Terminating must not mean "never probe again": somebody who pastes a key and reopens
-        // Settings has to see it take effect.
         const reg = countingRegistry();
         window.NEXUS_DISCOVERY = reg;
         Settings.render(document);
