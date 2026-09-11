@@ -24,7 +24,7 @@ function imageResponse() {
     };
 }
 
-beforeEach(() => {
+beforeEach(async () => {
     jest.resetModules();
     localStorage.clear();
     document.head.innerHTML = '';
@@ -49,10 +49,10 @@ beforeEach(() => {
     Images.installDiscoveryGroup();
     Images.registerProviders();
 
-    // The adapter self-renders after it patches the providers. Give readiness probes a
-    // deterministic no-deployment answer so tests never make a network request.
     window.fetch = jest.fn(async () => jsonResponse({ configured: false, reason: 'no-key' }));
     require('../src/features/images/ImageProviderSettings.js');
+    await Promise.resolve();
+    await Promise.resolve();
 
     originalCreateObjectURL = window.URL.createObjectURL;
     window.URL.createObjectURL = jest.fn(() => 'blob:test-image');
@@ -157,7 +157,7 @@ test('Disabled is a real off switch for both image search and generation', async
     expect(await Images.chooseProvider('ai', { fetch: window.fetch })).toBeNull();
 });
 
-test('image settings use capability-first choices and reveal credentials only for own-key mode', () => {
+test('image settings use capability-first choices and reveal credentials only for own-key mode', async () => {
     Registry.setPreference('image', 'pexels');
     Settings.render(document, { warm: false });
 
@@ -173,6 +173,9 @@ test('image settings use capability-first choices and reveal credentials only fo
     const input = document.getElementById('discovery-image-pexels-key');
     input.value = 'pexels-test-key';
     input.dispatchEvent(new Event('change'));
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
 
     const rerendered = document.getElementById('discovery-image').closest('.nexus-discovery-row');
     expect(rerendered.textContent).toContain('Ready · Pexels · using your key');
@@ -185,7 +188,7 @@ test('Auto keeps credentials hidden and reports the resolved site provider separ
         if (String(url).includes('provider=pollinations')) return jsonResponse({ configured: true, reason: 'deployment' });
         return jsonResponse({ available: false, reason: 'disabled' });
     });
-    await Registry.warm({ fetch });
+    await Registry.warm({ fetch, force: true });
     Settings.render(document, { warm: false });
 
     const searchRow = document.getElementById('discovery-image').closest('.nexus-discovery-row');
