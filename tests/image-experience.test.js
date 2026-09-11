@@ -46,9 +46,11 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+    if (Experience && typeof Experience.cleanup === 'function') Experience.cleanup();
     delete window.__NEXUS_IMAGE_PLUGIN_NOAUTO__;
     delete window.__NEXUS_IMAGE_EXPERIENCE_NOAUTO__;
     delete window.__nexusImageConversationIntercept;
+    delete window.__nexusImageConversationCleanup;
     delete window.NEXUS_IMAGE_MEDIA;
     delete window.NEXUS_IMAGE_EXPERIENCE;
     delete window.NEXUS_DISCOVERY;
@@ -63,6 +65,13 @@ test('conversational parser tolerates small typos and treats find/show as photo 
     });
     expect(Experience.parseIntent('Generate a picture of a cat')).toEqual({ query: 'a cat', mode: 'ai' });
     expect(Experience.parseIntent('draw a conclusion from these numbers')).toBeNull();
+});
+
+test('selection parser understands follow-ups such as display the first picture, including the common fist typo', () => {
+    expect(Experience.parseSelectionIntent('display the fist picture of a cat')).toEqual({ index: 0 });
+    expect(Experience.parseSelectionIntent('zoom in on the second image')).toEqual({ index: 1 });
+    expect(Experience.parseSelectionIntent('open the last photo')).toEqual({ index: 'last' });
+    expect(Experience.parseSelectionIntent('show me photos of the Colosseum')).toBeNull();
 });
 
 test('personal Pollinations key makes provider ready without deployment key', () => {
@@ -121,4 +130,70 @@ test('settings adds a personal Pollinations key field next to the existing image
     input.value = 'sk_saved';
     input.dispatchEvent(new Event('change'));
     expect(localStorage.getItem(Experience.POLLINATIONS_KEY_STORE)).toBe('sk_saved');
+});
+
+test('rendered search results open their full image in a dismissible viewer on click', () => {
+    const message = document.createElement('div');
+    document.body.appendChild(message);
+    const results = [
+        {
+            id: 'cat-1',
+            provider: 'pexels',
+            type: 'real',
+            title: 'Ginger cat',
+            alt: 'A ginger cat relaxing',
+            creator: 'Ada',
+            thumbnail: 'https://images.example/cat-small.jpg',
+            url: 'https://images.example/cat-full.jpg',
+            sourceUrl: 'https://www.pexels.com/photo/cat-1',
+        },
+    ];
+
+    expect(Experience.presentResults(message, results, document)).toBe(1);
+    const cardImage = message.querySelector('.nexus-image-card-img');
+    expect(cardImage.dataset.nexusImageOpen).toBe('1');
+    expect(cardImage.getAttribute('role')).toBe('button');
+
+    cardImage.click();
+    const viewer = document.getElementById(Experience.VIEWER_ID);
+    expect(viewer.hidden).toBe(false);
+    expect(viewer.querySelector('.nexus-image-viewer-img').src).toBe('https://images.example/cat-full.jpg');
+
+    viewer.querySelector('.nexus-image-viewer-close').click();
+    expect(viewer.hidden).toBe(true);
+});
+
+test('display the first picture is intercepted against the previous results instead of falling through to the LLM', () => {
+    const message = document.createElement('div');
+    document.getElementById('chat-history').appendChild(message);
+    const results = [
+        {
+            id: 'cat-1',
+            provider: 'pexels',
+            type: 'real',
+            title: 'First cat',
+            thumbnail: 'https://images.example/cat-1-small.jpg',
+            url: 'https://images.example/cat-1-full.jpg',
+        },
+        {
+            id: 'cat-2',
+            provider: 'pexels',
+            type: 'real',
+            title: 'Second cat',
+            thumbnail: 'https://images.example/cat-2-small.jpg',
+            url: 'https://images.example/cat-2-full.jpg',
+        },
+    ];
+    Experience.presentResults(message, results, document);
+    Experience.installInterceptor(document);
+
+    const input = document.getElementById('speech-text');
+    input.value = 'display the fist picture of a cat';
+    document.getElementById('speak-btn').click();
+
+    expect(input.value).toBe('');
+    const viewer = document.getElementById(Experience.VIEWER_ID);
+    expect(viewer.hidden).toBe(false);
+    expect(viewer.querySelector('.nexus-image-viewer-img').src).toBe('https://images.example/cat-1-full.jpg');
+    expect(document.getElementById('chat-history').textContent).toContain('Opening the first image.');
 });
