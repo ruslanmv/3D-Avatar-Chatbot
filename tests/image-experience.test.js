@@ -40,6 +40,7 @@ beforeEach(() => {
 
     Images = require('../src/features/images/ImagePlugin.js');
     Experience = require('../src/features/images/ImageExperience.js');
+    Experience.installPollinationsProvider();
     Images.installDiscoveryGroup();
     Images.registerProviders();
 });
