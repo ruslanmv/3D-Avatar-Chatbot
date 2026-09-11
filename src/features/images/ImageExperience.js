@@ -122,10 +122,7 @@
         if (nounIndex < 0) return null;
 
         let queryTokens = tokens.slice(nounIndex + 1);
-        while (
-            queryTokens.length &&
-            /^(?:of|about|for|showing|with|on)$/i.test(queryTokens[0])
-        ) {
+        while (queryTokens.length && /^(?:of|about|for|showing|with|on)$/i.test(queryTokens[0])) {
             queryTokens = queryTokens.slice(1);
         }
         const query = queryTokens.join(' ').trim();
@@ -341,7 +338,11 @@
         } catch (error) {
             const message = String(error && error.message ? error.message : error || '');
             if (/\((?:401|403)\)/.test(message)) {
-                say(`The ${providerLabel(provider)} key was rejected. Check it in Settings → Discovery & Media.`, 'bot', d);
+                say(
+                    `The ${providerLabel(provider)} key was rejected. Check it in Settings → Discovery & Media.`,
+                    'bot',
+                    d
+                );
             } else {
                 say(`I couldn’t reach ${providerLabel(provider)} right now. Please try again.`, 'bot', d);
             }
@@ -349,7 +350,13 @@
         }
 
         if (!Array.isArray(results) || !results.length) {
-            say(intent.mode === 'ai' ? 'I couldn’t generate that image right now.' : 'I couldn’t find matching photos right now.', 'bot', d);
+            say(
+                intent.mode === 'ai'
+                    ? 'I couldn’t generate that image right now.'
+                    : 'I couldn’t find matching photos right now.',
+                'bot',
+                d
+            );
             return true;
         }
 
