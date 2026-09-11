@@ -6,13 +6,16 @@
  * GET  /api/images/search?provider=pollinations               readiness
  * POST /api/images/search { provider:'pollinations', ... }    generated image bytes
  *
- * Provider secrets live only in environment variables. They are never returned to the browser.
+ * Deployment provider secrets live only in environment variables. A visitor may
+ * optionally send their own Pollinations key in X-Nexus-Pollinations-Key for one
+ * request; it is used in memory only and is never returned by this endpoint.
  */
 
 const MAX_PEXELS_RESULTS = 12;
 const MAX_PROMPT = 1200;
 const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
 const IMAGE_TIMEOUT_MS = 45000;
+const MAX_PERSONAL_KEY = 512;
 
 function cleanText(value, max) {
     return String(value === undefined || value === null ? '' : value)
@@ -30,8 +33,8 @@ function pexelsKey() {
     return String(process.env.PEXELS_API_KEY || '').trim();
 }
 
-function pollinationsKey() {
-    return String(process.env.POLLINATIONS_API_KEY || '').trim();
+function pollinationsKey(personalKey = '') {
+    return cleanText(personalKey, MAX_PERSONAL_KEY) || String(process.env.POLLINATIONS_API_KEY || '').trim();
 }
 
 function normalizePexels(photo, query) {
@@ -78,8 +81,8 @@ async function searchPexels(query, max) {
     return { results };
 }
 
-async function generatePollinations(prompt, width, height, seed) {
-    const key = pollinationsKey();
+async function generatePollinations(prompt, width, height, seed, personalKey = '') {
+    const key = pollinationsKey(personalKey);
     if (!key) return { error: 503, message: 'Pollinations is not configured on this deployment.' };
 
     const target = new URL(`https://gen.pollinations.ai/image/${encodeURIComponent(prompt)}`);
@@ -128,7 +131,7 @@ async function generatePollinations(prompt, width, height, seed) {
 export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Accept');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Accept,X-Nexus-Pollinations-Key');
     res.setHeader('X-Content-Type-Options', 'nosniff');
     if (req.method === 'OPTIONS') return res.status(204).end();
 
@@ -174,7 +177,8 @@ export default async function handler(req, res) {
         const width = clampInteger(req.body && req.body.width, 256, 2048, 1024);
         const height = clampInteger(req.body && req.body.height, 256, 2048, 1024);
         const seed = clampInteger(req.body && req.body.seed, 0, 2147483647, Math.floor(Math.random() * 1000000));
-        const output = await generatePollinations(prompt, width, height, seed);
+        const personalKey = cleanText(req.headers && req.headers['x-nexus-pollinations-key'], MAX_PERSONAL_KEY);
+        const output = await generatePollinations(prompt, width, height, seed, personalKey);
         if (output.error) return res.status(output.error).json({ error: output.message });
         res.setHeader('Content-Type', output.contentType);
         res.setHeader('Cache-Control', 'private, max-age=3600');
