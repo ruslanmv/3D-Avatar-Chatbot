@@ -18,12 +18,6 @@
  * be read. Fetching full pages would need stripping, sanitising and a much harder argument
  * about trust, for material she is only going to summarise anyway.
  *
- * ## The key never reaches the browser
- *
- * Same shape as `api/yt-search.js`, for the same reason: a search key in client JavaScript is
- * a public key. The route holds it, the page asks the route, and a deployment without one
- * degrades to Wikipedia rather than breaking.
- *
  * Exposes: window.NEXUS_RESEARCH_WEB
  */
 (function (global) {
@@ -33,13 +27,33 @@
     const ROUTE = '/api/research/search';
 
     let configured = null;
+    let configuredProvider = '';
 
     function shape() {
         return global && global.NEXUS_RESEARCH_SOURCE ? global.NEXUS_RESEARCH_SOURCE : null;
     }
 
+    function settings() {
+        return (global && global.NEXUS_WEB_SEARCH_SETTINGS) || null;
+    }
+
+    function isDisabled() {
+        const set = settings();
+        return Boolean(set && typeof set.disabled === 'function' && set.disabled());
+    }
+
     function status() {
         const set = settings();
+        if (isDisabled()) {
+            return {
+                id: ID,
+                configured: false,
+                available: false,
+                capabilities: ['topic.search'],
+                reason: 'disabled',
+                provider: '',
+            };
+        }
         const own = set && typeof set.own === 'function' ? set.own() : null;
         const usable = Boolean(own) || configured === true;
         return {
@@ -47,7 +61,8 @@
             configured: usable,
             available: usable && Boolean(shape()),
             capabilities: ['topic.search'],
-            reason: own ? 'own-key' : configured === null ? 'checking' : configured ? 'ok' : 'no-key',
+            reason: own ? 'own-key' : configured === null ? 'checking' : configured ? 'deployment' : 'no-key',
+            provider: own ? own.id : configuredProvider,
         };
     }
 
@@ -69,30 +84,31 @@
     }
 
     async function ready({ fetchImpl, force = false } = {}) {
+        if (isDisabled()) return status();
         const set = settings();
         if (set && typeof set.own === 'function' && set.own()) return status();
         if (configured !== null && !force) return status();
         const f = fetchImpl || (typeof fetch === 'function' ? fetch : null);
         if (!f) {
             configured = false;
+            configuredProvider = '';
             return status();
         }
         try {
-            const r = await within(f, ROUTE, { redirect: 'manual' });
+            const r = await within(f, ROUTE, { redirect: 'manual', cache: 'no-store' });
             if (!r || !r.ok || r.type === 'opaqueredirect') {
                 configured = false;
+                configuredProvider = '';
                 return status();
             }
             const body = await r.json();
             configured = Boolean(body && body.configured);
+            configuredProvider = configured ? String((body && body.provider) || '') : '';
         } catch (_) {
             configured = false;
+            configuredProvider = '';
         }
         return status();
-    }
-
-    function settings() {
-        return (global && global.NEXUS_WEB_SEARCH_SETTINGS) || null;
     }
 
     async function ownSearch(own, query, max, f) {
@@ -131,6 +147,7 @@
 
     /** Search the web. `null` when it could not run, `[]` when it found nothing. */
     async function research(query, { max = 4, fetchImpl } = {}) {
+        if (isDisabled()) return null;
         const f = fetchImpl || (typeof fetch === 'function' ? fetch : null);
         const S = shape();
         const q = String(query || '').trim();
@@ -141,6 +158,9 @@
         if (own) {
             const raw = await ownSearch(own, q, max, f);
             if (raw) return S.many(raw.map(metadataOf), { source: ID });
+            // An explicit personal provider is strict. A bad personal key should not silently
+            // spend the site's quota after the user chose "my own key".
+            return null;
         }
 
         try {
@@ -155,6 +175,7 @@
 
     function reset() {
         configured = null;
+        configuredProvider = '';
     }
 
     const api = { ID, ROUTE, status, ready, research, ownSearch, reset };
