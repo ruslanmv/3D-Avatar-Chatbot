@@ -6,6 +6,7 @@ on:
             - 'src/features/images/**'
             - 'api/images/**'
             - 'tests/image-plugin.test.js'
+            - 'tests/image-experience.test.js'
             - 'src/features/discovery/DiscoverySettings.js'
             - 'api/_allowlist.js'
             - '.env.example'
@@ -18,6 +19,7 @@ on:
             - 'src/features/images/**'
             - 'api/images/**'
             - 'tests/image-plugin.test.js'
+            - 'tests/image-experience.test.js'
             - 'src/features/discovery/DiscoverySettings.js'
             - 'api/_allowlist.js'
             - '.env.example'
@@ -45,19 +47,22 @@ jobs:
             - name: Syntax check
               run: |
                   node --check src/features/images/ImagePlugin.js
+                  node --check src/features/images/ImageExperience.js
                   node --check api/images/search.js
                   node --check src/features/discovery/DiscoverySettings.js
                   node --check api/_allowlist.js
 
             - name: Image plugin tests
-              run: npx jest tests/image-plugin.test.js --ci --runInBand
+              run: npx jest tests/image-plugin.test.js tests/image-experience.test.js --ci --runInBand
 
             - name: Format check
               run: >-
                   npx prettier --check
                   src/features/images/ImagePlugin.js
+                  src/features/images/ImageExperience.js
                   api/images/search.js
                   tests/image-plugin.test.js
+                  tests/image-experience.test.js
                   src/features/discovery/DiscoverySettings.js
                   api/_allowlist.js
                   vercel.json
