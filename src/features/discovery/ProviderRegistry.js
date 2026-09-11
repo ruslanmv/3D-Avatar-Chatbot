@@ -113,6 +113,29 @@ const ProviderRegistry = (() => {
         }
     }
 
+    /**
+     * Optional provider-owned credential metadata.
+     *
+     * A named provider in the consumer Settings UI means "use my key" when that provider
+     * supports a personal credential. `Auto` is the site/automatic path. Keeping this tiny
+     * hook on the provider prevents the registry from learning where YouTube, Pexels, or any
+     * future provider stores its key.
+     */
+    function credentialStatusOf(provider, storage) {
+        if (!provider || typeof provider.credentialStatus !== 'function') {
+            return null;
+        }
+        try {
+            const state = provider.credentialStatus(storage) || {};
+            return {
+                supportsOwnKey: Boolean(state.supportsOwnKey),
+                hasOwnKey: Boolean(state.hasOwnKey),
+            };
+        } catch (_) {
+            return { supportsOwnKey: true, hasOwnKey: false };
+        }
+    }
+
     /** Everything registered, with its readiness. What a Settings page would list. */
     function all() {
         return providers.map((p) => Object.assign({ provider: p }, statusOf(p)));
@@ -147,28 +170,42 @@ const ProviderRegistry = (() => {
     /**
      * The first ready provider for a capability, or `null`.
      *
-     * Ready, not merely registered: showing a dead provider as if it worked is the failure
-     * this returns `null` to avoid. The caller then asks `why` for a sentence.
+     * `Auto` means "pick the first ready provider". A named provider keeps the old fallback
+     * behaviour unless that provider advertises personal-key support: in that case the named
+     * choice means "use my key", so silently falling back to the site's key would contradict
+     * the UI. `disabled` is an explicit off switch and must never fall through to Auto.
      */
     function forCapability(capability, opts = {}) {
+        const wanted = opts.prefer || preferences(opts.storage)[groupOf(capability)] || 'auto';
+        if (wanted === 'disabled') {
+            return null;
+        }
+
         const ready = providers.filter((p) => {
             const s = statusOf(p);
             return s.available && s.capabilities.includes(capability);
         });
-        if (!ready.length) {
-            return null;
-        }
-        // A named choice wins — but only while it is ready. Honouring a preference for a
-        // provider that has since lost its key would turn "I picked that one" into "search
-        // is broken", which is the failure `available` exists to prevent.
-        const wanted = opts.prefer || preferences(opts.storage)[groupOf(capability)] || 'auto';
+
         if (wanted && wanted !== 'auto') {
-            const named = ready.find((p) => p.ID === wanted);
-            if (named) {
-                return named;
+            const provider = providers.find((p) => p.ID === wanted);
+            if (provider) {
+                const credential = credentialStatusOf(provider, opts.storage);
+                if (credential && credential.supportsOwnKey && !credential.hasOwnKey) {
+                    return null;
+                }
+                const named = ready.find((p) => p.ID === wanted);
+                if (named) {
+                    return named;
+                }
+                // A named personal-key provider is strict: if its own credential is invalid or
+                // the provider is otherwise not ready, do not spend the site's credential.
+                if (credential && credential.supportsOwnKey) {
+                    return null;
+                }
             }
         }
-        return ready[0];
+
+        return ready[0] || null;
     }
 
     /**
@@ -178,6 +215,9 @@ const ProviderRegistry = (() => {
      * picker needs to tell them apart.
      */
     function why(capability) {
+        if (preferences()[groupOf(capability)] === 'disabled') {
+            return 'disabled';
+        }
         if (!providers.length) {
             return 'no-provider';
         }
@@ -211,7 +251,19 @@ const ProviderRegistry = (() => {
         register(window.NEXUS_DISCOVERY_YOUTUBE);
     }
 
-    return { register, all, warm, forCapability, why, reset, preferences, setPreference, groupOf, SETTINGS_KEY };
+    return {
+        register,
+        all,
+        warm,
+        forCapability,
+        why,
+        reset,
+        preferences,
+        setPreference,
+        groupOf,
+        credentialStatusOf,
+        SETTINGS_KEY,
+    };
 })();
 
 if (typeof window !== 'undefined') {
