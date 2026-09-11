@@ -9,7 +9,7 @@ on:
             - 'tests/image-experience.test.js'
             - 'tests/image-provider-settings.test.js'
             - 'tests/discovery-settings.test.js'
-            - 'tests/web-search-lookup.test.js'
+            - 'tests/web-search-settings-capability.test.js'
             - 'src/features/discovery/DiscoverySettings.js'
             - 'src/features/discovery/ProviderRegistry.js'
             - 'src/features/discovery/providers/youtube.js'
@@ -30,7 +30,7 @@ on:
             - 'tests/image-experience.test.js'
             - 'tests/image-provider-settings.test.js'
             - 'tests/discovery-settings.test.js'
-            - 'tests/web-search-lookup.test.js'
+            - 'tests/web-search-settings-capability.test.js'
             - 'src/features/discovery/DiscoverySettings.js'
             - 'src/features/discovery/ProviderRegistry.js'
             - 'src/features/discovery/providers/youtube.js'
@@ -81,7 +81,7 @@ jobs:
                   tests/image-provider-settings.test.js
                   tests/image-experience.test.js
                   tests/discovery-settings.test.js
-                  tests/web-search-lookup.test.js
+                  tests/web-search-settings-capability.test.js
                   --ci --runInBand
 
             - name: Format check
@@ -95,7 +95,7 @@ jobs:
                   tests/image-provider-settings.test.js
                   tests/image-experience.test.js
                   tests/discovery-settings.test.js
-                  tests/web-search-lookup.test.js
+                  tests/web-search-settings-capability.test.js
                   src/features/discovery/DiscoverySettings.js
                   src/features/discovery/ProviderRegistry.js
                   src/features/discovery/providers/youtube.js
