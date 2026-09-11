@@ -68,3 +68,5 @@ jobs:
                   vercel.json
                   docs/IMAGE_PLUGIN.md
                   .github/workflows/image-media-plugin.yml
+
+# This owner-authored commit intentionally retriggers validation after the one-time formatter removed itself.
