@@ -158,9 +158,10 @@
         if (own) {
             const raw = await ownSearch(own, q, max, f);
             if (raw) return S.many(raw.map(metadataOf), { source: ID });
-            // An explicit personal provider is strict. A bad personal key should not silently
-            // spend the site's quota after the user chose "my own key".
-            return null;
+            // Preserve the shipped resilience rule: a temporary/bad personal web-search key
+            // may fall back to the deployment route so a current-information question can
+            // still be answered. Image-provider own-key modes remain strict because those
+            // selectors explicitly choose quota/provider behavior for the requested media.
         }
 
         try {
