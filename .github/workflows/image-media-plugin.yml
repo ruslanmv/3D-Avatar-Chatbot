@@ -9,6 +9,7 @@ on:
             - 'tests/image-experience.test.js'
             - 'tests/image-provider-settings.test.js'
             - 'tests/discovery-settings.test.js'
+            - 'tests/discovery-settings-browser.test.js'
             - 'tests/web-search-settings-capability.test.js'
             - 'src/features/discovery/DiscoverySettings.js'
             - 'src/features/discovery/ProviderRegistry.js'
@@ -30,6 +31,7 @@ on:
             - 'tests/image-experience.test.js'
             - 'tests/image-provider-settings.test.js'
             - 'tests/discovery-settings.test.js'
+            - 'tests/discovery-settings-browser.test.js'
             - 'tests/web-search-settings-capability.test.js'
             - 'src/features/discovery/DiscoverySettings.js'
             - 'src/features/discovery/ProviderRegistry.js'
@@ -81,6 +83,7 @@ jobs:
                   tests/image-provider-settings.test.js
                   tests/image-experience.test.js
                   tests/discovery-settings.test.js
+                  tests/discovery-settings-browser.test.js
                   tests/web-search-settings-capability.test.js
                   --ci --runInBand
 
@@ -95,6 +98,7 @@ jobs:
                   tests/image-provider-settings.test.js
                   tests/image-experience.test.js
                   tests/discovery-settings.test.js
+                  tests/discovery-settings-browser.test.js
                   tests/web-search-settings-capability.test.js
                   src/features/discovery/DiscoverySettings.js
                   src/features/discovery/ProviderRegistry.js
