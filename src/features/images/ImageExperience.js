@@ -4,6 +4,7 @@
  * Keeps the provider/plugin core removable while improving the user-facing path:
  * - typo-tolerant natural image intents are intercepted before the text LLM
  * - "find/show a picture" means real-photo search; "generate/draw" means AI
+ * - recent image results can be opened by click/tap or conversational follow-up
  * - personal Pollinations keys can be stored locally and sent only to the
  *   same-origin image gateway for the request
  * - concise chat feedback replaces provider/debug language
@@ -15,10 +16,29 @@
     if (!media) return;
 
     const POLLINATIONS_KEY_STORE = 'nexus.images.pollinationsApiKey';
+    const VIEWER_ID = 'nexus-image-viewer';
     const objectUrls = new Set();
     const AI_ACTIONS = ['generate', 'create', 'render', 'draw', 'make'];
     const FIND_ACTIONS = ['find', 'show', 'search', 'lookup', 'give'];
     const IMAGE_NOUNS = ['image', 'images', 'picture', 'pictures', 'photo', 'photos', 'photograph', 'photographs'];
+    const SELECTION_ACTIONS = ['display', 'show', 'open', 'view', 'enlarge', 'zoom'];
+    const ORDINAL_INDEX = Object.freeze({
+        first: 0,
+        '1st': 0,
+        one: 0,
+        fist: 0,
+        second: 1,
+        '2nd': 1,
+        two: 1,
+        third: 2,
+        '3rd': 2,
+        three: 2,
+        fourth: 3,
+        '4th': 3,
+        four: 3,
+    });
+    let recentResults = [];
+    let lastViewerFocus = null;
 
     function storage() {
         try {
@@ -131,6 +151,31 @@
         if (aiAction) return { query, mode: 'ai' };
         const beforeNoun = tokens.slice(actionOffset, nounIndex).join(' ').toLowerCase();
         return { query, mode: /\b(?:ai|generated)\b/.test(beforeNoun) ? 'ai' : 'real' };
+    }
+
+    function parseSelectionIntent(text) {
+        const value = String(text || '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .toLowerCase();
+        if (!value) return null;
+
+        const stripped = value
+            .replace(/^(?:can|could|would|will)\s+you\s+/, '')
+            .replace(/^please\s+/, '')
+            .replace(/^show\s+me\s+/, 'show ')
+            .trim();
+        const action = stripped.split(/\s+/)[0];
+        if (!SELECTION_ACTIONS.includes(action)) return null;
+        if (!/\b(?:image|images|picture|pictures|photo|photos|one)\b/.test(stripped)) return null;
+
+        if (/\blast\b/.test(stripped)) return { index: 'last' };
+        const ordinal = stripped.match(/\b(first|1st|one|fist|second|2nd|two|third|3rd|three|fourth|4th|four)\b/);
+        if (ordinal) return { index: ORDINAL_INDEX[ordinal[1]] };
+
+        const numbered = stripped.match(/\b(?:image|picture|photo)\s+(\d+)\b/);
+        if (numbered) return { index: Math.max(0, Number(numbered[1]) - 1) };
+        return null;
     }
 
     function installPollinationsProvider() {
@@ -308,12 +353,167 @@
         return message;
     }
 
+    function injectViewerStyle(doc) {
+        const d = doc || global.document;
+        if (!d || d.getElementById('nexus-image-viewer-style')) return;
+        const style = d.createElement('style');
+        style.id = 'nexus-image-viewer-style';
+        style.textContent = `
+            .nexus-image-card-img[data-nexus-image-open="1"] { cursor: zoom-in; }
+            .nexus-image-card-img[data-nexus-image-open="1"]:focus { outline: 2px solid var(--primary,#00e5ff); outline-offset: -2px; }
+            .nexus-image-viewer { position:fixed; inset:0; z-index:12000; display:flex; align-items:center; justify-content:center; padding:24px; background:rgba(0,0,0,.88); backdrop-filter:blur(6px); }
+            .nexus-image-viewer[hidden] { display:none!important; }
+            .nexus-image-viewer-dialog { position:relative; display:flex; flex-direction:column; align-items:center; max-width:96vw; max-height:94vh; }
+            .nexus-image-viewer-img { display:block; max-width:94vw; max-height:82vh; width:auto; height:auto; object-fit:contain; border-radius:12px; box-shadow:0 24px 70px rgba(0,0,0,.55); background:#111; }
+            .nexus-image-viewer-close { position:absolute; top:-14px; right:-14px; width:38px; height:38px; border:1px solid rgba(255,255,255,.22); border-radius:999px; background:rgba(15,18,22,.94); color:#fff; font-size:24px; line-height:34px; cursor:pointer; }
+            .nexus-image-viewer-caption { max-width:min(90vw,900px); margin-top:10px; color:rgba(255,255,255,.86); font-size:.8rem; line-height:1.4; text-align:center; }
+            @media (max-width:600px) { .nexus-image-viewer { padding:12px; } .nexus-image-viewer-img { max-width:96vw; max-height:78vh; } .nexus-image-viewer-close { top:6px; right:6px; } }
+        `;
+        (d.head || d.documentElement).appendChild(style);
+    }
+
+    function closeViewer(doc) {
+        const d = doc || global.document;
+        const viewer = d && d.getElementById(VIEWER_ID);
+        if (!viewer || viewer.hidden) return false;
+        viewer.hidden = true;
+        if (lastViewerFocus && typeof lastViewerFocus.focus === 'function') {
+            try {
+                lastViewerFocus.focus();
+            } catch (_) {}
+        }
+        lastViewerFocus = null;
+        return true;
+    }
+
+    function ensureViewer(doc) {
+        const d = doc || global.document;
+        if (!d) return null;
+        injectViewerStyle(d);
+        const found = d.getElementById(VIEWER_ID);
+        if (found) return found;
+
+        const viewer = d.createElement('div');
+        viewer.id = VIEWER_ID;
+        viewer.className = 'nexus-image-viewer';
+        viewer.hidden = true;
+        viewer.setAttribute('role', 'dialog');
+        viewer.setAttribute('aria-modal', 'true');
+        viewer.setAttribute('aria-label', 'Image preview');
+
+        const dialog = d.createElement('div');
+        dialog.className = 'nexus-image-viewer-dialog';
+        const close = d.createElement('button');
+        close.type = 'button';
+        close.className = 'nexus-image-viewer-close';
+        close.setAttribute('aria-label', 'Close image preview');
+        close.textContent = '×';
+        const image = d.createElement('img');
+        image.className = 'nexus-image-viewer-img';
+        const caption = d.createElement('div');
+        caption.className = 'nexus-image-viewer-caption';
+
+        close.addEventListener('click', () => closeViewer(d));
+        viewer.addEventListener('click', (event) => {
+            if (event.target === viewer) closeViewer(d);
+        });
+        d.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !viewer.hidden) closeViewer(d);
+        });
+
+        dialog.appendChild(close);
+        dialog.appendChild(image);
+        dialog.appendChild(caption);
+        viewer.appendChild(dialog);
+        (d.body || d.documentElement).appendChild(viewer);
+        return viewer;
+    }
+
+    function openViewer(item, doc) {
+        const d = doc || global.document;
+        if (!d || !item || !item.url) return false;
+        const viewer = ensureViewer(d);
+        if (!viewer) return false;
+        const image = viewer.querySelector('.nexus-image-viewer-img');
+        const caption = viewer.querySelector('.nexus-image-viewer-caption');
+        const close = viewer.querySelector('.nexus-image-viewer-close');
+        lastViewerFocus = d.activeElement;
+        image.src = item.url;
+        image.alt = item.alt || item.title || 'Image preview';
+        caption.textContent = item.title || item.alt || '';
+        viewer.hidden = false;
+        if (close && typeof close.focus === 'function') close.focus();
+        return true;
+    }
+
+    function rememberResults(results) {
+        recentResults = Array.isArray(results) ? results.filter((item) => item && item.url).slice(0, 12) : [];
+        return recentResults.slice();
+    }
+
+    function recentImageResults() {
+        return recentResults.slice();
+    }
+
+    function enhanceRenderedResults(message, results, doc) {
+        const d = doc || global.document;
+        if (!d || !message || !Array.isArray(results)) return 0;
+        const grids = message.querySelectorAll('.nexus-image-grid');
+        const grid = grids.length ? grids[grids.length - 1] : null;
+        if (!grid) return 0;
+        const images = [...grid.querySelectorAll('.nexus-image-card-img')];
+        images.forEach((image, index) => {
+            const item = results[index];
+            if (!item || !item.url) return;
+            image.dataset.nexusImageOpen = '1';
+            image.tabIndex = 0;
+            image.setAttribute('role', 'button');
+            image.setAttribute('aria-label', `Open ${item.title || item.alt || `image ${index + 1}`} full size`);
+            image.title = 'Click to enlarge';
+            image.addEventListener('click', () => openViewer(item, d));
+            image.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openViewer(item, d);
+                }
+            });
+        });
+        return images.length;
+    }
+
+    function presentResults(message, results, doc) {
+        rememberResults(results);
+        if (!message || typeof media.renderResults !== 'function') return 0;
+        const count = media.renderResults(message, results, doc);
+        enhanceRenderedResults(message, recentResults, doc);
+        return count;
+    }
+
     function providerLabel(provider) {
         if (!provider) return 'image provider';
         if (provider.ID === 'homepilot-remote') return 'HomePilot Remote';
         if (provider.ID === 'pollinations') return 'Pollinations';
         if (provider.ID === 'pexels') return 'Pexels';
         return provider.ID || 'image provider';
+    }
+
+    function ordinalLabel(index) {
+        return ['first', 'second', 'third', 'fourth'][index] || `image ${index + 1}`;
+    }
+
+    function handleSelection(selection, originalText, doc) {
+        const d = doc || global.document;
+        if (!d || !selection || !recentResults.length) return false;
+        const index = selection.index === 'last' ? recentResults.length - 1 : Number(selection.index);
+        say(originalText, 'user', d);
+        if (!Number.isInteger(index) || index < 0 || index >= recentResults.length) {
+            say(`I only have ${recentResults.length} recent image${recentResults.length === 1 ? '' : 's'} to display.`, 'bot', d);
+            return true;
+        }
+        const item = recentResults[index];
+        say(`Opening the ${ordinalLabel(index)} image.`, 'bot', d);
+        openViewer(item, d);
+        return true;
     }
 
     async function handleIntent(intent, originalText, doc) {
@@ -365,7 +565,7 @@
                 ? `Here’s the image I generated with ${providerLabel(provider)}.`
                 : `Here ${results.length === 1 ? 'is' : 'are'} ${results.length} ${intent.query} photo${results.length === 1 ? '' : 's'}.`;
         const message = say(text, 'bot', d);
-        if (message && typeof media.renderResults === 'function') media.renderResults(message, results, d);
+        if (message) presentResults(message, results, d);
         return true;
     }
 
@@ -377,16 +577,18 @@
         const run = (event) => {
             const elements = chatElements(d);
             if (!elements.input) return false;
-            const intent = parseIntent(elements.input.value);
-            if (!intent) return false;
+            const value = String(elements.input.value || '').trim();
+            const selection = recentResults.length ? parseSelectionIntent(value) : null;
+            const intent = selection ? null : parseIntent(value);
+            if (!selection && !intent) return false;
             if (event) {
                 event.preventDefault();
                 event.stopPropagation();
                 if (typeof event.stopImmediatePropagation === 'function') event.stopImmediatePropagation();
             }
-            const original = String(elements.input.value || '').trim();
             elements.input.value = '';
-            handleIntent(intent, original, d).catch((error) => {
+            if (selection) return handleSelection(selection, value, d);
+            handleIntent(intent, value, d).catch((error) => {
                 if (global.console) global.console.warn('[NEXUS_IMAGE_EXPERIENCE] handler failed:', error);
                 say('I couldn’t complete that image request right now.', 'bot', d);
             });
@@ -404,10 +606,23 @@
         };
         global.addEventListener('click', click, true);
         global.addEventListener('keydown', keydown, true);
+        global.__nexusImageConversationCleanup = () => {
+            global.removeEventListener('click', click, true);
+            global.removeEventListener('keydown', keydown, true);
+            delete global.__nexusImageConversationIntercept;
+            delete global.__nexusImageConversationCleanup;
+        };
         return true;
     }
 
     function cleanup() {
+        if (typeof global.__nexusImageConversationCleanup === 'function') {
+            global.__nexusImageConversationCleanup();
+        }
+        closeViewer(global.document);
+        const viewer = global.document && global.document.getElementById(VIEWER_ID);
+        if (viewer) viewer.remove();
+        recentResults = [];
         if (!global.URL || typeof global.URL.revokeObjectURL !== 'function') return;
         for (const url of objectUrls) {
             try {
@@ -420,6 +635,7 @@
     function mount(doc) {
         installPollinationsProvider();
         installSettings(doc);
+        ensureViewer(doc);
         installInterceptor(doc);
         const d = doc || global.document;
         const settingsButton = d && d.getElementById('settings-btn');
@@ -432,13 +648,22 @@
 
     const api = {
         POLLINATIONS_KEY_STORE,
+        VIEWER_ID,
         pollinationsKey,
         setPollinationsKey,
         editDistance,
         parseIntent,
+        parseSelectionIntent,
         installPollinationsProvider,
         installSettings,
         installInterceptor,
+        rememberResults,
+        recentImageResults,
+        enhanceRenderedResults,
+        presentResults,
+        openViewer,
+        closeViewer,
+        handleSelection,
         handleIntent,
         mount,
         cleanup,
@@ -448,6 +673,7 @@
     media.pollinationsKey = pollinationsKey;
     media.setPollinationsKey = setPollinationsKey;
     media.parseConversationalIntent = parseIntent;
+    media.openImageViewer = openViewer;
     global.NEXUS_IMAGE_EXPERIENCE = api;
 
     if (typeof global.addEventListener === 'function') {
