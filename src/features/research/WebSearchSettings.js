@@ -27,6 +27,7 @@
 
     const KEY_STORE = 'nexus.search.apiKey';
     const PROVIDER_STORE = 'nexus.search.provider';
+    const DISABLED = 'disabled';
 
     /** Where each provider lives, and how it wants to be asked. */
     const PROVIDERS = {
@@ -74,10 +75,15 @@
         }
     }
 
-    /** The provider the user chose, or `''` for "use the site's setup". */
+    /** `''` is Auto/site setup; `disabled` is an explicit off switch. */
     function provider() {
         const id = store(PROVIDER_STORE);
+        if (id === DISABLED) return DISABLED;
         return PROVIDERS[id] ? id : '';
+    }
+
+    function disabled() {
+        return provider() === DISABLED;
     }
 
     function apiKey() {
@@ -88,21 +94,23 @@
     function own() {
         const id = provider();
         const key = apiKey();
-        return id && key ? { id, key, spec: PROVIDERS[id] } : null;
+        return id !== DISABLED && id && key ? { id, key, spec: PROVIDERS[id] } : null;
     }
 
     function save({ provider: id, key }) {
-        put(PROVIDER_STORE, PROVIDERS[id] ? id : '');
+        const nextProvider = id === DISABLED ? DISABLED : PROVIDERS[id] ? id : '';
+        put(PROVIDER_STORE, nextProvider);
         put(KEY_STORE, String(key || '').trim());
         return own();
     }
 
     /**
-     * Wire the two inputs, if they are on the page.
+     * Wire the legacy two inputs, if they are on the page.
      *
-     * The key box is hidden until a provider is chosen, because an empty box labelled "API
-     * key" above a dropdown that says "use this site's setup" is an invitation to fill in
-     * something that will be ignored.
+     * DiscoverySettings now supplies the consumer-facing capability card. These controls stay
+     * compatible for older pages and for code that still owns their persistence, but a stored
+     * `disabled` value is never converted back to Auto merely because the legacy select has no
+     * disabled option.
      */
     function attach(doc) {
         const d = doc || (global && global.document);
@@ -116,7 +124,8 @@
             return null;
         }
 
-        select.value = provider();
+        const storedProvider = provider();
+        select.value = storedProvider === DISABLED ? '' : storedProvider;
         input.value = apiKey();
 
         const reflect = () => {
@@ -137,9 +146,6 @@
         return { select, input };
     }
 
-    // Self-mounting, the same way `DiscoverySettings` does: the fields belong to this file,
-    // so nothing in `main.js` has to know they exist and deleting the folder takes them with
-    // it. The escape hatch is for tests, which build their own DOM.
     if (typeof window !== 'undefined' && typeof document !== 'undefined' && !global.__NEXUS_WEB_SEARCH_NOAUTO__) {
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => attach());
@@ -148,7 +154,7 @@
         }
     }
 
-    const api = { KEY_STORE, PROVIDER_STORE, PROVIDERS, provider, apiKey, own, save, attach };
+    const api = { KEY_STORE, PROVIDER_STORE, DISABLED, PROVIDERS, provider, disabled, apiKey, own, save, attach };
 
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;
