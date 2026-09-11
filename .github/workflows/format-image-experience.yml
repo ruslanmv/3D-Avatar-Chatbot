@@ -1,0 +1,35 @@
+name: Format Image Experience Once
+
+on:
+    push:
+        branches: [feature/image-media-plugin]
+        paths:
+            - '.github/workflows/format-image-experience.yml'
+
+permissions:
+    contents: write
+
+jobs:
+    format:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  ref: feature/image-media-plugin
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: '20'
+                  cache: 'npm'
+
+            - run: npm ci
+
+            - name: Apply canonical Prettier output and remove this helper
+              run: |
+                  npx prettier --write src/features/images/ImageExperience.js
+                  git rm .github/workflows/format-image-experience.yml
+                  git add src/features/images/ImageExperience.js
+                  git config user.name github-actions[bot]
+                  git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+                  git commit -m "Format conversational image experience"
+                  git push origin HEAD:feature/image-media-plugin
