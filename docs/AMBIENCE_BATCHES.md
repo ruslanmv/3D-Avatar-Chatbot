@@ -7,6 +7,11 @@ Execution plan for the two designs:
 Built for agentic execution: **one batch = one session = one PR**. Every batch states what to
 read before writing, what it may touch, what it must not touch, and a machine-checkable gate.
 
+**Status: A0 is done** — `CLAUDE.md` and `docs/ambience-contract.md` exist, and the
+corrections A0 turned up are folded in below (two module conventions rather than one;
+`docs/` is prettier-exempt; A5 owns three script tags in `index.html`). Wave 1 is
+unblocked and its three batches can start in parallel.
+
 Batch prefix `A` (ambience). Verified free — the repo already uses `B`, `T`, `M`, `D`, `L`, `S`
 and `MS`, and `grep -rhoE '\bA[0-9]{1,2}\b' src/` returns zero hits, so `A1` in a code comment
 is unambiguous.
@@ -17,36 +22,60 @@ is unambiguous.
 
 These are the house rules. They exist because the repo already enforces them.
 
-**Module shape.** Every new module is an IIFE that assigns to *both* a global and
-`module.exports`, exactly like `TogetherSwitch.js` and `PlayDirective.js`:
+**Module shape — two conventions, and the directory decides.** See `CLAUDE.md` for
+the full reasoning; the short version:
+
+| Batch | Directory | Shape |
+|---|---|---|
+| A1, A2, A4 | `src/gltf-viewer/ambience/` | IIFE, **no top-level `import`/`export`**, dual export |
+| A3, A7–A10 | `src/features/ambience/` | IIFE, dual export |
+
+Both look the same in the file:
 
 ```js
 (function (global) {
     'use strict';
-    // …
     const api = { /* … */ };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_SCENE_AMBIENCE_SWITCH = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);
 ```
 
-There is no bundler (`"build": "echo 'Static site served by nexus-proxy (no bundle step)'"`) and
-no `import` in `src/features/**`. Browser loading is via the ordered list in
-`src/behavior/boot.js`; tests use `require()`. Both halves are required or the tests cannot see
-the module.
+The reason the `src/gltf-viewer/` three must avoid `import`/`export` is that there
+is **no Babel config** in this repo, so Jest cannot `require()` an ES module. The
+unit-tested files already in that directory (`CameraPresets.js`,
+`CameraFraming.js`, `CameraKeyboard.js`) have zero imports for exactly this
+reason; the ES modules there (`ViewerEngine.js`, `ARSupport.js`) are not
+unit-tested. Adding the `module.exports` tail means tests `require()` rather than
+using the `readFileSync` + `eval` pattern at `tests/camera-presets.test.js:135`.
 
-**The gate, for every batch without exception:**
+`ViewerEngine.js` is an ES module and cannot `import` a non-module script, so it
+reads `window.NEXUS_VIEWPORT_BACKGROUND_MANAGER` lazily in its constructor,
+null-guarded. Load mechanism per directory is in `docs/ambience-contract.md` §8.
+
+**The gate for every batch.** `npm run validate` **does not pass on a clean
+checkout** — measured 2026-09-12 with deps installed, and unrelated to this work:
+`format:check` fails on 12 pre-existing files and `test:ci` has 4 pre-existing
+failures out of 3217 (`lint:check` does pass). The full list is in `CLAUDE.md`.
+
+So the gate is *no regression*, plus your own files clean:
 
 ```bash
-npm run validate     # = lint:check && format:check && test:ci
+npx prettier --check <files this batch touched>   # must pass
+npx jest <this batch's test file>                 # must pass
+npm run lint:check                                # must stay exit 0
+npm run test:ci                                   # must stay at 4 failures, not 5
 ```
+
+Do **not** run bare `npm run format` — it rewrites those 12 unrelated files and
+buries the diff. Use `npx prettier --write <your files>`.
 
 Know what it does and does not cover:
 
 | Script | Covers | Gap to be aware of |
 |---|---|---|
 | `lint:check` | `js/**/*.js` only | **ESLint does not reach `src/`.** Do not rely on it to catch mistakes in new modules |
-| `format:check` | `**/*.{js,json,css,html,md}` | Does cover `src/`. Run `npm run format` before committing or this fails |
+| `format:check` | `**/*.{js,json,css,html,md}` minus `.prettierignore` | Does cover `src/` and root `*.md`. **`docs/` is ignored**, so doc batches are not format-gated. Run `npm run format` before committing |
 | `test:ci` | `tests/**/*.test.js` (91 files today) | jsdom, no WebGL — design pure functions so they are testable |
 
 **Never touch:** `app.js` (1.9 MB webpack bundle), `vendor/three-0.147.0/**`, `index-old.html`,
@@ -89,7 +118,7 @@ Contended files have exactly **one** owning batch. Nothing else in the same wave
 | File | Owner | Wave |
 |---|---|---|
 | `src/gltf-viewer/ViewerEngine.js` | **A5** | 3 |
-| `index.html` | **A6** (scene grid) → **A11** (ambience section) | 4 → 5 |
+| `index.html` | **A5** (3 script tags near `:119`) → **A6** (scene grid) → **A11** (ambience section) | 3 → 4 → 5 |
 | `src/main.js` | **A6** (bg listener) → **A11** (prompt/strip/settings) | 4 → 5 |
 | `styles/main.css` | **A6** | 4 |
 | `src/behavior/boot.js` | **A11** | 5 |
@@ -129,8 +158,10 @@ means no later batch reopens that file, and A3 can be written against the final 
 
 Plus the resolver signature, the event payload, and the two storage keys.
 
-**Accept.** `CLAUDE.md` exists and names the gate, module shape and never-touch list.
-`npm run validate` passes (format covers `.md`).
+**Accept.** `CLAUDE.md` exists and names the gate, both module shapes and the
+never-touch list. `npm run validate` passes — note `CLAUDE.md` is at the root so
+prettier **does** check it (Markdown is `printWidth` 80, `proseWrap: always`), while
+`docs/` is in `.prettierignore` and is not checked.
 **Verify.** `npm run format:check && npm test`
 **Rollback.** Delete two files.
 
@@ -158,7 +189,7 @@ percentages and garbage → `center`.
 **Accept.** The five viewport cases in §B.3 produce a sub-rectangle whose aspect equals the
 viewport's, with the window inside `[0,1]` on both axes; focal extremes pin to the correct edge
 on whichever axis crops; `focalY` provably has no effect when `repeat.y === 1`.
-**Verify** `npx jest tests/ambience-cover-transform.test.js && npm run validate`
+**Verify** `npx jest tests/ambience-cover-transform.test.js` + the no-regression gate
 
 ### A2 · Catalogue + asset data
 **Depends** A0. **Create** `src/gltf-viewer/ambience/ViewportBackgroundCatalog.js`,
@@ -176,7 +207,7 @@ catalogue is testable before 1.3 MB of WebP enters the repo.
 
 **Accept.** All five colour ids resolve to the exact `BG_COLORS` values; a malformed entry is
 dropped not thrown; an absolute URL or `..` path is rejected; no entry carries a function.
-**Verify** `npx jest tests/ambience-catalog.test.js && npm run validate`
+**Verify** `npx jest tests/ambience-catalog.test.js` + the no-regression gate
 
 ### A3 · Intent resolver
 **Depends** A0 (shape only — **not** A2's code; use fixtures).
@@ -189,7 +220,7 @@ dropped not thrown; an absolute URL or `..` path is rejected; no entry carries a
 tie-break; preference ranks but never filters; an explicit request beats a conflicting
 preference; below-threshold → `null`; empty catalogue → `null`; an entry missing `tags` does not
 throw.
-**Verify** `npx jest tests/scene-ambience-resolver.test.js && npm run validate`
+**Verify** `npx jest tests/scene-ambience-resolver.test.js` + the no-regression gate
 
 ---
 
@@ -215,7 +246,7 @@ texture, failure keeps the previous background.
 two; a rejected load keeps the previous background and warns once; `onResize` mutates
 `repeat`/`offset` without creating a texture; dispose is called after the swap, never before;
 switching image→colour disposes the image.
-**Verify** `npx jest tests/ambience-background-manager.test.js && npm run validate`
+**Verify** `npx jest tests/ambience-background-manager.test.js` + the no-regression gate
 
 ### A7 · SceneAmbienceSwitch
 **Depends** A0. **Create** `src/features/ambience/SceneAmbienceSwitch.js`,
@@ -228,7 +259,7 @@ tri-state** (`AI_SCENE_AMBIENCE.md` §4 says why).
 **Accept.** Default OFF; enable/disable persists; preference persists and defaults `auto`;
 `onChange` fires for both; unknown stored values fall back to defaults; a throwing
 `localStorage` degrades to memory without throwing.
-**Verify** `npx jest tests/scene-ambience-switch.test.js && npm run validate`
+**Verify** `npx jest tests/scene-ambience-switch.test.js` + the no-regression gate
 
 ### A10 · SceneAmbienceDirective
 **Depends** A0. **Create** `src/features/ambience/SceneAmbienceDirective.js`,
@@ -246,21 +277,26 @@ this batch ship before A9 exists.
 `url="…"` **matches** (so it is stripped) and is **rejected** (so it never executes); two
 directives → first executes, both stripped; orphan and bare forms stripped, never executed;
 gate re-read at execution refuses when off; a throwing executor does not lose the reply.
-**Verify** `npx jest tests/scene-ambience-directive.test.js && npm run validate`
+**Verify** `npx jest tests/scene-ambience-directive.test.js` + the no-regression gate
 
 ---
 
 ## 5. Wave 3 — renderer integration
 
 ### A5 · Wire ViewerEngine  ◄ sole owner of `ViewerEngine.js`
-**Depends** A4. **Modify** `src/gltf-viewer/ViewerEngine.js` **only**.
+**Depends** A4. **Modify** `src/gltf-viewer/ViewerEngine.js` and `index.html`
+(**only** the three `<script>` tags for `src/gltf-viewer/ambience/*.js`, placed
+immediately before the `engine-bridge.js` module at `:119` — not the settings modal,
+which is A6's).
 **Create** `tests/ambience-viewer-engine-background.test.js`.
 
 **Pre-read** `VIEWPORT_IMAGE_BACKGROUNDS.md` §J; the five exact sites are
 `:97`, `:1559-1569`, `:499-500`, `:905-928`, `:1457`.
 
 Five edits, nothing else:
-1. construct the manager in the constructor;
+1. construct the manager in the constructor, reading
+   `window.NEXUS_VIEWPORT_BACKGROUND_MANAGER` **null-guarded** — a missing script must
+   degrade to colours-only, not throw;
 2. `setDesktopBackground(id)` — colour path byte-identical, otherwise delegate;
 3. VR exit `:499-500` → `reapplyCurrent()` (fixes the image→black bug; `_vrSavedBackground` is
    written and never read today);
@@ -273,7 +309,7 @@ render-mode switch discarding a user's `white`. The fallback, if review objects,
 **Accept.** All five colours identical to before; an unknown id still no-ops; with no image
 entries nothing observable changes; VR enter→exit with a colour selected is unchanged; Anime ↔
 Cinematic preserves the selection.
-**Verify** `npm run validate`, then **manual**: the five colours, and VR enter/exit with a
+**Verify** the no-regression gate, then **manual**: the five colours, and VR enter/exit with a
 colour. No image exists yet — that is the point, this batch must be provably inert.
 
 ### A8 · SceneAmbienceCapability
@@ -286,7 +322,7 @@ colour. No image exists yet — that is the point, this batch must be provably i
 **Accept.** OFF → `''`; ON with no runnable scene → `''`; ON → contains the tag syntax, the
 14-word intent vocabulary, one example, the no-URL rule, "at most one", and the
 talking-about-vs-asking-for distinction; never contains a URL or a catalogue dump.
-**Verify** `npx jest tests/scene-ambience-capability.test.js && npm run validate`
+**Verify** `npx jest tests/scene-ambience-capability.test.js` + the no-regression gate
 
 ---
 
@@ -304,8 +340,10 @@ which closes the enclosing `.config-section`), `styles/main.css` (`.provider-thu
 `styles/main.css:1736-1790` — `.provider-radio:checked + .provider-content` is an **adjacent
 sibling** selector, so the radio must stay immediately before `.provider-content`.
 
-**Blocked until** asset rights are confirmed and recorded: `ruslanmv/yourfriend` has no
-`LICENSE` file, and copying the images redistributes them under this repo's Apache-2.0.
+**Asset rights: resolved.** The owner confirmed Apache-2.0 for the whole set
+(2026-09-12), matching this repository's `LICENSE`. Recorded in
+`docs/ambience-contract.md` §1; repeat the note beside the assets when they land. No
+longer a blocker.
 
 **Why a delegated listener.** `main.js:2333` runs `querySelectorAll(...).forEach` once, so
 radios injected later would get no handler. Delegation is order-independent and
@@ -316,7 +354,7 @@ listener-count-neutral. The save (`:3342`), sync (`:2627`) and pre-select (`:267
 loads and renders it; selection persists across reload; cover holds through
 landscape/portrait/narrow/mobile; a renamed asset keeps the previous background and warns; five
 colours still work; keyboard reaches every card with a visible focus ring.
-**Verify** `npm run validate` + the manual matrix in `VIEWPORT_IMAGE_BACKGROUNDS.md` §K.
+**Verify** the no-regression gate + the manual matrix in `VIEWPORT_IMAGE_BACKGROUNDS.md` §K.
 
 > **This is the demo milestone.** Stop and look at it before continuing.
 
@@ -332,7 +370,7 @@ of the current scene.** It reads `getVisualState().background` and writes throug
 inside 20 s is refused; cooldown does not apply to manual; disabled → model source refused,
 settings source succeeds; the event fires exactly once per real change with the right `source`;
 no duplicate state (assert the controller has no own scene field).
-**Verify** `npx jest tests/scene-ambience-controller.test.js && npm run validate`
+**Verify** `npx jest tests/scene-ambience-controller.test.js` + the no-regression gate
 
 ---
 
@@ -358,7 +396,7 @@ the transcript or TTS; a user typing the tag does nothing; toggling OFF mid-flig
 reply's directive; the dropdown is disabled while off; an AI change updates the background radio
 in an open Settings modal; `desktop_bg` written once; **turning AI ambience off does not change
 the visible background**.
-**Verify** `npm run validate` + the integration list in `AI_SCENE_AMBIENCE.md` §15.
+**Verify** the no-regression gate + the integration list in `AI_SCENE_AMBIENCE.md` §15.
 
 ---
 
@@ -402,7 +440,8 @@ Never touch:     app.js, vendor/, index-old.html, *.bak.*, build-viewer/, vrm-ma
 Write the tests first; the acceptance list in the A4 section is the test list.
 Do not widen the scope. If you need a file outside the list, stop and say so.
 
-Done when `npm run validate` passes. Run `npm run format` before committing.
+Done when your test file passes, `npm run lint:check` is exit 0, and `npm run test:ci`
+still shows 4 failures (not 5). Format only your files: `npx prettier --write <files>`.
 Commit as: "A4: viewport background manager".
 ```
 
@@ -412,8 +451,9 @@ Four habits that matter more than the template:
    reverts cleanly.
 2. **Tests before implementation in waves 1–2.** Those batches are pure functions and the
    acceptance lists are already written as assertions — there is nothing to discover first.
-3. **`npm run format` before every commit.** `format:check` covers `src/` and will fail the gate
-   otherwise. And do not expect `lint:check` to help: it only reads `js/**/*.js`.
+3. **Format only your own files** — `npx prettier --write <files>`. Bare `npm run format`
+   rewrites 12 unrelated pre-existing files. And do not expect `lint:check` to help: it only
+   reads `js/**/*.js`, never `src/`.
 4. **Stop at A6 and look at it.** It is the first batch a human can see, and the first chance to
    catch an aesthetic problem before the AI path is built on top.
 
