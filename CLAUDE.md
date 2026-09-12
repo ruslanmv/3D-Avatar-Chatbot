@@ -73,14 +73,19 @@ So the rule for new code in `src/gltf-viewer/`:
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (91 files today), setup in `tests/setup.js`.
-CommonJS — `require('../src/…')`.
+Jest, jsdom, `tests/**/*.test.js` (129 files today, nested ones included), setup
+in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
 
-- **`tests/setup.js` mocks `localStorage` with `jest.fn()`.** `getItem` returns
-  `undefined` by default, so a test about persistence must drive the mock
-  explicitly rather than expecting a real store.
+- **`localStorage` is real, despite what `tests/setup.js` looks like.** That
+  file assigns `global.localStorage = { getItem: jest.fn(), … }`, but
+  jest-environment-jsdom has `global === window` and jsdom defines
+  `localStorage` as a Window accessor, so the assignment does not take —
+  verified empirically: a `setItem`/`getItem` round trip works and
+  `localStorage.clear()` really clears. Write persistence tests against a real
+  store, and call `clear()` plus the module's own `reset()` in `beforeEach`.
+  (The mock is still worth knowing about in case jsdom's behaviour changes.)
 - For an ES module under `src/gltf-viewer/`, the house pattern is
   `fs.readFileSync(...)` then `eval(src)` — see
   `tests/camera-presets.test.js:135`. Prefer writing new code so you never need
