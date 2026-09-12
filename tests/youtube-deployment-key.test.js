@@ -172,7 +172,15 @@ describe('readiness', () => {
     test('Settings tells a visitor they need nothing', async () => {
         await Provider.ready({ fetchImpl: serverFetch({ configured: true }) });
         Settings.render(document);
-        expect(document.querySelector('.nexus-discovery-status').textContent).toBe('Ready · provided by this site');
+        // The claim is "you need nothing", not a byte-exact label. DiscoverySettings names the
+        // resolved provider when it knows it ("Ready · YouTube · provided by this site") and
+        // omits it when it does not; both are ready, and pinning the un-named variant failed
+        // on an improvement rather than on a regression.
+        const status = document.querySelector('.nexus-discovery-status');
+        expect(status.textContent).toMatch(/^Ready\b/);
+        expect(status.textContent).toContain('provided by this site');
+        expect(status.textContent).not.toMatch(/key|sign in|configure/i);
+        expect(status.dataset.ready).toBe('yes');
     });
 });
 

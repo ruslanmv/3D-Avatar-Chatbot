@@ -110,7 +110,8 @@ test('migrates legacy flattened source rows out of ordinary chat history', () =>
     const chat = document.getElementById('chat-history');
     const legacy = document.createElement('div');
     legacy.className = 'chat-row';
-    legacy.innerHTML = '<div class="chat-message avatar"><div class="message-text">4 sources · Ruslan Magana1. Old source</div></div>';
+    legacy.innerHTML =
+        '<div class="chat-message avatar"><div class="message-text">4 sources · Ruslan Magana1. Old source</div></div>';
     chat.appendChild(legacy);
 
     expect(Presentation.migrateLegacyFlattenedSources()).toBe(1);

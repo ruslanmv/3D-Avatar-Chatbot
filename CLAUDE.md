@@ -110,39 +110,44 @@ Know the coverage gaps, because they are not intuitive:
 | `format:check` | `**/*.{js,json,css,html,md}` minus ignores | **`docs/` is in `.prettierignore`** — docs are not checked    |
 | `test:ci`      | `tests/**/*.test.js`                       | jsdom only, no WebGL, no real network                         |
 
-### Baseline, measured 2026-09-12 with `npm ci` deps installed
+### The gate passes. Keep it that way.
 
-`npm run validate` **does not pass on a clean checkout**, and none of it is
-yours:
+Measured 2026-09-12 with `npm ci` deps installed: `npm run validate` exits **0**
+— lint clean, format clean, **3815 tests in 136 suites, all passing.**
 
-- `lint:check` — passes (exit 0)
-- `format:check` — **fails on 12 pre-existing files**: `src/AppLanguage.js`,
-  `src/features/research/{LookUp,SearchPresentation,SearchQuality,SearchSession,SearchUX}.js`
-  and six `tests/*search*`/`conversation*` suites
-- `test:ci` — **4 pre-existing failures** in 3 suites (3213 of 3217 pass): two
-  in the lookup/research tests, one in `tests/youtube-deployment-key.test.js`
-  (`readiness › Settings tells a visitor they need nothing`), confirmed still
-  failing with all new work removed
+This is recent. For most of this project's life the gate did not pass, and
+earlier revisions of this file told you to judge your own work against a
+baseline of "4 failures, not 5". That advice is gone because the baseline is
+gone: **any failure is now yours.**
 
-So judge your own work, not the whole gate:
+What was fixed, in case it recurs — all four were stale _tests_, not code:
+
+- a test called `SearchQuality.cleanSubjectQuery`, which never existed on the
+  module (the export is `cleanSearchSubject`), so it threw rather than failed
+- two tests pinned the exact wording of a LookUp prompt paragraph that had since
+  been reworded; the guarantees were intact
+- one pinned `'Ready · provided by this site'` after Settings started naming the
+  resolved provider — it failed on an improvement
+
+The lesson is in how they were rewritten: assert the **property**, not the
+sentence. A test pinned to prose fails on an edit that changes nothing.
 
 ```bash
 npx prettier --check <files you touched>
 npx jest <your test file>
-npm run lint:check            # must stay exit 0
-npm run test:ci               # must stay at 4 failures, not 5
+npm run validate              # must stay exit 0
 ```
 
-If you run `npm run format` without arguments it rewrites those 12 unrelated
-files and buries your diff. Format only what you touched:
-`npx prettier --write <your files>`.
+Format only what you touched — `npx prettier --write <your files>` — so your
+diff stays readable. Bare `npm run format` is now safe (nothing unrelated is
+unformatted) but still rewrites more than you meant.
 
 Note `npx` alone pulls the _latest_ ESLint (v10), which rejects `.eslintrc` and
 exits 2. Install deps first (`npm ci`) so the pinned ESLint 8 is used.
 
-`.prettierignore` also excludes `vendor/`, `coverage/`, `package-lock.json` and
+`.prettierignore` excludes `vendor/`, `coverage/`, `package-lock.json`,
 `tests/fixtures/protocol/` (those fixture bytes are a cross-repo contract —
-never reformat them).
+never reformat them) and `docs/`.
 
 Prettier settings that change how you write: 4-space indent, single quotes,
 `printWidth` 120 for code — but **Markdown is `printWidth` 80 with

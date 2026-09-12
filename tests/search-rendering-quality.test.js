@@ -31,7 +31,11 @@ test('link-heavy search result prose is retried and final chat text contains no 
         query: 'Ruslan Magana',
         kind: 'web',
         results: [
-            { title: 'Ruslan', snippet: 'Senior AI Engineer working on AI and cloud systems.', url: 'https://ruslanmv.com' },
+            {
+                title: 'Ruslan',
+                snippet: 'Senior AI Engineer working on AI and cloud systems.',
+                url: 'https://ruslanmv.com',
+            },
             { title: 'GitHub', snippet: 'Cloud architect focused on automation.', url: 'https://github.com/ruslanmv' },
         ],
     });

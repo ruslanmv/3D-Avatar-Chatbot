@@ -56,7 +56,10 @@ test('the search subject drops command grammar such as leading "about"', () => {
         cleanSearchQuery: (q) => String(q).replace(/\s+on internet$/i, ''),
         unusableSynthesis: () => false,
     };
-    expect(SearchQuality.cleanSubjectQuery('about Ruslan Magana on internet')).toBe('Ruslan Magana');
+    // The exported name is cleanSearchSubject; cleanSubjectQuery never existed on the module,
+    // so this assertion was throwing rather than failing. tests/search-rendering-quality.test.js
+    // exercises the same function under its real name.
+    expect(SearchQuality.cleanSearchSubject('about Ruslan Magana on internet')).toBe('Ruslan Magana');
 });
 
 test('the real typo follow-up "give me asummary about him" is recognized as grounded search context', () => {

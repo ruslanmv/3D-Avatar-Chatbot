@@ -9,9 +9,21 @@ const SearchSession = require('../src/features/research/SearchSession.js');
 const LookUp = require('../src/features/research/LookUp.js');
 
 const RESULTS = [
-    { title: 'Ruslan Magana — Profile', snippet: 'Ruslan Magana works on AI systems.', url: 'https://example.com/ruslan' },
-    { title: 'Ruslan Magana — GitHub', snippet: 'Projects and repositories by Ruslan Magana.', url: 'https://github.com/ruslanmv' },
-    { title: 'Ruslan Magana — Publications', snippet: 'Selected publications and technical work.', url: 'https://example.org/publications' },
+    {
+        title: 'Ruslan Magana — Profile',
+        snippet: 'Ruslan Magana works on AI systems.',
+        url: 'https://example.com/ruslan',
+    },
+    {
+        title: 'Ruslan Magana — GitHub',
+        snippet: 'Projects and repositories by Ruslan Magana.',
+        url: 'https://github.com/ruslanmv',
+    },
+    {
+        title: 'Ruslan Magana — Publications',
+        snippet: 'Selected publications and technical work.',
+        url: 'https://example.org/publications',
+    },
 ];
 
 beforeEach(() => {
@@ -39,7 +51,7 @@ function web(resultsForQuery) {
 }
 
 test('a weak first round is refined and deduplicated', async () => {
-    const provider = web((_q, round) => round === 1 ? RESULTS.slice(0, 2) : [RESULTS[0], RESULTS[2]]);
+    const provider = web((_q, round) => (round === 1 ? RESULTS.slice(0, 2) : [RESULTS[0], RESULTS[2]]));
     window.NEXUS_RESEARCH_WEB = provider;
 
     const out = await LookUp.run('ruslan magana');
@@ -90,9 +102,17 @@ test('ordinal references point at the held list', async () => {
 
 test('weather stays fresh for tomorrow follow-ups', async () => {
     const weatherResults = [
-        { title: 'Rome weather', snippet: 'Current weather and forecast for Rome.', url: 'https://weather.example/rome' },
+        {
+            title: 'Rome weather',
+            snippet: 'Current weather and forecast for Rome.',
+            url: 'https://weather.example/rome',
+        },
         { title: 'Rome forecast', snippet: 'Weather forecast, rain and wind.', url: 'https://forecast.example/rome' },
-        { title: 'Rome conditions', snippet: 'Temperature and weather conditions.', url: 'https://conditions.example/rome' },
+        {
+            title: 'Rome conditions',
+            snippet: 'Temperature and weather conditions.',
+            url: 'https://conditions.example/rome',
+        },
     ];
     window.NEXUS_RESEARCH_WEB = web(weatherResults);
     await LookUp.run('weather in Rome today');
@@ -124,7 +144,9 @@ test('a next turn waits for grounding to release', async () => {
     window.NEXUS_RESEARCH_WEB = web(RESULTS);
     await LookUp.run('ruslan magana');
     let released = false;
-    const waiting = LookUp.waitUntilReleased().then(() => { released = true; });
+    const waiting = LookUp.waitUntilReleased().then(() => {
+        released = true;
+    });
 
     await Promise.resolve();
     expect(released).toBe(false);

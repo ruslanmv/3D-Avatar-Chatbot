@@ -60,7 +60,9 @@ beforeEach(() => {
     window._persistChat = jest.fn();
     window.setStatus = jest.fn();
     window.speakText = jest.fn();
-    window.callLLM = jest.fn(async () => 'I found several current Genova sources. GenovaToday and Euronews both have active coverage.');
+    window.callLLM = jest.fn(
+        async () => 'I found several current Genova sources. GenovaToday and Euronews both have active coverage.'
+    );
 });
 
 afterEach(() => {
@@ -81,10 +83,14 @@ test('search query keeps the subject and removes UI instructions', () => {
 test('a search acknowledgement appears before retrieval finishes', async () => {
     let releaseSearch;
     let researchStarted;
-    const started = new Promise((resolve) => { researchStarted = resolve; });
+    const started = new Promise((resolve) => {
+        researchStarted = resolve;
+    });
     window.NEXUS_RESEARCH_WEB.research = jest.fn(() => {
         researchStarted();
-        return new Promise((resolve) => { releaseSearch = resolve; });
+        return new Promise((resolve) => {
+            releaseSearch = resolve;
+        });
     });
 
     const pending = SearchUX.executeSearchTurn(
@@ -94,7 +100,9 @@ test('a search acknowledgement appears before retrieval finishes', async () => {
 
     // The user gets feedback immediately, before the provider promise is released.
     expect(document.querySelector('[data-nexus-search-status="searching"]')).not.toBeNull();
-    expect(document.querySelector('[data-nexus-search-status] .message-text').textContent).toMatch(/Searching current web sources/i);
+    expect(document.querySelector('[data-nexus-search-status] .message-text').textContent).toMatch(
+        /Searching current web sources/i
+    );
 
     await started;
     releaseSearch(RESULTS);
@@ -122,7 +130,9 @@ test('synthesis uses the original user request and renders real clickable source
 });
 
 test('bad internal/refusal replies are rejected instead of shown to the user', () => {
-    expect(SearchUX.unusableSynthesis('The application has already completed a live web search. The user asked: "x"')).toBe(true);
+    expect(
+        SearchUX.unusableSynthesis('The application has already completed a live web search. The user asked: "x"')
+    ).toBe(true);
     expect(SearchUX.unusableSynthesis("I'm sorry, but I can't assist with that request.")).toBe(true);
     expect(SearchUX.unusableSynthesis('Here are the main Genova stories reported by the sources.')).toBe(false);
 });

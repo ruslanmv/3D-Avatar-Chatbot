@@ -76,7 +76,10 @@
     }
 
     function begin(query, options = {}) {
-        const q = String(query || '').replace(/\s+/g, ' ').trim().slice(0, 240);
+        const q = String(query || '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 240);
         if (!q) return snapshot();
         sequence += 1;
         const stamp = now();
@@ -158,7 +161,8 @@
         expire();
         if (!active()) return [];
         if (state.kind === 'weather') return ['tomorrow', 'this weekend', 'hourly forecast'];
-        if (state.kind === 'suggestion') return ['show more options', 'compare the top results', 'narrow the suggestions'];
+        if (state.kind === 'suggestion')
+            return ['show more options', 'compare the top results', 'narrow the suggestions'];
         if (state.kind === 'fresh') return ['latest updates', 'show the sources', 'search for more recent results'];
         return ['show the results', 'tell me about the first result', 'search for related results'];
     }
@@ -196,7 +200,9 @@
     function ensureConversationPresentation() {
         if (!global || !global.document) return;
         if (global.NEXUS_CONVERSATION_PRESENTATION) {
-            try { global.NEXUS_CONVERSATION_PRESENTATION.install?.(); } catch (_) {}
+            try {
+                global.NEXUS_CONVERSATION_PRESENTATION.install?.();
+            } catch (_) {}
             ensureSearchQuality();
             return;
         }
@@ -214,7 +220,9 @@
     function ensureSearchPresentation() {
         if (!global || !global.document) return;
         if (global.NEXUS_SEARCH_PRESENTATION) {
-            try { global.NEXUS_SEARCH_PRESENTATION.install?.(); } catch (_) {}
+            try {
+                global.NEXUS_SEARCH_PRESENTATION.install?.();
+            } catch (_) {}
             ensureConversationPresentation();
             return;
         }

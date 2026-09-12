@@ -40,10 +40,7 @@
             parsed.hash = '';
             [...parsed.searchParams.keys()].forEach((key) => {
                 const k = key.toLowerCase();
-                if (
-                    k.startsWith('utm_') ||
-                    ['gclid', 'fbclid', 'msclkid', 'mc_cid', 'mc_eid', 'srsltid'].includes(k)
-                ) {
+                if (k.startsWith('utm_') || ['gclid', 'fbclid', 'msclkid', 'mc_cid', 'mc_eid', 'srsltid'].includes(k)) {
                     parsed.searchParams.delete(key);
                 }
             });
@@ -94,7 +91,9 @@
     function looksLikeResultDump(text) {
         const value = String(text || '');
         const numbered = value.match(/(?:^|\s)\d{1,2}[.)]\s+(?:\*{0,2})?\S/g) || [];
-        const resultIntro = /\b(?:top|search|web|internet)\s+results?\b|\bhere (?:are|is)\b.{0,40}\bresults?\b/i.test(value);
+        const resultIntro = /\b(?:top|search|web|internet)\s+results?\b|\bhere (?:are|is)\b.{0,40}\bresults?\b/i.test(
+            value
+        );
         return (hasVisibleLinkSyntax(value) && (numbered.length >= 2 || resultIntro)) || numbered.length >= 5;
     }
 
@@ -134,7 +133,13 @@
         // Clean punctuation left behind by stripped URLs while preserving paragraphs/lists.
         value = value
             .split(/\n+/)
-            .map((line) => line.replace(/\[\s*\]\s*\(\s*\)/g, '').replace(/\(\s*\)/g, '').replace(/[ \t]{2,}/g, ' ').trim())
+            .map((line) =>
+                line
+                    .replace(/\[\s*\]\s*\(\s*\)/g, '')
+                    .replace(/\(\s*\)/g, '')
+                    .replace(/[ \t]{2,}/g, ' ')
+                    .trim()
+            )
             .filter((line) => line && !/^[\-–—|:;,.)\s]+$/.test(line))
             .join('\n')
             .replace(/\s+([,.;:!?])/g, '$1')
@@ -185,14 +190,19 @@
 
     function writePanels(list) {
         try {
-            global.localStorage?.setItem(STORAGE_KEY, JSON.stringify((Array.isArray(list) ? list : []).slice(-MAX_PANELS)));
+            global.localStorage?.setItem(
+                STORAGE_KEY,
+                JSON.stringify((Array.isArray(list) ? list : []).slice(-MAX_PANELS))
+            );
         } catch (_) {
             /* Storage is optional; current-session rendering still works. */
         }
     }
 
     function clearPersistedPanels() {
-        try { global.localStorage?.removeItem(STORAGE_KEY); } catch (_) {}
+        try {
+            global.localStorage?.removeItem(STORAGE_KEY);
+        } catch (_) {}
     }
 
     function looksLikeLegacyFlattenedSourceText(text) {
@@ -272,7 +282,9 @@
         try {
             const opened = global.open?.(safe, '_blank', 'noopener,noreferrer');
             if (opened) {
-                try { opened.opener = null; } catch (_) {}
+                try {
+                    opened.opener = null;
+                } catch (_) {}
             }
             return true;
         } catch (_) {
@@ -475,7 +487,8 @@
     function autoInstall() {
         if (install()) return;
         installAttempts += 1;
-        if (installAttempts < 80 && global && typeof global.setTimeout === 'function') global.setTimeout(autoInstall, 25);
+        if (installAttempts < 80 && global && typeof global.setTimeout === 'function')
+            global.setTimeout(autoInstall, 25);
     }
 
     const api = {

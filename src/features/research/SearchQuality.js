@@ -92,9 +92,15 @@
 
     function processAssistantText(text) {
         let out = String(text || '').trim();
-        try { if (global.NEXUS_MOTION?.processReply) out = global.NEXUS_MOTION.processReply(out); } catch (_) {}
-        try { if (global.NEXUS_PLAY_DIRECTIVE?.consume) out = global.NEXUS_PLAY_DIRECTIVE.consume(out); } catch (_) {}
-        try { if (global.NEXUS_STUDY_DIRECTIVE?.consume) out = global.NEXUS_STUDY_DIRECTIVE.consume(out); } catch (_) {}
+        try {
+            if (global.NEXUS_MOTION?.processReply) out = global.NEXUS_MOTION.processReply(out);
+        } catch (_) {}
+        try {
+            if (global.NEXUS_PLAY_DIRECTIVE?.consume) out = global.NEXUS_PLAY_DIRECTIVE.consume(out);
+        } catch (_) {}
+        try {
+            if (global.NEXUS_STUDY_DIRECTIVE?.consume) out = global.NEXUS_STUDY_DIRECTIVE.consume(out);
+        } catch (_) {}
         return String(out || '').trim();
     }
 
@@ -125,13 +131,21 @@
             'If the snippets do not establish a fact, say the available results do not establish it.',
         ];
         if (kind === 'fresh') {
-            base.push("For news, summarize distinct current items only when snippets actually contain those items; topic/index pages are not themselves today's news.");
+            base.push(
+                "For news, summarize distinct current items only when snippets actually contain those items; topic/index pages are not themselves today's news."
+            );
         } else if (kind === 'weather') {
-            base.push('For weather, state only the place/time/conditions that the snippets support and do not infer missing measurements.');
+            base.push(
+                'For weather, state only the place/time/conditions that the snippets support and do not infer missing measurements.'
+            );
         } else if (kind === 'suggestion') {
-            base.push("For recommendations, preserve the user's stated constraints and explain briefly why the strongest options match.");
+            base.push(
+                "For recommendations, preserve the user's stated constraints and explain briefly why the strongest options match."
+            );
         } else {
-            base.push('For a person or organization, summarize identity and work only from the snippets; do not infer education, credentials, employers or biography.');
+            base.push(
+                'For a person or organization, summarize identity and work only from the snippets; do not infer education, credentials, employers or biography.'
+            );
         }
         base.push(`User request: “${clean(userText, 320)}”`);
         base.push('Answer in 2–5 natural sentences unless the user requested another format.');
@@ -172,19 +186,33 @@
 
     function rememberUser(text) {
         const value = String(text || '').trim();
-        try { if (typeof global.addMessageToHistory === 'function') global.addMessageToHistory('user', value); } catch (_) {}
-        try { global.NEXUS_MOTION?.onUserUtterance?.(value); } catch (_) {}
-        try { global.chatHistory?.addMessage?.('user', value); } catch (_) {}
-        try { global._persistChat?.(); } catch (_) {}
+        try {
+            if (typeof global.addMessageToHistory === 'function') global.addMessageToHistory('user', value);
+        } catch (_) {}
+        try {
+            global.NEXUS_MOTION?.onUserUtterance?.(value);
+        } catch (_) {}
+        try {
+            global.chatHistory?.addMessage?.('user', value);
+        } catch (_) {}
+        try {
+            global._persistChat?.();
+        } catch (_) {}
     }
 
     function publishAnswer(text, speechText, { persist = true } = {}) {
         const value = cleanForChat(text);
         if (!value) return '';
         const speech = cleanForChat(speechText || value) || value;
-        try { if (typeof global.addMessageToHistory === 'function') global.addMessageToHistory('avatar', value); } catch (_) {}
-        try { global.chatHistory?.addMessage?.('assistant', value); } catch (_) {}
-        try { global._applyEmotionFromText?.(value); } catch (_) {}
+        try {
+            if (typeof global.addMessageToHistory === 'function') global.addMessageToHistory('avatar', value);
+        } catch (_) {}
+        try {
+            global.chatHistory?.addMessage?.('assistant', value);
+        } catch (_) {}
+        try {
+            global._applyEmotionFromText?.(value);
+        } catch (_) {}
         try {
             global.sendBotResponseToVR?.({
                 text: value,
@@ -193,10 +221,16 @@
                 persona_context: null,
             });
         } catch (_) {}
-        try { if (typeof global.speakText === 'function') global.speakText(speech); } catch (_) {}
-        try { if (typeof global.setStatus === 'function') global.setStatus('idle', 'READY'); } catch (_) {}
+        try {
+            if (typeof global.speakText === 'function') global.speakText(speech);
+        } catch (_) {}
+        try {
+            if (typeof global.setStatus === 'function') global.setStatus('idle', 'READY');
+        } catch (_) {}
         if (persist) {
-            try { global._persistChat?.(); } catch (_) {}
+            try {
+                global._persistChat?.();
+            } catch (_) {}
         }
         return value;
     }
@@ -208,13 +242,15 @@
     }
 
     function failureText(why) {
-        return {
-            'no-key': "I can't search the web yet because no web-search key is configured in Settings.",
-            'no-provider': "Web search isn't available in this build.",
-            failed: "I couldn't reach web search just now. Please try again.",
-            nothing: "I searched the web but couldn't find useful results for that query.",
-            stale: 'A newer search replaced that request.',
-        }[why] || "I couldn't complete that web search.";
+        return (
+            {
+                'no-key': "I can't search the web yet because no web-search key is configured in Settings.",
+                'no-provider': "Web search isn't available in this build.",
+                failed: "I couldn't reach web search just now. Please try again.",
+                nothing: "I searched the web but couldn't find useful results for that query.",
+                stale: 'A newer search replaced that request.',
+            }[why] || "I couldn't complete that web search."
+        );
     }
 
     function publishWithSources(answer, out) {
@@ -226,10 +262,14 @@
         const plain = P?.plainSources || U?.plainSources;
         const canCards = Boolean(typeof render === 'function' && global.document?.getElementById?.('chat-history'));
         const cleaned = cleanForChat(answer);
-        const display = canCards ? cleaned : [cleaned, typeof plain === 'function' ? plain(results) : ''].filter(Boolean).join('\n\n');
+        const display = canCards
+            ? cleaned
+            : [cleaned, typeof plain === 'function' ? plain(results) : ''].filter(Boolean).join('\n\n');
         publishAnswer(display, cleaned, { persist: false });
         if (canCards) render(results, query);
-        try { global._persistChat?.(); } catch (_) {}
+        try {
+            global._persistChat?.();
+        } catch (_) {}
         return display;
     }
 
@@ -243,32 +283,50 @@
         const direct = typeof L.explicitSearchIntent === 'function' ? L.explicitSearchIntent(userText) : null;
         const kind = direct?.kind || 'web';
         const notice = typeof U.showSearchNotice === 'function' ? U.showSearchNotice(q, kind) : null;
-        try { global.setStatus?.('listening', 'SEARCHING...'); } catch (_) {}
+        try {
+            global.setStatus?.('listening', 'SEARCHING...');
+        } catch (_) {}
 
         let out;
-        try { out = await L.run(q); } catch (_) { out = { ok: false, why: 'failed' }; }
+        try {
+            out = await L.run(q);
+        } catch (_) {
+            out = { ok: false, why: 'failed' };
+        }
         if (!out || !out.ok) {
             removeNotice(notice);
-            try { L.clear?.(); } catch (_) {}
+            try {
+                L.clear?.();
+            } catch (_) {}
             return publishAnswer(failureText(out && out.why));
         }
 
-        try { U.markSourcesFound?.(notice, out.results.length); } catch (_) {}
+        try {
+            U.markSourcesFound?.(notice, out.results.length);
+        } catch (_) {}
         const answer = await synthesizeSearch(userText, out);
-        try { L.clear?.(); } catch (_) {}
+        try {
+            L.clear?.();
+        } catch (_) {}
         removeNotice(notice);
         return publishWithSources(answer, out);
     }
 
     function isGroundedSummaryFollowUp(text, session) {
         if (!session || !Array.isArray(session.results) || !session.results.length) return false;
-        const t = String(text || '').replace(/\s+/g, ' ').trim();
-        return /\b(?:summari[sz]e|(?:a\s*)?summary|tell\s+me\s+(?:more\s+)?about\s+(?:him|her|it|them|this|that|the\s+person|the\s+company)|who\s+is\s+(?:he|she|this|that)|what\s+does\s+(?:he|she|this\s+person|that\s+person)\s+do)\b/i.test(t);
+        const t = String(text || '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        return /\b(?:summari[sz]e|(?:a\s*)?summary|tell\s+me\s+(?:more\s+)?about\s+(?:him|her|it|them|this|that|the\s+person|the\s+company)|who\s+is\s+(?:he|she|this|that)|what\s+does\s+(?:he|she|this\s+person|that\s+person)\s+do)\b/i.test(
+            t
+        );
     }
 
     async function answerGroundedFollowUp(userText, session) {
         rememberUser(userText);
-        try { global.setStatus?.('listening', 'THINKING...'); } catch (_) {}
+        try {
+            global.setStatus?.('listening', 'THINKING...');
+        } catch (_) {}
         const subject = clean(session.query, 200);
         const prompt = [
             `The user is referring to the subject of the ACTIVE WEB SEARCH SESSION: “${subject}”.`,
@@ -292,8 +350,12 @@
         const U = ux();
         if (!L || !U || typeof global.handleUserMessage !== 'function') return false;
 
-        try { presentation()?.install?.(); } catch (_) {}
-        try { U.install?.(); } catch (_) {}
+        try {
+            presentation()?.install?.();
+        } catch (_) {}
+        try {
+            U.install?.();
+        } catch (_) {}
         const original = global.handleUserMessage;
         if (original.__nexusSearchQualityWrapped) {
             installed = true;
