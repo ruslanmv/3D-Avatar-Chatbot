@@ -73,7 +73,7 @@ So the rule for new code in `src/gltf-viewer/`:
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (136 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (137 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -211,24 +211,23 @@ reply, enforced by the parser and not only by the prompt; never execute a tag a
 _user_ typed; re-check the enabling switch at execution time, not when the
 prompt was built.
 
-## In-flight work
+## The ambience feature
 
-The ambience feature — scenic viewport backgrounds, and letting the companion
-change them on request — is **built through wave 5**. Waves A0–A11 have landed;
-A12 (hardening) is the remainder.
+Scenic viewport backgrounds, and letting the companion change them on request.
+**Waves A0–A12 are complete.** The designs are still the reference:
 
-- `docs/AMBIENCE_BATCHES.md` — the execution plan, waves A0–A12. **Start here.**
+- `docs/AMBIENCE_BATCHES.md` — the execution plan, A0–A12
 - `docs/VIEWPORT_IMAGE_BACKGROUNDS.md` — the rendering design
 - `docs/AI_SCENE_AMBIENCE.md` — the language → intent → scene design
-- `docs/ambience-contract.md` — the frozen data shapes those batches code
-  against
+- `docs/ambience-contract.md` — the frozen data shapes
+- `docs/AMBIENCE_HARDENING.md` — **the A12 audit, and two open findings**
 
-What exists now: ten scenes in `assets/ambient/` with provenance recorded beside
-them, a Settings scene grid, and the five `src/features/ambience/` modules wired
-into `boot.js`. The switch is **off by default** and the capability returns `''`
-while it is, so a profile that never enables it sends the prompt it always sent.
+Ten scenes in `assets/ambient/` with provenance beside them, a Settings scene
+grid, and five `src/features/ambience/` modules in `boot.js`. The switch is
+**off by default** and the capability returns `''` while it is, so a profile
+that never enables it sends the prompt it always sent.
 
-Two things to know before touching it:
+Four things to know before touching it:
 
 - **`src/gltf-viewer/ambience/` is loaded by `index.html`, not `boot.js`.**
   `ViewerEngine` needs the catalogue synchronously at construction. Moving those
@@ -237,6 +236,13 @@ Two things to know before touching it:
   handlers: `_handleStreamingResponse`, `callLLM`, and `__nexusMediaSuffix`. The
   non-streaming handler delegates to `callLLM`. A new capability needs all
   three.
+- **`scene.background` now sometimes holds a `Texture` with an owner**, where it
+  used to always be a `Color` rebuildable from a constant. VR, AR and Companion
+  each snapshot and restore it, so those hand-offs are load-bearing. A12 audited
+  them; `docs/AMBIENCE_HARDENING.md` has the results.
+- **Two findings are open** (A12-1, AR exit; A12-2, document-PiP re-fit). Both
+  are pinned by tests asserting the _current, wrong_ behaviour, so fixing either
+  flips its test on purpose. Do not "fix" those tests to match a wish.
 
 ## Clearing a conversation
 
