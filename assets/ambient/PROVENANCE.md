@@ -5,54 +5,55 @@ Ten starter scenes for the viewport background feature (batch A6).
 ## Where these files came from
 
 Copied from **[`ruslanmv/yourfriend`](https://github.com/ruslanmv/yourfriend)**,
-at `public/ambient/{light,dark}/`, commit `80bd1fe`. The filenames are
-unchanged, so the two sets stay diffable.
+at `public/ambient/{light,dark}/`, commit `60f421b`. The filenames are
+unchanged, so the two sets stay diffable, and all ten are byte-identical to
+upstream — verified by checksum, not assumed.
 
-They are photoreal scenes, 1672×941 WebP, in matched light/dark pairs — the same
-place by day and by night. Composition matters as much as content here: each one
+They are photoreal scenes, 1672×941 WebP, in matched light/dark pairs: the same
+place by day and by night. Composition matters as much as content here. Each one
 keeps the middle third open and puts its detail at the edges, which is what a
 viewport background has to do when an avatar stands in the centre of the frame.
 
 **Total: 1.25 MB across ten files.**
 
-## Licence — read this before reusing them elsewhere
+## Licence
 
-`ruslanmv/yourfriend` **declares no licence.** Its README states that until the
-owner adds explicit terms, everything in it — imagery included — is _all rights
-reserved and unavailable for redistribution or commercial reuse without
-permission_.
+**Apache-2.0**, the same as this repository.
 
-These files are here because **the owner of both repositories (ruslanmv)
-directed their use here**, and this repository is Apache-2.0. They are covered
-by that permission, not by anything visible in the source repository.
+`ruslanmv/yourfriend` carries
+[an Apache-2.0 `LICENSE`](https://github.com/ruslanmv/yourfriend/blob/master/LICENSE),
+"Copyright 2024 Ruslan Magana". These files therefore arrive under terms that
+permit their use here, and the chain is auditable upstream rather than resting
+on a note in this file.
 
-That distinction matters to anyone auditing the chain. A third party reading
-`ruslanmv/yourfriend` today would conclude these images may not be
-redistributed, and nothing there contradicts that. **The clean fix is
-upstream**: add a licence file, or a note beside `public/ambient/`, recording
-that this set is released under Apache-2.0. Until that exists, this file is the
-only record of the permission.
+One upstream inconsistency worth knowing about while it lasts: that repository's
+`README.md` still carries a "Licensing" section saying no licence is declared
+and to treat its imagery as all rights reserved. The `LICENSE` file is the
+operative grant and post-dates that paragraph, but anyone auditing the chain
+will read both. Worth deleting or rewriting that section upstream.
 
-Anything that later replaces these must be Apache-2.0 or compatible, with its
-real provenance recorded here.
+Anything that later replaces these files must be Apache-2.0 or compatible, with
+its real provenance recorded here.
 
 ## The fallback set
 
 [`tools/ambience/generate-backgrounds.py`](../../tools/ambience/generate-backgrounds.py)
 generates ten abstract stand-ins at the same ten paths — gradient skies, horizon
-bands, silhouettes, water. They are **not** photoreal and are not what ships.
+bands, silhouettes, water. They are **not** photoreal and are **not** what
+ships.
 
-They exist for the case where the photoreal set cannot be used: they are a
-deterministic function of a script in this repository, so they are Apache-2.0 by
-construction, with no third-party provenance to trace at all. Run:
+They exist for the case where the photoreal set has to come out for any reason.
+Their output is a deterministic function of a script in this repository, so they
+are Apache-2.0 by construction, with no third-party provenance to trace at all —
+not even a licence file in another repository. Run:
 
 ```bash
 python3 tools/ambience/generate-backgrounds.py
 ```
 
-and they overwrite the files below. Nothing else in the feature changes — the
-catalogue names paths, not pixels, which is the property that makes either set
-droppable.
+and they overwrite the files below. Nothing else in the feature changes, because
+the catalogue names **paths, not pixels**. That is the property that makes
+either set droppable.
 
 ## The files
 

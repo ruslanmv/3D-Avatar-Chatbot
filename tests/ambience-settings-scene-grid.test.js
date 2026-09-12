@@ -125,19 +125,22 @@ describe('the assets exist, and the catalogue names them', () => {
         Catalog.reset();
     });
 
-    test('provenance names the source repository and the commit', () => {
+    test('provenance names the source repository and the exact commit', () => {
+        // The commit matters: it is what makes "byte-identical to upstream" a checkable claim
+        // rather than a reassuring sentence.
         const note = fs.readFileSync(path.join(root, 'assets/ambient/PROVENANCE.md'), 'utf-8');
         expect(note).toContain('ruslanmv/yourfriend');
-        expect(note).toContain('80bd1fe');
+        expect(note).toContain('60f421b');
     });
 
-    test('provenance does not claim a licence the source repository shows', () => {
-        // The part that would be easy to quietly get wrong. The source repo declares no licence
-        // at all; these files are here on the owner's say-so, and a reader auditing the chain
-        // needs to be told that rather than left to assume an Apache-2.0 upstream.
+    test('provenance records the upstream licence, and this repo can carry it', () => {
+        // CLAUDE.md: anything added must be Apache-2.0 or compatible, with provenance recorded
+        // where the asset lands. Upstream carries an Apache-2.0 LICENSE, so this is a citation
+        // rather than an assertion — and the note has to point at it.
         const note = fs.readFileSync(path.join(root, 'assets/ambient/PROVENANCE.md'), 'utf-8');
-        expect(note).toMatch(/declares no licence/i);
         expect(note).toMatch(/Apache-2\.0/);
+        expect(note).toContain('yourfriend/blob/master/LICENSE');
+        expect(note).not.toMatch(/declares no licence/i);
     });
 
     test('the fallback generator is in the tree and described as a fallback', () => {

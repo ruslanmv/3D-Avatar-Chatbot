@@ -10,17 +10,17 @@ with abstract stand-ins. Do that only deliberately.
 
 ## Why it exists anyway
 
-The shipped art sits on a permission rather than on a published licence: its
-source repository declares none. That is fine while the same person owns both
-repositories, and it is recorded honestly in PROVENANCE.md — but it is a
-dependency on a fact outside this tree, and a project that cannot ship without
-it has a single point of failure in its asset chain.
+The shipped art is Apache-2.0 and properly licensed upstream, so this is not a
+licensing workaround — PROVENANCE.md records the chain.
 
-This removes that. The output here is a deterministic function of this file, so
-it is Apache-2.0 by construction: no third-party photograph to trace, no stock
-terms to read, no model-output rights question, no attribution chain. If the
-photoreal set ever has to come out, the feature still works, and it works the
-same day.
+It is insurance of a duller kind. The art lives in another repository, and a
+project whose only art comes from somewhere else cannot ship the day that
+somewhere else becomes unavailable, changes, or turns out to be wrong for the
+product. The output here is a deterministic function of this file: Apache-2.0 by
+construction, with no third-party provenance to trace at all — no photograph, no
+stock terms, no model-output rights question, no attribution chain, not even a
+licence file in another repository. If the photoreal set ever has to come out,
+the feature still works, and it works the same day.
 
 It is only possible because the catalogue (`assets/ambient/backgrounds.json`)
 names **paths, not pixels**. Either set drops into the same ten paths and
