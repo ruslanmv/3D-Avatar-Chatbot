@@ -2329,11 +2329,18 @@ function setupModals() {
         });
     });
 
-    // Live preview: change desktop background immediately when radio is selected
-    document.querySelectorAll('input[name="desktop-bg"]').forEach((radio) => {
-        radio.addEventListener('change', () => {
-            window.NEXUS_VIEWER?.setDesktopBackground(radio.value);
-        });
+    // A6. Live preview: change desktop background immediately when a radio is selected.
+    //
+    // Delegated rather than one listener per radio, and that is the whole reason this line
+    // changed. The previous `querySelectorAll(...).forEach` ran once, at settings-init time, so
+    // the scene cards — which are injected from the catalogue after the data file arrives, and
+    // re-injected if it arrives late — would have had no handler at all and simply done nothing
+    // when clicked. Delegation is order-independent and listener-count-neutral: one listener
+    // instead of five, covering any number of cards added later.
+    document.addEventListener('change', (event) => {
+        const radio = event.target;
+        if (!radio || radio.name !== 'desktop-bg') return;
+        window.NEXUS_VIEWER?.setDesktopBackground(radio.value);
     });
 
     // Live preview: toggle shadows immediately when radio is selected
@@ -2642,6 +2649,137 @@ function _syncVisualControlsFromEngine() {
     }
 }
 
+/**
+ * A6. Draw the scene cards under Settings → Viewport Background.
+ *
+ * The five colour swatches are static markup and stay exactly as they were. The scenes are not:
+ * they come from `assets/ambient/backgrounds.json` through the catalogue, so the HTML carries no
+ * image URL at all and adding a scene is a data change. That is deliberate — it is also what
+ * keeps the LLM path honest later, since there is exactly one list of what exists.
+ *
+ * Three things here are load-bearing:
+ *
+ * **Built with DOM calls, never innerHTML.** Labels are free text in a data file. `textContent`
+ * makes a label containing markup a label containing markup, rather than markup. The paths are
+ * already validated by the catalogue (`isSafeRelativePath` allows only `[A-Za-z0-9._-/]`, so no
+ * quotes, spaces or parentheses can reach the `url()`), but the label had no such guarantee.
+ *
+ * **The radio is the immediately preceding sibling of `.provider-content`.** The stylesheet
+ * selects the checked state with `.provider-radio:checked + .provider-content` — an adjacent
+ * sibling combinator. Slip anything between the two and selection silently stops showing while
+ * everything else keeps working.
+ *
+ * **Idempotent.** Settings can be opened repeatedly, and the catalogue can arrive after the
+ * first open; both re-run this. It rebuilds the grid from scratch each time rather than
+ * appending, so re-entry cannot double the cards.
+ */
+function _renderSceneBackgroundCards() {
+    const grid = document.getElementById('bg-scene-grid');
+    const catalog = window.NEXUS_VIEWPORT_BACKGROUND_CATALOG;
+    if (!grid || !catalog || typeof catalog.images !== 'function') return;
+
+    const scenes = catalog.images();
+    grid.textContent = '';
+
+    // No art on disk yet is a legitimate state — every batch before this one shipped that way —
+    // and the right presentation is nothing at all, not an empty heading over a void.
+    const heading = document.getElementById('bg-scene-heading');
+    const empty = scenes.length === 0;
+    grid.hidden = empty;
+    if (heading) heading.hidden = empty;
+    if (empty) return;
+
+    for (const scene of scenes) {
+        const card = document.createElement('label');
+        card.className = 'provider-card';
+
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = 'desktop-bg';
+        radio.value = scene.id;
+        radio.className = 'provider-radio';
+
+        const content = document.createElement('div');
+        content.className = 'provider-content';
+
+        const thumb = document.createElement('div');
+        thumb.className = 'provider-thumb';
+        if (scene.thumb) {
+            thumb.style.backgroundImage = `url("${scene.thumb}")`;
+            // A renamed or missing file must leave the card usable and honest rather than
+            // showing the previous scene's picture under this scene's name.
+            const probe = new Image();
+            probe.onerror = () => {
+                thumb.classList.add('provider-thumb--missing');
+                console.warn(`[Ambience] thumbnail missing for ${scene.id}: ${scene.thumb}`);
+            };
+            probe.src = scene.thumb;
+        }
+
+        const name = document.createElement('div');
+        name.className = 'provider-name';
+        name.textContent = scene.label;
+
+        content.appendChild(thumb);
+        content.appendChild(name);
+        if (scene.variantLabel) {
+            const variant = document.createElement('div');
+            variant.className = 'provider-variant';
+            variant.textContent = scene.variantLabel;
+            content.appendChild(variant);
+        }
+
+        // Order matters: `.provider-radio:checked + .provider-content`.
+        card.appendChild(radio);
+        card.appendChild(content);
+        grid.appendChild(card);
+    }
+}
+
+/**
+ * A6. Tick whichever background card matches what is actually showing.
+ *
+ * Split out of `openSettings` because it has to run twice: once inline, and again after a late
+ * catalogue load has created the cards that the first pass had nothing to tick.
+ */
+function _preselectBackgroundCard() {
+    const vis = window.NEXUS_VIEWER?.getVisualState?.() || null;
+    const savedBg = vis?.background || localStorage.getItem('desktop_bg') || 'black';
+    // Compared rather than selected. A scene id contains colons, and a stored value could in
+    // principle contain a quote or a bracket — interpolating either into a selector makes
+    // `querySelector` throw a SyntaxError and takes the whole Settings panel down with it.
+    for (const radio of document.querySelectorAll('input[name="desktop-bg"]')) {
+        if (radio.value === savedBg) {
+            radio.checked = true;
+            return;
+        }
+    }
+}
+
+/**
+ * A6. Make sure the catalogue has been asked to load, then draw the cards.
+ *
+ * The data file is fetched once and cached by the catalogue; this may be the first time anything
+ * has asked for it, because a chat-only session never builds a viewer. Failure is silent by
+ * design — no scenes is a supported state, and a Settings panel that showed a network error
+ * where a picture list should be would be worse than one that shows five colours.
+ */
+function _ensureSceneBackgroundCards() {
+    const catalog = window.NEXUS_VIEWPORT_BACKGROUND_CATALOG;
+    if (!catalog) return;
+    _renderSceneBackgroundCards();
+    if (typeof catalog.load === 'function' && !catalog.hasImages()) {
+        Promise.resolve(catalog.load())
+            .then(() => {
+                _renderSceneBackgroundCards();
+                _preselectBackgroundCard();
+            })
+            .catch(() => {
+                /* No scenes. The five colours still work. */
+            });
+    }
+}
+
 function openSettings() {
     const modal = $('settings-modal');
     if (!modal) return;
@@ -2666,10 +2804,10 @@ function openSettings() {
     const modeRadio = document.querySelector(`input[name="render-mode"][value="${savedMode}"]`);
     if (modeRadio) modeRadio.checked = true;
 
-    // Pre-select desktop background
-    const savedBg = vis?.background || localStorage.getItem('desktop_bg') || 'black';
-    const bgRadio = document.querySelector(`input[name="desktop-bg"][value="${savedBg}"]`);
-    if (bgRadio) bgRadio.checked = true;
+    // Pre-select desktop background. A6 draws the scene cards first, so that a saved scene id
+    // has a radio to find — without that the selection silently falls back to Black on reopen.
+    _ensureSceneBackgroundCards();
+    _preselectBackgroundCard();
 
     // Pre-select shadow setting
     const savedShadow = vis ? (vis.shadows ? 'on' : 'off') : localStorage.getItem('desktop_shadow') || 'off';
