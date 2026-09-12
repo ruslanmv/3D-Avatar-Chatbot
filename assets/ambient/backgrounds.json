@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "comment": "Scenic viewport backgrounds (batch A2). Data only — no URLs outside this repository, no executable content. The WebP files these entries name are added in batch A6; until then ViewportBackgroundCatalog still lists the entries and a selection falls back safely. Assets are Apache-2.0, the same as this repository.",
+  "scenes": [
+    {
+      "id": "ambient:ocean:day",
+      "type": "image",
+      "label": "Ocean",
+      "variantLabel": "Sunrise",
+      "src": "assets/ambient/light/ocean-sunrise.webp",
+      "thumb": "assets/ambient/light/ocean-sunrise.webp",
+      "focalPoint": "center",
+      "intensity": 1,
+      "category": "relax",
+      "tags": ["sea", "ocean", "beach", "coast", "sunrise", "relax", "meditation"]
+    },
+    {
+      "id": "ambient:ocean:night",
+      "type": "image",
+      "label": "Ocean",
+      "variantLabel": "Moonlight",
+      "src": "assets/ambient/dark/ocean-moonlight.webp",
+      "thumb": "assets/ambient/dark/ocean-moonlight.webp",
+      "focalPoint": "center",
+      "intensity": 1,
+      "category": "sleep",
+      "tags": ["sea", "ocean", "beach", "coast", "night", "moonlight", "relax", "sleep"]
+    },
+    {
+      "id": "ambient:lake:day",
+      "type": "image",
+      "label": "Mountain Lake",
+      "variantLabel": "Day",
+      "src": "assets/ambient/light/mountain-lake.webp",
+      "thumb": "assets/ambient/light/mountain-lake.webp",
+      "focalPoint": "center",
+      "intensity": 1,
+      "category": "nature",
+      "tags": ["lake", "mountain", "water", "nature", "relax", "meditation"]
+    },
+    {
+      "id": "ambient:lake:night",
+      "type": "image",
+      "label": "Mountain Lake",
+      "variantLabel": "Night",
+      "src": "assets/ambient/dark/mountain-lake-night.webp",
+      "thumb": "assets/ambient/dark/mountain-lake-night.webp",
+      "focalPoint": "center",
+      "intensity": 1,
+      "category": "sleep",
+      "tags": ["lake", "mountain", "water", "nature", "night", "sleep", "relax"]
+    },
+    {
+      "id": "ambient:garden:day",
+      "type": "image",
+      "label": "Meditation Garden",
+      "variantLabel": "Day",
+      "src": "assets/ambient/light/meditation-garden.webp",
+      "thumb": "assets/ambient/light/meditation-garden.webp",
+      "focalPoint": "center",
+      "intensity": 1,
+      "category": "meditation",
+      "tags": ["garden", "zen", "meditation", "relax", "nature", "calm"]
+    },
+    {
+      "id": "ambient:garden:night",
+      "type": "image",
+      "label": "Meditation Garden",
+      "variantLabel": "Night",
+      "src": "assets/ambient/dark/meditation-garden-night.webp",
+      "thumb": "assets/ambient/dark/meditation-garden-night.webp",
+      "focalPoint": "center",
+      "intensity": 1,
+      "category": "meditation",
+      "tags": ["garden", "zen", "meditation", "night", "relax", "calm", "sleep"]
+    },
+    {
+      "id": "ambient:terrace:day",
+      "type": "image",
+      "label": "Coastal Terrace",
+      "variantLabel": "Day",
+      "src": "assets/ambient/light/coastal-terrace.webp",
+      "thumb": "assets/ambient/light/coastal-terrace.webp",
+      "focalPoint": "center",
+      "intensity": 1,
+      "category": "cozy",
+      "tags": ["sea", "ocean", "coast", "terrace", "cozy", "study", "relax"]
+    },
+    {
+      "id": "ambient:terrace:night",
+      "type": "image",
+      "label": "Coastal Terrace",
+      "variantLabel": "Twilight",
+      "src": "assets/ambient/dark/coastal-terrace-twilight.webp",
+      "thumb": "assets/ambient/dark/coastal-terrace-twilight.webp",
+      "focalPoint": "center",
+      "intensity": 1,
+      "category": "cozy",
+      "tags": ["sea", "ocean", "coast", "terrace", "night", "twilight", "cozy", "relax"]
+    },
+    {
+      "id": "ambient:sky:day",
+      "type": "image",
+      "label": "Open Sky",
+      "variantLabel": "Day",
+      "src": "assets/ambient/light/open-sky.webp",
+      "thumb": "assets/ambient/light/open-sky.webp",
+      "focalPoint": "center",
+      "intensity": 1,
+      "category": "focus",
+      "tags": ["sky", "clouds", "open", "study", "focus", "calm"]
+    },
+    {
+      "id": "ambient:sky:night",
+      "type": "image",
+      "label": "Open Sky",
+      "variantLabel": "Starlight",
+      "src": "assets/ambient/dark/starlight-sky.webp",
+      "thumb": "assets/ambient/dark/starlight-sky.webp",
+      "focalPoint": "center",
+      "intensity": 1,
+      "category": "sleep",
+      "tags": ["sky", "stars", "starlight", "night", "sleep", "relax", "fantasy", "dream"]
+    }
+  ]
+}
