@@ -116,6 +116,17 @@
             }
         </script>
 
+        <!-- A5. Scenic viewport backgrounds. Plain scripts, not modules: they are IIFEs
+             attaching to window.NEXUS_*, because there is no Babel config in this repo and
+             Jest cannot require() an ES module (see CLAUDE.md). They must load BEFORE
+             engine-bridge.js, which constructs ViewerEngine and reads these globals —
+             ViewerEngine is an ES module and so cannot import a non-module script. If any
+             of the three is missing, ViewerEngine null-guards and the app falls back to the
+             five solid colours. -->
+        <script src="src/gltf-viewer/ambience/coverTransform.js"></script>
+        <script src="src/gltf-viewer/ambience/ViewportBackgroundCatalog.js"></script>
+        <script src="src/gltf-viewer/ambience/ViewportBackgroundManager.js"></script>
+
         <script type="module" src="src/engine-bridge.js"></script>
 
         <script defer>

@@ -97,6 +97,13 @@ export class ViewerEngine {
         this._desktopBgKey = 'black';
         this.scene.background = new THREE.Color(0x000000);
 
+        // A5. Scenic viewport backgrounds, when the ambience scripts are present.
+        // Null-guarded the whole way down: those files are IIFEs loaded as plain
+        // <script> before this module (they cannot be ES modules — there is no Babel
+        // config, so an ES module under src/gltf-viewer/ is not unit-testable), and a
+        // missing one must degrade to the five colours rather than stop the app booting.
+        this.backgroundManager = this._createBackgroundManager();
+
         this._hemiLight = new THREE.HemisphereLight(0xffffff, 0x888899, 0.9);
         this.scene.add(this._hemiLight);
 
@@ -495,9 +502,18 @@ export class ViewerEngine {
             // Re-enable post-processing for desktop
             this.postProcessing?.onXRSessionEnd();
 
-            // Restore desktop background from current setting
-            const bgColor = ViewerEngine.BG_COLORS[this._desktopBgKey] ?? 0x000000;
-            this.scene.background = new THREE.Color(bgColor);
+            // Restore desktop background from current setting.
+            //
+            // A5. Through the manager, which puts a live image texture straight back with
+            // no refetch. Rebuilding from BG_COLORS here is how an image selection used to
+            // become black on leaving VR: BG_COLORS['ambient:terrace:night'] is undefined,
+            // so `?? 0x000000` painted the fallback over somebody's chosen scene.
+            if (this.backgroundManager) {
+                this.backgroundManager.reapplyCurrent();
+            } else {
+                const bgColor = ViewerEngine.BG_COLORS[this._desktopBgKey] ?? 0x000000;
+                this.scene.background = new THREE.Color(bgColor);
+            }
 
             // Restore desktop hemisphere light intensity
             if (this._hemiLight && this._vrSavedHemiIntensity !== null) {
@@ -920,6 +936,10 @@ export class ViewerEngine {
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, dprCap));
 
         this.postProcessing?.setSize(w, h);
+
+        // A5. Keep a scenic background's cover crop correct. Two vectors written on the
+        // texture already in memory: no reload, no allocation, nothing to dispose.
+        this.backgroundManager?.onResize(w, h);
 
         // Only reframe on mobile orientation/viewport changes — not on desktop resize
         if (!this.renderer.xr.isPresenting && this.mobileSupport?.isMobileOrTablet()) {
@@ -1454,7 +1474,12 @@ export class ViewerEngine {
         //    shading, but black is the house look; Settings → Viewport
         //    Background switches back to white and that choice is persisted
         //    (desktop_bg) and re-applied on top of this preset at boot.
-        this.setDesktopBackground('black');
+        // A5. Re-apply the *current* selection rather than forcing black. This is the one
+        // intentional behaviour change in the batch: before it, switching Anime ↔ Cinematic
+        // mid-session discarded whatever the user had chosen — already true for `white`,
+        // and far more noticeable once that choice can be a photograph. Boot order is
+        // unaffected, because engine-bridge still applies the persisted key after this.
+        this.setDesktopBackground(this._desktopBgKey || 'black');
 
         // 5. Authored MToon rim / matcap (restored in anime, neutralised in cinematic)
         this.avatarManager?.setMToonEdgeFxNeutralized?.(!anime);
@@ -1558,14 +1583,89 @@ export class ViewerEngine {
      */
     setDesktopBackground(key) {
         const color = ViewerEngine.BG_COLORS[key];
+
         if (color === undefined) {
+            // A5. Not one of the five colours. It may be a scene id like
+            // `ambient:terrace:night`, which the ambience catalogue knows about and this
+            // class deliberately does not. Anything the catalogue does not recognise
+            // falls through to the same silent no-op as before, so a stale desktop_bg
+            // written by a newer build still boots.
+            if (!this.backgroundManager || !this.backgroundManager.catalog?.has?.(key)) {
+                return;
+            }
+            this._desktopBgKey = key;
+            // The XR guard below, unchanged: while presenting, record the selection and
+            // leave the immersive view alone. A flat rectangular image must never be
+            // pushed into a headset; it is applied on exit instead.
+            if (!this.renderer.xr.isPresenting) {
+                this.backgroundManager.apply(key);
+            }
+            console.log(`[ViewerEngine] Desktop background → ${key}`);
             return;
         }
+
         this._desktopBgKey = key;
         if (!this.renderer.xr.isPresenting) {
-            this.scene.background = new THREE.Color(color);
+            if (this.backgroundManager) {
+                // Colours go through the manager too, and that is load-bearing rather
+                // than tidiness: image → colour is the one transition where a texture
+                // has no successor, so without this the old one stays resident behind
+                // the new colour. The manager builds the same THREE.Color from this same
+                // BG_COLORS value, so what lands on screen is unchanged.
+                this.backgroundManager.apply(key);
+            } else {
+                this.scene.background = new THREE.Color(color);
+            }
         }
         console.log(`[ViewerEngine] Desktop background → ${key}`);
+    }
+
+    /**
+     * Wire up the scenic-background manager, or return null if its scripts are absent.
+     *
+     * Everything it needs is handed over rather than reached for, which is what makes it
+     * testable without WebGL — and it is given *this* engine's `TextureLoader` and
+     * `BG_COLORS` so there is no second loader and no second copy of the colour values.
+     */
+    _createBackgroundManager() {
+        const factory = typeof window !== 'undefined' ? window.NEXUS_VIEWPORT_BACKGROUND_MANAGER : null;
+        const catalog = typeof window !== 'undefined' ? window.NEXUS_VIEWPORT_BACKGROUND_CATALOG : null;
+        if (!factory || typeof factory.attach !== 'function' || !catalog) {
+            return null;
+        }
+
+        const loader = new THREE.TextureLoader();
+        loader.setCrossOrigin('anonymous');
+
+        if (typeof catalog.load === 'function' && !catalog.hasImages()) {
+            catalog
+                .load()
+                .then(() => {
+                    // The saved selection may be a scene whose catalogue entry only
+                    // existed once the data file arrived — engine-bridge applies
+                    // desktop_bg synchronously at boot, before this resolves. Re-apply it
+                    // now rather than leaving somebody on the fallback colour. Compared
+                    // against `undefined` because black is 0x000000, which is falsy.
+                    const key = this._desktopBgKey;
+                    if (key && ViewerEngine.BG_COLORS[key] === undefined) {
+                        this.backgroundManager?.apply(key);
+                    }
+                })
+                .catch(() => null);
+        }
+
+        return factory.attach({
+            three: THREE,
+            scene: this.scene,
+            catalog,
+            cover: typeof window !== 'undefined' ? window.NEXUS_AMBIENCE_COVER_TRANSFORM : null,
+            colors: ViewerEngine.BG_COLORS,
+            getViewportSize: () => this._getViewportSize(),
+            loadTexture: (src) =>
+                new Promise((resolve, reject) => {
+                    loader.load(src, resolve, undefined, reject);
+                }),
+        });
     }
 
     /**
