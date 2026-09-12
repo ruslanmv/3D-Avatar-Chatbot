@@ -73,7 +73,7 @@ So the rule for new code in `src/gltf-viewer/`:
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (132 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (136 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -209,10 +209,40 @@ prompt was built.
 ## In-flight work
 
 The ambience feature — scenic viewport backgrounds, and letting the companion
-change them on request — is designed but not built:
+change them on request — is **built through wave 5**. Waves A0–A11 have landed;
+A12 (hardening) is the remainder.
 
 - `docs/AMBIENCE_BATCHES.md` — the execution plan, waves A0–A12. **Start here.**
 - `docs/VIEWPORT_IMAGE_BACKGROUNDS.md` — the rendering design
 - `docs/AI_SCENE_AMBIENCE.md` — the language → intent → scene design
 - `docs/ambience-contract.md` — the frozen data shapes those batches code
   against
+
+What exists now: ten scenes in `assets/ambient/` with provenance recorded beside
+them, a Settings scene grid, and the five `src/features/ambience/` modules wired
+into `boot.js`. The switch is **off by default** and the capability returns `''`
+while it is, so a profile that never enables it sends the prompt it always sent.
+
+Two things to know before touching it:
+
+- **`src/gltf-viewer/ambience/` is loaded by `index.html`, not `boot.js`.**
+  `ViewerEngine` needs the catalogue synchronously at construction. Moving those
+  three into the boot list disables scenic backgrounds with no error message.
+- **There are three prompt-assembly sites**, and they are not the two request
+  handlers: `_handleStreamingResponse`, `callLLM`, and `__nexusMediaSuffix`. The
+  non-streaming handler delegates to `callLLM`. A new capability needs all
+  three.
+
+## Clearing a conversation
+
+`clearHistory()` delegates to `NEXUS_CONVERSATION_RESET`
+(`src/features/chat/ConversationReset.js`), which is the single owner of
+forgetting. If you add a store that holds conversation content — anything that
+reaches the prompt, or any localStorage key — add it there. `KEYS` lists what it
+erases and `KEPT` lists what it deliberately does not (`nexus_study_history` is
+between-sessions memory, not part of a conversation; settings are not
+conversation either).
+
+Turns capture `currentEpoch()` at the start and check `isCurrent(turn)` before
+writing anything back, so a reply that outlives a CLEAR writes no message, no
+storage and no speech. A new code path that persists a reply needs that check.

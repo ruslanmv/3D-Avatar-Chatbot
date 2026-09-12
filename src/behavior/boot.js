@@ -164,6 +164,16 @@
         // the consent machine above grants the streams and HomePilot's recorder addon does
         // the work — so nothing here depends on it being present.
         'src/features/together/activities/meeting.js',
+        // A11. Scene ambience — letting her change where you both are. Order within the group
+        // matters: the resolver and switch are read by the capability and the controller, and
+        // the directive calls the controller. The renderer half (catalogue, manager, cover
+        // maths) is loaded by index.html before engine-bridge.js, because ViewerEngine needs
+        // it synchronously at construction; these five are the conversation half.
+        'src/features/ambience/SceneAmbienceResolver.js',
+        'src/features/ambience/SceneAmbienceSwitch.js',
+        'src/features/ambience/SceneAmbienceCapability.js',
+        'src/features/ambience/SceneAmbienceController.js',
+        'src/features/ambience/SceneAmbienceDirective.js',
         // B24/B25. The recorder first: the button is the thing that keeps what it buffered.
         'src/features/clips/ClipRecorder.js',
         'src/features/clips/ShareCard.js',

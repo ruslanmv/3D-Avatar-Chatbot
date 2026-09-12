@@ -2757,6 +2757,36 @@ function _preselectBackgroundCard() {
 }
 
 /**
+ * A11. Keep the Viewport Background radios honest when she changes the scene.
+ *
+ * Two surfaces can now change the background — the radios in Settings, and the companion — and
+ * the one that did not do it has no way of knowing. With Settings open, an AI scene change
+ * would leave the panel selecting Ocean while the viewport showed Garden, which is exactly the
+ * disagreement the controller refuses to cache state in order to avoid; it would be a shame to
+ * reintroduce it in the UI layer.
+ *
+ * Listens for the controller's DOM event rather than being called by it, so the controller
+ * stays free of any knowledge of Settings.
+ *
+ * Settings-sourced changes are skipped: the radio that caused one is already checked, and
+ * re-ticking it from an event is a needless write that would fight a user mid-click.
+ */
+(function wireSceneAmbienceRadioSync() {
+    const EVENT = window.NEXUS_SCENE_AMBIENCE_CONTROLLER?.EVENT || 'nexus:scene-ambience-change';
+    window.addEventListener(EVENT, (event) => {
+        const detail = (event && event.detail) || {};
+        if (detail.source === 'settings') return;
+        const modal = $('settings-modal');
+        // Visibility is the `active` class, not an inline style — `.modal-overlay` is
+        // `display:none` and `.modal-overlay.active` is `display:flex`. Checking `style.display`
+        // would read '' on a closed modal and re-tick radios nobody is looking at.
+        // Only worth doing while the panel is open; `openSettings` pre-selects on open anyway.
+        if (!modal || !modal.classList.contains('active')) return;
+        _preselectBackgroundCard();
+    });
+})();
+
+/**
  * A6. Make sure the catalogue has been asked to load, then draw the cards.
  *
  * The data file is fetched once and cached by the catalogue; this may be the first time anything
@@ -3728,7 +3758,12 @@ async function _handleStreamingResponse(text) {
             // T2. What she can *do* about media, as opposed to D9's what is playing. Empty
             // unless Together is on and something can actually search, so a promise is never
             // made that nothing can keep.
-            (window.NEXUS_TOGETHER_CAPABILITY?.systemPromptSuffix?.() || '');
+            (window.NEXUS_TOGETHER_CAPABILITY?.systemPromptSuffix?.() || '') +
+            // A11. Where you both are, and that she may change it. Empty unless the user has
+            // turned scene ambience on AND the catalogue can actually answer something, so a
+            // chat with it off sends byte-for-byte the prompt it sent before the feature
+            // existed.
+            (window.NEXUS_SCENE_AMBIENCE_CAPABILITY?.systemPromptSuffix?.() || '');
         let accumulated = '';
 
         const fullText = await window._nexusLLM.sendMessageStream(text, systemPrompt, history, (token) => {
@@ -3762,6 +3797,15 @@ async function _handleStreamingResponse(text) {
         // that reached the synthesiser would be her reading XML aloud.
         displayText = window.NEXUS_PLAY_DIRECTIVE ? window.NEXUS_PLAY_DIRECTIVE.consume(displayText) : displayText;
         displayText = window.NEXUS_STUDY_DIRECTIVE ? window.NEXUS_STUDY_DIRECTIVE.consume(displayText) : displayText;
+        // A11. Take <ambience> out and act on it, at the same seam and for the same reason:
+        // everything downstream reads `displayText`, so stripping once covers the bubble, the
+        // transcript, the VR forward and the voice together. A tag that reached the
+        // synthesiser would be her reading markup aloud. `consume` re-checks the switch at
+        // execution time, so a reply that arrives after the user turned ambience off does
+        // nothing.
+        displayText = window.NEXUS_SCENE_AMBIENCE_DIRECTIVE
+            ? window.NEXUS_SCENE_AMBIENCE_DIRECTIVE.consume(displayText)
+            : displayText;
         // S4. She asked to look something up. Strip the tag, run the search, then ask her
         // again — the second call carries the results, so the answer comes from her having
         // read them rather than from the app pasting snippets into the chat.
@@ -3842,6 +3886,15 @@ async function _handleNonStreamingResponse(text) {
         // that reached the synthesiser would be her reading XML aloud.
         displayText = window.NEXUS_PLAY_DIRECTIVE ? window.NEXUS_PLAY_DIRECTIVE.consume(displayText) : displayText;
         displayText = window.NEXUS_STUDY_DIRECTIVE ? window.NEXUS_STUDY_DIRECTIVE.consume(displayText) : displayText;
+        // A11. Take <ambience> out and act on it, at the same seam and for the same reason:
+        // everything downstream reads `displayText`, so stripping once covers the bubble, the
+        // transcript, the VR forward and the voice together. A tag that reached the
+        // synthesiser would be her reading markup aloud. `consume` re-checks the switch at
+        // execution time, so a reply that arrives after the user turned ambience off does
+        // nothing.
+        displayText = window.NEXUS_SCENE_AMBIENCE_DIRECTIVE
+            ? window.NEXUS_SCENE_AMBIENCE_DIRECTIVE.consume(displayText)
+            : displayText;
         // S4. She asked to look something up. Strip the tag, run the search, then ask her
         // again — the second call carries the results, so the answer comes from her having
         // read them rather than from the app pasting snippets into the chat.
@@ -4041,7 +4094,12 @@ async function callLLM(userMessage) {
             // T2. What she can *do* about media, as opposed to D9's what is playing. Empty
             // unless Together is on and something can actually search, so a promise is never
             // made that nothing can keep.
-            (window.NEXUS_TOGETHER_CAPABILITY?.systemPromptSuffix?.() || '');
+            (window.NEXUS_TOGETHER_CAPABILITY?.systemPromptSuffix?.() || '') +
+            // A11. Where you both are, and that she may change it. Empty unless the user has
+            // turned scene ambience on AND the catalogue can actually answer something, so a
+            // chat with it off sends byte-for-byte the prompt it sent before the feature
+            // existed.
+            (window.NEXUS_SCENE_AMBIENCE_CAPABILITY?.systemPromptSuffix?.() || '');
 
         // Use structured response for OllaBridge to get attachments
         if (config.provider === 'ollabridge' && typeof window._nexusLLM.sendMessageStructured === 'function') {
@@ -5545,7 +5603,8 @@ function __nexusMediaSuffix() {
             (window.NEXUS_CURRENT_MEDIA?.systemPromptSuffix?.() || '') +
             (window.NEXUS_STUDY_PROMPT?.systemPromptSuffix?.() || '') +
             (window.NEXUS_LOOKUP?.systemPromptSuffix?.() || '') +
-            (window.NEXUS_TOGETHER_CAPABILITY?.systemPromptSuffix?.() || '')
+            (window.NEXUS_TOGETHER_CAPABILITY?.systemPromptSuffix?.() || '') +
+            (window.NEXUS_SCENE_AMBIENCE_CAPABILITY?.systemPromptSuffix?.() || '')
         );
     } catch (_) {
         return '';
