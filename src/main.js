@@ -3687,8 +3687,29 @@ async function handleUserMessage(text) {
     }
 }
 
+/**
+ * Whether a turn that started at `token` still belongs to the conversation on screen.
+ *
+ * Pressing CLEAR mid-reply used to resurrect the conversation: the in-flight turn finished,
+ * appended the assistant's message and persisted it, writing a fresh conversation into the
+ * storage that had just been emptied. The reply arrived *after* the clear, so it looked like
+ * the clear had simply not worked.
+ *
+ * Permissive when the reset module is absent, so a deployment without it behaves exactly as it
+ * did before rather than silently dropping replies.
+ */
+function _turnIsCurrent(token) {
+    const reset = window.NEXUS_CONVERSATION_RESET;
+    if (!reset || typeof reset.isCurrent !== 'function') return true;
+    return reset.isCurrent(token);
+}
+
 // Streaming response: tokens appear word-by-word in the chat
 async function _handleStreamingResponse(text) {
+    // Which conversation this turn belongs to. Checked again before anything is written back,
+    // because the user may press CLEAR while she is still mid-sentence.
+    const turn = window.NEXUS_CONVERSATION_RESET?.currentEpoch?.();
+
     // Create an empty bot message element that we'll fill progressively
     const { textDiv, row } = _createStreamingBotMessage();
 
@@ -3722,6 +3743,15 @@ async function _handleStreamingResponse(text) {
         });
 
         if (window.setTypingIndicator) window.setTypingIndicator(false);
+
+        // The user pressed CLEAR while this was streaming. This reply belongs to a conversation
+        // that no longer exists: take the half-written bubble off screen and write nothing —
+        // no message, no storage, no speech. Anything else resurrects what they just erased.
+        if (!_turnIsCurrent(turn)) {
+            if (row.parentElement) row.parentElement.removeChild(row);
+            setStatus('idle', 'READY');
+            return;
+        }
 
         let displayText = fullText || accumulated || 'No response';
         // Living NPC: execute the ```motion plan and strip it from display/TTS
@@ -3763,6 +3793,14 @@ async function _handleStreamingResponse(text) {
         // Remove the empty streaming message
         if (row.parentElement) row.parentElement.removeChild(row);
 
+        // Do not retry a turn the user has already cleared. The fallback would capture a fresh
+        // epoch and therefore consider itself current, putting the old question's answer into
+        // the new conversation — the one hole a per-turn token does not close by itself.
+        if (!_turnIsCurrent(turn)) {
+            setStatus('idle', 'READY');
+            return;
+        }
+
         // Fallback to non-streaming
         await _handleNonStreamingResponse(text);
     }
@@ -3770,12 +3808,22 @@ async function _handleStreamingResponse(text) {
 
 // Non-streaming response (original behavior + retry button)
 async function _handleNonStreamingResponse(text) {
+    // See the note in _handleStreamingResponse: a reply that outlives a CLEAR must not write
+    // itself into the conversation that replaced it.
+    const turn = window.NEXUS_CONVERSATION_RESET?.currentEpoch?.();
     if (window.setTypingIndicator) window.setTypingIndicator(true);
 
     try {
         const response = config.provider === 'none' ? getSimpleResponse(text) : await callLLM(text);
 
         if (window.setTypingIndicator) window.setTypingIndicator(false);
+
+        // Cleared while the request was in flight. Nothing here belongs to the conversation on
+        // screen, so nothing is written, spoken or persisted. See _turnIsCurrent.
+        if (!_turnIsCurrent(turn)) {
+            setStatus('idle', 'READY');
+            return;
+        }
 
         let displayText;
         let attachments = [];
@@ -3818,6 +3866,13 @@ async function _handleNonStreamingResponse(text) {
     } catch (error) {
         if (window.setTypingIndicator) window.setTypingIndicator(false);
         logError('Error processing message', error);
+
+        // An error that arrives after a CLEAR is still about the old conversation. Report it in
+        // the status line, but do not put it in the transcript the user just emptied.
+        if (!_turnIsCurrent(turn)) {
+            setStatus('idle', 'READY');
+            return;
+        }
 
         if (error.name === 'PersonaUnavailableError') {
             const friendlyMsg =
@@ -4531,6 +4586,19 @@ function addMessageToHistory(sender, text, attachments) {
     }
 }
 
+/**
+ * CLEAR — and it now means it.
+ *
+ * This used to empty the transcript and the in-memory message list and stop there, leaving both
+ * localStorage copies in place. The conversation came back on the next page load, which is a
+ * long way from the click that was supposed to remove it. The drawer's Clear Chat removed the
+ * storage keys via a separate listener, so the same action behaved differently depending on
+ * which button you used.
+ *
+ * All of it now goes through one module, which also clears the search and study context that
+ * feeds the system prompt — without that, the first message after a CLEAR could still carry
+ * "You just searched the web for …" from the conversation that was supposed to be gone.
+ */
 function clearHistory() {
     const chatHistoryEl = $('chat-history');
     if (!chatHistoryEl) return;
@@ -4540,10 +4608,32 @@ function clearHistory() {
       <p class="sub-text">All transmissions will be recorded here.</p>
     </div>`;
 
-    // ✅ Also clear the chat session history (context memory)
-    if (window.chatHistory) {
-        window.chatHistory.clear();
-        showMessage('Chat history and context memory cleared', 'success');
+    const reset = window.NEXUS_CONVERSATION_RESET;
+    if (!reset) {
+        // The module is loaded by boot.js and a click cannot realistically precede it. If it is
+        // somehow absent, do the part that matters most by hand rather than silently doing less
+        // than the button promises.
+        if (window.chatHistory) window.chatHistory.clear();
+        try {
+            localStorage.removeItem(CHAT_STORAGE_KEY);
+            localStorage.removeItem(CHAT_DISPLAY_KEY);
+        } catch (_) {
+            /* storage unavailable */
+        }
+        showMessage('Conversation cleared', 'success');
+        return;
+    }
+
+    const result = reset.forget();
+    // Tell the user what actually happened. A private window with storage blocked cannot forget
+    // anything on disk, and claiming otherwise is how this went wrong the first time.
+    const left = reset.residue();
+    if (left.length) {
+        showMessage('Conversation cleared here, but this browser would not let it be erased from storage', 'error');
+    } else if (!result.storageAvailable) {
+        showMessage('Conversation cleared (nothing was stored on this device)', 'success');
+    } else {
+        showMessage('Conversation cleared — history, context and saved copy', 'success');
     }
 }
 
@@ -4691,22 +4781,12 @@ if (_npcTelemetryBtn) _npcTelemetryBtn.addEventListener('click', toggleTelemetry
 /* ============================
    Clear = clear + FORGET (persistence only when the user keeps the chat)
    ============================ */
-const _drawerClearBtn = document.getElementById('drawer-clear-btn');
-if (_drawerClearBtn) {
-    _drawerClearBtn.addEventListener('click', () => {
-        try {
-            // The constants are declared further down the file, but a click can
-            // only happen long after this script has finished evaluating, so
-            // they are initialised by then. Naming them rather than repeating
-            // the literals means a rename cannot leave a stale key behind.
-            localStorage.removeItem(CHAT_STORAGE_KEY);
-            localStorage.removeItem(CHAT_DISPLAY_KEY);
-            console.log('[ChatHistory] Persisted conversation forgotten (Clear)');
-        } catch (_e) {
-            /* storage unavailable */
-        }
-    });
-}
+// The drawer's Clear Chat used to carry its own half of the job here — it removed the two
+// storage keys, while MobileDrawerWiring forwarded the click to #clear-history for the rest.
+// Between them the drawer cleared everything and the chat panel's own CLEAR button cleared
+// only half, which is why the same action behaved differently depending on which one you
+// pressed. Both now reach the same `clearHistory()`, so this listener would be a second,
+// partial implementation of something that already works. Deleted rather than kept in step.
 
 /* ============================
    Reset view — a clean character, exactly like a fresh page load

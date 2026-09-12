@@ -82,6 +82,10 @@
         // conversation for news, today and the weather.
         'src/features/research/WebSearchSettings.js',
         'src/features/research/LookUp.js',
+        // Forgetting a conversation. After LookUp and the study modules, because it calls into
+        // whichever of them are present — though it null-guards each, so order is a courtesy
+        // here rather than a requirement.
+        'src/features/chat/ConversationReset.js',
         'src/features/study/StudySession.js',
         'src/features/study/StudyPrompt.js',
         'src/features/study/StudyDirective.js',
