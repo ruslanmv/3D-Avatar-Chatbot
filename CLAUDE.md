@@ -73,7 +73,7 @@ So the rule for new code in `src/gltf-viewer/`:
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (129 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (132 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
