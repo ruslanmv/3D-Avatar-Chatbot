@@ -216,7 +216,9 @@ dropped not thrown; an absolute URL or `..` path is rejected; no entry carries a
 
 **Pre-read** `AI_SCENE_AMBIENCE.md` §8 — alias table and weights are specified; copy them.
 
-**Accept.** The six worked examples in §8 resolve exactly; deterministic over 100 runs; stable
+**Accept.** The worked examples in §8 resolve exactly (two were corrected during A3 — the
+doc assumed a `relax` tag on `forest-river` that its own fixture does not have);
+also expose `satisfiableIntents(entries)` for A8's honesty check; deterministic over 100 runs; stable
 tie-break; preference ranks but never filters; an explicit request beats a conflicting
 preference; below-threshold → `null`; empty catalogue → `null`; an entry missing `tags` does not
 throw.

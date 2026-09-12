@@ -427,10 +427,29 @@ Worked examples against the §43 fixture catalogue:
 intent=sea                        → ocean-sunrise     (tags: ocean beach sea → +30)
 intent=forest                     → forest-river      (tags: forest → +10)
 intent=study                      → rain-study        (tags: study focus → +20)
-intent=meditation mood=night      → night-garden      (+10 meditation, +4 night)
-intent=relax preference=nature    → forest-river      (+10 relax, +3 nature)
+intent=meditation mood=night      → night-garden      (+10 meditation tag, +6 meditation
+                                                     category, +1 night; `night` is not a
+                                                     mood, so it is ignored as one)
+intent=relax preference=nature    → ocean-sunrise     (+10 relax tag, +6 relax category,
+                                                     +1 daytime; forest-river carries no
+                                                     relax-family tag, so +3 nature cannot
+                                                     lift it over the threshold)
 intent=mars                       → null              (below threshold → no change)
 ```
+
+### Content gap, found while implementing A3
+
+`satisfiableIntents(entries)` reports which of the fourteen advertised intents a given catalogue
+can actually answer. Against the shipped starter set (ocean, lake, garden, terrace, sky) it
+returns **neither `forest` nor `mountain` nor `fantasy`** — there is no forest scene, so
+*"take me to a forest"* resolves to `null` and the companion correctly declines.
+
+That is right behaviour and the wrong prompt. **A8 must advertise
+`Resolver.satisfiableIntents(catalog.images())` rather than the literal fourteen words**, for the
+same reason `TogetherCapability.canSearch()` refuses to describe a capability that cannot run: a
+vocabulary that promises places the art does not contain produces a companion that offers and
+then declines. The alternative — adding a forest scene in A6 — is a content decision, not a
+code one, and does not remove the need for the honesty check.
 
 ---
 
