@@ -1784,6 +1784,84 @@ body {
     color: var(--text-primary);
 }
 
+/* Scene backgrounds (batch A6).
+   Additive only: every rule below is new, and none overrides an existing one. The scene cards
+   reuse .provider-card / .provider-radio / .provider-content unchanged, so the checked and hover
+   states come for free — and crucially the radio must stay the *immediately preceding sibling*
+   of .provider-content, because .provider-radio:checked + .provider-content is an adjacent
+   sibling selector. Put anything between them and selection stops showing. */
+
+.config-subtitle {
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    opacity: 0.75;
+    margin: var(--spacing-md) 0 var(--spacing-sm);
+}
+
+/* Three across rather than two: these cards are pictures, and at two-up the thumbnails get
+   large enough to dominate a panel whose job is settings. */
+.provider-grid--scenes {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 480px) {
+    .provider-grid--scenes {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* The thumbnail is a background-image on a fixed-ratio box rather than an <img>, so the same
+   `cover` crop the viewport uses is what the card previews — a thumbnail that letterboxed would
+   misrepresent what selecting it does. */
+.provider-thumb {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    max-width: 100%;
+    border-radius: var(--border-radius-sm);
+    background-color: rgba(0, 0, 0, 0.45);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    margin-bottom: 0.4rem;
+}
+
+.provider-grid--scenes .provider-content {
+    padding: var(--spacing-sm);
+}
+
+.provider-grid--scenes .provider-name {
+    font-size: 0.78rem;
+    letter-spacing: 0.03em;
+}
+
+.provider-variant {
+    font-size: 0.68rem;
+    letter-spacing: 0.03em;
+    color: var(--text-secondary);
+    opacity: 0.8;
+}
+
+/* The radio is visually hidden (opacity 0) but still focusable, so without this a keyboard user
+   tabbing through the grid gets no indication at all of where they are — true of the five colour
+   cards since long before this batch. A new rule, so nothing existing changes; it simply starts
+   drawing a ring that was always missing. */
+.provider-radio:focus-visible + .provider-content {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* A scene whose file failed to load. The card stays selectable — the catalogue entry is still
+   valid and the colour fallback still applies — but it must not claim to preview something it
+   could not fetch. */
+.provider-thumb--missing {
+    background-image: none !important;
+    border: 1px dashed var(--glass-border);
+}
+
 .modal-footer {
     display: flex;
     flex-wrap: wrap;

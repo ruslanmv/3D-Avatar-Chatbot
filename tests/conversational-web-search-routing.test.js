@@ -14,9 +14,21 @@ describe('conversational web-search first-turn routing', () => {
     let bubbles;
 
     const RESULTS = [
-        { title: 'Genova news one', snippet: 'News today in Genova: first local update.', url: 'https://ansa.example/genova/1' },
-        { title: 'Genova news two', snippet: 'News today in Genova: second local update.', url: 'https://secolo.example/genova/2' },
-        { title: 'Genova news three', snippet: 'News today in Genova: third local update.', url: 'https://rai.example/genova/3' },
+        {
+            title: 'Genova news one',
+            snippet: 'News today in Genova: first local update.',
+            url: 'https://ansa.example/genova/1',
+        },
+        {
+            title: 'Genova news two',
+            snippet: 'News today in Genova: second local update.',
+            url: 'https://secolo.example/genova/2',
+        },
+        {
+            title: 'Genova news three',
+            snippet: 'News today in Genova: third local update.',
+            url: 'https://rai.example/genova/3',
+        },
     ];
 
     beforeEach(() => {
@@ -61,9 +73,17 @@ describe('conversational web-search first-turn routing', () => {
 
     afterEach(() => {
         for (const key of [
-            'NEXUS_RESEARCH_WEB', 'NEXUS_SEARCH_SESSION', 'NEXUS_LOOKUP', 'callLLM',
-            'addMessageToHistory', 'chatHistory', '_persistChat', 'setStatus', 'speakText',
-        ]) delete window[key];
+            'NEXUS_RESEARCH_WEB',
+            'NEXUS_SEARCH_SESSION',
+            'NEXUS_LOOKUP',
+            'callLLM',
+            'addMessageToHistory',
+            'chatHistory',
+            '_persistChat',
+            'setStatus',
+            'speakText',
+        ])
+            delete window[key];
         delete window.handleUserMessage;
     });
 

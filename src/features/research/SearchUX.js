@@ -46,7 +46,10 @@
         for (let i = 0; i < 2; i += 1) {
             q = q
                 .replace(/\s+(?:(?:on|in)\s+)?(?:the\s+)?(?:internet|web|online)\s*$/i, '')
-                .replace(/\s+(?:and\s+)?(?:summari[sz]e(?:\s+(?:it|this|them|the\s+results?))?|give\s+me\s+(?:a\s+)?summary|show(?:\s+me)?(?:\s+the)?\s+results?|list(?:\s+the)?\s+results?|tell\s+me\s+what\s+you\s+find)\s*$/i, '')
+                .replace(
+                    /\s+(?:and\s+)?(?:summari[sz]e(?:\s+(?:it|this|them|the\s+results?))?|give\s+me\s+(?:a\s+)?summary|show(?:\s+me)?(?:\s+the)?\s+results?|list(?:\s+the)?\s+results?|tell\s+me\s+what\s+you\s+find)\s*$/i,
+                    ''
+                )
                 .replace(/\s+/g, ' ')
                 .trim();
         }
@@ -55,8 +58,11 @@
 
     function emitStatus(phase, detail) {
         try {
-            if (!global || typeof global.dispatchEvent !== 'function' || typeof global.CustomEvent !== 'function') return;
-            global.dispatchEvent(new global.CustomEvent('nexus-search:status', { detail: Object.assign({ phase }, detail || {}) }));
+            if (!global || typeof global.dispatchEvent !== 'function' || typeof global.CustomEvent !== 'function')
+                return;
+            global.dispatchEvent(
+                new global.CustomEvent('nexus-search:status', { detail: Object.assign({ phase }, detail || {}) })
+            );
         } catch (_) {
             /* other surfaces can opt in; chat remains the source of truth */
         }
@@ -115,7 +121,8 @@
     function markSourcesFound(handle, count) {
         if (!handle) return;
         if (handle.row) handle.row.setAttribute('data-nexus-search-status', 'summarizing');
-        if (handle.body) handle.body.textContent = `✓ Found ${count} live source${count === 1 ? '' : 's'} for “${handle.query}”.`;
+        if (handle.body)
+            handle.body.textContent = `✓ Found ${count} live source${count === 1 ? '' : 's'} for “${handle.query}”.`;
         if (handle.detail) handle.detail.textContent = 'Reading the results and preparing your answer…';
         emitStatus('summarizing', { query: handle.query, kind: handle.kind, count });
     }
@@ -135,9 +142,15 @@
 
     function processAssistantText(text) {
         let out = String(text || '').trim();
-        try { if (global.NEXUS_MOTION?.processReply) out = global.NEXUS_MOTION.processReply(out); } catch (_) {}
-        try { if (global.NEXUS_PLAY_DIRECTIVE?.consume) out = global.NEXUS_PLAY_DIRECTIVE.consume(out); } catch (_) {}
-        try { if (global.NEXUS_STUDY_DIRECTIVE?.consume) out = global.NEXUS_STUDY_DIRECTIVE.consume(out); } catch (_) {}
+        try {
+            if (global.NEXUS_MOTION?.processReply) out = global.NEXUS_MOTION.processReply(out);
+        } catch (_) {}
+        try {
+            if (global.NEXUS_PLAY_DIRECTIVE?.consume) out = global.NEXUS_PLAY_DIRECTIVE.consume(out);
+        } catch (_) {}
+        try {
+            if (global.NEXUS_STUDY_DIRECTIVE?.consume) out = global.NEXUS_STUDY_DIRECTIVE.consume(out);
+        } catch (_) {}
         return String(out || '').trim();
     }
 
@@ -145,26 +158,56 @@
     function unusableSynthesis(text) {
         const t = String(text || '').trim();
         if (!t) return true;
-        if (/the application has (?:already )?completed a live web search|the completed search query was|the user asked:\s*["“]/i.test(t)) return true;
-        if (/(?:cannot|can't|unable to|don't|do not)\s+(?:perform|do|access|browse|search|use).{0,55}(?:internet|web|real[- ]?time)/i.test(t)) return true;
-        if (/knowledge\s+cut[- ]?off|don't have access to (?:the )?(?:latest|internet|web|real[- ]?time)/i.test(t)) return true;
-        if (/^(?:i['’]?m\s+sorry[,\s]*)?(?:but\s+)?i\s+(?:can(?:not|'t)|am\s+unable\s+to)\s+(?:assist|help)(?:\s+you)?(?:\s+with)?\s+(?:that|this)\s+request\b/i.test(t)) return true;
+        if (
+            /the application has (?:already )?completed a live web search|the completed search query was|the user asked:\s*["“]/i.test(
+                t
+            )
+        )
+            return true;
+        if (
+            /(?:cannot|can't|unable to|don't|do not)\s+(?:perform|do|access|browse|search|use).{0,55}(?:internet|web|real[- ]?time)/i.test(
+                t
+            )
+        )
+            return true;
+        if (/knowledge\s+cut[- ]?off|don't have access to (?:the )?(?:latest|internet|web|real[- ]?time)/i.test(t))
+            return true;
+        if (
+            /^(?:i['’]?m\s+sorry[,\s]*)?(?:but\s+)?i\s+(?:can(?:not|'t)|am\s+unable\s+to)\s+(?:assist|help)(?:\s+you)?(?:\s+with)?\s+(?:that|this)\s+request\b/i.test(
+                t
+            )
+        )
+            return true;
         return false;
     }
 
     function rememberUser(text) {
         const value = String(text || '').trim();
-        try { if (typeof global.addMessageToHistory === 'function') global.addMessageToHistory('user', value); } catch (_) {}
-        try { global.NEXUS_MOTION?.onUserUtterance?.(value); } catch (_) {}
-        try { global.chatHistory?.addMessage?.('user', value); } catch (_) {}
-        try { global._persistChat?.(); } catch (_) {}
+        try {
+            if (typeof global.addMessageToHistory === 'function') global.addMessageToHistory('user', value);
+        } catch (_) {}
+        try {
+            global.NEXUS_MOTION?.onUserUtterance?.(value);
+        } catch (_) {}
+        try {
+            global.chatHistory?.addMessage?.('user', value);
+        } catch (_) {}
+        try {
+            global._persistChat?.();
+        } catch (_) {}
     }
 
     function publishAnswer(text, speechText, { persist = true } = {}) {
         const value = String(text || '').trim();
-        try { if (typeof global.addMessageToHistory === 'function') global.addMessageToHistory('avatar', value); } catch (_) {}
-        try { global.chatHistory?.addMessage?.('assistant', value); } catch (_) {}
-        try { global._applyEmotionFromText?.(value); } catch (_) {}
+        try {
+            if (typeof global.addMessageToHistory === 'function') global.addMessageToHistory('avatar', value);
+        } catch (_) {}
+        try {
+            global.chatHistory?.addMessage?.('assistant', value);
+        } catch (_) {}
+        try {
+            global._applyEmotionFromText?.(value);
+        } catch (_) {}
         try {
             global.sendBotResponseToVR?.({
                 text: value,
@@ -173,10 +216,16 @@
                 persona_context: null,
             });
         } catch (_) {}
-        try { if (typeof global.speakText === 'function') global.speakText(speechText || value); } catch (_) {}
-        try { if (typeof global.setStatus === 'function') global.setStatus('idle', 'READY'); } catch (_) {}
+        try {
+            if (typeof global.speakText === 'function') global.speakText(speechText || value);
+        } catch (_) {}
+        try {
+            if (typeof global.setStatus === 'function') global.setStatus('idle', 'READY');
+        } catch (_) {}
         if (persist) {
-            try { global._persistChat?.(); } catch (_) {}
+            try {
+                global._persistChat?.();
+            } catch (_) {}
         }
         return value;
     }
@@ -275,10 +324,13 @@
     function plainSources(results, max = 4) {
         const rows = (Array.isArray(results) ? results : []).slice(0, max);
         if (!rows.length) return '';
-        return ['Sources:', ...rows.map((r, i) => {
-            const meta = sourceMeta(r);
-            return `${i + 1}. ${clean(r.title || 'Untitled', 200)}${meta ? ` — ${meta}` : ''}${r.url ? `\n   ${r.url}` : ''}`;
-        })].join('\n');
+        return [
+            'Sources:',
+            ...rows.map((r, i) => {
+                const meta = sourceMeta(r);
+                return `${i + 1}. ${clean(r.title || 'Untitled', 200)}${meta ? ` — ${meta}` : ''}${r.url ? `\n   ${r.url}` : ''}`;
+            }),
+        ].join('\n');
     }
 
     function fallbackAnswer(out) {
@@ -288,13 +340,15 @@
     }
 
     function failureText(why) {
-        return {
-            'no-key': "I can't search the web yet because no web-search key is configured in Settings.",
-            'no-provider': "Web search isn't available in this build.",
-            failed: "I couldn't reach web search just now. Please try again.",
-            nothing: "I searched the web but couldn't find useful results for that query.",
-            stale: 'A newer search replaced that request.',
-        }[why] || "I couldn't complete that web search.";
+        return (
+            {
+                'no-key': "I can't search the web yet because no web-search key is configured in Settings.",
+                'no-provider': "Web search isn't available in this build.",
+                failed: "I couldn't reach web search just now. Please try again.",
+                nothing: "I searched the web but couldn't find useful results for that query.",
+                stale: 'A newer search replaced that request.',
+            }[why] || "I couldn't complete that web search."
+        );
     }
 
     function publishWithSources(answer, results, query, speechText) {
@@ -302,7 +356,9 @@
         const display = cards ? answer : [answer, plainSources(results)].filter(Boolean).join('\n\n');
         publishAnswer(display, speechText || answer, { persist: false });
         if (cards) renderSourceCards(results, query);
-        try { global._persistChat?.(); } catch (_) {}
+        try {
+            global._persistChat?.();
+        } catch (_) {}
         return display;
     }
 
@@ -312,17 +368,24 @@
         const q = cleanSearchQuery(query) || clean(query, 240);
         rememberUser(userText);
 
-        const kind = typeof L.explicitSearchIntent === 'function'
-            ? (L.explicitSearchIntent(userText)?.kind || 'web')
-            : 'web';
+        const kind =
+            typeof L.explicitSearchIntent === 'function' ? L.explicitSearchIntent(userText)?.kind || 'web' : 'web';
         const notice = showSearchNotice(q, kind);
-        try { if (typeof global.setStatus === 'function') global.setStatus('listening', 'SEARCHING...'); } catch (_) {}
+        try {
+            if (typeof global.setStatus === 'function') global.setStatus('listening', 'SEARCHING...');
+        } catch (_) {}
 
         let out;
-        try { out = await L.run(q); } catch (_) { out = { ok: false, why: 'failed' }; }
+        try {
+            out = await L.run(q);
+        } catch (_) {
+            out = { ok: false, why: 'failed' };
+        }
         if (!out || !out.ok) {
             removeSearchNotice(notice, 'failed');
-            try { L.clear?.(); } catch (_) {}
+            try {
+                L.clear?.();
+            } catch (_) {}
             return publishAnswer(failureText(out && out.why));
         }
 
@@ -341,9 +404,16 @@
         }
 
         const answer = unusableSynthesis(synthesized) ? fallbackAnswer(out) : synthesized;
-        try { L.clear?.(); } catch (_) {}
+        try {
+            L.clear?.();
+        } catch (_) {}
         removeSearchNotice(notice, 'done');
-        return publishWithSources(answer, out.results, out.query, unusableSynthesis(synthesized) ? `I found ${out.results.length} web results.` : synthesized);
+        return publishWithSources(
+            answer,
+            out.results,
+            out.query,
+            unusableSynthesis(synthesized) ? `I found ${out.results.length} web results.` : synthesized
+        );
     }
 
     async function showCachedResults(userText, intent) {
@@ -352,7 +422,12 @@
         const results = (session && session.results) || [];
         const query = (session && session.query) || 'your last search';
         const answer = `Here are the ${results.length} source${results.length === 1 ? '' : 's'} from my last search for “${query}”.`;
-        return publishWithSources(answer, results, query, `I listed the ${results.length} sources from my last search.`);
+        return publishWithSources(
+            answer,
+            results,
+            query,
+            `I listed the ${results.length} sources from my last search.`
+        );
     }
 
     async function answerSelectedTurn(userText, intent) {
@@ -366,7 +441,10 @@
                 synthesized = '';
             }
         }
-        const fallback = [clean(result.title || `Result ${(intent?.index || 0) + 1}`, 200), clean(result.snippet || result.extract, 700)]
+        const fallback = [
+            clean(result.title || `Result ${(intent?.index || 0) + 1}`, 200),
+            clean(result.snippet || result.extract, 700),
+        ]
             .filter(Boolean)
             .join('\n');
         const answer = unusableSynthesis(synthesized) ? fallback : synthesized;
@@ -380,7 +458,9 @@
 
         // Make the existing lookup wrapper the inner fallback. Our wrapper then owns the
         // first-turn UX and cannot be pre-empted by LookUp's older executeSearchTurn closure.
-        try { L.installFollowUpHook?.(); } catch (_) {}
+        try {
+            L.installFollowUpHook?.();
+        } catch (_) {}
         const original = global.handleUserMessage;
         if (original.__nexusSearchUXWrapped) {
             installed = true;
@@ -396,9 +476,10 @@
             const intent = typeof L.followUpIntent === 'function' ? L.followUpIntent(text) : null;
             if (intent?.action === 'show') return showCachedResults(text, intent);
             if (intent?.action === 'refine') {
-                const refined = typeof L.refineFollowUpQuery === 'function'
-                    ? L.refineFollowUpQuery(text, intent.session)
-                    : `${intent.session?.query || ''} ${text}`;
+                const refined =
+                    typeof L.refineFollowUpQuery === 'function'
+                        ? L.refineFollowUpQuery(text, intent.session)
+                        : `${intent.session?.query || ''} ${text}`;
                 return executeSearchTurn(text, cleanSearchQuery(refined));
             }
             if (intent?.action === 'select') return answerSelectedTurn(text, intent);

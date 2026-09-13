@@ -82,6 +82,10 @@
         // conversation for news, today and the weather.
         'src/features/research/WebSearchSettings.js',
         'src/features/research/LookUp.js',
+        // Forgetting a conversation. After LookUp and the study modules, because it calls into
+        // whichever of them are present — though it null-guards each, so order is a courtesy
+        // here rather than a requirement.
+        'src/features/chat/ConversationReset.js',
         'src/features/study/StudySession.js',
         'src/features/study/StudyPrompt.js',
         'src/features/study/StudyDirective.js',
@@ -160,6 +164,20 @@
         // the consent machine above grants the streams and HomePilot's recorder addon does
         // the work — so nothing here depends on it being present.
         'src/features/together/activities/meeting.js',
+        // A11. Scene ambience — letting her change where you both are. Order within the group
+        // matters: the resolver and switch are read by the capability and the controller, and
+        // the directive calls the controller. The renderer half (catalogue, manager, cover
+        // maths) is loaded by index.html before engine-bridge.js, because ViewerEngine needs
+        // it synchronously at construction; these are the conversation half.
+        //
+        // A17. The library first: it is the data layer the others read from, and what the
+        // Settings grid renders.
+        'src/features/ambience/SceneCatalog.js',
+        'src/features/ambience/SceneAmbienceResolver.js',
+        'src/features/ambience/SceneAmbienceSwitch.js',
+        'src/features/ambience/SceneAmbienceCapability.js',
+        'src/features/ambience/SceneAmbienceController.js',
+        'src/features/ambience/SceneAmbienceDirective.js',
         // B24/B25. The recorder first: the button is the thing that keeps what it buffered.
         'src/features/clips/ClipRecorder.js',
         'src/features/clips/ShareCard.js',

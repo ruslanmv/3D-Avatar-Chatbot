@@ -116,6 +116,23 @@
             }
         </script>
 
+        <!-- A5. Scenic viewport backgrounds. Plain scripts, not modules: they are IIFEs
+             attaching to window.NEXUS_*, because there is no Babel config in this repo and
+             Jest cannot require() an ES module (see CLAUDE.md). They must load BEFORE
+             engine-bridge.js, which constructs ViewerEngine and reads these globals —
+             ViewerEngine is an ES module and so cannot import a non-module script. If any
+             of the three is missing, ViewerEngine null-guards and the app falls back to the
+             five solid colours. -->
+        <script src="src/gltf-viewer/ambience/coverTransform.js"></script>
+        <script src="src/gltf-viewer/ambience/ViewportBackgroundCatalog.js"></script>
+        <script src="src/gltf-viewer/ambience/ViewportBackgroundManager.js"></script>
+        <!-- A13. Development-only backplate calibration. Self-gating on
+             ?backgroundCalibration=1, so with no query parameter it creates no node, attaches
+             no listener and costs one regular-expression test at boot. Geometry first: the
+             overlay reads it. -->
+        <script src="src/gltf-viewer/ambience/CalibrationGeometry.js"></script>
+        <script src="src/gltf-viewer/ambience/CalibrationOverlay.js"></script>
+
         <script type="module" src="src/engine-bridge.js"></script>
 
         <script defer>
@@ -1498,6 +1515,52 @@
                             </p>
                         </div>
 
+                        <!-- Batch A11. Whether she may change where you both are.
+
+                             Off until somebody turns it on, and unlike the Together switch
+                             above nothing ever turns it on by itself: tapping a tile is a
+                             request to watch something, but nothing a person says to a chatbot
+                             implies "and you may redecorate".
+
+                             It gates her *agency*, not the pictures. The scenes themselves are
+                             in Settings -> Scenes and stay available whichever way this is set,
+                             which is why turning this off never changes what is on screen. Losing
+                             your chosen backdrop as a punishment for revoking a permission would
+                             be the wrong lesson. -->
+                        <div class="input-group">
+                            <label class="spicy-toggle-label">
+                                <span>Scene ambience — let her change where you both are</span>
+                                <div class="spicy-toggle-switch">
+                                    <input type="checkbox" id="scene-ambience-toggle" />
+                                    <span class="spicy-toggle-slider"></span>
+                                </div>
+                            </label>
+                            <p style="font-size: 0.7rem; color: #888; margin: 6px 0 0">
+                                Off by default. On, "take me somewhere by the sea" changes the backdrop behind her. She
+                                picks from the scenes this app already has — she is never given a web address and cannot
+                                invent one. Turning this off does not change the scene you are looking at.
+                            </p>
+                            <label
+                                for="scene-ambience-preference"
+                                style="display: block; font-size: 0.7rem; color: #888; margin: 10px 0 4px"
+                                >What she should lean towards</label
+                            >
+                            <select id="scene-ambience-preference" class="config-input" disabled>
+                                <option value="auto">Auto — read it from what I ask for</option>
+                                <option value="relax">Calm and restful</option>
+                                <option value="nature">Outdoors and natural</option>
+                                <option value="ocean">Water and coast</option>
+                                <option value="forest">Woodland</option>
+                                <option value="study">Quiet and focused</option>
+                                <option value="cozy">Warm and enclosed</option>
+                                <option value="night">After dark</option>
+                                <option value="fantasy">Somewhere unreal</option>
+                            </select>
+                            <p style="font-size: 0.7rem; color: #888; margin: 6px 0 0">
+                                A nudge, never a filter — it breaks ties, and it never outranks what you just asked for.
+                            </p>
+                        </div>
+
                         <!-- Batch B9, reshaped in B35. The two controls that used to live
                              here — a "Connect HomePilot session" switch and a URL box — asked
                              the user for something the app can find out: OllaBridge already
@@ -1611,6 +1674,58 @@
                                     var am = window.NEXUS_AMBIENT;
                                     if (!am || !am.setEnabled) return;
                                     am.setEnabled(ambient.checked);
+                                });
+                            }
+
+                            /* Batch A11. Same shape as the two rows above: the switch module
+                               owns the state and these controls are a view of it. Two
+                               differences worth naming.
+
+                               Nothing ever turns this on by itself, so an absent module reads
+                               as off — same as Calm mode, unlike Together.
+
+                               The dropdown is disabled while the toggle is off, because a
+                               preference for a thing she is not allowed to do is a control
+                               that does nothing. It is a nudge either way: the resolver adds
+                               it as a weight and it never outranks what was just asked for. */
+                            var sceneBox = document.getElementById('scene-ambience-toggle');
+                            var scenePref = document.getElementById('scene-ambience-preference');
+                            if (sceneBox) {
+                                var syncScene = function () {
+                                    var sw = window.NEXUS_SCENE_AMBIENCE_SWITCH;
+                                    var on = !!(sw && sw.isEnabled && sw.isEnabled());
+                                    sceneBox.checked = on;
+                                    if (scenePref) {
+                                        scenePref.disabled = !on;
+                                        if (sw && sw.getPreference) scenePref.value = sw.getPreference();
+                                    }
+                                };
+                                var subscribed = false;
+                                var adopt = function () {
+                                    syncScene();
+                                    /* Subscribe once the module is there, so the box stays
+                                       right if anything else flips the switch. The delayed
+                                       call is only for the first read: these modules arrive
+                                       with the director's list, after this inline script. */
+                                    var sw = window.NEXUS_SCENE_AMBIENCE_SWITCH;
+                                    if (!subscribed && sw && sw.onChange) {
+                                        subscribed = true;
+                                        sw.onChange(syncScene);
+                                    }
+                                };
+                                adopt();
+                                setTimeout(adopt, 1500);
+                                sceneBox.addEventListener('change', function () {
+                                    var sw = window.NEXUS_SCENE_AMBIENCE_SWITCH;
+                                    if (!sw || !sw.setEnabled) return;
+                                    sw.setEnabled(sceneBox.checked);
+                                    syncScene();
+                                });
+                            }
+                            if (scenePref) {
+                                scenePref.addEventListener('change', function () {
+                                    var sw = window.NEXUS_SCENE_AMBIENCE_SWITCH;
+                                    if (sw && sw.setPreference) sw.setPreference(scenePref.value);
                                 });
                             }
 
@@ -1780,8 +1895,45 @@
                         </div>
                     </div>
 
+                    <!-- A17. Two sections, not one.
+
+                         They were one because they share a radio group: a colour and a scene are
+                         both "what is behind her", and one group for both is what stops the UI
+                         showing *Ocean* while the scene is black. That part is unchanged — the
+                         cards the grid below builds still join the same group as the colours.
+
+                         What changed is which one reads as the subject. A list of five greys with
+                         the artwork underneath as a subheading said the colours were the feature;
+                         they are what shows when no scene is chosen or a scene's file will not
+                         load. So the scenes come first under their own heading, and the colours
+                         keep their grid under a name that says what they are for. -->
                     <div class="config-section">
-                        <h3 class="config-title">VIEWPORT BACKGROUND</h3>
+                        <h3 class="config-title" id="bg-scene-heading">SCENES</h3>
+                        <p style="font-size: 0.72rem; color: rgba(255, 255, 255, 0.5); margin-bottom: 12px">
+                            Where the two of you are. Pick one yourself at any time — this is also the library she
+                            chooses from when scene ambience is on.
+                        </p>
+                        <div
+                            class="provider-grid provider-grid--scenes"
+                            id="bg-scene-grid"
+                            role="group"
+                            aria-labelledby="bg-scene-heading"
+                        ></div>
+                        <p
+                            id="bg-scene-empty"
+                            style="font-size: 0.72rem; color: rgba(255, 255, 255, 0.5); margin: 0"
+                            hidden
+                        >
+                            No scenes are installed. The fallback colour below is what you will see.
+                        </p>
+                    </div>
+
+                    <div class="config-section">
+                        <h3 class="config-title">FALLBACK BACKGROUND</h3>
+                        <p style="font-size: 0.72rem; color: rgba(255, 255, 255, 0.5); margin-bottom: 12px">
+                            Shown when no scene is selected, or when a scene's picture cannot be loaded. Companion and
+                            passthrough modes override both.
+                        </p>
                         <div class="provider-grid" id="bg-selector">
                             <label class="provider-card">
                                 <input type="radio" name="desktop-bg" value="black" class="provider-radio" checked />
