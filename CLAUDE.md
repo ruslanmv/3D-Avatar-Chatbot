@@ -73,7 +73,7 @@ So the rule for new code in `src/gltf-viewer/`:
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (140 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (141 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -113,7 +113,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-09-12 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **3931 tests in 140 suites, all passing.**
+— lint clean, format clean, **3940 tests in 141 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -222,8 +222,9 @@ Scenic viewport backgrounds, and letting the companion change them on request.
 - `docs/ambience-contract.md` — the frozen data shapes
 - `docs/AMBIENCE_HARDENING.md` — the A12 audit; both findings fixed
 - `docs/BACKPLATE_PRODUCTION.md` — **how to author art the camera agrees with**
-- `docs/STUDIO_INTEGRATION.md` — 3D-Ambience-Studio: what it makes, and the
-  reprojection that turns it into something this app can show
+- `docs/STUDIO_INTEGRATION.md` — 3D-Ambience-Studio: what it makes, the
+  reprojection that turns it into something this app can show, and the camera
+  contract the Studio's backplate route generates against
 
 Ten scenes in `assets/ambient/` with provenance beside them, a Settings scene
 grid, and five `src/features/ambience/` modules in `boot.js`. The switch is
@@ -249,6 +250,12 @@ Four things to know before touching it:
   non-portrait FOV was 35 while desktop kept `ViewerEngine`'s 30; A13 made
   both 30. Run `?backgroundCalibration=1` for the live figures rather than
   trusting a number written down anywhere, this file included.
+- **`assets/ambient/camera-contract.json` is generated, not written.** It is how
+  the projection leaves this app for the Python asset pipeline and for
+  3D-Ambience-Studio, neither of which can run `CalibrationGeometry.js`. Change
+  the camera and you must re-run
+  `node tools/ambience/export-camera-contract.mjs`; a test regenerates it and
+  fails if the committed copy has drifted.
 - **`reapplyCurrent(id)` takes the selection of record, and that argument is
   load-bearing.** While XR is presenting, `setDesktopBackground` records the
   choice and deliberately does not call the manager, so the manager's own `_id`

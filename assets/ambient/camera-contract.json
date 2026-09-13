@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "id": "avatar-chatbot",
+  "runtime": "3D-Avatar-Chatbot",
+  "generatedBy": "tools/ambience/export-camera-contract.mjs",
+  "sourceOfTruth": "src/gltf-viewer/ambience/CalibrationGeometry.js",
+  "nominalAvatar": {
+    "height": 1.6,
+    "width": 0.55,
+    "footY": 0
+  },
+  "profiles": {
+    "landscape": {
+      "master": {
+        "width": 1920,
+        "height": 1080
+      },
+      "fovDeg": 30,
+      "aspect": 1.777778,
+      "pitchDeg": 1.7184,
+      "eyeHeightMetres": 0.9849,
+      "cameraDistanceMetres": 4.0306,
+      "horizonY": 0.44402,
+      "headTopY": 0.15754,
+      "footAnchor": {
+        "x": 0.5,
+        "y": 0.89727
+      },
+      "safeZone": {
+        "x0": 0.3,
+        "x1": 0.7,
+        "y0": 0.15754,
+        "y1": 0.89727
+      },
+      "groundLines": [
+        {
+          "metres": 0.5,
+          "y": 0.84755
+        },
+        {
+          "metres": 1,
+          "y": 0.80766
+        },
+        {
+          "metres": 2,
+          "y": 0.74764
+        },
+        {
+          "metres": 4,
+          "y": 0.67228
+        },
+        {
+          "metres": 8,
+          "y": 0.59656
+        },
+        {
+          "metres": 16,
+          "y": 0.53572
+        }
+      ]
+    },
+    "portrait": {
+      "master": {
+        "width": 1080,
+        "height": 1920
+      },
+      "fovDeg": 42,
+      "aspect": 0.5625,
+      "pitchDeg": 1.7184,
+      "eyeHeightMetres": 0.9515,
+      "cameraDistanceMetres": 2.9177,
+      "horizonY": 0.46092,
+      "headTopY": 0.16907,
+      "footAnchor": {
+        "x": 0.5,
+        "y": 0.88215
+      },
+      "safeZone": {
+        "x0": 0.3,
+        "x1": 0.7,
+        "y0": 0.16907,
+        "y1": 0.88215
+      },
+      "groundLines": [
+        {
+          "metres": 0.5,
+          "y": 0.82101
+        },
+        {
+          "metres": 1,
+          "y": 0.77537
+        },
+        {
+          "metres": 2,
+          "y": 0.71178
+        },
+        {
+          "metres": 4,
+          "y": 0.63954
+        },
+        {
+          "metres": 8,
+          "y": 0.57426
+        },
+        {
+          "metres": 16,
+          "y": 0.5264
+        }
+      ]
+    }
+  }
+}

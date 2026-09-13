@@ -140,12 +140,17 @@ changes, and it works now — but it throws away six-sevenths of the panorama an
 upscales what is left, so expect softness unless the worker can generate very
 wide.
 
-**2. As a backplate generator.** Skip the panorama entirely: point a Studio
-provider at a model conditioned on the calibration overlay
-(`?backgroundCalibration=1`) and have it emit 1920×1080 directly. This wastes no
-pixels and gives the compositional control the panorama route cannot. It needs a
-new provider in `providers/` and a second shape in `image_pipeline.py`, which
-currently hard-codes 2:1.
+**2. As a backplate generator — built.** The Studio now has a backplate route
+that generates 1920×1080 directly, conditioned on a guide image drawn from this
+app's camera contract. See `docs/BACKPLATE_ROUTE.md` in that repo. It wastes no
+pixels and gives the compositional control the panorama route cannot.
+
+The contract is the seam: `tools/ambience/export-camera-contract.mjs` writes
+`assets/ambient/camera-contract.json` from `CalibrationGeometry.js`, and the
+Studio reads it. Neither side reimplements the projection — that is how the two
+would quietly stop agreeing — and
+`tests/ambience-camera-contract.test.js` regenerates the file and fails if the
+committed copy has drifted.
 
 **3. As a full environment source.** Adopt the Studio's richer manifest —
 lighting presets, effects, audio, per-device variants — and build the runtime to
