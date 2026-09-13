@@ -168,7 +168,11 @@
         // matters: the resolver and switch are read by the capability and the controller, and
         // the directive calls the controller. The renderer half (catalogue, manager, cover
         // maths) is loaded by index.html before engine-bridge.js, because ViewerEngine needs
-        // it synchronously at construction; these five are the conversation half.
+        // it synchronously at construction; these are the conversation half.
+        //
+        // A17. The library first: it is the data layer the others read from, and what the
+        // Settings grid renders.
+        'src/features/ambience/SceneCatalog.js',
         'src/features/ambience/SceneAmbienceResolver.js',
         'src/features/ambience/SceneAmbienceSwitch.js',
         'src/features/ambience/SceneAmbienceCapability.js',

@@ -73,7 +73,7 @@ So the rule for new code in `src/gltf-viewer/`:
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (141 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (142 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -112,8 +112,8 @@ Know the coverage gaps, because they are not intuitive:
 
 ### The gate passes. Keep it that way.
 
-Measured 2026-09-12 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **3940 tests in 141 suites, all passing.**
+Measured 2026-09-13 with `npm ci` deps installed: `npm run validate` exits **0**
+— lint clean, format clean, **3981 tests in 142 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -147,7 +147,9 @@ exits 2. Install deps first (`npm ci`) so the pinned ESLint 8 is used.
 
 `.prettierignore` excludes `vendor/`, `coverage/`, `package-lock.json`,
 `tests/fixtures/protocol/` (those fixture bytes are a cross-repo contract —
-never reformat them) and `docs/`.
+never reformat them), `docs/` and `.pytest_cache/` — pytest writes a
+`.gitignore` inside its own cache, so git never sees it while `format:check`,
+which walks the filesystem, finds its README and fails the gate.
 
 Prettier settings that change how you write: 4-space indent, single quotes,
 `printWidth` 120 for code — but **Markdown is `printWidth` 80 with
@@ -214,7 +216,7 @@ prompt was built.
 ## The ambience feature
 
 Scenic viewport backgrounds, and letting the companion change them on request.
-**Waves A0–A12 are complete.** The designs are still the reference:
+**Waves A0–A17 are complete.** The designs are still the reference:
 
 - `docs/AMBIENCE_BATCHES.md` — the execution plan, A0–A12
 - `docs/VIEWPORT_IMAGE_BACKGROUNDS.md` — the rendering design
@@ -227,15 +229,34 @@ Scenic viewport backgrounds, and letting the companion change them on request.
   contract the Studio's backplate route generates against
 
 Ten scenes in `assets/ambient/` with provenance beside them, a Settings scene
-grid, and five `src/features/ambience/` modules in `boot.js`. The switch is
-**off by default** and the capability returns `''` while it is, so a profile
-that never enables it sends the prompt it always sent.
+grid, and six `src/features/ambience/` modules in `boot.js`. The switch is **off
+by default** and the capability returns `''` while it is, so a profile that
+never enables it sends the prompt it always sent.
 
-Four things to know before touching it:
+Things to know before touching it:
 
+- **`SceneCatalog.js` is the library, and it is a trust boundary (A17).** Every
+  scene reaches the Settings grid through it, tagged with the source it came
+  from and a `trust` of `system` or `user-content`. Untrusted sources lose
+  `profileOverlay` and `guidedScript` — the two top-level fields a manifest uses
+  to change how she behaves. A source registered without stating its trust is
+  treated as untrusted, and the path check is _borrowed_ from
+  `ViewportBackgroundCatalog.isSafeRelativePath` rather than copied: with that
+  module absent the library accepts nothing at all. Adding a behavioural field
+  to a scene manifest means adding it to `BEHAVIOUR_FIELDS` in the same change —
+  a test reads the scene-journey activity and fails on any manifest field that
+  is in neither list.
+- **Settings has two sections, not one (A17).** `SCENES` holds the grid;
+  `FALLBACK BACKGROUND` holds the five colours, which are what shows when no
+  scene is chosen or a scene's file will not load. Both still share one
+  `desktop-bg` radio group — two groups is how the panel ends up showing _Ocean_
+  while the background is black.
 - **`src/gltf-viewer/ambience/` is loaded by `index.html`, not `boot.js`.**
   `ViewerEngine` needs the catalogue synchronously at construction. Moving those
   three into the boot list disables scenic backgrounds with no error message.
+  `SceneCatalog` bridges the two trees: `_adoptBuiltinScenes` in `main.js` hands
+  it the catalogue's entries once the fetch has landed, because neither tree can
+  import the other.
 - **There are three prompt-assembly sites**, and they are not the two request
   handlers: `_handleStreamingResponse`, `callLLM`, and `__nexusMediaSuffix`. The
   non-streaming handler delegates to `callLLM`. A new capability needs all

@@ -160,14 +160,28 @@ describe('index.html — the container only, never the cards', () => {
         expect(html).not.toContain('assets/ambient/dark/');
     });
 
-    test('it sits inside the VIEWPORT BACKGROUND section, after the colours', () => {
-        const section = html.indexOf('VIEWPORT BACKGROUND');
+    test('scenes are their own section, and the colours follow as the fallback', () => {
+        // A17 split what used to be one VIEWPORT BACKGROUND section. The order is the claim:
+        // the artwork is the subject and the five colours are what shows when there is none.
+        const scenesHeading = html.indexOf('>SCENES<');
+        const grid = html.indexOf('id="bg-scene-grid"');
+        const fallbackHeading = html.indexOf('FALLBACK BACKGROUND');
         const colours = html.indexOf('id="bg-selector"');
-        const scenes = html.indexOf('id="bg-scene-grid"');
         const shadows = html.indexOf('SHADOWS');
-        expect(section).toBeLessThan(colours);
-        expect(colours).toBeLessThan(scenes);
-        expect(scenes).toBeLessThan(shadows);
+        expect(scenesHeading).toBeGreaterThan(-1);
+        expect(scenesHeading).toBeLessThan(grid);
+        expect(grid).toBeLessThan(fallbackHeading);
+        expect(fallbackHeading).toBeLessThan(colours);
+        expect(colours).toBeLessThan(shadows);
+    });
+
+    test('both kinds still share one radio group', () => {
+        // The reason they were one section, and the part that must survive being two: a colour
+        // and a scene are alternatives, not independent settings. Two groups is how the panel
+        // ends up showing Ocean while the background is black.
+        const sceneRadio = renderSource().match(/radio\.name = '([^']+)'/);
+        expect(sceneRadio).not.toBeNull();
+        expect(html).toContain(`name="${sceneRadio[1]}" value="black"`);
     });
 
     test('the heading is labelled for assistive technology', () => {
@@ -183,6 +197,15 @@ describe('index.html — the container only, never the cards', () => {
         expect(html.match(/name="desktop-bg"/g)).toHaveLength(5);
     });
 });
+
+/** The renderer's source, for assertions that compare markup against what the code emits. */
+function renderSource() {
+    const start = mainSrc.indexOf('function _renderSceneBackgroundCards()');
+    const end = mainSrc.indexOf('\nfunction ', start + 1);
+    const slice = mainSrc.slice(start, end);
+    if (slice.length < 200) throw new Error('could not slice _renderSceneBackgroundCards from main.js');
+    return slice;
+}
 
 describe('styles — additive, and the selector that fails silently', () => {
     test('the adjacent-sibling rule is untouched', () => {
@@ -248,9 +271,11 @@ describe('main.js — the cards are built, not templated', () => {
         expect(clear).toBeLessThan(render.indexOf('grid.appendChild'));
     });
 
-    test('no scenes hides the heading too', () => {
+    test('no scenes hides the grid and says so', () => {
+        // A17: the heading is now a section title, so hiding it would take the fallback colours
+        // out of context and leave somebody whose scenes failed to load with nothing to read.
         expect(render).toContain('grid.hidden = empty');
-        expect(render).toContain('heading.hidden = empty');
+        expect(render).toContain('note.hidden = !empty');
     });
 
     test('a missing file marks the card instead of showing the wrong picture', () => {
@@ -258,7 +283,10 @@ describe('main.js — the cards are built, not templated', () => {
         expect(render).toContain('probe.onerror');
     });
 
-    test('it reads the catalogue and nothing else for its list', () => {
+    test('it reads a catalogue and nothing else for its list', () => {
+        // A17 put the library in front: the grid renders every source, not only the built-in
+        // one, and still contains no path of its own.
+        expect(render).toContain('NEXUS_SCENE_CATALOG');
         expect(render).toContain('catalog.images()');
         expect(render).not.toMatch(/assets\/ambient/);
     });
@@ -323,13 +351,16 @@ describe('main.js — the paths the plan said must not change, and did not', () 
 describe('the grid, rendered for real in jsdom', () => {
     let grid;
     let heading;
+    let note;
 
     beforeEach(() => {
         document.body.innerHTML =
-            '<h4 class="config-subtitle" id="bg-scene-heading">Scenes</h4>' +
-            '<div class="provider-grid provider-grid--scenes" id="bg-scene-grid"></div>';
+            '<h3 class="config-title" id="bg-scene-heading">SCENES</h3>' +
+            '<div class="provider-grid provider-grid--scenes" id="bg-scene-grid"></div>' +
+            '<p id="bg-scene-empty" hidden>No scenes are installed.</p>';
         grid = document.getElementById('bg-scene-grid');
         heading = document.getElementById('bg-scene-heading');
+        note = document.getElementById('bg-scene-empty');
         Catalog.reset();
     });
 
@@ -412,12 +443,14 @@ describe('the grid, rendered for real in jsdom', () => {
         expect(grid.querySelectorAll('label.provider-card')).toHaveLength(10);
     });
 
-    test('an empty catalogue hides the grid and its heading', () => {
+    test('an empty catalogue hides the grid and shows the note', () => {
         window.NEXUS_VIEWPORT_BACKGROUND_CATALOG = Catalog;
         renderer()();
         expect(grid.querySelectorAll('label')).toHaveLength(0);
         expect(grid.hidden).toBe(true);
-        expect(heading.hidden).toBe(true);
+        expect(note.hidden).toBe(false);
+        // The section title stays: it is what the fallback colours below are an alternative to.
+        expect(heading.hidden).toBe(false);
     });
 
     test('scenes arriving later un-hide it', () => {

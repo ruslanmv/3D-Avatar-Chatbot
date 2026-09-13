@@ -273,15 +273,22 @@ describe('Settings — the toggle, and what it does not gate', () => {
         expect(script).not.toContain('desktop_bg');
     });
 
-    test('the scene cards stay in Viewport Background, not under this toggle', () => {
+    test('the scene cards live in their own section, not under this toggle', () => {
         // Two different Settings sections, and deliberately so: the pictures are "what I see"
         // and stay reachable whatever this toggle says. The toggle is in the behaviour panel,
         // which comes first in the document — so this is about containment, not order.
-        const section = html.indexOf('VIEWPORT BACKGROUND');
+        //
+        // A17 renamed the section the grid sits in (VIEWPORT BACKGROUND became SCENES, with the
+        // five colours following as FALLBACK BACKGROUND). The containment claim is unchanged,
+        // so this asserts it against the toggle and the grid rather than against a heading.
+        const toggleGroup = html.indexOf('id="scene-ambience-toggle"');
         const grid = html.indexOf('id="bg-scene-grid"');
-        const toggle = html.indexOf('id="scene-ambience-toggle"');
-        expect(grid).toBeGreaterThan(section);
-        expect(toggle).toBeLessThan(section);
+        const scenesSection = html.lastIndexOf('<div class="config-section">', grid);
+        expect(toggleGroup).toBeGreaterThan(-1);
+        expect(grid).toBeGreaterThan(-1);
+        // The grid's own section starts after the toggle, so no reading of the document puts one
+        // inside the other.
+        expect(scenesSection).toBeGreaterThan(toggleGroup);
     });
 });
 

@@ -2678,15 +2678,22 @@ function _renderSceneBackgroundCards() {
     const catalog = window.NEXUS_VIEWPORT_BACKGROUND_CATALOG;
     if (!grid || !catalog || typeof catalog.images !== 'function') return;
 
-    const scenes = catalog.images();
+    // A17. The library, not the built-in source of it. Identical output today — the library
+    // holds exactly the built-ins — and the difference is that an imported or Studio-published
+    // scene appears here without this function learning where it came from. `images()` remains
+    // the fallback for a boot that never loaded the features tree.
+    const library = window.NEXUS_SCENE_CATALOG;
+    const scenes = library && library.list().length ? library.list() : catalog.images();
     grid.textContent = '';
 
-    // No art on disk yet is a legitimate state — every batch before this one shipped that way —
-    // and the right presentation is nothing at all, not an empty heading over a void.
-    const heading = document.getElementById('bg-scene-heading');
+    // No art on disk is a legitimate state — every batch before A6 shipped that way. A17 gave it
+    // a sentence rather than hiding the section: now that SCENES is a heading of its own, an
+    // empty one that vanishes leaves the fallback colours looking like the whole feature, and
+    // somebody whose scenes failed to load has nothing at all to tell them so.
+    const note = document.getElementById('bg-scene-empty');
     const empty = scenes.length === 0;
     grid.hidden = empty;
-    if (heading) heading.hidden = empty;
+    if (note) note.hidden = !empty;
     if (empty) return;
 
     for (const scene of scenes) {
@@ -2787,6 +2794,25 @@ function _preselectBackgroundCard() {
 })();
 
 /**
+ * A17. Hand the built-in scenes to the library.
+ *
+ * Two trees, two load paths: `src/gltf-viewer/ambience/` comes from a script tag in index.html
+ * because `ViewerEngine` needs the catalogue synchronously, and `src/features/ambience/` comes
+ * from `boot.js`. Neither can import the other, and the catalogue's own entries arrive later
+ * still, from a fetch. So adoption is a call somebody makes once the data is actually there,
+ * rather than something either module does at load time.
+ *
+ * Registering the same source twice replaces it, so calling this on every Settings open costs a
+ * comparison and cannot duplicate a card.
+ */
+function _adoptBuiltinScenes(catalog) {
+    const library = window.NEXUS_SCENE_CATALOG;
+    if (!library || typeof library.adoptBuiltins !== 'function') return;
+    if (!catalog || typeof catalog.images !== 'function' || !catalog.images().length) return;
+    library.adoptBuiltins(catalog);
+}
+
+/**
  * A6. Make sure the catalogue has been asked to load, then draw the cards.
  *
  * The data file is fetched once and cached by the catalogue; this may be the first time anything
@@ -2797,10 +2823,12 @@ function _preselectBackgroundCard() {
 function _ensureSceneBackgroundCards() {
     const catalog = window.NEXUS_VIEWPORT_BACKGROUND_CATALOG;
     if (!catalog) return;
+    _adoptBuiltinScenes(catalog);
     _renderSceneBackgroundCards();
     if (typeof catalog.load === 'function' && !catalog.hasImages()) {
         Promise.resolve(catalog.load())
             .then(() => {
+                _adoptBuiltinScenes(catalog);
                 _renderSceneBackgroundCards();
                 _preselectBackgroundCard();
             })

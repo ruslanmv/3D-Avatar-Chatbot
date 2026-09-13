@@ -17,6 +17,13 @@ docs/
 .vercel/
 .cache/
 
+# pytest's cache, which git never sees and Prettier does.
+#
+# pytest writes a .gitignore inside its own cache directory, so `git status` stays clean while
+# `format:check` — which walks the filesystem — finds .pytest_cache/README.md and fails the gate.
+# This repository has Python under tools/ambience/, so anyone who runs those tests hits it.
+.pytest_cache/
+
 # Lock files
 package-lock.json
 yarn.lock

@@ -1522,11 +1522,11 @@
                              request to watch something, but nothing a person says to a chatbot
                              implies "and you may redecorate".
 
-                             It gates her *agency*, not the pictures. The scenes themselves live
-                             in Settings -> Viewport Background beside the five colours and stay
-                             available whichever way this is set, which is why turning this off
-                             never changes what is on screen. Losing your chosen backdrop as a
-                             punishment for revoking a permission would be the wrong lesson. -->
+                             It gates her *agency*, not the pictures. The scenes themselves are
+                             in Settings -> Scenes and stay available whichever way this is set,
+                             which is why turning this off never changes what is on screen. Losing
+                             your chosen backdrop as a punishment for revoking a permission would
+                             be the wrong lesson. -->
                         <div class="input-group">
                             <label class="spicy-toggle-label">
                                 <span>Scene ambience — let her change where you both are</span>
@@ -1895,8 +1895,45 @@
                         </div>
                     </div>
 
+                    <!-- A17. Two sections, not one.
+
+                         They were one because they share a radio group: a colour and a scene are
+                         both "what is behind her", and one group for both is what stops the UI
+                         showing *Ocean* while the scene is black. That part is unchanged — the
+                         cards the grid below builds still join the same group as the colours.
+
+                         What changed is which one reads as the subject. A list of five greys with
+                         the artwork underneath as a subheading said the colours were the feature;
+                         they are what shows when no scene is chosen or a scene's file will not
+                         load. So the scenes come first under their own heading, and the colours
+                         keep their grid under a name that says what they are for. -->
                     <div class="config-section">
-                        <h3 class="config-title">VIEWPORT BACKGROUND</h3>
+                        <h3 class="config-title" id="bg-scene-heading">SCENES</h3>
+                        <p style="font-size: 0.72rem; color: rgba(255, 255, 255, 0.5); margin-bottom: 12px">
+                            Where the two of you are. Pick one yourself at any time — this is also the library she
+                            chooses from when scene ambience is on.
+                        </p>
+                        <div
+                            class="provider-grid provider-grid--scenes"
+                            id="bg-scene-grid"
+                            role="group"
+                            aria-labelledby="bg-scene-heading"
+                        ></div>
+                        <p
+                            id="bg-scene-empty"
+                            style="font-size: 0.72rem; color: rgba(255, 255, 255, 0.5); margin: 0"
+                            hidden
+                        >
+                            No scenes are installed. The fallback colour below is what you will see.
+                        </p>
+                    </div>
+
+                    <div class="config-section">
+                        <h3 class="config-title">FALLBACK BACKGROUND</h3>
+                        <p style="font-size: 0.72rem; color: rgba(255, 255, 255, 0.5); margin-bottom: 12px">
+                            Shown when no scene is selected, or when a scene's picture cannot be loaded. Companion and
+                            passthrough modes override both.
+                        </p>
                         <div class="provider-grid" id="bg-selector">
                             <label class="provider-card">
                                 <input type="radio" name="desktop-bg" value="black" class="provider-radio" checked />
@@ -1984,13 +2021,6 @@
                                 </div>
                             </label>
                         </div>
-                        <h4 class="config-subtitle" id="bg-scene-heading">Scenes</h4>
-                        <div
-                            class="provider-grid provider-grid--scenes"
-                            id="bg-scene-grid"
-                            role="group"
-                            aria-labelledby="bg-scene-heading"
-                        ></div>
                     </div>
 
                     <div class="config-section">
