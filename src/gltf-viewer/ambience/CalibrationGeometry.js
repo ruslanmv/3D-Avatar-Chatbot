@@ -78,6 +78,11 @@
         return Number.isFinite(n) ? n : fallback;
     }
 
+    /** Keep a computed screen fraction inside the frame. */
+    function clamp01(value) {
+        return Math.min(1, Math.max(0, value));
+    }
+
     function normalize(v) {
         const len = Math.hypot(v[0], v[1], v[2]);
         if (!(len > 0)) return [0, 0, 0];
@@ -212,7 +217,34 @@
         const feet = project([0, footY, 0], view);
         const head = project([0, footY + sizeY, 0], view);
         const horizon = horizonY(view);
-        const keepClear = Array.isArray(opts.keepClear) ? opts.keepClear : [0.3, 0.7];
+
+        /**
+         * The keep-clear band, measured from the avatar rather than assumed.
+         *
+         * This was a hard-coded 0.3–0.7, which is roughly right in landscape and **wrong in
+         * portrait**. In portrait `fitDistance` is bound by the avatar's height, so the camera
+         * comes close and she fills far more of a narrow frame: at 16:9 her silhouette spans
+         * 42.8–57.2% of the width, but at 9:20 it spans 22.7–77.3%. A 30–70% band is then
+         * narrower than the avatar standing in it, so an artist told to keep 30–70% clear would
+         * still put scenery through her shoulders.
+         *
+         * Computed from her projected width plus a margin, it tracks the aspect automatically.
+         * `keepClear` remains an override for a deliberate composition.
+         */
+        const sizeX = num((avatar || {}).width, sizeY * 0.4);
+        const hip = footY + sizeY * 0.5;
+        const left = project([-sizeX / 2, hip, 0], view);
+        const right = project([sizeX / 2, hip, 0], view);
+        // A small margin measured against the *frame*, not against her.
+        //
+        // Scaling it to her width sounds right and is not: in portrait she already spans half
+        // the frame, so a quarter of that either side reserves 82% of the width and the
+        // constraint stops saying anything an artist can act on. Three percent of frame width
+        // keeps scenery from touching her outline while leaving a usable instruction.
+        const margin = 0.03;
+        const keepClear = Array.isArray(opts.keepClear)
+            ? opts.keepClear
+            : [clamp01(left.x - margin), clamp01(right.x + margin)];
 
         // Depth lines on the ground plane, for an artist to align a floor against. Spaced by
         // metres in world space, which is why they bunch towards the horizon on screen — that

@@ -45,7 +45,7 @@ one from the other.**
 | **Horizon** | **44.4%** · y = 480 px | **46.1%** · y = 885 px |
 | Foot contact | 50.0%, 89.7% · (960, 969) | 50.0%, 88.2% · (540, 1694) |
 | Head top | 15.7% · y = 170 px | 16.9% · y = 325 px |
-| Keep-clear band | 30–70% · x 576–1344 | 30–70% · x 324–756 |
+| Keep-clear band | 39.8–60.2% · x 765–1155 | 25.2–74.8% · x 272–808 |
 
 ### The horizon is not at the middle of the frame
 
@@ -80,11 +80,21 @@ makes a composite read as flat.
 
 ## Composition rules
 
-**Keep the central 40% clear of dominant foreground detail.** The avatar stands
-there. A railing, a table edge or a tree trunk painted across that band cannot
+**Keep the band in the table clear of dominant foreground detail.** The avatar
+stands there. A railing, a table edge or a tree trunk painted across it cannot
 become a real occluder — with `scene.background` the avatar is always drawn in
 front of the background pixels, so painted foreground reads as a mistake rather
 than as depth.
+
+The band is **not the same width in both profiles**, and that surprises people.
+It is her projected silhouette plus a 3% margin, and in portrait `fitDistance` is
+bound by her height, so the camera comes close and she fills far more of a narrow
+frame: about 14% of the width at 16:9, but **over half** at 9:20. Earlier drafts
+of this guide said "keep the central 40% clear" for both, which is conservative in
+landscape and **narrower than the avatar herself** on a tall phone.
+
+The practical consequence for portrait art: there is very little lateral room.
+Put the interest **above and below** her, not beside her.
 
 **Give the feet a surface.** There must be an unambiguous, continuous support
 plane at the foot-contact row. This is the difference between standing on

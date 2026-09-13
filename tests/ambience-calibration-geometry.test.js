@@ -184,12 +184,57 @@ describe('the shipped profiles', () => {
         expect(Geometry.guide(Geometry.PROFILES.landscape, AVATAR).footAnchor.x).toBeCloseTo(0.5, 10);
     });
 
-    test('the safe zone is the keep-clear band, and it is an input not a constant', () => {
+    test('the keep-clear band is measured from the avatar, not hard-coded', () => {
+        // It was a flat 0.3–0.7, which is roughly right in landscape and wrong in portrait.
+        // Now it is her projected silhouette plus a small frame-relative margin.
         const g = Geometry.guide(Geometry.PROFILES.landscape, AVATAR);
-        expect(g.safeZone.x0).toBeCloseTo(0.3, 10);
-        expect(g.safeZone.x1).toBeCloseTo(0.7, 10);
+        expect(g.safeZone.x0).toBeCloseTo(0.398, 2);
+        expect(g.safeZone.x1).toBeCloseTo(0.602, 2);
+        expect(g.safeZone.x0 + g.safeZone.x1).toBeCloseTo(1, 6); // centred
+    });
+
+    test('and it widens in portrait, because she fills more of a narrow frame', () => {
+        // The bug this replaced. In portrait fitDistance is bound by her height, so the camera
+        // comes close: at 9:20 her silhouette alone spans 22.7–77.3%, well outside a 30–70%
+        // band. An artist told to keep 30–70% clear would still put scenery through her
+        // shoulders.
+        const portrait = Geometry.guide(Geometry.PROFILES.portrait, AVATAR);
+        const landscape = Geometry.guide(Geometry.PROFILES.landscape, AVATAR);
+        const width = (g) => g.safeZone.x1 - g.safeZone.x0;
+        expect(width(portrait)).toBeGreaterThan(width(landscape));
+
+        const tall = Geometry.guide(Object.assign({}, Geometry.PROFILES.portrait, { aspect: 9 / 20 }), AVATAR);
+        expect(width(tall)).toBeGreaterThan(width(portrait));
+    });
+
+    test('the band always contains the avatar it was computed for', () => {
+        // The property that makes it correct at any aspect, rather than a number that happens
+        // to work at one.
+        for (const [key, aspect] of [
+            ['landscape', 16 / 9],
+            ['portrait', 9 / 16],
+            ['portrait', 9 / 20],
+            ['portrait', 9 / 21],
+        ]) {
+            const profile = Object.assign({}, Geometry.PROFILES[key], { aspect });
+            const view = Geometry.frameFor(profile, AVATAR);
+            const g = Geometry.guide(profile, AVATAR);
+            const left = Geometry.project([-AVATAR.width / 2, AVATAR.height * 0.5, 0], view);
+            const right = Geometry.project([AVATAR.width / 2, AVATAR.height * 0.5, 0], view);
+            expect(g.safeZone.x0).toBeLessThanOrEqual(left.x);
+            expect(g.safeZone.x1).toBeGreaterThanOrEqual(right.x);
+        }
+    });
+
+    test('an explicit keepClear still overrides it', () => {
         const custom = Geometry.guide(Geometry.PROFILES.landscape, AVATAR, { keepClear: [0.25, 0.75] });
         expect(custom.safeZone.x0).toBeCloseTo(0.25, 10);
+    });
+
+    test('it stays inside the frame even for an unusually wide subject', () => {
+        const wide = Geometry.guide(Geometry.PROFILES.portrait, { height: 1.6, width: 3.0, footY: 0 });
+        expect(wide.safeZone.x0).toBeGreaterThanOrEqual(0);
+        expect(wide.safeZone.x1).toBeLessThanOrEqual(1);
     });
 
     test('the profiles are frozen', () => {

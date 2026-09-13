@@ -144,10 +144,10 @@ describe('what it draws', () => {
     test('a safe zone rectangle spanning the keep-clear band', () => {
         const svg = Overlay.buildSvg(guide, document);
         const rect = svg.querySelector('rect');
-        expect(rect.getAttribute('x')).toBe('30%');
-        // Rounded in buildSvg: raw float arithmetic gives 40.00000000000001%, which is harmless
-        // to a browser and noise in the DOM.
-        expect(rect.getAttribute('width')).toBe('40%');
+        // Derived from the avatar's projected silhouette rather than a constant, so this checks
+        // the rectangle matches the guide it was drawn from rather than a remembered number.
+        expect(parseFloat(rect.getAttribute('x'))).toBeCloseTo(guide.safeZone.x0 * 100, 3);
+        expect(parseFloat(rect.getAttribute('width'))).toBeCloseTo((guide.safeZone.x1 - guide.safeZone.x0) * 100, 3);
     });
 
     test('one labelled line per ground depth', () => {
