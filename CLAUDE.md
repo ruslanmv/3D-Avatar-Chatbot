@@ -220,7 +220,7 @@ Scenic viewport backgrounds, and letting the companion change them on request.
 - `docs/VIEWPORT_IMAGE_BACKGROUNDS.md` — the rendering design
 - `docs/AI_SCENE_AMBIENCE.md` — the language → intent → scene design
 - `docs/ambience-contract.md` — the frozen data shapes
-- `docs/AMBIENCE_HARDENING.md` — **the A12 audit, and two open findings**
+- `docs/AMBIENCE_HARDENING.md` — the A12 audit; both findings fixed
 
 Ten scenes in `assets/ambient/` with provenance beside them, a Settings scene
 grid, and five `src/features/ambience/` modules in `boot.js`. The switch is
@@ -240,9 +240,11 @@ Four things to know before touching it:
   used to always be a `Color` rebuildable from a constant. VR, AR and Companion
   each snapshot and restore it, so those hand-offs are load-bearing. A12 audited
   them; `docs/AMBIENCE_HARDENING.md` has the results.
-- **Two findings are open** (A12-1, AR exit; A12-2, document-PiP re-fit). Both
-  are pinned by tests asserting the _current, wrong_ behaviour, so fixing either
-  flips its test on purpose. Do not "fix" those tests to match a wish.
+- **`reapplyCurrent(id)` takes the selection of record, and that argument is
+  load-bearing.** While XR is presenting, `setDesktopBackground` records the
+  choice and deliberately does not call the manager, so the manager's own `_id`
+  goes stale. Dropping the argument silently discards a scene chosen in the
+  headset (finding A12-1). Both XR exit handlers pass `this._desktopBgKey`.
 
 ## Clearing a conversation
 

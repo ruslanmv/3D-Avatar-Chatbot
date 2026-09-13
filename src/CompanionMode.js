@@ -577,6 +577,23 @@
             this.strategy = null;
             this.active = false;
             window.__COMPANION_ACTIVE__ = false;
+
+            // A12-2. Nudge a real re-fit, and only now that the flag is clear.
+            //
+            // `onResize` above updates the camera aspect and post-processing; it knows nothing
+            // about the scenic background, whose cover crop is driven solely from
+            // `ViewerEngine.resize()` — which early-returns for the whole PiP session because
+            // the PiP window owns sizing. Usually harmless, since the crop keeps the desktop
+            // aspect it was computed with and is still right on return. It is wrong when the
+            // main window changed size while PiP was open, and the crop then stays wrong until
+            // some unrelated resize event happens to fix it.
+            //
+            // The ordering is the whole point: called before the flag clear, this would be
+            // swallowed by that same early return. The overlay strategy below already does it
+            // this way; this is the two paths agreeing.
+            try {
+                window.NEXUS_VIEWER?.resize?.();
+            } catch (_) {}
             this._setButtonState(false);
         }
 

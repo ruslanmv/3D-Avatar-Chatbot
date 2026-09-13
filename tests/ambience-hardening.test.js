@@ -70,6 +70,14 @@ describe('the extractors are not lying to the rest of this file', () => {
 });
 
 describe('VR — the headset never sees a flat rectangle', () => {
+    test('a selection made while presenting is applied on exit, not the stale one', () => {
+        // The error in the first A12 record. reapplyCurrent() restored whatever the *manager*
+        // last applied, and the manager is deliberately never told about a change during XR —
+        // so a scene chosen in the headset was silently discarded on exit, for VR as well as
+        // AR. The exit now passes the selection of record.
+        expect(handler('vr-session-end')).toContain('reapplyCurrent(this._desktopBgKey)');
+    });
+
     test('a selection made while presenting is recorded, not applied', () => {
         // A flat 16:9 image pasted across an immersive sky is the single worst thing this
         // feature could do. Both branches of setDesktopBackground carry the guard.
@@ -84,7 +92,7 @@ describe('VR — the headset never sees a flat rectangle', () => {
 
     test('leaving VR re-applies the scene rather than painting a colour', () => {
         const exit = handler('vr-session-end');
-        expect(exit).toContain('this.backgroundManager.reapplyCurrent();');
+        expect(exit).toContain('this.backgroundManager.reapplyCurrent(this._desktopBgKey);');
     });
 
     test('and the old unconditional black rebuild is gone', () => {
@@ -116,16 +124,24 @@ describe('AR — the camera feed is not obscured', () => {
         expect(ar).toContain('this.scene.background = this._savedBackground;');
     });
 
-    test('FINDING A12-1: leaving AR does not re-apply a scene chosen during AR', () => {
-        // VR's exit calls reapplyCurrent(); AR's does not. So a scene selected in AR is written
-        // to _desktopBgKey (and ticks the Settings radio) while ARSupport restores the *previous*
-        // texture — the panel and the viewport then disagree, which is exactly the split the
-        // controller refuses to cache state in order to avoid.
-        //
-        // Asserted as it currently is, not as it should be. See docs/AMBIENCE_HARDENING.md;
-        // fixing it flips this test, which is the point.
+    test('A12-1 FIXED: leaving AR re-applies the selected scene', () => {
+        // Was: AR's exit had no equivalent of VR's reapplyCurrent(), so a scene chosen during
+        // the session was recorded in _desktopBgKey and never painted — the Settings radio and
+        // the viewport disagreed. This also covers forceExit(), which dispatches the event
+        // without restoring anything and would otherwise leave the viewport transparent.
         const exit = handler('ar-session-end');
-        expect(exit).not.toContain('backgroundManager.reapplyCurrent()');
+        expect(exit).toContain('this.backgroundManager?.reapplyCurrent(this._desktopBgKey);');
+    });
+
+    test('and it runs after ARSupport has written its snapshot back, not racing it', () => {
+        // onSessionEnd() restores scene.background and only then dispatches 'ar-session-end',
+        // so ordering is guaranteed by the dispatch being last rather than by the registration
+        // order of two listeners. That distinction is why this was raised rather than patched
+        // blind in A12.
+        const restore = ar.indexOf('this.scene.background = this._savedBackground;');
+        const dispatch = ar.indexOf("window.dispatchEvent(new CustomEvent('ar-session-end'));");
+        expect(restore).toBeGreaterThan(-1);
+        expect(restore).toBeLessThan(dispatch);
     });
 });
 
@@ -147,18 +163,24 @@ describe('Companion — the crop survives the round trip', () => {
         expect(restore.slice(0, 300)).toContain('window.NEXUS_VIEWER?.resize?.()');
     });
 
-    test("FINDING A12-2: document-PiP's restore does not nudge one", () => {
-        // Strategy C clears __COMPANION_ACTIVE__ and then calls NEXUS_VIEWER.resize().
-        // Strategy B calls only `onResize`, which updates the camera and post-processing and
-        // knows nothing about the background manager — and calls it *before* clearing the flag,
-        // so even routing it through resize() would be swallowed. Benign while the main window
-        // keeps its size, wrong when it does not. See docs/AMBIENCE_HARDENING.md.
+    test('A12-2 FIXED: document-PiP nudges a re-fit too', () => {
+        // Was: strategy B called only its onResize callback — which knows nothing about the
+        // background manager — and called it before clearing the flag, so even routing it
+        // through resize() would have been swallowed by the early return.
         const restore = companion.slice(companion.indexOf('        _restore() {'));
         const body = restore.slice(0, restore.indexOf('\n        }'));
-        expect(body).toContain('this.onResize?.(this._savedSize.w, this._savedSize.h);');
-        expect(body).not.toContain('NEXUS_VIEWER?.resize');
-        // And the call really does precede the flag clear, which is the sharper half.
-        expect(body.indexOf('this.onResize?.')).toBeLessThan(body.indexOf('__COMPANION_ACTIVE__ = false'));
+        expect(body).toContain('window.NEXUS_VIEWER?.resize?.()');
+    });
+
+    test('and the nudge comes after the flag is cleared, which is the whole point', () => {
+        const restore = companion.slice(companion.indexOf('        _restore() {'));
+        const body = restore.slice(0, restore.indexOf('\n        }'));
+        expect(body.indexOf('__COMPANION_ACTIVE__ = false')).toBeLessThan(body.indexOf('NEXUS_VIEWER?.resize'));
+    });
+
+    test('both strategies now agree', () => {
+        const nudges = companion.match(/window\.NEXUS_VIEWER\?\.resize\?\.\(\)/g) || [];
+        expect(nudges).toHaveLength(2);
     });
 
     test('onResize does not reach the background manager', () => {

@@ -574,3 +574,96 @@ describe('reapplyCurrent — what leaving VR calls', () => {
         expect(manager.reapplyCurrent()).toBe(false);
     });
 });
+
+describe('reapplyCurrent(id) — a scene chosen while XR was presenting (A12-1)', () => {
+    /**
+     * The situation this argument exists for, and the bug it fixes.
+     *
+     * While a headset session is presenting, `ViewerEngine` records the user's choice in
+     * `_desktopBgKey` and deliberately never calls this manager — a flat rectangle must not
+     * reach a headset, and in AR it would hide the camera feed. So on exit the manager's own
+     * `_id` still points at the scene from *before* the session.
+     *
+     * The old no-argument `reapplyCurrent()` therefore restored the scene the user had already
+     * moved on from, while Settings and `desktop_bg` said the new one. Discovered in A12 by
+     * probing rather than by reading, after the first audit pass wrongly recorded this row as
+     * passing.
+     */
+    test('the new selection is applied, not the one the manager remembers', async () => {
+        const { manager, scene } = rig();
+        await manager.apply('ambient:ocean:day');
+        const beforeXR = scene.background;
+
+        // XR takes the background; the manager is not told about the new choice.
+        scene.background = null;
+
+        await manager.reapplyCurrent('ambient:lake:day');
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(manager._id).toBe('ambient:lake:day');
+        expect(scene.background).not.toBe(beforeXR);
+        expect(scene.background).not.toBeNull();
+    });
+
+    test('and the texture the user moved past is freed', async () => {
+        const { manager, scene } = rig();
+        await manager.apply('ambient:ocean:day');
+        const stale = scene.background;
+        scene.background = null;
+
+        await manager.reapplyCurrent('ambient:lake:day');
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(stale.disposed).toBe(true);
+    });
+
+    test('an unchanged selection still takes the fast path — no refetch', async () => {
+        // The reason the argument is compared rather than always re-applied: leaving VR with
+        // nothing changed is the common case, and it must not re-download a texture that is
+        // already in memory.
+        const { manager, scene } = rig();
+        await manager.apply('ambient:ocean:day');
+        const live = scene.background;
+        const loadsBefore = manager.loads;
+        scene.background = null;
+
+        expect(manager.reapplyCurrent('ambient:ocean:day')).toBe(true);
+        expect(scene.background).toBe(live);
+        expect(manager.loads).toBe(loadsBefore);
+    });
+
+    test('omitting the id keeps the old behaviour exactly', async () => {
+        const { manager, scene } = rig();
+        await manager.apply('ambient:ocean:day');
+        const live = scene.background;
+        scene.background = null;
+
+        expect(manager.reapplyCurrent()).toBe(true);
+        expect(scene.background).toBe(live);
+    });
+
+    test('a colour chosen during XR is applied on exit', async () => {
+        // "Take the picture away" is expressible too, and it took the same wrong path.
+        const { manager, scene } = rig();
+        await manager.apply('ambient:ocean:day');
+        scene.background = null;
+
+        manager.reapplyCurrent('black');
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(manager._id).toBe('black');
+    });
+
+    test('an id given before anything was ever applied is loaded', async () => {
+        // AR forceExit() dispatches its event without restoring anything, so this path can be
+        // reached with the manager holding nothing at all.
+        const { manager, scene } = rig();
+        manager.reapplyCurrent('ambient:ocean:day');
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(scene.background).not.toBeNull();
+    });
+});

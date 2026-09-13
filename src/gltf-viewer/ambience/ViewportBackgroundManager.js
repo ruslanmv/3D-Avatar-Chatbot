@@ -182,27 +182,51 @@
         }
 
         /**
-         * Re-apply whatever is selected, re-using the texture already in memory.
+         * Re-apply what is selected, re-using the texture already in memory when it still fits.
          *
-         * This is what leaving VR calls. The background was swapped for a solid colour on entry,
-         * and rebuilding it from a colour key is how an image selection silently becomes black —
-         * so the live texture goes straight back on, with no refetch and no visible delay.
+         * This is what leaving VR and AR calls. The background was swapped for a solid colour
+         * (VR) or nulled for passthrough (AR) on entry, and rebuilding it from a colour key is
+         * how an image selection silently becomes black — so the live texture goes straight back
+         * on, with no refetch and no visible delay.
+         *
+         * ## Why it takes an id (finding A12-1)
+         *
+         * Because "what is selected" and "what this manager last applied" can disagree, and
+         * exactly one situation makes them: while an XR session is presenting, `ViewerEngine`
+         * records the user's choice in `_desktopBgKey` and deliberately does **not** call this
+         * manager — a flat rectangle must never reach a headset, and in AR it would hide the
+         * camera feed. So a scene chosen mid-session leaves `_id` pointing at the *previous*
+         * one.
+         *
+         * Without the argument this method then faithfully restored the scene the user had
+         * moved on from, and the Settings radio said something else. The caller knows the
+         * authoritative key; pass it.
+         *
+         * @param {string} [id] the selection of record. Omitted means "whatever I last applied",
+         *   which is the correct answer whenever nothing changed during the session.
          */
-        reapplyCurrent() {
+        reapplyCurrent(id) {
+            // A selection was made while we were not being told about it. Load it properly
+            // rather than restoring a texture the user has already moved past.
+            if (id && this._id && id !== this._id) {
+                this.apply(id, { force: true });
+                return true;
+            }
             if (this._texture && this._entry && this.scene) {
                 this._applyCover(this._texture, this._entry);
                 this.scene.background = this._texture;
                 this.scene.backgroundIntensity = this._entry.intensity || 1;
                 return true;
             }
-            if (this._id && this.catalog) {
-                const entry = this.catalog.get(this._id);
+            const want = id || this._id;
+            if (want && this.catalog) {
+                const entry = this.catalog.get(want);
                 if (entry && entry.type === 'color') {
                     return this._applyColor(entry);
                 }
                 // An image was selected but its texture is gone (or never arrived). Load it
                 // again rather than leaving the user on whatever XR left behind.
-                this.apply(this._id, { force: true });
+                this.apply(want, { force: true });
                 return true;
             }
             return false;

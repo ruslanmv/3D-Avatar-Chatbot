@@ -1,13 +1,20 @@
 # A12 — hardening record
 
-Wave 6 is an audit. Tests and docs only: anything found wrong in source is a
-finding raised here, not folded in silently. Two rows failed.
+Wave 6 was an audit: tests and docs only, findings raised rather than folded in.
+Two rows failed. **Both have since been fixed**, in a follow-up commit, and one
+of them turned out to be broader than the audit first recorded — see A12-1.
 
-Every row below is either automated in `tests/ambience-hardening.test.js` (33
-assertions) or marked as needing a headset, a camera or a human eye. Rows marked
+Every row below is either automated in `tests/ambience-hardening.test.js` or
+marked as needing a headset, a camera or a human eye. Rows marked
 **code-verified** were checked by reading the path that executes, not by running
 it — jsdom has no WebGL, no XR and no camera, so that is the honest ceiling for
 those.
+
+One lesson is worth more than the findings. The row *"select an image while in
+VR"* was marked **pass** on the strength of reading two event handlers, and it
+was broken. It took a five-line probe against the real manager to see it.
+Code-verified is genuinely weaker than tested, and this record now says which is
+which for exactly that reason.
 
 ## What is actually being audited
 
@@ -26,81 +33,78 @@ constant. It is now sometimes a `Texture` with a lifetime and an owner. **Every
 one of those hand-offs became load-bearing the day A5 landed**, which is what
 this wave exists to check.
 
-## Findings
+## Findings — both fixed
 
-### A12-1 · Leaving AR discards a scene chosen during AR — *open*
+Both were raised by the audit and fixed in the follow-up commit. A12-1 turned out
+to be broader than the first pass recorded; that correction is below.
 
-**Where** `src/gltf-viewer/ViewerEngine.js`, the `ar-session-end` handler.
+### A12-1 · A scene chosen during an XR session was discarded on exit — *fixed*
 
-**What happens.** While any XR session is presenting, `setDesktopBackground()`
-records the selection in `_desktopBgKey` and deliberately does not paint it — a
-flat rectangle must never reach a headset, and in AR it would hide the camera
-feed. VR's exit handler finishes the job with
-`this.backgroundManager.reapplyCurrent()`. **AR's exit handler has no equivalent
-call.** `ARSupport._restore()` writes back `this._savedBackground`, which is the
-texture from *before* AR.
+**Where** `ViewerEngine`'s `vr-session-end` and `ar-session-end` handlers, and
+`ViewportBackgroundManager.reapplyCurrent()`.
 
-So after: desktop → select Ocean → enter AR → ask her for the sea (or tap a card)
-→ exit AR, the viewport shows **Ocean** while `_desktopBgKey`, `desktop_bg` and
-the Settings radio all say the new scene.
+**The first pass got this half-right and recorded one row wrongly.** It found
+that AR's exit had no equivalent of VR's `reapplyCurrent()` call, and marked the
+VR row — *"select an image while in VR → applied on exit"* — as passing. That
+was wrong, and it was wrong because it was checked by reading the two handlers
+rather than by running the manager.
 
-**Why it matters more than it looks.** This is precisely the disagreement
-`SceneAmbienceController` refuses to cache state in order to prevent — Settings
-showing one place while the viewport shows another — reintroduced through a path
-the controller cannot see.
+The real defect is one level down. While presenting, `setDesktopBackground()`
+records the choice in `_desktopBgKey` and deliberately does **not** call the
+manager. So the manager's `_id` still points at the scene from *before* the
+session — and `reapplyCurrent()` faithfully restored **that**. A scene chosen in
+the headset was discarded on exit **in VR as well as AR**, while Settings and
+`desktop_bg` both said the new one.
 
-**Severity: low, and narrow.** It needs a scene change *during* an AR session.
-Any later selection corrects it, and nothing leaks: the XR guard means the
-manager is never called while presenting, so no texture is disposed underneath
-the snapshot ARSupport is holding.
+Proved by probe, not by reading:
 
-**Suggested fix**, one line, mirroring VR:
-
-```js
-window.addEventListener('ar-session-end', () => {
-    // …existing restore…
-    this.backgroundManager?.reapplyCurrent();
-});
+```
+PROBE before XR, manager._id = ambient:ocean:day
+PROBE after exit, manager._id = ambient:ocean:day
+PROBE re-applied the SAME texture as before XR: true
 ```
 
-It must run **after** `ARSupport._restore()` has written `_savedBackground` back,
-or the restore overwrites the re-apply. Ordering between the two `ar-session-end`
-listeners is registration order, so this needs checking rather than assuming —
-which is why it is a finding and not a patch in this wave.
+**Fix.** `reapplyCurrent(id)` now takes the selection of record. When it differs
+from what the manager last applied, it loads it properly; when it matches — the
+common case of leaving VR having changed nothing — it keeps the existing fast
+path with no refetch. Both exit handlers pass `this._desktopBgKey`, and AR gained
+the call it never had.
 
-Pinned by `FINDING A12-1` in `tests/ambience-hardening.test.js`, asserting the
-current, wrong behaviour. Fixing it flips that test, which is where the
-conversation belongs. A test asserting what we wish were true would fail on a
-clean checkout and teach the next person to ignore it.
+Adding it to AR also fixes `ARSupport.forceExit()`, which dispatches
+`ar-session-end` **without** restoring anything and would otherwise leave the
+viewport transparent.
 
-### A12-2 · Document-PiP restore does not re-fit the crop — *open, benign in the common case*
+**On the ordering concern raised in the audit:** it dissolved on inspection.
+`onSessionEnd()` writes the snapshot back and only *then* dispatches the event,
+so the ViewerEngine listener always runs after the restore. The guarantee comes
+from the dispatch being last, not from the registration order of two listeners —
+which is exactly why this was raised rather than patched blind.
+
+Covered by six behavioural tests in `tests/ambience-background-manager.test.js`
+(new selection wins, stale texture freed, unchanged selection takes the fast path,
+omitted id unchanged, a colour chosen during XR, and an id arriving with the
+manager holding nothing) plus source assertions in
+`tests/ambience-hardening.test.js`.
+
+### A12-2 · Document-PiP restore did not re-fit the crop — *fixed*
 
 **Where** `src/CompanionMode.js`, `_restore()` (strategy B, document-PiP).
 
-**What happens.** The overlay strategy ends with
-`window.NEXUS_VIEWER?.resize?.()` **after** clearing `__COMPANION_ACTIVE__`, so
-`backgroundManager.onResize(w, h)` runs and the cover crop is recomputed.
-Document-PiP's `_restore()` calls only `this.onResize(w, h)` — a callback that
-updates the camera aspect and post-processing and **knows nothing about the
-background manager** — and calls it *before* clearing the flag, so even routing
-it through `resize()` would be swallowed by the early return.
+The overlay strategy ended with `window.NEXUS_VIEWER?.resize?.()` **after**
+clearing `__COMPANION_ACTIVE__`. Document-PiP called only its `onResize`
+callback — which updates the camera aspect and post-processing and knows nothing
+about the background manager — and called it *before* clearing the flag, so even
+routing it through `resize()` would have been swallowed by that early return.
 
-**Why it is usually invisible.** The manager is driven only from `resize()`, and
-`resize()` is inert for the whole PiP session. The crop therefore keeps the
-desktop aspect it was computed with and is still correct on return — the batch
-plan's "image restored and re-fitted" row passes by accident rather than by
-design.
+Usually invisible: the manager is driven only from `resize()`, which is inert for
+the whole PiP session, so the crop keeps the desktop aspect and is still right on
+return. The batch plan's *"restored and re-fitted"* row was passing by accident
+rather than by design. It was wrong when the main window changed size while PiP
+was open, and stayed wrong until some unrelated resize happened to fix it.
 
-It is wrong when **the main window changes size while PiP is open**. The crop
-then reflects the old desktop and stays wrong until some later resize event.
-
-**Severity: low.** Cosmetic, self-correcting on the next resize, and it requires
-resizing the main window during PiP.
-
-**Suggested fix:** move the nudge after the flag clear, matching strategy C.
-
-Pinned by `FINDING A12-2`, again asserting current behaviour — including the
-sharper half, that the `onResize` call precedes the flag clear.
+**Fix.** The nudge moved after the flag clear, matching the overlay strategy. A
+test asserts both that it is there and that it comes after — and that the two
+strategies now agree.
 
 ## The matrix
 
@@ -118,11 +122,11 @@ sharper half, that the `onResize` call precedes the flag clear.
 | Resize | landscape ↔ portrait, narrow, rotate | **pass, with a note** | See *phone portrait* below. |
 | Render mode | Anime ↔ Cinematic with an image | **pass** | A5 changed this deliberately: it used to force black. |
 | Lighting | image selected | **pass** | No `environment`, PMREM or tone-mapping touch. Automated against comment-stripped source. |
-| Companion | image → enter → exit | **pass / finding A12-2** | Correct in the common case, for the wrong reason. |
+| Companion | image → enter → exit | **pass** | Was correct only by accident (A12-2); both strategies now nudge a real re-fit after clearing the flag. |
 | VR | image → enter → exit | **pass** | `reapplyCurrent()` on exit; the old unconditional black rebuild is gone. Automated. |
-| VR | select an image *while in VR* | **pass** | Recorded, not applied; applied on exit. Automated. |
+| VR | select an image *while in VR* | **pass, was a wrong record** | Recorded during, applied on exit. The first pass marked this pass without testing it; it was broken (A12-1) and is now fixed and covered behaviourally. |
 | AR | image → enter → exit | **pass** | Snapshot, `null` for passthrough, restore verbatim. Automated. |
-| AR | select an image *while in AR* | **FAIL — A12-1** | Recorded, never applied. |
+| AR | select an image *while in AR* | **pass** | Was the visible half of A12-1; AR's exit now re-applies the selection of record. |
 | Clips | record with an image selected | **pass** (code-verified) | `captureStream` on the WebGL canvas; the scenery is `scene.background`, drawn by the renderer into that canvas. Needs a real recording to confirm visually. |
 | Memory | switch scenes 20× | **pass** (code-verified) | Swap-then-dispose, asserted by line order; losers self-dispose. A live-texture count needs WebGL. |
 | Perf | image selected, idle | **pass** | The render loop never names the manager; the manager starts no loop, no interval, no rAF. Automated. |

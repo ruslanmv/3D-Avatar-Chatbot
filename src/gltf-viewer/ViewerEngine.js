@@ -509,7 +509,11 @@ export class ViewerEngine {
             // become black on leaving VR: BG_COLORS['ambient:terrace:night'] is undefined,
             // so `?? 0x000000` painted the fallback over somebody's chosen scene.
             if (this.backgroundManager) {
-                this.backgroundManager.reapplyCurrent();
+                // A12-1. Pass the selection of record, not "whatever the manager last applied".
+                // While presenting we deliberately never told it about a change, so those two
+                // disagree exactly when the user picked a scene mid-session — and restoring the
+                // stale one left the Settings radio saying something the viewport did not show.
+                this.backgroundManager.reapplyCurrent(this._desktopBgKey);
             } else {
                 const bgColor = ViewerEngine.BG_COLORS[this._desktopBgKey] ?? 0x000000;
                 this.scene.background = new THREE.Color(bgColor);
@@ -715,6 +719,17 @@ export class ViewerEngine {
             console.log('[ViewerEngine] AR Session Ending...');
             this.postProcessing?.onXRSessionEnd();
             this.controls.enabled = true;
+
+            // A12-1. Put the selected scene back, the same way leaving VR does.
+            //
+            // ARSupport nulls `scene.background` for passthrough and writes its snapshot back in
+            // `onSessionEnd()` — which runs *before* it dispatches this event, so by now the
+            // restore has happened and we are correcting it rather than racing it. Two things
+            // make that restore insufficient on its own: a scene chosen during the session was
+            // never given to the manager (the XR guard), so the snapshot is the wrong one; and
+            // `forceExit()` dispatches this event without restoring anything at all, which would
+            // otherwise leave the viewport transparent.
+            this.backgroundManager?.reapplyCurrent(this._desktopBgKey);
 
             // Restore opaque clear color for desktop rendering
             this.renderer.setClearColor(0x000000, 1);

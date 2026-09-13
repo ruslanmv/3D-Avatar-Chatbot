@@ -120,8 +120,11 @@ describe('edit 2 — setDesktopBackground delegates, and stays backward compatib
 });
 
 describe('edit 3 — leaving VR restores the image, not black', () => {
-    test('the restore goes through reapplyCurrent', () => {
-        expect(src).toContain('this.backgroundManager.reapplyCurrent();');
+    test('the restore goes through reapplyCurrent, carrying the selection of record', () => {
+        // A12-1 added the argument. Without it, reapplyCurrent restored whatever the *manager*
+        // last applied — and the manager is deliberately never told about a selection made
+        // while presenting, so a scene chosen in the headset was discarded on exit.
+        expect(src).toContain('this.backgroundManager.reapplyCurrent(this._desktopBgKey);');
     });
 
     test('the unconditional colour rebuild is gone from the VR-exit path', () => {
