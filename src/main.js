@@ -2329,11 +2329,18 @@ function setupModals() {
         });
     });
 
-    // Live preview: change desktop background immediately when radio is selected
-    document.querySelectorAll('input[name="desktop-bg"]').forEach((radio) => {
-        radio.addEventListener('change', () => {
-            window.NEXUS_VIEWER?.setDesktopBackground(radio.value);
-        });
+    // A6. Live preview: change desktop background immediately when a radio is selected.
+    //
+    // Delegated rather than one listener per radio, and that is the whole reason this line
+    // changed. The previous `querySelectorAll(...).forEach` ran once, at settings-init time, so
+    // the scene cards — which are injected from the catalogue after the data file arrives, and
+    // re-injected if it arrives late — would have had no handler at all and simply done nothing
+    // when clicked. Delegation is order-independent and listener-count-neutral: one listener
+    // instead of five, covering any number of cards added later.
+    document.addEventListener('change', (event) => {
+        const radio = event.target;
+        if (!radio || radio.name !== 'desktop-bg') return;
+        window.NEXUS_VIEWER?.setDesktopBackground(radio.value);
     });
 
     // Live preview: toggle shadows immediately when radio is selected
@@ -2642,6 +2649,195 @@ function _syncVisualControlsFromEngine() {
     }
 }
 
+/**
+ * A6. Draw the scene cards under Settings → Viewport Background.
+ *
+ * The five colour swatches are static markup and stay exactly as they were. The scenes are not:
+ * they come from `assets/ambient/backgrounds.json` through the catalogue, so the HTML carries no
+ * image URL at all and adding a scene is a data change. That is deliberate — it is also what
+ * keeps the LLM path honest later, since there is exactly one list of what exists.
+ *
+ * Three things here are load-bearing:
+ *
+ * **Built with DOM calls, never innerHTML.** Labels are free text in a data file. `textContent`
+ * makes a label containing markup a label containing markup, rather than markup. The paths are
+ * already validated by the catalogue (`isSafeRelativePath` allows only `[A-Za-z0-9._-/]`, so no
+ * quotes, spaces or parentheses can reach the `url()`), but the label had no such guarantee.
+ *
+ * **The radio is the immediately preceding sibling of `.provider-content`.** The stylesheet
+ * selects the checked state with `.provider-radio:checked + .provider-content` — an adjacent
+ * sibling combinator. Slip anything between the two and selection silently stops showing while
+ * everything else keeps working.
+ *
+ * **Idempotent.** Settings can be opened repeatedly, and the catalogue can arrive after the
+ * first open; both re-run this. It rebuilds the grid from scratch each time rather than
+ * appending, so re-entry cannot double the cards.
+ */
+function _renderSceneBackgroundCards() {
+    const grid = document.getElementById('bg-scene-grid');
+    const catalog = window.NEXUS_VIEWPORT_BACKGROUND_CATALOG;
+    if (!grid || !catalog || typeof catalog.images !== 'function') return;
+
+    // A17. The library, not the built-in source of it. Identical output today — the library
+    // holds exactly the built-ins — and the difference is that an imported or Studio-published
+    // scene appears here without this function learning where it came from. `images()` remains
+    // the fallback for a boot that never loaded the features tree.
+    const library = window.NEXUS_SCENE_CATALOG;
+    const scenes = library && library.list().length ? library.list() : catalog.images();
+    grid.textContent = '';
+
+    // No art on disk is a legitimate state — every batch before A6 shipped that way. A17 gave it
+    // a sentence rather than hiding the section: now that SCENES is a heading of its own, an
+    // empty one that vanishes leaves the fallback colours looking like the whole feature, and
+    // somebody whose scenes failed to load has nothing at all to tell them so.
+    const note = document.getElementById('bg-scene-empty');
+    const empty = scenes.length === 0;
+    grid.hidden = empty;
+    if (note) note.hidden = !empty;
+    if (empty) return;
+
+    for (const scene of scenes) {
+        const card = document.createElement('label');
+        card.className = 'provider-card';
+
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = 'desktop-bg';
+        radio.value = scene.id;
+        radio.className = 'provider-radio';
+
+        const content = document.createElement('div');
+        content.className = 'provider-content';
+
+        const thumb = document.createElement('div');
+        thumb.className = 'provider-thumb';
+        if (scene.thumb) {
+            thumb.style.backgroundImage = `url("${scene.thumb}")`;
+            // A renamed or missing file must leave the card usable and honest rather than
+            // showing the previous scene's picture under this scene's name.
+            const probe = new Image();
+            probe.onerror = () => {
+                thumb.classList.add('provider-thumb--missing');
+                console.warn(`[Ambience] thumbnail missing for ${scene.id}: ${scene.thumb}`);
+            };
+            probe.src = scene.thumb;
+        }
+
+        const name = document.createElement('div');
+        name.className = 'provider-name';
+        name.textContent = scene.label;
+
+        content.appendChild(thumb);
+        content.appendChild(name);
+        if (scene.variantLabel) {
+            const variant = document.createElement('div');
+            variant.className = 'provider-variant';
+            variant.textContent = scene.variantLabel;
+            content.appendChild(variant);
+        }
+
+        // Order matters: `.provider-radio:checked + .provider-content`.
+        card.appendChild(radio);
+        card.appendChild(content);
+        grid.appendChild(card);
+    }
+}
+
+/**
+ * A6. Tick whichever background card matches what is actually showing.
+ *
+ * Split out of `openSettings` because it has to run twice: once inline, and again after a late
+ * catalogue load has created the cards that the first pass had nothing to tick.
+ */
+function _preselectBackgroundCard() {
+    const vis = window.NEXUS_VIEWER?.getVisualState?.() || null;
+    const savedBg = vis?.background || localStorage.getItem('desktop_bg') || 'black';
+    // Compared rather than selected. A scene id contains colons, and a stored value could in
+    // principle contain a quote or a bracket — interpolating either into a selector makes
+    // `querySelector` throw a SyntaxError and takes the whole Settings panel down with it.
+    for (const radio of document.querySelectorAll('input[name="desktop-bg"]')) {
+        if (radio.value === savedBg) {
+            radio.checked = true;
+            return;
+        }
+    }
+}
+
+/**
+ * A11. Keep the Viewport Background radios honest when she changes the scene.
+ *
+ * Two surfaces can now change the background — the radios in Settings, and the companion — and
+ * the one that did not do it has no way of knowing. With Settings open, an AI scene change
+ * would leave the panel selecting Ocean while the viewport showed Garden, which is exactly the
+ * disagreement the controller refuses to cache state in order to avoid; it would be a shame to
+ * reintroduce it in the UI layer.
+ *
+ * Listens for the controller's DOM event rather than being called by it, so the controller
+ * stays free of any knowledge of Settings.
+ *
+ * Settings-sourced changes are skipped: the radio that caused one is already checked, and
+ * re-ticking it from an event is a needless write that would fight a user mid-click.
+ */
+(function wireSceneAmbienceRadioSync() {
+    const EVENT = window.NEXUS_SCENE_AMBIENCE_CONTROLLER?.EVENT || 'nexus:scene-ambience-change';
+    window.addEventListener(EVENT, (event) => {
+        const detail = (event && event.detail) || {};
+        if (detail.source === 'settings') return;
+        const modal = $('settings-modal');
+        // Visibility is the `active` class, not an inline style — `.modal-overlay` is
+        // `display:none` and `.modal-overlay.active` is `display:flex`. Checking `style.display`
+        // would read '' on a closed modal and re-tick radios nobody is looking at.
+        // Only worth doing while the panel is open; `openSettings` pre-selects on open anyway.
+        if (!modal || !modal.classList.contains('active')) return;
+        _preselectBackgroundCard();
+    });
+})();
+
+/**
+ * A17. Hand the built-in scenes to the library.
+ *
+ * Two trees, two load paths: `src/gltf-viewer/ambience/` comes from a script tag in index.html
+ * because `ViewerEngine` needs the catalogue synchronously, and `src/features/ambience/` comes
+ * from `boot.js`. Neither can import the other, and the catalogue's own entries arrive later
+ * still, from a fetch. So adoption is a call somebody makes once the data is actually there,
+ * rather than something either module does at load time.
+ *
+ * Registering the same source twice replaces it, so calling this on every Settings open costs a
+ * comparison and cannot duplicate a card.
+ */
+function _adoptBuiltinScenes(catalog) {
+    const library = window.NEXUS_SCENE_CATALOG;
+    if (!library || typeof library.adoptBuiltins !== 'function') return;
+    if (!catalog || typeof catalog.images !== 'function' || !catalog.images().length) return;
+    library.adoptBuiltins(catalog);
+}
+
+/**
+ * A6. Make sure the catalogue has been asked to load, then draw the cards.
+ *
+ * The data file is fetched once and cached by the catalogue; this may be the first time anything
+ * has asked for it, because a chat-only session never builds a viewer. Failure is silent by
+ * design — no scenes is a supported state, and a Settings panel that showed a network error
+ * where a picture list should be would be worse than one that shows five colours.
+ */
+function _ensureSceneBackgroundCards() {
+    const catalog = window.NEXUS_VIEWPORT_BACKGROUND_CATALOG;
+    if (!catalog) return;
+    _adoptBuiltinScenes(catalog);
+    _renderSceneBackgroundCards();
+    if (typeof catalog.load === 'function' && !catalog.hasImages()) {
+        Promise.resolve(catalog.load())
+            .then(() => {
+                _adoptBuiltinScenes(catalog);
+                _renderSceneBackgroundCards();
+                _preselectBackgroundCard();
+            })
+            .catch(() => {
+                /* No scenes. The five colours still work. */
+            });
+    }
+}
+
 function openSettings() {
     const modal = $('settings-modal');
     if (!modal) return;
@@ -2666,10 +2862,10 @@ function openSettings() {
     const modeRadio = document.querySelector(`input[name="render-mode"][value="${savedMode}"]`);
     if (modeRadio) modeRadio.checked = true;
 
-    // Pre-select desktop background
-    const savedBg = vis?.background || localStorage.getItem('desktop_bg') || 'black';
-    const bgRadio = document.querySelector(`input[name="desktop-bg"][value="${savedBg}"]`);
-    if (bgRadio) bgRadio.checked = true;
+    // Pre-select desktop background. A6 draws the scene cards first, so that a saved scene id
+    // has a radio to find — without that the selection silently falls back to Black on reopen.
+    _ensureSceneBackgroundCards();
+    _preselectBackgroundCard();
 
     // Pre-select shadow setting
     const savedShadow = vis ? (vis.shadows ? 'on' : 'off') : localStorage.getItem('desktop_shadow') || 'off';
@@ -3549,8 +3745,29 @@ async function handleUserMessage(text) {
     }
 }
 
+/**
+ * Whether a turn that started at `token` still belongs to the conversation on screen.
+ *
+ * Pressing CLEAR mid-reply used to resurrect the conversation: the in-flight turn finished,
+ * appended the assistant's message and persisted it, writing a fresh conversation into the
+ * storage that had just been emptied. The reply arrived *after* the clear, so it looked like
+ * the clear had simply not worked.
+ *
+ * Permissive when the reset module is absent, so a deployment without it behaves exactly as it
+ * did before rather than silently dropping replies.
+ */
+function _turnIsCurrent(token) {
+    const reset = window.NEXUS_CONVERSATION_RESET;
+    if (!reset || typeof reset.isCurrent !== 'function') return true;
+    return reset.isCurrent(token);
+}
+
 // Streaming response: tokens appear word-by-word in the chat
 async function _handleStreamingResponse(text) {
+    // Which conversation this turn belongs to. Checked again before anything is written back,
+    // because the user may press CLEAR while she is still mid-sentence.
+    const turn = window.NEXUS_CONVERSATION_RESET?.currentEpoch?.();
+
     // Create an empty bot message element that we'll fill progressively
     const { textDiv, row } = _createStreamingBotMessage();
 
@@ -3569,7 +3786,12 @@ async function _handleStreamingResponse(text) {
             // T2. What she can *do* about media, as opposed to D9's what is playing. Empty
             // unless Together is on and something can actually search, so a promise is never
             // made that nothing can keep.
-            (window.NEXUS_TOGETHER_CAPABILITY?.systemPromptSuffix?.() || '');
+            (window.NEXUS_TOGETHER_CAPABILITY?.systemPromptSuffix?.() || '') +
+            // A11. Where you both are, and that she may change it. Empty unless the user has
+            // turned scene ambience on AND the catalogue can actually answer something, so a
+            // chat with it off sends byte-for-byte the prompt it sent before the feature
+            // existed.
+            (window.NEXUS_SCENE_AMBIENCE_CAPABILITY?.systemPromptSuffix?.() || '');
         let accumulated = '';
 
         const fullText = await window._nexusLLM.sendMessageStream(text, systemPrompt, history, (token) => {
@@ -3585,6 +3807,15 @@ async function _handleStreamingResponse(text) {
 
         if (window.setTypingIndicator) window.setTypingIndicator(false);
 
+        // The user pressed CLEAR while this was streaming. This reply belongs to a conversation
+        // that no longer exists: take the half-written bubble off screen and write nothing —
+        // no message, no storage, no speech. Anything else resurrects what they just erased.
+        if (!_turnIsCurrent(turn)) {
+            if (row.parentElement) row.parentElement.removeChild(row);
+            setStatus('idle', 'READY');
+            return;
+        }
+
         let displayText = fullText || accumulated || 'No response';
         // Living NPC: execute the ```motion plan and strip it from display/TTS
         displayText = window.NEXUS_MOTION ? window.NEXUS_MOTION.processReply(displayText) : displayText;
@@ -3594,6 +3825,15 @@ async function _handleStreamingResponse(text) {
         // that reached the synthesiser would be her reading XML aloud.
         displayText = window.NEXUS_PLAY_DIRECTIVE ? window.NEXUS_PLAY_DIRECTIVE.consume(displayText) : displayText;
         displayText = window.NEXUS_STUDY_DIRECTIVE ? window.NEXUS_STUDY_DIRECTIVE.consume(displayText) : displayText;
+        // A11. Take <ambience> out and act on it, at the same seam and for the same reason:
+        // everything downstream reads `displayText`, so stripping once covers the bubble, the
+        // transcript, the VR forward and the voice together. A tag that reached the
+        // synthesiser would be her reading markup aloud. `consume` re-checks the switch at
+        // execution time, so a reply that arrives after the user turned ambience off does
+        // nothing.
+        displayText = window.NEXUS_SCENE_AMBIENCE_DIRECTIVE
+            ? window.NEXUS_SCENE_AMBIENCE_DIRECTIVE.consume(displayText)
+            : displayText;
         // S4. She asked to look something up. Strip the tag, run the search, then ask her
         // again — the second call carries the results, so the answer comes from her having
         // read them rather than from the app pasting snippets into the chat.
@@ -3625,6 +3865,14 @@ async function _handleStreamingResponse(text) {
         // Remove the empty streaming message
         if (row.parentElement) row.parentElement.removeChild(row);
 
+        // Do not retry a turn the user has already cleared. The fallback would capture a fresh
+        // epoch and therefore consider itself current, putting the old question's answer into
+        // the new conversation — the one hole a per-turn token does not close by itself.
+        if (!_turnIsCurrent(turn)) {
+            setStatus('idle', 'READY');
+            return;
+        }
+
         // Fallback to non-streaming
         await _handleNonStreamingResponse(text);
     }
@@ -3632,12 +3880,22 @@ async function _handleStreamingResponse(text) {
 
 // Non-streaming response (original behavior + retry button)
 async function _handleNonStreamingResponse(text) {
+    // See the note in _handleStreamingResponse: a reply that outlives a CLEAR must not write
+    // itself into the conversation that replaced it.
+    const turn = window.NEXUS_CONVERSATION_RESET?.currentEpoch?.();
     if (window.setTypingIndicator) window.setTypingIndicator(true);
 
     try {
         const response = config.provider === 'none' ? getSimpleResponse(text) : await callLLM(text);
 
         if (window.setTypingIndicator) window.setTypingIndicator(false);
+
+        // Cleared while the request was in flight. Nothing here belongs to the conversation on
+        // screen, so nothing is written, spoken or persisted. See _turnIsCurrent.
+        if (!_turnIsCurrent(turn)) {
+            setStatus('idle', 'READY');
+            return;
+        }
 
         let displayText;
         let attachments = [];
@@ -3656,6 +3914,15 @@ async function _handleNonStreamingResponse(text) {
         // that reached the synthesiser would be her reading XML aloud.
         displayText = window.NEXUS_PLAY_DIRECTIVE ? window.NEXUS_PLAY_DIRECTIVE.consume(displayText) : displayText;
         displayText = window.NEXUS_STUDY_DIRECTIVE ? window.NEXUS_STUDY_DIRECTIVE.consume(displayText) : displayText;
+        // A11. Take <ambience> out and act on it, at the same seam and for the same reason:
+        // everything downstream reads `displayText`, so stripping once covers the bubble, the
+        // transcript, the VR forward and the voice together. A tag that reached the
+        // synthesiser would be her reading markup aloud. `consume` re-checks the switch at
+        // execution time, so a reply that arrives after the user turned ambience off does
+        // nothing.
+        displayText = window.NEXUS_SCENE_AMBIENCE_DIRECTIVE
+            ? window.NEXUS_SCENE_AMBIENCE_DIRECTIVE.consume(displayText)
+            : displayText;
         // S4. She asked to look something up. Strip the tag, run the search, then ask her
         // again — the second call carries the results, so the answer comes from her having
         // read them rather than from the app pasting snippets into the chat.
@@ -3680,6 +3947,13 @@ async function _handleNonStreamingResponse(text) {
     } catch (error) {
         if (window.setTypingIndicator) window.setTypingIndicator(false);
         logError('Error processing message', error);
+
+        // An error that arrives after a CLEAR is still about the old conversation. Report it in
+        // the status line, but do not put it in the transcript the user just emptied.
+        if (!_turnIsCurrent(turn)) {
+            setStatus('idle', 'READY');
+            return;
+        }
 
         if (error.name === 'PersonaUnavailableError') {
             const friendlyMsg =
@@ -3848,7 +4122,12 @@ async function callLLM(userMessage) {
             // T2. What she can *do* about media, as opposed to D9's what is playing. Empty
             // unless Together is on and something can actually search, so a promise is never
             // made that nothing can keep.
-            (window.NEXUS_TOGETHER_CAPABILITY?.systemPromptSuffix?.() || '');
+            (window.NEXUS_TOGETHER_CAPABILITY?.systemPromptSuffix?.() || '') +
+            // A11. Where you both are, and that she may change it. Empty unless the user has
+            // turned scene ambience on AND the catalogue can actually answer something, so a
+            // chat with it off sends byte-for-byte the prompt it sent before the feature
+            // existed.
+            (window.NEXUS_SCENE_AMBIENCE_CAPABILITY?.systemPromptSuffix?.() || '');
 
         // Use structured response for OllaBridge to get attachments
         if (config.provider === 'ollabridge' && typeof window._nexusLLM.sendMessageStructured === 'function') {
@@ -4393,6 +4672,19 @@ function addMessageToHistory(sender, text, attachments) {
     }
 }
 
+/**
+ * CLEAR — and it now means it.
+ *
+ * This used to empty the transcript and the in-memory message list and stop there, leaving both
+ * localStorage copies in place. The conversation came back on the next page load, which is a
+ * long way from the click that was supposed to remove it. The drawer's Clear Chat removed the
+ * storage keys via a separate listener, so the same action behaved differently depending on
+ * which button you used.
+ *
+ * All of it now goes through one module, which also clears the search and study context that
+ * feeds the system prompt — without that, the first message after a CLEAR could still carry
+ * "You just searched the web for …" from the conversation that was supposed to be gone.
+ */
 function clearHistory() {
     const chatHistoryEl = $('chat-history');
     if (!chatHistoryEl) return;
@@ -4402,10 +4694,32 @@ function clearHistory() {
       <p class="sub-text">All transmissions will be recorded here.</p>
     </div>`;
 
-    // ✅ Also clear the chat session history (context memory)
-    if (window.chatHistory) {
-        window.chatHistory.clear();
-        showMessage('Chat history and context memory cleared', 'success');
+    const reset = window.NEXUS_CONVERSATION_RESET;
+    if (!reset) {
+        // The module is loaded by boot.js and a click cannot realistically precede it. If it is
+        // somehow absent, do the part that matters most by hand rather than silently doing less
+        // than the button promises.
+        if (window.chatHistory) window.chatHistory.clear();
+        try {
+            localStorage.removeItem(CHAT_STORAGE_KEY);
+            localStorage.removeItem(CHAT_DISPLAY_KEY);
+        } catch (_) {
+            /* storage unavailable */
+        }
+        showMessage('Conversation cleared', 'success');
+        return;
+    }
+
+    const result = reset.forget();
+    // Tell the user what actually happened. A private window with storage blocked cannot forget
+    // anything on disk, and claiming otherwise is how this went wrong the first time.
+    const left = reset.residue();
+    if (left.length) {
+        showMessage('Conversation cleared here, but this browser would not let it be erased from storage', 'error');
+    } else if (!result.storageAvailable) {
+        showMessage('Conversation cleared (nothing was stored on this device)', 'success');
+    } else {
+        showMessage('Conversation cleared — history, context and saved copy', 'success');
     }
 }
 
@@ -4553,22 +4867,12 @@ if (_npcTelemetryBtn) _npcTelemetryBtn.addEventListener('click', toggleTelemetry
 /* ============================
    Clear = clear + FORGET (persistence only when the user keeps the chat)
    ============================ */
-const _drawerClearBtn = document.getElementById('drawer-clear-btn');
-if (_drawerClearBtn) {
-    _drawerClearBtn.addEventListener('click', () => {
-        try {
-            // The constants are declared further down the file, but a click can
-            // only happen long after this script has finished evaluating, so
-            // they are initialised by then. Naming them rather than repeating
-            // the literals means a rename cannot leave a stale key behind.
-            localStorage.removeItem(CHAT_STORAGE_KEY);
-            localStorage.removeItem(CHAT_DISPLAY_KEY);
-            console.log('[ChatHistory] Persisted conversation forgotten (Clear)');
-        } catch (_e) {
-            /* storage unavailable */
-        }
-    });
-}
+// The drawer's Clear Chat used to carry its own half of the job here — it removed the two
+// storage keys, while MobileDrawerWiring forwarded the click to #clear-history for the rest.
+// Between them the drawer cleared everything and the chat panel's own CLEAR button cleared
+// only half, which is why the same action behaved differently depending on which one you
+// pressed. Both now reach the same `clearHistory()`, so this listener would be a second,
+// partial implementation of something that already works. Deleted rather than kept in step.
 
 /* ============================
    Reset view — a clean character, exactly like a fresh page load
@@ -5327,7 +5631,8 @@ function __nexusMediaSuffix() {
             (window.NEXUS_CURRENT_MEDIA?.systemPromptSuffix?.() || '') +
             (window.NEXUS_STUDY_PROMPT?.systemPromptSuffix?.() || '') +
             (window.NEXUS_LOOKUP?.systemPromptSuffix?.() || '') +
-            (window.NEXUS_TOGETHER_CAPABILITY?.systemPromptSuffix?.() || '')
+            (window.NEXUS_TOGETHER_CAPABILITY?.systemPromptSuffix?.() || '') +
+            (window.NEXUS_SCENE_AMBIENCE_CAPABILITY?.systemPromptSuffix?.() || '')
         );
     } catch (_) {
         return '';

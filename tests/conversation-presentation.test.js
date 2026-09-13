@@ -34,7 +34,9 @@ test('lookup control plus retrieval placeholder is empty so SearchQuality retrie
     window.NEXUS_LOOKUP = {
         extract(text) {
             return {
-                clean: String(text).replace(/<lookup\b[^>]*>[\s\S]*?<\/lookup\s*>/gi, ' ').trim(),
+                clean: String(text)
+                    .replace(/<lookup\b[^>]*>[\s\S]*?<\/lookup\s*>/gi, ' ')
+                    .trim(),
                 query: 'Ruslan Magana',
             };
         },
