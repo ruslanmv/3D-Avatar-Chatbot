@@ -73,7 +73,7 @@ So the rule for new code in `src/gltf-viewer/`:
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (139 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (140 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -113,7 +113,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-09-12 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **3922 tests in 139 suites, all passing.**
+— lint clean, format clean, **3931 tests in 140 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -222,6 +222,8 @@ Scenic viewport backgrounds, and letting the companion change them on request.
 - `docs/ambience-contract.md` — the frozen data shapes
 - `docs/AMBIENCE_HARDENING.md` — the A12 audit; both findings fixed
 - `docs/BACKPLATE_PRODUCTION.md` — **how to author art the camera agrees with**
+- `docs/STUDIO_INTEGRATION.md` — 3D-Ambience-Studio: what it makes, and the
+  reprojection that turns it into something this app can show
 
 Ten scenes in `assets/ambient/` with provenance beside them, a Settings scene
 grid, and five `src/features/ambience/` modules in `boot.js`. The switch is
