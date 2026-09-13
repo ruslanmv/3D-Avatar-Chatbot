@@ -126,6 +126,12 @@
         <script src="src/gltf-viewer/ambience/coverTransform.js"></script>
         <script src="src/gltf-viewer/ambience/ViewportBackgroundCatalog.js"></script>
         <script src="src/gltf-viewer/ambience/ViewportBackgroundManager.js"></script>
+        <!-- A13. Development-only backplate calibration. Self-gating on
+             ?backgroundCalibration=1, so with no query parameter it creates no node, attaches
+             no listener and costs one regular-expression test at boot. Geometry first: the
+             overlay reads it. -->
+        <script src="src/gltf-viewer/ambience/CalibrationGeometry.js"></script>
+        <script src="src/gltf-viewer/ambience/CalibrationOverlay.js"></script>
 
         <script type="module" src="src/engine-bridge.js"></script>
 

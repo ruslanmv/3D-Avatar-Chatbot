@@ -23,7 +23,25 @@ export class MobileSupport {
         // making the avatar fill the frame naturally (Ready Player Me, VRoid Hub).
         // Wide-angle FOV (58°) made the character appear tiny and far away.
         this.mobileFOV = 42; // telephoto feel — avatar fills ~60% of screen
-        this.desktopFOV = 35; // original FOV
+
+        // A13. 30, matching ViewerEngine's constructor, and no longer called "desktop".
+        //
+        // It was 35, and the name was a misnomer that hid a third projection. These listeners
+        // are only attached for phones and tablets (see init), so a desktop never reaches this
+        // branch and keeps the 30 it was constructed with. What actually shipped was 30 on
+        // desktop, 42 on a portrait phone, and 35 on a tablet or a phone held sideways —
+        // three projections, one of them named after the device that never used it.
+        //
+        // That was survivable while the background was a flat colour. It is not once a scenic
+        // backplate has to agree with the camera: an image composed for 30° is measurably wrong
+        // at 35°, and the horizon lands in the wrong place. One landscape projection, one
+        // landscape backplate.
+        //
+        // Framing is unaffected — frameObject derives distance from the FOV, so the avatar
+        // fills the same fraction of frame either way; the camera simply sits further back and
+        // the perspective flattens slightly, which is the point.
+        this.landscapeFOV = 30;
+        this.desktopFOV = 30; // kept as an alias: other code and tests may still read it
         this.mobilePixelRatioCap = 1.5; // limit GPU load on phones
         this.desktopPixelRatioCap = 2.0;
 
@@ -154,11 +172,8 @@ export class MobileSupport {
     }
 
     _updateFOV() {
-        if (this._isMobile && this._isPortrait) {
-            this.camera.fov = this.mobileFOV;
-        } else {
-            this.camera.fov = this.desktopFOV;
-        }
+        // Two projections, not three. See the note beside landscapeFOV.
+        this.camera.fov = this._isMobile && this._isPortrait ? this.mobileFOV : this.landscapeFOV;
         this.camera.updateProjectionMatrix();
     }
 

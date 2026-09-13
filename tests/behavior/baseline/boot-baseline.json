@@ -5,19 +5,19 @@
   "allowlistReferences": [
     {
       "file": "index.html",
-      "line": 1450,
+      "line": 1456,
       "guarded": true,
       "comment": false
     },
     {
       "file": "index.html",
-      "line": 1819,
+      "line": 1825,
       "guarded": true,
       "comment": false
     },
     {
       "file": "index.html",
-      "line": 1854,
+      "line": 1860,
       "guarded": true,
       "comment": false
     },
@@ -167,6 +167,6 @@
     "adult.available": true
   },
   "informational": {
-    "totalBootScripts": 94
+    "totalBootScripts": 96
   }
 }
