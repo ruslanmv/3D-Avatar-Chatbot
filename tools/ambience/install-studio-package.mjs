@@ -132,6 +132,11 @@ function main() {
     const night = /night|moonlight|starlight|twilight|dark/.test(manifest.id) ? 'dark' : 'light';
     const base = `assets/ambient/${night}/${manifest.id}`;
 
+    // A20. The anchors travel with the art whether or not anybody switches the option on. They
+    // describe where each plate's floor is, which is a property of the picture, not a preference.
+    const anchorY = manifest.variants?.desktop?.avatarAnchor?.feetY;
+    const anchorYPortrait = manifest.variants?.mobile?.avatarAnchor?.feetY;
+
     const entry = {
         id,
         type: 'image',
@@ -145,10 +150,14 @@ function main() {
         srcPortrait: `${base}-portrait.webp`,
         thumb: `${base}.webp`,
         focalPoint: 'center',
+        anchorY: typeof anchorY === 'number' ? anchorY : undefined,
+        anchorYPortrait: typeof anchorYPortrait === 'number' ? anchorYPortrait : undefined,
         intensity: 1,
         category: manifest.category || 'relax',
         tags: Array.isArray(manifest.tags) ? manifest.tags : [],
     };
+
+    for (const key of Object.keys(entry)) if (entry[key] === undefined) delete entry[key];
 
     console.log(`${manifest.id} ${manifest.version} → ${id}`);
     for (const { studio, field } of VARIANTS) {

@@ -216,6 +216,50 @@ was. Full details in [docs/COMPANION-MODE.md](docs/COMPANION-MODE.md).
 
 ---
 
+## Scenic Ambience
+
+Ten places to be together, each generated for this app's camera so she stands on
+the ground rather than in front of a photograph. Pick one yourself in **Settings
+▸ Scenes**, or let her change it when the conversation fits.
+
+![The ten built-in scenes: ocean at sunrise and by moonlight, a mountain lake by day and night, a meditation garden by day and night, a coastal terrace by day and at twilight, and open sky by day and under stars](assets/ambient/docs/scene-set.webp)
+
+_Above: the ten built-in scenes. Every one has a continuous, readable standing
+surface across its lower third — that is the part a landscape photograph almost
+never has, and the reason these were generated rather than sourced._
+
+**Two compositions per scene, not one picture cropped twice**
+
+![The same meditation garden as two separate images: a 1920x1080 desktop plate and a 1080x1920 portrait plate, each with a line marking where the character's feet land](assets/ambient/docs/two-compositions.webp)
+
+A scene is composed for a projection, not for a device. This app's camera is
+tilted about 1.72° down, which puts the horizon at **44.4%** of frame height in
+landscape and **46.1%** in portrait, and her feet at **89.7%** and **88.2%**.
+Cropping one picture to serve both shapes moves the horizon; generating two does
+not. The runtime picks between them by the shape of the canvas, and reloads
+rather than re-crops when you rotate the device.
+
+**Optional: keep the ground under her feet**
+
+![Side by side, the same portrait plate in a 472x564 panel: a centred crop puts the stone pier below the frame with her feet over open water, while a grounded crop puts the pier directly under the foot line](assets/ambient/docs/grounded-crop.webp)
+
+Those two numbers are exact only at the shape each plate was composed for. In
+any other shape the centred crop trims equally from both ends and the floor
+drifts. **Settings ▸ Scenes ▸ Keep the ground under her feet** anchors the crop
+to the row the camera stands her on instead — the ground stays put, at the cost
+of a composition that is no longer centred. It is **off by default**: centred is
+what these scenes were art-directed against.
+
+![The Settings scene gallery showing all ten scenes as thumbnail cards](assets/ambient/docs/settings-gallery.webp)
+
+The art is produced by
+[3D-Ambience-Studio](https://github.com/ruslanmv/3D-Ambience-Studio), which owns
+generation, validation and packaging; this app only ever consumes finished
+packages. See [`assets/ambient/PROVENANCE.md`](assets/ambient/PROVENANCE.md) for
+the model, the sizes and the licence.
+
+---
+
 ## Configuration
 
 Open **Settings** in the app and select your AI provider:

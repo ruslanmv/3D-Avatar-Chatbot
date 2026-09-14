@@ -824,3 +824,124 @@ function rigRequests(size) {
 function flush() {
     return new Promise((resolve) => setTimeout(resolve, 0));
 }
+
+describe('the grounded crop is off unless asked for (batch A20)', () => {
+    const ANCHORED = {
+        schemaVersion: 1,
+        scenes: [
+            {
+                id: 'ambient:anchored:day',
+                type: 'image',
+                label: 'Anchored',
+                src: 'assets/ambient/light/open-sky-day.webp',
+                anchorY: 0.89727,
+            },
+        ],
+    };
+
+    /** A manager whose viewport is deliberately not the shape the plate was composed for. */
+    function rigAt(w, h, options) {
+        const scene = { background: null, backgroundIntensity: 1 };
+        const manager = Manager.attach({
+            three: THREE_STUB,
+            scene,
+            catalog: Catalog,
+            cover: Cover,
+            colors: BG_COLORS,
+            loadTexture: (src) => Promise.resolve(fakeTexture(src, 1920, 1080)),
+            getViewportSize: () => ({ w, h }),
+            geometry: {
+                PROFILES: { landscape: { fovDeg: 30, aspect: 16 / 9, fitOffset: 1.35, biasY: 0.04 } },
+                guide: () => ({ footAnchor: { x: 0.5, y: 0.89727 } }),
+            },
+            ...options,
+        });
+        return { manager, scene };
+    }
+
+    beforeEach(() => {
+        Catalog.ingest(ANCHORED, 'a20-test');
+    });
+    afterEach(() => {
+        Catalog.reset();
+    });
+
+    test('the default is the centred crop, which is what this project ships', async () => {
+        const { manager, scene } = rigAt(1200, 900);
+        await manager.apply('ambient:anchored:day');
+        expect(manager.grounded).toBe(false);
+        const centred = Cover.computeCoverTransform(1920 / 1080, 1200 / 900, Cover.CENTER);
+        expect(scene.background.offset.y).toBeCloseTo(centred.offset.y, 10);
+    });
+
+    test('switching it on moves the crop and says that it did', async () => {
+        // 1200x500, not 1200x900: a viewport wider than the plate crops horizontally, leaves the
+        // full image height on screen and gives the option nothing to move. The interesting case
+        // is a viewport that crops vertically.
+        const { manager, scene } = rigAt(1200, 500);
+        await manager.apply('ambient:anchored:day');
+        const before = scene.background.offset.y;
+        expect(manager.setGrounded(true)).toBe(true);
+        expect(scene.background.offset.y).not.toBeCloseTo(before, 6);
+        expect(scene.background.repeat.y).toBeLessThan(1); // it really is a vertical crop
+    });
+
+    test('switching it to the value it already has is a no-op', async () => {
+        const { manager } = rigAt(1200, 900);
+        await manager.apply('ambient:anchored:day');
+        expect(manager.setGrounded(false)).toBe(false);
+    });
+
+    test('switching it back restores the centred crop exactly', async () => {
+        const { manager, scene } = rigAt(1200, 500);
+        await manager.apply('ambient:anchored:day');
+        const centred = scene.background.offset.y;
+        manager.setGrounded(true);
+        manager.setGrounded(false);
+        expect(scene.background.offset.y).toBeCloseTo(centred, 10);
+    });
+
+    test('on, the plate floor lands on the row the camera stands her on', async () => {
+        const { manager, scene } = rigAt(1200, 500, { grounded: true });
+        await manager.apply('ambient:anchored:day');
+        const t = scene.background;
+        expect(t.repeat.y).toBeLessThan(1); // otherwise this asserts nothing
+        const topTrim = 1 - t.offset.y - t.repeat.y;
+        expect((0.89727 - topTrim) / t.repeat.y).toBeCloseTo(0.89727, 6);
+
+        // And the centred crop at the same shape does not, or the option would be pointless.
+        const centred = Cover.computeCoverTransform(1920 / 1080, 1200 / 500, Cover.CENTER);
+        const centredTop = 1 - centred.offset.y - centred.repeat.y;
+        expect((0.89727 - centredTop) / centred.repeat.y).not.toBeCloseTo(0.89727, 3);
+    });
+
+    test('an uncalibrated scene is centred even with the option on', async () => {
+        // Every scene from before the anchors existed. Nothing to align to is not a reason to
+        // guess at one.
+        Catalog.ingest(
+            {
+                schemaVersion: 1,
+                scenes: [
+                    {
+                        id: 'ambient:plain:day',
+                        type: 'image',
+                        label: 'Plain',
+                        src: 'assets/ambient/light/open-sky-day.webp',
+                    },
+                ],
+            },
+            'a20-plain'
+        );
+        const { manager, scene } = rigAt(1200, 500, { grounded: true });
+        await manager.apply('ambient:plain:day');
+        const centred = Cover.computeCoverTransform(1920 / 1080, 1200 / 500, Cover.CENTER);
+        expect(scene.background.offset.y).toBeCloseTo(centred.offset.y, 10);
+    });
+
+    test('no geometry available falls back to centred rather than failing to draw', async () => {
+        const { manager, scene } = rigAt(1200, 500, { grounded: true, geometry: { PROFILES: null } });
+        await manager.apply('ambient:anchored:day');
+        const centred = Cover.computeCoverTransform(1920 / 1080, 1200 / 500, Cover.CENTER);
+        expect(scene.background.offset.y).toBeCloseTo(centred.offset.y, 10);
+    });
+});

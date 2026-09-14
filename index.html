@@ -1919,6 +1919,30 @@
                             role="group"
                             aria-labelledby="bg-scene-heading"
                         ></div>
+                        <!-- A20. An option, not a default.
+
+                             A scene is composed for one projection, and its floor sits where the
+                             camera stands her *at that aspect*. Fill a differently-shaped canvas
+                             and a centred crop trims equally from both ends, which moves the
+                             floor — in the desktop layout's avatar panel it leaves the frame
+                             entirely and she stands on open water.
+
+                             Anchoring the crop to her feet fixes that and shifts the composition
+                             off-centre to do it, which is a real trade rather than a free win.
+                             The project ships centred; this is here for anyone who would rather
+                             have the ground under her feet. -->
+                        <label class="spicy-toggle-label" style="margin-top: 12px">
+                            <span>Keep the ground under her feet</span>
+                            <div class="spicy-toggle-switch">
+                                <input type="checkbox" id="scene-grounded-toggle" />
+                                <span class="spicy-toggle-slider"></span>
+                            </div>
+                        </label>
+                        <p style="font-size: 0.7rem; color: #888; margin: 6px 0 12px">
+                            Off by default. Each scene is composed for one window shape; in any other shape the floor
+                            drifts from where she stands. On, the picture is shifted so the ground stays under her feet
+                            — at the cost of no longer being centred.
+                        </p>
                         <p
                             id="bg-scene-empty"
                             style="font-size: 0.72rem; color: rgba(255, 255, 255, 0.5); margin: 0"

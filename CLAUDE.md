@@ -257,6 +257,17 @@ Things to know before touching it:
   — both read from `camera-contract.json`, so re-exporting the camera
   invalidates art composed against the old one instead of installing it
   silently.
+- **The grounded crop is an option, and off (A20).** A centred crop is exact at
+  the two shapes each plate was composed for and drifts elsewhere — in the
+  desktop layout's 472×564 avatar panel a portrait plate's floor lands at
+  106.9%, off the bottom edge.
+  `Settings ▸ Scenes ▸ Keep the ground under her feet` (`nexus_scene_grounded`,
+  `manager.setGrounded`) anchors the crop to the camera's foot row instead,
+  using `anchorY`/`anchorYPortrait` from the catalogue and `CalibrationGeometry`
+  for the camera's row. **Default is centred** — that is what the scenes were
+  art-directed against and what production ships; do not change the default
+  without asking. Both paths compute the same `repeat`; only `offset` moves, so
+  it is never a stretch.
 - **A scene may ship two pictures (A19).** `srcPortrait` on a catalogue entry is
   the composition for a portrait viewport;
   `ViewportBackgroundCatalog.sourceFor(entry, aspect)` chooses, and `onResize`

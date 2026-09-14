@@ -223,3 +223,83 @@ describe('parseFocalPoint', () => {
         expect(window(t).v[1]).toBeCloseTo(1, 12);
     });
 });
+
+describe('the grounded crop, which is an option and not the default (batch A20)', () => {
+    /**
+     * A centred crop is exact at the two viewport shapes the plates were composed for and drifts
+     * everywhere else, because it trims equally from both ends while the floor is nowhere near
+     * the middle. This is the alternative, for anyone who would rather have the ground under her
+     * feet than the composition centred. It is a trade, which is why it is a setting.
+     */
+    const LANDSCAPE = { aspect: 16 / 9, foot: 0.89727 };
+    const PORTRAIT = { aspect: 0.5625, foot: 0.88215 };
+
+    /** Where an image row ends up on the canvas, given a transform. */
+    function landsAt(transform, imageFootY) {
+        const topTrim = 1 - transform.offset.y - transform.repeat.y;
+        return (imageFootY - topTrim) / transform.repeat.y;
+    }
+
+    function grounded(plate, viewAspect) {
+        return Cover.computeGroundedCoverTransform(plate.aspect, viewAspect, {
+            imageFootY: plate.foot,
+            cameraFootY: plate.foot,
+            focalX: 0.5,
+        });
+    }
+
+    test('the floor lands on the camera row at every viewport shape', () => {
+        // 0.837 is the real desktop layout: a 472x564 avatar panel beside the chat.
+        for (const viewAspect of [0.5625, 0.837, 0.6, 0.75, 0.42]) {
+            expect(landsAt(grounded(PORTRAIT, viewAspect), PORTRAIT.foot)).toBeCloseTo(PORTRAIT.foot, 6);
+        }
+        for (const viewAspect of [16 / 9, 1.2, 2.4, 4.02]) {
+            expect(landsAt(grounded(LANDSCAPE, viewAspect), LANDSCAPE.foot)).toBeCloseTo(LANDSCAPE.foot, 6);
+        }
+    });
+
+    test('the centred crop really does misplace it, or none of this would be worth an option', () => {
+        // The control. If this stops failing, the option has nothing left to offer.
+        const centred = Cover.computeCoverTransform(PORTRAIT.aspect, 0.837, Cover.parseFocalPoint('center'));
+        expect(landsAt(centred, PORTRAIT.foot)).toBeGreaterThan(1);
+    });
+
+    test('at the composed aspect the two are identical, so turning it on changes nothing there', () => {
+        for (const [plate, aspect] of [
+            [PORTRAIT, 0.5625],
+            [LANDSCAPE, 16 / 9],
+        ]) {
+            expect(grounded(plate, aspect)).toEqual(Cover.computeCoverTransform(plate.aspect, aspect, Cover.CENTER));
+        }
+    });
+
+    test('it never scales differently — only the offset moves', () => {
+        // Cover is still cover. Changing `repeat` would stretch the image, which is the one thing
+        // this file exists to prevent.
+        for (const viewAspect of [0.837, 1.2, 0.5625, 16 / 9]) {
+            const centred = Cover.computeCoverTransform(PORTRAIT.aspect, viewAspect, Cover.CENTER);
+            const g = grounded(PORTRAIT, viewAspect);
+            expect(g.repeat.x).toBeCloseTo(centred.repeat.x, 10);
+            expect(g.repeat.y).toBeCloseTo(centred.repeat.y, 10);
+        }
+    });
+
+    test('without an anchor it is exactly the centred crop', () => {
+        const withoutAnchor = Cover.computeGroundedCoverTransform(PORTRAIT.aspect, 0.837, { focalX: 0.5 });
+        expect(withoutAnchor).toEqual(Cover.computeCoverTransform(PORTRAIT.aspect, 0.837, Cover.CENTER));
+    });
+
+    test('a nonsense anchor falls back rather than cropping to nowhere', () => {
+        for (const bad of [{ imageFootY: NaN, cameraFootY: 0.9 }, { imageFootY: 0.9 }, {}]) {
+            const t = Cover.computeGroundedCoverTransform(PORTRAIT.aspect, 0.837, { ...bad, focalX: 0.5 });
+            expect(t).toEqual(Cover.computeCoverTransform(PORTRAIT.aspect, 0.837, Cover.CENTER));
+        }
+    });
+
+    test('an unusable viewport is the identity, not a division by zero', () => {
+        expect(Cover.computeGroundedCoverTransform(1.5, 0, { imageFootY: 0.9, cameraFootY: 0.9 })).toEqual({
+            repeat: { x: 1, y: 1 },
+            offset: { x: 0, y: 0 },
+        });
+    });
+});
