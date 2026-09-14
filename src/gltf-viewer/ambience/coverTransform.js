@@ -96,6 +96,52 @@
         };
     }
 
+    /**
+     * A20. Cover, with the ground put where the camera stands her — **opt-in**.
+     *
+     * `computeCoverTransform` crops around a focal point, and every scene ships `center`. That is
+     * exact at the two viewport shapes the plates were composed for and drifts everywhere else,
+     * because a centred crop trims equally from both ends while the floor is nowhere near the
+     * middle. In the desktop layout's 472x564 avatar panel a portrait plate is cropped to 67% of
+     * its height and the floor lands at 106.9% — past the bottom edge, leaving her on open water.
+     *
+     * The window shows image rows starting at `fy · (1 - ry)` and spanning `ry`, so an image row
+     * `imageFootY` appears at `(imageFootY - fy(1 - ry)) / ry`. Setting that equal to the row the
+     * camera puts her feet on and solving for `fy` is the whole of it:
+     *
+     *     fy = (imageFootY - cameraFootY · ry) / (1 - ry)
+     *
+     * At the composed aspect `ry` is 1, nothing is cropped vertically, and this returns the
+     * centred transform — so turning the option on changes nothing where nothing was wrong.
+     *
+     * It is not the default because a centred crop is what the scenes were art-directed against
+     * and what the project prefers to ship; this is the alternative for anyone who would rather
+     * have the floor under her feet than the composition centred.
+     *
+     * @param {number} imageAspect
+     * @param {number} viewAspect
+     * @param {{imageFootY:number, cameraFootY:number, focalX:number}} anchor
+     */
+    function computeGroundedCoverTransform(imageAspect, viewAspect, anchor) {
+        if (!usableAspect(imageAspect) || !usableAspect(viewAspect)) return identity();
+
+        const imageFootY = anchor && typeof anchor.imageFootY === 'number' ? anchor.imageFootY : null;
+        const cameraFootY = anchor && typeof anchor.cameraFootY === 'number' ? anchor.cameraFootY : null;
+        const focalX = anchor && typeof anchor.focalX === 'number' ? anchor.focalX : CENTER.x;
+        if (!Number.isFinite(imageFootY) || !Number.isFinite(cameraFootY)) {
+            // Nothing to align to — a scene nobody calibrated. Centre is the documented default.
+            return computeCoverTransform(imageAspect, viewAspect, { x: focalX, y: CENTER.y });
+        }
+
+        const ry = imageAspect > viewAspect ? 1 : imageAspect / viewAspect;
+        // A horizontal crop shows the full image height, so the foot row is already wherever it
+        // was drawn and there is no vertical slack to spend. Moving it would mean stretching.
+        if (ry >= 1) return computeCoverTransform(imageAspect, viewAspect, { x: focalX, y: CENTER.y });
+
+        const fy = clamp01((clamp01(imageFootY) - clamp01(cameraFootY) * ry) / (1 - ry));
+        return computeCoverTransform(imageAspect, viewAspect, { x: focalX, y: fy });
+    }
+
     const HORIZONTAL = { left: 0, right: 1 };
     const VERTICAL = { top: 0, bottom: 1 };
     const PERCENT = /^-?\d+(?:\.\d+)?%$/;
@@ -163,7 +209,7 @@
         return { x: x === null ? 0.5 : x, y: y === null ? 0.5 : y };
     }
 
-    const api = { computeCoverTransform, parseFocalPoint, CENTER };
+    const api = { computeCoverTransform, computeGroundedCoverTransform, parseFocalPoint, CENTER };
 
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;

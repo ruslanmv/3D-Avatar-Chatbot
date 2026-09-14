@@ -71,6 +71,16 @@
             this.colors = d.colors || {};
             this._loadTexture = typeof d.loadTexture === 'function' ? d.loadTexture : null;
             this._getViewportSize = typeof d.getViewportSize === 'function' ? d.getViewportSize : null;
+            // A20. Injected where a test supplies one; otherwise read from the global, which
+            // index.html loads alongside this file.
+            this.geometry = d.geometry || null;
+            /**
+             * A20. Which crop to use. **Off by default**: a centred crop is what the scenes were
+             * art-directed against and what this project ships. On, the crop is anchored to the
+             * row the camera stands her on, which keeps the floor under her feet at viewport
+             * shapes other than the two each plate was composed for.
+             */
+            this.grounded = d.grounded === true;
 
             /** Bumped on every apply. A load carrying a stale number is thrown away. */
             this._generation = 0;
@@ -283,6 +293,49 @@
             return entry ? entry.src : '';
         }
 
+        /**
+         * A20. Turn the grounded crop on or off and redraw. Returns whether anything changed, so
+         * a Settings toggle can avoid announcing a no-op.
+         */
+        setGrounded(on) {
+            const next = on === true;
+            if (next === this.grounded) return false;
+            this.grounded = next;
+            if (this._texture && this._entry) this._applyCover(this._texture, this._entry);
+            return true;
+        }
+
+        /** Where this entry's visible plate was composed to put her feet, or null. */
+        _plateFootAnchor(entry, aspect) {
+            const catalog = this.catalog;
+            if (catalog && typeof catalog.anchorFor === 'function') return catalog.anchorFor(entry, aspect);
+            return null;
+        }
+
+        /**
+         * Where the camera actually puts her feet in a viewport of this shape.
+         *
+         * Read from `CalibrationGeometry` rather than a constant, because that module *is* the
+         * camera. A number copied here would be right until somebody changed the framing, and
+         * then wrong in a way that looks like bad art rather than stale code.
+         */
+        _cameraFootRow(aspect) {
+            const geometry =
+                this.geometry || (typeof window !== 'undefined' ? window.NEXUS_AMBIENCE_CALIBRATION_GEOMETRY : null);
+            if (!geometry || typeof geometry.guide !== 'function' || !geometry.PROFILES) return null;
+            const base = aspect >= 1 ? geometry.PROFILES.landscape : geometry.PROFILES.portrait;
+            if (!base) return null;
+            try {
+                const guide = geometry.guide({ ...base, aspect });
+                const value = guide && guide.footAnchor ? guide.footAnchor.y : null;
+                return typeof value === 'number' && Number.isFinite(value) ? value : null;
+            } catch (error) {
+                // Fail soft: a centred crop is the default, not a broken scene.
+                console.warn('[ViewportBackground] could not read the camera foot row', error);
+                return null;
+            }
+        }
+
         /** Give up the texture. For a teardown, or a test that wants a clean slate. */
         dispose() {
             if (this._texture) this._dispose(this._texture);
@@ -375,7 +428,19 @@
                 typeof this.cover.parseFocalPoint === 'function'
                     ? this.cover.parseFocalPoint(entry.focalPoint)
                     : undefined;
-            const t = this.cover.computeCoverTransform(iw / ih, size.w / size.h, focal);
+            const viewAspect = size.w / size.h;
+            const anchor = this.grounded ? this._plateFootAnchor(entry, viewAspect) : null;
+            const cameraFootY = anchor === null ? null : this._cameraFootRow(viewAspect);
+            const t =
+                anchor !== null &&
+                cameraFootY !== null &&
+                typeof this.cover.computeGroundedCoverTransform === 'function'
+                    ? this.cover.computeGroundedCoverTransform(iw / ih, viewAspect, {
+                          imageFootY: anchor,
+                          cameraFootY,
+                          focalX: focal ? focal.x : 0.5,
+                      })
+                    : this.cover.computeCoverTransform(iw / ih, viewAspect, focal);
             try {
                 if (texture.repeat && typeof texture.repeat.set === 'function') {
                     texture.repeat.set(t.repeat.x, t.repeat.y);

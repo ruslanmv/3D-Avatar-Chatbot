@@ -2794,6 +2794,48 @@ function _preselectBackgroundCard() {
 })();
 
 /**
+ * A20. The grounded-crop option: read it, apply it, remember it.
+ *
+ * A render preference rather than a capability, so it lives where `desktop_shadow` and the
+ * background colour live — localStorage plus a setter on the engine — rather than becoming a
+ * fifth switch module. Off unless somebody turned it on, and applied on every Settings open so a
+ * viewer built after the panel was last used still gets it.
+ */
+const GROUNDED_KEY = 'nexus_scene_grounded';
+
+function _sceneGroundedPreference() {
+    try {
+        return localStorage.getItem(GROUNDED_KEY) === 'on';
+    } catch (error) {
+        // Private mode, blocked storage. The default is the answer, not a thrown settings panel.
+        return false;
+    }
+}
+
+function _applySceneGrounded(on) {
+    const manager = window.NEXUS_VIEWER?.backgroundManager;
+    if (manager && typeof manager.setGrounded === 'function') manager.setGrounded(on);
+}
+
+function _wireSceneGroundedToggle() {
+    const box = document.getElementById('scene-grounded-toggle');
+    if (!box) return;
+    box.checked = _sceneGroundedPreference();
+    _applySceneGrounded(box.checked);
+    if (box._wired) return;
+    box._wired = true;
+    box.addEventListener('change', () => {
+        try {
+            localStorage.setItem(GROUNDED_KEY, box.checked ? 'on' : 'off');
+        } catch (error) {
+            // Unsaveable, but the viewer can still honour it for this session.
+            console.warn('[Ambience] could not save the grounded-crop preference', error);
+        }
+        _applySceneGrounded(box.checked);
+    });
+}
+
+/**
  * A17. Hand the built-in scenes to the library.
  *
  * Two trees, two load paths: `src/gltf-viewer/ambience/` comes from a script tag in index.html
@@ -2866,6 +2908,7 @@ function openSettings() {
     // has a radio to find — without that the selection silently falls back to Black on reopen.
     _ensureSceneBackgroundCards();
     _preselectBackgroundCard();
+    _wireSceneGroundedToggle();
 
     // Pre-select shadow setting
     const savedShadow = vis ? (vis.shadows ? 'on' : 'off') : localStorage.getItem('desktop_shadow') || 'off';

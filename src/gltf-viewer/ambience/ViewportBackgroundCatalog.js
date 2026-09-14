@@ -70,6 +70,13 @@
 
     const ID_PATTERN = /^ambient:[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
+    /** A 0..1 fraction, or the fallback. Out of range is a data error, not a crop to attempt. */
+    function fractionOr(value, fallback) {
+        if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+        if (value < 0 || value > 1) return fallback;
+        return value;
+    }
+
     function cleanTags(raw) {
         if (!Array.isArray(raw)) return [];
         const out = [];
@@ -98,6 +105,12 @@
         // case and always will be: the ten scenes that shipped first have one picture each, and
         // an entry without this is served the landscape plate cropped, exactly as before.
         const srcPortrait = isSafeRelativePath(raw.srcPortrait) ? raw.srcPortrait : '';
+
+        // A20. Where each plate was composed to put her feet, as a fraction of image height. Only
+        // the optional grounded crop reads these; a centred crop, which is the default, ignores
+        // them. Carried anyway because they describe the art and cost two numbers.
+        const anchorY = fractionOr(raw.anchorY, null);
+        const anchorYPortrait = fractionOr(raw.anchorYPortrait, anchorY);
         if (typeof raw.label !== 'string' || !raw.label.trim()) return { reason: 'label is missing' };
 
         // `intensity` reaches scene.backgroundIntensity, so it is range-checked here rather
@@ -115,6 +128,8 @@
                 variantLabel: typeof raw.variantLabel === 'string' ? raw.variantLabel.trim() : '',
                 src: raw.src,
                 srcPortrait,
+                anchorY,
+                anchorYPortrait,
                 thumb,
                 focalPoint: typeof raw.focalPoint === 'string' ? raw.focalPoint : 'center',
                 intensity,
@@ -138,8 +153,21 @@
      */
     function sourceFor(entry, aspect) {
         if (!entry || typeof entry !== 'object') return '';
+        return usesPortraitPlate(entry, aspect) ? entry.srcPortrait : entry.src;
+    }
+
+    /** Which plate a viewport of this shape gets. Separate because its anchor is wanted too. */
+    function usesPortraitPlate(entry, aspect) {
+        if (!entry || typeof entry !== 'object') return false;
         const portrait = typeof aspect === 'number' && Number.isFinite(aspect) && aspect < 1;
-        return portrait && entry.srcPortrait ? entry.srcPortrait : entry.src;
+        return Boolean(portrait && entry.srcPortrait);
+    }
+
+    /** The foot anchor of the plate this viewport shows, or null for an uncalibrated scene. */
+    function anchorFor(entry, aspect) {
+        if (!entry || typeof entry !== 'object') return null;
+        const value = usesPortraitPlate(entry, aspect) ? entry.anchorYPortrait : entry.anchorY;
+        return typeof value === 'number' && Number.isFinite(value) ? value : null;
     }
 
     /** The scenic entries, in file order. Replaced wholesale by `ingest`. */
@@ -278,6 +306,8 @@
         reset,
         isSafeRelativePath,
         sourceFor,
+        usesPortraitPlate,
+        anchorFor,
     };
 
     if (typeof module !== 'undefined' && module.exports) {

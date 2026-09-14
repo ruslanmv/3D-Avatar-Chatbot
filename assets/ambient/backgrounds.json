@@ -11,6 +11,8 @@
       "srcPortrait": "assets/ambient/light/ocean-sunrise-portrait.webp",
       "thumb": "assets/ambient/light/ocean-sunrise.webp",
       "focalPoint": "center",
+      "anchorY": 0.89727,
+      "anchorYPortrait": 0.88215,
       "intensity": 1,
       "category": "relax",
       "tags": ["water", "coast", "sunrise", "calm", "outdoor", "bright"]
@@ -24,6 +26,8 @@
       "srcPortrait": "assets/ambient/dark/ocean-moonlight-portrait.webp",
       "thumb": "assets/ambient/dark/ocean-moonlight.webp",
       "focalPoint": "center",
+      "anchorY": 0.89727,
+      "anchorYPortrait": 0.88215,
       "intensity": 1,
       "category": "sleep",
       "tags": ["water", "coast", "night", "moonlight", "calm", "outdoor"]
@@ -37,6 +41,8 @@
       "srcPortrait": "assets/ambient/light/mountain-lake-day-portrait.webp",
       "thumb": "assets/ambient/light/mountain-lake-day.webp",
       "focalPoint": "center",
+      "anchorY": 0.89727,
+      "anchorYPortrait": 0.88215,
       "intensity": 1,
       "category": "nature",
       "tags": ["water", "mountain", "lake", "nature", "day", "calm"]
@@ -50,6 +56,8 @@
       "srcPortrait": "assets/ambient/dark/mountain-lake-night-portrait.webp",
       "thumb": "assets/ambient/dark/mountain-lake-night.webp",
       "focalPoint": "center",
+      "anchorY": 0.89727,
+      "anchorYPortrait": 0.88215,
       "intensity": 1,
       "category": "nature",
       "tags": ["water", "mountain", "lake", "nature", "night", "calm"]
@@ -63,6 +71,8 @@
       "srcPortrait": "assets/ambient/light/meditation-garden-day-portrait.webp",
       "thumb": "assets/ambient/light/meditation-garden-day.webp",
       "focalPoint": "center",
+      "anchorY": 0.89727,
+      "anchorYPortrait": 0.88215,
       "intensity": 1,
       "category": "meditation",
       "tags": ["meditation", "garden", "nature", "day", "calm", "restful"]
@@ -76,6 +86,8 @@
       "srcPortrait": "assets/ambient/dark/meditation-garden-night-portrait.webp",
       "thumb": "assets/ambient/dark/meditation-garden-night.webp",
       "focalPoint": "center",
+      "anchorY": 0.89727,
+      "anchorYPortrait": 0.88215,
       "intensity": 1,
       "category": "meditation",
       "tags": ["meditation", "garden", "nature", "night", "calm", "restful"]
@@ -89,6 +101,8 @@
       "srcPortrait": "assets/ambient/light/coastal-terrace-day-portrait.webp",
       "thumb": "assets/ambient/light/coastal-terrace-day.webp",
       "focalPoint": "center",
+      "anchorY": 0.89727,
+      "anchorYPortrait": 0.88215,
       "intensity": 1,
       "category": "chill",
       "tags": ["water", "coast", "terrace", "outdoor", "day", "calm"]
@@ -102,6 +116,8 @@
       "srcPortrait": "assets/ambient/dark/coastal-terrace-twilight-portrait.webp",
       "thumb": "assets/ambient/dark/coastal-terrace-twilight.webp",
       "focalPoint": "center",
+      "anchorY": 0.89727,
+      "anchorYPortrait": 0.88215,
       "intensity": 1,
       "category": "chill",
       "tags": ["water", "coast", "terrace", "twilight", "evening", "calm"]
@@ -115,6 +131,8 @@
       "srcPortrait": "assets/ambient/light/open-sky-day-portrait.webp",
       "thumb": "assets/ambient/light/open-sky-day.webp",
       "focalPoint": "center",
+      "anchorY": 0.89727,
+      "anchorYPortrait": 0.88215,
       "intensity": 1,
       "category": "relax",
       "tags": ["sky", "open", "day", "peaceful", "minimal"]
@@ -128,6 +146,8 @@
       "srcPortrait": "assets/ambient/dark/open-sky-starlight-portrait.webp",
       "thumb": "assets/ambient/dark/open-sky-starlight.webp",
       "focalPoint": "center",
+      "anchorY": 0.89727,
+      "anchorYPortrait": 0.88215,
       "intensity": 1,
       "category": "sleep",
       "tags": ["sky", "open", "stars", "night", "peaceful", "minimal"]
