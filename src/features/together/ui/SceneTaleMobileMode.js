@@ -1,13 +1,10 @@
 /**
  * SceneTaleMobileMode — stage-first Scene Tale presentation for phones.
  *
- * Ordinary mobile chat is intentionally chat-first. Scene Tale is different: the 3D avatar and
- * ambience are the performance, so the story surface becomes a compact bottom sheet and the
- * normal mobile overlay chrome is suspended while a story is active.
- *
- * This module is presentation-only. StoryPlayer still owns narration, timing and branching.
- * It also deliberately takes over mobile HUD observation while active so timer ticks cannot
- * trigger the legacy Conversation view's unconditional scroll-to-bottom behavior.
+ * StoryPlayer owns narration/timing/branching. This module owns only the mobile presentation
+ * and the Ready -> Playing handoff safety net. All observer-driven DOM writes are idempotent so
+ * the Scene Tale HUD can never create a MutationObserver feedback loop that starves Together's
+ * async start continuation.
  *
  * Exposes: window.NEXUS_SCENE_TALE_MOBILE_MODE
  */
@@ -18,8 +15,11 @@ const SceneTaleMobileMode = (() => {
     const ROW_ID = 'nexus-scene-tale-conversation-row';
     const STYLE_ID = 'nexus-scene-tale-mobile-mode-styles';
     const ACTIVE_CLASS = 'nexus-scene-tale-active';
+    const CONFIGURE_CLASS = 'nexus-scene-tale-configure-active';
     const MOBILE_QUERY = '(max-width: 767px)';
     const NEAR_BOTTOM_PX = 60;
+    const PANEL_PATCH_FLAG = '__sceneTaleStartGuardPatched';
+    const READY_PATCH_FLAG = '__sceneTaleReadyGuardPatched';
 
     let rootObserver = null;
     let hudObserver = null;
@@ -27,12 +27,15 @@ const SceneTaleMobileMode = (() => {
     let currentWin = null;
     let currentDoc = null;
     let scrollHost = null;
-    let lastScrollTop = 0;
     let userNearBottom = true;
     let composerBinding = null;
     let endGuard = null;
     let legacyViewDetached = false;
     let chromeSnapshot = null;
+    let resizeHandler = null;
+    let patchTimer = null;
+    let scanning = false;
+    let syncing = false;
 
     const CSS = `
 @media (max-width:767px){
@@ -82,18 +85,14 @@ const SceneTaleMobileMode = (() => {
   html.${ACTIVE_CLASS} .nexus-story-btn:not(.is-end){background:rgba(0,207,235,.16)!important;border-color:rgba(24,218,255,.58)!important;color:#e9fbff}
   html.${ACTIVE_CLASS} .nexus-story-btn.is-end{background:transparent!important;border-color:rgba(255,255,255,.13)!important;opacity:.62!important}
   html.${ACTIVE_CLASS} .nexus-story-btn.is-end.is-confirming{border-color:rgba(255,112,112,.46)!important;color:#ffb3b3!important;opacity:1!important}
-  html.${ACTIVE_CLASS} .nexus-scene-tale-soundtrack{display:none!important}
-  html.${ACTIVE_CLASS} .nexus-scene-tale-soundtrack-player{display:none!important}
+  html.${ACTIVE_CLASS} .nexus-scene-tale-soundtrack,html.${ACTIVE_CLASS} .nexus-scene-tale-soundtrack-player{display:none!important}
   html.${ACTIVE_CLASS} .chat-input-shell{position:relative!important;bottom:auto!important;z-index:1!important;flex:0 0 auto!important;padding:6px 0 0!important;border:0!important;background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
   html.${ACTIVE_CLASS} .chat-input-bar{grid-template-columns:40px 1fr 44px!important;gap:7px!important;padding:0!important}
   html.${ACTIVE_CLASS} .voice-btn-compact{width:40px!important;height:40px!important;border-radius:12px!important;background:rgba(0,40,45,.78)!important}
   html.${ACTIVE_CLASS} .chat-input{height:40px!important;min-height:40px!important;font-size:16px!important;border-radius:12px!important;background:rgba(2,10,18,.86)!important}
   html.${ACTIVE_CLASS} .send-btn{height:40px!important;min-width:44px!important;width:44px!important;padding:0!important;border-radius:12px!important}
-  html.${ACTIVE_CLASS} .voice-status-inline{display:none!important}
-  html.${ACTIVE_CLASS} .typing-row{display:none!important}
-  html.${ACTIVE_CLASS} .pose-studio-root,
-  html.${ACTIVE_CLASS} .avatar-picker-backdrop,
-  html.${ACTIVE_CLASS} .avatar-picker-panel{display:none!important}
+  html.${ACTIVE_CLASS} .voice-status-inline,html.${ACTIVE_CLASS} .typing-row{display:none!important}
+  html.${ACTIVE_CLASS} .pose-studio-root,html.${ACTIVE_CLASS} .avatar-picker-backdrop,html.${ACTIVE_CLASS} .avatar-picker-panel{display:none!important}
 }
 `;
 
@@ -102,6 +101,30 @@ const SceneTaleMobileMode = (() => {
         if (!w) return false;
         if (typeof w.matchMedia === 'function') return w.matchMedia(MOBILE_QUERY).matches;
         return Number(w.innerWidth) <= 767;
+    }
+
+    function setText(node, value) {
+        if (!node) return false;
+        const next = String(value == null ? '' : value);
+        if (node.textContent === next) return false;
+        node.textContent = next;
+        return true;
+    }
+
+    function setAttribute(node, name, value) {
+        if (!node || !node.getAttribute || !node.setAttribute) return false;
+        const next = String(value);
+        if (node.getAttribute(name) === next) return false;
+        node.setAttribute(name, next);
+        return true;
+    }
+
+    function toggleClass(node, name, active) {
+        if (!node || !node.classList) return false;
+        const next = Boolean(active);
+        if (node.classList.contains(name) === next) return false;
+        node.classList.toggle(name, next);
+        return true;
     }
 
     function ensureStyles(doc) {
@@ -132,14 +155,13 @@ const SceneTaleMobileMode = (() => {
 
     function rememberScroll() {
         if (!scrollHost) return;
-        lastScrollTop = Number(scrollHost.scrollTop || 0);
         userNearBottom = nearBottom(scrollHost);
     }
 
     function meaningfulMutation(records) {
         return records.some((record) => {
             const target = record.target && record.target.nodeType === 3 ? record.target.parentElement : record.target;
-            if (!target || !target.closest) return Boolean(record.type === 'childList');
+            if (!target || !target.closest) return record.type === 'childList';
             if (target.closest('.nexus-story-time')) return false;
             if (target.closest('.nexus-story-btn') && record.type === 'characterData') return false;
             return Boolean(
@@ -152,15 +174,22 @@ const SceneTaleMobileMode = (() => {
         });
     }
 
+    function mutationNeedsSync(records) {
+        return records.some((record) => {
+            const target = record.target && record.target.nodeType === 3 ? record.target.parentElement : record.target;
+            return !(target && target.closest && target.closest('.nexus-story-time'));
+        });
+    }
+
     function storyState(win) {
         const player = activePlayer(win);
         return player && player.state ? String(player.state) : '';
     }
 
     function decorateSceneLabel(hud, win) {
-        if (!hud || !hud.querySelector) return;
+        if (!hud || !hud.querySelector) return false;
         const heading = hud.querySelector('.nexus-story-heading');
-        if (!heading) return;
+        if (!heading) return false;
         let place = heading.querySelector('.nexus-story-place');
         if (!place) {
             place = hud.ownerDocument.createElement('div');
@@ -170,7 +199,7 @@ const SceneTaleMobileMode = (() => {
         const player = activePlayer(win);
         const plan = player && player.plan;
         const label = String((plan && plan.sceneLabel) || '').trim();
-        place.textContent = label && !/^current scene$/i.test(label) ? label : 'Scene Tale';
+        return setText(place, label && !/^current scene$/i.test(label) ? label : 'Scene Tale');
     }
 
     function decorateTranscript(hud) {
@@ -181,7 +210,7 @@ const SceneTaleMobileMode = (() => {
         const oldToggle = card.querySelector('.nexus-story-transcript-toggle');
         if (!caption || String(caption.textContent || '').trim().length <= 210) {
             if (oldToggle) oldToggle.remove();
-            hud.classList.remove('transcript-expanded');
+            toggleClass(hud, 'transcript-expanded', false);
             return;
         }
         if (oldToggle) return;
@@ -192,9 +221,9 @@ const SceneTaleMobileMode = (() => {
         toggle.setAttribute('aria-expanded', 'false');
         toggle.addEventListener('click', () => {
             const expanded = !hud.classList.contains('transcript-expanded');
-            hud.classList.toggle('transcript-expanded', expanded);
-            toggle.textContent = expanded ? 'Collapse transcript' : 'Expand transcript';
-            toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+            toggleClass(hud, 'transcript-expanded', expanded);
+            setText(toggle, expanded ? 'Collapse transcript' : 'Expand transcript');
+            setAttribute(toggle, 'aria-expanded', expanded ? 'true' : 'false');
         });
         card.appendChild(toggle);
     }
@@ -209,20 +238,19 @@ const SceneTaleMobileMode = (() => {
                 status: status ? status.textContent : null,
             };
         }
-        if (title) title.textContent = 'Scene Tale';
-        if (status) {
-            const state = storyState(win);
-            status.textContent = state === 'paused' ? 'PAUSED' : state === 'waiting-choice' ? 'YOUR CHOICE' : 'PLAYING';
-        }
-        if (hud) decorateSceneLabel(hud, win);
+        setText(title, 'Scene Tale');
+        const state = storyState(win);
+        const statusText = state === 'paused' ? 'PAUSED' : state === 'waiting-choice' ? 'YOUR CHOICE' : 'PLAYING';
+        setText(status, statusText);
+        decorateSceneLabel(hud, win);
     }
 
     function restoreChrome(doc) {
         if (!doc || !chromeSnapshot) return;
         const title = doc.querySelector('.brand-inline-title');
         const status = doc.getElementById('status-text');
-        if (title && chromeSnapshot.title !== null) title.textContent = chromeSnapshot.title;
-        if (status && chromeSnapshot.status !== null) status.textContent = chromeSnapshot.status;
+        if (chromeSnapshot.title !== null) setText(title, chromeSnapshot.title);
+        if (chromeSnapshot.status !== null) setText(status, chromeSnapshot.status);
         chromeSnapshot = null;
     }
 
@@ -240,7 +268,7 @@ const SceneTaleMobileMode = (() => {
         if (composerBinding && composerBinding.input === input && composerBinding.send === send) return;
         unbindComposer(true);
         const previous = input.getAttribute('placeholder') || '';
-        input.setAttribute('placeholder', 'Talk to the story…');
+        setAttribute(input, 'placeholder', 'Talk to the story…');
         const onSend = () => pauseForChat(win);
         const onKey = (event) => {
             if (event && event.key === 'Enter' && !event.shiftKey) pauseForChat(win);
@@ -255,7 +283,7 @@ const SceneTaleMobileMode = (() => {
         if (!binding) return;
         if (binding.send) binding.send.removeEventListener('click', binding.onSend, true);
         binding.input.removeEventListener('keydown', binding.onKey, true);
-        if (restore) binding.input.setAttribute('placeholder', binding.previous);
+        if (restore) setAttribute(binding.input, 'placeholder', binding.previous);
         composerBinding = null;
     }
 
@@ -267,21 +295,21 @@ const SceneTaleMobileMode = (() => {
             const now = Date.now();
             const until = Number(button.dataset.sceneTaleConfirmUntil || 0);
             if (until > now) {
-                button.classList.remove('is-confirming');
+                toggleClass(button, 'is-confirming', false);
                 delete button.dataset.sceneTaleConfirmUntil;
                 return;
             }
             event.preventDefault();
             event.stopImmediatePropagation();
             button.dataset.sceneTaleConfirmUntil = String(now + 3000);
-            button.classList.add('is-confirming');
-            button.textContent = 'Confirm end';
+            toggleClass(button, 'is-confirming', true);
+            setText(button, 'Confirm end');
             setTimeout(() => {
                 if (!button.isConnected) return;
                 if (Number(button.dataset.sceneTaleConfirmUntil || 0) <= Date.now()) {
-                    button.classList.remove('is-confirming');
+                    toggleClass(button, 'is-confirming', false);
                     delete button.dataset.sceneTaleConfirmUntil;
-                    button.textContent = 'End';
+                    setText(button, 'End');
                 }
             }, 3050);
         };
@@ -314,31 +342,36 @@ const SceneTaleMobileMode = (() => {
 
     function applyRootState(doc, active) {
         if (!doc || !doc.documentElement) return;
-        doc.documentElement.classList.toggle(ACTIVE_CLASS, active);
-        if (doc.body) {
-            if (active) doc.body.setAttribute('data-scene-tale-active', '1');
-            else doc.body.removeAttribute('data-scene-tale-active');
-        }
+        if (active) toggleClass(doc.documentElement, CONFIGURE_CLASS, false);
+        toggleClass(doc.documentElement, ACTIVE_CLASS, active);
+        if (!doc.body) return;
+        if (active) setAttribute(doc.body, 'data-scene-tale-active', '1');
+        else if (doc.body.hasAttribute('data-scene-tale-active')) doc.body.removeAttribute('data-scene-tale-active');
     }
 
     function sync(hud = currentHud, { allowScroll = false } = {}) {
-        if (!hud) return false;
-        const doc = hud.ownerDocument;
-        const win = currentWin || (doc && doc.defaultView) || null;
-        const text = String(hud.textContent || '');
-        const error = /Scene Tale paused/i.test(text);
-        const hasChoices = Boolean(hud.querySelector('.nexus-story-options'));
-        const complete = /Story complete/i.test(text);
-        hud.classList.toggle('has-choices', hasChoices);
-        hud.classList.toggle('is-complete', complete);
-        decorateTranscript(hud);
-        updateChrome(doc, hud, win);
-        if (allowScroll && scrollHost && userNearBottom) {
-            try { scrollHost.scrollTop = scrollHost.scrollHeight; } catch (_) {}
-            rememberScroll();
+        if (!hud || syncing) return false;
+        syncing = true;
+        try {
+            const doc = hud.ownerDocument;
+            const win = currentWin || (doc && doc.defaultView) || null;
+            const text = String(hud.textContent || '');
+            const error = /Scene Tale paused/i.test(text);
+            const hasChoices = Boolean(hud.querySelector('.nexus-story-options'));
+            const complete = /Story complete/i.test(text);
+            toggleClass(hud, 'has-choices', hasChoices);
+            toggleClass(hud, 'is-complete', complete);
+            decorateTranscript(hud);
+            updateChrome(doc, hud, win);
+            if (allowScroll && scrollHost && userNearBottom) {
+                try { scrollHost.scrollTop = scrollHost.scrollHeight; } catch (_) {}
+                rememberScroll();
+            }
+            if (error) deactivate({ restoreView: true });
+            return complete;
+        } finally {
+            syncing = false;
         }
-        if (error) deactivate({ restoreView: true });
-        return complete;
     }
 
     function observeHud(hud) {
@@ -346,8 +379,8 @@ const SceneTaleMobileMode = (() => {
         hudObserver = null;
         if (!hud || typeof MutationObserver === 'undefined') return;
         hudObserver = new MutationObserver((records) => {
-            const shouldScroll = meaningfulMutation(records);
-            sync(hud, { allowScroll: shouldScroll });
+            if (!mutationNeedsSync(records)) return;
+            sync(hud, { allowScroll: meaningfulMutation(records) });
         });
         hudObserver.observe(hud, { childList: true, subtree: true, characterData: true });
     }
@@ -363,11 +396,11 @@ const SceneTaleMobileMode = (() => {
         currentDoc = doc;
         currentWin = win || currentWin;
         ensureStyles(doc);
+        // Playback owns mobile UI from this point. Setup must not remain active for even one frame.
         applyRootState(doc, true);
         disableLegacyHudObserver(currentWin);
         scrollHost = chatHost(doc);
         if (scrollHost) {
-            lastScrollTop = Number(scrollHost.scrollTop || 0);
             userNearBottom = nearBottom(scrollHost);
             scrollHost.addEventListener('scroll', rememberScroll, { passive: true });
         }
@@ -394,15 +427,126 @@ const SceneTaleMobileMode = (() => {
         if (restoreView) restoreLegacyView(win, doc);
     }
 
+    function containsStoryHud(node) {
+        if (!node || node.nodeType !== 1) return false;
+        if (node.id === HUD_ID) return true;
+        return Boolean(node.querySelector && node.querySelector(`#${HUD_ID}`));
+    }
+
+    function hudMutationRelevant(records) {
+        return records.some((record) => {
+            const added = [...(record.addedNodes || [])].some(containsStoryHud);
+            const removed = [...(record.removedNodes || [])].some(containsStoryHud);
+            return added || removed;
+        });
+    }
+
     function scan(doc, win) {
-        if (!doc || !isMobile(win)) {
+        if (scanning) return Boolean(currentHud);
+        scanning = true;
+        try {
+            if (!doc || !isMobile(win)) {
+                if (currentHud) deactivate({ restoreView: true });
+                return false;
+            }
+            const hud = doc.getElementById(HUD_ID);
+            if (hud) return activate(hud, doc, win);
             if (currentHud) deactivate({ restoreView: true });
             return false;
+        } finally {
+            scanning = false;
         }
-        const hud = doc.getElementById(HUD_ID);
-        if (hud) return activate(hud, doc, win);
-        if (currentHud) deactivate({ restoreView: true });
-        return false;
+    }
+
+    function patchStartHandoff(win) {
+        const w = win || currentWin || (typeof window !== 'undefined' ? window : null);
+        if (!w) return false;
+        let panelReady = false;
+        let playgroundReady = false;
+
+        const togetherApi = w.NEXUS_BD_TOGETHER_PANEL;
+        const Panel = togetherApi && togetherApi.Panel;
+        if (Panel && Panel.prototype && !Panel.prototype[PANEL_PATCH_FLAG]) {
+            const originalStartActivity = Panel.prototype.startActivity;
+            if (typeof originalStartActivity === 'function') {
+                Panel.prototype.startActivity = async function guardedStartActivity(id, option = null) {
+                    try {
+                        return await originalStartActivity.call(this, id, option);
+                    } catch (error) {
+                        console.error('[Together] activity start failed', error);
+                        try {
+                            if (this.pipeline && typeof this.stopSharing === 'function') this.stopSharing('start failed');
+                        } catch (_) {}
+                        const contract = typeof this.contractFor === 'function' ? this.contractFor(id) : null;
+                        const raw = this.activities && typeof this.activities.get === 'function' ? this.activities.get(id) : null;
+                        try {
+                            if (raw && raw.active && typeof raw.stop === 'function') raw.stop('start failed');
+                        } catch (_) {}
+                        const activity = contract || raw || { title: 'This activity' };
+                        const failure = {
+                            ok: false,
+                            why: String((error && error.message) || error || 'The experience could not start'),
+                        };
+                        if (typeof this._fail === 'function') return this._fail(activity, failure);
+                        return failure;
+                    }
+                };
+                Object.defineProperty(Panel.prototype, PANEL_PATCH_FLAG, { configurable: true, value: true });
+                panelReady = true;
+            }
+        } else if (Panel && Panel.prototype && Panel.prototype[PANEL_PATCH_FLAG]) {
+            panelReady = true;
+        }
+
+        const playgroundApi = w.NEXUS_BD_PLAYGROUND;
+        const Playground = playgroundApi && playgroundApi.Playground;
+        if (Playground && Playground.prototype && !Playground.prototype[READY_PATCH_FLAG]) {
+            const originalPaintReady = Playground.prototype._paintReady;
+            if (typeof originalPaintReady === 'function') {
+                Playground.prototype._paintReady = function guardedPaintReady(panel) {
+                    const out = originalPaintReady.call(this, panel);
+                    const root = panel && panel.root;
+                    const start = root && root.querySelector ? root.querySelector('[data-action="start-story"]') : null;
+                    if (!start || start.dataset.sceneTaleAwaitBound === '1') return out;
+                    start.dataset.sceneTaleAwaitBound = '1';
+                    const activity = this;
+                    start.addEventListener('click', async (event) => {
+                        event.preventDefault();
+                        event.stopImmediatePropagation();
+                        if (start.dataset.starting === '1') return;
+                        start.dataset.starting = '1';
+                        start.disabled = true;
+                        setText(start, 'Starting…');
+                        try {
+                            const result = await panel.startActivity('playground', {
+                                id: 'scene-tale',
+                                permission: null,
+                                preparedPlan: activity.preparedPlan,
+                                soundtrack: activity.preparedSoundtrack,
+                            });
+                            if ((!result || result.ok === false) && start.isConnected) {
+                                start.disabled = false;
+                                setText(start, 'Start story');
+                                delete start.dataset.starting;
+                            }
+                        } catch (error) {
+                            console.error('[Scene Tale] Start failed', error);
+                            if (start.isConnected) {
+                                start.disabled = false;
+                                setText(start, 'Try again');
+                                delete start.dataset.starting;
+                            }
+                        }
+                    }, true);
+                    return out;
+                };
+                Object.defineProperty(Playground.prototype, READY_PATCH_FLAG, { configurable: true, value: true });
+                playgroundReady = true;
+            }
+        } else if (Playground && Playground.prototype && Playground.prototype[READY_PATCH_FLAG]) {
+            playgroundReady = true;
+        }
+        return panelReady && playgroundReady;
     }
 
     function install(doc, win) {
@@ -412,20 +556,44 @@ const SceneTaleMobileMode = (() => {
         currentDoc = d;
         currentWin = w || currentWin;
         ensureStyles(d);
+        patchStartHandoff(w);
+        if (!patchTimer && w && typeof w.setInterval === 'function') {
+            let attempts = 0;
+            patchTimer = w.setInterval(() => {
+                attempts += 1;
+                const ok = patchStartHandoff(w);
+                if (ok || attempts >= 40) {
+                    w.clearInterval(patchTimer);
+                    patchTimer = null;
+                }
+            }, 125);
+        }
         scan(d, w);
-        if (rootObserver || typeof MutationObserver === 'undefined' || !d.body) return detach;
-        rootObserver = new MutationObserver(() => scan(d, w));
-        rootObserver.observe(d.body, { childList: true, subtree: true });
-        if (w && typeof w.addEventListener === 'function') w.addEventListener('resize', () => scan(d, w));
+        if (!rootObserver && typeof MutationObserver !== 'undefined' && d.body) {
+            rootObserver = new MutationObserver((records) => {
+                if (hudMutationRelevant(records)) scan(d, w);
+            });
+            rootObserver.observe(d.body, { childList: true, subtree: true });
+        }
+        if (!resizeHandler && w && typeof w.addEventListener === 'function') {
+            resizeHandler = () => scan(d, w);
+            w.addEventListener('resize', resizeHandler);
+        }
         return detach;
     }
 
     function detach() {
         if (rootObserver) rootObserver.disconnect();
         rootObserver = null;
+        if (patchTimer && currentWin && typeof currentWin.clearInterval === 'function') currentWin.clearInterval(patchTimer);
+        patchTimer = null;
+        if (resizeHandler && currentWin && typeof currentWin.removeEventListener === 'function') currentWin.removeEventListener('resize', resizeHandler);
+        resizeHandler = null;
         deactivate({ restoreView: true });
         currentWin = null;
         currentDoc = null;
+        scanning = false;
+        syncing = false;
     }
 
     const api = {
@@ -433,6 +601,7 @@ const SceneTaleMobileMode = (() => {
         ROW_ID,
         STYLE_ID,
         ACTIVE_CLASS,
+        CONFIGURE_CLASS,
         CSS,
         install,
         detach,
@@ -443,6 +612,10 @@ const SceneTaleMobileMode = (() => {
         isMobile,
         nearBottom,
         meaningfulMutation,
+        containsStoryHud,
+        hudMutationRelevant,
+        setText,
+        patchStartHandoff,
     };
 
     if (typeof window !== 'undefined' && typeof document !== 'undefined' && !window.__NEXUS_SCENE_TALE_MOBILE_NOAUTO__) {
