@@ -4,9 +4,10 @@
  * SpicyGate — user preference gate for mature/private experiences.
  * =================================================================
  *
- * This remains the repository's single local preference authority. The user-facing product
- * label is now "Intimate experiences", while the internal `NEXUS_SPICY` API and storage keys
- * stay unchanged for backwards compatibility.
+ * This remains the repository's single local preference authority. The Settings-facing
+ * product label is deliberately neutral ("Private Mode"), while the Together activity may
+ * still be named "Intimate" and the internal `NEXUS_SPICY` API/storage keys stay unchanged
+ * for backwards compatibility.
  *
  * IMPORTANT: this local preference is not sufficient to expose Together -> Intimate.
  * The Together bridge also requires the deployment adult capability and the trusted,
@@ -201,7 +202,7 @@
             // Preserve the existing status badge element and only replace the text node.
             for (var i = 0; i < title.childNodes.length; i++) {
                 if (title.childNodes[i].nodeType === 3 && title.childNodes[i].textContent.trim()) {
-                    title.childNodes[i].textContent = '\n                            INTIMATE EXPERIENCES\n                            ';
+                    title.childNodes[i].textContent = '\n                            PRIVATE MODE\n                            ';
                     break;
                 }
             }
@@ -210,12 +211,12 @@
         var description = title && title.nextElementSibling;
         if (description && description.tagName === 'P') {
             description.textContent =
-                'Allow private adult romantic and sensual experiences. The Intimate button only appears after trusted adult verification and never starts automatically.';
+                'Allows verified adults to access more personal, romantic, and mature experiences. This option is available only after adult verification and is never enabled automatically.';
         }
 
         var row = toggle.closest ? toggle.closest('.spicy-toggle-label') : null;
         var rowText = row && row.querySelector('span:not(.spicy-toggle-slider)');
-        if (rowText) rowText.textContent = 'Enable Intimate experiences';
+        if (rowText) rowText.textContent = 'Enable Private Mode';
     }
 
     // ─── UI Sync ───
