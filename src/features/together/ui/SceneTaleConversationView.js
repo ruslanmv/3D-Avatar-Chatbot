@@ -188,7 +188,8 @@ const SceneTaleConversationView = (() => {
             shell.insertBefore(block, shell.firstChild);
         }
         const name = block.querySelector('.nexus-story-heading-title');
-        if (name) name.textContent = String(title || 'Scene Tale');
+        const nextTitle = String(title || 'Scene Tale');
+        if (name && name.textContent !== nextTitle) name.textContent = nextTitle;
         return block;
     }
 
@@ -389,7 +390,17 @@ const SceneTaleConversationView = (() => {
         const d = doc || (typeof document !== 'undefined' ? document : null);
         if (!d) return null;
         const hud = d.getElementById(HUD_ID);
-        return hud ? mountHud(hud, { doc: d }) : null;
+        if (!hud) return null;
+        const row = d.getElementById(ROW_ID);
+        // The root observer sees the mutations used to build the Conversation card itself.
+        // Re-mounting an already-adopted HUD from that callback used to rewrite its title,
+        // which created another child mutation and could spin forever in MutationObserver.
+        if (hud.classList.contains('is-conversation') && row && hud.parentNode === row) {
+            currentHud = hud;
+            sync(hud);
+            return row;
+        }
+        return mountHud(hud, { doc: d });
     }
 
     function removeSoundtrack(hud = currentHud) {
