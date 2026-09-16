@@ -1,10 +1,10 @@
 /**
  * Private/Intimate Together UI gate.
  *
- * The consumer-facing tile is deliberately ordinary-sized. Its visibility is controlled by
- * the user's explicit Private Mode setting, while actually starting the adult experience
- * still requires deployment capability, trusted session verification and the existing
- * ConsentFlow. This keeps the Settings switch visibly useful without weakening the gate.
+ * The consumer-facing tile is ordinary-sized. Its visibility follows the user's explicit
+ * Private Mode setting. Starting a mature experience still requires trusted session
+ * verification and the existing ConsentFlow. The shipped static adult.available flag may
+ * stay false: a positive server adult_ack allows that flow to be attached lazily.
  */
 
 /* global describe, test, expect, beforeEach, afterEach, jest */
@@ -77,16 +77,23 @@ class AdultFlowMock {
     }
 }
 
-function director({ enabled = true, verified = true, available = true, withAdult = true } = {}) {
+function director({ enabled = true, verified = true, available = false, withAdult = true, connected = true } = {}) {
     const p = panel();
     const spicy = spicyGate(enabled);
     const adult = withAdult ? new AdultFlowMock() : null;
     const b = bus();
     const d = {
         config: { adult: { available } },
-        blackboard: { adultVerified: verified },
+        blackboard: { adultVerified: verified, nsfwAllowed: false },
         adult,
         bus: b,
+        modes: {},
+        clips: null,
+        adapters: [],
+        session: {
+            connected,
+            send: jest.fn(() => connected),
+        },
         togetherPanel: p,
         intimate: null,
     };
@@ -98,12 +105,18 @@ function director({ enabled = true, verified = true, available = true, withAdult
 beforeEach(() => {
     delete window.NEXUS_BD;
     delete window.NEXUS_SPICY;
+    delete window.NEXUS_BD_CONSENT_FLOW;
+    delete window.NEXUS_BD_PROFILE_ADULT;
+    delete window.NEXUS_BD_SAY;
     document.body.innerHTML = '';
 });
 
 afterEach(() => {
     delete window.NEXUS_BD;
     delete window.NEXUS_SPICY;
+    delete window.NEXUS_BD_CONSENT_FLOW;
+    delete window.NEXUS_BD_PROFILE_ADULT;
+    delete window.NEXUS_BD_SAY;
     document.body.innerHTML = '';
 });
 
@@ -117,14 +130,17 @@ describe('Private visibility vs adult eligibility', () => {
         expect(visibility(null).ok).toBe(false);
     });
 
-    test('starting still requires deployment flag, trusted verification, flow, and preference', () => {
+    test('runtime eligibility requires trusted verification, a consent flow, and the preference — not the static boot flag', () => {
         const adult = new AdultFlowMock();
         const spicy = { isEnabled: () => true };
-        const base = { config: { adult: { available: true } }, adult, blackboard: { adultVerified: true } };
+        const base = {
+            config: { adult: { available: false } },
+            adult,
+            blackboard: { adultVerified: true, nsfwAllowed: true },
+        };
 
         expect(eligibility(base, spicy).ok).toBe(true);
-        expect(eligibility({ ...base, config: { adult: { available: false } } }, spicy).ok).toBe(false);
-        expect(eligibility({ ...base, blackboard: { adultVerified: false } }, spicy).ok).toBe(false);
+        expect(eligibility({ ...base, blackboard: { adultVerified: false, nsfwAllowed: true } }, spicy).ok).toBe(false);
         expect(eligibility({ ...base, adult: null }, spicy).ok).toBe(false);
         expect(eligibility(base, { isEnabled: () => false }).ok).toBe(false);
     });
@@ -138,11 +154,12 @@ describe('Private tile bridge', () => {
 
         expect(document.querySelector('[data-activity="intimate"]')).toBeNull();
         expect(setup.panel.activities.has('intimate')).toBe(false);
+        expect(setup.director.blackboard.nsfwAllowed).toBe(false);
 
         bridge.detach();
     });
 
-    test('shows and hides the same-sized Private tile dynamically on desktop/mobile shared chooser', () => {
+    test('shows and hides the same-sized Private tile dynamically on the shared desktop/mobile chooser', () => {
         const setup = director({ enabled: false, verified: false, available: false, withAdult: false });
         const bridge = PlaygroundActivity.installIntimateBridge({ bus: setup.bus });
 
@@ -154,44 +171,82 @@ describe('Private tile bridge', () => {
         expect(tile.classList.contains('is-wide')).toBe(false);
         expect(tile.textContent).toContain('Private');
         expect(setup.panel.activities.has('intimate')).toBe(true);
+        expect(setup.director.blackboard.nsfwAllowed).toBe(true);
 
         setup.spicy.set(false);
         tile = document.querySelector('[data-activity="intimate"]');
         expect(tile).toBeNull();
         expect(setup.panel.activities.has('intimate')).toBe(false);
+        expect(setup.director.blackboard.nsfwAllowed).toBe(false);
 
         bridge.detach();
     });
 
-    test('unverified users only see neutral locked copy, not the adult presets', () => {
-        const setup = director({ enabled: true, verified: false, available: true });
+    test('requests trusted verification from the connected session when Private is enabled', () => {
+        const setup = director({ enabled: true, verified: false, available: false, withAdult: false });
+        const bridge = PlaygroundActivity.installIntimateBridge({ bus: setup.bus });
+
+        expect(setup.director.session.send).toHaveBeenCalledWith({ v: 1, type: 'adult_verify_request' });
+        expect(setup.director.blackboard.adultVerified).toBe(false);
+
+        bridge.detach();
+    });
+
+    test('unverified users stay on a neutral waiting setup instead of the generic failure screen', () => {
+        const setup = director({ enabled: true, verified: false, available: false, withAdult: false });
+        const bridge = PlaygroundActivity.installIntimateBridge({ bus: setup.bus });
+        setup.panel.open();
+
+        const result = setup.panel.choose('intimate');
+        const activity = setup.panel.activities.get('intimate');
+
+        expect(result).toEqual({ ok: true, why: 'setup' });
+        expect(activity.inputs()).toEqual([]);
+        expect(setup.panel.view).toBe('setup');
+        expect(setup.panel.root.textContent).toContain('Checking trusted adult verification');
+        expect(setup.panel.root.textContent).not.toContain('could not start');
+        expect(setup.panel.root.textContent).not.toContain('Try again');
+        expect(setup.panel.root.textContent).not.toContain('Affectionate');
+        expect(setup.panel.root.textContent).not.toContain('Romantic');
+        expect(setup.panel.root.textContent).not.toContain('Sensual');
+
+        bridge.detach();
+    });
+
+    test('a server-authored verification can lazily attach the existing flow even though adult.available stays false', () => {
+        const setup = director({ enabled: true, verified: true, available: false, withAdult: false });
+        const lazyAdult = new AdultFlowMock();
+        window.NEXUS_BD_CONSENT_FLOW = { attach: jest.fn(() => lazyAdult) };
+        window.NEXUS_BD_PROFILE_ADULT = { id: 'adult' };
+
         const bridge = PlaygroundActivity.installIntimateBridge({ bus: setup.bus });
         const activity = setup.panel.activities.get('intimate');
 
-        expect(activity).toBeTruthy();
-        expect(activity.inputs()).toEqual([
-            expect.objectContaining({
-                id: 'private-locked',
-                label: 'Private Mode',
-                note: 'Available after trusted adult verification.',
-            }),
-        ]);
+        expect(window.NEXUS_BD_CONSENT_FLOW.attach).toHaveBeenCalledTimes(1);
+        expect(setup.director.adult).toBe(lazyAdult);
+        expect(activity.adult).toBe(lazyAdult);
+        expect(activity.inputs().map((input) => input.id)).toEqual(['affectionate', 'romantic', 'sensual']);
+        expect(setup.director.config.adult.available).toBe(false);
 
         bridge.detach();
     });
 
-    test('trusted verification loss keeps the neutral tile but removes access to presets', () => {
-        const setup = director({ enabled: true, verified: true, available: true });
+    test('losing trusted verification removes preset access and stops an active Private experience', async () => {
+        const setup = director({ enabled: true, verified: true, available: false, withAdult: true });
         const bridge = PlaygroundActivity.installIntimateBridge({ bus: setup.bus });
         const activity = setup.panel.activities.get('intimate');
 
         expect(activity.inputs().map((input) => input.id)).toEqual(['affectionate', 'romantic', 'sensual']);
+        await setup.panel.startActivity('intimate', { id: 'romantic' });
+        expect(setup.panel.activeActivity).toBe('intimate');
 
         setup.director.blackboard.adultVerified = false;
         bridge.sync();
 
         expect(setup.panel.activities.has('intimate')).toBe(true);
-        expect(activity.inputs().map((input) => input.id)).toEqual(['private-locked']);
+        expect(activity.inputs()).toEqual([]);
+        expect(setup.panel.activeActivity).toBeNull();
+        expect(setup.adult.exit).toHaveBeenCalledTimes(1);
 
         bridge.detach();
     });
@@ -202,13 +257,13 @@ describe('Private activity contract', () => {
         const adult = new AdultFlowMock();
         const activity = new PlaygroundActivity.IntimateActivity.Intimate({
             adult,
-            capability: () => ({ ok: false, why: 'trusted adult verification is not present' }),
+            capability: () => ({ ok: false, why: 'trusted adult verification is not ready yet' }),
             bus: bus(),
         });
 
-        expect(activity.inputs().map((input) => input.id)).toEqual(['private-locked']);
+        expect(activity.inputs()).toEqual([]);
         const result = await activity.start({ input: { id: 'romantic' } });
-        expect(result).toEqual({ ok: false, why: 'trusted adult verification is not present' });
+        expect(result).toEqual({ ok: false, why: 'trusted adult verification is not ready yet' });
         expect(adult.enter).not.toHaveBeenCalled();
     });
 
