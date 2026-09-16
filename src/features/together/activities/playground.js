@@ -1,26 +1,19 @@
 /**
  * Playground — the family-friendly way into scene-aware stories.
  *
- * This activity is intentionally small. It owns the product entry point and session boundary,
- * not the story engine: StoryPlanner/StoryPlayer land behind the `playground:start` event in a
- * later vertical slice. Shipping the tile first is useful only if it is honest, so starting
- * Scene Tale records a real Together activity state and emits a typed intent; it never claims
- * that narration, music or a generated plan already exist.
+ * This activity owns the Playground entry point and, in this branch, also installs the
+ * separate Intimate Together tile once the adult capability is genuinely available. The
+ * two experiences remain deliberately independent: Playground is always family-safe;
+ * Intimate is registered only after the deployment flag, trusted server attestation and the
+ * user's existing SpicyGate preference are all true.
  *
- * ## Why this is a native Together contract
+ * There is still one Together chooser for desktop and mobile, so both activities use the
+ * same native contract and the same responsive tile size. Intimate is not a wide/special
+ * card and it never appears as a locked advertisement to an ineligible user.
  *
- * `TogetherPanel` already has one extension point for a ninth activity: an object with
- * `__contract === true`. Using it means Playground gets the same desktop grid, mobile
- * two-column sheet, focus management, running state and Stop behavior as every other tile.
- * There is no desktop-only markup and no second mobile launcher to drift later.
- *
- * ## Family boundary
- *
- * Playground does not activate the adult profile and does not touch `allowNsfw`. The future
- * `PlaygroundSession` must derive its family profile only after any Intimate session has been
- * fully restored; this shell merely exposes the family entry point and emits no adult intent.
- *
- * Exposes: window.NEXUS_BD_PLAYGROUND
+ * Exposes:
+ *   window.NEXUS_BD_PLAYGROUND
+ *   window.NEXUS_BD_INTIMATE
  */
 const PlaygroundActivity = (() => {
     'use strict';
@@ -32,14 +25,306 @@ const PlaygroundActivity = (() => {
         note: 'A short interactive story inspired by where we are.',
     });
 
+    const INTIMATE_PRESETS = Object.freeze([
+        Object.freeze({
+            id: 'affectionate',
+            label: 'Affectionate',
+            permission: null,
+            note: 'Warm, close and gentle.',
+            maxLevel: 1,
+        }),
+        Object.freeze({
+            id: 'romantic',
+            label: 'Romantic',
+            permission: null,
+            note: 'Romantic conversation and atmosphere.',
+            maxLevel: 2,
+        }),
+        Object.freeze({
+            id: 'sensual',
+            label: 'Sensual',
+            permission: null,
+            note: 'A more intimate atmosphere, still consent-gated.',
+            maxLevel: 3,
+        }),
+    ]);
+
+    function intimateEligibility(director, spicy) {
+        if (!director || !director.config || !director.config.adult || director.config.adult.available !== true) {
+            return { ok: false, why: 'adult capability is not available in this deployment' };
+        }
+        if (!director.adult || typeof director.adult.enter !== 'function') {
+            return { ok: false, why: 'adult consent flow is unavailable' };
+        }
+        if (!director.blackboard || director.blackboard.adultVerified !== true) {
+            return { ok: false, why: 'trusted adult verification is not present' };
+        }
+        if (!spicy || typeof spicy.isEnabled !== 'function' || !spicy.isEnabled()) {
+            return { ok: false, why: 'Intimate experiences are disabled in Settings' };
+        }
+        return { ok: true, why: '' };
+    }
+
+    class Intimate {
+        constructor({ bus, adult, capability } = {}) {
+            this.__contract = true;
+            this.id = 'intimate';
+            this.title = 'Intimate';
+            this.icon = '♡';
+            // Normal-sized tile. It follows Meeting and stays before the wide Help tile.
+            this.order = 85;
+            this.prompt = 'Choose the mood for this private experience.';
+
+            this.bus = bus || null;
+            this.adult = adult || null;
+            this.capability = typeof capability === 'function' ? capability : () => ({ ok: false, why: 'unavailable' });
+            this.active = false;
+            this.preset = null;
+            this.startedAt = null;
+            this._adultMaxDescriptor = null;
+        }
+
+        get name() {
+            return 'Intimate';
+        }
+
+        inputs() {
+            return INTIMATE_PRESETS.map((preset) => ({ ...preset }));
+        }
+
+        availability() {
+            return this.capability();
+        }
+
+        async start({ input = {} } = {}) {
+            if (this.active) return { ok: false, why: 'Intimate is already running' };
+            const gate = this.availability();
+            if (!gate || gate.ok === false) return gate || { ok: false, why: 'Intimate is unavailable' };
+
+            const preset = INTIMATE_PRESETS.find((candidate) => candidate.id === String(input.id || ''));
+            if (!preset) return { ok: false, why: `unknown Intimate preset: ${String(input.id || '')}` };
+            if (!this.adult || typeof this.adult.enter !== 'function') return { ok: false, why: 'adult consent flow is unavailable' };
+
+            // V1 presets are ceilings, not shortcuts. ConsentFlow still starts at level 1,
+            // keeps its two-minute floor/check-ins and owns every advance. Shadowing the
+            // instance getter narrows only this session; stop() restores the exact descriptor.
+            this._installCeiling(preset.maxLevel);
+            const entered = this.adult.enter();
+            if (!entered || entered.ok === false) {
+                this._restoreCeiling();
+                return entered || { ok: false, why: 'adult consent flow refused to enter' };
+            }
+
+            this.active = true;
+            this.preset = preset.id;
+            this.startedAt = Date.now();
+            this._emit('intimate:start', {
+                preset: preset.id,
+                maxLevel: preset.maxLevel,
+                startedAt: this.startedAt,
+            });
+            return { ok: true, why: preset.id, preset: preset.id, maxLevel: preset.maxLevel };
+        }
+
+        stop(why = 'user') {
+            const wasActive = this.active || Boolean(this.adult && this.adult.active);
+            const preset = this.preset;
+            this.active = false;
+            this.preset = null;
+            this.startedAt = null;
+
+            if (this.adult && this.adult.active && typeof this.adult.exit === 'function') {
+                this.adult.exit('hard');
+            }
+            this._restoreCeiling();
+            if (wasActive) this._emit('intimate:stop', { preset, why });
+            return wasActive;
+        }
+
+        status() {
+            if (!this.active) return null;
+            const preset = INTIMATE_PRESETS.find((candidate) => candidate.id === this.preset);
+            return { label: preset ? preset.label : 'Intimate', detail: 'Private' };
+        }
+
+        detach() {
+            this.stop('detached');
+        }
+
+        _installCeiling(maxLevel) {
+            if (!this.adult) return;
+            if (this._adultMaxDescriptor === null) {
+                this._adultMaxDescriptor = Object.getOwnPropertyDescriptor(this.adult, 'maxLevel') || false;
+            }
+            const profileMax = Number(this.adult.profile && this.adult.profile.escalation && this.adult.profile.escalation.levels) || 4;
+            Object.defineProperty(this.adult, 'maxLevel', {
+                configurable: true,
+                enumerable: false,
+                get: () => Math.max(1, Math.min(profileMax, Number(maxLevel) || 1)),
+            });
+        }
+
+        _restoreCeiling() {
+            if (!this.adult || this._adultMaxDescriptor === null) return;
+            try {
+                delete this.adult.maxLevel;
+                if (this._adultMaxDescriptor && this._adultMaxDescriptor !== false) {
+                    Object.defineProperty(this.adult, 'maxLevel', this._adultMaxDescriptor);
+                }
+            } catch (_) {
+                /* best effort; ConsentFlow still owns the server/user gates */
+            }
+            this._adultMaxDescriptor = null;
+        }
+
+        _emit(event, payload) {
+            if (this.bus && typeof this.bus.emit === 'function') this.bus.emit(event, payload);
+        }
+
+        get stats() {
+            return {
+                active: this.active,
+                preset: this.preset,
+                startedAt: this.startedAt,
+            };
+        }
+    }
+
+    /**
+     * Bridge Intimate into the already-mounted TogetherPanel without inventing a second UI.
+     *
+     * `boot.js` intentionally constructs the adult flow only when `adult.available` is true.
+     * The Playground module is already loaded by that boot path in this branch, so it can
+     * register the private activity after boot completes and remove it again when the user
+     * switches the existing Settings gate off. This keeps the current PR additive and avoids
+     * a second adult preference flag.
+     */
+    function installIntimateBridge({ bus } = {}) {
+        if (typeof window === 'undefined' || !window.NEXUS_SPICY) return null;
+
+        let director = null;
+        let activity = null;
+        let stopped = false;
+        let retryTimer = null;
+        let verifyTimer = null;
+        let unsubscribeSpicy = null;
+        let unsubscribePanel = null;
+        let unsubscribeAdultExit = null;
+        let lastVerified = null;
+
+        const repaint = () => {
+            if (director && director.togetherPanel && typeof director.togetherPanel.setContext === 'function') {
+                director.togetherPanel.setContext({});
+            }
+        };
+
+        const unregister = (why = 'gate disabled') => {
+            if (!director || !director.togetherPanel) return;
+            const panel = director.togetherPanel;
+            const current = panel.activities && panel.activities.get('intimate');
+            if (!current) return;
+            if (panel.activeActivity === 'intimate' && typeof panel.stopActivity === 'function') {
+                panel.stopActivity(why);
+            } else if (typeof current.detach === 'function') {
+                current.detach();
+            }
+            if (panel.activities) panel.activities.delete('intimate');
+            if (panel.adapted) panel.adapted.delete('intimate');
+            if (director.intimate === current) director.intimate = null;
+            activity = null;
+            repaint();
+        };
+
+        const sync = () => {
+            if (stopped) return false;
+            if (!director) director = window.NEXUS_BD || null;
+            if (!director || !director.togetherPanel) return false;
+
+            const gate = intimateEligibility(director, window.NEXUS_SPICY);
+            if (gate.ok) {
+                const existing = director.togetherPanel.activities && director.togetherPanel.activities.get('intimate');
+                if (!existing) {
+                    activity = new Intimate({
+                        bus: bus || director.bus,
+                        adult: director.adult,
+                        capability: () => intimateEligibility(director, window.NEXUS_SPICY),
+                    });
+                    director.intimate = activity;
+                    director.togetherPanel.register(activity);
+                    repaint();
+                } else {
+                    activity = existing;
+                    director.intimate = existing;
+                }
+            } else {
+                unregister(gate.why);
+            }
+            return gate.ok;
+        };
+
+        const wire = () => {
+            if (stopped) return;
+            director = window.NEXUS_BD || null;
+            if (!director || !director.togetherPanel) {
+                retryTimer = setTimeout(wire, 100);
+                return;
+            }
+
+            lastVerified = Boolean(director.blackboard && director.blackboard.adultVerified);
+            sync();
+
+            if (window.NEXUS_SPICY && typeof window.NEXUS_SPICY.onChange === 'function') {
+                unsubscribeSpicy = window.NEXUS_SPICY.onChange(() => sync());
+            }
+            if (director.togetherPanel && typeof director.togetherPanel.onChange === 'function') {
+                unsubscribePanel = director.togetherPanel.onChange((snapshot) => {
+                    if (snapshot && snapshot.open) sync();
+                });
+            }
+            if (bus && typeof bus.on === 'function') {
+                unsubscribeAdultExit = bus.on('adult:exit', (event) => {
+                    if (event && event.kind === 'hard' && director.togetherPanel.activeActivity === 'intimate') {
+                        director.togetherPanel.stopActivity('adult exit');
+                    }
+                });
+            }
+
+            // `adult_ack` currently writes the blackboard directly rather than publishing a
+            // capability event. Watch that single boolean at a low rate so an already-open
+            // chooser also updates when trusted verification arrives/expires. This timer is
+            // feature-local and is removed with Playground/Behavior Director teardown.
+            verifyTimer = setInterval(() => {
+                if (stopped || !director) return;
+                const verified = Boolean(director.blackboard && director.blackboard.adultVerified);
+                if (verified !== lastVerified) {
+                    lastVerified = verified;
+                    sync();
+                }
+            }, 1000);
+        };
+
+        wire();
+
+        return {
+            sync,
+            detach() {
+                stopped = true;
+                if (retryTimer) clearTimeout(retryTimer);
+                if (verifyTimer) clearInterval(verifyTimer);
+                if (unsubscribeSpicy) unsubscribeSpicy();
+                if (unsubscribePanel) unsubscribePanel();
+                if (unsubscribeAdultExit) unsubscribeAdultExit();
+                unregister('detached');
+            },
+        };
+    }
+
     class Playground {
         constructor({ bus } = {}) {
             this.__contract = true;
             this.id = 'playground';
             this.title = 'Playground';
             this.icon = '✨';
-            // Between Play and Focus. On the mobile two-column grid this gives the new entry
-            // a predictable visible row rather than burying it beneath the wide Help tile.
             this.order = 45;
             this.prompt = 'What should we imagine together?';
 
@@ -47,6 +332,7 @@ const PlaygroundActivity = (() => {
             this.active = false;
             this.mode = null;
             this.startedAt = null;
+            this._intimateBridge = installIntimateBridge({ bus: this.bus });
         }
 
         get name() {
@@ -94,6 +380,8 @@ const PlaygroundActivity = (() => {
 
         detach() {
             this.stop('detached');
+            if (this._intimateBridge) this._intimateBridge.detach();
+            this._intimateBridge = null;
         }
 
         _emit(event, payload) {
@@ -113,8 +401,19 @@ const PlaygroundActivity = (() => {
         return new Playground(deps);
     }
 
-    return { attach, Playground, SCENE_TALE };
+    const IntimateActivity = { Intimate, presets: INTIMATE_PRESETS, eligibility: intimateEligibility };
+
+    return {
+        attach,
+        Playground,
+        SCENE_TALE,
+        IntimateActivity,
+        installIntimateBridge,
+    };
 })();
 
-if (typeof window !== 'undefined') window.NEXUS_BD_PLAYGROUND = PlaygroundActivity;
+if (typeof window !== 'undefined') {
+    window.NEXUS_BD_PLAYGROUND = PlaygroundActivity;
+    window.NEXUS_BD_INTIMATE = PlaygroundActivity.IntimateActivity;
+}
 if (typeof module !== 'undefined' && module.exports) module.exports = PlaygroundActivity;
