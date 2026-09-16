@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "comment": "Canonical Scene Tale art mapping. Scene Tale intentionally reuses the production ambience assets instead of duplicating a second image library. The same landscape image is used for the Stage 1 thumbnail and Conversation hero; portrait remains available for narrow/mobile treatments.",
+  "scenes": [
+    {
+      "id": "ambient:ocean:day",
+      "label": "Ocean · Sunrise",
+      "hero": "assets/ambient/light/ocean-sunrise.webp",
+      "thumbnail": "assets/ambient/light/ocean-sunrise.webp",
+      "portrait": "assets/ambient/light/ocean-sunrise-portrait.webp",
+      "generationKey": "ocean-sunrise"
+    },
+    {
+      "id": "ambient:ocean:night",
+      "label": "Ocean · Moonlight",
+      "hero": "assets/ambient/dark/ocean-moonlight.webp",
+      "thumbnail": "assets/ambient/dark/ocean-moonlight.webp",
+      "portrait": "assets/ambient/dark/ocean-moonlight-portrait.webp",
+      "generationKey": "ocean-moonlight"
+    },
+    {
+      "id": "ambient:lake:day",
+      "label": "Mountain Lake · Day",
+      "hero": "assets/ambient/light/mountain-lake-day.webp",
+      "thumbnail": "assets/ambient/light/mountain-lake-day.webp",
+      "portrait": "assets/ambient/light/mountain-lake-day-portrait.webp",
+      "generationKey": "mountain-lake-day"
+    },
+    {
+      "id": "ambient:lake:night",
+      "label": "Mountain Lake · Night",
+      "hero": "assets/ambient/dark/mountain-lake-night.webp",
+      "thumbnail": "assets/ambient/dark/mountain-lake-night.webp",
+      "portrait": "assets/ambient/dark/mountain-lake-night-portrait.webp",
+      "generationKey": "mountain-lake-night"
+    },
+    {
+      "id": "ambient:garden:day",
+      "label": "Meditation Garden · Day",
+      "hero": "assets/ambient/light/meditation-garden-day.webp",
+      "thumbnail": "assets/ambient/light/meditation-garden-day.webp",
+      "portrait": "assets/ambient/light/meditation-garden-day-portrait.webp",
+      "generationKey": "meditation-garden-day"
+    },
+    {
+      "id": "ambient:garden:night",
+      "label": "Meditation Garden · Night",
+      "hero": "assets/ambient/dark/meditation-garden-night.webp",
+      "thumbnail": "assets/ambient/dark/meditation-garden-night.webp",
+      "portrait": "assets/ambient/dark/meditation-garden-night-portrait.webp",
+      "generationKey": "meditation-garden-night"
+    },
+    {
+      "id": "ambient:terrace:day",
+      "label": "Coastal Terrace · Day",
+      "hero": "assets/ambient/light/coastal-terrace-day.webp",
+      "thumbnail": "assets/ambient/light/coastal-terrace-day.webp",
+      "portrait": "assets/ambient/light/coastal-terrace-day-portrait.webp",
+      "generationKey": "coastal-terrace-day"
+    },
+    {
+      "id": "ambient:terrace:night",
+      "label": "Coastal Terrace · Twilight",
+      "hero": "assets/ambient/dark/coastal-terrace-twilight.webp",
+      "thumbnail": "assets/ambient/dark/coastal-terrace-twilight.webp",
+      "portrait": "assets/ambient/dark/coastal-terrace-twilight-portrait.webp",
+      "generationKey": "coastal-terrace-twilight"
+    },
+    {
+      "id": "ambient:sky:day",
+      "label": "Open Sky · Day",
+      "hero": "assets/ambient/light/open-sky-day.webp",
+      "thumbnail": "assets/ambient/light/open-sky-day.webp",
+      "portrait": "assets/ambient/light/open-sky-day-portrait.webp",
+      "generationKey": "open-sky-day"
+    },
+    {
+      "id": "ambient:sky:night",
+      "label": "Open Sky · Starlight",
+      "hero": "assets/ambient/dark/open-sky-starlight.webp",
+      "thumbnail": "assets/ambient/dark/open-sky-starlight.webp",
+      "portrait": "assets/ambient/dark/open-sky-starlight-portrait.webp",
+      "generationKey": "open-sky-starlight"
+    }
+  ]
+}
