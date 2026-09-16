@@ -36,9 +36,28 @@ const ConversationPublisher = (() => {
     'use strict';
 
     const SCENE_TALE_VIEW_SRC = 'src/features/together/ui/SceneTaleConversationView.js';
+    const SCENE_TALE_SETUP_VIEW_SRC = 'src/features/together/ui/SceneTaleSetupView.js';
 
     function ask() {
         return (typeof window !== 'undefined' && window.NEXUS_YT_ASK) || null;
+    }
+
+    function ensureScript(win, doc, { globalName, src, marker }) {
+        const w = win || (typeof window !== 'undefined' ? window : null);
+        const d = doc || (typeof document !== 'undefined' ? document : null);
+        if (!w || !d || w[globalName]) return w && w[globalName];
+        const selector = `script[data-${marker}="1"]`;
+        if (d.querySelector && d.querySelector(selector)) return null;
+        try {
+            const script = d.createElement('script');
+            script.src = src;
+            script.async = false;
+            script.setAttribute(`data-${marker}`, '1');
+            (d.head || d.documentElement || d.body).appendChild(script);
+        } catch (_) {
+            return null;
+        }
+        return null;
     }
 
     /**
@@ -48,21 +67,24 @@ const ConversationPublisher = (() => {
      * ordinary media-card path remains a safe fallback.
      */
     function ensureSceneTaleView(win, doc) {
-        const w = win || (typeof window !== 'undefined' ? window : null);
-        const d = doc || (typeof document !== 'undefined' ? document : null);
-        if (!w || !d || w.NEXUS_SCENE_TALE_VIEW) return w && w.NEXUS_SCENE_TALE_VIEW;
-        const selector = 'script[data-nexus-scene-tale-view="1"]';
-        if (d.querySelector && d.querySelector(selector)) return null;
-        try {
-            const script = d.createElement('script');
-            script.src = SCENE_TALE_VIEW_SRC;
-            script.async = false;
-            script.dataset.nexusSceneTaleView = '1';
-            (d.head || d.documentElement || d.body).appendChild(script);
-        } catch (_) {
-            return null;
-        }
-        return null;
+        return ensureScript(win, doc, {
+            globalName: 'NEXUS_SCENE_TALE_VIEW',
+            src: SCENE_TALE_VIEW_SRC,
+            marker: 'nexus-scene-tale-view',
+        });
+    }
+
+    /**
+     * Stage 1 is presentation-only, so its polished setup renderer is a separate small view.
+     * It watches the existing Together DOM and decorates only the Scene Tale configure state;
+     * Playground continues to own every listener and state transition.
+     */
+    function ensureSceneTaleSetupView(win, doc) {
+        return ensureScript(win, doc, {
+            globalName: 'NEXUS_SCENE_TALE_SETUP_VIEW',
+            src: SCENE_TALE_SETUP_VIEW_SRC,
+            marker: 'nexus-scene-tale-setup-view',
+        });
     }
 
     function sceneTaleSource(win) {
@@ -228,12 +250,17 @@ const ConversationPublisher = (() => {
         line,
         start,
         ensureSceneTaleView,
+        ensureSceneTaleSetupView,
         sceneTaleSource,
         publishSceneTaleBackground,
         SCENE_TALE_VIEW_SRC,
+        SCENE_TALE_SETUP_VIEW_SRC,
     };
 
-    if (typeof window !== 'undefined' && typeof document !== 'undefined') ensureSceneTaleView(window, document);
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+        ensureSceneTaleView(window, document);
+        ensureSceneTaleSetupView(window, document);
+    }
     return api;
 })();
 
