@@ -23,6 +23,7 @@
 (function () {
     const VERIFY_RETRY_MS = 5000;
     const ENABLE_TIMEOUT_MS = 10000;
+    const CONNECTION_TIMEOUT_MS = 10000;
     const REFRESH_MS = 500;
 
     // Trusted adulthood is session-scoped. A persisted ON bit from an earlier page/session can
@@ -32,6 +33,11 @@
     let verified = localStorage.getItem('nexus_spicy_verified') === 'true';
     let pending = false;
     let pendingSince = 0;
+    let connecting = false;
+    let connectingSince = 0;
+    let connectionAttempt = 0;
+    let discoveryInFlight = false;
+    let discoveredSession = null;
     let lastVerifyRequestAt = 0;
     let refreshTimer = null;
     const listeners = [];
@@ -98,10 +104,106 @@
         return Boolean(session && session.connected === true && typeof session.send === 'function');
     }
 
+    function applySessionSettings(session, settings) {
+        if (!session || !settings || !settings.url) return false;
+        if (typeof session.configureSession === 'function') {
+            try {
+                return session.configureSession(settings) !== false;
+            } catch (_) {
+                return false;
+            }
+        }
+
+        // Compatibility with the current SessionAdapter while this branch rolls out the
+        // Settings-side recovery path. These are already public instance fields used by boot.js.
+        session.session = { ...(session.session || {}), ...settings };
+        if (session.config && typeof session.config === 'object') session.config.session = session.session;
+        if (session.connected || session.socket) return true;
+        if (session._timer) {
+            try {
+                window.clearTimeout(session._timer);
+            } catch (_) {}
+            session._timer = null;
+        }
+        if (typeof session.connect !== 'function') return false;
+        try {
+            return session.connect() !== false;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    /**
+     * Private may be enabled after the Behavior Director booted without a realtime HomePilot
+     * session. Re-run the same bridge discovery boot.js uses, configure the existing adapter,
+     * and let its normal WebSocket lifecycle establish the trusted channel. This does not invent
+     * a second transport and it never changes adultVerified locally.
+     */
+    function attemptSessionRecovery(attempt) {
+        if (!connecting || attempt !== connectionAttempt) return false;
+        if (sessionReady()) return true;
+
+        const d = director();
+        const session = d && d.session;
+
+        if (session && discoveredSession) {
+            const settings = discoveredSession;
+            discoveredSession = null;
+            if (!applySessionSettings(session, settings)) {
+                disableGate('unavailable');
+                return false;
+            }
+            return true;
+        }
+
+        if (session) {
+            const current = session.session || {};
+            if (session.socket) return true;
+            if (current.enabled === true && current.url && typeof session.connect === 'function') {
+                try {
+                    return session.connect() !== false;
+                } catch (_) {
+                    // Discovery below may still provide a fresh bridge endpoint.
+                }
+            }
+        }
+
+        const discovery = window.NEXUS_BD_BRIDGE_DISCOVERY;
+        if (!discovery || typeof discovery.discover !== 'function') return false;
+        if (discoveryInFlight) return true;
+
+        discoveryInFlight = true;
+        Promise.resolve()
+            .then(function () {
+                return discovery.discover();
+            })
+            .then(function (found) {
+                discoveryInFlight = false;
+                if (!connecting || attempt !== connectionAttempt) return;
+                if (!found || found.available !== true || !found.sessionUrl) {
+                    disableGate('unavailable');
+                    return;
+                }
+                discoveredSession = {
+                    enabled: true,
+                    url: found.sessionUrl,
+                    auth: found.auth || '',
+                    source: 'bridge',
+                    features: Array.isArray(found.features) ? found.features.slice() : [],
+                };
+                attemptSessionRecovery(attempt);
+            })
+            .catch(function () {
+                discoveryInFlight = false;
+                if (connecting && attempt === connectionAttempt) disableGate('unavailable');
+            });
+        return true;
+    }
+
     /**
      * Ask the connected service for trusted adulthood verification. VERIFYING is entered only
-     * after this returns true. A missing/disconnected session is an immediate unavailable state,
-     * not a fake in-progress request.
+     * after this returns true. A missing/disconnected session is handled by the connection
+     * recovery path rather than being mistaken for a verification refusal.
      */
     function requestTrustedVerification(force) {
         const d = director();
@@ -137,10 +239,15 @@
     }
 
     function disableGate(reason, { notifyChange = true } = {}) {
-        const changed = enabled || pending;
+        const changed = enabled || pending || connecting;
         enabled = false;
         pending = false;
         pendingSince = 0;
+        connecting = false;
+        connectingSince = 0;
+        connectionAttempt += 1;
+        discoveryInFlight = false;
+        discoveredSession = null;
         lastVerifyRequestAt = 0;
         persist();
         if (changed && notifyChange) notify(false);
@@ -150,10 +257,15 @@
 
     function commitEnabled() {
         if (!verified || !trustedReady()) return false;
-        const changed = !enabled || pending;
+        const changed = !enabled || pending || connecting;
         enabled = true;
         pending = false;
         pendingSince = 0;
+        connecting = false;
+        connectingSince = 0;
+        connectionAttempt += 1;
+        discoveryInFlight = false;
+        discoveredSession = null;
         lastVerifyRequestAt = 0;
         persist();
         updateUI('on');
@@ -162,10 +274,36 @@
         return true;
     }
 
+    function beginVerificationRequest() {
+        connecting = false;
+        connectingSince = 0;
+        discoveredSession = null;
+        if (!requestTrustedVerification(true)) {
+            disableGate('unavailable');
+            return false;
+        }
+        pending = true;
+        pendingSince = Date.now();
+        updateUI('verifying');
+        return true;
+    }
+
+    function beginSessionRecovery() {
+        connecting = true;
+        connectingSince = Date.now();
+        const attempt = ++connectionAttempt;
+        updateUI('connecting');
+        if (!attemptSessionRecovery(attempt)) {
+            disableGate('unavailable');
+            return false;
+        }
+        return true;
+    }
+
     /**
-     * Reconcile the Settings switch with trusted session state. Pending is ephemeral and exists
-     * only while a request was really sent. Verification loss makes OFF absolute and a reconnect
-     * never silently restores Private.
+     * Reconcile the Settings switch with trusted session state. Connection recovery and trusted
+     * verification are separate states: first establish the normal HomePilot session, then send
+     * adult_verify_request, then commit ON only after adult_ack + ConsentFlow are ready.
      */
     function refreshTrustedState() {
         if (enabled) {
@@ -177,6 +315,21 @@
             return false;
         }
 
+        if (connecting) {
+            if (trustedReady()) return commitEnabled();
+            if (sessionReady()) {
+                beginVerificationRequest();
+                return false;
+            }
+            if (Date.now() - connectingSince >= CONNECTION_TIMEOUT_MS) {
+                disableGate('connection-timeout');
+                return false;
+            }
+            attemptSessionRecovery(connectionAttempt);
+            updateUI('connecting');
+            return false;
+        }
+
         if (!pending) {
             updateUI('off');
             return false;
@@ -184,10 +337,13 @@
 
         if (trustedReady()) return commitEnabled();
 
-        // A request that loses its transport is no longer legitimately "verifying".
+        // A request that loses its transport is no longer legitimately "verifying". Start a
+        // fresh recovery attempt instead of dropping the user's accepted ON choice immediately.
         if (!sessionReady()) {
-            disableGate('unavailable');
-            return false;
+            pending = false;
+            pendingSince = 0;
+            lastVerifyRequestAt = 0;
+            return beginSessionRecovery();
         }
 
         if (Date.now() - pendingSince >= ENABLE_TIMEOUT_MS) {
@@ -305,6 +461,11 @@
             return pending;
         },
 
+        /** The gate is establishing the normal HomePilot realtime session before verification. */
+        isConnecting: function () {
+            return connecting;
+        },
+
         /** Legacy/local confirmation state. Not the trusted session attestation. */
         isVerified: function () {
             return verified;
@@ -336,23 +497,18 @@
                     return;
                 }
 
-                // Do not write an eventual-on preference and do not enter VERIFYING unless the
-                // request was actually accepted by a connected session.
+                // Do not write an eventual-on preference. Keep the accepted switch visually ON
+                // while we establish the existing HomePilot session and then verify it.
                 enabled = false;
                 pending = false;
                 pendingSince = 0;
+                connecting = false;
+                connectingSince = 0;
                 lastVerifyRequestAt = 0;
                 persist();
 
-                if (!requestTrustedVerification(true)) {
-                    updateUI('unavailable');
-                    flushCallbacks(false);
-                    return;
-                }
-
-                pending = true;
-                pendingSince = Date.now();
-                updateUI('verifying');
+                if (sessionReady()) beginVerificationRequest();
+                else beginSessionRecovery();
             };
 
             const requireConfirmation = Boolean(options && options.requireConfirmation);
@@ -412,20 +568,22 @@
     function updateUI(state) {
         const active = usable();
         const checking = pending && !active;
+        const establishing = connecting && !active;
+        const busy = checking || establishing;
 
         const toggle = document.getElementById('spicy-mode-toggle');
         if (toggle) {
             // Accepting the conditions is the user's ON choice, so keep the switch visually ON
-            // while trusted verification finishes. Private itself still remains unavailable until
-            // `active` is true; this changes presentation only, not the trusted gate.
-            toggle.checked = active || checking;
-            toggle.disabled = checking;
-            toggle.setAttribute('aria-busy', checking ? 'true' : 'false');
+            // while the trusted channel connects/verifies. Private itself remains unavailable
+            // until `active` is true; this changes presentation only, not the trusted gate.
+            toggle.checked = active || busy;
+            toggle.disabled = busy;
+            toggle.setAttribute('aria-busy', busy ? 'true' : 'false');
         }
 
         const label = document.getElementById('spicy-status-label');
         if (label) {
-            label.textContent = checking ? 'VERIFYING…' : active ? 'ON' : 'OFF';
+            label.textContent = establishing ? 'CONNECTING…' : checking ? 'VERIFYING…' : active ? 'ON' : 'OFF';
             label.className = 'spicy-status-label' + (active ? ' spicy-status-on' : ' spicy-status-off');
         }
 
@@ -436,7 +594,7 @@
         for (let i = 0; i < gated.length; i++) gated[i].style.display = active ? '' : 'none';
 
         const section = toggle && toggle.closest ? toggle.closest('.config-section') : null;
-        if (section) section.dataset.privateState = state || (checking ? 'verifying' : active ? 'on' : 'off');
+        if (section) section.dataset.privateState = state || (establishing ? 'connecting' : checking ? 'verifying' : active ? 'on' : 'off');
     }
 
     function initUI() {
