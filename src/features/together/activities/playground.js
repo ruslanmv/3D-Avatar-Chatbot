@@ -2,14 +2,14 @@
  * Playground — the family-friendly way into scene-aware stories.
  *
  * This activity owns the Playground entry point and, in this branch, also installs the
- * separate Intimate Together tile once the adult capability is genuinely available. The
- * two experiences remain deliberately independent: Playground is always family-safe;
- * Intimate is registered only after the deployment flag, trusted server attestation and the
- * user's existing SpicyGate preference are all true.
+ * separate private/adult Together tile. The two experiences remain deliberately independent:
+ * Playground is always family-safe; the Private tile is shown only after the user explicitly
+ * enables Private Mode, while the actual adult experience still requires the deployment
+ * capability, trusted server attestation and the existing consent flow before it can start.
  *
  * There is still one Together chooser for desktop and mobile, so both activities use the
- * same native contract and the same responsive tile size. Intimate is not a wide/special
- * card and it never appears as a locked advertisement to an ineligible user.
+ * same native contract and the same responsive tile size. Private is not a wide/special card
+ * and it never appears while Private Mode is off.
  *
  * Exposes:
  *   window.NEXUS_BD_PLAYGROUND
@@ -23,6 +23,13 @@ const PlaygroundActivity = (() => {
         label: 'Scene Tale',
         permission: null,
         note: 'A short interactive story inspired by where we are.',
+    });
+
+    const PRIVATE_LOCKED = Object.freeze({
+        id: 'private-locked',
+        label: 'Private Mode',
+        permission: null,
+        note: 'Available after trusted adult verification.',
     });
 
     const INTIMATE_PRESETS = Object.freeze([
@@ -49,6 +56,20 @@ const PlaygroundActivity = (() => {
         }),
     ]);
 
+    /**
+     * Product visibility is intentionally narrower than the adult-content vocabulary but
+     * broader than runtime eligibility: once the user deliberately enables Private Mode,
+     * the neutral Private tile may appear. The full gate below still decides whether any
+     * adult experience may actually start.
+     */
+    function privateTileVisibility(spicy) {
+        if (!spicy || typeof spicy.isEnabled !== 'function' || !spicy.isEnabled()) {
+            return { ok: false, why: 'Private Mode is disabled in Settings' };
+        }
+        return { ok: true, why: '' };
+    }
+
+    /** Full runtime gate. This is never weakened just because the tile is visible. */
     function intimateEligibility(director, spicy) {
         if (!director || !director.config || !director.config.adult || director.config.adult.available !== true) {
             return { ok: false, why: 'adult capability is not available in this deployment' };
@@ -60,7 +81,7 @@ const PlaygroundActivity = (() => {
             return { ok: false, why: 'trusted adult verification is not present' };
         }
         if (!spicy || typeof spicy.isEnabled !== 'function' || !spicy.isEnabled()) {
-            return { ok: false, why: 'Intimate experiences are disabled in Settings' };
+            return { ok: false, why: 'Private Mode is disabled in Settings' };
         }
         return { ok: true, why: '' };
     }
@@ -69,11 +90,13 @@ const PlaygroundActivity = (() => {
         constructor({ bus, adult, capability } = {}) {
             this.__contract = true;
             this.id = 'intimate';
-            this.title = 'Intimate';
-            this.icon = '♡';
+            // Consumer-facing label stays neutral. The internal id remains `intimate` so the
+            // existing adult architecture and tests do not need a second vocabulary.
+            this.title = 'Private';
+            this.icon = '🔐';
             // Normal-sized tile. It follows Meeting and stays before the wide Help tile.
             this.order = 85;
-            this.prompt = 'Choose the mood for this private experience.';
+            this.prompt = 'Choose a private experience.';
 
             this.bus = bus || null;
             this.adult = adult || null;
@@ -85,10 +108,12 @@ const PlaygroundActivity = (() => {
         }
 
         get name() {
-            return 'Intimate';
+            return 'Private';
         }
 
         inputs() {
+            const gate = this.availability();
+            if (!gate || gate.ok === false) return [{ ...PRIVATE_LOCKED }];
             return INTIMATE_PRESETS.map((preset) => ({ ...preset }));
         }
 
@@ -97,12 +122,12 @@ const PlaygroundActivity = (() => {
         }
 
         async start({ input = {} } = {}) {
-            if (this.active) return { ok: false, why: 'Intimate is already running' };
+            if (this.active) return { ok: false, why: 'Private is already running' };
             const gate = this.availability();
-            if (!gate || gate.ok === false) return gate || { ok: false, why: 'Intimate is unavailable' };
+            if (!gate || gate.ok === false) return gate || { ok: false, why: 'Private is unavailable' };
 
             const preset = INTIMATE_PRESETS.find((candidate) => candidate.id === String(input.id || ''));
-            if (!preset) return { ok: false, why: `unknown Intimate preset: ${String(input.id || '')}` };
+            if (!preset) return { ok: false, why: `unknown Private preset: ${String(input.id || '')}` };
             if (!this.adult || typeof this.adult.enter !== 'function') return { ok: false, why: 'adult consent flow is unavailable' };
 
             // V1 presets are ceilings, not shortcuts. ConsentFlow still starts at level 1,
@@ -144,7 +169,7 @@ const PlaygroundActivity = (() => {
         status() {
             if (!this.active) return null;
             const preset = INTIMATE_PRESETS.find((candidate) => candidate.id === this.preset);
-            return { label: preset ? preset.label : 'Intimate', detail: 'Private' };
+            return { label: preset ? preset.label : 'Private', detail: 'Private' };
         }
 
         detach() {
@@ -191,16 +216,19 @@ const PlaygroundActivity = (() => {
     }
 
     /**
-     * Bridge Intimate into the already-mounted TogetherPanel without inventing a second UI.
+     * Bridge Private into the already-mounted TogetherPanel without inventing a second UI.
      *
-     * `boot.js` intentionally constructs the adult flow only when `adult.available` is true.
-     * The Playground module is already loaded by that boot path in this branch, so it can
-     * register the private activity after boot completes and remove it again when the user
-     * switches the existing Settings gate off. This keeps the current PR additive and avoids
-     * a second adult preference flag.
+     * Visibility and runtime permission are intentionally separate:
+     *
+     *   Settings Private Mode OFF -> tile absent
+     *   Settings Private Mode ON  -> neutral Private tile present
+     *   Start attempt             -> full adult deployment + trusted verification gate
+     *
+     * This makes the Settings switch visibly do what it says on both desktop and mobile,
+     * while preserving the trusted adult boundary at the moment any mature experience starts.
      */
     function installIntimateBridge({ bus } = {}) {
-        if (typeof window === 'undefined' || !window.NEXUS_SPICY) return null;
+        if (typeof window === 'undefined') return null;
 
         let director = null;
         let activity = null;
@@ -218,7 +246,7 @@ const PlaygroundActivity = (() => {
             }
         };
 
-        const unregister = (why = 'gate disabled') => {
+        const unregister = (why = 'Private Mode disabled') => {
             if (!director || !director.togetherPanel) return;
             const panel = director.togetherPanel;
             const current = panel.activities && panel.activities.get('intimate');
@@ -238,10 +266,12 @@ const PlaygroundActivity = (() => {
         const sync = () => {
             if (stopped) return false;
             if (!director) director = window.NEXUS_BD || null;
-            if (!director || !director.togetherPanel) return false;
+            if (!director || !director.togetherPanel || !window.NEXUS_SPICY) return false;
 
+            const visible = privateTileVisibility(window.NEXUS_SPICY);
             const gate = intimateEligibility(director, window.NEXUS_SPICY);
-            if (gate.ok) {
+
+            if (visible.ok) {
                 const existing = director.togetherPanel.activities && director.togetherPanel.activities.get('intimate');
                 if (!existing) {
                     activity = new Intimate({
@@ -256,16 +286,23 @@ const PlaygroundActivity = (() => {
                     activity = existing;
                     director.intimate = existing;
                 }
+
+                // A visible tile is not permission. If trusted eligibility disappears while
+                // the experience is active, stop it immediately but leave the neutral tile
+                // visible as long as the user has kept Private Mode enabled.
+                if (!gate.ok && director.togetherPanel.activeActivity === 'intimate') {
+                    director.togetherPanel.stopActivity(gate.why || 'Private eligibility changed');
+                }
             } else {
-                unregister(gate.why);
+                unregister(visible.why);
             }
-            return gate.ok;
+            return visible.ok;
         };
 
         const wire = () => {
             if (stopped) return;
             director = window.NEXUS_BD || null;
-            if (!director || !director.togetherPanel) {
+            if (!director || !director.togetherPanel || !window.NEXUS_SPICY) {
                 retryTimer = setTimeout(wire, 100);
                 return;
             }
@@ -273,7 +310,7 @@ const PlaygroundActivity = (() => {
             lastVerified = Boolean(director.blackboard && director.blackboard.adultVerified);
             sync();
 
-            if (window.NEXUS_SPICY && typeof window.NEXUS_SPICY.onChange === 'function') {
+            if (typeof window.NEXUS_SPICY.onChange === 'function') {
                 unsubscribeSpicy = window.NEXUS_SPICY.onChange(() => sync());
             }
             if (director.togetherPanel && typeof director.togetherPanel.onChange === 'function') {
@@ -290,15 +327,16 @@ const PlaygroundActivity = (() => {
             }
 
             // `adult_ack` currently writes the blackboard directly rather than publishing a
-            // capability event. Watch that single boolean at a low rate so an already-open
-            // chooser also updates when trusted verification arrives/expires. This timer is
-            // feature-local and is removed with Playground/Behavior Director teardown.
+            // capability event. Watch that single boolean at a low rate so an active Private
+            // session is stopped immediately if trusted verification expires, and so the
+            // setup screen can switch from the neutral locked message to the verified presets.
             verifyTimer = setInterval(() => {
                 if (stopped || !director) return;
                 const verified = Boolean(director.blackboard && director.blackboard.adultVerified);
                 if (verified !== lastVerified) {
                     lastVerified = verified;
                     sync();
+                    repaint();
                 }
             }, 1000);
         };
@@ -401,7 +439,12 @@ const PlaygroundActivity = (() => {
         return new Playground(deps);
     }
 
-    const IntimateActivity = { Intimate, presets: INTIMATE_PRESETS, eligibility: intimateEligibility };
+    const IntimateActivity = {
+        Intimate,
+        presets: INTIMATE_PRESETS,
+        eligibility: intimateEligibility,
+        visibility: privateTileVisibility,
+    };
 
     return {
         attach,
