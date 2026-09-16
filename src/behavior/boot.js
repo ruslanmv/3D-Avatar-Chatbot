@@ -144,6 +144,9 @@
         // Loaded beside the file source; it asks for no permission of its own.
         'src/features/together/activities/mediaTabAudioSource.js',
         'src/features/together/activities/scene-journey.js',
+        // Playground is a native contract activity. The same Together chooser is used by
+        // desktop and mobile, so one registration creates the tile on both surfaces.
+        'src/features/together/activities/playground.js',
         'src/features/together/activities/screen-insight.js',
         // B26 holds the B15 activity above rather than describing its round trip again.
         'src/features/together/activities/copilot.js',
@@ -589,6 +592,15 @@
                     global.NEXUS_BD_JOURNEY.loadManifests(director.journey).catch(() => {});
                     director.togetherPanel.register(director.journey);
                     director.adapters.push(director.journey);
+                }
+
+                // Playground is family-friendly and registers through the same native
+                // activity contract as the rest of Together. There is no desktop/mobile
+                // fork: TogetherPanel's responsive grid paints this one activity on both.
+                if (global.NEXUS_BD_PLAYGROUND) {
+                    director.playground = global.NEXUS_BD_PLAYGROUND.attach({ bus });
+                    director.togetherPanel.register(director.playground);
+                    director.adapters.push(director.playground);
                 }
 
                 // Screen Insight (B15). On demand by default: registered, never started,
