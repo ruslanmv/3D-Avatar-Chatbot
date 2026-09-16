@@ -1,10 +1,14 @@
 /**
- * SceneTaleMobileMode — stage-first Scene Tale presentation for phones.
+ * SceneTaleMobileMode — Scene Tale presentation that preserves the native mobile chat overlay.
  *
- * StoryPlayer owns narration/timing/branching. This module owns only the mobile presentation
- * and the Ready -> Playing handoff safety net. All observer-driven DOM writes are idempotent so
- * the Scene Tale HUD can never create a MutationObserver feedback loop that starves Together's
- * async start continuation.
+ * Product rule:
+ *   Scene Tale may decorate Conversation, but it must never replace, suspend, or rewrite the
+ *   existing MobileChatOverlay state machine. The original tap/drag dropdown remains authoritative.
+ *
+ * When Scene Tale starts we use the existing overlay toggle once if the chat is collapsed, so the
+ * story becomes visible through the same public interaction the user already has. After that the
+ * user can collapse, expand, tap and drag the chat exactly as before. A prepared choice re-opens a
+ * collapsed chat through that same toggle so the story never dead-ends behind a hidden panel.
  *
  * Exposes: window.NEXUS_SCENE_TALE_MOBILE_MODE
  */
@@ -37,42 +41,23 @@ const SceneTaleMobileMode = (() => {
     let scanning = false;
     let syncing = false;
 
+    /*
+     * Deliberately scoped to Scene Tale content only. There are NO rules here for .chat-panel,
+     * .chat-main geometry, #chat-overlay-handle, overlay snap heights, or touch behavior.
+     * MobileChatOverlay.js remains byte-for-byte the master implementation.
+     */
     const CSS = `
 @media (max-width:767px){
-  html.${ACTIVE_CLASS},html.${ACTIVE_CLASS} body{height:100%;overflow:hidden!important;background:#020912}
-  html.${ACTIVE_CLASS} .app-shell{height:100dvh;min-height:100dvh;overflow:hidden}
-  html.${ACTIVE_CLASS} .topbar{position:fixed!important;top:0;left:0;right:0;z-index:90;min-height:56px!important;height:56px!important;padding:6px 10px!important;border-radius:0!important;background:rgba(5,15,25,.82)!important;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
-  html.${ACTIVE_CLASS} .brand-inline-title{font-size:.9rem!important;line-height:1.1}
-  html.${ACTIVE_CLASS} .brand-inline-sub{font-size:.62rem!important;line-height:1.1;gap:5px}
-  html.${ACTIVE_CLASS} #status-indicator{width:7px!important;height:7px!important}
-  html.${ACTIVE_CLASS} .content-layout{position:fixed!important;top:56px!important;left:0!important;right:0!important;bottom:0!important;display:block!important;padding:0!important;gap:0!important;overflow:hidden!important}
-  html.${ACTIVE_CLASS} .avatar-panel{position:absolute!important;inset:0!important;max-height:none!important;min-height:0!important;overflow:hidden!important}
-  html.${ACTIVE_CLASS} .avatar-card{height:100%!important;min-height:0!important;border:0!important;border-radius:0!important;background:transparent!important}
-  html.${ACTIVE_CLASS} .avatar-preview-wrap{height:100%!important;min-height:0!important;max-height:none!important}
-  html.${ACTIVE_CLASS} .avatar-viewport{height:100%!important;min-height:0!important}
-  html.${ACTIVE_CLASS} .avatar-footer{display:none!important}
-  html.${ACTIVE_CLASS} .chat-panel,
-  html.${ACTIVE_CLASS} .chat-panel.chat-overlay--collapsed,
-  html.${ACTIVE_CLASS} .chat-panel.chat-overlay--expanded{position:fixed!important;left:12px!important;right:12px!important;bottom:max(6px,env(safe-area-inset-bottom,0px))!important;top:auto!important;width:auto!important;height:auto!important;max-height:none!important;min-height:0!important;z-index:80!important;overflow:visible!important;transform:none!important;transition:none!important;background:transparent!important;border:0!important;box-shadow:none!important}
-  html.${ACTIVE_CLASS} .chat-card{height:auto!important;min-height:0!important;display:flex!important;flex-direction:column!important;overflow:visible!important;background:transparent!important;border:0!important;box-shadow:none!important;contain:none!important}
-  html.${ACTIVE_CLASS} .chat-card-header{display:none!important}
-  html.${ACTIVE_CLASS} #chat-overlay-handle{display:none!important}
-  html.${ACTIVE_CLASS} .chat-main{position:relative!important;flex:0 1 auto!important;min-height:0!important;max-height:min(34dvh,360px)!important;overflow:visible!important}
-  html.${ACTIVE_CLASS} .chat-history{position:relative!important;inset:auto!important;padding:0!important;overflow:visible!important;overscroll-behavior:none!important;scrollbar-width:none!important}
-  html.${ACTIVE_CLASS} .chat-history::-webkit-scrollbar{display:none!important}
-  html.${ACTIVE_CLASS} #${ROW_ID}{margin:0!important;width:100%!important}
+  html.${ACTIVE_CLASS} #${ROW_ID}{margin:8px 0 12px!important;width:100%!important}
   html.${ACTIVE_CLASS} #${HUD_ID}{width:100%!important;margin:0!important;position:relative!important;left:auto!important;right:auto!important;bottom:auto!important;transform:none!important;z-index:auto!important;max-width:none!important}
-  html.${ACTIVE_CLASS} #${HUD_ID} .nexus-story-shell{display:flex;flex-direction:column;max-height:min(34dvh,360px);overflow:hidden;border-radius:16px;background:rgba(5,15,25,.82);border:1px solid rgba(24,218,255,.38);box-shadow:0 14px 40px rgba(0,0,0,.38);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
-  html.${ACTIVE_CLASS} #${HUD_ID}.has-choices .nexus-story-shell{max-height:min(44dvh,430px)}
-  html.${ACTIVE_CLASS} #${HUD_ID}.is-complete .nexus-story-shell{max-height:min(40dvh,400px)}
-  html.${ACTIVE_CLASS} #${HUD_ID}.transcript-expanded .nexus-story-shell{max-height:min(58dvh,520px)}
+  html.${ACTIVE_CLASS} #${HUD_ID} .nexus-story-shell{display:flex;flex-direction:column;overflow:hidden;border-radius:16px;background:rgba(5,15,25,.86);border:1px solid rgba(24,218,255,.38);box-shadow:0 14px 40px rgba(0,0,0,.32);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
   html.${ACTIVE_CLASS} .nexus-story-heading{padding:10px 13px 8px!important;flex:0 0 auto}
   html.${ACTIVE_CLASS} .nexus-story-kicker{font-size:.62rem!important;margin-bottom:3px!important;letter-spacing:.1em}
   html.${ACTIVE_CLASS} .nexus-story-heading-title{font-size:.96rem!important;margin-bottom:1px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   html.${ACTIVE_CLASS} .nexus-story-heading-note{display:none!important}
   html.${ACTIVE_CLASS} .nexus-story-place{font-size:.68rem;line-height:1.25;color:rgba(224,247,250,.62);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  html.${ACTIVE_CLASS} .nexus-scene-tale-hero{display:none!important}
-  html.${ACTIVE_CLASS} .nexus-story-card{padding:10px 13px!important;overflow-y:auto!important;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;min-height:0;flex:1 1 auto}
+  html.${ACTIVE_CLASS} .nexus-scene-tale-hero{max-height:150px!important;object-fit:cover!important}
+  html.${ACTIVE_CLASS} .nexus-story-card{padding:10px 13px!important;min-height:0}
   html.${ACTIVE_CLASS} .nexus-story-caption{font-size:.91rem!important;line-height:1.42!important;white-space:pre-wrap;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden}
   html.${ACTIVE_CLASS} #${HUD_ID}.transcript-expanded .nexus-story-caption{-webkit-line-clamp:unset;display:block;overflow:visible}
   html.${ACTIVE_CLASS} .nexus-story-transcript-toggle{display:inline-flex;margin-top:7px;border:0;background:transparent;color:#20d7f2;padding:2px 0;font:inherit;font-size:.72rem;cursor:pointer}
@@ -83,16 +68,9 @@ const SceneTaleMobileMode = (() => {
   html.${ACTIVE_CLASS} .nexus-story-time{font-size:.72rem!important;margin-left:auto!important}
   html.${ACTIVE_CLASS} .nexus-story-btn{min-height:38px;padding:7px 12px!important;font-size:.76rem!important}
   html.${ACTIVE_CLASS} .nexus-story-btn:not(.is-end){background:rgba(0,207,235,.16)!important;border-color:rgba(24,218,255,.58)!important;color:#e9fbff}
-  html.${ACTIVE_CLASS} .nexus-story-btn.is-end{background:transparent!important;border-color:rgba(255,255,255,.13)!important;opacity:.62!important}
+  html.${ACTIVE_CLASS} .nexus-story-btn.is-end{background:transparent!important;border-color:rgba(255,255,255,.13)!important;opacity:.68!important}
   html.${ACTIVE_CLASS} .nexus-story-btn.is-end.is-confirming{border-color:rgba(255,112,112,.46)!important;color:#ffb3b3!important;opacity:1!important}
-  html.${ACTIVE_CLASS} .nexus-scene-tale-soundtrack,html.${ACTIVE_CLASS} .nexus-scene-tale-soundtrack-player{display:none!important}
-  html.${ACTIVE_CLASS} .chat-input-shell{position:relative!important;bottom:auto!important;z-index:1!important;flex:0 0 auto!important;padding:6px 0 0!important;border:0!important;background:transparent!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
-  html.${ACTIVE_CLASS} .chat-input-bar{grid-template-columns:40px 1fr 44px!important;gap:7px!important;padding:0!important}
-  html.${ACTIVE_CLASS} .voice-btn-compact{width:40px!important;height:40px!important;border-radius:12px!important;background:rgba(0,40,45,.78)!important}
-  html.${ACTIVE_CLASS} .chat-input{height:40px!important;min-height:40px!important;font-size:16px!important;border-radius:12px!important;background:rgba(2,10,18,.86)!important}
-  html.${ACTIVE_CLASS} .send-btn{height:40px!important;min-width:44px!important;width:44px!important;padding:0!important;border-radius:12px!important}
-  html.${ACTIVE_CLASS} .voice-status-inline,html.${ACTIVE_CLASS} .typing-row{display:none!important}
-  html.${ACTIVE_CLASS} .pose-studio-root,html.${ACTIVE_CLASS} .avatar-picker-backdrop,html.${ACTIVE_CLASS} .avatar-picker-panel{display:none!important}
+  html.${ACTIVE_CLASS} .nexus-scene-tale-soundtrack-player{max-width:100%!important}
 }
 `;
 
@@ -156,6 +134,18 @@ const SceneTaleMobileMode = (() => {
     function rememberScroll() {
         if (!scrollHost) return;
         userNearBottom = nearBottom(scrollHost);
+    }
+
+    function ensureChatVisible(doc) {
+        if (!doc || !doc.querySelector) return false;
+        const panel = doc.querySelector('.chat-panel');
+        if (!panel || !panel.classList.contains('chat-overlay--collapsed')) return false;
+        const toggle = doc.getElementById('chat-overlay-toggle');
+        if (!toggle || typeof toggle.click !== 'function') return false;
+        // IMPORTANT: use the existing MobileChatOverlay interaction instead of mutating classes.
+        // This keeps its private currentState synchronized, so tap/drag behavior remains intact.
+        toggle.click();
+        return true;
     }
 
     function meaningfulMutation(records) {
@@ -363,6 +353,11 @@ const SceneTaleMobileMode = (() => {
             toggleClass(hud, 'is-complete', complete);
             decorateTranscript(hud);
             updateChrome(doc, hud, win);
+
+            // A required choice must never remain hidden behind the user's previously-collapsed
+            // chat panel. Re-open it through the original overlay toggle, never by class surgery.
+            if (hasChoices) ensureChatVisible(doc);
+
             if (allowScroll && scrollHost && userNearBottom) {
                 try { scrollHost.scrollTop = scrollHost.scrollHeight; } catch (_) {}
                 rememberScroll();
@@ -396,7 +391,6 @@ const SceneTaleMobileMode = (() => {
         currentDoc = doc;
         currentWin = win || currentWin;
         ensureStyles(doc);
-        // Playback owns mobile UI from this point. Setup must not remain active for even one frame.
         applyRootState(doc, true);
         disableLegacyHudObserver(currentWin);
         scrollHost = chatHost(doc);
@@ -407,6 +401,10 @@ const SceneTaleMobileMode = (() => {
         bindComposer(doc, currentWin);
         bindEndGuard(hud);
         observeHud(hud);
+
+        // Start playback with Conversation visible, but preserve the original dropdown/touch
+        // state machine. If the user later collapses it, their gesture remains authoritative.
+        ensureChatVisible(doc);
         sync(hud);
         return true;
     }
@@ -615,6 +613,7 @@ const SceneTaleMobileMode = (() => {
         containsStoryHud,
         hudMutationRelevant,
         setText,
+        ensureChatVisible,
         patchStartHandoff,
     };
 
