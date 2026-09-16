@@ -88,6 +88,39 @@ describe('Private Settings gate', () => {
         expect(document.getElementById('spicy-status-label').textContent).toBe('VERIFYING…');
     });
 
+    test('desktop Settings toggle always shows the conditions modal before trusted verification', () => {
+        const s = loadGate({ verified: false, connected: true });
+        const toggle = document.getElementById('spicy-mode-toggle');
+
+        // loadGate intentionally starts with the legacy/local acknowledgement already stored.
+        // A visible Settings enable action must still explain the conditions instead of jumping
+        // straight to a disabled VERIFYING switch.
+        expect(s.gate.isVerified()).toBe(true);
+        toggle.checked = true;
+        toggle.dispatchEvent(new Event('change', { bubbles: true }));
+
+        const overlay = document.querySelector('.spicy-age-overlay');
+        expect(overlay).not.toBeNull();
+        expect(s.director.session.send).not.toHaveBeenCalled();
+        expect(s.gate.isPending()).toBe(false);
+        expect(toggle.disabled).toBe(false);
+        expect(document.getElementById('spicy-status-label').textContent).toBe('OFF');
+
+        const consent = overlay.querySelector('#spicy-age-consent');
+        const confirm = overlay.querySelector('#spicy-age-confirm');
+        expect(confirm.disabled).toBe(true);
+        consent.checked = true;
+        consent.dispatchEvent(new Event('change', { bubbles: true }));
+        expect(confirm.disabled).toBe(false);
+        confirm.click();
+
+        expect(document.querySelector('.spicy-age-overlay')).toBeNull();
+        expect(s.director.session.send).toHaveBeenCalledWith({ v: 1, type: 'adult_verify_request' });
+        expect(s.gate.isPending()).toBe(true);
+        expect(document.getElementById('spicy-status-label').textContent).toBe('VERIFYING…');
+        expect(toggle.disabled).toBe(true);
+    });
+
     test('a disconnected verification service never enters VERIFYING or persists an eventual-on preference', () => {
         const s = loadGate({ verified: false, connected: false });
         const done = jest.fn();
