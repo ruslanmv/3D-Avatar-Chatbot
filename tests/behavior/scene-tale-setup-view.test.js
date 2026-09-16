@@ -2,7 +2,7 @@
  * Scene Tale Stage 1 should feel like an experience launcher, not a browser form.
  */
 
-/* global describe, test, expect, beforeEach, afterEach, jest */
+/* global describe, test, expect, beforeEach, afterEach, afterAll, jest */
 
 window.__NEXUS_SCENE_TALE_SETUP_VIEW_NOAUTO__ = true;
 
@@ -19,14 +19,11 @@ function consentMachine() {
 }
 
 function spicyOff() {
-    return {
-        isEnabled: () => false,
-        onChange: () => () => {},
-    };
+    return { isEnabled: () => false, onChange: () => () => {} };
 }
 
 function mountPanel() {
-    document.body.innerHTML = '<div class="avatar-card"><div id="host"></div></div>';
+    document.body.innerHTML = '<div class="avatar-card"><div id="host"></div></div><footer class="chat-input-shell"></footer>';
     const panel = TogetherPanel.attach({ consent: consentMachine(), doc: document, win: window });
     panel.mount(document.getElementById('host'));
     const director = {
@@ -44,7 +41,15 @@ function mountPanel() {
     window.NEXUS_BD = director;
     const activity = PlaygroundActivity.attach({ bus: director.bus, win: window, doc: document });
     panel.register(activity);
-    return { panel, activity };
+    return { panel, activity, director };
+}
+
+function openSceneTale(panel) {
+    panel.open();
+    document.querySelector('[data-activity=playground]').click();
+    SetupView.install(document);
+    SetupView.decorate(document);
+    return document.getElementById(TogetherPanel.PANEL_ID);
 }
 
 beforeEach(() => {
@@ -55,6 +60,9 @@ beforeEach(() => {
 afterEach(() => {
     SetupView.detach();
     delete window.NEXUS_TOGETHER_SWITCH;
+    delete window.NEXUS_SCENE_AMBIENCE_CAPABILITY;
+    delete window.NEXUS_VIEWPORT_BACKGROUND_CATALOG;
+    delete window.NEXUS_VIEWER;
     delete window.NEXUS_BD;
     delete window.NEXUS_SPICY;
     document.body.innerHTML = '';
@@ -63,15 +71,11 @@ afterEach(() => {
 describe('Scene Tale Stage 1 premium setup surface', () => {
     test('decorates the real Together configure stage into the cinematic three-section launcher', () => {
         const { panel, activity } = mountPanel();
-        panel.open();
-        document.querySelector('[data-activity="playground"]').click();
-        SetupView.install(document);
-        SetupView.decorate(document);
+        const root = openSceneTale(panel);
 
-        const root = document.getElementById(TogetherPanel.PANEL_ID);
         expect(root.classList.contains(SetupView.PANEL_CLASS)).toBe(true);
+        expect(document.documentElement.classList.contains(SetupView.ROOT_CLASS)).toBe(true);
         expect(document.querySelector('.avatar-card').classList.contains(SetupView.OPEN_CLASS)).toBe(true);
-
         expect(root.querySelector('.nexus-bd-together-head').textContent).toBe('TOGETHER');
         expect(root.querySelector('.nexus-scene-tale-setup-title').textContent).toBe('Scene Tale');
         expect(root.querySelector('.nexus-bd-together-prompt').textContent).toBe('A little story inspired by this place.');
@@ -93,6 +97,7 @@ describe('Scene Tale Stage 1 premium setup surface', () => {
         const idea = root.querySelector('#nexus-scene-tale-idea');
         expect(idea.placeholder).toBe('A letter somebody never delivered');
         expect(idea.getAttribute('aria-label')).toBe('Give me an idea');
+        expect(idea.rows).toBe(1);
 
         const soundOptions = [...root.querySelectorAll('.nexus-scene-tale-sound-option')];
         expect(soundOptions).toHaveLength(2);
@@ -102,26 +107,35 @@ describe('Scene Tale Stage 1 premium setup surface', () => {
         expect(soundOptions[1].classList.contains('is-selected')).toBe(false);
         expect(soundOptions.every((option) => option.querySelector('.nexus-scene-tale-radio-dot'))).toBe(true);
 
-        const create = root.querySelector('[data-action="create-story"]');
+        const create = root.querySelector('[data-action=create-story]');
         expect(create.getAttribute('aria-label')).toBe('Create story');
         expect(create.textContent).toContain('Create story');
         expect(create.querySelector('.nexus-scene-tale-cta-arrow')).not.toBeNull();
-
-        const back = [...root.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Back');
-        expect(back).toBeDefined();
-
+        expect([...root.querySelectorAll('button')].some((button) => button.textContent.trim() === 'Back')).toBe(true);
         activity.detach();
     });
 
-    test('selected soundtrack card follows the underlying radio and setup styling does not leak back to chooser', () => {
-        const { panel, activity } = mountPanel();
-        panel.open();
-        document.querySelector('[data-activity="playground"]').click();
-        SetupView.install(document);
-        SetupView.decorate(document);
+    test('authoritative ambience state replaces Current Scene with the real label and thumbnail', () => {
+        const { panel, activity, director } = mountPanel();
+        director.blackboard.scene = { id: 'current-scene', label: 'Current Scene' };
+        window.NEXUS_SCENE_AMBIENCE_CAPABILITY = { currentSceneLabel: jest.fn(() => 'Ocean — Moonlight') };
 
-        const root = document.getElementById(TogetherPanel.PANEL_ID);
-        const radios = [...root.querySelectorAll('.nexus-scene-tale-sound-option input[type="radio"]')];
+        const root = openSceneTale(panel);
+        const place = root.querySelector('.nexus-scene-tale-place-card');
+        const thumb = place.querySelector('.nexus-scene-tale-place-thumb');
+
+        expect(window.NEXUS_SCENE_AMBIENCE_CAPABILITY.currentSceneLabel).toHaveBeenCalled();
+        expect(place.textContent).toContain('Ocean · Moonlight');
+        expect(place.textContent).not.toContain('Current Scene');
+        expect(thumb.getAttribute('src')).toBe('assets/ambient/dark/ocean-moonlight.webp');
+        expect(thumb.getAttribute('alt')).toBe('Ocean · Moonlight');
+        activity.detach();
+    });
+
+    test('selected soundtrack follows the radio and launcher ownership is removed on exit', () => {
+        const { panel, activity } = mountPanel();
+        const root = openSceneTale(panel);
+        const radios = [...root.querySelectorAll('.nexus-scene-tale-sound-option input[type=radio]')];
         const options = [...root.querySelectorAll('.nexus-scene-tale-sound-option')];
         radios[1].checked = true;
         radios[1].dispatchEvent(new Event('change', { bubbles: true }));
@@ -133,20 +147,51 @@ describe('Scene Tale Stage 1 premium setup surface', () => {
         panel.open();
         SetupView.decorate(document);
         expect(root.classList.contains(SetupView.PANEL_CLASS)).toBe(false);
+        expect(document.documentElement.classList.contains(SetupView.ROOT_CLASS)).toBe(false);
         expect(document.querySelector('.avatar-card').classList.contains(SetupView.OPEN_CLASS)).toBe(false);
-
         activity.detach();
     });
 
-    test('CSS pins the desktop setup to a centered glass card and visually hides native radio chrome', () => {
-        expect(SetupView.CSS).toContain('top:50%; bottom:auto; left:50%; transform:translate(-50%,-50%)');
+    test('Configure, Preparing and Ready keep setup ownership until Start story', () => {
+        const { panel, activity } = mountPanel();
+        openSceneTale(panel);
+        expect(document.documentElement.classList.contains(SetupView.ROOT_CLASS)).toBe(true);
+
+        activity.sessionState = 'preparing';
+        panel._paint();
+        SetupView.decorate(document);
+        expect(document.querySelector('[data-action=cancel-story]')).not.toBeNull();
+        expect(document.documentElement.classList.contains(SetupView.ROOT_CLASS)).toBe(true);
+
+        activity.preparedPlan = PlaygroundActivity.fallbackStory(
+            { id: 'coastal-terrace-twilight', label: 'Coastal Terrace · Twilight' },
+            'A letter somebody never delivered',
+            false
+        );
+        activity.sessionState = 'ready';
+        panel._paint();
+        SetupView.decorate(document);
+        expect(document.querySelector('[data-action=start-story]')).not.toBeNull();
+        expect(document.documentElement.classList.contains(SetupView.ROOT_CLASS)).toBe(true);
+
+        panel.open();
+        SetupView.decorate(document);
+        expect(document.documentElement.classList.contains(SetupView.ROOT_CLASS)).toBe(false);
+        activity.detach();
+    });
+
+    test('mobile CSS keeps a floating card, hides ordinary chat and only stacks soundtrack below 390px', () => {
+        expect(SetupView.CSS).toContain('top:50%;bottom:auto;left:50%;transform:translate(-50%,-50%)');
         expect(SetupView.CSS).toContain('backdrop-filter:blur(24px)');
-        expect(SetupView.CSS).toContain('grid-template-columns:1fr 1fr');
-        expect(SetupView.CSS).toContain('input{position:absolute;width:1px;height:1px;opacity:0');
+        expect(SetupView.CSS).toContain(`html.${SetupView.ROOT_CLASS} .chat-input-shell`);
+        expect(SetupView.CSS).toContain('top:calc(50% + 24px);bottom:auto;left:50%;right:auto');
+        expect(SetupView.CSS).toContain('width:min(520px,calc(100vw - 28px))');
+        expect(SetupView.CSS).toContain('min-height:3.5rem;height:3.5rem');
+        expect(SetupView.CSS).toContain('@media(max-width:389px)');
+        expect(SetupView.CSS).not.toContain('position:fixed;top:auto;bottom:0;left:0;right:0');
+        expect(SetupView.sceneThumbnail('ambient:ocean:night')).toBe('assets/ambient/dark/ocean-moonlight.webp');
         expect(SetupView.sceneThumbnail('Coastal Terrace · Twilight')).toBe('assets/ambient/dark/coastal-terrace-twilight.webp');
     });
 });
 
-afterAll(() => {
-    delete window.__NEXUS_SCENE_TALE_SETUP_VIEW_NOAUTO__;
-});
+afterAll(() => { delete window.__NEXUS_SCENE_TALE_SETUP_VIEW_NOAUTO__; });
