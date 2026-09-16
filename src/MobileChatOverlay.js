@@ -14,8 +14,10 @@
  *   - Drag the handle to resize; snaps on release
  *   - Auto-collapses when the virtual keyboard opens
  *
- * Purely additive — does not modify any existing module.
- * Only activates when html.is-mobile is present (phones in portrait).
+ * Scene Tale can temporarily suspend this state machine while it owns the
+ * Conversation surface. Suspension snapshots the previous mobile chat state,
+ * removes the collapsed/default/expanded ownership classes, and restores the
+ * exact stable state when the experience exits.
  */
 (function () {
     /* ── Guard: only run on mobile phones ── */
@@ -35,6 +37,7 @@
     var CSS_COLLAPSED = 'chat-overlay--collapsed';
     var CSS_EXPANDED = 'chat-overlay--expanded';
     var CSS_DRAGGING = 'chat-overlay--dragging';
+    var CSS_SCENE_TALE = 'chat-overlay--scene-tale';
 
     /* ── State ── */
     var currentState = STATE_COLLAPSED; // Start collapsed so avatar fills the screen
@@ -44,6 +47,10 @@
     var panel; // .chat-panel element
     var handle; // #chat-overlay-handle
     var toggle; // #chat-overlay-toggle
+    var suspended = false;
+    var suspendedReason = '';
+    var suspendedSnapshot = null;
+    var pendingSuspendReason = '';
 
     /* ── Helpers ── */
     function recalcHeights() {
@@ -53,7 +60,8 @@
 
     function applyState(state) {
         currentState = state;
-        panel.classList.remove(CSS_COLLAPSED, CSS_EXPANDED);
+        if (!panel || suspended) return;
+        panel.classList.remove(CSS_COLLAPSED, CSS_EXPANDED, CSS_DRAGGING, CSS_SCENE_TALE);
         panel.style.height = ''; // clear inline height from drag
 
         if (state === STATE_COLLAPSED) {
@@ -64,8 +72,60 @@
         // STATE_DEFAULT uses the CSS default (50vh) — no class needed
     }
 
+    function suspend(reason) {
+        var why = String(reason || 'external');
+        if (!panel) {
+            pendingSuspendReason = why;
+            return false;
+        }
+        if (suspended) return true;
+        suspendedSnapshot = {
+            state: currentState,
+            height: panel.style.height || '',
+        };
+        suspended = true;
+        suspendedReason = why;
+        pendingSuspendReason = '';
+        isDragging = false;
+        hasDragged = false;
+        panel.classList.remove(CSS_COLLAPSED, CSS_EXPANDED, CSS_DRAGGING);
+        panel.classList.add(CSS_SCENE_TALE);
+        panel.style.height = '';
+        return true;
+    }
+
+    function resume(reason) {
+        if (!suspended) return false;
+        if (reason && suspendedReason && String(reason) !== suspendedReason) return false;
+        var snapshot = suspendedSnapshot || { state: currentState, height: '' };
+        suspended = false;
+        suspendedReason = '';
+        suspendedSnapshot = null;
+        if (panel) {
+            panel.classList.remove(CSS_SCENE_TALE, CSS_DRAGGING);
+            applyState(snapshot.state || STATE_COLLAPSED);
+            if (snapshot.height) panel.style.height = snapshot.height;
+        }
+        return true;
+    }
+
+    function getState() {
+        return {
+            state: currentState,
+            suspended: suspended,
+            reason: suspendedReason,
+        };
+    }
+
+    function setState(state) {
+        if (state !== STATE_COLLAPSED && state !== STATE_DEFAULT && state !== STATE_EXPANDED) return false;
+        applyState(state);
+        return true;
+    }
+
     /* ── Tap toggle: collapsed → default → expanded → default → … ── */
     function cycleState() {
+        if (suspended) return;
         switch (currentState) {
             case STATE_DEFAULT:
                 applyState(STATE_EXPANDED);
@@ -93,7 +153,7 @@
     var VELOCITY_THRESHOLD = 0.4; // px/ms — fast swipe overrides nearest-snap
 
     function onTouchStart(e) {
-        if (!e.touches || e.touches.length !== 1) return;
+        if (suspended || !e.touches || e.touches.length !== 1) return;
         isDragging = true;
         hasDragged = false;
         dragStartY = e.touches[0].clientY;
@@ -108,7 +168,7 @@
     }
 
     function onTouchMove(e) {
-        if (!isDragging) return;
+        if (suspended || !isDragging) return;
         var deltaY = dragStartY - e.touches[0].clientY;
         if (Math.abs(deltaY) > DRAG_THRESHOLD) hasDragged = true;
         e.preventDefault(); // prevent page scroll while dragging
@@ -117,7 +177,7 @@
     }
 
     function onTouchEnd(e) {
-        if (!isDragging) return;
+        if (suspended || !isDragging) return;
         isDragging = false;
         panel.classList.remove(CSS_DRAGGING);
 
@@ -174,7 +234,7 @@
     var stateBeforeKeyboard = null;
 
     function onViewportResize() {
-        if (!window.visualViewport) return;
+        if (suspended || !window.visualViewport) return;
         var ratio = window.visualViewport.height / window.innerHeight;
 
         // Keyboard likely open when viewport shrinks below 70% of full height
@@ -198,6 +258,7 @@
     /* ── Orientation change: recalc heights ── */
     function onOrientationChange() {
         recalcHeights();
+        if (suspended) return;
         // In landscape the CSS overlay rules don't apply, so just reset inline styles
         panel.style.height = '';
         panel.classList.remove(CSS_COLLAPSED, CSS_EXPANDED, CSS_DRAGGING);
@@ -222,6 +283,7 @@
 
         // Chevron tap
         toggle.addEventListener('click', function (e) {
+            if (suspended) return;
             e.stopPropagation();
             cycleState();
         });
@@ -230,6 +292,7 @@
         var inputShell = panel.querySelector('.chat-input-shell');
         if (inputShell) {
             inputShell.addEventListener('click', function (e) {
+                if (suspended) return;
                 if (currentState === STATE_COLLAPSED) {
                     // Only expand if user tapped the shell itself or the handle area,
                     // not an interactive element (input, button)
@@ -265,8 +328,22 @@
             recalcHeights();
         });
 
+        if (pendingSuspendReason) suspend(pendingSuspendReason);
         console.log('[MobileChatOverlay] Overlay chat active — fullscreen avatar mode.');
     }
+
+    window.NEXUS_MOBILE_CHAT_OVERLAY = {
+        getState: getState,
+        setState: setState,
+        suspend: suspend,
+        resume: resume,
+        isSuspended: function () { return suspended; },
+        states: {
+            collapsed: STATE_COLLAPSED,
+            default: STATE_DEFAULT,
+            expanded: STATE_EXPANDED,
+        },
+    };
 
     /* ── Boot ── */
     if (document.readyState === 'loading') {
