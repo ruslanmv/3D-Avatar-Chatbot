@@ -501,7 +501,7 @@ const SceneTaleConversationView = (() => {
             });
         }
         for (const edit of doc.querySelectorAll('[data-action="another-version"]')) {
-            edit.textContent = 'Edit setup';
+            if (edit.textContent !== 'Edit setup') edit.textContent = 'Edit setup';
         }
         for (const meta of doc.querySelectorAll('.nexus-story-ready-meta')) {
             if (/Story ready/i.test(meta.textContent || '')) {
