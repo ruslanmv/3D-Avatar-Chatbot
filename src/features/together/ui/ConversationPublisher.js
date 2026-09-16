@@ -38,6 +38,7 @@ const ConversationPublisher = (() => {
     const SCENE_TALE_VIEW_SRC = 'src/features/together/ui/SceneTaleConversationView.js';
     const SCENE_TALE_SETUP_VIEW_SRC = 'src/features/together/ui/SceneTaleSetupView.js';
     const SCENE_TALE_ART_VIEW_SRC = 'src/features/together/ui/SceneTaleArtView.js';
+    const SCENE_TALE_MOBILE_MODE_SRC = 'src/features/together/ui/SceneTaleMobileMode.js';
 
     function ask() {
         return (typeof window !== 'undefined' && window.NEXUS_YT_ASK) || null;
@@ -101,6 +102,20 @@ const ConversationPublisher = (() => {
         });
     }
 
+    /**
+     * Ordinary mobile conversation is chat-first; Scene Tale must be stage-first. This small
+     * presentation layer activates only while a phone-sized Scene Tale HUD exists. It compacts
+     * the top bar/composer, constrains narration, removes timer-driven autoscroll and restores
+     * the normal mobile chat geometry as soon as the story exits.
+     */
+    function ensureSceneTaleMobileMode(win, doc) {
+        return ensureScript(win, doc, {
+            globalName: 'NEXUS_SCENE_TALE_MOBILE_MODE',
+            src: SCENE_TALE_MOBILE_MODE_SRC,
+            marker: 'nexus-scene-tale-mobile-mode',
+        });
+    }
+
     function sceneTaleSource(win) {
         const w = win || (typeof window !== 'undefined' ? window : null);
         const session = w && w.NEXUS_MEDIA_SESSION;
@@ -113,7 +128,6 @@ const ConversationPublisher = (() => {
         }
     }
 
-    /** What she says above the card. The title in quotes, because it is what you picked. */
     /**
      * What the card says it is doing.
      *
@@ -164,6 +178,7 @@ const ConversationPublisher = (() => {
         const w = win || (typeof window !== 'undefined' ? window : null);
         if (!play || !sceneTaleSource(w) || !d || !w) return null;
         ensureSceneTaleView(w, d);
+        ensureSceneTaleMobileMode(w, d);
         const view = w.NEXUS_SCENE_TALE_VIEW;
         if (!view || typeof view.attachSoundtrack !== 'function') return null;
         try {
@@ -266,16 +281,19 @@ const ConversationPublisher = (() => {
         ensureSceneTaleView,
         ensureSceneTaleSetupView,
         ensureSceneTaleArtView,
+        ensureSceneTaleMobileMode,
         sceneTaleSource,
         publishSceneTaleBackground,
         SCENE_TALE_VIEW_SRC,
         SCENE_TALE_SETUP_VIEW_SRC,
         SCENE_TALE_ART_VIEW_SRC,
+        SCENE_TALE_MOBILE_MODE_SRC,
     };
 
     if (typeof window !== 'undefined' && typeof document !== 'undefined') {
         ensureSceneTaleArtView(window, document);
         ensureSceneTaleView(window, document);
+        ensureSceneTaleMobileMode(window, document);
         ensureSceneTaleSetupView(window, document);
     }
     return api;
