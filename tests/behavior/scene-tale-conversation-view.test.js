@@ -129,7 +129,7 @@ describe('Conversation-owned Scene Tale surface', () => {
             win: window,
             doc: document,
             say: jest.fn(),
-            timingScale: 1,
+            timingScale: 0,
             bus: { emit: jest.fn() },
         });
         window.NEXUS_BD.togetherPanel.activities.set('playground', { player });
@@ -149,7 +149,7 @@ describe('Conversation-owned Scene Tale surface', () => {
             win: window,
             doc: document,
             say: jest.fn(),
-            timingScale: 1,
+            timingScale: 0,
             bus: { emit: jest.fn() },
         });
         window.NEXUS_BD.togetherPanel.activities.set('playground', { player });
