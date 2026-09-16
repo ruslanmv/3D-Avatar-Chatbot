@@ -257,7 +257,7 @@
             '  </div>' +
             '  <div class="spicy-age-actions">' +
             '    <button class="secondary-btn" id="spicy-age-cancel">Cancel</button>' +
-            '    <button class="primary-btn" id="spicy-age-confirm" disabled>Continue with verification</button>' +
+            '    <button class="primary-btn" id="spicy-age-confirm" disabled>Accept</button>' +
             '  </div>' +
             '</div>';
 
@@ -415,7 +415,10 @@
 
         const toggle = document.getElementById('spicy-mode-toggle');
         if (toggle) {
-            toggle.checked = active;
+            // Accepting the conditions is the user's ON choice, so keep the switch visually ON
+            // while trusted verification finishes. Private itself still remains unavailable until
+            // `active` is true; this changes presentation only, not the trusted gate.
+            toggle.checked = active || checking;
             toggle.disabled = checking;
             toggle.setAttribute('aria-busy', checking ? 'true' : 'false');
         }
