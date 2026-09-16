@@ -2,10 +2,9 @@
  * Settings-side Private gate.
  *
  * Turning the preference on may request trusted verification, but `isEnabled()` remains false
- * until adultVerified and the repository's existing ConsentFlow are both ready. VERIFYING is
- * shown only after a request was really sent; missing/disconnected verification immediately
- * returns the switch to OFF. Verification loss turns the preference OFF rather than silently
- * restoring it on reconnect.
+ * until adultVerified and the repository's existing ConsentFlow are both ready. If the normal
+ * HomePilot realtime session is not connected yet, the Settings action re-runs BridgeDiscovery,
+ * reconnects that existing session adapter, and only then sends adult_verify_request.
  */
 
 /* global describe, test, expect, beforeEach, afterEach, jest */
@@ -19,7 +18,7 @@ function adultFlow() {
     };
 }
 
-function loadGate({ verified = false, connected = true, storedEnabled = false } = {}) {
+function loadGate({ verified = false, connected = true, storedEnabled = false, discovery = null } = {}) {
     jest.resetModules();
     localStorage.clear();
     localStorage.setItem('nexus_spicy_verified', 'true');
@@ -32,6 +31,16 @@ function loadGate({ verified = false, connected = true, storedEnabled = false } 
         </section>`;
 
     const flow = adultFlow();
+    const session = {
+        connected,
+        socket: connected ? {} : null,
+        session: connected
+            ? { enabled: true, url: 'wss://test/avatar/session', auth: '' }
+            : { enabled: false, url: '', auth: '' },
+        config: { session: {} },
+        send: jest.fn(() => session.connected),
+        connect: jest.fn(() => Boolean(session.session.enabled && session.session.url)),
+    };
     const director = {
         blackboard: { adultVerified: verified, nsfwAllowed: false },
         adult: verified ? flow : null,
@@ -39,15 +48,17 @@ function loadGate({ verified = false, connected = true, storedEnabled = false } 
         modes: {},
         clips: null,
         adapters: [],
-        session: { connected, send: jest.fn(() => connected) },
+        session,
     };
     window.NEXUS_BD = director;
     window.NEXUS_BD_CONSENT_FLOW = { attach: jest.fn(() => flow) };
     window.NEXUS_BD_PROFILE_ADULT = { id: 'adult' };
     window.NEXUS_BD_SAY = jest.fn();
+    if (discovery) window.NEXUS_BD_BRIDGE_DISCOVERY = { discover: jest.fn(discovery) };
+    else delete window.NEXUS_BD_BRIDGE_DISCOVERY;
 
     require('../../src/SpicyGate.js');
-    return { gate: window.NEXUS_SPICY, director, flow };
+    return { gate: window.NEXUS_SPICY, director, flow, session };
 }
 
 beforeEach(() => {
@@ -58,6 +69,7 @@ beforeEach(() => {
     delete window.NEXUS_BD_CONSENT_FLOW;
     delete window.NEXUS_BD_PROFILE_ADULT;
     delete window.NEXUS_BD_SAY;
+    delete window.NEXUS_BD_BRIDGE_DISCOVERY;
 });
 
 afterEach(() => {
@@ -70,6 +82,7 @@ afterEach(() => {
     delete window.NEXUS_BD_CONSENT_FLOW;
     delete window.NEXUS_BD_PROFILE_ADULT;
     delete window.NEXUS_BD_SAY;
+    delete window.NEXUS_BD_BRIDGE_DISCOVERY;
 });
 
 describe('Private Settings gate', () => {
@@ -82,6 +95,7 @@ describe('Private Settings gate', () => {
         expect(s.director.session.send).toHaveBeenCalledWith({ v: 1, type: 'adult_verify_request' });
         expect(s.gate.isEnabled()).toBe(false);
         expect(s.gate.isPending()).toBe(true);
+        expect(s.gate.isConnecting()).toBe(false);
         expect(done).not.toHaveBeenCalled();
         expect(localStorage.getItem('nexus_spicy_enabled')).toBe('false');
         expect(document.getElementById('spicy-mode-toggle').checked).toBe(true);
@@ -123,7 +137,63 @@ describe('Private Settings gate', () => {
         expect(toggle.disabled).toBe(true);
     });
 
-    test('a disconnected verification service never enters VERIFYING or persists an eventual-on preference', () => {
+    test('an accepted ON choice re-discovers HomePilot and reconnects before verification', async () => {
+        const found = {
+            available: true,
+            reason: 'ok',
+            sessionUrl: 'wss://bridge.example/v1/avatar/session',
+            auth: 'pair-token',
+            features: ['directives', 'panels'],
+        };
+        const s = loadGate({
+            verified: false,
+            connected: false,
+            discovery: () => Promise.resolve(found),
+        });
+        const done = jest.fn();
+
+        s.gate.setEnabled(true, done);
+
+        expect(s.gate.isConnecting()).toBe(true);
+        expect(s.gate.isPending()).toBe(false);
+        expect(document.getElementById('spicy-mode-toggle').checked).toBe(true);
+        expect(document.getElementById('spicy-mode-toggle').disabled).toBe(true);
+        expect(document.getElementById('spicy-status-label').textContent).toBe('CONNECTING…');
+        expect(s.director.session.send).not.toHaveBeenCalled();
+
+        await Promise.resolve();
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(window.NEXUS_BD_BRIDGE_DISCOVERY.discover).toHaveBeenCalledTimes(1);
+        expect(s.session.session).toMatchObject({
+            enabled: true,
+            url: found.sessionUrl,
+            auth: found.auth,
+            source: 'bridge',
+        });
+        expect(s.session.connect).toHaveBeenCalled();
+
+        // Opening the normal SessionAdapter socket is the boundary between CONNECTING and
+        // VERIFYING. SpicyGate does not forge that state itself.
+        s.session.connected = true;
+        s.session.socket = {};
+        jest.advanceTimersByTime(500);
+
+        expect(s.gate.isConnecting()).toBe(false);
+        expect(s.gate.isPending()).toBe(true);
+        expect(s.session.send).toHaveBeenCalledWith({ v: 1, type: 'adult_verify_request' });
+        expect(document.getElementById('spicy-status-label').textContent).toBe('VERIFYING…');
+
+        s.director.blackboard.adultVerified = true;
+        jest.advanceTimersByTime(500);
+
+        expect(s.gate.isEnabled()).toBe(true);
+        expect(done).toHaveBeenCalledWith(true);
+        expect(document.getElementById('spicy-status-label').textContent).toBe('ON');
+    });
+
+    test('a disconnected service with no discoverable HomePilot never enters fake VERIFYING', () => {
         const s = loadGate({ verified: false, connected: false });
         const done = jest.fn();
 
@@ -132,6 +202,7 @@ describe('Private Settings gate', () => {
         expect(s.director.session.send).not.toHaveBeenCalled();
         expect(s.gate.isEnabled()).toBe(false);
         expect(s.gate.isPending()).toBe(false);
+        expect(s.gate.isConnecting()).toBe(false);
         expect(done).toHaveBeenCalledWith(false);
         expect(localStorage.getItem('nexus_spicy_enabled')).toBe('false');
         expect(document.getElementById('spicy-mode-toggle').disabled).toBe(false);
