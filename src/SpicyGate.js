@@ -8,45 +8,42 @@
  *   If Private is visible in Together, Private is already usable.
  *   If Private is not usable, the tile does not exist.
  *
- * The local confirmation stored here is only a device preference. It never writes trusted
- * adulthood state. Trusted adulthood still comes exclusively from the connected session via
- * blackboard.adultVerified. Enabling Private therefore has two phases that are deliberately
- * presented only in Settings: local confirmation, then trusted verification + existing
- * ConsentFlow attachment. NEXUS_SPICY.isEnabled() becomes true only after both are ready.
+ * The local 18+ confirmation is only a device acknowledgement. It never writes trusted
+ * adulthood state. Trusted adulthood comes exclusively from the connected HomePilot session
+ * through blackboard.adultVerified, and Private is committed ON only after that attestation and
+ * the existing ConsentFlow are both ready.
  *
  * Storage (localStorage):
- *   nexus_spicy_enabled  — the user's requested Private preference
- *   nexus_spicy_verified — legacy/local confirmation only; never trusted adulthood
+ *   nexus_spicy_enabled  — true only for a currently usable Private gate; pending verification
+ *                           is never persisted as enabled
+ *   nexus_spicy_verified — local confirmation only; never trusted adulthood
  *
  * Exposes: window.NEXUS_SPICY
  */
 (function () {
     const VERIFY_RETRY_MS = 5000;
-    const ENABLE_TIMEOUT_MS = 20000;
+    const ENABLE_TIMEOUT_MS = 10000;
     const REFRESH_MS = 500;
 
-    let enabled = localStorage.getItem('nexus_spicy_enabled') === 'true';
+    // Trusted adulthood is session-scoped. A persisted ON bit from an earlier page/session can
+    // therefore never be restored before a fresh adult_ack; starting OFF also prevents booting
+    // directly into the misleading VERIFYING state.
+    let enabled = false;
     let verified = localStorage.getItem('nexus_spicy_verified') === 'true';
+    let pending = false;
     let pendingSince = 0;
     let lastVerifyRequestAt = 0;
-    let lastUsable = false;
     let refreshTimer = null;
     const listeners = [];
     const pendingCallbacks = [];
 
-    // A stored preference without the local confirmation is never allowed to survive startup.
-    if (enabled && !verified) {
-        enabled = false;
+    if (localStorage.getItem('nexus_spicy_enabled') === 'true') {
         localStorage.setItem('nexus_spicy_enabled', 'false');
     }
 
     function persist() {
         localStorage.setItem('nexus_spicy_enabled', enabled ? 'true' : 'false');
         localStorage.setItem('nexus_spicy_verified', verified ? 'true' : 'false');
-    }
-
-    function requested() {
-        return enabled && verified;
     }
 
     function director() {
@@ -92,22 +89,28 @@
     }
 
     function usable() {
-        return requested() && trustedReady();
+        return enabled && verified && trustedReady();
+    }
+
+    function sessionReady() {
+        const d = director();
+        const session = d && d.session;
+        return Boolean(session && session.connected === true && typeof session.send === 'function');
     }
 
     /**
-     * Ask the connected service for trusted adulthood verification. The client never interprets
-     * its own request as success; only adultVerified=true from the session can unlock Private.
+     * Ask the connected service for trusted adulthood verification. VERIFYING is entered only
+     * after this returns true. A missing/disconnected session is an immediate unavailable state,
+     * not a fake in-progress request.
      */
     function requestTrustedVerification(force) {
         const d = director();
-        if (!requested() || (d && d.blackboard && d.blackboard.adultVerified === true)) return false;
+        if (d && d.blackboard && d.blackboard.adultVerified === true) return false;
+        if (!sessionReady()) return false;
         const now = Date.now();
-        if (!force && lastVerifyRequestAt && now - lastVerifyRequestAt < VERIFY_RETRY_MS) return false;
-        const session = d && d.session;
-        if (!session || typeof session.send !== 'function') return false;
+        if (!force && lastVerifyRequestAt && now - lastVerifyRequestAt < VERIFY_RETRY_MS) return true;
         try {
-            const sent = session.send({ v: 1, type: 'adult_verify_request' }) === true;
+            const sent = d.session.send({ v: 1, type: 'adult_verify_request' }) === true;
             if (sent) lastVerifyRequestAt = now;
             return sent;
         } catch (_) {
@@ -124,69 +127,79 @@
         }
     }
 
-    /**
-     * Subscribers are told what the user requested, not granted trusted state. The Together
-     * bridge still calls isEnabled() before exposing anything, so a request can trigger its
-     * verification plumbing without ever making a locked tile visible.
-     */
-    function notify() {
-        const value = requested();
+    function notify(value) {
+        const active = Boolean(value);
         for (let i = 0; i < listeners.length; i++) {
             try {
-                listeners[i](value);
+                listeners[i](active);
             } catch (_) {}
         }
     }
 
-    function disableRequested(reason) {
-        const changed = enabled;
+    function disableGate(reason, { notifyChange = true } = {}) {
+        const changed = enabled || pending;
         enabled = false;
+        pending = false;
         pendingSince = 0;
         lastVerifyRequestAt = 0;
-        lastUsable = false;
         persist();
-        if (changed) notify();
+        if (changed && notifyChange) notify(false);
         updateUI(reason || 'off');
         flushCallbacks(false);
     }
 
+    function commitEnabled() {
+        if (!verified || !trustedReady()) return false;
+        const changed = !enabled || pending;
+        enabled = true;
+        pending = false;
+        pendingSince = 0;
+        lastVerifyRequestAt = 0;
+        persist();
+        updateUI('on');
+        if (changed) notify(true);
+        flushCallbacks(true);
+        return true;
+    }
+
     /**
-     * Reconcile the Settings switch with trusted session state. If verification is lost after
-     * Private was usable, the preference is turned OFF and will not silently restore later.
+     * Reconcile the Settings switch with trusted session state. Pending is ephemeral and exists
+     * only while a request was really sent. Verification loss makes OFF absolute and a reconnect
+     * never silently restores Private.
      */
     function refreshTrustedState() {
-        if (!requested()) {
-            lastUsable = false;
+        if (enabled) {
+            if (trustedReady()) {
+                updateUI('on');
+                return true;
+            }
+            disableGate('verification-lost');
+            return false;
+        }
+
+        if (!pending) {
             updateUI('off');
             return false;
         }
 
-        const ready = trustedReady();
-        if (ready) {
-            const becameUsable = !lastUsable;
-            lastUsable = true;
-            pendingSince = 0;
-            lastVerifyRequestAt = 0;
-            updateUI('on');
-            if (becameUsable) notify();
-            flushCallbacks(true);
-            return true;
-        }
+        if (trustedReady()) return commitEnabled();
 
-        // Trusted state disappeared after an active/usable session. Make OFF absolute and do not
-        // re-enable when a later reconnect happens; the user can explicitly enable again.
-        if (lastUsable) {
-            disableRequested('verification-lost');
+        // A request that loses its transport is no longer legitimately "verifying".
+        if (!sessionReady()) {
+            disableGate('unavailable');
             return false;
         }
 
-        if (!pendingSince) pendingSince = Date.now();
         if (Date.now() - pendingSince >= ENABLE_TIMEOUT_MS) {
-            disableRequested('verification-timeout');
+            disableGate('verification-timeout');
             return false;
         }
 
-        requestTrustedVerification(false);
+        if (!requestTrustedVerification(false)) {
+            disableGate('unavailable');
+            return false;
+        }
+
         updateUI('verifying');
         return false;
     }
@@ -270,17 +283,15 @@
     window.NEXUS_SPICY = {
         /** True only when the local preference, trusted verification and ConsentFlow are ready. */
         isEnabled: function () {
-            const active = usable();
-            // If Together can see Private, remember that it was genuinely usable. A later
-            // verification loss must therefore turn the preference OFF instead of silently
-            // restoring it on reconnect.
-            if (active) lastUsable = true;
-            return active;
+            if (!enabled) return false;
+            if (usable()) return true;
+            disableGate('verification-lost');
+            return false;
         },
 
-        /** User asked for Private but trusted verification/ConsentFlow is not ready yet. */
+        /** A real trusted-verification request is currently in flight. */
         isPending: function () {
-            return requested() && !trustedReady();
+            return pending;
         },
 
         /** Legacy/local confirmation state. Not the trusted session attestation. */
@@ -294,26 +305,40 @@
         },
 
         /**
-         * Enable or disable Private Mode. Enabling is not committed as ON until trusted session
-         * verification and the existing ConsentFlow are ready.
+         * Enable or disable Private Mode. Enabling is committed only after a real connected
+         * verification request succeeds and trusted state/ConsentFlow become ready.
          */
         setEnabled: function (on, onComplete) {
             if (typeof onComplete === 'function') pendingCallbacks.push(onComplete);
 
             if (!on) {
-                disableRequested('user');
+                disableGate('user');
                 return;
             }
 
             const begin = function () {
-                enabled = true;
-                pendingSince = Date.now();
+                if (trustedReady()) {
+                    commitEnabled();
+                    return;
+                }
+
+                // Do not write an eventual-on preference and do not enter VERIFYING unless the
+                // request was actually accepted by a connected session.
+                enabled = false;
+                pending = false;
+                pendingSince = 0;
                 lastVerifyRequestAt = 0;
-                lastUsable = false;
                 persist();
-                notify();
-                requestTrustedVerification(true);
-                refreshTrustedState();
+
+                if (!requestTrustedVerification(true)) {
+                    updateUI('unavailable');
+                    flushCallbacks(false);
+                    return;
+                }
+
+                pending = true;
+                pendingSince = Date.now();
+                updateUI('verifying');
             };
 
             if (!verified) {
@@ -337,7 +362,7 @@
         /** Reset local confirmation (testing / parental control). */
         resetVerification: function () {
             verified = false;
-            disableRequested('reset');
+            disableGate('reset');
             persist();
         },
     };
@@ -371,18 +396,18 @@
 
     function updateUI(state) {
         const active = usable();
-        const pending = requested() && !active;
+        const checking = pending && !active;
 
         const toggle = document.getElementById('spicy-mode-toggle');
         if (toggle) {
             toggle.checked = active;
-            toggle.disabled = pending;
-            toggle.setAttribute('aria-busy', pending ? 'true' : 'false');
+            toggle.disabled = checking;
+            toggle.setAttribute('aria-busy', checking ? 'true' : 'false');
         }
 
         const label = document.getElementById('spicy-status-label');
         if (label) {
-            label.textContent = pending ? 'VERIFYING…' : active ? 'ON' : 'OFF';
+            label.textContent = checking ? 'VERIFYING…' : active ? 'ON' : 'OFF';
             label.className = 'spicy-status-label' + (active ? ' spicy-status-on' : ' spicy-status-off');
         }
 
@@ -393,7 +418,7 @@
         for (let i = 0; i < gated.length; i++) gated[i].style.display = active ? '' : 'none';
 
         const section = toggle && toggle.closest ? toggle.closest('.config-section') : null;
-        if (section) section.dataset.privateState = state || (pending ? 'verifying' : active ? 'on' : 'off');
+        if (section) section.dataset.privateState = state || (checking ? 'verifying' : active ? 'on' : 'off');
     }
 
     function initUI() {
@@ -403,7 +428,6 @@
                 window.NEXUS_SPICY.setEnabled(toggle.checked, function () {
                     updateUI();
                 });
-                // Never leave a visually-ON switch while verification is still pending.
                 updateUI();
             });
         }
@@ -418,12 +442,10 @@
         refreshTrustedState();
     }, REFRESH_MS);
 
-    // Keep the timer private, but let page teardown/test harnesses stop it without changing the
-    // public preference semantics.
     window.addEventListener('beforeunload', function () {
         if (refreshTimer) window.clearInterval(refreshTimer);
         refreshTimer = null;
     }, { once: true });
 
-    console.log('[SpicyGate] Initialized — Private usable:', usable() ? 'ON' : requested() ? 'VERIFYING' : 'OFF');
+    console.log('[SpicyGate] Initialized — Private usable:', usable() ? 'ON' : 'OFF');
 })();
