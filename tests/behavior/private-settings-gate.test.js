@@ -2,8 +2,10 @@
  * Settings-side Private gate.
  *
  * Turning the preference on may request trusted verification, but `isEnabled()` remains false
- * until adultVerified and the repository's existing ConsentFlow are both ready. Verification
- * loss turns the preference OFF rather than silently restoring it on reconnect.
+ * until adultVerified and the repository's existing ConsentFlow are both ready. VERIFYING is
+ * shown only after a request was really sent; missing/disconnected verification immediately
+ * returns the switch to OFF. Verification loss turns the preference OFF rather than silently
+ * restoring it on reconnect.
  */
 
 /* global describe, test, expect, beforeEach, afterEach, jest */
@@ -17,11 +19,11 @@ function adultFlow() {
     };
 }
 
-function loadGate({ verified = false, connected = true } = {}) {
+function loadGate({ verified = false, connected = true, storedEnabled = false } = {}) {
     jest.resetModules();
     localStorage.clear();
     localStorage.setItem('nexus_spicy_verified', 'true');
-    localStorage.setItem('nexus_spicy_enabled', 'false');
+    localStorage.setItem('nexus_spicy_enabled', storedEnabled ? 'true' : 'false');
     document.body.innerHTML = `
         <section class="config-section">
             <div class="config-title">PRIVATE MODE <span id="spicy-status-label">OFF</span></div>
@@ -81,8 +83,25 @@ describe('Private Settings gate', () => {
         expect(s.gate.isEnabled()).toBe(false);
         expect(s.gate.isPending()).toBe(true);
         expect(done).not.toHaveBeenCalled();
+        expect(localStorage.getItem('nexus_spicy_enabled')).toBe('false');
         expect(document.getElementById('spicy-mode-toggle').checked).toBe(false);
         expect(document.getElementById('spicy-status-label').textContent).toBe('VERIFYING…');
+    });
+
+    test('a disconnected verification service never enters VERIFYING or persists an eventual-on preference', () => {
+        const s = loadGate({ verified: false, connected: false });
+        const done = jest.fn();
+
+        s.gate.setEnabled(true, done);
+
+        expect(s.director.session.send).not.toHaveBeenCalled();
+        expect(s.gate.isEnabled()).toBe(false);
+        expect(s.gate.isPending()).toBe(false);
+        expect(done).toHaveBeenCalledWith(false);
+        expect(localStorage.getItem('nexus_spicy_enabled')).toBe('false');
+        expect(document.getElementById('spicy-mode-toggle').disabled).toBe(false);
+        expect(document.getElementById('spicy-status-label').textContent).toBe('OFF');
+        expect(document.querySelector('.config-section').dataset.privateState).toBe('unavailable');
     });
 
     test('adult_ack plus the existing ConsentFlow makes the switch usable and only then reports ON', () => {
@@ -98,6 +117,7 @@ describe('Private Settings gate', () => {
         expect(s.gate.isEnabled()).toBe(true);
         expect(s.gate.isPending()).toBe(false);
         expect(done).toHaveBeenCalledWith(true);
+        expect(localStorage.getItem('nexus_spicy_enabled')).toBe('true');
         expect(document.getElementById('spicy-mode-toggle').checked).toBe(true);
         expect(document.getElementById('spicy-status-label').textContent).toBe('ON');
     });
@@ -133,12 +153,24 @@ describe('Private Settings gate', () => {
         const done = jest.fn();
         s.gate.setEnabled(true, done);
 
-        jest.advanceTimersByTime(20500);
+        jest.advanceTimersByTime(10500);
 
         expect(s.gate.isEnabled()).toBe(false);
         expect(s.gate.isPending()).toBe(false);
         expect(localStorage.getItem('nexus_spicy_enabled')).toBe('false');
         expect(done).toHaveBeenCalledWith(false);
+        expect(document.getElementById('spicy-mode-toggle').disabled).toBe(false);
+        expect(document.getElementById('spicy-status-label').textContent).toBe('OFF');
+    });
+
+    test('reload never restores a stale enabled bit into VERIFYING before a trusted session exists', () => {
+        const s = loadGate({ verified: false, connected: false, storedEnabled: true });
+
+        expect(s.gate.isEnabled()).toBe(false);
+        expect(s.gate.isPending()).toBe(false);
+        expect(localStorage.getItem('nexus_spicy_enabled')).toBe('false');
+        expect(s.director.session.send).not.toHaveBeenCalled();
+        expect(document.getElementById('spicy-mode-toggle').disabled).toBe(false);
         expect(document.getElementById('spicy-status-label').textContent).toBe('OFF');
     });
 });
