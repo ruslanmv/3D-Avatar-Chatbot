@@ -84,7 +84,7 @@ describe('Private Settings gate', () => {
         expect(s.gate.isPending()).toBe(true);
         expect(done).not.toHaveBeenCalled();
         expect(localStorage.getItem('nexus_spicy_enabled')).toBe('false');
-        expect(document.getElementById('spicy-mode-toggle').checked).toBe(false);
+        expect(document.getElementById('spicy-mode-toggle').checked).toBe(true);
         expect(document.getElementById('spicy-status-label').textContent).toBe('VERIFYING…');
     });
 
@@ -108,6 +108,7 @@ describe('Private Settings gate', () => {
 
         const consent = overlay.querySelector('#spicy-age-consent');
         const confirm = overlay.querySelector('#spicy-age-confirm');
+        expect(confirm.textContent).toBe('Accept');
         expect(confirm.disabled).toBe(true);
         consent.checked = true;
         consent.dispatchEvent(new Event('change', { bubbles: true }));
@@ -117,6 +118,7 @@ describe('Private Settings gate', () => {
         expect(document.querySelector('.spicy-age-overlay')).toBeNull();
         expect(s.director.session.send).toHaveBeenCalledWith({ v: 1, type: 'adult_verify_request' });
         expect(s.gate.isPending()).toBe(true);
+        expect(toggle.checked).toBe(true);
         expect(document.getElementById('spicy-status-label').textContent).toBe('VERIFYING…');
         expect(toggle.disabled).toBe(true);
     });
