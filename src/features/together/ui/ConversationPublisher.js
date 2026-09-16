@@ -37,6 +37,7 @@ const ConversationPublisher = (() => {
 
     const SCENE_TALE_VIEW_SRC = 'src/features/together/ui/SceneTaleConversationView.js';
     const SCENE_TALE_SETUP_VIEW_SRC = 'src/features/together/ui/SceneTaleSetupView.js';
+    const SCENE_TALE_ART_VIEW_SRC = 'src/features/together/ui/SceneTaleArtView.js';
 
     function ask() {
         return (typeof window !== 'undefined' && window.NEXUS_YT_ASK) || null;
@@ -84,6 +85,19 @@ const ConversationPublisher = (() => {
             globalName: 'NEXUS_SCENE_TALE_SETUP_VIEW',
             src: SCENE_TALE_SETUP_VIEW_SRC,
             marker: 'nexus-scene-tale-setup-view',
+        });
+    }
+
+    /**
+     * Scene Tale art is a third presentation-only layer. It reads the canonical ambience art
+     * manifest and adds the current scene as a hero image inside Conversation. The story still
+     * runs when the manifest or image cannot load.
+     */
+    function ensureSceneTaleArtView(win, doc) {
+        return ensureScript(win, doc, {
+            globalName: 'NEXUS_SCENE_TALE_ART_VIEW',
+            src: SCENE_TALE_ART_VIEW_SRC,
+            marker: 'nexus-scene-tale-art-view',
         });
     }
 
@@ -251,13 +265,16 @@ const ConversationPublisher = (() => {
         start,
         ensureSceneTaleView,
         ensureSceneTaleSetupView,
+        ensureSceneTaleArtView,
         sceneTaleSource,
         publishSceneTaleBackground,
         SCENE_TALE_VIEW_SRC,
         SCENE_TALE_SETUP_VIEW_SRC,
+        SCENE_TALE_ART_VIEW_SRC,
     };
 
     if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+        ensureSceneTaleArtView(window, document);
         ensureSceneTaleView(window, document);
         ensureSceneTaleSetupView(window, document);
     }
