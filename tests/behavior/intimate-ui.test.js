@@ -1,10 +1,10 @@
 /**
- * Intimate Together UI gate.
+ * Private/Intimate Together UI gate.
  *
- * The consumer-facing tile is deliberately ordinary-sized and deliberately absent until
- * three independent facts are true: deployment capability, trusted session verification,
- * and the user's existing NEXUS_SPICY preference. The bridge must also remove/stop the tile
- * immediately when that preference is turned off.
+ * The consumer-facing tile is deliberately ordinary-sized. Its visibility is controlled by
+ * the user's explicit Private Mode setting, while actually starting the adult experience
+ * still requires deployment capability, trusted session verification and the existing
+ * ConsentFlow. This keeps the Settings switch visibly useful without weakening the gate.
  */
 
 /* global describe, test, expect, beforeEach, afterEach, jest */
@@ -77,10 +77,10 @@ class AdultFlowMock {
     }
 }
 
-function director({ enabled = true, verified = true, available = true } = {}) {
+function director({ enabled = true, verified = true, available = true, withAdult = true } = {}) {
     const p = panel();
     const spicy = spicyGate(enabled);
-    const adult = new AdultFlowMock();
+    const adult = withAdult ? new AdultFlowMock() : null;
     const b = bus();
     const d = {
         config: { adult: { available } },
@@ -107,10 +107,17 @@ afterEach(() => {
     document.body.innerHTML = '';
 });
 
-describe('Intimate eligibility', () => {
+describe('Private visibility vs adult eligibility', () => {
     const eligibility = PlaygroundActivity.IntimateActivity.eligibility;
+    const visibility = PlaygroundActivity.IntimateActivity.visibility;
 
-    test('requires deployment flag, trusted verification, and the existing local preference', () => {
+    test('Private tile visibility follows only the explicit Settings preference', () => {
+        expect(visibility({ isEnabled: () => true }).ok).toBe(true);
+        expect(visibility({ isEnabled: () => false }).ok).toBe(false);
+        expect(visibility(null).ok).toBe(false);
+    });
+
+    test('starting still requires deployment flag, trusted verification, flow, and preference', () => {
         const adult = new AdultFlowMock();
         const spicy = { isEnabled: () => true };
         const base = { config: { adult: { available: true } }, adult, blackboard: { adultVerified: true } };
@@ -118,12 +125,13 @@ describe('Intimate eligibility', () => {
         expect(eligibility(base, spicy).ok).toBe(true);
         expect(eligibility({ ...base, config: { adult: { available: false } } }, spicy).ok).toBe(false);
         expect(eligibility({ ...base, blackboard: { adultVerified: false } }, spicy).ok).toBe(false);
+        expect(eligibility({ ...base, adult: null }, spicy).ok).toBe(false);
         expect(eligibility(base, { isEnabled: () => false }).ok).toBe(false);
     });
 });
 
-describe('Intimate tile bridge', () => {
-    test('does not advertise Intimate while the Settings preference is off', () => {
+describe('Private tile bridge', () => {
+    test('is absent while Private Mode is off', () => {
         const setup = director({ enabled: false });
         const bridge = PlaygroundActivity.installIntimateBridge({ bus: setup.bus });
         setup.panel.open();
@@ -134,8 +142,8 @@ describe('Intimate tile bridge', () => {
         bridge.detach();
     });
 
-    test('shows and hides the same-sized tile dynamically when the Settings preference changes', () => {
-        const setup = director({ enabled: false });
+    test('shows and hides the same-sized Private tile dynamically on desktop/mobile shared chooser', () => {
+        const setup = director({ enabled: false, verified: false, available: false, withAdult: false });
         const bridge = PlaygroundActivity.installIntimateBridge({ bus: setup.bus });
 
         setup.spicy.set(true);
@@ -144,7 +152,8 @@ describe('Intimate tile bridge', () => {
         expect(tile).not.toBeNull();
         expect(tile.classList.contains('nexus-bd-together-tile')).toBe(true);
         expect(tile.classList.contains('is-wide')).toBe(false);
-        expect(tile.textContent).toContain('Intimate');
+        expect(tile.textContent).toContain('Private');
+        expect(setup.panel.activities.has('intimate')).toBe(true);
 
         setup.spicy.set(false);
         tile = document.querySelector('[data-activity="intimate"]');
@@ -154,20 +163,55 @@ describe('Intimate tile bridge', () => {
         bridge.detach();
     });
 
-    test('trusted verification is also live: losing it removes the tile on the next sync', () => {
-        const setup = director({ enabled: true, verified: true });
+    test('unverified users only see neutral locked copy, not the adult presets', () => {
+        const setup = director({ enabled: true, verified: false, available: true });
         const bridge = PlaygroundActivity.installIntimateBridge({ bus: setup.bus });
-        expect(setup.panel.activities.has('intimate')).toBe(true);
+        const activity = setup.panel.activities.get('intimate');
+
+        expect(activity).toBeTruthy();
+        expect(activity.inputs()).toEqual([
+            expect.objectContaining({
+                id: 'private-locked',
+                label: 'Private Mode',
+                note: 'Available after trusted adult verification.',
+            }),
+        ]);
+
+        bridge.detach();
+    });
+
+    test('trusted verification loss keeps the neutral tile but removes access to presets', () => {
+        const setup = director({ enabled: true, verified: true, available: true });
+        const bridge = PlaygroundActivity.installIntimateBridge({ bus: setup.bus });
+        const activity = setup.panel.activities.get('intimate');
+
+        expect(activity.inputs().map((input) => input.id)).toEqual(['affectionate', 'romantic', 'sensual']);
 
         setup.director.blackboard.adultVerified = false;
         bridge.sync();
-        expect(setup.panel.activities.has('intimate')).toBe(false);
+
+        expect(setup.panel.activities.has('intimate')).toBe(true);
+        expect(activity.inputs().map((input) => input.id)).toEqual(['private-locked']);
 
         bridge.detach();
     });
 });
 
-describe('Intimate activity contract', () => {
+describe('Private activity contract', () => {
+    test('blocked starts fail before the adult flow can enter', async () => {
+        const adult = new AdultFlowMock();
+        const activity = new PlaygroundActivity.IntimateActivity.Intimate({
+            adult,
+            capability: () => ({ ok: false, why: 'trusted adult verification is not present' }),
+            bus: bus(),
+        });
+
+        expect(activity.inputs().map((input) => input.id)).toEqual(['private-locked']);
+        const result = await activity.start({ input: { id: 'romantic' } });
+        expect(result).toEqual({ ok: false, why: 'trusted adult verification is not present' });
+        expect(adult.enter).not.toHaveBeenCalled();
+    });
+
     test('uses Affectionate/Romantic/Sensual as ceilings and restores the adult flow afterwards', async () => {
         const adult = new AdultFlowMock();
         const activity = new PlaygroundActivity.IntimateActivity.Intimate({
@@ -178,6 +222,7 @@ describe('Intimate activity contract', () => {
 
         expect(activity.__contract).toBe(true);
         expect(activity.id).toBe('intimate');
+        expect(activity.title).toBe('Private');
         expect(activity.order).toBe(85);
         expect(activity.inputs().map((input) => [input.id, input.maxLevel])).toEqual([
             ['affectionate', 1],
