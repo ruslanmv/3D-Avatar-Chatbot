@@ -14,11 +14,8 @@
  *   - Drag the handle to resize; snaps on release
  *   - Auto-collapses when the virtual keyboard opens
  *
- * Scene Tale can temporarily suspend this state machine while it owns the
- * Conversation surface. Suspension snapshots the previous mobile chat state,
- * removes the collapsed/default/expanded ownership classes, guarantees that
- * chat-main/chat-history stay visible, and restores the exact stable state when
- * the experience exits.
+ * Purely additive — does not modify any existing module.
+ * Only activates when html.is-mobile is present (phones in portrait).
  */
 (function () {
     /* ── Guard: only run on mobile phones ── */
@@ -38,8 +35,6 @@
     var CSS_COLLAPSED = 'chat-overlay--collapsed';
     var CSS_EXPANDED = 'chat-overlay--expanded';
     var CSS_DRAGGING = 'chat-overlay--dragging';
-    var CSS_SCENE_TALE = 'chat-overlay--scene-tale';
-    var SCENE_TALE_ACTIVE = 'nexus-scene-tale-active';
 
     /* ── State ── */
     var currentState = STATE_COLLAPSED; // Start collapsed so avatar fills the screen
@@ -49,11 +44,6 @@
     var panel; // .chat-panel element
     var handle; // #chat-overlay-handle
     var toggle; // #chat-overlay-toggle
-    var suspended = false;
-    var suspendedReason = '';
-    var suspendedSnapshot = null;
-    var pendingSuspendReason = '';
-    var sceneTaleObserver = null;
 
     /* ── Helpers ── */
     function recalcHeights() {
@@ -61,25 +51,9 @@
         HEIGHT_EXPANDED = window.innerHeight * 0.85;
     }
 
-    function styleSnapshot(node, name) {
-        if (!node || !node.style) return { value: '', priority: '' };
-        return {
-            value: node.style.getPropertyValue(name) || '',
-            priority: node.style.getPropertyPriority(name) || '',
-        };
-    }
-
-    function restoreStyle(node, name, snapshot) {
-        if (!node || !node.style) return;
-        var saved = snapshot || { value: '', priority: '' };
-        if (saved.value) node.style.setProperty(name, saved.value, saved.priority || '');
-        else node.style.removeProperty(name);
-    }
-
     function applyState(state) {
         currentState = state;
-        if (!panel || suspended) return;
-        panel.classList.remove(CSS_COLLAPSED, CSS_EXPANDED, CSS_DRAGGING, CSS_SCENE_TALE);
+        panel.classList.remove(CSS_COLLAPSED, CSS_EXPANDED);
         panel.style.height = ''; // clear inline height from drag
 
         if (state === STATE_COLLAPSED) {
@@ -90,92 +64,8 @@
         // STATE_DEFAULT uses the CSS default (50vh) — no class needed
     }
 
-    function suspend(reason) {
-        var why = String(reason || 'external');
-        if (!panel) {
-            pendingSuspendReason = why;
-            return false;
-        }
-        if (suspended) return suspendedReason === why || !why;
-
-        var main = panel.querySelector('.chat-main');
-        var history = panel.querySelector('.chat-history');
-        suspendedSnapshot = {
-            state: currentState,
-            height: panel.style.height || '',
-            mainDisplay: styleSnapshot(main, 'display'),
-            historyDisplay: styleSnapshot(history, 'display'),
-        };
-        suspended = true;
-        suspendedReason = why;
-        pendingSuspendReason = '';
-        isDragging = false;
-        hasDragged = false;
-        panel.classList.remove(CSS_COLLAPSED, CSS_EXPANDED, CSS_DRAGGING);
-        panel.classList.add(CSS_SCENE_TALE);
-        panel.style.height = '';
-
-        // Scene Tale owns Conversation while active. These inline !important declarations are
-        // deliberate: the ordinary mobile stylesheet hides .chat-main with !important when
-        // collapsed, and a story choice must never depend on the user expanding that overlay.
-        if (why === 'scene-tale') {
-            if (main) main.style.setProperty('display', 'block', 'important');
-            if (history) history.style.setProperty('display', 'block', 'important');
-        }
-        return true;
-    }
-
-    function resume(reason) {
-        if (!suspended) return false;
-        if (reason && suspendedReason && String(reason) !== suspendedReason) return false;
-        var snapshot = suspendedSnapshot || {
-            state: currentState,
-            height: '',
-            mainDisplay: { value: '', priority: '' },
-            historyDisplay: { value: '', priority: '' },
-        };
-        var main = panel && panel.querySelector('.chat-main');
-        var history = panel && panel.querySelector('.chat-history');
-        suspended = false;
-        suspendedReason = '';
-        suspendedSnapshot = null;
-        if (panel) {
-            panel.classList.remove(CSS_SCENE_TALE, CSS_DRAGGING);
-            restoreStyle(main, 'display', snapshot.mainDisplay);
-            restoreStyle(history, 'display', snapshot.historyDisplay);
-            applyState(snapshot.state || STATE_COLLAPSED);
-            if (snapshot.height) panel.style.height = snapshot.height;
-        }
-        return true;
-    }
-
-    function getState() {
-        return {
-            state: currentState,
-            suspended: suspended,
-            reason: suspendedReason,
-        };
-    }
-
-    function setState(state) {
-        if (state !== STATE_COLLAPSED && state !== STATE_DEFAULT && state !== STATE_EXPANDED) return false;
-        applyState(state);
-        return true;
-    }
-
-    function syncSceneTaleOwnership() {
-        var active = html.classList.contains(SCENE_TALE_ACTIVE);
-        if (active) {
-            if (!suspended) suspend('scene-tale');
-            return true;
-        }
-        if (suspended && suspendedReason === 'scene-tale') resume('scene-tale');
-        return false;
-    }
-
     /* ── Tap toggle: collapsed → default → expanded → default → … ── */
     function cycleState() {
-        if (suspended) return;
         switch (currentState) {
             case STATE_DEFAULT:
                 applyState(STATE_EXPANDED);
@@ -203,7 +93,7 @@
     var VELOCITY_THRESHOLD = 0.4; // px/ms — fast swipe overrides nearest-snap
 
     function onTouchStart(e) {
-        if (suspended || !e.touches || e.touches.length !== 1) return;
+        if (!e.touches || e.touches.length !== 1) return;
         isDragging = true;
         hasDragged = false;
         dragStartY = e.touches[0].clientY;
@@ -218,7 +108,7 @@
     }
 
     function onTouchMove(e) {
-        if (suspended || !isDragging) return;
+        if (!isDragging) return;
         var deltaY = dragStartY - e.touches[0].clientY;
         if (Math.abs(deltaY) > DRAG_THRESHOLD) hasDragged = true;
         e.preventDefault(); // prevent page scroll while dragging
@@ -227,7 +117,7 @@
     }
 
     function onTouchEnd(e) {
-        if (suspended || !isDragging) return;
+        if (!isDragging) return;
         isDragging = false;
         panel.classList.remove(CSS_DRAGGING);
 
@@ -284,7 +174,7 @@
     var stateBeforeKeyboard = null;
 
     function onViewportResize() {
-        if (suspended || !window.visualViewport) return;
+        if (!window.visualViewport) return;
         var ratio = window.visualViewport.height / window.innerHeight;
 
         // Keyboard likely open when viewport shrinks below 70% of full height
@@ -308,7 +198,6 @@
     /* ── Orientation change: recalc heights ── */
     function onOrientationChange() {
         recalcHeights();
-        if (suspended) return;
         // In landscape the CSS overlay rules don't apply, so just reset inline styles
         panel.style.height = '';
         panel.classList.remove(CSS_COLLAPSED, CSS_EXPANDED, CSS_DRAGGING);
@@ -333,7 +222,6 @@
 
         // Chevron tap
         toggle.addEventListener('click', function (e) {
-            if (suspended) return;
             e.stopPropagation();
             cycleState();
         });
@@ -342,7 +230,6 @@
         var inputShell = panel.querySelector('.chat-input-shell');
         if (inputShell) {
             inputShell.addEventListener('click', function (e) {
-                if (suspended) return;
                 if (currentState === STATE_COLLAPSED) {
                     // Only expand if user tapped the shell itself or the handle area,
                     // not an interactive element (input, button)
@@ -378,32 +265,8 @@
             recalcHeights();
         });
 
-        // Scene Tale's own mobile mode communicates ownership through one root class. Watching
-        // that class keeps the generic overlay and the experience-specific surface from fighting
-        // over the same .chat-panel, including when the phone started in collapsed mode.
-        if (typeof MutationObserver !== 'undefined' && !sceneTaleObserver) {
-            sceneTaleObserver = new MutationObserver(syncSceneTaleOwnership);
-            sceneTaleObserver.observe(html, { attributes: true, attributeFilter: ['class'] });
-        }
-
-        if (pendingSuspendReason) suspend(pendingSuspendReason);
-        syncSceneTaleOwnership();
         console.log('[MobileChatOverlay] Overlay chat active — fullscreen avatar mode.');
     }
-
-    window.NEXUS_MOBILE_CHAT_OVERLAY = {
-        getState: getState,
-        setState: setState,
-        suspend: suspend,
-        resume: resume,
-        isSuspended: function () { return suspended; },
-        syncSceneTaleOwnership: syncSceneTaleOwnership,
-        states: {
-            collapsed: STATE_COLLAPSED,
-            default: STATE_DEFAULT,
-            expanded: STATE_EXPANDED,
-        },
-    };
 
     /* ── Boot ── */
     if (document.readyState === 'loading') {
