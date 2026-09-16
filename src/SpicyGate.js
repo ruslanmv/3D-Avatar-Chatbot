@@ -204,11 +204,22 @@
         return false;
     }
 
-    function showAgeGate(onConfirm, onCancel) {
-        if (verified) {
+    /**
+     * The Settings switch always presents the conditions before an OFF -> ON request. The stored
+     * local acknowledgement is useful to programmatic callers, but it must never make a desktop
+     * click jump straight to VERIFYING with no visible explanation. `force` is therefore used by
+     * the Settings UI while existing callers can keep the legacy one-time acknowledgement path.
+     */
+    function showAgeGate(onConfirm, onCancel, { force = false } = {}) {
+        if (verified && !force) {
             onConfirm();
             return;
         }
+
+        // One modal owns one enable attempt. Avoid duplicate overlays if a browser dispatches a
+        // second change/click while the first confirmation is already open.
+        const existing = document.querySelector('.spicy-age-overlay');
+        if (existing) return;
 
         const overlay = document.createElement('div');
         overlay.className = 'spicy-age-overlay';
@@ -307,8 +318,11 @@
         /**
          * Enable or disable Private Mode. Enabling is committed only after a real connected
          * verification request succeeds and trusted state/ConsentFlow become ready.
+         *
+         * Settings passes `{ requireConfirmation: true }` so every visible OFF -> ON action is
+         * explained by the conditions modal even when this device acknowledged them previously.
          */
-        setEnabled: function (on, onComplete) {
+        setEnabled: function (on, onComplete, options) {
             if (typeof onComplete === 'function') pendingCallbacks.push(onComplete);
 
             if (!on) {
@@ -341,11 +355,12 @@
                 updateUI('verifying');
             };
 
-            if (!verified) {
+            const requireConfirmation = Boolean(options && options.requireConfirmation);
+            if (!verified || requireConfirmation) {
                 showAgeGate(begin, function () {
                     flushCallbacks(false);
                     updateUI('off');
-                });
+                }, { force: requireConfirmation });
                 return;
             }
             begin();
@@ -425,9 +440,12 @@
         const toggle = document.getElementById('spicy-mode-toggle');
         if (toggle) {
             toggle.addEventListener('change', function () {
-                window.NEXUS_SPICY.setEnabled(toggle.checked, function () {
+                const wantsOn = toggle.checked;
+                window.NEXUS_SPICY.setEnabled(wantsOn, function () {
                     updateUI();
-                });
+                }, wantsOn ? { requireConfirmation: true } : undefined);
+                // The switch itself is not trusted verification. Keep the visible switch/state in
+                // sync while the conditions modal owns the OFF -> ON decision.
                 updateUI();
             });
         }
