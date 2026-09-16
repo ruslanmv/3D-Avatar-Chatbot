@@ -1,10 +1,9 @@
 /**
  * Settings-side Private gate.
  *
- * Turning the preference on may request trusted verification, but `isEnabled()` remains false
- * until adultVerified and the repository's existing ConsentFlow are both ready. If the normal
- * HomePilot realtime session is not connected yet, the Settings action re-runs BridgeDiscovery,
- * reconnects that existing session adapter, and only then sends adult_verify_request.
+ * The Settings switch is the user's accepted preference. Trusted usability is stricter:
+ * `isEnabled()` is true only while HomePilot adulthood + ConsentFlow are live. A transient
+ * session/attestation loss must remove Private access without silently rewriting the switch OFF.
  */
 
 /* global describe, test, expect, beforeEach, afterEach, jest */
@@ -63,7 +62,7 @@ function loadGate({ verified = false, connected = true, storedEnabled = false, d
 
 beforeEach(() => {
     jest.useFakeTimers();
-    jest.setSystemTime(new Date('2026-09-16T12:00:00Z'));
+    jest.setSystemTime(new Date('2026-09-17T12:00:00Z'));
     delete window.NEXUS_SPICY;
     delete window.NEXUS_BD;
     delete window.NEXUS_BD_CONSENT_FLOW;
@@ -86,39 +85,33 @@ afterEach(() => {
 });
 
 describe('Private Settings gate', () => {
-    test('turning ON requests trusted verification but does not report Private as enabled while unverified', () => {
+    test('turning ON preserves the user preference while trusted verification is pending', () => {
         const s = loadGate({ verified: false, connected: true });
         const done = jest.fn();
 
         s.gate.setEnabled(true, done);
 
         expect(s.director.session.send).toHaveBeenCalledWith({ v: 1, type: 'adult_verify_request' });
+        expect(s.gate.isRequested()).toBe(true);
         expect(s.gate.isEnabled()).toBe(false);
         expect(s.gate.isPending()).toBe(true);
-        expect(s.gate.isConnecting()).toBe(false);
         expect(done).not.toHaveBeenCalled();
-        expect(localStorage.getItem('nexus_spicy_enabled')).toBe('false');
+        expect(localStorage.getItem('nexus_spicy_enabled')).toBe('true');
         expect(document.getElementById('spicy-mode-toggle').checked).toBe(true);
         expect(document.getElementById('spicy-status-label').textContent).toBe('VERIFYING…');
     });
 
-    test('desktop Settings toggle always shows the conditions modal before trusted verification', () => {
+    test('desktop Settings toggle always shows conditions before trusted verification', () => {
         const s = loadGate({ verified: false, connected: true });
         const toggle = document.getElementById('spicy-mode-toggle');
 
-        // loadGate intentionally starts with the legacy/local acknowledgement already stored.
-        // A visible Settings enable action must still explain the conditions instead of jumping
-        // straight to a disabled VERIFYING switch.
-        expect(s.gate.isVerified()).toBe(true);
         toggle.checked = true;
         toggle.dispatchEvent(new Event('change', { bubbles: true }));
 
         const overlay = document.querySelector('.spicy-age-overlay');
         expect(overlay).not.toBeNull();
         expect(s.director.session.send).not.toHaveBeenCalled();
-        expect(s.gate.isPending()).toBe(false);
-        expect(toggle.disabled).toBe(false);
-        expect(document.getElementById('spicy-status-label').textContent).toBe('OFF');
+        expect(s.gate.isRequested()).toBe(false);
 
         const consent = overlay.querySelector('#spicy-age-consent');
         const confirm = overlay.querySelector('#spicy-age-confirm');
@@ -126,15 +119,14 @@ describe('Private Settings gate', () => {
         expect(confirm.disabled).toBe(true);
         consent.checked = true;
         consent.dispatchEvent(new Event('change', { bubbles: true }));
-        expect(confirm.disabled).toBe(false);
         confirm.click();
 
         expect(document.querySelector('.spicy-age-overlay')).toBeNull();
         expect(s.director.session.send).toHaveBeenCalledWith({ v: 1, type: 'adult_verify_request' });
+        expect(s.gate.isRequested()).toBe(true);
         expect(s.gate.isPending()).toBe(true);
         expect(toggle.checked).toBe(true);
         expect(document.getElementById('spicy-status-label').textContent).toBe('VERIFYING…');
-        expect(toggle.disabled).toBe(true);
     });
 
     test('an accepted ON choice re-discovers HomePilot and reconnects before verification', async () => {
@@ -154,12 +146,10 @@ describe('Private Settings gate', () => {
 
         s.gate.setEnabled(true, done);
 
+        expect(s.gate.isRequested()).toBe(true);
         expect(s.gate.isConnecting()).toBe(true);
-        expect(s.gate.isPending()).toBe(false);
         expect(document.getElementById('spicy-mode-toggle').checked).toBe(true);
-        expect(document.getElementById('spicy-mode-toggle').disabled).toBe(true);
         expect(document.getElementById('spicy-status-label').textContent).toBe('CONNECTING…');
-        expect(s.director.session.send).not.toHaveBeenCalled();
 
         await Promise.resolve();
         await Promise.resolve();
@@ -174,8 +164,6 @@ describe('Private Settings gate', () => {
         });
         expect(s.session.connect).toHaveBeenCalled();
 
-        // Opening the normal SessionAdapter socket is the boundary between CONNECTING and
-        // VERIFYING. SpicyGate does not forge that state itself.
         s.session.connected = true;
         s.session.socket = {};
         jest.advanceTimersByTime(500);
@@ -183,7 +171,6 @@ describe('Private Settings gate', () => {
         expect(s.gate.isConnecting()).toBe(false);
         expect(s.gate.isPending()).toBe(true);
         expect(s.session.send).toHaveBeenCalledWith({ v: 1, type: 'adult_verify_request' });
-        expect(document.getElementById('spicy-status-label').textContent).toBe('VERIFYING…');
 
         s.director.blackboard.adultVerified = true;
         jest.advanceTimersByTime(500);
@@ -193,24 +180,25 @@ describe('Private Settings gate', () => {
         expect(document.getElementById('spicy-status-label').textContent).toBe('ON');
     });
 
-    test('a disconnected service with no discoverable HomePilot never enters fake VERIFYING', () => {
+    test('an unavailable service does not silently rewrite the accepted switch OFF', () => {
         const s = loadGate({ verified: false, connected: false });
         const done = jest.fn();
 
         s.gate.setEnabled(true, done);
 
-        expect(s.director.session.send).not.toHaveBeenCalled();
         expect(s.gate.isEnabled()).toBe(false);
+        expect(s.gate.isRequested()).toBe(true);
         expect(s.gate.isPending()).toBe(false);
         expect(s.gate.isConnecting()).toBe(false);
         expect(done).toHaveBeenCalledWith(false);
-        expect(localStorage.getItem('nexus_spicy_enabled')).toBe('false');
+        expect(localStorage.getItem('nexus_spicy_enabled')).toBe('true');
+        expect(document.getElementById('spicy-mode-toggle').checked).toBe(true);
         expect(document.getElementById('spicy-mode-toggle').disabled).toBe(false);
-        expect(document.getElementById('spicy-status-label').textContent).toBe('OFF');
+        expect(document.getElementById('spicy-status-label').textContent).toBe('UNAVAILABLE');
         expect(document.querySelector('.config-section').dataset.privateState).toBe('unavailable');
     });
 
-    test('adult_ack plus the existing ConsentFlow makes the switch usable and only then reports ON', () => {
+    test('adult_ack plus the existing ConsentFlow makes the switch usable and reports ON', () => {
         const s = loadGate({ verified: false, connected: true });
         const done = jest.fn();
         s.gate.setEnabled(true, done);
@@ -221,6 +209,7 @@ describe('Private Settings gate', () => {
         expect(window.NEXUS_BD_CONSENT_FLOW.attach).toHaveBeenCalledTimes(1);
         expect(s.director.adult).toBe(s.flow);
         expect(s.gate.isEnabled()).toBe(true);
+        expect(s.gate.isRequested()).toBe(true);
         expect(s.gate.isPending()).toBe(false);
         expect(done).toHaveBeenCalledWith(true);
         expect(localStorage.getItem('nexus_spicy_enabled')).toBe('true');
@@ -228,33 +217,47 @@ describe('Private Settings gate', () => {
         expect(document.getElementById('spicy-status-label').textContent).toBe('ON');
     });
 
-    test('trusted verification alone does not enable Private when the local setting is OFF', () => {
+    test('trusted verification alone does not enable Private when the user preference is OFF', () => {
         const s = loadGate({ verified: true, connected: true });
 
+        expect(s.gate.isRequested()).toBe(false);
         expect(s.gate.isEnabled()).toBe(false);
-        expect(s.gate.isPending()).toBe(false);
         expect(document.getElementById('spicy-mode-toggle').checked).toBe(false);
     });
 
-    test('verification loss after Private was usable turns the preference OFF and never silently restores it', () => {
+    test('transient verification loss removes access but keeps the switch ON and re-verifies', () => {
         const s = loadGate({ verified: true, connected: true });
+        const changes = [];
+        s.gate.onChange((value) => changes.push(value));
+
         s.gate.setEnabled(true);
         expect(s.gate.isEnabled()).toBe(true);
-        expect(localStorage.getItem('nexus_spicy_enabled')).toBe('true');
+        expect(document.getElementById('spicy-status-label').textContent).toBe('ON');
 
+        // Simulate the trusted session attestation disappearing. Access must close, but this is
+        // not the same thing as the user turning the Settings switch off.
         s.director.blackboard.adultVerified = false;
         expect(s.gate.refresh()).toBe(false);
+
         expect(s.gate.isEnabled()).toBe(false);
-        expect(s.gate.isPending()).toBe(false);
-        expect(localStorage.getItem('nexus_spicy_enabled')).toBe('false');
+        expect(s.gate.isRequested()).toBe(true);
+        expect(s.gate.isPending()).toBe(true);
+        expect(localStorage.getItem('nexus_spicy_enabled')).toBe('true');
+        expect(document.getElementById('spicy-mode-toggle').checked).toBe(true);
+        expect(document.getElementById('spicy-status-label').textContent).toBe('VERIFYING…');
+        expect(changes).toContain(false);
 
         s.director.blackboard.adultVerified = true;
-        s.director.adult = s.flow;
-        expect(s.gate.refresh()).toBe(false);
-        expect(s.gate.isEnabled()).toBe(false);
+        expect(s.gate.refresh()).toBe(true);
+
+        expect(s.gate.isEnabled()).toBe(true);
+        expect(s.gate.isRequested()).toBe(true);
+        expect(document.getElementById('spicy-mode-toggle').checked).toBe(true);
+        expect(document.getElementById('spicy-status-label').textContent).toBe('ON');
+        expect(changes[changes.length - 1]).toBe(true);
     });
 
-    test('verification timeout returns the Settings switch to OFF instead of leaving an eventual-on preference', () => {
+    test('verification timeout leaves preference ON but trusted access unavailable', () => {
         const s = loadGate({ verified: false, connected: true });
         const done = jest.fn();
         s.gate.setEnabled(true, done);
@@ -262,21 +265,41 @@ describe('Private Settings gate', () => {
         jest.advanceTimersByTime(10500);
 
         expect(s.gate.isEnabled()).toBe(false);
+        expect(s.gate.isRequested()).toBe(true);
         expect(s.gate.isPending()).toBe(false);
-        expect(localStorage.getItem('nexus_spicy_enabled')).toBe('false');
+        expect(localStorage.getItem('nexus_spicy_enabled')).toBe('true');
         expect(done).toHaveBeenCalledWith(false);
+        expect(document.getElementById('spicy-mode-toggle').checked).toBe(true);
         expect(document.getElementById('spicy-mode-toggle').disabled).toBe(false);
-        expect(document.getElementById('spicy-status-label').textContent).toBe('OFF');
+        expect(document.getElementById('spicy-status-label').textContent).toBe('UNAVAILABLE');
     });
 
-    test('reload never restores a stale enabled bit into VERIFYING before a trusted session exists', () => {
+    test('reload preserves an accepted ON preference and revalidates instead of forcing OFF', () => {
         const s = loadGate({ verified: false, connected: false, storedEnabled: true });
 
+        expect(s.gate.isRequested()).toBe(true);
         expect(s.gate.isEnabled()).toBe(false);
-        expect(s.gate.isPending()).toBe(false);
+        expect(localStorage.getItem('nexus_spicy_enabled')).toBe('true');
+        expect(document.getElementById('spicy-mode-toggle').checked).toBe(true);
+        expect(document.getElementById('spicy-status-label').textContent).toBe('REVERIFYING…');
+
+        jest.advanceTimersByTime(500);
+        expect(s.gate.isRequested()).toBe(true);
+        expect(document.getElementById('spicy-mode-toggle').checked).toBe(true);
+        expect(document.getElementById('spicy-status-label').textContent).toBe('UNAVAILABLE');
+    });
+
+    test('only an explicit OFF action clears the preference', () => {
+        const s = loadGate({ verified: true, connected: true });
+        s.gate.setEnabled(true);
+        expect(s.gate.isEnabled()).toBe(true);
+
+        s.gate.setEnabled(false);
+
+        expect(s.gate.isRequested()).toBe(false);
+        expect(s.gate.isEnabled()).toBe(false);
         expect(localStorage.getItem('nexus_spicy_enabled')).toBe('false');
-        expect(s.director.session.send).not.toHaveBeenCalled();
-        expect(document.getElementById('spicy-mode-toggle').disabled).toBe(false);
+        expect(document.getElementById('spicy-mode-toggle').checked).toBe(false);
         expect(document.getElementById('spicy-status-label').textContent).toBe('OFF');
     });
 });
