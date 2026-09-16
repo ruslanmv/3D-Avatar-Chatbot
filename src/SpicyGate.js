@@ -1,21 +1,25 @@
 'use strict';
 
 /**
- * SpicyGate — Simple ON/OFF adult content gate with age verification.
+ * SpicyGate — user preference gate for mature/private experiences.
  * =================================================================
- * When OFF (default): all adult poses, emotes, modes, and behaviors are hidden.
- * When ON: everything unlocks — poses, animations, talk styles, emotes.
  *
- * Requires one-time age verification (18+ checkbox) before enabling.
+ * This remains the repository's single local preference authority. The user-facing product
+ * label is now "Intimate experiences", while the internal `NEXUS_SPICY` API and storage keys
+ * stay unchanged for backwards compatibility.
+ *
+ * IMPORTANT: this local preference is not sufficient to expose Together -> Intimate.
+ * The Together bridge also requires the deployment adult capability and the trusted,
+ * session-scoped `blackboard.adultVerified` server attestation.
  *
  * Storage (localStorage):
  *   nexus_spicy_enabled  — "true" / "false"
- *   nexus_spicy_verified — "true" / "false"
+ *   nexus_spicy_verified — "true" / "false" (legacy/local confirmation)
  *
  * Usage:
  *   window.NEXUS_SPICY.isEnabled()       → bool
- *   window.NEXUS_SPICY.setEnabled(true)  → shows age gate if not verified
- *   window.NEXUS_SPICY.onChange(fn)       → subscribe to toggle changes
+ *   window.NEXUS_SPICY.setEnabled(true)  → asks for the existing local confirmation if needed
+ *   window.NEXUS_SPICY.onChange(fn)       → subscribe to preference changes
  *
  * Exposes: window.NEXUS_SPICY
  */
@@ -25,7 +29,8 @@
     let verified = localStorage.getItem('nexus_spicy_verified') === 'true';
     const listeners = [];
 
-    // If enabled but not verified, force off
+    // If enabled but not locally confirmed, force off. This is an extra client-side consent
+    // step only; trusted adult eligibility is still supplied independently by the session.
     if (enabled && !verified) {
         enabled = false;
         localStorage.setItem('nexus_spicy_enabled', 'false');
@@ -39,16 +44,16 @@
 
     // ─── Notify subscribers ───
     function notify() {
+        const active = enabled && verified;
         for (let i = 0; i < listeners.length; i++) {
             try {
-                listeners[i](enabled);
+                listeners[i](active);
             } catch (_) {}
         }
     }
 
-    // ─── Age Verification Modal ───
+    // ─── Local confirmation modal ───
     function showAgeGate(onConfirm, onCancel) {
-        // If already verified, skip
         if (verified) {
             onConfirm();
             return;
@@ -59,20 +64,18 @@
         overlay.innerHTML =
             '<div class="spicy-age-modal">' +
             '  <div class="spicy-age-header">' +
-            '    <span class="spicy-age-icon">\u{1F525}</span>' +
-            '    <h3>Adult Content</h3>' +
+            '    <span class="spicy-age-icon">♡</span>' +
+            '    <h3>Intimate experiences</h3>' +
             '  </div>' +
             '  <div class="spicy-age-body">' +
-            '    <p>Spicy Mode unlocks adult poses, animations, emotes, and behaviors ' +
-            '       designed for mature audiences.</p>' +
+            '    <p>Intimate experiences can make supported companion interactions more romantic, flirtatious ' +
+            '       or sensual. They never start automatically.</p>' +
             '    <div class="spicy-age-allowed">' +
             '      <strong>When enabled:</strong>' +
             '      <ul>' +
-            '        <li>Adult poses (seductive, intimate, explicit)</li>' +
-            '        <li>Flirt, tease &amp; intimate animation modes</li>' +
-            '        <li>Whisper &amp; playful talk styles</li>' +
-            '        <li>Adult interaction emotes</li>' +
-            '        <li>Mature roleplay behaviors</li>' +
+            '        <li>The Intimate activity may appear in Together after trusted adult verification</li>' +
+            '        <li>Eligible adult poses, expressions and mature companion behavior may be available</li>' +
+            '        <li>You can turn the preference off at any time</li>' +
             '      </ul>' +
             '    </div>' +
             '    <div class="spicy-age-blocked">' +
@@ -83,14 +86,16 @@
             '        <li>Illegal content</li>' +
             '      </ul>' +
             '    </div>' +
+            '    <p style="font-size:0.78rem;opacity:.75">This local confirmation does not replace the ' +
+            '       connected service\'s trusted adult verification.</p>' +
             '    <label class="spicy-age-checkbox">' +
             '      <input type="checkbox" id="spicy-age-consent" />' +
-            '      <span>I am 18 years or older and consent to viewing adult content</span>' +
+            '      <span>I am 18 years or older and want Intimate experiences enabled on this device</span>' +
             '    </label>' +
             '  </div>' +
             '  <div class="spicy-age-actions">' +
             '    <button class="secondary-btn" id="spicy-age-cancel">Cancel</button>' +
-            '    <button class="primary-btn" id="spicy-age-confirm" disabled>Enable Spicy Mode</button>' +
+            '    <button class="primary-btn" id="spicy-age-confirm" disabled>Enable Intimate experiences</button>' +
             '  </div>' +
             '</div>';
 
@@ -116,7 +121,6 @@
             onCancel();
         });
 
-        // Close on overlay click (outside modal)
         overlay.addEventListener('click', function (e) {
             if (e.target === overlay) {
                 overlay.remove();
@@ -127,31 +131,23 @@
 
     // ─── Public API ───
     window.NEXUS_SPICY = {
-        /**
-         * Check if spicy mode is active (enabled AND verified).
-         * @returns {boolean}
-         */
+        /** Check whether the user's local mature-content preference is active. */
         isEnabled: function () {
             return enabled && verified;
         },
 
-        /**
-         * Check if user has passed age verification.
-         * @returns {boolean}
-         */
+        /** Legacy/local confirmation state. Not the trusted session attestation. */
         isVerified: function () {
             return verified;
         },
 
         /**
-         * Enable or disable spicy mode.
-         * If enabling and not yet verified, shows the age gate modal.
+         * Enable or disable the local mature-content preference.
          * @param {boolean} on
-         * @param {Function} [onComplete] — called after state change (or cancel)
+         * @param {Function} [onComplete]
          */
         setEnabled: function (on, onComplete) {
             if (on && !verified) {
-                // Must pass age gate first
                 showAgeGate(
                     function () {
                         enabled = true;
@@ -161,7 +157,6 @@
                         if (onComplete) onComplete(true);
                     },
                     function () {
-                        // Cancelled — stay off
                         if (onComplete) onComplete(false);
                     }
                 );
@@ -172,14 +167,10 @@
             persist();
             notify();
             updateUI();
-            if (onComplete) onComplete(enabled);
+            if (onComplete) onComplete(enabled && verified);
         },
 
-        /**
-         * Subscribe to spicy mode changes.
-         * @param {Function} fn — called with (enabled: boolean)
-         * @returns {Function} unsubscribe
-         */
+        /** Subscribe to preference changes. Returns an unsubscribe function. */
         onChange: function (fn) {
             listeners.push(fn);
             return function () {
@@ -188,9 +179,7 @@
             };
         },
 
-        /**
-         * Reset age verification (for testing / parental control).
-         */
+        /** Reset local confirmation (testing / parental control). */
         resetVerification: function () {
             verified = false;
             enabled = false;
@@ -200,44 +189,72 @@
         },
     };
 
+    // ─── Product copy ───
+    function updateSettingsCopy() {
+        var toggle = document.getElementById('spicy-mode-toggle');
+        if (!toggle) return;
+        var section = toggle.closest ? toggle.closest('.config-section') : null;
+        if (!section) return;
+
+        var title = section.querySelector('.config-title');
+        if (title) {
+            // Preserve the existing status badge element and only replace the text node.
+            for (var i = 0; i < title.childNodes.length; i++) {
+                if (title.childNodes[i].nodeType === 3 && title.childNodes[i].textContent.trim()) {
+                    title.childNodes[i].textContent = '\n                            INTIMATE EXPERIENCES\n                            ';
+                    break;
+                }
+            }
+        }
+
+        var description = title && title.nextElementSibling;
+        if (description && description.tagName === 'P') {
+            description.textContent =
+                'Allow private adult romantic and sensual experiences. The Intimate button only appears after trusted adult verification and never starts automatically.';
+        }
+
+        var row = toggle.closest ? toggle.closest('.spicy-toggle-label') : null;
+        var rowText = row && row.querySelector('span:not(.spicy-toggle-slider)');
+        if (rowText) rowText.textContent = 'Enable Intimate experiences';
+    }
+
     // ─── UI Sync ───
     function updateUI() {
-        // Update toggle switch in settings
-        var toggle = document.getElementById('spicy-mode-toggle');
-        if (toggle) toggle.checked = enabled && verified;
+        var active = enabled && verified;
 
-        // Update settings label
+        var toggle = document.getElementById('spicy-mode-toggle');
+        if (toggle) toggle.checked = active;
+
         var label = document.getElementById('spicy-status-label');
         if (label) {
-            label.textContent = enabled && verified ? 'ON' : 'OFF';
-            label.className = 'spicy-status-label' + (enabled && verified ? ' spicy-status-on' : ' spicy-status-off');
+            label.textContent = active ? 'ON' : 'OFF';
+            label.className = 'spicy-status-label' + (active ? ' spicy-status-on' : ' spicy-status-off');
         }
 
-        // Gate adult optgroup in settings VR pose dropdown
         var adultGroup = document.getElementById('vr-pose-adult-group');
-        if (adultGroup) {
-            adultGroup.style.display = enabled && verified ? '' : 'none';
-        }
+        if (adultGroup) adultGroup.style.display = active ? '' : 'none';
 
-        // Gate all elements with .spicy-gated class
         var gated = document.querySelectorAll('.spicy-gated');
         for (var i = 0; i < gated.length; i++) {
-            gated[i].style.display = enabled && verified ? '' : 'none';
+            gated[i].style.display = active ? '' : 'none';
         }
     }
 
     // ─── Init UI on DOM ready ───
     function initUI() {
-        // Wire the toggle switch in settings
         var toggle = document.getElementById('spicy-mode-toggle');
         if (toggle) {
             toggle.checked = enabled && verified;
             toggle.addEventListener('change', function () {
-                window.NEXUS_SPICY.setEnabled(toggle.checked);
+                window.NEXUS_SPICY.setEnabled(toggle.checked, function (result) {
+                    // If the local confirmation dialog was cancelled, put the switch back in
+                    // sync immediately instead of leaving a visually-on control with an off gate.
+                    toggle.checked = !!result;
+                });
             });
         }
 
-        // Set initial badge visibility
+        updateSettingsCopy();
         updateUI();
     }
 
@@ -247,5 +264,5 @@
         initUI();
     }
 
-    console.log('[SpicyGate] Initialized — spicy mode:', enabled && verified ? 'ON' : 'OFF');
+    console.log('[SpicyGate] Initialized — Intimate preference:', enabled && verified ? 'ON' : 'OFF');
 })();
