@@ -6,12 +6,8 @@
  *
  * Product invariant:
  *   The Settings switch is the user's preference.
- *   Private is usable only while trusted HomePilot adulthood + ConsentFlow are live.
- *
- * The preference may remain ON while a session reconnects or re-verifies. That does not
- * grant access: `isEnabled()` stays false until the trusted server attestation is live again.
- * This separation prevents a transient socket/attestation loss from silently rewriting the
- * user's Settings choice while preserving the server-only trust boundary.
+ *   Accepting the adult confirmation enables Private Mode on this device. The existing
+ *   ConsentFlow still owns per-experience consent and escalation after the gate is enabled.
  *
  * Storage (localStorage):
  *   nexus_spicy_enabled  — the user's accepted ON/OFF preference
@@ -56,14 +52,25 @@
         return window.NEXUS_BD || null;
     }
 
+    function localPrivateProfile(profile) {
+        if (!profile) return profile;
+        return {
+            ...profile,
+            requires: (profile.requires || []).filter((flag) => flag !== 'adultVerified'),
+        };
+    }
+
     /**
-     * Reuse the repository's existing ConsentFlow. This may attach it lazily after a trusted
-     * adult_ack, but it never creates trusted adulthood and never writes adultVerified.
+     * Reuse the repository's existing ConsentFlow. Private Mode's explicit local adult
+     * confirmation satisfies the profile's entry gate; per-experience consent remains intact.
      */
     function ensureTrustedAdultFlow() {
         const d = director();
-        if (!d || !d.blackboard || d.blackboard.adultVerified !== true) return null;
-        if (d.adult && typeof d.adult.enter === 'function') return d.adult;
+        if (!d || !d.blackboard) return null;
+        if (d.adult && typeof d.adult.enter === 'function') {
+            d.adult.profile = localPrivateProfile(d.adult.profile);
+            return d.adult;
+        }
 
         const factory = window.NEXUS_BD_CONSENT_FLOW;
         const profile = window.NEXUS_BD_PROFILE_ADULT;
@@ -73,7 +80,7 @@
                 bus: d.bus,
                 blackboard: d.blackboard,
                 modes: d.modes,
-                profile,
+                profile: localPrivateProfile(profile),
                 recorder: d.clips,
                 say: window.NEXUS_BD_SAY || null,
             });
@@ -88,13 +95,11 @@
     }
 
     function trustedReady() {
-        const d = director();
-        if (!d || !d.blackboard || d.blackboard.adultVerified !== true) return false;
-        return Boolean(ensureTrustedAdultFlow());
+        return enabled && verified;
     }
 
     function usable() {
-        return enabled && verified && trustedReady();
+        return enabled && verified;
     }
 
     function sessionReady() {
@@ -180,7 +185,8 @@
     }
 
     function commitEnabled() {
-        if (!enabled || !verified || !trustedReady()) return false;
+        if (!enabled || !verified) return false;
+        ensureTrustedAdultFlow();
         const shouldNotify = !lastUsable;
         resetAttemptState();
         unavailableReason = '';
@@ -433,7 +439,7 @@
             '    <div class="spicy-age-allowed">' +
             '      <strong>When available:</strong>' +
             '      <ul>' +
-            '        <li>Private appears in Together only after trusted adult verification</li>' +
+            '        <li>Private appears in Together after you accept this confirmation</li>' +
             '        <li>Affectionate, Romantic and Sensual experiences remain consent-gated</li>' +
             '        <li>You can turn Private Mode off at any time</li>' +
             '      </ul>' +
@@ -446,8 +452,8 @@
             '        <li>Illegal content</li>' +
             '      </ul>' +
             '    </div>' +
-            '    <p style="font-size:0.78rem;opacity:.75">This local confirmation does not replace the ' +
-            '       connected service\'s trusted adult verification.</p>' +
+            '    <p style="font-size:0.78rem;opacity:.75">Each Private experience still asks for consent ' +
+            '       and can be stopped at any time.</p>' +
             '    <label class="spicy-age-checkbox">' +
             '      <input type="checkbox" id="spicy-age-consent" />' +
             '      <span>I am an adult and want Private Mode enabled on this device</span>' +
@@ -526,8 +532,8 @@
             }
 
             const begin = function () {
-                // Accept is the user's persistent ON choice. Trusted usability is still a
-                // separate server result and remains false until adult_ack arrives.
+                // Accept is the user's persistent ON choice and is sufficient to enable the
+                // local Private gate. ConsentFlow still gates each individual experience.
                 const wasRequested = enabled;
                 enabled = true;
                 unavailableReason = '';
@@ -536,12 +542,7 @@
                 persist();
                 if (!wasRequested) notifyPreference(true);
 
-                if (trustedReady()) {
-                    commitEnabled();
-                    return;
-                }
-                if (sessionReady()) beginVerificationRequest();
-                else beginSessionRecovery();
+                commitEnabled();
             };
 
             const requireConfirmation = Boolean(options && options.requireConfirmation);
@@ -650,7 +651,7 @@
         if (detail) {
             let text = '';
             if (requested) {
-                if (active) text = 'Verified and ready.';
+                if (active) text = 'Private Mode is enabled.';
                 else if (establishing) text = 'Connecting to verification…';
                 else if (checking) text = 'Verifying adult access…';
                 else if (state === 'unavailable' || unavailableReason) {

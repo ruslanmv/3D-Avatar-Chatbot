@@ -62,14 +62,7 @@ function privateGate(initialRequested = false) {
     return {
         bind(d) { director = d; return this; },
         isEnabled() {
-            return Boolean(
-                requested
-                && director
-                && director.blackboard
-                && director.blackboard.adultVerified === true
-                && director.adult
-                && typeof director.adult.enter === 'function'
-            );
+            return requested;
         },
         isRequested() { return requested; },
         set(value) {
@@ -136,7 +129,7 @@ afterEach(() => {
 describe('Private runtime eligibility', () => {
     const eligibility = PlaygroundActivity.IntimateActivity.eligibility;
 
-    test('requires the usable Settings gate, trusted verification and the existing consent flow', () => {
+    test('requires the accepted Settings gate and the existing consent flow', () => {
         const adult = new AdultFlowMock();
         const base = {
             config: { adult: { available: false } },
@@ -146,7 +139,7 @@ describe('Private runtime eligibility', () => {
         const requested = { isRequested: () => true, isEnabled: () => true };
 
         expect(eligibility(base, requested).ok).toBe(true);
-        expect(eligibility({ ...base, blackboard: { adultVerified: false, nsfwAllowed: true } }, requested).ok).toBe(false);
+        expect(eligibility({ ...base, blackboard: { adultVerified: false, nsfwAllowed: true } }, requested).ok).toBe(true);
         expect(eligibility({ ...base, adult: null }, requested).ok).toBe(false);
         expect(eligibility(base, { isRequested: () => true, isEnabled: () => false }).ok).toBe(false);
         expect(eligibility(base, { isRequested: () => false, isEnabled: () => true }).ok).toBe(false);
@@ -166,13 +159,13 @@ describe('Private tile invariant', () => {
         bridge.detach();
     });
 
-    test('Private Mode ON keeps the Private tile visible while trusted verification is still pending', () => {
+    test('Private Mode ON keeps the tile visible while the consent flow is still loading', () => {
         const s = setup({ requested: true, verified: false, withAdult: false });
         const bridge = PlaygroundActivity.installIntimateBridge({ bus: s.bus });
         s.panel.open();
 
         expect(s.spicy.isRequested()).toBe(true);
-        expect(s.spicy.isEnabled()).toBe(false);
+        expect(s.spicy.isEnabled()).toBe(true);
         expect(s.panel.activities.has('intimate')).toBe(true);
         expect(document.querySelector('[data-activity="intimate"]')).not.toBeNull();
         expect(s.director.blackboard.nsfwAllowed).toBe(true);
@@ -180,7 +173,7 @@ describe('Private tile invariant', () => {
         const activity = s.panel.activities.get('intimate');
         expect(activity.inputs()).toEqual([]);
         expect(activity.prompt).toContain('Private Mode is on');
-        expect(activity.prompt).toContain('verification');
+        expect(activity.prompt).toContain('consent flow');
 
         bridge.detach();
     });
@@ -252,7 +245,7 @@ describe('Private tile invariant', () => {
         bridge.detach();
     });
 
-    test('losing trusted verification stops Private but keeps its ON-preference tile visible', async () => {
+    test('losing an unrelated server acknowledgement does not stop accepted Private Mode', async () => {
         const s = setup({ requested: true, verified: true, withAdult: true });
         const bridge = PlaygroundActivity.installIntimateBridge({ bus: s.bus });
         await s.panel.startActivity('intimate', { id: 'romantic' });
@@ -261,13 +254,12 @@ describe('Private tile invariant', () => {
         s.director.blackboard.adultVerified = false;
         bridge.sync();
 
-        expect(s.panel.activeActivity).toBeNull();
+        expect(s.panel.activeActivity).toBe('intimate');
         expect(s.panel.activities.has('intimate')).toBe(true);
-        expect(document.querySelector('[data-activity="intimate"]')).not.toBeNull();
         expect(s.director.intimate).not.toBeNull();
-        expect(s.adult.exit).toHaveBeenCalledTimes(1);
+        expect(s.adult.exit).not.toHaveBeenCalled();
         expect(s.director.blackboard.nsfwAllowed).toBe(true);
-        expect(s.panel.activities.get('intimate').inputs()).toEqual([]);
+        expect(s.panel.activities.get('intimate').inputs()).toHaveLength(3);
 
         bridge.detach();
     });

@@ -8,8 +8,8 @@
  *
  * This file also owns the separate Private/Intimate Together bridge. The two systems remain
  * independent: Playground is always family-safe; the Private tile follows the user's Settings
- * preference, while starting a Private experience still requires trusted adult verification
- * and the repository's existing ConsentFlow.
+ * preference. Accepting the Settings confirmation enables the gate; the repository's existing
+ * ConsentFlow still owns consent for each Private experience.
  *
  * Exposes:
  *   window.NEXUS_BD_PLAYGROUND
@@ -18,7 +18,6 @@
 const PlaygroundActivity = (() => {
     'use strict';
 
-    const VERIFY_RETRY_MS = 5000;
     const HISTORY_KEY = 'nexus_playground_histories_v1';
     const MAX_HISTORY = 20;
     const MAX_NODES = 24;
@@ -878,10 +877,7 @@ const PlaygroundActivity = (() => {
             return { ok: false, why: 'Private Mode is disabled in Settings' };
         }
         if (!spicy || typeof spicy.isEnabled !== 'function' || !spicy.isEnabled()) {
-            return { ok: false, why: 'trusted adult verification is not ready yet' };
-        }
-        if (!director || !director.blackboard || director.blackboard.adultVerified !== true) {
-            return { ok: false, why: 'trusted adult verification is not ready yet' };
+            return { ok: false, why: 'Private Mode is not enabled yet' };
         }
         if (!director.adult || typeof director.adult.enter !== 'function') {
             return { ok: false, why: 'Private consent flow is still loading' };
@@ -889,20 +885,21 @@ const PlaygroundActivity = (() => {
         return { ok: true, why: '' };
     }
 
-    function requestAdultVerification(director) {
-        const session = director && director.session;
-        if (!session || typeof session.send !== 'function') return false;
-        try {
-            return session.send({ v: 1, type: 'adult_verify_request' }) === true;
-        } catch (_) {
-            return false;
-        }
+    function localPrivateProfile(profile) {
+        if (!profile) return profile;
+        return {
+            ...profile,
+            requires: (profile.requires || []).filter((flag) => flag !== 'adultVerified'),
+        };
     }
 
     function ensureAdultFlow(director) {
         if (!director) return null;
-        if (director.adult && typeof director.adult.enter === 'function') return director.adult;
-        if (!director.blackboard || director.blackboard.adultVerified !== true) return null;
+        if (director.adult && typeof director.adult.enter === 'function') {
+            director.adult.profile = localPrivateProfile(director.adult.profile);
+            return director.adult;
+        }
+        if (!director.blackboard) return null;
         const win = globalObject();
         const factory = win && win.NEXUS_BD_CONSENT_FLOW;
         const profile = win && win.NEXUS_BD_PROFILE_ADULT;
@@ -912,7 +909,7 @@ const PlaygroundActivity = (() => {
                 bus: director.bus,
                 blackboard: director.blackboard,
                 modes: director.modes,
-                profile,
+                profile: localPrivateProfile(profile),
                 recorder: director.clips,
                 say: win.NEXUS_BD_SAY || null,
             });
@@ -927,11 +924,8 @@ const PlaygroundActivity = (() => {
     }
 
     function lockedPrompt(gate) {
-        const why = String((gate && gate.why) || 'trusted adult verification is not ready yet');
-        if (/verification/i.test(why)) {
-            return 'Private Mode is on. Finishing trusted adult verification…';
-        }
-        if (/consent flow/i.test(why)) return 'Trusted verification arrived. Preparing Private Mode…';
+        const why = String((gate && gate.why) || 'Private Mode is unavailable');
+        if (/consent flow/i.test(why)) return 'Private Mode is on. Preparing the consent flow…';
         return why;
     }
 
@@ -1024,26 +1018,16 @@ const PlaygroundActivity = (() => {
         let activity = null;
         let stopped = false;
         let retryTimer = null;
-        let verifyTimer = null;
+        let syncTimer = null;
         let unsubscribeSpicy = null;
         let unsubscribePanel = null;
         let unsubscribeAdultExit = null;
-        let lastVerified = null;
-        let lastVerifyRequestAt = 0;
 
         const repaint = () => {
             if (director && director.togetherPanel && typeof director.togetherPanel.setContext === 'function') director.togetherPanel.setContext({});
         };
         const mirrorPreference = (requested) => {
             if (director && director.blackboard) director.blackboard.nsfwAllowed = Boolean(requested);
-        };
-        const maybeRequestVerification = (force = false) => {
-            if (!director || !director.blackboard || director.blackboard.adultVerified === true) return false;
-            const now = Date.now();
-            if (!force && lastVerifyRequestAt && now - lastVerifyRequestAt < VERIFY_RETRY_MS) return false;
-            const sent = requestAdultVerification(director);
-            if (sent) lastVerifyRequestAt = now;
-            return sent;
         };
         const unregister = (why = 'Private Mode disabled') => {
             if (!director || !director.togetherPanel) return;
@@ -1065,8 +1049,7 @@ const PlaygroundActivity = (() => {
             const visible = privateTileVisibility(window.NEXUS_SPICY);
             mirrorPreference(visible.ok);
             if (visible.ok) {
-                if (!director.blackboard || director.blackboard.adultVerified !== true) maybeRequestVerification();
-                else ensureAdultFlow(director);
+                ensureAdultFlow(director);
                 const existing = director.togetherPanel.activities && director.togetherPanel.activities.get('intimate');
                 if (!existing) {
                     activity = new Intimate({
@@ -1101,7 +1084,6 @@ const PlaygroundActivity = (() => {
                 retryTimer = setTimeout(wire, 100);
                 return;
             }
-            lastVerified = Boolean(director.blackboard && director.blackboard.adultVerified);
             sync();
             const preferenceSubscribe =
                 typeof window.NEXUS_SPICY.onPreferenceChange === 'function'
@@ -1110,17 +1092,12 @@ const PlaygroundActivity = (() => {
             if (typeof preferenceSubscribe === 'function') {
                 unsubscribeSpicy = preferenceSubscribe((requested) => {
                     mirrorPreference(requested);
-                    lastVerifyRequestAt = 0;
                     sync();
-                    if (requested) maybeRequestVerification(true);
                 });
             }
             if (director.togetherPanel && typeof director.togetherPanel.onChange === 'function') {
                 unsubscribePanel = director.togetherPanel.onChange((snapshot) => {
-                    if (snapshot && snapshot.open) {
-                        sync();
-                        if (privatePreferenceOn(window.NEXUS_SPICY)) maybeRequestVerification();
-                    }
+                    if (snapshot && snapshot.open) sync();
                 });
             }
             const eventBus = bus || director.bus;
@@ -1131,17 +1108,8 @@ const PlaygroundActivity = (() => {
                     }
                 });
             }
-            verifyTimer = setInterval(() => {
-                if (stopped || !director) return;
-                const verified = Boolean(director.blackboard && director.blackboard.adultVerified);
-                if (verified !== lastVerified) {
-                    lastVerified = verified;
-                    if (verified) ensureAdultFlow(director);
-                    sync();
-                    repaint();
-                } else if (!verified && window.NEXUS_SPICY && privatePreferenceOn(window.NEXUS_SPICY)) {
-                    maybeRequestVerification();
-                }
+            syncTimer = setInterval(() => {
+                if (!stopped && director && !director.adult && privatePreferenceOn(window.NEXUS_SPICY)) sync();
             }, 1000);
         };
         wire();
@@ -1150,7 +1118,7 @@ const PlaygroundActivity = (() => {
             detach() {
                 stopped = true;
                 if (retryTimer) clearTimeout(retryTimer);
-                if (verifyTimer) clearInterval(verifyTimer);
+                if (syncTimer) clearInterval(syncTimer);
                 if (unsubscribeSpicy) unsubscribeSpicy();
                 if (unsubscribePanel) unsubscribePanel();
                 if (unsubscribeAdultExit) unsubscribeAdultExit();
