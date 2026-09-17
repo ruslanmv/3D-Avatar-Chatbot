@@ -40,6 +40,7 @@
     let lastUsable = false;
     let refreshTimer = null;
     const listeners = [];
+    const preferenceListeners = [];
     const pendingCallbacks = [];
 
     // An ON preference without the local conditions acknowledgement is not meaningful.
@@ -111,6 +112,15 @@
         }
     }
 
+    function notifyPreference(value) {
+        const requested = Boolean(value);
+        for (const fn of preferenceListeners.slice()) {
+            try {
+                fn(requested);
+            } catch (_) {}
+        }
+    }
+
     function setUsableNotification(active) {
         const next = Boolean(active);
         if (lastUsable === next) return;
@@ -140,12 +150,14 @@
 
     /** Explicit user OFF/reset. This is the only normal path that clears the preference. */
     function disableGate(reason, { notifyChange = true } = {}) {
+        const wasRequested = enabled;
         const wasUsable = lastUsable;
         enabled = false;
         unavailableReason = '';
         retryAfter = 0;
         resetAttemptState();
         persist();
+        if (wasRequested) notifyPreference(false);
         if (wasUsable && notifyChange) setUsableNotification(false);
         else lastUsable = false;
         updateUI(reason || 'off');
@@ -507,11 +519,13 @@
             const begin = function () {
                 // Accept is the user's persistent ON choice. Trusted usability is still a
                 // separate server result and remains false until adult_ack arrives.
+                const wasRequested = enabled;
                 enabled = true;
                 unavailableReason = '';
                 retryAfter = 0;
                 resetAttemptState();
                 persist();
+                if (!wasRequested) notifyPreference(true);
 
                 if (trustedReady()) {
                     commitEnabled();
@@ -536,11 +550,21 @@
             begin();
         },
 
+        /** Usability changes: trusted Private access became available/unavailable. */
         onChange: function (fn) {
             listeners.push(fn);
             return function () {
                 const idx = listeners.indexOf(fn);
                 if (idx >= 0) listeners.splice(idx, 1);
+            };
+        },
+
+        /** Settings preference changes: the user explicitly turned Private ON or OFF. */
+        onPreferenceChange: function (fn) {
+            preferenceListeners.push(fn);
+            return function () {
+                const idx = preferenceListeners.indexOf(fn);
+                if (idx >= 0) preferenceListeners.splice(idx, 1);
             };
         },
 
