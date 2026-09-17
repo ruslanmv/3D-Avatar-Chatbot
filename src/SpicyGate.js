@@ -569,13 +569,24 @@
 
         const description = title && title.nextElementSibling;
         if (description && description.tagName === 'P') {
-            description.textContent =
-                'Allows verified adults to access more personal, romantic, and mature experiences. This option is available only after adult verification and is never enabled automatically.';
+            description.textContent = 'More personal, romantic, and mature experiences for verified adults.';
         }
 
         const row = toggle.closest ? toggle.closest('.spicy-toggle-label') : null;
         const rowText = row && row.querySelector('span:not(.spicy-toggle-slider)');
         if (rowText) rowText.textContent = 'Enable Private Mode';
+
+        let detail = section.querySelector('#spicy-verification-status');
+        if (!detail) {
+            detail = document.createElement('p');
+            detail.id = 'spicy-verification-status';
+            detail.className = 'spicy-verification-status';
+            detail.setAttribute('role', 'status');
+            detail.setAttribute('aria-live', 'polite');
+            detail.style.cssText = 'font-size:0.7rem;color:rgba(255,255,255,.55);margin:6px 0 0;line-height:1.4';
+            const group = toggle.closest ? toggle.closest('.input-group') : null;
+            (group || section).appendChild(detail);
+        }
     }
 
     function updateUI(state) {
@@ -593,16 +604,29 @@
             toggle.setAttribute('aria-busy', busy ? 'true' : 'false');
         }
 
+        // The headline status mirrors the switch only. Verification is a separate concern and
+        // is explained below the switch so a temporary network problem never looks like the
+        // user's preference was turned off.
         const label = document.getElementById('spicy-status-label');
         if (label) {
-            let text = 'OFF';
-            if (active) text = 'ON';
-            else if (establishing) text = 'CONNECTING…';
-            else if (checking) text = 'VERIFYING…';
-            else if (requested && (state === 'unavailable' || unavailableReason)) text = 'UNAVAILABLE';
-            else if (requested) text = 'REVERIFYING…';
-            label.textContent = text;
-            label.className = 'spicy-status-label' + (active ? ' spicy-status-on' : ' spicy-status-off');
+            label.textContent = requested ? 'ON' : 'OFF';
+            label.className = 'spicy-status-label' + (requested ? ' spicy-status-on' : ' spicy-status-off');
+        }
+
+        const detail = document.getElementById('spicy-verification-status');
+        if (detail) {
+            let text = '';
+            if (requested) {
+                if (active) text = 'Verified and ready.';
+                else if (establishing) text = 'Connecting to verification…';
+                else if (checking) text = 'Verifying adult access…';
+                else if (state === 'unavailable' || unavailableReason) {
+                    text = 'Verification unavailable. Private experiences stay locked until verification succeeds.';
+                } else if (state === 'restoring') text = 'Restoring verification…';
+                else text = 'Waiting for verification…';
+            }
+            detail.textContent = text;
+            detail.hidden = !text;
         }
 
         const adultGroup = document.getElementById('vr-pose-adult-group');
