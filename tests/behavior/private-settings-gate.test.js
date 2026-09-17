@@ -26,7 +26,9 @@ function loadGate({ verified = false, connected = true, storedEnabled = false, d
         <section class="config-section">
             <div class="config-title">PRIVATE MODE <span id="spicy-status-label">OFF</span></div>
             <p></p>
-            <label class="spicy-toggle-label"><span>Enable</span><input id="spicy-mode-toggle" type="checkbox"><span class="spicy-toggle-slider"></span></label>
+            <div class="input-group">
+                <label class="spicy-toggle-label"><span>Enable</span><input id="spicy-mode-toggle" type="checkbox"><span class="spicy-toggle-slider"></span></label>
+            </div>
         </section>`;
 
     const flow = adultFlow();
@@ -98,7 +100,8 @@ describe('Private Settings gate', () => {
         expect(done).not.toHaveBeenCalled();
         expect(localStorage.getItem('nexus_spicy_enabled')).toBe('true');
         expect(document.getElementById('spicy-mode-toggle').checked).toBe(true);
-        expect(document.getElementById('spicy-status-label').textContent).toBe('VERIFYING…');
+        expect(document.getElementById('spicy-status-label').textContent).toBe('ON');
+        expect(document.getElementById('spicy-verification-status').textContent).toBe('Verifying adult access…');
     });
 
     test('desktop Settings toggle always shows conditions before trusted verification', () => {
@@ -126,7 +129,30 @@ describe('Private Settings gate', () => {
         expect(s.gate.isRequested()).toBe(true);
         expect(s.gate.isPending()).toBe(true);
         expect(toggle.checked).toBe(true);
-        expect(document.getElementById('spicy-status-label').textContent).toBe('VERIFYING…');
+        expect(document.getElementById('spicy-status-label').textContent).toBe('ON');
+        expect(document.getElementById('spicy-verification-status').textContent).toBe('Verifying adult access…');
+    });
+
+    test('accepting the adult checkbox shows ON even if verification is unavailable', () => {
+        const s = loadGate({ verified: false, connected: false });
+        const toggle = document.getElementById('spicy-mode-toggle');
+
+        toggle.checked = true;
+        toggle.dispatchEvent(new Event('change', { bubbles: true }));
+
+        const overlay = document.querySelector('.spicy-age-overlay');
+        const consent = overlay.querySelector('#spicy-age-consent');
+        const confirm = overlay.querySelector('#spicy-age-confirm');
+        consent.checked = true;
+        consent.dispatchEvent(new Event('change', { bubbles: true }));
+        confirm.click();
+
+        expect(s.gate.isRequested()).toBe(true);
+        expect(s.gate.isEnabled()).toBe(false);
+        expect(toggle.checked).toBe(true);
+        expect(document.getElementById('spicy-status-label').textContent).toBe('ON');
+        expect(document.getElementById('spicy-verification-status').textContent).toContain('Verification unavailable');
+        expect(document.querySelector('.config-section').dataset.privateState).toBe('unavailable');
     });
 
     test('an accepted ON choice re-discovers HomePilot and reconnects before verification', async () => {
@@ -149,7 +175,8 @@ describe('Private Settings gate', () => {
         expect(s.gate.isRequested()).toBe(true);
         expect(s.gate.isConnecting()).toBe(true);
         expect(document.getElementById('spicy-mode-toggle').checked).toBe(true);
-        expect(document.getElementById('spicy-status-label').textContent).toBe('CONNECTING…');
+        expect(document.getElementById('spicy-status-label').textContent).toBe('ON');
+        expect(document.getElementById('spicy-verification-status').textContent).toBe('Connecting to verification…');
 
         await Promise.resolve();
         await Promise.resolve();
@@ -171,6 +198,8 @@ describe('Private Settings gate', () => {
         expect(s.gate.isConnecting()).toBe(false);
         expect(s.gate.isPending()).toBe(true);
         expect(s.session.send).toHaveBeenCalledWith({ v: 1, type: 'adult_verify_request' });
+        expect(document.getElementById('spicy-status-label').textContent).toBe('ON');
+        expect(document.getElementById('spicy-verification-status').textContent).toBe('Verifying adult access…');
 
         s.director.blackboard.adultVerified = true;
         jest.advanceTimersByTime(500);
@@ -178,6 +207,7 @@ describe('Private Settings gate', () => {
         expect(s.gate.isEnabled()).toBe(true);
         expect(done).toHaveBeenCalledWith(true);
         expect(document.getElementById('spicy-status-label').textContent).toBe('ON');
+        expect(document.getElementById('spicy-verification-status').textContent).toBe('Verified and ready.');
     });
 
     test('an unavailable service does not silently rewrite the accepted switch OFF', () => {
@@ -194,7 +224,8 @@ describe('Private Settings gate', () => {
         expect(localStorage.getItem('nexus_spicy_enabled')).toBe('true');
         expect(document.getElementById('spicy-mode-toggle').checked).toBe(true);
         expect(document.getElementById('spicy-mode-toggle').disabled).toBe(false);
-        expect(document.getElementById('spicy-status-label').textContent).toBe('UNAVAILABLE');
+        expect(document.getElementById('spicy-status-label').textContent).toBe('ON');
+        expect(document.getElementById('spicy-verification-status').textContent).toContain('Verification unavailable');
         expect(document.querySelector('.config-section').dataset.privateState).toBe('unavailable');
     });
 
@@ -215,6 +246,7 @@ describe('Private Settings gate', () => {
         expect(localStorage.getItem('nexus_spicy_enabled')).toBe('true');
         expect(document.getElementById('spicy-mode-toggle').checked).toBe(true);
         expect(document.getElementById('spicy-status-label').textContent).toBe('ON');
+        expect(document.getElementById('spicy-verification-status').textContent).toBe('Verified and ready.');
     });
 
     test('trusted verification alone does not enable Private when the user preference is OFF', () => {
@@ -223,6 +255,8 @@ describe('Private Settings gate', () => {
         expect(s.gate.isRequested()).toBe(false);
         expect(s.gate.isEnabled()).toBe(false);
         expect(document.getElementById('spicy-mode-toggle').checked).toBe(false);
+        expect(document.getElementById('spicy-status-label').textContent).toBe('OFF');
+        expect(document.getElementById('spicy-verification-status').hidden).toBe(true);
     });
 
     test('transient verification loss removes access but keeps the switch ON and re-verifies', () => {
@@ -233,6 +267,7 @@ describe('Private Settings gate', () => {
         s.gate.setEnabled(true);
         expect(s.gate.isEnabled()).toBe(true);
         expect(document.getElementById('spicy-status-label').textContent).toBe('ON');
+        expect(document.getElementById('spicy-verification-status').textContent).toBe('Verified and ready.');
 
         // Simulate the trusted session attestation disappearing. Access must close, but this is
         // not the same thing as the user turning the Settings switch off.
@@ -244,7 +279,8 @@ describe('Private Settings gate', () => {
         expect(s.gate.isPending()).toBe(true);
         expect(localStorage.getItem('nexus_spicy_enabled')).toBe('true');
         expect(document.getElementById('spicy-mode-toggle').checked).toBe(true);
-        expect(document.getElementById('spicy-status-label').textContent).toBe('VERIFYING…');
+        expect(document.getElementById('spicy-status-label').textContent).toBe('ON');
+        expect(document.getElementById('spicy-verification-status').textContent).toBe('Verifying adult access…');
         expect(changes).toContain(false);
 
         s.director.blackboard.adultVerified = true;
@@ -254,6 +290,7 @@ describe('Private Settings gate', () => {
         expect(s.gate.isRequested()).toBe(true);
         expect(document.getElementById('spicy-mode-toggle').checked).toBe(true);
         expect(document.getElementById('spicy-status-label').textContent).toBe('ON');
+        expect(document.getElementById('spicy-verification-status').textContent).toBe('Verified and ready.');
         expect(changes[changes.length - 1]).toBe(true);
     });
 
@@ -271,7 +308,8 @@ describe('Private Settings gate', () => {
         expect(done).toHaveBeenCalledWith(false);
         expect(document.getElementById('spicy-mode-toggle').checked).toBe(true);
         expect(document.getElementById('spicy-mode-toggle').disabled).toBe(false);
-        expect(document.getElementById('spicy-status-label').textContent).toBe('UNAVAILABLE');
+        expect(document.getElementById('spicy-status-label').textContent).toBe('ON');
+        expect(document.getElementById('spicy-verification-status').textContent).toContain('Verification unavailable');
     });
 
     test('reload preserves an accepted ON preference and revalidates instead of forcing OFF', () => {
@@ -281,12 +319,14 @@ describe('Private Settings gate', () => {
         expect(s.gate.isEnabled()).toBe(false);
         expect(localStorage.getItem('nexus_spicy_enabled')).toBe('true');
         expect(document.getElementById('spicy-mode-toggle').checked).toBe(true);
-        expect(document.getElementById('spicy-status-label').textContent).toBe('REVERIFYING…');
+        expect(document.getElementById('spicy-status-label').textContent).toBe('ON');
+        expect(document.getElementById('spicy-verification-status').textContent).toBe('Restoring verification…');
 
         jest.advanceTimersByTime(500);
         expect(s.gate.isRequested()).toBe(true);
         expect(document.getElementById('spicy-mode-toggle').checked).toBe(true);
-        expect(document.getElementById('spicy-status-label').textContent).toBe('UNAVAILABLE');
+        expect(document.getElementById('spicy-status-label').textContent).toBe('ON');
+        expect(document.getElementById('spicy-verification-status').textContent).toContain('Verification unavailable');
     });
 
     test('only an explicit OFF action clears the preference', () => {
@@ -301,5 +341,6 @@ describe('Private Settings gate', () => {
         expect(localStorage.getItem('nexus_spicy_enabled')).toBe('false');
         expect(document.getElementById('spicy-mode-toggle').checked).toBe(false);
         expect(document.getElementById('spicy-status-label').textContent).toBe('OFF');
+        expect(document.getElementById('spicy-verification-status').hidden).toBe(true);
     });
 });
