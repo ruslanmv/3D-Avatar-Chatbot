@@ -13,6 +13,9 @@
     const OPEN = '<play';
     const CLOSE = '</play>';
     const PRIVATE_RUNTIME_VERSION = 1;
+    const PrivateViewApi =
+        (global && global.NEXUS_PRIVATE_CONVERSATION_VIEW) ||
+        (typeof module !== 'undefined' && module.exports ? require('./ui/PrivateConversationView.js') : null);
 
     const PRIVATE_PRESETS = Object.freeze({
         affectionate: Object.freeze({
@@ -20,7 +23,8 @@
             label: 'Affectionate',
             maxLevel: 1,
             music: 'warm gentle evening instrumental ambient no lyrics',
-            opening: 'I thought we could keep this simple and warm for a few minutes. No pressure, no agenda — just a little time together.',
+            opening:
+                'I thought we could keep this simple and warm for a few minutes. No pressure, no agenda — just a little time together.',
             playful: 'Then let us keep it light. I am happy just being here with you and letting the moment be easy.',
             tender: 'Then let us make it gentle. You do not have to perform or prove anything here. We can just enjoy the quiet together.',
             middle: 'I like the slower pace. It gives the room a chance to feel like a place instead of a backdrop.',
@@ -31,8 +35,10 @@
             label: 'Romantic',
             maxLevel: 2,
             music: 'soft romantic evening instrumental ambient no lyrics',
-            opening: 'This place feels a little different tonight. I thought we could make the next few minutes feel like a small date, without rushing anything.',
-            playful: 'Playful it is. I like the idea of making you smile and letting the evening stay a little mischievous without pushing it anywhere.',
+            opening:
+                'This place feels a little different tonight. I thought we could make the next few minutes feel like a small date, without rushing anything.',
+            playful:
+                'Playful it is. I like the idea of making you smile and letting the evening stay a little mischievous without pushing it anywhere.',
             tender: 'Tender sounds good. Then I want to keep this soft, unhurried, and a little romantic — just enough to make the moment feel special.',
             middle: 'There is something nice about not needing the next moment to be bigger than this one.',
             closing: 'I liked this. We can leave it here, with a little warmth still hanging in the room.',
@@ -42,11 +48,14 @@
             label: 'Sensual',
             maxLevel: 3,
             music: 'slow intimate lounge instrumental ambient no lyrics',
-            opening: 'We can make this quieter and a little more intimate, while keeping everything comfortable and completely in your control.',
-            playful: 'Then I will keep a little spark in it — confident, teasing in a gentle way, and still easy to slow down whenever you want.',
+            opening:
+                'We can make this quieter and a little more intimate, while keeping everything comfortable and completely in your control.',
+            playful:
+                'Then I will keep a little spark in it — confident, teasing in a gentle way, and still easy to slow down whenever you want.',
             tender: 'Then I will keep it close and calm: slower words, longer pauses, and no need to make the moment more intense than you want it to be.',
             middle: 'I like the quiet confidence of this pace. Nothing has to happen for the moment to feel close.',
-            closing: 'That is enough for tonight. I would rather end on a good feeling than stretch it past the point where it feels natural.',
+            closing:
+                'That is enough for tonight. I would rather end on a good feeling than stretch it past the point where it feels natural.',
         }),
     });
 
@@ -125,7 +134,12 @@
         const blackboard = director && director.blackboard;
         if (!director || !activity || !adult || !blackboard) return null;
         if (!activity.active || !adult.active) return null;
-        if (blackboard.adultVerified !== true || blackboard.nsfwAllowed !== true) return null;
+        const gate = global && global.NEXUS_SPICY;
+        const eligible =
+            gate && typeof gate.usable === 'function'
+                ? gate.usable() === true
+                : blackboard.adultVerified === true && blackboard.nsfwAllowed === true;
+        if (!eligible) return null;
         const preset = PRIVATE_PRESETS[activity.preset] || PRIVATE_PRESETS.affectionate;
         const level = Math.max(1, Math.min(preset.maxLevel, Number(adult.level) || 1));
         return { director, activity, adult, blackboard, preset, level };
@@ -161,29 +175,17 @@
     function currentSceneLabel(win) {
         const bb = win && win.NEXUS_BD && win.NEXUS_BD.blackboard;
         const scene = bb && bb.scene;
-        if (scene && typeof scene === 'object') return cleanText(scene.label || scene.title || scene.id || 'this place', 120);
+        if (scene && typeof scene === 'object')
+            return cleanText(scene.label || scene.title || scene.id || 'this place', 120);
         if (scene) return cleanText(scene, 120).replace(/[-_]+/g, ' ');
         return 'this place';
     }
 
-    const PRIVATE_CSS = `
-#nexus-private-hud{position:fixed;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:2147482501;width:min(660px,calc(100vw - 28px));font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#fff;pointer-events:none}
-#nexus-private-hud *{box-sizing:border-box}.nexus-private-card,.nexus-private-bar{pointer-events:auto;background:rgba(16,13,20,.78);border:1px solid rgba(255,255,255,.14);box-shadow:0 16px 50px rgba(0,0,0,.35);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-radius:16px}.nexus-private-card{padding:15px 17px;margin-bottom:8px}.nexus-private-bar{display:flex;align-items:center;gap:8px;padding:9px 11px}.nexus-private-title{font-weight:650;font-size:.86rem;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nexus-private-level{font-size:.72rem;opacity:.68}.nexus-private-copy{font-size:.98rem;line-height:1.55;text-wrap:pretty}.nexus-private-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.nexus-private-btn{border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:#fff;border-radius:10px;padding:8px 11px;font:inherit;font-size:.78rem;cursor:pointer}.nexus-private-btn:hover,.nexus-private-btn:focus-visible{background:rgba(255,255,255,.16);outline:none}.nexus-private-note{font-size:.78rem;opacity:.7;margin-top:8px}.nexus-private-complete{font-weight:700;margin-bottom:4px}
-@media(max-width:560px){#nexus-private-hud{width:calc(100vw - 18px);bottom:max(9px,env(safe-area-inset-bottom))}.nexus-private-copy{font-size:.93rem}}
-`;
-
-    function ensurePrivateStyles(doc) {
-        if (!doc || doc.getElementById('nexus-private-styles')) return;
-        const style = doc.createElement('style');
-        style.id = 'nexus-private-styles';
-        style.textContent = PRIVATE_CSS;
-        (doc.head || doc.documentElement).appendChild(style);
-    }
-
     class IntimateExperienceSession {
-        constructor({ activity, preset, adult, director, win, bus, say, timingScale, now } = {}) {
+        constructor({ activity, preset, soundtrack, adult, director, win, bus, say, timingScale, now } = {}) {
             this.activity = activity || null;
             this.preset = PRIVATE_PRESETS[preset] || PRIVATE_PRESETS.affectionate;
+            this.soundtrack = ['choose', 'current', 'none'].includes(soundtrack) ? soundtrack : 'choose';
             this.adult = adult || null;
             this.director = director || (global && global.NEXUS_BD) || null;
             this.win = win || global || null;
@@ -195,9 +197,8 @@
             this.now = typeof now === 'function' ? now : () => Date.now();
             this.state = 'idle';
             this.startedAt = null;
-            this.hud = null;
-            this.card = null;
-            this.levelEl = null;
+            this.view = null;
+            this._conversationBusyUntil = 0;
             this._timers = new Set();
             this._unsubscribes = [];
             this._ownsMedia = false;
@@ -226,6 +227,10 @@
             this.startedAt = this.now();
             this.state = 'active';
             this._mount();
+            if (!this.view) {
+                this.state = 'idle';
+                return { ok: false, why: 'Open Conversation before beginning Private' };
+            }
             this._listen();
             this._speak(`${this.preset.opening} ${currentSceneLabel(this.win)} feels like a good place for it.`);
             this._startSoundtrack();
@@ -307,7 +312,9 @@
             const delay = Math.max(0, Number(ms) || 0) * this.timingScale;
             const id = this.win.setTimeout(() => {
                 this._timers.delete(id);
-                if (!this._stopped && this.state !== 'complete') fn();
+                if (this.now() < this._conversationBusyUntil) {
+                    this._schedule(1000, fn);
+                } else if (!this._stopped && this.state !== 'complete') fn();
             }, delay);
             this._timers.add(id);
             return id;
@@ -320,70 +327,35 @@
         }
 
         _mount() {
-            if (!this.doc || !this.doc.body) return;
-            ensurePrivateStyles(this.doc);
-            const old = this.doc.getElementById('nexus-private-hud');
-            if (old && old.parentNode) old.parentNode.removeChild(old);
-            const hud = this.doc.createElement('div');
-            hud.id = 'nexus-private-hud';
-            hud.setAttribute('aria-live', 'polite');
-            this.card = this.doc.createElement('div');
-            this.card.className = 'nexus-private-card';
-            hud.appendChild(this.card);
-            const bar = this.doc.createElement('div');
-            bar.className = 'nexus-private-bar';
-            const title = this.doc.createElement('span');
-            title.className = 'nexus-private-title';
-            title.textContent = `${this.preset.label} · Private`;
-            bar.appendChild(title);
-            this.levelEl = this.doc.createElement('span');
-            this.levelEl.className = 'nexus-private-level';
-            bar.appendChild(this.levelEl);
-            bar.appendChild(this._button('Keep it cozy', 'cozy', () => {
-                if (this.adult && typeof this.adult.exit === 'function') this.adult.exit('soft');
-            }));
-            bar.appendChild(this._button('End', 'end', () => this._requestEnd(false)));
-            hud.appendChild(bar);
-            this.doc.body.appendChild(hud);
-            this.hud = hud;
+            if (!this.doc || !PrivateViewApi || !PrivateViewApi.View) return;
+            const view = new PrivateViewApi.View({
+                doc: this.doc,
+                win: this.win,
+                onCozy: () => {
+                    if (this.adult && typeof this.adult.exit === 'function') this.adult.exit('soft');
+                },
+                onEnd: () => this._requestEnd(false),
+                onUserMessage: () => this._yieldToConversation(),
+            });
+            if (!view.mount({ preset: this.preset, scene: currentSceneLabel(this.win) })) return;
+            this.view = view;
+            view.showStarting();
             this._paintLevel();
         }
 
-        _button(label, action, handler) {
-            const button = this.doc.createElement('button');
-            button.type = 'button';
-            button.className = 'nexus-private-btn';
-            button.textContent = label;
-            button.dataset.privateAction = action;
-            button.addEventListener('click', handler);
-            return button;
-        }
-
         _paintLevel() {
-            if (!this.levelEl) return;
             const level = Math.max(1, Math.min(this.preset.maxLevel, Number(this.adult && this.adult.level) || 1));
             const words = level === 1 ? 'Warm' : level === 2 ? 'Romantic' : 'Sensual';
-            this.levelEl.textContent = words;
+            if (this.view) this.view.setPace(words);
         }
 
         _showMessage(text, actions) {
-            if (!this.card || !this.doc) return;
-            this.card.textContent = '';
-            const copy = this.doc.createElement('div');
-            copy.className = 'nexus-private-copy';
-            copy.textContent = text;
-            this.card.appendChild(copy);
-            if (actions && actions.length) {
-                const row = this.doc.createElement('div');
-                row.className = 'nexus-private-actions';
-                for (const action of actions) row.appendChild(this._button(action.label, action.id, action.run));
-                this.card.appendChild(row);
-            }
+            if (this.view) this.view.showMessage(text, actions);
         }
 
         _showMoodChoice() {
             if (this.state !== 'active') return;
-            this._showMessage('What kind of mood should we keep?', [
+            const options = [
                 {
                     id: 'playful',
                     label: 'Playful',
@@ -400,7 +372,8 @@
                         this._showMessage(this.preset.tender, []);
                     },
                 },
-            ]);
+            ];
+            if (this.view) this.view.showMoodChoice(options);
         }
 
         _offerCheckIn() {
@@ -416,7 +389,7 @@
             }
             this.state = 'checkin-pending';
             const nextLabel = level + 1 >= 3 ? 'A little more sensual' : 'A little more flirty';
-            this._showMessage('Would you like to keep this sweet, or make it a little more intense?', [
+            const options = [
                 {
                     id: 'keep-sweet',
                     label: 'Keep it sweet',
@@ -431,7 +404,8 @@
                     label: nextLabel,
                     run: () => this._acceptCheckIn(),
                 },
-            ]);
+            ];
+            if (this.view) this.view.showConsentCheckIn(options);
         }
 
         _acceptCheckIn() {
@@ -460,10 +434,12 @@
 
         async _startSoundtrack() {
             if (!this.win || this._stopped) return false;
+            if (this.soundtrack === 'none' || this.soundtrack === 'current') return false;
             const media = this.win.NEXUS_MEDIA_SESSION;
             try {
                 const existing = media && typeof media.get === 'function' ? media.get() : null;
-                if (existing && ['playing', 'loading', 'paused'].includes(existing.status) && existing.current) return false;
+                if (existing && ['playing', 'loading', 'paused'].includes(existing.status) && existing.current)
+                    return false;
             } catch (_) {}
             const registry = this.win.NEXUS_DISCOVERY;
             if (!registry || typeof registry.forCapability !== 'function') return false;
@@ -475,16 +451,12 @@
                 if (this._stopped || !Array.isArray(found) || !found.length) return false;
                 const track = found[0];
                 if (media && typeof media.requestPlay === 'function') media.requestPlay(track, { source: 'private' });
-                const publisher = this.win.NEXUS_CONVERSATION_PUBLISHER;
-                if (publisher && typeof publisher.publish === 'function') {
-                    publisher.publish(track, { doc: this.doc, win: this.win, play: true });
-                    this._ownsMedia = true;
-                    return true;
-                }
+                if (this.view) this.view.attachSoundtrack(track);
+                this._ownsMedia = true;
+                return true;
             } catch (_) {
                 return false;
             }
-            return false;
         }
 
         _stopSoundtrack() {
@@ -506,7 +478,8 @@
                     const result = this.say(line);
                     if (result && typeof result.then === 'function') {
                         result.finally(() => {
-                            if (this.audioFocus && typeof this.audioFocus.restore === 'function') this.audioFocus.restore();
+                            if (this.audioFocus && typeof this.audioFocus.restore === 'function')
+                                this.audioFocus.restore();
                         });
                         return;
                     }
@@ -515,31 +488,36 @@
             if (this.audioFocus && typeof this.audioFocus.restore === 'function') this.audioFocus.restore();
         }
 
+        _yieldToConversation() {
+            this._conversationBusyUntil = this.now() + 8000;
+            try {
+                if (this.win && this.win.speechSynthesis && typeof this.win.speechSynthesis.cancel === 'function')
+                    this.win.speechSynthesis.cancel();
+            } catch (_) {}
+            if (this.audioFocus && typeof this.audioFocus.restore === 'function') this.audioFocus.restore();
+            this._emit('private:user-turn', { preset: this.preset.id });
+        }
+
         _complete() {
             if (this._stopped) return;
             this.state = 'complete';
             this._clearTimers();
-            if (!this.card || !this.doc) return;
-            this.card.textContent = '';
-            const title = this.doc.createElement('div');
-            title.className = 'nexus-private-complete';
-            title.textContent = 'Private moment complete';
-            this.card.appendChild(title);
-            const note = this.doc.createElement('div');
-            note.className = 'nexus-private-note';
-            note.textContent = 'Nothing from this Private session is saved to Playground Histories.';
-            this.card.appendChild(note);
-            const row = this.doc.createElement('div');
-            row.className = 'nexus-private-actions';
-            row.appendChild(this._button('End Private', 'finish', () => this._requestEnd(false)));
-            row.appendChild(this._button('Back to Together', 'back', () => this._requestEnd(true)));
-            this.card.appendChild(row);
+            if (this.view) {
+                this.view.showComplete({
+                    onAgain: () => this._requestEnd(true),
+                    onBack: () => this._requestEnd(true),
+                });
+            }
             this._emit('private:session-complete', { preset: this.preset.id });
         }
 
         _requestEnd(openTogether) {
             const panel = this.director && this.director.togetherPanel;
-            if (panel && (panel.active === 'intimate' || panel.activeActivity === 'intimate') && typeof panel.stopActivity === 'function') {
+            if (
+                panel &&
+                (panel.active === 'intimate' || panel.activeActivity === 'intimate') &&
+                typeof panel.stopActivity === 'function'
+            ) {
                 panel.stopActivity('private complete');
                 if (openTogether && typeof panel.open === 'function') panel.open();
                 return;
@@ -548,10 +526,8 @@
         }
 
         _unmount() {
-            if (this.hud && this.hud.parentNode) this.hud.parentNode.removeChild(this.hud);
-            this.hud = null;
-            this.card = null;
-            this.levelEl = null;
+            if (this.view) this.view.destroy();
+            this.view = null;
         }
 
         _emit(name, payload) {
@@ -578,6 +554,7 @@
             const session = new IntimateExperienceSession({
                 activity: this,
                 preset: presetId,
+                soundtrack: input.soundtrack,
                 adult: this.adult || (director && director.adult),
                 director,
                 win: global,
@@ -617,7 +594,8 @@
     }
 
     function schedulePrivateRuntimeInstall() {
-        if (!global || !global.document || !global.document.currentScript || typeof global.setTimeout !== 'function') return;
+        if (!global || !global.document || !global.document.currentScript || typeof global.setTimeout !== 'function')
+            return;
         let attempts = 0;
         const tryInstall = () => {
             if (installPrivateRuntime()) return;

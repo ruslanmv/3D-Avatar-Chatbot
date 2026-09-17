@@ -97,6 +97,7 @@
         // T1/T2. The one switch, and the paragraph that stops her apologising. Before the
         // launcher that flips the switch and before anything that reads it.
         'src/features/together/TogetherSwitch.js',
+        'src/features/together/ui/PrivateConversationView.js',
         'src/features/together/TogetherCapability.js',
         // T3/T5. The one function that finds and plays, and the parser that lets her ask for
         // it. After the publisher's dependencies, before the launcher.

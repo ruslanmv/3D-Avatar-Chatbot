@@ -36,19 +36,18 @@ The first production slice should emphasize presence rather than explicit sexual
 
 V1 should **not** add explicit sexual-act simulation or a new explicit animation pack.
 
-## Reuse the existing adult gate
+## Reuse the existing Private gate
 
-The repository already has a stronger adult gate than a self-attestation dialog. Keep it.
+Private uses one eligibility source: the accepted device-local adult confirmation exposed by
+`NEXUS_SPICY.usable()`. Settings controls whether the destination is visible, that eligibility
+check controls whether **Begin private moment** can succeed, and ConsentFlow controls the live
+pace and ceiling. Do not add a second server acknowledgement that can disagree with Settings.
 
-Intimate may be exposed only when all existing adult prerequisites are satisfied:
+Intimate may be exposed only when all current Private prerequisites are satisfied:
 
-1. the deployment/server side has adult capability enabled and has produced the trusted
-   `adultVerified` attestation;
-2. the user has explicitly enabled `nsfwAllowed`;
+1. the adult confirmation has been accepted and Private is enabled on this device;
+2. `nsfwAllowed` mirrors that enabled preference;
 3. `adult.available` is enabled so the consent flow exists.
-
-`adultVerified` must remain server-authored only. Do **not** add a client setting, config key,
-scene field, model instruction, localStorage value, or "I am 18" button that writes it.
 
 If any prerequisite is false:
 
@@ -625,7 +624,7 @@ The feature is not complete merely because an Intimate tile exists.
 
 Merge only when:
 
-- the existing server-authored adult attestation remains the only source of `adultVerified`;
+- `NEXUS_SPICY.usable()` remains the single eligibility source used by Settings, launch, and the prompt boundary;
 - `nsfwAllowed` and `adult.available` remain independent gates;
 - Intimate V1 exposes only level 1-3 ceilings;
 - no automatic escalation path exists;

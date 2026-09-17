@@ -691,6 +691,8 @@ const TogetherPanel = (() => {
             if (!contract && !activity) return this._paintChooser();
             const meta = contract || metaFor(activity);
 
+            if (this.pending === 'intimate' && contract) return this._paintPrivateSetup(contract, meta);
+
             const title = this.doc.createElement('p');
             title.className = 'nexus-bd-together-subtitle';
             title.textContent = `${meta.icon || '✦'} ${meta.title || (activity && activity.label) || this.pending}`;
@@ -771,6 +773,67 @@ const TogetherPanel = (() => {
                 list.appendChild(b);
             }
             this.root.appendChild(list);
+        }
+
+        /** Premium, explicit setup for Private. Selecting a ceiling never starts the session. */
+        _paintPrivateSetup(contract, _meta) {
+            const doc = this.doc;
+            const bb = typeof window !== 'undefined' && window.NEXUS_BD && window.NEXUS_BD.blackboard;
+            const rawScene = bb && bb.scene;
+            const scene =
+                rawScene && typeof rawScene === 'object' ? rawScene.label || rawScene.title || rawScene.id : rawScene;
+            const place = String(scene || 'Current place').replace(/[-_]+/g, ' ');
+            const styleId = 'nexus-private-setup-styles';
+            if (!doc.getElementById(styleId)) {
+                const style = doc.createElement('style');
+                style.id = styleId;
+                style.textContent =
+                    '.nexus-private-setup{display:grid;gap:14px}.nexus-private-setup .nexus-private-setup-kicker{text-align:center;color:#f49aba;font-weight:750;letter-spacing:.08em}.nexus-private-setup-lead{text-align:center;opacity:.78;margin:0}.nexus-private-place-card{padding:12px 14px;border:1px solid rgba(244,128,166,.25);border-radius:14px;background:rgba(244,128,166,.06)}.nexus-private-preset-grid{display:grid;gap:9px}.nexus-private-preset{display:block;width:100%;text-align:left;border:1px solid rgba(255,255,255,.13);border-radius:14px;padding:13px;background:rgba(255,255,255,.05);color:inherit;font:inherit;cursor:pointer}.nexus-private-preset.is-selected{border-color:rgba(244,128,166,.75);background:rgba(244,128,166,.13)}.nexus-private-preset strong,.nexus-private-preset span{display:block}.nexus-private-preset span{font-size:.8rem;opacity:.7;margin-top:4px}.nexus-private-soundtrack-options{display:flex;flex-wrap:wrap;gap:8px;font-size:.8rem}.nexus-private-safety{font-size:.78rem;line-height:1.5;opacity:.7}.nexus-private-begin{width:100%;padding:12px;border:0;border-radius:12px;background:linear-gradient(120deg,#c34f7b,#9a4f9e);color:#fff;font:inherit;font-weight:700;cursor:pointer}.nexus-private-begin:disabled{opacity:.45;cursor:default}.nexus-private-ready{padding:11px 13px;border-left:3px solid #f49aba;background:rgba(244,128,166,.07);font-size:.84rem;line-height:1.55}';
+                (doc.head || doc.documentElement).appendChild(style);
+            }
+            const shell = doc.createElement('div');
+            shell.className = 'nexus-private-setup';
+            shell.innerHTML = `<div class="nexus-private-setup-kicker">🔐 PRIVATE</div><p class="nexus-private-setup-lead">A more personal moment together.<br>You choose the pace.</p><div><small>Current place</small><div class="nexus-private-place-card"></div></div><div><small>How should this feel?</small><div class="nexus-private-preset-grid"></div></div><div><small>Soundtrack</small><div class="nexus-private-soundtrack-options"><label><input type="radio" name="private-music" value="choose" checked> Let her choose</label><label><input type="radio" name="private-music" value="current"> Keep current</label><label><input type="radio" name="private-music" value="none"> No music</label></div></div><div class="nexus-private-ready" hidden></div><div class="nexus-private-safety">Starts gentle. You can slow down or stop at any time.</div>`;
+            shell.querySelector('.nexus-private-place-card').textContent = place;
+            const grid = shell.querySelector('.nexus-private-preset-grid');
+            const ready = shell.querySelector('.nexus-private-ready');
+            let selected = null;
+            const descriptions = {
+                affectionate: 'Warm, caring and relaxed. Gentle closeness.',
+                romantic: 'A date-night mood with gentle flirting.',
+                sensual: 'More intimate and suggestive, while staying at your pace.',
+            };
+            const begin = doc.createElement('button');
+            begin.type = 'button';
+            begin.className = 'nexus-private-begin';
+            begin.disabled = true;
+            begin.textContent = 'Begin private moment →';
+            for (const input of contract.inputs()) {
+                const option = doc.createElement('button');
+                option.type = 'button';
+                option.className = 'nexus-private-preset';
+                option.innerHTML = `<strong>${input.id === 'sensual' ? '✧' : '♡'} ${input.label}</strong><span></span>`;
+                option.querySelector('span').textContent = descriptions[input.id] || input.note || '';
+                option.addEventListener('click', () => {
+                    selected = input;
+                    grid.querySelectorAll('.nexus-private-preset').forEach((node) =>
+                        node.classList.toggle('is-selected', node === option)
+                    );
+                    begin.disabled = false;
+                    ready.hidden = false;
+                    ready.textContent = `${input.label} · ${place}\nStarts gentle · about 5 minutes\nYou remain in control of the pace.`;
+                });
+                grid.appendChild(option);
+            }
+            begin.addEventListener('click', () => {
+                const music = shell.querySelector('input[name="private-music"]:checked');
+                if (selected)
+                    this.startActivity('intimate', { ...selected, soundtrack: music ? music.value : 'choose' });
+            });
+            shell.appendChild(begin);
+            const back = this._button('Back', 'nexus-bd-together-option', () => this.back());
+            shell.appendChild(back);
+            this.root.appendChild(shell);
         }
 
         /**
