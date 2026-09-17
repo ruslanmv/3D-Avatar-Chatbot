@@ -7,8 +7,9 @@
  * a small HUD carries narration, choices, pause/end controls and completion actions.
  *
  * This file also owns the separate Private/Intimate Together bridge. The two systems remain
- * independent: Playground is always family-safe; Private requires the user's local preference,
- * a trusted server adult attestation and the repository's existing ConsentFlow.
+ * independent: Playground is always family-safe; the Private tile follows the user's Settings
+ * preference, while starting a Private experience still requires trusted adult verification
+ * and the repository's existing ConsentFlow.
  *
  * Exposes:
  *   window.NEXUS_BD_PLAYGROUND
@@ -81,7 +82,7 @@ const PlaygroundActivity = (() => {
             .replace(/[\u0000-\u001f\u007f]/g, ' ')
             .replace(/\s+/g, ' ')
             .trim()
-            .slice(0, max);
+            .slice(0, max || 500);
     }
 
     function safeIdea(value) {
@@ -859,16 +860,25 @@ const PlaygroundActivity = (() => {
         }
     }
 
+    function privatePreferenceOn(spicy) {
+        if (!spicy) return false;
+        if (typeof spicy.isRequested === 'function') return spicy.isRequested() === true;
+        return typeof spicy.isEnabled === 'function' && spicy.isEnabled() === true;
+    }
+
     function privateTileVisibility(spicy) {
-        if (!spicy || typeof spicy.isEnabled !== 'function' || !spicy.isEnabled()) {
+        if (!privatePreferenceOn(spicy)) {
             return { ok: false, why: 'Private Mode is disabled in Settings' };
         }
         return { ok: true, why: '' };
     }
 
     function intimateEligibility(director, spicy) {
-        if (!spicy || typeof spicy.isEnabled !== 'function' || !spicy.isEnabled()) {
+        if (!privatePreferenceOn(spicy)) {
             return { ok: false, why: 'Private Mode is disabled in Settings' };
+        }
+        if (!spicy || typeof spicy.isEnabled !== 'function' || !spicy.isEnabled()) {
+            return { ok: false, why: 'trusted adult verification is not ready yet' };
         }
         if (!director || !director.blackboard || director.blackboard.adultVerified !== true) {
             return { ok: false, why: 'trusted adult verification is not ready yet' };
@@ -919,7 +929,7 @@ const PlaygroundActivity = (() => {
     function lockedPrompt(gate) {
         const why = String((gate && gate.why) || 'trusted adult verification is not ready yet');
         if (/verification/i.test(why)) {
-            return 'Checking trusted adult verification… Keep this screen open. If it stays locked, enable adult verification in HomePilot and reconnect.';
+            return 'Private Mode is on. Finishing trusted adult verification…';
         }
         if (/consent flow/i.test(why)) return 'Trusted verification arrived. Preparing Private Mode…';
         return why;
@@ -1024,8 +1034,8 @@ const PlaygroundActivity = (() => {
         const repaint = () => {
             if (director && director.togetherPanel && typeof director.togetherPanel.setContext === 'function') director.togetherPanel.setContext({});
         };
-        const mirrorPreference = (enabled) => {
-            if (director && director.blackboard) director.blackboard.nsfwAllowed = Boolean(enabled);
+        const mirrorPreference = (requested) => {
+            if (director && director.blackboard) director.blackboard.nsfwAllowed = Boolean(requested);
         };
         const maybeRequestVerification = (force = false) => {
             if (!director || !director.blackboard || director.blackboard.adultVerified === true) return false;
@@ -1088,19 +1098,23 @@ const PlaygroundActivity = (() => {
             }
             lastVerified = Boolean(director.blackboard && director.blackboard.adultVerified);
             sync();
-            if (typeof window.NEXUS_SPICY.onChange === 'function') {
-                unsubscribeSpicy = window.NEXUS_SPICY.onChange((enabled) => {
-                    mirrorPreference(enabled);
+            const preferenceSubscribe =
+                typeof window.NEXUS_SPICY.onPreferenceChange === 'function'
+                    ? window.NEXUS_SPICY.onPreferenceChange
+                    : window.NEXUS_SPICY.onChange;
+            if (typeof preferenceSubscribe === 'function') {
+                unsubscribeSpicy = preferenceSubscribe((requested) => {
+                    mirrorPreference(requested);
                     lastVerifyRequestAt = 0;
                     sync();
-                    if (enabled) maybeRequestVerification(true);
+                    if (requested) maybeRequestVerification(true);
                 });
             }
             if (director.togetherPanel && typeof director.togetherPanel.onChange === 'function') {
                 unsubscribePanel = director.togetherPanel.onChange((snapshot) => {
                     if (snapshot && snapshot.open) {
                         sync();
-                        if (window.NEXUS_SPICY.isEnabled()) maybeRequestVerification();
+                        if (privatePreferenceOn(window.NEXUS_SPICY)) maybeRequestVerification();
                     }
                 });
             }
@@ -1120,7 +1134,7 @@ const PlaygroundActivity = (() => {
                     if (verified) ensureAdultFlow(director);
                     sync();
                     repaint();
-                } else if (!verified && window.NEXUS_SPICY && window.NEXUS_SPICY.isEnabled()) {
+                } else if (!verified && window.NEXUS_SPICY && privatePreferenceOn(window.NEXUS_SPICY)) {
                     maybeRequestVerification();
                 }
             }, 1000);
