@@ -1085,6 +1085,11 @@ const PlaygroundActivity = (() => {
                 const gate = intimateEligibility(director, window.NEXUS_SPICY);
                 if (!gate.ok && (director.togetherPanel.active === 'intimate' || director.togetherPanel.activeActivity === 'intimate')) {
                     director.togetherPanel.stopActivity(gate.why || 'Private eligibility changed');
+                    // Starting an activity closes Together. If trust disappears while it is
+                    // running, reopen the chooser so the still-enabled Private preference is
+                    // represented by its locked tile rather than by an apparently vanished
+                    // destination.
+                    if (typeof director.togetherPanel.open === 'function') director.togetherPanel.open();
                 }
             } else unregister(visible.why);
             return visible.ok;

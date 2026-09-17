@@ -252,10 +252,17 @@
         if (discoveryInFlight) return true;
 
         discoveryInFlight = true;
-        Promise.resolve()
-            .then(function () {
-                return discovery.discover();
-            })
+        let discoveryResult;
+        try {
+            // Start discovery immediately. Besides avoiding an unnecessary event-loop turn,
+            // this lets callers observe the recovered SessionAdapter settings as soon as the
+            // discovery promise settles.
+            discoveryResult = discovery.discover();
+        } catch (_) {
+            discoveryInFlight = false;
+            return suspendTrustedAccess('unavailable');
+        }
+        Promise.resolve(discoveryResult)
             .then(function (found) {
                 discoveryInFlight = false;
                 if (!enabled || !connecting || attempt !== connectionAttempt) return;
@@ -397,8 +404,10 @@
         }
         unavailableReason = '';
 
-        if (sessionReady()) return beginVerificationRequest();
-        return beginSessionRecovery();
+        if (sessionReady()) beginVerificationRequest();
+        else beginSessionRecovery();
+        // `refresh()` reports trusted usability, not whether a recovery attempt started.
+        return false;
     }
 
     function showAgeGate(onConfirm, onCancel, { force = false } = {}) {
@@ -662,7 +671,18 @@
         const section = toggle && toggle.closest ? toggle.closest('.config-section') : null;
         if (section) {
             section.dataset.privateState =
-                state || (active ? 'on' : establishing ? 'connecting' : checking ? 'verifying' : requested ? 'reverifying' : 'off');
+                state ||
+                (active
+                    ? 'on'
+                    : establishing
+                      ? 'connecting'
+                      : checking
+                        ? 'verifying'
+                        : unavailableReason
+                          ? 'unavailable'
+                          : requested
+                            ? 'reverifying'
+                            : 'off');
         }
     }
 
