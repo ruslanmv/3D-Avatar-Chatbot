@@ -96,6 +96,9 @@
         'src/features/discovery/samples.js',
         // T1/T2. The one switch, and the paragraph that stops her apologising. Before the
         // launcher that flips the switch and before anything that reads it.
+        // P7. Who draws a conversation turn. Before PrivateConversationView, which replaces
+        // the drawing while a Private session is running.
+        'src/features/chat/ConversationSurface.js',
         'src/features/together/TogetherSwitch.js',
         // What a found track is called on screen, and the one strip that says it. Before
         // PrivateConversationView, which draws one, and before anything else that names media;

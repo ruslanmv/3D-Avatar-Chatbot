@@ -85,7 +85,8 @@ function setup() {
     return { activity, adult };
 }
 
-const copy = () => document.querySelector('.nexus-private-copy').textContent;
+/** The most recent line. The card is a rolling transcript, not one replaced message. */
+const copy = () => [...document.querySelectorAll('.nexus-private-copy')].pop().textContent;
 const dots = () => document.querySelector('[data-private-thinking="1"]');
 
 /** Pretend the tab was hidden: advance the clock without letting timers run on time. */

@@ -53,7 +53,8 @@ function setup({ scene = null } = {}) {
 }
 
 const actions = () => [...document.querySelectorAll('[data-private-action]')].map((b) => b.dataset.privateAction);
-const copy = () => document.querySelector('.nexus-private-copy').textContent;
+/** The most recent line. The card is a rolling transcript, not one replaced message. */
+const copy = () => [...document.querySelectorAll('.nexus-private-copy')].pop().textContent;
 const click = (action) => document.querySelector(`[data-private-action="${action}"]`).click();
 
 beforeEach(() => {
@@ -122,8 +123,9 @@ describe('Keep it cozy, over the real consent flow', () => {
 
         click('cozy');
 
+        // The transcript keeps the question on screen, so the buttons are the same live ones
+        // rather than a redrawn copy — which is what the old restore machinery had to fake.
         expect(actions()).toEqual(['playful', 'tender', 'cozy', 'end']);
-        expect(document.querySelector('.nexus-private-pending').textContent).toMatch(/mood|feel/i);
 
         // And the question still works after the interruption.
         click('tender');
@@ -132,13 +134,20 @@ describe('Keep it cozy, over the real consent flow', () => {
         s.activity.stop('user');
     });
 
-    test('a scheduled beat clears the question rather than stacking under it', async () => {
+    test('an answered question stops offering itself', async () => {
         const s = setup();
         await s.activity.start({ input: { id: 'sensual' } });
         jest.advanceTimersByTime(45000);
         click('tender');
         jest.advanceTimersByTime(165000);
-        expect(document.querySelector('.nexus-private-pending')).toBeNull();
+        // Asked once and answered once. The label stays visible as part of the conversation,
+        // but it is no longer a control — in a transcript an un-consumed choice could be taken
+        // twice, an hour apart.
+        expect(actions().filter((a) => a === 'tender' || a === 'playful')).toHaveLength(0);
+        expect(document.querySelector('.nexus-private-btn.is-chosen').textContent).toBe('Tender');
+        // The permanent controls are untouched — and a *later* beat may of course ask its own
+        // question, which is the check-in at 120s that this window has crossed.
+        expect(actions()).toEqual(expect.arrayContaining(['cozy', 'end']));
         s.activity.stop('user');
     });
 });

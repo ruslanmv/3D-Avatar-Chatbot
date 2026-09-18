@@ -114,9 +114,9 @@ function click(action) {
     node.click();
 }
 
-/** The spoken copy alone — `.nexus-private-card` also contains any action buttons. */
+/** The most recent spoken line; the card is a rolling transcript now. */
 function cardText() {
-    return document.querySelector('.nexus-private-copy').textContent;
+    return [...document.querySelectorAll('.nexus-private-copy')].pop().textContent;
 }
 
 beforeEach(() => {
