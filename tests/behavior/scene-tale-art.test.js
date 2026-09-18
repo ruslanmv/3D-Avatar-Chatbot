@@ -47,7 +47,7 @@ describe('Scene Tale canonical scene art', () => {
         const view = fs.readFileSync(ART_VIEW, 'utf8');
         expect(publisher).toContain('SceneTaleArtView.js');
         expect(publisher).toContain('ensureSceneTaleArtView');
-        expect(view).toContain("assets/ambient/scene-tale-art.json");
+        expect(view).toContain('assets/ambient/scene-tale-art.json');
         expect(view).toContain('nexus-scene-tale-hero');
     });
 });

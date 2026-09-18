@@ -73,7 +73,16 @@ beforeEach(() => {
     window.NEXUS_BD = {
         togetherPanel: {
             activities: new Map([
-                ['playground', { player: { state: 'waiting-choice', plan: { sceneLabel: 'Ocean · Moonlight' }, pause: jest.fn() } }],
+                [
+                    'playground',
+                    {
+                        player: {
+                            state: 'waiting-choice',
+                            plan: { sceneLabel: 'Ocean · Moonlight' },
+                            pause: jest.fn(),
+                        },
+                    },
+                ],
             ]),
         },
     };

@@ -22,8 +22,13 @@ function consentMachine() {
         state: 'idle',
         grant: null,
         reason: '',
-        onChange() { return () => {}; },
-        revoke() { this.state = 'idle'; return true; },
+        onChange() {
+            return () => {};
+        },
+        revoke() {
+            this.state = 'idle';
+            return true;
+        },
     };
 }
 
@@ -178,7 +183,9 @@ describe('Scene Tale mobile Ready -> Playing handoff', () => {
             hud.querySelector('.nexus-story-place'),
         ].filter(Boolean);
         let mutations = 0;
-        const observer = new MutationObserver((records) => { mutations += records.length; });
+        const observer = new MutationObserver((records) => {
+            mutations += records.length;
+        });
         watched.forEach((node) => observer.observe(node, { childList: true, characterData: true, subtree: true }));
         for (let i = 0; i < 12; i += 1) MobileMode.sync(hud);
         await flush();
@@ -204,7 +211,9 @@ describe('Scene Tale mobile Ready -> Playing handoff', () => {
             title: 'Broken test activity',
             inputs: () => [{ id: 'start', permission: null, note: 'test' }],
             availability: () => ({ ok: true, why: '' }),
-            start: jest.fn(async () => { throw new Error('mobile start exploded'); }),
+            start: jest.fn(async () => {
+                throw new Error('mobile start exploded');
+            }),
             stop: jest.fn(),
             status: () => null,
             detach: jest.fn(),
@@ -213,12 +222,18 @@ describe('Scene Tale mobile Ready -> Playing handoff', () => {
         MobileMode.patchStartHandoff(window);
 
         panel.open();
-        const result = await panel.startActivity('broken-mobile-start', { id: 'start', permission: null, note: 'test' });
+        const result = await panel.startActivity('broken-mobile-start', {
+            id: 'start',
+            permission: null,
+            note: 'test',
+        });
 
         expect(result).toEqual(expect.objectContaining({ ok: false }));
         expect(panel.isOpen).toBe(true);
         expect(panel.view).toBe('failure');
-        expect(document.getElementById(TogetherPanel.PANEL_ID).textContent).toMatch(/could not start|mobile start exploded/i);
+        expect(document.getElementById(TogetherPanel.PANEL_ID).textContent).toMatch(
+            /could not start|mobile start exploded/i
+        );
     });
 });
 

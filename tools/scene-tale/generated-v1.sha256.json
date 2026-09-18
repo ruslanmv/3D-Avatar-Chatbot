@@ -7,25 +7,145 @@
     "sha256": "d75d5eeaa9916f77dca192df3238f9ded9c5225c1bd56a3692a1791689ea2cc4"
   },
   "assets": [
-    {"source":"coastal-terrace-day/landscape.webp","bytes":68702,"sha256":"7d0b97a79f5431cdacc2612b3f84d02cdd0fa22c09a2fbef0f4d532cb2c70c4d","dimensions":[1920,1080],"target":"assets/ambient/light/coastal-terrace-day.webp"},
-    {"source":"coastal-terrace-day/portrait.webp","bytes":42810,"sha256":"e1ebb06a18a8ec48113510515c2362ca598dc6a9be9004d1ac04652f64638d52","dimensions":[1080,1920],"target":"assets/ambient/light/coastal-terrace-day-portrait.webp"},
-    {"source":"coastal-terrace-twilight/landscape.webp","bytes":47844,"sha256":"cc691bc79a65626f71859db2671e582904e733f9dd4a885a79a595f334d5e383","dimensions":[1920,1080],"target":"assets/ambient/dark/coastal-terrace-twilight.webp"},
-    {"source":"coastal-terrace-twilight/portrait.webp","bytes":38108,"sha256":"22b26cca59b621310c0e013f732b71d7f7f40238d9847fd180df509010e94662","dimensions":[1080,1920],"target":"assets/ambient/dark/coastal-terrace-twilight-portrait.webp"},
-    {"source":"meditation-garden-day/landscape.webp","bytes":82444,"sha256":"f6e4f6d255316789922672ad130c9f10ddb6604af3c5d11ebc904b4b91263f29","dimensions":[1920,1080],"target":"assets/ambient/light/meditation-garden-day.webp"},
-    {"source":"meditation-garden-day/portrait.webp","bytes":53686,"sha256":"047045e979637a52b81b2fb78675d629b55e04410169f1c5cedd60a503d6da91","dimensions":[1080,1920],"target":"assets/ambient/light/meditation-garden-day-portrait.webp"},
-    {"source":"meditation-garden-night/landscape.webp","bytes":58880,"sha256":"d055972fb0f3ef6fae2f8b5d64cf715fee9256ee2d5fcdd0d9ba26b27a9740a3","dimensions":[1920,1080],"target":"assets/ambient/dark/meditation-garden-night.webp"},
-    {"source":"meditation-garden-night/portrait.webp","bytes":38694,"sha256":"24075c92ef03451ec32f778c6752c0ebcfeac68759c88fc1ac5299e5c2a63bd4","dimensions":[1080,1920],"target":"assets/ambient/dark/meditation-garden-night-portrait.webp"},
-    {"source":"mountain-lake-day/landscape.webp","bytes":74062,"sha256":"e89bcb2e262c1f52cc132706b8f1982f9d3b0d7a22c3b81157c2212827e68482","dimensions":[1920,1080],"target":"assets/ambient/light/mountain-lake-day.webp"},
-    {"source":"mountain-lake-day/portrait.webp","bytes":39820,"sha256":"83d594efb38a471297bd36ecc9d60a15a9c56edf894e65f45007fee4e7be1bd6","dimensions":[1080,1920],"target":"assets/ambient/light/mountain-lake-day-portrait.webp"},
-    {"source":"mountain-lake-night/landscape.webp","bytes":48100,"sha256":"b9bd3ee5f537c066b90ef9754d425019d92b9636b3f1ab72c34fe1d49cd403f8","dimensions":[1920,1080],"target":"assets/ambient/dark/mountain-lake-night.webp"},
-    {"source":"mountain-lake-night/portrait.webp","bytes":27734,"sha256":"52868415bb89fc48074f8001c2a99d08c1aef144ea15f036085e8af26534ead9","dimensions":[1080,1920],"target":"assets/ambient/dark/mountain-lake-night-portrait.webp"},
-    {"source":"ocean-moonlight/landscape.webp","bytes":36786,"sha256":"f555486acd4c542ad2e36ae54fd553234bfd9a269aa8283434ba20378193b8b1","dimensions":[1920,1080],"target":"assets/ambient/dark/ocean-moonlight.webp"},
-    {"source":"ocean-moonlight/portrait.webp","bytes":34076,"sha256":"86d56b4f724881d1619f34ccd607c2b1e0d5f2c1865d1b29227c0db79689ff18","dimensions":[1080,1920],"target":"assets/ambient/dark/ocean-moonlight-portrait.webp"},
-    {"source":"ocean-sunrise/landscape.webp","bytes":45900,"sha256":"719cfc05fc48d44b0be02b04f57c9f7e2ffc858e0a6e5237c7a299acf1c8652c","dimensions":[1920,1080],"target":"assets/ambient/light/ocean-sunrise.webp"},
-    {"source":"ocean-sunrise/portrait.webp","bytes":29534,"sha256":"3542fd5d5b401c76ebe8662ad254bef5de1245a0b498e104a40274aed60a637a","dimensions":[1080,1920],"target":"assets/ambient/light/ocean-sunrise-portrait.webp"},
-    {"source":"open-sky-day/landscape.webp","bytes":49158,"sha256":"5143ef546889b22183484e15ac0a9db210ea8ad6b28c14514c67f93de9497283","dimensions":[1920,1080],"target":"assets/ambient/light/open-sky-day.webp"},
-    {"source":"open-sky-day/portrait.webp","bytes":25702,"sha256":"35200fcf839e5e364b5f47b0b348b7c23d340dd36c7cc0f4aa8f93ab28ec158a","dimensions":[1080,1920],"target":"assets/ambient/light/open-sky-day-portrait.webp"},
-    {"source":"open-sky-starlight/landscape.webp","bytes":32676,"sha256":"0b41f9d3023b058a675aeaf8e1c7ff7a5e214f2d61f6482f79d67c57f4b357b6","dimensions":[1920,1080],"target":"assets/ambient/dark/open-sky-starlight.webp"},
-    {"source":"open-sky-starlight/portrait.webp","bytes":24050,"sha256":"cd71a99fd175aef113c4d8acec25b614a7bb050d1f457b6c37d163c6733efbe0","dimensions":[1080,1920],"target":"assets/ambient/dark/open-sky-starlight-portrait.webp"}
+    {
+      "source": "coastal-terrace-day/landscape.webp",
+      "bytes": 68702,
+      "sha256": "7d0b97a79f5431cdacc2612b3f84d02cdd0fa22c09a2fbef0f4d532cb2c70c4d",
+      "dimensions": [1920, 1080],
+      "target": "assets/ambient/light/coastal-terrace-day.webp"
+    },
+    {
+      "source": "coastal-terrace-day/portrait.webp",
+      "bytes": 42810,
+      "sha256": "e1ebb06a18a8ec48113510515c2362ca598dc6a9be9004d1ac04652f64638d52",
+      "dimensions": [1080, 1920],
+      "target": "assets/ambient/light/coastal-terrace-day-portrait.webp"
+    },
+    {
+      "source": "coastal-terrace-twilight/landscape.webp",
+      "bytes": 47844,
+      "sha256": "cc691bc79a65626f71859db2671e582904e733f9dd4a885a79a595f334d5e383",
+      "dimensions": [1920, 1080],
+      "target": "assets/ambient/dark/coastal-terrace-twilight.webp"
+    },
+    {
+      "source": "coastal-terrace-twilight/portrait.webp",
+      "bytes": 38108,
+      "sha256": "22b26cca59b621310c0e013f732b71d7f7f40238d9847fd180df509010e94662",
+      "dimensions": [1080, 1920],
+      "target": "assets/ambient/dark/coastal-terrace-twilight-portrait.webp"
+    },
+    {
+      "source": "meditation-garden-day/landscape.webp",
+      "bytes": 82444,
+      "sha256": "f6e4f6d255316789922672ad130c9f10ddb6604af3c5d11ebc904b4b91263f29",
+      "dimensions": [1920, 1080],
+      "target": "assets/ambient/light/meditation-garden-day.webp"
+    },
+    {
+      "source": "meditation-garden-day/portrait.webp",
+      "bytes": 53686,
+      "sha256": "047045e979637a52b81b2fb78675d629b55e04410169f1c5cedd60a503d6da91",
+      "dimensions": [1080, 1920],
+      "target": "assets/ambient/light/meditation-garden-day-portrait.webp"
+    },
+    {
+      "source": "meditation-garden-night/landscape.webp",
+      "bytes": 58880,
+      "sha256": "d055972fb0f3ef6fae2f8b5d64cf715fee9256ee2d5fcdd0d9ba26b27a9740a3",
+      "dimensions": [1920, 1080],
+      "target": "assets/ambient/dark/meditation-garden-night.webp"
+    },
+    {
+      "source": "meditation-garden-night/portrait.webp",
+      "bytes": 38694,
+      "sha256": "24075c92ef03451ec32f778c6752c0ebcfeac68759c88fc1ac5299e5c2a63bd4",
+      "dimensions": [1080, 1920],
+      "target": "assets/ambient/dark/meditation-garden-night-portrait.webp"
+    },
+    {
+      "source": "mountain-lake-day/landscape.webp",
+      "bytes": 74062,
+      "sha256": "e89bcb2e262c1f52cc132706b8f1982f9d3b0d7a22c3b81157c2212827e68482",
+      "dimensions": [1920, 1080],
+      "target": "assets/ambient/light/mountain-lake-day.webp"
+    },
+    {
+      "source": "mountain-lake-day/portrait.webp",
+      "bytes": 39820,
+      "sha256": "83d594efb38a471297bd36ecc9d60a15a9c56edf894e65f45007fee4e7be1bd6",
+      "dimensions": [1080, 1920],
+      "target": "assets/ambient/light/mountain-lake-day-portrait.webp"
+    },
+    {
+      "source": "mountain-lake-night/landscape.webp",
+      "bytes": 48100,
+      "sha256": "b9bd3ee5f537c066b90ef9754d425019d92b9636b3f1ab72c34fe1d49cd403f8",
+      "dimensions": [1920, 1080],
+      "target": "assets/ambient/dark/mountain-lake-night.webp"
+    },
+    {
+      "source": "mountain-lake-night/portrait.webp",
+      "bytes": 27734,
+      "sha256": "52868415bb89fc48074f8001c2a99d08c1aef144ea15f036085e8af26534ead9",
+      "dimensions": [1080, 1920],
+      "target": "assets/ambient/dark/mountain-lake-night-portrait.webp"
+    },
+    {
+      "source": "ocean-moonlight/landscape.webp",
+      "bytes": 36786,
+      "sha256": "f555486acd4c542ad2e36ae54fd553234bfd9a269aa8283434ba20378193b8b1",
+      "dimensions": [1920, 1080],
+      "target": "assets/ambient/dark/ocean-moonlight.webp"
+    },
+    {
+      "source": "ocean-moonlight/portrait.webp",
+      "bytes": 34076,
+      "sha256": "86d56b4f724881d1619f34ccd607c2b1e0d5f2c1865d1b29227c0db79689ff18",
+      "dimensions": [1080, 1920],
+      "target": "assets/ambient/dark/ocean-moonlight-portrait.webp"
+    },
+    {
+      "source": "ocean-sunrise/landscape.webp",
+      "bytes": 45900,
+      "sha256": "719cfc05fc48d44b0be02b04f57c9f7e2ffc858e0a6e5237c7a299acf1c8652c",
+      "dimensions": [1920, 1080],
+      "target": "assets/ambient/light/ocean-sunrise.webp"
+    },
+    {
+      "source": "ocean-sunrise/portrait.webp",
+      "bytes": 29534,
+      "sha256": "3542fd5d5b401c76ebe8662ad254bef5de1245a0b498e104a40274aed60a637a",
+      "dimensions": [1080, 1920],
+      "target": "assets/ambient/light/ocean-sunrise-portrait.webp"
+    },
+    {
+      "source": "open-sky-day/landscape.webp",
+      "bytes": 49158,
+      "sha256": "5143ef546889b22183484e15ac0a9db210ea8ad6b28c14514c67f93de9497283",
+      "dimensions": [1920, 1080],
+      "target": "assets/ambient/light/open-sky-day.webp"
+    },
+    {
+      "source": "open-sky-day/portrait.webp",
+      "bytes": 25702,
+      "sha256": "35200fcf839e5e364b5f47b0b348b7c23d340dd36c7cc0f4aa8f93ab28ec158a",
+      "dimensions": [1080, 1920],
+      "target": "assets/ambient/light/open-sky-day-portrait.webp"
+    },
+    {
+      "source": "open-sky-starlight/landscape.webp",
+      "bytes": 32676,
+      "sha256": "0b41f9d3023b058a675aeaf8e1c7ff7a5e214f2d61f6482f79d67c57f4b357b6",
+      "dimensions": [1920, 1080],
+      "target": "assets/ambient/dark/open-sky-starlight.webp"
+    },
+    {
+      "source": "open-sky-starlight/portrait.webp",
+      "bytes": 24050,
+      "sha256": "cd71a99fd175aef113c4d8acec25b614a7bb050d1f457b6c37d163c6733efbe0",
+      "dimensions": [1080, 1920],
+      "target": "assets/ambient/dark/open-sky-starlight-portrait.webp"
+    }
   ]
 }

@@ -21,7 +21,8 @@ const PlaygroundActivity = (() => {
     const HISTORY_KEY = 'nexus_playground_histories_v1';
     const MAX_HISTORY = 20;
     const MAX_NODES = 24;
-    const FAMILY_BLOCK = /\b(?:porn|pornographic|explicit sex|sexual act|nude|naked|rape|incest|self-harm|suicide|gore)\b/i;
+    const FAMILY_BLOCK =
+        /\b(?:porn|pornographic|explicit sex|sexual act|nude|naked|rape|incest|self-harm|suicide|gore)\b/i;
 
     const SCENE_TALE = Object.freeze({
         id: 'scene-tale',
@@ -65,7 +66,11 @@ const PlaygroundActivity = (() => {
 
     function safeStorage(win) {
         try {
-            return win && win.localStorage ? win.localStorage : typeof localStorage !== 'undefined' ? localStorage : null;
+            return win && win.localStorage
+                ? win.localStorage
+                : typeof localStorage !== 'undefined'
+                  ? localStorage
+                  : null;
         } catch (_) {
             return null;
         }
@@ -91,10 +96,12 @@ const PlaygroundActivity = (() => {
     }
 
     function slug(value) {
-        return cleanText(value, 80)
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-|-$/g, '') || 'story';
+        return (
+            cleanText(value, 80)
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/^-|-$/g, '') || 'story'
+        );
     }
 
     function storyId(title) {
@@ -110,7 +117,17 @@ const PlaygroundActivity = (() => {
             .filter(Boolean)
             .map((part) => part.charAt(0).toUpperCase() + part.slice(1));
         if (!words.length) return 'Current scene';
-        const timeWords = new Set(['Day', 'Night', 'Twilight', 'Sunrise', 'Moonlight', 'Starlight', 'Sunset', 'Dawn', 'Dusk']);
+        const timeWords = new Set([
+            'Day',
+            'Night',
+            'Twilight',
+            'Sunrise',
+            'Moonlight',
+            'Starlight',
+            'Sunset',
+            'Dawn',
+            'Dusk',
+        ]);
         const last = words[words.length - 1];
         if (words.length > 1 && timeWords.has(last)) return `${words.slice(0, -1).join(' ')} · ${last}`;
         return words.join(' ');
@@ -144,7 +161,10 @@ const PlaygroundActivity = (() => {
     }
 
     function parseJsonObject(raw) {
-        const text = String(raw || '').replace(/^\s*```(?:json)?/i, '').replace(/```\s*$/i, '').trim();
+        const text = String(raw || '')
+            .replace(/^\s*```(?:json)?/i, '')
+            .replace(/```\s*$/i, '')
+            .trim();
         const start = text.indexOf('{');
         const end = text.lastIndexOf('}');
         if (start < 0 || end <= start) throw new Error('Story planner did not return JSON');
@@ -171,7 +191,8 @@ const PlaygroundActivity = (() => {
         }
         const keys = Object.keys(nodesRaw);
         if (!keys.length || keys.length > MAX_NODES) return { ok: false, why: 'StoryPlan has an invalid node count' };
-        if (!Object.prototype.hasOwnProperty.call(nodesRaw, startNode)) return { ok: false, why: 'StoryPlan startNode is missing' };
+        if (!Object.prototype.hasOwnProperty.call(nodesRaw, startNode))
+            return { ok: false, why: 'StoryPlan startNode is missing' };
 
         const nodes = {};
         let choiceCount = 0;
@@ -195,7 +216,8 @@ const PlaygroundActivity = (() => {
             } else if (type === 'choice') {
                 const prompt = cleanText(node.prompt, 180);
                 const options = Array.isArray(node.options) ? node.options.map(normalizeChoice).filter(Boolean) : [];
-                if (!prompt || options.length < 2 || options.length > 3) return { ok: false, why: `Choice ${id} is incomplete` };
+                if (!prompt || options.length < 2 || options.length > 3)
+                    return { ok: false, why: `Choice ${id} is incomplete` };
                 choiceCount += 1;
                 allText.push(prompt, ...options.map((x) => x.label));
                 nodes[id] = { type, prompt, options };
@@ -212,9 +234,11 @@ const PlaygroundActivity = (() => {
             return { ok: false, why: 'StoryPlan contains content outside the family-safe plan contract' };
         }
         for (const [id, node] of Object.entries(nodes)) {
-            if (node.type === 'narration' && !nodes[node.next]) return { ok: false, why: `Node ${id} points to missing ${node.next}` };
+            if (node.type === 'narration' && !nodes[node.next])
+                return { ok: false, why: `Node ${id} points to missing ${node.next}` };
             if (node.type === 'choice') {
-                for (const opt of node.options) if (!nodes[opt.next]) return { ok: false, why: `Choice ${id} points to missing ${opt.next}` };
+                for (const opt of node.options)
+                    if (!nodes[opt.next]) return { ok: false, why: `Choice ${id} points to missing ${opt.next}` };
             }
         }
 
@@ -225,7 +249,8 @@ const PlaygroundActivity = (() => {
             if (visiting.has(id)) return false;
             visiting.add(id);
             const node = nodes[id];
-            const nexts = node.type === 'narration' ? [node.next] : node.type === 'choice' ? node.options.map((x) => x.next) : [];
+            const nexts =
+                node.type === 'narration' ? [node.next] : node.type === 'choice' ? node.options.map((x) => x.next) : [];
             for (const next of nexts) if (!walk(next)) return false;
             visiting.delete(id);
             visited.add(id);
@@ -256,9 +281,15 @@ const PlaygroundActivity = (() => {
     function fallbackStory(scene, idea, musicEnabled) {
         const seed = safeIdea(idea);
         const isLetter = /letter|message|note/i.test(seed);
-        const title = isLetter ? 'The Letter at the Last Light' : seed ? 'The Story the Light Remembered' : 'The Light That Stayed';
+        const title = isLetter
+            ? 'The Letter at the Last Light'
+            : seed
+              ? 'The Story the Light Remembered'
+              : 'The Light That Stayed';
         const place = scene.label;
-        const hook = seed ? `Tonight, one small thought follows us into ${place}: ${seed}.` : `Tonight, ${place} feels as if it has been waiting for one quiet story.`;
+        const hook = seed
+            ? `Tonight, one small thought follows us into ${place}: ${seed}.`
+            : `Tonight, ${place} feels as if it has been waiting for one quiet story.`;
         const raw = {
             version: 1,
             id: storyId(title),
@@ -424,7 +455,8 @@ const PlaygroundActivity = (() => {
             if (!discovery) return null;
             try {
                 if (typeof discovery.warm === 'function') await discovery.warm();
-                const provider = typeof discovery.forCapability === 'function' ? discovery.forCapability('music.search') : null;
+                const provider =
+                    typeof discovery.forCapability === 'function' ? discovery.forCapability('music.search') : null;
                 if (!provider || typeof provider.search !== 'function') return null;
                 const found = await provider.search(cleanText(query, 160), { max: 3, kind: 'music' });
                 return Array.isArray(found) && found.length ? found[0] : null;
@@ -496,7 +528,7 @@ const PlaygroundActivity = (() => {
             const doc = this.win && this.win.document;
             if (doc && typeof doc.querySelectorAll === 'function') {
                 for (const media of doc.querySelectorAll('audio,video')) {
-                    if (!media || media.dataset && media.dataset.storyVoice === 'true') continue;
+                    if (!media || (media.dataset && media.dataset.storyVoice === 'true')) continue;
                     const volume = Number(media.volume);
                     if (!Number.isFinite(volume)) continue;
                     this.saved.push({ media, volume });
@@ -539,7 +571,19 @@ const PlaygroundActivity = (() => {
     }
 
     class StoryPlayer {
-        constructor({ plan, soundtrack, bus, win, doc, say, audioFocus, history, timingScale = 1, onComplete, onReplay } = {}) {
+        constructor({
+            plan,
+            soundtrack,
+            bus,
+            win,
+            doc,
+            say,
+            audioFocus,
+            history,
+            timingScale = 1,
+            onComplete,
+            onReplay,
+        } = {}) {
             this.plan = plan;
             this.soundtrack = soundtrack || null;
             this.bus = bus || null;
@@ -595,7 +639,8 @@ const PlaygroundActivity = (() => {
             this.state = 'paused';
             this.pausedAt = Date.now();
             try {
-                if (this.win && this.win.speechSynthesis && typeof this.win.speechSynthesis.pause === 'function') this.win.speechSynthesis.pause();
+                if (this.win && this.win.speechSynthesis && typeof this.win.speechSynthesis.pause === 'function')
+                    this.win.speechSynthesis.pause();
             } catch (_) {}
             this._paintBar();
             busEmit(this.bus, 'playground:story-state', { state: this.state, storyId: this.plan.id });
@@ -608,7 +653,8 @@ const PlaygroundActivity = (() => {
             this.pausedAt = null;
             this.state = this._beforePause || 'playing';
             try {
-                if (this.win && this.win.speechSynthesis && typeof this.win.speechSynthesis.resume === 'function') this.win.speechSynthesis.resume();
+                if (this.win && this.win.speechSynthesis && typeof this.win.speechSynthesis.resume === 'function')
+                    this.win.speechSynthesis.resume();
             } catch (_) {}
             const waiters = this._waiters.splice(0);
             for (const resolve of waiters) resolve();
@@ -662,7 +708,11 @@ const PlaygroundActivity = (() => {
                 this.state = 'waiting-choice';
                 this._paintChoice(node);
                 this._paintBar();
-                busEmit(this.bus, 'playground:story-state', { state: this.state, storyId: this.plan.id, nodeId: this.nodeId });
+                busEmit(this.bus, 'playground:story-state', {
+                    state: this.state,
+                    storyId: this.plan.id,
+                    nodeId: this.nodeId,
+                });
                 return;
             }
             if (node.type === 'end') {
@@ -693,23 +743,26 @@ const PlaygroundActivity = (() => {
                 const estimate = Math.max(1200, (words / 2.65) * 1000) * this.timingScale;
                 const waits = [];
                 if (this.bus && typeof this.bus.on === 'function') {
-                    waits.push(new Promise((resolve) => {
-                        let done = false;
-                        try {
-                            unsubscribe = this.bus.on('tts:end', () => {
-                                if (done) return;
-                                done = true;
+                    waits.push(
+                        new Promise((resolve) => {
+                            let done = false;
+                            try {
+                                unsubscribe = this.bus.on('tts:end', () => {
+                                    if (done) return;
+                                    done = true;
+                                    resolve();
+                                });
+                            } catch (_) {
                                 resolve();
-                            });
-                        } catch (_) {
-                            resolve();
-                        }
-                    }));
+                            }
+                        })
+                    );
                 }
                 if (typeof this.say === 'function') {
                     try {
                         const out = this.say(text);
-                        if (out && typeof out.then === 'function' && !waits.length) waits.push(Promise.resolve(out).catch(() => null));
+                        if (out && typeof out.then === 'function' && !waits.length)
+                            waits.push(Promise.resolve(out).catch(() => null));
                     } catch (_) {}
                 }
                 waits.push(new Promise((resolve) => setTimeout(resolve, estimate)));
@@ -784,7 +837,13 @@ const PlaygroundActivity = (() => {
             this.card.textContent = '';
             this.card.hidden = false;
             addEl(this.doc, this.card, 'div', 'nexus-story-complete-title', this.plan.title);
-            addEl(this.doc, this.card, 'div', 'nexus-story-complete-note', 'Story complete · Fictional story inspired by this scene');
+            addEl(
+                this.doc,
+                this.card,
+                'div',
+                'nexus-story-complete-note',
+                'Story complete · Fictional story inspired by this scene'
+            );
             const actions = addEl(this.doc, this.card, 'div', 'nexus-story-complete-actions');
             const save = button(this.doc, actions, 'Save to Histories', 'nexus-story-btn', () => {
                 const ok = this.history.save(this.plan, this.choices);
@@ -799,7 +858,8 @@ const PlaygroundActivity = (() => {
                 if (this.win && this.win.NEXUS_BD && this.win.NEXUS_BD.togetherPanel) {
                     const panel = this.win.NEXUS_BD.togetherPanel;
                     this.detach();
-                    if (panel.active === 'playground' || panel.activeActivity === 'playground') panel.stopActivity('complete');
+                    if (panel.active === 'playground' || panel.activeActivity === 'playground')
+                        panel.stopActivity('complete');
                     if (typeof panel.open === 'function') panel.open();
                 }
             });
@@ -816,7 +876,8 @@ const PlaygroundActivity = (() => {
             const publisher = this.win.NEXUS_CONVERSATION_PUBLISHER;
             const session = this.win.NEXUS_MEDIA_SESSION;
             try {
-                if (session && typeof session.requestPlay === 'function') session.requestPlay(this.soundtrack, { source: 'scene-tale' });
+                if (session && typeof session.requestPlay === 'function')
+                    session.requestPlay(this.soundtrack, { source: 'scene-tale' });
                 if (publisher && typeof publisher.publish === 'function') {
                     publisher.publish(this.soundtrack, { doc: this.doc, win: this.win, play: true });
                     this._mediaStarted = true;
@@ -944,7 +1005,9 @@ const PlaygroundActivity = (() => {
             this.startedAt = null;
             this._adultMaxDescriptor = null;
         }
-        get name() { return 'Private'; }
+        get name() {
+            return 'Private';
+        }
         get prompt() {
             const gate = this.availability();
             return gate && gate.ok ? 'Choose a private experience.' : lockedPrompt(gate);
@@ -954,14 +1017,17 @@ const PlaygroundActivity = (() => {
             if (!gate || gate.ok === false) return [];
             return INTIMATE_PRESETS.map((preset) => ({ ...preset }));
         }
-        availability() { return this.capability(); }
+        availability() {
+            return this.capability();
+        }
         async start({ input = {} } = {}) {
             if (this.active) return { ok: false, why: 'Private is already running' };
             const gate = this.availability();
             if (!gate || gate.ok === false) return gate || { ok: false, why: 'Private is unavailable' };
             const preset = INTIMATE_PRESETS.find((candidate) => candidate.id === String(input.id || ''));
             if (!preset) return { ok: false, why: `unknown Private preset: ${String(input.id || '')}` };
-            if (!this.adult || typeof this.adult.enter !== 'function') return { ok: false, why: 'Private consent flow is unavailable' };
+            if (!this.adult || typeof this.adult.enter !== 'function')
+                return { ok: false, why: 'Private consent flow is unavailable' };
             this._installCeiling(preset.maxLevel);
             const entered = this.adult.enter();
             if (!entered || entered.ok === false) {
@@ -971,7 +1037,11 @@ const PlaygroundActivity = (() => {
             this.active = true;
             this.preset = preset.id;
             this.startedAt = Date.now();
-            busEmit(this.bus, 'intimate:start', { preset: preset.id, maxLevel: preset.maxLevel, startedAt: this.startedAt });
+            busEmit(this.bus, 'intimate:start', {
+                preset: preset.id,
+                maxLevel: preset.maxLevel,
+                startedAt: this.startedAt,
+            });
             return { ok: true, why: preset.id, preset: preset.id, maxLevel: preset.maxLevel };
         }
         stop(why = 'user') {
@@ -990,11 +1060,16 @@ const PlaygroundActivity = (() => {
             const preset = INTIMATE_PRESETS.find((candidate) => candidate.id === this.preset);
             return { label: preset ? preset.label : 'Private', detail: 'Private' };
         }
-        detach() { this.stop('detached'); }
+        detach() {
+            this.stop('detached');
+        }
         _installCeiling(maxLevel) {
             if (!this.adult) return;
-            if (this._adultMaxDescriptor === null) this._adultMaxDescriptor = Object.getOwnPropertyDescriptor(this.adult, 'maxLevel') || false;
-            const profileMax = Number(this.adult.profile && this.adult.profile.escalation && this.adult.profile.escalation.levels) || 4;
+            if (this._adultMaxDescriptor === null)
+                this._adultMaxDescriptor = Object.getOwnPropertyDescriptor(this.adult, 'maxLevel') || false;
+            const profileMax =
+                Number(this.adult.profile && this.adult.profile.escalation && this.adult.profile.escalation.levels) ||
+                4;
             Object.defineProperty(this.adult, 'maxLevel', {
                 configurable: true,
                 enumerable: false,
@@ -1005,11 +1080,14 @@ const PlaygroundActivity = (() => {
             if (!this.adult || this._adultMaxDescriptor === null) return;
             try {
                 delete this.adult.maxLevel;
-                if (this._adultMaxDescriptor && this._adultMaxDescriptor !== false) Object.defineProperty(this.adult, 'maxLevel', this._adultMaxDescriptor);
+                if (this._adultMaxDescriptor && this._adultMaxDescriptor !== false)
+                    Object.defineProperty(this.adult, 'maxLevel', this._adultMaxDescriptor);
             } catch (_) {}
             this._adultMaxDescriptor = null;
         }
-        get stats() { return { active: this.active, preset: this.preset, startedAt: this.startedAt }; }
+        get stats() {
+            return { active: this.active, preset: this.preset, startedAt: this.startedAt };
+        }
     }
 
     function installIntimateBridge({ bus } = {}) {
@@ -1024,7 +1102,8 @@ const PlaygroundActivity = (() => {
         let unsubscribeAdultExit = null;
 
         const repaint = () => {
-            if (director && director.togetherPanel && typeof director.togetherPanel.setContext === 'function') director.togetherPanel.setContext({});
+            if (director && director.togetherPanel && typeof director.togetherPanel.setContext === 'function')
+                director.togetherPanel.setContext({});
         };
         const mirrorPreference = (requested) => {
             if (director && director.blackboard) director.blackboard.nsfwAllowed = Boolean(requested);
@@ -1034,7 +1113,11 @@ const PlaygroundActivity = (() => {
             const panel = director.togetherPanel;
             const current = panel.activities && panel.activities.get('intimate');
             if (!current) return;
-            if ((panel.active === 'intimate' || panel.activeActivity === 'intimate') && typeof panel.stopActivity === 'function') panel.stopActivity(why);
+            if (
+                (panel.active === 'intimate' || panel.activeActivity === 'intimate') &&
+                typeof panel.stopActivity === 'function'
+            )
+                panel.stopActivity(why);
             else if (typeof current.detach === 'function') current.detach();
             if (panel.activities) panel.activities.delete('intimate');
             if (panel.adapted) panel.adapted.delete('intimate');
@@ -1066,7 +1149,11 @@ const PlaygroundActivity = (() => {
                     director.intimate = existing;
                 }
                 const gate = intimateEligibility(director, window.NEXUS_SPICY);
-                if (!gate.ok && (director.togetherPanel.active === 'intimate' || director.togetherPanel.activeActivity === 'intimate')) {
+                if (
+                    !gate.ok &&
+                    (director.togetherPanel.active === 'intimate' ||
+                        director.togetherPanel.activeActivity === 'intimate')
+                ) {
                     director.togetherPanel.stopActivity(gate.why || 'Private eligibility changed');
                     // Starting an activity closes Together. If trust disappears while it is
                     // running, reopen the chooser so the still-enabled Private preference is
@@ -1103,7 +1190,12 @@ const PlaygroundActivity = (() => {
             const eventBus = bus || director.bus;
             if (eventBus && typeof eventBus.on === 'function') {
                 unsubscribeAdultExit = eventBus.on('adult:exit', (event) => {
-                    if (event && event.kind === 'hard' && (director.togetherPanel.active === 'intimate' || director.togetherPanel.activeActivity === 'intimate')) {
+                    if (
+                        event &&
+                        event.kind === 'hard' &&
+                        (director.togetherPanel.active === 'intimate' ||
+                            director.togetherPanel.activeActivity === 'intimate')
+                    ) {
                         director.togetherPanel.stopActivity('adult exit');
                     }
                 });
@@ -1178,9 +1270,15 @@ const PlaygroundActivity = (() => {
             this._intimateBridge = installIntimateBridge({ bus: this.bus });
         }
 
-        get name() { return 'Playground'; }
-        inputs() { return [{ ...SCENE_TALE }]; }
-        availability() { return { ok: true, why: '' }; }
+        get name() {
+            return 'Playground';
+        }
+        inputs() {
+            return [{ ...SCENE_TALE }];
+        }
+        availability() {
+            return { ok: true, why: '' };
+        }
 
         paintSetup(panel) {
             if (!panel || !panel.root || !panel.doc) return;
@@ -1230,7 +1328,8 @@ const PlaygroundActivity = (() => {
                 return { ok: true, plan: checked.plan };
             } catch (error) {
                 if (token !== this._prepareToken) return { ok: false, why: 'cancelled' };
-                this.prepareError = cleanText((error && error.message) || error, 240) || 'The story could not be prepared.';
+                this.prepareError =
+                    cleanText((error && error.message) || error, 240) || 'The story could not be prepared.';
                 this.sessionState = 'error';
                 this._repaint();
                 return { ok: false, why: this.prepareError };
@@ -1250,7 +1349,8 @@ const PlaygroundActivity = (() => {
 
         async start({ input = {} } = {}) {
             if (this.active) return { ok: false, why: 'Playground is already running' };
-            if (String(input.id || '') !== SCENE_TALE.id) return { ok: false, why: `unknown Playground mode: ${String(input.id || '')}` };
+            if (String(input.id || '') !== SCENE_TALE.id)
+                return { ok: false, why: `unknown Playground mode: ${String(input.id || '')}` };
             const plan = input.preparedPlan || this.preparedPlan;
             const checked = validateStoryPlan(plan, {
                 sceneId: plan && plan.sceneId,
@@ -1274,9 +1374,11 @@ const PlaygroundActivity = (() => {
                 },
                 onReplay: () => this._anotherVersion(),
             });
-            if (!player || typeof player.start !== 'function') return { ok: false, why: 'Scene Tale player is unavailable' };
+            if (!player || typeof player.start !== 'function')
+                return { ok: false, why: 'Scene Tale player is unavailable' };
             const started = player.start();
-            if (!started || started.ok === false) return started || { ok: false, why: 'Scene Tale player refused to start' };
+            if (!started || started.ok === false)
+                return started || { ok: false, why: 'Scene Tale player refused to start' };
             this.player = player;
             this.active = true;
             this.mode = SCENE_TALE.id;
@@ -1312,7 +1414,10 @@ const PlaygroundActivity = (() => {
         status() {
             if (!this.active) return null;
             const state = this.player && this.player.state ? this.player.state : this.sessionState;
-            return { label: 'Scene Tale', detail: state === 'waiting-choice' ? 'Your choice' : state === 'paused' ? 'Paused' : 'Playing' };
+            return {
+                label: 'Scene Tale',
+                detail: state === 'waiting-choice' ? 'Your choice' : state === 'paused' ? 'Paused' : 'Playing',
+            };
         }
 
         detach() {
@@ -1362,7 +1467,13 @@ const PlaygroundActivity = (() => {
         _paintPreparing(panel) {
             const doc = panel.doc;
             addEl(doc, panel.root, 'p', 'nexus-bd-together-subtitle', 'Creating our story…');
-            addEl(doc, panel.root, 'p', 'nexus-bd-together-prompt', 'The scene stays with us while I prepare the whole story before playback.');
+            addEl(
+                doc,
+                panel.root,
+                'p',
+                'nexus-bd-together-prompt',
+                'The scene stays with us while I prepare the whole story before playback.'
+            );
             const progress = addEl(doc, panel.root, 'div', 'nexus-story-progress');
             const steps = [
                 ['scene', 'Understanding this place'],
@@ -1372,7 +1483,13 @@ const PlaygroundActivity = (() => {
             ];
             for (const [id, label] of steps) {
                 const done = this.prepareProgress.has(id);
-                addEl(doc, progress, 'div', `nexus-story-progress-row${done ? ' is-done' : ''}`, `${done ? '✓' : '○'} ${label}`);
+                addEl(
+                    doc,
+                    progress,
+                    'div',
+                    `nexus-story-progress-row${done ? ' is-done' : ''}`,
+                    `${done ? '✓' : '○'} ${label}`
+                );
             }
             const list = addEl(doc, panel.root, 'div', 'nexus-bd-together-options');
             button(doc, list, 'Cancel', 'nexus-bd-together-option is-stop', () => {
@@ -1386,8 +1503,19 @@ const PlaygroundActivity = (() => {
             const plan = this.preparedPlan;
             addEl(doc, panel.root, 'p', 'nexus-bd-together-subtitle', plan ? plan.title.toUpperCase() : 'SCENE TALE');
             addEl(doc, panel.root, 'p', 'nexus-bd-together-prompt', 'Fictional story inspired by this scene');
-            const soundtrack = this.musicChoice === 'none' ? 'No soundtrack' : this.preparedSoundtrack ? 'Soundtrack ready' : 'No soundtrack found — story will still play';
-            addEl(doc, panel.root, 'div', 'nexus-story-ready-meta', `About 5 minutes · 2 choices\n✓ Story ready · ✓ Scene ready · ${soundtrack}`);
+            const soundtrack =
+                this.musicChoice === 'none'
+                    ? 'No soundtrack'
+                    : this.preparedSoundtrack
+                      ? 'Soundtrack ready'
+                      : 'No soundtrack found — story will still play';
+            addEl(
+                doc,
+                panel.root,
+                'div',
+                'nexus-story-ready-meta',
+                `About 5 minutes · 2 choices\n✓ Story ready · ✓ Scene ready · ${soundtrack}`
+            );
             const list = addEl(doc, panel.root, 'div', 'nexus-bd-together-options');
             const start = button(doc, list, 'Start story', 'nexus-bd-together-option', () => {
                 start.disabled = true;
@@ -1410,9 +1538,17 @@ const PlaygroundActivity = (() => {
         _paintPrepareError(panel) {
             const doc = panel.doc;
             addEl(doc, panel.root, 'p', 'nexus-bd-together-subtitle', 'Story not ready');
-            addEl(doc, panel.root, 'p', 'nexus-bd-together-prompt', this.prepareError || 'The story could not be prepared.');
+            addEl(
+                doc,
+                panel.root,
+                'p',
+                'nexus-bd-together-prompt',
+                this.prepareError || 'The story could not be prepared.'
+            );
             const list = addEl(doc, panel.root, 'div', 'nexus-bd-together-options');
-            button(doc, list, 'Try again', 'nexus-bd-together-option', () => this.prepare({ idea: this.idea, music: this.musicChoice }));
+            button(doc, list, 'Try again', 'nexus-bd-together-option', () =>
+                this.prepare({ idea: this.idea, music: this.musicChoice })
+            );
             button(doc, list, 'Change idea', 'nexus-bd-together-option', () => {
                 this.sessionState = 'configure';
                 this._repaint();
@@ -1421,7 +1557,12 @@ const PlaygroundActivity = (() => {
 
         _repaint() {
             const panel = this._panel;
-            if (panel && panel.pending === 'playground' && panel.open_ !== false && typeof panel._paint === 'function') {
+            if (
+                panel &&
+                panel.pending === 'playground' &&
+                panel.open_ !== false &&
+                typeof panel._paint === 'function'
+            ) {
                 panel._paint();
                 if (typeof panel._announce === 'function') panel._announce();
             }
@@ -1431,7 +1572,8 @@ const PlaygroundActivity = (() => {
             const director = this.win && this.win.NEXUS_BD;
             if (!director) return;
             try {
-                if (director.adult && director.adult.active && typeof director.adult.exit === 'function') director.adult.exit('hard');
+                if (director.adult && director.adult.active && typeof director.adult.exit === 'function')
+                    director.adult.exit('hard');
             } catch (_) {}
             if (director.blackboard) {
                 director.blackboard.activity = 'playground';

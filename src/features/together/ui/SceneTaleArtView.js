@@ -42,7 +42,8 @@ const SceneTaleArtView = (() => {
     function loadCatalog(win) {
         if (catalogPromise) return catalogPromise;
         const w = win || currentWin || (typeof window !== 'undefined' ? window : null);
-        const fetcher = w && typeof w.fetch === 'function' ? w.fetch.bind(w) : typeof fetch === 'function' ? fetch : null;
+        const fetcher =
+            w && typeof w.fetch === 'function' ? w.fetch.bind(w) : typeof fetch === 'function' ? fetch : null;
         if (!fetcher) return Promise.resolve([]);
         catalogPromise = fetcher(MANIFEST, { cache: 'force-cache' })
             .then((response) => (response && response.ok ? response.json() : null))
@@ -57,20 +58,28 @@ const SceneTaleArtView = (() => {
         const panel = director && director.togetherPanel;
         const activities = panel && panel.activities;
         const playground = activities && typeof activities.get === 'function' ? activities.get('playground') : null;
-        return playground && playground.player && playground.player.plan ? playground.player.plan : playground && playground.preparedPlan ? playground.preparedPlan : null;
+        return playground && playground.player && playground.player.plan
+            ? playground.player.plan
+            : playground && playground.preparedPlan
+              ? playground.preparedPlan
+              : null;
     }
 
     function normalize(value) {
-        return String(value || '').trim().toLowerCase();
+        return String(value || '')
+            .trim()
+            .toLowerCase();
     }
 
     function findArt(catalog, plan) {
         if (!Array.isArray(catalog) || !catalog.length || !plan) return null;
         const id = normalize(plan.sceneId);
         const label = normalize(plan.sceneLabel);
-        return catalog.find((entry) => normalize(entry && entry.id) === id)
-            || catalog.find((entry) => normalize(entry && entry.label) === label)
-            || null;
+        return (
+            catalog.find((entry) => normalize(entry && entry.id) === id) ||
+            catalog.find((entry) => normalize(entry && entry.label) === label) ||
+            null
+        );
     }
 
     function insertHero(hud, art) {

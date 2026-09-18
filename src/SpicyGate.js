@@ -595,7 +595,8 @@
         if (title) {
             for (let i = 0; i < title.childNodes.length; i++) {
                 if (title.childNodes[i].nodeType === 3 && title.childNodes[i].textContent.trim()) {
-                    title.childNodes[i].textContent = '\n                            PRIVATE MODE\n                            ';
+                    title.childNodes[i].textContent =
+                        '\n                            PRIVATE MODE\n                            ';
                     break;
                 }
             }
@@ -722,5 +723,10 @@
         { once: true }
     );
 
-    console.log('[SpicyGate] Initialized — Private preference:', enabled ? 'ON' : 'OFF', 'usable:', usable() ? 'YES' : 'NO');
+    console.log(
+        '[SpicyGate] Initialized — Private preference:',
+        enabled ? 'ON' : 'OFF',
+        'usable:',
+        usable() ? 'YES' : 'NO'
+    );
 })();

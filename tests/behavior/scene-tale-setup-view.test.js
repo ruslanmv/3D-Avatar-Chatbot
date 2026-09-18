@@ -13,8 +13,13 @@ const SetupView = require('../../src/features/together/ui/SceneTaleSetupView.js'
 function consentMachine() {
     return {
         state: 'idle',
-        onChange() { return () => {}; },
-        revoke() { this.state = 'idle'; return true; },
+        onChange() {
+            return () => {};
+        },
+        revoke() {
+            this.state = 'idle';
+            return true;
+        },
     };
 }
 
@@ -23,7 +28,8 @@ function spicyOff() {
 }
 
 function mountPanel() {
-    document.body.innerHTML = '<div class="avatar-card"><div id="host"></div></div><footer class="chat-input-shell"></footer>';
+    document.body.innerHTML =
+        '<div class="avatar-card"><div id="host"></div></div><footer class="chat-input-shell"></footer>';
     const panel = TogetherPanel.attach({ consent: consentMachine(), doc: document, win: window });
     panel.mount(document.getElementById('host'));
     const director = {
@@ -78,7 +84,9 @@ describe('Scene Tale Stage 1 premium setup surface', () => {
         expect(document.querySelector('.avatar-card').classList.contains(SetupView.OPEN_CLASS)).toBe(true);
         expect(root.querySelector('.nexus-bd-together-head').textContent).toBe('TOGETHER');
         expect(root.querySelector('.nexus-scene-tale-setup-title').textContent).toBe('Scene Tale');
-        expect(root.querySelector('.nexus-bd-together-prompt').textContent).toBe('A little story inspired by this place.');
+        expect(root.querySelector('.nexus-bd-together-prompt').textContent).toBe(
+            'A little story inspired by this place.'
+        );
 
         const sections = [...root.querySelectorAll('.nexus-scene-tale-setup-section')];
         expect(sections).toHaveLength(3);
@@ -190,8 +198,12 @@ describe('Scene Tale Stage 1 premium setup surface', () => {
         expect(SetupView.CSS).toContain('@media(max-width:389px)');
         expect(SetupView.CSS).not.toContain('position:fixed;top:auto;bottom:0;left:0;right:0');
         expect(SetupView.sceneThumbnail('ambient:ocean:night')).toBe('assets/ambient/dark/ocean-moonlight.webp');
-        expect(SetupView.sceneThumbnail('Coastal Terrace · Twilight')).toBe('assets/ambient/dark/coastal-terrace-twilight.webp');
+        expect(SetupView.sceneThumbnail('Coastal Terrace · Twilight')).toBe(
+            'assets/ambient/dark/coastal-terrace-twilight.webp'
+        );
     });
 });
 
-afterAll(() => { delete window.__NEXUS_SCENE_TALE_SETUP_VIEW_NOAUTO__; });
+afterAll(() => {
+    delete window.__NEXUS_SCENE_TALE_SETUP_VIEW_NOAUTO__;
+});

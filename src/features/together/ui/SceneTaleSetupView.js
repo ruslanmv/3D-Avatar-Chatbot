@@ -141,20 +141,38 @@ const SceneTaleSetupView = (() => {
         svg.setAttribute('stroke-linejoin', 'round');
         svg.setAttribute('aria-hidden', 'true');
         svg.classList.add(className || 'nexus-scene-tale-label-icon');
-        const path = (d) => { const node = doc.createElementNS(ns, 'path'); node.setAttribute('d', d); svg.appendChild(node); };
+        const path = (d) => {
+            const node = doc.createElementNS(ns, 'path');
+            node.setAttribute('d', d);
+            svg.appendChild(node);
+        };
         if (kind === 'pin') {
             path('M12 21s6-5.1 6-11a6 6 0 1 0-12 0c0 5.9 6 11 6 11Z');
             const circle = doc.createElementNS(ns, 'circle');
-            circle.setAttribute('cx', '12'); circle.setAttribute('cy', '10'); circle.setAttribute('r', '2'); svg.appendChild(circle);
-        } else if (kind === 'edit') { path('M4 20l4.2-1 10.6-10.6a2.1 2.1 0 0 0-3-3L5.2 16 4 20Z'); path('M13.8 7.4l2.8 2.8'); }
-        else if (kind === 'music') { path('M9 18V6l10-2v12'); path('M9 10l10-2'); path('M9 18a3 3 0 1 1-3-3h3'); path('M19 16a3 3 0 1 1-3-3h3'); }
-        else if (kind === 'arrow') { path('M5 12h14'); path('M14 7l5 5-5 5'); }
+            circle.setAttribute('cx', '12');
+            circle.setAttribute('cy', '10');
+            circle.setAttribute('r', '2');
+            svg.appendChild(circle);
+        } else if (kind === 'edit') {
+            path('M4 20l4.2-1 10.6-10.6a2.1 2.1 0 0 0-3-3L5.2 16 4 20Z');
+            path('M13.8 7.4l2.8 2.8');
+        } else if (kind === 'music') {
+            path('M9 18V6l10-2v12');
+            path('M9 10l10-2');
+            path('M9 18a3 3 0 1 1-3-3h3');
+            path('M19 16a3 3 0 1 1-3-3h3');
+        } else if (kind === 'arrow') {
+            path('M5 12h14');
+            path('M14 7l5 5-5 5');
+        }
         return svg;
     }
 
     function ensureStyles(doc) {
         if (!doc || doc.getElementById(STYLE_ID)) return;
-        const style = doc.createElement('style'); style.id = STYLE_ID; style.textContent = CSS;
+        const style = doc.createElement('style');
+        style.id = STYLE_ID;
+        style.textContent = CSS;
         (doc.head || doc.documentElement).appendChild(style);
     }
 
@@ -167,7 +185,15 @@ const SceneTaleSetupView = (() => {
         return label;
     }
 
-    function sceneLabelForId(value) { return SCENE_LABELS_BY_ID[String(value || '').trim().toLowerCase()] || ''; }
+    function sceneLabelForId(value) {
+        return (
+            SCENE_LABELS_BY_ID[
+                String(value || '')
+                    .trim()
+                    .toLowerCase()
+            ] || ''
+        );
+    }
 
     function catalogLabel(entry) {
         if (!entry || entry.type !== 'image') return '';
@@ -182,7 +208,9 @@ const SceneTaleSetupView = (() => {
             const viewer = win && win.NEXUS_VIEWER;
             const state = viewer && typeof viewer.getVisualState === 'function' ? viewer.getVisualState() : null;
             return String((state && state.background) || '').trim();
-        } catch (_) { return ''; }
+        } catch (_) {
+            return '';
+        }
     }
 
     function resolveCurrentScene(doc, fallbackText) {
@@ -222,10 +250,18 @@ const SceneTaleSetupView = (() => {
 
     function sectionLabel(doc, node, kind, text, secondary) {
         if (!node) return;
-        node.textContent = ''; node.classList.add('nexus-scene-tale-section-label');
+        node.textContent = '';
+        node.classList.add('nexus-scene-tale-section-label');
         node.appendChild(svgIcon(doc, kind, 'nexus-scene-tale-label-icon'));
-        const primary = doc.createElement('span'); primary.textContent = text; node.appendChild(primary);
-        if (secondary) { const extra = doc.createElement('span'); extra.className = 'nexus-scene-tale-label-secondary'; extra.textContent = secondary; node.appendChild(extra); }
+        const primary = doc.createElement('span');
+        primary.textContent = text;
+        node.appendChild(primary);
+        if (secondary) {
+            const extra = doc.createElement('span');
+            extra.className = 'nexus-scene-tale-label-secondary';
+            extra.textContent = secondary;
+            node.appendChild(extra);
+        }
     }
 
     function sceneThumbnail(value) {
@@ -235,8 +271,11 @@ const SceneTaleSetupView = (() => {
     }
 
     function wrapSection(doc, panel, nodes) {
-        const valid = nodes.filter(Boolean); if (!valid.length) return null;
-        const section = doc.createElement('section'); section.className = 'nexus-scene-tale-setup-section'; panel.insertBefore(section, valid[0]);
+        const valid = nodes.filter(Boolean);
+        if (!valid.length) return null;
+        const section = doc.createElement('section');
+        section.className = 'nexus-scene-tale-setup-section';
+        panel.insertBefore(section, valid[0]);
         for (const node of valid) section.appendChild(node);
         return section;
     }
@@ -245,13 +284,18 @@ const SceneTaleSetupView = (() => {
         for (const option of options) {
             const input = option.querySelector('input[type=radio]');
             const selected = Boolean(input && input.checked);
-            option.classList.toggle('is-selected', selected); option.setAttribute('aria-checked', selected ? 'true' : 'false');
+            option.classList.toggle('is-selected', selected);
+            option.setAttribute('aria-checked', selected ? 'true' : 'false');
         }
     }
 
     function setupLifecycleActive(panel) {
         if (!panel || !panel.querySelector) return false;
-        return Boolean(panel.querySelector('[data-action=create-story],[data-action=cancel-story],[data-action=start-story],.nexus-story-progress,.nexus-story-ready-meta'));
+        return Boolean(
+            panel.querySelector(
+                '[data-action=create-story],[data-action=cancel-story],[data-action=start-story],.nexus-story-progress,.nexus-story-ready-meta'
+            )
+        );
     }
 
     function setLifecycle(doc, panel, active) {
@@ -260,17 +304,27 @@ const SceneTaleSetupView = (() => {
         const stage = activeStage || (panel && panel.closest && panel.closest('.avatar-card'));
         if (panel) panel.classList.toggle(PANEL_CLASS, Boolean(active));
         if (stage) stage.classList.toggle(OPEN_CLASS, Boolean(active));
-        if (active) { activePanel = panel; activeStage = stage || null; }
-        else { if (activePanel === panel) activePanel = null; if (activeStage === stage) activeStage = null; }
+        if (active) {
+            activePanel = panel;
+            activeStage = stage || null;
+        } else {
+            if (activePanel === panel) activePanel = null;
+            if (activeStage === stage) activeStage = null;
+        }
     }
 
-    function clearStage(panel) { setLifecycle((panel && panel.ownerDocument) || currentDoc, panel, false); }
+    function clearStage(panel) {
+        setLifecycle((panel && panel.ownerDocument) || currentDoc, panel, false);
+    }
 
     function decorate(doc) {
         if (!doc || !doc.getElementById) return null;
         ensureStyles(doc);
         const panel = doc.getElementById(PANEL_ID);
-        if (!panel) { if (doc.documentElement) doc.documentElement.classList.remove(ROOT_CLASS); return null; }
+        if (!panel) {
+            if (doc.documentElement) doc.documentElement.classList.remove(ROOT_CLASS);
+            return null;
+        }
         const lifecycle = setupLifecycleActive(panel);
         setLifecycle(doc, panel, lifecycle);
         if (!lifecycle) return null;
@@ -279,62 +333,138 @@ const SceneTaleSetupView = (() => {
         if (create.dataset.sceneTaleSetupDecorated === '1') return panel;
         create.dataset.sceneTaleSetupDecorated = '1';
 
-        const head = panel.querySelector('.nexus-bd-together-head'); if (head) head.textContent = 'TOGETHER';
-        const title = panel.querySelector('.nexus-bd-together-subtitle'); if (title) { title.textContent = 'Scene Tale'; title.classList.add('nexus-scene-tale-setup-title'); }
-        const prompt = panel.querySelector('.nexus-bd-together-prompt'); if (prompt) prompt.textContent = 'A little story inspired by this place.';
+        const head = panel.querySelector('.nexus-bd-together-head');
+        if (head) head.textContent = 'TOGETHER';
+        const title = panel.querySelector('.nexus-bd-together-subtitle');
+        if (title) {
+            title.textContent = 'Scene Tale';
+            title.classList.add('nexus-scene-tale-setup-title');
+        }
+        const prompt = panel.querySelector('.nexus-bd-together-prompt');
+        if (prompt) prompt.textContent = 'A little story inspired by this place.';
 
         const labels = [...panel.querySelectorAll('.nexus-story-setup-label')];
         const placeLabel = labels.find((node) => /^Current place/i.test(node.textContent || '')) || labels[0];
         const ideaLabel = labels.find((node) => /^Give me an idea/i.test(node.textContent || '')) || labels[1];
         const soundLabel = labels.find((node) => /^Soundtrack/i.test(node.textContent || '')) || labels[2];
-        sectionLabel(doc, placeLabel, 'pin', 'Current place'); sectionLabel(doc, ideaLabel, 'edit', 'Give me an idea', 'Optional'); sectionLabel(doc, soundLabel, 'music', 'Soundtrack');
+        sectionLabel(doc, placeLabel, 'pin', 'Current place');
+        sectionLabel(doc, ideaLabel, 'edit', 'Give me an idea', 'Optional');
+        sectionLabel(doc, soundLabel, 'music', 'Soundtrack');
 
         const place = panel.querySelector('.nexus-bd-together-note');
         if (place) {
-            const label = resolveCurrentScene(doc, place.textContent); place.textContent = ''; place.classList.add('nexus-scene-tale-place-card');
+            const label = resolveCurrentScene(doc, place.textContent);
+            place.textContent = '';
+            place.classList.add('nexus-scene-tale-place-card');
             const src = sceneThumbnail(label);
-            if (src) { const img = doc.createElement('img'); img.className = 'nexus-scene-tale-place-thumb'; img.src = src; img.alt = label; img.loading = 'eager'; img.decoding = 'async'; place.appendChild(img); }
-            const name = doc.createElement('span'); name.className = 'nexus-scene-tale-place-name'; name.textContent = label; place.appendChild(name);
+            if (src) {
+                const img = doc.createElement('img');
+                img.className = 'nexus-scene-tale-place-thumb';
+                img.src = src;
+                img.alt = label;
+                img.loading = 'eager';
+                img.decoding = 'async';
+                place.appendChild(img);
+            }
+            const name = doc.createElement('span');
+            name.className = 'nexus-scene-tale-place-name';
+            name.textContent = label;
+            place.appendChild(name);
         }
 
         const area = panel.querySelector('#nexus-scene-tale-idea');
-        if (area) { area.placeholder = 'A letter somebody never delivered'; area.setAttribute('aria-label', 'Give me an idea'); area.rows = 1; }
+        if (area) {
+            area.placeholder = 'A letter somebody never delivered';
+            area.setAttribute('aria-label', 'Give me an idea');
+            area.rows = 1;
+        }
 
         const soundOptions = [...panel.querySelectorAll('.nexus-story-radio')];
         for (const option of soundOptions) {
-            option.classList.add('nexus-scene-tale-sound-option'); option.setAttribute('role', 'radio');
+            option.classList.add('nexus-scene-tale-sound-option');
+            option.setAttribute('role', 'radio');
             const input = option.querySelector('input[type=radio]');
-            if (input && !option.querySelector('.nexus-scene-tale-radio-dot')) { const dot = doc.createElement('span'); dot.className = 'nexus-scene-tale-radio-dot'; dot.setAttribute('aria-hidden', 'true'); input.insertAdjacentElement('afterend', dot); }
-            if (input && input.dataset.sceneTaleSoundBound !== '1') { input.dataset.sceneTaleSoundBound = '1'; input.addEventListener('change', () => syncSoundOptions(soundOptions)); }
+            if (input && !option.querySelector('.nexus-scene-tale-radio-dot')) {
+                const dot = doc.createElement('span');
+                dot.className = 'nexus-scene-tale-radio-dot';
+                dot.setAttribute('aria-hidden', 'true');
+                input.insertAdjacentElement('afterend', dot);
+            }
+            if (input && input.dataset.sceneTaleSoundBound !== '1') {
+                input.dataset.sceneTaleSoundBound = '1';
+                input.addEventListener('change', () => syncSoundOptions(soundOptions));
+            }
         }
         syncSoundOptions(soundOptions);
 
         if (placeLabel && place) wrapSection(doc, panel, [placeLabel, place]);
         if (ideaLabel && area) wrapSection(doc, panel, [ideaLabel, area]);
-        if (soundLabel && soundOptions.length) { const grid = doc.createElement('div'); grid.className = 'nexus-scene-tale-sound-grid'; panel.insertBefore(grid, soundOptions[0]); for (const option of soundOptions) grid.appendChild(option); wrapSection(doc, panel, [soundLabel, grid]); }
+        if (soundLabel && soundOptions.length) {
+            const grid = doc.createElement('div');
+            grid.className = 'nexus-scene-tale-sound-grid';
+            panel.insertBefore(grid, soundOptions[0]);
+            for (const option of soundOptions) grid.appendChild(option);
+            wrapSection(doc, panel, [soundLabel, grid]);
+        }
 
-        const actions = create.closest('.nexus-bd-together-options'); if (actions) actions.classList.add('nexus-scene-tale-primary-actions');
-        create.setAttribute('aria-label', 'Create story'); create.appendChild(svgIcon(doc, 'arrow', 'nexus-scene-tale-cta-arrow'));
+        const actions = create.closest('.nexus-bd-together-options');
+        if (actions) actions.classList.add('nexus-scene-tale-primary-actions');
+        create.setAttribute('aria-label', 'Create story');
+        create.appendChild(svgIcon(doc, 'arrow', 'nexus-scene-tale-cta-arrow'));
         return panel;
     }
 
     function install(doc) {
-        const d = doc || (typeof document !== 'undefined' ? document : null); if (!d) return () => {};
-        currentDoc = d; decorate(d);
+        const d = doc || (typeof document !== 'undefined' ? document : null);
+        if (!d) return () => {};
+        currentDoc = d;
+        decorate(d);
         if (observer || typeof MutationObserver === 'undefined' || !d.body) return detach;
-        observer = new MutationObserver(() => decorate(d)); observer.observe(d.body, { childList: true, subtree: true }); return detach;
+        observer = new MutationObserver(() => decorate(d));
+        observer.observe(d.body, { childList: true, subtree: true });
+        return detach;
     }
 
     function detach() {
-        if (observer) observer.disconnect(); observer = null;
+        if (observer) observer.disconnect();
+        observer = null;
         if (activePanel) clearStage(activePanel);
-        if (currentDoc) { currentDoc.documentElement.classList.remove(ROOT_CLASS); const style = currentDoc.getElementById(STYLE_ID); if (style && style.parentNode) style.parentNode.removeChild(style); }
-        activePanel = null; activeStage = null; currentDoc = null;
+        if (currentDoc) {
+            currentDoc.documentElement.classList.remove(ROOT_CLASS);
+            const style = currentDoc.getElementById(STYLE_ID);
+            if (style && style.parentNode) style.parentNode.removeChild(style);
+        }
+        activePanel = null;
+        activeStage = null;
+        currentDoc = null;
     }
 
-    const api = { PANEL_ID, STYLE_ID, OPEN_CLASS, PANEL_CLASS, ROOT_CLASS, CSS, SCENE_THUMBNAILS, SCENE_LABELS_BY_ID, normalizeSceneLabel, resolveCurrentScene, sceneThumbnail, setupLifecycleActive, decorate, install, detach, syncSoundOptions };
-    if (typeof window !== 'undefined' && typeof document !== 'undefined' && !window.__NEXUS_SCENE_TALE_SETUP_VIEW_NOAUTO__) {
-        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => install(document), { once: true }); else install(document);
+    const api = {
+        PANEL_ID,
+        STYLE_ID,
+        OPEN_CLASS,
+        PANEL_CLASS,
+        ROOT_CLASS,
+        CSS,
+        SCENE_THUMBNAILS,
+        SCENE_LABELS_BY_ID,
+        normalizeSceneLabel,
+        resolveCurrentScene,
+        sceneThumbnail,
+        setupLifecycleActive,
+        decorate,
+        install,
+        detach,
+        syncSoundOptions,
+    };
+    if (
+        typeof window !== 'undefined' &&
+        typeof document !== 'undefined' &&
+        !window.__NEXUS_SCENE_TALE_SETUP_VIEW_NOAUTO__
+    ) {
+        if (document.readyState === 'loading')
+            document.addEventListener('DOMContentLoaded', () => install(document), { once: true });
+        else install(document);
     }
     return api;
 })();

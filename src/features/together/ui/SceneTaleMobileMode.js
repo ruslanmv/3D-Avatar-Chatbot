@@ -121,7 +121,10 @@ const SceneTaleMobileMode = (() => {
         const w = win || currentWin || (typeof window !== 'undefined' ? window : null);
         const director = w && w.NEXUS_BD;
         const panel = director && director.togetherPanel;
-        const activity = panel && panel.activities && typeof panel.activities.get === 'function' ? panel.activities.get('playground') : null;
+        const activity =
+            panel && panel.activities && typeof panel.activities.get === 'function'
+                ? panel.activities.get('playground')
+                : null;
         return activity && activity.player ? activity.player : null;
     }
 
@@ -155,11 +158,11 @@ const SceneTaleMobileMode = (() => {
             if (target.closest('.nexus-story-time')) return false;
             if (target.closest('.nexus-story-btn') && record.type === 'characterData') return false;
             return Boolean(
-                record.type === 'childList'
-                || target.closest('.nexus-story-caption')
-                || target.closest('.nexus-story-options')
-                || target.closest('.nexus-story-complete-title')
-                || target.closest('.nexus-story-complete-note')
+                record.type === 'childList' ||
+                    target.closest('.nexus-story-caption') ||
+                    target.closest('.nexus-story-options') ||
+                    target.closest('.nexus-story-complete-title') ||
+                    target.closest('.nexus-story-complete-note')
             );
         });
     }
@@ -280,7 +283,8 @@ const SceneTaleMobileMode = (() => {
     function bindEndGuard(hud) {
         if (!hud || endGuard) return;
         endGuard = (event) => {
-            const button = event.target && event.target.closest ? event.target.closest('.nexus-story-btn.is-end') : null;
+            const button =
+                event.target && event.target.closest ? event.target.closest('.nexus-story-btn.is-end') : null;
             if (!button || !hud.contains(button)) return;
             const now = Date.now();
             const until = Number(button.dataset.sceneTaleConfirmUntil || 0);
@@ -359,7 +363,9 @@ const SceneTaleMobileMode = (() => {
             if (hasChoices) ensureChatVisible(doc);
 
             if (allowScroll && scrollHost && userNearBottom) {
-                try { scrollHost.scrollTop = scrollHost.scrollHeight; } catch (_) {}
+                try {
+                    scrollHost.scrollTop = scrollHost.scrollHeight;
+                } catch (_) {}
                 rememberScroll();
             }
             if (error) deactivate({ restoreView: true });
@@ -473,10 +479,14 @@ const SceneTaleMobileMode = (() => {
                     } catch (error) {
                         console.error('[Together] activity start failed', error);
                         try {
-                            if (this.pipeline && typeof this.stopSharing === 'function') this.stopSharing('start failed');
+                            if (this.pipeline && typeof this.stopSharing === 'function')
+                                this.stopSharing('start failed');
                         } catch (_) {}
                         const contract = typeof this.contractFor === 'function' ? this.contractFor(id) : null;
-                        const raw = this.activities && typeof this.activities.get === 'function' ? this.activities.get(id) : null;
+                        const raw =
+                            this.activities && typeof this.activities.get === 'function'
+                                ? this.activities.get(id)
+                                : null;
                         try {
                             if (raw && raw.active && typeof raw.stop === 'function') raw.stop('start failed');
                         } catch (_) {}
@@ -508,34 +518,38 @@ const SceneTaleMobileMode = (() => {
                     if (!start || start.dataset.sceneTaleAwaitBound === '1') return out;
                     start.dataset.sceneTaleAwaitBound = '1';
                     const activity = this;
-                    start.addEventListener('click', async (event) => {
-                        event.preventDefault();
-                        event.stopImmediatePropagation();
-                        if (start.dataset.starting === '1') return;
-                        start.dataset.starting = '1';
-                        start.disabled = true;
-                        setText(start, 'Starting…');
-                        try {
-                            const result = await panel.startActivity('playground', {
-                                id: 'scene-tale',
-                                permission: null,
-                                preparedPlan: activity.preparedPlan,
-                                soundtrack: activity.preparedSoundtrack,
-                            });
-                            if ((!result || result.ok === false) && start.isConnected) {
-                                start.disabled = false;
-                                setText(start, 'Start story');
-                                delete start.dataset.starting;
+                    start.addEventListener(
+                        'click',
+                        async (event) => {
+                            event.preventDefault();
+                            event.stopImmediatePropagation();
+                            if (start.dataset.starting === '1') return;
+                            start.dataset.starting = '1';
+                            start.disabled = true;
+                            setText(start, 'Starting…');
+                            try {
+                                const result = await panel.startActivity('playground', {
+                                    id: 'scene-tale',
+                                    permission: null,
+                                    preparedPlan: activity.preparedPlan,
+                                    soundtrack: activity.preparedSoundtrack,
+                                });
+                                if ((!result || result.ok === false) && start.isConnected) {
+                                    start.disabled = false;
+                                    setText(start, 'Start story');
+                                    delete start.dataset.starting;
+                                }
+                            } catch (error) {
+                                console.error('[Scene Tale] Start failed', error);
+                                if (start.isConnected) {
+                                    start.disabled = false;
+                                    setText(start, 'Try again');
+                                    delete start.dataset.starting;
+                                }
                             }
-                        } catch (error) {
-                            console.error('[Scene Tale] Start failed', error);
-                            if (start.isConnected) {
-                                start.disabled = false;
-                                setText(start, 'Try again');
-                                delete start.dataset.starting;
-                            }
-                        }
-                    }, true);
+                        },
+                        true
+                    );
                     return out;
                 };
                 Object.defineProperty(Playground.prototype, READY_PATCH_FLAG, { configurable: true, value: true });
@@ -583,9 +597,11 @@ const SceneTaleMobileMode = (() => {
     function detach() {
         if (rootObserver) rootObserver.disconnect();
         rootObserver = null;
-        if (patchTimer && currentWin && typeof currentWin.clearInterval === 'function') currentWin.clearInterval(patchTimer);
+        if (patchTimer && currentWin && typeof currentWin.clearInterval === 'function')
+            currentWin.clearInterval(patchTimer);
         patchTimer = null;
-        if (resizeHandler && currentWin && typeof currentWin.removeEventListener === 'function') currentWin.removeEventListener('resize', resizeHandler);
+        if (resizeHandler && currentWin && typeof currentWin.removeEventListener === 'function')
+            currentWin.removeEventListener('resize', resizeHandler);
         resizeHandler = null;
         deactivate({ restoreView: true });
         currentWin = null;
@@ -617,8 +633,13 @@ const SceneTaleMobileMode = (() => {
         patchStartHandoff,
     };
 
-    if (typeof window !== 'undefined' && typeof document !== 'undefined' && !window.__NEXUS_SCENE_TALE_MOBILE_NOAUTO__) {
-        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => install(document, window), { once: true });
+    if (
+        typeof window !== 'undefined' &&
+        typeof document !== 'undefined' &&
+        !window.__NEXUS_SCENE_TALE_MOBILE_NOAUTO__
+    ) {
+        if (document.readyState === 'loading')
+            document.addEventListener('DOMContentLoaded', () => install(document, window), { once: true });
         else install(document, window);
     }
 
