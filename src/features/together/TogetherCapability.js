@@ -13,6 +13,15 @@
     const OPEN = '<play';
     const CLOSE = '</play>';
     const PRIVATE_RUNTIME_VERSION = 1;
+
+    /**
+     * How long the thinking dots stay up before giving in.
+     *
+     * A reply normally lands in the transcript and the view hides them itself. This is for the
+     * reply that never comes — a provider timing out, the 504-and-retry loop in the reported
+     * session — where dots spinning forever would be its own kind of lie.
+     */
+    const THINKING_TIMEOUT_MS = 90000;
     const PrivateViewApi =
         (global && global.NEXUS_PRIVATE_CONVERSATION_VIEW) ||
         (typeof module !== 'undefined' && module.exports ? require('./ui/PrivateConversationView.js') : null);
@@ -251,6 +260,11 @@
             /** Turns the user has taken. The arc waits for a talker; see `_schedule`. */
             this._turns = 0;
             this._lastTurnAt = 0;
+            /** Beats as wall-clock offsets rather than live timers. See `_beat`. */
+            this._beats = [];
+            this._unwatchVisibility = null;
+            /** The safety valve on the thinking dots. See `_yieldToConversation`. */
+            this._thinkingTimer = null;
             const bb = this.director && this.director.blackboard;
             const modes = this.director && this.director.modes;
             this.snapshot = {
@@ -295,11 +309,12 @@
                 named ? `${this._line('opening')} ${place} feels like a good place for it.` : this._line('opening')
             );
             this._startSoundtrack();
-            this._schedule(45000, () => this._showMoodChoice());
-            this._schedule(120000, () => this._offerCheckIn());
-            this._schedule(210000, () => this._speak(this._moodLine('middle')));
-            this._schedule(285000, () => this._speak(this._moodLine('closing')));
-            this._schedule(300000, () => this._complete());
+            this._beat(45000, () => this._showMoodChoice());
+            this._beat(120000, () => this._offerCheckIn());
+            this._beat(210000, () => this._speak(this._moodLine('middle')));
+            this._beat(285000, () => this._speak(this._moodLine('closing')));
+            this._beat(300000, () => this._complete());
+            this._armBeats();
             this._emit('private:session-start', {
                 preset: this.preset.id,
                 maxLevel: this.preset.maxLevel,
@@ -471,9 +486,96 @@
         }
 
         _clearTimers() {
+            if (this._unwatchVisibility) {
+                try {
+                    this._unwatchVisibility();
+                } catch (_) {}
+                this._unwatchVisibility = null;
+            }
+            this._beats = [];
             if (!this.win || typeof this.win.clearTimeout !== 'function') return;
             for (const id of this._timers) this.win.clearTimeout(id);
             this._timers.clear();
+        }
+
+        /**
+         * Register a beat at a wall-clock offset from the session's start.
+         *
+         * The five beats used to be five independent `setTimeout`s spanning five minutes with
+         * gaps of 75, 90 and 75 seconds between them, and that is not a schedule a browser
+         * will honour. A hidden tab has its timers clamped to roughly one a minute, and after
+         * about five minutes hidden Chrome may freeze them outright; locking a phone or
+         * switching apps does the same. So a session where somebody looked away after the
+         * 210-second line simply never got the closing or the completion — the card sat there,
+         * still mounted, still showing its buttons, with nothing left that would ever fire.
+         * Reported, accurately, as "later nothing happens".
+         *
+         * Storing the offset instead of trusting a timer fixes it, because a late tick can
+         * still work out what it missed. `_tick` fires everything now due.
+         */
+        _beat(at, run) {
+            this._beats.push({ at: Math.max(0, Number(at) || 0), run, done: false });
+            return this._beats.length;
+        }
+
+        /** Milliseconds since `start()`, in the session's own (test-scalable) timebase. */
+        _elapsed() {
+            const scale = this.timingScale > 0 ? this.timingScale : 1;
+            return (this.now() - (this.startedAt || this.now())) / scale;
+        }
+
+        /**
+         * Fire everything due, then arm for the next one.
+         *
+         * Deliberately catch-up rather than replay-in-order-with-delays: coming back to a tab
+         * after four minutes should land you at the right point in the session, not walk you
+         * through four minutes of backlog. Beats are marked done before running so a throw in
+         * one cannot make it fire twice on the next tick.
+         */
+        _tick() {
+            if (this._stopped || this.state === 'complete') return;
+            // A person mid-sentence is the one thing that outranks the clock, and the existing
+            // yield already knows it. Come back in a second rather than talking over them.
+            if (this.now() < this._conversationBusyUntil) return this._armBeats(1000);
+            const elapsed = this._elapsed();
+            for (const beat of this._beats) {
+                if (beat.done || beat.at > elapsed) continue;
+                beat.done = true;
+                try {
+                    beat.run();
+                } catch (error) {
+                    // One beat that throws must not take the rest of the evening with it.
+                    console.warn('[Private] a beat failed', error);
+                }
+                if (this._stopped || this.state === 'complete') return;
+            }
+            this._armBeats();
+        }
+
+        /**
+         * One timer for the next beat, plus a wake-up when the tab comes back.
+         *
+         * `visibilitychange` is the half that makes the catch-up actually happen: a throttled
+         * timer may be minutes late, but the event fires the moment somebody returns.
+         */
+        _armBeats(inMs) {
+            if (this._stopped || this.state === 'complete') return null;
+            if (!this._unwatchVisibility && this.doc && typeof this.doc.addEventListener === 'function') {
+                const onVisible = () => {
+                    if (!this.doc.hidden) this._tick();
+                };
+                this.doc.addEventListener('visibilitychange', onVisible);
+                this._unwatchVisibility = () => this.doc.removeEventListener('visibilitychange', onVisible);
+            }
+            const pending = this._beats.filter((beat) => !beat.done);
+            if (!pending.length) return null;
+            const elapsed = this._elapsed();
+            const next = Math.min(...pending.map((beat) => beat.at));
+            // Never longer than a minute: that is roughly the resolution a background tab
+            // gets anyway, and it keeps a stalled session self-healing without a visibility
+            // event at all.
+            const wait = Number.isFinite(inMs) ? inMs : Math.max(0, Math.min(next - elapsed, 60000));
+            return this._schedule(wait, () => this._tick());
         }
 
         _mount() {
@@ -741,6 +843,19 @@
             this._turns += 1;
             this._lastTurnAt = this.now();
             this._conversationBusyUntil = this.now() + 8000;
+            // Something moving while the provider works. The reported session sat through
+            // `OllaBridge returned 504; retrying` with a completely static card, which is
+            // indistinguishable from a crash. The view hides these again when a reply lands
+            // in the transcript; this is only the safety valve for a reply that never does.
+            if (this.view && typeof this.view.showThinking === 'function') {
+                this.view.showThinking();
+                if (this._thinkingTimer && this.win && typeof this.win.clearTimeout === 'function') {
+                    this.win.clearTimeout(this._thinkingTimer);
+                }
+                this._thinkingTimer = this._schedule(THINKING_TIMEOUT_MS, () => {
+                    if (this.view && typeof this.view.hideThinking === 'function') this.view.hideThinking();
+                });
+            }
             try {
                 if (this.win && this.win.speechSynthesis && typeof this.win.speechSynthesis.cancel === 'function')
                     this.win.speechSynthesis.cancel();

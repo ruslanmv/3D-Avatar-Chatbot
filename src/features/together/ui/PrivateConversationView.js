@@ -40,9 +40,30 @@ const PrivateConversationView = (() => {
     const CSS = `
 #${ROW_ID}{display:block;width:100%;margin:10px 0 14px;box-sizing:border-box;color:inherit}
 #${ROW_ID} *{box-sizing:border-box}.nexus-private-shell{overflow:hidden;border:1px solid rgba(244,128,166,.4);border-radius:16px;background:linear-gradient(145deg,rgba(39,15,36,.9),rgba(22,13,28,.82));box-shadow:0 16px 50px rgba(23,5,21,.3);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
-.nexus-private-heading{padding:15px 17px 11px;border-bottom:1px solid rgba(255,255,255,.08)}.nexus-private-kicker{color:#f49aba;font-size:.72rem;font-weight:750;letter-spacing:.09em}.nexus-private-heading-title{font-size:1.08rem;font-weight:750;margin:5px 0 2px}.nexus-private-place{font-size:.8rem;opacity:.68}.nexus-private-card{padding:15px 17px}.nexus-private-copy{font-size:.98rem;line-height:1.55;white-space:pre-wrap;text-wrap:pretty}.nexus-private-pending{margin-top:12px;padding-top:11px;border-top:1px solid rgba(255,255,255,.08);opacity:.85}.nexus-private-actions{display:grid;gap:8px;margin-top:13px}.nexus-private-btn{border:1px solid rgba(244,128,166,.34);background:rgba(244,128,166,.09);color:inherit;border-radius:11px;padding:10px 12px;text-align:left;font:inherit;font-size:.82rem;cursor:pointer}.nexus-private-btn:hover,.nexus-private-btn:focus-visible{background:rgba(244,128,166,.18);outline:none}.nexus-private-bar{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08)}.nexus-private-level{font-size:.76rem;opacity:.76;flex:1}.nexus-private-bar .nexus-private-btn{padding:7px 10px}.nexus-private-soundtrack{margin:0 14px 12px;font-size:.78rem}.nexus-private-soundtrack-strip{display:flex;align-items:flex-start;gap:10px;justify-content:space-between;padding:9px 12px;border:1px solid rgba(244,128,166,.2);border-radius:11px;background:rgba(244,128,166,.06)}.nexus-private-soundtrack-copy{min-width:0;flex:1}.nexus-private-soundtrack-kicker{font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;opacity:.56;margin-bottom:2px}.nexus-private-soundtrack-title{font-size:.8rem;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nexus-private-soundtrack-creator{font-size:.7rem;line-height:1.3;opacity:.58;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}.nexus-private-soundtrack-toggle{border:1px solid rgba(244,128,166,.28);background:rgba(244,128,166,.1);color:inherit;border-radius:9px;padding:6px 8px;font:inherit;font-size:.72rem;cursor:pointer;flex:0 0 auto}.nexus-private-soundtrack-toggle:hover,.nexus-private-soundtrack-toggle:focus-visible{background:rgba(244,128,166,.2);outline:none}.nexus-private-soundtrack-player{display:none;width:min(280px,100%);margin-top:9px}.nexus-private-soundtrack-player.is-open{display:block}.nexus-private-soundtrack-player .nexus-yt-card{width:100%;max-width:280px;margin:0}.nexus-private-soundtrack-player .nexus-yt-meta{font-size:.72rem}.nexus-private-complete{font-size:1rem;font-weight:750;margin-bottom:6px}.nexus-private-note{font-size:.84rem;line-height:1.5;opacity:.74}.is-complete .nexus-private-bar{display:none}
+.nexus-private-heading{padding:15px 17px 11px;border-bottom:1px solid rgba(255,255,255,.08)}.nexus-private-kicker{color:#f49aba;font-size:.72rem;font-weight:750;letter-spacing:.09em}.nexus-private-heading-title{font-size:1.08rem;font-weight:750;margin:5px 0 2px}.nexus-private-place{font-size:.8rem;opacity:.68}.nexus-private-card{padding:15px 17px}.nexus-private-copy{font-size:.98rem;line-height:1.55;white-space:pre-wrap;text-wrap:pretty}.nexus-private-pending{margin-top:12px;padding-top:11px;border-top:1px solid rgba(255,255,255,.08);opacity:.85}.nexus-private-thinking{display:flex;align-items:center;gap:5px;margin-top:12px;height:10px}.nexus-private-dot{width:6px;height:6px;border-radius:50%;background:#f49aba;opacity:.35;animation:nexus-private-dot 1.25s ease-in-out infinite}.nexus-private-dot:nth-child(2){animation-delay:.18s}.nexus-private-dot:nth-child(3){animation-delay:.36s}@keyframes nexus-private-dot{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:.95;transform:translateY(-3px)}}.nexus-private-kicker{animation:nexus-private-breathe 5.5s ease-in-out infinite}@keyframes nexus-private-breathe{0%,100%{opacity:.72}50%{opacity:1}}@media(prefers-reduced-motion:reduce){.nexus-private-dot,.nexus-private-kicker{animation:none}.nexus-private-dot{opacity:.6}}.nexus-private-actions{display:grid;gap:8px;margin-top:13px}.nexus-private-btn{border:1px solid rgba(244,128,166,.34);background:rgba(244,128,166,.09);color:inherit;border-radius:11px;padding:10px 12px;text-align:left;font:inherit;font-size:.82rem;cursor:pointer}.nexus-private-btn:hover,.nexus-private-btn:focus-visible{background:rgba(244,128,166,.18);outline:none}.nexus-private-bar{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08)}.nexus-private-level{font-size:.76rem;opacity:.76;flex:1}.nexus-private-bar .nexus-private-btn{padding:7px 10px}.nexus-private-soundtrack{margin:0 14px 12px;font-size:.78rem}.nexus-private-soundtrack-strip{display:flex;align-items:flex-start;gap:10px;justify-content:space-between;padding:9px 12px;border:1px solid rgba(244,128,166,.2);border-radius:11px;background:rgba(244,128,166,.06)}.nexus-private-soundtrack-copy{min-width:0;flex:1}.nexus-private-soundtrack-kicker{font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;opacity:.56;margin-bottom:2px}.nexus-private-soundtrack-title{font-size:.8rem;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nexus-private-soundtrack-creator{font-size:.7rem;line-height:1.3;opacity:.58;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}.nexus-private-soundtrack-toggle{border:1px solid rgba(244,128,166,.28);background:rgba(244,128,166,.1);color:inherit;border-radius:9px;padding:6px 8px;font:inherit;font-size:.72rem;cursor:pointer;flex:0 0 auto}.nexus-private-soundtrack-toggle:hover,.nexus-private-soundtrack-toggle:focus-visible{background:rgba(244,128,166,.2);outline:none}.nexus-private-soundtrack-player{display:none;width:min(280px,100%);margin-top:9px}.nexus-private-soundtrack-player.is-open{display:block}.nexus-private-soundtrack-player .nexus-yt-card{width:100%;max-width:280px;margin:0}.nexus-private-soundtrack-player .nexus-yt-meta{font-size:.72rem}.nexus-private-complete{font-size:1rem;font-weight:750;margin-bottom:6px}.nexus-private-note{font-size:.84rem;line-height:1.5;opacity:.74}.is-complete .nexus-private-bar{display:none}
 @media(max-width:560px){#${ROW_ID}{margin:8px 0 12px}.nexus-private-heading,.nexus-private-card{padding:13px 14px}.nexus-private-copy{font-size:.94rem}.nexus-private-bar{flex-wrap:wrap}.nexus-private-soundtrack{margin:0 12px 10px}.nexus-private-soundtrack-player{width:100%}.nexus-private-soundtrack-player .nexus-yt-card{max-width:100%}}
 `;
+
+    /**
+     * Did a mutation batch add a real chat message, as opposed to our own row moving?
+     *
+     * The Private row lives in `#chat-history` too and gets re-appended when chat restore code
+     * replaces the children, so "something was added" on its own would hide the thinking dots
+     * every time the session repaired itself. An element that is neither our row nor inside it
+     * is a message the chat pipeline wrote.
+     */
+    function addedAMessage(records, ownRow) {
+        for (const record of records || []) {
+            for (const node of (record && record.addedNodes) || []) {
+                if (!node || node.nodeType !== 1) continue;
+                if (node === ownRow) continue;
+                if (ownRow && typeof ownRow.contains === 'function' && ownRow.contains(node)) continue;
+                if (node.classList && node.classList.contains('empty-state')) continue;
+                return true;
+            }
+        }
+        return false;
+    }
 
     function ensureStyles(doc) {
         if (!doc || doc.getElementById(STYLE_ID)) return;
@@ -64,6 +85,8 @@ const PrivateConversationView = (() => {
             this._hostObserver = null;
             /** A question with buttons that an interjection must give back. See showMessage. */
             this._pending = null;
+            /** The three-dot row, while she is thinking. See showThinking. */
+            this._thinking = null;
         }
 
         mount({ preset, scene } = {}) {
@@ -100,6 +123,52 @@ const PrivateConversationView = (() => {
         }
 
         /**
+         * Three dots, while she is working out what to say.
+         *
+         * The card was a still image between beats, and the gaps are long: 75 s, 90 s and 75 s
+         * between the scheduled lines, plus however long the provider takes to answer anything
+         * typed in between. A reported session sat through `OllaBridge returned 504; retrying`
+         * with nothing on screen moving, which is indistinguishable from the feature having
+         * crashed — and in the one mode where the whole point is that somebody is present with
+         * you, "frozen" is the worst possible reading.
+         *
+         * Appended rather than written through `showMessage`, deliberately: this must not
+         * disturb a question that is on screen. The mood choice stays tappable while she
+         * thinks.
+         */
+        showThinking() {
+            if (!this.card || this._thinking) return null;
+            const wrap = this.doc.createElement('div');
+            wrap.className = 'nexus-private-thinking';
+            wrap.dataset.privateThinking = '1';
+            // Announced once, as a status rather than a live transcript: a screen reader that
+            // read three dots on every frame would be unusable.
+            wrap.setAttribute('role', 'status');
+            wrap.setAttribute('aria-label', 'She is thinking');
+            for (let i = 0; i < 3; i += 1) {
+                const dot = this.doc.createElement('span');
+                dot.className = 'nexus-private-dot';
+                wrap.appendChild(dot);
+            }
+            this.card.appendChild(wrap);
+            this._thinking = wrap;
+            this._scroll(this.doc && this.doc.getElementById('chat-history'));
+            return wrap;
+        }
+
+        hideThinking() {
+            if (!this._thinking) return false;
+            if (this._thinking.parentNode) this._thinking.remove();
+            this._thinking = null;
+            return true;
+        }
+
+        /** Whether the dots are up, so a caller can avoid re-arming a timer it already has. */
+        get isThinking() {
+            return Boolean(this._thinking);
+        }
+
+        /**
          * Say something, and — when it is an interjection — give back the question it landed on.
          *
          * The card holds one message at a time, so every `showMessage` wipes what was there.
@@ -118,6 +187,9 @@ const PrivateConversationView = (() => {
         showMessage(text, actions = [], { interjection = false } = {}) {
             if (!this.card) return;
             const pending = this._pending;
+            // Clearing the card takes the dots with it, so the handle has to go too or
+            // `showThinking` would refuse to draw new ones against a node that is gone.
+            this._thinking = null;
             this.card.textContent = '';
             const copy = this.doc.createElement('div');
             copy.className = 'nexus-private-copy';
@@ -241,6 +313,7 @@ const PrivateConversationView = (() => {
             const old = this.doc && this.doc.getElementById(ROW_ID);
             if (old) old.remove();
             this._pending = null;
+            this._thinking = null;
             this.row = this.card = this.level = null;
         }
         _ensureConversationVisible() {
@@ -252,8 +325,13 @@ const PrivateConversationView = (() => {
         _observeHost(host) {
             if (!host || typeof MutationObserver === 'undefined') return;
             if (this._hostObserver) this._hostObserver.disconnect();
-            this._hostObserver = new MutationObserver(() => {
+            this._hostObserver = new MutationObserver((records) => {
                 if (!this.row) return;
+                // A reply landing in the transcript is the end of thinking, and it is the only
+                // signal available here: the composer is observed rather than intercepted, so
+                // the ordinary chat pipeline owns the request and never reports back. A new
+                // child of the history that is not our own row is that reply.
+                if (this._thinking && addedAMessage(records, this.row)) this.hideThinking();
                 // Chat restore/clear code can replace the history children after an activity
                 // has mounted. The active experience remains authoritative, so put its one
                 // persistent row back rather than leaving a running Private session invisible.
