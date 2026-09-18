@@ -1004,9 +1004,164 @@ const PlaygroundActivity = (() => {
             this.preset = null;
             this.startedAt = null;
             this._adultMaxDescriptor = null;
+            /**
+             * Private used to go straight from "pick a preset" to a running session, and every
+             * piece of asynchronous work — planning her lines, searching for a track — happened
+             * *after* `Begin`, invisibly, while she had already started talking. Playground had
+             * solved the same problem long before: prepare everything, show what you are doing,
+             * then let the person press Start on something that is actually ready.
+             *
+             * So Private now has the same four states. `configure` is the screen that was
+             * already there; the rest are new.
+             */
+            this.sessionState = 'configure';
+            this.prepareInput = null;
+            this.soundtrackChoice = 'choose';
+            /** The ambience scene the evening will use, or `null` for "wherever we are". */
+            this.sceneChoice = null;
+            this.prepareProgress = new Set();
+            this.preparedPlan = null;
+            this.preparedTrack = null;
+            this.prepareError = '';
+            this._prepareToken = 0;
+            this._panel = null;
         }
         get name() {
             return 'Private';
+        }
+
+        /** Scenes the evening can be set in, from the catalogue rather than a hardcoded list. */
+        scenes() {
+            const win = globalObject();
+            const catalog = win && win.NEXUS_SCENE_CATALOG;
+            if (!catalog || typeof catalog.list !== 'function') return [];
+            try {
+                return catalog
+                    .list()
+                    .map((entry) => ({
+                        id: cleanText(entry && entry.id, 80),
+                        label: cleanText(entry && entry.label, 80),
+                    }))
+                    .filter((entry) => entry.id && entry.label);
+            } catch (_) {
+                // No catalogue is a Private session in whatever room is already showing, which
+                // is exactly how it behaved before there was a choice.
+                return [];
+            }
+        }
+
+        /** The panel calls this so the activity knows where to ask for a repaint. */
+        paintSetup(panel) {
+            this._panel = panel || this._panel;
+            return this.sessionState;
+        }
+
+        _repaint() {
+            const panel = this._panel;
+            if (panel && panel.view === 'setup' && typeof panel._paint === 'function') panel._paint();
+        }
+
+        /**
+         * Do the waiting before the session rather than during it.
+         *
+         * Every step here already existed; all that changes is *when*. Planning her beats and
+         * finding a track used to run after `start()` — so the first thing a person heard was
+         * a written fallback line while the real plan was still in flight, and the soundtrack
+         * appeared some seconds into an evening that had already begun.
+         *
+         * Never rejects. A step that cannot be done is a step that is skipped, and the session
+         * starts anyway with whatever came back — which for the plan is always something, per
+         * `PrivateBeats.plan`.
+         */
+        async prepare({ input = {}, soundtrack = 'choose', scene = null } = {}) {
+            const token = ++this._prepareToken;
+            const gate = this.availability();
+            if (!gate || gate.ok === false) {
+                this.prepareError = (gate && gate.why) || 'Private is unavailable';
+                this.sessionState = 'error';
+                this._repaint();
+                return { ok: false, why: this.prepareError };
+            }
+            this.prepareInput = { ...input };
+            this.soundtrackChoice = ['choose', 'current', 'none'].includes(soundtrack) ? soundtrack : 'choose';
+            this.sceneChoice = cleanText(scene, 80) || null;
+            this.prepareProgress = new Set();
+            this.preparedPlan = null;
+            this.preparedTrack = null;
+            this.prepareError = '';
+            this.sessionState = 'preparing';
+            this._repaint();
+
+            const win = globalObject();
+            const capability = win && win.NEXUS_TOGETHER_CAPABILITY;
+            const presets = (capability && capability.PRIVATE_PRESETS) || {};
+            const preset = presets[String(input.id || '')] || presets.affectionate || null;
+            const step = (id) => {
+                if (token !== this._prepareToken) return;
+                this.prepareProgress.add(id);
+                this._repaint();
+            };
+            const live = () => token === this._prepareToken;
+
+            const place = this.sceneChoice
+                ? (this.scenes().find((entry) => entry.id === this.sceneChoice) || {}).label || currentScene(win).label
+                : currentScene(win).label;
+            step('scene');
+
+            const beats = win && win.NEXUS_PRIVATE_BEATS;
+            if (beats && typeof beats.plan === 'function') {
+                try {
+                    const plan = await beats.plan({ preset, scene: place, win });
+                    if (!live()) return { ok: false, why: 'cancelled' };
+                    this.preparedPlan = plan || null;
+                } catch (_) {
+                    this.preparedPlan = null;
+                }
+            }
+            step('words');
+            step('pace');
+
+            if (this.soundtrackChoice === 'choose' && preset && preset.music) {
+                this.preparedTrack = await this._findTrack(preset.music, win);
+                if (!live()) return { ok: false, why: 'cancelled' };
+            }
+            step('music');
+
+            if (!live()) return { ok: false, why: 'cancelled' };
+            this.sessionState = 'ready';
+            this._repaint();
+            busEmit(this.bus, 'private:prepared', {
+                preset: input.id,
+                scene: this.sceneChoice,
+                soundtrack: Boolean(this.preparedTrack),
+            });
+            return { ok: true, plan: this.preparedPlan };
+        }
+
+        /** The same discovery path the session used to run inline, moved forward in time. */
+        async _findTrack(query, win) {
+            const registry = win && win.NEXUS_DISCOVERY;
+            if (!registry || typeof registry.forCapability !== 'function') return null;
+            try {
+                if (typeof registry.warm === 'function') await registry.warm();
+                const provider = registry.forCapability('music.search');
+                if (!provider || typeof provider.search !== 'function') return null;
+                const found = await provider.search(cleanText(query, 160), { max: 3, kind: 'music' });
+                return Array.isArray(found) && found.length ? found[0] : null;
+            } catch (_) {
+                return null;
+            }
+        }
+
+        cancelPrepare() {
+            this._prepareToken += 1;
+            this.prepareProgress = new Set();
+            this.preparedPlan = null;
+            this.preparedTrack = null;
+            this.prepareError = '';
+            this.sessionState = 'configure';
+            this._repaint();
+            return true;
         }
         get prompt() {
             const gate = this.availability();
@@ -1037,6 +1192,7 @@ const PlaygroundActivity = (() => {
             this.active = true;
             this.preset = preset.id;
             this.startedAt = Date.now();
+            this.sessionState = 'playing';
             busEmit(this.bus, 'intimate:start', {
                 preset: preset.id,
                 maxLevel: preset.maxLevel,
@@ -1050,6 +1206,12 @@ const PlaygroundActivity = (() => {
             this.active = false;
             this.preset = null;
             this.startedAt = null;
+            // Back to the first screen, and nothing prepared carried into the next evening: a
+            // plan written for the mood somebody was in an hour ago is worse than a fresh one.
+            this.sessionState = 'configure';
+            this.preparedPlan = null;
+            this.preparedTrack = null;
+            this.prepareProgress = new Set();
             if (this.adult && this.adult.active && typeof this.adult.exit === 'function') this.adult.exit('hard');
             this._restoreCeiling();
             if (wasActive) busEmit(this.bus, 'intimate:stop', { preset, why });

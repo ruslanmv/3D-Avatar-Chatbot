@@ -221,7 +221,21 @@
     }
 
     class IntimateExperienceSession {
-        constructor({ activity, preset, soundtrack, adult, director, win, bus, say, timingScale, now } = {}) {
+        constructor({
+            activity,
+            preset,
+            soundtrack,
+            plan,
+            track,
+            scene,
+            adult,
+            director,
+            win,
+            bus,
+            say,
+            timingScale,
+            now,
+        } = {}) {
             this.activity = activity || null;
             this.preset = PRIVATE_PRESETS[preset] || PRIVATE_PRESETS.affectionate;
             this.soundtrack = ['choose', 'current', 'none'].includes(soundtrack) ? soundtrack : 'choose';
@@ -249,7 +263,12 @@
              * in `_planAhead` if and when it arrives and validates, which is in time for
              * every beat after the opening.
              */
-            this.plan = null;
+            this.plan = plan || null;
+            /** A track the prepare step already found, so the session plays rather than searches. */
+            this.track = track || null;
+            /** The ambience scene this evening asked for, and what was showing before it. */
+            this.scene = scene || null;
+            this._sceneBefore = null;
             /**
              * Which way the 45-second choice went. It used to be spoken and thrown away —
              * `middle` and `closing` were the same strings either way — so the one branch in
@@ -296,9 +315,16 @@
             // The written plan first, so the opening is instant. Asking a provider for one
             // before saying anything would put a silent card in front of somebody who just
             // pressed "Begin private moment", which is the worst possible place for a wait.
-            const api = beats();
-            this.plan = api ? api.fallbackPlan(this.preset, { mood: this._rememberedMood() }) : null;
-            this._planAhead();
+            // A prepared plan is the normal path now: the setup screen did the waiting, with
+            // named steps, before anybody pressed Begin. The written-fallback-then-upgrade
+            // dance below is what happens when a session is started without one — a test, or
+            // a caller that skipped the prepare step.
+            if (!this.plan) {
+                const api = beats();
+                this.plan = api ? api.fallbackPlan(this.preset, { mood: this._rememberedMood() }) : null;
+                this._planAhead();
+            }
+            this._enterScene();
             // The scene sentence only when there is actually a scene. With no ambience chosen
             // `currentSceneLabel` returns the literal words "this place", and the opening then
             // ended "…this place feels like a good place for it", which is what a placeholder
@@ -330,6 +356,7 @@
             this.state = 'restoring';
             this._clearTimers();
             this._stopSoundtrack();
+            this._restoreScene();
             if (this.audioFocus && typeof this.audioFocus.restore === 'function') this.audioFocus.restore();
             const modes = this.director && this.director.modes;
             if (this._modeEntered && modes && modes.activeId === 'adult' && typeof modes.deactivate === 'function') {
@@ -752,18 +779,68 @@
                 if (existing && ['playing', 'loading', 'paused'].includes(existing.status) && existing.current)
                     return false;
             } catch (_) {}
-            const registry = this.win.NEXUS_DISCOVERY;
-            if (!registry || typeof registry.forCapability !== 'function') return false;
+            // Prepared, normally. Searching here was what made the soundtrack arrive some
+            // seconds into an evening that had already started talking.
+            let track = this.track;
+            if (!track) {
+                const registry = this.win.NEXUS_DISCOVERY;
+                if (!registry || typeof registry.forCapability !== 'function') return false;
+                try {
+                    if (typeof registry.warm === 'function') await registry.warm();
+                    const provider = registry.forCapability('music.search');
+                    if (!provider || typeof provider.search !== 'function') return false;
+                    const found = await provider.search(this.preset.music, { max: 3, kind: 'music' });
+                    if (this._stopped || !Array.isArray(found) || !found.length) return false;
+                    track = found[0];
+                } catch (_) {
+                    return false;
+                }
+            }
             try {
-                if (typeof registry.warm === 'function') await registry.warm();
-                const provider = registry.forCapability('music.search');
-                if (!provider || typeof provider.search !== 'function') return false;
-                const found = await provider.search(this.preset.music, { max: 3, kind: 'music' });
-                if (this._stopped || !Array.isArray(found) || !found.length) return false;
-                const track = found[0];
                 if (media && typeof media.requestPlay === 'function') media.requestPlay(track, { source: 'private' });
                 if (this.view) this.view.attachSoundtrack(track);
                 this._ownsMedia = true;
+                return true;
+            } catch (_) {
+                return false;
+            }
+        }
+
+        /**
+         * Put the evening where it asked to be, and remember where it was.
+         *
+         * Private had no connection to the scene system at all. `adult.profile` declares
+         * `scenes: ['sunset', 'candlelit']` and **nothing in the repository reads that field**
+         * — the setup screen showed the current place as a read-only label and the session
+         * never touched the background. So "a more personal moment" happened in whatever room
+         * happened to be up, including the default black.
+         *
+         * Snapshot and restore rather than a bespoke undo, per the house rule: whatever was
+         * showing is stashed verbatim and written back on exit, so a scene chosen for one
+         * evening never leaks into the rest of the app.
+         */
+        _enterScene() {
+            if (!this.scene || !this.win) return false;
+            const controller = this.win.NEXUS_SCENE_AMBIENCE_CONTROLLER;
+            if (!controller || typeof controller.apply !== 'function') return false;
+            try {
+                if (typeof controller.currentScene === 'function') this._sceneBefore = controller.currentScene();
+                const result = controller.apply(this.scene, { source: 'private' });
+                return Boolean(result && result.changed);
+            } catch (_) {
+                // A room that will not change is not a session that cannot happen.
+                return false;
+            }
+        }
+
+        _restoreScene() {
+            if (this._sceneBefore === null || !this.win) return false;
+            const previous = this._sceneBefore;
+            this._sceneBefore = null;
+            const controller = this.win.NEXUS_SCENE_AMBIENCE_CONTROLLER;
+            if (!controller || typeof controller.apply !== 'function') return false;
+            try {
+                controller.apply(previous, { source: 'private' });
                 return true;
             } catch (_) {
                 return false;
@@ -965,6 +1042,11 @@
                 activity: this,
                 preset: presetId,
                 soundtrack: input.soundtrack,
+                // Whatever the setup screen prepared. Absent on a caller that skipped it, and
+                // the session falls back to doing the work itself.
+                plan: input.preparedPlan || this.preparedPlan || null,
+                track: input.preparedTrack || this.preparedTrack || null,
+                scene: input.scene || this.sceneChoice || null,
                 adult: this.adult || (director && director.adult),
                 director,
                 win: global,
