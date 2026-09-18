@@ -788,7 +788,7 @@ const TogetherPanel = (() => {
                 const style = doc.createElement('style');
                 style.id = styleId;
                 style.textContent =
-                    '.nexus-private-setup{display:grid;gap:14px}.nexus-private-setup .nexus-private-setup-kicker{text-align:center;color:#f49aba;font-weight:750;letter-spacing:.08em}.nexus-private-setup-lead{text-align:center;opacity:.78;margin:0}.nexus-private-place-card{padding:12px 14px;border:1px solid rgba(244,128,166,.25);border-radius:14px;background:rgba(244,128,166,.06)}.nexus-private-preset-grid{display:grid;gap:9px}.nexus-private-preset{display:block;width:100%;text-align:left;border:1px solid rgba(255,255,255,.13);border-radius:14px;padding:13px;background:rgba(255,255,255,.05);color:inherit;font:inherit;cursor:pointer}.nexus-private-preset.is-selected{border-color:rgba(244,128,166,.75);background:rgba(244,128,166,.13)}.nexus-private-preset strong,.nexus-private-preset span{display:block}.nexus-private-preset span{font-size:.8rem;opacity:.7;margin-top:4px}.nexus-private-soundtrack-options{display:flex;flex-wrap:wrap;gap:8px;font-size:.8rem}.nexus-private-safety{font-size:.78rem;line-height:1.5;opacity:.7}.nexus-private-begin{width:100%;padding:12px;border:0;border-radius:12px;background:linear-gradient(120deg,#c34f7b,#9a4f9e);color:#fff;font:inherit;font-weight:700;cursor:pointer}.nexus-private-begin:disabled{opacity:.45;cursor:default}.nexus-private-ready{padding:11px 13px;border-left:3px solid #f49aba;background:rgba(244,128,166,.07);font-size:.84rem;line-height:1.55}';
+                    '.nexus-private-setup{display:grid;gap:14px}.nexus-private-setup .nexus-private-setup-kicker{text-align:center;color:#f49aba;font-weight:750;letter-spacing:.08em}.nexus-private-setup-lead{text-align:center;opacity:.78;margin:0}.nexus-private-place-card{padding:12px 14px;border:1px solid rgba(244,128,166,.25);border-radius:14px;background:rgba(244,128,166,.06)}.nexus-private-preset-grid{display:grid;gap:9px}.nexus-private-preset{display:block;width:100%;text-align:left;border:1px solid rgba(255,255,255,.13);border-radius:14px;padding:13px;background:rgba(255,255,255,.05);color:inherit;font:inherit;cursor:pointer}.nexus-private-preset.is-selected{border-color:rgba(244,128,166,.75);background:rgba(244,128,166,.13)}.nexus-private-preset strong,.nexus-private-preset span{display:block}.nexus-private-preset span{font-size:.8rem;opacity:.7;margin-top:4px}.nexus-private-soundtrack-options{display:flex;flex-wrap:wrap;gap:8px;font-size:.8rem}.nexus-private-safety{font-size:.78rem;line-height:1.5;opacity:.7}.nexus-private-begin{width:100%;padding:12px;border:0;border-radius:12px;background:linear-gradient(120deg,#c34f7b,#9a4f9e);color:#fff;font:inherit;font-weight:700;cursor:pointer}.nexus-private-begin:disabled{opacity:.45;cursor:default}.nexus-private-ready{padding:11px 13px;border-left:3px solid #f49aba;background:rgba(244,128,166,.07);font-size:.84rem;line-height:1.55}.nexus-private-locked{margin:0;padding:12px 13px;border:1px dashed rgba(244,128,166,.3);border-radius:12px;font-size:.82rem;line-height:1.5;opacity:.75}';
                 (doc.head || doc.documentElement).appendChild(style);
             }
             const shell = doc.createElement('div');
@@ -808,7 +808,8 @@ const TogetherPanel = (() => {
             begin.className = 'nexus-private-begin';
             begin.disabled = true;
             begin.textContent = 'Begin private moment →';
-            for (const input of contract.inputs()) {
+            const presets = contract.inputs();
+            for (const input of presets) {
                 const option = doc.createElement('button');
                 option.type = 'button';
                 option.className = 'nexus-private-preset';
@@ -824,6 +825,21 @@ const TogetherPanel = (() => {
                     ready.textContent = `${input.label} · ${place}\nStarts gentle · about 5 minutes\nYou remain in control of the pace.`;
                 });
                 grid.appendChild(option);
+            }
+            // A locked gate returns no presets, and this screen renders none of the generic
+            // setup view's copy — so `Private is not enabled yet` never reached the person who
+            // needed it. They got the pink card, an empty "How should this feel?", and a
+            // button that would not press: a destination that looks broken rather than one
+            // that is waiting on a setting they can change. `activity.prompt` already carries
+            // the reason from the gate; it just had nowhere to be shown.
+            if (!presets.length) {
+                const locked = doc.createElement('p');
+                locked.className = 'nexus-private-locked';
+                locked.dataset.privateLocked = '1';
+                const activity = this.activities.get('intimate');
+                locked.textContent =
+                    (activity && activity.prompt) || (contract && contract.prompt) || 'Private is unavailable.';
+                grid.appendChild(locked);
             }
             begin.addEventListener('click', () => {
                 const music = shell.querySelector('input[name="private-music"]:checked');

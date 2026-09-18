@@ -25,6 +25,20 @@ const SceneTaleConversationView = (() => {
     const PLAYER_CLASS = 'nexus-scene-tale-soundtrack-player';
     const PATCH_FLAG = '__sceneTaleConversationViewPatched';
 
+    /**
+     * The shared strip renderer, from the module system under jest and from the window in the
+     * browser — this file is injected as a plain script, so neither knows about the other.
+     * Resolved again per call in `attachSoundtrack`, because boot order is not require order.
+     */
+    const StripApi = (() => {
+        try {
+            // eslint-disable-next-line global-require
+            return typeof require === 'function' ? require('./SoundtrackStrip.js') : null;
+        } catch (error) {
+            return typeof window !== 'undefined' ? window.NEXUS_SOUNDTRACK_STRIP : null;
+        }
+    })();
+
     let rootObserver = null;
     let hudObserver = null;
     let rowObserver = null;
@@ -66,7 +80,7 @@ const SceneTaleConversationView = (() => {
 #${HUD_ID}.is-complete .nexus-story-bar{display:none!important}
 #${HUD_ID}.is-complete .nexus-story-card{padding-bottom:16px}
 .${SOUNDTRACK_CLASS}{pointer-events:auto;display:flex;align-items:flex-start;gap:10px;justify-content:space-between;padding:9px 12px;margin:0 12px 10px;border:1px solid rgba(255,255,255,.1);border-radius:11px;background:rgba(0,0,0,.13)}
-.nexus-scene-tale-soundtrack-copy{min-width:0;flex:1}.nexus-scene-tale-soundtrack-kicker{font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;opacity:.56;margin-bottom:2px}.nexus-scene-tale-soundtrack-title{font-size:.8rem;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nexus-scene-tale-soundtrack-toggle{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:inherit;border-radius:9px;padding:6px 8px;font:inherit;font-size:.72rem;cursor:pointer;flex:0 0 auto}.nexus-scene-tale-soundtrack-toggle:hover,.nexus-scene-tale-soundtrack-toggle:focus-visible{background:rgba(255,255,255,.12);outline:none}
+.nexus-scene-tale-soundtrack-copy{min-width:0;flex:1}.nexus-scene-tale-soundtrack-kicker{font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;opacity:.56;margin-bottom:2px}.nexus-scene-tale-soundtrack-title{font-size:.8rem;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nexus-scene-tale-soundtrack-creator{font-size:.7rem;line-height:1.3;opacity:.58;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}.nexus-scene-tale-soundtrack-toggle{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:inherit;border-radius:9px;padding:6px 8px;font:inherit;font-size:.72rem;cursor:pointer;flex:0 0 auto}.nexus-scene-tale-soundtrack-toggle:hover,.nexus-scene-tale-soundtrack-toggle:focus-visible{background:rgba(255,255,255,.12);outline:none}
 .${PLAYER_CLASS}{display:none;width:min(280px,calc(100% - 24px));margin:0 12px 10px}.${PLAYER_CLASS}.is-open{display:block}.${PLAYER_CLASS} .nexus-yt-card{width:100%;max-width:280px;margin:0}.${PLAYER_CLASS} .nexus-yt-meta{font-size:.72rem}
 .nexus-story-setup-label{display:block;font-size:.78rem;opacity:.72;margin:12px 0 5px}.nexus-story-setup-input{width:100%;min-height:72px;resize:vertical;border-radius:11px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:inherit;padding:10px;font:inherit}.nexus-story-radio{display:flex;align-items:center;gap:8px;margin:7px 0;font-size:.88rem}.nexus-story-progress{display:grid;gap:7px;margin:12px 0}.nexus-story-progress-row{font-size:.86rem;opacity:.72}.nexus-story-progress-row.is-done{opacity:1}.nexus-story-ready-meta{font-size:.84rem;opacity:.75;line-height:1.55;margin:8px 0 14px;white-space:pre-line}
 @media(max-width:700px){#${ROW_ID}{margin:8px 0 12px}.nexus-story-options{grid-template-columns:1fr}.nexus-story-caption{font-size:.94rem}.${PLAYER_CLASS}{width:calc(100% - 24px)}.${PLAYER_CLASS} .nexus-yt-card{max-width:100%}}
@@ -110,7 +124,10 @@ const SceneTaleConversationView = (() => {
         const w = win || currentWin || (typeof window !== 'undefined' ? window : null);
         const director = w && w.NEXUS_BD;
         const panel = director && director.togetherPanel;
-        const activity = panel && panel.activities && typeof panel.activities.get === 'function' ? panel.activities.get('playground') : null;
+        const activity =
+            panel && panel.activities && typeof panel.activities.get === 'function'
+                ? panel.activities.get('playground')
+                : null;
         return activity && activity.player ? activity.player : null;
     }
 
@@ -403,13 +420,20 @@ const SceneTaleConversationView = (() => {
         return mountHud(hud, { doc: d });
     }
 
+    /**
+     * Take every strip out, not the first one.
+     *
+     * `querySelector` was enough while one code path attached a soundtrack, and stopped being
+     * enough the moment a second track could arrive over a story that already had one: the
+     * older strip stayed, the new one went in above the bar, and the card ended up showing two
+     * `Soundtrack` rows with two `Show player` buttons — one of them wired to an iframe that
+     * had already been replaced.
+     */
     function removeSoundtrack(hud = currentHud) {
-        if (!hud || !hud.querySelector) return false;
-        const strip = hud.querySelector(`.${SOUNDTRACK_CLASS}`);
-        const player = hud.querySelector(`.${PLAYER_CLASS}`);
-        if (strip) strip.remove();
-        if (player) player.remove();
-        return Boolean(strip || player);
+        if (!hud || !hud.querySelectorAll) return false;
+        const gone = [...hud.querySelectorAll(`.${SOUNDTRACK_CLASS}`), ...hud.querySelectorAll(`.${PLAYER_CLASS}`)];
+        for (const node of gone) node.remove();
+        return gone.length > 0;
     }
 
     function attachSoundtrack(result, { doc, win, play = true } = {}) {
@@ -423,61 +447,31 @@ const SceneTaleConversationView = (() => {
 
         const shell = ensureShell(hud) || hud;
         const bar = hud.querySelector('.nexus-story-bar');
-        const strip = d.createElement('div');
-        strip.className = SOUNDTRACK_CLASS;
-        strip.setAttribute('data-scene-tale-soundtrack', '1');
-
-        const copy = d.createElement('div');
-        copy.className = 'nexus-scene-tale-soundtrack-copy';
-        const kicker = d.createElement('div');
-        kicker.className = 'nexus-scene-tale-soundtrack-kicker';
-        kicker.textContent = 'Soundtrack';
-        const title = d.createElement('div');
-        title.className = 'nexus-scene-tale-soundtrack-title';
-        title.textContent = `♫ ${String(result.title || 'Background music')}`;
-        copy.appendChild(kicker);
-        copy.appendChild(title);
-        strip.appendChild(copy);
-
-        const playerHost = d.createElement('div');
-        playerHost.className = PLAYER_CLASS;
-        playerHost.setAttribute('aria-label', 'Scene Tale soundtrack player');
-
-        const embed = w && w.NEXUS_YT_2D;
-        let card = null;
-        if (embed && typeof embed.buildCard === 'function' && result.id) {
-            const video = {
-                id: String(result.id),
-                name: String(result.title || ''),
-                author: String(result.creator || ''),
-                start: Number(result.start) || 0,
-            };
-            try {
-                card = embed.buildCard(video, { doc: d });
-                card.dataset.kind = 'music';
-                card.dataset.creator = String(result.creator || '');
-                card.classList.add('nexus-scene-tale-background-card');
-                playerHost.appendChild(card);
-
-                const toggle = button(d, strip, 'Show player', 'nexus-scene-tale-soundtrack-toggle', () => {
-                    const open = !playerHost.classList.contains('is-open');
-                    playerHost.classList.toggle('is-open', open);
-                    toggle.textContent = open ? 'Hide player' : 'Show player';
-                    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-                    scrollConversation(chatHost(d));
-                });
-                toggle.setAttribute('aria-expanded', 'false');
-
-                if (play && typeof embed.activate === 'function') {
-                    embed.activate(card, video);
-                    const session = w && w.NEXUS_MEDIA_SESSION;
-                    if (session && typeof session.requestPlay === 'function') session.requestPlay(result, { source: 'scene-tale' });
-                }
-            } catch (_) {
-                card = null;
-                playerHost.textContent = '';
-            }
-        }
+        const strips = (w && w.NEXUS_SOUNDTRACK_STRIP) || StripApi;
+        if (!strips || typeof strips.render !== 'function') return null;
+        const built = strips.render(result, {
+            doc: d,
+            win: w,
+            play,
+            source: 'scene-tale',
+            marker: 'data-scene-tale-soundtrack',
+            playerLabel: 'Scene Tale soundtrack player',
+            classes: {
+                strip: SOUNDTRACK_CLASS,
+                copy: 'nexus-scene-tale-soundtrack-copy',
+                kicker: 'nexus-scene-tale-soundtrack-kicker',
+                title: 'nexus-scene-tale-soundtrack-title',
+                creator: 'nexus-scene-tale-soundtrack-creator',
+                toggle: 'nexus-scene-tale-soundtrack-toggle',
+                player: PLAYER_CLASS,
+                card: 'nexus-scene-tale-background-card',
+            },
+            // Opening the player grows the card, and a story card that grows without following
+            // it leaves the narration off the bottom of the conversation.
+            onToggle: () => scrollConversation(chatHost(d)),
+        });
+        if (!built) return null;
+        const { strip, player: playerHost, card } = built;
 
         if (bar && bar.parentNode) {
             bar.parentNode.insertBefore(strip, bar);
@@ -505,13 +499,19 @@ const SceneTaleConversationView = (() => {
         }
         for (const meta of doc.querySelectorAll('.nexus-story-ready-meta')) {
             if (/Story ready/i.test(meta.textContent || '')) {
-                meta.textContent = String(meta.textContent || '').replace('✓ Story ready · ✓ Scene ready · ', 'Ready to begin · ');
+                meta.textContent = String(meta.textContent || '').replace(
+                    '✓ Story ready · ✓ Scene ready · ',
+                    'Ready to begin · '
+                );
             }
         }
     }
 
     function patchStoryPlayer(playground) {
-        const api = playground || (currentWin && currentWin.NEXUS_BD_PLAYGROUND) || (typeof window !== 'undefined' ? window.NEXUS_BD_PLAYGROUND : null);
+        const api =
+            playground ||
+            (currentWin && currentWin.NEXUS_BD_PLAYGROUND) ||
+            (typeof window !== 'undefined' ? window.NEXUS_BD_PLAYGROUND : null);
         const StoryPlayer = api && api.StoryPlayer;
         if (!StoryPlayer || !StoryPlayer.prototype) return false;
         const proto = StoryPlayer.prototype;
@@ -589,7 +589,8 @@ const SceneTaleConversationView = (() => {
         if (rootObserver) rootObserver.disconnect();
         if (hudObserver) hudObserver.disconnect();
         if (rowObserver) rowObserver.disconnect();
-        if (patchTimer && currentWin && typeof currentWin.clearInterval === 'function') currentWin.clearInterval(patchTimer);
+        if (patchTimer && currentWin && typeof currentWin.clearInterval === 'function')
+            currentWin.clearInterval(patchTimer);
         rootObserver = null;
         hudObserver = null;
         rowObserver = null;
@@ -618,7 +619,8 @@ const SceneTaleConversationView = (() => {
     };
 
     if (typeof window !== 'undefined' && typeof document !== 'undefined' && !window.__NEXUS_SCENE_TALE_VIEW_NOAUTO__) {
-        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => install(document, window), { once: true });
+        if (document.readyState === 'loading')
+            document.addEventListener('DOMContentLoaded', () => install(document, window), { once: true });
         else install(document, window);
     }
 
