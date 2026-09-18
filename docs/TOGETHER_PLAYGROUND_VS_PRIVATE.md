@@ -191,13 +191,42 @@ Private now carries the same real collapsed YouTube card Scene Tale has had all 
 publisher writes a chat message whose text is what `_persistChat` saves — and a Private moment
 is supposed to leave nothing in the transcript.
 
-### 5.3 Scene Tale could stack two soundtrack strips
+### 5.3 The Private soundtrack came in at whatever the last video was left at
+
+A YouTube player starts at the viewer's last level, which in practice is 100. That is right for
+a track somebody chose to listen to and wrong for background music under a quiet conversation:
+it arrived over the top of her opening line, and the only recourse was to open the player and
+drag a slider — in the one mode where fiddling with controls is least welcome.
+
+`PrivateConversationView.VOLUME` is **15**, applied through a new `volume` option that runs from
+the strip down to `YouTubePlaybackAdapter.attach`. It is set inside the player's `onReady`
+rather than by the caller on the returned handle: `attach` resolves when `new YT.Player` has
+been *constructed*, and the player does not accept `setVolume` until it is ready, so setting it
+from outside races initialisation and loses often enough to be heard. Autoplay commonly starts
+muted, so `unMute()` goes with it.
+
+The level is Private's alone. Scene Tale's soundtrack *is* the point of the scene and is
+untouched, and a card somebody tapped themselves is never quietened — `activate(card, video)`
+stays a two-argument call everywhere that has no opinion about volume.
+
+Two things this cannot do, and they are worth knowing:
+
+- **No IFrame API, no volume.** The level goes through the player object, so a page where
+  `youtube.com/iframe_api` is blocked plays at the browser's level. There is no embed-URL
+  parameter for volume to fall back on. The same condition already makes the session report
+  `unconfirmed`.
+- **`AudioFocusManager` still cannot duck it.** `duck()` walks `audio,video` elements and
+  clamps `.volume`; a cross-origin iframe is neither, so the ducking Private performs before
+  every spoken line has never reached the soundtrack. At 15 that matters much less, and the
+  `setVolume` now on the playback handle is the piece that was missing to fix it properly.
+
+### 5.4 Scene Tale could stack two soundtrack strips
 
 `removeSoundtrack` used `querySelector`, so a second track arriving over a story that already
 had one left the first in place: two `Soundtrack` rows, two `Show player` buttons, one of them
 wired to an iframe that had already been replaced. Now `querySelectorAll`.
 
-### 5.4 A locked Private setup screen explained nothing
+### 5.5 A locked Private setup screen explained nothing
 
 `_paintPrivateSetup` short-circuits past the generic setup view, which is where
 `activity.prompt` (and therefore `lockedPrompt(gate)`) is rendered. With the gate shut,
@@ -257,9 +286,11 @@ ends a Private moment* — turns an invisible guarantee into a reason to trust t
 | file | covers |
 | --- | --- |
 | `tests/behavior/media-title.test.js` | the two shipped titles, the shapes that must survive untouched, capping, and that nothing ever returns empty |
-| `tests/behavior/soundtrack-strip.test.js` | Private actually plays what it names; neither view can stack two strips; degradation with no embed and with one that throws |
+| `tests/behavior/soundtrack-strip.test.js` | Private actually plays what it names, at 15 and not at whatever came before; neither view can stack two strips; degradation with no embed and with one that throws |
+| `tests/youtube-playback-state.test.js` | the level lands in `onReady` and not before, is clamped, and an explicit `null` is **not** volume zero |
 | `tests/behavior/intimate-ui.test.js` | a locked Private setup screen states its reason |
 
-The gate is green on everything above: `4107 tests / 157 suites` passing, lint clean. Twelve
+The gate is green on everything above: `4106 tests / 157 suites` passing, lint clean. Eleven
 files fail `format:check` on this branch, all of them pre-existing and none of them touched
-here — `SceneTaleConversationView.js` was a thirteenth and is now formatted.
+here — `SceneTaleConversationView.js` and `intimate-ui.test.js` were two more and are now
+formatted.

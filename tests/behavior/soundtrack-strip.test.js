@@ -140,6 +140,18 @@ describe('SoundtrackStrip', () => {
         expect(yt.buildCard).toHaveBeenCalledTimes(1);
         expect(yt.activate).not.toHaveBeenCalled();
     });
+
+    test('a level is passed on only when one was asked for', () => {
+        const yt = embed();
+
+        Strip.render(track(), { doc: document, win: window });
+        // Two arguments, not three with a null: `activate(card, video)` is what every other
+        // caller uses, and a strip with no opinion about volume must not start overriding it.
+        expect(yt.activate.mock.calls[0]).toHaveLength(2);
+
+        Strip.render(track(), { doc: document, win: window, volume: 15 });
+        expect(yt.activate.mock.calls[1][2]).toEqual({ volume: 15 });
+    });
 });
 
 describe('Private soundtrack', () => {
@@ -176,6 +188,32 @@ describe('Private soundtrack', () => {
         expect(slot.textContent).toContain('Second');
         expect(slot.textContent).not.toContain('First');
 
+        view.destroy();
+    });
+
+    test('comes in quietly, and never at whatever the last video was left at', () => {
+        const yt = embed();
+        const view = new PrivateConversationView.View({ doc: document, win: window });
+        view.mount({ preset: { label: 'Affectionate' }, scene: 'Coastal Terrace · Twilight' });
+
+        view.attachSoundtrack(track());
+
+        expect(PrivateConversationView.VOLUME).toBe(15);
+        expect(yt.activate).toHaveBeenCalledWith(expect.anything(), expect.anything(), {
+            volume: PrivateConversationView.VOLUME,
+        });
+
+        view.destroy();
+    });
+
+    test('a caller may override the level', () => {
+        const yt = embed();
+        const view = new PrivateConversationView.View({ doc: document, win: window });
+        view.mount({ preset: { label: 'Affectionate' }, scene: 'Coastal Terrace · Twilight' });
+
+        view.attachSoundtrack(track(), { volume: 40 });
+
+        expect(yt.activate.mock.calls[0][2]).toEqual({ volume: 40 });
         view.destroy();
     });
 

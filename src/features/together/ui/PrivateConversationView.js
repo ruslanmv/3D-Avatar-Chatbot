@@ -11,6 +11,21 @@ const PrivateConversationView = (() => {
     const STYLE_ID = 'nexus-private-conversation-styles';
 
     /**
+     * How loud the Private soundtrack comes in, as a YouTube player percentage.
+     *
+     * A YouTube player starts at whatever the viewer last left it at, which in practice is
+     * 100. That is a fine level for a track somebody chose to listen to and the wrong one for
+     * background music under a quiet conversation: it arrives over the top of her first line
+     * and the person's only recourse is to open the player and drag a slider, in the one mode
+     * where fiddling with controls is most unwelcome.
+     *
+     * 15 is low enough to sit under speech and high enough to still be there. It is
+     * deliberately not shared with Scene Tale, whose soundtrack *is* the point of the scene
+     * and which nobody has complained about.
+     */
+    const VOLUME = 15;
+
+    /**
      * The strip Scene Tale draws, in Private's colours. Required under jest, read off the
      * window in the browser; resolved again per call because boot order is not require order.
      */
@@ -117,8 +132,11 @@ const PrivateConversationView = (() => {
          * `ConversationPublisher`, which would post an ordinary chat message with the watch
          * URL in its text — and that text is what `_persistChat` saves. A Private moment
          * leaves nothing in the transcript, which is the promise the completion card makes.
+         *
+         * It comes in at `VOLUME`, not at whatever the last thing played was set to. See the
+         * constant.
          */
-        attachSoundtrack(track, { play = true } = {}) {
+        attachSoundtrack(track, { play = true, volume = VOLUME } = {}) {
             if (!this.row || !track) return null;
             const slot = this.row.querySelector('.nexus-private-soundtrack');
             if (!slot) return null;
@@ -133,6 +151,7 @@ const PrivateConversationView = (() => {
                 doc: this.doc,
                 win: this.win,
                 play,
+                volume,
                 // No `source`: `IntimateExperienceSession` already tells `MediaSession` it is
                 // taking the music, and it is the half that also knows to hand it back on
                 // exit. A second announcement from the strip would make two owners of one fact.
@@ -246,7 +265,7 @@ const PrivateConversationView = (() => {
         }
     }
 
-    return { View, ROW_ID };
+    return { View, ROW_ID, VOLUME };
 })();
 
 if (typeof window !== 'undefined') window.NEXUS_PRIVATE_CONVERSATION_VIEW = PrivateConversationView;

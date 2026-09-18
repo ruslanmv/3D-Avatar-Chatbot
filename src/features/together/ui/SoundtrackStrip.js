@@ -147,7 +147,12 @@
                 strip.appendChild(toggle);
 
                 if (options.play !== false && typeof embed.activate === 'function') {
-                    embed.activate(card, video);
+                    // A level only when the caller named one. `activate(card, video)` is the
+                    // signature every other caller uses and the one older builds understand,
+                    // so a strip with no opinion about volume must not start passing options.
+                    const volume = Number(options.volume);
+                    if (Number.isFinite(volume)) embed.activate(card, video, { volume });
+                    else embed.activate(card, video);
                     // Told after the player was asked, not before: `requestPlay` means
                     // "playback has been asked for", and until `activate` has run it has not.
                     const session = win && win.NEXUS_MEDIA_SESSION;
