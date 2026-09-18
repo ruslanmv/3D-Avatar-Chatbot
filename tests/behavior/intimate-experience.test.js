@@ -142,7 +142,8 @@ class AdultFlowMock {
 }
 
 function setup({ preset = 'romantic', withDiscovery = false, mediaPlaying = false } = {}) {
-    document.body.innerHTML = '';
+    document.body.innerHTML =
+        '<div id="chat-history"></div><input id="speech-text" placeholder="Message"><button id="speak-btn">Send</button>';
     const eventBus = bus();
     const blackboard = {
         adultVerified: true,
@@ -256,8 +257,9 @@ describe('Private runtime integration', () => {
         expect(s.adult.maxLevel).toBe(2);
         expect(s.modes.activeId).toBe('adult');
         expect(s.blackboard.activity).toBe('intimate');
-        expect(document.getElementById('nexus-private-hud')).not.toBeNull();
-        expect(document.getElementById('nexus-private-hud').textContent).toContain('Romantic · Private');
+        expect(document.getElementById('nexus-private-hud')).toBeNull();
+        expect(document.getElementById('nexus-private-conversation-row').textContent).toContain('Romantic');
+        expect(document.getElementById('speech-text').placeholder).toBe('Talk privately…');
         expect(window.NEXUS_BD_SAY).toHaveBeenCalled();
 
         const suffix = Capability.privateSystemPromptSuffix();
@@ -268,7 +270,7 @@ describe('Private runtime integration', () => {
         expect(suffix).toMatch(/non-explicit/i);
 
         s.activity.stop('user');
-        expect(document.getElementById('nexus-private-hud')).toBeNull();
+        expect(document.getElementById('nexus-private-conversation-row')).toBeNull();
         expect(s.adult.active).toBe(false);
         expect(s.adult.maxLevel).toBe(4);
         expect(s.modes.activeId).toBe('companion');
@@ -339,7 +341,7 @@ describe('Private runtime integration', () => {
         expect(s.adult.exit).toHaveBeenCalledWith('soft');
         expect(s.adult.active).toBe(true);
         expect(s.adult.level).toBe(1);
-        expect(document.getElementById('nexus-private-hud')).not.toBeNull();
+        expect(document.getElementById('nexus-private-conversation-row')).not.toBeNull();
 
         s.activity.stop('user');
     });
@@ -355,7 +357,7 @@ describe('Private runtime integration', () => {
             expect.objectContaining({ kind: 'music' })
         );
         expect(idle.media.requestPlay).toHaveBeenCalledTimes(1);
-        expect(window.NEXUS_CONVERSATION_PUBLISHER.publish).toHaveBeenCalledTimes(1);
+        expect(document.querySelector('.nexus-private-soundtrack').textContent).toContain('Soft instrumental');
         idle.activity.stop('user');
         expect(idle.media.stop).toHaveBeenCalled();
 

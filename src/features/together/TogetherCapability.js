@@ -13,6 +13,27 @@
     const OPEN = '<play';
     const CLOSE = '</play>';
     const PRIVATE_RUNTIME_VERSION = 1;
+    const PrivateViewApi =
+        (global && global.NEXUS_PRIVATE_CONVERSATION_VIEW) ||
+        (typeof module !== 'undefined' && module.exports ? require('./ui/PrivateConversationView.js') : null);
+
+    function optional(path, globalName) {
+        if (global && global[globalName]) return global[globalName];
+        try {
+            // eslint-disable-next-line global-require
+            return typeof require === 'function' ? require(path) : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /** Resolved per use as well, because boot order is not require order. */
+    function beats() {
+        return optional('./PrivateBeats.js', 'NEXUS_PRIVATE_BEATS');
+    }
+    function memory() {
+        return optional('./PrivateMemory.js', 'NEXUS_PRIVATE_MEMORY');
+    }
 
     const PRIVATE_PRESETS = Object.freeze({
         affectionate: Object.freeze({
@@ -20,7 +41,8 @@
             label: 'Affectionate',
             maxLevel: 1,
             music: 'warm gentle evening instrumental ambient no lyrics',
-            opening: 'I thought we could keep this simple and warm for a few minutes. No pressure, no agenda — just a little time together.',
+            opening:
+                'I thought we could keep this simple and warm for a few minutes. No pressure, no agenda — just a little time together.',
             playful: 'Then let us keep it light. I am happy just being here with you and letting the moment be easy.',
             tender: 'Then let us make it gentle. You do not have to perform or prove anything here. We can just enjoy the quiet together.',
             middle: 'I like the slower pace. It gives the room a chance to feel like a place instead of a backdrop.',
@@ -31,8 +53,10 @@
             label: 'Romantic',
             maxLevel: 2,
             music: 'soft romantic evening instrumental ambient no lyrics',
-            opening: 'This place feels a little different tonight. I thought we could make the next few minutes feel like a small date, without rushing anything.',
-            playful: 'Playful it is. I like the idea of making you smile and letting the evening stay a little mischievous without pushing it anywhere.',
+            opening:
+                'This place feels a little different tonight. I thought we could make the next few minutes feel like a small date, without rushing anything.',
+            playful:
+                'Playful it is. I like the idea of making you smile and letting the evening stay a little mischievous without pushing it anywhere.',
             tender: 'Tender sounds good. Then I want to keep this soft, unhurried, and a little romantic — just enough to make the moment feel special.',
             middle: 'There is something nice about not needing the next moment to be bigger than this one.',
             closing: 'I liked this. We can leave it here, with a little warmth still hanging in the room.',
@@ -42,11 +66,14 @@
             label: 'Sensual',
             maxLevel: 3,
             music: 'slow intimate lounge instrumental ambient no lyrics',
-            opening: 'We can make this quieter and a little more intimate, while keeping everything comfortable and completely in your control.',
-            playful: 'Then I will keep a little spark in it — confident, teasing in a gentle way, and still easy to slow down whenever you want.',
+            opening:
+                'We can make this quieter and a little more intimate, while keeping everything comfortable and completely in your control.',
+            playful:
+                'Then I will keep a little spark in it — confident, teasing in a gentle way, and still easy to slow down whenever you want.',
             tender: 'Then I will keep it close and calm: slower words, longer pauses, and no need to make the moment more intense than you want it to be.',
             middle: 'I like the quiet confidence of this pace. Nothing has to happen for the moment to feel close.',
-            closing: 'That is enough for tonight. I would rather end on a good feeling than stretch it past the point where it feels natural.',
+            closing:
+                'That is enough for tonight. I would rather end on a good feeling than stretch it past the point where it feels natural.',
         }),
     });
 
@@ -125,20 +152,37 @@
         const blackboard = director && director.blackboard;
         if (!director || !activity || !adult || !blackboard) return null;
         if (!activity.active || !adult.active) return null;
-        if (blackboard.adultVerified !== true || blackboard.nsfwAllowed !== true) return null;
+        const gate = global && global.NEXUS_SPICY;
+        const eligible =
+            gate && typeof gate.usable === 'function'
+                ? gate.usable() === true
+                : blackboard.adultVerified === true && blackboard.nsfwAllowed === true;
+        if (!eligible) return null;
         const preset = PRIVATE_PRESETS[activity.preset] || PRIVATE_PRESETS.affectionate;
         const level = Math.max(1, Math.min(preset.maxLevel, Number(adult.level) || 1));
-        return { director, activity, adult, blackboard, preset, level };
+        // The live session, when one is running. It is what knows which way the mood choice
+        // went, and the model answering in chat has no other way to find out.
+        const session = activity._privateExperience || null;
+        const mood = session && ['playful', 'tender'].includes(session.mood) ? session.mood : null;
+        return { director, activity, adult, blackboard, preset, level, mood };
     }
 
     function privateSystemPromptSuffix() {
         const ctx = privateContext();
         if (!ctx) return '';
-        const { preset, level } = ctx;
+        const { preset, level, mood } = ctx;
+        const moodLine = mood
+            ? [
+                  mood === 'playful'
+                      ? 'The user chose a playful mood for this session: keep a light, warm spark in your replies without pushing anywhere.'
+                      : 'The user chose a tender mood for this session: keep your replies slow, soft and unhurried.',
+              ]
+            : [];
         return [
             '',
             'ACTIVE PRIVATE EXPERIENCE',
             `The user deliberately started the ${preset.label} Private experience. Current consent level: ${level}. Preset ceiling: ${preset.maxLevel}.`,
+            ...moodLine,
             'Stay warm, relational and non-explicit. Never exceed the lower of the current consent level and preset ceiling.',
             'Do not infer consent from friendliness, silence, scenery, music or previous turns. Do not pressure the user to continue or escalate.',
             'Never use jealousy, secrecy, isolation, dependency, threats, coercion or intoxication as leverage. Never imply that the companion should replace real relationships.',
@@ -161,29 +205,17 @@
     function currentSceneLabel(win) {
         const bb = win && win.NEXUS_BD && win.NEXUS_BD.blackboard;
         const scene = bb && bb.scene;
-        if (scene && typeof scene === 'object') return cleanText(scene.label || scene.title || scene.id || 'this place', 120);
+        if (scene && typeof scene === 'object')
+            return cleanText(scene.label || scene.title || scene.id || 'this place', 120);
         if (scene) return cleanText(scene, 120).replace(/[-_]+/g, ' ');
         return 'this place';
     }
 
-    const PRIVATE_CSS = `
-#nexus-private-hud{position:fixed;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:2147482501;width:min(660px,calc(100vw - 28px));font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#fff;pointer-events:none}
-#nexus-private-hud *{box-sizing:border-box}.nexus-private-card,.nexus-private-bar{pointer-events:auto;background:rgba(16,13,20,.78);border:1px solid rgba(255,255,255,.14);box-shadow:0 16px 50px rgba(0,0,0,.35);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-radius:16px}.nexus-private-card{padding:15px 17px;margin-bottom:8px}.nexus-private-bar{display:flex;align-items:center;gap:8px;padding:9px 11px}.nexus-private-title{font-weight:650;font-size:.86rem;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nexus-private-level{font-size:.72rem;opacity:.68}.nexus-private-copy{font-size:.98rem;line-height:1.55;text-wrap:pretty}.nexus-private-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.nexus-private-btn{border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.08);color:#fff;border-radius:10px;padding:8px 11px;font:inherit;font-size:.78rem;cursor:pointer}.nexus-private-btn:hover,.nexus-private-btn:focus-visible{background:rgba(255,255,255,.16);outline:none}.nexus-private-note{font-size:.78rem;opacity:.7;margin-top:8px}.nexus-private-complete{font-weight:700;margin-bottom:4px}
-@media(max-width:560px){#nexus-private-hud{width:calc(100vw - 18px);bottom:max(9px,env(safe-area-inset-bottom))}.nexus-private-copy{font-size:.93rem}}
-`;
-
-    function ensurePrivateStyles(doc) {
-        if (!doc || doc.getElementById('nexus-private-styles')) return;
-        const style = doc.createElement('style');
-        style.id = 'nexus-private-styles';
-        style.textContent = PRIVATE_CSS;
-        (doc.head || doc.documentElement).appendChild(style);
-    }
-
     class IntimateExperienceSession {
-        constructor({ activity, preset, adult, director, win, bus, say, timingScale, now } = {}) {
+        constructor({ activity, preset, soundtrack, adult, director, win, bus, say, timingScale, now } = {}) {
             this.activity = activity || null;
             this.preset = PRIVATE_PRESETS[preset] || PRIVATE_PRESETS.affectionate;
+            this.soundtrack = ['choose', 'current', 'none'].includes(soundtrack) ? soundtrack : 'choose';
             this.adult = adult || null;
             this.director = director || (global && global.NEXUS_BD) || null;
             this.win = win || global || null;
@@ -195,14 +227,30 @@
             this.now = typeof now === 'function' ? now : () => Date.now();
             this.state = 'idle';
             this.startedAt = null;
-            this.hud = null;
-            this.card = null;
-            this.levelEl = null;
+            this.view = null;
+            this._conversationBusyUntil = 0;
             this._timers = new Set();
             this._unsubscribes = [];
             this._ownsMedia = false;
             this._modeEntered = false;
             this._stopped = false;
+            /**
+             * The beats for this session. The written plan is in hand before anything is
+             * spoken, so the opening never waits on a provider; a generated one replaces it
+             * in `_planAhead` if and when it arrives and validates, which is in time for
+             * every beat after the opening.
+             */
+            this.plan = null;
+            /**
+             * Which way the 45-second choice went. It used to be spoken and thrown away —
+             * `middle` and `closing` were the same strings either way — so the one branch in
+             * the experience had no consequence. Now it selects them, and it reaches the
+             * prompt suffix so the model answering in chat is in the same mood she is.
+             */
+            this.mood = null;
+            /** Turns the user has taken. The arc waits for a talker; see `_schedule`. */
+            this._turns = 0;
+            this._lastTurnAt = 0;
             const bb = this.director && this.director.blackboard;
             const modes = this.director && this.director.modes;
             this.snapshot = {
@@ -226,18 +274,37 @@
             this.startedAt = this.now();
             this.state = 'active';
             this._mount();
+            if (!this.view) {
+                this.state = 'idle';
+                return { ok: false, why: 'Open Conversation before beginning Private' };
+            }
             this._listen();
-            this._speak(`${this.preset.opening} ${currentSceneLabel(this.win)} feels like a good place for it.`);
+            // The written plan first, so the opening is instant. Asking a provider for one
+            // before saying anything would put a silent card in front of somebody who just
+            // pressed "Begin private moment", which is the worst possible place for a wait.
+            const api = beats();
+            this.plan = api ? api.fallbackPlan(this.preset, { mood: this._rememberedMood() }) : null;
+            this._planAhead();
+            // The scene sentence only when there is actually a scene. With no ambience chosen
+            // `currentSceneLabel` returns the literal words "this place", and the opening then
+            // ended "…this place feels like a good place for it", which is what a placeholder
+            // sounds like when it reaches production.
+            const place = currentSceneLabel(this.win);
+            const named = place && place !== 'this place';
+            this._speak(
+                named ? `${this._line('opening')} ${place} feels like a good place for it.` : this._line('opening')
+            );
             this._startSoundtrack();
             this._schedule(45000, () => this._showMoodChoice());
             this._schedule(120000, () => this._offerCheckIn());
-            this._schedule(210000, () => this._speak(this.preset.middle));
-            this._schedule(285000, () => this._speak(this.preset.closing));
+            this._schedule(210000, () => this._speak(this._moodLine('middle')));
+            this._schedule(285000, () => this._speak(this._moodLine('closing')));
             this._schedule(300000, () => this._complete());
             this._emit('private:session-start', {
                 preset: this.preset.id,
                 maxLevel: this.preset.maxLevel,
                 scene: currentSceneLabel(this.win),
+                returning: !this._isFirstSession(),
             });
             return { ok: true, why: 'active', preset: this.preset.id };
         }
@@ -294,10 +361,21 @@
             this._unsubscribes.push(
                 this.bus.on('adult:level', () => this._paintLevel()),
                 this.bus.on('adult:exit', (event) => {
-                    if (event && event.kind === 'soft') {
-                        this._paintLevel();
-                        this._showMessage('Keeping it cozy. We can stay right here.', []);
-                    }
+                    if (!event || event.kind !== 'soft') return;
+                    this._paintLevel();
+                    // `Keep it cozy` from level 1 is `from: 1, to: 1` — the pace word already
+                    // said Warm and still says Warm, so the old single line claimed something
+                    // had been turned down when nothing had, and read as a dead button.
+                    // Saying what is actually true costs one branch.
+                    const eased = Number(event.from) > Number(event.to);
+                    this._speak(
+                        eased
+                            ? 'Keeping it cozy. Back to gentle, and we can stay right here.'
+                            : 'We are already as gentle as this gets. I am happy right here.',
+                        // An interjection, so a question that was on screen comes back under
+                        // it rather than being destroyed by a footer button.
+                        { interjection: true, intent: 'breathe' }
+                    );
                 })
             );
         }
@@ -307,10 +385,89 @@
             const delay = Math.max(0, Number(ms) || 0) * this.timingScale;
             const id = this.win.setTimeout(() => {
                 this._timers.delete(id);
-                if (!this._stopped && this.state !== 'complete') fn();
+                if (this.now() < this._conversationBusyUntil) {
+                    this._schedule(1000, fn);
+                } else if (!this._stopped && this.state !== 'complete') fn();
             }, delay);
             this._timers.add(id);
             return id;
+        }
+
+        /**
+         * Ask for a written plan for this session, and quietly upgrade to a generated one.
+         *
+         * Deliberately not awaited by `start()`. The written plan is already good — it draws
+         * from pools sized for twenty-four playthroughs per preset — so the model is an
+         * improvement on a working floor rather than a dependency. If it lands, it lands
+         * before the 45-second beat and every beat after the opening comes from it; if it
+         * never lands, nobody can tell.
+         */
+        _planAhead() {
+            const api = beats();
+            if (!api || typeof api.plan !== 'function') return null;
+            let promise = null;
+            try {
+                promise = api.plan({
+                    preset: this.preset,
+                    scene: currentSceneLabel(this.win),
+                    win: this.win,
+                    mood: this.mood,
+                });
+            } catch (_) {
+                return null;
+            }
+            if (!promise || typeof promise.then !== 'function') return null;
+            return promise
+                .then((plan) => {
+                    // A session that ended while the provider was thinking must not have its
+                    // script swapped underneath a completion card.
+                    if (!plan || this._stopped || this.state === 'complete') return null;
+                    this.plan = plan;
+                    this._emit('private:plan-ready', { preset: this.preset.id, source: plan.source });
+                    return plan;
+                })
+                .catch(() => null);
+        }
+
+        _rememberedMood() {
+            const store = memory();
+            try {
+                const kept = store && typeof store.read === 'function' ? store.read() : null;
+                return (kept && kept.mood) || null;
+            } catch (_) {
+                return null;
+            }
+        }
+
+        _isFirstSession() {
+            const store = memory();
+            try {
+                return !store || typeof store.isFirstSession !== 'function' || store.isFirstSession();
+            } catch (_) {
+                return true;
+            }
+        }
+
+        /** One plan field, falling back to the preset's original string for that beat. */
+        _line(field) {
+            const fromPlan = this.plan && typeof this.plan[field] === 'string' ? this.plan[field] : '';
+            return fromPlan || this.preset[field] || '';
+        }
+
+        /**
+         * A beat that depends on the mood.
+         *
+         * Before a mood is chosen there is no wrong answer, so the plan's tender variant
+         * stands in — it is the gentler of the two, and defaulting to the gentler one is the
+         * same instinct as starting at level 1.
+         */
+        _moodLine(field) {
+            const section = this.plan && this.plan[field];
+            if (section && typeof section === 'object') {
+                const chosen = section[this.mood] || section.tender || section.playful;
+                if (chosen) return chosen;
+            }
+            return this.preset[field] || '';
         }
 
         _clearTimers() {
@@ -320,86 +477,104 @@
         }
 
         _mount() {
-            if (!this.doc || !this.doc.body) return;
-            ensurePrivateStyles(this.doc);
-            const old = this.doc.getElementById('nexus-private-hud');
-            if (old && old.parentNode) old.parentNode.removeChild(old);
-            const hud = this.doc.createElement('div');
-            hud.id = 'nexus-private-hud';
-            hud.setAttribute('aria-live', 'polite');
-            this.card = this.doc.createElement('div');
-            this.card.className = 'nexus-private-card';
-            hud.appendChild(this.card);
-            const bar = this.doc.createElement('div');
-            bar.className = 'nexus-private-bar';
-            const title = this.doc.createElement('span');
-            title.className = 'nexus-private-title';
-            title.textContent = `${this.preset.label} · Private`;
-            bar.appendChild(title);
-            this.levelEl = this.doc.createElement('span');
-            this.levelEl.className = 'nexus-private-level';
-            bar.appendChild(this.levelEl);
-            bar.appendChild(this._button('Keep it cozy', 'cozy', () => {
-                if (this.adult && typeof this.adult.exit === 'function') this.adult.exit('soft');
-            }));
-            bar.appendChild(this._button('End', 'end', () => this._requestEnd(false)));
-            hud.appendChild(bar);
-            this.doc.body.appendChild(hud);
-            this.hud = hud;
+            if (!this.doc || !PrivateViewApi || !PrivateViewApi.View) return;
+            const view = new PrivateViewApi.View({
+                doc: this.doc,
+                win: this.win,
+                onCozy: () => {
+                    if (this.adult && typeof this.adult.exit === 'function') this.adult.exit('soft');
+                },
+                onEnd: () => this._requestEnd(false),
+                onUserMessage: () => this._yieldToConversation(),
+            });
+            if (!view.mount({ preset: this.preset, scene: currentSceneLabel(this.win) })) return;
+            this.view = view;
+            view.showStarting();
             this._paintLevel();
         }
 
-        _button(label, action, handler) {
-            const button = this.doc.createElement('button');
-            button.type = 'button';
-            button.className = 'nexus-private-btn';
-            button.textContent = label;
-            button.dataset.privateAction = action;
-            button.addEventListener('click', handler);
-            return button;
-        }
-
         _paintLevel() {
-            if (!this.levelEl) return;
             const level = Math.max(1, Math.min(this.preset.maxLevel, Number(this.adult && this.adult.level) || 1));
             const words = level === 1 ? 'Warm' : level === 2 ? 'Romantic' : 'Sensual';
-            this.levelEl.textContent = words;
+            if (this.view) this.view.setPace(words);
         }
 
-        _showMessage(text, actions) {
-            if (!this.card || !this.doc) return;
-            this.card.textContent = '';
-            const copy = this.doc.createElement('div');
-            copy.className = 'nexus-private-copy';
-            copy.textContent = text;
-            this.card.appendChild(copy);
-            if (actions && actions.length) {
-                const row = this.doc.createElement('div');
-                row.className = 'nexus-private-actions';
-                for (const action of actions) row.appendChild(this._button(action.label, action.id, action.run));
-                this.card.appendChild(row);
+        _showMessage(text, actions, options) {
+            if (this.view) this.view.showMessage(text, actions, options);
+        }
+
+        /**
+         * Ask for a movement, the way every other Together activity does.
+         *
+         * `bus.emit('intent', …)` is the seam — `boot.js` forwards it to
+         * `director.handleIntent`, and Assistant, Coach, Focus, Music, Cohost, Scene Journey
+         * and Screen Insight all use it. Private was the only activity that never emitted
+         * anything at all, which is the whole of why the avatar stands still through a session
+         * and the card reads as unresponsive.
+         *
+         * The names here are deliberately ordinary — `breathe`, `nod_along` — and never the
+         * adult ceiling's `flirt`/`tease`/`sensualSway`. Those map to nsfw-tagged clips, and
+         * `UtilityRanker` refuses an nsfw clip whose intent did not come from the user while
+         * `proactiveNsfw: false` says she may never initiate one. So this asks for presence,
+         * not performance, and an install whose registry has no clip for the name simply
+         * plays nothing — the same fail-soft every other caller gets.
+         */
+        _intent(name, intensity = 0.3) {
+            if (!this.bus || typeof this.bus.emit !== 'function' || this._stopped) return false;
+            try {
+                this.bus.emit('intent', { name, intensity, source: 'private' });
+                return true;
+            } catch (_) {
+                // A movement that will not play is never a reason to lose the line it went with.
+                return false;
             }
         }
 
+        /**
+         * The one branch in the session, now with something downstream of it.
+         *
+         * `this.mood` is read by `_moodLine` for the 210 s and 285 s beats and by
+         * `privateSystemPromptSuffix`, so choosing Playful changes the rest of the evening in
+         * both channels instead of buying one sentence.
+         */
         _showMoodChoice() {
             if (this.state !== 'active') return;
-            this._showMessage('What kind of mood should we keep?', [
-                {
-                    id: 'playful',
-                    label: 'Playful',
-                    run: () => {
-                        this._speak(this.preset.playful);
-                        this._showMessage(this.preset.playful, []);
-                    },
-                },
-                {
-                    id: 'tender',
-                    label: 'Tender',
-                    run: () => {
-                        this._speak(this.preset.tender);
-                        this._showMessage(this.preset.tender, []);
-                    },
-                },
+            const choose = (mood) => {
+                this.mood = mood;
+                this._speak(this.plan && this.plan.moods ? this.plan.moods[mood] : this.preset[mood]);
+                this._emit('private:mood', { preset: this.preset.id, mood });
+            };
+            const options = [
+                { id: 'playful', label: 'Playful', run: () => choose('playful') },
+                { id: 'tender', label: 'Tender', run: () => choose('tender') },
+            ];
+            if (this.view) this.view.showMoodChoice(options, this._line('moodPrompt'));
+        }
+
+        /**
+         * A preset already at its ceiling gets a choice about texture, not an apology.
+         *
+         * `Affectionate` has `maxLevel: 1`, so this branch was its 120-second beat: a single
+         * line saying that nothing further was going to happen, with no buttons. The gentlest
+         * preset is the one most people try first, so the emptiest run in the feature was also
+         * its first impression. Quieter-or-closer is a real choice that changes how she talks
+         * without touching the ceiling, which is the whole point — it is texture, not
+         * escalation, and it needs no consent step because it grants nothing.
+         */
+        _offerTextureChoice() {
+            const texture = (this.plan && this.plan.texture) || null;
+            if (!texture || !texture.prompt) {
+                this._showMessage('This pace feels good. We can keep it right here.', []);
+                return;
+            }
+            const choose = (id) => {
+                this.texture = id;
+                this._speak(texture[id]);
+                this._emit('private:texture', { preset: this.preset.id, texture: id });
+            };
+            this._showMessage(texture.prompt, [
+                { id: 'quieter', label: 'Quieter', run: () => choose('quieter') },
+                { id: 'closer', label: 'Closer', run: () => choose('closer') },
             ]);
         }
 
@@ -407,7 +582,7 @@
             if (this.state === 'complete' || this._stopped || !this.adult) return;
             const level = Number(this.adult.level) || 1;
             if (level >= this.preset.maxLevel) {
-                this._showMessage('This pace feels good. We can keep it right here.', []);
+                this._offerTextureChoice();
                 return;
             }
             if (typeof this.adult.earned === 'function' && !this.adult.earned()) {
@@ -416,7 +591,7 @@
             }
             this.state = 'checkin-pending';
             const nextLabel = level + 1 >= 3 ? 'A little more sensual' : 'A little more flirty';
-            this._showMessage('Would you like to keep this sweet, or make it a little more intense?', [
+            const options = [
                 {
                     id: 'keep-sweet',
                     label: 'Keep it sweet',
@@ -431,7 +606,8 @@
                     label: nextLabel,
                     run: () => this._acceptCheckIn(),
                 },
-            ]);
+            ];
+            if (this.view) this.view.showConsentCheckIn(options);
         }
 
         _acceptCheckIn() {
@@ -447,7 +623,14 @@
             this._paintLevel();
             if (answer && answer.action === 'advanced') {
                 const level = Number(this.adult.level) || 1;
-                this._showMessage('Okay. A little closer, still at your pace.', []);
+                // Advancing used to repaint one word in the footer. Saying yes to a consent
+                // question deserves an answer in her voice, and — since `proactiveNsfw: false`
+                // means she may never initiate a motion the user did not ask for — words are
+                // the honest place for an escalation to land.
+                const lines = (this.plan && this.plan.levelLines) || null;
+                const spoken = lines && (lines[level] || lines[String(level)]);
+                if (spoken) this._speak(spoken);
+                else this._showMessage('Okay. A little closer, still at your pace.', []);
                 if (level < this.preset.maxLevel) {
                     const floor = Math.max(1000, Number(this.adult.perLevelMinMs) || 120000);
                     this._schedule(floor, () => this._offerCheckIn());
@@ -460,10 +643,12 @@
 
         async _startSoundtrack() {
             if (!this.win || this._stopped) return false;
+            if (this.soundtrack === 'none' || this.soundtrack === 'current') return false;
             const media = this.win.NEXUS_MEDIA_SESSION;
             try {
                 const existing = media && typeof media.get === 'function' ? media.get() : null;
-                if (existing && ['playing', 'loading', 'paused'].includes(existing.status) && existing.current) return false;
+                if (existing && ['playing', 'loading', 'paused'].includes(existing.status) && existing.current)
+                    return false;
             } catch (_) {}
             const registry = this.win.NEXUS_DISCOVERY;
             if (!registry || typeof registry.forCapability !== 'function') return false;
@@ -475,16 +660,12 @@
                 if (this._stopped || !Array.isArray(found) || !found.length) return false;
                 const track = found[0];
                 if (media && typeof media.requestPlay === 'function') media.requestPlay(track, { source: 'private' });
-                const publisher = this.win.NEXUS_CONVERSATION_PUBLISHER;
-                if (publisher && typeof publisher.publish === 'function') {
-                    publisher.publish(track, { doc: this.doc, win: this.win, play: true });
-                    this._ownsMedia = true;
-                    return true;
-                }
+                if (this.view) this.view.attachSoundtrack(track);
+                this._ownsMedia = true;
+                return true;
             } catch (_) {
                 return false;
             }
-            return false;
         }
 
         _stopSoundtrack() {
@@ -496,17 +677,58 @@
             this._ownsMedia = false;
         }
 
-        _speak(text) {
+        /**
+         * Put a line where the model can see it.
+         *
+         * `NEXUS_BD_SAY` is `(text) => speakText(text)` in `src/main.js` — text-to-speech and
+         * nothing else. So every scripted Private line was spoken aloud and drawn in the card
+         * while never entering `chatHistory`, which is the transcript the model reads. She
+         * said four things the model answering the user had no record of, and could therefore
+         * contradict in the very next chat bubble. Two channels in one card, neither aware of
+         * the other.
+         *
+         * `chatHistory.addMessage` rather than `NEXUS_YT_ASK.say`, because `say` also *draws*
+         * a chat bubble and the Private card is already the display. This records without
+         * rendering, which is exactly the half that was missing.
+         *
+         * Nothing extra is persisted by doing this: the user's own messages and her chat
+         * replies during a Private session already go into this transcript, because the
+         * composer is observed rather than intercepted. This makes the record complete rather
+         * than making it larger, and the completion card's promise — nothing is written to
+         * Playground Histories — is untouched.
+         */
+        _remember(text) {
+            const w = this.win;
+            if (!w) return false;
+            try {
+                const cm = w.ChatManager;
+                if (cm && typeof cm.addMessage === 'function') return false;
+                const history = w.chatHistory;
+                if (!history || typeof history.addMessage !== 'function') return false;
+                history.addMessage('assistant', String(text || ''));
+                return true;
+            } catch (_) {
+                // A line on screen and in the air is worth more than a tidy transcript.
+                return false;
+            }
+        }
+
+        _speak(text, { interjection = false, intent = 'nod_along' } = {}) {
             const line = cleanText(text, 700);
             if (!line) return;
-            this._showMessage(line, []);
+            this._showMessage(line, [], { interjection });
+            this._remember(line);
+            // Something to look at while she talks. Gentle and non-adult by design — see
+            // `_intent` for why the ceiling's own intents are not used here.
+            if (intent) this._intent(intent, 0.3);
             if (this.audioFocus && typeof this.audioFocus.duck === 'function') this.audioFocus.duck();
             try {
                 if (typeof this.say === 'function') {
                     const result = this.say(line);
                     if (result && typeof result.then === 'function') {
                         result.finally(() => {
-                            if (this.audioFocus && typeof this.audioFocus.restore === 'function') this.audioFocus.restore();
+                            if (this.audioFocus && typeof this.audioFocus.restore === 'function')
+                                this.audioFocus.restore();
                         });
                         return;
                     }
@@ -515,31 +737,69 @@
             if (this.audioFocus && typeof this.audioFocus.restore === 'function') this.audioFocus.restore();
         }
 
+        _yieldToConversation() {
+            this._turns += 1;
+            this._lastTurnAt = this.now();
+            this._conversationBusyUntil = this.now() + 8000;
+            try {
+                if (this.win && this.win.speechSynthesis && typeof this.win.speechSynthesis.cancel === 'function')
+                    this.win.speechSynthesis.cancel();
+            } catch (_) {}
+            if (this.audioFocus && typeof this.audioFocus.restore === 'function') this.audioFocus.restore();
+            this._emit('private:user-turn', { preset: this.preset.id });
+        }
+
+        /** How far past the scripted 300 s a live conversation may push the ending. */
+        static get GRACE_MS() {
+            return 180000;
+        }
+
         _complete() {
             if (this._stopped) return;
+            // The arc was five wall-clock minutes regardless of whether the user had written
+            // twenty messages or none, so somebody mid-sentence got the closing line and the
+            // completion card on a timer that had never heard them. `_conversationBusyUntil`
+            // already defers a *line* for a talker; an ending deserves at least as much.
+            // Bounded, because "it never ends while you keep typing" is a different and worse
+            // product than "it does not hang up on you".
+            const elapsed = this.now() - (this.startedAt || 0);
+            const talking = this.now() - this._lastTurnAt < 30000 * (this.timingScale || 1);
+            if (talking && elapsed < (300000 + IntimateExperienceSession.GRACE_MS) * (this.timingScale || 1)) {
+                this._schedule(20000, () => this._complete());
+                return;
+            }
             this.state = 'complete';
             this._clearTimers();
-            if (!this.card || !this.doc) return;
-            this.card.textContent = '';
-            const title = this.doc.createElement('div');
-            title.className = 'nexus-private-complete';
-            title.textContent = 'Private moment complete';
-            this.card.appendChild(title);
-            const note = this.doc.createElement('div');
-            note.className = 'nexus-private-note';
-            note.textContent = 'Nothing from this Private session is saved to Playground Histories.';
-            this.card.appendChild(note);
-            const row = this.doc.createElement('div');
-            row.className = 'nexus-private-actions';
-            row.appendChild(this._button('End Private', 'finish', () => this._requestEnd(false)));
-            row.appendChild(this._button('Back to Together', 'back', () => this._requestEnd(true)));
-            this.card.appendChild(row);
-            this._emit('private:session-complete', { preset: this.preset.id });
+            // Only on a completed session, and only the four enums — never a word of what was
+            // said. See `PrivateMemory`.
+            const store = memory();
+            try {
+                if (store && typeof store.remember === 'function') {
+                    store.remember({
+                        preset: this.preset.id,
+                        mood: this.mood,
+                        soundtrack: this.soundtrack,
+                    });
+                }
+            } catch (_) {
+                // Not being remembered is exactly how every session behaved before.
+            }
+            if (this.view) {
+                this.view.showComplete({
+                    onAgain: () => this._requestEnd(true),
+                    onBack: () => this._requestEnd(true),
+                });
+            }
+            this._emit('private:session-complete', { preset: this.preset.id, mood: this.mood, turns: this._turns });
         }
 
         _requestEnd(openTogether) {
             const panel = this.director && this.director.togetherPanel;
-            if (panel && (panel.active === 'intimate' || panel.activeActivity === 'intimate') && typeof panel.stopActivity === 'function') {
+            if (
+                panel &&
+                (panel.active === 'intimate' || panel.activeActivity === 'intimate') &&
+                typeof panel.stopActivity === 'function'
+            ) {
                 panel.stopActivity('private complete');
                 if (openTogether && typeof panel.open === 'function') panel.open();
                 return;
@@ -548,14 +808,25 @@
         }
 
         _unmount() {
-            if (this.hud && this.hud.parentNode) this.hud.parentNode.removeChild(this.hud);
-            this.hud = null;
-            this.card = null;
-            this.levelEl = null;
+            if (this.view) this.view.destroy();
+            this.view = null;
         }
 
+        /**
+         * Tell the bus, and never let the bus stop the session.
+         *
+         * This was unguarded, and `beforeActivityStop` emits — so a bus that threw took
+         * teardown down with it, leaving the adult mode entered, the ceiling installed and the
+         * blackboard unrestored. A telemetry line is not worth a session that cannot be
+         * stopped, and exit is exactly where fail-soft matters most.
+         */
         _emit(name, payload) {
-            if (this.bus && typeof this.bus.emit === 'function') this.bus.emit(name, payload);
+            if (!this.bus || typeof this.bus.emit !== 'function') return;
+            try {
+                this.bus.emit(name, payload);
+            } catch (_) {
+                // Nobody heard it. Everything else still happens.
+            }
         }
     }
 
@@ -578,6 +849,7 @@
             const session = new IntimateExperienceSession({
                 activity: this,
                 preset: presetId,
+                soundtrack: input.soundtrack,
                 adult: this.adult || (director && director.adult),
                 director,
                 win: global,
@@ -617,7 +889,8 @@
     }
 
     function schedulePrivateRuntimeInstall() {
-        if (!global || !global.document || !global.document.currentScript || typeof global.setTimeout !== 'function') return;
+        if (!global || !global.document || !global.document.currentScript || typeof global.setTimeout !== 'function')
+            return;
         let attempts = 0;
         const tryInstall = () => {
             if (installPrivateRuntime()) return;

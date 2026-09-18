@@ -14,8 +14,13 @@ const PlaygroundActivity = require('../../src/features/together/activities/playg
 function consentMachine() {
     return {
         state: 'idle',
-        onChange() { return () => {}; },
-        revoke() { this.state = 'idle'; return true; },
+        onChange() {
+            return () => {};
+        },
+        revoke() {
+            this.state = 'idle';
+            return true;
+        },
     };
 }
 
@@ -47,7 +52,9 @@ class AdultFlowMock {
         });
     }
 
-    get maxLevel() { return 4; }
+    get maxLevel() {
+        return 4;
+    }
 }
 
 /**
@@ -60,11 +67,16 @@ function privateGate(initialRequested = false) {
     const preferenceListeners = [];
     const usableListeners = [];
     return {
-        bind(d) { director = d; return this; },
+        bind(d) {
+            director = d;
+            return this;
+        },
         isEnabled() {
             return requested;
         },
-        isRequested() { return requested; },
+        isRequested() {
+            return requested;
+        },
         set(value) {
             requested = Boolean(value);
             for (const listener of [...preferenceListeners]) listener(requested);
@@ -139,7 +151,9 @@ describe('Private runtime eligibility', () => {
         const requested = { isRequested: () => true, isEnabled: () => true };
 
         expect(eligibility(base, requested).ok).toBe(true);
-        expect(eligibility({ ...base, blackboard: { adultVerified: false, nsfwAllowed: true } }, requested).ok).toBe(true);
+        expect(eligibility({ ...base, blackboard: { adultVerified: false, nsfwAllowed: true } }, requested).ok).toBe(
+            true
+        );
         expect(eligibility({ ...base, adult: null }, requested).ok).toBe(false);
         expect(eligibility(base, { isRequested: () => true, isEnabled: () => false }).ok).toBe(false);
         expect(eligibility(base, { isRequested: () => false, isEnabled: () => true }).ok).toBe(false);
@@ -223,6 +237,27 @@ describe('Private tile invariant', () => {
         expect(s.panel.root.textContent).toContain('Affectionate');
         expect(s.panel.root.textContent).toContain('Romantic');
         expect(s.panel.root.textContent).toContain('Sensual');
+
+        bridge.detach();
+    });
+
+    test('a Private destination that cannot start yet says why instead of showing an empty card', () => {
+        // Preference on, consent flow not attached: the tile is registered and the gate is
+        // shut, so `inputs()` is empty. The premium setup screen draws none of the generic
+        // view's copy, so without this the person got a pink card, no presets and a dead
+        // button — indistinguishable from a broken feature.
+        const s = setup({ requested: true, verified: true, withAdult: false });
+        const bridge = PlaygroundActivity.installIntimateBridge({ bus: s.bus });
+        s.panel.open();
+
+        expect(s.panel.activities.has('intimate')).toBe(true);
+        expect(s.panel.activities.get('intimate').inputs()).toEqual([]);
+
+        expect(s.panel.choose('intimate')).toEqual({ ok: true, why: 'setup' });
+        const locked = s.panel.root.querySelector('[data-private-locked="1"]');
+        expect(locked).not.toBeNull();
+        expect(locked.textContent.trim().length).toBeGreaterThan(0);
+        expect(s.panel.root.querySelector('.nexus-private-begin').disabled).toBe(true);
 
         bridge.detach();
     });

@@ -97,6 +97,16 @@
         // T1/T2. The one switch, and the paragraph that stops her apologising. Before the
         // launcher that flips the switch and before anything that reads it.
         'src/features/together/TogetherSwitch.js',
+        // What a found track is called on screen, and the one strip that says it. Before
+        // PrivateConversationView, which draws one, and before anything else that names media;
+        // SceneTaleConversationView is injected later and reads both off the window.
+        'src/features/together/MediaTitle.js',
+        'src/features/together/ui/SoundtrackStrip.js',
+        'src/features/together/ui/PrivateConversationView.js',
+        // What she says during a Private session, and the four enums it is allowed to
+        // remember between them. Before TogetherCapability, which runs both.
+        'src/features/together/PrivateBeats.js',
+        'src/features/together/PrivateMemory.js',
         'src/features/together/TogetherCapability.js',
         // T3/T5. The one function that finds and plays, and the parser that lets her ask for
         // it. After the publisher's dependencies, before the launcher.
