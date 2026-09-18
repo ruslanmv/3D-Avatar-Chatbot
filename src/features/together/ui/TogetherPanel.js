@@ -34,6 +34,16 @@ const TogetherPanel = (() => {
     const PANEL_ID = 'nexus-bd-together-panel';
 
     /**
+     * The longest Begin may wait on optional work before starting anyway.
+     *
+     * Preparation begins when a mood is chosen, so by Begin the answer is normally already in
+     * hand and this never fires. When it does, the session starts with the written plan and the
+     * generated one upgrades the later beats if it lands. Nothing optional — least of all a
+     * music lookup — gets to stand between wanting this and having it.
+     */
+    const PRIVATE_START_BUDGET = 2500;
+
+    /**
      * B36. The activity contract and the failure copy, from the module system or the window,
      * so this file works under jest and in the browser without either knowing about the
      * other. Absent, the panel falls back to B30's behaviour rather than breaking — an
@@ -776,18 +786,24 @@ const TogetherPanel = (() => {
         }
 
         /** Premium, explicit setup for Private. Selecting a ceiling never starts the session. */
-        _paintPrivateSetup(contract, _meta) {
-            const activity = this.activities.get('intimate');
-            if (activity && typeof activity.paintSetup === 'function') activity.paintSetup(this);
-            const state = (activity && activity.sessionState) || 'configure';
-            if (state === 'preparing') return this._paintPrivatePreparing(activity);
-            if (state === 'ready') return this._paintPrivateReady(activity, contract);
-            if (state === 'error') return this._paintPrivatePrepareError(activity);
-            return this._paintPrivateConfigure(contract, activity);
-        }
-
-        /** The screen that was already here: place, presets, soundtrack, and now a scene. */
-        /** The premium setup skin, injected once and shared by all four of its states. */
+        /**
+         * Two screens, and never a screen whose only content is that the app is busy.
+         *
+         * The first version of this exposed all four internal states: configure, a preparing
+         * screen with four ticking rows, a ready screen, and only then Begin. Four screens to
+         * start a private moment, two of which existed to say "wait". Somebody who has just
+         * decided they want this is not in the mood to be administered, and pressing Begin on
+         * a screen that says "Ready when you are" is being asked twice.
+         *
+         * So: mood, then atmosphere, then it starts. `starting` paints only in the case where
+         * the background work genuinely has not landed inside its budget.
+         */
+        /**
+         * The Private setup skin, injected once and shared by both steps.
+         *
+         * Rose rather than the purple this screen used to be: Private should read as the app
+         * turning warmer, not as a second application opening inside a cyan one.
+         */
         _privateStyles() {
             const doc = this.doc;
             const styleId = 'nexus-private-setup-styles';
@@ -795,223 +811,263 @@ const TogetherPanel = (() => {
             const style = doc.createElement('style');
             style.id = styleId;
             style.textContent =
-                '.nexus-private-setup{display:grid;gap:14px}.nexus-private-setup .nexus-private-setup-kicker{text-align:center;color:#f49aba;font-weight:750;letter-spacing:.08em}.nexus-private-setup-lead{text-align:center;opacity:.78;margin:0}.nexus-private-place-card{padding:12px 14px;border:1px solid rgba(244,128,166,.25);border-radius:14px;background:rgba(244,128,166,.06)}.nexus-private-preset-grid{display:grid;gap:9px}.nexus-private-preset{display:block;width:100%;text-align:left;border:1px solid rgba(255,255,255,.13);border-radius:14px;padding:13px;background:rgba(255,255,255,.05);color:inherit;font:inherit;cursor:pointer}.nexus-private-preset.is-selected{border-color:rgba(244,128,166,.75);background:rgba(244,128,166,.13)}.nexus-private-preset strong,.nexus-private-preset span{display:block}.nexus-private-preset span{font-size:.8rem;opacity:.7;margin-top:4px}.nexus-private-soundtrack-options{display:flex;flex-wrap:wrap;gap:8px;font-size:.8rem}.nexus-private-safety{font-size:.78rem;line-height:1.5;opacity:.7}.nexus-private-begin{width:100%;padding:12px;border:0;border-radius:12px;background:linear-gradient(120deg,#c34f7b,#9a4f9e);color:#fff;font:inherit;font-weight:700;cursor:pointer}.nexus-private-begin:disabled{opacity:.45;cursor:default}.nexus-private-ready{padding:11px 13px;border-left:3px solid #f49aba;background:rgba(244,128,166,.07);font-size:.84rem;line-height:1.55}.nexus-private-locked{margin:0;padding:12px 13px;border:1px dashed rgba(244,128,166,.3);border-radius:12px;font-size:.82rem;line-height:1.5;opacity:.75}.nexus-private-scene-options{display:flex;flex-wrap:wrap;gap:8px;font-size:.8rem}.nexus-private-progress{display:grid;gap:8px}.nexus-private-progress-row{font-size:.86rem;opacity:.55;transition:opacity .2s ease}.nexus-private-progress-row.is-done{opacity:1}';
+                '.nexus-private-setup{display:grid;gap:13px}.nexus-private-setup .nexus-private-setup-kicker{text-align:center;color:#f08fb6;font-weight:750;letter-spacing:.08em;font-size:.72rem}.nexus-private-setup-lead{text-align:center;opacity:.85;margin:0;font-size:1rem;font-weight:650}.nexus-private-preset-grid{display:grid;gap:9px}.nexus-private-preset{display:block;width:100%;text-align:left;border:1px solid rgba(255,255,255,.13);border-radius:14px;padding:13px;background:rgba(255,255,255,.05);color:inherit;font:inherit;cursor:pointer}.nexus-private-preset:hover,.nexus-private-preset:focus-visible{border-color:rgba(240,143,182,.6);background:rgba(240,143,182,.1);outline:none}.nexus-private-preset strong,.nexus-private-preset span{display:block}.nexus-private-preset span{font-size:.8rem;opacity:.68;margin-top:4px}.nexus-private-safety{font-size:.76rem;line-height:1.5;opacity:.62;text-align:center}.nexus-private-begin{width:100%;padding:12px;border:0;border-radius:12px;background:linear-gradient(120deg,#c34f7b,#9a4f9e);color:#fff;font:inherit;font-weight:700;cursor:pointer}.nexus-private-begin:disabled{opacity:.45;cursor:default}.nexus-private-locked{margin:0;padding:12px 13px;border:1px dashed rgba(240,143,182,.3);border-radius:12px;font-size:.82rem;line-height:1.5;opacity:.75}.nexus-private-steps{display:flex;gap:6px;justify-content:center}.nexus-private-steps span{width:18px;height:3px;border-radius:2px;background:rgba(255,255,255,.16)}.nexus-private-steps span.is-on{background:#f08fb6}.nexus-private-label{display:block;opacity:.6;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase}.nexus-private-scene-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.nexus-private-scene-card{display:grid;gap:2px;text-align:left;padding:11px 12px;border-radius:13px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.045);color:inherit;font:inherit;cursor:pointer}.nexus-private-scene-card.is-selected{border-color:rgba(240,143,182,.7);background:rgba(240,143,182,.13)}.nexus-private-scene-name{font-weight:650;font-size:.86rem}.nexus-private-scene-note{font-size:.72rem;opacity:.62}.nexus-private-more{width:100%;text-align:center;font-size:.78rem;opacity:.75}.nexus-private-segmented{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid rgba(255,255,255,.13);border-radius:12px;overflow:hidden}.nexus-private-segment{padding:9px 6px;border:0;background:transparent;color:inherit;font:inherit;font-size:.82rem;cursor:pointer}.nexus-private-segment.is-selected{background:rgba(240,143,182,.18);font-weight:650}.nexus-private-again{display:grid;gap:8px;padding:13px;border-radius:14px;border:1px solid rgba(240,143,182,.28);background:rgba(240,143,182,.08)}.nexus-private-again small{opacity:.6;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase}.nexus-private-again-summary{font-size:.9rem;font-weight:650}.nexus-private-or{text-align:center;margin:0;opacity:.45;font-size:.76rem}';
             (doc.head || doc.documentElement).appendChild(style);
         }
 
-        _paintPrivateConfigure(contract, activity) {
-            const doc = this.doc;
-            const bb = typeof window !== 'undefined' && window.NEXUS_BD && window.NEXUS_BD.blackboard;
-            const rawScene = bb && bb.scene;
-            const scene =
-                rawScene && typeof rawScene === 'object' ? rawScene.label || rawScene.title || rawScene.id : rawScene;
-            const place = String(scene || 'Current place').replace(/[-_]+/g, ' ');
+        _paintPrivateSetup(contract, _meta) {
+            const activity = this.activities.get('intimate');
+            if (activity && typeof activity.paintSetup === 'function') activity.paintSetup(this);
+            const state = (activity && activity.sessionState) || 'mood';
             this._privateStyles();
+            if (state === 'starting') return this._paintPrivateStarting();
+            if (state === 'atmosphere') return this._paintPrivateAtmosphere(activity);
+            return this._paintPrivateMood(contract, activity);
+        }
+
+        /** The shell every Private setup screen shares: kicker, optional step dots. */
+        _privateShell(step) {
+            const doc = this.doc;
             const shell = doc.createElement('div');
             shell.className = 'nexus-private-setup';
-            shell.innerHTML = `<div class="nexus-private-setup-kicker">🔐 PRIVATE</div><p class="nexus-private-setup-lead">A more personal moment together.<br>You choose the pace.</p><div><small>Current place</small><div class="nexus-private-place-card"></div></div><div><small>How should this feel?</small><div class="nexus-private-preset-grid"></div></div><div><small>Where should we be?</small><div class="nexus-private-scene-options"></div></div><div><small>Soundtrack</small><div class="nexus-private-soundtrack-options"><label><input type="radio" name="private-music" value="choose" checked> Let her choose</label><label><input type="radio" name="private-music" value="current"> Keep current</label><label><input type="radio" name="private-music" value="none"> No music</label></div></div><div class="nexus-private-ready" hidden></div><div class="nexus-private-safety">Starts gentle. You can slow down or stop at any time.</div>`;
-            shell.querySelector('.nexus-private-place-card').textContent = place;
-            // `adult.profile` has declared `scenes: ['sunset', 'candlelit']` since it was
-            // written and **nothing in the repository ever read that field**: the setup screen
-            // showed the current room as a read-only label and the session never touched the
-            // background, so "a more personal moment" happened in whatever was already up,
-            // including the default black. The catalogue is the source of truth rather than
-            // that list, so every scene the app ships is reachable from here.
-            const sceneBox = shell.querySelector('.nexus-private-scene-options');
-            const sceneOptions = [{ id: 'current', label: 'Keep this place' }].concat(
-                activity && typeof activity.scenes === 'function' ? activity.scenes() : []
-            );
-            for (const entry of sceneOptions) {
-                const label = doc.createElement('label');
-                const radio = doc.createElement('input');
-                radio.type = 'radio';
-                radio.name = 'private-scene';
-                radio.value = entry.id;
-                radio.checked = entry.id === 'current';
-                label.append(radio, doc.createTextNode(` ${entry.label}`));
-                sceneBox.appendChild(label);
+            const kicker = doc.createElement('div');
+            kicker.className = 'nexus-private-setup-kicker';
+            kicker.textContent = '🔐 PRIVATE';
+            shell.appendChild(kicker);
+            if (step) {
+                const dots = doc.createElement('div');
+                dots.className = 'nexus-private-steps';
+                dots.dataset.step = String(step);
+                dots.setAttribute('aria-label', `Step ${step} of 2`);
+                dots.innerHTML = `<span class="${step === 1 ? 'is-on' : ''}"></span><span class="${step === 2 ? 'is-on' : ''}"></span>`;
+                shell.appendChild(dots);
             }
-            const grid = shell.querySelector('.nexus-private-preset-grid');
-            const ready = shell.querySelector('.nexus-private-ready');
-            let selected = null;
+            return shell;
+        }
+
+        /**
+         * Step 1 — one decision.
+         *
+         * Scene, soundtrack, duration and preparation state are all deliberately absent. They
+         * were on this screen and they made the first thing anybody saw look like a settings
+         * page for a feature rather than the start of an evening.
+         */
+        _paintPrivateMood(contract, activity) {
+            const doc = this.doc;
+            const shell = this._privateShell(1);
+            const last = activity && typeof activity.lastSetup === 'function' ? activity.lastSetup() : null;
+
+            // A returning person gets two taps to the thing they already liked. The wizard is
+            // still one tap away and is what a newcomer sees.
+            if (last) {
+                const again = doc.createElement('div');
+                again.className = 'nexus-private-again';
+                again.dataset.privateLast = '1';
+                const kicker = doc.createElement('small');
+                kicker.textContent = 'Last time';
+                const summary = doc.createElement('div');
+                summary.className = 'nexus-private-again-summary';
+                summary.textContent = [
+                    last.preset.label,
+                    last.sceneLabel,
+                    last.soundtrack === 'none' ? 'No music' : 'Auto music',
+                ]
+                    .filter(Boolean)
+                    .join(' · ');
+                again.append(kicker, summary);
+                const go = doc.createElement('button');
+                go.type = 'button';
+                go.className = 'nexus-private-begin';
+                go.dataset.action = 'private-again';
+                go.textContent = 'Continue like last time →';
+                go.addEventListener('click', () => {
+                    activity.prepareInput = { ...last.preset };
+                    activity.sceneChoice = last.scene;
+                    activity.soundtrackChoice = last.soundtrack;
+                    activity.prewarm();
+                    this._beginPrivate(activity);
+                });
+                again.appendChild(go);
+                shell.appendChild(again);
+                const or = doc.createElement('p');
+                or.className = 'nexus-private-or';
+                or.textContent = 'or';
+                shell.appendChild(or);
+            }
+
+            const lead = doc.createElement('p');
+            lead.className = 'nexus-private-setup-lead';
+            lead.textContent = 'How should this feel?';
+            shell.appendChild(lead);
+
+            const grid = doc.createElement('div');
+            grid.className = 'nexus-private-preset-grid';
             const descriptions = {
-                affectionate: 'Warm, caring and relaxed. Gentle closeness.',
-                romantic: 'A date-night mood with gentle flirting.',
-                sensual: 'More intimate and suggestive, while staying at your pace.',
+                affectionate: 'Soft and affectionate',
+                romantic: 'Date-night energy',
+                sensual: 'Closer and more suggestive',
             };
-            const begin = doc.createElement('button');
-            begin.type = 'button';
-            begin.className = 'nexus-private-begin';
-            begin.disabled = true;
-            begin.textContent = 'Begin private moment →';
-            const presets = contract.inputs();
-            // What they chose last time, so a returning user is one tap from the evening they
-            // already liked instead of re-making the same decision every time. Four enums in
-            // localStorage; see `PrivateMemory` for what is deliberately not in there.
-            const remembered = (() => {
-                const store = this.win && this.win.NEXUS_PRIVATE_MEMORY;
-                try {
-                    return store && typeof store.preferredPreset === 'function' ? store.preferredPreset() : null;
-                } catch (_) {
-                    return null;
-                }
-            })();
+            const presets = contract ? contract.inputs() : [];
             for (const input of presets) {
                 const option = doc.createElement('button');
                 option.type = 'button';
                 option.className = 'nexus-private-preset';
+                option.dataset.preset = input.id;
                 option.innerHTML = `<strong>${input.id === 'sensual' ? '✧' : '♡'} ${input.label}</strong><span></span>`;
                 option.querySelector('span').textContent = descriptions[input.id] || input.note || '';
-                const choose = () => {
-                    selected = input;
-                    grid.querySelectorAll('.nexus-private-preset').forEach((node) =>
-                        node.classList.toggle('is-selected', node === option)
-                    );
-                    begin.disabled = false;
-                    ready.hidden = false;
-                    ready.textContent = `${input.label} · ${place}\nStarts gentle · about 5 minutes\nYou remain in control of the pace.`;
-                };
-                option.addEventListener('click', choose);
+                // Selecting *is* continuing. A separate Continue button would be a second tap
+                // that carries no new information, and the prefetch wants the mood now.
+                option.addEventListener('click', () => activity && activity.chooseMood(input));
                 grid.appendChild(option);
-                // Pre-selected, never auto-started: `Begin private moment` is still a press.
-                if (remembered && input.id === remembered) choose();
             }
-            // A locked gate returns no presets, and this screen renders none of the generic
-            // setup view's copy — so `Private is not enabled yet` never reached the person who
-            // needed it. They got the pink card, an empty "How should this feel?", and a
-            // button that would not press: a destination that looks broken rather than one
-            // that is waiting on a setting they can change. `activity.prompt` already carries
-            // the reason from the gate; it just had nowhere to be shown.
+            shell.appendChild(grid);
+
             if (!presets.length) {
                 const locked = doc.createElement('p');
                 locked.className = 'nexus-private-locked';
                 locked.dataset.privateLocked = '1';
                 locked.textContent =
                     (activity && activity.prompt) || (contract && contract.prompt) || 'Private is unavailable.';
-                grid.appendChild(locked);
+                shell.appendChild(locked);
             }
-            // Prepare, not start. The waiting moved in front of the Begin button so it can be
-            // seen and cancelled, which is the shape Playground has had all along.
-            begin.addEventListener('click', () => {
-                const music = shell.querySelector('input[name="private-music"]:checked');
-                const place = shell.querySelector('input[name="private-scene"]:checked');
-                if (!selected) return;
-                begin.disabled = true;
-                begin.textContent = 'Setting the mood…';
-                activity.prepare({
-                    input: { ...selected },
-                    soundtrack: music ? music.value : 'choose',
-                    scene: place && place.value !== 'current' ? place.value : null,
-                });
-            });
-            shell.appendChild(begin);
-            const back = this._button('Back', 'nexus-bd-together-option', () => this.back());
-            shell.appendChild(back);
+
+            const safety = doc.createElement('div');
+            safety.className = 'nexus-private-safety';
+            safety.textContent = 'You control the pace. Nothing here is added to Playground History.';
+            shell.appendChild(safety);
+            shell.appendChild(this._button('Back', 'nexus-bd-together-option', () => this.back()));
             this.root.appendChild(shell);
         }
 
         /**
-         * "Setting the mood…" — the waiting, with its steps named.
+         * Step 2 — where, and what it sounds like. Then it starts.
          *
-         * The same shape as Scene Tale's, and for the same reason: several seconds of silence
-         * after a button press is indistinguishable from a button that did not work. Private
-         * was doing this work anyway, just after `Begin`, where it was invisible and could not
-         * be cancelled.
+         * Scene cards rather than a radio per row: the catalogue can hold ten scenes and the
+         * previous screen rendered every one of them, twice over where two sources carried the
+         * same id. Three and a `More`, which is the shape a picker takes when most people want
+         * one of the first few.
          */
-        _paintPrivatePreparing(activity) {
+        _paintPrivateAtmosphere(activity) {
             const doc = this.doc;
-            this._privateStyles();
-            const shell = doc.createElement('div');
-            shell.className = 'nexus-private-setup';
-            shell.innerHTML =
-                '<div class="nexus-private-setup-kicker">🔐 PRIVATE</div><p class="nexus-private-setup-lead">Setting the mood…<br>I will have everything ready before we begin.</p>';
-            const done = (activity && activity.prepareProgress) || new Set();
-            const rows = doc.createElement('div');
-            rows.className = 'nexus-private-progress';
-            const steps = [
-                ['scene', 'Reading the room'],
-                ['words', 'Choosing my words'],
-                ['pace', 'Setting the pace'],
-                ['music', 'Finding a soundtrack'],
-            ];
-            for (const [id, label] of steps) {
-                const row = doc.createElement('div');
-                row.className = `nexus-private-progress-row${done.has(id) ? ' is-done' : ''}`;
-                row.dataset.step = id;
-                row.textContent = `${done.has(id) ? '✓' : '○'} ${label}`;
-                rows.appendChild(row);
-            }
-            shell.appendChild(rows);
-            const cancel = this._button('Cancel', 'nexus-bd-together-option', () => {
-                if (activity && typeof activity.cancelPrepare === 'function') activity.cancelPrepare();
-            });
-            cancel.dataset.action = 'cancel-private';
-            shell.appendChild(cancel);
-            this.root.appendChild(shell);
-        }
+            const shell = this._privateShell(2);
+            const lead = doc.createElement('p');
+            lead.className = 'nexus-private-setup-lead';
+            lead.textContent = 'Set the atmosphere';
+            shell.appendChild(lead);
 
-        /** Everything is ready, and nothing has started. Begin is the only thing that starts it. */
-        _paintPrivateReady(activity, contract) {
-            const doc = this.doc;
-            this._privateStyles();
-            const preset = (activity && activity.prepareInput) || {};
+            const label = (text) => {
+                const el = doc.createElement('small');
+                el.className = 'nexus-private-label';
+                el.textContent = text;
+                return el;
+            };
+
+            const all = activity.scenes();
+            const shown = activity.recommendedScenes(3);
             const place = this._privatePlace(activity);
-            const shell = doc.createElement('div');
-            shell.className = 'nexus-private-setup';
-            shell.innerHTML =
-                '<div class="nexus-private-setup-kicker">🔐 PRIVATE</div><p class="nexus-private-setup-lead">Ready when you are.</p><div class="nexus-private-ready"></div><div class="nexus-private-safety">Starts gentle. You can slow down or stop at any time.</div>';
-            const soundtrack =
-                activity && activity.soundtrackChoice === 'none'
-                    ? 'No soundtrack'
-                    : activity && activity.preparedTrack
-                      ? 'Soundtrack ready'
-                      : 'No soundtrack found — we will talk instead';
-            shell.querySelector('.nexus-private-ready').textContent =
-                `${preset.label || 'Private'} · ${place}\nAbout 5 minutes · you set the pace\n${soundtrack}`;
+            shell.appendChild(label('Where should we be?'));
+            const cards = doc.createElement('div');
+            cards.className = 'nexus-private-scene-cards';
+            const cardFor = (id, title, note) => {
+                const card = doc.createElement('button');
+                card.type = 'button';
+                card.className = 'nexus-private-scene-card';
+                card.dataset.scene = id || 'current';
+                card.classList.toggle('is-selected', (activity.sceneChoice || 'current') === (id || 'current'));
+                card.innerHTML =
+                    '<span class="nexus-private-scene-name"></span><span class="nexus-private-scene-note"></span>';
+                card.querySelector('.nexus-private-scene-name').textContent = title;
+                card.querySelector('.nexus-private-scene-note').textContent = note || '';
+                card.addEventListener('click', () => activity.setAtmosphere({ scene: id }));
+                return card;
+            };
+            cards.appendChild(cardFor(null, place, 'Keep this place'));
+            for (const entry of shown) cards.appendChild(cardFor(entry.id, entry.label, ''));
+            shell.appendChild(cards);
+            if (!activity._showAllScenes && all.length > shown.length) {
+                const more = this._button(`More (${all.length - shown.length})`, 'nexus-private-more', () =>
+                    activity.showAllScenes()
+                );
+                more.dataset.action = 'more-scenes';
+                shell.appendChild(more);
+            }
+
+            shell.appendChild(label('Music'));
+            const music = doc.createElement('div');
+            music.className = 'nexus-private-segmented';
+            for (const [value, text] of [
+                ['choose', 'Auto'],
+                ['current', 'Keep'],
+                ['none', 'Off'],
+            ]) {
+                const seg = doc.createElement('button');
+                seg.type = 'button';
+                seg.className = 'nexus-private-segment';
+                seg.dataset.music = value;
+                seg.textContent = text;
+                seg.classList.toggle('is-selected', activity.soundtrackChoice === value);
+                seg.addEventListener('click', () => activity.setAtmosphere({ soundtrack: value }));
+                music.appendChild(seg);
+            }
+            shell.appendChild(music);
+
             const begin = doc.createElement('button');
             begin.type = 'button';
             begin.className = 'nexus-private-begin';
             begin.dataset.action = 'begin-private';
-            begin.textContent = 'Begin private moment →';
-            begin.addEventListener('click', () => {
-                begin.disabled = true;
-                begin.textContent = 'Beginning…';
-                this.startActivity('intimate', {
-                    ...preset,
-                    soundtrack: (activity && activity.soundtrackChoice) || 'choose',
-                    scene: (activity && activity.sceneChoice) || null,
-                    preparedPlan: activity && activity.preparedPlan,
-                    preparedTrack: activity && activity.preparedTrack,
-                });
-            });
+            begin.textContent = 'Begin →';
+            begin.addEventListener('click', () => this._beginPrivate(activity));
             shell.appendChild(begin);
-            const edit = this._button('Edit setup', 'nexus-bd-together-option', () => {
-                if (activity && typeof activity.cancelPrepare === 'function') activity.cancelPrepare();
-            });
-            edit.dataset.action = 'edit-private';
-            shell.appendChild(edit);
-            if (contract) shell.appendChild(this._button('Back', 'nexus-bd-together-option', () => this.back()));
+
+            const back = this._button('Back', 'nexus-bd-together-option', () => activity.editSetup());
+            back.dataset.action = 'edit-private';
+            shell.appendChild(back);
             this.root.appendChild(shell);
         }
 
-        /** Preparing failed. Say so, and offer the one thing worth offering. */
-        _paintPrivatePrepareError(activity) {
-            const doc = this.doc;
-            this._privateStyles();
-            const shell = doc.createElement('div');
-            shell.className = 'nexus-private-setup';
-            shell.innerHTML = '<div class="nexus-private-setup-kicker">🔐 PRIVATE</div>';
-            const why = doc.createElement('p');
-            why.className = 'nexus-private-locked';
-            why.dataset.privateError = '1';
-            why.textContent = (activity && activity.prepareError) || 'The evening could not be prepared.';
-            shell.appendChild(why);
-            shell.appendChild(
-                this._button('Try again', 'nexus-bd-together-option', () => {
-                    if (activity && typeof activity.cancelPrepare === 'function') activity.cancelPrepare();
-                })
-            );
+        /** Only ever seen when the background work missed its budget. */
+        _paintPrivateStarting() {
+            const shell = this._privateShell(0);
+            const lead = this.doc.createElement('p');
+            lead.className = 'nexus-private-setup-lead';
+            lead.dataset.privateStarting = '1';
+            lead.textContent = 'Setting the mood…';
+            shell.appendChild(lead);
             this.root.appendChild(shell);
+        }
+
+        /**
+         * Begin means begin.
+         *
+         * Prepared work is usually in hand by now — it started when the mood was chosen — so
+         * the common path is synchronous. When it is not, the session starts anyway once the
+         * budget expires, with the written plan, and the generated one upgrades the later
+         * beats if it ever lands. Nothing optional is allowed to stand between wanting this
+         * and having it.
+         */
+        _beginPrivate(activity) {
+            if (!activity || !activity.prepareInput) return null;
+            const go = () =>
+                this.startActivity('intimate', {
+                    ...activity.prepareInput,
+                    soundtrack: activity.soundtrackChoice || 'choose',
+                    scene: activity.sceneChoice || null,
+                    preparedPlan: activity.preparedPlan,
+                    preparedTrack: activity.preparedTrack,
+                });
+            if (!activity.prepared || activity.preparedPlan) return go();
+            activity.sessionState = 'starting';
+            this._paint();
+            const win = this.win || (typeof window !== 'undefined' ? window : null);
+            let started = false;
+            const once = () => {
+                if (started) return null;
+                started = true;
+                return go();
+            };
+            if (win && typeof win.setTimeout === 'function') win.setTimeout(once, PRIVATE_START_BUDGET);
+            activity.prepared.then(once, once);
+            return null;
         }
 
         /** The room this evening will happen in, named the way the setup screen names it. */

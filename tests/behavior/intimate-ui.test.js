@@ -257,7 +257,9 @@ describe('Private tile invariant', () => {
         const locked = s.panel.root.querySelector('[data-private-locked="1"]');
         expect(locked).not.toBeNull();
         expect(locked.textContent.trim().length).toBeGreaterThan(0);
-        expect(s.panel.root.querySelector('.nexus-private-begin').disabled).toBe(true);
+        // Step 1 has no Begin of its own — choosing a mood is what continues — so the
+        // property is that there is no mood to choose and the reason is on screen.
+        expect(s.panel.root.querySelectorAll('.nexus-private-preset')).toHaveLength(0);
 
         bridge.detach();
     });

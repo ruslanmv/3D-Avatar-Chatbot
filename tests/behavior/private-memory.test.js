@@ -66,7 +66,7 @@ describe('what it cannot keep', () => {
             scene: 'Coastal Terrace',
         });
         const stored = JSON.parse(localStorage.getItem(Memory.KEY));
-        expect(Object.keys(stored).sort()).toEqual(['lastAt', 'mood', 'preset', 'sessions', 'soundtrack']);
+        expect(Object.keys(stored).sort()).toEqual(['lastAt', 'mood', 'preset', 'scene', 'sessions', 'soundtrack']);
         expect(JSON.stringify(stored)).not.toMatch(/something|Coastal/);
     });
 
@@ -76,6 +76,17 @@ describe('what it cannot keep', () => {
         expect(kept.preset).toBeNull();
         expect(kept.mood).toBeNull();
         expect(kept.soundtrack).toBeNull();
+    });
+
+    test('the scene field takes a catalogue id and refuses a sentence', () => {
+        // Open-ended by necessity — packs add scenes — so it is constrained by shape instead.
+        Memory.write({ scene: 'coastal-terrace-twilight' });
+        expect(Memory.read().scene).toBe('coastal-terrace-twilight');
+
+        for (const bad of ['a whole sentence about the evening', '<script>', 'Coastal Terrace', 'x'.repeat(80)]) {
+            Memory.write({ scene: bad });
+            expect(Memory.read().scene).toBe('coastal-terrace-twilight');
+        }
     });
 
     test('a hand-edited or corrupted key cannot put arbitrary text in front of a caller', () => {

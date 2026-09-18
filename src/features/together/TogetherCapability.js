@@ -971,6 +971,7 @@
                         preset: this.preset.id,
                         mood: this.mood,
                         soundtrack: this.soundtrack,
+                        scene: this.scene,
                     });
                 }
             } catch (_) {

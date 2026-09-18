@@ -133,6 +133,24 @@ const PlaygroundActivity = (() => {
         return words.join(' ');
     }
 
+    /**
+     * `PrivateBeats`, from the window in the browser and the module system under jest.
+     *
+     * Reading only the global silently produced a null plan wherever boot order had not put it
+     * there yet — and a null plan is not an error anybody sees, it is an evening that quietly
+     * falls back to the preset's single strings. Worth one guarded require.
+     */
+    function privateBeats(win) {
+        const w = win || globalObject();
+        if (w && w.NEXUS_PRIVATE_BEATS) return w.NEXUS_PRIVATE_BEATS;
+        try {
+            // eslint-disable-next-line global-require
+            return typeof require === 'function' ? require('../PrivateBeats.js') : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
     function currentScene(win) {
         const d = win && win.NEXUS_BD;
         const scene = d && d.blackboard && d.blackboard.scene;
@@ -1005,49 +1023,95 @@ const PlaygroundActivity = (() => {
             this.startedAt = null;
             this._adultMaxDescriptor = null;
             /**
-             * Private used to go straight from "pick a preset" to a running session, and every
-             * piece of asynchronous work — planning her lines, searching for a track — happened
-             * *after* `Begin`, invisibly, while she had already started talking. Playground had
-             * solved the same problem long before: prepare everything, show what you are doing,
-             * then let the person press Start on something that is actually ready.
+             * Two screens for the person, four states for the machine.
              *
-             * So Private now has the same four states. `configure` is the screen that was
-             * already there; the rest are new.
+             * The first pass at this exposed every internal state as a screen — configure,
+             * preparing with four ticking rows, ready, then Begin — which turned starting a
+             * private moment into filling in a form and watching a progress bar. Somebody who
+             * has just decided they want this is not in the mood to be administered.
+             *
+             * So `mood` and `atmosphere` are the only states anybody sees. `starting` exists
+             * for the rare case where the work is genuinely not done yet, and `playing` is the
+             * session. Preparation happens underneath all of it, beginning the moment a mood is
+             * chosen, and the person is never shown a screen whose only content is that the app
+             * is busy.
              */
-            this.sessionState = 'configure';
+            this.sessionState = 'mood';
             this.prepareInput = null;
             this.soundtrackChoice = 'choose';
             /** The ambience scene the evening will use, or `null` for "wherever we are". */
             this.sceneChoice = null;
-            this.prepareProgress = new Set();
             this.preparedPlan = null;
             this.preparedTrack = null;
             this.prepareError = '';
+            /** Resolves when the background work has settled; see `prewarm`. */
+            this.prepared = null;
             this._prepareToken = 0;
             this._panel = null;
+            this._showAllScenes = false;
         }
         get name() {
             return 'Private';
         }
 
-        /** Scenes the evening can be set in, from the catalogue rather than a hardcoded list. */
+        /**
+         * Scenes the evening can be set in — each one once.
+         *
+         * `SceneCatalog.list()` concatenates the scenes of every registered source in order, so
+         * a scene the built-ins and an imported pack both carry comes back twice. Rendered as a
+         * radio per row that produced a setup screen listing Ocean, Meditation Garden and
+         * Coastal Terrace two and three times over, which is what it looks like when a picker
+         * trusts a catalogue to be a set. First source wins, because SOURCE_ORDER puts the
+         * built-ins first and a duplicate is the same scene, not a better one.
+         */
         scenes() {
             const win = globalObject();
             const catalog = win && win.NEXUS_SCENE_CATALOG;
             if (!catalog || typeof catalog.list !== 'function') return [];
             try {
-                return catalog
-                    .list()
-                    .map((entry) => ({
-                        id: cleanText(entry && entry.id, 80),
-                        label: cleanText(entry && entry.label, 80),
-                    }))
-                    .filter((entry) => entry.id && entry.label);
+                const seen = new Set();
+                const out = [];
+                for (const entry of catalog.list()) {
+                    const id = cleanText(entry && entry.id, 80);
+                    const label = cleanText(entry && entry.label, 80);
+                    if (!id || !label || seen.has(id)) continue;
+                    seen.add(id);
+                    out.push({ id, label, thumbnail: cleanText(entry && (entry.src || entry.thumbnail), 300) });
+                }
+                return out;
             } catch (_) {
                 // No catalogue is a Private session in whatever room is already showing, which
                 // is exactly how it behaved before there was a choice.
                 return [];
             }
+        }
+
+        /**
+         * The few scenes worth showing without a `More`.
+         *
+         * Three, because a grid of ten thumbnails is the long list this redesign exists to get
+         * rid of. The remembered scene floats to the front so a returning person sees the room
+         * they liked rather than hunting for it.
+         */
+        recommendedScenes(limit = 3) {
+            const all = this.scenes();
+            if (this._showAllScenes) return all;
+            const win = globalObject();
+            const store = win && win.NEXUS_PRIVATE_MEMORY;
+            let remembered = null;
+            try {
+                remembered = store && typeof store.read === 'function' ? store.read().scene : null;
+            } catch (_) {
+                remembered = null;
+            }
+            const first = all.filter((entry) => entry.id === remembered);
+            const rest = all.filter((entry) => entry.id !== remembered);
+            return [...first, ...rest].slice(0, Math.max(1, limit));
+        }
+
+        showAllScenes() {
+            this._showAllScenes = true;
+            this._repaint();
         }
 
         /** The panel calls this so the activity knows where to ask for a repaint. */
@@ -1061,81 +1125,93 @@ const PlaygroundActivity = (() => {
             if (panel && panel.view === 'setup' && typeof panel._paint === 'function') panel._paint();
         }
 
-        /**
-         * Do the waiting before the session rather than during it.
-         *
-         * Every step here already existed; all that changes is *when*. Planning her beats and
-         * finding a track used to run after `start()` — so the first thing a person heard was
-         * a written fallback line while the real plan was still in flight, and the soundtrack
-         * appeared some seconds into an evening that had already begun.
-         *
-         * Never rejects. A step that cannot be done is a step that is skipped, and the session
-         * starts anyway with whatever came back — which for the plan is always something, per
-         * `PrivateBeats.plan`.
-         */
-        async prepare({ input = {}, soundtrack = 'choose', scene = null } = {}) {
-            const token = ++this._prepareToken;
-            const gate = this.availability();
-            if (!gate || gate.ok === false) {
-                this.prepareError = (gate && gate.why) || 'Private is unavailable';
-                this.sessionState = 'error';
-                this._repaint();
-                return { ok: false, why: this.prepareError };
+        /** What a returning person can start again in one tap, or `null` for a newcomer. */
+        lastSetup() {
+            const win = globalObject();
+            const store = win && win.NEXUS_PRIVATE_MEMORY;
+            try {
+                const kept = store && typeof store.read === 'function' ? store.read() : null;
+                if (!kept || !kept.sessions || !kept.preset) return null;
+                const scene = kept.scene ? this.scenes().find((entry) => entry.id === kept.scene) : null;
+                const preset = INTIMATE_PRESETS.find((candidate) => candidate.id === kept.preset);
+                if (!preset) return null;
+                return {
+                    preset: { ...preset },
+                    scene: scene ? scene.id : null,
+                    sceneLabel: scene ? scene.label : null,
+                    soundtrack: kept.soundtrack || 'choose',
+                };
+            } catch (_) {
+                return null;
             }
-            this.prepareInput = { ...input };
-            this.soundtrackChoice = ['choose', 'current', 'none'].includes(soundtrack) ? soundtrack : 'choose';
-            this.sceneChoice = cleanText(scene, 80) || null;
-            this.prepareProgress = new Set();
-            this.preparedPlan = null;
-            this.preparedTrack = null;
-            this.prepareError = '';
-            this.sessionState = 'preparing';
-            this._repaint();
+        }
 
+        /** Step 1 chose a mood: remember it, start the work, and move on. */
+        chooseMood(input) {
+            const preset = INTIMATE_PRESETS.find((candidate) => candidate.id === String((input && input.id) || ''));
+            if (!preset) return false;
+            this.prepareInput = { ...preset };
+            this.sessionState = 'atmosphere';
+            this.prewarm();
+            this._repaint();
+            return true;
+        }
+
+        /** Step 2 changed something the background work depends on. */
+        setAtmosphere({ scene, soundtrack } = {}) {
+            if (scene !== undefined) this.sceneChoice = cleanText(scene, 80) || null;
+            if (soundtrack !== undefined) {
+                this.soundtrackChoice = ['choose', 'current', 'none'].includes(soundtrack) ? soundtrack : 'choose';
+            }
+            this.prewarm();
+            this._repaint();
+            return true;
+        }
+
+        /**
+         * Start the waiting before anybody is waiting.
+         *
+         * Called the moment a mood is picked and again whenever step 2 changes an input, so by
+         * the time somebody presses Begin the answer is usually already in hand. Nothing here
+         * is awaited by the UI: `prepared` is a promise the Begin button races against a
+         * budget, not a screen.
+         *
+         * The plan and the soundtrack are looked up **concurrently**. Serially the wait was
+         * their sum; this makes it the larger of the two, and the two have never depended on
+         * each other.
+         */
+        prewarm() {
+            const token = ++this._prepareToken;
+            const input = this.prepareInput;
+            if (!input) return null;
             const win = globalObject();
             const capability = win && win.NEXUS_TOGETHER_CAPABILITY;
             const presets = (capability && capability.PRIVATE_PRESETS) || {};
             const preset = presets[String(input.id || '')] || presets.affectionate || null;
-            const step = (id) => {
-                if (token !== this._prepareToken) return;
-                this.prepareProgress.add(id);
-                this._repaint();
-            };
-            const live = () => token === this._prepareToken;
-
             const place = this.sceneChoice
                 ? (this.scenes().find((entry) => entry.id === this.sceneChoice) || {}).label || currentScene(win).label
                 : currentScene(win).label;
-            step('scene');
+            const wantsMusic = this.soundtrackChoice === 'choose' && preset && preset.music;
 
-            const beats = win && win.NEXUS_PRIVATE_BEATS;
-            if (beats && typeof beats.plan === 'function') {
-                try {
-                    const plan = await beats.plan({ preset, scene: place, win });
-                    if (!live()) return { ok: false, why: 'cancelled' };
-                    this.preparedPlan = plan || null;
-                } catch (_) {
-                    this.preparedPlan = null;
-                }
-            }
-            step('words');
-            step('pace');
+            const beats = privateBeats(win);
+            const planning =
+                beats && typeof beats.plan === 'function'
+                    ? beats.plan({ preset, scene: place, win, sceneId: this.sceneChoice })
+                    : Promise.resolve(null);
+            const music = wantsMusic ? this._findTrack(preset.music, win) : Promise.resolve(null);
 
-            if (this.soundtrackChoice === 'choose' && preset && preset.music) {
-                this.preparedTrack = await this._findTrack(preset.music, win);
-                if (!live()) return { ok: false, why: 'cancelled' };
-            }
-            step('music');
-
-            if (!live()) return { ok: false, why: 'cancelled' };
-            this.sessionState = 'ready';
-            this._repaint();
-            busEmit(this.bus, 'private:prepared', {
-                preset: input.id,
-                scene: this.sceneChoice,
-                soundtrack: Boolean(this.preparedTrack),
+            this.prepared = Promise.allSettled([planning, music]).then(([plan, track]) => {
+                if (token !== this._prepareToken) return { ok: false, why: 'superseded' };
+                this.preparedPlan = plan.status === 'fulfilled' ? plan.value : null;
+                this.preparedTrack = track.status === 'fulfilled' ? track.value : null;
+                busEmit(this.bus, 'private:prepared', {
+                    preset: input.id,
+                    scene: this.sceneChoice,
+                    soundtrack: Boolean(this.preparedTrack),
+                });
+                return { ok: true };
             });
-            return { ok: true, plan: this.preparedPlan };
+            return this.prepared;
         }
 
         /** The same discovery path the session used to run inline, moved forward in time. */
@@ -1153,13 +1229,15 @@ const PlaygroundActivity = (() => {
             }
         }
 
-        cancelPrepare() {
+        /** Back to step 1, keeping nothing: a plan for last night's mood is worse than none. */
+        editSetup() {
             this._prepareToken += 1;
-            this.prepareProgress = new Set();
             this.preparedPlan = null;
             this.preparedTrack = null;
+            this.prepared = null;
             this.prepareError = '';
-            this.sessionState = 'configure';
+            this.sessionState = 'mood';
+            this._showAllScenes = false;
             this._repaint();
             return true;
         }
@@ -1208,10 +1286,12 @@ const PlaygroundActivity = (() => {
             this.startedAt = null;
             // Back to the first screen, and nothing prepared carried into the next evening: a
             // plan written for the mood somebody was in an hour ago is worse than a fresh one.
-            this.sessionState = 'configure';
+            this.sessionState = 'mood';
+            this.prepareInput = null;
             this.preparedPlan = null;
             this.preparedTrack = null;
-            this.prepareProgress = new Set();
+            this.prepared = null;
+            this._showAllScenes = false;
             if (this.adult && this.adult.active && typeof this.adult.exit === 'function') this.adult.exit('hard');
             this._restoreCeiling();
             if (wasActive) busEmit(this.bus, 'intimate:stop', { preset, why });
