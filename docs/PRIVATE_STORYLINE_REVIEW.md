@@ -1,5 +1,10 @@
 # Private mode: is the storyline good enough?
 
+> **Status: the five findings below have been fixed.** This document is kept as the record of
+> what was wrong and why, because the fixes only make sense against it. §7 at the end says what
+> shipped, what was deliberately not done, and what is still open.
+
+
 An honest review of what a Private session actually contains, measured against what it needs
 to be for someone to want a second one.
 
@@ -234,3 +239,85 @@ by reusing a pattern the repo already ships; recommendation 6 fixes *remember* w
 up the privacy promise.
 
 Do those three and the count of presets stops mattering.
+
+
+---
+
+## 7. What shipped
+
+Recommendations 1, 2, 3, 4, 6 and 7 are implemented. Recommendation 5 was **deliberately not
+done** — see below.
+
+### `src/features/together/PrivateBeats.js` — what she says
+
+Two producers of one plan shape. `plan()` asks the model and validates the reply;
+`fallbackPlan()` builds one from written pools. The fallback is the floor, not a degraded mode:
+most installs of this app point at a local model or at nothing, so variety conditional on a
+cloud provider is no variety. The pools give **24 distinct playthroughs per preset** with no
+LLM at all — three openings × two mood lines × two middles × two closings — against six for the
+whole feature before.
+
+`validatePlan` is a trust boundary rather than a shape check. Every field is length-capped and
+control-stripped, and a plan is refused whole — never patched — if any field carries a URL,
+markup, talk of the machinery, or the register the prompt suffix already forbids: isolation,
+secrecy, obligation. Half a generated plan and half a written one is a voice that changes
+register mid-session, which is worse than either.
+
+### `src/features/together/PrivateMemory.js` — what it remembers
+
+Four enums and two numbers: last preset, last mood, last soundtrack choice, completed-session
+count, timestamp. There is **no field for content**, and `write()` drops anything not in the
+schema, so a later caller cannot start storing conversation through a door this file left open.
+That is the difference between "we do not store it" and "we cannot". Device-local, written only
+when a session *completes*, removable with `forget()`.
+
+The completion card's promise is untouched: nothing reaches Playground Histories.
+
+### Changes in `TogetherCapability.js`
+
+| finding | fix |
+| --- | --- |
+| §2.1 split voice | `_speak` now calls `chatHistory.addMessage('assistant', line)` — the transcript the model reads. Not `NEXUS_YT_ASK.say`, which would also draw a second bubble next to the card. A page whose `ChatManager` owns its own history is left alone, or every line would double. |
+| §2.2 inert branch | `this.mood` is stored, read by `_moodLine` for the 210 s and 285 s beats, and added to `privateSystemPromptSuffix` — so the model answering in chat is in the same mood she is. |
+| §2.3 silent escalation | Accepting a check-in speaks `plan.levelLines[level]` instead of repainting one word. |
+| §2.4 dead Affectionate beat | A preset at its ceiling gets `_offerTextureChoice` — quieter or closer. It is texture, not escalation: it grants nothing, so it needs no consent step and never calls `checkIn`. |
+| §2.5 no continuity | A completed session records its four enums; the setup screen pre-selects the remembered preset. Pre-selected, never auto-started — `Begin private moment` is still a press. |
+| §5.7 clock-driven ending | `_complete` defers while the user has taken a turn in the last 30 s, bounded by `GRACE_MS` (3 min). A silent session still ends on time; a live one is not hung up on. |
+
+Planning is deliberately **not awaited**. `start()` speaks the written opening immediately and
+`_planAhead()` upgrades the later beats if a generated plan arrives and validates. A silent card
+in front of someone who just pressed *Begin private moment* is the worst possible place for a
+wait, and a plan that lands after the session ended is discarded rather than swapped in under a
+completion card.
+
+### Recommendation 5 was not done, on purpose
+
+"Let escalation change something you can see" meant emitting a motion intent on a level change.
+It should not be built. `adult.profile` declares `proactiveNsfw: false` as *"an invariant with
+no `true` branch anywhere"*, and `UtilityRanker.js:55` independently refuses an nsfw clip whose
+intent did not come from the user. Making Private emit one would be working around a rule the
+codebase states explicitly and enforces in two places. The escalation lands in words instead,
+which is `levelLines`.
+
+### Still open
+
+- **`AudioFocusManager` cannot duck a YouTube iframe.** `duck()` walks `audio,video` elements
+  and clamps `.volume`; a cross-origin iframe is neither. The `setVolume()` added to the
+  playback handle in T10 is the missing piece. At a soundtrack volume of 15 it is much less
+  pressing.
+- **Beats advance on the clock, deferred by conversation.** Recommendation 7 is half done: the
+  ending waits for a talker, but the 45 s / 120 s / 210 s beats are still wall-clock with a
+  yield, not turn-driven.
+- **One LLM call per session.** The beats are planned once. A session that reacted to what was
+  actually said would need a second seam, and that is a larger design question than this change.
+
+### Coverage
+
+| file | tests |
+| --- | --- |
+| `tests/behavior/private-beats.test.js` | 19 — pool depth, mood divergence, the written lines clearing their own validator, and six refusal cases |
+| `tests/behavior/private-memory.test.js` | 8 — what it keeps, and that unknown fields and out-of-enum values cannot survive a write |
+| `tests/behavior/private-session-depth.test.js` | 11 — transcript, mood consequence, level lines, texture choice, deferred ending, continuity, and that the model path never delays or breaks a session |
+
+160 suites / 4144 tests pass; lint clean; the 11 `format:check` failures are the same
+pre-existing ones, none in files touched here.

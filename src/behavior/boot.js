@@ -103,6 +103,10 @@
         'src/features/together/MediaTitle.js',
         'src/features/together/ui/SoundtrackStrip.js',
         'src/features/together/ui/PrivateConversationView.js',
+        // What she says during a Private session, and the four enums it is allowed to
+        // remember between them. Before TogetherCapability, which runs both.
+        'src/features/together/PrivateBeats.js',
+        'src/features/together/PrivateMemory.js',
         'src/features/together/TogetherCapability.js',
         // T3/T5. The one function that finds and plays, and the parser that lets her ask for
         // it. After the publisher's dependencies, before the launcher.

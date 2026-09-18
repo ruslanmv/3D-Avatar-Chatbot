@@ -809,13 +809,24 @@ const TogetherPanel = (() => {
             begin.disabled = true;
             begin.textContent = 'Begin private moment →';
             const presets = contract.inputs();
+            // What they chose last time, so a returning user is one tap from the evening they
+            // already liked instead of re-making the same decision every time. Four enums in
+            // localStorage; see `PrivateMemory` for what is deliberately not in there.
+            const remembered = (() => {
+                const store = this.win && this.win.NEXUS_PRIVATE_MEMORY;
+                try {
+                    return store && typeof store.preferredPreset === 'function' ? store.preferredPreset() : null;
+                } catch (_) {
+                    return null;
+                }
+            })();
             for (const input of presets) {
                 const option = doc.createElement('button');
                 option.type = 'button';
                 option.className = 'nexus-private-preset';
                 option.innerHTML = `<strong>${input.id === 'sensual' ? '✧' : '♡'} ${input.label}</strong><span></span>`;
                 option.querySelector('span').textContent = descriptions[input.id] || input.note || '';
-                option.addEventListener('click', () => {
+                const choose = () => {
                     selected = input;
                     grid.querySelectorAll('.nexus-private-preset').forEach((node) =>
                         node.classList.toggle('is-selected', node === option)
@@ -823,8 +834,11 @@ const TogetherPanel = (() => {
                     begin.disabled = false;
                     ready.hidden = false;
                     ready.textContent = `${input.label} · ${place}\nStarts gentle · about 5 minutes\nYou remain in control of the pace.`;
-                });
+                };
+                option.addEventListener('click', choose);
                 grid.appendChild(option);
+                // Pre-selected, never auto-started: `Begin private moment` is still a press.
+                if (remembered && input.id === remembered) choose();
             }
             // A locked gate returns no presets, and this screen renders none of the generic
             // setup view's copy — so `Private is not enabled yet` never reached the person who

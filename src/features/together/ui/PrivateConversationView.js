@@ -110,8 +110,11 @@ const PrivateConversationView = (() => {
                 this.card.appendChild(list);
             }
         }
-        showMoodChoice(options) {
-            this.showMessage('What kind of mood should we keep?', options);
+        showMoodChoice(options, prompt) {
+            // The prompt is an argument now because a planned session writes its own, and a
+            // generated evening that asks its one question in a stock sentence gives itself
+            // away at exactly the wrong moment.
+            this.showMessage(prompt || 'What kind of mood should we keep?', options);
         }
         showConsentCheckIn(options) {
             this.showMessage('Would you like to keep this sweet, or make it a little more intense?', options);
