@@ -285,7 +285,15 @@
             const api = beats();
             this.plan = api ? api.fallbackPlan(this.preset, { mood: this._rememberedMood() }) : null;
             this._planAhead();
-            this._speak(`${this._line('opening')} ${currentSceneLabel(this.win)} feels like a good place for it.`);
+            // The scene sentence only when there is actually a scene. With no ambience chosen
+            // `currentSceneLabel` returns the literal words "this place", and the opening then
+            // ended "…this place feels like a good place for it", which is what a placeholder
+            // sounds like when it reaches production.
+            const place = currentSceneLabel(this.win);
+            const named = place && place !== 'this place';
+            this._speak(
+                named ? `${this._line('opening')} ${place} feels like a good place for it.` : this._line('opening')
+            );
             this._startSoundtrack();
             this._schedule(45000, () => this._showMoodChoice());
             this._schedule(120000, () => this._offerCheckIn());
@@ -353,10 +361,21 @@
             this._unsubscribes.push(
                 this.bus.on('adult:level', () => this._paintLevel()),
                 this.bus.on('adult:exit', (event) => {
-                    if (event && event.kind === 'soft') {
-                        this._paintLevel();
-                        this._showMessage('Keeping it cozy. We can stay right here.', []);
-                    }
+                    if (!event || event.kind !== 'soft') return;
+                    this._paintLevel();
+                    // `Keep it cozy` from level 1 is `from: 1, to: 1` — the pace word already
+                    // said Warm and still says Warm, so the old single line claimed something
+                    // had been turned down when nothing had, and read as a dead button.
+                    // Saying what is actually true costs one branch.
+                    const eased = Number(event.from) > Number(event.to);
+                    this._speak(
+                        eased
+                            ? 'Keeping it cozy. Back to gentle, and we can stay right here.'
+                            : 'We are already as gentle as this gets. I am happy right here.',
+                        // An interjection, so a question that was on screen comes back under
+                        // it rather than being destroyed by a footer button.
+                        { interjection: true, intent: 'breathe' }
+                    );
                 })
             );
         }
@@ -480,8 +499,35 @@
             if (this.view) this.view.setPace(words);
         }
 
-        _showMessage(text, actions) {
-            if (this.view) this.view.showMessage(text, actions);
+        _showMessage(text, actions, options) {
+            if (this.view) this.view.showMessage(text, actions, options);
+        }
+
+        /**
+         * Ask for a movement, the way every other Together activity does.
+         *
+         * `bus.emit('intent', …)` is the seam — `boot.js` forwards it to
+         * `director.handleIntent`, and Assistant, Coach, Focus, Music, Cohost, Scene Journey
+         * and Screen Insight all use it. Private was the only activity that never emitted
+         * anything at all, which is the whole of why the avatar stands still through a session
+         * and the card reads as unresponsive.
+         *
+         * The names here are deliberately ordinary — `breathe`, `nod_along` — and never the
+         * adult ceiling's `flirt`/`tease`/`sensualSway`. Those map to nsfw-tagged clips, and
+         * `UtilityRanker` refuses an nsfw clip whose intent did not come from the user while
+         * `proactiveNsfw: false` says she may never initiate one. So this asks for presence,
+         * not performance, and an install whose registry has no clip for the name simply
+         * plays nothing — the same fail-soft every other caller gets.
+         */
+        _intent(name, intensity = 0.3) {
+            if (!this.bus || typeof this.bus.emit !== 'function' || this._stopped) return false;
+            try {
+                this.bus.emit('intent', { name, intensity, source: 'private' });
+                return true;
+            } catch (_) {
+                // A movement that will not play is never a reason to lose the line it went with.
+                return false;
+            }
         }
 
         /**
@@ -667,11 +713,14 @@
             }
         }
 
-        _speak(text) {
+        _speak(text, { interjection = false, intent = 'nod_along' } = {}) {
             const line = cleanText(text, 700);
             if (!line) return;
-            this._showMessage(line, []);
+            this._showMessage(line, [], { interjection });
             this._remember(line);
+            // Something to look at while she talks. Gentle and non-adult by design — see
+            // `_intent` for why the ceiling's own intents are not used here.
+            if (intent) this._intent(intent, 0.3);
             if (this.audioFocus && typeof this.audioFocus.duck === 'function') this.audioFocus.duck();
             try {
                 if (typeof this.say === 'function') {
@@ -763,8 +812,21 @@
             this.view = null;
         }
 
+        /**
+         * Tell the bus, and never let the bus stop the session.
+         *
+         * This was unguarded, and `beforeActivityStop` emits — so a bus that threw took
+         * teardown down with it, leaving the adult mode entered, the ceiling installed and the
+         * blackboard unrestored. A telemetry line is not worth a session that cannot be
+         * stopped, and exit is exactly where fail-soft matters most.
+         */
         _emit(name, payload) {
-            if (this.bus && typeof this.bus.emit === 'function') this.bus.emit(name, payload);
+            if (!this.bus || typeof this.bus.emit !== 'function') return;
+            try {
+                this.bus.emit(name, payload);
+            } catch (_) {
+                // Nobody heard it. Everything else still happens.
+            }
         }
     }
 

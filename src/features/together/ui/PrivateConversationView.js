@@ -40,7 +40,7 @@ const PrivateConversationView = (() => {
     const CSS = `
 #${ROW_ID}{display:block;width:100%;margin:10px 0 14px;box-sizing:border-box;color:inherit}
 #${ROW_ID} *{box-sizing:border-box}.nexus-private-shell{overflow:hidden;border:1px solid rgba(244,128,166,.4);border-radius:16px;background:linear-gradient(145deg,rgba(39,15,36,.9),rgba(22,13,28,.82));box-shadow:0 16px 50px rgba(23,5,21,.3);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
-.nexus-private-heading{padding:15px 17px 11px;border-bottom:1px solid rgba(255,255,255,.08)}.nexus-private-kicker{color:#f49aba;font-size:.72rem;font-weight:750;letter-spacing:.09em}.nexus-private-heading-title{font-size:1.08rem;font-weight:750;margin:5px 0 2px}.nexus-private-place{font-size:.8rem;opacity:.68}.nexus-private-card{padding:15px 17px}.nexus-private-copy{font-size:.98rem;line-height:1.55;white-space:pre-wrap;text-wrap:pretty}.nexus-private-actions{display:grid;gap:8px;margin-top:13px}.nexus-private-btn{border:1px solid rgba(244,128,166,.34);background:rgba(244,128,166,.09);color:inherit;border-radius:11px;padding:10px 12px;text-align:left;font:inherit;font-size:.82rem;cursor:pointer}.nexus-private-btn:hover,.nexus-private-btn:focus-visible{background:rgba(244,128,166,.18);outline:none}.nexus-private-bar{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08)}.nexus-private-level{font-size:.76rem;opacity:.76;flex:1}.nexus-private-bar .nexus-private-btn{padding:7px 10px}.nexus-private-soundtrack{margin:0 14px 12px;font-size:.78rem}.nexus-private-soundtrack-strip{display:flex;align-items:flex-start;gap:10px;justify-content:space-between;padding:9px 12px;border:1px solid rgba(244,128,166,.2);border-radius:11px;background:rgba(244,128,166,.06)}.nexus-private-soundtrack-copy{min-width:0;flex:1}.nexus-private-soundtrack-kicker{font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;opacity:.56;margin-bottom:2px}.nexus-private-soundtrack-title{font-size:.8rem;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nexus-private-soundtrack-creator{font-size:.7rem;line-height:1.3;opacity:.58;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}.nexus-private-soundtrack-toggle{border:1px solid rgba(244,128,166,.28);background:rgba(244,128,166,.1);color:inherit;border-radius:9px;padding:6px 8px;font:inherit;font-size:.72rem;cursor:pointer;flex:0 0 auto}.nexus-private-soundtrack-toggle:hover,.nexus-private-soundtrack-toggle:focus-visible{background:rgba(244,128,166,.2);outline:none}.nexus-private-soundtrack-player{display:none;width:min(280px,100%);margin-top:9px}.nexus-private-soundtrack-player.is-open{display:block}.nexus-private-soundtrack-player .nexus-yt-card{width:100%;max-width:280px;margin:0}.nexus-private-soundtrack-player .nexus-yt-meta{font-size:.72rem}.nexus-private-complete{font-size:1rem;font-weight:750;margin-bottom:6px}.nexus-private-note{font-size:.84rem;line-height:1.5;opacity:.74}.is-complete .nexus-private-bar{display:none}
+.nexus-private-heading{padding:15px 17px 11px;border-bottom:1px solid rgba(255,255,255,.08)}.nexus-private-kicker{color:#f49aba;font-size:.72rem;font-weight:750;letter-spacing:.09em}.nexus-private-heading-title{font-size:1.08rem;font-weight:750;margin:5px 0 2px}.nexus-private-place{font-size:.8rem;opacity:.68}.nexus-private-card{padding:15px 17px}.nexus-private-copy{font-size:.98rem;line-height:1.55;white-space:pre-wrap;text-wrap:pretty}.nexus-private-pending{margin-top:12px;padding-top:11px;border-top:1px solid rgba(255,255,255,.08);opacity:.85}.nexus-private-actions{display:grid;gap:8px;margin-top:13px}.nexus-private-btn{border:1px solid rgba(244,128,166,.34);background:rgba(244,128,166,.09);color:inherit;border-radius:11px;padding:10px 12px;text-align:left;font:inherit;font-size:.82rem;cursor:pointer}.nexus-private-btn:hover,.nexus-private-btn:focus-visible{background:rgba(244,128,166,.18);outline:none}.nexus-private-bar{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08)}.nexus-private-level{font-size:.76rem;opacity:.76;flex:1}.nexus-private-bar .nexus-private-btn{padding:7px 10px}.nexus-private-soundtrack{margin:0 14px 12px;font-size:.78rem}.nexus-private-soundtrack-strip{display:flex;align-items:flex-start;gap:10px;justify-content:space-between;padding:9px 12px;border:1px solid rgba(244,128,166,.2);border-radius:11px;background:rgba(244,128,166,.06)}.nexus-private-soundtrack-copy{min-width:0;flex:1}.nexus-private-soundtrack-kicker{font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;opacity:.56;margin-bottom:2px}.nexus-private-soundtrack-title{font-size:.8rem;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nexus-private-soundtrack-creator{font-size:.7rem;line-height:1.3;opacity:.58;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}.nexus-private-soundtrack-toggle{border:1px solid rgba(244,128,166,.28);background:rgba(244,128,166,.1);color:inherit;border-radius:9px;padding:6px 8px;font:inherit;font-size:.72rem;cursor:pointer;flex:0 0 auto}.nexus-private-soundtrack-toggle:hover,.nexus-private-soundtrack-toggle:focus-visible{background:rgba(244,128,166,.2);outline:none}.nexus-private-soundtrack-player{display:none;width:min(280px,100%);margin-top:9px}.nexus-private-soundtrack-player.is-open{display:block}.nexus-private-soundtrack-player .nexus-yt-card{width:100%;max-width:280px;margin:0}.nexus-private-soundtrack-player .nexus-yt-meta{font-size:.72rem}.nexus-private-complete{font-size:1rem;font-weight:750;margin-bottom:6px}.nexus-private-note{font-size:.84rem;line-height:1.5;opacity:.74}.is-complete .nexus-private-bar{display:none}
 @media(max-width:560px){#${ROW_ID}{margin:8px 0 12px}.nexus-private-heading,.nexus-private-card{padding:13px 14px}.nexus-private-copy{font-size:.94rem}.nexus-private-bar{flex-wrap:wrap}.nexus-private-soundtrack{margin:0 12px 10px}.nexus-private-soundtrack-player{width:100%}.nexus-private-soundtrack-player .nexus-yt-card{max-width:100%}}
 `;
 
@@ -62,6 +62,8 @@ const PrivateConversationView = (() => {
             this.level = null;
             this._composer = null;
             this._hostObserver = null;
+            /** A question with buttons that an interjection must give back. See showMessage. */
+            this._pending = null;
         }
 
         mount({ preset, scene } = {}) {
@@ -96,8 +98,26 @@ const PrivateConversationView = (() => {
         showStarting() {
             this.showMessage('Starting gently. You remain in control of the pace.');
         }
-        showMessage(text, actions = []) {
+
+        /**
+         * Say something, and — when it is an interjection — give back the question it landed on.
+         *
+         * The card holds one message at a time, so every `showMessage` wipes what was there.
+         * That was fine while only the scheduled beats wrote to it, and became a real defect
+         * the moment a footer button could write to it too: pressing **Keep it cozy** while
+         * *"What kind of mood should we keep?"* was on screen replaced the question and its two
+         * buttons with one acknowledgement. `_showMoodChoice` is a one-shot `setTimeout`, so the
+         * question was never re-offered — the user lost that beat permanently and the rest of
+         * the session silently ran on the default mood. From the outside it reads as the button
+         * having broken the card, which is very close to what it did.
+         *
+         * So a message with its own actions is remembered as *pending*, and an interjection —
+         * a message with no actions of its own — restores it underneath. A scheduled beat
+         * clears it, because a beat is the session moving on rather than talking over itself.
+         */
+        showMessage(text, actions = [], { interjection = false } = {}) {
             if (!this.card) return;
+            const pending = this._pending;
             this.card.textContent = '';
             const copy = this.doc.createElement('div');
             copy.className = 'nexus-private-copy';
@@ -108,7 +128,25 @@ const PrivateConversationView = (() => {
                 list.className = 'nexus-private-actions';
                 actions.forEach((action) => list.appendChild(this._button(action.label, action.id, action.run)));
                 this.card.appendChild(list);
+                this._pending = { text: String(text || ''), actions };
+                return;
             }
+            if (interjection && pending) {
+                // The question again, under the answer to the button they just pressed.
+                const back = this.doc.createElement('div');
+                back.className = 'nexus-private-copy nexus-private-pending';
+                back.textContent = pending.text;
+                this.card.appendChild(back);
+                const list = this.doc.createElement('div');
+                list.className = 'nexus-private-actions';
+                pending.actions.forEach((action) =>
+                    list.appendChild(this._button(action.label, action.id, action.run))
+                );
+                this.card.appendChild(list);
+                this._pending = pending;
+                return;
+            }
+            this._pending = null;
         }
         showMoodChoice(options, prompt) {
             // The prompt is an argument now because a planned session writes its own, and a
@@ -202,6 +240,7 @@ const PrivateConversationView = (() => {
             this._unbindComposer();
             const old = this.doc && this.doc.getElementById(ROW_ID);
             if (old) old.remove();
+            this._pending = null;
             this.row = this.card = this.level = null;
         }
         _ensureConversationVisible() {
