@@ -92,6 +92,14 @@ const BehaviorEventBus = (() => {
         'private:mood',
         'private:texture',
         'private:plan-ready',
+        // The same oversight twice more: `private:intensity` (P12) and `private:choices` (P13)
+        // were added with the features and not with the vocabulary, so both were dropped exactly
+        // as the four above were. A new `_emit` needs a line here in the same change.
+        'private:intensity',
+        'private:choices',
+        // P17. Which stage of a silence she has reached. Carries no level and never a consent
+        // state — the timer advances liveness, never intimacy. See `PrivateIdleClock`.
+        'private:idle',
     ];
 
     class EventBus {

@@ -86,6 +86,16 @@
          */
         afterSlowDownMs: 45000,
     });
+
+    /**
+     * How long a keystroke keeps the idle clock at zero (P17).
+     *
+     * Somebody mid-sentence is not silent, and the composer fires `keydown` per character rather
+     * than per thought. Eight seconds is long enough to cover the pause between a clause and the
+     * next one and short enough that a line typed and then abandoned does not hold the scene open
+     * for a minute.
+     */
+    const COMPOSING_MS = 8000;
     const PrivateViewApi =
         (global && global.NEXUS_PRIVATE_CONVERSATION_VIEW) ||
         (typeof module !== 'undefined' && module.exports ? require('./ui/PrivateConversationView.js') : null);
@@ -119,6 +129,10 @@
     /** Every visible word Private says that a model did not write (P14). See `PrivateLocale`. */
     function localeModel() {
         return optional('./PrivateLocale.js', 'NEXUS_PRIVATE_LOCALE');
+    }
+    /** The stages of a silence (P17). See `PrivateIdleClock`. */
+    function idleModel() {
+        return optional('./PrivateIdleClock.js', 'NEXUS_PRIVATE_IDLE_CLOCK');
     }
     /** One string, or the key back — same contract the view's `t` has, and same reason. */
     function t(key, params) {
@@ -655,6 +669,15 @@
              * anything this session can see in the text.
              */
             this._pendingQuestion = false;
+            /**
+             * The stages of a silence (P17). Created at `start()`; see `PrivateIdleClock`.
+             *
+             * Null until then, and null again after `stop`, so nothing can tick a clock for a
+             * session nobody is in.
+             */
+            this._idle = null;
+            /** True while an idle stage is speaking, so its own line cannot reset the clock. */
+            this._inIdleStage = false;
             /** How she should be talking, as the conversation has suggested. P15 acts on it. */
             this.style = null;
             /**
@@ -771,6 +794,11 @@
             // These two are what a scripted beat is actually good for: a question about texture when
             // nothing has been said yet, and an observation to fill a lull. Both are droppable,
             // because a conversation that never had a lull has already answered them.
+            // And the clock that notices silence (P17), started from the opening rather than from
+            // the mount: the opening is the last thing that happened, so the first minute of quiet
+            // is measured from her saying it.
+            const idle = idleModel();
+            if (idle) this._idle = idle.create(this.now());
             this._beat(45000, () => this._showMoodChoice());
             this._beat(210000, () => this._speak(this._moodLine('middle')));
             this._beat(330000, () => this._offerTextureChoice());
@@ -789,6 +817,8 @@
             this._stopped = true;
             this.state = 'restoring';
             this._clearTimers();
+            // Nothing can tick a clock for a session nobody is in (P17).
+            this._idle = null;
             this._stopSoundtrack();
             this._restoreScene();
             if (this.audioFocus && typeof this.audioFocus.restore === 'function') this.audioFocus.restore();
@@ -934,6 +964,7 @@
          * subject in the second after her reply vanished.
          */
         _onAssistantFinished(answered = true) {
+            this._noteLive();
             if (answered) this._pendingQuestion = false;
             // Her reply is in, and the turn it belongs to now exists on both the streaming and the
             // non-streaming path. Whatever `sanitizeReply` read out of it goes up here; an empty
@@ -1278,6 +1309,9 @@
 
         /** The footer's transient line, when there is a view to put it in. */
         _status(text) {
+            // A press is activity even when it changed nothing — a refused double-tap is still
+            // somebody in the room. See `_noteLive`.
+            this._noteLive();
             if (this.view && typeof this.view.showTransientStatus === 'function') {
                 return this.view.showTransientStatus(text);
             }
@@ -1530,6 +1564,202 @@
         }
 
         /**
+         * Something is happening, so the silence has not started yet (P17).
+         *
+         * One definition of "live" rather than one per caller. Reached from every route in — a
+         * keystroke, a reply landing, a button answered, a line she says, a control pressed — so a
+         * future path that forgets to call it fails in the safe direction: she notices a quiet that
+         * is not quite as old as it looks, rather than talking over somebody.
+         */
+        _noteLive() {
+            // Except when it is the silence itself talking (P17). A noticing line goes through
+            // `_showMessage` like every other line she says, and without this exemption stage 1
+            // would reset the clock it just advanced: she would notice the quiet every sixty
+            // seconds forever and stages 2 and 3 would be unreachable.
+            if (this._inIdleStage) return false;
+            const api = idleModel();
+            if (api && this._idle) api.active(this._idle, this.now());
+            return true;
+        }
+
+        /**
+         * Is anybody in the middle of something? The whole of P17's risk is in this function.
+         *
+         * Every one of these is somebody mid-turn, and a nudge over the top of any of them is worse
+         * than no nudge at all: she would be interrupting her own voice, or answering a sentence
+         * that is still being typed.
+         *
+         * `companionMode._replyAudioBusy` is asked first and reused rather than re-derived, for the
+         * reason `arAudioBusy` in `main.js` documents: Piper plays through WebAudio and is entirely
+         * invisible to `speechSynthesis.speaking`, so a naive check reads a reply that is still
+         * being spoken as finished. That is the exact bug this would otherwise reintroduce, and it
+         * would be at its worst here — interrupting herself mid-sentence to remark on the silence.
+         */
+        _idleBusy() {
+            if (this._conversationHasFloor()) return true;
+            if (this._replyAudioBusy()) return true;
+            if (this.now() - (this._composingAt || 0) < COMPOSING_MS * (this.timingScale || 1)) return true;
+            if (this._composerHasText()) return true;
+            if (this._voiceIsListening()) return true;
+            // Somebody who has just asked for less has asked for room, not for company. The hold
+            // resets the clock rather than pausing it, so the minute starts when the hold ends.
+            if (this.now() < (this._guidanceHeldUntil || 0)) return true;
+            return false;
+        }
+
+        /** Is her voice still playing? See `_idleBusy` for why this is not `speechSynthesis`. */
+        _replyAudioBusy() {
+            try {
+                const win = this.win;
+                const companion = win && win.companionMode;
+                if (companion && typeof companion._replyAudioBusy === 'function') {
+                    return companion._replyAudioBusy() === true;
+                }
+                if (win && win.SpeechService && win.SpeechService.isSpeaking) return true;
+                const synth = win && win.speechSynthesis;
+                if (synth && (synth.speaking || synth.pending)) return true;
+            } catch (_) {
+                // A busy check that throws must never read as busy forever: that would mute the
+                // idle clock for the rest of the session.
+            }
+            return false;
+        }
+
+        /** A half-written line nobody has sent yet is not a silence. */
+        _composerHasText() {
+            if (!this.doc || typeof this.doc.getElementById !== 'function') return false;
+            const input = this.doc.getElementById('speech-text') || this.doc.getElementById('chatInput');
+            return Boolean(input && String(input.value || '').trim());
+        }
+
+        /** Nor is a live microphone. */
+        _voiceIsListening() {
+            try {
+                const speech = this.win && this.win.SpeechService;
+                return Boolean(speech && speech.isRecognizing);
+            } catch (_) {
+                return false;
+            }
+        }
+
+        /**
+         * Move the clock one step, and do whatever the new stage is.
+         *
+         * Driven from `_tick`, which the beat machinery already runs on a timer and on
+         * `visibilitychange` — the same wall-clock catch-up, pointed at a second question. At most
+         * one stage per tick, so a tab that was hidden for ten minutes comes back to somebody who
+         * noticed rather than to three stages in one second.
+         *
+         * **Nothing reached from here may change the level.** Not the noticing line, not the
+         * buttons, not stage 3. Silence is not a request, and a companion who gets closer because
+         * you stopped typing is the failure this whole design is arranged against. There is no call
+         * to `ConsentFlow.initiated` below this line and there must never be one.
+         */
+        _tickIdle() {
+            const api = idleModel();
+            if (!api || !this._idle || this.state !== 'active') return 0;
+            const stage = api.tick(this._idle, {
+                at: this.now(),
+                busy: this._idleBusy(),
+                scale: this.timingScale || 1,
+            });
+            if (!stage) return 0;
+            this._emit('private:idle', { preset: this.preset.id, stage, level: this._level() });
+            this._inIdleStage = true;
+            try {
+                if (stage === 1) this._noticeQuiet();
+                else if (stage === 2) this._offerIdleChoices();
+                else this._settleIntoAmbience();
+            } catch (error) {
+                // A stage that throws must not take the rest of the evening with it — the same
+                // fail-soft a beat gets, for the same reason.
+                console.warn('[Private] an idle stage failed', error);
+            } finally {
+                // `finally`, so a stage that throws cannot leave the clock permanently unable to
+                // hear the person come back.
+                this._inIdleStage = false;
+            }
+            return stage;
+        }
+
+        /**
+         * Stage 1: one line that notices the quiet, and never a system notice.
+         *
+         * "Are you still there?" is the sentence a support widget says. It is correct, harmless,
+         * and it ends the scene — which is why `PrivateIdleClock.BANNED` refuses it and the pool is
+         * written as story beats that happen to acknowledge a silence.
+         *
+         * When she is owed an answer the line *releases* the question instead of adding a second
+         * one. `PrivateNovelty`'s ignored-question rule already stops the script asking again; this
+         * is the other half of being asked something and saying nothing — the kind response is to
+         * take the question back, not to let it stand there.
+         */
+        _noticeQuiet() {
+            const api = idleModel();
+            if (!api) return false;
+            const owed = this._pendingQuestion || this._hasLiveOffer();
+            const pool = owed ? api.RELEASING : api.NOTICING;
+            const novelty = noveltyModel();
+            for (const candidate of pool) {
+                const line = api.usable(candidate);
+                if (!line) continue;
+                if (novelty && this.novelty && novelty.saidAlready(this.novelty, line)) continue;
+                if (owed) {
+                    // She has withdrawn it, so the offer on screen stops being an offer and the
+                    // ledger stops holding the rest of the script behind an answer nobody owes.
+                    this._withdrawOffers();
+                    this._answeredOffer();
+                }
+                this._speak(line, { intent: 'breathe' });
+                return true;
+            }
+            // Nothing left that has not been said. Silence is the honest answer — a script with
+            // nothing new to offer should be quiet rather than clever.
+            return false;
+        }
+
+        /**
+         * Stage 2: three ways back in, and no model call.
+         *
+         * Somebody who has already said nothing for two minutes is the last person who should be
+         * asked to wait for a provider, so these are local and instant. See `PrivateChoices.idle`
+         * for why `[stay quiet]` is not among them.
+         */
+        _offerIdleChoices() {
+            const api = choicesModel();
+            if (!api || typeof api.idle !== 'function') return false;
+            return this._offerChoices(api.idle(), { source: 'idle' });
+        }
+
+        /**
+         * Stage 3: she stops talking, and stays.
+         *
+         * The point of the last stage is that there is no fourth. A companion who keeps producing
+         * lines into an empty room is a notification, and the person has made it clear they are
+         * not reading. One slow breath and then nothing until they act.
+         */
+        _settleIntoAmbience() {
+            this._intent('breathe', 0.15);
+            return true;
+        }
+
+        /** Is there a question on screen still waiting to be answered? */
+        _hasLiveOffer() {
+            const log = this.view && this.view.log;
+            if (!log || typeof log.querySelector !== 'function') return false;
+            return Boolean(log.querySelector('.nexus-private-actions:not([data-spent])'));
+        }
+
+        /** When the next idle stage could open, in the session's unscaled timebase. */
+        _idleNextIn() {
+            const api = idleModel();
+            if (!api || !this._idle || this.state !== 'active') return null;
+            const scale = this.timingScale || 1;
+            const ms = api.nextIn(this._idle, { at: this.now(), scale, floor: 0 });
+            return ms == null ? null : ms / scale;
+        }
+
+        /**
          * The last thing that happened in the conversation, whoever did it.
          *
          * All three matter and for the same reason: a guided line is an interruption unless
@@ -1624,6 +1854,14 @@
                 }
                 if (this._stopped || this.state === 'complete') return;
             }
+            // The silence clock, last, and only on a tick the script had nothing for (P17). The
+            // authored beats are the better line when one is due — a noticing line is generic where
+            // "what kind of mood should we keep?" is the evening's one real branch — and a beat
+            // that fired has already reset this clock through `_showMessage`, so the minute of
+            // quiet is measured from her most recent line either way. Its own busy predicate, not
+            // the beats': "nobody is mid-turn" and "nothing has happened for a minute" are
+            // different questions, and the beats only ever needed the first.
+            if (!spoke) this._tickIdle();
             this._armBeats();
         }
 
@@ -1642,10 +1880,11 @@
                 this.doc.addEventListener('visibilitychange', onVisible);
                 this._unwatchVisibility = () => this.doc.removeEventListener('visibilitychange', onVisible);
             }
+            if (Number.isFinite(inMs)) return this._schedule(inMs, () => this._tick());
+            const waits = [];
             const pending = this._beats.filter((beat) => !beat.done);
-            if (!pending.length) return null;
             const elapsed = this._elapsed();
-            const next = Math.min(...pending.map((beat) => beat.at));
+            const next = pending.length ? Math.min(...pending.map((beat) => beat.at)) : 0;
             // Never longer than a minute: that is roughly the resolution a background tab
             // gets anyway, and it keeps a stalled session self-healing without a visibility
             // event at all.
@@ -1654,8 +1893,15 @@
             // still waiting — for a quiet moment — and `next - elapsed` is then negative, so
             // without the floor this armed a zero-delay timer that ticked, deferred, and armed
             // another one: a busy loop for as long as somebody kept talking.
-            const wait = Number.isFinite(inMs) ? inMs : Math.max(1000, Math.min(next - elapsed, 60000));
-            return this._schedule(wait, () => this._tick());
+            if (pending.length) waits.push(Math.max(1000, Math.min(next - elapsed, 60000)));
+            // And the silence clock, which outlives the beats (P17). This used to return null the
+            // moment the last beat was done, and with the idle stages hanging off the same tick
+            // that would stop the clock a few minutes into every session — exactly when somebody
+            // going quiet starts to matter.
+            const idleIn = this._idleNextIn();
+            if (idleIn != null) waits.push(Math.max(1000, Math.min(idleIn, 60000)));
+            if (!waits.length) return null;
+            return this._schedule(Math.min(...waits), () => this._tick());
         }
 
         _mount() {
@@ -1705,6 +1951,10 @@
         }
 
         _showMessage(text, actions, options) {
+            // Her own lines count as something happening (P17). Without this the 45-second mood
+            // beat and a 60-second nudge would arrive fifteen seconds apart, which reads as
+            // somebody who cannot leave a pause alone.
+            this._noteLive();
             if (this.view) this.view.showMessage(text, actions, options);
         }
 
@@ -1770,6 +2020,12 @@
         }
 
         _recordOffer(family, line) {
+            // She has just asked something, which is the clearest possible "something happened"
+            // (P17). `_showMoodChoice` draws through `view.showMoodChoice` rather than
+            // `_showMessage`, so without this the one offer that does not pass the usual seam left
+            // the silence clock running — and stage 1 would withdraw a question ten seconds after
+            // she asked it, which reads as her changing her mind about her own sentence.
+            this._noteLive();
             const api = noveltyModel();
             if (!api || !this.novelty) return false;
             return api.use(this.novelty, family, { line: line || '' });
@@ -1798,6 +2054,7 @@
 
         /** A question she asked has been answered, so the next one is allowed. */
         _answeredOffer() {
+            this._noteLive();
             const api = noveltyModel();
             if (api && this.novelty) api.noteAnswered(this.novelty);
             this._pendingQuestion = false;
@@ -2022,6 +2279,7 @@
          */
         _userIsTalking() {
             this._composingAt = this.now();
+            this._noteLive();
             // Something moving while the provider works. The reported session sat through
             // `OllaBridge returned 504; retrying` with a completely static card, which is
             // indistinguishable from a crash. The view hides these again when a reply lands

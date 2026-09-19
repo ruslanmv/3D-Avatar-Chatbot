@@ -602,3 +602,46 @@ would do.
 sequence: P14 + P17. Language coherence and a character who notices silence, with
 the beat system untouched. That is two milestones and it is most of the felt
 difference.
+
+---
+
+## 16. What shipped, and where it differs from the design above
+
+**P14 and P17 are done.** The slice in the paragraph above was taken; P15, P16
+and P18–P23 are not started, and the sections describing them are still the
+reference.
+
+**P14 — language** (`src/features/together/PrivateLocale.js`). As designed, plus
+one defect that was worse than §2.1 records: `AppLanguage._patchLLM` never
+wrapped `sendMessageStream`, which is the path `main.js` takes for OpenAI, Claude
+and Ollama — so three of the five providers received no language instruction at
+all. Only OllaBridge and watsonx spoke the chosen language, because those two are
+excluded from streaming, which is why the setting appeared to work. Defect 2.3
+(`this place` in the header) and the `Starting gently…` opener went with it.
+
+The translation budget landed at tier B: the mechanical surface is translated in
+all ten languages and `PrivateBeats.POOLS` stays English, as §4.3 proposed.
+
+**P17 — idle clock** (`src/features/together/PrivateIdleClock.js`), with three
+differences from §6, all of them consequences of landing it without P15 and P18:
+
+- **Stage 1 speaks a written line, not a generation.** There is no StoryDirector
+  to ask, so `NOTICING` and `RELEASING` are the written floor — the same shape as
+  `PrivateBeats.POOLS`, and they get replaced by the deck when P18 lands. The
+  `BANNED` list is the part worth keeping either way: no "are you still there?",
+  and no question mark at all, because a line that asks something turns a silence
+  into a debt.
+- **§6.4 was not done.** The story timers stay. Removing them is P16, and P16
+  without P18 leaves Private with an opening line and nothing else — the warning
+  two paragraphs up. The beats and the idle clock share `_tick` and the beats win
+  it: an authored line is better than a generic one, and a beat that fires resets
+  the silence clock, so the minute of quiet is measured from her most recent line
+  either way.
+- **The clock is driven from `_tick`**, rather than being its own timer. `_beat`,
+  `_armBeats` and the `visibilitychange` wake-up were already the right machinery
+  pointed at one question; they now answer two.
+
+The busy predicate is as §6.1 specifies, including `companionMode._replyAudioBusy`
+first and by reference. `private-idle-stages.test.js` covers each entry, and the
+rule that §5 calls non-negotiable — the timer advances liveness, never intimacy —
+is pinned there rather than promised in a comment.

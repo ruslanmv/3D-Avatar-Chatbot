@@ -232,6 +232,25 @@
     }
 
     /**
+     * Three ways back in, after a long silence (P17).
+     *
+     * Stage 2 of the idle clock, and the reason it costs nothing: no model call, no round trip, no
+     * waiting — somebody who has already said nothing for two minutes is the last person who should
+     * be asked to wait for a provider. The buttons are the invitation.
+     *
+     * Deliberately *not* `fallback`'s set. `[stay quiet]` is missing because the person is already
+     * quiet and offering it would be the interface being clever at them, and every option here
+     * hands the next move back to her — "ask me something", "choose for us" — so taking one costs a
+     * tap and no sentence. That is the whole ask: the smallest possible thing to do.
+     *
+     * Nothing here asks for more than they have. A silence is not a request, and an idle button
+     * that read "closer" would be a stopwatch putting an escalation in somebody's mouth.
+     */
+    function idle() {
+        return [t('choice.stillHere'), t('choice.askMe'), t('choice.surprise')];
+    }
+
+    /**
      * Is this choice the quiet one?
      *
      * Bracketed, the way a stage cue is in a game's dialogue wheel, because it is the one option
@@ -261,7 +280,7 @@
         ].join('\n');
     }
 
-    const api = { OPEN, CLOSE, MAX, MAX_CHARS, BANNED, parse, validate, fallback, isQuiet, instruction, usable };
+    const api = { OPEN, CLOSE, MAX, MAX_CHARS, BANNED, parse, validate, fallback, idle, isQuiet, instruction, usable };
 
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_PRIVATE_CHOICES = api;

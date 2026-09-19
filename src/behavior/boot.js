@@ -128,6 +128,9 @@
         // P13. Things you could say next, and the block they ride back in. Before
         // TogetherCapability, which parses it at the display seam.
         'src/features/together/PrivateChoices.js',
+        // P17. The clock that notices silence — stages, never intensity. Before
+        // TogetherCapability, which drives it from the beat tick it already has.
+        'src/features/together/PrivateIdleClock.js',
         'src/features/together/TogetherCapability.js',
         // T3/T5. The one function that finds and plays, and the parser that lets her ask for
         // it. After the publisher's dependencies, before the launcher.
