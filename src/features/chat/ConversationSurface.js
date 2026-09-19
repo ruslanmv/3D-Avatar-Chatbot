@@ -446,5 +446,46 @@
     };
 
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
-    if (global) global.NEXUS_CONVERSATION_SURFACE = api;
+    if (global) {
+        global.NEXUS_CONVERSATION_SURFACE = api;
+        /**
+         * The host's hooks, if it published them before this file existed (P18).
+         *
+         * It always does, and that was the bug. `main.js` calls
+         * `window.NEXUS_CONVERSATION_SURFACE?.configure?.(…)` inside `startBehaviorDirector`,
+         * *before* it appends `boot.js` — and this file is item eighty in that boot list, fetched
+         * asynchronously seconds later. So the optional chaining evaluated to `undefined`,
+         * `configure` never ran, and nothing said so.
+         *
+         * What that cost, in the order somebody would notice it:
+         *
+         *   - `send` reads `host.send`, so **every tapped dialogue choice did nothing at all**.
+         *     Buttons appeared, a click spent them, and no turn was ever sent. Reported exactly
+         *     that way.
+         *   - `fallback` stayed null, so `current()` was null and `guard` found no surface. With
+         *     the director on, an ordinary chat turn outside Private drew nothing and persisted
+         *     nothing *through this module* — `main.js` prefers this API over its own renderers
+         *     the moment the file exists.
+         *   - Private looked fine throughout, which is why it survived four batches: the card
+         *     installs its own surface through `use()`, so `active` was set and the drawing
+         *     worked. Only the two things that read `host` were dead.
+         *
+         * A handshake rather than a moved call, because neither side can be made to load first
+         * without one of them knowing about the other's bootstrap: `main.js` must publish its
+         * hooks before the engine is fetched (the engine is what fetches this file), and this
+         * file must not reach into `main.js` for renderers. So the host leaves them on the
+         * window and whichever arrives second joins them up. `configure` stays idempotent, so
+         * the direct call in `main.js` — which is the path under Jest, and on any page that
+         * loads this file with a script tag — is still the one that runs there.
+         */
+        try {
+            const hooks = global.NEXUS_CONVERSATION_SURFACE_HOOKS;
+            if (hooks && typeof hooks === 'object') configure(hooks);
+        } catch (error) {
+            // A host that published something unusable must not stop the module loading: every
+            // method is already a no-op without hooks, which is strictly better than throwing
+            // in the middle of the boot list.
+            console.warn('[ConversationSurface] host hooks were unusable', error);
+        }
+    }
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);

@@ -986,7 +986,15 @@ function startBehaviorDirector(options = {}) {
 
     // P7. Hand the conversation surface this file's own renderers, so the default way a turn is
     // drawn stays exactly what it has always been and only the *owner* can change.
-    window.NEXUS_CONVERSATION_SURFACE?.configure?.({
+    //
+    // P18: published on the window *and* offered directly, because this call runs before
+    // `boot.js` is appended and `ConversationSurface.js` is item eighty in that boot list. The
+    // optional chaining therefore evaluated to `undefined` on every real page load and the
+    // hooks were silently dropped — which is why a tapped dialogue choice did nothing: `send`
+    // reads `host.send` and there was no host. The module adopts this global when it loads, so
+    // the order stops mattering; the direct call below still covers a page that loaded the
+    // module first.
+    const conversationHooks = {
         addMessage: (sender, text, attachments) => addMessageToHistory(sender, text, attachments),
         beginStream: () => _createStreamingBotMessage(),
         scroll: () => {
@@ -1002,7 +1010,9 @@ function startBehaviorDirector(options = {}) {
         // same pipeline, so prompt assembly, the provider, the directives and persistence are the
         // ones typed text gets rather than a second implementation that drifts from them.
         send: (text) => handleUserMessage(text),
-    });
+    };
+    window.NEXUS_CONVERSATION_SURFACE_HOOKS = conversationHooks;
+    window.NEXUS_CONVERSATION_SURFACE?.configure?.(conversationHooks);
 
     const bdScript = document.createElement('script');
     bdScript.src = 'src/behavior/boot.js';
@@ -4136,7 +4146,12 @@ function _addErrorWithRetry(originalText, error) {
     // conversation gets to draw the failure too; the retry button is a default-surface
     // affordance and a raw one inside an intimate transcript reads as the app, not as her.
     const surface = window.NEXUS_CONVERSATION_SURFACE;
-    const drawnElsewhere = surface && typeof surface.current === 'function' && surface.current().id !== 'default';
+    // `current()` is null until the surface has been configured, and this is the error path — the
+    // one place that must not throw on top of whatever already failed. No surface installed means
+    // nothing else is drawing, so the local row below is the one that gets the error rather than a
+    // `renderError` that would go nowhere.
+    const installed = surface && typeof surface.current === 'function' ? surface.current() : null;
+    const drawnElsewhere = Boolean(installed) && installed.id !== 'default';
     if (drawnElsewhere) {
         _surface().renderError('Sorry — I lost my train of thought for a second. Say that again?');
         return;

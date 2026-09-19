@@ -36,14 +36,31 @@ function setup() {
     window.NEXUS_BD = director;
     window.NEXUS_BD_SAY = jest.fn(() => Promise.resolve());
     window.NEXUS_PRIVATE_TIMING_SCALE = 1;
-    Surface.configure({ addMessage: () => {}, beginStream: () => null, scroll: () => {} });
+    /**
+     * `send` is `handleUserMessage` in the real app, and it is the hook that was missing.
+     *
+     * Not a stub that only records: it draws the user's turn and then a reply, the way the host
+     * does, because the reported defect was a tap that produced no answer and a recorder alone
+     * cannot tell a dropped send from one that sent and never came back.
+     */
+    const sent = [];
+    Surface.configure({
+        addMessage: () => {},
+        beginStream: () => null,
+        scroll: () => {},
+        send: (text) => {
+            sent.push(text);
+            Surface.renderUser(text);
+            Surface.renderAssistant(`about "${text}" — yes.`);
+        },
+    });
     const activity = new PlaygroundActivity.IntimateActivity.Intimate({
         bus,
         adult,
         capability: () => ({ ok: true, why: '' }),
     });
     director.intimate = activity;
-    return { activity, adult, blackboard, bus };
+    return { activity, adult, blackboard, bus, sent };
 }
 
 const herLines = () =>
@@ -371,5 +388,70 @@ describe('the closed vocabulary, which has now swallowed three batches of events
         expect(emitted.length).toBeGreaterThan(0);
         const unknown = emitted.filter((name) => !EventBus.EVENTS.includes(name));
         expect(unknown).toEqual([]);
+    });
+});
+
+describe('the button the clock puts up is wired to an answer', () => {
+    test('tapping an idle choice sends it and she replies', async () => {
+        // The reported defect, end to end: "I clicked and did not receive the answer." The button,
+        // the handler and the send were all correct; `ConversationSurface.configure` had never run,
+        // so `send` read `host.send` on an empty host and returned false. See
+        // `conversation-surface-boot-order.test.js` for the cause.
+        const s = setup();
+        await s.activity.start({ input: { id: 'romantic' } });
+        const session = s.activity._privateExperience;
+        scriptDone(session);
+
+        quietFor(65000);
+        session._tick();
+        quietFor(65000);
+        session._tick();
+
+        const buttons = [...document.querySelectorAll('[data-private-choice]')];
+        expect(buttons.length).toBeGreaterThanOrEqual(2);
+        const chosen = buttons[0].textContent;
+        buttons[0].click();
+
+        // It went out as their turn…
+        expect(s.sent).toEqual([chosen]);
+        expect(
+            [...document.querySelectorAll('[data-private-turn="you"] .nexus-private-copy')].map((n) => n.textContent)
+        ).toContain(chosen);
+        // …and an answer came back into the card.
+        expect(herLines().pop()).toBe(`about "${chosen}" — yes.`);
+    });
+
+    test('and so does a choice offered under one of her own lines', async () => {
+        // Same seam, the ordinary path: the opening offers choices from the first second.
+        const s = setup();
+        await s.activity.start({ input: { id: 'romantic' } });
+
+        const buttons = [...document.querySelectorAll('[data-private-choice]')];
+        const spoken = buttons.map((b) => b.textContent).find((text) => !PrivateChoices.isQuiet(text));
+        expect(spoken).toBeTruthy();
+        buttons.find((b) => b.textContent === spoken).click();
+
+        expect(s.sent).toEqual([spoken]);
+        expect(herLines().pop()).toBe(`about "${spoken}" — yes.`);
+
+        s.activity.stop('user');
+    });
+
+    test('the quiet option is the one that deliberately sends nothing', async () => {
+        // "Say nothing" is a move, not a sentence. Sending the literal `[stay quiet]` to the model
+        // would be asking it to read a stage direction as speech.
+        const s = setup();
+        await s.activity.start({ input: { id: 'romantic' } });
+
+        const quiet = [...document.querySelectorAll('[data-private-choice]')].find((b) =>
+            PrivateChoices.isQuiet(b.textContent)
+        );
+        expect(quiet).toBeTruthy();
+        quiet.click();
+
+        expect(s.sent).toEqual([]);
+        expect(s.activity._privateExperience.energy).toBe('quiet');
+
+        s.activity.stop('user');
     });
 });
