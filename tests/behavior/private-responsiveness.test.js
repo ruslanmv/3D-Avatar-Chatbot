@@ -72,8 +72,8 @@ afterEach(() => {
     document.body.innerHTML = '';
 });
 
-describe('Keep it cozy, over the real consent flow', () => {
-    test('the event is delivered and the card responds', async () => {
+describe('Slow down, over the real consent flow', () => {
+    test('the request is acted on, and acknowledged once', async () => {
         // The real EventBus silently drops any name outside its vocabulary, so this also
         // pins that `adult:exit` is in it — a rename would otherwise fail in the browser
         // only, and look exactly like a dead button.
@@ -82,23 +82,56 @@ describe('Keep it cozy, over the real consent flow', () => {
         const before = copy();
 
         click('cozy');
+        // Two words, not a paragraph explaining what the control did.
         expect(copy()).not.toBe(before);
+        expect(copy()).toBe('Got you.');
+        expect(s.activity._privateExperience.energy).toBe('quiet');
 
         s.activity.stop('user');
     });
 
-    test('from level 1 it does not claim to have turned anything down', async () => {
+    test('at level 1 it still has somewhere to go, because energy is the second dimension', async () => {
+        // Private used to think only in pace, so at Warm there was genuinely nothing left to
+        // lower and the only honest answer was a sentence saying so. Energy is texture rather
+        // than consent, so it can always be brought down without touching the ceiling.
         const s = setup();
         await s.activity.start({ input: { id: 'sensual' } });
+        const session = s.activity._privateExperience;
         expect(s.adult.level).toBe(1);
+        expect(session.energy).toBe('present');
 
         click('cozy');
-        expect(copy()).toMatch(/already as gentle/i);
+        expect(session.energy).toBe('quiet');
+        expect(session.style).toBe('quiet');
+        expect(s.adult.level).toBe(1);
 
         s.activity.stop('user');
     });
 
-    test('from a raised level it says what it actually did', async () => {
+    test('at the floor it is a no-op: no line, no repeat, no button', async () => {
+        // The reported screenshot, as a test. Six taps produced six identical HER turns because
+        // `ConsentFlow.exit('soft')` emits `adult:exit` even at the floor and the listener spoke
+        // on every event. A safety control that generates dialogue can be made to repeat itself.
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+
+        click('cozy');
+        const after = document.querySelectorAll('[data-private-turn="her"]').length;
+
+        // The control has stopped being a control, so the loop cannot even be started.
+        const button = document.querySelector('.nexus-private-btn.is-gentle');
+        expect(button.textContent).toBe('✓ Gentle');
+        expect(button.disabled).toBe(true);
+
+        // And driving it directly five more times still adds nothing.
+        for (let i = 0; i < 5; i += 1) s.activity._privateExperience._slowDown();
+        expect(document.querySelectorAll('[data-private-turn="her"]').length).toBe(after);
+        expect(document.body.textContent.match(/Got you\./g)).toHaveLength(1);
+
+        s.activity.stop('user');
+    });
+
+    test('from a raised level the pace comes down, and the footer says so', async () => {
         const s = setup();
         await s.activity.start({ input: { id: 'sensual' } });
         jest.advanceTimersByTime(120000);
@@ -107,15 +140,37 @@ describe('Keep it cozy, over the real consent flow', () => {
 
         click('cozy');
         expect(s.adult.level).toBe(1);
-        expect(copy()).toMatch(/back to gentle/i);
         expect(document.querySelector('.nexus-private-level').textContent).toBe('Warm');
+        // Where the acknowledgement lives now: UI state that fades, not a turn that stays.
+        expect(document.querySelector('.nexus-private-status').textContent).toBe('✓ Pace softened');
 
         s.activity.stop('user');
     });
 
-    test('it does not destroy the question it landed on', async () => {
-        // The defect behind the report: the mood question and its two buttons vanished and
-        // were never re-offered, so the rest of the session ran on a default nobody picked.
+    test('the confirmation fades, and never becomes conversation the model reads', async () => {
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+        const session = s.activity._privateExperience;
+        const before = session.view._history.length;
+
+        click('cozy');
+        const status = document.querySelector('.nexus-private-status');
+        expect(status.classList.contains('is-visible')).toBe(true);
+
+        jest.advanceTimersByTime(2000);
+        expect(status.classList.contains('is-visible')).toBe(false);
+        expect(status.textContent).toBe('');
+        // `Got you.` is spoken and drawn but deliberately not remembered: a safety confirmation
+        // in the history is context the model may answer, elaborate on, or bring up again.
+        expect(session.view._history.length).toBe(before);
+
+        s.activity.stop('user');
+    });
+
+    test('it withdraws the offer it landed on rather than arguing with the person', async () => {
+        // The old guarantee was that pressing this did not *destroy* the question. The question
+        // still stands on screen — it is part of the conversation — but `Playful` is more energy
+        // and offering it to somebody who just asked for less is the interface arguing back.
         const s = setup();
         await s.activity.start({ input: { id: 'sensual' } });
         jest.advanceTimersByTime(45000);
@@ -123,13 +178,51 @@ describe('Keep it cozy, over the real consent flow', () => {
 
         click('cozy');
 
-        // The transcript keeps the question on screen, so the buttons are the same live ones
-        // rather than a redrawn copy — which is what the old restore machinery had to fake.
-        expect(actions()).toEqual(['playful', 'tender', 'cozy', 'end']);
+        // The choices are gone as controls; the footer's two stay, with `cozy` now `✓ Gentle`
+        // and disabled.
+        expect(actions()).toEqual(['cozy', 'end']);
+        expect(document.querySelector('[data-private-action="cozy"]').disabled).toBe(true);
+        expect(document.body.textContent).toMatch(/Playful/);
+        for (const button of document.querySelectorAll('.nexus-private-actions button')) {
+            expect(button.disabled).toBe(true);
+        }
 
-        // And the question still works after the interruption.
-        click('tender');
-        expect(s.activity._privateExperience.mood).toBe('tender');
+        s.activity.stop('user');
+    });
+
+    test('the control cannot disagree with the state it is showing', async () => {
+        // `Keep it sweet` on a check-in also soft-exits, which brings the energy down. Before the
+        // footer was painted from the state, the button went on saying `↓ Slow down` while there was
+        // nothing left to lower — which is the invitation that produced six identical lines.
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+        jest.advanceTimersByTime(120000);
+        click('advance');
+        expect(s.adult.level).toBe(2);
+        expect(document.querySelector('[data-private-action="cozy"]').disabled).toBe(false);
+
+        jest.advanceTimersByTime(120000);
+        click('keep-sweet');
+
+        const button = document.querySelector('[data-private-action="cozy"]');
+        expect(s.activity._privateExperience.energy).toBe('quiet');
+        expect(button.textContent).toBe('✓ Gentle');
+        expect(button.disabled).toBe(true);
+
+        s.activity.stop('user');
+    });
+
+    test('and it is not re-offered later, nor is a consent check-in', async () => {
+        // Deferred would be worse than dropped: a check-in arriving two minutes after somebody
+        // asked to slow down turns the control into a negotiation.
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+        click('cozy');
+
+        jest.advanceTimersByTime(400000);
+        expect(actions()).not.toEqual(expect.arrayContaining(['playful', 'tender']));
+        expect(actions()).not.toEqual(expect.arrayContaining(['advance', 'keep-sweet']));
+        expect(s.adult.level).toBe(1);
 
         s.activity.stop('user');
     });

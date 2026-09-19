@@ -209,6 +209,57 @@ describe('stage directions, and the gate on the sanitiser (P14)', () => {
     });
 });
 
+describe('Slow down reaches the model, explicitly (P11)', () => {
+    test('nothing is added before anybody asks', async () => {
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+        expect(Capability.privateSystemPromptSuffix()).not.toMatch(/asked to slow down/i);
+        s.activity.stop('user');
+    });
+
+    test('after the control, the state is stated rather than inferred from an absence', async () => {
+        // The ten-turn window (P10) already stops old context pulling her back past a Slow down
+        // implicitly. A model that can only infer the request from what is missing will eventually
+        // infer wrong.
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+        document.querySelector('[data-private-action="cozy"]').click();
+
+        const prompt = Capability.privateSystemPromptSuffix();
+        expect(prompt).toMatch(/asked to slow down/i);
+        expect(prompt).toMatch(/do not propose, hint at, or ask about anything more intense/i);
+        expect(prompt).toMatch(/do not mention their request again/i);
+        expect(prompt).toMatch(/only a clear, explicit request from them changes it/i);
+
+        s.activity.stop('user');
+    });
+
+    test('it does not lapse because the conversation warmed up again', async () => {
+        // The rule that matters most: warmth is not permission. Only an explicit request leaves
+        // this state, and time passing is not one.
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+        document.querySelector('[data-private-action="cozy"]').click();
+
+        Surface.renderUser('you are lovely, you know');
+        Surface.renderUser('what were you going to say before?');
+        jest.advanceTimersByTime(400000);
+
+        expect(Capability.privateSystemPromptSuffix()).toMatch(/asked to slow down/i);
+        s.activity.stop('user');
+    });
+
+    test('the reply budget follows the quieter register', async () => {
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+        document.querySelector('[data-private-action="cozy"]').click();
+        Surface.renderUser('mm');
+        expect(Capability.responseBudget()).toBeLessThanOrEqual(48);
+        expect(Capability.privateSystemPromptSuffix()).toMatch(/present rather than talkative/i);
+        s.activity.stop('user');
+    });
+});
+
 describe('a remote persona is no longer sent a Private session with no rules', () => {
     test('the overlay carries the safety paragraph', async () => {
         // `_chatOllaBridge` sends no system prompt at all for a remote persona — correctly, since

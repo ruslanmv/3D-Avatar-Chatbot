@@ -58,6 +58,16 @@
     const GUIDANCE = Object.freeze({
         idleMs: 18000,
         staleAfterMs: 90000,
+        /**
+         * How long the script stays out of the way after `Slow down` (P11).
+         *
+         * Longer than `idleMs` on purpose, and that is the point of having both. The lull rule asks
+         * "has the conversation gone quiet?"; this answers "was I just asked for less?". Somebody
+         * who presses the control and then says nothing has not invited a scripted line — they have
+         * asked for room — and meeting that silence with a beat eighteen seconds later is the exact
+         * pressure they pressed the button to be rid of.
+         */
+        afterSlowDownMs: 45000,
     });
     const PrivateViewApi =
         (global && global.NEXUS_PRIVATE_CONVERSATION_VIEW) ||
@@ -82,6 +92,12 @@
     }
     function turnDirector() {
         return optional('./PrivateTurnDirector.js', 'NEXUS_PRIVATE_TURN_DIRECTOR');
+    }
+    function paceModel() {
+        return optional('./PrivatePace.js', 'NEXUS_PRIVATE_PACE');
+    }
+    function noveltyModel() {
+        return optional('./PrivateNovelty.js', 'NEXUS_PRIVATE_NOVELTY');
     }
     function surfaceApi(win) {
         const scope = win || global;
@@ -231,6 +247,28 @@
      * one, and a companion who answers every remark with a question is conducting an interview.
      * Silence is a legitimate reply to "this is nice"; so is agreeing and stopping.
      */
+    /**
+     * What the model must be told once somebody has asked to slow down (P11).
+     *
+     * The ten-turn window (P10) already stops old context pulling her back past a `Slow down`
+     * implicitly. This makes the state explicit, which is the difference between "the transcript no
+     * longer contains the louder part" and "she has been told not to go back there". A model that can
+     * only infer the request from an absence will eventually infer wrong.
+     *
+     * "Do not mention the request again" is in here for the same reason the acknowledgement left the
+     * transcript: a companion who keeps referring to the fact that you asked her to slow down has
+     * made the asking into the topic.
+     */
+    function slowedLines() {
+        return [
+            'THE USER ASKED TO SLOW DOWN.',
+            'Stay at the gentlest pace. Do not propose, hint at, or ask about anything more intense — not once.',
+            'Do not mention their request again, do not apologise for it, and do not check whether they still mean it.',
+            'Shorter and calmer replies. Fewer questions. A short acknowledgement or a comfortable silence is a complete answer.',
+            'Do not read warmth, flirtation or affection as permission to pick the pace back up. Only a clear, explicit request from them changes it.',
+        ];
+    }
+
     function privateLengthLines(turn, style) {
         const lines = [];
         const words = turn && turn.words ? Number(turn.words) : 0;
@@ -274,6 +312,8 @@
             `The user deliberately started the ${preset.label} Private experience. Current consent level: ${level}. Preset ceiling: ${preset.maxLevel}.`,
             ...moodLine,
             ...privateLengthLines(session && session._turn, session && session.style),
+            // Explicit, not inferred from an absence. See `slowedLines`.
+            ...(session && session._styleLocked ? slowedLines() : []),
             'Stay warm, relational and non-explicit. Never exceed the lower of the current consent level and preset ceiling.',
             'Do not infer consent from friendliness, silence, scenery, music or previous turns. Do not pressure the user to continue or escalate.',
             'Never use jealousy, secrecy, isolation, dependency, threats, coercion or intoxication as leverage. Never imply that the companion should replace real relationships.',
@@ -488,6 +528,32 @@
             this._pendingQuestion = false;
             /** How she should be talking, as the conversation has suggested. P15 acts on it. */
             this.style = null;
+            /**
+             * Whether the style was *asked for* rather than inferred (P11).
+             *
+             * `Slow down` sets `style = 'quiet'` explicitly, and an explicit request must not be
+             * undone by the classifier noticing a chatty turn three sentences later. Only another
+             * explicit choice leaves it, which is the same rule the pace has always had.
+             */
+            this._styleLocked = false;
+            /**
+             * The second dimension (P11). See `PrivatePace`.
+             *
+             * Private thought only in pace — Warm, Romantic, Sensual — so at Warm `Slow down` had
+             * nothing left to lower and the only honest answer was a sentence saying so, six times.
+             * Energy is texture rather than consent: it grants nothing, so it can be lowered freely.
+             */
+            this.energy = (paceModel() && paceModel().DEFAULT_ENERGY) || 'present';
+            /** Guided lines are held until this time. See `_suppressGuidance`. */
+            this._guidanceHeldUntil = 0;
+            /**
+             * What this session has already said and already offered (P11).
+             *
+             * Six identical lines was one symptom of a script with no memory of itself. Every guided
+             * interaction asks the ledger before it runs, so any path that could fire twice is
+             * caught rather than only the one that was reported.
+             */
+            this.novelty = (noveltyModel() && noveltyModel().create()) || null;
             /** Torn off the conversation surface in `_listen`, put back in `afterActivityStop`. */
             this._unwatchTurns = null;
             /** Beats as wall-clock offsets rather than live timers. See `_beat`. */
@@ -665,8 +731,20 @@
             const turn = td && typeof td.classify === 'function' ? td.classify(text) : null;
             this._turn = turn;
             this._pendingQuestion = Boolean(turn && turn.holdsTheFloor);
+            // The ledger's clock is turns, not seconds: five turns of talking is real distance and
+            // five seconds is none. A preference or an agreement counts as answering whatever she
+            // had asked; anything else, with a question outstanding, is the person talking past it.
+            const novelty = noveltyModel();
+            if (novelty && this.novelty) {
+                const intent = turn && turn.intent;
+                novelty.noteTurn(this.novelty, {
+                    answered: intent === 'preference' || intent === 'affirmation',
+                });
+            }
             const suggested = turn && td && typeof td.styleFor === 'function' ? td.styleFor(turn.intent) : null;
-            if (suggested) this.style = suggested;
+            // An explicit `Slow down` is not undone by the classifier noticing a chatty turn. Only
+            // another explicit choice leaves that state — the same rule the pace has always had.
+            if (suggested && !this._styleLocked) this.style = suggested;
             this._userIsTalking();
             this._emit('private:user-turn', { preset: this.preset.id, intent: turn ? turn.intent : null });
             if (!turn) return null;
@@ -677,10 +755,11 @@
                 this._requestEnd(false);
                 return turn;
             }
-            if (turn.intent === 'pace-down' && this.adult && typeof this.adult.exit === 'function') {
-                // The `adult:exit` handler below says the true thing about what changed, so the
-                // acknowledgement is already written and already correct at level 1.
-                this.adult.exit('soft');
+            if (turn.intent === 'pace-down') {
+                // The same control, reached by typing it. One implementation, so a typed "slow
+                // down" is idempotent for the same reason the button is — and so somebody who taps
+                // the button and then types the words does not get the acknowledgement twice.
+                this._slowDown();
             }
             return turn;
         }
@@ -748,27 +827,167 @@
             return true;
         }
 
+        /**
+         * `Slow down` is a control, not a conversation prompt (P11).
+         *
+         * The reported screenshot: six taps, six identical HER turns. The cause was two-layered and
+         * both layers are fixed here. The button called `ConsentFlow.exit('soft')` directly, which
+         * emits `adult:exit` even at the floor; the listener turned every event into speech. So the
+         * control had no idempotence *and* its confirmation was dialogue.
+         *
+         * Four properties this must have, and they are the whole design:
+         *
+         *   **Idempotent.** At the floor it changes nothing and says nothing. Not "says something
+         *   shorter" — nothing. A second tap is a no-op with a UI confirmation.
+         *
+         *   **Immediate.** Everything below is local. No provider, no await, no LLM. A
+         *   de-escalation that waits on a network is one that can fail to happen.
+         *
+         *   **Predictable.** One transition table (`PrivatePace.softer`), no randomness, no
+         *   personality. The curiosity belongs in how the experience behaves afterwards.
+         *
+         *   **Never repetitive.** The acknowledgement is spoken at most once per session and lives
+         *   in the footer, not the transcript — a safety confirmation is UI state, and putting it in
+         *   the history means the model reads six of them too.
+         *
+         * What the person should actually feel, within about a tenth of a second: the music drops,
+         * she settles, the guided beat and any pending check-in are cancelled, the card goes a shade
+         * calmer, and the control changes to `✓ Gentle`. That multimodal shift is far more
+         * convincing than another paragraph explaining what the button did.
+         */
+        _slowDown() {
+            if (this._stopped || this.state === 'complete') return false;
+            const pace = paceModel();
+            const level = Math.max(1, Number(this.adult && this.adult.level) || 1);
+            const current = { level, energy: this.energy, maxLevel: this.preset.maxLevel };
+            const next = pace ? pace.softer(current) : { level: 1, energy: 'quiet', changed: level > 1 };
+
+            // Already as gentle as the experience goes. The confirmation is the whole response:
+            // the request was heard, and there is nothing to narrate.
+            if (!next.changed) {
+                if (this.view && typeof this.view.setGentle === 'function') this.view.setGentle(true);
+                if (this.view && typeof this.view.showTransientStatus === 'function') {
+                    this.view.showTransientStatus('✓ Already gentle');
+                }
+                return true;
+            }
+
+            // The consent floor is `ConsentFlow`'s to lower, never this file's. Asked only when the
+            // pace actually moved, which is what stops the unconditional `adult:exit` at level 1.
+            if (next.loweredPace && this.adult && typeof this.adult.exit === 'function') {
+                this.adult.exit('soft');
+            }
+
+            this.energy = next.energy;
+            // Not a suggestion from the classifier this time — an explicit request, and P15's
+            // adaptive style must not drift back out of it on the next chatty turn.
+            this.style = 'quiet';
+            this._styleLocked = true;
+
+            this._withdrawOffers();
+            this._suppressGuidance(GUIDANCE.afterSlowDownMs);
+            // Paints the pace word *and* the gentle control, from the state, so the two cannot
+            // disagree. See `_paintLevel`.
+            this._paintLevel();
+            if (this.view && typeof this.view.showTransientStatus === 'function') {
+                this.view.showTransientStatus('✓ Pace softened');
+            }
+            if (this.view && typeof this.view.softenSoundtrack === 'function') this.view.softenSoundtrack();
+            // Something small and physical, so the change is felt rather than only read.
+            this._intent('breathe', 0.2);
+
+            // Once per session, in her voice, and deliberately tiny. Two words acknowledge without
+            // explaining; anything longer is the control narrating itself, which is what this
+            // milestone exists to remove.
+            const ledger = this.novelty;
+            const ack = 'Got you.';
+            const allowed = !ledger || !noveltyModel() || noveltyModel().canUse(ledger, 'safety-ack', { line: ack }).ok;
+            if (allowed) {
+                if (ledger && noveltyModel()) noveltyModel().use(ledger, 'safety-ack', { line: ack });
+                this._sayBrief(ack);
+            }
+
+            this._emit('private:slow-down', { preset: this.preset.id, level: next.level, energy: next.energy });
+            return true;
+        }
+
+        /**
+         * Say it aloud, put it in the transcript, and keep it out of the history.
+         *
+         * For the one acknowledgement a control is allowed. `_speak` would also `_remember` it, and
+         * a safety confirmation in the history is context the model may answer, elaborate on, or
+         * bring up again later — which is the same defect as repeating it, one turn removed.
+         */
+        _sayBrief(text) {
+            const line = cleanText(text, 120);
+            if (!line) return false;
+            this._showMessage(line, []);
+            try {
+                if (typeof this.say === 'function') this.say(line);
+            } catch (_) {
+                // A line on screen without the voice is still the acknowledgement.
+            }
+            return true;
+        }
+
+        /**
+         * Take back every offer on screen.
+         *
+         * A check-in asking "a little more intense?" — or a mood choice offering `Playful` — while
+         * the person has just pressed `Slow down` is the interface arguing with them. `state` goes
+         * back to `active` so `_acceptCheckIn` can no longer be answered, and the buttons are spent
+         * so nothing on screen can be tapped into a level the person just refused. In a rolling
+         * transcript that matters more than it would in a card that wipes itself: an un-spent offer
+         * stays tappable for the rest of the evening.
+         *
+         * The questions stay *visible*, because they were part of the conversation. They stop being
+         * controls, which is the part that was arguing.
+         */
+        _withdrawOffers() {
+            if (this.state === 'checkin-pending') this.state = 'active';
+            if (this.view && typeof this.view.consumePending === 'function') this.view.consumePending();
+            const ledger = this.novelty;
+            if (ledger && noveltyModel()) noveltyModel().noteAnswered(ledger);
+            this._pendingQuestion = false;
+            return true;
+        }
+
+        /**
+         * No unprompted lines for a while.
+         *
+         * Distinct from P12's lull rule, which asks "has the conversation gone quiet?". This answers
+         * "was I just asked for less?", and the answer has to outlast a lull — otherwise pressing
+         * `Slow down` and then saying nothing would be met by a scripted beat twenty seconds later,
+         * which is precisely the pressure the person asked to be rid of.
+         */
+        _suppressGuidance(ms) {
+            const until = this.now() + Math.max(0, Number(ms) || 0) * (this.timingScale || 1);
+            this._guidanceHeldUntil = Math.max(this._guidanceHeldUntil || 0, until);
+            return this._guidanceHeldUntil;
+        }
+
         _listen() {
             this._watchConversation();
             if (!this.bus || typeof this.bus.on !== 'function') return;
             this._unsubscribes.push(
                 this.bus.on('adult:level', () => this._paintLevel()),
+                // A soft exit happened. Repaint, and record that the energy came down with the
+                // pace — and **say nothing** (P11).
+                //
+                // This listener used to speak on every event, which is the whole of the reported
+                // bug. `ConsentFlow.exit('soft')` emits unconditionally, `from: 1, to: 1` when
+                // there is nothing left to lower, so six taps on a control that could not act
+                // produced six identical "We are already as gentle as this gets." turns — in the
+                // transcript, in the voice, and in the history the model reads. The sentence was
+                // even true. A safety control that generates dialogue is a safety control that can
+                // be made to repeat itself, and no amount of better wording fixes that.
+                //
+                // Acknowledgement is now the control's own job, exactly once, and it lives in the
+                // footer rather than the conversation. See `_slowDown`.
                 this.bus.on('adult:exit', (event) => {
                     if (!event || event.kind !== 'soft') return;
+                    this.energy = 'quiet';
                     this._paintLevel();
-                    // `Keep it cozy` from level 1 is `from: 1, to: 1` — the pace word already
-                    // said Warm and still says Warm, so the old single line claimed something
-                    // had been turned down when nothing had, and read as a dead button.
-                    // Saying what is actually true costs one branch.
-                    const eased = Number(event.from) > Number(event.to);
-                    this._speak(
-                        eased
-                            ? 'Keeping it cozy. Back to gentle, and we can stay right here.'
-                            : 'We are already as gentle as this gets. I am happy right here.',
-                        // An interjection, so a question that was on screen comes back under
-                        // it rather than being destroyed by a footer button.
-                        { interjection: true, intent: 'breathe' }
-                    );
                 })
             );
         }
@@ -960,6 +1179,8 @@
          * evening it exists to shape.
          */
         _quietEnough() {
+            // An explicit request for less outranks a lull (P11). See `_suppressGuidance`.
+            if (this.now() < (this._guidanceHeldUntil || 0)) return false;
             const since = this.now() - this._lastActivityAt();
             return since >= GUIDANCE.idleMs * (this.timingScale || 1);
         }
@@ -1094,9 +1315,7 @@
             const view = new PrivateViewApi.View({
                 doc: this.doc,
                 win: this.win,
-                onCozy: () => {
-                    if (this.adult && typeof this.adult.exit === 'function') this.adult.exit('soft');
-                },
+                onCozy: () => this._slowDown(),
                 onEnd: () => this._requestEnd(false),
                 onUserMessage: () => this._userIsTalking(),
             });
@@ -1106,10 +1325,27 @@
             this._paintLevel();
         }
 
+        /**
+         * The footer, from the state — both halves, in one place (P11).
+         *
+         * `gentle` is painted here rather than only in `_slowDown` so the control cannot disagree
+         * with the experience. `Keep it sweet` on a check-in also soft-exits, which brings the energy
+         * down through the `adult:exit` listener; without this the button would still have been
+         * inviting a tap it could no longer act on, which is the state that produced six identical
+         * lines in the first place.
+         *
+         * Nothing here is on a timer, so this can never un-gentle a session because time passed —
+         * only a state that genuinely left the floor can, and after a `Slow down` nothing offers to.
+         */
         _paintLevel() {
+            const pace = paceModel();
             const level = Math.max(1, Math.min(this.preset.maxLevel, Number(this.adult && this.adult.level) || 1));
-            const words = level === 1 ? 'Warm' : level === 2 ? 'Romantic' : 'Sensual';
-            if (this.view) this.view.setPace(words);
+            const shown = pace
+                ? pace.describe({ level, energy: this.energy, maxLevel: this.preset.maxLevel })
+                : { pace: level === 1 ? 'Warm' : level === 2 ? 'Romantic' : 'Sensual', gentle: false };
+            if (!this.view) return;
+            this.view.setPace(shown.pace);
+            if (typeof this.view.setGentle === 'function') this.view.setGentle(shown.gentle);
         }
 
         _showMessage(text, actions, options) {
@@ -1164,10 +1400,35 @@
          * `privateSystemPromptSuffix`, so choosing Playful changes the rest of the evening in
          * both channels instead of buying one sentence.
          */
+        /**
+         * May this interaction run, and is this line new? (P11)
+         *
+         * Every guided interaction goes through the ledger, not just the one that was reported
+         * repeating itself. A `false` here is a beat that quietly does not happen, which is the
+         * right outcome: a script with nothing new to offer should be silent rather than clever.
+         */
+        _mayOffer(family, line) {
+            const api = noveltyModel();
+            if (!api || !this.novelty) return true;
+            return api.canUse(this.novelty, family, { line: line || '' }).ok;
+        }
+
+        _recordOffer(family, line) {
+            const api = noveltyModel();
+            if (!api || !this.novelty) return false;
+            return api.use(this.novelty, family, { line: line || '' });
+        }
+
         _showMoodChoice() {
             if (this.state !== 'active') return;
+            const prompt = this._line('moodPrompt');
+            if (!this._mayOffer('mood-choice', prompt)) return;
+            // A person who has asked for quiet is not asking to be handed a menu. The mood is
+            // inferred from how they talk from here on instead; see `privateLengthLines`.
+            if (this.style === 'quiet' && this._styleLocked) return;
             const choose = (mood) => {
                 this.mood = mood;
+                this._answeredOffer();
                 this._speak(this.plan && this.plan.moods ? this.plan.moods[mood] : this.preset[mood]);
                 this._emit('private:mood', { preset: this.preset.id, mood });
             };
@@ -1175,7 +1436,16 @@
                 { id: 'playful', label: 'Playful', run: () => choose('playful') },
                 { id: 'tender', label: 'Tender', run: () => choose('tender') },
             ];
-            if (this.view) this.view.showMoodChoice(options, this._line('moodPrompt'));
+            this._recordOffer('mood-choice', prompt);
+            if (this.view) this.view.showMoodChoice(options, prompt);
+        }
+
+        /** A question she asked has been answered, so the next one is allowed. */
+        _answeredOffer() {
+            const api = noveltyModel();
+            if (api && this.novelty) api.noteAnswered(this.novelty);
+            this._pendingQuestion = false;
+            return true;
         }
 
         /**
@@ -1191,14 +1461,22 @@
         _offerTextureChoice() {
             const texture = (this.plan && this.plan.texture) || null;
             if (!texture || !texture.prompt) {
-                this._showMessage('This pace feels good. We can keep it right here.', []);
+                // No fallback sentence any more. "This pace feels good. We can keep it right here."
+                // is the same species as the six repeated lines: a beat with nothing to offer saying
+                // so out loud. A beat with nothing to offer should be silent.
                 return;
             }
+            if (!this._mayOffer('texture-choice', texture.prompt)) return;
+            // `Closer` is an increase in texture, and offering it to somebody who just asked for
+            // less is the interface arguing with them.
+            if (this.style === 'quiet' && this._styleLocked) return;
             const choose = (id) => {
                 this.texture = id;
+                this._answeredOffer();
                 this._speak(texture[id]);
                 this._emit('private:texture', { preset: this.preset.id, texture: id });
             };
+            this._recordOffer('texture-choice', texture.prompt);
             this._showMessage(texture.prompt, [
                 { id: 'quieter', label: 'Quieter', run: () => choose('quieter') },
                 { id: 'closer', label: 'Closer', run: () => choose('closer') },
@@ -1207,6 +1485,10 @@
 
         _offerCheckIn() {
             if (this.state === 'complete' || this._stopped || !this.adult) return;
+            // Somebody who asked to slow down is not to be offered an escalation. Not deferred —
+            // dropped: the whole point of the control is that it is not a negotiation, and a
+            // check-in arriving later would make it one.
+            if (this.style === 'quiet' && this._styleLocked) return;
             const level = Number(this.adult.level) || 1;
             if (level >= this.preset.maxLevel) {
                 this._offerTextureChoice();
@@ -1216,6 +1498,7 @@
                 this._schedule(1000, () => this._offerCheckIn());
                 return;
             }
+            if (!this._mayOffer('consent-checkin')) return;
             this.state = 'checkin-pending';
             const nextLabel = level + 1 >= 3 ? 'A little more sensual' : 'A little more flirty';
             const options = [
@@ -1223,6 +1506,7 @@
                     id: 'keep-sweet',
                     label: 'Keep it sweet',
                     run: () => {
+                        this._answeredOffer();
                         if (level > 1 && typeof this.adult.exit === 'function') this.adult.exit('soft');
                         this.state = 'active';
                         this._showMessage('Sweet and easy it is.', []);
@@ -1231,9 +1515,13 @@
                 {
                     id: 'advance',
                     label: nextLabel,
-                    run: () => this._acceptCheckIn(),
+                    run: () => {
+                        this._answeredOffer();
+                        this._acceptCheckIn();
+                    },
                 },
             ];
+            this._recordOffer('consent-checkin');
             if (this.view) this.view.showConsentCheckIn(options);
         }
 
@@ -1390,6 +1678,20 @@
         _speak(text, { interjection = false, intent = 'nod_along' } = {}) {
             const line = cleanText(text, 700);
             if (!line) return;
+            // The backstop for the whole class of defect P11 is about (P11).
+            //
+            // `_slowDown` and the ledger stop the paths that were *known* to repeat. This catches
+            // the ones nobody has thought of yet: a scripted line that has already been said this
+            // session is not said again, whatever route reached it. Six identical turns cannot
+            // happen even if some future beat tries.
+            //
+            // Scripted lines only. A model's reply never comes through here — it is drawn by the
+            // conversation surface — so this cannot silence her answering "yes" twice in an evening.
+            const novelty = noveltyModel();
+            if (novelty && this.novelty) {
+                if (novelty.saidAlready(this.novelty, line)) return;
+                novelty.noteLine(this.novelty, line);
+            }
             this._showMessage(line, [], { interjection });
             this._remember(line);
             // Something to look at while she talks. Gentle and non-adult by design — see

@@ -227,17 +227,40 @@ describe('a typed safe word is answered locally, before the model is asked anyth
 
         // No timers advanced, no reply from anybody.
         expect(s.adult.level).toBe(1);
-        expect(herLines().pop()).toMatch(/back to gentle/i);
+        expect(s.activity._privateExperience.energy).toBe('quiet');
+        expect(document.querySelector('.nexus-private-status').textContent).toBe('✓ Pace softened');
 
         s.activity.stop('user');
     });
 
-    test('at the lowest level it says the true thing rather than claiming a change', async () => {
+    test('typing it and tapping it are the same control, so it acknowledges once', async () => {
+        // One implementation behind both, or somebody who taps the button and then writes the
+        // words gets two acknowledgements for one request.
         const s = setup();
         await s.activity.start({ input: { id: 'sensual' } });
+
+        document.querySelector('[data-private-action="cozy"]').click();
         Surface.renderUser('can we take it slower');
+        Surface.renderUser('slower, please');
+
         expect(s.adult.level).toBe(1);
-        expect(herLines().pop()).toMatch(/already as gentle/i);
+        expect(herLines().filter((line) => line === 'Got you.')).toHaveLength(1);
+        s.activity.stop('user');
+    });
+
+    test('a typed slow-down locks the style against a later chatty turn', async () => {
+        // The classifier suggests a style from each turn. An explicit request is not a suggestion,
+        // and must not be undone by somebody asking a question three sentences later.
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+        const session = s.activity._privateExperience;
+
+        Surface.renderUser('can we take it slower');
+        expect(session.style).toBe('quiet');
+
+        Surface.renderUser('what were you going to say?');
+        expect(session.style).toBe('quiet');
+
         s.activity.stop('user');
     });
 

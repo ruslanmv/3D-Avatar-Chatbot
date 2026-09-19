@@ -116,6 +116,10 @@
         // P8. What kind of turn the person just took, decided locally so the experience can
         // react before a token comes back. Before TogetherCapability, which asks it.
         'src/features/together/PrivateTurnDirector.js',
+        // P11. The two dimensions `Slow down` moves through, and the ledger that stops any guided
+        // interaction repeating itself. Before TogetherCapability, which asks both.
+        'src/features/together/PrivatePace.js',
+        'src/features/together/PrivateNovelty.js',
         'src/features/together/TogetherCapability.js',
         // T3/T5. The one function that finds and plays, and the parser that lets her ask for
         // it. After the publisher's dependencies, before the launcher.

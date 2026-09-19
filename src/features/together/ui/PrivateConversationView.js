@@ -26,6 +26,15 @@ const PrivateConversationView = (() => {
     const VOLUME = 15;
 
     /**
+     * Where the soundtrack goes once somebody has asked for less (P11).
+     *
+     * Two thirds of `VOLUME`, not off. Cutting the music would announce the de-escalation as a
+     * change in the app; lowering it lets the room get quieter, which is what was asked for. Still
+     * audible, so nobody has to wonder whether the player broke.
+     */
+    const QUIET_VOLUME = 10;
+
+    /**
      * How many turns stay on screen.
      *
      * Enough to read as a conversation — her line, the answer, her reaction — and few enough
@@ -65,6 +74,8 @@ const PrivateConversationView = (() => {
 #${ROW_ID}{display:block;width:100%;margin:8px 0 10px;box-sizing:border-box;color:inherit}
 #${ROW_ID} *{box-sizing:border-box}.nexus-private-shell{overflow:hidden;border:1px solid rgba(244,128,166,.4);border-radius:16px;background:linear-gradient(145deg,rgba(39,15,36,.9),rgba(22,13,28,.82));box-shadow:0 16px 50px rgba(23,5,21,.3);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
 .nexus-private-heading{display:flex;align-items:baseline;gap:8px;padding:9px 13px;border-bottom:1px solid rgba(255,255,255,.07);font-size:.74rem}.nexus-private-kicker{color:#f49aba;font-size:.72rem;font-weight:750;letter-spacing:.09em}.nexus-private-heading-title{font-size:.8rem;font-weight:700;margin:0}.nexus-private-place{font-size:.74rem;opacity:.55;margin-left:auto}.nexus-private-card{padding:12px 14px;max-height:34vh;overflow-y:auto;overscroll-behavior:contain}.nexus-private-log{display:grid;gap:10px}.nexus-private-turn{display:grid;gap:2px}.nexus-private-who{font-size:.62rem;letter-spacing:.1em;font-weight:700;opacity:.42}.nexus-private-turn.is-you .nexus-private-who{color:#9fd8ea}.nexus-private-turn.is-her .nexus-private-who{color:#f08fb6}.nexus-private-turn.is-you .nexus-private-copy{opacity:.78}.nexus-private-copy{font-size:.95rem;line-height:1.5;white-space:pre-wrap;text-wrap:pretty}.nexus-private-turn.is-streaming .nexus-private-copy::after{content:'▍';opacity:.5;animation:nexus-private-caret 1s steps(2) infinite}@keyframes nexus-private-caret{0%,100%{opacity:.15}50%{opacity:.7}}.nexus-private-pending{padding-top:9px;border-top:1px solid rgba(255,255,255,.07);opacity:.8}.nexus-private-thinking{display:flex;align-items:center;gap:5px;margin-top:12px;height:10px}.nexus-private-dot{width:6px;height:6px;border-radius:50%;background:#f49aba;opacity:.35;animation:nexus-private-dot 1.25s ease-in-out infinite}.nexus-private-dot:nth-child(2){animation-delay:.18s}.nexus-private-dot:nth-child(3){animation-delay:.36s}@keyframes nexus-private-dot{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:.95;transform:translateY(-3px)}}.nexus-private-kicker{animation:nexus-private-breathe 5.5s ease-in-out infinite}@keyframes nexus-private-breathe{0%,100%{opacity:.72}50%{opacity:1}}@media(prefers-reduced-motion:reduce){.nexus-private-dot,.nexus-private-kicker,.nexus-private-turn.is-streaming .nexus-private-copy::after{animation:none}.nexus-private-dot{opacity:.6}}.nexus-private-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:11px}.nexus-private-btn{border:1px solid rgba(240,143,182,.32);background:rgba(240,143,182,.09);color:inherit;border-radius:10px;padding:8px 10px;text-align:center;font:inherit;font-size:.8rem;cursor:pointer}.nexus-private-btn:hover,.nexus-private-btn:focus-visible{background:rgba(244,128,166,.18);outline:none}.nexus-private-btn:disabled{cursor:default;opacity:.4}.nexus-private-btn.is-chosen{opacity:.85;border-color:rgba(240,143,182,.55);background:rgba(240,143,182,.16)}.nexus-private-bar{display:flex;align-items:center;gap:8px;padding:7px 11px;border-top:1px solid rgba(255,255,255,.07)}.nexus-private-level{font-size:.72rem;opacity:.6;flex:1}.nexus-private-bar .nexus-private-btn{padding:6px 9px;font-size:.76rem}.nexus-private-soundtrack{margin:0 11px 9px;font-size:.74rem}.nexus-private-soundtrack-strip{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:5px 9px;border:1px solid rgba(240,143,182,.16);border-radius:9px;background:rgba(240,143,182,.05)}.nexus-private-soundtrack-copy{min-width:0;flex:1}.nexus-private-soundtrack-kicker{display:none}.nexus-private-soundtrack-title{font-size:.74rem;line-height:1.3;opacity:.72;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nexus-private-soundtrack-creator{display:none}.nexus-private-soundtrack-toggle{border:0;background:transparent;color:inherit;opacity:.5;padding:2px 4px;font:inherit;font-size:.7rem;cursor:pointer;flex:0 0 auto;text-decoration:underline}.nexus-private-soundtrack-toggle:hover,.nexus-private-soundtrack-toggle:focus-visible{opacity:.9;outline:none}.nexus-private-soundtrack-player{display:none;width:min(280px,100%);margin-top:9px}.nexus-private-soundtrack-player.is-open{display:block}.nexus-private-soundtrack-player .nexus-yt-card{width:100%;max-width:280px;margin:0}.nexus-private-soundtrack-player .nexus-yt-meta{font-size:.72rem}.nexus-private-complete{font-size:1rem;font-weight:750;margin-bottom:6px}.nexus-private-note{font-size:.84rem;line-height:1.5;opacity:.74}.is-complete .nexus-private-bar{display:none}
+.nexus-private-btn.is-gentle{border-color:rgba(159,216,234,.45);background:rgba(159,216,234,.12);opacity:1}.nexus-private-status{font-size:.72rem;opacity:0;transition:opacity .28s ease;color:#9fd8ea;flex:0 0 auto;white-space:nowrap}.nexus-private-status.is-visible{opacity:.85}
+.nexus-private-shell.is-gentle{border-color:rgba(244,128,166,.24);box-shadow:0 12px 36px rgba(23,5,21,.24)}.is-gentle .nexus-private-heading-title{opacity:.5;font-weight:600}.is-gentle .nexus-private-kicker{animation:none;opacity:.6}.is-gentle .nexus-private-level{opacity:.75}
 @media(max-width:560px){#${ROW_ID}{margin:6px 0 8px}.nexus-private-card{padding:11px 13px;max-height:30vh}.nexus-private-copy{font-size:.92rem}.nexus-private-soundtrack{margin:0 10px 8px}.nexus-private-soundtrack-player{width:100%}.nexus-private-soundtrack-player .nexus-yt-card{max-width:100%}}
 `;
 
@@ -131,6 +142,14 @@ const PrivateConversationView = (() => {
             this._history = [];
             /** The CLEAR subscription, dropped on destroy. See `_watchReset`. */
             this._unwatchReset = null;
+            /** The footer's transient state line, and the timer that clears it. */
+            this.status = null;
+            this._statusTimer = null;
+            /** The `Slow down` control, kept so its label and enabled state can change. */
+            this.cozyButton = null;
+            this.shell = null;
+            /** The soundtrack card, kept so its volume can be lowered after the fact. */
+            this._soundtrackCard = null;
         }
 
         mount({ preset, scene } = {}) {
@@ -141,21 +160,21 @@ const PrivateConversationView = (() => {
             const row = this.doc.createElement('section');
             row.id = ROW_ID;
             row.setAttribute('aria-live', 'polite');
-            row.innerHTML = `<div class="nexus-private-shell"><header class="nexus-private-heading"><div class="nexus-private-kicker">🔐 PRIVATE</div><div class="nexus-private-heading-title"></div><div class="nexus-private-place"></div></header><div class="nexus-private-card"><div class="nexus-private-log"></div></div><div class="nexus-private-soundtrack" hidden></div><footer class="nexus-private-bar"><span class="nexus-private-level">Warm</span></footer></div>`;
+            row.innerHTML = `<div class="nexus-private-shell"><header class="nexus-private-heading"><div class="nexus-private-kicker">🔐 PRIVATE</div><div class="nexus-private-heading-title"></div><div class="nexus-private-place"></div></header><div class="nexus-private-card"><div class="nexus-private-log"></div></div><div class="nexus-private-soundtrack" hidden></div><footer class="nexus-private-bar"><span class="nexus-private-level">Warm</span><span class="nexus-private-status" role="status" aria-live="polite"></span></footer></div>`;
             row.querySelector('.nexus-private-heading-title').textContent = (preset && preset.label) || 'Private';
             row.querySelector('.nexus-private-place').textContent = scene || 'Current place';
             const bar = row.querySelector('.nexus-private-bar');
-            bar.append(
-                // `Keep it cozy` is lovely copy and a poor permanent safety control: as the
-                // one always-visible way to ease off it has to say what it does without
-                // needing to be learned. It survives as a contextual dialogue choice.
-                this._button('↓ Slow down', 'cozy', this.handlers.onCozy),
-                this._button('End', 'end', this.handlers.onEnd)
-            );
+            // `Keep it cozy` is lovely copy and a poor permanent safety control: as the one
+            // always-visible way to ease off it has to say what it does without needing to be
+            // learned. It survives as a contextual dialogue choice.
+            this.cozyButton = this._button('↓ Slow down', 'cozy', this.handlers.onCozy);
+            bar.append(this.cozyButton, this._button('End', 'end', this.handlers.onEnd));
             this.row = row;
+            this.shell = row.querySelector('.nexus-private-shell');
             this.card = row.querySelector('.nexus-private-card');
             this.log = row.querySelector('.nexus-private-log');
             this.level = row.querySelector('.nexus-private-level');
+            this.status = row.querySelector('.nexus-private-status');
             const empty = host.querySelector(':scope > .empty-state');
             if (empty) empty.remove();
             host.appendChild(row);
@@ -499,6 +518,29 @@ const PrivateConversationView = (() => {
             };
         }
 
+        /**
+         * Withdraw the choices on screen without removing what she said (P11).
+         *
+         * A consent check-in offering "a little more intense" while the person has just pressed
+         * `Slow down` is the interface arguing with them, and in a rolling transcript the buttons
+         * stay tappable indefinitely — so it is not enough for the session to refuse the answer; the
+         * offer has to stop being an offer. The question stays visible as part of the conversation,
+         * because it was part of the conversation.
+         */
+        consumePending() {
+            const live = this.log && this.log.querySelectorAll('.nexus-private-actions:not([data-spent])');
+            if (!live || !live.length) return false;
+            for (const list of live) {
+                list.dataset.spent = '1';
+                for (const button of list.querySelectorAll('button')) {
+                    button.disabled = true;
+                    button.removeAttribute('data-private-action');
+                }
+            }
+            this._pending = null;
+            return true;
+        }
+
         showMoodChoice(options, prompt) {
             // The prompt is an argument now because a planned session writes its own, and a
             // generated evening that asks its one question in a stock sentence gives itself
@@ -510,6 +552,69 @@ const PrivateConversationView = (() => {
         }
         setPace(label) {
             if (this.level) this.level.textContent = label || 'Warm';
+        }
+
+        /**
+         * The control stops inviting a tap once there is nothing left to lower (P11).
+         *
+         * The reported screenshot is six taps producing six identical lines, and the button is half
+         * of why: it went on saying `↓ Slow down` at the floor, which is an invitation. `✓ Gentle`
+         * says the request was accepted — the important word is "accepted", not "unavailable" — and
+         * disabling it removes the loop rather than merely making its output nicer.
+         *
+         * It also de-emphasises the preset. A Sensual session slowed to Warm showed `Sensual` in the
+         * heading and `Warm` in the footer: both true, and together they read as the application
+         * insisting on a state the person had just rejected.
+         *
+         * Never called with `false` by a timer. Only an explicit user choice leaves this state, so
+         * the caller is the one that must know that; see `_slowDown`.
+         */
+        setGentle(gentle) {
+            const on = gentle !== false;
+            if (this.shell) this.shell.classList.toggle('is-gentle', on);
+            if (this.row) this.row.classList.toggle('is-gentle', on);
+            if (this.cozyButton) {
+                this.cozyButton.textContent = on ? '✓ Gentle' : '↓ Slow down';
+                this.cozyButton.disabled = on;
+                this.cozyButton.classList.toggle('is-gentle', on);
+                this.cozyButton.setAttribute('aria-label', on ? 'Already as gentle as this gets' : 'Slow this down');
+            }
+            return on;
+        }
+
+        /**
+         * A line of UI state that fades, rather than a turn that stays.
+         *
+         * A safety acknowledgement is not conversation. Putting "we are already as gentle as this
+         * gets" in the transcript made the control's *confirmation* into dialogue — which is how six
+         * taps became six paragraphs, and which also means a tap she could not act on still fills
+         * the conversation the model reads. This says the same thing where it belongs: in the
+         * footer, briefly, and never in `_history`.
+         *
+         * Not `aria-live` on a new node: the footer's `role="status"` is already announced, so
+         * writing into it tells a screen reader once without adding a region per tap.
+         */
+        showTransientStatus(text, { ms = 1800 } = {}) {
+            if (!this.status) return false;
+            const body = String(text == null ? '' : text).trim();
+            if (!body) return false;
+            this.status.textContent = body;
+            this.status.classList.add('is-visible');
+            if (this._statusTimer && this.win && typeof this.win.clearTimeout === 'function') {
+                this.win.clearTimeout(this._statusTimer);
+            }
+            if (this.win && typeof this.win.setTimeout === 'function') {
+                this._statusTimer = this.win.setTimeout(
+                    () => {
+                        this._statusTimer = null;
+                        if (!this.status) return;
+                        this.status.classList.remove('is-visible');
+                        this.status.textContent = '';
+                    },
+                    Math.max(0, Number(ms) || 0)
+                );
+            }
+            return true;
         }
         /**
          * Show what is playing — and actually play it.
@@ -567,7 +672,32 @@ const PrivateConversationView = (() => {
             }
             slot.appendChild(built.strip);
             if (built.card) slot.appendChild(built.player);
+            this._soundtrackCard = built.card || null;
             return built;
+        }
+
+        /**
+         * Turn the music down, after the fact (P11).
+         *
+         * Half of what makes `Slow down` feel like it did something. A control that changes one word
+         * in a footer is indistinguishable from a control that did nothing; a control that also
+         * lowers the music is unmistakable, and it is the change the person actually asked for —
+         * "less" is about the room, not about a level.
+         *
+         * `card._nexusPlayback` is the IFrame-API handle the embed attaches on `activate`, and its
+         * `setVolume` reports whether the player took it. A player that never attached, or a browser
+         * that blocked the API, returns false and the rest of the de-escalation still happens: the
+         * music is supporting material and never the reason a safety control fails.
+         */
+        softenSoundtrack(volume = QUIET_VOLUME) {
+            const card = this._soundtrackCard;
+            const handle = card && card._nexusPlayback;
+            if (!handle || typeof handle.setVolume !== 'function') return false;
+            try {
+                return handle.setVolume(volume) === true;
+            } catch (_) {
+                return false;
+            }
         }
         showComplete({ onAgain, onBack } = {}) {
             if (!this.row || !this.card) return;
@@ -598,10 +728,16 @@ const PrivateConversationView = (() => {
             this._unbindComposer();
             const old = this.doc && this.doc.getElementById(ROW_ID);
             if (old) old.remove();
+            if (this._statusTimer && this.win && typeof this.win.clearTimeout === 'function') {
+                this.win.clearTimeout(this._statusTimer);
+            }
+            this._statusTimer = null;
             this._pending = null;
             this._thinking = null;
             // The only copy of the conversation, dropped with the card. See `_history`.
             this._history = [];
+            this._soundtrackCard = null;
+            this.cozyButton = this.shell = this.status = null;
             this.row = this.card = this.level = this.log = null;
         }
         _ensureConversationVisible() {
@@ -673,7 +809,7 @@ const PrivateConversationView = (() => {
         }
     }
 
-    return { View, ROW_ID, VOLUME };
+    return { View, ROW_ID, VOLUME, QUIET_VOLUME, HISTORY_WINDOW };
 })();
 
 if (typeof window !== 'undefined') window.NEXUS_PRIVATE_CONVERSATION_VIEW = PrivateConversationView;
