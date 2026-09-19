@@ -120,6 +120,9 @@
         // interaction repeating itself. Before TogetherCapability, which asks both.
         'src/features/together/PrivatePace.js',
         'src/features/together/PrivateNovelty.js',
+        // P13. Things you could say next, and the block they ride back in. Before
+        // TogetherCapability, which parses it at the display seam.
+        'src/features/together/PrivateChoices.js',
         'src/features/together/TogetherCapability.js',
         // T3/T5. The one function that finds and plays, and the parser that lets her ask for
         // it. After the publisher's dependencies, before the launcher.

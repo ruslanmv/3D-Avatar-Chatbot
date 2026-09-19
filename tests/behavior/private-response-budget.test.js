@@ -20,6 +20,13 @@ const ConsentFlow = require('../../src/behavior/ConsentFlow.js');
 const AdultProfile = require('../../src/behavior/modes/adult.profile.js');
 const Surface = require('../../src/features/chat/ConversationSurface.js');
 const Director = require('../../src/features/together/PrivateTurnDirector.js');
+const Choices = require('../../src/features/together/PrivateChoices.js');
+
+/**
+ * Room for the `<choices>` block, which rides back inside the reply rather than costing a second
+ * request (P13). The turn budget is what she may spend on *words*; this is what the buttons cost.
+ */
+const CHOICE_TOKENS = 48;
 const Capability = require('../../src/features/together/TogetherCapability.js');
 const PlaygroundActivity = require('../../src/features/together/activities/playground.js');
 
@@ -90,7 +97,7 @@ describe('the budget answers what was actually said', () => {
         await s.activity.start({ input: { id: 'sensual' } });
 
         Surface.renderUser('mm, nice');
-        expect(Capability.responseBudget()).toBeLessThanOrEqual(48);
+        expect(Capability.responseBudget()).toBeLessThanOrEqual(48 + CHOICE_TOKENS);
 
         s.activity.stop('user');
     });
@@ -100,7 +107,7 @@ describe('the budget answers what was actually said', () => {
         await s.activity.start({ input: { id: 'sensual' } });
 
         Surface.renderUser('why do you think the quiet ones are the good evenings and the loud ones are not?');
-        expect(Capability.responseBudget()).toBe(Director.BUDGET.question);
+        expect(Capability.responseBudget()).toBe(Director.BUDGET.question + CHOICE_TOKENS);
 
         s.activity.stop('user');
     });
@@ -108,7 +115,7 @@ describe('the budget answers what was actually said', () => {
     test('before anybody has said anything it is the ordinary-conversation budget', async () => {
         const s = setup();
         await s.activity.start({ input: { id: 'sensual' } });
-        expect(Capability.responseBudget()).toBe(Director.BUDGET.conversation);
+        expect(Capability.responseBudget()).toBe(Director.BUDGET.conversation + CHOICE_TOKENS);
         s.activity.stop('user');
     });
 });
@@ -156,6 +163,71 @@ describe('the prompt says the same thing the budget enforces', () => {
             expect(prompt).toMatch(rule);
         }
         s.activity.stop('user');
+    });
+});
+
+describe('the block is headroom, not a licence to write more (P13)', () => {
+    test('the words budget is still the words budget', async () => {
+        // A budget that did not allow for the block would truncate it — leaving a dangling
+        // `<choices>` and no buttons, which is the worst of both. A budget that allowed for it
+        // twice would undo P9.
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+
+        Surface.renderUser('mm');
+        const tiny = Capability.responseBudget();
+        Surface.renderUser('why do you think the quiet ones are the good evenings?');
+        const asked = Capability.responseBudget();
+
+        expect(asked - tiny).toBe(Director.BUDGET.question - 48);
+        expect(tiny - CHOICE_TOKENS).toBeLessThanOrEqual(48);
+
+        s.activity.stop('user');
+    });
+
+    test('she is told how to write the block, and where', async () => {
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+        const prompt = Capability.privateSystemPromptSuffix();
+        expect(prompt).toContain(Choices.OPEN);
+        expect(prompt).toContain(Choices.CLOSE);
+        expect(prompt).toMatch(/never write a choice that asks you to be more intense/i);
+        expect(prompt).toMatch(/not spoken and never appears on screen/i);
+        s.activity.stop('user');
+    });
+
+    test('the block is taken out of the reply, and becomes buttons', async () => {
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+
+        const raw = [
+            'I like it when it is this quiet.',
+            Choices.OPEN,
+            'Me too.',
+            'Say something anyway.',
+            Choices.CLOSE,
+        ].join('\n');
+
+        // Two steps, and the order is the point: the sanitiser reads the block at the `displayText`
+        // seam, which on the non-streaming path is before the reply's turn exists. The buttons go up
+        // when there is a turn to put them under. See `private-dialogue-choices.test.js`.
+        const stream = Surface.beginAssistant();
+        const shown = Capability.sanitizeReply(raw);
+        stream.finish(shown);
+
+        expect(shown).toBe('I like it when it is this quiet.');
+        expect([...document.querySelectorAll('[data-private-choice]')].map((b) => b.textContent)).toEqual([
+            'Me too.',
+            'Say something anyway.',
+        ]);
+
+        s.activity.stop('user');
+    });
+
+    test('outside a Private session the block is left alone', () => {
+        // The same gate as the stage-direction sanitiser: nothing outside Private moves.
+        const reply = `Sure.\n${Choices.OPEN}\nOne\nTwo\n${Choices.CLOSE}`;
+        expect(Capability.sanitizeReply(reply)).toBe(reply);
     });
 });
 
@@ -255,7 +327,7 @@ describe('the pace state reaches the model, explicitly (P11/P12)', () => {
         await s.activity.start({ input: { id: 'sensual' } });
         s.activity._privateExperience._softenAllTheWay();
         Surface.renderUser('mm');
-        expect(Capability.responseBudget()).toBeLessThanOrEqual(48);
+        expect(Capability.responseBudget()).toBeLessThanOrEqual(48 + CHOICE_TOKENS);
         expect(Capability.privateSystemPromptSuffix()).toMatch(/present rather than talkative/i);
         s.activity.stop('user');
     });

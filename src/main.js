@@ -998,6 +998,10 @@ function startBehaviorDirector(options = {}) {
         getHistory: () => window.chatHistory.getHistory(),
         addHistory: (role, text) => window.chatHistory.addMessage(role, text),
         persist: () => _persistChat(),
+        // P13. Sending a turn the person did not type — a tapped dialogue choice. One line into the
+        // same pipeline, so prompt assembly, the provider, the directives and persistence are the
+        // ones typed text gets rather than a second implementation that drifts from them.
+        send: (text) => handleUserMessage(text),
     });
 
     const bdScript = document.createElement('script');

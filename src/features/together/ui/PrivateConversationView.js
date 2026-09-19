@@ -77,6 +77,7 @@ const PrivateConversationView = (() => {
 .nexus-private-status{font-size:.72rem;opacity:0;transition:opacity .28s ease;color:#9fd8ea;flex:0 0 auto;white-space:nowrap}.nexus-private-status.is-visible{opacity:.85}
 .nexus-private-shell.is-gentle{border-color:rgba(244,128,166,.24);box-shadow:0 12px 36px rgba(23,5,21,.24)}.is-gentle .nexus-private-kicker{animation:none;opacity:.6}
 .nexus-private-level{display:flex;align-items:center;gap:5px}.nexus-private-step{font-size:.72rem;opacity:.3;transition:opacity .3s ease,color .3s ease}.nexus-private-step.is-reached{opacity:.6;color:#f49aba}.nexus-private-step.is-current{opacity:1;font-weight:700;letter-spacing:.01em}.nexus-private-rung{width:12px;height:1px;background:currentColor;opacity:.22;flex:0 0 auto}
+.nexus-private-choices{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:9px;border-top:1px solid rgba(255,255,255,.07)}.nexus-private-choice{text-align:left;font-size:.82rem;line-height:1.35;padding:8px 11px;border-color:rgba(159,216,234,.3);background:rgba(159,216,234,.07);animation:nexus-private-choice-in .22s ease both}.nexus-private-choice:hover,.nexus-private-choice:focus-visible{background:rgba(159,216,234,.16);border-color:rgba(159,216,234,.5)}.nexus-private-choice:nth-child(2){animation-delay:.05s}.nexus-private-choice:nth-child(3){animation-delay:.1s}@keyframes nexus-private-choice-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){.nexus-private-choice{animation:none}}
 .nexus-private-controls{display:flex;align-items:center;gap:6px;margin-left:auto;flex:0 0 auto}.nexus-private-btn.is-primary{border-color:rgba(244,128,166,.6);background:rgba(244,128,166,.24);font-weight:650}.nexus-private-btn.is-primary:hover,.nexus-private-btn.is-primary:focus-visible{background:rgba(244,128,166,.34)}.nexus-private-btn.is-secondary{border-color:rgba(255,255,255,.14);background:transparent;opacity:.62}.nexus-private-btn.is-secondary:hover,.nexus-private-btn.is-secondary:focus-visible{opacity:.95;background:rgba(255,255,255,.06)}
 @media(max-width:560px){.nexus-private-bar{flex-wrap:wrap}.nexus-private-controls{margin-left:auto}.nexus-private-step{font-size:.7rem}.nexus-private-rung{width:8px}}
 @media(max-width:560px){#${ROW_ID}{margin:6px 0 8px}.nexus-private-card{padding:11px 13px;max-height:30vh}.nexus-private-copy{font-size:.92rem}.nexus-private-soundtrack{margin:0 10px 8px}.nexus-private-soundtrack-player{width:100%}.nexus-private-soundtrack-player .nexus-yt-card{max-width:100%}}
@@ -333,6 +334,67 @@ const PrivateConversationView = (() => {
         }
 
         /**
+         * Things you could say next, under her last line (P13).
+         *
+         * Attached to the most recent `her` turn rather than drawn in the footer, because they
+         * belong to *that* line — they are replies to it, and they scroll away with it. Anything
+         * offered earlier and not taken is withdrawn first: an RPG shows you the choices for the
+         * line you are on, never a stack of everything the character has ever said.
+         *
+         * Each button carries its own text and the tap sends it; the view does not decide what
+         * happens next, which keeps the send pipeline in one place. See `ConversationSurface.send`.
+         */
+        showChoices(choices, onChoose) {
+            if (!this.log || !Array.isArray(choices) || !choices.length) return null;
+            this.clearChoices();
+            const turn = [...this.log.querySelectorAll('[data-private-turn="her"]')].pop();
+            if (!turn) return null;
+            const list = this.doc.createElement('div');
+            list.className = 'nexus-private-choices';
+            list.dataset.privateChoices = '1';
+            const spend = () => {
+                list.dataset.spent = '1';
+                for (const button of list.querySelectorAll('button')) {
+                    button.disabled = true;
+                    button.removeAttribute('data-private-choice');
+                }
+            };
+            choices.forEach((choice, index) => {
+                const button = this.doc.createElement('button');
+                button.type = 'button';
+                button.className = 'nexus-private-btn nexus-private-choice';
+                button.textContent = choice;
+                button.dataset.privateChoice = String(index);
+                button.addEventListener('click', () => {
+                    if (list.dataset.spent === '1') return;
+                    // Spent before the handler runs, not after: sending is asynchronous and a
+                    // double-tap in the gap would send the same line twice.
+                    spend();
+                    list.remove();
+                    if (typeof onChoose === 'function') onChoose(choice, index);
+                });
+                list.appendChild(button);
+            });
+            turn.appendChild(list);
+            this._scroll(this.doc && this.doc.getElementById('chat-history'));
+            return list;
+        }
+
+        /**
+         * Take back the choices on screen.
+         *
+         * Called before offering new ones and whenever the person types instead — writing your own
+         * line is answering, and leaving the old options tappable underneath it would let somebody
+         * say two things in one turn.
+         */
+        clearChoices() {
+            const lists = this.log ? this.log.querySelectorAll('[data-private-choices]') : null;
+            if (!lists || !lists.length) return false;
+            for (const list of lists) list.remove();
+            return true;
+        }
+
+        /**
          * One turn in the transcript.
          *
          * The card used to hold exactly one message and wipe it on every write, which is what a
@@ -406,6 +468,9 @@ const PrivateConversationView = (() => {
             for (const old of turns) {
                 if (over <= 0) break;
                 if (old.querySelector('.nexus-private-actions:not([data-spent])')) continue;
+                // And a live set of dialogue choices, for the same reason (P13): they are the only
+                // copy of what the person can say next, and trimming the turn takes them with it.
+                if (old.querySelector('[data-private-choices]:not([data-spent])')) continue;
                 old.remove();
                 over -= 1;
             }
@@ -810,6 +875,7 @@ const PrivateConversationView = (() => {
                 this.win.clearTimeout(this._statusTimer);
             }
             this._statusTimer = null;
+            this.clearChoices();
             this._pending = null;
             this._thinking = null;
             // The only copy of the conversation, dropped with the card. See `_history`.

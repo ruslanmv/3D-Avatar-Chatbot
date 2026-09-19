@@ -152,6 +152,29 @@
         return { id: 'null', append() {}, finish() {}, discard() {}, node: null, textNode: null };
     }
 
+    /**
+     * Send a turn as though the person had typed it (P13).
+     *
+     * For a tapped dialogue choice. The host owns the whole pipeline — prompt assembly, the
+     * provider, the directives, persistence — and a feature that reimplemented any of it would
+     * drift from it. So this is one line into `handleUserMessage`, and everything downstream,
+     * including the drawing of the user's turn, happens exactly as it does for typed text.
+     *
+     * Returns whether the host took it, so a caller can tell "sent" from "there is no host" rather
+     * than assuming.
+     */
+    function send(text) {
+        const body = String(text == null ? '' : text).trim();
+        if (!body || typeof host.send !== 'function') return false;
+        try {
+            host.send(body);
+            return true;
+        } catch (error) {
+            console.warn('[ConversationSurface] host.send threw', error);
+            return false;
+        }
+    }
+
     /** A store that remembers nothing, for a surface that did not supply `history`. */
     function nullHistory() {
         return { id: 'null', getHistory: () => [], addMessage() {}, persist() {} };
@@ -414,6 +437,7 @@
         renderError,
         beginAssistant,
         history,
+        send,
         defaultSurface,
         nullStream,
         nullHistory,

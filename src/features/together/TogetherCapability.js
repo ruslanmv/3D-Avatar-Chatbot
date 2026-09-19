@@ -69,6 +69,9 @@
         3: 'Easing off a little. Still close, just slower.',
     });
 
+    /** What the `<choices>` block costs inside a reply. See `responseBudget`. */
+    const CHOICE_TOKENS = 48;
+
     const GUIDANCE = Object.freeze({
         idleMs: 18000,
         staleAfterMs: 90000,
@@ -283,6 +286,17 @@
         ];
     }
 
+    /**
+     * The `<choices>` instruction, or nothing (P13).
+     *
+     * Empty when the module is absent, so a build without it sends the prompt it sent before.
+     */
+    function choiceLines() {
+        const api = choicesModel();
+        if (!api || typeof api.instruction !== 'function') return [];
+        return ['', api.instruction()];
+    }
+
     function privateLengthLines(turn, style) {
         const lines = [];
         const words = turn && turn.words ? Number(turn.words) : 0;
@@ -353,6 +367,10 @@
             // matters is on screen: "[smile] I like it when the room is this quiet" is a note
             // about how to perform a line, rendered as part of the line.
             'Write only what you say. No stage directions, no bracketed or asterisked actions — not [smile], not *she leans in*. You have a body and it moves on its own; describing it in text breaks the moment instead of creating it.',
+            // P13. The choices ride back inside the reply, so the buttons are on screen at the same
+            // instant her line is. The alternative — a second request once the reply lands — is the
+            // wait this feature exists to remove.
+            ...choiceLines(),
             'Do not expose internal levels, gates or implementation details unless the user explicitly asks about the product.',
             '',
         ].join('\n');
@@ -378,7 +396,12 @@
         if (!td || typeof td.budgetFor !== 'function') return null;
         try {
             const wanted = td.budgetFor(session._turn || null);
-            return Number.isFinite(wanted) && wanted > 0 ? wanted : null;
+            if (!Number.isFinite(wanted) || wanted <= 0) return null;
+            // Room for the `<choices>` block, which is part of this reply rather than a second one
+            // (P13). Three short lines plus the tags is about forty tokens, and a budget that did
+            // not allow for them would truncate the block — leaving a dangling `<choices>` and no
+            // buttons, which is the worst of both.
+            return wanted + (choicesModel() ? CHOICE_TOKENS : 0);
         } catch (_) {
             return null;
         }
@@ -400,6 +423,10 @@
      */
     function experienceOverlay() {
         return privateSystemPromptSuffix().trim();
+    }
+
+    function choicesModel() {
+        return optional('./PrivateChoices.js', 'NEXUS_PRIVATE_CHOICES');
     }
 
     function stageDirections() {
@@ -425,21 +452,42 @@
         const original = String(text == null ? '' : text);
         const ctx = privateContext();
         if (!ctx) return original;
+        const session = ctx.activity && ctx.activity._privateExperience;
+
+        // P13's block comes off first, and unconditionally. It rides back inside the reply so the
+        // dialogue choices cost no second round trip — but that means the reply now contains markup
+        // which must never reach the bubble, the transcript or the synthesiser. Same seam as the
+        // stage directions below, and for the same reason: everything downstream reads this string.
+        let body = original;
+        const choices = choicesModel();
+        if (choices && typeof choices.parse === 'function') {
+            try {
+                const read = choices.parse(body);
+                body = read.text || body;
+                // Recorded, not drawn. This runs at the `displayText` seam, which on the
+                // **non-streaming** path is *before* the reply's turn exists — so drawing here
+                // would hang the buttons under her previous line. `_onAssistantFinished` puts them
+                // up once there is a turn to put them under, on both paths.
+                if (session && typeof session._stashChoices === 'function') session._stashChoices(read.choices);
+            } catch (_) {
+                // A parser that throws costs the buttons, never the reply.
+            }
+        }
+
         const api = stageDirections();
-        if (!api || typeof api.strip !== 'function') return original;
+        if (!api || typeof api.strip !== 'function') return body;
         let result = null;
         try {
-            result = api.strip(original);
+            result = api.strip(body);
         } catch (_) {
             // A sanitiser that throws costs the tidying, never the reply.
-            return original;
+            return body;
         }
-        if (!result || !result.markers || !result.markers.length) return original;
+        if (!result || !result.markers || !result.markers.length) return body;
         // The marker was information: a model that wrote `[smile]` was asking for a smile, and
         // the avatar can do that. Throwing it away would turn a formatting bug into a lost
         // signal. The session owns the emit so the source tag and the fail-soft are the same
         // ones every other Private motion gets.
-        const session = ctx.activity && ctx.activity._privateExperience;
         if (session && typeof session._embody === 'function') {
             try {
                 session._embody(api.presenceFrom(result.markers));
@@ -449,7 +497,7 @@
         }
         // An empty reply is worse than a marker on screen: a turn with nothing in it reads as a
         // failure. If the direction was the whole message, keep what she wrote.
-        return result.text || original;
+        return result.text || body;
     }
 
     function systemPromptSuffix() {
@@ -585,6 +633,14 @@
              */
             this._advances = 0;
             /**
+             * Choices read out of the reply that is still arriving (P13).
+             *
+             * Held rather than drawn because `sanitizeReply` runs at the `displayText` seam, and on
+             * the non-streaming path that is before the turn they belong under exists. Empty means
+             * the model wrote no block, and the local set goes up instead.
+             */
+            this._pendingChoices = [];
+            /**
              * What this session has already said and already offered (P11).
              *
              * Six identical lines was one symptom of a script with no memory of itself. Every guided
@@ -650,6 +706,10 @@
                 named ? `${this._line('opening')} ${place} feels like a good place for it.` : this._line('opening')
             );
             this._startSoundtrack();
+            // Something to tap from the first second (P13). The opening is a scripted line, not a
+            // model reply, so there is no block to ride back on — and an RPG that made you wait for
+            // the second exchange before offering a choice would have got the feel wrong.
+            this._offerChoices([], { source: 'local' });
             // Earliest-at rather than fires-at, and each of these waits for a quiet moment.
             //
             // What is *not* here any more (P12): the consent check-in at 120 s, the closing line at
@@ -784,6 +844,9 @@
             // An explicit `Slow down` is not undone by the classifier noticing a chatty turn. Only
             // another explicit choice leaves that state — the same rule the pace has always had.
             if (suggested && !this._styleLocked) this.style = suggested;
+            // Writing your own line is answering. Leaving the old options tappable underneath it
+            // would let somebody say two things in one turn.
+            if (this.view && typeof this.view.clearChoices === 'function') this.view.clearChoices();
             this._userIsTalking();
             this._emit('private:user-turn', { preset: this.preset.id, intent: turn ? turn.intent : null });
             if (!turn) return null;
@@ -823,6 +886,13 @@
          */
         _onAssistantFinished(answered = true) {
             if (answered) this._pendingQuestion = false;
+            // Her reply is in, and the turn it belongs to now exists on both the streaming and the
+            // non-streaming path. Whatever `sanitizeReply` read out of it goes up here; an empty
+            // stash falls through to the local set, so there is never a turn with nothing to tap.
+            // Either way it costs no round trip — the block came back inside the reply.
+            const stashed = this._pendingChoices;
+            this._pendingChoices = [];
+            if (answered) this._offerChoices(stashed, { source: stashed.length ? 'model' : 'local' });
             if (this.view && typeof this.view.hideThinking === 'function') this.view.hideThinking();
             if (this._thinkingTimer && this.win && typeof this.win.clearTimeout === 'function') {
                 this.win.clearTimeout(this._thinkingTimer);
@@ -1058,6 +1128,101 @@
             this._speakStepLine('easeLines', 1, EASE_LINES[1]);
             this._emit('private:intensity', { preset: this.preset.id, level: 1, energy: 'quiet', direction: 'down' });
             return true;
+        }
+
+        /**
+         * Put two or three things to say on screen (P13).
+         *
+         * The interaction people mean when they say a conversation with a character feels good:
+         * there is always something to *pick*, so the next turn costs a tap rather than a sentence
+         * and the pace is set by choosing rather than by a clock.
+         *
+         * `source: 'model'` is the set that came back inside her reply, which is why there is no
+         * second round trip and no extra wait. An empty set from that source is not nothing — it
+         * means the model did not write the block, or wrote one that failed validation — so this
+         * falls through to the local set, and there is never a turn with nothing to tap.
+         */
+        /** Hold what the reply carried until there is a turn to hang it under. See above. */
+        _stashChoices(list) {
+            this._pendingChoices = Array.isArray(list) ? list.filter(Boolean) : [];
+            return this._pendingChoices.length;
+        }
+
+        _offerChoices(list, { source = 'local' } = {}) {
+            if (this._stopped || this.state === 'complete' || !this.view) return false;
+            if (typeof this.view.showChoices !== 'function') return false;
+            const api = choicesModel();
+            let choices = Array.isArray(list) ? list.filter(Boolean) : [];
+            if (!choices.length) {
+                if (!api || typeof api.fallback !== 'function') return false;
+                const pace = paceModel();
+                const shown = pace
+                    ? pace.describe({ level: this._level(), energy: this.energy, maxLevel: this.preset.maxLevel })
+                    : null;
+                choices = api.fallback({
+                    pace: shown ? shown.pace : 'Warm',
+                    energy: this.energy,
+                    intent: this._turn && this._turn.intent,
+                    opening: this._turns === 0,
+                    scene: Boolean(this.scene),
+                    music: this._ownsMedia,
+                });
+            }
+            if (!choices.length) return false;
+            this.view.showChoices(choices, (text) => this._chooseReply(text));
+            this._emit('private:choices', { preset: this.preset.id, count: choices.length, source });
+            return true;
+        }
+
+        /**
+         * They tapped one. Send it as their turn.
+         *
+         * Through `ConversationSurface.send`, which is one line into `handleUserMessage` — so the
+         * prompt assembly, the provider, the directives and the drawing of the user's turn are the
+         * ones typed text gets. A feature that reimplemented any of that would drift from it, and
+         * the drawing in particular: `renderUser` already runs on that path, so drawing it here too
+         * would put the line on screen twice.
+         *
+         * The quiet option is the exception and the reason `isQuiet` exists. "Say nothing" is a
+         * move, not a sentence, and sending the literal text `[stay quiet]` to the model would be
+         * asking it to interpret a stage direction as speech. It is answered locally.
+         */
+        _chooseReply(text) {
+            if (this._stopped || this.state === 'complete') return false;
+            const api = choicesModel();
+            const line = cleanText(text, 200);
+            if (!line) return false;
+            if (api && typeof api.isQuiet === 'function' && api.isQuiet(line)) {
+                this._choseQuiet();
+                return true;
+            }
+            const surface = surfaceApi(this.win);
+            if (!surface || typeof surface.send !== 'function') return false;
+            return surface.send(line) === true;
+        }
+
+        /**
+         * They chose to say nothing, which is a thing this mode is for.
+         *
+         * No provider call, so it is instant, and no turn in the history: silence is not a line. The
+         * session simply eases toward quiet and leaves the floor alone, which is exactly what the
+         * person asked for by picking it.
+         */
+        _choseQuiet() {
+            this.energy = (paceModel() && paceModel().normaliseEnergy('quiet')) || 'quiet';
+            this.style = 'quiet';
+            this._paintLevel();
+            this._status('✓ Quiet');
+            this._intent('breathe', 0.2);
+            // A lull is what the guided beats are for, and the person has just declared one.
+            this._suppressGuidance(GUIDANCE.idleMs);
+            this._emit('private:choices', { preset: this.preset.id, count: 0, source: 'quiet' });
+            return true;
+        }
+
+        /** The level, clamped to the preset's ceiling. Read in several places; computed in one. */
+        _level() {
+            return Math.max(1, Math.min(this.preset.maxLevel, Number(this.adult && this.adult.level) || 1));
         }
 
         /** The footer's transient line, when there is a view to put it in. */
@@ -1476,7 +1641,7 @@
         _paintLevel() {
             if (!this.view) return;
             const pace = paceModel();
-            const level = Math.max(1, Math.min(this.preset.maxLevel, Number(this.adult && this.adult.level) || 1));
+            const level = this._level();
             const shown = pace
                 ? pace.describe({ level, energy: this.energy, maxLevel: this.preset.maxLevel })
                 : { pace: level === 1 ? 'Warm' : level === 2 ? 'Romantic' : 'Sensual' };
