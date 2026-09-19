@@ -6,6 +6,11 @@
  * closes, cannot be scrolled back to, and is gone on reload — so what Together does with a
  * selection is not "play it" but "say it", as an ordinary assistant message.
  *
+ * Scene Tale is the one deliberate variation: its soundtrack is supporting material, not a
+ * new conversation topic. When the media session says the source is `scene-tale`, the result
+ * is handed to `SceneTaleConversationView` so it appears as a compact background soundtrack
+ * inside the persistent Scene Tale card instead of becoming a second full YouTube message.
+ *
  * ## Why the URL goes in the message text
  *
  * `addMessageToHistory(sender, text, attachments)` accepts attachments, and `_persistChat`
@@ -19,22 +24,110 @@
  * other YouTube link — so a video chosen in Together and one pasted by hand become the same
  * kind of message. One renderer, one history model, one playback implementation.
  *
- * ## Nothing here plays anything
+ * ## Nothing here plays anything by default
  *
- * The card arrives as a facade: thumbnail, title, play button, no iframe. Playback begins when
- * somebody presses play. Selecting a search result is not consent to make noise, and neither
- * is restoring a conversation that contains one.
+ * Ordinary cards arrive as a facade: thumbnail, title, play button, no iframe. Playback begins
+ * when somebody presses play. `play:true` is the explicit exception used from a real user
+ * gesture. Scene Tale uses that same exception for its already-chosen background soundtrack.
  *
  * Exposes: window.NEXUS_CONVERSATION_PUBLISHER
  */
 const ConversationPublisher = (() => {
     'use strict';
 
+    const SCENE_TALE_VIEW_SRC = 'src/features/together/ui/SceneTaleConversationView.js';
+    const SCENE_TALE_SETUP_VIEW_SRC = 'src/features/together/ui/SceneTaleSetupView.js';
+    const SCENE_TALE_ART_VIEW_SRC = 'src/features/together/ui/SceneTaleArtView.js';
+    const SCENE_TALE_MOBILE_MODE_SRC = 'src/features/together/ui/SceneTaleMobileMode.js';
+
     function ask() {
         return (typeof window !== 'undefined' && window.NEXUS_YT_ASK) || null;
     }
 
-    /** What she says above the card. The title in quotes, because it is what you picked. */
+    function ensureScript(win, doc, { globalName, src, marker }) {
+        const w = win || (typeof window !== 'undefined' ? window : null);
+        const d = doc || (typeof document !== 'undefined' ? document : null);
+        if (!w || !d || w[globalName]) return w && w[globalName];
+        const selector = `script[data-${marker}="1"]`;
+        if (d.querySelector && d.querySelector(selector)) return null;
+        try {
+            const script = d.createElement('script');
+            script.src = src;
+            script.async = false;
+            script.setAttribute(`data-${marker}`, '1');
+            (d.head || d.documentElement || d.body).appendChild(script);
+        } catch (_) {
+            return null;
+        }
+        return null;
+    }
+
+    /**
+     * Load the Scene Tale conversation renderer without adding another static script tag to
+     * index.html. ConversationPublisher is already loaded before Playground in Behavior boot,
+     * so this normally finishes long before a user can reach Start story. If it does not, the
+     * ordinary media-card path remains a safe fallback.
+     */
+    function ensureSceneTaleView(win, doc) {
+        return ensureScript(win, doc, {
+            globalName: 'NEXUS_SCENE_TALE_VIEW',
+            src: SCENE_TALE_VIEW_SRC,
+            marker: 'nexus-scene-tale-view',
+        });
+    }
+
+    /**
+     * Stage 1 is presentation-only, so its polished setup renderer is a separate small view.
+     * It watches the existing Together DOM and decorates only the Scene Tale configure state;
+     * Playground continues to own every listener and state transition.
+     */
+    function ensureSceneTaleSetupView(win, doc) {
+        return ensureScript(win, doc, {
+            globalName: 'NEXUS_SCENE_TALE_SETUP_VIEW',
+            src: SCENE_TALE_SETUP_VIEW_SRC,
+            marker: 'nexus-scene-tale-setup-view',
+        });
+    }
+
+    /**
+     * Scene Tale art is a third presentation-only layer. It reads the canonical ambience art
+     * manifest and adds the current scene as a hero image inside Conversation. The story still
+     * runs when the manifest or image cannot load.
+     */
+    function ensureSceneTaleArtView(win, doc) {
+        return ensureScript(win, doc, {
+            globalName: 'NEXUS_SCENE_TALE_ART_VIEW',
+            src: SCENE_TALE_ART_VIEW_SRC,
+            marker: 'nexus-scene-tale-art-view',
+        });
+    }
+
+    /**
+     * Ordinary mobile conversation is chat-first; Scene Tale must be stage-first. This small
+     * presentation layer activates only while a phone-sized Scene Tale HUD exists. It compacts
+     * the top bar/composer, constrains narration, removes timer-driven autoscroll and restores
+     * the normal mobile chat geometry as soon as the story exits.
+     */
+    function ensureSceneTaleMobileMode(win, doc) {
+        return ensureScript(win, doc, {
+            globalName: 'NEXUS_SCENE_TALE_MOBILE_MODE',
+            src: SCENE_TALE_MOBILE_MODE_SRC,
+            marker: 'nexus-scene-tale-mobile-mode',
+        });
+    }
+
+    function sceneTaleSource(win) {
+        const w = win || (typeof window !== 'undefined' ? window : null);
+        const session = w && w.NEXUS_MEDIA_SESSION;
+        if (!session || typeof session.get !== 'function') return false;
+        try {
+            const snapshot = session.get();
+            return Boolean(snapshot && snapshot.source === 'scene-tale');
+        } catch (_) {
+            return false;
+        }
+    }
+
     /**
      * What the card says it is doing.
      *
@@ -71,34 +164,55 @@ const ConversationPublisher = (() => {
         return title ? `Playing “${title}”` : 'Here you go';
     }
 
+    function setCurrentMedia(result, w) {
+        try {
+            const media = w && w.NEXUS_CURRENT_MEDIA;
+            if (media && typeof media.set === 'function') media.set(result);
+        } catch (_) {
+            // Knowing what is playing is never worth losing the card over.
+        }
+    }
+
+    function publishSceneTaleBackground(result, { doc, win, play = false } = {}) {
+        const d = doc || (typeof document !== 'undefined' ? document : null);
+        const w = win || (typeof window !== 'undefined' ? window : null);
+        if (!play || !sceneTaleSource(w) || !d || !w) return null;
+        ensureSceneTaleView(w, d);
+        ensureSceneTaleMobileMode(w, d);
+        const view = w.NEXUS_SCENE_TALE_VIEW;
+        if (!view || typeof view.attachSoundtrack !== 'function') return null;
+        try {
+            return view.attachSoundtrack(result, { doc: d, win: w, play: true });
+        } catch (_) {
+            return null;
+        }
+    }
+
     /**
      * Put a chosen result into the conversation.
      *
-     * Returns the message node, or `null` on a page with no chat — a headset overlay, a test.
-     * Never throws: this runs from a click in the launcher, and a failure here must close the
-     * panel and leave the app alone rather than taking the click down with it.
+     * Returns the message node, Scene Tale card, or `null` on a page with no chat — a headset
+     * overlay, a test. Never throws: this runs from a click in the launcher, and a failure
+     * here must close the panel and leave the app alone rather than taking the click down.
      */
     function publish(result, { doc, win, play = false } = {}) {
         const d = doc || (typeof document !== 'undefined' ? document : null);
         const w = win || (typeof window !== 'undefined' ? window : null);
-        if (!result || !result.url || !d) {
-            return null;
-        }
-        const A = ask();
-        if (!A || typeof A.say !== 'function') {
-            return null;
-        }
+        if (!result || !result.url || !d) return null;
 
-        // D9. Before the message, so a model answering the very next turn already knows.
-        // Guarded: an install without the context module publishes exactly as it did before.
-        try {
-            const media = w && w.NEXUS_CURRENT_MEDIA;
-            if (media && typeof media.set === 'function') {
-                media.set(result);
-            }
-        } catch (_) {
-            // Knowing what is playing is never worth losing the card over.
-        }
+        // D9. Before either presentation, so a model answering the very next turn already
+        // knows. Guarded: an install without the context module publishes exactly as before.
+        setCurrentMedia(result, w);
+
+        // Scene Tale soundtrack is ambience for the active story, not a second assistant
+        // message. The view owns a compact player inside the Scene Tale card. If the view is
+        // unavailable we intentionally fall through to the standard card rather than losing
+        // playback entirely.
+        const background = publishSceneTaleBackground(result, { doc: d, win: w, play });
+        if (background) return background;
+
+        const A = ask();
+        if (!A || typeof A.say !== 'function') return null;
 
         // `say` writes in whichever shape this page uses — ChatManager where there is one,
         // the `.chat-row > .chat-message > .message-text` `main.js` builds otherwise. Reused
@@ -113,16 +227,12 @@ const ConversationPublisher = (() => {
         try {
             // The same function the app calls after its own messages. Without it the card is
             // there until reload and then silently is not.
-            if (w && typeof w._persistChat === 'function') {
-                w._persistChat();
-            }
+            if (w && typeof w._persistChat === 'function') w._persistChat();
         } catch (_) {
             // Storage full or disabled. The card is live either way.
         }
 
-        if (play) {
-            start(result, node, w);
-        }
+        if (play) start(result, node, w);
         return node;
     }
 
@@ -149,19 +259,13 @@ const ConversationPublisher = (() => {
     function start(result, node, w) {
         const id = String((result && result.id) || '').trim();
         const embed = w && w.NEXUS_YT_2D;
-        if (!id || !node || !embed || typeof embed.activate !== 'function') {
-            return false;
-        }
+        if (!id || !node || !embed || typeof embed.activate !== 'function') return false;
         try {
-            if (typeof embed.decorateLive === 'function') {
-                embed.decorateLive(node);
-            }
+            if (typeof embed.decorateLive === 'function') embed.decorateLive(node);
             // Scoped to the node just published. The old whole-document lookup would happily
             // start an older card for the same video sitting further up the conversation.
             const card = node.querySelector(`.nexus-yt-card[data-yt-id="${id}"]`);
-            if (!card) {
-                return false;
-            }
+            if (!card) return false;
             embed.activate(card, { id, start: Number(result.start) || 0, name: result.title || '' });
             return true;
         } catch (_) {
@@ -170,12 +274,30 @@ const ConversationPublisher = (() => {
         }
     }
 
-    return { publish, line, start };
+    const api = {
+        publish,
+        line,
+        start,
+        ensureSceneTaleView,
+        ensureSceneTaleSetupView,
+        ensureSceneTaleArtView,
+        ensureSceneTaleMobileMode,
+        sceneTaleSource,
+        publishSceneTaleBackground,
+        SCENE_TALE_VIEW_SRC,
+        SCENE_TALE_SETUP_VIEW_SRC,
+        SCENE_TALE_ART_VIEW_SRC,
+        SCENE_TALE_MOBILE_MODE_SRC,
+    };
+
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+        ensureSceneTaleArtView(window, document);
+        ensureSceneTaleView(window, document);
+        ensureSceneTaleMobileMode(window, document);
+        ensureSceneTaleSetupView(window, document);
+    }
+    return api;
 })();
 
-if (typeof window !== 'undefined') {
-    window.NEXUS_CONVERSATION_PUBLISHER = ConversationPublisher;
-}
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = ConversationPublisher;
-}
+if (typeof window !== 'undefined') window.NEXUS_CONVERSATION_PUBLISHER = ConversationPublisher;
+if (typeof module !== 'undefined' && module.exports) module.exports = ConversationPublisher;

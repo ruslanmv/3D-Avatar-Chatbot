@@ -370,18 +370,31 @@
             setTimeout(() => d.remove(), 3200);
         },
 
-        /** BRAIN — wrap the LLM entry once so every reply carries the directive. */
+        /**
+         * BRAIN — wrap the LLM entry once so every reply carries the directive.
+         *
+         * All three entry points, and `sendMessageStream` is the one that was missing. It is
+         * the path `main.js` takes for OpenAI, Claude and Ollama — so those three providers
+         * received no language instruction at all, and only OllaBridge and watsonx spoke the
+         * chosen language, because those two are excluded from streaming. Half the providers
+         * were silently English.
+         *
+         * Rest args rather than a fixed `(msg, sys, hist)`: `sendMessageStream` takes a fourth
+         * argument, the token callback, and a wrapper that drops it turns every streaming reply
+         * into a silent one.
+         */
         _patchLLM() {
             const mgr = window._nexusLLM;
             if (!mgr || mgr.__langPatched) return !!mgr;
             const wrap = (fnName) => {
                 const orig = mgr[fnName]?.bind(mgr);
                 if (!orig) return;
-                mgr[fnName] = (msg, sys, hist) =>
-                    orig(msg, ((sys || '') + '\n\n' + AppLanguage.directive()).trim(), hist);
+                mgr[fnName] = (msg, sys, ...rest) =>
+                    orig(msg, ((sys || '') + '\n\n' + AppLanguage.directive()).trim(), ...rest);
             };
             wrap('sendMessage');
             wrap('sendMessageStructured');
+            wrap('sendMessageStream');
             mgr.__langPatched = true;
             return true;
         },

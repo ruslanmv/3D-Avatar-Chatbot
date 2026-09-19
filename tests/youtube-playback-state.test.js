@@ -28,6 +28,15 @@ function fakeYT() {
             self.pauseVideo = () => self.calls.push('pause');
             self.playVideo = () => self.calls.push('play');
             self.stopVideo = () => self.calls.push('stop');
+            self.volume = null;
+            self.muted = true;
+            self.setVolume = (value) => {
+                self.volume = value;
+                self.calls.push(`volume:${value}`);
+            };
+            self.unMute = () => {
+                self.muted = false;
+            };
             self.destroy = () => {
                 self.destroyed = true;
             };
@@ -195,5 +204,69 @@ describe('driving the player you are watching', () => {
         handle.stop();
         expect(window.YT.players[0].destroyed).toBe(true);
         expect(handle.pause()).toBe(false);
+    });
+});
+
+describe('how loud it comes in', () => {
+    test('a requested volume is applied when the player is ready, not before', async () => {
+        window.YT = fakeYT();
+        await Playback.attach(document.createElement('iframe'), { volume: 15 });
+        const player = window.YT.players[0];
+
+        // `attach` resolves when the player has been *constructed*. Setting the level here
+        // would race its initialisation, and the race is audible: a background track that
+        // arrives at full volume for a second is worse than one that was never quietened.
+        expect(player.volume).toBeNull();
+
+        player.ready();
+        expect(player.volume).toBe(15);
+        // Autoplay commonly starts muted, so a level set without unmuting is a level nobody
+        // can hear.
+        expect(player.muted).toBe(false);
+    });
+
+    test('no volume asked for means the player is left exactly as it was', async () => {
+        window.YT = fakeYT();
+        await Playback.attach(document.createElement('iframe'));
+        window.YT.players[0].ready();
+        expect(window.YT.players[0].volume).toBeNull();
+        expect(window.YT.players[0].calls).toEqual([]);
+    });
+
+    test('an explicit null is not volume zero', async () => {
+        // `activate(card, video)` defaults the option to null and passes it straight down, so
+        // this is the path every ordinary card in the app takes. `Number(null)` is 0, and
+        // coercing here would have muted every video on the page.
+        window.YT = fakeYT();
+        await Playback.attach(document.createElement('iframe'), { volume: null });
+        window.YT.players[0].ready();
+        expect(window.YT.players[0].volume).toBeNull();
+        expect(window.YT.players[0].calls).toEqual([]);
+    });
+
+    test('a level out of range is clamped rather than refused', async () => {
+        window.YT = fakeYT();
+        const handle = await Playback.attach(document.createElement('iframe'));
+        expect(handle.setVolume(140)).toBe(true);
+        expect(window.YT.players[0].volume).toBe(100);
+        expect(handle.setVolume(-8)).toBe(true);
+        expect(window.YT.players[0].volume).toBe(0);
+        expect(handle.setVolume(14.6)).toBe(true);
+        expect(window.YT.players[0].volume).toBe(15);
+    });
+
+    test('a level that is not a number changes nothing and says so', async () => {
+        window.YT = fakeYT();
+        const handle = await Playback.attach(document.createElement('iframe'));
+        expect(handle.setVolume('loud')).toBe(false);
+        expect(handle.setVolume(null)).toBe(false);
+        expect(window.YT.players[0].volume).toBeNull();
+    });
+
+    test('a player that has gone away reports that it could not be turned down', async () => {
+        window.YT = fakeYT();
+        const handle = await Playback.attach(document.createElement('iframe'));
+        handle.stop();
+        expect(handle.setVolume(15)).toBe(false);
     });
 });

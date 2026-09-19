@@ -1,78 +1,447 @@
 'use strict';
 
 /**
- * SpicyGate — Simple ON/OFF adult content gate with age verification.
- * =================================================================
- * When OFF (default): all adult poses, emotes, modes, and behaviors are hidden.
- * When ON: everything unlocks — poses, animations, talk styles, emotes.
+ * SpicyGate — Settings gate for Private Mode.
+ * ============================================
  *
- * Requires one-time age verification (18+ checkbox) before enabling.
+ * Product invariant:
+ *   The Settings switch is the user's preference.
+ *   Accepting the adult confirmation enables Private Mode on this device. The existing
+ *   ConsentFlow still owns per-experience consent and escalation after the gate is enabled.
  *
  * Storage (localStorage):
- *   nexus_spicy_enabled  — "true" / "false"
- *   nexus_spicy_verified — "true" / "false"
- *
- * Usage:
- *   window.NEXUS_SPICY.isEnabled()       → bool
- *   window.NEXUS_SPICY.setEnabled(true)  → shows age gate if not verified
- *   window.NEXUS_SPICY.onChange(fn)       → subscribe to toggle changes
+ *   nexus_spicy_enabled  — the user's accepted ON/OFF preference
+ *   nexus_spicy_verified — local conditions acknowledgement only; never trusted adulthood
  *
  * Exposes: window.NEXUS_SPICY
  */
 (function () {
-    // ─── State ───
+    const VERIFY_RETRY_MS = 5000;
+    const ENABLE_TIMEOUT_MS = 10000;
+    const CONNECTION_TIMEOUT_MS = 10000;
+    const REFRESH_MS = 500;
+
     let enabled = localStorage.getItem('nexus_spicy_enabled') === 'true';
     let verified = localStorage.getItem('nexus_spicy_verified') === 'true';
+    let pending = false;
+    let pendingSince = 0;
+    let connecting = false;
+    let connectingSince = 0;
+    let connectionAttempt = 0;
+    let discoveryInFlight = false;
+    let discoveredSession = null;
+    let lastVerifyRequestAt = 0;
+    let retryAfter = 0;
+    let unavailableReason = '';
+    let lastUsable = false;
+    let refreshTimer = null;
     const listeners = [];
+    const preferenceListeners = [];
+    const pendingCallbacks = [];
 
-    // If enabled but not verified, force off
-    if (enabled && !verified) {
-        enabled = false;
-        localStorage.setItem('nexus_spicy_enabled', 'false');
-    }
+    // An ON preference without the local conditions acknowledgement is not meaningful.
+    if (enabled && !verified) enabled = false;
 
-    // ─── Persistence ───
     function persist() {
         localStorage.setItem('nexus_spicy_enabled', enabled ? 'true' : 'false');
         localStorage.setItem('nexus_spicy_verified', verified ? 'true' : 'false');
     }
+    persist();
 
-    // ─── Notify subscribers ───
-    function notify() {
-        for (let i = 0; i < listeners.length; i++) {
+    function director() {
+        return window.NEXUS_BD || null;
+    }
+
+    function localPrivateProfile(profile) {
+        if (!profile) return profile;
+        return {
+            ...profile,
+            requires: (profile.requires || []).filter((flag) => flag !== 'adultVerified'),
+        };
+    }
+
+    /**
+     * Reuse the repository's existing ConsentFlow. Private Mode's explicit local adult
+     * confirmation satisfies the profile's entry gate; per-experience consent remains intact.
+     */
+    function ensureTrustedAdultFlow() {
+        const d = director();
+        if (!d || !d.blackboard) return null;
+        if (d.adult && typeof d.adult.enter === 'function') {
+            d.adult.profile = localPrivateProfile(d.adult.profile);
+            return d.adult;
+        }
+
+        const factory = window.NEXUS_BD_CONSENT_FLOW;
+        const profile = window.NEXUS_BD_PROFILE_ADULT;
+        if (!factory || typeof factory.attach !== 'function' || !profile) return null;
+        try {
+            const flow = factory.attach({
+                bus: d.bus,
+                blackboard: d.blackboard,
+                modes: d.modes,
+                profile: localPrivateProfile(profile),
+                recorder: d.clips,
+                say: window.NEXUS_BD_SAY || null,
+            });
+            if (!flow || typeof flow.enter !== 'function') return null;
+            d.adult = flow;
+            if (Array.isArray(d.adapters) && !d.adapters.includes(flow)) d.adapters.push(flow);
+            return flow;
+        } catch (error) {
+            console.warn('[SpicyGate] Private consent flow could not attach', error);
+            return null;
+        }
+    }
+
+    function trustedReady() {
+        return enabled && verified;
+    }
+
+    function usable() {
+        return enabled && verified;
+    }
+
+    function sessionReady() {
+        const d = director();
+        const session = d && d.session;
+        return Boolean(session && session.connected === true && typeof session.send === 'function');
+    }
+
+    function notify(value) {
+        const active = Boolean(value);
+        for (const fn of listeners.slice()) {
             try {
-                listeners[i](enabled);
+                fn(active);
             } catch (_) {}
         }
     }
 
-    // ─── Age Verification Modal ───
-    function showAgeGate(onConfirm, onCancel) {
-        // If already verified, skip
-        if (verified) {
+    function notifyPreference(value) {
+        const requested = Boolean(value);
+        for (const fn of preferenceListeners.slice()) {
+            try {
+                fn(requested);
+            } catch (_) {}
+        }
+    }
+
+    function setUsableNotification(active) {
+        const next = Boolean(active);
+        if (lastUsable === next) return;
+        lastUsable = next;
+        notify(next);
+    }
+
+    function flushCallbacks(ok) {
+        const callbacks = pendingCallbacks.splice(0, pendingCallbacks.length);
+        for (const fn of callbacks) {
+            try {
+                fn(Boolean(ok));
+            } catch (_) {}
+        }
+    }
+
+    function resetAttemptState() {
+        pending = false;
+        pendingSince = 0;
+        connecting = false;
+        connectingSince = 0;
+        connectionAttempt += 1;
+        discoveryInFlight = false;
+        discoveredSession = null;
+        lastVerifyRequestAt = 0;
+    }
+
+    /** Explicit user OFF/reset. This is the only normal path that clears the preference. */
+    function disableGate(reason, { notifyChange = true } = {}) {
+        const wasRequested = enabled;
+        const wasUsable = lastUsable;
+        enabled = false;
+        unavailableReason = '';
+        retryAfter = 0;
+        resetAttemptState();
+        persist();
+        if (wasRequested) notifyPreference(false);
+        if (wasUsable && notifyChange) setUsableNotification(false);
+        else lastUsable = false;
+        updateUI(reason || 'off');
+        flushCallbacks(false);
+    }
+
+    /**
+     * A transport/verification problem removes trusted access but does not rewrite the user's
+     * ON preference. The switch therefore stays ON and can recover automatically.
+     */
+    function suspendTrustedAccess(reason) {
+        setUsableNotification(false);
+        resetAttemptState();
+        unavailableReason = reason || 'unavailable';
+        retryAfter = Date.now() + VERIFY_RETRY_MS;
+        persist();
+        updateUI('unavailable');
+        flushCallbacks(false);
+        return false;
+    }
+
+    function commitEnabled() {
+        if (!enabled || !verified) return false;
+        ensureTrustedAdultFlow();
+        const shouldNotify = !lastUsable;
+        resetAttemptState();
+        unavailableReason = '';
+        retryAfter = 0;
+        persist();
+        if (shouldNotify) setUsableNotification(true);
+        updateUI('on');
+        flushCallbacks(true);
+        return true;
+    }
+
+    function applySessionSettings(session, settings) {
+        if (!session || !settings || !settings.url) return false;
+        if (typeof session.configureSession === 'function') {
+            try {
+                return session.configureSession(settings) !== false;
+            } catch (_) {
+                return false;
+            }
+        }
+
+        // Compatibility with the existing SessionAdapter. Reuse it; do not create a second
+        // transport just for Private Mode.
+        session.session = { ...(session.session || {}), ...settings };
+        if (session.config && typeof session.config === 'object') session.config.session = session.session;
+        if (session.connected || session.socket) return true;
+        if (session._timer) {
+            try {
+                window.clearTimeout(session._timer);
+            } catch (_) {}
+            session._timer = null;
+        }
+        if (typeof session.connect !== 'function') return false;
+        try {
+            return session.connect() !== false;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function attemptSessionRecovery(attempt) {
+        if (!enabled || !connecting || attempt !== connectionAttempt) return false;
+        if (sessionReady()) return true;
+
+        const d = director();
+        const session = d && d.session;
+
+        if (session && discoveredSession) {
+            const settings = discoveredSession;
+            discoveredSession = null;
+            if (!applySessionSettings(session, settings)) return suspendTrustedAccess('unavailable');
+            return true;
+        }
+
+        if (session) {
+            const current = session.session || {};
+            if (session.socket) return true;
+            if (current.enabled === true && current.url && typeof session.connect === 'function') {
+                try {
+                    if (session.connect() !== false) return true;
+                } catch (_) {
+                    // Discovery below can still provide a fresh endpoint.
+                }
+            }
+        }
+
+        const discovery = window.NEXUS_BD_BRIDGE_DISCOVERY;
+        if (!discovery || typeof discovery.discover !== 'function') return false;
+        if (discoveryInFlight) return true;
+
+        discoveryInFlight = true;
+        let discoveryResult;
+        try {
+            // Start discovery immediately. Besides avoiding an unnecessary event-loop turn,
+            // this lets callers observe the recovered SessionAdapter settings as soon as the
+            // discovery promise settles.
+            discoveryResult = discovery.discover();
+        } catch (_) {
+            discoveryInFlight = false;
+            return suspendTrustedAccess('unavailable');
+        }
+        Promise.resolve(discoveryResult)
+            .then(function (found) {
+                discoveryInFlight = false;
+                if (!enabled || !connecting || attempt !== connectionAttempt) return;
+                if (!found || found.available !== true || !found.sessionUrl) {
+                    suspendTrustedAccess('unavailable');
+                    return;
+                }
+                discoveredSession = {
+                    enabled: true,
+                    url: found.sessionUrl,
+                    auth: found.auth || '',
+                    source: 'bridge',
+                    features: Array.isArray(found.features) ? found.features.slice() : [],
+                };
+                attemptSessionRecovery(attempt);
+            })
+            .catch(function () {
+                discoveryInFlight = false;
+                if (enabled && connecting && attempt === connectionAttempt) suspendTrustedAccess('unavailable');
+            });
+        return true;
+    }
+
+    function requestTrustedVerification(force) {
+        const d = director();
+        if (!sessionReady()) return false;
+        if (d && d.blackboard && d.blackboard.adultVerified === true) return false;
+        const now = Date.now();
+        if (!force && lastVerifyRequestAt && now - lastVerifyRequestAt < VERIFY_RETRY_MS) return true;
+        try {
+            const sent = d.session.send({ v: 1, type: 'adult_verify_request' }) === true;
+            if (sent) lastVerifyRequestAt = now;
+            return sent;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function beginVerificationRequest() {
+        if (!enabled) return false;
+        connecting = false;
+        connectingSince = 0;
+        discoveredSession = null;
+        unavailableReason = '';
+        retryAfter = 0;
+        if (trustedReady()) return commitEnabled();
+        if (!requestTrustedVerification(true)) {
+            if (!sessionReady()) return beginSessionRecovery();
+            return suspendTrustedAccess('unavailable');
+        }
+        pending = true;
+        pendingSince = Date.now();
+        updateUI('verifying');
+        return true;
+    }
+
+    function beginSessionRecovery() {
+        if (!enabled) return false;
+        pending = false;
+        pendingSince = 0;
+        lastVerifyRequestAt = 0;
+        unavailableReason = '';
+        retryAfter = 0;
+        connecting = true;
+        connectingSince = Date.now();
+        const attempt = ++connectionAttempt;
+        updateUI('connecting');
+        if (!attemptSessionRecovery(attempt)) {
+            return suspendTrustedAccess('unavailable');
+        }
+        return true;
+    }
+
+    /**
+     * Reconcile preference and trust. Losing trusted readiness removes Private access at once,
+     * but the Settings preference remains ON and the normal HomePilot session is re-established
+     * and re-verified automatically.
+     */
+    function refreshTrustedState() {
+        const trusted = trustedReady();
+
+        if (!enabled) {
+            if (lastUsable) setUsableNotification(false);
+            updateUI('off');
+            return false;
+        }
+
+        if (!verified) {
+            disableGate('reset');
+            return false;
+        }
+
+        if (trusted) {
+            if (!lastUsable || pending || connecting || unavailableReason) return commitEnabled();
+            updateUI('on');
+            return true;
+        }
+
+        // Trust is gone now; consumers must stop using Private immediately. The user's switch
+        // choice, however, remains ON while we recover it.
+        if (lastUsable) setUsableNotification(false);
+
+        if (connecting) {
+            if (sessionReady()) {
+                beginVerificationRequest();
+                return false;
+            }
+            if (Date.now() - connectingSince >= CONNECTION_TIMEOUT_MS) {
+                return suspendTrustedAccess('connection-timeout');
+            }
+            attemptSessionRecovery(connectionAttempt);
+            updateUI('connecting');
+            return false;
+        }
+
+        if (pending) {
+            if (!sessionReady()) {
+                pending = false;
+                pendingSince = 0;
+                lastVerifyRequestAt = 0;
+                return beginSessionRecovery();
+            }
+            if (Date.now() - pendingSince >= ENABLE_TIMEOUT_MS) {
+                return suspendTrustedAccess('verification-timeout');
+            }
+            if (!requestTrustedVerification(false)) {
+                if (!sessionReady()) return beginSessionRecovery();
+                return suspendTrustedAccess('unavailable');
+            }
+            updateUI('verifying');
+            return false;
+        }
+
+        // A previous recovery attempt may have failed. Keep the preference ON, show the real
+        // state, and periodically retry instead of silently flipping the switch OFF.
+        if (unavailableReason && Date.now() < retryAfter) {
+            updateUI('unavailable');
+            return false;
+        }
+        unavailableReason = '';
+
+        if (sessionReady()) beginVerificationRequest();
+        else beginSessionRecovery();
+        // `refresh()` reports trusted usability, not whether a recovery attempt started.
+        return false;
+    }
+
+    function showAgeGate(onConfirm, onCancel, { force = false } = {}) {
+        if (verified && !force) {
             onConfirm();
             return;
         }
+
+        const existing = document.querySelector('.spicy-age-overlay');
+        if (existing) return;
 
         const overlay = document.createElement('div');
         overlay.className = 'spicy-age-overlay';
         overlay.innerHTML =
             '<div class="spicy-age-modal">' +
             '  <div class="spicy-age-header">' +
-            '    <span class="spicy-age-icon">\u{1F525}</span>' +
-            '    <h3>Adult Content</h3>' +
+            '    <span class="spicy-age-icon">♡</span>' +
+            '    <h3>Private Mode</h3>' +
             '  </div>' +
             '  <div class="spicy-age-body">' +
-            '    <p>Spicy Mode unlocks adult poses, animations, emotes, and behaviors ' +
-            '       designed for mature audiences.</p>' +
+            '    <p>Private Mode can make supported companion interactions more personal, romantic ' +
+            '       or sensual. It never starts automatically.</p>' +
             '    <div class="spicy-age-allowed">' +
-            '      <strong>When enabled:</strong>' +
+            '      <strong>When available:</strong>' +
             '      <ul>' +
-            '        <li>Adult poses (seductive, intimate, explicit)</li>' +
-            '        <li>Flirt, tease &amp; intimate animation modes</li>' +
-            '        <li>Whisper &amp; playful talk styles</li>' +
-            '        <li>Adult interaction emotes</li>' +
-            '        <li>Mature roleplay behaviors</li>' +
+            '        <li>Private appears in Together after you accept this confirmation</li>' +
+            '        <li>Affectionate, Romantic and Sensual experiences remain consent-gated</li>' +
+            '        <li>You can turn Private Mode off at any time</li>' +
             '      </ul>' +
             '    </div>' +
             '    <div class="spicy-age-blocked">' +
@@ -83,22 +452,24 @@
             '        <li>Illegal content</li>' +
             '      </ul>' +
             '    </div>' +
+            '    <p style="font-size:0.78rem;opacity:.75">Each Private experience still asks for consent ' +
+            '       and can be stopped at any time.</p>' +
             '    <label class="spicy-age-checkbox">' +
             '      <input type="checkbox" id="spicy-age-consent" />' +
-            '      <span>I am 18 years or older and consent to viewing adult content</span>' +
+            '      <span>I am an adult and want Private Mode enabled on this device</span>' +
             '    </label>' +
             '  </div>' +
             '  <div class="spicy-age-actions">' +
             '    <button class="secondary-btn" id="spicy-age-cancel">Cancel</button>' +
-            '    <button class="primary-btn" id="spicy-age-confirm" disabled>Enable Spicy Mode</button>' +
+            '    <button class="primary-btn" id="spicy-age-confirm" disabled>Accept</button>' +
             '  </div>' +
             '</div>';
 
         document.body.appendChild(overlay);
 
-        var checkbox = overlay.querySelector('#spicy-age-consent');
-        var confirmBtn = overlay.querySelector('#spicy-age-confirm');
-        var cancelBtn = overlay.querySelector('#spicy-age-cancel');
+        const checkbox = overlay.querySelector('#spicy-age-consent');
+        const confirmBtn = overlay.querySelector('#spicy-age-confirm');
+        const cancelBtn = overlay.querySelector('#spicy-age-cancel');
 
         checkbox.addEventListener('change', function () {
             confirmBtn.disabled = !checkbox.checked;
@@ -116,7 +487,6 @@
             onCancel();
         });
 
-        // Close on overlay click (outside modal)
         overlay.addEventListener('click', function (e) {
             if (e.target === overlay) {
                 overlay.remove();
@@ -125,127 +495,238 @@
         });
     }
 
-    // ─── Public API ───
     window.NEXUS_SPICY = {
-        /**
-         * Check if spicy mode is active (enabled AND verified).
-         * @returns {boolean}
-         */
+        /** True only while the trusted server attestation + ConsentFlow are live. */
         isEnabled: function () {
-            return enabled && verified;
+            return usable();
         },
 
-        /**
-         * Check if user has passed age verification.
-         * @returns {boolean}
-         */
+        /** The user's Settings preference, independent of current trusted availability. */
+        isRequested: function () {
+            return enabled;
+        },
+
+        isPending: function () {
+            return pending;
+        },
+
+        isConnecting: function () {
+            return connecting;
+        },
+
+        /** Local conditions acknowledgement only; not trusted adulthood. */
         isVerified: function () {
             return verified;
         },
 
-        /**
-         * Enable or disable spicy mode.
-         * If enabling and not yet verified, shows the age gate modal.
-         * @param {boolean} on
-         * @param {Function} [onComplete] — called after state change (or cancel)
-         */
-        setEnabled: function (on, onComplete) {
-            if (on && !verified) {
-                // Must pass age gate first
-                showAgeGate(
-                    function () {
-                        enabled = true;
-                        persist();
-                        notify();
-                        updateUI();
-                        if (onComplete) onComplete(true);
-                    },
-                    function () {
-                        // Cancelled — stay off
-                        if (onComplete) onComplete(false);
-                    }
-                );
+        refresh: function () {
+            return refreshTrustedState();
+        },
+
+        setEnabled: function (on, onComplete, options) {
+            if (typeof onComplete === 'function') pendingCallbacks.push(onComplete);
+
+            if (!on) {
+                disableGate('user');
                 return;
             }
 
-            enabled = !!on;
-            persist();
-            notify();
-            updateUI();
-            if (onComplete) onComplete(enabled);
+            const begin = function () {
+                // Accept is the user's persistent ON choice and is sufficient to enable the
+                // local Private gate. ConsentFlow still gates each individual experience.
+                const wasRequested = enabled;
+                enabled = true;
+                unavailableReason = '';
+                retryAfter = 0;
+                resetAttemptState();
+                persist();
+                if (!wasRequested) notifyPreference(true);
+
+                commitEnabled();
+            };
+
+            const requireConfirmation = Boolean(options && options.requireConfirmation);
+            if (!verified || requireConfirmation) {
+                showAgeGate(
+                    begin,
+                    function () {
+                        flushCallbacks(false);
+                        updateUI(enabled ? 'restoring' : 'off');
+                    },
+                    { force: requireConfirmation }
+                );
+                return;
+            }
+            begin();
         },
 
-        /**
-         * Subscribe to spicy mode changes.
-         * @param {Function} fn — called with (enabled: boolean)
-         * @returns {Function} unsubscribe
-         */
+        /** Usability changes: trusted Private access became available/unavailable. */
         onChange: function (fn) {
             listeners.push(fn);
             return function () {
-                var idx = listeners.indexOf(fn);
+                const idx = listeners.indexOf(fn);
                 if (idx >= 0) listeners.splice(idx, 1);
             };
         },
 
-        /**
-         * Reset age verification (for testing / parental control).
-         */
+        /** Settings preference changes: the user explicitly turned Private ON or OFF. */
+        onPreferenceChange: function (fn) {
+            preferenceListeners.push(fn);
+            return function () {
+                const idx = preferenceListeners.indexOf(fn);
+                if (idx >= 0) preferenceListeners.splice(idx, 1);
+            };
+        },
+
         resetVerification: function () {
             verified = false;
-            enabled = false;
+            disableGate('reset');
             persist();
-            notify();
-            updateUI();
         },
     };
 
-    // ─── UI Sync ───
-    function updateUI() {
-        // Update toggle switch in settings
-        var toggle = document.getElementById('spicy-mode-toggle');
-        if (toggle) toggle.checked = enabled && verified;
+    function updateSettingsCopy() {
+        const toggle = document.getElementById('spicy-mode-toggle');
+        if (!toggle) return;
+        const section = toggle.closest ? toggle.closest('.config-section') : null;
+        if (!section) return;
 
-        // Update settings label
-        var label = document.getElementById('spicy-status-label');
-        if (label) {
-            label.textContent = enabled && verified ? 'ON' : 'OFF';
-            label.className = 'spicy-status-label' + (enabled && verified ? ' spicy-status-on' : ' spicy-status-off');
+        const title = section.querySelector('.config-title');
+        if (title) {
+            for (let i = 0; i < title.childNodes.length; i++) {
+                if (title.childNodes[i].nodeType === 3 && title.childNodes[i].textContent.trim()) {
+                    title.childNodes[i].textContent =
+                        '\n                            PRIVATE MODE\n                            ';
+                    break;
+                }
+            }
         }
 
-        // Gate adult optgroup in settings VR pose dropdown
-        var adultGroup = document.getElementById('vr-pose-adult-group');
-        if (adultGroup) {
-            adultGroup.style.display = enabled && verified ? '' : 'none';
+        const description = title && title.nextElementSibling;
+        if (description && description.tagName === 'P') {
+            description.textContent = 'More personal, romantic, and mature experiences for verified adults.';
         }
 
-        // Gate all elements with .spicy-gated class
-        var gated = document.querySelectorAll('.spicy-gated');
-        for (var i = 0; i < gated.length; i++) {
-            gated[i].style.display = enabled && verified ? '' : 'none';
+        const row = toggle.closest ? toggle.closest('.spicy-toggle-label') : null;
+        const rowText = row && row.querySelector('span:not(.spicy-toggle-slider)');
+        if (rowText) rowText.textContent = 'Enable Private Mode';
+
+        let detail = section.querySelector('#spicy-verification-status');
+        if (!detail) {
+            detail = document.createElement('p');
+            detail.id = 'spicy-verification-status';
+            detail.className = 'spicy-verification-status';
+            detail.setAttribute('role', 'status');
+            detail.setAttribute('aria-live', 'polite');
+            detail.style.cssText = 'font-size:0.7rem;color:rgba(255,255,255,.55);margin:6px 0 0;line-height:1.4';
+            const group = toggle.closest ? toggle.closest('.input-group') : null;
+            (group || section).appendChild(detail);
         }
     }
 
-    // ─── Init UI on DOM ready ───
-    function initUI() {
-        // Wire the toggle switch in settings
-        var toggle = document.getElementById('spicy-mode-toggle');
+    function updateUI(state) {
+        const active = usable();
+        const checking = pending && !active;
+        const establishing = connecting && !active;
+        const busy = checking || establishing;
+        const requested = enabled;
+
+        const toggle = document.getElementById('spicy-mode-toggle');
         if (toggle) {
-            toggle.checked = enabled && verified;
+            // The switch reflects the user's preference, not a momentary network condition.
+            toggle.checked = requested;
+            toggle.disabled = busy;
+            toggle.setAttribute('aria-busy', busy ? 'true' : 'false');
+        }
+
+        // The headline status mirrors the switch only. Verification is a separate concern and
+        // is explained below the switch so a temporary network problem never looks like the
+        // user's preference was turned off.
+        const label = document.getElementById('spicy-status-label');
+        if (label) {
+            label.textContent = requested ? 'ON' : 'OFF';
+            label.className = 'spicy-status-label' + (requested ? ' spicy-status-on' : ' spicy-status-off');
+        }
+
+        const detail = document.getElementById('spicy-verification-status');
+        if (detail) {
+            let text = '';
+            if (requested) {
+                if (active) text = 'Private Mode is enabled.';
+                else if (establishing) text = 'Connecting to verification…';
+                else if (checking) text = 'Verifying adult access…';
+                else if (state === 'unavailable' || unavailableReason) {
+                    text = 'Verification unavailable. Private experiences stay locked until verification succeeds.';
+                } else if (state === 'restoring') text = 'Restoring verification…';
+                else text = 'Waiting for verification…';
+            }
+            detail.textContent = text;
+            detail.hidden = !text;
+        }
+
+        const adultGroup = document.getElementById('vr-pose-adult-group');
+        if (adultGroup) adultGroup.style.display = active ? '' : 'none';
+
+        const gated = document.querySelectorAll('.spicy-gated');
+        for (let i = 0; i < gated.length; i++) gated[i].style.display = active ? '' : 'none';
+
+        const section = toggle && toggle.closest ? toggle.closest('.config-section') : null;
+        if (section) {
+            section.dataset.privateState =
+                state ||
+                (active
+                    ? 'on'
+                    : establishing
+                      ? 'connecting'
+                      : checking
+                        ? 'verifying'
+                        : unavailableReason
+                          ? 'unavailable'
+                          : requested
+                            ? 'reverifying'
+                            : 'off');
+        }
+    }
+
+    function initUI() {
+        const toggle = document.getElementById('spicy-mode-toggle');
+        if (toggle) {
             toggle.addEventListener('change', function () {
-                window.NEXUS_SPICY.setEnabled(toggle.checked);
+                const wantsOn = toggle.checked;
+                window.NEXUS_SPICY.setEnabled(
+                    wantsOn,
+                    function () {
+                        updateUI();
+                    },
+                    wantsOn ? { requireConfirmation: true } : undefined
+                );
+                updateUI();
             });
         }
-
-        // Set initial badge visibility
-        updateUI();
+        updateSettingsCopy();
+        updateUI(enabled ? 'restoring' : 'off');
     }
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initUI);
-    } else {
-        initUI();
-    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initUI);
+    else initUI();
 
-    console.log('[SpicyGate] Initialized — spicy mode:', enabled && verified ? 'ON' : 'OFF');
+    refreshTimer = window.setInterval(function () {
+        refreshTrustedState();
+    }, REFRESH_MS);
+
+    window.addEventListener(
+        'beforeunload',
+        function () {
+            if (refreshTimer) window.clearInterval(refreshTimer);
+            refreshTimer = null;
+        },
+        { once: true }
+    );
+
+    console.log(
+        '[SpicyGate] Initialized — Private preference:',
+        enabled ? 'ON' : 'OFF',
+        'usable:',
+        usable() ? 'YES' : 'NO'
+    );
 })();

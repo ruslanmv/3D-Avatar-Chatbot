@@ -45,8 +45,25 @@ const AdultProfile = (() => {
 
     const LEVELS = 4;
 
-    /** §16.3. Earned, never rushed: two minutes at a level before the next is offered. */
+    /** §16.3. Earned, never rushed: two minutes at a level before the next is *offered*. */
     const PER_LEVEL_MIN_MS = 120000;
+
+    /**
+     * And how long before the user may take the next step *themselves*.
+     *
+     * Two clocks, because they answer two different questions, and conflating them was a product
+     * bug. `PER_LEVEL_MIN_MS` governs when the experience may **ask** — that is protection against
+     * being pestered, and two minutes is right for it. This governs when a person who deliberately
+     * pressed `Closer →` may press it again, and two minutes there is the interface refusing a
+     * request it was just given.
+     *
+     * Not zero, though. Four seconds is invisible to somebody moving at the pace of a conversation
+     * and it is the whole defence against a double-tap, or a fast triple-tap in a moment of
+     * impulse, carrying an evening from Warm to the ceiling before anyone has read a word of it.
+     * Escalation stays something that happens on purpose; this only asks that the purpose lasts
+     * longer than a stray finger.
+     */
+    const USER_STEP_MIN_MS = 4000;
 
     /** Inactivity cools it back down. A level is a state of an evening, not a setting. */
     const DECAY_TO_LEVEL = 1;
@@ -89,6 +106,7 @@ const AdultProfile = (() => {
             advance: 'user-affirmative-or-checkin-yes',
             checkInEveryLevel: true,
             perLevelMinMs: PER_LEVEL_MIN_MS,
+            userStepMinMs: USER_STEP_MIN_MS,
             decayToLevel: DECAY_TO_LEVEL,
             decayAfterMs: DECAY_AFTER_MS,
             softExitWord: SOFT_EXIT_WORD,
@@ -123,6 +141,7 @@ const AdultProfile = (() => {
         CEILING,
         LEVELS,
         PER_LEVEL_MIN_MS,
+        USER_STEP_MIN_MS,
         DECAY_TO_LEVEL,
         DECAY_AFTER_MS,
         SOFT_EXIT_WORD,
