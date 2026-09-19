@@ -79,6 +79,19 @@ const BehaviorEventBus = (() => {
         'adult:checkin',
         'adult:declined',
         'adult:level',
+        // The Private experience's own arc. These were emitted for several batches and heard by
+        // nothing: the vocabulary is closed, so every one of them was dropped with a warning
+        // only `debug` would have shown. `private:user-turn` carries the intent
+        // `PrivateTurnDirector` read off the turn (P8), so a listener never has to re-read what
+        // somebody typed in the one mode where re-reading it is least welcome.
+        'private:session-start',
+        'private:session-ending',
+        'private:session-stop',
+        'private:session-complete',
+        'private:user-turn',
+        'private:mood',
+        'private:texture',
+        'private:plan-ready',
     ];
 
     class EventBus {

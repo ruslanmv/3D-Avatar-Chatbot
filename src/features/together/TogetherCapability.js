@@ -22,6 +22,20 @@
      * session — where dots spinning forever would be its own kind of lie.
      */
     const THINKING_TIMEOUT_MS = 90000;
+
+    /**
+     * How long after her last word a scheduled beat may land (P8).
+     *
+     * The eligibility rule is "the conversation is not mid-turn", and mid-turn is now known
+     * exactly — `ConversationSurface` reports the phase. This is the small extra courtesy on
+     * top: a scripted line arriving in the same instant her reply settles reads as two people
+     * talking at once, or worse, as her saying two unrelated things.
+     *
+     * Deliberately much shorter than the 15–25 s idle window a *new* guided beat should want.
+     * That window belongs to deciding whether guidance is wanted at all, which is a separate
+     * job; this is only about not colliding with the sentence that just finished.
+     */
+    const BREATHING_ROOM_MS = 4000;
     const PrivateViewApi =
         (global && global.NEXUS_PRIVATE_CONVERSATION_VIEW) ||
         (typeof module !== 'undefined' && module.exports ? require('./ui/PrivateConversationView.js') : null);
@@ -42,6 +56,13 @@
     }
     function memory() {
         return optional('./PrivateMemory.js', 'NEXUS_PRIVATE_MEMORY');
+    }
+    function turnDirector() {
+        return optional('./PrivateTurnDirector.js', 'NEXUS_PRIVATE_TURN_DIRECTOR');
+    }
+    function surfaceApi(win) {
+        const scope = win || global;
+        return (scope && scope.NEXUS_CONVERSATION_SURFACE) || null;
     }
 
     const PRIVATE_PRESETS = Object.freeze({
@@ -251,7 +272,6 @@
             this.state = 'idle';
             this.startedAt = null;
             this.view = null;
-            this._conversationBusyUntil = 0;
             this._timers = new Set();
             this._unsubscribes = [];
             this._ownsMedia = false;
@@ -279,6 +299,37 @@
             /** Turns the user has taken. The arc waits for a talker; see `_schedule`. */
             this._turns = 0;
             this._lastTurnAt = 0;
+            /**
+             * The last turn the person took, as `PrivateTurnDirector` read it (P8).
+             *
+             * Classified locally, so the experience can react before a single token comes back:
+             * a pace request eases off at 50 ms rather than at whatever the provider costs, and
+             * a question suppresses the next scheduled line immediately rather than being
+             * talked over by it.
+             */
+            this._turn = null;
+            /**
+             * When the composer last saw a keystroke — which is not a turn.
+             *
+             * Kept separately from `_lastTurnAt` because the two answer different questions.
+             * Taking the floor from a scheduled beat needs a turn that actually exists, or an
+             * empty input somebody pressed Enter on would mute the session. Deciding whether to
+             * *hang up* does not: a person still typing at the 300-second mark has not sent
+             * anything yet and ending on them would be the worst possible reading of the clock.
+             */
+            this._composingAt = 0;
+            /**
+             * She was asked something and has not answered yet.
+             *
+             * Its own flag rather than a re-read of `_turn`, because it is cleared by the reply
+             * landing — and what clears it is an event from the conversation surface, not
+             * anything this session can see in the text.
+             */
+            this._pendingQuestion = false;
+            /** How she should be talking, as the conversation has suggested. P15 acts on it. */
+            this.style = null;
+            /** Torn off the conversation surface in `_listen`, put back in `afterActivityStop`. */
+            this._unwatchTurns = null;
             /** Beats as wall-clock offsets rather than live timers. See `_beat`. */
             this._beats = [];
             this._unwatchVisibility = null;
@@ -381,6 +432,12 @@
                 bb.activity = this.snapshot.activity;
                 bb.escalationLevel = this.snapshot.escalationLevel;
             }
+            if (this._unwatchTurns) {
+                try {
+                    this._unwatchTurns();
+                } catch (_) {}
+                this._unwatchTurns = null;
+            }
             for (const stop of this._unsubscribes.splice(0)) {
                 try {
                     stop();
@@ -398,7 +455,133 @@
             return 'Private';
         }
 
+        /**
+         * Hear the conversation itself, not a guess about it (P8).
+         *
+         * Every turn in the application passes through `ConversationSurface`, so this is where
+         * the session finds out that somebody typed something — with the text, at the moment
+         * they sent it — and that her reply has actually finished. Before this the session
+         * learned about a turn from a `keydown` on the composer and then assumed eight seconds.
+         *
+         * Separate from the bus subscriptions below because it is a different kind of fact: the
+         * bus carries consent events, this carries whose turn it is.
+         */
+        _watchConversation() {
+            const api = surfaceApi(this.win);
+            if (!api || typeof api.observe !== 'function') return false;
+            this._unwatchTurns = api.observe((event) => {
+                if (!event || this._stopped) return;
+                if (event.type === 'user') this._onUserTurn(event.text);
+                else if (event.type === 'assistant-end') this._onAssistantFinished(true);
+                else if (event.type === 'assistant-discarded') this._onAssistantFinished(false);
+            });
+            return true;
+        }
+
+        /**
+         * A turn the person took, read locally before the provider is asked anything.
+         *
+         * The two safety intents act here rather than waiting for the model, and that is the
+         * point of classifying locally at all: `ConsentFlow` already guarantees that easing off
+         * and leaving happen "within one scheduler tick", and a person who types "slow down"
+         * rather than saying it out loud deserves the same guarantee. Until now they did not
+         * get it — `ConsentFlow.hear` is subscribed to `voice:final` only, so **typed** safe
+         * words reached nothing at all and were answered, eventually, by whatever the model
+         * made of them.
+         */
+        _onUserTurn(text) {
+            const at = this.now();
+            this._turns += 1;
+            this._lastTurnAt = at;
+            const td = turnDirector();
+            const turn = td && typeof td.classify === 'function' ? td.classify(text) : null;
+            this._turn = turn;
+            this._pendingQuestion = Boolean(turn && turn.holdsTheFloor);
+            const suggested = turn && td && typeof td.styleFor === 'function' ? td.styleFor(turn.intent) : null;
+            if (suggested) this.style = suggested;
+            this._userIsTalking();
+            this._emit('private:user-turn', { preset: this.preset.id, intent: turn ? turn.intent : null });
+            if (!turn) return null;
+            if (turn.intent === 'end') {
+                // Not `adult.exit('hard')`: stopping the activity runs the whole teardown —
+                // soundtrack handed back, scene restored, mode left, blackboard put back — and
+                // a bare hard exit would leave a mounted card in a session nobody is in.
+                this._requestEnd(false);
+                return turn;
+            }
+            if (turn.intent === 'pace-down' && this.adult && typeof this.adult.exit === 'function') {
+                // The `adult:exit` handler below says the true thing about what changed, so the
+                // acknowledgement is already written and already correct at level 1.
+                this.adult.exit('soft');
+            }
+            return turn;
+        }
+
+        /**
+         * Her reply landed, or was abandoned. Either way the floor is free.
+         *
+         * The dots come down here as well as in the view's own observer: this fires on the
+         * reply *finishing*, which is the honest signal, where the view is watching the chat
+         * container for a mutation that a Private-drawn reply no longer produces.
+         *
+         * `answered` is false for a turn that was thrown away — the user pressed CLEAR, the
+         * stream died. A question asked into that is still owed an answer, so it stays pending
+         * and `_beatIsEligible` keeps the script quiet for a while rather than changing the
+         * subject in the second after her reply vanished.
+         */
+        _onAssistantFinished(answered = true) {
+            if (answered) this._pendingQuestion = false;
+            if (this.view && typeof this.view.hideThinking === 'function') this.view.hideThinking();
+            if (this._thinkingTimer && this.win && typeof this.win.clearTimeout === 'function') {
+                this.win.clearTimeout(this._thinkingTimer);
+                this._thinkingTimer = null;
+            }
+        }
+
+        /**
+         * Is the conversation itself mid-turn?
+         *
+         * Reads the phase from `ConversationSurface` rather than from a deadline, so a beat
+         * waits exactly as long as the reply takes — no longer, and no less.
+         *
+         * The one timeout left is a failure valve, not a guess: `main.js` does not close the
+         * turn on every error path, and a provider stuck in the 504-and-retry loop the reported
+         * session showed closes nothing at all. Without it a single dead request would mute the
+         * rest of the evening, which is a worse failure than a line arriving late.
+         */
+        _conversationHasFloor() {
+            const api = surfaceApi(this.win);
+            const state = api && typeof api.turn === 'function' ? api.turn() : null;
+            if (!state) return false;
+            const stale = THINKING_TIMEOUT_MS * (this.timingScale || 1);
+            if (state.phase === 'assistant') return this.now() - state.assistantAt < stale;
+            if (state.phase === 'user') return this.now() - state.userAt < stale;
+            // She finished a moment ago. Let the sentence land before scripting over it.
+            const since = this.now() - (state.assistantEndedAt || 0);
+            return state.assistantEndedAt > 0 && since < BREATHING_ROOM_MS * (this.timingScale || 1);
+        }
+
+        /**
+         * Whether a scheduled beat may speak now.
+         *
+         * The whole of P8 in one expression, and the replacement for
+         * `now() < _conversationBusyUntil`: never over the person, never over the model, and
+         * never on top of a question she still owes an answer to.
+         */
+        _beatIsEligible() {
+            if (this._conversationHasFloor()) return false;
+            if (this._pendingQuestion) {
+                // A question whose reply never arrived. Bounded by the same valve as the floor,
+                // because "she owes you an answer" must not become a mute for the rest of the
+                // evening — the same reasoning as `_conversationHasFloor`, for the same reason.
+                if (this.now() - this._lastTurnAt < THINKING_TIMEOUT_MS * (this.timingScale || 1)) return false;
+                this._pendingQuestion = false;
+            }
+            return true;
+        }
+
         _listen() {
+            this._watchConversation();
             if (!this.bus || typeof this.bus.on !== 'function') return;
             this._unsubscribes.push(
                 this.bus.on('adult:level', () => this._paintLevel()),
@@ -422,12 +605,32 @@
             );
         }
 
+        /**
+         * A timer in the session's timebase, tracked for teardown, with no eligibility check.
+         *
+         * `_schedule` defers when the conversation holds the floor, which is right for anything
+         * that would *speak*. A timer whose job is to give up on a reply that is not coming
+         * needs the opposite, so the two are separate rather than one function with a flag.
+         */
+        _delay(ms, fn) {
+            if (!this.win || typeof this.win.setTimeout !== 'function') return null;
+            const id = this.win.setTimeout(
+                () => {
+                    this._timers.delete(id);
+                    if (!this._stopped) fn();
+                },
+                Math.max(0, Number(ms) || 0) * this.timingScale
+            );
+            this._timers.add(id);
+            return id;
+        }
+
         _schedule(ms, fn) {
             if (!this.win || typeof this.win.setTimeout !== 'function') return null;
             const delay = Math.max(0, Number(ms) || 0) * this.timingScale;
             const id = this.win.setTimeout(() => {
                 this._timers.delete(id);
-                if (this.now() < this._conversationBusyUntil) {
+                if (!this._beatIsEligible()) {
                     this._schedule(1000, fn);
                 } else if (!this._stopped && this.state !== 'complete') fn();
             }, delay);
@@ -561,9 +764,11 @@
          */
         _tick() {
             if (this._stopped || this.state === 'complete') return;
-            // A person mid-sentence is the one thing that outranks the clock, and the existing
-            // yield already knows it. Come back in a second rather than talking over them.
-            if (this.now() < this._conversationBusyUntil) return this._armBeats(1000);
+            // A person mid-sentence, or a reply mid-stream, outranks the clock. Come back in a
+            // second rather than talking over either of them. This used to be
+            // `now() < _conversationBusyUntil` — an eight-second guess at how long an answer
+            // takes. See `_conversationHasFloor` for what replaced it and why.
+            if (!this._beatIsEligible()) return this._armBeats(1000);
             const elapsed = this._elapsed();
             for (const beat of this._beats) {
                 if (beat.done || beat.at > elapsed) continue;
@@ -614,7 +819,7 @@
                     if (this.adult && typeof this.adult.exit === 'function') this.adult.exit('soft');
                 },
                 onEnd: () => this._requestEnd(false),
-                onUserMessage: () => this._yieldToConversation(),
+                onUserMessage: () => this._userIsTalking(),
             });
             if (!view.mount({ preset: this.preset, scene: currentSceneLabel(this.win) })) return;
             this.view = view;
@@ -916,10 +1121,17 @@
             if (this.audioFocus && typeof this.audioFocus.restore === 'function') this.audioFocus.restore();
         }
 
-        _yieldToConversation() {
-            this._turns += 1;
-            this._lastTurnAt = this.now();
-            this._conversationBusyUntil = this.now() + 8000;
+        /**
+         * The person is composing. Presentation only — no counting, no classification.
+         *
+         * Called from the composer's `keydown`/click, which is the earliest possible moment and
+         * fires even for a keystroke that never becomes a message, and again from `_onUserTurn`
+         * for a send that did not come from the composer at all (voice, a programmatic send).
+         * Whose turn it is is *not* set here: `ConversationSurface` owns that, and a keystroke
+         * that never became a message must not be able to take the floor.
+         */
+        _userIsTalking() {
+            this._composingAt = this.now();
             // Something moving while the provider works. The reported session sat through
             // `OllaBridge returned 504; retrying` with a completely static card, which is
             // indistinguishable from a crash. The view hides these again when a reply lands
@@ -929,7 +1141,12 @@
                 if (this._thinkingTimer && this.win && typeof this.win.clearTimeout === 'function') {
                     this.win.clearTimeout(this._thinkingTimer);
                 }
-                this._thinkingTimer = this._schedule(THINKING_TIMEOUT_MS, () => {
+                // `_delay`, not `_schedule`: the valve on the dots must fire *because* the
+                // conversation is stuck mid-turn, and `_schedule` now defers exactly then. Put
+                // this on the beat scheduler and the one timer whose job is to admit that
+                // nothing is coming would wait for something to come.
+                this._thinkingTimer = this._delay(THINKING_TIMEOUT_MS, () => {
+                    this._thinkingTimer = null;
                     if (this.view && typeof this.view.hideThinking === 'function') this.view.hideThinking();
                 });
             }
@@ -938,7 +1155,6 @@
                     this.win.speechSynthesis.cancel();
             } catch (_) {}
             if (this.audioFocus && typeof this.audioFocus.restore === 'function') this.audioFocus.restore();
-            this._emit('private:user-turn', { preset: this.preset.id });
         }
 
         /** How far past the scripted 300 s a live conversation may push the ending. */
@@ -955,7 +1171,11 @@
             // Bounded, because "it never ends while you keep typing" is a different and worse
             // product than "it does not hang up on you".
             const elapsed = this.now() - (this.startedAt || 0);
-            const talking = this.now() - this._lastTurnAt < 30000 * (this.timingScale || 1);
+            // Either a turn they sent or a key they pressed. See `_composingAt`: mid-sentence
+            // and mid-typing both deserve not to be hung up on, even though only one of them is
+            // allowed to hold a scheduled line.
+            const spokeAt = Math.max(this._lastTurnAt, this._composingAt);
+            const talking = this.now() - spokeAt < 30000 * (this.timingScale || 1);
             if (talking && elapsed < (300000 + IntimateExperienceSession.GRACE_MS) * (this.timingScale || 1)) {
                 this._schedule(20000, () => this._complete());
                 return;

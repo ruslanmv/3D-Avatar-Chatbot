@@ -137,6 +137,123 @@ describe('a surface can be swapped and put back', () => {
     });
 });
 
+describe('whose turn it is (P8)', () => {
+    test('the phase follows the turn, and idles when it ends', () => {
+        const h = hostHooks();
+        Surface.configure(h.hooks);
+        expect(Surface.turn().phase).toBe('idle');
+
+        Surface.renderUser('are you there?');
+        expect(Surface.turn().phase).toBe('user');
+        expect(Surface.turn().userText).toBe('are you there?');
+
+        const stream = Surface.beginAssistant();
+        expect(Surface.turn().phase).toBe('assistant');
+
+        stream.finish('I am.');
+        expect(Surface.turn().phase).toBe('idle');
+        expect(Surface.turn().assistantEndedAt).toBeGreaterThan(0);
+    });
+
+    test('an abandoned turn frees the floor too', () => {
+        Surface.configure(hostHooks().hooks);
+        Surface.renderUser('x');
+        Surface.beginAssistant().discard();
+        expect(Surface.turn().phase).toBe('idle');
+    });
+
+    test('a non-streaming reply and an error both end the turn', () => {
+        // The error path is the one that matters: a consumer left believing she is still
+        // composing holds its own timers for the whole of its own timeout.
+        Surface.configure(hostHooks().hooks);
+        Surface.renderUser('x');
+        Surface.renderAssistant('done');
+        expect(Surface.turn().phase).toBe('idle');
+
+        Surface.renderUser('y');
+        Surface.renderError('something broke');
+        expect(Surface.turn().phase).toBe('idle');
+    });
+
+    test('a settled turn is not ended twice by a late discard', () => {
+        Surface.configure(hostHooks().hooks);
+        const seen = [];
+        const stop = Surface.observe((event) => seen.push(event.type));
+        const stream = Surface.beginAssistant();
+        stream.finish('said');
+        stream.discard();
+        stop();
+        expect(seen).toEqual(['assistant-start', 'assistant-end']);
+    });
+
+    test('observers see the transitions in order, and unsubscribe', () => {
+        Surface.configure(hostHooks().hooks);
+        const seen = [];
+        const stop = Surface.observe((event) => seen.push(event.type));
+        Surface.renderUser('hello');
+        Surface.beginAssistant().finish('hi');
+        stop();
+        Surface.renderUser('ignored');
+        expect(seen).toEqual(['user', 'assistant-start', 'assistant-end']);
+    });
+
+    test('an observer that throws costs neither the turn nor the other observers', () => {
+        Surface.configure(hostHooks().hooks);
+        jest.spyOn(console, 'warn').mockImplementation(() => {});
+        const seen = [];
+        Surface.observe(() => {
+            throw new Error('observer exploded');
+        });
+        Surface.observe((event) => seen.push(event.type));
+        expect(() => Surface.renderUser('still said')).not.toThrow();
+        expect(seen).toEqual(['user']);
+        expect(Surface.turn().phase).toBe('user');
+        console.warn.mockRestore();
+    });
+
+    test('the phase is recorded even when the renderer throws', () => {
+        // Drawing is best-effort; whose turn it is, is not. A consumer holding its beats for
+        // somebody mid-sentence must not start talking because a card failed to paint.
+        Surface.configure(hostHooks().hooks);
+        jest.spyOn(console, 'warn').mockImplementation(() => {});
+        Surface.use({
+            id: 'broken',
+            renderUser() {
+                throw new Error('renderer exploded');
+            },
+        });
+        Surface.renderUser('typed anyway');
+        expect(Surface.turn().phase).toBe('user');
+        console.warn.mockRestore();
+    });
+
+    test('a stream handle that throws still ends the turn', () => {
+        Surface.configure(hostHooks().hooks);
+        jest.spyOn(console, 'warn').mockImplementation(() => {});
+        Surface.use({
+            id: 'broken',
+            beginAssistant: () => ({
+                finish() {
+                    throw new Error('finish exploded');
+                },
+            }),
+        });
+        const stream = Surface.beginAssistant();
+        expect(() => stream.finish('whatever')).not.toThrow();
+        expect(Surface.turn().phase).toBe('idle');
+        console.warn.mockRestore();
+    });
+
+    test('the host still gets real nodes through the tracked handle', () => {
+        // The YouTube decorator and the attachment renderer work on them.
+        const h = hostHooks();
+        Surface.configure(h.hooks);
+        const stream = Surface.beginAssistant();
+        expect(stream.node).toBe(h.streams[0].row);
+        expect(stream.textNode).toBe(h.streams[0].textDiv);
+    });
+});
+
 describe('Private becomes the conversation while it runs', () => {
     let view;
 

@@ -40,6 +40,31 @@
  * `use()` returns what was there. Private restores it on exit rather than assuming the default,
  * because the day a third surface exists, assuming would silently drop it.
  *
+ * ## It also knows whose turn it is (P8)
+ *
+ * Every turn in the application already passes through here, which makes this the one place
+ * that can answer "is somebody mid-sentence right now?" without guessing. Private used to
+ * guess: on a keystroke it set `_conversationBusyUntil = now + 8000` and held its scheduled
+ * beats until that passed. Eight seconds is wrong in both directions — a local model answers
+ * in seven hundred milliseconds and the reported session sat through `OllaBridge returned
+ * 504; retrying` for far longer than eight — so a beat could land on top of a reply still
+ * streaming, or the session could sit mute long after one had finished.
+ *
+ * So `renderUser`, `beginAssistant` and the handle it returns record the phase, and `observe()`
+ * reports the transitions. `turn()` is the state; the events are for reacting the instant a
+ * turn starts rather than on the next poll.
+ *
+ * ```text
+ *   renderUser        ─▶ phase 'user'       (she owes an answer)
+ *   beginAssistant    ─▶ phase 'assistant'  (tokens arriving)
+ *   finish / discard  ─▶ phase 'idle'
+ *   renderAssistant   ─▶ phase 'idle'       (the non-streaming providers)
+ * ```
+ *
+ * Deliberately *not* a timeout: a phase ends when the thing itself ends. A consumer that must
+ * not be muted by a provider which never answers puts its own valve on top, because how long
+ * to wait for a dead provider is that consumer's judgement, not this file's.
+ *
  * Exposes: window.NEXUS_CONVERSATION_SURFACE
  */
 (function (global) {
@@ -99,6 +124,134 @@
     let active = null;
 
     /**
+     * Whose turn it is, and when each phase started. See the header.
+     *
+     * `userAt` is kept across the assistant phase on purpose: a consumer that wants "how long
+     * ago did they say something" should not have to observe events to find out.
+     */
+    let phase = 'idle';
+    let userAt = 0;
+    let userText = '';
+    let assistantAt = 0;
+    let assistantEndedAt = 0;
+    const observers = new Set();
+
+    function clock() {
+        return Date.now();
+    }
+
+    /** A copy, so a consumer holding it cannot be surprised by the next turn. */
+    function turn() {
+        return { phase, userAt, userText, assistantAt, assistantEndedAt };
+    }
+
+    /**
+     * Watch the phase change. Returns an unsubscribe.
+     *
+     * Every listener is called in its own try/catch: a consumer that throws while reacting to a
+     * turn must not stop the turn, and must not stop the *other* consumers either — the reason
+     * this is a set of independent calls rather than one composed handler.
+     */
+    function observe(listener) {
+        if (typeof listener !== 'function') return () => {};
+        observers.add(listener);
+        return () => observers.delete(listener);
+    }
+
+    function announce(event) {
+        for (const listener of [...observers]) {
+            try {
+                listener(event);
+            } catch (error) {
+                console.warn('[ConversationSurface] a turn observer threw', error);
+            }
+        }
+    }
+
+    /**
+     * Recording the phase and announcing it are two steps, and the drawing goes between them.
+     *
+     * The phase is set first so that a renderer which throws still leaves the turn correctly
+     * owned — a consumer holding its beats while somebody is mid-sentence must not start talking
+     * because a card failed to paint. The *announcement* comes after the drawing, because an
+     * observer reacting to it draws too: Private's session puts thinking dots on the card, and
+     * with the order reversed the card's own `renderUser` — which clears them, as it should when
+     * a turn is drawn — wiped the dots in the same tick they appeared.
+     */
+    function beganUserTurn(text) {
+        phase = 'user';
+        userAt = clock();
+        userText = String(text == null ? '' : text);
+    }
+
+    function beganAssistantTurn() {
+        phase = 'assistant';
+        assistantAt = clock();
+    }
+
+    function endedAssistantTurn(type, text) {
+        phase = 'idle';
+        assistantEndedAt = clock();
+        // Already after the drawing at every call site, for the reason in `beganUserTurn`.
+        announce({ type, text: String(text == null ? '' : text), at: assistantEndedAt });
+    }
+
+    function forgetTurn() {
+        phase = 'idle';
+        userAt = assistantAt = assistantEndedAt = 0;
+        userText = '';
+    }
+
+    /**
+     * The handle, plus the phase bookkeeping.
+     *
+     * Wrapped here rather than inside each surface so that every surface — including one written
+     * later, and including Private's — reports its phase without having to remember to. A
+     * surface that forgets is a session that goes mute.
+     */
+    function trackStream(handle) {
+        const inner = handle && typeof handle === 'object' ? handle : nullStream();
+        let settled = false;
+        const call = (name, args) => {
+            if (typeof inner[name] !== 'function') return undefined;
+            try {
+                return inner[name](...args);
+            } catch (error) {
+                console.warn(`[ConversationSurface] stream.${name} threw`, error);
+                return undefined;
+            }
+        };
+        return {
+            id: inner.id || 'stream',
+            append(full) {
+                return call('append', [full]);
+            },
+            finish(full) {
+                const out = call('finish', [full]);
+                if (!settled) {
+                    settled = true;
+                    endedAssistantTurn('assistant-end', full);
+                }
+                return out;
+            },
+            discard() {
+                const out = call('discard', []);
+                if (!settled) {
+                    settled = true;
+                    endedAssistantTurn('assistant-discarded', '');
+                }
+                return out;
+            },
+            get node() {
+                return inner.node || null;
+            },
+            get textNode() {
+                return inner.textNode || null;
+            },
+        };
+    }
+
+    /**
      * Tell the module how the host draws. Called once by `main.js` at boot.
      *
      * Until this runs every method is a no-op that returns a null handle, which is what keeps
@@ -113,6 +266,10 @@
         // deliberately installed its own surface keeps it: reconfiguring the host is not a
         // reason to evict Private from the middle of a session.
         if (wasDefault) active = fallback;
+        // Boot, or a re-boot. Nothing is mid-sentence at that point by definition, and a stale
+        // phase would make the first scheduled beat of the next session wait for a turn that
+        // finished in a previous page.
+        forgetTurn();
         return fallback;
     }
 
@@ -123,9 +280,17 @@
         return previous || fallback;
     }
 
-    /** Back to whatever the host installed. */
+    /**
+     * Back to whatever the host installed, with no turn in flight.
+     *
+     * The only production caller is a surface tearing down with nothing to restore, so "the
+     * conversation that was being drawn is over" is true there as well as in a test's
+     * `beforeEach`. Private restores through `use(previous)` instead and keeps the phase, which
+     * is what you want when a reply is still arriving as the card comes down.
+     */
     function reset() {
         active = fallback;
+        forgetTurn();
         return active;
     }
 
@@ -160,19 +325,31 @@
     }
 
     function renderUser(text, attachments) {
-        return guard('renderUser', [text, attachments], true);
+        beganUserTurn(text);
+        const out = guard('renderUser', [text, attachments], true);
+        announce({ type: 'user', text: userText, at: userAt });
+        return out;
     }
 
     function renderAssistant(text, attachments) {
-        return guard('renderAssistant', [text, attachments], true);
+        const out = guard('renderAssistant', [text, attachments], true);
+        endedAssistantTurn('assistant-end', text);
+        return out;
     }
 
     function renderError(text) {
-        return guard('renderError', [text], true);
+        const out = guard('renderError', [text], true);
+        // An error is how a turn ended, and the turn did end. A consumer left believing she is
+        // still composing would hold its beats for the whole of its own timeout.
+        endedAssistantTurn('assistant-end', '');
+        return out;
     }
 
     function beginAssistant() {
-        return guard('beginAssistant', [], true) || nullStream();
+        beganAssistantTurn();
+        const handle = trackStream(guard('beginAssistant', [], true));
+        announce({ type: 'assistant-start', text: '', at: assistantAt });
+        return handle;
     }
 
     const api = {
@@ -186,6 +363,8 @@
         beginAssistant,
         defaultSurface,
         nullStream,
+        turn,
+        observe,
     };
 
     if (typeof module !== 'undefined' && module.exports) module.exports = api;

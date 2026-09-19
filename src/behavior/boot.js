@@ -110,6 +110,9 @@
         // remember between them. Before TogetherCapability, which runs both.
         'src/features/together/PrivateBeats.js',
         'src/features/together/PrivateMemory.js',
+        // P8. What kind of turn the person just took, decided locally so the experience can
+        // react before a token comes back. Before TogetherCapability, which asks it.
+        'src/features/together/PrivateTurnDirector.js',
         'src/features/together/TogetherCapability.js',
         // T3/T5. The one function that finds and plays, and the parser that lets her ask for
         // it. After the publisher's dependencies, before the launcher.

@@ -258,12 +258,15 @@ describe('the ending waits for a person who is mid-sentence', () => {
         const session = s.activity._privateExperience;
 
         jest.advanceTimersByTime(295000);
-        // Somebody typing five seconds before the scripted end.
+        // Somebody typing five seconds before the scripted end. Still typing — nothing has been
+        // sent, so this is not a turn (P8 moved counting to the conversation surface, where a
+        // turn that actually happened is reported). It is still a reason not to hang up.
         document.getElementById('speak-btn').click();
         jest.advanceTimersByTime(10000);
 
         expect(session.state).not.toBe('complete');
-        expect(session._turns).toBe(1);
+        expect(session._turns).toBe(0);
+        expect(session._composingAt).toBeGreaterThan(0);
 
         // And it does not wait forever: the grace is bounded.
         jest.advanceTimersByTime(200000);

@@ -4099,6 +4099,19 @@ function _createStreamingBotMessage() {
 
 // Show error message with a retry button
 function _addErrorWithRetry(originalText, error) {
+    // The one error path that still built its own row, and the reported Private session was
+    // full of `OllaBridge returned 504; retrying` — so a NEXUS bubble with a Retry button
+    // appeared *underneath* the Private card, which is precisely the two-presentation-systems
+    // problem P7 removed, surviving in the failure path. A surface that is drawing the
+    // conversation gets to draw the failure too; the retry button is a default-surface
+    // affordance and a raw one inside an intimate transcript reads as the app, not as her.
+    const surface = window.NEXUS_CONVERSATION_SURFACE;
+    const drawnElsewhere = surface && typeof surface.current === 'function' && surface.current().id !== 'default';
+    if (drawnElsewhere) {
+        _surface().renderError('Sorry — I lost my train of thought for a second. Say that again?');
+        return;
+    }
+
     const chatEl = $('chat-history');
     if (!chatEl) return;
 
