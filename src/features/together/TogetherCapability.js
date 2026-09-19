@@ -36,6 +36,29 @@
      * job; this is only about not colliding with the sentence that just finished.
      */
     const BREATHING_ROOM_MS = 4000;
+
+    /**
+     * When an unprompted line is a kindness rather than an interruption (P12).
+     *
+     * The five beats were wall-clock offsets — 45, 120, 210, 285, 300 seconds — and they fired on
+     * that schedule whether the evening needed them or not. P8 stopped them landing *on top of*
+     * a turn. This is the rest of it: a guided line is for a session that has gone quiet and does
+     * not know what to do next, and a conversation that is flowing does not need one at all.
+     *
+     * `idleMs` is the pause after which somebody has clearly finished rather than paused for
+     * breath. 18 seconds is long enough that it is not a gap in a sentence and short enough that
+     * it does not read as being abandoned.
+     *
+     * `staleAfterMs` is when a deferred line stops being worth saying. "What kind of mood should
+     * we keep?" is a good question at forty-five seconds and an odd one at four minutes into a
+     * conversation that has been answering it implicitly the whole time — so a beat that has been
+     * waiting this long **while the person was talking** is dropped rather than delivered late. A
+     * silent session still gets every beat, however late: that is the session the arc is for.
+     */
+    const GUIDANCE = Object.freeze({
+        idleMs: 18000,
+        staleAfterMs: 90000,
+    });
     const PrivateViewApi =
         (global && global.NEXUS_PRIVATE_CONVERSATION_VIEW) ||
         (typeof module !== 'undefined' && module.exports ? require('./ui/PrivateConversationView.js') : null);
@@ -523,11 +546,19 @@
                 named ? `${this._line('opening')} ${place} feels like a good place for it.` : this._line('opening')
             );
             this._startSoundtrack();
+            // Earliest-at rather than fires-at, and every one of these waits for a quiet moment
+            // (P12) — except the ending, which has its own bounded grace and would otherwise
+            // never arrive for somebody who keeps typing.
+            //
+            // The closing is not droppable: an evening that ends without one ends abruptly, and
+            // "this was nice" arriving a little late is still worth saying. The three before it
+            // are, because each of them is a question or an observation written for a lull, and
+            // a conversation that never had one has already answered them.
             this._beat(45000, () => this._showMoodChoice());
             this._beat(120000, () => this._offerCheckIn());
             this._beat(210000, () => this._speak(this._moodLine('middle')));
-            this._beat(285000, () => this._speak(this._moodLine('closing')));
-            this._beat(300000, () => this._complete());
+            this._beat(285000, () => this._speak(this._moodLine('closing')), { stale: false });
+            this._beat(300000, () => this._complete(), { guided: false });
             this._armBeats();
             this._emit('private:session-start', {
                 preset: this.preset.id,
@@ -879,10 +910,74 @@
          *
          * Storing the offset instead of trusting a timer fixes it, because a late tick can
          * still work out what it missed. `_tick` fires everything now due.
+         *
+         * `at` is now the **earliest** a beat may speak rather than the moment it does (P12). It
+         * keeps the arc's shape — the check-in does not arrive thirty seconds after the opening —
+         * and `_tick` decides whether the evening actually wants the line yet.
+         *
+         * @param {number} at         earliest elapsed ms at which this beat may speak
+         * @param {Function} run      what it says
+         * @param {object} [options]
+         * @param {boolean} [options.guided=true]  whether it waits for a quiet moment. The
+         *        ending does not: it has its own bounded grace, and an ending that waits for
+         *        silence from somebody who keeps typing never happens.
+         * @param {boolean} [options.stale=true]   whether it may be dropped for arriving too
+         *        late to be worth saying. See `GUIDANCE.staleAfterMs`.
          */
-        _beat(at, run) {
-            this._beats.push({ at: Math.max(0, Number(at) || 0), run, done: false });
+        _beat(at, run, { guided = true, stale = true } = {}) {
+            this._beats.push({
+                at: Math.max(0, Number(at) || 0),
+                run,
+                done: false,
+                guided,
+                stale,
+                /** `_turns` when this beat first came due, for deciding whether it went stale. */
+                dueTurns: null,
+                dueAt: null,
+            });
             return this._beats.length;
+        }
+
+        /**
+         * The last thing that happened in the conversation, whoever did it.
+         *
+         * All three matter and for the same reason: a guided line is an interruption unless
+         * everybody has finished. A turn they sent, a key they are still pressing, and her own
+         * reply settling are each somebody in the middle of something.
+         */
+        _lastActivityAt() {
+            const api = surfaceApi(this.win);
+            const state = api && typeof api.turn === 'function' ? api.turn() : null;
+            const replyAt = state ? Math.max(state.assistantEndedAt || 0, state.assistantAt || 0) : 0;
+            return Math.max(this._lastTurnAt, this._composingAt, replyAt);
+        }
+
+        /**
+         * Has the conversation gone quiet enough to want a line from the script?
+         *
+         * A session where nothing has happened at all — nobody typed, she has said only her
+         * opening — is quiet by definition, which is what keeps the arc intact for the silent
+         * evening it exists to shape.
+         */
+        _quietEnough() {
+            const since = this.now() - this._lastActivityAt();
+            return since >= GUIDANCE.idleMs * (this.timingScale || 1);
+        }
+
+        /**
+         * Is there still something the evening wanted to say before this one?
+         *
+         * Only the ending asks. Bounded by the same grace the ending already had, because a
+         * deferred line that never gets its quiet moment must not hold the session open for
+         * ever: "it does not hang up on you" is the goal, and "it never ends while you keep
+         * typing" is a different and worse product.
+         */
+        _guidanceStillPending(beat, elapsed) {
+            const index = this._beats.indexOf(beat);
+            if (index <= 0) return false;
+            const grace = IntimateExperienceSession.GRACE_MS * (this.timingScale || 1);
+            if (elapsed > beat.at + grace) return false;
+            return this._beats.slice(0, index).some((earlier) => !earlier.done && earlier.guided);
         }
 
         /** Milliseconds since `start()`, in the session's own (test-scalable) timebase. */
@@ -892,12 +987,27 @@
         }
 
         /**
-         * Fire everything due, then arm for the next one.
+         * Decide what the evening wants next, then arm for the next look.
          *
          * Deliberately catch-up rather than replay-in-order-with-delays: coming back to a tab
          * after four minutes should land you at the right point in the session, not walk you
          * through four minutes of backlog. Beats are marked done before running so a throw in
          * one cannot make it fire twice on the next tick.
+         *
+         * Three gates, in the order they matter (P12):
+         *
+         *   1. **Eligible** (P8) — nobody is mid-turn. Applies to every beat including the
+         *      ending, because talking over a reply is never right.
+         *   2. **Stale** — a guided line that has been waiting a long time *while the person was
+         *      talking* is dropped instead of delivered late. "What kind of mood should we keep?"
+         *      is a good question at forty-five seconds and an odd one at four minutes into a
+         *      conversation that has been answering it implicitly.
+         *   3. **Quiet** — an unprompted line waits for a real pause. A conversation that is
+         *      flowing does not need the script; the script is for the evening that has gone
+         *      quiet and does not know what to do next.
+         *
+         * At most one guided line per tick, so a session that was away for four minutes does not
+         * come back to the whole backlog at once.
          */
         _tick() {
             if (this._stopped || this.state === 'complete') return;
@@ -907,9 +1017,36 @@
             // takes. See `_conversationHasFloor` for what replaced it and why.
             if (!this._beatIsEligible()) return this._armBeats(1000);
             const elapsed = this._elapsed();
+            let spoke = false;
             for (const beat of this._beats) {
                 if (beat.done || beat.at > elapsed) continue;
+                if (beat.dueAt == null) {
+                    beat.dueAt = this.now();
+                    beat.dueTurns = this._turns;
+                }
+                if (!beat.guided && this._guidanceStillPending(beat, elapsed)) {
+                    // The ending must not overtake the evening. A tab that was hidden for four
+                    // minutes comes back with every beat due at once, and because the ending is
+                    // the one beat that does *not* wait for a quiet moment it used to fire first
+                    // — so the session jumped from its opening line to the completion card and
+                    // the three beats in between were marked done having never run.
+                    continue;
+                }
+                if (beat.guided) {
+                    if (spoke) continue;
+                    const waited = this.now() - beat.dueAt;
+                    const talkedSince = this._turns - (beat.dueTurns || 0);
+                    if (beat.stale && talkedSince > 0 && waited >= GUIDANCE.staleAfterMs * (this.timingScale || 1)) {
+                        // The conversation did this beat's job. Dropping it is the whole point:
+                        // delivering it now would be a script arriving after the scene it was
+                        // written for.
+                        beat.done = true;
+                        continue;
+                    }
+                    if (!this._quietEnough()) continue;
+                }
                 beat.done = true;
+                if (beat.guided) spoke = true;
                 try {
                     beat.run();
                 } catch (error) {
@@ -943,7 +1080,12 @@
             // Never longer than a minute: that is roughly the resolution a background tab
             // gets anyway, and it keeps a stalled session self-healing without a visibility
             // event at all.
-            const wait = Number.isFinite(inMs) ? inMs : Math.max(0, Math.min(next - elapsed, 60000));
+            //
+            // The floor of a second matters more than it looks (P12). A beat can now be due and
+            // still waiting — for a quiet moment — and `next - elapsed` is then negative, so
+            // without the floor this armed a zero-delay timer that ticked, deferred, and armed
+            // another one: a busy loop for as long as somebody kept talking.
+            const wait = Number.isFinite(inMs) ? inMs : Math.max(1000, Math.min(next - elapsed, 60000));
             return this._schedule(wait, () => this._tick());
         }
 

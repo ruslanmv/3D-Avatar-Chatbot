@@ -121,7 +121,10 @@ describe('the beats survive a tab that was not being watched', () => {
         // Four minutes of wall clock pass with the tab hidden and its timers throttled to a
         // single late tick. Before this, the closing and the completion were simply lost.
         hiddenFor(260000);
-        jest.advanceTimersByTime(60000);
+        // Long enough for the backlog to arrive a line at a time: P12 delivers at most one
+        // guided beat per tick and re-looks a second later, so catching up is a short sequence
+        // of lines rather than all four at once.
+        jest.advanceTimersByTime(120000);
 
         expect(session.state).toBe('complete');
         expect(document.querySelector('.nexus-private-complete')).not.toBeNull();
@@ -139,8 +142,15 @@ describe('the beats survive a tab that was not being watched', () => {
         // instant somebody returns to a throttled tab.
         document.dispatchEvent(new Event('visibilitychange'));
 
-        expect(session._beats.filter((b) => b.done).length).toBeGreaterThanOrEqual(3);
+        // One line, not the backlog. Three beats are due after three and a half minutes away and
+        // P12 delivers at most one guided line per tick, so coming back is a sentence rather
+        // than a wall of them; the rest arrive over the ticks that follow.
+        expect(session._beats.filter((b) => b.done).length).toBe(1);
         expect(copy()).toBeTruthy();
+
+        // And they do follow, rather than the session stalling on the one it said.
+        jest.advanceTimersByTime(120000);
+        expect(session._beats.every((b) => b.done)).toBe(true);
 
         s.activity.stop('user');
     });
