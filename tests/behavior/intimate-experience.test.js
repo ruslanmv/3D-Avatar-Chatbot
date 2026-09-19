@@ -313,6 +313,27 @@ describe('Private runtime integration', () => {
         expect(Capability.privateSystemPromptSuffix()).toBe('');
     });
 
+    test('the prompt names the language, and only when there is one worth naming (P14)', async () => {
+        // The rest of this suffix is a page of English, and a model that has just read a page of
+        // English is liable to answer in it whatever the request opened with. `AppLanguage`'s
+        // directive reaches every provider path now; this is the same instruction in the same block
+        // as the rules for this reply, which costs nine tokens.
+        const s = setup({ preset: 'romantic' });
+        await s.activity.start({ input: { id: 'romantic' } });
+
+        expect(Capability.privateSystemPromptSuffix()).not.toMatch(/^LANGUAGE:/m);
+
+        window.AppLanguage = { code: 'it-IT' };
+        const suffix = Capability.privateSystemPromptSuffix();
+        expect(suffix).toContain('LANGUAGE: Italian (it-IT)');
+        // Named inside the tag too: a model told to answer in Italian has been seen translating the
+        // tag name along with everything else, and a translated tag is one the parser cannot find.
+        expect(suffix).toMatch(/<choices>/);
+        delete window.AppLanguage;
+
+        s.activity.stop('user');
+    });
+
     test('Romantic steps to its ceiling on an explicit press, and no further', async () => {
         // The two-minute floor was the cadence for *her* asking. A person pressing the button has
         // asked, so the floor on this route is `userStepMinMs` — enough to outlast a stray finger.

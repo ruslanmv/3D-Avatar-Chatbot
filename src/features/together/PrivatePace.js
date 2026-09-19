@@ -59,6 +59,16 @@
      */
     const FORWARD_LABELS = Object.freeze(['', 'Closer', 'More', '']);
 
+    /**
+     * The same thing, as something to look up rather than something to print (P14).
+     *
+     * `FORWARD_LABELS` is English and stays English, because two files agreeing on a translated
+     * string is two files that can disagree. The view needs to know *which* of the two forward words
+     * this level takes without re-deriving the ladder rule, and then asks `PrivateLocale` for the
+     * word in the language the rest of the card is in.
+     */
+    const FORWARD_KEYS = Object.freeze(['', 'closer', 'more', '']);
+
     function ceilingOf(maxLevel) {
         return Math.max(1, Math.min(3, Math.round(Number(maxLevel) || 3)));
     }
@@ -191,6 +201,8 @@
             atFloor: level <= 1 && energy === 'quiet',
             /** What the forward control is called here, or '' when there is no forward left. */
             forward: level >= maxLevel ? '' : FORWARD_LABELS[level] || 'Closer',
+            /** The same, as a locale key. See `FORWARD_KEYS`. */
+            forwardKey: level >= maxLevel ? '' : FORWARD_KEYS[level] || 'closer',
             /** Easing is offered while there is a pace step to give back. See the footer. */
             canEase: level > 1,
         };
@@ -201,6 +213,7 @@
         DEFAULT_ENERGY,
         PACE_LABELS,
         FORWARD_LABELS,
+        FORWARD_KEYS,
         stepUp,
         stepDown,
         atCeiling,

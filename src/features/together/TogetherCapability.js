@@ -116,6 +116,15 @@
     function noveltyModel() {
         return optional('./PrivateNovelty.js', 'NEXUS_PRIVATE_NOVELTY');
     }
+    /** Every visible word Private says that a model did not write (P14). See `PrivateLocale`. */
+    function localeModel() {
+        return optional('./PrivateLocale.js', 'NEXUS_PRIVATE_LOCALE');
+    }
+    /** One string, or the key back — same contract the view's `t` has, and same reason. */
+    function t(key, params) {
+        const api = localeModel();
+        return api && typeof api.t === 'function' ? api.t(key, params) : String(key);
+    }
     function surfaceApi(win) {
         const scope = win || global;
         return (scope && scope.NEXUS_CONVERSATION_SURFACE) || null;
@@ -297,6 +306,26 @@
         return ['', api.instruction()];
     }
 
+    /**
+     * Which language this reply is in, named rather than implied (P14).
+     *
+     * Nothing at all on English, because every rule in this suffix is already in English and a line
+     * saying so is a line that can only dilute the ones that matter. `<choices>` gets its own
+     * mention: the block is markup, and a model told to answer in Italian has been observed to
+     * translate the tag name along with everything else.
+     */
+    function languageLines() {
+        const api = localeModel();
+        if (!api || typeof api.code !== 'function') return [];
+        const chosen = api.code();
+        if (!chosen || chosen === api.FALLBACK || String(chosen).slice(0, 2) === 'en') return [];
+        const named = typeof api.name === 'function' ? api.name() : chosen;
+        return [
+            `LANGUAGE: ${named} (${chosen}). Write everything you say in ${named}, including inside <choices>.`,
+            'These instructions are in English; your reply is not.',
+        ];
+    }
+
     function privateLengthLines(turn, style) {
         const lines = [];
         const words = turn && turn.words ? Number(turn.words) : 0;
@@ -342,6 +371,13 @@
             '',
             'ACTIVE PRIVATE EXPERIENCE',
             `The user deliberately started the ${preset.label} Private experience. Current consent level: ${level}. Preset ceiling: ${preset.maxLevel}.`,
+            // Said again, here, on purpose (P14). `AppLanguage.directive()` reaches every provider
+            // path as of this change, so this is not the only instruction — it is the one in the
+            // same block as the rest of the rules for this reply. The whole of this suffix is
+            // English, and a model reading a page of English immediately before writing is liable
+            // to answer in it however the request opened; a line naming the language at the end of
+            // that page costs nine tokens and removes the ambiguity.
+            ...languageLines(),
             // Where on the ladder, in the words the person is looking at, and — when they have moved
             // it — that *they* moved it (P12). Progression is now the primary control, so the model
             // needs to know it was asked for rather than guess from a number going up. The last
@@ -510,13 +546,28 @@
         return chunks.length ? `\n${chunks.join('\n\n')}\n` : '';
     }
 
-    function currentSceneLabel(win) {
+    /**
+     * What the chosen ambience is called, or nothing at all (P14).
+     *
+     * Split out from `currentSceneLabel` because the two callers want different things and one
+     * string was serving both badly. A *sentence* needs something to say when no scene is set, and
+     * `this place` reads fine inside "…this place feels like a good place for it." A *label* needs
+     * the name or an empty slot: the Private card printed the literal words `this place` in its
+     * header where a scene name goes, which is a placeholder reaching production.
+     */
+    function currentSceneName(win) {
         const bb = win && win.NEXUS_BD && win.NEXUS_BD.blackboard;
         const scene = bb && bb.scene;
-        if (scene && typeof scene === 'object')
-            return cleanText(scene.label || scene.title || scene.id || 'this place', 120);
+        if (scene && typeof scene === 'object') {
+            const named = scene.label || scene.title || scene.id;
+            return named ? cleanText(named, 120) : '';
+        }
         if (scene) return cleanText(scene, 120).replace(/[-_]+/g, ' ');
-        return 'this place';
+        return '';
+    }
+
+    function currentSceneLabel(win) {
+        return currentSceneName(win) || 'this place';
     }
 
     class IntimateExperienceSession {
@@ -696,14 +747,12 @@
                 this._planAhead();
             }
             this._enterScene();
-            // The scene sentence only when there is actually a scene. With no ambience chosen
-            // `currentSceneLabel` returns the literal words "this place", and the opening then
-            // ended "…this place feels like a good place for it", which is what a placeholder
-            // sounds like when it reaches production.
-            const place = currentSceneLabel(this.win);
-            const named = place && place !== 'this place';
+            // The scene sentence only when there is actually a scene — `currentSceneName` is empty
+            // rather than a placeholder when no ambience is chosen, so the opening cannot end
+            // "…this place feels like a good place for it."
+            const place = currentSceneName(this.win);
             this._speak(
-                named ? `${this._line('opening')} ${place} feels like a good place for it.` : this._line('opening')
+                place ? `${this._line('opening')} ${place} feels like a good place for it.` : this._line('opening')
             );
             this._startSoundtrack();
             // Something to tap from the first second (P13). The opening is a scripted line, not a
@@ -978,7 +1027,7 @@
             // only by a typed request — and the honest answer is that there is no more to give
             // rather than a line implying the preset could be changed mid-session.
             if (!next.changed) {
-                this._status('✓ As close as this preset goes');
+                this._status(t('status.ceiling'));
                 return false;
             }
 
@@ -989,7 +1038,7 @@
             if (!asked || asked.action !== 'advanced') {
                 // The only realistic refusal is a second press inside four seconds — a double-tap.
                 // Say so without drama and without moving anything.
-                this._status('✓ Give it a moment');
+                this._status(t('status.moment'));
                 return false;
             }
 
@@ -1001,7 +1050,9 @@
             this.style = null;
             this._guidanceHeldUntil = 0;
             this._paintLevel();
-            this._status(`✓ ${(paceModel() && paceModel().PACE_LABELS[asked.level]) || 'Closer'}`);
+            // The level's name in the card's language, not `PACE_LABELS`, which is English on purpose.
+            const locale = localeModel();
+            this._status(`✓ ${locale && typeof locale.pace === 'function' ? locale.pace(asked.level) : asked.level}`);
             // Presence rather than performance: never the adult ceiling's own intents. See `_intent`.
             this._intent('lean_in', 0.35);
             // The music comes back up to where it started, since the person asked for more rather
@@ -1040,7 +1091,7 @@
             // request was heard, and there is nothing to narrate. Six identical lines came from
             // narrating this case.
             if (!next.changed) {
-                this._status('✓ Already gentle');
+                this._status(t('status.alreadyGentle'));
                 return true;
             }
 
@@ -1058,7 +1109,7 @@
             }
             this._withdrawOffers();
             this._paintLevel();
-            this._status(next.loweredPace ? '✓ Pace eased' : '✓ Quieter');
+            this._status(next.loweredPace ? t('status.eased') : t('status.quieter'));
             if (this.view && typeof this.view.softenSoundtrack === 'function') this.view.softenSoundtrack();
             this._intent('breathe', 0.2);
             this._speakStepLine('easeLines', next.level, EASE_LINES[next.level]);
@@ -1112,7 +1163,7 @@
             const pace = paceModel();
             const level = Math.max(1, Number(this.adult && this.adult.level) || 1);
             if (pace && pace.atFloor({ level, energy: this.energy, maxLevel: this.preset.maxLevel })) {
-                this._status('✓ Already gentle');
+                this._status(t('status.alreadyGentle'));
                 return true;
             }
             if (level > 1 && this.adult && typeof this.adult.exit === 'function') this.adult.exit('soft');
@@ -1122,7 +1173,7 @@
             this._withdrawOffers();
             this._suppressGuidance(GUIDANCE.afterSlowDownMs);
             this._paintLevel();
-            this._status('✓ Pace softened');
+            this._status(t('status.softened'));
             if (this.view && typeof this.view.softenSoundtrack === 'function') this.view.softenSoundtrack();
             this._intent('breathe', 0.2);
             this._speakStepLine('easeLines', 1, EASE_LINES[1]);
@@ -1212,7 +1263,7 @@
             this.energy = (paceModel() && paceModel().normaliseEnergy('quiet')) || 'quiet';
             this.style = 'quiet';
             this._paintLevel();
-            this._status('✓ Quiet');
+            this._status(t('status.quiet'));
             this._intent('breathe', 0.2);
             // A lull is what the guided beats are for, and the person has just declared one.
             this._suppressGuidance(GUIDANCE.idleMs);
@@ -1621,9 +1672,14 @@
                 onEnd: () => this._complete('user'),
                 onUserMessage: () => this._userIsTalking(),
             });
-            if (!view.mount({ preset: this.preset, scene: currentSceneLabel(this.win) })) return;
+            // `currentSceneName`, not `currentSceneLabel`: the header slot is a label, and an
+            // unnamed scene leaves it empty rather than printing the sentence fragment.
+            if (!view.mount({ preset: this.preset, scene: currentSceneName(this.win) })) return;
             this.view = view;
-            view.showStarting();
+            // No opening notice (P14). The card used to greet with "Starting gently. You remain in
+            // control of the pace." under a `HER` label — a system notice in her voice, and the
+            // first thing anybody read. The opening beat is a real line and lands a moment later;
+            // this was the app clearing its throat over the top of it.
             this._paintLevel();
         }
 
@@ -1733,8 +1789,8 @@
                 this._emit('private:mood', { preset: this.preset.id, mood });
             };
             const options = [
-                { id: 'playful', label: 'Playful', run: () => choose('playful') },
-                { id: 'tender', label: 'Tender', run: () => choose('tender') },
+                { id: 'playful', label: t('mood.playful'), run: () => choose('playful') },
+                { id: 'tender', label: t('mood.tender'), run: () => choose('tender') },
             ];
             this._recordOffer('mood-choice', prompt);
             if (this.view) this.view.showMoodChoice(options, prompt);
@@ -1782,8 +1838,8 @@
             // They never appear together — the texture choice only runs at the ceiling, where there
             // is no forward control — and relying on that would be relying on a coincidence.
             this._showMessage(texture.prompt, [
-                { id: 'texture-quieter', label: 'Quieter', run: () => choose('quieter') },
-                { id: 'texture-closer', label: 'Closer', run: () => choose('closer') },
+                { id: 'texture-quieter', label: t('texture.quieter'), run: () => choose('quieter') },
+                { id: 'texture-closer', label: t('texture.closer'), run: () => choose('closer') },
             ]);
         }
 

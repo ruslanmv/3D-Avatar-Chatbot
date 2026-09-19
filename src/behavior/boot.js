@@ -108,6 +108,11 @@
         // SceneTaleConversationView is injected later and reads both off the window.
         'src/features/together/MediaTitle.js',
         'src/features/together/ui/SoundtrackStrip.js',
+        // P14. Every visible word Private says that a model did not write. Before the view, the
+        // capability and the choices, all three of which read it at draw time — a module that
+        // loads after its first reader gets English for one paint and the chosen language after,
+        // which is the flicker this list exists to prevent.
+        'src/features/together/PrivateLocale.js',
         'src/features/together/ui/PrivateConversationView.js',
         // What she says during a Private session, and the four enums it is allowed to
         // remember between them. Before TogetherCapability, which runs both.

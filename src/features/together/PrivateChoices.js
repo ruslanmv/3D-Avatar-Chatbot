@@ -95,6 +95,31 @@
         /\b(?:the )?only (?:you|one)\b/i,
     ];
 
+    /**
+     * The local choices, in the card's language (P14).
+     *
+     * The model's choices already come back in-language, because the language directive reaches
+     * every provider path now. These are the floor underneath them, and a floor that is English
+     * under an Italian conversation is the most visible seam in the feature: three buttons saying
+     * things the person would not say.
+     *
+     * Resolved per call and English if absent, so a page without `PrivateLocale` behaves exactly as
+     * it did before this existed.
+     */
+    function t(key) {
+        try {
+            const api =
+                (global && global.NEXUS_PRIVATE_LOCALE) ||
+                // eslint-disable-next-line global-require
+                (typeof require === 'function' ? require('./PrivateLocale.js') : null);
+            if (api && typeof api.t === 'function') return api.t(key);
+        } catch (_) {
+            // No pack, no problem: the key falls through to the caller, which is visibly wrong
+            // rather than invisibly missing. See `PrivateLocale.t`.
+        }
+        return String(key);
+    }
+
     function clean(value) {
         return String(value == null ? '' : value)
             .replace(/[\u0000-\u001f\u007f]/g, ' ')
@@ -184,30 +209,26 @@
         // one worth having — precisely when there was most to say.
         const out = [];
         if (state.opening) {
-            out.push('Tell me what you had in mind.');
-            out.push(state.scene ? 'I like it here.' : 'This is good.');
+            out.push(t('choice.opening'));
+            out.push(state.scene ? t('choice.likeHere') : t('choice.thisIsGood'));
         } else if (state.intent === 'question' || state.intent === 'request') {
             // She has just answered something. Follow it, or let it rest.
-            out.push('Go on.');
-            out.push('That is a good answer.');
+            out.push(t('choice.goOn'));
+            out.push(t('choice.goodAnswer'));
         } else if (quiet) {
-            out.push('Mm.');
-            out.push(state.music ? 'This music suits the quiet.' : 'I am still here.');
+            out.push(t('choice.mm'));
+            out.push(state.music ? t('choice.musicQuiet') : t('choice.stillHere'));
         } else {
-            out.push('Tell me more.');
+            out.push(t('choice.tellMore'));
             out.push(
-                state.music
-                    ? 'This music suits you.'
-                    : pace === 'Warm'
-                      ? 'What are you thinking about?'
-                      : 'I like hearing you say that.'
+                state.music ? t('choice.musicSuits') : pace === 'Warm' ? t('choice.thinking') : t('choice.likeHearing')
             );
         }
 
         // Always last, always present. In a mode whose promise is that nothing has to happen,
         // "say nothing" is a first-class move, and putting it in the same place every time makes it
         // findable without being read.
-        return out.slice(0, MAX - 1).concat('[stay quiet]');
+        return out.slice(0, MAX - 1).concat(t('choice.quiet'));
     }
 
     /**

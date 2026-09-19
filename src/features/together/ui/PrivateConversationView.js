@@ -70,6 +70,47 @@ const PrivateConversationView = (() => {
             return typeof window !== 'undefined' ? window.NEXUS_SOUNDTRACK_STRIP : null;
         }
     })();
+
+    /**
+     * The same resolution for the words on the card (P14).
+     *
+     * Read at call time, never cached into a local: the person can change the language mid-session
+     * from Settings, and a pack captured at mount would leave the footer in whatever the session
+     * opened in while her replies came back in the new language. `boot.js` loads `PrivateLocale`
+     * ahead of this file so the first paint is already in-language.
+     */
+    const LocaleApi = (() => {
+        try {
+            // eslint-disable-next-line global-require
+            return typeof require === 'function' ? require('../PrivateLocale.js') : null;
+        } catch (error) {
+            return null;
+        }
+    })();
+
+    function locale() {
+        return (typeof window !== 'undefined' && window.NEXUS_PRIVATE_LOCALE) || LocaleApi;
+    }
+
+    /**
+     * One string, and the key back if there is no locale module at all.
+     *
+     * The key rather than an empty string, for the reason `PrivateLocale.t` gives: a button reading
+     * `controls.end` is a bug anybody can see and report, and an invisible button is a bug nobody
+     * can. In practice unreachable — `boot.js` loads the module — so this is the shape of a
+     * degradation rather than a path anybody takes.
+     */
+    function t(key, params) {
+        const api = locale();
+        return api && typeof api.t === 'function' ? api.t(key, params) : String(key);
+    }
+
+    /** What level `n` is called here. See `PrivateLocale.pace`. */
+    function paceWord(level) {
+        const api = locale();
+        return api && typeof api.pace === 'function' ? api.pace(level) : String(level);
+    }
+
     const CSS = `
 #${ROW_ID}{display:block;width:100%;margin:8px 0 10px;box-sizing:border-box;color:inherit}
 #${ROW_ID} *{box-sizing:border-box}.nexus-private-shell{overflow:hidden;border:1px solid rgba(244,128,166,.4);border-radius:16px;background:linear-gradient(145deg,rgba(39,15,36,.9),rgba(22,13,28,.82));box-shadow:0 16px 50px rgba(23,5,21,.3);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
@@ -171,8 +212,12 @@ const PrivateConversationView = (() => {
             // to show `Sensual` while the footer said `Warm` — ceiling and current, both true, and
             // read by everybody as the application insisting on a state they had not reached. The
             // ladder in the footer carries the ceiling instead, where it needs no explaining.
-            row.innerHTML = `<div class="nexus-private-shell"><header class="nexus-private-heading"><div class="nexus-private-kicker">🔐 PRIVATE</div><div class="nexus-private-heading-title"></div><div class="nexus-private-place"></div></header><div class="nexus-private-card"><div class="nexus-private-log"></div></div><div class="nexus-private-soundtrack" hidden></div><footer class="nexus-private-bar"><span class="nexus-private-level" aria-live="polite"></span><span class="nexus-private-status" role="status" aria-live="polite"></span><span class="nexus-private-controls"></span></footer></div>`;
-            row.querySelector('.nexus-private-place').textContent = scene || 'Current place';
+            row.innerHTML = `<div class="nexus-private-shell"><header class="nexus-private-heading"><div class="nexus-private-kicker"></div><div class="nexus-private-heading-title"></div><div class="nexus-private-place"></div></header><div class="nexus-private-card"><div class="nexus-private-log"></div></div><div class="nexus-private-soundtrack" hidden></div><footer class="nexus-private-bar"><span class="nexus-private-level" aria-live="polite"></span><span class="nexus-private-status" role="status" aria-live="polite"></span><span class="nexus-private-controls"></span></footer></div>`;
+            row.querySelector('.nexus-private-kicker').textContent = t('card.kicker');
+            // Empty when nothing is set, never a placeholder (P14). The slot used to print
+            // `this place` — the sentence fragment `currentSceneLabel` returns for prose — as
+            // though that were the name of somewhere. An empty slot says the true thing.
+            row.querySelector('.nexus-private-place').textContent = String(scene || '').trim();
             this.row = row;
             this.shell = row.querySelector('.nexus-private-shell');
             this.card = row.querySelector('.nexus-private-card');
@@ -183,7 +228,7 @@ const PrivateConversationView = (() => {
             this.title = row.querySelector('.nexus-private-heading-title');
             // A floor to draw before the session paints its real state, so the card is never
             // momentarily blank. `setPace` replaces all of it on the first `_paintLevel`.
-            this.setPace({ pace: 'Warm', steps: [], hasLadder: false, forward: 'Closer', canEase: false });
+            this.setPace({ level: 1, steps: [], hasLadder: false, forwardKey: 'closer', canEase: false });
             const empty = host.querySelector(':scope > .empty-state');
             if (empty) empty.remove();
             host.appendChild(row);
@@ -246,10 +291,6 @@ const PrivateConversationView = (() => {
             return true;
         }
 
-        showStarting() {
-            this.showMessage('Starting gently. You remain in control of the pace.');
-        }
-
         /**
          * Three dots, while she is working out what to say.
          *
@@ -272,7 +313,7 @@ const PrivateConversationView = (() => {
             // Announced once, as a status rather than a live transcript: a screen reader that
             // read three dots on every frame would be unusable.
             wrap.setAttribute('role', 'status');
-            wrap.setAttribute('aria-label', 'She is thinking');
+            wrap.setAttribute('aria-label', t('card.thinking'));
             for (let i = 0; i < 3; i += 1) {
                 const dot = this.doc.createElement('span');
                 dot.className = 'nexus-private-dot';
@@ -412,7 +453,7 @@ const PrivateConversationView = (() => {
             row.dataset.privateTurn = who === 'you' ? 'you' : 'her';
             const label = this.doc.createElement('div');
             label.className = 'nexus-private-who';
-            label.textContent = who === 'you' ? 'YOU' : 'HER';
+            label.textContent = who === 'you' ? t('card.you') : t('card.her');
             const copy = this.doc.createElement('div');
             copy.className = 'nexus-private-copy';
             copy.textContent = body;
@@ -637,8 +678,12 @@ const PrivateConversationView = (() => {
          * anything; it draws what `PrivatePace.describe` says.
          */
         setPace(shown) {
-            const state = shown && typeof shown === 'object' ? shown : { pace: String(shown || 'Warm') };
-            const pace = state.pace || 'Warm';
+            const state = shown && typeof shown === 'object' ? shown : {};
+            // The *level* is the state; the word for it is this file's to choose (P14). `describe`
+            // still returns an English `pace`, and deliberately is not read here — the day somebody
+            // switches to Italian, a footer that printed whatever string logic handed it would be
+            // the one English word left on an otherwise Italian card.
+            const pace = paceWord(state.level);
             if (this.title) this.title.textContent = pace;
             this._paintLadder(state);
             this._paintControls(state);
@@ -663,10 +708,13 @@ const PrivateConversationView = (() => {
             this.level.textContent = '';
             const steps = Array.isArray(state.steps) ? state.steps : [];
             if (!state.hasLadder || !steps.length) {
-                this.level.textContent = state.pace || 'Warm';
+                this.level.textContent = paceWord(state.level);
                 return this.level;
             }
-            this.level.setAttribute('aria-label', `${state.pace}, step ${state.level} of ${state.maxLevel}`);
+            this.level.setAttribute(
+                'aria-label',
+                `${paceWord(state.level)}, ${t('pace.aria.step', { step: state.level, total: state.maxLevel })}`
+            );
             steps.forEach((step, index) => {
                 if (index > 0) {
                     const rule = this.doc.createElement('span');
@@ -681,7 +729,7 @@ const PrivateConversationView = (() => {
                 if (step.current) dot.classList.add('is-current');
                 // The word only on the step you are on: three labels in a phone-width footer is a
                 // legend, and a legend is something to read rather than something to glance at.
-                dot.textContent = step.current ? step.label : '•';
+                dot.textContent = step.current ? paceWord(step.level) : '•';
                 this.level.appendChild(dot);
             });
             return this.level;
@@ -699,18 +747,23 @@ const PrivateConversationView = (() => {
             this.forwardButton = null;
             this.easeButton = null;
             if (state.canEase) {
-                this.easeButton = this._button('← Ease up', 'ease', this.handlers.onEase);
+                this.easeButton = this._button(t('controls.ease'), 'ease', this.handlers.onEase);
                 this.easeButton.classList.add('is-secondary');
-                this.easeButton.setAttribute('aria-label', 'One step gentler');
+                this.easeButton.setAttribute('aria-label', t('controls.aria.ease'));
                 this.controls.appendChild(this.easeButton);
             }
-            if (state.forward) {
-                this.forwardButton = this._button(`${state.forward} →`, 'closer', this.handlers.onCloser);
+            // `forwardKey` says which of the two forward words this level takes; `forward` is the
+            // English one `describe` has always returned and is read only as a fallback, so a caller
+            // that predates P14 still draws a button.
+            const forwardKey = state.forwardKey || String(state.forward || '').toLowerCase();
+            if (forwardKey === 'closer' || forwardKey === 'more') {
+                const label = t(`controls.${forwardKey}`);
+                this.forwardButton = this._button(label, 'closer', this.handlers.onCloser);
                 this.forwardButton.classList.add('is-primary');
-                this.forwardButton.setAttribute('aria-label', `${state.forward} — one step more intense`);
+                this.forwardButton.setAttribute('aria-label', t('controls.aria.forward'));
                 this.controls.appendChild(this.forwardButton);
             }
-            this.controls.appendChild(this._button('End', 'end', this.handlers.onEnd));
+            this.controls.appendChild(this._button(t('controls.end'), 'end', this.handlers.onEnd));
             return this.controls;
         }
 
@@ -773,7 +826,7 @@ const PrivateConversationView = (() => {
             slot.textContent = '';
             slot.hidden = false;
             if (!strips || typeof strips.render !== 'function') {
-                slot.textContent = `♫ ${track.title || 'Soft private soundtrack'}`;
+                slot.textContent = `♫ ${track.title || t('soundtrack.fallback')}`;
                 return null;
             }
             const built = strips.render(track, {
@@ -785,7 +838,7 @@ const PrivateConversationView = (() => {
                 // taking the music, and it is the half that also knows to hand it back on
                 // exit. A second announcement from the strip would make two owners of one fact.
                 marker: 'data-private-soundtrack',
-                playerLabel: 'Private soundtrack player',
+                playerLabel: t('soundtrack.player'),
                 classes: {
                     strip: 'nexus-private-soundtrack-strip',
                     copy: 'nexus-private-soundtrack-copy',
@@ -799,7 +852,7 @@ const PrivateConversationView = (() => {
                 onToggle: () => this._scroll(this.doc && this.doc.getElementById('chat-history')),
             });
             if (!built) {
-                slot.textContent = `♫ ${track.title || 'Soft private soundtrack'}`;
+                slot.textContent = `♫ ${track.title || t('soundtrack.fallback')}`;
                 return null;
             }
             slot.appendChild(built.strip);
@@ -845,13 +898,21 @@ const PrivateConversationView = (() => {
         showComplete({ onAgain, onBack } = {}) {
             if (!this.row || !this.card) return;
             this.row.classList.add('is-complete');
-            this.card.innerHTML =
-                '<div class="nexus-private-complete">✓ Private moment complete</div><div class="nexus-private-note">A quiet ending, with no pressure to continue.<br>Nothing from this Private moment was added to Playground Histories.</div>';
+            // Built rather than assigned as one HTML string: the words come from a pack now, and a
+            // translation reaching `innerHTML` is a translation that can carry markup.
+            this.card.textContent = '';
+            const title = this.doc.createElement('div');
+            title.className = 'nexus-private-complete';
+            title.textContent = t('complete.title');
+            const note = this.doc.createElement('div');
+            note.className = 'nexus-private-note';
+            note.append(t('complete.note'), this.doc.createElement('br'), t('complete.kept'));
+            this.card.append(title, note);
             const actions = this.doc.createElement('div');
             actions.className = 'nexus-private-actions';
             actions.append(
-                this._button('Another private moment', 'again', onAgain),
-                this._button('Back to Together', 'back', onBack)
+                this._button(t('complete.again'), 'again', onAgain),
+                this._button(t('complete.back'), 'back', onBack)
             );
             this.card.appendChild(actions);
         }
@@ -933,7 +994,7 @@ const PrivateConversationView = (() => {
             if (!input) return;
             const send = this.doc.getElementById('speak-btn') || this.doc.getElementById('sendBtn');
             const previous = input.getAttribute('placeholder') || '';
-            input.setAttribute('placeholder', 'Talk privately…');
+            input.setAttribute('placeholder', t('composer.placeholder'));
             const notify = () => {
                 if (typeof this.handlers.onUserMessage === 'function') this.handlers.onUserMessage();
             };
