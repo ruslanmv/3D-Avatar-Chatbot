@@ -197,10 +197,47 @@
         return { director, activity, adult, blackboard, preset, level, mood };
     }
 
+    /**
+     * How long, and in what register, this particular reply should be (P9/P15).
+     *
+     * The budget is enforced by `max_tokens`, which truncates — so a model that writes two
+     * hundred words gets a sentence cut in half rather than a short answer. Telling it the
+     * length is the other half, and it is the half that makes the reply *finish*.
+     *
+     * The question rule is here because the default behaviour of every assistant is to end on
+     * one, and a companion who answers every remark with a question is conducting an interview.
+     * Silence is a legitimate reply to "this is nice"; so is agreeing and stopping.
+     */
+    function privateLengthLines(turn, style) {
+        const lines = [];
+        const words = turn && turn.words ? Number(turn.words) : 0;
+        if (words > 0 && words <= 3) {
+            lines.push(
+                'They said very little. Answer in one short sentence, or a few words. Do not expand a two-word remark into a paragraph.'
+            );
+        } else if (words > 0 && words <= 12) {
+            lines.push('Keep this reply to one or two sentences. Match their length rather than exceeding it.');
+        } else {
+            lines.push('Keep replies short — three sentences at most unless they asked for something longer.');
+        }
+        lines.push(
+            'Do not end every reply with a question. Ask one only when you genuinely want an answer; otherwise say your thing and let the silence be comfortable.'
+        );
+        if (style === 'quiet') {
+            lines.push(
+                'They asked for fewer words. Be present rather than talkative: very short replies, long pauses, no new topics.'
+            );
+        } else if (style === 'conversational') {
+            lines.push('They are talking with you rather than being led. Follow what they raise; do not steer.');
+        }
+        return lines;
+    }
+
     function privateSystemPromptSuffix() {
         const ctx = privateContext();
         if (!ctx) return '';
         const { preset, level, mood } = ctx;
+        const session = ctx.activity && ctx.activity._privateExperience;
         const moodLine = mood
             ? [
                   mood === 'playful'
@@ -213,6 +250,7 @@
             'ACTIVE PRIVATE EXPERIENCE',
             `The user deliberately started the ${preset.label} Private experience. Current consent level: ${level}. Preset ceiling: ${preset.maxLevel}.`,
             ...moodLine,
+            ...privateLengthLines(session && session._turn, session && session.style),
             'Stay warm, relational and non-explicit. Never exceed the lower of the current consent level and preset ceiling.',
             'Do not infer consent from friendliness, silence, scenery, music or previous turns. Do not pressure the user to continue or escalate.',
             'Never use jealousy, secrecy, isolation, dependency, threats, coercion or intoxication as leverage. Never imply that the companion should replace real relationships.',
@@ -220,6 +258,50 @@
             'Do not expose internal levels, gates or implementation details unless the user explicitly asks about the product.',
             '',
         ].join('\n');
+    }
+
+    /**
+     * How long her next answer is worth, or null when Private is not running (P9).
+     *
+     * `LLMManager` consults this where it builds each request body, the way the request path
+     * already consults `systemPromptSuffix()`. Null for every request outside a Private session,
+     * so ordinary chat asks for exactly the ceiling it always asked for.
+     *
+     * The number comes from the turn `PrivateTurnDirector` classified, not from the preset: the
+     * budget is a reply to what somebody said, and `Mm` and a three-sentence question do not
+     * deserve the same one. Eight hundred tokens for `So` is a hundred and fifty words nobody
+     * wanted and several seconds of waiting for them, which is most of why Private read as slow.
+     */
+    function responseBudget() {
+        const ctx = privateContext();
+        const session = ctx && ctx.activity && ctx.activity._privateExperience;
+        if (!session || session.state === 'complete' || session._stopped) return null;
+        const td = turnDirector();
+        if (!td || typeof td.budgetFor !== 'function') return null;
+        try {
+            const wanted = td.budgetFor(session._turn || null);
+            return Number.isFinite(wanted) && wanted > 0 ? wanted : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /**
+     * The Private instructions, for a request that cannot carry a system prompt (P9).
+     *
+     * `_chatOllaBridge` does not send one at all for a remote persona — the gateway supplies the
+     * persona's own, and overwriting it is the whole reason for the `if (!isRemotePersona)`. But
+     * that also drops everything the app appends, and the app appends the *safety* half of
+     * Private: the consent level, the ceiling, "do not infer consent from friendliness", "if
+     * they say stop, end immediately". Silently. So a remote persona ran a Private session with
+     * none of its rules, which is a correctness hole rather than a missing feature.
+     *
+     * An overlay, deliberately, not a replacement: this is an additional message that sits
+     * alongside whatever the gateway prepends, and it is empty whenever Private is not running,
+     * so ordinary remote-persona chat sends byte-for-byte what it sent before.
+     */
+    function experienceOverlay() {
+        return privateSystemPromptSuffix().trim();
     }
 
     function systemPromptSuffix() {
@@ -1329,6 +1411,8 @@
         privateSystemPromptSuffix,
         installPrivateRuntime,
         systemPromptSuffix,
+        responseBudget,
+        experienceOverlay,
     };
 
     if (typeof module !== 'undefined' && module.exports) module.exports = api;

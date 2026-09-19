@@ -201,13 +201,18 @@ describe('whose turn it is (P8)', () => {
         Surface.configure(hostHooks().hooks);
         jest.spyOn(console, 'warn').mockImplementation(() => {});
         const seen = [];
-        Surface.observe(() => {
+        // Unsubscribed at the end, because an observer outlives a surface swap by design — that
+        // is what makes it usable by a long-lived consumer — so `reset()` does not clear it and a
+        // leaked one narrates every later test in this file.
+        const stopThrower = Surface.observe(() => {
             throw new Error('observer exploded');
         });
-        Surface.observe((event) => seen.push(event.type));
+        const stopWatcher = Surface.observe((event) => seen.push(event.type));
         expect(() => Surface.renderUser('still said')).not.toThrow();
         expect(seen).toEqual(['user']);
         expect(Surface.turn().phase).toBe('user');
+        stopThrower();
+        stopWatcher();
         console.warn.mockRestore();
     });
 

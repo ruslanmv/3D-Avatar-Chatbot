@@ -181,7 +181,7 @@
                 { role: 'system', content: systemPrompt || 'You are a helpful assistant.' },
                 ...this._withCurrentTurn(conversationHistory, userMessage),
             ];
-            const body = { model, messages, max_tokens: 500, stream: true };
+            const body = { model, messages, max_tokens: this._tokenBudget(500), stream: true };
 
             const res = this._hasProxy()
                 ? await this._fetchViaProxy(url, 'POST', headers, body)
@@ -215,7 +215,7 @@
                 model,
                 system: systemPrompt || 'You are a helpful assistant.',
                 messages,
-                max_tokens: 1024,
+                max_tokens: this._tokenBudget(1024),
                 stream: true,
             };
 
@@ -459,6 +459,51 @@
         }
 
         /**
+         * How long this particular answer is worth (P9).
+         *
+         * Every path here asks for a fixed ceiling — 500, 800, 1024 — chosen once for the
+         * longest thing the model might reasonably be asked. In an intimate conversation that is
+         * the wrong number for almost every turn: `So` earns eight hundred tokens, which is a
+         * hundred and fifty words nobody wanted and several seconds of waiting for them. Half of
+         * Private reading as "frozen" is a budget that has no opinion about what was said.
+         *
+         * Consulted rather than passed, the way `systemPromptSuffix()` is: threading an options
+         * argument through `sendMessage` → each provider → each body would touch every path to
+         * serve one, and a future provider would silently not honour it. This returns null
+         * unless a Private session is actually running, so every other request is byte-for-byte
+         * what it was.
+         *
+         * Telling the model to be brief is not a substitute for this and this is not a
+         * substitute for telling it: a prompt is a request, `max_tokens` is a rule.
+         */
+        /**
+         * The instructions a request that cannot carry a system prompt still needs (P9).
+         *
+         * Only the remote-persona path uses it, and only because that path deliberately sends no
+         * system prompt at all. See the call site. Empty string when there is nothing to add.
+         */
+        _experienceOverlay() {
+            try {
+                const api = global && global.NEXUS_TOGETHER_CAPABILITY;
+                const text = api && typeof api.experienceOverlay === 'function' ? api.experienceOverlay() : '';
+                return typeof text === 'string' ? text : '';
+            } catch (_) {
+                return '';
+            }
+        }
+
+        _tokenBudget(fallback) {
+            try {
+                const api = global && global.NEXUS_TOGETHER_CAPABILITY;
+                const wanted = api && typeof api.responseBudget === 'function' ? api.responseBudget() : null;
+                if (Number.isFinite(wanted) && wanted > 0) return Math.min(wanted, fallback);
+            } catch (_) {
+                // A capability module that throws costs the tuning, never the reply.
+            }
+            return fallback;
+        }
+
+        /**
          * POST a chat completion to OllaBridge, retrying transient gateway
          * failures.
          *
@@ -607,7 +652,7 @@
             const body = {
                 model: model,
                 messages: messages,
-                max_tokens: 500,
+                max_tokens: this._tokenBudget(500),
             };
 
             let res;
@@ -662,7 +707,7 @@
                 model: model,
                 system: systemPrompt || 'You are a helpful assistant.',
                 messages: messages,
-                max_tokens: 1024,
+                max_tokens: this._tokenBudget(1024),
             };
 
             let res;
@@ -713,7 +758,7 @@
                 project_id: project_id,
                 input: input,
                 parameters: {
-                    max_new_tokens: 500,
+                    max_new_tokens: this._tokenBudget(500),
                     temperature: 0.7,
                 },
             };
@@ -839,13 +884,24 @@
             const messages = [];
             if (!isRemotePersona) {
                 messages.push({ role: 'system', content: systemPrompt || 'You are a helpful assistant.' });
+            } else {
+                // A remote persona brings its own prompt and this path deliberately does not
+                // overwrite it — but it also dropped everything the app appends, and the app
+                // appends the *safety* half of the Private experience: the consent level, the
+                // preset ceiling, "do not infer consent from friendliness", "if they say stop,
+                // end immediately". Silently, so a Private session on a remote persona ran with
+                // none of its rules. An overlay sits alongside the persona's prompt rather than
+                // replacing it, and it is empty unless Private is actually running, so ordinary
+                // remote-persona chat sends byte-for-byte what it sent before.
+                const overlay = this._experienceOverlay();
+                if (overlay) messages.push({ role: 'system', content: overlay });
             }
             messages.push(...this._withCurrentTurn(conversationHistory, userMessage));
 
             const body = {
                 model: model || 'default',
                 messages: messages,
-                max_tokens: 800,
+                max_tokens: this._tokenBudget(800),
             };
 
             const res = await this._postOllaBridgeWithRetry(url, headers, body);
@@ -970,13 +1026,24 @@
             const messages = [];
             if (!isRemotePersona) {
                 messages.push({ role: 'system', content: systemPrompt || 'You are a helpful assistant.' });
+            } else {
+                // A remote persona brings its own prompt and this path deliberately does not
+                // overwrite it — but it also dropped everything the app appends, and the app
+                // appends the *safety* half of the Private experience: the consent level, the
+                // preset ceiling, "do not infer consent from friendliness", "if they say stop,
+                // end immediately". Silently, so a Private session on a remote persona ran with
+                // none of its rules. An overlay sits alongside the persona's prompt rather than
+                // replacing it, and it is empty unless Private is actually running, so ordinary
+                // remote-persona chat sends byte-for-byte what it sent before.
+                const overlay = this._experienceOverlay();
+                if (overlay) messages.push({ role: 'system', content: overlay });
             }
             messages.push(...this._withCurrentTurn(conversationHistory, userMessage));
 
             const body = {
                 model: model || 'default',
                 messages: messages,
-                max_tokens: 800,
+                max_tokens: this._tokenBudget(800),
             };
 
             const res = await this._postOllaBridgeWithRetry(url, headers, body);
