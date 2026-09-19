@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "sharedPrompt": "Create a premium cinematic environmental illustration for HomePilot Scene Tale. Environment only: no people, avatar, UI, typography, logos, watermark, or embedded text. Family-friendly. Use a realistic-fantasy / cinematic storybook treatment with layered depth, atmospheric light, a clear focal point, and strong readability at thumbnail size. Keep the center area readable for a wide story-card crop. This is a fictional story setting, not factual local history. Maintain one consistent visual language across the full library: dark-to-mid-tone palette where appropriate, luminous highlights, gentle atmospheric depth, polished immersive detail, and emotionally rich but calm composition.",
+  "landscapeComposition": "Landscape composition for a 16:9 production backplate. Keep the important focal point within the central 60% horizontally and the scene readable behind a foreground avatar. Leave a believable standing surface or visual grounding near the lower 10-15% when the location includes ground, terrace, shore, path, or garden. No foreground person.",
+  "portraitComposition": "Portrait composition for a 9:16 production backplate depicting the same recognizable location, lighting, palette, architectural/natural landmarks, and time of day as the landscape version. Recompose independently for portrait rather than cropping the landscape. Keep the important focal point within the central 50% horizontally and preserve a believable lower grounding zone. No foreground person.",
+  "scenes": [
+    {
+      "key": "ocean-sunrise",
+      "label": "Ocean · Sunrise",
+      "prompt": "Calm ocean viewed from a beautiful coast at dawn, soft peach and pale-blue sunrise, gentle waves, light atmospheric haze, luminous horizon, quiet open space, fresh optimistic morning mood. Premium cinematic realistic-fantasy environmental illustration."
+    },
+    {
+      "key": "ocean-moonlight",
+      "label": "Ocean · Moonlight",
+      "prompt": "Calm ocean coast at night under clear moonlight, silver reflections across dark blue water, subtle clouds, quiet shoreline depth, restrained cool palette, serene and slightly mysterious mood. Premium cinematic realistic-fantasy environmental illustration."
+    },
+    {
+      "key": "mountain-lake-day",
+      "label": "Mountain Lake · Day",
+      "prompt": "Pristine mountain lake in daylight, still reflective water, layered evergreen shoreline, majestic distant mountains, soft natural sunlight, open sky and peaceful depth, restorative nature mood. Premium cinematic realistic-fantasy environmental illustration."
+    },
+    {
+      "key": "mountain-lake-night",
+      "label": "Mountain Lake · Night",
+      "prompt": "Mountain lake at night, dark reflective water, moonlit mountain silhouettes, subtle stars, cool blue atmosphere, sparse warm distant lights if appropriate, peaceful secluded mood. Premium cinematic realistic-fantasy environmental illustration."
+    },
+    {
+      "key": "meditation-garden-day",
+      "label": "Meditation Garden · Day",
+      "prompt": "Quiet landscaped meditation garden in daylight, stone path, restrained greenery, gentle water or small pond, balanced natural composition, soft daylight, calm restorative mood, elegant rather than ornate. Premium cinematic realistic-fantasy environmental illustration."
+    },
+    {
+      "key": "meditation-garden-night",
+      "label": "Meditation Garden · Night",
+      "prompt": "Meditation garden at night with moonlit plants, stone path, small reflective water feature, subtle lantern glow, gentle mist, deep teal and blue palette, intimate calm atmosphere. Premium cinematic realistic-fantasy environmental illustration."
+    },
+    {
+      "key": "coastal-terrace-day",
+      "label": "Coastal Terrace · Day",
+      "prompt": "Elegant open coastal terrace in daylight, railing overlooking a blue bay or sea, distant hills, tasteful plants and architecture, soft sun, airy calm composition, inviting place to linger. Premium cinematic realistic-fantasy environmental illustration."
+    },
+    {
+      "key": "coastal-terrace-twilight",
+      "label": "Coastal Terrace · Twilight",
+      "prompt": "Elegant coastal terrace during blue hour, warm architectural and lantern lights, railing overlooking calm water, distant hills, blue-purple twilight sky, intimate reflective atmosphere, sophisticated cinematic lighting. Premium cinematic realistic-fantasy environmental illustration."
+    },
+    {
+      "key": "open-sky-day",
+      "label": "Open Sky · Day",
+      "prompt": "Expansive peaceful daytime sky with layered soft clouds and a minimal distant horizon, luminous natural blue, airy open composition, gentle sense of freedom and possibility, visually calm rather than dramatic. Premium cinematic realistic-fantasy environmental illustration."
+    },
+    {
+      "key": "open-sky-starlight",
+      "label": "Open Sky · Starlight",
+      "prompt": "Expansive clear night sky filled with restrained natural starlight above a minimal dark horizon, subtle atmospheric gradient, deep blue-black palette, quiet wonder and spaciousness, no exaggerated science-fiction objects. Premium cinematic realistic-fantasy environmental illustration."
+    }
+  ]
+}

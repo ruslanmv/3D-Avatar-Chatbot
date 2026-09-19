@@ -984,6 +984,36 @@ function startBehaviorDirector(options = {}) {
        through the same speakText a chat reply does; lipsync does not care who began it. */
     window.NEXUS_BD_SAY = (text) => speakText(text);
 
+    // P7. Hand the conversation surface this file's own renderers, so the default way a turn is
+    // drawn stays exactly what it has always been and only the *owner* can change.
+    //
+    // P18: published on the window *and* offered directly, because this call runs before
+    // `boot.js` is appended and `ConversationSurface.js` is item eighty in that boot list. The
+    // optional chaining therefore evaluated to `undefined` on every real page load and the
+    // hooks were silently dropped — which is why a tapped dialogue choice did nothing: `send`
+    // reads `host.send` and there was no host. The module adopts this global when it loads, so
+    // the order stops mattering; the direct call below still covers a page that loaded the
+    // module first.
+    const conversationHooks = {
+        addMessage: (sender, text, attachments) => addMessageToHistory(sender, text, attachments),
+        beginStream: () => _createStreamingBotMessage(),
+        scroll: () => {
+            const el = $('chat-history');
+            if (el) el.scrollTop = el.scrollHeight;
+        },
+        // P10. Where the turns are kept. These three are what this file has always done, so the
+        // default store is byte-for-byte the previous behaviour — `nexus_chat_messages` and all.
+        getHistory: () => window.chatHistory.getHistory(),
+        addHistory: (role, text) => window.chatHistory.addMessage(role, text),
+        persist: () => _persistChat(),
+        // P13. Sending a turn the person did not type — a tapped dialogue choice. One line into the
+        // same pipeline, so prompt assembly, the provider, the directives and persistence are the
+        // ones typed text gets rather than a second implementation that drifts from them.
+        send: (text) => handleUserMessage(text),
+    };
+    window.NEXUS_CONVERSATION_SURFACE_HOOKS = conversationHooks;
+    window.NEXUS_CONVERSATION_SURFACE?.configure?.(conversationHooks);
+
     const bdScript = document.createElement('script');
     bdScript.src = 'src/behavior/boot.js';
     bdScript.async = false;
@@ -3760,16 +3790,22 @@ function saveSettings() {
    Chat + LLM
    ============================ */
 async function handleUserMessage(text) {
-    addMessageToHistory('user', text);
+    // P7. Whoever owns the conversation draws it. The default owner is `addMessageToHistory`
+    // and nothing about ordinary chat changes; during a Private session the owner is the
+    // Private card, so a typed message becomes a row inside the experience rather than an
+    // ordinary blue bubble underneath it.
+    _surface().renderUser(text);
 
     // Living NPC: instant motion for recognized commands (LLM still replies)
     window.NEXUS_MOTION?.onUserUtterance?.(text);
 
-    // Add user message to chat session history
-    chatHistory.addMessage('user', text);
-
-    // Persist chat
-    _persistChat();
+    // P10. Whoever owns the conversation owns where its turns are kept, too. The default store
+    // is `window.chatHistory` plus `_persistChat` and nothing about ordinary chat changes; a
+    // Private session keeps its turns in memory and writes none of them to disk, which is the
+    // promise its completion card makes.
+    const store = _surface().history();
+    store.addMessage('user', text);
+    store.persist();
 
     setStatus('listening', 'THINKING...');
 
@@ -3811,13 +3847,16 @@ async function _handleStreamingResponse(text) {
     // because the user may press CLEAR while she is still mid-sentence.
     const turn = window.NEXUS_CONVERSATION_RESET?.currentEpoch?.();
 
-    // Create an empty bot message element that we'll fill progressively
-    const { textDiv, row } = _createStreamingBotMessage();
+    // Create an empty bot turn that we'll fill progressively. The surface decides what that
+    // looks like; on the default path it is still `_createStreamingBotMessage`.
+    const stream = _surface().beginAssistant();
+    const textDiv = stream.textNode;
+    const row = stream.node;
 
     if (window.setTypingIndicator) window.setTypingIndicator(true);
 
     try {
-        const history = window.chatHistory.getHistory();
+        const history = _surface().history().getHistory();
         const systemPrompt =
             (config.systemPrompt || 'You are a helpful AI assistant named Nexus.') +
             (window.NEXUS_MOTION?.systemPromptSuffix?.() || '') +
@@ -3842,10 +3881,7 @@ async function _handleStreamingResponse(text) {
             if (!accumulated && window.setTypingIndicator) window.setTypingIndicator(false);
             accumulated += token;
             // Living NPC: hide the ```motion block while it streams in
-            textDiv.textContent = window.NEXUS_MOTION ? window.NEXUS_MOTION.maskStreaming(accumulated) : accumulated;
-            // Scroll chat
-            const chatEl = $('chat-history');
-            if (chatEl) chatEl.scrollTop = chatEl.scrollHeight;
+            stream.append(window.NEXUS_MOTION ? window.NEXUS_MOTION.maskStreaming(accumulated) : accumulated);
         });
 
         if (window.setTypingIndicator) window.setTypingIndicator(false);
@@ -3854,12 +3890,20 @@ async function _handleStreamingResponse(text) {
         // that no longer exists: take the half-written bubble off screen and write nothing —
         // no message, no storage, no speech. Anything else resurrects what they just erased.
         if (!_turnIsCurrent(turn)) {
-            if (row.parentElement) row.parentElement.removeChild(row);
+            stream.discard();
             setStatus('idle', 'READY');
             return;
         }
 
-        let displayText = fullText || accumulated || 'No response';
+        // A stream that produced no tokens is a failed turn, not a line she said (P19). Throwing
+        // hands it to the `catch` below, which is the path that reports a failure properly — and
+        // inside Private reads as her rather than as the app. `'No response'` here was the same
+        // defect the five providers had: two words that went down the pipe a reply goes down, into
+        // the bubble, into the history the next request reads, and out through the synthesiser.
+        if (!String(fullText || accumulated || '').trim()) {
+            throw new Error(`${config.provider || 'The provider'} streamed an empty reply.`);
+        }
+        let displayText = fullText || accumulated;
         // Living NPC: execute the ```motion plan and strip it from display/TTS
         displayText = window.NEXUS_MOTION ? window.NEXUS_MOTION.processReply(displayText) : displayText;
         // T5. Take the <play> tag out and act on it. Here, beside the motion seam, because
@@ -3881,7 +3925,13 @@ async function _handleStreamingResponse(text) {
         // again — the second call carries the results, so the answer comes from her having
         // read them rather than from the app pasting snippets into the chat.
         displayText = __nexusRunLookup(displayText);
-        textDiv.textContent = displayText;
+        // P14. Take the stage directions out and let the avatar do them instead. Here, at the
+        // same seam and for the same reason as the tags above: everything downstream reads
+        // `displayText`, so stripping once covers the bubble, the transcript, the VR forward and
+        // the voice together. `[smile]` that reached the synthesiser was her saying the word
+        // "smile" out loud. Unchanged unless a Private session is running.
+        displayText = window.NEXUS_TOGETHER_CAPABILITY?.sanitizeReply?.(displayText) ?? displayText;
+        stream.finish(displayText);
 
         // Mirror to AR overlay
         if (window._arAppendBubble) window._arAppendBubble('bot', displayText);
@@ -3896,8 +3946,9 @@ async function _handleStreamingResponse(text) {
             });
         }
 
-        chatHistory.addMessage('assistant', displayText);
-        _persistChat();
+        const store = _surface().history();
+        store.addMessage('assistant', displayText);
+        store.persist();
         _applyEmotionFromText(displayText);
         speakText(displayText);
         setStatus('idle', 'READY');
@@ -3905,8 +3956,8 @@ async function _handleStreamingResponse(text) {
         if (window.setTypingIndicator) window.setTypingIndicator(false);
         logError('Streaming error, falling back', error);
 
-        // Remove the empty streaming message
-        if (row.parentElement) row.parentElement.removeChild(row);
+        // Remove the empty streaming turn
+        stream.discard();
 
         // Do not retry a turn the user has already cleared. The fallback would capture a fresh
         // epoch and therefore consider itself current, putting the old question's answer into
@@ -3970,8 +4021,14 @@ async function _handleNonStreamingResponse(text) {
         // again — the second call carries the results, so the answer comes from her having
         // read them rather than from the app pasting snippets into the chat.
         displayText = __nexusRunLookup(displayText);
+        // P14. Take the stage directions out and let the avatar do them instead. Here, at the
+        // same seam and for the same reason as the tags above: everything downstream reads
+        // `displayText`, so stripping once covers the bubble, the transcript, the VR forward and
+        // the voice together. `[smile]` that reached the synthesiser was her saying the word
+        // "smile" out loud. Unchanged unless a Private session is running.
+        displayText = window.NEXUS_TOGETHER_CAPABILITY?.sanitizeReply?.(displayText) ?? displayText;
 
-        addMessageToHistory('avatar', displayText, attachments);
+        _surface().renderAssistant(displayText, attachments);
 
         if (window.sendBotResponseToVR) {
             window.sendBotResponseToVR({
@@ -3982,8 +4039,9 @@ async function _handleNonStreamingResponse(text) {
             });
         }
 
-        chatHistory.addMessage('assistant', displayText);
-        _persistChat();
+        const store = _surface().history();
+        store.addMessage('assistant', displayText);
+        store.persist();
         _applyEmotionFromText(displayText);
         speakText(displayText);
         setStatus('idle', 'READY');
@@ -4002,8 +4060,8 @@ async function _handleNonStreamingResponse(text) {
             const friendlyMsg =
                 `The persona "${error.modelName}" is no longer available. ` +
                 `You can select a different model in Settings, or refresh the model list.`;
-            addMessageToHistory('avatar', friendlyMsg);
-            chatHistory.addMessage('assistant', friendlyMsg);
+            _surface().renderError(friendlyMsg);
+            _surface().history().addMessage('assistant', friendlyMsg);
             showMessage('Persona unavailable \u2014 open Settings to choose another model', 'warning');
             setStatus('idle', 'READY');
         } else {
@@ -4016,6 +4074,47 @@ async function _handleNonStreamingResponse(text) {
 }
 
 // Creates an empty bot message div for streaming token-by-token
+/**
+ * Whoever is drawing the conversation right now.
+ *
+ * Configured once below with this file's own renderers, so the default surface *is* the code
+ * that was here before — same elements, same classes, same persistence. A missing module falls
+ * back to calling them directly, which is what keeps a page that never loaded the feature
+ * behaving exactly as it always did.
+ */
+function _surface() {
+    const api = window.NEXUS_CONVERSATION_SURFACE;
+    if (api && typeof api.current === 'function') return api;
+    return {
+        renderUser: (text, attachments) => addMessageToHistory('user', text, attachments),
+        renderAssistant: (text, attachments) => addMessageToHistory('avatar', text, attachments),
+        renderError: (text) => addMessageToHistory('avatar', text),
+        history: () => ({
+            getHistory: () => window.chatHistory.getHistory(),
+            addMessage: (role, text) => window.chatHistory.addMessage(role, text),
+            persist: () => _persistChat(),
+        }),
+        beginAssistant: () => {
+            const made = _createStreamingBotMessage();
+            return {
+                append: (full) => {
+                    made.textDiv.textContent = full;
+                    const el = $('chat-history');
+                    if (el) el.scrollTop = el.scrollHeight;
+                },
+                finish: (full) => {
+                    made.textDiv.textContent = full;
+                },
+                discard: () => {
+                    if (made.row.parentElement) made.row.parentElement.removeChild(made.row);
+                },
+                node: made.row,
+                textNode: made.textDiv,
+            };
+        },
+    };
+}
+
 function _createStreamingBotMessage() {
     const chatEl = $('chat-history');
     if (!chatEl) return { textDiv: document.createElement('div'), row: document.createElement('div') };
@@ -4048,6 +4147,24 @@ function _createStreamingBotMessage() {
 
 // Show error message with a retry button
 function _addErrorWithRetry(originalText, error) {
+    // The one error path that still built its own row, and the reported Private session was
+    // full of `OllaBridge returned 504; retrying` — so a NEXUS bubble with a Retry button
+    // appeared *underneath* the Private card, which is precisely the two-presentation-systems
+    // problem P7 removed, surviving in the failure path. A surface that is drawing the
+    // conversation gets to draw the failure too; the retry button is a default-surface
+    // affordance and a raw one inside an intimate transcript reads as the app, not as her.
+    const surface = window.NEXUS_CONVERSATION_SURFACE;
+    // `current()` is null until the surface has been configured, and this is the error path — the
+    // one place that must not throw on top of whatever already failed. No surface installed means
+    // nothing else is drawing, so the local row below is the one that gets the error rather than a
+    // `renderError` that would go nowhere.
+    const installed = surface && typeof surface.current === 'function' ? surface.current() : null;
+    const drawnElsewhere = Boolean(installed) && installed.id !== 'default';
+    if (drawnElsewhere) {
+        _surface().renderError('Sorry — I lost my train of thought for a second. Say that again?');
+        return;
+    }
+
     const chatEl = $('chat-history');
     if (!chatEl) return;
 
@@ -4153,7 +4270,7 @@ function __nexusRunLookup(displayText) {
 async function callLLM(userMessage) {
     // ✅ Use LLMManager with conversation history if available
     if (window._nexusLLM && config.provider !== 'none') {
-        const history = window.chatHistory.getHistory();
+        const history = _surface().history().getHistory();
         const systemPrompt =
             (config.systemPrompt || 'You are a helpful AI assistant named Nexus.') +
             (window.NEXUS_MOTION?.systemPromptSuffix?.() || '') +

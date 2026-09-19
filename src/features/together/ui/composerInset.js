@@ -48,6 +48,21 @@
      */
     const MOBILE_MAX = 640;
 
+    /**
+     * How tall a thing may be and still count as bottom furniture.
+     *
+     * Half. Not tighter, because the visual viewport shrinks under an open keyboard and a
+     * composer that was 10% of the screen can legitimately measure a third of what is left —
+     * a threshold below that would start ignoring the very bar this module exists to avoid.
+     * Not looser, because the thing being excluded is the expanded chat overlay, which the
+     * design note describes as "most of the screen" and which measured around 70% on the
+     * phone this was reported from.
+     */
+    const BAR_MAX_FRACTION = 0.5;
+
+    /** And a hard ceiling on the total, so no combination of bars can strand the sheet. */
+    const INSET_MAX_FRACTION = 0.5;
+
     function viewportHeight(win) {
         // `visualViewport` is what shrinks when the keyboard opens; `innerHeight` does not on
         // Android Chrome. Using the visual viewport is what keeps the reservation right with a
@@ -81,11 +96,23 @@
             // element scrolled off, or one that ends well above the fold, is not.
             if (rect.bottom < height - 4) continue;
 
+            // A surface is not furniture, and this is where the two got confused. `.chat-panel`
+            // expanded is most of the screen and is bottom-anchored, so it measured as an inset
+            // of ~70% — and the sheet, told to sit `bottom: 70%` with a max-height of what was
+            // left, became a clipped sliver pinned to the top of the phone with two and a half
+            // rows of tiles in it. Reported as "if the chat history is full, Together is not
+            // shown, the middle is broken", which is exactly what it was.
+            //
+            // The reservation exists so the sheet clears the *composer bar*. Anything taller
+            // than a bar plausibly is, is a panel the sheet should be drawn over instead — the
+            // user opened Together, so Together is the thing they are looking at.
+            if (rect.height > height * BAR_MAX_FRACTION) continue;
+
             inset = Math.max(inset, Math.round(height - rect.top));
         }
         // A reservation taller than the screen would leave the sheet with no height at all;
         // better a cramped panel than an invisible one.
-        return Math.max(0, Math.min(inset, Math.round(height * 0.75)));
+        return Math.max(0, Math.min(inset, Math.round(height * INSET_MAX_FRACTION)));
     }
 
     function apply(doc, win) {

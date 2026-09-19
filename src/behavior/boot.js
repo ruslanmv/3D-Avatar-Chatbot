@@ -96,7 +96,41 @@
         'src/features/discovery/samples.js',
         // T1/T2. The one switch, and the paragraph that stops her apologising. Before the
         // launcher that flips the switch and before anything that reads it.
+        // P7. Who draws a conversation turn. Before PrivateConversationView, which replaces
+        // the drawing while a Private session is running.
+        'src/features/chat/ConversationSurface.js',
+        // P14. What a reply says, as opposed to how it asked to be performed. Before
+        // TogetherCapability, which consults it at the display seam.
+        'src/features/chat/StageDirections.js',
         'src/features/together/TogetherSwitch.js',
+        // What a found track is called on screen, and the one strip that says it. Before
+        // PrivateConversationView, which draws one, and before anything else that names media;
+        // SceneTaleConversationView is injected later and reads both off the window.
+        'src/features/together/MediaTitle.js',
+        'src/features/together/ui/SoundtrackStrip.js',
+        // P14. Every visible word Private says that a model did not write. Before the view, the
+        // capability and the choices, all three of which read it at draw time — a module that
+        // loads after its first reader gets English for one paint and the chosen language after,
+        // which is the flicker this list exists to prevent.
+        'src/features/together/PrivateLocale.js',
+        'src/features/together/ui/PrivateConversationView.js',
+        // What she says during a Private session, and the four enums it is allowed to
+        // remember between them. Before TogetherCapability, which runs both.
+        'src/features/together/PrivateBeats.js',
+        'src/features/together/PrivateMemory.js',
+        // P8. What kind of turn the person just took, decided locally so the experience can
+        // react before a token comes back. Before TogetherCapability, which asks it.
+        'src/features/together/PrivateTurnDirector.js',
+        // P11. The two dimensions `Slow down` moves through, and the ledger that stops any guided
+        // interaction repeating itself. Before TogetherCapability, which asks both.
+        'src/features/together/PrivatePace.js',
+        'src/features/together/PrivateNovelty.js',
+        // P13. Things you could say next, and the block they ride back in. Before
+        // TogetherCapability, which parses it at the display seam.
+        'src/features/together/PrivateChoices.js',
+        // P17. The clock that notices silence — stages, never intensity. Before
+        // TogetherCapability, which drives it from the beat tick it already has.
+        'src/features/together/PrivateIdleClock.js',
         'src/features/together/TogetherCapability.js',
         // T3/T5. The one function that finds and plays, and the parser that lets her ask for
         // it. After the publisher's dependencies, before the launcher.
@@ -144,6 +178,9 @@
         // Loaded beside the file source; it asks for no permission of its own.
         'src/features/together/activities/mediaTabAudioSource.js',
         'src/features/together/activities/scene-journey.js',
+        // Playground is a native contract activity. The same Together chooser is used by
+        // desktop and mobile, so one registration creates the tile on both surfaces.
+        'src/features/together/activities/playground.js',
         'src/features/together/activities/screen-insight.js',
         // B26 holds the B15 activity above rather than describing its round trip again.
         'src/features/together/activities/copilot.js',
@@ -589,6 +626,15 @@
                     global.NEXUS_BD_JOURNEY.loadManifests(director.journey).catch(() => {});
                     director.togetherPanel.register(director.journey);
                     director.adapters.push(director.journey);
+                }
+
+                // Playground is family-friendly and registers through the same native
+                // activity contract as the rest of Together. There is no desktop/mobile
+                // fork: TogetherPanel's responsive grid paints this one activity on both.
+                if (global.NEXUS_BD_PLAYGROUND) {
+                    director.playground = global.NEXUS_BD_PLAYGROUND.attach({ bus });
+                    director.togetherPanel.register(director.playground);
+                    director.adapters.push(director.playground);
                 }
 
                 // Screen Insight (B15). On demand by default: registered, never started,

@@ -555,6 +555,142 @@ describe('escalation is earned', () => {
     });
 });
 
+describe('two clocks, because they answer two different questions (P12)', () => {
+    function flow() {
+        let clock = 0;
+        const bus = new EventBus();
+        const events = [];
+        for (const name of ['adult:level', 'adult:checkin']) bus.on(name, (e) => events.push({ name, ...e }));
+        const blackboard = openBoard();
+        const f = ConsentFlow.attach({ bus, profile: AdultProfile, blackboard, now: () => clock });
+        f.enter(0);
+        return { f, events, blackboard, at: () => clock, tick: (ms) => (clock += ms) };
+    }
+
+    test('a user-initiated step does not wait for the cadence at which she may ask', () => {
+        // `perLevelMinMs` is two minutes, and holding this route to it meant a person who pressed
+        // `Closer →` was told to wait for a question they had already answered.
+        const f = flow();
+        f.tick(AdultProfile.USER_STEP_MIN_MS);
+        expect(f.f.earned(f.at())).toBe(false);
+        expect(f.f.stepReady(f.at())).toBe(true);
+        expect(f.f.initiated(f.at())).toEqual(expect.objectContaining({ action: 'advanced', level: 2 }));
+    });
+
+    test('but it is not nothing, so a double-tap cannot climb the ladder', () => {
+        // Four seconds is invisible to somebody moving at the pace of a conversation and is the
+        // whole defence against a stray finger carrying an evening to the ceiling.
+        const f = flow();
+        f.tick(AdultProfile.USER_STEP_MIN_MS);
+        f.f.initiated(f.at());
+        expect(f.f.level).toBe(2);
+
+        f.tick(1);
+        expect(f.f.initiated(f.at())).toEqual({ action: 'ignored', why: 'this level has only just started' });
+        expect(f.f.level).toBe(2);
+
+        f.tick(AdultProfile.USER_STEP_MIN_MS);
+        expect(f.f.initiated(f.at()).action).toBe('advanced');
+        expect(f.f.level).toBe(3);
+    });
+
+    test('a check-in still waits the full two minutes', () => {
+        // The cadence for *her* asking is unchanged. Loosening this route was never the point.
+        const f = flow();
+        f.tick(AdultProfile.USER_STEP_MIN_MS);
+        expect(f.f.checkIn(f.at()).ok).toBe(false);
+        f.tick(AdultProfile.PER_LEVEL_MIN_MS);
+        expect(f.f.checkIn(f.at()).ok).toBe(true);
+    });
+
+    test('the step route still refuses everything except the floor', () => {
+        const f = flow();
+        for (let i = 0; i < 10; i += 1) {
+            f.tick(AdultProfile.USER_STEP_MIN_MS);
+            f.f.initiated(f.at());
+        }
+        // The ceiling is still the ceiling, however many times it is asked.
+        expect(f.f.level).toBe(AdultProfile.LEVELS);
+        f.tick(AdultProfile.USER_STEP_MIN_MS);
+        expect(f.f.initiated(f.at())).toEqual({ action: 'ignored', why: 'at the top already' });
+
+        f.f.exit('hard', f.at());
+        expect(f.f.initiated(f.at())).toEqual({ action: 'ignored', why: 'not in the tier' });
+    });
+
+    test('nothing raises a level without somebody asking', () => {
+        // The invariant that outlives every redesign: not a timer, not inference, not the model.
+        const f = flow();
+        f.tick(AdultProfile.PER_LEVEL_MIN_MS * 4);
+        f.f.tick(f.at());
+        expect(f.f.level).toBe(1);
+        expect(f.events.filter((e) => e.name === 'adult:level' && e.why !== 'decayed')).toHaveLength(0);
+    });
+});
+
+describe('easing gives back one level, where the safe word gives back all of them', () => {
+    function flow() {
+        let clock = 0;
+        const blackboard = openBoard();
+        const f = ConsentFlow.attach({ profile: AdultProfile, blackboard, now: () => clock });
+        f.enter(0);
+        const step = () => {
+            clock += AdultProfile.USER_STEP_MIN_MS;
+            f.initiated(clock);
+        };
+        return { f, blackboard, step, at: () => clock };
+    }
+
+    test('one step back, not a jump to the bottom', () => {
+        // P11's control did `Sensual → Warm` in one tap. Right for a word, a cliff for a dial.
+        const f = flow();
+        f.step();
+        f.step();
+        expect(f.f.level).toBe(3);
+
+        expect(f.f.eased(f.at())).toEqual(expect.objectContaining({ action: 'advanced', level: 2 }));
+        expect(f.f.eased(f.at())).toEqual(expect.objectContaining({ action: 'advanced', level: 1 }));
+        expect(f.blackboard.escalationLevel).toBe(1);
+    });
+
+    test('down needs no earning, at any time', () => {
+        // Down has never needed earning: `exit('soft')` works from any state within one tick.
+        const f = flow();
+        f.step();
+        expect(f.f.stepReady(f.at() + 1)).toBe(false);
+        expect(f.f.eased(f.at() + 1).action).toBe('advanced');
+    });
+
+    test('at the bottom it is a no-op that says so', () => {
+        const f = flow();
+        expect(f.f.eased(f.at())).toEqual({ action: 'ignored', why: 'at the bottom already' });
+        expect(f.f.level).toBe(1);
+    });
+
+    test('it drops a pending check-in, and never leaves the tier', () => {
+        // A question about going further is not one to leave standing in front of somebody who has
+        // just gone back.
+        const f = flow();
+        f.step();
+        f.step();
+        f.f.checkIn(f.at() + AdultProfile.PER_LEVEL_MIN_MS);
+        const pendingBefore = f.f.pending;
+        f.f.eased(f.at());
+        expect(pendingBefore).not.toBeNull();
+        expect(f.f.pending).toBeNull();
+        expect(f.f.active).toBe(true);
+    });
+
+    test('the safe word still goes all the way down, from anywhere', () => {
+        const f = flow();
+        f.step();
+        f.step();
+        expect(f.f.level).toBe(3);
+        expect(f.f.exit('soft', f.at()).level).toBe(1);
+        expect(f.f.active).toBe(true);
+    });
+});
+
 describe('and it cools down on its own', () => {
     test('inactivity decays the level back to 1', () => {
         let clock = 0;

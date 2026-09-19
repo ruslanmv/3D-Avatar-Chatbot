@@ -129,8 +129,15 @@ const YouTubeEmbed2D = (() => {
      */
     const UNCONFIRMED_MS = 9000;
 
-    /** Swap the facade for the real player. Only one card plays at a time. */
-    function activate(card, video) {
+    /**
+     * Swap the facade for the real player. Only one card plays at a time.
+     *
+     * `options.volume` is a percentage for background music that must not compete with the
+     * conversation on top of it — Private asks for one. It is optional and unset everywhere
+     * else on purpose: a card somebody tapped is the thing they chose to listen to, and
+     * quietening that would be the app overruling them.
+     */
+    function activate(card, video, { volume = null } = {}) {
         const Y = YT();
         const doc = card.ownerDocument;
         if (state.active && state.active !== card) {
@@ -246,7 +253,7 @@ const YouTubeEmbed2D = (() => {
         const playback = typeof window !== 'undefined' ? window.NEXUS_YT_PLAYBACK : null;
         if (playback && typeof playback.attach === 'function') {
             try {
-                Promise.resolve(playback.attach(frame))
+                Promise.resolve(playback.attach(frame, { volume }))
                     .then((handle) => {
                         if (!handle) {
                             return;

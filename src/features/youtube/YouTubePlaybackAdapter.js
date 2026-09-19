@@ -112,13 +112,34 @@
     }
 
     /**
+     * A percentage the YouTube player will accept, or `null` for "leave it alone".
+     *
+     * `typeof` first, and not as a nicety. `Number(null)`, `Number('')` and `Number([])` are
+     * all `0`, and the caller that passes `null` here is every caller that did not ask for a
+     * volume at all — `activate(card, video)` defaults the option to `null` and hands it
+     * straight down. Coercing that to `0` would silence every video on the page and call it a
+     * feature.
+     */
+    function level(value) {
+        if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+        return Math.max(0, Math.min(100, Math.round(value)));
+    }
+
+    /**
      * Watch one iframe and report what it does.
      *
-     * Returns a handle with `stop()`, plus `pause`/`resume`/`stopVideo` so a caller that has
-     * the handle can drive the player it is watching. `null` when the player could not be
-     * attached, which is not an error — see the header.
+     * Returns a handle with `stop()`, plus `pause`/`resume`/`stopVideo`/`setVolume` so a
+     * caller that has the handle can drive the player it is watching. `null` when the player
+     * could not be attached, which is not an error — see the header.
+     *
+     * `volume` is applied in `onReady` rather than by the caller on return, and the difference
+     * is the whole reason it is an option here. `attach` resolves when `new YT.Player` has been
+     * *constructed*; the player does not accept `setVolume` until it is ready, so a caller
+     * setting the volume on the returned handle is racing the player's own initialisation and
+     * loses often enough to be heard — a background track that comes in at full volume for a
+     * second before dropping is worse than one that was never quietened.
      */
-    async function attach(frame, { onState = null } = {}) {
+    async function attach(frame, { onState = null, volume = null } = {}) {
         if (!frame) {
             return null;
         }
@@ -126,6 +147,7 @@
         if (!YT || !YT.Player) {
             return null;
         }
+        const wanted = level(volume);
 
         let player = null;
         let blockedTimer = null;
@@ -168,6 +190,17 @@
             player = new YT.Player(frame, {
                 events: {
                     onReady: () => {
+                        // The earliest moment the player will take a level. Unmuting is part of
+                        // it: a player that autoplayed muted would otherwise stay silent and
+                        // the caller would have set a volume nobody can hear.
+                        if (wanted !== null) {
+                            try {
+                                if (typeof player.unMute === 'function') player.unMute();
+                                if (typeof player.setVolume === 'function') player.setVolume(wanted);
+                            } catch (_) {
+                                /* a player that will not take a volume still plays */
+                            }
+                        }
                         // Asked to autoplay and still unstarted after a grace period means the
                         // browser refused. That is a state worth having: the app says "tap
                         // Play" rather than claiming sound is coming out of a silent tab.
@@ -220,6 +253,25 @@
             pause: () => call('pauseVideo'),
             resume: () => call('playVideo'),
             stopVideo: () => call('stopVideo'),
+            /**
+             * Change the level after the fact — a volume slider, or ducking under speech.
+             * Returns whether the player took it, so a caller can tell "turned down" from
+             * "could not be turned down" instead of assuming.
+             */
+            setVolume(value) {
+                const next = level(value);
+                if (next === null) return false;
+                try {
+                    if (player && typeof player.setVolume === 'function') {
+                        if (typeof player.unMute === 'function') player.unMute();
+                        player.setVolume(next);
+                        return true;
+                    }
+                } catch (_) {
+                    /* a player that has gone away is not a crash */
+                }
+                return false;
+            },
             stop() {
                 clearBlockedTimer();
                 try {

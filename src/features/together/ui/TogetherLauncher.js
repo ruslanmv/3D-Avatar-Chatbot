@@ -54,6 +54,9 @@ const TogetherLauncher = (() => {
     const DRAWER_ID = 'nexus-bd-together-drawer-item';
     const STYLE_ID = 'nexus-bd-together-style';
     const OVERLAY_HOST = '.avatar-card';
+
+    /** The launcher's own breakpoint, shared with composerInset — one number, one meaning. */
+    const MOBILE_MAX = 640;
     const TOOLBAR = '.avatar-footer-actions';
     const TOOLBAR_RIGHT = '.avatar-footer-right';
     const COMPANION_BUTTON = '#companion-mode-btn';
@@ -408,6 +411,12 @@ const TogetherLauncher = (() => {
             this.drawerItem = null;
             this.style = null;
             this.opens = 0;
+            /**
+             * Whether the chat overlay was expanded when Together opened, so `close` can put
+             * it back. `null` means "we have not taken it", which is what keeps a second
+             * `open()` from overwriting the snapshot with the state we ourselves just set.
+             */
+            this._chatWasExpanded = null;
             this._unsubscribe = null;
             this._stopInsetWatch = null;
             this._stopSwitchWatch = null;
@@ -649,9 +658,58 @@ const TogetherLauncher = (() => {
 
         // ── opening ──────────────────────────────────────────────────────────
 
+        /**
+         * Give the sheet the bottom of the screen while it is open.
+         *
+         * On a phone the chat overlay and the Together sheet both want the same strip, and
+         * until now the sheet gave way to it — with the history expanded, `composerInset`
+         * reserved most of the screen and the sheet ended up a clipped sliver at the top with
+         * two and a half rows of tiles in it. That is the wrong way round: somebody who just
+         * pressed Together is looking at Together, and a transcript they can get back with one
+         * tap is not what they are reading right now.
+         *
+         * So the overlay is collapsed, and the *previous* state is snapshotted so `close`
+         * restores it rather than leaving everybody's chat collapsed — snapshot and restore,
+         * not a bespoke undo. It is a no-op on desktop, where the panel is a floating card
+         * beside the avatar and nothing is competing for the strip.
+         */
+        _yieldChat() {
+            if (this._chatWasExpanded !== null) return false;
+            const win = this.doc && this.doc.defaultView;
+            if (!win || (win.innerWidth || 0) > MOBILE_MAX) return false;
+            const panel = this.doc.querySelector('.chat-panel');
+            if (!panel || !panel.classList) return false;
+            const expanded = !panel.classList.contains('chat-overlay--collapsed');
+            this._chatWasExpanded = expanded;
+            if (!expanded) return false;
+            const toggle = this.doc.getElementById('chat-overlay-toggle');
+            if (toggle && typeof toggle.click === 'function') toggle.click();
+            return true;
+        }
+
+        /**
+         * Put the transcript back the way it was, if it is still the way we left it.
+         *
+         * Checked rather than assumed, because something else may legitimately have expanded
+         * it in between — `PrivateConversationView` does exactly that when a session mounts,
+         * since its card lives in the history. Clicking the toggle unconditionally would then
+         * collapse a panel somebody else had just opened for a reason.
+         */
+        _restoreChat() {
+            const wanted = this._chatWasExpanded;
+            this._chatWasExpanded = null;
+            if (!wanted || !this.doc) return false;
+            const panel = this.doc.querySelector('.chat-panel');
+            if (!panel || !panel.classList || !panel.classList.contains('chat-overlay--collapsed')) return false;
+            const toggle = this.doc.getElementById('chat-overlay-toggle');
+            if (toggle && typeof toggle.click === 'function') toggle.click();
+            return true;
+        }
+
         open() {
             this.opens++;
             if (this.inXR) return this._openXR();
+            this._yieldChat();
             this.panel.open();
             this._listen(true);
             this._focusFirst();
@@ -661,6 +719,7 @@ const TogetherLauncher = (() => {
         close({ restoreFocus = true } = {}) {
             const wasOpen = this.panel.isOpen;
             this.panel.close();
+            this._restoreChat();
             this._listen(false);
             // Back to where they were. A keyboard user dropped at the top of the document
             // every time they dismiss a menu has to find their place again, every time.

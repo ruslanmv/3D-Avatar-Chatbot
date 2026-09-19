@@ -71,43 +71,43 @@
     },
     {
       "file": "src/main.js",
-      "line": 988,
-      "guarded": true,
-      "comment": false
-    },
-    {
-      "file": "src/main.js",
-      "line": 991,
-      "guarded": true,
-      "comment": false
-    },
-    {
-      "file": "src/main.js",
-      "line": 999,
-      "guarded": true,
-      "comment": true
-    },
-    {
-      "file": "src/main.js",
-      "line": 1008,
-      "guarded": true,
-      "comment": false
-    },
-    {
-      "file": "src/main.js",
       "line": 1018,
       "guarded": true,
-      "comment": true
+      "comment": false
     },
     {
       "file": "src/main.js",
-      "line": 1019,
+      "line": 1021,
       "guarded": true,
       "comment": false
     },
     {
       "file": "src/main.js",
-      "line": 5254,
+      "line": 1029,
+      "guarded": true,
+      "comment": true
+    },
+    {
+      "file": "src/main.js",
+      "line": 1038,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "src/main.js",
+      "line": 1048,
+      "guarded": true,
+      "comment": true
+    },
+    {
+      "file": "src/main.js",
+      "line": 1049,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "src/main.js",
+      "line": 5371,
       "guarded": false,
       "comment": true
     },
