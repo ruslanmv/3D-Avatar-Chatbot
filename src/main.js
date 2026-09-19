@@ -3896,6 +3896,12 @@ async function _handleStreamingResponse(text) {
         // again — the second call carries the results, so the answer comes from her having
         // read them rather than from the app pasting snippets into the chat.
         displayText = __nexusRunLookup(displayText);
+        // P14. Take the stage directions out and let the avatar do them instead. Here, at the
+        // same seam and for the same reason as the tags above: everything downstream reads
+        // `displayText`, so stripping once covers the bubble, the transcript, the VR forward and
+        // the voice together. `[smile]` that reached the synthesiser was her saying the word
+        // "smile" out loud. Unchanged unless a Private session is running.
+        displayText = window.NEXUS_TOGETHER_CAPABILITY?.sanitizeReply?.(displayText) ?? displayText;
         stream.finish(displayText);
 
         // Mirror to AR overlay
@@ -3985,6 +3991,12 @@ async function _handleNonStreamingResponse(text) {
         // again — the second call carries the results, so the answer comes from her having
         // read them rather than from the app pasting snippets into the chat.
         displayText = __nexusRunLookup(displayText);
+        // P14. Take the stage directions out and let the avatar do them instead. Here, at the
+        // same seam and for the same reason as the tags above: everything downstream reads
+        // `displayText`, so stripping once covers the bubble, the transcript, the VR forward and
+        // the voice together. `[smile]` that reached the synthesiser was her saying the word
+        // "smile" out loud. Unchanged unless a Private session is running.
+        displayText = window.NEXUS_TOGETHER_CAPABILITY?.sanitizeReply?.(displayText) ?? displayText;
 
         _surface().renderAssistant(displayText, attachments);
 

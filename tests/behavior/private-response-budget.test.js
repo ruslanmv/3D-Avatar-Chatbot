@@ -159,6 +159,56 @@ describe('the prompt says the same thing the budget enforces', () => {
     });
 });
 
+describe('stage directions, and the gate on the sanitiser (P14)', () => {
+    test('outside a Private session nothing is touched', () => {
+        // `*smiles*` in ordinary chat may be exactly what somebody wants — a roleplay in normal
+        // conversation is theirs to write however they like.
+        const text = '*she smiles softly* I am glad you said so.';
+        expect(Capability.sanitizeReply(text)).toBe(text);
+    });
+
+    test('inside one, the marker comes out of the line', async () => {
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+
+        expect(Capability.sanitizeReply('[smile] I like it when the room is this quiet.')).toBe(
+            'I like it when the room is this quiet.'
+        );
+
+        s.activity.stop('user');
+    });
+
+    test('the marker becomes a movement instead of text', async () => {
+        const s = setup();
+        const intents = [];
+        s.bus.on('intent', (intent) => intents.push(intent));
+        await s.activity.start({ input: { id: 'sensual' } });
+
+        const before = intents.length;
+        Capability.sanitizeReply('[smiles] Mm. [nods] I think so too.');
+        // One per reply, not one per marker: three intents in a tick would make her twitch.
+        expect(intents.length).toBe(before + 1);
+        expect(intents[intents.length - 1]).toEqual(expect.objectContaining({ name: 'smile_soft', source: 'private' }));
+
+        s.activity.stop('user');
+    });
+
+    test('a reply that was nothing but a direction is kept, not emptied', async () => {
+        // A turn with nothing in it reads as a failure, which is worse than a marker on screen.
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+        expect(Capability.sanitizeReply('[smile]')).toBe('[smile]');
+        s.activity.stop('user');
+    });
+
+    test('she is told not to write them in the first place', async () => {
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+        expect(Capability.privateSystemPromptSuffix()).toMatch(/no stage directions/i);
+        s.activity.stop('user');
+    });
+});
+
 describe('a remote persona is no longer sent a Private session with no rules', () => {
     test('the overlay carries the safety paragraph', async () => {
         // `_chatOllaBridge` sends no system prompt at all for a remote persona — correctly, since

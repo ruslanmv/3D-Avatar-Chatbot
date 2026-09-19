@@ -255,6 +255,11 @@
             'Do not infer consent from friendliness, silence, scenery, music or previous turns. Do not pressure the user to continue or escalate.',
             'Never use jealousy, secrecy, isolation, dependency, threats, coercion or intoxication as leverage. Never imply that the companion should replace real relationships.',
             'If the user says cozy, immediately soften to the lowest level without interrogation. If they say stop or exit, end Private immediately and return to ordinary conversation.',
+            // The prompt half of P14. The app strips these defensively, but a marker that never
+            // gets written is a marker that cannot survive a sanitiser gap — and the reason it
+            // matters is on screen: "[smile] I like it when the room is this quiet" is a note
+            // about how to perform a line, rendered as part of the line.
+            'Write only what you say. No stage directions, no bracketed or asterisked actions — not [smile], not *she leans in*. You have a body and it moves on its own; describing it in text breaks the moment instead of creating it.',
             'Do not expose internal levels, gates or implementation details unless the user explicitly asks about the product.',
             '',
         ].join('\n');
@@ -302,6 +307,56 @@
      */
     function experienceOverlay() {
         return privateSystemPromptSuffix().trim();
+    }
+
+    function stageDirections() {
+        return optional('../chat/StageDirections.js', 'NEXUS_STAGE_DIRECTIONS');
+    }
+
+    /**
+     * Take the stage directions out of a reply, and let the avatar do them instead (P14).
+     *
+     * Reported from a real session: her replies arrived with `[smile]` in them, so the bubble read
+     * "[smile] I like it when the room is this quiet" and the speech engine said the word "smile"
+     * out loud. A note about how to perform a line, rendered as part of the line, in two places.
+     *
+     * Gated on a live Private session rather than applied to all chat, deliberately. The
+     * sanitiser is narrow and well covered, but `*smiles*` in ordinary conversation may be
+     * exactly what somebody wants — a roleplay in normal chat is theirs to write however they
+     * like. Private is the mode that promised somebody is present with you, and a bracketed
+     * instruction is the fastest way to break that.
+     *
+     * Returns the text unchanged for every other reply, so nothing outside Private moves.
+     */
+    function sanitizeReply(text) {
+        const original = String(text == null ? '' : text);
+        const ctx = privateContext();
+        if (!ctx) return original;
+        const api = stageDirections();
+        if (!api || typeof api.strip !== 'function') return original;
+        let result = null;
+        try {
+            result = api.strip(original);
+        } catch (_) {
+            // A sanitiser that throws costs the tidying, never the reply.
+            return original;
+        }
+        if (!result || !result.markers || !result.markers.length) return original;
+        // The marker was information: a model that wrote `[smile]` was asking for a smile, and
+        // the avatar can do that. Throwing it away would turn a formatting bug into a lost
+        // signal. The session owns the emit so the source tag and the fail-soft are the same
+        // ones every other Private motion gets.
+        const session = ctx.activity && ctx.activity._privateExperience;
+        if (session && typeof session._embody === 'function') {
+            try {
+                session._embody(api.presenceFrom(result.markers));
+            } catch (_) {
+                // A movement that will not play is never a reason to lose the line it went with.
+            }
+        }
+        // An empty reply is worse than a marker on screen: a turn with nothing in it reads as a
+        // failure. If the direction was the whole message, keep what she wrote.
+        return result.text || original;
     }
 
     function systemPromptSuffix() {
@@ -947,6 +1002,20 @@
         }
 
         /**
+         * Do what the reply asked for, instead of printing that it asked (P14).
+         *
+         * One presence per reply, not all of them: a model that writes three directions in four
+         * sentences is describing a performance, and firing three intents in the same tick would
+         * make her twitch rather than move. The first is the one that belongs to the opening of
+         * the line, which is where a reader's attention is.
+         */
+        _embody(names) {
+            const first = Array.isArray(names) ? names.find(Boolean) : null;
+            if (!first) return false;
+            return this._intent(first, 0.3);
+        }
+
+        /**
          * The one branch in the session, now with something downstream of it.
          *
          * `this.mood` is read by `_moodLine` for the 210 s and 285 s beats and by
@@ -1413,6 +1482,7 @@
         systemPromptSuffix,
         responseBudget,
         experienceOverlay,
+        sanitizeReply,
     };
 
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
