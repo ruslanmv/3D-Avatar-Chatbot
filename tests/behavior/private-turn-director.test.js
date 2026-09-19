@@ -124,22 +124,36 @@ describe('what the runtime reads off a turn', () => {
 });
 
 describe('the response budget', () => {
-    test('every intent has one, and none of them is 800', () => {
-        // The OllaBridge path asks for 800 tokens on every turn, which for "So" is a hundred and
-        // fifty words nobody wanted and several seconds of waiting for them.
+    test('every intent is capped, and none is capped below the floor (P19)', () => {
+        // The floor is the whole point of the P19 correction. At 48-140 a Private turn came back
+        // empty: the provider stopped at the cap before its first visible token and the card drew
+        // the literal words "No response" under a HER label. `max_tokens` is a ceiling, providers
+        // bill what they produced, so a ceiling nobody reaches is free — and brevity was never
+        // coming from it. It comes from `privateLengthLines`, in words the model reads.
         for (const name of Director.INTENTS) {
-            expect(Director.BUDGET[name]).toBeGreaterThan(0);
-            expect(Director.BUDGET[name]).toBeLessThanOrEqual(140);
+            expect(Director.BUDGET[name]).toBeGreaterThanOrEqual(Director.MIN);
+            // Still a reduction against the provider default, which is what this table is for.
+            expect(Director.BUDGET[name]).toBeLessThan(800);
         }
     });
 
-    test('a short turn gets a short answer, whatever the intent would allow', () => {
-        // Mirroring, not lecturing: a one-word question does not earn a hundred and twenty
-        // tokens just because questions in general do.
-        expect(Director.budgetFor(Director.classify('why?'))).toBeLessThanOrEqual(48);
-        expect(Director.budgetFor(Director.classify('yes'))).toBeLessThanOrEqual(48);
-        const long = Director.classify(`why do you think ${new Array(20).fill('that').join(' ')}?`);
-        expect(Director.budgetFor(long)).toBe(Director.BUDGET.question);
+    test('nothing budgetFor can return is below the floor', () => {
+        // Stated over every shape rather than over the interesting ones, because the regression
+        // was a `Math.min` that looked local and applied to everything.
+        for (const text of ['yes', 'why?', 'mm', '', 'this is good.', 'slow down', 'tell me a story about us']) {
+            expect(Director.budgetFor(Director.classify(text))).toBeGreaterThanOrEqual(Director.MIN);
+        }
+        expect(Director.budgetFor(null)).toBeGreaterThanOrEqual(Director.MIN);
+        expect(Director.budgetFor({ intent: 'question', length: 'tiny' })).toBeGreaterThanOrEqual(Director.MIN);
+    });
+
+    test('a short turn still gets no more than a long one, which is the shaping worth keeping', () => {
+        // Relative, never absolute. A one-word question does not earn the whole question budget;
+        // it just no longer earns a cap it can hit.
+        const tiny = Director.budgetFor(Director.classify('why?'));
+        const long = Director.budgetFor(Director.classify(`why do you think ${new Array(20).fill('that').join(' ')}?`));
+        expect(tiny).toBeLessThanOrEqual(long);
+        expect(long).toBe(Director.BUDGET.question);
     });
 
     test('an unknown or missing turn still gets a sane budget', () => {

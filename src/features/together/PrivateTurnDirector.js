@@ -217,37 +217,73 @@
     }
 
     /**
-     * How many tokens her answer is worth.
+     * How many tokens her answer is allowed, which is not the same as how long it should be.
      *
-     * The OllaBridge path asks for 800 on every turn, which for `So` is a hundred and fifty
-     * words of reply nobody wanted and several seconds of waiting for them. A budget is not a
-     * substitute for telling the model to be brief, and telling the model is not a substitute
-     * for a budget: prompts are a request and `max_tokens` is a rule.
+     * ## The correction (P19), because the first version of this table broke the feature
+     *
+     * These numbers were 48–140, and at those values a Private turn came back **empty**. The
+     * provider answered with `finish_reason: "length"` and no content, `LLMManager` turned that
+     * into the literal string `'No response'`, and the card drew it under a `HER` label and spoke
+     * it out loud. Reported exactly that way, with `This is good.` as the turn that caused it: 3
+     * words, `conversation`, `short` → 96, plus 48 for the `<choices>` block → a 144-token
+     * allowance for a reply *and* three buttons.
+     *
+     * The mistake was in the old comment above this table, which said "prompts are a request and
+     * `max_tokens` is a rule". Both halves are true and the conclusion does not follow, because
+     * the two do different jobs:
+     *
+     *   - **The prompt controls length.** `privateLengthLines` already says "one short sentence",
+     *     "one or two sentences", "three at most". That is what made Private answer briefly, and
+     *     it is what removed the hundred-and-fifty-word replies.
+     *   - **`max_tokens` controls only the failure.** It is a ceiling, and providers bill what
+     *     was produced rather than what was allowed — so a ceiling nobody reaches costs nothing,
+     *     in latency or in money. A ceiling somebody *does* reach costs the whole turn.
+     *
+     * So the cap is now set to be unreachable in normal use rather than to shape the reply. The
+     * relative shaping is kept, because it is free and it is a second signal in the same
+     * direction — it just no longer has an absolute value low enough to be hit.
+     *
+     * ## And why the old numbers were lethal rather than merely tight
+     *
+     * A reasoning model spends its thinking against the same allowance. `free-best` on OllaBridge
+     * routes to one, so the first 144 tokens went to reasoning and the visible reply began after
+     * the cap. That is not a slightly short answer; it is no answer, and it is invisible unless
+     * something reads `finish_reason` — which is why `EmptyCompletionError` now does.
+     *
+     * `MIN` is the floor, and it exists so that a later edit optimising for brevity cannot
+     * reintroduce this. Brevity belongs in the prompt. Nothing here may go below it.
      */
+    const MIN = 256;
+
     const BUDGET = Object.freeze({
-        affirmation: 48,
-        conversation: 96,
-        quiet: 48,
-        preference: 72,
-        'pace-down': 48,
-        'pace-up-request': 72,
-        'scene-request': 72,
-        'music-request': 48,
-        end: 48,
-        question: 120,
-        request: 140,
+        affirmation: MIN,
+        conversation: 384,
+        quiet: MIN,
+        preference: 320,
+        'pace-down': MIN,
+        'pace-up-request': 320,
+        'scene-request': 320,
+        'music-request': MIN,
+        end: MIN,
+        question: 448,
+        request: 512,
     });
 
-    /** Shorter still when the person said almost nothing: mirror them rather than lecture. */
+    /**
+     * A little less when the person said almost nothing — and never below `MIN`.
+     *
+     * The shaping survives the P19 correction; the cliff does not. "Mirror them rather than
+     * lecture" is the prompt's job, and `privateLengthLines` does it in words the model reads.
+     */
     function budgetFor(turn) {
         const base = BUDGET[turn && turn.intent] || BUDGET.conversation;
         if (!turn) return base;
-        if (turn.length === 'tiny') return Math.min(base, 48);
-        if (turn.length === 'short') return Math.min(base, 96);
-        return base;
+        if (turn.length === 'tiny') return Math.max(MIN, Math.min(base, MIN));
+        if (turn.length === 'short') return Math.max(MIN, Math.min(base, 320));
+        return Math.max(MIN, base);
     }
 
-    const api = { INTENTS, STYLES, BUDGET, classify, styleFor, budgetFor, normalise, lengthOf };
+    const api = { INTENTS, STYLES, BUDGET, MIN, classify, styleFor, budgetFor, normalise, lengthOf };
 
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_PRIVATE_TURN_DIRECTOR = api;

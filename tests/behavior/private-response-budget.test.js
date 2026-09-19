@@ -26,9 +26,12 @@ const Choices = require('../../src/features/together/PrivateChoices.js');
  * Room for the `<choices>` block, which rides back inside the reply rather than costing a second
  * request (P13). The turn budget is what she may spend on *words*; this is what the buttons cost.
  */
-const CHOICE_TOKENS = 48;
 const Capability = require('../../src/features/together/TogetherCapability.js');
 const PlaygroundActivity = require('../../src/features/together/activities/playground.js');
+
+// Read from the module, never copied. A local `48` here is what let the P19 budget correction
+// break four tests that were only ever asserting arithmetic about somebody else's constant.
+const CHOICE_TOKENS = Capability.CHOICE_TOKENS;
 
 Capability.installPrivateRuntime(PlaygroundActivity);
 
@@ -97,7 +100,7 @@ describe('the budget answers what was actually said', () => {
         await s.activity.start({ input: { id: 'sensual' } });
 
         Surface.renderUser('mm, nice');
-        expect(Capability.responseBudget()).toBeLessThanOrEqual(48 + CHOICE_TOKENS);
+        expect(Capability.responseBudget()).toBeLessThanOrEqual(Director.MIN + CHOICE_TOKENS);
 
         s.activity.stop('user');
     });
@@ -179,8 +182,11 @@ describe('the block is headroom, not a licence to write more (P13)', () => {
         Surface.renderUser('why do you think the quiet ones are the good evenings?');
         const asked = Capability.responseBudget();
 
-        expect(asked - tiny).toBe(Director.BUDGET.question - 48);
-        expect(tiny - CHOICE_TOKENS).toBeLessThanOrEqual(48);
+        expect(asked - tiny).toBe(Director.BUDGET.question - Director.MIN);
+        expect(tiny - CHOICE_TOKENS).toBeLessThanOrEqual(Director.MIN);
+        // And the floor holds even for the shortest possible turn, which is the P19 invariant:
+        // a cap the model reaches before its first visible token is an empty reply.
+        expect(tiny - CHOICE_TOKENS).toBeGreaterThanOrEqual(Director.MIN);
 
         s.activity.stop('user');
     });
@@ -327,7 +333,7 @@ describe('the pace state reaches the model, explicitly (P11/P12)', () => {
         await s.activity.start({ input: { id: 'sensual' } });
         s.activity._privateExperience._softenAllTheWay();
         Surface.renderUser('mm');
-        expect(Capability.responseBudget()).toBeLessThanOrEqual(48 + CHOICE_TOKENS);
+        expect(Capability.responseBudget()).toBeLessThanOrEqual(Director.MIN + CHOICE_TOKENS);
         expect(Capability.privateSystemPromptSuffix()).toMatch(/present rather than talkative/i);
         s.activity.stop('user');
     });

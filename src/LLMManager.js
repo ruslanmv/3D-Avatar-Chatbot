@@ -52,6 +52,73 @@
     }
 
     /**
+     * EmptyCompletionError — the provider answered, and the answer had no words in it.
+     *
+     * Its own type because the five providers all used to paper over this the same way:
+     *
+     *     return data.choices?.[0]?.message?.content || 'No response';
+     *
+     * `'No response'` is not an error message. It is a two-word string that goes down the same
+     * pipe a reply goes down, so it was drawn as a chat bubble, written into the history the next
+     * request reads, and **spoken out loud**. Inside a Private session it appeared under a `HER`
+     * label, which is how it was reported: a line in the transcript reading "No response".
+     *
+     * An empty completion is a failed turn, and `main.js` already has a good failure path for one
+     * — status line, retry affordance, and inside Private a recovery line in her own voice. So
+     * this throws into it rather than inventing dialogue.
+     *
+     * `finishReason` is the diagnosis and the reason this class exists rather than a bare throw.
+     * `length` means the model was cut off at `max_tokens` before it produced a visible token,
+     * which is what a reasoning model does when the cap is small: the thinking is billed against
+     * the same allowance and the content comes back empty. That is a *configuration* fault with a
+     * specific fix, and it is indistinguishable from every other empty answer unless somebody
+     * writes the reason down.
+     */
+    class EmptyCompletionError extends Error {
+        constructor({ provider, finishReason, budget } = {}) {
+            const cutOff = String(finishReason || '') === 'length';
+            super(
+                cutOff
+                    ? `${provider || 'The provider'} stopped at the token limit before writing anything` +
+                          (budget ? ` (max_tokens ${budget})` : '') +
+                          '. A reasoning model spends this allowance before its first visible token.'
+                    : `${provider || 'The provider'} returned an empty completion` +
+                          (finishReason ? ` (finish_reason "${finishReason}")` : '') +
+                          '.'
+            );
+            this.name = 'EmptyCompletionError';
+            this.provider = provider || '';
+            this.finishReason = finishReason || '';
+            this.budget = Number.isFinite(budget) ? budget : null;
+            this.cutOff = cutOff;
+        }
+    }
+
+    /**
+     * The completion, or a throw that says why there isn't one.
+     *
+     * One helper for all five providers so none of them can quietly reinvent `'No response'`.
+     * Whitespace-only counts as empty: a reply of `"\n\n"` renders as a blank bubble, which reads
+     * as the app having broken rather than as an answer.
+     */
+    function requireCompletion(text, { provider, finishReason, budget } = {}) {
+        const body = typeof text === 'string' ? text : text == null ? '' : String(text);
+        if (body.trim()) {
+            // Worth saying out loud even on success: a reply that *was* cut off mid-sentence is
+            // the same configuration fault, one token later, and it is otherwise invisible.
+            if (String(finishReason || '') === 'length') {
+                console.warn(
+                    `[LLMManager] ${provider || 'provider'} hit the token limit mid-reply` +
+                        (budget ? ` (max_tokens ${budget})` : '') +
+                        ' — the answer is truncated.'
+                );
+            }
+            return body;
+        }
+        throw new EmptyCompletionError({ provider, finishReason, budget });
+    }
+
+    /**
      * LLMManager Class
      * Handles all LLM provider operations
      */
@@ -673,7 +740,11 @@
             }
 
             const data = await res.json();
-            return data.choices?.[0]?.message?.content || 'No response';
+            return requireCompletion(data.choices?.[0]?.message?.content, {
+                provider: 'OpenAI',
+                finishReason: data.choices?.[0]?.finish_reason,
+                budget: body.max_tokens,
+            });
         }
 
         async _chatClaude(userMessage, systemPrompt, conversationHistory = []) {
@@ -728,7 +799,11 @@
             }
 
             const data = await res.json();
-            return data.content?.[0]?.text || 'No response';
+            return requireCompletion(data.content?.[0]?.text, {
+                provider: 'Claude',
+                finishReason: data.stop_reason === 'max_tokens' ? 'length' : data.stop_reason,
+                budget: body.max_tokens,
+            });
         }
 
         async _chatWatsonx(userMessage, systemPrompt, conversationHistory = []) {
@@ -781,7 +856,11 @@
             }
 
             const data = await res.json();
-            return data.results?.[0]?.generated_text || 'No response';
+            return requireCompletion(data.results?.[0]?.generated_text, {
+                provider: 'watsonx',
+                finishReason: data.results?.[0]?.stop_reason,
+                budget: body.parameters?.max_new_tokens,
+            });
         }
 
         async _chatOllama(userMessage, systemPrompt, conversationHistory = []) {
@@ -819,7 +898,11 @@
             }
 
             const data = await res.json();
-            return data.message?.content || 'No response';
+            return requireCompletion(data.message?.content, {
+                provider: 'Ollama',
+                finishReason: data.done_reason,
+                budget: body.options?.num_predict,
+            });
         }
 
         /**
@@ -945,7 +1028,11 @@
                 global.PersonaContextBridge._lastModel = model;
             }
 
-            return data.choices?.[0]?.message?.content || 'No response';
+            return requireCompletion(data.choices?.[0]?.message?.content, {
+                provider: 'OllaBridge',
+                finishReason: data.choices?.[0]?.finish_reason,
+                budget: body.max_tokens,
+            });
         }
 
         // ===============================================

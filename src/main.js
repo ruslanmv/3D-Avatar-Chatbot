@@ -3895,7 +3895,15 @@ async function _handleStreamingResponse(text) {
             return;
         }
 
-        let displayText = fullText || accumulated || 'No response';
+        // A stream that produced no tokens is a failed turn, not a line she said (P19). Throwing
+        // hands it to the `catch` below, which is the path that reports a failure properly — and
+        // inside Private reads as her rather than as the app. `'No response'` here was the same
+        // defect the five providers had: two words that went down the pipe a reply goes down, into
+        // the bubble, into the history the next request reads, and out through the synthesiser.
+        if (!String(fullText || accumulated || '').trim()) {
+            throw new Error(`${config.provider || 'The provider'} streamed an empty reply.`);
+        }
+        let displayText = fullText || accumulated;
         // Living NPC: execute the ```motion plan and strip it from display/TTS
         displayText = window.NEXUS_MOTION ? window.NEXUS_MOTION.processReply(displayText) : displayText;
         // T5. Take the <play> tag out and act on it. Here, beside the motion seam, because

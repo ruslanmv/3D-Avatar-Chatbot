@@ -69,8 +69,17 @@
         3: 'Easing off a little. Still close, just slower.',
     });
 
-    /** What the `<choices>` block costs inside a reply. See `responseBudget`. */
-    const CHOICE_TOKENS = 48;
+    /**
+     * What the `<choices>` block costs inside a reply. See `responseBudget`.
+     *
+     * Was 48, on a count of three short English lines plus the tags (P19). Two things make that
+     * wrong. A non-English reply is the first: Italian runs longer per idea, and Japanese and
+     * Chinese tokenise far worse than Latin script — the same three buttons can be two or three
+     * times the tokens, and P14 made a non-English session the normal case rather than an edge.
+     * The second is that this is added to a cap, and a cap nobody reaches is free; only a cap
+     * somebody reaches costs anything, and what it costs is the whole reply.
+     */
+    const CHOICE_TOKENS = 128;
 
     const GUIDANCE = Object.freeze({
         idleMs: 18000,
@@ -2474,6 +2483,8 @@
         installPrivateRuntime,
         systemPromptSuffix,
         responseBudget,
+        /** Exported so a test reads the real number rather than keeping a second copy of it. */
+        CHOICE_TOKENS,
         experienceOverlay,
         sanitizeReply,
     };
