@@ -65,6 +65,19 @@
  * not be muted by a provider which never answers puts its own valve on top, because how long
  * to wait for a dead provider is that consumer's judgement, not this file's.
  *
+ * ## And where the turns are kept (P10)
+ *
+ * The card in `#chat-history` was only the visible half of the problem. `handleUserMessage` also
+ * writes every turn into `window.chatHistory` and calls `_persistChat`, which puts it in
+ * `localStorage` under `nexus_chat_messages` — so a Private conversation survived the session,
+ * the page and the browser restart, and came back as ordinary chat scrollback. The completion
+ * card promises a quiet ending; ordinary chat persistence is the opposite of one.
+ *
+ * So the surface owns the store as well as the drawing. `history()` returns
+ * `{ getHistory, addMessage, persist, id }` and the default one is `window.chatHistory` plus
+ * `_persistChat`, unchanged. Private's is a small in-memory buffer that is never written to disk
+ * and is dropped when the card comes down.
+ *
  * Exposes: window.NEXUS_CONVERSATION_SURFACE
  */
 (function (global) {
@@ -88,6 +101,26 @@
             },
             renderError(text) {
                 if (typeof hooks.addMessage === 'function') hooks.addMessage('avatar', text);
+            },
+            /**
+             * Where the turns are kept — `window.chatHistory` and `_persistChat`, unchanged.
+             *
+             * Built from the host's callbacks for the same reason the renderers are: this file
+             * must not grow a second opinion about where a conversation lives.
+             */
+            history() {
+                return {
+                    id: 'default',
+                    getHistory() {
+                        return typeof hooks.getHistory === 'function' ? hooks.getHistory() : [];
+                    },
+                    addMessage(role, text) {
+                        if (typeof hooks.addHistory === 'function') hooks.addHistory(role, text);
+                    },
+                    persist() {
+                        if (typeof hooks.persist === 'function') hooks.persist();
+                    },
+                };
             },
             beginAssistant() {
                 const made = typeof hooks.beginStream === 'function' ? hooks.beginStream() : null;
@@ -117,6 +150,11 @@
     /** A handle that draws nothing, for a surface that did not supply `beginAssistant`. */
     function nullStream() {
         return { id: 'null', append() {}, finish() {}, discard() {}, node: null, textNode: null };
+    }
+
+    /** A store that remembers nothing, for a surface that did not supply `history`. */
+    function nullHistory() {
+        return { id: 'null', getHistory: () => [], addMessage() {}, persist() {} };
     }
 
     let host = {};
@@ -352,6 +390,20 @@
         return handle;
     }
 
+    /**
+     * Where this conversation's turns are kept (P10).
+     *
+     * Falls back to the default store rather than to nothing, because a surface that draws but
+     * forgot to say where it keeps its turns should keep them somewhere real. Only a surface with
+     * no store at all — and no default configured — gets `nullHistory`, which is the same
+     * "nothing throws before `configure`" guarantee the renderers have.
+     */
+    function history() {
+        const current = guard('history', [], true);
+        if (current && typeof current === 'object') return current;
+        return nullHistory();
+    }
+
     const api = {
         configure,
         use,
@@ -361,8 +413,10 @@
         renderAssistant,
         renderError,
         beginAssistant,
+        history,
         defaultSurface,
         nullStream,
+        nullHistory,
         turn,
         observe,
     };

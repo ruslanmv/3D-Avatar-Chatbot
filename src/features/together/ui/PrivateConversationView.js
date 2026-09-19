@@ -35,6 +35,21 @@ const PrivateConversationView = (() => {
     const MAX_TURNS = 6;
 
     /**
+     * How many turns of this conversation reach the model (P10).
+     *
+     * Private's history is session-local now, which raises a question ordinary chat never had to
+     * answer: how much of it to send. Deliberately small. A long window in an intimate
+     * conversation is not more context, it is more chance for the model to reach back past a
+     * `Slow down` to whatever the register was before it — and pace, once eased, must stay eased.
+     * Ten turns is plenty for continuity within a five-minute moment and short enough that the
+     * present dominates it.
+     *
+     * It is also the latency budget. Every turn in the window is tokens the provider reads before
+     * it writes anything, and the reported session was one where waiting was the problem.
+     */
+    const HISTORY_WINDOW = 10;
+
+    /**
      * The strip Scene Tale draws, in Private's colours. Required under jest, read off the
      * window in the browser; resolved again per call because boot order is not require order.
      */
@@ -100,6 +115,22 @@ const PrivateConversationView = (() => {
             this.log = null;
             /** The surface this view replaced, restored on destroy. */
             this._previousSurface = null;
+            /**
+             * This conversation's turns, and the only copy of them (P10).
+             *
+             * `handleUserMessage` wrote every turn into `window.chatHistory` and called
+             * `_persistChat`, which put it in `localStorage` under `nexus_chat_messages` — so a
+             * Private conversation survived the session, the page and the browser restart, and
+             * came back as ordinary chat scrollback the next time somebody opened the app. The
+             * completion card promises a quiet ending with nothing kept; ordinary chat
+             * persistence is the exact opposite of one.
+             *
+             * An array on the view, so it is gone when the card is gone. Nothing writes it to
+             * disk and nothing outside this session can read it.
+             */
+            this._history = [];
+            /** The CLEAR subscription, dropped on destroy. See `_watchReset`. */
+            this._unwatchReset = null;
         }
 
         mount({ preset, scene } = {}) {
@@ -132,6 +163,7 @@ const PrivateConversationView = (() => {
             this._bindComposer();
             this._observeHost(host);
             this._installSurface();
+            this._watchReset();
             this._scroll(host);
             return true;
         }
@@ -152,6 +184,28 @@ const PrivateConversationView = (() => {
             const api = this.win && this.win.NEXUS_CONVERSATION_SURFACE;
             if (!api || typeof api.use !== 'function') return false;
             this._previousSurface = api.use(this.surface());
+            return true;
+        }
+
+        /**
+         * CLEAR must empty this conversation too (P10).
+         *
+         * `ConversationReset` is the single owner of forgetting, and it erases
+         * `nexus_chat_messages` and calls `chatHistory.clear()`. Private's turns are in neither of
+         * those any more — which is the point — so without this, pressing CLEAR during a Private
+         * session wiped the screen while leaving the model's context untouched: she would still
+         * have remembered what the person had just erased, and could have referred to it in the
+         * next reply. That is the one failure mode a CLEAR button must not have.
+         */
+        _watchReset() {
+            const api = this.win && this.win.NEXUS_CONVERSATION_RESET;
+            if (!api || typeof api.onReset !== 'function') return false;
+            this._unwatchReset = api.onReset(() => {
+                this._history = [];
+                if (this.log) this.log.textContent = '';
+                this._pending = null;
+                this.hideThinking();
+            });
             return true;
         }
 
@@ -389,10 +443,43 @@ const PrivateConversationView = (() => {
          * private moment is still something she says, and a red system row would break the one
          * thing this mode is for.
          */
+        /**
+         * The session-local store (P10). See `_history`.
+         *
+         * `persist()` is deliberately a no-op rather than absent: the caller should not have to
+         * know which surfaces persist, and a missing method would read as an oversight. Not
+         * writing to disk is the feature.
+         */
+        history() {
+            const view = this;
+            return {
+                id: 'private',
+                getHistory() {
+                    return view._history.slice(-HISTORY_WINDOW);
+                },
+                addMessage(role, text) {
+                    const body = String(text == null ? '' : text);
+                    if (!body) return;
+                    view._history.push({ role: role === 'user' ? 'user' : 'assistant', content: body });
+                    // Bounded well above the window so the trim is never in the hot path, and so
+                    // a long session cannot grow it without limit.
+                    if (view._history.length > HISTORY_WINDOW * 4) {
+                        view._history.splice(0, view._history.length - HISTORY_WINDOW * 2);
+                    }
+                },
+                persist() {
+                    // Nothing. That is the promise the completion card makes.
+                },
+            };
+        }
+
         surface() {
             const view = this;
             return {
                 id: 'private',
+                history() {
+                    return view.history();
+                },
                 renderUser(text) {
                     view.renderUserTurn(text);
                 },
@@ -500,6 +587,12 @@ const PrivateConversationView = (() => {
         }
         destroy() {
             this._restoreSurface();
+            if (this._unwatchReset) {
+                try {
+                    this._unwatchReset();
+                } catch (_) {}
+                this._unwatchReset = null;
+            }
             if (this._hostObserver) this._hostObserver.disconnect();
             this._hostObserver = null;
             this._unbindComposer();
@@ -507,6 +600,8 @@ const PrivateConversationView = (() => {
             if (old) old.remove();
             this._pending = null;
             this._thinking = null;
+            // The only copy of the conversation, dropped with the card. See `_history`.
+            this._history = [];
             this.row = this.card = this.level = this.log = null;
         }
         _ensureConversationVisible() {

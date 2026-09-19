@@ -9,6 +9,7 @@
 
 /* global describe, test, expect, beforeEach, afterEach, jest */
 
+const Surface = require('../../src/features/chat/ConversationSurface.js');
 const Capability = require('../../src/features/together/TogetherCapability.js');
 const PlaygroundActivity = require('../../src/features/together/activities/playground.js');
 const Memory = require('../../src/features/together/PrivateMemory.js');
@@ -65,12 +66,30 @@ class AdultFlowMock {
     }
 }
 
-/** The model-facing transcript, which is what `chatHistory` is in the real app. */
+/**
+ * The global store, and a spy on anything that reaches it.
+ *
+ * As of P10 a Private session must write **nothing** here: `_persistChat` puts this array in
+ * `localStorage`, so a line that lands in it survives the session, the page and the browser
+ * restart and comes back as ordinary chat scrollback.
+ */
 function transcript() {
     const rows = [];
-    window.chatHistory = { addMessage: (role, content) => rows.push({ role, content }) };
+    window.chatHistory = {
+        addMessage: (role, content) => rows.push({ role, content }),
+        getHistory: () => rows.slice(),
+    };
     return rows;
 }
+
+/**
+ * What the model will actually be sent.
+ *
+ * The conversation store of whoever is drawing — `window.chatHistory` in ordinary chat, and the
+ * session-local buffer while a Private card is up. Read through the surface rather than named
+ * directly, because which one it is is the thing P10 changed.
+ */
+const modelRows = () => Surface.history().getHistory();
 
 function setup({ preset = 'romantic' } = {}) {
     document.body.innerHTML =
@@ -141,34 +160,41 @@ afterEach(() => {
 
 describe('she is the same person in both channels', () => {
     test('every spoken beat reaches the transcript the model reads', async () => {
-        const rows = transcript();
+        const global = transcript();
         const s = setup();
         await s.activity.start({ input: { id: 'romantic' } });
 
         // The opening. Before this, NEXUS_BD_SAY was TTS only — she said four things the
         // model answering the user had no record of, and could contradict in the next bubble.
-        expect(rows).toHaveLength(1);
-        expect(rows[0].role).toBe('assistant');
-        expect(rows[0].content).toContain('Coastal Terrace');
+        expect(modelRows()).toHaveLength(1);
+        expect(modelRows()[0].role).toBe('assistant');
+        expect(modelRows()[0].content).toContain('Coastal Terrace');
 
         jest.advanceTimersByTime(45000);
         click('tender');
-        expect(rows).toHaveLength(2);
+        expect(modelRows()).toHaveLength(2);
 
         jest.advanceTimersByTime(165000);
-        expect(rows.length).toBeGreaterThanOrEqual(3);
-        for (const row of rows) expect(row.role).toBe('assistant');
+        expect(modelRows().length).toBeGreaterThanOrEqual(3);
+        for (const row of modelRows()) expect(row.role).toBe('assistant');
+        // And none of it reached the store `_persistChat` writes to disk. See P10.
+        expect(global).toHaveLength(0);
 
         s.activity.stop('user');
     });
 
-    test('a page whose ChatManager owns its own history is left alone', async () => {
+    test('the global store is left alone whatever else is on the page', async () => {
+        // `_remember` used to inspect `window.ChatManager` and skip writing when a page had one,
+        // because ChatManager records what it draws and writing to `chatHistory` too would double
+        // every line. P10 made that check unnecessary rather than merely satisfied: Private writes
+        // to its own store, so there is nothing for either of them to double.
         const rows = transcript();
         window.ChatManager = { addMessage: jest.fn() };
         const s = setup();
         await s.activity.start({ input: { id: 'romantic' } });
-        // ChatManager records what it draws, so writing here too would double every line.
         expect(rows).toHaveLength(0);
+        expect(window.ChatManager.addMessage).not.toHaveBeenCalled();
+        expect(modelRows().length).toBeGreaterThan(0);
         s.activity.stop('user');
         delete window.ChatManager;
     });
@@ -215,18 +241,18 @@ describe('the one choice in the session has consequences', () => {
 
 describe('escalation is answered, and a ceiling is not a dead end', () => {
     test('saying yes to a check-in gets a line, not just a repainted label', async () => {
-        const rows = transcript();
+        transcript();
         const s = setup();
         await s.activity.start({ input: { id: 'romantic' } });
         const session = s.activity._privateExperience;
-        const before = rows.length;
+        const before = modelRows().length;
 
         jest.advanceTimersByTime(120000);
         click('advance');
 
         expect(s.adult.level).toBe(2);
-        expect(rows.length).toBeGreaterThan(before);
-        expect(rows[rows.length - 1].content).toBe(session.plan.levelLines[2]);
+        expect(modelRows().length).toBeGreaterThan(before);
+        expect(modelRows().pop().content).toBe(session.plan.levelLines[2]);
 
         s.activity.stop('user');
     });
@@ -312,7 +338,7 @@ describe('continuity between sessions', () => {
 
 describe('the model path never delays or breaks a session', () => {
     test('the opening is spoken before any planner could answer', async () => {
-        const rows = transcript();
+        transcript();
         let resolve = null;
         window._nexusLLM = {
             getSettings: () => ({ provider: 'openai' }),
@@ -327,7 +353,7 @@ describe('the model path never delays or breaks a session', () => {
         await s.activity.start({ input: { id: 'romantic' } });
 
         // Spoken immediately, from the written plan, with the provider still thinking.
-        expect(rows).toHaveLength(1);
+        expect(modelRows()).toHaveLength(1);
         expect(s.activity._privateExperience.plan.source).toBe('written');
         expect(window._nexusLLM.sendMessage).toHaveBeenCalledTimes(1);
 

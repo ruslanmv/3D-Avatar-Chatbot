@@ -993,6 +993,11 @@ function startBehaviorDirector(options = {}) {
             const el = $('chat-history');
             if (el) el.scrollTop = el.scrollHeight;
         },
+        // P10. Where the turns are kept. These three are what this file has always done, so the
+        // default store is byte-for-byte the previous behaviour — `nexus_chat_messages` and all.
+        getHistory: () => window.chatHistory.getHistory(),
+        addHistory: (role, text) => window.chatHistory.addMessage(role, text),
+        persist: () => _persistChat(),
     });
 
     const bdScript = document.createElement('script');
@@ -3780,11 +3785,13 @@ async function handleUserMessage(text) {
     // Living NPC: instant motion for recognized commands (LLM still replies)
     window.NEXUS_MOTION?.onUserUtterance?.(text);
 
-    // Add user message to chat session history
-    chatHistory.addMessage('user', text);
-
-    // Persist chat
-    _persistChat();
+    // P10. Whoever owns the conversation owns where its turns are kept, too. The default store
+    // is `window.chatHistory` plus `_persistChat` and nothing about ordinary chat changes; a
+    // Private session keeps its turns in memory and writes none of them to disk, which is the
+    // promise its completion card makes.
+    const store = _surface().history();
+    store.addMessage('user', text);
+    store.persist();
 
     setStatus('listening', 'THINKING...');
 
@@ -3835,7 +3842,7 @@ async function _handleStreamingResponse(text) {
     if (window.setTypingIndicator) window.setTypingIndicator(true);
 
     try {
-        const history = window.chatHistory.getHistory();
+        const history = _surface().history().getHistory();
         const systemPrompt =
             (config.systemPrompt || 'You are a helpful AI assistant named Nexus.') +
             (window.NEXUS_MOTION?.systemPromptSuffix?.() || '') +
@@ -3917,8 +3924,9 @@ async function _handleStreamingResponse(text) {
             });
         }
 
-        chatHistory.addMessage('assistant', displayText);
-        _persistChat();
+        const store = _surface().history();
+        store.addMessage('assistant', displayText);
+        store.persist();
         _applyEmotionFromText(displayText);
         speakText(displayText);
         setStatus('idle', 'READY');
@@ -4009,8 +4017,9 @@ async function _handleNonStreamingResponse(text) {
             });
         }
 
-        chatHistory.addMessage('assistant', displayText);
-        _persistChat();
+        const store = _surface().history();
+        store.addMessage('assistant', displayText);
+        store.persist();
         _applyEmotionFromText(displayText);
         speakText(displayText);
         setStatus('idle', 'READY');
@@ -4030,7 +4039,7 @@ async function _handleNonStreamingResponse(text) {
                 `The persona "${error.modelName}" is no longer available. ` +
                 `You can select a different model in Settings, or refresh the model list.`;
             _surface().renderError(friendlyMsg);
-            chatHistory.addMessage('assistant', friendlyMsg);
+            _surface().history().addMessage('assistant', friendlyMsg);
             showMessage('Persona unavailable \u2014 open Settings to choose another model', 'warning');
             setStatus('idle', 'READY');
         } else {
@@ -4058,6 +4067,11 @@ function _surface() {
         renderUser: (text, attachments) => addMessageToHistory('user', text, attachments),
         renderAssistant: (text, attachments) => addMessageToHistory('avatar', text, attachments),
         renderError: (text) => addMessageToHistory('avatar', text),
+        history: () => ({
+            getHistory: () => window.chatHistory.getHistory(),
+            addMessage: (role, text) => window.chatHistory.addMessage(role, text),
+            persist: () => _persistChat(),
+        }),
         beginAssistant: () => {
             const made = _createStreamingBotMessage();
             return {
@@ -4229,7 +4243,7 @@ function __nexusRunLookup(displayText) {
 async function callLLM(userMessage) {
     // ✅ Use LLMManager with conversation history if available
     if (window._nexusLLM && config.provider !== 'none') {
-        const history = window.chatHistory.getHistory();
+        const history = _surface().history().getHistory();
         const systemPrompt =
             (config.systemPrompt || 'You are a helpful AI assistant named Nexus.') +
             (window.NEXUS_MOTION?.systemPromptSuffix?.() || '') +

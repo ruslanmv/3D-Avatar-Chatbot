@@ -1364,25 +1364,22 @@
          * contradict in the very next chat bubble. Two channels in one card, neither aware of
          * the other.
          *
-         * `chatHistory.addMessage` rather than `NEXUS_YT_ASK.say`, because `say` also *draws*
-         * a chat bubble and the Private card is already the display. This records without
-         * rendering, which is exactly the half that was missing.
+         * Recorded rather than said: `NEXUS_YT_ASK.say` would also *draw* a chat bubble, and the
+         * Private card is already the display. This records without rendering, which is exactly
+         * the half that was missing.
          *
-         * Nothing extra is persisted by doing this: the user's own messages and her chat
-         * replies during a Private session already go into this transcript, because the
-         * composer is observed rather than intercepted. This makes the record complete rather
-         * than making it larger, and the completion card's promise — nothing is written to
-         * Playground Histories — is untouched.
+         * Through the conversation surface's store as of P10, not `window.chatHistory` directly.
+         * That is the whole difference between the model remembering her scripted lines and
+         * `localStorage` remembering them: the Private store is an array on the view that is
+         * dropped with the card, so the model has the context and nothing reaches disk.
          */
         _remember(text) {
-            const w = this.win;
-            if (!w) return false;
+            const api = surfaceApi(this.win);
+            if (!api || typeof api.history !== 'function') return false;
             try {
-                const cm = w.ChatManager;
-                if (cm && typeof cm.addMessage === 'function') return false;
-                const history = w.chatHistory;
-                if (!history || typeof history.addMessage !== 'function') return false;
-                history.addMessage('assistant', String(text || ''));
+                const store = api.history();
+                if (!store || typeof store.addMessage !== 'function') return false;
+                store.addMessage('assistant', String(text || ''));
                 return true;
             } catch (_) {
                 // A line on screen and in the air is worth more than a tidy transcript.

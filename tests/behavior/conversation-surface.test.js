@@ -16,11 +16,18 @@ const View = require('../../src/features/together/ui/PrivateConversationView.js'
 function hostHooks() {
     const drawn = [];
     const streams = [];
+    const kept = [];
+    const persisted = [];
     return {
         drawn,
         streams,
+        kept,
+        persisted,
         hooks: {
             addMessage: (sender, text) => drawn.push({ sender, text }),
+            getHistory: () => kept.slice(),
+            addHistory: (role, text) => kept.push({ role, content: text }),
+            persist: () => persisted.push(kept.length),
             beginStream: () => {
                 const row = document.createElement('div');
                 const textDiv = document.createElement('div');
@@ -259,6 +266,46 @@ describe('whose turn it is (P8)', () => {
     });
 });
 
+describe('where the turns are kept (P10)', () => {
+    test('the default store is what main.js always did', () => {
+        const h = hostHooks();
+        Surface.configure(h.hooks);
+
+        const store = Surface.history();
+        store.addMessage('user', 'hello');
+        store.addMessage('assistant', 'hi there');
+        store.persist();
+
+        expect(h.kept).toEqual([
+            { role: 'user', content: 'hello' },
+            { role: 'assistant', content: 'hi there' },
+        ]);
+        expect(store.getHistory()).toEqual(h.kept);
+        expect(h.persisted).toEqual([2]);
+    });
+
+    test('a surface with no store of its own gets the default one, not nothing', () => {
+        // A surface that draws but forgot to say where it keeps its turns should keep them
+        // somewhere real, or a bug in one feature quietly erases the conversation.
+        const h = hostHooks();
+        Surface.configure(h.hooks);
+        Surface.use({ id: 'draws-only', renderUser: () => {} });
+        Surface.history().addMessage('user', 'still kept');
+        expect(h.kept).toEqual([{ role: 'user', content: 'still kept' }]);
+    });
+
+    test('a store that remembers nothing still answers every call', () => {
+        // What a page with no host store at all gets — `demo.html`, a test. The same
+        // "nothing throws before configure" guarantee the renderers have.
+        const store = Surface.nullHistory();
+        expect(store.getHistory()).toEqual([]);
+        expect(() => {
+            store.addMessage('user', 'x');
+            store.persist();
+        }).not.toThrow();
+    });
+});
+
 describe('Private becomes the conversation while it runs', () => {
     let view;
 
@@ -338,6 +385,65 @@ describe('Private becomes the conversation while it runs', () => {
         // And it keeps the newest, not the oldest.
         expect(document.body.textContent).toContain('line 11');
         expect(document.body.textContent).not.toContain('line 0');
+    });
+
+    test('the conversation is kept in the session, never on disk', () => {
+        // `handleUserMessage` wrote every turn into `window.chatHistory` and called
+        // `_persistChat`, which puts it in localStorage under `nexus_chat_messages` — so a Private
+        // conversation survived the session, the page and the browser restart and came back as
+        // ordinary chat scrollback. The completion card promises a quiet ending with nothing kept.
+        const h = mount();
+        const store = Surface.history();
+        store.addMessage('user', 'this stays between us');
+        store.addMessage('assistant', 'it does');
+        store.persist();
+
+        expect(store.getHistory()).toEqual([
+            { role: 'user', content: 'this stays between us' },
+            { role: 'assistant', content: 'it does' },
+        ]);
+        // Nothing reached the store the host persists.
+        expect(h.kept).toHaveLength(0);
+        expect(h.persisted).toHaveLength(0);
+    });
+
+    test('the window sent to the model is small, and it is the recent end of it', () => {
+        // A long window in an intimate conversation is not more context, it is more chance for the
+        // model to reach back past a `Slow down` to whatever the register was before it.
+        mount();
+        const store = Surface.history();
+        for (let i = 0; i < 40; i += 1) store.addMessage('user', `line ${i}`);
+        const sent = store.getHistory();
+        expect(sent.length).toBeLessThanOrEqual(10);
+        expect(sent[sent.length - 1].content).toBe('line 39');
+    });
+
+    test('CLEAR empties this conversation too, not just the screen', () => {
+        // Private's turns are in neither `nexus_chat_messages` nor `chatHistory` any more, which
+        // is the point — so without a subscription here, pressing CLEAR wiped the screen and left
+        // the model's context intact: she would still have remembered what the person had just
+        // erased. That is the one failure mode a CLEAR button must not have.
+        const Reset = require('../../src/features/chat/ConversationReset.js');
+        mount();
+        Surface.history().addMessage('user', 'forget this');
+        expect(Surface.history().getHistory()).toHaveLength(1);
+
+        Reset.forget('test');
+
+        expect(Surface.history().getHistory()).toEqual([]);
+        expect(document.querySelectorAll('[data-private-turn]')).toHaveLength(0);
+    });
+
+    test('destroying the card drops the conversation with it', () => {
+        mount();
+        Surface.history().addMessage('user', 'said once');
+        const stored = view._history;
+        view.destroy();
+        view = null;
+        expect(stored).not.toBe(null);
+        // The store the view handed out is empty, and the surface is back to the host's.
+        expect(Surface.current().id).toBe('default');
+        expect(Surface.history().getHistory()).toEqual([]);
     });
 
     test('an error inside a private moment still reads as her', () => {
