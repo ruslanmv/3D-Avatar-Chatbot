@@ -52,6 +52,21 @@ class AdultFlowMock {
             return { ok: true, kind: 'hard', level: 1 };
         });
         this.earned = jest.fn(() => true);
+        this.stepReady = jest.fn(() => true);
+        // P12's two routes: an explicit step up, and one level back.
+        this.initiated = jest.fn(() => {
+            if (this.level >= this.maxLevel) return { action: 'ignored', why: 'at the top already' };
+            this.level += 1;
+            this.blackboard.escalationLevel = this.level;
+            return { action: 'advanced', level: this.level, why: 'initiated' };
+        });
+        this.eased = jest.fn(() => {
+            this.pending = null;
+            if (this.level <= 1) return { action: 'ignored', why: 'at the bottom already' };
+            this.level -= 1;
+            this.blackboard.escalationLevel = this.level;
+            return { action: 'advanced', level: this.level, why: 'eased' };
+        });
         this.checkIn = jest.fn(() => {
             if (this.level >= this.maxLevel) return { ok: false, why: 'at the top' };
             this.pending = { level: this.level + 1 };
@@ -223,50 +238,69 @@ describe('the one choice in the session has consequences', () => {
         s.activity.stop('user');
     });
 
-    test('the two moods produce different endings', async () => {
-        const endings = [];
+    test('the two moods produce different lines, spoken rather than only stored', async () => {
+        const spoken = [];
         for (const mood of ['playful', 'tender']) {
             const s = setup();
             await s.activity.start({ input: { id: 'romantic' } });
-            const session = s.activity._privateExperience;
             jest.advanceTimersByTime(45000);
             click(mood);
-            jest.advanceTimersByTime(240000);
-            endings.push(session.plan.closing[mood]);
+            jest.advanceTimersByTime(180000);
+            spoken.push(cardText());
             s.activity.stop('user');
         }
-        expect(endings[0]).not.toBe(endings[1]);
+        expect(spoken[0]).not.toBe(spoken[1]);
     });
 });
 
-describe('escalation is answered, and a ceiling is not a dead end', () => {
-    test('saying yes to a check-in gets a line, not just a repainted label', async () => {
+describe('progression is the primary control, and a ceiling is not a dead end', () => {
+    test('a step forward gets a line, not just a repainted label', async () => {
         transcript();
         const s = setup();
         await s.activity.start({ input: { id: 'romantic' } });
         const session = s.activity._privateExperience;
-        const before = modelRows().length;
 
-        jest.advanceTimersByTime(120000);
-        click('advance');
+        jest.advanceTimersByTime(5000);
+        click('closer');
 
         expect(s.adult.level).toBe(2);
-        expect(modelRows().length).toBeGreaterThan(before);
-        expect(modelRows().pop().content).toBe(session.plan.levelLines[2]);
+        expect(cardText()).toBe(session.plan.levelLines[2]);
+        // Said and heard, and deliberately not remembered: the model already knows the level from
+        // the prompt overlay, and a line about the control is something it might elaborate on.
+        expect(modelRows().map((row) => row.content)).not.toContain(session.plan.levelLines[2]);
 
         s.activity.stop('user');
     });
 
-    test('Affectionate gets a real choice at its ceiling instead of a line saying no', async () => {
-        // maxLevel 1, so this branch used to be one sentence with no buttons — the emptiest
-        // run in the feature, in the preset most people try first.
+    test('the overlay says the step was asked for, not that a number went up', async () => {
+        const s = setup();
+        await s.activity.start({ input: { id: 'romantic' } });
+        expect(Capability.privateSystemPromptSuffix()).toMatch(/have not asked for anything more intense/i);
+
+        jest.advanceTimersByTime(5000);
+        click('closer');
+        const suffix = Capability.privateSystemPromptSuffix();
+        expect(suffix).toMatch(/asked for this step themselves/i);
+        expect(suffix).toMatch(/without proposing the next one/i);
+        expect(suffix).toContain('Current consent level: 2');
+
+        s.activity.stop('user');
+    });
+
+    test('Affectionate has no ladder to climb, and is offered texture instead', async () => {
+        // maxLevel 1, so there is no forward step at all — and a preset with one level gets no
+        // ladder, because `Warm` on its own is not progress.
         const s = setup();
         await s.activity.start({ input: { id: 'affectionate' } });
         const session = s.activity._privateExperience;
 
-        jest.advanceTimersByTime(120000);
+        expect(document.querySelector('[data-private-action="closer"]')).toBeNull();
+        expect(document.querySelectorAll('[data-private-step]')).toHaveLength(0);
+        expect(document.querySelector('.nexus-private-heading-title').textContent).toBe('Warm');
+
+        jest.advanceTimersByTime(330000);
         expect(cardText()).toBe(session.plan.texture.prompt);
-        click('closer');
+        click('texture-closer');
         expect(session.texture).toBe('closer');
         expect(cardText()).toBe(session.plan.texture.closer);
         // Texture is not escalation: it grants nothing and asks for no consent step.
@@ -277,36 +311,47 @@ describe('escalation is answered, and a ceiling is not a dead end', () => {
     });
 });
 
-describe('the ending waits for a person who is mid-sentence', () => {
-    test('a live conversation defers the completion card', async () => {
+describe('nothing but End finishes a Private session', () => {
+    test('a silent session does not end on a timer', async () => {
+        // Warm → Romantic → Sensual is not an arc toward completion. It is a place the person drives
+        // to and then stays, so the clock has no opinion about when an evening is finished.
         const s = setup();
         await s.activity.start({ input: { id: 'romantic' } });
         const session = s.activity._privateExperience;
 
-        jest.advanceTimersByTime(295000);
-        // Somebody typing five seconds before the scripted end. Still typing — nothing has been
-        // sent, so this is not a turn (P8 moved counting to the conversation surface, where a
-        // turn that actually happened is reported). It is still a reason not to hang up.
-        document.getElementById('speak-btn').click();
-        jest.advanceTimersByTime(10000);
-
+        jest.advanceTimersByTime(900000);
         expect(session.state).not.toBe('complete');
-        expect(session._turns).toBe(0);
-        expect(session._composingAt).toBeGreaterThan(0);
-
-        // And it does not wait forever: the grace is bounded.
-        jest.advanceTimersByTime(200000);
-        expect(session.state).toBe('complete');
+        expect(document.querySelector('.nexus-private-complete')).toBeNull();
+        expect(document.querySelector('[data-private-action="end"]')).not.toBeNull();
 
         s.activity.stop('user');
     });
 
-    test('a silent session still ends on time', async () => {
+    test('a session at its ceiling stays there rather than completing', async () => {
         const s = setup();
         await s.activity.start({ input: { id: 'romantic' } });
         const session = s.activity._privateExperience;
-        jest.advanceTimersByTime(300000);
+        jest.advanceTimersByTime(5000);
+        click('closer');
+        expect(s.adult.level).toBe(2);
+
+        jest.advanceTimersByTime(600000);
+        expect(session.state).not.toBe('complete');
+        expect(s.adult.level).toBe(2);
+
+        s.activity.stop('user');
+    });
+
+    test('End shows the completion card, which is where the promise is made', async () => {
+        const s = setup();
+        await s.activity.start({ input: { id: 'romantic' } });
+        const session = s.activity._privateExperience;
+
+        click('end');
         expect(session.state).toBe('complete');
+        expect(document.querySelector('.nexus-private-complete')).not.toBeNull();
+        expect(document.body.textContent).toMatch(/nothing from this private moment/i);
+
         s.activity.stop('user');
     });
 });
@@ -324,7 +369,8 @@ describe('continuity between sessions', () => {
         await second.activity.start({ input: { id: 'sensual' } });
         jest.advanceTimersByTime(45000);
         click('playful');
-        jest.advanceTimersByTime(255000);
+        // Remembered on a deliberate exit, not on a stopwatch reaching five minutes.
+        click('end');
         expect(second.activity._privateExperience.state).toBe('complete');
 
         const kept = Memory.read();

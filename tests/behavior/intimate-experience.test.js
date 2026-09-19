@@ -70,6 +70,7 @@ class AdultFlowMock {
                 levels: 4,
                 start: 1,
                 perLevelMinMs: 120000,
+                userStepMinMs: 4000,
                 decayToLevel: 1,
             },
         };
@@ -116,6 +117,28 @@ class AdultFlowMock {
             this.bus.emit('adult:checkin', { from: this.level, to: this.level + 1, at: Date.now() });
             return { ok: true, why: 'asked', to: this.level + 1 };
         });
+        // P12's two routes. `initiated` is a user-initiated step, floored by `userStepMinMs`
+        // rather than the two-minute cadence for *her* asking; `eased` gives one level back.
+        this.initiated = jest.fn(() => {
+            if (!this.active) return { action: 'ignored', why: 'not in the tier' };
+            if (this.level >= this.maxLevel) return { action: 'ignored', why: 'at the top already' };
+            if (!this.stepReady()) return { action: 'ignored', why: 'this level has only just started' };
+            this.level += 1;
+            this.levelSince = Date.now();
+            this.blackboard.escalationLevel = this.level;
+            this.bus.emit('adult:level', { level: this.level, why: 'initiated', at: Date.now() });
+            return { action: 'advanced', level: this.level, why: 'initiated' };
+        });
+        this.eased = jest.fn(() => {
+            if (!this.active) return { action: 'ignored', why: 'not in the tier' };
+            this.pending = null;
+            if (this.level <= 1) return { action: 'ignored', why: 'at the bottom already' };
+            this.level -= 1;
+            this.levelSince = Date.now();
+            this.blackboard.escalationLevel = this.level;
+            this.bus.emit('adult:level', { level: this.level, why: 'eased', at: Date.now() });
+            return { action: 'advanced', level: this.level, why: 'eased' };
+        });
         this.hear = jest.fn((text) => {
             if (!this.pending || String(text).toLowerCase() !== 'yes') return { action: 'heard', level: this.level };
             const target = this.pending.level;
@@ -136,8 +159,16 @@ class AdultFlowMock {
         return this.profile.escalation.perLevelMinMs;
     }
 
+    get userStepMinMs() {
+        return this.profile.escalation.userStepMinMs;
+    }
+
     earned() {
         return this.levelSince !== null && Date.now() - this.levelSince >= this.perLevelMinMs;
+    }
+
+    stepReady() {
+        return this.levelSince !== null && Date.now() - this.levelSince >= this.userStepMinMs;
     }
 }
 
@@ -258,7 +289,10 @@ describe('Private runtime integration', () => {
         expect(s.modes.activeId).toBe('adult');
         expect(s.blackboard.activity).toBe('intimate');
         expect(document.getElementById('nexus-private-hud')).toBeNull();
-        expect(document.getElementById('nexus-private-conversation-row').textContent).toContain('Romantic');
+        // The heading shows where the evening *is* (P12). The preset is the ceiling, and the ladder
+        // in the footer carries it — the two words in two places were the confusing part.
+        expect(document.querySelector('.nexus-private-heading-title').textContent).toBe('Warm');
+        expect(document.querySelectorAll('[data-private-step]')).toHaveLength(2);
         expect(document.getElementById('speech-text').placeholder).toBe('Talk privately…');
         expect(window.NEXUS_BD_SAY).toHaveBeenCalled();
 
@@ -279,69 +313,90 @@ describe('Private runtime integration', () => {
         expect(Capability.privateSystemPromptSuffix()).toBe('');
     });
 
-    test('Romantic can advance only after the existing two-minute ConsentFlow floor and stops at level 2', async () => {
+    test('Romantic steps to its ceiling on an explicit press, and no further', async () => {
+        // The two-minute floor was the cadence for *her* asking. A person pressing the button has
+        // asked, so the floor on this route is `userStepMinMs` — enough to outlast a stray finger.
         const s = setup({ preset: 'romantic' });
         await s.activity.start({ input: { id: 'romantic' } });
 
-        jest.advanceTimersByTime(119999);
-        expect(document.querySelector('[data-private-action="advance"]')).toBeNull();
-        expect(s.adult.level).toBe(1);
+        expect(document.querySelector('[data-private-action="closer"]')).not.toBeNull();
+        jest.advanceTimersByTime(5000);
+        document.querySelector('[data-private-action="closer"]').click();
 
-        jest.advanceTimersByTime(1);
-        const advance = document.querySelector('[data-private-action="advance"]');
-        expect(advance).not.toBeNull();
-        advance.click();
-
-        expect(s.adult.checkIn).toHaveBeenCalledTimes(1);
-        expect(s.adult.hear).toHaveBeenCalledWith('yes');
+        expect(s.adult.initiated).toHaveBeenCalledTimes(1);
+        // Not through the check-in path: that is the route for a question she asked.
+        expect(s.adult.checkIn).not.toHaveBeenCalled();
         expect(s.adult.level).toBe(2);
         expect(s.blackboard.escalationLevel).toBe(2);
         expect(Capability.privateSystemPromptSuffix()).toContain('Current consent level: 2');
 
-        jest.advanceTimersByTime(120000);
+        // At the preset's ceiling the forward control is gone, and nothing offers to raise it.
+        expect(document.querySelector('[data-private-action="closer"]')).toBeNull();
+        jest.advanceTimersByTime(300000);
         expect(s.adult.level).toBe(2);
-        expect(document.querySelector('[data-private-action="advance"]')).toBeNull();
+        expect(document.querySelector('[data-private-action="closer"]')).toBeNull();
 
         s.activity.stop('user');
     });
 
-    test('Sensual uses two earned confirmations to reach level 3 and never opens level 4', async () => {
+    test('Sensual takes two explicit steps to reach level 3 and never opens level 4', async () => {
         const s = setup({ preset: 'sensual' });
         await s.activity.start({ input: { id: 'sensual' } });
 
-        jest.advanceTimersByTime(120000);
-        document.querySelector('[data-private-action="advance"]').click();
+        jest.advanceTimersByTime(5000);
+        document.querySelector('[data-private-action="closer"]').click();
         expect(s.adult.level).toBe(2);
         expect(s.adult.maxLevel).toBe(3);
 
-        jest.advanceTimersByTime(120000);
-        const second = document.querySelector('[data-private-action="advance"]');
+        jest.advanceTimersByTime(5000);
+        const second = document.querySelector('[data-private-action="closer"]');
         expect(second).not.toBeNull();
         second.click();
         expect(s.adult.level).toBe(3);
         expect(s.adult.maxLevel).toBe(3);
 
+        // The preset's ceiling is the ceiling. Level 4 exists in the profile and is never reachable.
         jest.advanceTimersByTime(30000);
         expect(s.adult.level).toBe(3);
-        expect(document.querySelector('[data-private-action="advance"]')).toBeNull();
+        expect(document.querySelector('[data-private-action="closer"]')).toBeNull();
 
         s.activity.stop('user');
         expect(s.adult.maxLevel).toBe(4);
     });
 
-    test('Keep it cozy downgrades through ConsentFlow without ending the experience', async () => {
-        const s = setup({ preset: 'romantic' });
-        await s.activity.start({ input: { id: 'romantic' } });
-        jest.advanceTimersByTime(120000);
-        document.querySelector('[data-private-action="advance"]').click();
-        expect(s.adult.level).toBe(2);
+    test('Ease up gives back exactly one level, and never ends the experience', async () => {
+        const s = setup({ preset: 'sensual' });
+        await s.activity.start({ input: { id: 'sensual' } });
+        jest.advanceTimersByTime(5000);
+        document.querySelector('[data-private-action="closer"]').click();
+        jest.advanceTimersByTime(5000);
+        document.querySelector('[data-private-action="closer"]').click();
+        expect(s.adult.level).toBe(3);
 
-        const cozy = document.querySelector('[data-private-action="cozy"]');
-        cozy.click();
-        expect(s.adult.exit).toHaveBeenCalledWith('soft');
+        document.querySelector('[data-private-action="ease"]').click();
+        expect(s.adult.eased).toHaveBeenCalledTimes(1);
+        // One step, not a jump to the bottom. `exit('soft')` stays the safe word's mechanism.
+        expect(s.adult.exit).not.toHaveBeenCalled();
+        expect(s.adult.level).toBe(2);
         expect(s.adult.active).toBe(true);
-        expect(s.adult.level).toBe(1);
         expect(document.getElementById('nexus-private-conversation-row')).not.toBeNull();
+
+        s.activity.stop('user');
+    });
+
+    test('a typed safe word still goes all the way down, through exit', async () => {
+        const s = setup({ preset: 'sensual' });
+        await s.activity.start({ input: { id: 'sensual' } });
+        jest.advanceTimersByTime(5000);
+        document.querySelector('[data-private-action="closer"]').click();
+        jest.advanceTimersByTime(5000);
+        document.querySelector('[data-private-action="closer"]').click();
+        expect(s.adult.level).toBe(3);
+
+        s.activity._privateExperience._onUserTurn('this is too much');
+        expect(s.adult.exit).toHaveBeenCalledWith('soft');
+        expect(s.adult.level).toBe(1);
+        expect(s.adult.active).toBe(true);
 
         s.activity.stop('user');
     });

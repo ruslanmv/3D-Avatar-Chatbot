@@ -74,8 +74,11 @@ const PrivateConversationView = (() => {
 #${ROW_ID}{display:block;width:100%;margin:8px 0 10px;box-sizing:border-box;color:inherit}
 #${ROW_ID} *{box-sizing:border-box}.nexus-private-shell{overflow:hidden;border:1px solid rgba(244,128,166,.4);border-radius:16px;background:linear-gradient(145deg,rgba(39,15,36,.9),rgba(22,13,28,.82));box-shadow:0 16px 50px rgba(23,5,21,.3);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
 .nexus-private-heading{display:flex;align-items:baseline;gap:8px;padding:9px 13px;border-bottom:1px solid rgba(255,255,255,.07);font-size:.74rem}.nexus-private-kicker{color:#f49aba;font-size:.72rem;font-weight:750;letter-spacing:.09em}.nexus-private-heading-title{font-size:.8rem;font-weight:700;margin:0}.nexus-private-place{font-size:.74rem;opacity:.55;margin-left:auto}.nexus-private-card{padding:12px 14px;max-height:34vh;overflow-y:auto;overscroll-behavior:contain}.nexus-private-log{display:grid;gap:10px}.nexus-private-turn{display:grid;gap:2px}.nexus-private-who{font-size:.62rem;letter-spacing:.1em;font-weight:700;opacity:.42}.nexus-private-turn.is-you .nexus-private-who{color:#9fd8ea}.nexus-private-turn.is-her .nexus-private-who{color:#f08fb6}.nexus-private-turn.is-you .nexus-private-copy{opacity:.78}.nexus-private-copy{font-size:.95rem;line-height:1.5;white-space:pre-wrap;text-wrap:pretty}.nexus-private-turn.is-streaming .nexus-private-copy::after{content:'▍';opacity:.5;animation:nexus-private-caret 1s steps(2) infinite}@keyframes nexus-private-caret{0%,100%{opacity:.15}50%{opacity:.7}}.nexus-private-pending{padding-top:9px;border-top:1px solid rgba(255,255,255,.07);opacity:.8}.nexus-private-thinking{display:flex;align-items:center;gap:5px;margin-top:12px;height:10px}.nexus-private-dot{width:6px;height:6px;border-radius:50%;background:#f49aba;opacity:.35;animation:nexus-private-dot 1.25s ease-in-out infinite}.nexus-private-dot:nth-child(2){animation-delay:.18s}.nexus-private-dot:nth-child(3){animation-delay:.36s}@keyframes nexus-private-dot{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:.95;transform:translateY(-3px)}}.nexus-private-kicker{animation:nexus-private-breathe 5.5s ease-in-out infinite}@keyframes nexus-private-breathe{0%,100%{opacity:.72}50%{opacity:1}}@media(prefers-reduced-motion:reduce){.nexus-private-dot,.nexus-private-kicker,.nexus-private-turn.is-streaming .nexus-private-copy::after{animation:none}.nexus-private-dot{opacity:.6}}.nexus-private-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:11px}.nexus-private-btn{border:1px solid rgba(240,143,182,.32);background:rgba(240,143,182,.09);color:inherit;border-radius:10px;padding:8px 10px;text-align:center;font:inherit;font-size:.8rem;cursor:pointer}.nexus-private-btn:hover,.nexus-private-btn:focus-visible{background:rgba(244,128,166,.18);outline:none}.nexus-private-btn:disabled{cursor:default;opacity:.4}.nexus-private-btn.is-chosen{opacity:.85;border-color:rgba(240,143,182,.55);background:rgba(240,143,182,.16)}.nexus-private-bar{display:flex;align-items:center;gap:8px;padding:7px 11px;border-top:1px solid rgba(255,255,255,.07)}.nexus-private-level{font-size:.72rem;opacity:.6;flex:1}.nexus-private-bar .nexus-private-btn{padding:6px 9px;font-size:.76rem}.nexus-private-soundtrack{margin:0 11px 9px;font-size:.74rem}.nexus-private-soundtrack-strip{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:5px 9px;border:1px solid rgba(240,143,182,.16);border-radius:9px;background:rgba(240,143,182,.05)}.nexus-private-soundtrack-copy{min-width:0;flex:1}.nexus-private-soundtrack-kicker{display:none}.nexus-private-soundtrack-title{font-size:.74rem;line-height:1.3;opacity:.72;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nexus-private-soundtrack-creator{display:none}.nexus-private-soundtrack-toggle{border:0;background:transparent;color:inherit;opacity:.5;padding:2px 4px;font:inherit;font-size:.7rem;cursor:pointer;flex:0 0 auto;text-decoration:underline}.nexus-private-soundtrack-toggle:hover,.nexus-private-soundtrack-toggle:focus-visible{opacity:.9;outline:none}.nexus-private-soundtrack-player{display:none;width:min(280px,100%);margin-top:9px}.nexus-private-soundtrack-player.is-open{display:block}.nexus-private-soundtrack-player .nexus-yt-card{width:100%;max-width:280px;margin:0}.nexus-private-soundtrack-player .nexus-yt-meta{font-size:.72rem}.nexus-private-complete{font-size:1rem;font-weight:750;margin-bottom:6px}.nexus-private-note{font-size:.84rem;line-height:1.5;opacity:.74}.is-complete .nexus-private-bar{display:none}
-.nexus-private-btn.is-gentle{border-color:rgba(159,216,234,.45);background:rgba(159,216,234,.12);opacity:1}.nexus-private-status{font-size:.72rem;opacity:0;transition:opacity .28s ease;color:#9fd8ea;flex:0 0 auto;white-space:nowrap}.nexus-private-status.is-visible{opacity:.85}
-.nexus-private-shell.is-gentle{border-color:rgba(244,128,166,.24);box-shadow:0 12px 36px rgba(23,5,21,.24)}.is-gentle .nexus-private-heading-title{opacity:.5;font-weight:600}.is-gentle .nexus-private-kicker{animation:none;opacity:.6}.is-gentle .nexus-private-level{opacity:.75}
+.nexus-private-status{font-size:.72rem;opacity:0;transition:opacity .28s ease;color:#9fd8ea;flex:0 0 auto;white-space:nowrap}.nexus-private-status.is-visible{opacity:.85}
+.nexus-private-shell.is-gentle{border-color:rgba(244,128,166,.24);box-shadow:0 12px 36px rgba(23,5,21,.24)}.is-gentle .nexus-private-kicker{animation:none;opacity:.6}
+.nexus-private-level{display:flex;align-items:center;gap:5px}.nexus-private-step{font-size:.72rem;opacity:.3;transition:opacity .3s ease,color .3s ease}.nexus-private-step.is-reached{opacity:.6;color:#f49aba}.nexus-private-step.is-current{opacity:1;font-weight:700;letter-spacing:.01em}.nexus-private-rung{width:12px;height:1px;background:currentColor;opacity:.22;flex:0 0 auto}
+.nexus-private-controls{display:flex;align-items:center;gap:6px;margin-left:auto;flex:0 0 auto}.nexus-private-btn.is-primary{border-color:rgba(244,128,166,.6);background:rgba(244,128,166,.24);font-weight:650}.nexus-private-btn.is-primary:hover,.nexus-private-btn.is-primary:focus-visible{background:rgba(244,128,166,.34)}.nexus-private-btn.is-secondary{border-color:rgba(255,255,255,.14);background:transparent;opacity:.62}.nexus-private-btn.is-secondary:hover,.nexus-private-btn.is-secondary:focus-visible{opacity:.95;background:rgba(255,255,255,.06)}
+@media(max-width:560px){.nexus-private-bar{flex-wrap:wrap}.nexus-private-controls{margin-left:auto}.nexus-private-step{font-size:.7rem}.nexus-private-rung{width:8px}}
 @media(max-width:560px){#${ROW_ID}{margin:6px 0 8px}.nexus-private-card{padding:11px 13px;max-height:30vh}.nexus-private-copy{font-size:.92rem}.nexus-private-soundtrack{margin:0 10px 8px}.nexus-private-soundtrack-player{width:100%}.nexus-private-soundtrack-player .nexus-yt-card{max-width:100%}}
 `;
 
@@ -109,10 +112,10 @@ const PrivateConversationView = (() => {
     }
 
     class View {
-        constructor({ doc, win, onCozy, onEnd, onUserMessage } = {}) {
+        constructor({ doc, win, onCloser, onEase, onEnd, onUserMessage } = {}) {
             this.doc = doc || (typeof document !== 'undefined' ? document : null);
             this.win = win || (typeof window !== 'undefined' ? window : null);
-            this.handlers = { onCozy, onEnd, onUserMessage };
+            this.handlers = { onCloser, onEase, onEnd, onUserMessage };
             this.row = null;
             this.card = null;
             this.level = null;
@@ -145,8 +148,11 @@ const PrivateConversationView = (() => {
             /** The footer's transient state line, and the timer that clears it. */
             this.status = null;
             this._statusTimer = null;
-            /** The `Slow down` control, kept so its label and enabled state can change. */
-            this.cozyButton = null;
+            /** The footer's controls, rebuilt per level. See `_paintControls`. */
+            this.controls = null;
+            this.forwardButton = null;
+            this.easeButton = null;
+            this.title = null;
             this.shell = null;
             /** The soundtrack card, kept so its volume can be lowered after the fact. */
             this._soundtrackCard = null;
@@ -160,21 +166,23 @@ const PrivateConversationView = (() => {
             const row = this.doc.createElement('section');
             row.id = ROW_ID;
             row.setAttribute('aria-live', 'polite');
-            row.innerHTML = `<div class="nexus-private-shell"><header class="nexus-private-heading"><div class="nexus-private-kicker">🔐 PRIVATE</div><div class="nexus-private-heading-title"></div><div class="nexus-private-place"></div></header><div class="nexus-private-card"><div class="nexus-private-log"></div></div><div class="nexus-private-soundtrack" hidden></div><footer class="nexus-private-bar"><span class="nexus-private-level">Warm</span><span class="nexus-private-status" role="status" aria-live="polite"></span></footer></div>`;
-            row.querySelector('.nexus-private-heading-title').textContent = (preset && preset.label) || 'Private';
+            // The heading shows where the evening *is*, not which preset opened it (P12). It used
+            // to show `Sensual` while the footer said `Warm` — ceiling and current, both true, and
+            // read by everybody as the application insisting on a state they had not reached. The
+            // ladder in the footer carries the ceiling instead, where it needs no explaining.
+            row.innerHTML = `<div class="nexus-private-shell"><header class="nexus-private-heading"><div class="nexus-private-kicker">🔐 PRIVATE</div><div class="nexus-private-heading-title"></div><div class="nexus-private-place"></div></header><div class="nexus-private-card"><div class="nexus-private-log"></div></div><div class="nexus-private-soundtrack" hidden></div><footer class="nexus-private-bar"><span class="nexus-private-level" aria-live="polite"></span><span class="nexus-private-status" role="status" aria-live="polite"></span><span class="nexus-private-controls"></span></footer></div>`;
             row.querySelector('.nexus-private-place').textContent = scene || 'Current place';
-            const bar = row.querySelector('.nexus-private-bar');
-            // `Keep it cozy` is lovely copy and a poor permanent safety control: as the one
-            // always-visible way to ease off it has to say what it does without needing to be
-            // learned. It survives as a contextual dialogue choice.
-            this.cozyButton = this._button('↓ Slow down', 'cozy', this.handlers.onCozy);
-            bar.append(this.cozyButton, this._button('End', 'end', this.handlers.onEnd));
             this.row = row;
             this.shell = row.querySelector('.nexus-private-shell');
             this.card = row.querySelector('.nexus-private-card');
             this.log = row.querySelector('.nexus-private-log');
             this.level = row.querySelector('.nexus-private-level');
             this.status = row.querySelector('.nexus-private-status');
+            this.controls = row.querySelector('.nexus-private-controls');
+            this.title = row.querySelector('.nexus-private-heading-title');
+            // A floor to draw before the session paints its real state, so the card is never
+            // momentarily blank. `setPace` replaces all of it on the first `_paintLevel`.
+            this.setPace({ pace: 'Warm', steps: [], hasLadder: false, forward: 'Closer', canEase: false });
             const empty = host.querySelector(':scope > .empty-state');
             if (empty) empty.remove();
             host.appendChild(row);
@@ -547,39 +555,98 @@ const PrivateConversationView = (() => {
             // away at exactly the wrong moment.
             this.showMessage(prompt || 'What kind of mood should we keep?', options);
         }
-        showConsentCheckIn(options) {
-            this.showMessage('Would you like to keep this sweet, or make it a little more intense?', options);
-        }
-        setPace(label) {
-            if (this.level) this.level.textContent = label || 'Warm';
+        /**
+         * The whole footer, from one description of the state (P12).
+         *
+         * Progression is the primary action, so `Closer →` is the prominent control and easing is
+         * the quiet one beside it. That hierarchy is the correction P12 exists for: P11 made the
+         * de-escalation control the loudest thing in the card, which is exactly backwards for an
+         * experience whose emotional action is moving forward.
+         *
+         * Rebuilt rather than patched on every paint, because the *set* of controls changes with the
+         * level — there is no `Ease up` at Warm and no forward at the ceiling — and a renderer that
+         * toggles visibility on a fixed set is how a button ends up enabled in a state it cannot act
+         * in. That was half of the reported bug.
+         *
+         * Never called by a timer with a different level than the state has. Nothing here decides
+         * anything; it draws what `PrivatePace.describe` says.
+         */
+        setPace(shown) {
+            const state = shown && typeof shown === 'object' ? shown : { pace: String(shown || 'Warm') };
+            const pace = state.pace || 'Warm';
+            if (this.title) this.title.textContent = pace;
+            this._paintLadder(state);
+            this._paintControls(state);
+            const gentle = state.atFloor === true;
+            if (this.shell) this.shell.classList.toggle('is-gentle', gentle);
+            if (this.row) this.row.classList.toggle('is-gentle', gentle);
+            return pace;
         }
 
         /**
-         * The control stops inviting a tap once there is nothing left to lower (P11).
+         * The ladder, which is the answer to the most confusing thing in the screenshot.
          *
-         * The reported screenshot is six taps producing six identical lines, and the button is half
-         * of why: it went on saying `↓ Slow down` at the floor, which is an invitation. `✓ Gentle`
-         * says the request was accepted — the important word is "accepted", not "unavailable" — and
-         * disabling it removes the loop rather than merely making its output nicer.
+         * The header said `Sensual` and the footer said `Warm`. Both true — the preset is a ceiling
+         * and the level is where you are — and nobody could be expected to infer that from two
+         * words in two places. Three dots show the ceiling and the position at once.
          *
-         * It also de-emphasises the preset. A Sensual session slowed to Warm showed `Sensual` in the
-         * heading and `Warm` in the footer: both true, and together they read as the application
-         * insisting on a state the person had just rejected.
-         *
-         * Never called with `false` by a timer. Only an explicit user choice leaves this state, so
-         * the caller is the one that must know that; see `_slowDown`.
+         * A one-level preset gets no ladder: `Warm` on its own is not progress, and drawing a single
+         * dot would imply there is somewhere else to be.
          */
-        setGentle(gentle) {
-            const on = gentle !== false;
-            if (this.shell) this.shell.classList.toggle('is-gentle', on);
-            if (this.row) this.row.classList.toggle('is-gentle', on);
-            if (this.cozyButton) {
-                this.cozyButton.textContent = on ? '✓ Gentle' : '↓ Slow down';
-                this.cozyButton.disabled = on;
-                this.cozyButton.classList.toggle('is-gentle', on);
-                this.cozyButton.setAttribute('aria-label', on ? 'Already as gentle as this gets' : 'Slow this down');
+        _paintLadder(state) {
+            if (!this.level) return null;
+            this.level.textContent = '';
+            const steps = Array.isArray(state.steps) ? state.steps : [];
+            if (!state.hasLadder || !steps.length) {
+                this.level.textContent = state.pace || 'Warm';
+                return this.level;
             }
-            return on;
+            this.level.setAttribute('aria-label', `${state.pace}, step ${state.level} of ${state.maxLevel}`);
+            steps.forEach((step, index) => {
+                if (index > 0) {
+                    const rule = this.doc.createElement('span');
+                    rule.className = 'nexus-private-rung';
+                    rule.setAttribute('aria-hidden', 'true');
+                    this.level.appendChild(rule);
+                }
+                const dot = this.doc.createElement('span');
+                dot.className = 'nexus-private-step';
+                dot.dataset.privateStep = String(step.level);
+                if (step.reached) dot.classList.add('is-reached');
+                if (step.current) dot.classList.add('is-current');
+                // The word only on the step you are on: three labels in a phone-width footer is a
+                // legend, and a legend is something to read rather than something to glance at.
+                dot.textContent = step.current ? step.label : '•';
+                this.level.appendChild(dot);
+            });
+            return this.level;
+        }
+
+        /**
+         * Forward first, easing second, End last — and only the ones that can act.
+         *
+         * `End` is rebuilt with the rest so the DOM order matches the hierarchy; it does the same
+         * thing it always did.
+         */
+        _paintControls(state) {
+            if (!this.controls) return null;
+            this.controls.textContent = '';
+            this.forwardButton = null;
+            this.easeButton = null;
+            if (state.canEase) {
+                this.easeButton = this._button('← Ease up', 'ease', this.handlers.onEase);
+                this.easeButton.classList.add('is-secondary');
+                this.easeButton.setAttribute('aria-label', 'One step gentler');
+                this.controls.appendChild(this.easeButton);
+            }
+            if (state.forward) {
+                this.forwardButton = this._button(`${state.forward} →`, 'closer', this.handlers.onCloser);
+                this.forwardButton.classList.add('is-primary');
+                this.forwardButton.setAttribute('aria-label', `${state.forward} — one step more intense`);
+                this.controls.appendChild(this.forwardButton);
+            }
+            this.controls.appendChild(this._button('End', 'end', this.handlers.onEnd));
+            return this.controls;
         }
 
         /**
@@ -677,6 +744,17 @@ const PrivateConversationView = (() => {
         }
 
         /**
+         * And back up, when the person asked for more rather than less (P12).
+         *
+         * The same dial the other way. Without it a session that eased off and then pressed `Closer`
+         * would stay at the quieter level for the rest of the evening — the music remembering a
+         * request the person had since reversed.
+         */
+        restoreSoundtrack(volume = VOLUME) {
+            return this.softenSoundtrack(volume);
+        }
+
+        /**
          * Turn the music down, after the fact (P11).
          *
          * Half of what makes `Slow down` feel like it did something. A control that changes one word
@@ -737,7 +815,8 @@ const PrivateConversationView = (() => {
             // The only copy of the conversation, dropped with the card. See `_history`.
             this._history = [];
             this._soundtrackCard = null;
-            this.cozyButton = this.shell = this.status = null;
+            this.controls = this.forwardButton = this.easeButton = this.title = null;
+            this.shell = this.status = null;
             this.row = this.card = this.level = this.log = null;
         }
         _ensureConversationVisible() {

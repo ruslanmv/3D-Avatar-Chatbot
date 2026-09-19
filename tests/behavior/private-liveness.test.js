@@ -119,15 +119,19 @@ describe('the beats survive a tab that was not being watched', () => {
         expect(copy()).toMatch(/mood|feel/i);
 
         // Four minutes of wall clock pass with the tab hidden and its timers throttled to a
-        // single late tick. Before this, the closing and the completion were simply lost.
+        // single late tick. Before this, the later beats were simply lost.
         hiddenFor(260000);
-        // Long enough for the backlog to arrive a line at a time: P12 delivers at most one
-        // guided beat per tick and re-looks a second later, so catching up is a short sequence
-        // of lines rather than all four at once.
+        // Long enough for the backlog to arrive a line at a time: at most one guided beat per tick,
+        // re-looking a second later, so catching up is a short sequence rather than all of it at
+        // once.
         jest.advanceTimersByTime(120000);
 
-        expect(session.state).toBe('complete');
-        expect(document.querySelector('.nexus-private-complete')).not.toBeNull();
+        // Every beat arrived — and the session is still running, because nothing but `End` finishes
+        // a Private session now. "later nothing happens" is fixed by the beats landing, not by the
+        // card reaching a completion screen.
+        expect(session._beats.every((b) => b.done)).toBe(true);
+        expect(session.state).toBe('active');
+        expect(document.querySelector('.nexus-private-complete')).toBeNull();
 
         s.activity.stop('user');
     });
@@ -164,10 +168,10 @@ describe('the beats survive a tab that was not being watched', () => {
         // One late tick, which is all a throttled tab gets.
         jest.advanceTimersByTime(60000);
 
-        // Every beat is marked done exactly once, and the session lands at the end rather
-        // than walking through five minutes of catch-up.
+        // Every beat is marked done exactly once, rather than the session walking through five
+        // minutes of catch-up. It stays active: the beats are the arc, not an ending.
         expect(session._beats.every((b) => b.done)).toBe(true);
-        expect(session.state).toBe('complete');
+        expect(session.state).toBe('active');
 
         s.activity.stop('user');
     });
@@ -182,9 +186,12 @@ describe('the beats survive a tab that was not being watched', () => {
             throw new Error('beat exploded');
         };
         hiddenFor(300000);
-        jest.advanceTimersByTime(60000);
+        jest.advanceTimersByTime(120000);
 
-        expect(session.state).toBe('complete');
+        // The other beats still ran, which is the guarantee: one that throws does not take the
+        // evening with it. The session stays active, because nothing but `End` ends one.
+        expect(session._beats.every((b) => b.done)).toBe(true);
+        expect(session.state).toBe('active');
         expect(console.warn).toHaveBeenCalled();
         console.warn.mockRestore();
         s.activity.stop('user');

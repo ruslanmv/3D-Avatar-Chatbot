@@ -7,9 +7,14 @@
  *
  * A level advances on exactly two things: an explicit affirmative answer to a check-in she
  * asked, or unmistakable user initiation. Never on a timer, never on inference, never
- * because the conversation "seemed to be going that way". And never before `perLevelMinMs`
- * has passed at the current level — so the fastest possible path from level 1 to level 4 is
- * six minutes of somebody actively saying yes three times.
+ * because the conversation "seemed to be going that way".
+ *
+ * Each route has a floor, and they are different numbers because they answer different
+ * questions. `perLevelMinMs` — two minutes — is how often the experience may *offer*, and it
+ * is protection against being pestered. `userStepMinMs` — four seconds — is how often a
+ * person who is pressing a button may press it again, and it is protection against a stray
+ * finger. Holding the second route to the first meant the interface refused a request it had
+ * just been given; see `initiated`.
  *
  * The check-in is not a formality to be got past. `checkIn()` asks and then **waits**: until
  * an answer arrives the flow is `pending`, and a pending flow does not advance no matter
@@ -149,10 +154,39 @@ const ConsentFlow = (() => {
             return this.escalation.perLevelMinMs || 120000;
         }
 
-        /** Has this level been held long enough for the next to be offered? */
+        /**
+         * The other clock. See the profile's `USER_STEP_MIN_MS` for why there are two.
+         *
+         * Short, and deliberately so: this is the floor under a person pressing a button, not under
+         * the experience asking a question.
+         */
+        get userStepMinMs() {
+            const configured = this.escalation.userStepMinMs;
+            return configured == null ? 4000 : Math.max(0, Number(configured) || 0);
+        }
+
+        /** Has this level been held long enough for the next to be *offered*? */
         earned(at = this.now()) {
             if (this.levelSince === null) return false;
             return at - this.levelSince >= this.perLevelMinMs;
+        }
+
+        /**
+         * Has it been held long enough for the user to step up from it themselves?
+         *
+         * Separate from `earned` because the two answer different questions, and answering them with
+         * one number made the interface refuse a request it had just been given: a person who
+         * deliberately presses `Closer →` was told to wait two minutes, which is the cadence for
+         * *her* asking, not for them.
+         *
+         * This is still a floor rather than nothing. A double-tap, or a fast triple-tap in a moment
+         * of impulse, should not carry an evening to the ceiling before anybody has read a word of
+         * it. Escalation remains something that happens on purpose; this only asks that the purpose
+         * outlast a stray finger.
+         */
+        stepReady(at = this.now()) {
+            if (this.levelSince === null) return false;
+            return at - this.levelSince >= this.userStepMinMs;
         }
 
         // ── entering and leaving ─────────────────────────────────────────────
@@ -281,16 +315,47 @@ const ConsentFlow = (() => {
         }
 
         /**
-         * Unmistakable user initiation — §16.4's second route. The caller decides what
-         * counts as unmistakable; this refuses everything the check-in path would refuse,
-         * so the second route is never the looser one.
+         * Unmistakable user initiation — §16.4's second route. The caller decides what counts as
+         * unmistakable; everything this route grants, the user asked for in so many words.
+         *
+         * It used to hold this route to `earned`, on the reasoning that the second route must never
+         * be the looser one. That reasoning conflated two clocks. `perLevelMinMs` is the cadence at
+         * which the experience may *offer* — protection against being pestered — and applying it
+         * here meant a person who pressed `Closer →` was told, in effect, to wait two minutes for a
+         * question they had already answered. The floor that belongs on this route is
+         * `userStepMinMs`: enough to survive a stray finger, invisible to anybody moving at the pace
+         * of a conversation.
+         *
+         * Everything else the check-in path refuses, this still refuses. It cannot exceed the
+         * ceiling, it does nothing outside the tier, and nothing but a caller reporting an explicit
+         * request ever reaches it — there is no timer, no inference and no model output on this path.
          */
         initiated(at = this.now()) {
             if (!this.active) return { action: 'ignored', why: 'not in the tier' };
             if (this.level >= this.maxLevel) return { action: 'ignored', why: 'at the top already' };
-            if (!this.earned(at)) return { action: 'ignored', why: 'this level has not been held long enough' };
+            if (!this.stepReady(at)) return { action: 'ignored', why: 'this level has only just started' };
             this.lastInputAt = at;
             return this._advance(this.level + 1, at, 'initiated');
+        }
+
+        /**
+         * One level gentler, because the user asked for one level gentler.
+         *
+         * Down needs no earning and never has: `exit('soft')` has always dropped straight to the
+         * bottom from anywhere, in one tick, from any state. This is the same permission with finer
+         * resolution — for a control that steps rather than jumps, so somebody at Sensual who wants
+         * Romantic is not sent all the way to Warm.
+         *
+         * `exit('soft')` stays exactly as it was: it is the safe *word*, and a safe word should not
+         * have degrees. A pending check-in is dropped here too, because a question about going
+         * further is not one to leave standing in front of somebody who has just gone back.
+         */
+        eased(at = this.now()) {
+            if (!this.active) return { action: 'ignored', why: 'not in the tier' };
+            this.lastInputAt = at;
+            this.pending = null;
+            if (this.level <= 1) return { action: 'ignored', why: 'at the bottom already' };
+            return this._advance(this.level - 1, at, 'eased');
         }
 
         _advance(to, at, why) {
@@ -352,6 +417,7 @@ const ConsentFlow = (() => {
                 level: this.level,
                 pending: this.pending ? this.pending.level : null,
                 earned: this.earned(),
+                stepReady: this.stepReady(),
                 checkIns: this.checkIns,
                 advances: this.advances,
                 declines: this.declines,

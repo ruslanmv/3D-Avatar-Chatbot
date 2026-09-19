@@ -55,6 +55,20 @@
      * waiting this long **while the person was talking** is dropped rather than delivered late. A
      * silent session still gets every beat, however late: that is the session the arc is for.
      */
+    /**
+     * What she says on the way back down, per level arrived at.
+     *
+     * One per step, and distinct, because `_speakStepLine` refuses a line it has already said this
+     * session — a single shared fallback would leave the *second* ease step silent, which reads as
+     * the control having stopped working. `PrivateBeats` writes `levelLines` for the way up; this is
+     * the other direction, and it stays here because it is three sentences rather than a pool.
+     */
+    const EASE_LINES = Object.freeze({
+        1: 'Of course. All the way back to gentle, and we can stay here.',
+        2: 'Mm. A step back, then. Nothing has to be more than this.',
+        3: 'Easing off a little. Still close, just slower.',
+    });
+
     const GUIDANCE = Object.freeze({
         idleMs: 18000,
         staleAfterMs: 90000,
@@ -306,10 +320,26 @@
                       : 'The user chose a tender mood for this session: keep your replies slow, soft and unhurried.',
               ]
             : [];
+        const pace = paceModel();
+        const shown = pace
+            ? pace.describe({ level, energy: session && session.energy, maxLevel: preset.maxLevel })
+            : null;
         return [
             '',
             'ACTIVE PRIVATE EXPERIENCE',
             `The user deliberately started the ${preset.label} Private experience. Current consent level: ${level}. Preset ceiling: ${preset.maxLevel}.`,
+            // Where on the ladder, in the words the person is looking at, and — when they have moved
+            // it — that *they* moved it (P12). Progression is now the primary control, so the model
+            // needs to know it was asked for rather than guess from a number going up. The last
+            // clause is what stops her treating her own arrival at a level as licence to push on.
+            ...(shown
+                ? [
+                      `They are at ${shown.pace}${shown.atCeiling ? ', which is this preset’s ceiling' : ` of ${shown.maxLevel} steps`}.`,
+                      session && session._advances > 0
+                          ? 'They asked for this step themselves. Match it without commenting on the control they used, and without proposing the next one — there is a button for that and it is theirs to press.'
+                          : 'They have not asked for anything more intense. Do not offer or imply it.',
+                  ]
+                : []),
             ...moodLine,
             ...privateLengthLines(session && session._turn, session && session.style),
             // Explicit, not inferred from an absence. See `slowedLines`.
@@ -547,6 +577,14 @@
             /** Guided lines are held until this time. See `_suppressGuidance`. */
             this._guidanceHeldUntil = 0;
             /**
+             * How many steps forward the person has taken (P12).
+             *
+             * Read by the prompt overlay, which needs to say that the current level was *asked for*
+             * rather than let the model infer intent from a number. Counts presses and typed
+             * requests alike, because both are the same explicit act.
+             */
+            this._advances = 0;
+            /**
              * What this session has already said and already offered (P11).
              *
              * Six identical lines was one symptom of a script with no memory of itself. Every guided
@@ -612,19 +650,21 @@
                 named ? `${this._line('opening')} ${place} feels like a good place for it.` : this._line('opening')
             );
             this._startSoundtrack();
-            // Earliest-at rather than fires-at, and every one of these waits for a quiet moment
-            // (P12) — except the ending, which has its own bounded grace and would otherwise
-            // never arrive for somebody who keeps typing.
+            // Earliest-at rather than fires-at, and each of these waits for a quiet moment.
             //
-            // The closing is not droppable: an evening that ends without one ends abruptly, and
-            // "this was nice" arriving a little late is still worth saying. The three before it
-            // are, because each of them is a question or an observation written for a lull, and
-            // a conversation that never had one has already answered them.
+            // What is *not* here any more (P12): the consent check-in at 120 s, the closing line at
+            // 285 s and the completion at 300 s. Private is a persistent mode, not a five-minute arc
+            // toward an ending — so intensity is driven by the footer's forward control whenever the
+            // person wants it rather than offered by a script that has waited two minutes, there is
+            // no "that was nice, let us leave it here" on a clock, and nothing completes the session
+            // but `End`.
+            //
+            // These two are what a scripted beat is actually good for: a question about texture when
+            // nothing has been said yet, and an observation to fill a lull. Both are droppable,
+            // because a conversation that never had a lull has already answered them.
             this._beat(45000, () => this._showMoodChoice());
-            this._beat(120000, () => this._offerCheckIn());
             this._beat(210000, () => this._speak(this._moodLine('middle')));
-            this._beat(285000, () => this._speak(this._moodLine('closing')), { stale: false });
-            this._beat(300000, () => this._complete(), { guided: false });
+            this._beat(330000, () => this._offerTextureChoice());
             this._armBeats();
             this._emit('private:session-start', {
                 preset: this.preset.id,
@@ -683,7 +723,6 @@
         }
 
         statusDetail() {
-            if (this.state === 'checkin-pending') return 'Your choice';
             if (this.state === 'complete') return 'Complete';
             if (this.state === 'restoring') return 'Restoring';
             return 'Private';
@@ -756,10 +795,16 @@
                 return turn;
             }
             if (turn.intent === 'pace-down') {
-                // The same control, reached by typing it. One implementation, so a typed "slow
-                // down" is idempotent for the same reason the button is — and so somebody who taps
-                // the button and then types the words does not get the acknowledgement twice.
-                this._slowDown();
+                // Typed, so it is a *word* rather than a step on a dial — and a word asking to slow
+                // down is answered the way `cozy` is: all the way down, in one tick, from anywhere.
+                // The stepping control is for somebody steering; this is for somebody who wants it
+                // to stop being intense now.
+                this._softenAllTheWay();
+            }
+            if (turn.intent === 'pace-up-request') {
+                // Asked for, not granted. The same route the button takes, so `initiated` and the
+                // ceiling decide — and so "come closer" cannot skip a step the button could not.
+                this._advanceIntensity();
             }
             return turn;
         }
@@ -828,87 +873,199 @@
         }
 
         /**
-         * `Slow down` is a control, not a conversation prompt (P11).
+         * One step closer, because the person asked for one step closer (P12).
          *
-         * The reported screenshot: six taps, six identical HER turns. The cause was two-layered and
-         * both layers are fixed here. The button called `ConsentFlow.exit('soft')` directly, which
-         * emits `adult:exit` even at the floor; the listener turned every event into speech. So the
-         * control had no idempotence *and* its confirmation was dialogue.
+         * This is Private's primary action, and promoting it is the correction P12 exists for. The
+         * mechanism was already here — a scripted question eventually showed a button and took the
+         * answer through the gate — but it was reachable only on a two-minute timer. So the
+         * emotional centre of the experience was something that happened *to* the person
+         * occasionally, while the loudest control in the card was de-escalation.
          *
-         * Four properties this must have, and they are the whole design:
+         * Four properties, the mirror of `_easeUp`'s:
          *
-         *   **Idempotent.** At the floor it changes nothing and says nothing. Not "says something
-         *   shorter" — nothing. A second tap is a no-op with a UI confirmation.
+         *   **Explicit.** Nothing but a press or a typed request reaches this. No timer, no
+         *   inference, no reading of the mood — `proactiveNsfw: false` and there is still no code
+         *   path that raises a level without somebody asking.
          *
-         *   **Immediate.** Everything below is local. No provider, no await, no LLM. A
-         *   de-escalation that waits on a network is one that can fail to happen.
+         *   **Immediate.** The acknowledgement is local and written. Waiting on a provider to find
+         *   out whether your own tap worked is the thing that made this feel like a workflow.
          *
-         *   **Predictable.** One transition table (`PrivatePace.softer`), no randomness, no
-         *   personality. The curiosity belongs in how the experience behaves afterwards.
+         *   **One step.** Warm → Romantic → Sensual, never two at once, never straight to the
+         *   ceiling. Precise control in both directions is the whole point of a two-way control.
          *
-         *   **Never repetitive.** The acknowledgement is spoken at most once per session and lives
-         *   in the footer, not the transcript — a safety confirmation is UI state, and putting it in
-         *   the history means the model reads six of them too.
-         *
-         * What the person should actually feel, within about a tenth of a second: the music drops,
-         * she settles, the guided beat and any pending check-in are cancelled, the card goes a shade
-         * calmer, and the control changes to `✓ Gentle`. That multimodal shift is far more
-         * convincing than another paragraph explaining what the button did.
+         *   **Not an arc.** Reaching the ceiling is a place to stay, not an ending. Nothing here
+         *   completes the session; only `End` does.
          */
-        _slowDown() {
+        _advanceIntensity() {
             if (this._stopped || this.state === 'complete') return false;
             const pace = paceModel();
             const level = Math.max(1, Number(this.adult && this.adult.level) || 1);
-            const current = { level, energy: this.energy, maxLevel: this.preset.maxLevel };
-            const next = pace ? pace.softer(current) : { level: 1, energy: 'quiet', changed: level > 1 };
+            const next = pace
+                ? pace.stepUp({ level, energy: this.energy, maxLevel: this.preset.maxLevel })
+                : { changed: false };
 
-            // Already as gentle as the experience goes. The confirmation is the whole response:
-            // the request was heard, and there is nothing to narrate.
+            // At the preset's ceiling. The forward control is not drawn here, so this is reachable
+            // only by a typed request — and the honest answer is that there is no more to give
+            // rather than a line implying the preset could be changed mid-session.
             if (!next.changed) {
-                if (this.view && typeof this.view.setGentle === 'function') this.view.setGentle(true);
-                if (this.view && typeof this.view.showTransientStatus === 'function') {
-                    this.view.showTransientStatus('✓ Already gentle');
-                }
+                this._status('✓ As close as this preset goes');
+                return false;
+            }
+
+            // The gate decides, not this file. `initiated` is §16.4's user-initiation route: it
+            // still refuses to exceed the ceiling and still refuses outside the tier, and its floor
+            // is now `userStepMinMs` rather than the two-minute cadence for *her* asking.
+            const asked = this.adult && typeof this.adult.initiated === 'function' ? this.adult.initiated() : null;
+            if (!asked || asked.action !== 'advanced') {
+                // The only realistic refusal is a second press inside four seconds — a double-tap.
+                // Say so without drama and without moving anything.
+                this._status('✓ Give it a moment');
+                return false;
+            }
+
+            this._advances += 1;
+            this.energy = next.energy;
+            // An explicit forward request is the one thing allowed to leave the quiet state. Not a
+            // timer, not a warm turn, not the model's reading of the mood.
+            this._styleLocked = false;
+            this.style = null;
+            this._guidanceHeldUntil = 0;
+            this._paintLevel();
+            this._status(`✓ ${(paceModel() && paceModel().PACE_LABELS[asked.level]) || 'Closer'}`);
+            // Presence rather than performance: never the adult ceiling's own intents. See `_intent`.
+            this._intent('lean_in', 0.35);
+            // The music comes back up to where it started, since the person asked for more rather
+            // than less. `softenSoundtrack` took it down; this is the same dial the other way.
+            if (this.view && typeof this.view.restoreSoundtrack === 'function') this.view.restoreSoundtrack();
+            this._speakStepLine('levelLines', asked.level, 'Okay. A little closer, still at your pace.');
+            this._emit('private:intensity', {
+                preset: this.preset.id,
+                level: asked.level,
+                energy: this.energy,
+                direction: 'up',
+            });
+            return true;
+        }
+
+        /**
+         * One step gentler, because the person asked for one step gentler (P12).
+         *
+         * Secondary to the forward control and always available while there is a step to give back.
+         * It keeps everything P11 got right — idempotent at the floor, silent when it cannot act,
+         * never a paragraph explaining itself — and drops what P11 got wrong: it stepped from Sensual
+         * to Warm in one tap. That is correct for a safe *word*, and `ConsentFlow.exit('soft')` still
+         * does exactly that for `cozy` and for the typed phrases the director reads as a pace
+         * request. It is the wrong shape for a control somebody is steering with, where a cliff is
+         * not precision.
+         */
+        _easeUp() {
+            if (this._stopped || this.state === 'complete') return false;
+            const pace = paceModel();
+            const level = Math.max(1, Number(this.adult && this.adult.level) || 1);
+            const next = pace
+                ? pace.stepDown({ level, energy: this.energy, maxLevel: this.preset.maxLevel })
+                : { changed: false };
+
+            // Already as gentle as the experience goes. The confirmation is the whole response: the
+            // request was heard, and there is nothing to narrate. Six identical lines came from
+            // narrating this case.
+            if (!next.changed) {
+                this._status('✓ Already gentle');
                 return true;
             }
 
-            // The consent floor is `ConsentFlow`'s to lower, never this file's. Asked only when the
-            // pace actually moved, which is what stops the unconditional `adult:exit` at level 1.
-            if (next.loweredPace && this.adult && typeof this.adult.exit === 'function') {
-                this.adult.exit('soft');
-            }
+            // The consent level is `ConsentFlow`'s to lower, never this file's. `eased` is one step;
+            // `exit('soft')` remains the all-the-way-down safe word.
+            if (next.loweredPace && this.adult && typeof this.adult.eased === 'function') this.adult.eased();
 
             this.energy = next.energy;
-            // Not a suggestion from the classifier this time — an explicit request, and P15's
-            // adaptive style must not drift back out of it on the next chatty turn.
+            if (next.atFloor) {
+                // At the bottom of both dials the register is a request rather than a suggestion, and
+                // the classifier must not drift back out of it on the next chatty turn.
+                this.style = 'quiet';
+                this._styleLocked = true;
+                this._suppressGuidance(GUIDANCE.afterSlowDownMs);
+            }
+            this._withdrawOffers();
+            this._paintLevel();
+            this._status(next.loweredPace ? '✓ Pace eased' : '✓ Quieter');
+            if (this.view && typeof this.view.softenSoundtrack === 'function') this.view.softenSoundtrack();
+            this._intent('breathe', 0.2);
+            this._speakStepLine('easeLines', next.level, EASE_LINES[next.level]);
+            this._emit('private:intensity', {
+                preset: this.preset.id,
+                level: next.level,
+                energy: this.energy,
+                direction: 'down',
+            });
+            return true;
+        }
+
+        /**
+         * The one short line a step is worth, from the plan when it has one.
+         *
+         * Through `_sayBrief` rather than `_speak`: a step acknowledgement belongs on screen and in
+         * the voice, and belongs out of the history for the same reason P11's did — the model
+         * answering the next turn already knows the level from the prompt overlay, and a line about
+         * the control is something it might elaborate on instead.
+         *
+         * The novelty ledger still applies, so a step taken twice in an evening — down and then up
+         * and then down again — cannot produce the same sentence twice.
+         */
+        _speakStepLine(field, level, fallback) {
+            const lines = (this.plan && this.plan[field]) || null;
+            const written = lines && (lines[level] || lines[String(level)]);
+            const line = cleanText(written || fallback, 200);
+            if (!line) return false;
+            const novelty = noveltyModel();
+            if (novelty && this.novelty) {
+                if (novelty.saidAlready(this.novelty, line)) return false;
+                novelty.noteLine(this.novelty, line);
+            }
+            return this._sayBrief(line);
+        }
+
+        /**
+         * All the way down, for a request phrased as a word rather than a step.
+         *
+         * A typed "slow down", "too much", "cozy". `ConsentFlow.exit('soft')` is the right mechanism
+         * — one tick, from any state, straight to the bottom, no degrees — because a safe word should
+         * not need to be repeated to be obeyed. The stepping controls are for steering; this is for
+         * being heard.
+         *
+         * Idempotent for the same reason `_easeUp` is: at the floor it changes nothing and says
+         * nothing, so a person who taps `← Ease up` and then types the words does not get two
+         * acknowledgements for one request.
+         */
+        _softenAllTheWay() {
+            if (this._stopped || this.state === 'complete') return false;
+            const pace = paceModel();
+            const level = Math.max(1, Number(this.adult && this.adult.level) || 1);
+            if (pace && pace.atFloor({ level, energy: this.energy, maxLevel: this.preset.maxLevel })) {
+                this._status('✓ Already gentle');
+                return true;
+            }
+            if (level > 1 && this.adult && typeof this.adult.exit === 'function') this.adult.exit('soft');
+            this.energy = 'quiet';
             this.style = 'quiet';
             this._styleLocked = true;
-
             this._withdrawOffers();
             this._suppressGuidance(GUIDANCE.afterSlowDownMs);
-            // Paints the pace word *and* the gentle control, from the state, so the two cannot
-            // disagree. See `_paintLevel`.
             this._paintLevel();
-            if (this.view && typeof this.view.showTransientStatus === 'function') {
-                this.view.showTransientStatus('✓ Pace softened');
-            }
+            this._status('✓ Pace softened');
             if (this.view && typeof this.view.softenSoundtrack === 'function') this.view.softenSoundtrack();
-            // Something small and physical, so the change is felt rather than only read.
             this._intent('breathe', 0.2);
-
-            // Once per session, in her voice, and deliberately tiny. Two words acknowledge without
-            // explaining; anything longer is the control narrating itself, which is what this
-            // milestone exists to remove.
-            const ledger = this.novelty;
-            const ack = 'Got you.';
-            const allowed = !ledger || !noveltyModel() || noveltyModel().canUse(ledger, 'safety-ack', { line: ack }).ok;
-            if (allowed) {
-                if (ledger && noveltyModel()) noveltyModel().use(ledger, 'safety-ack', { line: ack });
-                this._sayBrief(ack);
-            }
-
-            this._emit('private:slow-down', { preset: this.preset.id, level: next.level, energy: next.energy });
+            this._speakStepLine('easeLines', 1, EASE_LINES[1]);
+            this._emit('private:intensity', { preset: this.preset.id, level: 1, energy: 'quiet', direction: 'down' });
             return true;
+        }
+
+        /** The footer's transient line, when there is a view to put it in. */
+        _status(text) {
+            if (this.view && typeof this.view.showTransientStatus === 'function') {
+                return this.view.showTransientStatus(text);
+            }
+            return false;
         }
 
         /**
@@ -935,16 +1092,14 @@
          *
          * A check-in asking "a little more intense?" — or a mood choice offering `Playful` — while
          * the person has just pressed `Slow down` is the interface arguing with them. `state` goes
-         * back to `active` so `_acceptCheckIn` can no longer be answered, and the buttons are spent
-         * so nothing on screen can be tapped into a level the person just refused. In a rolling
-         * transcript that matters more than it would in a card that wipes itself: an un-spent offer
-         * stays tappable for the rest of the evening.
+         * The buttons are spent so nothing on screen can be tapped into a state the person just
+         * refused. In a rolling transcript that matters more than it would in a card that wipes
+         * itself: an un-spent offer stays tappable for the rest of the evening.
          *
          * The questions stay *visible*, because they were part of the conversation. They stop being
          * controls, which is the part that was arguing.
          */
         _withdrawOffers() {
-            if (this.state === 'checkin-pending') this.state = 'active';
             if (this.view && typeof this.view.consumePending === 'function') this.view.consumePending();
             const ledger = this.novelty;
             if (ledger && noveltyModel()) noveltyModel().noteAnswered(ledger);
@@ -1134,21 +1289,22 @@
          * keeps the arc's shape — the check-in does not arrive thirty seconds after the opening —
          * and `_tick` decides whether the evening actually wants the line yet.
          *
+         * Every beat is guided — it waits for a quiet moment. There used to be one that did not,
+         * the 300-second completion, and P12 removed it along with the idea that an evening ends on
+         * a clock. The option that exempted it is gone too rather than left as a promise nothing
+         * keeps: a future non-guided beat would need the overtake protection back with it.
+         *
          * @param {number} at         earliest elapsed ms at which this beat may speak
          * @param {Function} run      what it says
          * @param {object} [options]
-         * @param {boolean} [options.guided=true]  whether it waits for a quiet moment. The
-         *        ending does not: it has its own bounded grace, and an ending that waits for
-         *        silence from somebody who keeps typing never happens.
          * @param {boolean} [options.stale=true]   whether it may be dropped for arriving too
          *        late to be worth saying. See `GUIDANCE.staleAfterMs`.
          */
-        _beat(at, run, { guided = true, stale = true } = {}) {
+        _beat(at, run, { stale = true } = {}) {
             this._beats.push({
                 at: Math.max(0, Number(at) || 0),
                 run,
                 done: false,
-                guided,
                 stale,
                 /** `_turns` when this beat first came due, for deciding whether it went stale. */
                 dueTurns: null,
@@ -1183,22 +1339,6 @@
             if (this.now() < (this._guidanceHeldUntil || 0)) return false;
             const since = this.now() - this._lastActivityAt();
             return since >= GUIDANCE.idleMs * (this.timingScale || 1);
-        }
-
-        /**
-         * Is there still something the evening wanted to say before this one?
-         *
-         * Only the ending asks. Bounded by the same grace the ending already had, because a
-         * deferred line that never gets its quiet moment must not hold the session open for
-         * ever: "it does not hang up on you" is the goal, and "it never ends while you keep
-         * typing" is a different and worse product.
-         */
-        _guidanceStillPending(beat, elapsed) {
-            const index = this._beats.indexOf(beat);
-            if (index <= 0) return false;
-            const grace = IntimateExperienceSession.GRACE_MS * (this.timingScale || 1);
-            if (elapsed > beat.at + grace) return false;
-            return this._beats.slice(0, index).some((earlier) => !earlier.done && earlier.guided);
         }
 
         /** Milliseconds since `start()`, in the session's own (test-scalable) timebase. */
@@ -1245,29 +1385,21 @@
                     beat.dueAt = this.now();
                     beat.dueTurns = this._turns;
                 }
-                if (!beat.guided && this._guidanceStillPending(beat, elapsed)) {
-                    // The ending must not overtake the evening. A tab that was hidden for four
-                    // minutes comes back with every beat due at once, and because the ending is
-                    // the one beat that does *not* wait for a quiet moment it used to fire first
-                    // — so the session jumped from its opening line to the completion card and
-                    // the three beats in between were marked done having never run.
+                // One line per tick, so a tab that was hidden for four minutes comes back to a
+                // sentence rather than the whole backlog at once.
+                if (spoke) continue;
+                const waited = this.now() - beat.dueAt;
+                const talkedSince = this._turns - (beat.dueTurns || 0);
+                if (beat.stale && talkedSince > 0 && waited >= GUIDANCE.staleAfterMs * (this.timingScale || 1)) {
+                    // The conversation did this beat's job. Dropping it is the whole point:
+                    // delivering it now would be a script arriving after the scene it was written
+                    // for.
+                    beat.done = true;
                     continue;
                 }
-                if (beat.guided) {
-                    if (spoke) continue;
-                    const waited = this.now() - beat.dueAt;
-                    const talkedSince = this._turns - (beat.dueTurns || 0);
-                    if (beat.stale && talkedSince > 0 && waited >= GUIDANCE.staleAfterMs * (this.timingScale || 1)) {
-                        // The conversation did this beat's job. Dropping it is the whole point:
-                        // delivering it now would be a script arriving after the scene it was
-                        // written for.
-                        beat.done = true;
-                        continue;
-                    }
-                    if (!this._quietEnough()) continue;
-                }
+                if (!this._quietEnough()) continue;
                 beat.done = true;
-                if (beat.guided) spoke = true;
+                spoke = true;
                 try {
                     beat.run();
                 } catch (error) {
@@ -1315,8 +1447,13 @@
             const view = new PrivateViewApi.View({
                 doc: this.doc,
                 win: this.win,
-                onCozy: () => this._slowDown(),
-                onEnd: () => this._requestEnd(false),
+                onCloser: () => this._advanceIntensity(),
+                onEase: () => this._easeUp(),
+                // `End` is the only thing that finishes a Private session (P12). The completion card
+                // is not a timer's verdict on how long five minutes is; it is what the person gets
+                // when they decide they are done, and it is where the promise about nothing being
+                // kept is made.
+                onEnd: () => this._complete('user'),
                 onUserMessage: () => this._userIsTalking(),
             });
             if (!view.mount({ preset: this.preset, scene: currentSceneLabel(this.win) })) return;
@@ -1326,26 +1463,24 @@
         }
 
         /**
-         * The footer, from the state — both halves, in one place (P11).
+         * The whole footer, from the state, in one place.
          *
-         * `gentle` is painted here rather than only in `_slowDown` so the control cannot disagree
-         * with the experience. `Keep it sweet` on a check-in also soft-exits, which brings the energy
-         * down through the `adult:exit` listener; without this the button would still have been
-         * inviting a tap it could no longer act on, which is the state that produced six identical
-         * lines in the first place.
+         * Every path that can move the level or the energy ends here — the two controls, the typed
+         * requests, an `adult:level` event from anywhere, a decay — so the ladder and the set of
+         * buttons cannot disagree with the experience. A control enabled in a state it cannot act in
+         * is what produced six identical lines, and the fix for that class of bug is one renderer
+         * fed one description rather than several callers each remembering to update a button.
          *
-         * Nothing here is on a timer, so this can never un-gentle a session because time passed —
-         * only a state that genuinely left the floor can, and after a `Slow down` nothing offers to.
+         * Nothing here is on a timer of its own. It only ever draws what the state already is.
          */
         _paintLevel() {
+            if (!this.view) return;
             const pace = paceModel();
             const level = Math.max(1, Math.min(this.preset.maxLevel, Number(this.adult && this.adult.level) || 1));
             const shown = pace
                 ? pace.describe({ level, energy: this.energy, maxLevel: this.preset.maxLevel })
-                : { pace: level === 1 ? 'Warm' : level === 2 ? 'Romantic' : 'Sensual', gentle: false };
-            if (!this.view) return;
-            this.view.setPace(shown.pace);
-            if (typeof this.view.setGentle === 'function') this.view.setGentle(shown.gentle);
+                : { pace: level === 1 ? 'Warm' : level === 2 ? 'Romantic' : 'Sensual' };
+            this.view.setPace(shown);
         }
 
         _showMessage(text, actions, options) {
@@ -1477,84 +1612,26 @@
                 this._emit('private:texture', { preset: this.preset.id, texture: id });
             };
             this._recordOffer('texture-choice', texture.prompt);
+            // `texture-` prefixed, because `closer` is now the footer's forward control (P12) and
+            // two elements carrying one action id is a `querySelector` finding the wrong button.
+            // They never appear together — the texture choice only runs at the ceiling, where there
+            // is no forward control — and relying on that would be relying on a coincidence.
             this._showMessage(texture.prompt, [
-                { id: 'quieter', label: 'Quieter', run: () => choose('quieter') },
-                { id: 'closer', label: 'Closer', run: () => choose('closer') },
+                { id: 'texture-quieter', label: 'Quieter', run: () => choose('quieter') },
+                { id: 'texture-closer', label: 'Closer', run: () => choose('closer') },
             ]);
         }
 
-        _offerCheckIn() {
-            if (this.state === 'complete' || this._stopped || !this.adult) return;
-            // Somebody who asked to slow down is not to be offered an escalation. Not deferred —
-            // dropped: the whole point of the control is that it is not a negotiation, and a
-            // check-in arriving later would make it one.
-            if (this.style === 'quiet' && this._styleLocked) return;
-            const level = Number(this.adult.level) || 1;
-            if (level >= this.preset.maxLevel) {
-                this._offerTextureChoice();
-                return;
-            }
-            if (typeof this.adult.earned === 'function' && !this.adult.earned()) {
-                this._schedule(1000, () => this._offerCheckIn());
-                return;
-            }
-            if (!this._mayOffer('consent-checkin')) return;
-            this.state = 'checkin-pending';
-            const nextLabel = level + 1 >= 3 ? 'A little more sensual' : 'A little more flirty';
-            const options = [
-                {
-                    id: 'keep-sweet',
-                    label: 'Keep it sweet',
-                    run: () => {
-                        this._answeredOffer();
-                        if (level > 1 && typeof this.adult.exit === 'function') this.adult.exit('soft');
-                        this.state = 'active';
-                        this._showMessage('Sweet and easy it is.', []);
-                    },
-                },
-                {
-                    id: 'advance',
-                    label: nextLabel,
-                    run: () => {
-                        this._answeredOffer();
-                        this._acceptCheckIn();
-                    },
-                },
-            ];
-            this._recordOffer('consent-checkin');
-            if (this.view) this.view.showConsentCheckIn(options);
-        }
-
-        _acceptCheckIn() {
-            if (!this.adult || this.state !== 'checkin-pending') return false;
-            const asked = typeof this.adult.checkIn === 'function' ? this.adult.checkIn() : { ok: false };
-            if (!asked || asked.ok === false) {
-                this.state = 'active';
-                this._showMessage('We can keep the current pace.', []);
-                return false;
-            }
-            const answer = typeof this.adult.hear === 'function' ? this.adult.hear('yes') : null;
-            this.state = 'active';
-            this._paintLevel();
-            if (answer && answer.action === 'advanced') {
-                const level = Number(this.adult.level) || 1;
-                // Advancing used to repaint one word in the footer. Saying yes to a consent
-                // question deserves an answer in her voice, and — since `proactiveNsfw: false`
-                // means she may never initiate a motion the user did not ask for — words are
-                // the honest place for an escalation to land.
-                const lines = (this.plan && this.plan.levelLines) || null;
-                const spoken = lines && (lines[level] || lines[String(level)]);
-                if (spoken) this._speak(spoken);
-                else this._showMessage('Okay. A little closer, still at your pace.', []);
-                if (level < this.preset.maxLevel) {
-                    const floor = Math.max(1000, Number(this.adult.perLevelMinMs) || 120000);
-                    this._schedule(floor, () => this._offerCheckIn());
-                }
-                return true;
-            }
-            this._showMessage('We will keep the current pace.', []);
-            return false;
-        }
+        // `_offerCheckIn` and `_acceptCheckIn` are gone (P12).
+        //
+        // They were the forward mechanism, and the whole of the correction is that a mechanism
+        // reachable only through a scripted question on a two-minute timer is not a control. The
+        // footer's `Closer →` goes through `ConsentFlow.initiated` instead — §16.4's user-initiation
+        // route — so progression is something the person does rather than something they are
+        // occasionally offered.
+        //
+        // Deleted rather than left unreachable. A `checkin-pending` state nothing can enter, and a
+        // `Keep it sweet` button nothing can draw, read as live code to the next person here.
 
         async _startSoundtrack() {
             if (!this.win || this._stopped) return false;
@@ -1749,29 +1826,20 @@
             if (this.audioFocus && typeof this.audioFocus.restore === 'function') this.audioFocus.restore();
         }
 
-        /** How far past the scripted 300 s a live conversation may push the ending. */
-        static get GRACE_MS() {
-            return 180000;
-        }
-
-        _complete() {
-            if (this._stopped) return;
-            // The arc was five wall-clock minutes regardless of whether the user had written
-            // twenty messages or none, so somebody mid-sentence got the closing line and the
-            // completion card on a timer that had never heard them. `_conversationBusyUntil`
-            // already defers a *line* for a talker; an ending deserves at least as much.
-            // Bounded, because "it never ends while you keep typing" is a different and worse
-            // product than "it does not hang up on you".
-            const elapsed = this.now() - (this.startedAt || 0);
-            // Either a turn they sent or a key they pressed. See `_composingAt`: mid-sentence
-            // and mid-typing both deserve not to be hung up on, even though only one of them is
-            // allowed to hold a scheduled line.
-            const spokeAt = Math.max(this._lastTurnAt, this._composingAt);
-            const talking = this.now() - spokeAt < 30000 * (this.timingScale || 1);
-            if (talking && elapsed < (300000 + IntimateExperienceSession.GRACE_MS) * (this.timingScale || 1)) {
-                this._schedule(20000, () => this._complete());
-                return;
-            }
+        /**
+         * The session is over, because the person said so (P12).
+         *
+         * There is no other caller. Private used to complete on a 300-second timer, with a bounded
+         * grace so it would not hang up on somebody mid-sentence — which was the right patch for the
+         * wrong shape. Warm → Romantic → Sensual is not an arc toward completion; it is a place the
+         * person drives to and then stays. So the clock no longer has an opinion about when an
+         * evening is finished, and `GRACE_MS` is gone with the timer that needed it.
+         *
+         * The completion card stays, because it is where the promise is made: nothing from this
+         * moment was kept. That promise belongs to a deliberate exit rather than to a stopwatch.
+         */
+        _complete(why = 'user') {
+            if (this._stopped || this.state === 'complete') return;
             this.state = 'complete';
             this._clearTimers();
             // Only on a completed session, and only the four enums — never a word of what was
@@ -1795,7 +1863,12 @@
                     onBack: () => this._requestEnd(true),
                 });
             }
-            this._emit('private:session-complete', { preset: this.preset.id, mood: this.mood, turns: this._turns });
+            this._emit('private:session-complete', {
+                preset: this.preset.id,
+                mood: this.mood,
+                turns: this._turns,
+                why,
+            });
         }
 
         _requestEnd(openTogether) {

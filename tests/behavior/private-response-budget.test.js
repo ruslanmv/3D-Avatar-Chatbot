@@ -209,7 +209,7 @@ describe('stage directions, and the gate on the sanitiser (P14)', () => {
     });
 });
 
-describe('Slow down reaches the model, explicitly (P11)', () => {
+describe('the pace state reaches the model, explicitly (P11/P12)', () => {
     test('nothing is added before anybody asks', async () => {
         const s = setup();
         await s.activity.start({ input: { id: 'sensual' } });
@@ -223,7 +223,8 @@ describe('Slow down reaches the model, explicitly (P11)', () => {
         // infer wrong.
         const s = setup();
         await s.activity.start({ input: { id: 'sensual' } });
-        document.querySelector('[data-private-action="cozy"]').click();
+        // At Warm there is no easing control — nothing to ease — so the typed word is the route.
+        s.activity._privateExperience._softenAllTheWay();
 
         const prompt = Capability.privateSystemPromptSuffix();
         expect(prompt).toMatch(/asked to slow down/i);
@@ -239,7 +240,7 @@ describe('Slow down reaches the model, explicitly (P11)', () => {
         // this state, and time passing is not one.
         const s = setup();
         await s.activity.start({ input: { id: 'sensual' } });
-        document.querySelector('[data-private-action="cozy"]').click();
+        s.activity._privateExperience._softenAllTheWay();
 
         Surface.renderUser('you are lovely, you know');
         Surface.renderUser('what were you going to say before?');
@@ -252,7 +253,7 @@ describe('Slow down reaches the model, explicitly (P11)', () => {
     test('the reply budget follows the quieter register', async () => {
         const s = setup();
         await s.activity.start({ input: { id: 'sensual' } });
-        document.querySelector('[data-private-action="cozy"]').click();
+        s.activity._privateExperience._softenAllTheWay();
         Surface.renderUser('mm');
         expect(Capability.responseBudget()).toBeLessThanOrEqual(48);
         expect(Capability.privateSystemPromptSuffix()).toMatch(/present rather than talkative/i);

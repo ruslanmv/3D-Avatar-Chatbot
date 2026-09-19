@@ -100,14 +100,14 @@ describe('a beat never lands on top of a live turn', () => {
         // Well past 45 s, and twelve seconds past the old eight-second guess. The mood
         // question must not be on screen while she is mid-sentence.
         jest.advanceTimersByTime(60000);
-        expect(actions()).toEqual(['cozy', 'end']);
+        expect(actions()).toEqual(['closer', 'end']);
 
         stream.finish('I was thinking that this is enough, actually.');
         // Her sentence lands, and then the beat does — after a real pause, not in the same
         // instant. P12 asks for a quiet moment before an unprompted line, so the wait here is
         // `GUIDANCE.idleMs` rather than the breathing room alone.
         jest.advanceTimersByTime(6000);
-        expect(actions()).toEqual(['cozy', 'end']);
+        expect(actions()).toEqual(['closer', 'end']);
         jest.advanceTimersByTime(20000);
         expect(actions()).toEqual(expect.arrayContaining(['playful', 'tender']));
 
@@ -148,7 +148,7 @@ describe('a beat never lands on top of a live turn', () => {
         Surface.beginAssistant().discard();
 
         jest.advanceTimersByTime(60000);
-        expect(actions()).toEqual(['cozy', 'end']);
+        expect(actions()).toEqual(['closer', 'end']);
 
         s.activity.stop('user');
     });
@@ -163,7 +163,7 @@ describe('the valves, because a dead provider must not mute the evening', () => 
         Surface.beginAssistant(); // never finished, never discarded — the 504-and-retry loop
 
         jest.advanceTimersByTime(60000);
-        expect(actions()).toEqual(['cozy', 'end']);
+        expect(actions()).toEqual(['closer', 'end']);
 
         // Past the valve. The session resumes rather than sitting silent for the rest of the
         // evening, which is the worse of the two failures.
@@ -189,11 +189,13 @@ describe('the valves, because a dead provider must not mute the evening', () => 
         s.activity.stop('user');
     });
 
-    test('...but it is still a reason not to hang up on them', async () => {
-        // The two facts are deliberately separate. A keystroke may not hold a scheduled line,
-        // because an empty input somebody pressed Enter on would mute the session. It may
-        // absolutely postpone the ending: somebody still typing at the five-minute mark has not
-        // sent anything yet, and closing the session on them reads as being hung up on.
+    test('...but it is still counted as somebody being present', async () => {
+        // The two facts are deliberately separate. A keystroke may not hold a scheduled line, because
+        // an empty input somebody pressed Enter on would mute the session; it is still evidence that
+        // somebody is there, which is what `_lastActivityAt` reads for the lull rule.
+        //
+        // It used to also postpone the ending. There is no ending to postpone now (P12): a session
+        // runs until `End`, so nothing can hang up on anybody mid-sentence in the first place.
         const s = setup();
         await s.activity.start({ input: { id: 'romantic' } });
         const session = s.activity._privateExperience;
@@ -201,12 +203,13 @@ describe('the valves, because a dead provider must not mute the evening', () => 
         jest.advanceTimersByTime(295000);
         document.getElementById('speak-btn').click();
         jest.advanceTimersByTime(10000);
-        expect(session.state).not.toBe('complete');
-        expect(session._turns).toBe(0);
 
-        // Bounded, as it always was.
-        jest.advanceTimersByTime(200000);
-        expect(session.state).toBe('complete');
+        expect(session._turns).toBe(0);
+        expect(session._composingAt).toBeGreaterThan(0);
+        expect(session._quietEnough()).toBe(false);
+
+        jest.advanceTimersByTime(400000);
+        expect(session.state).toBe('active');
 
         s.activity.stop('user');
     });
@@ -219,13 +222,14 @@ describe('a typed safe word is answered locally, before the model is asked anyth
         // guarantee in ConsentFlow's own header is "within one scheduler tick".
         const s = setup();
         await s.activity.start({ input: { id: 'sensual' } });
-        jest.advanceTimersByTime(120000);
-        document.querySelector('[data-private-action="advance"]').click();
+        jest.advanceTimersByTime(5000);
+        document.querySelector('[data-private-action="closer"]').click();
         expect(s.adult.level).toBe(2);
 
         Surface.renderUser('slow down a bit, this is nice');
 
-        // No timers advanced, no reply from anybody.
+        // No timers advanced, no reply from anybody. Typed, so it is a word rather than a step: all
+        // the way down, the way `cozy` has always worked.
         expect(s.adult.level).toBe(1);
         expect(s.activity._privateExperience.energy).toBe('quiet');
         expect(document.querySelector('.nexus-private-status').textContent).toBe('✓ Pace softened');
@@ -239,12 +243,16 @@ describe('a typed safe word is answered locally, before the model is asked anyth
         const s = setup();
         await s.activity.start({ input: { id: 'sensual' } });
 
-        document.querySelector('[data-private-action="cozy"]').click();
+        // At Warm there is no easing control, so drive the same entry point the typed word uses and
+        // then type it twice: one acknowledgement for one request, not three.
+        const session = s.activity._privateExperience;
+        session._softenAllTheWay();
         Surface.renderUser('can we take it slower');
         Surface.renderUser('slower, please');
 
         expect(s.adult.level).toBe(1);
-        expect(herLines().filter((line) => line === 'Got you.')).toHaveLength(1);
+        expect(herLines().filter((line) => line === herLines()[herLines().length - 1])).toHaveLength(1);
+        expect(document.querySelector('.nexus-private-status').textContent).toBe('✓ Already gentle');
         s.activity.stop('user');
     });
 
@@ -278,8 +286,8 @@ describe('a typed safe word is answered locally, before the model is asked anyth
     test('an ordinary sentence changes nothing', async () => {
         const s = setup();
         await s.activity.start({ input: { id: 'sensual' } });
-        jest.advanceTimersByTime(120000);
-        document.querySelector('[data-private-action="advance"]').click();
+        jest.advanceTimersByTime(5000);
+        document.querySelector('[data-private-action="closer"]').click();
         expect(s.adult.level).toBe(2);
 
         Surface.renderUser('the light in here is nicer than I expected');
@@ -305,7 +313,7 @@ describe('a guided line waits for a lull, and gives up on one that never comes (
         }
 
         // Eighty seconds in, past two beats' earliest times, and neither has interrupted.
-        expect(actions()).toEqual(['cozy', 'end']);
+        expect(actions()).toEqual(['closer', 'end']);
 
         s.activity.stop('user');
     });
@@ -318,7 +326,7 @@ describe('a guided line waits for a lull, and gives up on one that never comes (
         Surface.renderUser('I was just thinking about the light in here');
         Surface.beginAssistant().finish('It is nicer with the lamp off.');
         jest.advanceTimersByTime(6000);
-        expect(actions()).toEqual(['cozy', 'end']);
+        expect(actions()).toEqual(['closer', 'end']);
 
         // They stop typing. Past the idle window, the script has something to offer.
         jest.advanceTimersByTime(20000);
@@ -359,28 +367,26 @@ describe('a guided line waits for a lull, and gives up on one that never comes (
 
         jest.advanceTimersByTime(400000);
         expect(session._beats.every((b) => b.done)).toBe(true);
-        expect(session.state).toBe('complete');
+        // And it is still running: the beats are the arc, not a countdown to an ending.
+        expect(session.state).toBe('active');
 
         s.activity.stop('user');
     });
 
-    test('the ending does not overtake the lines before it', async () => {
-        // The ending is the one beat that does not wait for a lull — it has its own bounded grace
-        // and would otherwise never arrive for somebody who keeps typing. That made it the first
-        // thing to fire when a hidden tab came back with everything due at once, so the session
-        // jumped from its opening straight to the completion card.
+    test('a backlog arrives a line at a time, not all at once', async () => {
+        // A tab hidden for four minutes comes back with every beat due. One per tick, so returning
+        // is a sentence rather than a wall of them.
         const s = setup();
         await s.activity.start({ input: { id: 'romantic' } });
         const session = s.activity._privateExperience;
 
         session._tick();
-        jest.setSystemTime(new Date(Date.now() + 320000));
+        jest.setSystemTime(new Date(Date.now() + 400000));
         session._tick();
 
-        expect(session.state).not.toBe('complete');
-        expect(session._beats[session._beats.length - 1].done).toBe(false);
-        // One line said, the rest still to come.
         expect(session._beats.filter((b) => b.done).length).toBe(1);
+        expect(session._beats.some((b) => !b.done)).toBe(true);
+        expect(session.state).toBe('active');
 
         s.activity.stop('user');
     });

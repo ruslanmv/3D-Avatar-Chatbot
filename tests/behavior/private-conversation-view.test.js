@@ -30,7 +30,9 @@ describe('PrivateConversationView', () => {
 
         const row = document.getElementById('nexus-private-conversation-row');
         expect(row.parentNode).toBe(document.getElementById('chat-history'));
-        expect(row.textContent).toContain('Romantic');
+        // The heading shows the level, not the preset (P12) — the preset is a ceiling and the
+        // ladder in the footer carries it.
+        expect(row.querySelector('.nexus-private-heading-title').textContent).toBe('Warm');
         expect(row.textContent).toContain('A private opening that must be visible.');
         expect(document.querySelector('.empty-state')).toBeNull();
         expect(document.getElementById('speech-text').placeholder).toBe('Talk privately…');
@@ -71,7 +73,7 @@ describe('PrivateConversationView', () => {
     });
 });
 
-describe('the gentle state, and a confirmation that is not conversation (P11)', () => {
+describe('the footer, and a confirmation that is not conversation (P12)', () => {
     let view;
 
     function mount() {
@@ -81,35 +83,112 @@ describe('the gentle state, and a confirmation that is not conversation (P11)', 
         return view;
     }
 
+    const ids = () => [...document.querySelectorAll('[data-private-action]')].map((b) => b.dataset.privateAction);
+
     afterEach(() => {
         if (view) view.destroy();
         view = null;
     });
 
-    test('the control says the request was accepted, and stops being a control', () => {
-        // Half of why six taps happened: the button went on saying `↓ Slow down` at the floor,
-        // which is an invitation.
+    test('forward is the prominent control and easing the quiet one', () => {
+        // P11 made de-escalation the loudest thing in the card, which is backwards for an experience
+        // whose emotional action is moving forward.
         mount();
-        const button = document.querySelector('[data-private-action="cozy"]');
-        expect(button.textContent).toBe('↓ Slow down');
-        expect(button.disabled).toBe(false);
+        view.setPace({
+            pace: 'Romantic',
+            level: 2,
+            maxLevel: 3,
+            hasLadder: true,
+            steps: [
+                { level: 1, label: 'Warm', reached: true, current: false },
+                { level: 2, label: 'Romantic', reached: true, current: true },
+                { level: 3, label: 'Sensual', reached: false, current: false },
+            ],
+            forward: 'More',
+            canEase: true,
+        });
 
-        view.setGentle(true);
-        expect(button.textContent).toBe('✓ Gentle');
-        expect(button.disabled).toBe(true);
-        expect(button.getAttribute('aria-label')).toMatch(/already as gentle/i);
+        expect(ids()).toEqual(['ease', 'closer', 'end']);
+        const forward = document.querySelector('[data-private-action="closer"]');
+        const ease = document.querySelector('[data-private-action="ease"]');
+        expect(forward.textContent).toBe('More →');
+        expect(forward.classList.contains('is-primary')).toBe(true);
+        expect(ease.textContent).toBe('← Ease up');
+        expect(ease.classList.contains('is-secondary')).toBe(true);
     });
 
-    test('the preset stops being the headline once somebody has asked for gentle', () => {
-        // A Sensual session slowed to Warm showed `Sensual` in the heading and `Warm` in the
-        // footer: both true, and together they read as the application insisting on a state the
-        // person had just rejected.
+    test('a control that cannot act is not drawn at all, rather than drawn and disabled', () => {
+        // Half of the reported bug was a button that went on inviting a tap it could not act on. The
+        // set of controls changes with the level, so the footer is rebuilt rather than toggled.
         mount();
-        expect(view.shell.classList.contains('is-gentle')).toBe(false);
-        view.setGentle(true);
-        expect(view.shell.classList.contains('is-gentle')).toBe(true);
-        // The label is still there for anyone who wants it — CSS de-emphasises it rather than
-        // deleting information.
+        view.setPace({
+            pace: 'Warm',
+            level: 1,
+            maxLevel: 3,
+            hasLadder: true,
+            steps: [],
+            forward: 'Closer',
+            canEase: false,
+        });
+        expect(ids()).toEqual(['closer', 'end']);
+
+        view.setPace({
+            pace: 'Sensual',
+            level: 3,
+            maxLevel: 3,
+            hasLadder: true,
+            steps: [],
+            forward: '',
+            canEase: true,
+        });
+        expect(ids()).toEqual(['ease', 'end']);
+    });
+
+    test('the ladder shows where the evening is, with one word not three', () => {
+        // Three labels in a phone-width footer is a legend, and a legend is something to read rather
+        // than glance at.
+        mount();
+        view.setPace({
+            pace: 'Romantic',
+            level: 2,
+            maxLevel: 3,
+            hasLadder: true,
+            steps: [
+                { level: 1, label: 'Warm', reached: true, current: false },
+                { level: 2, label: 'Romantic', reached: true, current: true },
+                { level: 3, label: 'Sensual', reached: false, current: false },
+            ],
+            forward: 'More',
+            canEase: true,
+        });
+
+        const rungs = [...document.querySelectorAll('[data-private-step]')];
+        expect(rungs).toHaveLength(3);
+        expect(rungs.map((n) => n.textContent)).toEqual(['•', 'Romantic', '•']);
+        expect(rungs.filter((n) => n.classList.contains('is-reached'))).toHaveLength(2);
+        expect(document.querySelector('.nexus-private-level').getAttribute('aria-label')).toMatch(/step 2 of 3/);
+    });
+
+    test('a one-level preset gets the word instead of a one-dot ladder', () => {
+        mount();
+        view.setPace({ pace: 'Warm', level: 1, maxLevel: 1, hasLadder: false, steps: [], forward: '', canEase: false });
+        expect(document.querySelectorAll('[data-private-step]')).toHaveLength(0);
+        expect(document.querySelector('.nexus-private-level').textContent).toBe('Warm');
+        expect(ids()).toEqual(['end']);
+    });
+
+    test('the heading follows the level rather than the preset', () => {
+        mount();
+        expect(document.querySelector('.nexus-private-heading-title').textContent).toBe('Warm');
+        view.setPace({
+            pace: 'Sensual',
+            level: 3,
+            maxLevel: 3,
+            hasLadder: true,
+            steps: [],
+            forward: '',
+            canEase: true,
+        });
         expect(document.querySelector('.nexus-private-heading-title').textContent).toBe('Sensual');
     });
 
@@ -160,7 +239,7 @@ describe('the gentle state, and a confirmation that is not conversation (P11)', 
         // The words stay; the buttons stop being controls.
         expect(document.body.textContent).toContain('Quieter, or closer?');
         expect([...document.querySelectorAll('[data-private-action]')].map((b) => b.dataset.privateAction)).toEqual([
-            'cozy',
+            'closer',
             'end',
         ]);
         for (const button of document.querySelectorAll('.nexus-private-actions button')) {
