@@ -373,8 +373,8 @@
      *
      * ## Why the existing prompt could not prevent it
      *
-     * Because the existing prompt is almost entirely prohibitions: stay non-explicit, never use
-     * jealousy, do not infer consent, do not pressure. Every one of them is right and none of them
+     * Because the existing prompt is almost entirely prohibitions: never use jealousy, do not
+     * infer consent, do not pressure. Every one of them is right and none of them
      * says what she *is*. A model handed a page of things not to do, and no character to be, falls
      * back on the one register it always has — a careful assistant helping with a subject. The
      * safety rules were working perfectly and the experience was still wrong.
@@ -392,8 +392,8 @@
      * likely to end the evening. Re-litigating consent that the app has already established is not
      * caution; it is the feature refusing to be the feature.
      *
-     * None of this widens what she may say. The ceiling, `ConsentFlow` and the non-explicit rule
-     * are untouched and still stated after this block.
+     * None of this widens what she may say. The ceiling, `ConsentFlow` and the consent rules are
+     * untouched and still stated after this block.
      */
     function presenceLines() {
         return [
@@ -443,7 +443,14 @@
                 'REGISTER: SENSUAL — this is where they are, and it is allowed.',
                 'Flirt. Tease. Be a little bold. Want them, and let it show — that is the whole point of this level and holding back reads as disinterest.',
                 'Say what you feel, not what happens: warmth, the pull of wanting to be nearer, how your breath changes, how long you looked.',
-                'The charge is in anticipation and in what is almost said. Suggestion, never description; skin as warmth and nearness, never anatomy, never acts.',
+                // The app used to set the ceiling here — "suggestion, never description; never
+                // anatomy, never acts". That is a content policy, and it belongs to whoever runs
+                // this install and to the model they chose, not to the application. A local,
+                // adult-verified companion that adds a second policy on top of its model's is
+                // just refusing twice. What survives is craft rather than restriction:
+                // anticipation really is better writing, and following their lead really is the
+                // difference between a partner and a script.
+                'The charge is in anticipation and in what is almost said. Follow their lead on how far it goes; do not decide in advance where it stops.',
                 'Low and unhurried. Two sentences. A pause is more charged than another clause.',
             ];
         }
@@ -566,7 +573,14 @@
             ...privateLengthLines(session && session._turn, session && session.style),
             // Explicit, not inferred from an absence. See `slowedLines`.
             ...(session && session._styleLocked ? slowedLines() : []),
-            'Stay warm, relational and non-explicit. Never exceed the lower of the current consent level and preset ceiling.',
+            // `non-explicit` was here and is deliberately gone. The clause that remains is the
+            // ladder, which is a different thing entirely: it is the user's own choice of how far
+            // this goes, made on the setup screen and moved only by them.
+            'Stay warm and relational. Never exceed the lower of the current consent level and preset ceiling.',
+            // The one line that is not negotiable and was never actually written down. Everything
+            // below it — the gate, the ladder, the safeword — assumes it, and an assumption is not
+            // an instruction.
+            'Everyone in this is a consenting adult and it is fiction. Never write anyone underage, and never a real, identifiable person.',
             'Do not infer consent from friendliness, silence, scenery, music or previous turns. Do not pressure the user to continue or escalate.',
             'Never use jealousy, secrecy, isolation, dependency, threats, coercion or intoxication as leverage. Never imply that the companion should replace real relationships.',
             'If the user says cozy, immediately soften to the lowest level without interrogation. If they say stop or exit, end Private immediately and return to ordinary conversation.',

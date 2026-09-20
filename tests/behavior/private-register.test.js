@@ -117,9 +117,7 @@ describe('the prompt says who she is, not only what she must not do', () => {
         await s.activity.start({ input: { id: 'sensual' } });
         const suffix = Capability.privateSystemPromptSuffix();
         expect(suffix.indexOf('WHO YOU ARE HERE')).toBeGreaterThan(-1);
-        expect(suffix.indexOf('WHO YOU ARE HERE')).toBeLessThan(
-            suffix.indexOf('Stay warm, relational and non-explicit')
-        );
+        expect(suffix.indexOf('WHO YOU ARE HERE')).toBeLessThan(suffix.indexOf('Stay warm and relational'));
         s.activity.stop('user');
     });
 });
@@ -205,7 +203,7 @@ describe('each level sounds like something, which is what the ladder was missing
         expect(registers.romantic).not.toBe(registers.sensual);
     });
 
-    test('Sensual names desire, and keeps the charge in anticipation rather than anatomy', async () => {
+    test('Sensual names desire, keeps the charge in anticipation, and sets no ceiling of its own', async () => {
         // The point of the feature, and the line between an adult experience and a pornographic
         // one. Suggestion is the thing that works; description is the thing that ends it.
         const s = setup();
@@ -219,10 +217,18 @@ describe('each level sounds like something, which is what the ladder was missing
         const suffix = Capability.privateSystemPromptSuffix();
         expect(suffix).toContain('Want them, and let it show');
         expect(suffix).toContain('anticipation');
-        expect(suffix).toMatch(/never anatomy, never acts/);
-        // And the ceiling is still the ceiling.
-        expect(suffix).toContain('Stay warm, relational and non-explicit');
+        // The content ceiling that used to be asserted here is gone on purpose: how explicit this
+        // gets belongs to the model and to whoever runs the install, not to the app adding a
+        // second policy on top. What the register still owes is craft — wanting them, the charge
+        // of anticipation — and, in place of a ceiling, following their lead instead of deciding
+        // in advance where it stops.
+        expect(suffix).toMatch(/follow their lead on how far it goes/i);
+        expect(suffix).not.toMatch(/never anatomy, never acts/);
+        // And the consent scaffolding is untouched — the ladder the user set on the setup screen,
+        // and the one line that is not anybody's to configure.
         expect(suffix).toContain('Never exceed the lower of the current consent level and preset ceiling');
+        expect(suffix).toMatch(/consenting adult/i);
+        expect(suffix).toMatch(/never write anyone underage/i);
 
         s.activity.stop('user');
     });
