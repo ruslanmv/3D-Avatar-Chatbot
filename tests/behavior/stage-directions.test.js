@@ -112,3 +112,51 @@ describe('a marker is information, not just noise', () => {
         for (const verb of Object.keys(Stage.PRESENCE)) expect(Stage.VERBS).toContain(verb);
     });
 });
+
+describe('a direction written as more than one clause (P33)', () => {
+    /**
+     * Reported verbatim, on screen and read aloud by the voice:
+     *
+     *     HER  ✨ *leans in, eyes sparkling* Imagine it, darling…
+     *
+     * `isDirection` requires every word inside the asterisks to be a performance verb, filler or
+     * adverb. That is right for a single phrase and is what keeps `[sic]`, `[1]` and
+     * `*I really like that*` out of the sanitiser's reach. But this genre writes two of them
+     * joined by a comma, and the second half is usually a body noun and a state rather than a
+     * verb at all — `eyes sparkling`, `voice low`, `breath catching`. One unrecognised clause
+     * failed the whole span, so the commonest shape of the defect was the one shape that always
+     * leaked.
+     */
+    test('the reported line is stripped, and its motion is still captured', () => {
+        const out = Stage.strip('*leans in, eyes sparkling* Imagine it, darling…');
+        expect(out.text).toBe('Imagine it, darling…');
+        expect(out.markers).toContain('leans');
+    });
+
+    test('the single-clause forms keep working exactly as before', () => {
+        expect(Stage.strip('*leans in*').text).toBe('');
+        expect(Stage.strip('*smiles softly*').text).toBe('');
+    });
+
+    test('other clause separators too, because models use all of them', () => {
+        for (const said of ['*leans in; voice low*', '*leans in and smiles*', '*smiles, leaning closer*']) {
+            expect(Stage.strip(said).text).toBe('');
+        }
+    });
+
+    test('emphasis with no performance verb in it is still left alone', () => {
+        // The allowlist still does the deciding. Relaxing the clause rule must not turn every
+        // pair of asterisks into something the sanitiser eats — somebody emphasising a word in
+        // ordinary chat is not writing a stage direction.
+        for (const said of ['*I really like that*', '*that one, not the other*', '*eyes sparkling*']) {
+            expect(Stage.strip(said).text).toBe(said);
+        }
+    });
+
+    test('and a whole sentence between asterisks is not a direction', () => {
+        // The length guard. Without it a model that wrapped a paragraph in asterisks would have
+        // the paragraph deleted because one clause happened to contain "leans".
+        const long = '*she leans in, and then tells you about the whole of her afternoon in detail, at length, twice*';
+        expect(Stage.strip(long).text).toBe(long);
+    });
+});

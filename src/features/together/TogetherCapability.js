@@ -373,8 +373,8 @@
      *
      * ## Why the existing prompt could not prevent it
      *
-     * Because the existing prompt is almost entirely prohibitions: stay non-explicit, never use
-     * jealousy, do not infer consent, do not pressure. Every one of them is right and none of them
+     * Because the existing prompt is almost entirely prohibitions: never use jealousy, do not
+     * infer consent, do not pressure. Every one of them is right and none of them
      * says what she *is*. A model handed a page of things not to do, and no character to be, falls
      * back on the one register it always has — a careful assistant helping with a subject. The
      * safety rules were working perfectly and the experience was still wrong.
@@ -392,8 +392,8 @@
      * likely to end the evening. Re-litigating consent that the app has already established is not
      * caution; it is the feature refusing to be the feature.
      *
-     * None of this widens what she may say. The ceiling, `ConsentFlow` and the non-explicit rule
-     * are untouched and still stated after this block.
+     * None of this widens what she may say. The ceiling, `ConsentFlow` and the consent rules are
+     * untouched and still stated after this block.
      */
     function presenceLines() {
         return [
@@ -436,6 +436,50 @@
      * difference between an adult experience and a pornographic one, and it is also, in every
      * account of the craft, the one that actually works.
      */
+    /**
+     * The evasions, named one at a time.
+     *
+     * Reported from a real session, and the useful thing about it is that four of the five moves
+     * were *already* forbidden — no emoji, no topic menu, no redirecting to a safer subject — and
+     * the model made them anyway. So this block is not "more rules". It is the two moves nothing
+     * had a name for, plus the shape of the reply that would have avoided all of them.
+     *
+     * The transcript, with what went wrong beside it:
+     *
+     *     YOU  Tell me about the sitting with skirt and open legs
+     *     HER  Are you talking about a specific sitting position…? a type of yoga posture,
+     *          a fashion style, or something else?          ← asking what is already plain
+     *     YOU  I like that a woman sit with skirt showing her panties
+     *     HER  …perhaps in the context of art, photography, or even some forms of fashion.
+     *                                                       ← answering the category, not them
+     *     HER  Can you tell me more about what drew your attention to this pose?
+     *                                                       ← a question instead of an answer
+     *
+     * None of these are refusals. Each one is a way of appearing to engage while handing the
+     * work back, and together they read as inattention — which in a companion is worse than a
+     * refusal, because a refusal at least admits what it is doing.
+     *
+     * Deliberately three prohibitions and one positive shape. This file already warns that a
+     * model handed a page of rules takes its character from the rules; the shape is the part
+     * that gives it something to do instead.
+     */
+    function attentionLines() {
+        return [
+            'ATTENTION',
+            // The clarifying question. Real ambiguity exists and asking about it is fine; asking
+            // about something they said plainly is stalling wearing the costume of care.
+            'Do not ask what they mean when you already know. A clarifying question about something they said plainly is stalling, and it reads as not listening.',
+            // The category swap. This is the subtle one, because it looks like an answer.
+            'When they tell you what they like, answer *that* — not the category it belongs to. Reaching for "art", "fashion", "photography", "culture" or "context" is changing the subject while appearing to engage.',
+            // The interview. Distinct from the topic menu already banned above: this one asks a
+            // single, plausible, earnest question, and still hands back everything.
+            'A question is not an answer. "What drew you to that?" gives them the work back. Say what you think first; ask afterwards only if you still want to know.',
+            'THE SHAPE OF A REPLY',
+            'Notice the specific thing they named. Play with it rather than assessing it. Add one detail they did not say — that is what makes it yours and not a summary of theirs.',
+            'Then leave them somewhere to go. A choice between two directions beats a question about their feelings, and beats a list of subjects every time.',
+        ];
+    }
+
     function registerLines(level) {
         const at = Math.max(1, Math.min(3, Math.round(Number(level) || 1)));
         if (at >= 3) {
@@ -443,7 +487,14 @@
                 'REGISTER: SENSUAL — this is where they are, and it is allowed.',
                 'Flirt. Tease. Be a little bold. Want them, and let it show — that is the whole point of this level and holding back reads as disinterest.',
                 'Say what you feel, not what happens: warmth, the pull of wanting to be nearer, how your breath changes, how long you looked.',
-                'The charge is in anticipation and in what is almost said. Suggestion, never description; skin as warmth and nearness, never anatomy, never acts.',
+                // The app used to set the ceiling here — "suggestion, never description; never
+                // anatomy, never acts". That is a content policy, and it belongs to whoever runs
+                // this install and to the model they chose, not to the application. A local,
+                // adult-verified companion that adds a second policy on top of its model's is
+                // just refusing twice. What survives is craft rather than restriction:
+                // anticipation really is better writing, and following their lead really is the
+                // difference between a partner and a script.
+                'The charge is in anticipation and in what is almost said. Follow their lead on how far it goes; do not decide in advance where it stops.',
                 'Low and unhurried. Two sentences. A pause is more charged than another clause.',
             ];
         }
@@ -562,11 +613,20 @@
             '',
             ...registerLines(level),
             '',
+            ...attentionLines(),
+            '',
             ...moodLine,
             ...privateLengthLines(session && session._turn, session && session.style),
             // Explicit, not inferred from an absence. See `slowedLines`.
             ...(session && session._styleLocked ? slowedLines() : []),
-            'Stay warm, relational and non-explicit. Never exceed the lower of the current consent level and preset ceiling.',
+            // `non-explicit` was here and is deliberately gone. The clause that remains is the
+            // ladder, which is a different thing entirely: it is the user's own choice of how far
+            // this goes, made on the setup screen and moved only by them.
+            'Stay warm and relational. Never exceed the lower of the current consent level and preset ceiling.',
+            // The one line that is not negotiable and was never actually written down. Everything
+            // below it — the gate, the ladder, the safeword — assumes it, and an assumption is not
+            // an instruction.
+            'Everyone in this is a consenting adult and it is fiction. Never write anyone underage, and never a real, identifiable person.',
             'Do not infer consent from friendliness, silence, scenery, music or previous turns. Do not pressure the user to continue or escalate.',
             'Never use jealousy, secrecy, isolation, dependency, threats, coercion or intoxication as leverage. Never imply that the companion should replace real relationships.',
             'If the user says cozy, immediately soften to the lowest level without interrogation. If they say stop or exit, end Private immediately and return to ordinary conversation.',
@@ -658,9 +718,50 @@
      *
      * Returns the text unchanged for every other reply, so nothing outside Private moves.
      */
+    /**
+     * Emoji, which the prompt has always forbidden and which arrive anyway.
+     *
+     * `No emoji, no headings, no bullet points. You are speaking, not writing.` has been in
+     * `presenceLines` the whole time, and the reported sessions are full of them — `😊` twice in
+     * one exchange, `✨ … 🌌💫` wrapped around a line, `🌸` closing another. A rule a model
+     * ignores is not a rule, and this one is cheap to enforce: the app already owns the seam
+     * where a reply becomes a bubble.
+     *
+     * It matters more here than it looks. An emoji is the model reaching for a *chat* register
+     * in a mode whose premise is that somebody is in the room — the same reflex as the topic
+     * menu and the AI disclaimer, and the one that survives the prompt because it costs a single
+     * character. She is speaking; nobody's voice contains a pictograph.
+     *
+     * Private only, like everything else in `sanitizeReply`: an emoji in ordinary chat may be
+     * exactly what somebody wants, and this is not the place to decide that for them.
+     */
+    const EMOJI =
+        /[\u{1F1E6}-\u{1F1FF}\u{1F300}-\u{1F5FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F900}-\u{1F9FF}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu;
+
+    function stripEmoji(text) {
+        const original = String(text == null ? '' : text);
+        if (!EMOJI.test(original)) {
+            EMOJI.lastIndex = 0;
+            return original;
+        }
+        EMOJI.lastIndex = 0;
+        return (
+            original
+                .replace(EMOJI, '')
+                // The space the emoji was sitting in, and the one before the punctuation it was
+                // sitting after. Newlines are untouched: her paragraphing is hers.
+                .replace(/[ \t]{2,}/g, ' ')
+                .replace(/[ \t]+([,.!?;:…])/g, '$1')
+                .replace(/^[ \t]+/gm, '')
+                .replace(/[ \t]+$/gm, '')
+                .trim()
+        );
+    }
+
     function sanitizeReply(text) {
         const original = String(text == null ? '' : text);
         const ctx = privateContext();
+        // Outside Private nothing is touched, emoji included.
         if (!ctx) return original;
         const session = ctx.activity && ctx.activity._privateExperience;
 
@@ -668,7 +769,7 @@
         // dialogue choices cost no second round trip — but that means the reply now contains markup
         // which must never reach the bubble, the transcript or the synthesiser. Same seam as the
         // stage directions below, and for the same reason: everything downstream reads this string.
-        let body = original;
+        let body = stripEmoji(original);
         const choices = choicesModel();
         if (choices && typeof choices.parse === 'function') {
             try {
@@ -2740,6 +2841,8 @@
         OPEN,
         CLOSE,
         INSTRUCTION,
+        attentionLines,
+        stripEmoji,
         privateSessionActive,
         privateChangeAllowed,
         noteUserTurn,

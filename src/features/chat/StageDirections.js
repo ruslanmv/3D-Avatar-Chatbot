@@ -278,6 +278,44 @@
         return verb;
     }
 
+    /** `leans in, eyes sparkling` → `['leans in', 'eyes sparkling']`. */
+    const CLAUSE = /\s*(?:,|;|\band\b)\s*/;
+
+    /**
+     * The same question, for a direction written as more than one clause.
+     *
+     * Reported verbatim, on screen and read aloud:
+     *
+     *     HER  ✨ *leans in, eyes sparkling* Imagine it, darling…
+     *
+     * `isDirection` requires *every* word inside to be a performance verb, filler or adverb, and
+     * that is right for a single phrase — it is what keeps `[sic]`, `[1]` and `*I really like
+     * that*` out of the sanitiser's reach. But a model writing this genre joins two of them with
+     * a comma, and the second half is usually a body noun and a state rather than a verb at all:
+     * `eyes sparkling`, `voice low`, `breath catching`. One unrecognised clause failed the whole
+     * span, so the most common shape of the defect was the one shape that always leaked.
+     *
+     * So: split on clause separators and accept the span when **any** clause is a direction on
+     * the strict test. The allowlist still does the deciding — a span with no performance verb
+     * anywhere in it is still left alone — but `leans` no longer has to carry `eyes sparkling`
+     * through a test written for one phrase.
+     */
+    function isCompoundDirection(inner) {
+        const direct = isDirection(inner);
+        if (direct) return direct;
+        const clauses = String(inner || '')
+            .split(CLAUSE)
+            .map((part) => part.trim())
+            .filter(Boolean);
+        if (clauses.length < 2) return null;
+        if (words(inner).length > MAX_WORDS * 2) return null;
+        for (const clause of clauses) {
+            const verb = isDirection(clause);
+            if (verb) return verb;
+        }
+        return null;
+    }
+
     /**
      * The labelled form — `[[emote: lean_in thinking]]` — which is a different shape entirely (P21).
      *
@@ -301,6 +339,24 @@
      */
     const EMOTE =
         /\[{1,2}\s*(?:emote|emotion|action|gesture|motion|anim|animation|expression)\s*[:=]\s*([^\][\n]{1,60})\]{1,2}/gi;
+
+    /**
+     * The same marker with the label left off — `[[lean_in thinking]]`.
+     *
+     * Reported on screen, in a Private session, verbatim:
+     *
+     *     HER  [[lean_in thinking]] I'm here to listen and help, but…
+     *
+     * `EMOTE` needs a label (`emote:`, `action:`, `gesture:`) and `BRACKETED` reads the inner
+     * text of a *single* pair, so on `[[lean_in thinking]]` it sees `[lean_in thinking` — a
+     * leading bracket that is not a word a body does — and declines. Between the two patterns the
+     * commonest double-bracket form had nothing that matched it.
+     *
+     * Conservative on purpose: a double bracket is stripped only when what is inside it is
+     * recognisable — a known intent, or a direction on the same allowlist everything else uses.
+     * `[[1]]` and `[[citation needed]]` are left exactly where they are.
+     */
+    const BARE_EMOTE = /\[\[\s*([^\][\n]{1,60}?)\s*\]\]/g;
 
     /**
      * Every motion name the app can act on, so a payload can be recognised as one directly.
@@ -356,7 +412,7 @@
         if (!original) return { text: '', markers: [] };
         const markers = [];
         const take = (match, inner) => {
-            const verb = isDirection(inner);
+            const verb = isCompoundDirection(inner);
             if (!verb) return match;
             markers.push(verb);
             return '';
@@ -369,6 +425,17 @@
             // is the defect. Only the *movement* depends on recognising it.
             if (intent) markers.push(intent);
             else markers.push('');
+            return '';
+        });
+        text = text.replace(BARE_EMOTE, (match, payload) => {
+            const intent = emoteIntent(payload);
+            if (intent) {
+                markers.push(intent);
+                return '';
+            }
+            const verb = isCompoundDirection(payload);
+            if (!verb) return match;
+            markers.push(verb);
             return '';
         });
         text = text.replace(BRACKETED, take).replace(ASTERISKED, take);
@@ -413,7 +480,7 @@
         return out;
     }
 
-    const api = { strip, presenceFor, presenceFrom, VERBS, PRESENCE, INTENTS, MAX_WORDS };
+    const api = { strip, presenceFor, presenceFrom, isCompoundDirection, VERBS, PRESENCE, INTENTS, MAX_WORDS };
 
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_STAGE_DIRECTIONS = api;

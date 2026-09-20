@@ -117,9 +117,7 @@ describe('the prompt says who she is, not only what she must not do', () => {
         await s.activity.start({ input: { id: 'sensual' } });
         const suffix = Capability.privateSystemPromptSuffix();
         expect(suffix.indexOf('WHO YOU ARE HERE')).toBeGreaterThan(-1);
-        expect(suffix.indexOf('WHO YOU ARE HERE')).toBeLessThan(
-            suffix.indexOf('Stay warm, relational and non-explicit')
-        );
+        expect(suffix.indexOf('WHO YOU ARE HERE')).toBeLessThan(suffix.indexOf('Stay warm and relational'));
         s.activity.stop('user');
     });
 });
@@ -205,7 +203,7 @@ describe('each level sounds like something, which is what the ladder was missing
         expect(registers.romantic).not.toBe(registers.sensual);
     });
 
-    test('Sensual names desire, and keeps the charge in anticipation rather than anatomy', async () => {
+    test('Sensual names desire, keeps the charge in anticipation, and sets no ceiling of its own', async () => {
         // The point of the feature, and the line between an adult experience and a pornographic
         // one. Suggestion is the thing that works; description is the thing that ends it.
         const s = setup();
@@ -219,10 +217,18 @@ describe('each level sounds like something, which is what the ladder was missing
         const suffix = Capability.privateSystemPromptSuffix();
         expect(suffix).toContain('Want them, and let it show');
         expect(suffix).toContain('anticipation');
-        expect(suffix).toMatch(/never anatomy, never acts/);
-        // And the ceiling is still the ceiling.
-        expect(suffix).toContain('Stay warm, relational and non-explicit');
+        // The content ceiling that used to be asserted here is gone on purpose: how explicit this
+        // gets belongs to the model and to whoever runs the install, not to the app adding a
+        // second policy on top. What the register still owes is craft — wanting them, the charge
+        // of anticipation — and, in place of a ceiling, following their lead instead of deciding
+        // in advance where it stops.
+        expect(suffix).toMatch(/follow their lead on how far it goes/i);
+        expect(suffix).not.toMatch(/never anatomy, never acts/);
+        // And the consent scaffolding is untouched — the ladder the user set on the setup screen,
+        // and the one line that is not anybody's to configure.
         expect(suffix).toContain('Never exceed the lower of the current consent level and preset ceiling');
+        expect(suffix).toMatch(/consenting adult/i);
+        expect(suffix).toMatch(/never write anyone underage/i);
 
         s.activity.stop('user');
     });
@@ -309,5 +315,124 @@ describe('the marker that leaked, and the movement it was asking for', () => {
         await s.activity.start({ input: { id: 'sensual' } });
         expect(Capability.sanitizeReply('[[emote: lean_in]] Come closer.')).toBe('Come closer.');
         s.activity.stop('user');
+    });
+});
+
+describe('the evasions that are not refusals (P32)', () => {
+    const Capability = require('../../src/features/together/TogetherCapability.js');
+
+    /**
+     * Reported session: she dodged the context four turns running without ever refusing. Asking
+     * what "skirt and open legs" meant, answering "art, photography, fashion" instead of the
+     * person, and "what drew your attention to this pose?" are each a way of appearing to engage
+     * while handing the work back — which in a companion reads worse than a refusal, because a
+     * refusal at least admits what it is.
+     */
+    test('the two moves nothing had a name for are named', () => {
+        const lines = Capability.attentionLines().join('\n');
+        // Asking about something already plain.
+        expect(lines).toMatch(/do not ask what they mean when you already know/i);
+        // Answering the category instead of the person.
+        expect(lines).toMatch(/not the category it belongs to/i);
+        expect(lines).toMatch(/art.*fashion.*photography/i);
+        // A question handed back in place of an answer.
+        expect(lines).toMatch(/a question is not an answer/i);
+    });
+
+    test('and a reply is given a shape, not only a list of things not to do', () => {
+        // This file's own warning: a model handed a page of prohibitions takes its character from
+        // the prohibitions. The positive half is what it does instead.
+        const lines = Capability.attentionLines().join('\n');
+        expect(lines).toMatch(/THE SHAPE OF A REPLY/);
+        expect(lines).toMatch(/notice the specific thing they named/i);
+        expect(lines).toMatch(/add one detail they did not say/i);
+        expect(lines).toMatch(/leave them somewhere to go/i);
+    });
+
+    test('it reaches the prompt a running session actually sends', async () => {
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+        const suffix = Capability.privateSystemPromptSuffix();
+        expect(suffix).toContain('ATTENTION');
+        expect(suffix).toMatch(/a question is not an answer/i);
+        s.activity.stop('user');
+    });
+
+    test('and reaches a remote persona too, where the system prompt is skipped', async () => {
+        // `_chatOllaBridge` drops the app's system prompt for a `persona:`/`personality:` model
+        // and sends `experienceOverlay()` instead. Their device advertises several of those, so a
+        // craft rule that only rode the system prompt would never arrive.
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+        expect(Capability.experienceOverlay()).toMatch(/a question is not an answer/i);
+        s.activity.stop('user');
+    });
+
+    test('it is short, because the file says why', async () => {
+        // "A model reads a page of rules and takes its character from whatever came first."
+        // Three prohibitions and one shape; a block that grows without bound is the regression.
+        expect(Capability.attentionLines().length).toBeLessThanOrEqual(8);
+    });
+});
+
+describe('the markup that kept reaching the screen (P34)', () => {
+    const Capability = require('../../src/features/together/TogetherCapability.js');
+    const Stage = require('../../src/features/chat/StageDirections.js');
+
+    /**
+     * Two more leaks from real sessions, both of them markup rather than meaning:
+     *
+     *     HER  [[lean_in thinking]] I'm here to listen and help, but…
+     *     HER  …a quiet, sophisticated contrast that whispers charm. 😊
+     *
+     * `EMOTE` needs a label — `emote:`, `action:` — and `BRACKETED` reads the inner text of a
+     * single pair, so on `[[lean_in thinking]]` it sees a leading bracket and declines. Between
+     * them the commonest double-bracket form matched nothing.
+     *
+     * The emoji is the older one: `No emoji … You are speaking, not writing` has been in the
+     * prompt the whole time and the model emits them anyway. A rule a model ignores is not a
+     * rule, and the app owns the seam where a reply becomes a bubble.
+     */
+    test('an unlabelled marker in double brackets is stripped, and still moves her', () => {
+        const out = Stage.strip('[[lean_in thinking]] Imagine it.');
+        expect(out.text).toBe('Imagine it.');
+        expect(out.markers.length).toBeGreaterThan(0);
+    });
+
+    test('and the labelled form and single brackets keep working', () => {
+        expect(Stage.strip('[[emote: lean_in thinking]] hi').text).toBe('hi');
+        expect(Stage.strip('[lean_in] hi').text).toBe('hi');
+    });
+
+    test('double brackets that are not markers are left alone', () => {
+        // Conservative on purpose: only a known intent or an allowlisted direction is stripped.
+        for (const said of ['[[1]] hi', '[[citation needed]] hi']) {
+            expect(Stage.strip(said).text).toBe(said);
+        }
+    });
+
+    test('emoji are removed from a Private reply, with the space they sat in', () => {
+        const s = setup();
+        return s.activity.start({ input: { id: 'sensual' } }).then(() => {
+            expect(Capability.sanitizeReply('a quiet contrast that whispers charm. 😊')).toBe(
+                'a quiet contrast that whispers charm.'
+            );
+            expect(Capability.sanitizeReply('✨ Imagine it, darling… 🌌💫')).toBe('Imagine it, darling…');
+            s.activity.stop('user');
+        });
+    });
+
+    test('her words are untouched — only the pictographs go', () => {
+        expect(Capability.stripEmoji('The skirt flows, and the light does too.')).toBe(
+            'The skirt flows, and the light does too.'
+        );
+        // Punctuation and accents are not emoji.
+        expect(Capability.stripEmoji('café — naïve … “quoted”')).toBe('café — naïve … “quoted”');
+    });
+
+    test('and ordinary chat keeps its emoji, because that is not ours to decide', async () => {
+        // `sanitizeReply` returns early outside Private. Somebody using emoji in normal
+        // conversation is doing something this mode has no opinion about.
+        expect(Capability.sanitizeReply('nice one 😊')).toBe('nice one 😊');
     });
 });
