@@ -132,14 +132,18 @@ describe('the forward control, over the real consent flow (P12)', () => {
         await s.activity.start({ input: { id: 'sensual' } });
 
         const rungs = () => [...document.querySelectorAll('[data-private-step]')];
+        const badge = () => document.querySelector('.nexus-private-heading-title').textContent;
         expect(rungs().map((n) => n.dataset.privateStep)).toEqual(['1', '2', '3']);
         expect(rungs().filter((n) => n.classList.contains('is-reached'))).toHaveLength(1);
-        expect(rungs().find((n) => n.classList.contains('is-current')).textContent).toBe('Warm');
+        // The ladder is the shape; the header badge is the word (P26). It used to be on the
+        // current rung as well, which repeated it two inches below itself.
+        expect(rungs().every((n) => n.textContent === '•')).toBe(true);
+        expect(badge()).toBe('Warm');
 
         ready();
         click('closer');
         expect(rungs().filter((n) => n.classList.contains('is-reached'))).toHaveLength(2);
-        expect(rungs().find((n) => n.classList.contains('is-current')).textContent).toBe('Romantic');
+        expect(badge()).toBe('Romantic');
 
         s.activity.stop('user');
     });

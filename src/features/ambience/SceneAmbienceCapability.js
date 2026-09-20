@@ -179,6 +179,17 @@
         if (!intents.length) {
             return '';
         }
+        // Not offered while a Private session is running: the place was chosen on the setup
+        // screen and is meant to stay. Withholding the instruction is the polite half of that;
+        // `SceneAmbienceDirective.consume` is the half that holds.
+        const together = d.capability || (global && global.NEXUS_TOGETHER_CAPABILITY) || null;
+        try {
+            if (together && typeof together.privateSessionActive === 'function' && together.privateSessionActive()) {
+                return '';
+            }
+        } catch (_) {
+            // A capability that throws is not a session anybody can prove is running.
+        }
         return `\n${instruction(intents, availableMoods(d), currentSceneLabel(d))}\n`;
     }
 

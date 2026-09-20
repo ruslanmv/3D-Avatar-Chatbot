@@ -222,7 +222,9 @@ describe('the one choice in the session has consequences', () => {
         const session = s.activity._privateExperience;
 
         expect(session.mood).toBeNull();
-        expect(Capability.privateSystemPromptSuffix()).not.toMatch(/playful|tender/i);
+        // The property is that the *chosen mood* has not leaked, not that the words never appear:
+        // P22's Warm register legitimately says "warm and playful" about the level itself.
+        expect(Capability.privateSystemPromptSuffix()).not.toMatch(/chose a (playful|tender) mood/i);
 
         jest.advanceTimersByTime(45000);
         click('playful');

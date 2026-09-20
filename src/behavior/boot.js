@@ -107,6 +107,10 @@
         // PrivateConversationView, which draws one, and before anything else that names media;
         // SceneTaleConversationView is injected later and reads both off the window.
         'src/features/together/MediaTitle.js',
+        // What the current place looks like, read-only, for the thumbnails Together draws.
+        // Before TogetherPanel and Playground, both of which ask it while painting; the two
+        // Scene Tale views are injected later and read it off the window.
+        'src/features/together/SceneArt.js',
         'src/features/together/ui/SoundtrackStrip.js',
         // P14. Every visible word Private says that a model did not write. Before the view, the
         // capability and the choices, all three of which read it at draw time — a module that
@@ -128,6 +132,9 @@
         // P13. Things you could say next, and the block they ride back in. Before
         // TogetherCapability, which parses it at the display seam.
         'src/features/together/PrivateChoices.js',
+        // P20. What an evening needs, loaded before it starts. Before the Together panel and
+        // the playground activity, which drive it from the wizard's third step.
+        'src/features/together/PrivatePreflight.js',
         // P17. The clock that notices silence — stages, never intensity. Before
         // TogetherCapability, which drives it from the beat tick it already has.
         'src/features/together/PrivateIdleClock.js',

@@ -8,6 +8,9 @@ const PrivateConversationView = (() => {
     'use strict';
 
     const ROW_ID = 'nexus-private-conversation-row';
+
+    /** How far from the bottom still counts as "at the bottom". See `_atBottom`. */
+    const STICK_SLACK_PX = 48;
     const STYLE_ID = 'nexus-private-conversation-styles';
 
     /**
@@ -111,17 +114,41 @@ const PrivateConversationView = (() => {
         return api && typeof api.pace === 'function' ? api.pace(level) : String(level);
     }
 
+    /**
+     * The card's geometry, and in particular how much of a phone it is allowed to have (P27).
+     *
+     * The mobile block used to cap the transcript at `max-height:30vh`. On a 390×844 phone that is
+     * roughly 253px for her words — about four lines once the padding is paid — while the avatar
+     * above it kept the rest. The evening reads as a ticker tape, and the reply you are in the
+     * middle of scrolls out from under you.
+     *
+     * The fix takes no measurement, because the host already is the measurement. On mobile
+     * `.chat-main` is `flex:1 1 0; min-height:0; position:relative` and `.chat-history` fills it,
+     * so the history's box **is** the space between the panel header and the composer — the
+     * address bar retracting, the keyboard opening and the device rotating all land in it before
+     * any of our CSS resolves. So the row asks for `100%` of that, minus its own 14px of margin,
+     * and the shell grows into it. Nothing recomputes on resize because nothing was computed.
+     *
+     * What must not follow from "the card is taller" is "the card is one scroller". The header,
+     * the soundtrack strip and the footer with `Closer` and `End` stay `flex:0 0 auto`; only
+     * `.nexus-private-card` has `flex:1 1 auto;min-height:0;overflow-y:auto`. That is the whole
+     * difference between a transcript that grows and controls that disappear.
+     *
+     * The top of the card is deliberately unchanged. She is the reason the screen is on, and a
+     * card that grows upward buys reading room by taking her face — the one trade this layout is
+     * not allowed to make.
+     */
     const CSS = `
-#${ROW_ID}{display:block;width:100%;margin:8px 0 10px;box-sizing:border-box;color:inherit}
-#${ROW_ID} *{box-sizing:border-box}.nexus-private-shell{overflow:hidden;border:1px solid rgba(244,128,166,.4);border-radius:16px;background:linear-gradient(145deg,rgba(39,15,36,.9),rgba(22,13,28,.82));box-shadow:0 16px 50px rgba(23,5,21,.3);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
-.nexus-private-heading{display:flex;align-items:baseline;gap:8px;padding:9px 13px;border-bottom:1px solid rgba(255,255,255,.07);font-size:.74rem}.nexus-private-kicker{color:#f49aba;font-size:.72rem;font-weight:750;letter-spacing:.09em}.nexus-private-heading-title{font-size:.8rem;font-weight:700;margin:0}.nexus-private-place{font-size:.74rem;opacity:.55;margin-left:auto}.nexus-private-card{padding:12px 14px;max-height:34vh;overflow-y:auto;overscroll-behavior:contain}.nexus-private-log{display:grid;gap:10px}.nexus-private-turn{display:grid;gap:2px}.nexus-private-who{font-size:.62rem;letter-spacing:.1em;font-weight:700;opacity:.42}.nexus-private-turn.is-you .nexus-private-who{color:#9fd8ea}.nexus-private-turn.is-her .nexus-private-who{color:#f08fb6}.nexus-private-turn.is-you .nexus-private-copy{opacity:.78}.nexus-private-copy{font-size:.95rem;line-height:1.5;white-space:pre-wrap;text-wrap:pretty}.nexus-private-turn.is-streaming .nexus-private-copy::after{content:'▍';opacity:.5;animation:nexus-private-caret 1s steps(2) infinite}@keyframes nexus-private-caret{0%,100%{opacity:.15}50%{opacity:.7}}.nexus-private-pending{padding-top:9px;border-top:1px solid rgba(255,255,255,.07);opacity:.8}.nexus-private-thinking{display:flex;align-items:center;gap:5px;margin-top:12px;height:10px}.nexus-private-dot{width:6px;height:6px;border-radius:50%;background:#f49aba;opacity:.35;animation:nexus-private-dot 1.25s ease-in-out infinite}.nexus-private-dot:nth-child(2){animation-delay:.18s}.nexus-private-dot:nth-child(3){animation-delay:.36s}@keyframes nexus-private-dot{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:.95;transform:translateY(-3px)}}.nexus-private-kicker{animation:nexus-private-breathe 5.5s ease-in-out infinite}@keyframes nexus-private-breathe{0%,100%{opacity:.72}50%{opacity:1}}@media(prefers-reduced-motion:reduce){.nexus-private-dot,.nexus-private-kicker,.nexus-private-turn.is-streaming .nexus-private-copy::after{animation:none}.nexus-private-dot{opacity:.6}}.nexus-private-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:11px}.nexus-private-btn{border:1px solid rgba(240,143,182,.32);background:rgba(240,143,182,.09);color:inherit;border-radius:10px;padding:8px 10px;text-align:center;font:inherit;font-size:.8rem;cursor:pointer}.nexus-private-btn:hover,.nexus-private-btn:focus-visible{background:rgba(244,128,166,.18);outline:none}.nexus-private-btn:disabled{cursor:default;opacity:.4}.nexus-private-btn.is-chosen{opacity:.85;border-color:rgba(240,143,182,.55);background:rgba(240,143,182,.16)}.nexus-private-bar{display:flex;align-items:center;gap:8px;padding:7px 11px;border-top:1px solid rgba(255,255,255,.07)}.nexus-private-level{font-size:.72rem;opacity:.6;flex:1}.nexus-private-bar .nexus-private-btn{padding:6px 9px;font-size:.76rem}.nexus-private-soundtrack{margin:0 11px 9px;font-size:.74rem}.nexus-private-soundtrack-strip{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:5px 9px;border:1px solid rgba(240,143,182,.16);border-radius:9px;background:rgba(240,143,182,.05)}.nexus-private-soundtrack-copy{min-width:0;flex:1}.nexus-private-soundtrack-kicker{display:none}.nexus-private-soundtrack-title{font-size:.74rem;line-height:1.3;opacity:.72;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nexus-private-soundtrack-creator{display:none}.nexus-private-soundtrack-toggle{border:0;background:transparent;color:inherit;opacity:.5;padding:2px 4px;font:inherit;font-size:.7rem;cursor:pointer;flex:0 0 auto;text-decoration:underline}.nexus-private-soundtrack-toggle:hover,.nexus-private-soundtrack-toggle:focus-visible{opacity:.9;outline:none}.nexus-private-soundtrack-player{display:none;width:min(280px,100%);margin-top:9px}.nexus-private-soundtrack-player.is-open{display:block}.nexus-private-soundtrack-player .nexus-yt-card{width:100%;max-width:280px;margin:0}.nexus-private-soundtrack-player .nexus-yt-meta{font-size:.72rem}.nexus-private-complete{font-size:1rem;font-weight:750;margin-bottom:6px}.nexus-private-note{font-size:.84rem;line-height:1.5;opacity:.74}.is-complete .nexus-private-bar{display:none}
+#${ROW_ID}{display:flex;flex-direction:column;width:100%;max-height:calc(100% - 18px);min-height:0;margin:8px 0 10px;box-sizing:border-box;color:inherit}
+#${ROW_ID} *{box-sizing:border-box}.nexus-private-shell{display:flex;flex-direction:column;min-height:0;overflow:hidden;overflow:clip;border:1px solid rgba(244,128,166,.4);border-radius:16px;background:linear-gradient(145deg,rgba(39,15,36,.9),rgba(22,13,28,.82));box-shadow:0 16px 50px rgba(23,5,21,.3);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.nexus-private-heading{display:flex;align-items:baseline;gap:8px;padding:9px 13px;border-bottom:1px solid rgba(255,255,255,.07);font-size:.74rem;flex:0 0 auto;background:linear-gradient(145deg,rgba(35,13,33,.97),rgba(26,14,31,.95))}.nexus-private-kicker{color:#f49aba;font-size:.72rem;font-weight:750;letter-spacing:.09em}.nexus-private-heading-title{font-weight:700;margin:0}.nexus-private-place{order:2;font-size:.74rem;opacity:.5;margin-left:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:45%}.nexus-private-heading-title{order:3;flex:0 0 auto;padding:2px 9px;border-radius:999px;border:1px solid rgba(244,128,166,.32);background:rgba(244,128,166,.12);color:#f6b9cd;font-size:.72rem;letter-spacing:.02em}.nexus-private-card{flex:1 1 auto;min-height:0;padding:12px 14px;max-height:34vh;overflow-y:auto;overscroll-behavior:contain}.nexus-private-log{display:grid;gap:10px}.nexus-private-turn{display:grid;gap:2px}.nexus-private-who{font-size:.62rem;letter-spacing:.1em;font-weight:700;opacity:.42}.nexus-private-turn.is-you .nexus-private-who{color:#9fd8ea}.nexus-private-turn.is-her .nexus-private-who{color:#f08fb6}.nexus-private-turn.is-you .nexus-private-copy{opacity:.78}.nexus-private-copy{font-size:.95rem;line-height:1.5;white-space:pre-wrap;text-wrap:pretty}.nexus-private-turn.is-streaming .nexus-private-copy::after{content:'▍';opacity:.5;animation:nexus-private-caret 1s steps(2) infinite}@keyframes nexus-private-caret{0%,100%{opacity:.15}50%{opacity:.7}}.nexus-private-pending{padding-top:9px;border-top:1px solid rgba(255,255,255,.07);opacity:.8}.nexus-private-thinking{display:flex;align-items:center;gap:5px;margin-top:12px;height:10px}.nexus-private-dot{width:6px;height:6px;border-radius:50%;background:#f49aba;opacity:.35;animation:nexus-private-dot 1.25s ease-in-out infinite}.nexus-private-dot:nth-child(2){animation-delay:.18s}.nexus-private-dot:nth-child(3){animation-delay:.36s}@keyframes nexus-private-dot{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:.95;transform:translateY(-3px)}}.nexus-private-kicker{animation:nexus-private-breathe 5.5s ease-in-out infinite}@keyframes nexus-private-breathe{0%,100%{opacity:.72}50%{opacity:1}}@media(prefers-reduced-motion:reduce){.nexus-private-dot,.nexus-private-kicker,.nexus-private-turn.is-streaming .nexus-private-copy::after{animation:none}.nexus-private-dot{opacity:.6}}.nexus-private-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:11px}.nexus-private-btn{border:1px solid rgba(240,143,182,.32);background:rgba(240,143,182,.09);color:inherit;border-radius:10px;padding:8px 10px;text-align:center;font:inherit;font-size:.8rem;cursor:pointer}.nexus-private-btn:hover,.nexus-private-btn:focus-visible{background:rgba(244,128,166,.18);outline:none}.nexus-private-btn:disabled{cursor:default;opacity:.4}.nexus-private-btn.is-chosen{opacity:.85;border-color:rgba(240,143,182,.55);background:rgba(240,143,182,.16)}.nexus-private-bar{display:flex;align-items:center;gap:8px;padding:7px 11px;border-top:1px solid rgba(255,255,255,.07);flex:0 0 auto;background:linear-gradient(145deg,rgba(30,12,29,.97),rgba(22,13,28,.96))}.nexus-private-level{font-size:.72rem;opacity:.6;flex:1}.nexus-private-bar .nexus-private-btn{padding:6px 9px;font-size:.76rem}.nexus-private-soundtrack{flex:0 0 auto;margin:0 11px 9px;font-size:.74rem}.nexus-private-soundtrack-strip{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:5px 9px;border:1px solid rgba(240,143,182,.16);border-radius:9px;background:rgba(240,143,182,.05)}.nexus-private-soundtrack-copy{min-width:0;flex:1}.nexus-private-soundtrack-kicker{display:none}.nexus-private-soundtrack-title{font-size:.74rem;line-height:1.3;opacity:.72;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nexus-private-soundtrack-creator{display:none}.nexus-private-soundtrack-toggle{border:0;background:transparent;color:inherit;opacity:.5;padding:2px 4px;font:inherit;font-size:.7rem;cursor:pointer;flex:0 0 auto;text-decoration:underline}.nexus-private-soundtrack-toggle:hover,.nexus-private-soundtrack-toggle:focus-visible{opacity:.9;outline:none}.nexus-private-soundtrack-player{display:none;width:min(280px,100%);margin-top:9px}.nexus-private-soundtrack-player.is-open{display:block}.nexus-private-soundtrack-player .nexus-yt-card{width:100%;max-width:280px;margin:0}.nexus-private-soundtrack-player .nexus-yt-meta{font-size:.72rem}.nexus-private-complete{font-size:1rem;font-weight:750;margin-bottom:6px}.nexus-private-note{font-size:.84rem;line-height:1.5;opacity:.74}.is-complete .nexus-private-bar{display:none}
 .nexus-private-status{font-size:.72rem;opacity:0;transition:opacity .28s ease;color:#9fd8ea;flex:0 0 auto;white-space:nowrap}.nexus-private-status.is-visible{opacity:.85}
 .nexus-private-shell.is-gentle{border-color:rgba(244,128,166,.24);box-shadow:0 12px 36px rgba(23,5,21,.24)}.is-gentle .nexus-private-kicker{animation:none;opacity:.6}
 .nexus-private-level{display:flex;align-items:center;gap:5px}.nexus-private-step{font-size:.72rem;opacity:.3;transition:opacity .3s ease,color .3s ease}.nexus-private-step.is-reached{opacity:.6;color:#f49aba}.nexus-private-step.is-current{opacity:1;font-weight:700;letter-spacing:.01em}.nexus-private-rung{width:12px;height:1px;background:currentColor;opacity:.22;flex:0 0 auto}
 .nexus-private-choices{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:9px;border-top:1px solid rgba(255,255,255,.07)}.nexus-private-choice{text-align:left;font-size:.82rem;line-height:1.35;padding:8px 11px;border-color:rgba(159,216,234,.3);background:rgba(159,216,234,.07);animation:nexus-private-choice-in .22s ease both}.nexus-private-choice:hover,.nexus-private-choice:focus-visible{background:rgba(159,216,234,.16);border-color:rgba(159,216,234,.5)}.nexus-private-choice:nth-child(2){animation-delay:.05s}.nexus-private-choice:nth-child(3){animation-delay:.1s}@keyframes nexus-private-choice-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){.nexus-private-choice{animation:none}}
 .nexus-private-controls{display:flex;align-items:center;gap:6px;margin-left:auto;flex:0 0 auto}.nexus-private-btn.is-primary{border-color:rgba(244,128,166,.6);background:rgba(244,128,166,.24);font-weight:650}.nexus-private-btn.is-primary:hover,.nexus-private-btn.is-primary:focus-visible{background:rgba(244,128,166,.34)}.nexus-private-btn.is-secondary{border-color:rgba(255,255,255,.14);background:transparent;opacity:.62}.nexus-private-btn.is-secondary:hover,.nexus-private-btn.is-secondary:focus-visible{opacity:.95;background:rgba(255,255,255,.06)}
 @media(max-width:560px){.nexus-private-bar{flex-wrap:wrap}.nexus-private-controls{margin-left:auto}.nexus-private-step{font-size:.7rem}.nexus-private-rung{width:8px}}
-@media(max-width:560px){#${ROW_ID}{margin:6px 0 8px}.nexus-private-card{padding:11px 13px;max-height:30vh}.nexus-private-copy{font-size:.92rem}.nexus-private-soundtrack{margin:0 10px 8px}.nexus-private-soundtrack-player{width:100%}.nexus-private-soundtrack-player .nexus-yt-card{max-width:100%}}
+@media(max-width:560px){#${ROW_ID}{height:calc(100% - 14px);max-height:calc(100% - 14px);margin:6px 0 8px}.nexus-private-shell{flex:1 1 auto}.nexus-private-card{padding:11px 13px;max-height:none}.nexus-private-copy{font-size:.92rem}.nexus-private-soundtrack{margin:0 10px 8px}.nexus-private-soundtrack-player{width:100%}.nexus-private-soundtrack-player .nexus-yt-card{max-width:100%}}@media(max-width:560px) and (max-height:450px){.nexus-private-soundtrack{display:none}}
 `;
 
     /**
@@ -160,6 +187,12 @@ const PrivateConversationView = (() => {
             this.handlers = { onCloser, onEase, onEnd, onUserMessage };
             this.row = null;
             this.card = null;
+            /**
+             * Whether the transcript follows new lines. True until the reader scrolls away from
+             * the bottom; see `_scroll`.
+             */
+            this._stick = true;
+            this._onScroll = null;
             this.level = null;
             this._composer = null;
             this._hostObserver = null;
@@ -236,6 +269,16 @@ const PrivateConversationView = (() => {
             this._bindComposer();
             this._observeHost(host);
             this._installSurface();
+            // The card is up, so the generic `NEXUS • • •` must not be (P26). `main.js` suppresses
+            // it from here on, but one already on screen when Private mounted has nothing left to
+            // clear it and would sit there for the whole session. Here rather than in
+            // `_installSurface`, because it belongs to the card existing rather than to the
+            // surface swap — and that call returns early on a page with no surface module.
+            this._clearGenericThinking();
+            // A fresh card starts following, and starts listening for the reader stepping away
+            // from the bottom. The listener lives on the card, which is the element that scrolls.
+            this._stickToEnd();
+            this._watchScroll();
             this._watchReset();
             this._scroll(host);
             return true;
@@ -279,6 +322,18 @@ const PrivateConversationView = (() => {
                 this._pending = null;
                 this.hideThinking();
             });
+            return true;
+        }
+
+        /** The host's own waiting placeholder, down. See `mount`. */
+        _clearGenericThinking() {
+            try {
+                if (this.win && typeof this.win.setTypingIndicator === 'function') {
+                    this.win.setTypingIndicator(false);
+                }
+            } catch (_) {
+                // An indicator that will not hide is not a reason to fail the mount.
+            }
             return true;
         }
 
@@ -526,8 +581,12 @@ const PrivateConversationView = (() => {
          */
         renderUserTurn(text) {
             this.hideThinking();
+            // Sending something is the clearest possible statement that you want to see what
+            // comes back, so it cancels any scrolling-up you did while waiting.
+            this._stickToEnd();
             const turn = this._turn('you', text);
             this._trim();
+            this._scroll(this.doc && this.doc.getElementById('chat-history'));
             return turn;
         }
 
@@ -560,6 +619,11 @@ const PrivateConversationView = (() => {
                     copy.textContent = String(full == null ? '' : full);
                     if (turn) turn.classList.remove('is-streaming');
                     view._trim();
+                    // The whole point. `append` followed her while she typed, and then the last
+                    // chunk — often the longest, because a non-streaming provider delivers the
+                    // entire reply here — landed with no scroll at all. That is the reported
+                    // bug: the answer arrives and you have to go and find it.
+                    view._scroll(view.doc && view.doc.getElementById('chat-history'));
                 },
                 discard() {
                     // The user pressed CLEAR mid-sentence, or the provider failed. An empty
@@ -727,9 +791,12 @@ const PrivateConversationView = (() => {
                 dot.dataset.privateStep = String(step.level);
                 if (step.reached) dot.classList.add('is-reached');
                 if (step.current) dot.classList.add('is-current');
-                // The word only on the step you are on: three labels in a phone-width footer is a
-                // legend, and a legend is something to read rather than something to glance at.
-                dot.textContent = step.current ? paceWord(step.level) : '•';
+                // Dots only (P26). The word used to sit on the current step, which was right when
+                // the header showed the *preset* — but the header shows the current level now, so
+                // the footer was repeating it two inches below. The ladder's job is the ceiling and
+                // the position; the badge says which one it is, and the `aria-label` below says
+                // both for anybody who cannot see the shape.
+                dot.textContent = '•';
                 this.level.appendChild(dot);
             });
             return this.level;
@@ -929,6 +996,7 @@ const PrivateConversationView = (() => {
             }
             if (this._hostObserver) this._hostObserver.disconnect();
             this._hostObserver = null;
+            this._unwatchScroll();
             this._unbindComposer();
             const old = this.doc && this.doc.getElementById(ROW_ID);
             if (old) old.remove();
@@ -974,11 +1042,66 @@ const PrivateConversationView = (() => {
             });
             this._hostObserver.observe(host, { childList: true });
         }
+        /**
+         * Keep the newest line in view — and scroll the box that actually scrolls.
+         *
+         * This used to move `#chat-history` and nothing else, which was right until P27 made
+         * `.nexus-private-card` the scroller. After that the card overflowed, the history did
+         * not, and setting `scrollTop` on the history was a no-op: her reply landed below the
+         * fold and the reader had to drag the card's own scrollbar to every answer. Both are
+         * scrolled now, because on desktop the row can still be what moves inside the history.
+         *
+         * `_stick` is what stops this being hostile. Somebody who has scrolled up to re-read a
+         * line is *reading*; yanking them back on the next token is the classic chat-window
+         * annoyance. So a scroll away from the bottom turns following off, and returning to the
+         * bottom — or taking a turn of their own — turns it back on.
+         */
         _scroll(host) {
-            if (!host) return;
+            if (this._stick === false) return;
+            this._scrollToEnd(this.card);
+            this._scrollToEnd(host);
+        }
+
+        _scrollToEnd(el) {
+            if (!el) return;
             try {
-                host.scrollTop = host.scrollHeight;
+                el.scrollTop = el.scrollHeight;
             } catch (_) {}
+        }
+
+        /**
+         * Is the reader at the bottom, near enough?
+         *
+         * A few pixels of slack because a fractional `scrollHeight`, a sub-pixel zoom or a
+         * momentum scroll that stops just short all leave a reader who is plainly at the bottom
+         * one or two pixels off it, and an exact comparison would silently stop following.
+         */
+        _atBottom(el) {
+            if (!el) return true;
+            const slack = Number(el.scrollHeight) - Number(el.scrollTop) - Number(el.clientHeight);
+            return !(slack > STICK_SLACK_PX);
+        }
+
+        /** Follow again from here, whatever the reader was doing. Their own turn says "I'm back". */
+        _stickToEnd() {
+            this._stick = true;
+        }
+
+        _watchScroll() {
+            const card = this.card;
+            if (!card || typeof card.addEventListener !== 'function') return;
+            this._unwatchScroll();
+            this._onScroll = () => {
+                this._stick = this._atBottom(card);
+            };
+            card.addEventListener('scroll', this._onScroll, { passive: true });
+        }
+
+        _unwatchScroll() {
+            if (this.card && this._onScroll && typeof this.card.removeEventListener === 'function') {
+                this.card.removeEventListener('scroll', this._onScroll);
+            }
+            this._onScroll = null;
         }
         _button(label, action, handler) {
             const button = this.doc.createElement('button');

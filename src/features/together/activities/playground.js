@@ -151,15 +151,109 @@ const PlaygroundActivity = (() => {
         }
     }
 
+    /** Same resolution as `privateBeats`, and for the same reason: boot order is not require order. */
+    function privatePreflight(win) {
+        const w = win || globalObject();
+        if (w && w.NEXUS_PRIVATE_PREFLIGHT) return w.NEXUS_PRIVATE_PREFLIGHT;
+        try {
+            // eslint-disable-next-line global-require
+            return typeof require === 'function' ? require('../PrivatePreflight.js') : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /** Same resolution again, for the read-only art catalogue behind every scene thumbnail. */
+    function sceneArt(win) {
+        const w = win || globalObject();
+        if (w && w.NEXUS_SCENE_ART) return w.NEXUS_SCENE_ART;
+        try {
+            // eslint-disable-next-line global-require
+            return typeof require === 'function' ? require('../SceneArt.js') : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /**
+     * The scene, as a small picture and its name, for the screens between Configure and playing.
+     *
+     * Preparing and Ready used to name no place at all. Twelve seconds of `Creating our story…`
+     * with four ticking rows, then a title — and nothing on either screen said which of the ten
+     * places the story belonged to, so choosing a scene and then waiting felt like the choice had
+     * been dropped. It had not been; it was simply invisible.
+     *
+     * This draws from a resolved `{id, label}` and nothing else. It reads the art catalogue,
+     * appends an `<img>` and returns. It does not consult the viewport, and — the part worth
+     * being explicit about — it does not set one either: the environment behind her is whatever
+     * it already was, and a thumbnail is a picture of it, not a request to change it.
+     */
+    function sceneStrip(doc, parent, scene, win) {
+        if (!doc || !parent || !scene) return null;
+        const strip = addEl(doc, parent, 'div', 'nexus-story-scene-strip');
+        const art = sceneArt(win);
+        if (art && typeof art.thumbnailElement === 'function') {
+            // Id first, label second. `currentScene` slugs a label into an id when the blackboard
+            // holds only a name, and that slug is not one of the catalogue's ids — so a lookup on
+            // the id alone finds nothing for exactly the scenes a user picked by hand.
+            const key = art.getSceneArt(scene.id) ? scene.id : scene.label;
+            const img = art.thumbnailElement(doc, key, {
+                className: 'nexus-story-scene-thumb',
+                alt: scene.label || '',
+                eager: true,
+            });
+            if (img) strip.appendChild(img);
+        }
+        addEl(doc, strip, 'span', 'nexus-story-scene-name', scene.label || '');
+        strip.dataset.sceneId = String(scene.id || '');
+        return strip;
+    }
+
+    /**
+     * Where she is, asked of the things that actually know.
+     *
+     * This used to read the blackboard and nothing else, and the blackboard's `scene` is often
+     * unset — which is how the Preparing screen came to say `Current Scene` on a session whose
+     * Configure card, two clicks earlier, had said `Coastal Terrace · Twilight`. The setup view
+     * had a proper resolver and this did not, so the same evening had two different names for
+     * the same place depending on which screen you were looking at.
+     *
+     * Order is most-authoritative first: what the viewport is actually rendering, then what the
+     * director believes, then the humanised id. `SceneArt` turns any of those into the
+     * catalogue's spelling — read-only, as ever; asking what the background *is* is not the same
+     * as setting one.
+     */
     function currentScene(win) {
+        const art = sceneArt(win);
+        const named = (key) => {
+            const entry = art && key ? art.getSceneArt(key) : null;
+            return entry ? { id: entry.id, label: entry.label } : null;
+        };
+
+        // 1. The viewport's own answer.
+        try {
+            const viewer = win && win.NEXUS_VIEWER;
+            const state = viewer && typeof viewer.getVisualState === 'function' ? viewer.getVisualState() : null;
+            const found = named(state && state.background);
+            if (found) return found;
+        } catch (_) {
+            // A viewer mid-teardown is not a reason to lose the scene name.
+        }
+
+        // 2. The director's blackboard, by id and then by label.
         const d = win && win.NEXUS_BD;
         const scene = d && d.blackboard && d.blackboard.scene;
         if (scene && typeof scene === 'object') {
             const id = cleanText(scene.id || scene.sceneId || '', 100);
             const label = cleanText(scene.label || scene.title || '', 120);
+            const found = named(id) || named(label);
+            if (found) return found;
             return { id: id || slug(label || 'current-scene'), label: label || humanizeScene(id) };
         }
-        const id = cleanText(scene || '', 100) || 'current-scene';
+        const raw = cleanText(scene || '', 100);
+        const found = named(raw);
+        if (found) return found;
+        const id = raw || 'current-scene';
         return { id, label: humanizeScene(id) };
     }
 
@@ -415,57 +509,286 @@ const PlaygroundActivity = (() => {
         ].join(' ');
     }
 
+    /**
+     * How long each half of preparation is allowed to take before we stop waiting on it.
+     *
+     * Generous for the plan, because a model writing a whole story with choices and a music
+     * query legitimately takes tens of seconds, and cutting it off early throws away work that
+     * was about to land. The number is not a guess: the app's own connection check measures a
+     * single completion on a real setup (`huihui_ai/qwen3-abliterated:4b`, through the serverless
+     * proxy) at **45 seconds**, and `api/proxy.js` aborts upstream at 55s and returns a structured
+     * `UPSTREAM_TIMEOUT`. Sitting just above that means the proxy's own, clearer answer arrives
+     * first and our deadline only catches the case where even it said nothing.
+     *
+     * Tight for the search, because a music lookup that has not answered in eight seconds is not
+     * about to.
+     *
+     * The numbers matter less than the fact that they exist. Before them this path awaited the
+     * provider with no deadline at all, so a hung request left `Creating our story…` on screen
+     * with one tick and three empty circles, for as long as the user was willing to look at it.
+     */
+    const PLAN_TIMEOUT_MS = 60000;
+    const MUSIC_TIMEOUT_MS = 8000;
+
+    /**
+     * How many decisions this story asks for.
+     *
+     * A validated plan is a node graph, not a list — `plan.choices` has never existed, and code
+     * that reads it gets `undefined` and reports "nothing to do" about the two choices sitting
+     * in `plan.nodes`. The contract pins the count at exactly two, so this is always 2 today;
+     * counting it anyway means the screen keeps telling the truth if that ever changes.
+     */
+    function countChoices(plan) {
+        const nodes = (plan && plan.nodes) || null;
+        if (!nodes || typeof nodes !== 'object') return 0;
+        return Object.keys(nodes).filter((key) => nodes[key] && nodes[key].type === 'choice').length;
+    }
+
+    /** `○` not started, `…` working, `✓` done, `·` nothing to do, `✕` tried and did not work. */
+    const PREPARE_MARKS = Object.freeze({
+        pending: '○',
+        running: '…',
+        done: '✓',
+        skipped: '·',
+        failed: '✕',
+    });
+
+    /**
+     * Wait for `promise`, but not forever.
+     *
+     * Resolves `{settled: true, value}` when the work landed, `{settled: false}` when the clock
+     * beat it, and `{settled: true, error}` when it threw. The timer is always cleared, because
+     * the alternative is a pending timeout per preparation and a user who changes their mind
+     * three times holding three of them.
+     *
+     * The abandoned promise keeps running — there is no abort through this client, and pretending
+     * otherwise would need a cancellation contract every provider would have to honour. What this
+     * guarantees is narrower and is the part that matters: *the screen* stops waiting.
+     */
+    function withDeadline(promise, ms, win) {
+        const w = win || globalObject();
+        const settled = Promise.resolve(promise).then(
+            (value) => ({ settled: true, value }),
+            (error) => ({ settled: true, error: error || new Error('failed') })
+        );
+        if (!w || typeof w.setTimeout !== 'function' || !(ms > 0)) return settled;
+        let timer = null;
+        const clock = new Promise((resolve) => {
+            timer = w.setTimeout(() => resolve({ settled: false }), ms);
+        });
+        return Promise.race([settled, clock]).then((result) => {
+            if (timer !== null && typeof w.clearTimeout === 'function') w.clearTimeout(timer);
+            return result;
+        });
+    }
+
+    /**
+     * How many times a plan request is worth asking for, and how long to wait between.
+     *
+     * Two attempts, not more: a third costs the user another `PLAN_TIMEOUT_MS` of staring at a
+     * progress list to buy a diminishing chance, and the written story is a complete story. Full
+     * jitter on the backoff because a reconnecting gateway gets every open tab retrying at once
+     * otherwise — the classic thundering herd, and the reason a fixed backoff is a bug at scale.
+     */
+    const PLAN_ATTEMPTS = 2;
+    const PLAN_RETRY_BASE_MS = 800;
+
     class StoryPlanner {
-        constructor({ win, bus } = {}) {
+        constructor({ win, bus, timeouts } = {}) {
             this.win = win || globalObject();
             this.bus = bus || null;
+            /**
+             * Injected so a test can prove the deadline fires without waiting 45 real seconds.
+             * Production passes nothing and gets the constants above.
+             */
+            this.timeouts = {
+                plan: (timeouts && timeouts.plan) || PLAN_TIMEOUT_MS,
+                music: (timeouts && timeouts.music) || MUSIC_TIMEOUT_MS,
+                retryBase: timeouts && typeof timeouts.retryBase === 'number' ? timeouts.retryBase : PLAN_RETRY_BASE_MS,
+            };
+            /** The outstanding plan request, so a second preparation can call off the first. */
+            this._inFlight = null;
         }
 
+        /**
+         * Stop the request this planner is waiting on, at the transport if the browser allows it.
+         *
+         * This is the half of the fix that the deadline alone does not buy. Giving up on a slow
+         * request client-side leaves it running: the socket stays open, the gateway stays busy,
+         * and a provider that generates one completion at a time — Ollama and anything proxying
+         * to it — keeps that slot until the first request finishes. The next preparation then
+         * queues behind work nobody is waiting for, which is why the *second* story froze while
+         * the first had been fine. Aborting hands the slot back.
+         */
+        cancel(why = 'superseded') {
+            const live = this._inFlight;
+            this._inFlight = null;
+            if (!live) return false;
+            try {
+                if (live.controller) live.controller.abort();
+            } catch (_) {
+                // An abort that throws is still an abandoned request; nothing here can be worse
+                // off for it, and the deadline below covers us either way.
+            }
+            busEmit(this.bus, 'playground:planner-cancelled', { why });
+            return true;
+        }
+
+        /**
+         * Ask the provider for a plan: bounded attempts, a deadline each, abortable throughout.
+         *
+         * Returns `{ ok, raw }`, or `{ ok: false, why }` — never throws and never resolves late
+         * enough to matter, because the caller has already moved on by then.
+         */
+        async _requestPlan(request, llm) {
+            const win = this.win || globalObject();
+            // Whatever the last preparation left running is no longer anybody's answer.
+            this.cancel('superseded');
+            let lastWhy = 'no attempt ran';
+            for (let attempt = 0; attempt < PLAN_ATTEMPTS; attempt += 1) {
+                const controller = win && typeof win.AbortController === 'function' ? new win.AbortController() : null;
+                const started = Promise.resolve().then(() =>
+                    llm.sendMessage(request, plannerSystemPrompt(), [], controller ? { signal: controller.signal } : {})
+                );
+                this._inFlight = { controller, promise: started };
+                // A rejection nobody is awaiting is an unhandled rejection in the console; this
+                // request is abandoned on purpose, so its failure is expected rather than news.
+                started.catch(() => {});
+                const asked = await withDeadline(started, this.timeouts.plan, win);
+                if (this._inFlight && this._inFlight.promise === started) this._inFlight = null;
+
+                if (!asked.settled) {
+                    // Out of time. Abort so the provider stops working on an answer that will
+                    // never be read, then stop asking: a retry would spend the same budget again.
+                    try {
+                        if (controller) controller.abort();
+                    } catch (_) {}
+                    return { ok: false, why: 'timeout' };
+                }
+                if (!asked.error) return { ok: true, raw: asked.value };
+
+                lastWhy = String((asked.error && asked.error.message) || asked.error);
+                if (/abort/i.test(lastWhy)) return { ok: false, why: 'cancelled' };
+                if (attempt + 1 < PLAN_ATTEMPTS) {
+                    // Exponential base, full jitter: sleep somewhere in [0, base * 2^attempt].
+                    const ceiling = this.timeouts.retryBase * Math.pow(2, attempt);
+                    const wait = Math.floor(Math.random() * ceiling);
+                    busEmit(this.bus, 'playground:planner-retry', { attempt: attempt + 1, wait, why: lastWhy });
+                    await new Promise((resolve) => {
+                        if (win && typeof win.setTimeout === 'function') win.setTimeout(resolve, wait);
+                        else resolve();
+                    });
+                }
+            }
+            return { ok: false, why: lastWhy };
+        }
+
+        /**
+         * Four steps, each of which says what it is actually doing while it does it.
+         *
+         * The reported failure was this screen frozen on `✓ Understanding this place` with three
+         * empty circles under it. Two things made that possible and both are fixed here.
+         *
+         * One: the plan request was awaited with no deadline, so a slow or dead provider stopped
+         * the sequence dead. Every wait now has a clock, and a step that runs out of time is
+         * reported and stepped over — the written plan is a complete story, so there is always
+         * something to fall back to and never a reason to strand somebody on a progress list.
+         *
+         * Two: a step had two states, done or not, so "working on it" and "never started" drew
+         * the same circle. There was no way to tell a slow evening from a stuck one. The states
+         * are now the five `PrivatePreflight` uses, for the same reason and with the same marks.
+         *
+         * The boundaries moved too. `choices` used to tick in the same breath as `story` with no
+         * work between them, which made the list read as three instant steps and one that hung.
+         * Each step is now marked running before its own work and settled after it.
+         */
         async prepare({ scene, idea = '', music = 'auto', onProgress } = {}) {
             const safeScene = scene || currentScene(this.win);
             const safeSeed = safeIdea(idea);
             const musicEnabled = music !== 'none';
-            const progress = (id) => {
-                if (typeof onProgress === 'function') onProgress(id);
-                busEmit(this.bus, 'playground:prepare-progress', { step: id });
+            // One argument means `done`, which is what every existing caller and test means by it.
+            const progress = (id, state = 'done') => {
+                if (typeof onProgress === 'function') onProgress(id, state);
+                busEmit(this.bus, 'playground:prepare-progress', { step: id, state });
             };
 
-            progress('scene');
+            progress('scene', 'running');
+            progress('scene', 'done');
+
+            progress('story', 'running');
             let plan = null;
+            let planFrom = 'written';
             const llm = this.win && this.win._nexusLLM;
-            try {
-                const settings = llm && typeof llm.getSettings === 'function' ? llm.getSettings() : null;
-                if (llm && typeof llm.sendMessage === 'function' && (!settings || settings.provider !== 'none')) {
-                    const request = [
-                        `Scene id: ${safeScene.id}`,
-                        `Scene label: ${safeScene.label}`,
-                        `Optional user idea: ${safeSeed || '(none — invent a gentle mystery)'}`,
-                        'Write the complete plan now. It is fictional and inspired by the scene, not factual history.',
-                    ].join('\n');
-                    const raw = await llm.sendMessage(request, plannerSystemPrompt(), []);
-                    const parsed = parseJsonObject(raw);
-                    const checked = validateStoryPlan(parsed, {
-                        sceneId: safeScene.id,
-                        sceneLabel: safeScene.label,
-                        musicEnabled,
-                        musicQuery: parsed && parsed.music && parsed.music.query,
-                    });
-                    if (checked.ok) plan = checked.plan;
+            const settings = llm && typeof llm.getSettings === 'function' ? llm.getSettings() : null;
+            const canAsk =
+                Boolean(llm && typeof llm.sendMessage === 'function') && (!settings || settings.provider !== 'none');
+            if (!canAsk) {
+                // No provider is not a failure. There is a written story for exactly this case,
+                // and a red cross against "Writing the story" would be a lie about a story that
+                // is about to play.
+                progress('story', 'skipped');
+            } else {
+                const request = [
+                    `Scene id: ${safeScene.id}`,
+                    `Scene label: ${safeScene.label}`,
+                    `Optional user idea: ${safeSeed || '(none — invent a gentle mystery)'}`,
+                    'Write the complete plan now. It is fictional and inspired by the scene, not factual history.',
+                ].join('\n');
+                const asked = await this._requestPlan(request, llm);
+                if (!asked.ok) {
+                    busEmit(this.bus, 'playground:planner-fallback', { why: asked.why });
+                    progress('story', 'failed');
+                } else {
+                    // `parseJsonObject` throws on prose, and a model that answers "I'd rather
+                    // write you something gentler" is answering, not erroring. Unparseable and
+                    // parseable-but-not-a-story are the same outcome — the written story — and
+                    // neither is allowed to take the preparation down with it.
+                    let checked = { ok: false, why: '' };
+                    try {
+                        const parsed = parseJsonObject(asked.raw);
+                        checked = validateStoryPlan(parsed, {
+                            sceneId: safeScene.id,
+                            sceneLabel: safeScene.label,
+                            musicEnabled,
+                            musicQuery: parsed && parsed.music && parsed.music.query,
+                        });
+                    } catch (error) {
+                        checked = { ok: false, why: String((error && error.message) || error) };
+                    }
+                    if (checked.ok) {
+                        plan = checked.plan;
+                        planFrom = 'model';
+                        progress('story', 'done');
+                    } else {
+                        busEmit(this.bus, 'playground:planner-fallback', { why: checked.why || 'unusable plan' });
+                        progress('story', 'failed');
+                    }
                 }
-            } catch (error) {
-                busEmit(this.bus, 'playground:planner-fallback', { why: String((error && error.message) || error) });
             }
-
-            progress('story');
             if (!plan) plan = fallbackStory(safeScene, safeSeed, musicEnabled);
-            progress('choices');
 
+            progress('choices', 'running');
+            progress('choices', countChoices(plan) ? 'done' : 'skipped');
+
+            progress('music', 'running');
             let soundtrack = null;
-            if (musicEnabled) {
-                soundtrack = await this._findSoundtrack(plan.music.query || `${safeScene.label} gentle instrumental`);
+            if (!musicEnabled) {
+                progress('music', 'skipped');
+            } else {
+                const found = await withDeadline(
+                    Promise.resolve().then(() =>
+                        this._findSoundtrack(plan.music.query || `${safeScene.label} gentle instrumental`)
+                    ),
+                    this.timeouts.music,
+                    this.win
+                );
+                soundtrack = found.settled && !found.error ? found.value || null : null;
+                // Nothing found is not the same as never answered, and the summary says which.
+                if (!found.settled || found.error) progress('music', 'failed');
+                else progress('music', soundtrack ? 'done' : 'skipped');
             }
-            progress('music');
-            return { plan, soundtrack };
+
+            return { plan, soundtrack, planFrom };
         }
 
         async _findSoundtrack(query) {
@@ -576,7 +899,7 @@ const PlaygroundActivity = (() => {
 #nexus-scene-tale-hud *{box-sizing:border-box}
 .nexus-story-bar,.nexus-story-card{pointer-events:auto;background:rgba(12,15,24,.76);border:1px solid rgba(255,255,255,.14);box-shadow:0 16px 50px rgba(0,0,0,.34);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-radius:16px}
 .nexus-story-bar{display:flex;align-items:center;gap:10px;padding:9px 11px;margin-top:8px}.nexus-story-title{font-weight:650;font-size:.86rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}.nexus-story-time{font-size:.76rem;opacity:.68;font-variant-numeric:tabular-nums}.nexus-story-btn{border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.08);color:#fff;border-radius:10px;padding:7px 11px;font:inherit;font-size:.78rem;cursor:pointer}.nexus-story-btn:hover,.nexus-story-btn:focus-visible{background:rgba(255,255,255,.15);outline:none}.nexus-story-btn.is-end{opacity:.82}.nexus-story-card{padding:15px 17px;margin-bottom:8px}.nexus-story-caption{font-size:1rem;line-height:1.55;text-wrap:pretty}.nexus-story-choice-title{font-size:.92rem;line-height:1.45;margin-bottom:11px}.nexus-story-options{display:grid;grid-template-columns:1fr 1fr;gap:8px}.nexus-story-option{width:100%;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.1);color:#fff;border-radius:12px;padding:12px;text-align:left;font:inherit;cursor:pointer}.nexus-story-option:hover,.nexus-story-option:focus-visible{background:rgba(255,255,255,.18);outline:none}.nexus-story-complete-title{font-weight:700;font-size:1rem;margin-bottom:5px}.nexus-story-complete-note{font-size:.84rem;opacity:.76;margin-bottom:12px}.nexus-story-complete-actions{display:flex;flex-wrap:wrap;gap:8px}
-.nexus-story-setup-label{display:block;font-size:.78rem;opacity:.72;margin:12px 0 5px}.nexus-story-setup-input{width:100%;min-height:72px;resize:vertical;border-radius:11px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:inherit;padding:10px;font:inherit}.nexus-story-radio{display:flex;align-items:center;gap:8px;margin:7px 0;font-size:.88rem}.nexus-story-progress{display:grid;gap:7px;margin:12px 0}.nexus-story-progress-row{font-size:.86rem;opacity:.72}.nexus-story-progress-row.is-done{opacity:1}.nexus-story-ready-meta{font-size:.84rem;opacity:.75;line-height:1.55;margin:8px 0 14px}
+.nexus-story-setup-label{display:block;font-size:.78rem;opacity:.72;margin:12px 0 5px}.nexus-story-setup-input{width:100%;min-height:72px;resize:vertical;border-radius:11px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:inherit;padding:10px;font:inherit}.nexus-story-radio{display:flex;align-items:center;gap:8px;margin:7px 0;font-size:.88rem}.nexus-story-progress{display:grid;gap:7px;margin:12px 0}.nexus-story-progress-row{font-size:.86rem;opacity:.72}.nexus-story-progress-row.is-done{opacity:1}.nexus-story-progress-row.is-pending{opacity:.45}.nexus-story-progress-row.is-running{opacity:1;color:#7fe3f5}.nexus-story-progress-row.is-skipped{opacity:.55}.nexus-story-progress-row.is-failed{opacity:.9;color:#f2a0a0}.nexus-story-ready-meta{font-size:.84rem;opacity:.75;line-height:1.55;margin:8px 0 14px}
 @media(max-width:560px){#nexus-scene-tale-hud{width:calc(100vw - 18px);bottom:max(9px,env(safe-area-inset-bottom))}.nexus-story-options{grid-template-columns:1fr}.nexus-story-caption{font-size:.94rem}.nexus-story-bar{gap:6px}.nexus-story-btn{padding:7px 9px}}
 `;
 
@@ -1049,6 +1372,26 @@ const PlaygroundActivity = (() => {
             this._prepareToken = 0;
             this._panel = null;
             this._showAllScenes = false;
+            /**
+             * The preflight, and what it has finished (P20).
+             *
+             * The comment above this block is still true about *step 1 and 2* — nobody should be
+             * administered before choosing a mood. It was wrong about the moment after `Begin`,
+             * which is where the work actually is and where the reported session fell over: the
+             * first line was spoken before `speech-service` had a voice, the scene decoded after
+             * the card was up, and the first reply came back empty because nothing had checked
+             * the provider could answer at the cap it was about to be asked at.
+             *
+             * Scene Tale already showed the way — `Creating our story…` with a named line per
+             * step. A screen that says what it is doing is not a progress bar; a progress bar is
+             * what you show when you have nothing true to say.
+             */
+            this.preflightShown = null;
+            this._preflightToken = 0;
+            /** One in-flight media search per query, reused rather than repeated. See `_findTrack`. */
+            this._trackCache = new Map();
+            /** And one plan per set of inputs, for the same reason. See `_planFor`. */
+            this._planCache = new Map();
         }
         get name() {
             return 'Private';
@@ -1193,11 +1536,7 @@ const PlaygroundActivity = (() => {
                 : currentScene(win).label;
             const wantsMusic = this.soundtrackChoice === 'choose' && preset && preset.music;
 
-            const beats = privateBeats(win);
-            const planning =
-                beats && typeof beats.plan === 'function'
-                    ? beats.plan({ preset, scene: place, win, sceneId: this.sceneChoice })
-                    : Promise.resolve(null);
+            const planning = this._planFor({ preset, place, win });
             const music = wantsMusic ? this._findTrack(preset.music, win) : Promise.resolve(null);
 
             this.prepared = Promise.allSettled([planning, music]).then(([plan, track]) => {
@@ -1214,19 +1553,346 @@ const PlaygroundActivity = (() => {
             return this.prepared;
         }
 
-        /** The same discovery path the session used to run inline, moved forward in time. */
-        async _findTrack(query, win) {
-            const registry = win && win.NEXUS_DISCOVERY;
-            if (!registry || typeof registry.forCapability !== 'function') return null;
+        /**
+         * A plan for these inputs, asked for once (P20).
+         *
+         * `prewarm` runs on every change to step 2, and generating a plan is an LLM request. So
+         * choosing a scene, changing your mind and changing back used to cost three completions
+         * for two distinct questions — and then the preflight would have waited on the third
+         * while the first two were still in flight, paid for and discarded.
+         *
+         * Keyed on what actually reaches the planner, so a genuinely different question is still
+         * asked: the scene label is part of the prompt, and a plan written for the terrace is not
+         * a plan for the candlelit room. Flipping back to a choice already made is free.
+         *
+         * The promise is cached rather than the value, which is what makes this a de-duplicator
+         * as well as a cache; a rejection is evicted so a retry is a real retry.
+         */
+        _planFor({ preset, place, win }) {
+            const beats = privateBeats(win);
+            if (!beats || typeof beats.plan !== 'function') return Promise.resolve(null);
+            const key = `${(preset && preset.id) || ''}|${place || ''}|${this.mood || ''}`;
+            const cached = this._planCache.get(key);
+            if (cached) return cached;
+            let attempt;
             try {
+                attempt = Promise.resolve(beats.plan({ preset, scene: place, win, sceneId: this.sceneChoice }));
+            } catch (error) {
+                return Promise.reject(error);
+            }
+            const guarded = attempt.catch((error) => {
+                this._planCache.delete(key);
+                throw error;
+            });
+            this._planCache.set(key, guarded);
+            return guarded;
+        }
+
+        /**
+         * The same discovery path the session used to run inline, moved forward in time.
+         *
+         * Cached per query, and the cache holds the **promise** rather than the result (P20).
+         * That is what makes it a de-duplicator as well as a cache: `prewarm` runs on every
+         * change to step 2, so choosing a scene, changing your mind and choosing another used to
+         * fire three identical searches against the same provider — and then the preflight would
+         * have fired a fourth. Storing the in-flight promise means the second caller waits on the
+         * first instead of starting again, so the answer arrives sooner *and* costs one request.
+         *
+         * A rejection is not cached. A network blip should not mean no music for the rest of the
+         * session, and the retry on the preflight screen would otherwise be a button that replays
+         * a stored failure.
+         */
+        _findTrack(query, win) {
+            const key = cleanText(query, 160);
+            if (!key) return Promise.resolve(null);
+            const cached = this._trackCache.get(key);
+            if (cached) return cached;
+            const attempt = (async () => {
+                const registry = win && win.NEXUS_DISCOVERY;
+                if (!registry || typeof registry.forCapability !== 'function') return null;
                 if (typeof registry.warm === 'function') await registry.warm();
                 const provider = registry.forCapability('music.search');
                 if (!provider || typeof provider.search !== 'function') return null;
-                const found = await provider.search(cleanText(query, 160), { max: 3, kind: 'music' });
+                const found = await provider.search(key, { max: 3, kind: 'music' });
                 return Array.isArray(found) && found.length ? found[0] : null;
+            })().catch(() => {
+                this._trackCache.delete(key);
+                return null;
+            });
+            this._trackCache.set(key, attempt);
+            return attempt;
+        }
+
+        /**
+         * Everything the evening needs, loaded before it starts (P20).
+         *
+         * Each entry does the thing it names; `PrivatePreflight` owns what the steps are and what
+         * "done" means, this owns how to perform them against the live runtime. Nothing here
+         * *starts* work that `prewarm` already began — `storyReady` and `trackReady` wait on the
+         * promises step 1 kicked off, so the screen reports work in flight rather than doubling it.
+         * That is why the preflight is usually over in well under a second on a warm machine.
+         */
+        _preflightDeps(win) {
+            const token = this._preflightToken;
+            const self = this;
+            return {
+                now: () => Date.now(),
+                setTimeout: (fn, ms) => win.setTimeout(fn, ms),
+                clearTimeout: (id) => win.clearTimeout(id),
+                setInterval: (fn, ms) => win.setInterval(fn, ms),
+                clearInterval: (id) => win.clearInterval(id),
+                cancelled: () => token !== self._preflightToken,
+                speechSynthesis: win.speechSynthesis || null,
+                ttsProvider: win.NEXUS_TTS_PROVIDER || null,
+                probeModel: () => self._probeModel(win),
+                storyReady: () => self._storyReady(win),
+                sceneReady: () => self._preloadScene(win),
+                intentResolves: (name) => self._intentResolves(win, name),
+                trackReady: () => self._preloadTrack(win),
+                onChange: (shown) => {
+                    if (token !== self._preflightToken) return;
+                    self.preflightShown = shown;
+                    self._repaint();
+                },
+            };
+        }
+
+        /**
+         * Is there a model to talk to — not "how fast is it".
+         *
+         * This used to ask for a whole completion, and on a real provider that is the slowest
+         * thing the app ever does. The reported setup is `huihui_ai/qwen3-abliterated:4b` through
+         * a serverless proxy, where the app's own connection check measures a completion at
+         * **45 seconds** and the model listing at 289ms. No warm-up budget can accommodate the
+         * first without making the user wait most of a minute before `Begin` appears, and any
+         * budget shorter than it paints `✕ Waking the model` over a provider that works — which
+         * is exactly the screen that was reported, on a session whose console showed forty models
+         * loaded and completions posting.
+         *
+         * So this asks the question the step's name actually promises. A provider that lists
+         * models is awake, reachable and authenticated: those are the three ways "waking the
+         * model" can genuinely fail, and all three are answered in a fraction of a second.
+         *
+         * Whether a completion comes back *empty* was the other thing the old probe caught, and
+         * it is no longer this step's job: an empty completion on this gateway came from sending
+         * the `'default'` model sentinel, which `LLMManager` now resolves to a route that answers.
+         *
+         * The completion path stays as the fallback for a provider that offers no listing, since
+         * for those there is no cheaper question to ask.
+         */
+        async _probeModel(win) {
+            const llm = win && win._nexusLLM;
+            if (!llm) return true;
+            if (typeof llm.fetchAvailableModels === 'function') {
+                try {
+                    const found = await llm.fetchAvailableModels();
+                    const models = (found && found.models) || [];
+                    // An explicit error is a real failure; an empty list from a provider that
+                    // simply does not enumerate is not, and falls through to the ask below.
+                    if (found && found.error) return false;
+                    if (Array.isArray(models) && models.length) return true;
+                } catch (_) {
+                    // Fall through — a listing that throws tells us less than a completion would.
+                }
+            }
+            if (typeof llm.sendMessage !== 'function') return true;
+            try {
+                const reply = await llm.sendMessage('Say the single word: ready.', 'Reply with one word.', []);
+                return Boolean(String(reply || '').trim());
+            } catch (_) {
+                return false;
+            }
+        }
+
+        /**
+         * How long a step waits for the *better* answer before taking the one it already has.
+         *
+         * Short, because both steps it governs already hold a complete answer and are only ever
+         * waiting on an upgrade. The step deadline is twelve seconds and this is not a smaller
+         * version of it: that one means "give up", this one means "stop holding the door".
+         */
+        get _graceMs() {
+            return 2500;
+        }
+
+        /** Whichever lands first: the work, or the clock. Resolves `null` on the clock. */
+        _withGrace(promise, win) {
+            if (!win || typeof win.setTimeout !== 'function') return Promise.resolve(promise);
+            return new Promise((resolve) => {
+                let settled = false;
+                let timer = null;
+                const done = (value) => {
+                    if (settled) return;
+                    settled = true;
+                    if (timer !== null && typeof win.clearTimeout === 'function') win.clearTimeout(timer);
+                    resolve(value);
+                };
+                timer = win.setTimeout(() => done(null), this._graceMs);
+                Promise.resolve(promise).then(done, () => done(null));
+            });
+        }
+
+        /**
+         * Is there a plan for this evening? There always is (P22).
+         *
+         * This used to be `Promise.resolve(this.prepared).then(() => preparedPlan || written)`,
+         * and the reported checklist showed **✕ Writing the evening** — a required step, so it
+         * blocked `Begin` entirely. Nothing was wrong with the plan. `prepared` waits on the
+         * *generated* one, the provider was in its 504-and-retry loop, and the step hit its
+         * twelve-second deadline and went red — while a complete written plan sat in memory the
+         * whole time, available synchronously.
+         *
+         * That is exactly backwards, and `PrivateBeats` says so in its own header: the written
+         * pools "are the floor, not the fallback-of-last-resort: with no LLM configured this is
+         * the whole experience". An upgrade that has not arrived is not a failure.
+         *
+         * So the generated plan gets a short grace and then the floor is taken. `_planAhead` still
+         * upgrades the later beats if the generated one ever lands, which is what it was always
+         * for. This step can now only fail if `PrivateBeats` is absent altogether — which would
+         * mean she has nothing to say at all, and is worth blocking for.
+         */
+        _storyReady(win) {
+            if (this.preparedPlan) return Promise.resolve(this.preparedPlan);
+            return this._withGrace(this.prepared, win).then(() => this.preparedPlan || this._writtenPlan(win));
+        }
+
+        /** The written floor, so a planner that never answered is not a blocked evening. */
+        _writtenPlan(win) {
+            const beats = privateBeats(win);
+            const presets =
+                (win && win.NEXUS_TOGETHER_CAPABILITY && win.NEXUS_TOGETHER_CAPABILITY.PRIVATE_PRESETS) || {};
+            const preset = presets[String((this.prepareInput && this.prepareInput.id) || '')] || null;
+            if (!beats || typeof beats.fallbackPlan !== 'function') return null;
+            try {
+                return beats.fallbackPlan(preset, {});
             } catch (_) {
                 return null;
             }
+        }
+
+        /**
+         * Decode the picture the viewport is about to show.
+         *
+         * `null` when no scene was chosen — "keep this place" loads nothing, and the preflight
+         * reports that as skipped rather than ticking a step it did not perform. Otherwise the
+         * decode puts the bytes in the browser's cache, so `_enterScene` paints from memory
+         * instead of the card coming up over a black viewport that fills in a second later.
+         *
+         * `decode()` where it exists rather than `onload`: a decoded image is one the compositor
+         * can draw this frame, and the visible pop is the decode rather than the download.
+         */
+        _preloadScene(win) {
+            if (!this.sceneChoice) return Promise.resolve(null);
+            const entry = this.scenes().find((scene) => scene.id === this.sceneChoice);
+            const src = entry && entry.thumbnail;
+            if (!src || typeof win.Image !== 'function') return Promise.resolve(null);
+            return new Promise((resolve) => {
+                const image = new win.Image();
+                image.onload = () => {
+                    if (typeof image.decode === 'function') {
+                        image.decode().then(
+                            () => resolve(true),
+                            // Decoded or not, it is downloaded, which is most of the win.
+                            () => resolve(true)
+                        );
+                        return;
+                    }
+                    resolve(true);
+                };
+                image.onerror = () => resolve(false);
+                image.src = src;
+            });
+        }
+
+        /** Does the registry hold a clip for one of the three intents Private emits? */
+        _intentResolves(win, name) {
+            const registry = win && win.NEXUS_BD && win.NEXUS_BD.registry;
+            if (!registry || typeof registry.forIntent !== 'function') return true;
+            try {
+                return registry.forIntent(name).length > 0;
+            } catch (_) {
+                return false;
+            }
+        }
+
+        /**
+         * The soundtrack, if one was asked for — and "none found" is not a failure (P22).
+         *
+         * The reported checklist showed **✕ Finding a soundtrack**, which is the wrong mark for
+         * what happened. A search that ran and came back with nothing has exactly the same
+         * consequence as music being switched off: the evening plays in silence, which is a
+         * perfectly good evening and is already what the session does with a null track. `·` is
+         * the mark for that, and it is the one "music: off" has always had.
+         *
+         * So `null` here means "no track", from any cause short of a throw: not asked for, no
+         * provider configured, nothing matched, or still searching when the grace ran out. A slow
+         * provider must not hold the checklist open for twelve seconds and then paint it red over
+         * something optional.
+         */
+        _preloadTrack(win) {
+            if (this.soundtrackChoice !== 'choose') return Promise.resolve(null);
+            const presets =
+                (win && win.NEXUS_TOGETHER_CAPABILITY && win.NEXUS_TOGETHER_CAPABILITY.PRIVATE_PRESETS) || {};
+            const preset = presets[String((this.prepareInput && this.prepareInput.id) || '')] || null;
+            if (!preset || !preset.music) return Promise.resolve(null);
+            if (this.preparedTrack) return Promise.resolve(true);
+            return this._withGrace(
+                Promise.resolve(this.prepared).then(() =>
+                    this.preparedTrack ? true : this._findTrack(preset.music, win)
+                ),
+                win
+            ).then((found) => {
+                if (found && found !== true) this.preparedTrack = found;
+                return this.preparedTrack ? true : null;
+            });
+        }
+
+        /**
+         * Run it, and show it.
+         *
+         * The screen is the deliverable as much as the loading is: `onChange` repaints per settled
+         * step, so the list fills in rather than arriving complete. A run that finishes ready moves
+         * to the summary; one with a required step failed stays put and offers a retry, because
+         * starting into it produces the transcript that was reported.
+         */
+        runPreflight() {
+            const win = globalObject();
+            const api = privatePreflight(win);
+            this._preflightToken += 1;
+            const token = this._preflightToken;
+            // No module, no screen. The session starts the way it always did rather than stopping
+            // at a checklist that cannot be filled in.
+            if (!api || typeof api.run !== 'function') {
+                this.sessionState = 'ready';
+                this.preflightShown = null;
+                this._repaint();
+                return Promise.resolve(null);
+            }
+            this.sessionState = 'preparing';
+            this.preflightShown = api.describe(api.create());
+            this._repaint();
+            return api.run(this._preflightDeps(win)).then((result) => {
+                if (token !== this._preflightToken) return null;
+                this.preflightShown = result;
+                if (result.outcome === 'cancelled') return null;
+                this.sessionState = 'ready';
+                this._repaint();
+                busEmit(this.bus, 'private:prepared', {
+                    preset: this.prepareInput && this.prepareInput.id,
+                    scene: this.sceneChoice,
+                    soundtrack: Boolean(this.preparedTrack),
+                });
+                return result;
+            });
+        }
+
+        /** Back to step 2 with nothing half-run. */
+        cancelPreflight() {
+            this._preflightToken += 1;
+            this.preflightShown = null;
+            this.sessionState = 'atmosphere';
+            this._repaint();
+            return true;
         }
 
         /** Back to step 1, keeping nothing: a plan for last night's mood is worse than none. */
@@ -1503,7 +2169,17 @@ const PlaygroundActivity = (() => {
             this.musicChoice = 'auto';
             this.preparedPlan = null;
             this.preparedSoundtrack = null;
-            this.prepareProgress = new Set();
+            /** `'model'` when the provider wrote this plan, `'written'` when we fell back. */
+            this.preparedFrom = 'written';
+            /**
+             * The place this story belongs to, held across Configure → Preparing → Ready → Playing.
+             *
+             * Presentation only: every screen after Configure shows it so the story never loses
+             * the scene it was asked for, and `Another version` keeps it rather than falling back
+             * to a generic `Current Scene`. Nothing reads it to decide what the viewport renders.
+             */
+            this.prepareScene = null;
+            this.prepareProgress = new Map();
             this.prepareError = '';
             this.player = null;
             this._prepareToken = 0;
@@ -1537,20 +2213,33 @@ const PlaygroundActivity = (() => {
             this.musicChoice = music === 'none' ? 'none' : 'auto';
             this.preparedPlan = null;
             this.preparedSoundtrack = null;
-            this.prepareProgress = new Set();
+            this.prepareProgress = new Map();
             this.prepareError = '';
             this.sessionState = 'preparing';
+            // Whatever the last attempt left running is nobody's answer now. Without this, asking
+            // for a second story while the first request is still generating queues behind it and
+            // the checklist sits on `Understanding this place` for as long as that takes.
+            if (this.planner && typeof this.planner.cancel === 'function') this.planner.cancel('restarted');
+            // Resolved before the first `preparing` paint, and kept, so every screen from here to
+            // playback can name the place. It used to be a local read *after* the repaint, which
+            // is why Preparing had no scene to show: the only copy of it was inside this call.
+            this.prepareScene = currentScene(this.win);
             this._repaint();
-            const scene = currentScene(this.win);
+            const scene = this.prepareScene;
             busEmit(this.bus, 'playground:prepare', { sceneId: scene.id, idea: this.idea, music: this.musicChoice });
             try {
                 const result = await this.planner.prepare({
                     scene,
                     idea: this.idea,
                     music: this.musicChoice,
-                    onProgress: (step) => {
+                    onProgress: (step, state) => {
                         if (token !== this._prepareToken) return;
-                        this.prepareProgress.add(step);
+                        // A step never goes backwards. A planner that reports `running` after it
+                        // already said `done` — a retry inside one step, say — would otherwise
+                        // un-tick a line in front of somebody, which reads as work being lost.
+                        const was = this.prepareProgress.get(step);
+                        if (was && was !== 'running') return;
+                        this.prepareProgress.set(step, state || 'done');
                         this._repaint();
                     },
                 });
@@ -1564,6 +2253,10 @@ const PlaygroundActivity = (() => {
                 if (!checked.ok) throw new Error(checked.why);
                 this.preparedPlan = checked.plan;
                 this.preparedSoundtrack = result && result.soundtrack ? result.soundtrack : null;
+                // Which story this is, so Ready can stop saying `✓ Story ready` about a plan the
+                // model never delivered. A timeout that silently becomes the written story is the
+                // same class of dishonesty as a checklist ticking work it did not do.
+                this.preparedFrom = (result && result.planFrom) || 'written';
                 this.sessionState = 'ready';
                 this._repaint();
                 busEmit(this.bus, 'playground:ready', { storyId: checked.plan.id, title: checked.plan.title });
@@ -1580,7 +2273,11 @@ const PlaygroundActivity = (() => {
 
         cancelPrepare() {
             this._prepareToken += 1;
-            this.prepareProgress = new Set();
+            // Bumping the token stops us *writing back*. It does not stop the request, and a
+            // request nobody reads still holds the provider's generation slot — which is what
+            // made the next preparation hang. Call it off for real.
+            if (this.planner && typeof this.planner.cancel === 'function') this.planner.cancel('cancelled');
+            this.prepareProgress = new Map();
             this.preparedPlan = null;
             this.preparedSoundtrack = null;
             this.prepareError = '';
@@ -1706,6 +2403,21 @@ const PlaygroundActivity = (() => {
             create.dataset.action = 'create-story';
         }
 
+        /**
+         * Which place the screens after Configure are about.
+         *
+         * The prepared plan is the most authoritative answer, because it is the scene the story
+         * was actually written against; `prepareScene` covers Preparing, before a plan exists;
+         * and a live read covers the first Configure paint and any repaint after a reset. Each
+         * fallback is one step further from "what this story is", never a different place.
+         */
+        _scene() {
+            const plan = this.preparedPlan;
+            if (plan && plan.sceneId) return { id: plan.sceneId, label: plan.sceneLabel || '' };
+            if (this.prepareScene) return this.prepareScene;
+            return currentScene(this.win);
+        }
+
         _paintPreparing(panel) {
             const doc = panel.doc;
             addEl(doc, panel.root, 'p', 'nexus-bd-together-subtitle', 'Creating our story…');
@@ -1716,6 +2428,7 @@ const PlaygroundActivity = (() => {
                 'nexus-bd-together-prompt',
                 'The scene stays with us while I prepare the whole story before playback.'
             );
+            sceneStrip(doc, panel.root, this._scene(), this.win);
             const progress = addEl(doc, panel.root, 'div', 'nexus-story-progress');
             const steps = [
                 ['scene', 'Understanding this place'],
@@ -1723,15 +2436,19 @@ const PlaygroundActivity = (() => {
                 ['choices', 'Preparing your choices'],
                 ['music', 'Finding a soundtrack'],
             ];
+            // The same five marks `PrivatePreflight` uses, because the distinction they carry is
+            // the one this screen was missing: `…` is the step being worked on right now. With
+            // only `✓` and `○`, a slow evening and a stuck one drew exactly the same picture, and
+            // the reported freeze was indistinguishable from the thing working.
             for (const [id, label] of steps) {
-                const done = this.prepareProgress.has(id);
+                const state = this.prepareProgress.get(id) || 'pending';
                 addEl(
                     doc,
                     progress,
                     'div',
-                    `nexus-story-progress-row${done ? ' is-done' : ''}`,
-                    `${done ? '✓' : '○'} ${label}`
-                );
+                    `nexus-story-progress-row is-${state}`,
+                    `${PREPARE_MARKS[state] || '○'} ${label}`
+                ).dataset.prepareStep = id;
             }
             const list = addEl(doc, panel.root, 'div', 'nexus-bd-together-options');
             button(doc, list, 'Cancel', 'nexus-bd-together-option is-stop', () => {
@@ -1745,18 +2462,25 @@ const PlaygroundActivity = (() => {
             const plan = this.preparedPlan;
             addEl(doc, panel.root, 'p', 'nexus-bd-together-subtitle', plan ? plan.title.toUpperCase() : 'SCENE TALE');
             addEl(doc, panel.root, 'p', 'nexus-bd-together-prompt', 'Fictional story inspired by this scene');
+            sceneStrip(doc, panel.root, this._scene(), this.win);
             const soundtrack =
                 this.musicChoice === 'none'
                     ? 'No soundtrack'
                     : this.preparedSoundtrack
                       ? 'Soundtrack ready'
                       : 'No soundtrack found — story will still play';
+            const count = countChoices(plan) || 2;
+            // The provenance goes on the end, deliberately. `SceneTaleConversationView` rewrites
+            // the literal `✓ Story ready · ✓ Scene ready · ` into `Ready to begin · `, so putting
+            // anything inside that run stops the rewrite matching — and its guard would then stay
+            // true forever. A clause after it survives the rewrite and breaks nothing.
+            const written = this.preparedFrom === 'model' ? '' : ' · Written by the app';
             addEl(
                 doc,
                 panel.root,
                 'div',
                 'nexus-story-ready-meta',
-                `About 5 minutes · 2 choices\n✓ Story ready · ✓ Scene ready · ${soundtrack}`
+                `About 5 minutes · ${count} choices\n✓ Story ready · ✓ Scene ready · ${soundtrack}${written}`
             );
             const list = addEl(doc, panel.root, 'div', 'nexus-bd-together-options');
             const start = button(doc, list, 'Start story', 'nexus-bd-together-option', () => {

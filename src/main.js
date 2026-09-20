@@ -3853,7 +3853,7 @@ async function _handleStreamingResponse(text) {
     const textDiv = stream.textNode;
     const row = stream.node;
 
-    if (window.setTypingIndicator) window.setTypingIndicator(true);
+    _setTyping(true);
 
     try {
         const history = _surface().history().getHistory();
@@ -3878,13 +3878,13 @@ async function _handleStreamingResponse(text) {
 
         const fullText = await window._nexusLLM.sendMessageStream(text, systemPrompt, history, (token) => {
             // Hide typing indicator on first token
-            if (!accumulated && window.setTypingIndicator) window.setTypingIndicator(false);
+            if (!accumulated) _setTyping(false);
             accumulated += token;
             // Living NPC: hide the ```motion block while it streams in
             stream.append(window.NEXUS_MOTION ? window.NEXUS_MOTION.maskStreaming(accumulated) : accumulated);
         });
 
-        if (window.setTypingIndicator) window.setTypingIndicator(false);
+        _setTyping(false);
 
         // The user pressed CLEAR while this was streaming. This reply belongs to a conversation
         // that no longer exists: take the half-written bubble off screen and write nothing —
@@ -3953,7 +3953,7 @@ async function _handleStreamingResponse(text) {
         speakText(displayText);
         setStatus('idle', 'READY');
     } catch (error) {
-        if (window.setTypingIndicator) window.setTypingIndicator(false);
+        _setTyping(false);
         logError('Streaming error, falling back', error);
 
         // Remove the empty streaming turn
@@ -3977,12 +3977,12 @@ async function _handleNonStreamingResponse(text) {
     // See the note in _handleStreamingResponse: a reply that outlives a CLEAR must not write
     // itself into the conversation that replaced it.
     const turn = window.NEXUS_CONVERSATION_RESET?.currentEpoch?.();
-    if (window.setTypingIndicator) window.setTypingIndicator(true);
+    _setTyping(true);
 
     try {
         const response = config.provider === 'none' ? getSimpleResponse(text) : await callLLM(text);
 
-        if (window.setTypingIndicator) window.setTypingIndicator(false);
+        _setTyping(false);
 
         // Cleared while the request was in flight. Nothing here belongs to the conversation on
         // screen, so nothing is written, spoken or persisted. See _turnIsCurrent.
@@ -4046,7 +4046,7 @@ async function _handleNonStreamingResponse(text) {
         speakText(displayText);
         setStatus('idle', 'READY');
     } catch (error) {
-        if (window.setTypingIndicator) window.setTypingIndicator(false);
+        _setTyping(false);
         logError('Error processing message', error);
 
         // An error that arrives after a CLEAR is still about the old conversation. Report it in
@@ -4113,6 +4113,39 @@ function _surface() {
             };
         },
     };
+}
+
+/**
+ * Whoever owns the conversation owns its waiting indicator too (P26).
+ *
+ * `#typing-indicator` is the generic `NEXUS • • •` placeholder that lives in `#chat-history`.
+ * During a Private session that container also holds the Private card, and the card draws its own
+ * three dots *inside* its transcript — so the app showed the same fact twice, in two different
+ * visual languages, one of them in a surface Private had already replaced:
+ *
+ * ```text
+ *   Top bar:      THINKING…          ← global app status, fine
+ *   Private card: • • •              ← the one that belongs to the conversation
+ *   #chat-history: NEXUS • • •       ← a second conversation surface, showing through
+ * ```
+ *
+ * So the rule is the same one `_surface()` already encodes: a feature that has installed its own
+ * surface owns the drawing, and that includes drawing "she is thinking". The top bar is untouched
+ * — it reports global system state rather than a message in a conversation, which is why it may
+ * keep saying `THINKING…` while the card does its own thing.
+ *
+ * Hiding is never suppressed. A stale indicator is worse than a missing one, and `false` must get
+ * through whatever owns the surface.
+ */
+function _conversationOwnedByFeature() {
+    const api = window.NEXUS_CONVERSATION_SURFACE;
+    const installed = api && typeof api.current === 'function' ? api.current() : null;
+    return Boolean(installed) && installed.id !== 'default';
+}
+
+function _setTyping(show) {
+    if (!window.setTypingIndicator) return;
+    window.setTypingIndicator(Boolean(show) && !_conversationOwnedByFeature());
 }
 
 function _createStreamingBotMessage() {

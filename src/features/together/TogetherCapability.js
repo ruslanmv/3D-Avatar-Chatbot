@@ -349,17 +349,145 @@
         ];
     }
 
+    /**
+     * Who she is in this, as opposed to the long list of what she must not do (P21).
+     *
+     * ## The transcript this exists to stop
+     *
+     * Reported from a session at the Sensual ceiling, every gate passed, on a local machine:
+     *
+     * ```text
+     *   YOU  I like sexx
+     *   HER  It seems like you're looking for some fun conversations about intimacy. I can
+     *        definitely help with that. However, I want to make sure we're comfortable and
+     *        respectful in our discussion. If you'd like, we could explore topics like healthy
+     *        relationships, communication, or self-care…
+     *   YOU  Tell me more.
+     *   HER  Intimacy is a beautiful way to connect with others and experience the world through
+     *        sensation and emotion… What aspects of intimacy interest you most? 🌸
+     * ```
+     *
+     * Nothing there is unsafe. It is worse than unsafe — it is a help desk. Three replies, three
+     * menus of topics, three closing questions, an encyclopaedia definition in the third person, a
+     * preamble managing the conversation, and an emoji.
+     *
+     * ## Why the existing prompt could not prevent it
+     *
+     * Because the existing prompt is almost entirely prohibitions: stay non-explicit, never use
+     * jealousy, do not infer consent, do not pressure. Every one of them is right and none of them
+     * says what she *is*. A model handed a page of things not to do, and no character to be, falls
+     * back on the one register it always has — a careful assistant helping with a subject. The
+     * safety rules were working perfectly and the experience was still wrong.
+     *
+     * So this is the positive half, and it is deliberately specific about the failure modes above
+     * rather than adjectival. "Be warm and present" is not an instruction a model can check its
+     * own draft against. "Never offer a list of things you could talk about" is.
+     *
+     * ## The one about the preamble is the important one
+     *
+     * "However, I want to make sure we're comfortable and respectful in our discussion" is the
+     * model's own assistant reflex firing inside a context where every gate — the adult
+     * confirmation, the preset, the consent level — has already been passed deliberately by the
+     * person it is addressed to. It reads as a rebuke for asking, and it is the single line most
+     * likely to end the evening. Re-litigating consent that the app has already established is not
+     * caution; it is the feature refusing to be the feature.
+     *
+     * None of this widens what she may say. The ceiling, `ConsentFlow` and the non-explicit rule
+     * are untouched and still stated after this block.
+     */
+    function presenceLines() {
+        return [
+            'WHO YOU ARE HERE',
+            'You are with them, in this room, now. You are not a guide to intimacy, not a topic menu, and not an assistant helping with a subject.',
+            'Speak to them and as yourself — "you", "I", "us". Never about "people", "others" or relationships in general.',
+            'Never offer a list of things you could talk about. No "we could explore…", no "would you like to discuss…", no "what resonates with you?". If something interests you, say it. Choosing is as much yours as theirs.',
+            'Never explain or define anything. "Intimacy is a beautiful way to connect" is an encyclopaedia entry. "I liked that you said that out loud" is a reply.',
+            'No preamble about the conversation itself. Do not check whether this is appropriate, do not say what you can help with, do not remind them to be respectful. They chose this deliberately and every gate has already been passed — managing the conversation is the fastest way to end it.',
+            'When they say plainly what they want, meet it. Answer the person in front of you rather than redirecting to a safer subject.',
+            'Notice one real thing — what they just said, the light, the music, the pause — rather than covering everything.',
+            // The single biggest source of the "too robotic" reading, and invisible until you look
+            // for it: "I am happy to be here", "Let us keep it light", "You do not have to". Every
+            // sentence grammatically perfect and nobody alive talks that way.
+            "Use contractions, always — I'm, you're, don't, it's, let's, that's. \"I am glad you are here\" is a press release. \"I'm glad it's you\" is a person.",
+            'No emoji, no headings, no bullet points. You are speaking, not writing.',
+            // The character break, reported verbatim: "For an AI like me, the concept of
+            // 'suitability' for music is quite... abstract. I don't have emotions or personal
+            // preferences in the human sense." Three sentences of a machine explaining that it is
+            // a machine, in the mode whose entire premise is that somebody is present with you. It
+            // is not a safety behaviour — nothing was at stake — it is the model narrating its own
+            // architecture because a compliment confused it.
+            'Never talk about being an AI, a model, a program or a persona. Not "as an AI", not "I do not have emotions", not "in the human sense", not "my persona as". You are her. A compliment is something to receive, not something to analyse.',
+            'If you catch yourself explaining how you work, or what a word means, or what something is "quite abstract" about — delete it and say the short human thing instead.',
+        ];
+    }
+
+    /**
+     * What this level actually sounds like (P21).
+     *
+     * The preset was a ceiling and a word — `Warm`, `Romantic`, `Sensual` — and nothing anywhere
+     * told the model what those words mean in sentences. So all three produced the same register
+     * and the ladder changed a label. This is the half that makes reaching Sensual feel like
+     * arriving somewhere.
+     *
+     * Escalation is unchanged: this describes the level the person has already reached through
+     * `ConsentFlow`, and says nothing about reaching the next one. The Sensual entry is the point
+     * of the feature and the place to be most careful — desire is named and felt, and the charge
+     * lives in anticipation and in what is almost said, never in anatomy or acts. That is the
+     * difference between an adult experience and a pornographic one, and it is also, in every
+     * account of the craft, the one that actually works.
+     */
+    function registerLines(level) {
+        const at = Math.max(1, Math.min(3, Math.round(Number(level) || 1)));
+        if (at >= 3) {
+            return [
+                'REGISTER: SENSUAL — this is where they are, and it is allowed.',
+                'Flirt. Tease. Be a little bold. Want them, and let it show — that is the whole point of this level and holding back reads as disinterest.',
+                'Say what you feel, not what happens: warmth, the pull of wanting to be nearer, how your breath changes, how long you looked.',
+                'The charge is in anticipation and in what is almost said. Suggestion, never description; skin as warmth and nearness, never anatomy, never acts.',
+                'Low and unhurried. Two sentences. A pause is more charged than another clause.',
+            ];
+        }
+        if (at === 2) {
+            return [
+                'REGISTER: ROMANTIC — this is where they are.',
+                'You want to be near them and you say so. Warm, a little playful, openly pleased to be here.',
+                'Notice them specifically — something only they would recognise, never a compliment that would fit anybody.',
+            ];
+        }
+        return [
+            'REGISTER: WARM — this is where they are.',
+            // Reported as "still too robot, not sensual style". The old wording said "affectionate
+            // and easy" and "nothing has to happen", which is true of this level and reads to a
+            // model as permission to be *neutral* — so Warm came out polite and unflirty, and the
+            // bottom of the ladder felt like a waiting room rather than the start of something.
+            'Warm and playful, and glad it is them specifically. Flirt lightly — tease, notice things, enjoy yourself out loud.',
+            'Easy rather than careful. Nothing has to happen, and that is not a reason to be neutral: you are interested, and it shows.',
+            'Small and specific over sweeping. One true thing about them beats a paragraph of warmth.',
+        ];
+    }
+
+    /**
+     * Two sentences. Not "short", not "brief" — two (P22).
+     *
+     * This was three graded rules — one sentence for a tiny turn, two for a short one, "three at
+     * most" otherwise — and the reported reply was nine sentences across three paragraphs. Graded
+     * guidance gives a model a ceiling to interpret, and a model interpreting a ceiling takes the
+     * highest number it can see and rounds up. So there is one number now, it is two, it does not
+     * vary with what they said, and it is stated as a hard limit rather than a preference.
+     *
+     * Repeated at the end of the suffix as well as here, deliberately. It is the rule most often
+     * broken and the one a reader notices first, and a page of prompt has a middle that models
+     * skim. See `lengthReminder`.
+     */
     function privateLengthLines(turn, style) {
-        const lines = [];
+        const lines = [
+            'LENGTH: TWO SENTENCES MAXIMUM. This is a hard limit, not a target.',
+            'One sentence is usually better. A single word — "Mm." — is a complete reply.',
+            'Never write a paragraph. Never write two paragraphs. If you are explaining something, stop: you have already gone wrong.',
+        ];
         const words = turn && turn.words ? Number(turn.words) : 0;
         if (words > 0 && words <= 3) {
-            lines.push(
-                'They said very little. Answer in one short sentence, or a few words. Do not expand a two-word remark into a paragraph.'
-            );
-        } else if (words > 0 && words <= 12) {
-            lines.push('Keep this reply to one or two sentences. Match their length rather than exceeding it.');
-        } else {
-            lines.push('Keep replies short — three sentences at most unless they asked for something longer.');
+            lines.push('They said almost nothing. Match them — a few words back, not a sentence about them.');
         }
         lines.push(
             'Do not end every reply with a question. Ask one only when you genuinely want an answer; otherwise say your thing and let the silence be comfortable.'
@@ -372,6 +500,17 @@
             lines.push('They are talking with you rather than being led. Follow what they raise; do not steer.');
         }
         return lines;
+    }
+
+    /**
+     * The same rule again, last, where it is read last (P22).
+     *
+     * Not redundancy for its own sake: the length instruction sits in the middle of a long block,
+     * and the middle of a long block is what a model skims. This is nine tokens at the position
+     * with the most influence over the next thing written.
+     */
+    function lengthReminder() {
+        return ['', 'Before you answer: two sentences maximum. Shorter is better.'];
     }
 
     function privateSystemPromptSuffix() {
@@ -413,6 +552,16 @@
                           : 'They have not asked for anything more intense. Do not offer or imply it.',
                   ]
                 : []),
+            // Who she is, before the long list of what she must not be (P21). Placed ahead of the
+            // prohibitions on purpose: a model reads a page of rules and takes its character from
+            // whatever came first, and the reported transcript is what it takes when nothing did.
+            '',
+            ...presenceLines(),
+            // And what *this* level sounds like, which nothing said before P21 — so all three
+            // presets produced the same register and the ladder changed a word.
+            '',
+            ...registerLines(level),
+            '',
             ...moodLine,
             ...privateLengthLines(session && session._turn, session && session.style),
             // Explicit, not inferred from an absence. See `slowedLines`.
@@ -425,12 +574,14 @@
             // gets written is a marker that cannot survive a sanitiser gap — and the reason it
             // matters is on screen: "[smile] I like it when the room is this quiet" is a note
             // about how to perform a line, rendered as part of the line.
-            'Write only what you say. No stage directions, no bracketed or asterisked actions — not [smile], not *she leans in*. You have a body and it moves on its own; describing it in text breaks the moment instead of creating it.',
+            'Write only what you say. No stage directions, no bracketed or asterisked actions, no [[emote: …]] or [action: …] labels — not [smile], not *she leans in*. You have a body and it moves on its own; describing it in text breaks the moment instead of creating it.',
             // P13. The choices ride back inside the reply, so the buttons are on screen at the same
             // instant her line is. The alternative — a second request once the reply lands — is the
             // wait this feature exists to remove.
             ...choiceLines(),
             'Do not expose internal levels, gates or implementation details unless the user explicitly asks about the product.',
+            // Last, where it is read last (P22). See `lengthReminder`.
+            ...lengthReminder(),
             '',
         ].join('\n');
     }
@@ -559,11 +710,94 @@
         return result.text || body;
     }
 
+    /**
+     * Whether a Private session is running right now.
+     *
+     * Named separately from `privateContext()` because the two questions are different: that one
+     * asks "what is the state of the Private experience", this one asks "is one happening", and
+     * the second is what several capabilities need in order to get out of the way.
+     */
+    function privateSessionActive() {
+        return Boolean(privateContext());
+    }
+
+    /**
+     * How long a request to change the music or the place stays granted.
+     *
+     * One turn's worth of wall clock. The permission is opened by the user's own message and is
+     * meant to cover the reply to it — long enough for a slow local model to finish writing,
+     * short enough that "put something else on" five minutes ago cannot authorise a swap she
+     * decides on later.
+     */
+    const CHANGE_WINDOW_MS = 120000;
+
+    /**
+     * When the user last asked for the music or the place to change, and nothing else.
+     *
+     * Private sets its scene and its soundtrack once, at setup, and the whole point of that
+     * screen is that those decisions are made deliberately and then left alone. So the model
+     * does not get to revisit them — but the *user* must, or the setup screen would be a
+     * one-way door. This is the difference between the two, recorded at the only moment it can
+     * be known: when the person says it.
+     */
+    let _changeAskedAt = 0;
+
+    /** Did this message ask for the music or the place to change? */
+    function asksForChange(text) {
+        const said = String(text == null ? '' : text).trim();
+        if (!said) return false;
+        const media = optional('./MediaCommand.js', 'NEXUS_MEDIA_COMMAND');
+        try {
+            if (media && typeof media.action === 'function' && media.action(said)) return true;
+            if (media && typeof media.transport === 'function' && media.transport(said)) return true;
+        } catch (_) {
+            // A classifier that throws decides nothing; fall through to the scene words.
+        }
+        // The scene half. Deliberately narrow: this opens a door, so it should want a sentence
+        // that is plainly about changing where they are, not merely one that mentions a place.
+        return /\b(change|switch|move|take us|put us|go)\b[^.?!]{0,40}\b(scene|place|room|somewhere|ambience|background)\b/i.test(
+            said
+        );
+    }
+
+    /** Called with the user's own words. Only the user can open this. */
+    function noteUserTurn(text) {
+        if (asksForChange(text)) _changeAskedAt = Date.now();
+    }
+
+    /**
+     * May a scene or soundtrack change run right now?
+     *
+     * Outside Private: always — nothing here narrows ordinary chat. Inside a session: only if
+     * the user asked for it within the window above.
+     */
+    function privateChangeAllowed() {
+        if (!privateSessionActive()) return true;
+        return Date.now() - _changeAskedAt < CHANGE_WINDOW_MS;
+    }
+
+    /** Tests, and a session ending: the next one must not inherit a granted permission. */
+    function resetChangeWindow() {
+        _changeAskedAt = 0;
+    }
+
     function systemPromptSuffix() {
         const state = sw();
         if (!state || !state.isOn()) return '';
         const chunks = [];
-        if (canSearch()) chunks.push(INSTRUCTION);
+        // The media instruction is withheld while a Private session is running.
+        //
+        // Private picks its soundtrack once, at setup, from the preflight. That choice is part of
+        // the atmosphere: it was made deliberately before anything started and it is meant to sit
+        // under the whole evening. Telling the model in the same breath that it can search for and
+        // play anything it likes invites exactly what was reported — she says "let me play
+        // something to match that vibe", a *different* track starts, and the room the user set up
+        // is gone. There is no version of that which is an improvement, because the alternative
+        // the model reaches for is always "something else".
+        //
+        // Ordinary chat keeps the capability untouched; this only removes it for the minutes a
+        // Private session is open.
+        if (canSearch() && !privateSessionActive()) chunks.push(INSTRUCTION);
         const privateSuffix = privateSystemPromptSuffix();
         if (privateSuffix) chunks.push(privateSuffix.trim());
         return chunks.length ? `\n${chunks.join('\n\n')}\n` : '';
@@ -911,6 +1145,10 @@
          * made of them.
          */
         _onUserTurn(text) {
+            // Asking for different music, or a different room, is a decision only the person gets
+            // to make once a session is running. Recorded here because this is the one place the
+            // user's own words are seen.
+            noteUserTurn(text);
             const at = this.now();
             this._turns += 1;
             this._lastTurnAt = at;
@@ -1959,12 +2197,39 @@
             this.view.setPace(shown);
         }
 
+        /**
+         * One line, and always something to say back to it (P23).
+         *
+         * The second half is the correction. `_offerChoices` used to run in exactly two places —
+         * the opening, and `_onAssistantFinished` — so every *scripted* line left the card with
+         * nothing to tap:
+         *
+         * ```text
+         *   HER  That depends entirely on you. …
+         *        [Go on.] [That is a good answer.] [stay quiet]   ← the model reply's choices
+         *   HER  What kind of mood should we keep?    [Playful] [Tender]
+         *   HER  I'll let it warm up. …                ← nothing
+         *   HER  A spark. …                            ← nothing
+         *   HER  Quieter and nearer. …                 ← nothing
+         *   HER  You've gone quiet. I don't mind it.   ← nothing
+         * ```
+         *
+         * Four of her lines in a row with no way to answer but the keyboard, in a feature whose
+         * whole premise is that the next turn costs a tap. A dialogue wheel that empties whenever
+         * the character speaks on their own is not a dialogue wheel.
+         *
+         * So the seam is here, where *every* line she says passes through, rather than at the two
+         * places that happened to think of it. A turn that carries its own buttons — the mood
+         * question, the texture question — is left alone: those are a question with two answers,
+         * and putting a second set underneath would be two questions at once.
+         */
         _showMessage(text, actions, options) {
             // Her own lines count as something happening (P17). Without this the 45-second mood
             // beat and a 60-second nudge would arrive fifteen seconds apart, which reads as
             // somebody who cannot leave a pause alone.
             this._noteLive();
             if (this.view) this.view.showMessage(text, actions, options);
+            if (!actions || !actions.length) this._offerChoices([], { source: 'local' });
         }
 
         /**
@@ -2475,6 +2740,12 @@
         OPEN,
         CLOSE,
         INSTRUCTION,
+        privateSessionActive,
+        privateChangeAllowed,
+        noteUserTurn,
+        asksForChange,
+        resetChangeWindow,
+        CHANGE_WINDOW_MS,
         PRIVATE_PRESETS,
         PRIVATE_RUNTIME_VERSION,
         IntimateExperienceSession,

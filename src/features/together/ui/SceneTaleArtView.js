@@ -39,16 +39,32 @@ const SceneTaleArtView = (() => {
         (doc.head || doc.documentElement).appendChild(style);
     }
 
+    /**
+     * The shared read-only art catalogue, from the module system or the window.
+     *
+     * This view used to own its own fetch of the manifest, which meant two modules asking for
+     * the same file and two answers that could differ for a frame. `SceneArt` is the one loader
+     * now; keeping the local `loadCatalog` signature means the hero path and its tests did not
+     * have to change shape to get there.
+     */
+    const SceneArt =
+        (typeof require === 'function' ? tryRequire('../SceneArt.js') : null) ||
+        (typeof window !== 'undefined' ? window.NEXUS_SCENE_ART : null) ||
+        null;
+
+    function tryRequire(path) {
+        try {
+            return require(path);
+        } catch (_) {
+            return null;
+        }
+    }
+
     function loadCatalog(win) {
         if (catalogPromise) return catalogPromise;
+        if (!SceneArt) return Promise.resolve([]);
         const w = win || currentWin || (typeof window !== 'undefined' ? window : null);
-        const fetcher =
-            w && typeof w.fetch === 'function' ? w.fetch.bind(w) : typeof fetch === 'function' ? fetch : null;
-        if (!fetcher) return Promise.resolve([]);
-        catalogPromise = fetcher(MANIFEST, { cache: 'force-cache' })
-            .then((response) => (response && response.ok ? response.json() : null))
-            .then((payload) => (payload && Array.isArray(payload.scenes) ? payload.scenes : []))
-            .catch(() => []);
+        catalogPromise = SceneArt.load(w).then(() => SceneArt.all());
         return catalogPromise;
     }
 

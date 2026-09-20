@@ -121,6 +121,19 @@ async function settle() {
     for (let i = 0; i < 12; i += 1) await Promise.resolve();
 }
 
+/**
+ * Step 2 → the checklist → the summary (P20).
+ *
+ * `Get ready →` loads the evening and `Begin →` starts it, so a test that wants a running session
+ * walks both. Named rather than inlined because six tests do it and the interesting assertion is
+ * never this hop.
+ */
+async function getReady() {
+    action('ready-private').click();
+    await settle();
+    await settle();
+}
+
 beforeEach(() => {
     document.body.innerHTML = '';
 });
@@ -166,11 +179,20 @@ describe('two screens, not four', () => {
         expect(s.adult.enter).not.toHaveBeenCalled();
     });
 
-    test('there is no Ready screen between Begin and playing', async () => {
+    test('step two loads, and the summary is what begins (P20)', async () => {
+        // This used to assert the opposite — that `Begin` went straight to playing. That was the
+        // defect: it began into whatever state the machine happened to be in, which is how a
+        // first line got spoken before there was a voice to say it in. Three screens now, and the
+        // third one is a checklist of work that actually happened.
         const s = setup();
         s.panel.choose('intimate');
         document.querySelector('[data-preset="romantic"]').click();
         await settle();
+
+        await getReady();
+        expect(s.activity.sessionState).toBe('ready');
+        expect(s.adult.enter).not.toHaveBeenCalled();
+        expect(document.querySelector('[data-preflight-summary="1"]')).not.toBeNull();
 
         action('begin-private').click();
         await settle();
@@ -205,34 +227,43 @@ describe('the work is concurrent, and budgeted', () => {
         expect(s.activity.preparedPlan).toBeNull();
     });
 
-    test('Begin starts within the budget even when nothing has landed', async () => {
-        jest.useFakeTimers();
+    test('a planner that never answers shows a named step, not a frozen card', async () => {
+        // The old version of this pinned a hidden 2.5-second budget that `Begin` raced. The budget
+        // is gone; the checklist is what replaced it. A step that is still running says so by
+        // name, which is the whole reason the screen exists.
         const s = setup({ hangPlan: true });
         s.panel.choose('intimate');
         document.querySelector('[data-preset="romantic"]').click();
 
-        action('begin-private').click();
-        // Not started yet, and saying so rather than looking frozen.
-        expect(s.adult.enter).not.toHaveBeenCalled();
-        expect(document.querySelector('[data-private-starting="1"]')).not.toBeNull();
-
-        jest.advanceTimersByTime(2600);
+        action('ready-private').click();
         await settle();
 
-        expect(s.adult.enter).toHaveBeenCalledTimes(1);
-        s.activity.stop('user');
-        jest.useRealTimers();
+        expect(s.adult.enter).not.toHaveBeenCalled();
+        expect(s.activity.sessionState).toBe('preparing');
+        const story = document.querySelector('[data-preflight-step="story"]');
+        expect(story).not.toBeNull();
+        expect(['pending', 'running']).toContain(story.dataset.preflightState);
+        // And it is cancellable, rather than a screen you are stuck on.
+        action('cancel-preflight').click();
+        expect(s.activity.sessionState).toBe('atmosphere');
     });
 
-    test('a prepared evening starts synchronously, with no waiting screen at all', async () => {
+    test('a prepared evening passes the checklist without repeating any of the work', async () => {
+        // The performance property, and the reason the screen is usually brief: the preflight
+        // waits on the promises `prewarm` already started rather than starting its own. One
+        // search for the whole wizard, however many screens it passes through.
         const s = setup();
         s.panel.choose('intimate');
         document.querySelector('[data-preset="romantic"]').click();
         await settle();
 
+        await getReady();
+        expect(s.search).toHaveBeenCalledTimes(1);
+        expect(s.activity.preflightShown.ready).toBe(true);
+
         action('begin-private').click();
         expect(s.adult.enter).toHaveBeenCalledTimes(1);
-        expect(document.querySelector('[data-private-starting="1"]')).toBeNull();
+        expect(s.search).toHaveBeenCalledTimes(1);
         s.activity.stop('user');
     });
 
@@ -241,6 +272,7 @@ describe('the work is concurrent, and budgeted', () => {
         s.panel.choose('intimate');
         document.querySelector('[data-preset="romantic"]').click();
         await settle();
+        await getReady();
         action('begin-private').click();
         await settle();
 
@@ -303,6 +335,7 @@ describe('the scenes are connected, and each appears once', () => {
         await settle();
         expect(s.applied).toHaveLength(0);
 
+        await getReady();
         action('begin-private').click();
         await settle();
         expect(s.applied).toEqual([{ id: 'candlelit', source: 'private' }]);
@@ -316,6 +349,7 @@ describe('the scenes are connected, and each appears once', () => {
         s.panel.choose('intimate');
         document.querySelector('[data-preset="affectionate"]').click();
         await settle();
+        await getReady();
         action('begin-private').click();
         await settle();
 

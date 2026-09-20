@@ -107,12 +107,14 @@ describe('the shape of the checklist', () => {
         expect(shown.ready).toBe(false);
     });
 
-    test('required and optional are declared, not inferred from the order', () => {
-        const required = Preflight.STEPS.filter((step) => step.required).map((step) => step.id);
-        const optional = Preflight.STEPS.filter((step) => !step.required).map((step) => step.id);
-        // Nothing works without these three. The others make the evening worse, not impossible.
-        expect(required).toEqual(['voice', 'model', 'story']);
-        expect(optional).toEqual(['place', 'movement', 'soundtrack']);
+    test('no step is a gate, and none declares itself one (P25)', () => {
+        // The first version split these into required and optional, and a failed required step
+        // withheld `Begin`. Every reason a step goes red is transient — a slow first request, a
+        // cold provider, a 504 in the retry loop — and the cost of being wrong is the whole
+        // feature. A warm-up that can refuse to let you in is a second gate, not a warm-up.
+        for (const step of Preflight.STEPS) {
+            expect(step.required).toBeUndefined();
+        }
     });
 
     test('every step names a locale key, so the screen is not English by construction', () => {
@@ -135,7 +137,7 @@ describe('a run where everything works', () => {
         });
         expect(result.ready).toBe(true);
         expect(result.outcome).toBe('ready');
-        expect(result.blocked).toEqual([]);
+        expect(result.failed).toEqual([]);
     });
 
     test('the screen fills in as the work lands, rather than at the end', async () => {
@@ -210,15 +212,15 @@ describe('work that was not done is never a tick', () => {
     });
 });
 
-describe('a required step that fails stops the evening', () => {
-    test('a provider that cannot answer blocks, and is named', async () => {
-        // The step the reported session most needed: the first reply came back empty because
-        // nothing had checked the provider could answer at the cap it was about to be asked at.
+describe('a failure is a line on the summary, never a wall (P25)', () => {
+    test('a provider that cannot answer is reported and does not stop anything', async () => {
+        // The reported screen: `✕ Waking the model`, and the feature shut, in an app whose
+        // provider had answered a minute earlier.
         const result = await Preflight.run(deps({ probeModel: () => Promise.resolve(false) }));
         expect(byId(result).model).toBe('failed');
-        expect(result.ready).toBe(false);
-        expect(result.outcome).toBe('blocked');
-        expect(result.blocked.map((entry) => entry.id)).toEqual(['model']);
+        expect(result.ready).toBe(true);
+        expect(result.outcome).toBe('ready');
+        expect(result.failed.map((entry) => entry.id)).toEqual(['model']);
     });
 
     test('a probe that throws is a failure, not a crash', async () => {
@@ -230,21 +232,24 @@ describe('a required step that fails stops the evening', () => {
             })
         );
         expect(byId(result).model).toBe('failed');
-        expect(result.blocked.map((entry) => entry.id)).toEqual(['model']);
+        expect(result.ready).toBe(true);
     });
 
-    test('an optional failure is reported and does not block', async () => {
-        const result = await Preflight.run(deps({ sceneReady: () => Promise.resolve(false) }));
-        expect(byId(result).place).toBe('failed');
+    test('several failures at once still leave it ready', async () => {
+        const result = await Preflight.run(
+            deps({
+                probeModel: () => Promise.resolve(false),
+                sceneReady: () => Promise.resolve(false),
+                intentResolves: () => false,
+            })
+        );
+        expect(result.failed.map((entry) => entry.id).sort()).toEqual(['model', 'movement', 'place']);
         expect(result.ready).toBe(true);
-        expect(result.blocked).toEqual([]);
     });
 
     test('the reason survives, because "it failed" is not a diagnosis', async () => {
         const result = await Preflight.run(
-            deps({
-                storyReady: () => Promise.reject(new Error('the planner refused')),
-            })
+            deps({ storyReady: () => Promise.reject(new Error('the planner refused')) })
         );
         const story = result.list.find((entry) => entry.id === 'story');
         expect(story.state).toBe('failed');
@@ -285,7 +290,8 @@ describe('the voice list, which is empty at boot and is why this exists', () => 
         await c.advance(Preflight.STEP_TIMEOUT_MS + 1000);
         const settled = await result;
         expect(byId(settled).voice).toBe('failed');
-        expect(settled.ready).toBe(false);
+        // Reported, not blocking (P25).
+        expect(settled.ready).toBe(true);
     });
 
     test('nothing it started outlives it', async () => {
