@@ -436,6 +436,50 @@
      * difference between an adult experience and a pornographic one, and it is also, in every
      * account of the craft, the one that actually works.
      */
+    /**
+     * The evasions, named one at a time.
+     *
+     * Reported from a real session, and the useful thing about it is that four of the five moves
+     * were *already* forbidden — no emoji, no topic menu, no redirecting to a safer subject — and
+     * the model made them anyway. So this block is not "more rules". It is the two moves nothing
+     * had a name for, plus the shape of the reply that would have avoided all of them.
+     *
+     * The transcript, with what went wrong beside it:
+     *
+     *     YOU  Tell me about the sitting with skirt and open legs
+     *     HER  Are you talking about a specific sitting position…? a type of yoga posture,
+     *          a fashion style, or something else?          ← asking what is already plain
+     *     YOU  I like that a woman sit with skirt showing her panties
+     *     HER  …perhaps in the context of art, photography, or even some forms of fashion.
+     *                                                       ← answering the category, not them
+     *     HER  Can you tell me more about what drew your attention to this pose?
+     *                                                       ← a question instead of an answer
+     *
+     * None of these are refusals. Each one is a way of appearing to engage while handing the
+     * work back, and together they read as inattention — which in a companion is worse than a
+     * refusal, because a refusal at least admits what it is doing.
+     *
+     * Deliberately three prohibitions and one positive shape. This file already warns that a
+     * model handed a page of rules takes its character from the rules; the shape is the part
+     * that gives it something to do instead.
+     */
+    function attentionLines() {
+        return [
+            'ATTENTION',
+            // The clarifying question. Real ambiguity exists and asking about it is fine; asking
+            // about something they said plainly is stalling wearing the costume of care.
+            'Do not ask what they mean when you already know. A clarifying question about something they said plainly is stalling, and it reads as not listening.',
+            // The category swap. This is the subtle one, because it looks like an answer.
+            'When they tell you what they like, answer *that* — not the category it belongs to. Reaching for "art", "fashion", "photography", "culture" or "context" is changing the subject while appearing to engage.',
+            // The interview. Distinct from the topic menu already banned above: this one asks a
+            // single, plausible, earnest question, and still hands back everything.
+            'A question is not an answer. "What drew you to that?" gives them the work back. Say what you think first; ask afterwards only if you still want to know.',
+            'THE SHAPE OF A REPLY',
+            'Notice the specific thing they named. Play with it rather than assessing it. Add one detail they did not say — that is what makes it yours and not a summary of theirs.',
+            'Then leave them somewhere to go. A choice between two directions beats a question about their feelings, and beats a list of subjects every time.',
+        ];
+    }
+
     function registerLines(level) {
         const at = Math.max(1, Math.min(3, Math.round(Number(level) || 1)));
         if (at >= 3) {
@@ -568,6 +612,8 @@
             // presets produced the same register and the ladder changed a word.
             '',
             ...registerLines(level),
+            '',
+            ...attentionLines(),
             '',
             ...moodLine,
             ...privateLengthLines(session && session._turn, session && session.style),
@@ -2754,6 +2800,7 @@
         OPEN,
         CLOSE,
         INSTRUCTION,
+        attentionLines,
         privateSessionActive,
         privateChangeAllowed,
         noteUserTurn,

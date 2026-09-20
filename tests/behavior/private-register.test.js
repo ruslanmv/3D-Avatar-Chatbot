@@ -317,3 +317,60 @@ describe('the marker that leaked, and the movement it was asking for', () => {
         s.activity.stop('user');
     });
 });
+
+describe('the evasions that are not refusals (P32)', () => {
+    const Capability = require('../../src/features/together/TogetherCapability.js');
+
+    /**
+     * Reported session: she dodged the context four turns running without ever refusing. Asking
+     * what "skirt and open legs" meant, answering "art, photography, fashion" instead of the
+     * person, and "what drew your attention to this pose?" are each a way of appearing to engage
+     * while handing the work back — which in a companion reads worse than a refusal, because a
+     * refusal at least admits what it is.
+     */
+    test('the two moves nothing had a name for are named', () => {
+        const lines = Capability.attentionLines().join('\n');
+        // Asking about something already plain.
+        expect(lines).toMatch(/do not ask what they mean when you already know/i);
+        // Answering the category instead of the person.
+        expect(lines).toMatch(/not the category it belongs to/i);
+        expect(lines).toMatch(/art.*fashion.*photography/i);
+        // A question handed back in place of an answer.
+        expect(lines).toMatch(/a question is not an answer/i);
+    });
+
+    test('and a reply is given a shape, not only a list of things not to do', () => {
+        // This file's own warning: a model handed a page of prohibitions takes its character from
+        // the prohibitions. The positive half is what it does instead.
+        const lines = Capability.attentionLines().join('\n');
+        expect(lines).toMatch(/THE SHAPE OF A REPLY/);
+        expect(lines).toMatch(/notice the specific thing they named/i);
+        expect(lines).toMatch(/add one detail they did not say/i);
+        expect(lines).toMatch(/leave them somewhere to go/i);
+    });
+
+    test('it reaches the prompt a running session actually sends', async () => {
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+        const suffix = Capability.privateSystemPromptSuffix();
+        expect(suffix).toContain('ATTENTION');
+        expect(suffix).toMatch(/a question is not an answer/i);
+        s.activity.stop('user');
+    });
+
+    test('and reaches a remote persona too, where the system prompt is skipped', async () => {
+        // `_chatOllaBridge` drops the app's system prompt for a `persona:`/`personality:` model
+        // and sends `experienceOverlay()` instead. Their device advertises several of those, so a
+        // craft rule that only rode the system prompt would never arrive.
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+        expect(Capability.experienceOverlay()).toMatch(/a question is not an answer/i);
+        s.activity.stop('user');
+    });
+
+    test('it is short, because the file says why', async () => {
+        // "A model reads a page of rules and takes its character from whatever came first."
+        // Three prohibitions and one shape; a block that grows without bound is the regression.
+        expect(Capability.attentionLines().length).toBeLessThanOrEqual(8);
+    });
+});
