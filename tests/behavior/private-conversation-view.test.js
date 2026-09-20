@@ -73,51 +73,56 @@ describe('PrivateConversationView', () => {
     });
 });
 
-describe('the header and the controls stay on screen (P24)', () => {
+describe('the header and the controls stay on screen (P25)', () => {
     /** The one stylesheet the view injects, as text. */
     const css = () => document.getElementById('nexus-private-conversation-styles').textContent;
 
-    test('the heading sticks to the top of the scroller', () => {
-        // Reported: `🔐 PRIVATE / Warm` scrolled out of sight. The row lives in `#chat-history`,
-        // and `_scroll()` pins that container to the bottom after every turn — so on a tall phone,
-        // where the card is taller than the panel, the header was pushed off the top on each line.
+    function mounted() {
         page();
         const view = new PrivateConversationView.View({ doc: document, win: window });
         view.mount({ preset: { label: 'Romantic' }, scene: '' });
-        expect(css()).toMatch(/\.nexus-private-heading\{[^}]*position:sticky/);
-        expect(css()).toMatch(/\.nexus-private-heading\{[^}]*top:0/);
+        return view;
+    }
+
+    test('the row never grows past the panel it lives in', () => {
+        // The fix, and the whole of it. `#chat-history` has `height:100%`, so bounding the row to
+        // its parent means nothing ever scrolls except the transcript inside the card — which is
+        // what keeps the header at the top and the controls at the bottom without either having
+        // to be positioned.
+        const view = mounted();
+        expect(css()).toMatch(/#nexus-private-conversation-row\{[^}]*max-height:calc\(100% - 18px\)/);
+        expect(css()).toMatch(/#nexus-private-conversation-row\{[^}]*flex-direction:column/);
         view.destroy();
     });
 
-    test('and the controls stick to the bottom', () => {
-        // Same failure, other end: `← Ease up`, `Closer →` and `End` are the safety controls, and
-        // a safety control you have to scroll to find is one you do not have.
-        page();
-        const view = new PrivateConversationView.View({ doc: document, win: window });
-        view.mount({ preset: { label: 'Romantic' }, scene: '' });
-        expect(css()).toMatch(/\.nexus-private-bar\{[^}]*position:sticky/);
-        expect(css()).toMatch(/\.nexus-private-bar\{[^}]*bottom:0/);
+    test('and the transcript is the only part that scrolls', () => {
+        const view = mounted();
+        expect(css()).toMatch(/\.nexus-private-card\{[^}]*flex:1 1 auto/);
+        expect(css()).toMatch(/\.nexus-private-card\{[^}]*min-height:0/);
+        expect(css()).toMatch(/\.nexus-private-card\{[^}]*overflow-y:auto/);
+        for (const fixed of ['heading', 'bar', 'soundtrack']) {
+            expect(css()).toMatch(new RegExp(`\\.nexus-private-${fixed}\\{[^}]*flex:0 0 auto`));
+        }
         view.destroy();
     });
 
-    test('both are opaque, so the transcript does not read through them', () => {
-        page();
-        const view = new PrivateConversationView.View({ doc: document, win: window });
-        view.mount({ preset: { label: 'Romantic' }, scene: '' });
-        expect(css()).toMatch(/\.nexus-private-heading\{[^}]*background:linear-gradient/);
-        expect(css()).toMatch(/\.nexus-private-bar\{[^}]*background:linear-gradient/);
+    test('nothing is sticky, because sticky was the overlap', () => {
+        // `position:sticky` pinned the heading to the top of `#chat-history`, which is *below* the
+        // card's own top once the card has scrolled — so the header was displaced downward and her
+        // line painted in the band above it. Reported as the header overlaying the text. Bounding
+        // the row removes the displacement and the need for sticky together.
+        const view = mounted();
+        expect(css()).not.toMatch(/position:sticky/);
         view.destroy();
     });
 
     test('the shell clips without becoming a scroll container', () => {
         // `overflow:hidden` rounds the corners *and* makes the shell a scroller, which would trap
-        // a sticky child inside it — sticking to the top of the card rather than to the top of the
-        // view. `overflow:clip` keeps the clipping and creates no scroll container; the `hidden`
-        // before it is the fallback for a browser that does not know `clip`.
-        page();
-        const view = new PrivateConversationView.View({ doc: document, win: window });
-        view.mount({ preset: { label: 'Romantic' }, scene: '' });
-        expect(css()).toMatch(/\.nexus-private-shell\{overflow:hidden;overflow:clip/);
+        // the card's own scrolling in the wrong box. `overflow:clip` keeps the clipping and creates
+        // no scroll container; the `hidden` before it is the fallback for a browser without `clip`.
+        const view = mounted();
+        expect(css()).toMatch(/\.nexus-private-shell\{[^}]*overflow:hidden;overflow:clip/);
+        expect(css()).toMatch(/\.nexus-private-shell\{[^}]*flex-direction:column/);
         view.destroy();
     });
 });

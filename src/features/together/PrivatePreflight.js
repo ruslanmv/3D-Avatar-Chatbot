@@ -22,17 +22,30 @@
  * each lands — and the reason it feels different is not the spinner. It is that the work is *real*
  * and the screen is telling the truth about it. This is the same shape for Private.
  *
- * ## Required, and merely wanted
+ * ## Nothing here is a gate (P25)
+ *
+ * The first version split the steps into required and optional, and a failed required step stopped
+ * at a screen with no way forward but `Start anyway`. That was reported in the obvious way: a green
+ * checklist with one red row —
  *
  * ```text
- *   required   voice · model · story          nothing works without these
- *   optional   place · movement · soundtrack  the evening is worse, not impossible
+ *   ✓ Finding her voice      ✕ Waking the model       ✓ Writing the evening
+ *   · Loading this place     ✓ Warming up her movements   · Finding a soundtrack
+ *   Not ready: Waking the model.
  * ```
  *
- * An optional step that fails is reported and the session starts anyway — the established fail-soft
- * of this codebase, and correct here: no soundtrack is a quieter evening, while no voice is a
- * silent companion. A required step that fails stops at a screen that says which one and offers a
- * retry, because starting into it produces the transcript that was reported.
+ * — in an app whose provider demonstrably worked a minute earlier. A warm-up that can refuse to let
+ * you in is not a warm-up, it is a second gate in front of a feature that already has one; and it
+ * fails in the worst direction, because every reason it goes red is transient — a slow first
+ * request, a cold provider, a 504 in the retry loop — while the cost of being wrong is the whole
+ * feature.
+ *
+ * So this warms and reports, and that is all. `Begin` is always available. A step that did not work
+ * is a line on the summary, not a wall, which is the same fail-soft the rest of this codebase
+ * already uses for a bad manifest and a missing asset.
+ *
+ * The one thing that genuinely could not work — no `PrivateBeats` at all, so she has nothing to
+ * say — is not checkable here anyway: `Private` would not have started.
  *
  * ## Deliberately not a spinner with nice words on it
  *
@@ -61,10 +74,10 @@
      * named step tick over waits far longer than somebody staring at a frozen card — the reported
      * boot took 21 seconds and nothing said so.
      */
-    const STEP_TIMEOUT_MS = 12000;
+    const STEP_TIMEOUT_MS = 6000;
 
-    /** And the whole preflight, after which the required steps that landed are what we go with. */
-    const TOTAL_TIMEOUT_MS = 25000;
+    /** And the whole preflight, after which whatever landed is what we go with. */
+    const TOTAL_TIMEOUT_MS = 10000;
 
     /**
      * The voice list, which is populated asynchronously and is empty at boot.
@@ -81,17 +94,17 @@
     /**
      * The steps, in the order they are shown.
      *
-     * `required` decides whether a failure stops the evening. The labels are locale keys, resolved
-     * by the view — this module names what is happening, and `PrivateLocale` says it in the
-     * language the rest of the card is in.
+     * No `required` flag, deliberately — see the header. The labels are locale keys, resolved by
+     * the view: this module names what is happening, and `PrivateLocale` says it in the language
+     * the rest of the card is in.
      */
     const STEPS = Object.freeze([
-        Object.freeze({ id: 'voice', key: 'preflight.voice', required: true }),
-        Object.freeze({ id: 'model', key: 'preflight.model', required: true }),
-        Object.freeze({ id: 'story', key: 'preflight.story', required: true }),
-        Object.freeze({ id: 'place', key: 'preflight.place', required: false }),
-        Object.freeze({ id: 'movement', key: 'preflight.movement', required: false }),
-        Object.freeze({ id: 'soundtrack', key: 'preflight.soundtrack', required: false }),
+        Object.freeze({ id: 'voice', key: 'preflight.voice' }),
+        Object.freeze({ id: 'model', key: 'preflight.model' }),
+        Object.freeze({ id: 'story', key: 'preflight.story' }),
+        Object.freeze({ id: 'place', key: 'preflight.place' }),
+        Object.freeze({ id: 'movement', key: 'preflight.movement' }),
+        Object.freeze({ id: 'soundtrack', key: 'preflight.soundtrack' }),
     ]);
 
     /** The intents Private actually emits. See `TogetherCapability._intent`. */
@@ -111,7 +124,7 @@
         return run.steps[id];
     }
 
-    /** `{ done, total, ready, blocked }` — everything a progress line needs and nothing else. */
+    /** `{ done, total, ready, failed }` — everything a progress line needs and nothing else. */
     function describe(run) {
         const list = STEPS.map((step) => ({
             ...step,
@@ -119,15 +132,15 @@
             why: (run && run.steps && run.steps[step.id] && run.steps[step.id].why) || '',
         }));
         const settled = (entry) => entry.state === 'done' || entry.state === 'skipped' || entry.state === 'failed';
-        const blocked = list.filter((entry) => entry.required && entry.state === 'failed');
+        const failed = list.filter((entry) => entry.state === 'failed');
         return {
             list,
             done: list.filter((entry) => entry.state === 'done').length,
             total: list.length,
-            /** Every step has settled, and no required one failed. */
-            ready: list.every(settled) && !blocked.length,
-            /** The required steps that failed, which is what the error screen names. */
-            blocked,
+            /** Every step has settled. Nothing blocks, so settled is all `ready` can mean. */
+            ready: list.every(settled),
+            /** What did not work, for the one line under the summary. Never a reason to stop. */
+            failed,
             running: list.filter((entry) => entry.state === 'running').map((entry) => entry.id),
         };
     }
@@ -361,7 +374,7 @@
         const all = Promise.all(STEPS.map(one));
         const bounded = withTimeout(all, TOTAL_TIMEOUT_MS, deps, 'preflight').catch(() => {
             // The overall valve. Whatever has not settled by now is reported as failed so the
-            // screen never sits on a ○ forever; a required one then shows the retry.
+            // screen never sits on a ○ forever. It is still a line on the summary, never a wall.
             for (const step of STEPS) {
                 const entry = state.steps[step.id];
                 if (entry && (entry.state === 'pending' || entry.state === 'running')) {
@@ -372,7 +385,7 @@
         return bounded.then(() => {
             state.finishedAt = typeof deps.now === 'function' ? deps.now() : 0;
             const shown = describe(state);
-            state.outcome = cancelled() ? 'cancelled' : shown.ready ? 'ready' : 'blocked';
+            state.outcome = cancelled() ? 'cancelled' : 'ready';
             report();
             return { ...shown, outcome: state.outcome, state };
         });

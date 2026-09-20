@@ -1089,23 +1089,27 @@ const TogetherPanel = (() => {
         }
 
         /**
-         * The outline, and the button that now honestly says begin (P20).
+         * The outline, and one button that always works (P25).
          *
-         * Scene Tale's ready screen is the model: what this is, how long, what landed. Everything
-         * here is a fact the preflight established a moment ago rather than a promise — which is
-         * the difference between a summary and a splash screen.
+         * Scene Tale's ready screen is the model: what this is, what landed. Everything here is a
+         * fact the preflight established a moment ago rather than a promise.
          *
-         * A required step that failed keeps the person here with a retry and a plain sentence
-         * about what is wrong. `Start anyway` is still offered, because this is their machine and
-         * a blocked evening they choose to enter is their call — but it is the secondary control,
-         * and it is never the default.
+         * There is no blocked branch any more. The first version withheld `Begin →` when a
+         * "required" step failed and offered `Try again` / `Start anyway` instead, and the
+         * reported screen is why that was wrong: one red row — `✕ Waking the model` — in an app
+         * whose provider had answered a minute earlier, and the feature was shut. Every reason
+         * that row goes red is transient, and the cost of being wrong about it is the whole
+         * evening. So a step that did not work is a line under the summary, and `Begin →` is
+         * always there.
+         *
+         * `Try again` stays, secondary, for somebody who would rather warm it properly first.
          */
         _paintPrivateReady(activity) {
             const doc = this.doc;
             const shell = this._privateShell(0);
             const preset = activity.prepareInput || {};
             const shown = activity.preflightShown;
-            const blocked = (shown && shown.blocked) || [];
+            const failed = (shown && shown.failed) || [];
 
             const title = doc.createElement('p');
             title.className = 'nexus-private-setup-lead';
@@ -1113,10 +1117,9 @@ const TogetherPanel = (() => {
             title.textContent = String(preset.label || 'Private').toUpperCase();
             shell.appendChild(title);
 
-            const place = this._privatePlace(activity);
             const note = doc.createElement('p');
             note.className = 'nexus-private-label';
-            note.textContent = place;
+            note.textContent = this._privatePlace(activity);
             shell.appendChild(note);
 
             // The outline: what landed, named, in the order the checklist ran. Skipped steps say
@@ -1130,39 +1133,35 @@ const TogetherPanel = (() => {
                 .join('\n');
             shell.appendChild(summary);
 
-            if (blocked.length) {
+            if (failed.length) {
                 const problem = doc.createElement('p');
-                problem.className = 'nexus-private-locked';
-                problem.dataset.preflightBlocked = '1';
-                problem.textContent = `Not ready: ${blocked
+                problem.className = 'nexus-private-label';
+                problem.dataset.preflightNote = '1';
+                // Phrased as what it is — something that did not warm up — rather than as a
+                // verdict on whether the evening can happen.
+                problem.textContent = `Could not warm up: ${failed
                     .map((entry) => this._privateWord(entry.key, entry.id))
-                    .join(', ')}.`;
+                    .join(', ')}. You can start anyway.`;
                 shell.appendChild(problem);
             }
 
             const actions = doc.createElement('div');
             actions.className = 'nexus-bd-together-options';
-            if (!blocked.length) {
-                const begin = doc.createElement('button');
-                begin.type = 'button';
-                begin.className = 'nexus-private-begin';
-                begin.dataset.action = 'begin-private';
-                begin.textContent = this._privateWord('ready.begin', 'Begin →');
-                begin.addEventListener('click', () => this._beginPrivate(activity));
-                actions.appendChild(begin);
-            } else {
-                const retry = this._button(this._privateWord('ready.retry', 'Try again'), 'nexus-private-begin', () =>
-                    activity.runPreflight()
+            const begin = doc.createElement('button');
+            begin.type = 'button';
+            begin.className = 'nexus-private-begin';
+            begin.dataset.action = 'begin-private';
+            begin.textContent = this._privateWord('ready.begin', 'Begin →');
+            begin.addEventListener('click', () => this._beginPrivate(activity));
+            actions.appendChild(begin);
+            if (failed.length) {
+                const retry = this._button(
+                    this._privateWord('ready.retry', 'Try again'),
+                    'nexus-bd-together-option',
+                    () => activity.runPreflight()
                 );
                 retry.dataset.action = 'retry-preflight';
                 actions.appendChild(retry);
-                const anyway = this._button(
-                    this._privateWord('ready.anyway', 'Start anyway'),
-                    'nexus-bd-together-option',
-                    () => this._beginPrivate(activity)
-                );
-                anyway.dataset.action = 'begin-anyway';
-                actions.appendChild(anyway);
             }
             shell.appendChild(actions);
 

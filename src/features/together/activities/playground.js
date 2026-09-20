@@ -1076,7 +1076,6 @@ const PlaygroundActivity = (() => {
              * what you show when you have nothing true to say.
              */
             this.preflightShown = null;
-            this.preflightError = '';
             this._preflightToken = 0;
             /** One in-flight media search per query, reused rather than repeated. See `_findTrack`. */
             this._trackCache = new Map();
@@ -1522,7 +1521,6 @@ const PlaygroundActivity = (() => {
         runPreflight() {
             const win = globalObject();
             const api = privatePreflight(win);
-            this.preflightError = '';
             this._preflightToken += 1;
             const token = this._preflightToken;
             // No module, no screen. The session starts the way it always did rather than stopping
@@ -1541,9 +1539,6 @@ const PlaygroundActivity = (() => {
                 this.preflightShown = result;
                 if (result.outcome === 'cancelled') return null;
                 this.sessionState = 'ready';
-                if (!result.ready) {
-                    this.preflightError = result.blocked.map((entry) => entry.id).join(', ');
-                }
                 this._repaint();
                 busEmit(this.bus, 'private:prepared', {
                     preset: this.prepareInput && this.prepareInput.id,
@@ -1558,7 +1553,6 @@ const PlaygroundActivity = (() => {
         cancelPreflight() {
             this._preflightToken += 1;
             this.preflightShown = null;
-            this.preflightError = '';
             this.sessionState = 'atmosphere';
             this._repaint();
             return true;

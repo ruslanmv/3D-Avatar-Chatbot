@@ -272,18 +272,30 @@ describe('the reported checklist: ✕ Writing the evening, ✕ Finding a soundtr
     });
 });
 
-describe('a required failure keeps them here', () => {
-    test('a provider that answers nothing blocks, and Begin is not offered', async () => {
-        // The reported first turn, caught one screen earlier: the model produced no visible token
-        // inside its allowance, and the card printed "No response" under a HER label.
+describe('a failure never withholds Begin (P25)', () => {
+    test('a provider that answers nothing is reported, and Begin is still there', async () => {
+        // The reported screen: `✕ Waking the model` / `Not ready: Waking the model.` and no way
+        // in, for a provider that had answered a minute earlier.
         const s = setup({ reply: '' });
         await toChecklist(s);
 
-        expect(s.activity.preflightShown.ready).toBe(false);
-        expect(document.querySelector('[data-preflight-blocked="1"]')).not.toBeNull();
-        expect(action('begin-private')).toBeNull();
-        expect(action('retry-preflight')).not.toBeNull();
-        expect(s.adult.enter).not.toHaveBeenCalled();
+        expect(s.activity.preflightShown.failed.map((e) => e.id)).toEqual(['model']);
+        expect(action('begin-private')).not.toBeNull();
+        expect(action('begin-anyway')).toBeNull();
+        // Said plainly, as something that did not warm up rather than a verdict.
+        const note = document.querySelector('[data-preflight-note="1"]');
+        expect(note).not.toBeNull();
+        expect(note.textContent).toMatch(/could not warm up/i);
+        expect(note.textContent).toMatch(/start anyway/i);
+    });
+
+    test('and Begin actually starts the session', async () => {
+        const s = setup({ reply: '' });
+        await toChecklist(s);
+        action('begin-private').click();
+        await settle();
+        expect(s.adult.enter).toHaveBeenCalledTimes(1);
+        s.activity.stop('user');
     });
 
     test('an EmptyCompletionError is the same answer, not a crash', async () => {
@@ -292,9 +304,10 @@ describe('a required failure keeps them here', () => {
         const s = setup({ reply: boom });
         await toChecklist(s);
         expect(s.activity.preflightShown.list.find((e) => e.id === 'model').state).toBe('failed');
+        expect(action('begin-private')).not.toBeNull();
     });
 
-    test('retry runs it again rather than replaying the stored failure', async () => {
+    test('retry is offered beside it, and runs the work again', async () => {
         const s = setup({ reply: '' });
         await toChecklist(s);
         expect(probes(s)).toBe(1);
@@ -304,28 +317,23 @@ describe('a required failure keeps them here', () => {
         await settle();
 
         expect(probes(s)).toBe(2);
-        expect(s.activity.preflightShown.ready).toBe(true);
+        expect(s.activity.preflightShown.failed).toEqual([]);
+        // And with nothing wrong, there is nothing to retry.
+        expect(action('retry-preflight')).toBeNull();
+    });
+
+    test('a green run shows no note and no retry — one button', async () => {
+        const s = setup();
+        await toChecklist(s);
+        expect(document.querySelector('[data-preflight-note="1"]')).toBeNull();
+        expect(action('retry-preflight')).toBeNull();
         expect(action('begin-private')).not.toBeNull();
     });
 
-    test('Start anyway is offered, secondary, because it is their machine', async () => {
-        const s = setup({ reply: '' });
-        await toChecklist(s);
-        const anyway = action('begin-anyway');
-        expect(anyway).not.toBeNull();
-        anyway.click();
-        await settle();
-        expect(s.adult.enter).toHaveBeenCalledTimes(1);
-        s.activity.stop('user');
-    });
-
-    test('an optional failure does not block anything', async () => {
-        // No clip for any of her three intents is worth saying and is not worth stopping for: a
-        // missing clip plays nothing, the same fail-soft every caller of the intent bus gets.
+    test('a movement gap is reported without blocking either', async () => {
         const s = setup({ intents: false });
         await toChecklist(s);
         expect(s.activity.preflightShown.list.find((e) => e.id === 'movement').state).toBe('failed');
-        expect(s.activity.preflightShown.ready).toBe(true);
         expect(action('begin-private')).not.toBeNull();
     });
 });
