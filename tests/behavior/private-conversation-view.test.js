@@ -73,6 +73,55 @@ describe('PrivateConversationView', () => {
     });
 });
 
+describe('the header and the controls stay on screen (P24)', () => {
+    /** The one stylesheet the view injects, as text. */
+    const css = () => document.getElementById('nexus-private-conversation-styles').textContent;
+
+    test('the heading sticks to the top of the scroller', () => {
+        // Reported: `🔐 PRIVATE / Warm` scrolled out of sight. The row lives in `#chat-history`,
+        // and `_scroll()` pins that container to the bottom after every turn — so on a tall phone,
+        // where the card is taller than the panel, the header was pushed off the top on each line.
+        page();
+        const view = new PrivateConversationView.View({ doc: document, win: window });
+        view.mount({ preset: { label: 'Romantic' }, scene: '' });
+        expect(css()).toMatch(/\.nexus-private-heading\{[^}]*position:sticky/);
+        expect(css()).toMatch(/\.nexus-private-heading\{[^}]*top:0/);
+        view.destroy();
+    });
+
+    test('and the controls stick to the bottom', () => {
+        // Same failure, other end: `← Ease up`, `Closer →` and `End` are the safety controls, and
+        // a safety control you have to scroll to find is one you do not have.
+        page();
+        const view = new PrivateConversationView.View({ doc: document, win: window });
+        view.mount({ preset: { label: 'Romantic' }, scene: '' });
+        expect(css()).toMatch(/\.nexus-private-bar\{[^}]*position:sticky/);
+        expect(css()).toMatch(/\.nexus-private-bar\{[^}]*bottom:0/);
+        view.destroy();
+    });
+
+    test('both are opaque, so the transcript does not read through them', () => {
+        page();
+        const view = new PrivateConversationView.View({ doc: document, win: window });
+        view.mount({ preset: { label: 'Romantic' }, scene: '' });
+        expect(css()).toMatch(/\.nexus-private-heading\{[^}]*background:linear-gradient/);
+        expect(css()).toMatch(/\.nexus-private-bar\{[^}]*background:linear-gradient/);
+        view.destroy();
+    });
+
+    test('the shell clips without becoming a scroll container', () => {
+        // `overflow:hidden` rounds the corners *and* makes the shell a scroller, which would trap
+        // a sticky child inside it — sticking to the top of the card rather than to the top of the
+        // view. `overflow:clip` keeps the clipping and creates no scroll container; the `hidden`
+        // before it is the fallback for a browser that does not know `clip`.
+        page();
+        const view = new PrivateConversationView.View({ doc: document, win: window });
+        view.mount({ preset: { label: 'Romantic' }, scene: '' });
+        expect(css()).toMatch(/\.nexus-private-shell\{overflow:hidden;overflow:clip/);
+        view.destroy();
+    });
+});
+
 describe('the footer, and a confirmation that is not conversation (P12)', () => {
     let view;
 
