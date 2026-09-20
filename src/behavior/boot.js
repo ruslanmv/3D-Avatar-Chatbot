@@ -128,6 +128,9 @@
         // P13. Things you could say next, and the block they ride back in. Before
         // TogetherCapability, which parses it at the display seam.
         'src/features/together/PrivateChoices.js',
+        // P20. What an evening needs, loaded before it starts. Before the Together panel and
+        // the playground activity, which drive it from the wizard's third step.
+        'src/features/together/PrivatePreflight.js',
         // P17. The clock that notices silence — stages, never intensity. Before
         // TogetherCapability, which drives it from the beat tick it already has.
         'src/features/together/PrivateIdleClock.js',

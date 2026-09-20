@@ -51,6 +51,7 @@
      */
     const PACKS = {
         'en-US': {
+            'preflight.continue': 'Get ready →',
             'preflight.voice': 'Finding her voice',
             'preflight.model': 'Waking the model',
             'preflight.story': 'Writing the evening',
@@ -113,6 +114,7 @@
             'choice.surprise': 'Choose for us.',
         },
         'es-ES': {
+            'preflight.continue': 'Preparar →',
             'preflight.voice': 'Buscando su voz',
             'preflight.model': 'Despertando el modelo',
             'preflight.story': 'Escribiendo la velada',
@@ -175,6 +177,7 @@
             'choice.surprise': 'Elige tú por los dos.',
         },
         'it-IT': {
+            'preflight.continue': 'Prepariamo →',
             'preflight.voice': 'Cerco la sua voce',
             'preflight.model': 'Sveglio il modello',
             'preflight.story': 'Scrivo la serata',
@@ -237,6 +240,7 @@
             'choice.surprise': 'Scegli tu cosa facciamo.',
         },
         'fr-FR': {
+            'preflight.continue': 'Préparer →',
             'preflight.voice': 'Je cherche sa voix',
             'preflight.model': 'Je réveille le modèle',
             'preflight.story': 'J’écris la soirée',
@@ -299,6 +303,7 @@
             'choice.surprise': 'Choisis pour nous.',
         },
         'de-DE': {
+            'preflight.continue': 'Vorbereiten →',
             'preflight.voice': 'Ihre Stimme wird gesucht',
             'preflight.model': 'Das Modell wird geweckt',
             'preflight.story': 'Der Abend wird geschrieben',
@@ -361,6 +366,7 @@
             'choice.surprise': 'Entscheide du für uns.',
         },
         'pt-BR': {
+            'preflight.continue': 'Preparar →',
             'preflight.voice': 'Procurando a voz dela',
             'preflight.model': 'Acordando o modelo',
             'preflight.story': 'Escrevendo a noite',
@@ -423,6 +429,7 @@
             'choice.surprise': 'Escolhe você por nós.',
         },
         'ja-JP': {
+            'preflight.continue': '準備する →',
             'preflight.voice': '彼女の声を探しています',
             'preflight.model': 'モデルを起こしています',
             'preflight.story': '今夜を書いています',
@@ -485,6 +492,7 @@
             'choice.surprise': '君が決めて。',
         },
         'ko-KR': {
+            'preflight.continue': '준비하기 →',
             'preflight.voice': '그녀의 목소리를 찾는 중',
             'preflight.model': '모델을 깨우는 중',
             'preflight.story': '오늘 밤을 쓰는 중',
@@ -547,6 +555,7 @@
             'choice.surprise': '네가 정해줘.',
         },
         'zh-CN': {
+            'preflight.continue': '开始准备 →',
             'preflight.voice': '正在寻找她的声音',
             'preflight.model': '正在唤醒模型',
             'preflight.story': '正在写今晚',

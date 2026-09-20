@@ -151,6 +151,18 @@ const PlaygroundActivity = (() => {
         }
     }
 
+    /** Same resolution as `privateBeats`, and for the same reason: boot order is not require order. */
+    function privatePreflight(win) {
+        const w = win || globalObject();
+        if (w && w.NEXUS_PRIVATE_PREFLIGHT) return w.NEXUS_PRIVATE_PREFLIGHT;
+        try {
+            // eslint-disable-next-line global-require
+            return typeof require === 'function' ? require('../PrivatePreflight.js') : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
     function currentScene(win) {
         const d = win && win.NEXUS_BD;
         const scene = d && d.blackboard && d.blackboard.scene;
@@ -1049,6 +1061,27 @@ const PlaygroundActivity = (() => {
             this._prepareToken = 0;
             this._panel = null;
             this._showAllScenes = false;
+            /**
+             * The preflight, and what it has finished (P20).
+             *
+             * The comment above this block is still true about *step 1 and 2* — nobody should be
+             * administered before choosing a mood. It was wrong about the moment after `Begin`,
+             * which is where the work actually is and where the reported session fell over: the
+             * first line was spoken before `speech-service` had a voice, the scene decoded after
+             * the card was up, and the first reply came back empty because nothing had checked
+             * the provider could answer at the cap it was about to be asked at.
+             *
+             * Scene Tale already showed the way — `Creating our story…` with a named line per
+             * step. A screen that says what it is doing is not a progress bar; a progress bar is
+             * what you show when you have nothing true to say.
+             */
+            this.preflightShown = null;
+            this.preflightError = '';
+            this._preflightToken = 0;
+            /** One in-flight media search per query, reused rather than repeated. See `_findTrack`. */
+            this._trackCache = new Map();
+            /** And one plan per set of inputs, for the same reason. See `_planFor`. */
+            this._planCache = new Map();
         }
         get name() {
             return 'Private';
@@ -1193,11 +1226,7 @@ const PlaygroundActivity = (() => {
                 : currentScene(win).label;
             const wantsMusic = this.soundtrackChoice === 'choose' && preset && preset.music;
 
-            const beats = privateBeats(win);
-            const planning =
-                beats && typeof beats.plan === 'function'
-                    ? beats.plan({ preset, scene: place, win, sceneId: this.sceneChoice })
-                    : Promise.resolve(null);
+            const planning = this._planFor({ preset, place, win });
             const music = wantsMusic ? this._findTrack(preset.music, win) : Promise.resolve(null);
 
             this.prepared = Promise.allSettled([planning, music]).then(([plan, track]) => {
@@ -1214,19 +1243,257 @@ const PlaygroundActivity = (() => {
             return this.prepared;
         }
 
-        /** The same discovery path the session used to run inline, moved forward in time. */
-        async _findTrack(query, win) {
-            const registry = win && win.NEXUS_DISCOVERY;
-            if (!registry || typeof registry.forCapability !== 'function') return null;
+        /**
+         * A plan for these inputs, asked for once (P20).
+         *
+         * `prewarm` runs on every change to step 2, and generating a plan is an LLM request. So
+         * choosing a scene, changing your mind and changing back used to cost three completions
+         * for two distinct questions — and then the preflight would have waited on the third
+         * while the first two were still in flight, paid for and discarded.
+         *
+         * Keyed on what actually reaches the planner, so a genuinely different question is still
+         * asked: the scene label is part of the prompt, and a plan written for the terrace is not
+         * a plan for the candlelit room. Flipping back to a choice already made is free.
+         *
+         * The promise is cached rather than the value, which is what makes this a de-duplicator
+         * as well as a cache; a rejection is evicted so a retry is a real retry.
+         */
+        _planFor({ preset, place, win }) {
+            const beats = privateBeats(win);
+            if (!beats || typeof beats.plan !== 'function') return Promise.resolve(null);
+            const key = `${(preset && preset.id) || ''}|${place || ''}|${this.mood || ''}`;
+            const cached = this._planCache.get(key);
+            if (cached) return cached;
+            let attempt;
             try {
+                attempt = Promise.resolve(beats.plan({ preset, scene: place, win, sceneId: this.sceneChoice }));
+            } catch (error) {
+                return Promise.reject(error);
+            }
+            const guarded = attempt.catch((error) => {
+                this._planCache.delete(key);
+                throw error;
+            });
+            this._planCache.set(key, guarded);
+            return guarded;
+        }
+
+        /**
+         * The same discovery path the session used to run inline, moved forward in time.
+         *
+         * Cached per query, and the cache holds the **promise** rather than the result (P20).
+         * That is what makes it a de-duplicator as well as a cache: `prewarm` runs on every
+         * change to step 2, so choosing a scene, changing your mind and choosing another used to
+         * fire three identical searches against the same provider — and then the preflight would
+         * have fired a fourth. Storing the in-flight promise means the second caller waits on the
+         * first instead of starting again, so the answer arrives sooner *and* costs one request.
+         *
+         * A rejection is not cached. A network blip should not mean no music for the rest of the
+         * session, and the retry on the preflight screen would otherwise be a button that replays
+         * a stored failure.
+         */
+        _findTrack(query, win) {
+            const key = cleanText(query, 160);
+            if (!key) return Promise.resolve(null);
+            const cached = this._trackCache.get(key);
+            if (cached) return cached;
+            const attempt = (async () => {
+                const registry = win && win.NEXUS_DISCOVERY;
+                if (!registry || typeof registry.forCapability !== 'function') return null;
                 if (typeof registry.warm === 'function') await registry.warm();
                 const provider = registry.forCapability('music.search');
                 if (!provider || typeof provider.search !== 'function') return null;
-                const found = await provider.search(cleanText(query, 160), { max: 3, kind: 'music' });
+                const found = await provider.search(key, { max: 3, kind: 'music' });
                 return Array.isArray(found) && found.length ? found[0] : null;
+            })().catch(() => {
+                this._trackCache.delete(key);
+                return null;
+            });
+            this._trackCache.set(key, attempt);
+            return attempt;
+        }
+
+        /**
+         * Everything the evening needs, loaded before it starts (P20).
+         *
+         * Each entry does the thing it names; `PrivatePreflight` owns what the steps are and what
+         * "done" means, this owns how to perform them against the live runtime. Nothing here
+         * *starts* work that `prewarm` already began — `storyReady` and `trackReady` wait on the
+         * promises step 1 kicked off, so the screen reports work in flight rather than doubling it.
+         * That is why the preflight is usually over in well under a second on a warm machine.
+         */
+        _preflightDeps(win) {
+            const token = this._preflightToken;
+            const self = this;
+            return {
+                now: () => Date.now(),
+                setTimeout: (fn, ms) => win.setTimeout(fn, ms),
+                clearTimeout: (id) => win.clearTimeout(id),
+                setInterval: (fn, ms) => win.setInterval(fn, ms),
+                clearInterval: (id) => win.clearInterval(id),
+                cancelled: () => token !== self._preflightToken,
+                speechSynthesis: win.speechSynthesis || null,
+                ttsProvider: win.NEXUS_TTS_PROVIDER || null,
+                probeModel: () => self._probeModel(win),
+                storyReady: () =>
+                    Promise.resolve(self.prepared).then(() => self.preparedPlan || self._writtenPlan(win)),
+                sceneReady: () => self._preloadScene(win),
+                intentResolves: (name) => self._intentResolves(win, name),
+                trackReady: () => self._preloadTrack(win),
+                onChange: (shown) => {
+                    if (token !== self._preflightToken) return;
+                    self.preflightShown = shown;
+                    self._repaint();
+                },
+            };
+        }
+
+        /**
+         * One real completion, at the budget Private is about to use.
+         *
+         * A reachability check that asks for the provider's default proves nothing about a session
+         * that will ask for less — and the reported failure was exactly that: the model produced no
+         * visible token inside its allowance and the card printed "No response" under a HER label.
+         * So this asks the question the session will ask, and a provider that cannot answer it is
+         * a required step that failed rather than a surprise in the first turn.
+         */
+        async _probeModel(win) {
+            const llm = win && win._nexusLLM;
+            if (!llm || typeof llm.sendMessage !== 'function') return true;
+            try {
+                const reply = await llm.sendMessage('Say the single word: ready.', 'Reply with one word.', []);
+                return Boolean(String(reply || '').trim());
+            } catch (_) {
+                // Includes `EmptyCompletionError`, which is precisely the case worth catching here.
+                return false;
+            }
+        }
+
+        /** The written floor, so a planner that never answered is not a blocked evening. */
+        _writtenPlan(win) {
+            const beats = privateBeats(win);
+            const presets =
+                (win && win.NEXUS_TOGETHER_CAPABILITY && win.NEXUS_TOGETHER_CAPABILITY.PRIVATE_PRESETS) || {};
+            const preset = presets[String((this.prepareInput && this.prepareInput.id) || '')] || null;
+            if (!beats || typeof beats.fallbackPlan !== 'function') return null;
+            try {
+                return beats.fallbackPlan(preset, {});
             } catch (_) {
                 return null;
             }
+        }
+
+        /**
+         * Decode the picture the viewport is about to show.
+         *
+         * `null` when no scene was chosen — "keep this place" loads nothing, and the preflight
+         * reports that as skipped rather than ticking a step it did not perform. Otherwise the
+         * decode puts the bytes in the browser's cache, so `_enterScene` paints from memory
+         * instead of the card coming up over a black viewport that fills in a second later.
+         *
+         * `decode()` where it exists rather than `onload`: a decoded image is one the compositor
+         * can draw this frame, and the visible pop is the decode rather than the download.
+         */
+        _preloadScene(win) {
+            if (!this.sceneChoice) return Promise.resolve(null);
+            const entry = this.scenes().find((scene) => scene.id === this.sceneChoice);
+            const src = entry && entry.thumbnail;
+            if (!src || typeof win.Image !== 'function') return Promise.resolve(null);
+            return new Promise((resolve) => {
+                const image = new win.Image();
+                image.onload = () => {
+                    if (typeof image.decode === 'function') {
+                        image.decode().then(
+                            () => resolve(true),
+                            // Decoded or not, it is downloaded, which is most of the win.
+                            () => resolve(true)
+                        );
+                        return;
+                    }
+                    resolve(true);
+                };
+                image.onerror = () => resolve(false);
+                image.src = src;
+            });
+        }
+
+        /** Does the registry hold a clip for one of the three intents Private emits? */
+        _intentResolves(win, name) {
+            const registry = win && win.NEXUS_BD && win.NEXUS_BD.registry;
+            if (!registry || typeof registry.forIntent !== 'function') return true;
+            try {
+                return registry.forIntent(name).length > 0;
+            } catch (_) {
+                return false;
+            }
+        }
+
+        /** The soundtrack, if one was asked for. `null` means "not asked for", never "not found". */
+        _preloadTrack(win) {
+            if (this.soundtrackChoice !== 'choose') return Promise.resolve(null);
+            const presets =
+                (win && win.NEXUS_TOGETHER_CAPABILITY && win.NEXUS_TOGETHER_CAPABILITY.PRIVATE_PRESETS) || {};
+            const preset = presets[String((this.prepareInput && this.prepareInput.id) || '')] || null;
+            if (!preset || !preset.music) return Promise.resolve(null);
+            return Promise.resolve(this.prepared)
+                .then(() => (this.preparedTrack ? true : this._findTrack(preset.music, win)))
+                .then((found) => {
+                    if (found && found !== true) this.preparedTrack = found;
+                    return Boolean(this.preparedTrack);
+                });
+        }
+
+        /**
+         * Run it, and show it.
+         *
+         * The screen is the deliverable as much as the loading is: `onChange` repaints per settled
+         * step, so the list fills in rather than arriving complete. A run that finishes ready moves
+         * to the summary; one with a required step failed stays put and offers a retry, because
+         * starting into it produces the transcript that was reported.
+         */
+        runPreflight() {
+            const win = globalObject();
+            const api = privatePreflight(win);
+            this.preflightError = '';
+            this._preflightToken += 1;
+            const token = this._preflightToken;
+            // No module, no screen. The session starts the way it always did rather than stopping
+            // at a checklist that cannot be filled in.
+            if (!api || typeof api.run !== 'function') {
+                this.sessionState = 'ready';
+                this.preflightShown = null;
+                this._repaint();
+                return Promise.resolve(null);
+            }
+            this.sessionState = 'preparing';
+            this.preflightShown = api.describe(api.create());
+            this._repaint();
+            return api.run(this._preflightDeps(win)).then((result) => {
+                if (token !== this._preflightToken) return null;
+                this.preflightShown = result;
+                if (result.outcome === 'cancelled') return null;
+                this.sessionState = 'ready';
+                if (!result.ready) {
+                    this.preflightError = result.blocked.map((entry) => entry.id).join(', ');
+                }
+                this._repaint();
+                busEmit(this.bus, 'private:prepared', {
+                    preset: this.prepareInput && this.prepareInput.id,
+                    scene: this.sceneChoice,
+                    soundtrack: Boolean(this.preparedTrack),
+                });
+                return result;
+            });
+        }
+
+        /** Back to step 2 with nothing half-run. */
+        cancelPreflight() {
+            this._preflightToken += 1;
+            this.preflightShown = null;
+            this.preflightError = '';
+            this.sessionState = 'atmosphere';
+            this._repaint();
+            return true;
         }
 
         /** Back to step 1, keeping nothing: a plan for last night's mood is worse than none. */

@@ -821,6 +821,8 @@ const TogetherPanel = (() => {
             const state = (activity && activity.sessionState) || 'mood';
             this._privateStyles();
             if (state === 'starting') return this._paintPrivateStarting();
+            if (state === 'preparing') return this._paintPrivatePreparing(activity);
+            if (state === 'ready') return this._paintPrivateReady(activity);
             if (state === 'atmosphere') return this._paintPrivateAtmosphere(activity);
             return this._paintPrivateMood(contract, activity);
         }
@@ -1014,9 +1016,15 @@ const TogetherPanel = (() => {
             const begin = doc.createElement('button');
             begin.type = 'button';
             begin.className = 'nexus-private-begin';
-            begin.dataset.action = 'begin-private';
-            begin.textContent = 'Begin →';
-            begin.addEventListener('click', () => this._beginPrivate(activity));
+            // `ready-private`, not `begin-private` (P20). Two buttons on two screens meaning two
+            // different things must not share a name — `begin-private` is the one on the summary
+            // that actually starts the session, and a test clicking the wrong one would pass while
+            // skipping the checklist entirely.
+            begin.dataset.action = 'ready-private';
+            // It no longer begins — it loads. `Begin →` is on the summary screen, after the
+            // checklist, which is where it can honestly mean begin.
+            begin.textContent = this._privateWord('preflight.continue', 'Get ready →');
+            begin.addEventListener('click', () => activity.runPreflight());
             shell.appendChild(begin);
 
             const back = this._button('Back', 'nexus-bd-together-option', () => activity.editSetup());
@@ -1026,6 +1034,154 @@ const TogetherPanel = (() => {
         }
 
         /** Only ever seen when the background work missed its budget. */
+        /**
+         * One word from the card's language, or the English behind it (P14/P20).
+         *
+         * The setup panel predates `PrivateLocale` and reaches for it defensively rather than
+         * assuming it loaded: the wizard can be painted on a page where the boot list has not
+         * finished, and a checklist reading `preflight.voice` would be worse than one in English.
+         */
+        _privateWord(key, fallback) {
+            try {
+                const api = (this.win || (typeof window !== 'undefined' ? window : null)).NEXUS_PRIVATE_LOCALE;
+                if (api && typeof api.t === 'function') {
+                    const word = api.t(key);
+                    if (word && word !== key) return word;
+                }
+            } catch (_) {
+                // English, which is what this screen said before there was a pack.
+            }
+            return fallback;
+        }
+
+        /**
+         * The checklist, while the evening loads (P20).
+         *
+         * Deliberately the shape Scene Tale already uses — a named line per step and a ✓ as each
+         * one lands — because the thing that makes that screen feel good is not the symbol. It is
+         * that every line is real work somebody can name, so the wait reads as preparation rather
+         * than as the app being busy.
+         *
+         * A step reports what it actually did, which is why there are four marks and not two: `○`
+         * pending, `…` running, `✓` done, `·` skipped (nothing to do) and `✕` failed. A checklist
+         * that ticks work it did not perform is the same picture whether or not it worked.
+         */
+        _paintPrivatePreparing(activity) {
+            const doc = this.doc;
+            const shell = this._privateShell(0);
+            const lead = doc.createElement('p');
+            lead.className = 'nexus-private-setup-lead';
+            lead.dataset.privatePreparing = '1';
+            lead.textContent = this._privateWord('preflight.title', 'Getting ready…');
+            shell.appendChild(lead);
+
+            const shown = activity.preflightShown;
+            const list = doc.createElement('div');
+            list.className = 'nexus-story-progress';
+            const MARKS = { pending: '○', running: '…', done: '✓', skipped: '·', failed: '✕' };
+            for (const step of (shown && shown.list) || []) {
+                const row = doc.createElement('div');
+                row.className = `nexus-story-progress-row is-${step.state}`;
+                row.dataset.preflightStep = step.id;
+                row.dataset.preflightState = step.state;
+                row.textContent = `${MARKS[step.state] || '○'} ${this._privateWord(step.key, step.id)}`;
+                list.appendChild(row);
+            }
+            shell.appendChild(list);
+
+            const actions = doc.createElement('div');
+            actions.className = 'nexus-bd-together-options';
+            const cancel = this._button('Cancel', 'nexus-bd-together-option is-stop', () => activity.cancelPreflight());
+            cancel.dataset.action = 'cancel-preflight';
+            actions.appendChild(cancel);
+            shell.appendChild(actions);
+            this.root.appendChild(shell);
+        }
+
+        /**
+         * The outline, and the button that now honestly says begin (P20).
+         *
+         * Scene Tale's ready screen is the model: what this is, how long, what landed. Everything
+         * here is a fact the preflight established a moment ago rather than a promise — which is
+         * the difference between a summary and a splash screen.
+         *
+         * A required step that failed keeps the person here with a retry and a plain sentence
+         * about what is wrong. `Start anyway` is still offered, because this is their machine and
+         * a blocked evening they choose to enter is their call — but it is the secondary control,
+         * and it is never the default.
+         */
+        _paintPrivateReady(activity) {
+            const doc = this.doc;
+            const shell = this._privateShell(0);
+            const preset = activity.prepareInput || {};
+            const shown = activity.preflightShown;
+            const blocked = (shown && shown.blocked) || [];
+
+            const title = doc.createElement('p');
+            title.className = 'nexus-private-setup-lead';
+            title.dataset.privateReady = '1';
+            title.textContent = String(preset.label || 'Private').toUpperCase();
+            shell.appendChild(title);
+
+            const place = this._privatePlace(activity);
+            const note = doc.createElement('p');
+            note.className = 'nexus-private-label';
+            note.textContent = place;
+            shell.appendChild(note);
+
+            // The outline: what landed, named, in the order the checklist ran. Skipped steps say
+            // so rather than being dropped — "no soundtrack" is information, not an absence.
+            const summary = doc.createElement('div');
+            summary.className = 'nexus-story-ready-meta';
+            summary.dataset.preflightSummary = '1';
+            const MARKS = { done: '✓', skipped: '·', failed: '✕', pending: '○', running: '…' };
+            summary.textContent = ((shown && shown.list) || [])
+                .map((step) => `${MARKS[step.state] || '○'} ${this._privateWord(step.key, step.id)}`)
+                .join('\n');
+            shell.appendChild(summary);
+
+            if (blocked.length) {
+                const problem = doc.createElement('p');
+                problem.className = 'nexus-private-locked';
+                problem.dataset.preflightBlocked = '1';
+                problem.textContent = `Not ready: ${blocked
+                    .map((entry) => this._privateWord(entry.key, entry.id))
+                    .join(', ')}.`;
+                shell.appendChild(problem);
+            }
+
+            const actions = doc.createElement('div');
+            actions.className = 'nexus-bd-together-options';
+            if (!blocked.length) {
+                const begin = doc.createElement('button');
+                begin.type = 'button';
+                begin.className = 'nexus-private-begin';
+                begin.dataset.action = 'begin-private';
+                begin.textContent = this._privateWord('ready.begin', 'Begin →');
+                begin.addEventListener('click', () => this._beginPrivate(activity));
+                actions.appendChild(begin);
+            } else {
+                const retry = this._button(this._privateWord('ready.retry', 'Try again'), 'nexus-private-begin', () =>
+                    activity.runPreflight()
+                );
+                retry.dataset.action = 'retry-preflight';
+                actions.appendChild(retry);
+                const anyway = this._button(
+                    this._privateWord('ready.anyway', 'Start anyway'),
+                    'nexus-bd-together-option',
+                    () => this._beginPrivate(activity)
+                );
+                anyway.dataset.action = 'begin-anyway';
+                actions.appendChild(anyway);
+            }
+            shell.appendChild(actions);
+
+            const back = this._button('Edit setup', 'nexus-bd-together-option', () => activity.cancelPreflight());
+            back.dataset.action = 'edit-private';
+            shell.appendChild(back);
+            this.root.appendChild(shell);
+        }
+
         _paintPrivateStarting() {
             const shell = this._privateShell(0);
             const lead = this.doc.createElement('p');
