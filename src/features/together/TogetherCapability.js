@@ -718,9 +718,50 @@
      *
      * Returns the text unchanged for every other reply, so nothing outside Private moves.
      */
+    /**
+     * Emoji, which the prompt has always forbidden and which arrive anyway.
+     *
+     * `No emoji, no headings, no bullet points. You are speaking, not writing.` has been in
+     * `presenceLines` the whole time, and the reported sessions are full of them — `😊` twice in
+     * one exchange, `✨ … 🌌💫` wrapped around a line, `🌸` closing another. A rule a model
+     * ignores is not a rule, and this one is cheap to enforce: the app already owns the seam
+     * where a reply becomes a bubble.
+     *
+     * It matters more here than it looks. An emoji is the model reaching for a *chat* register
+     * in a mode whose premise is that somebody is in the room — the same reflex as the topic
+     * menu and the AI disclaimer, and the one that survives the prompt because it costs a single
+     * character. She is speaking; nobody's voice contains a pictograph.
+     *
+     * Private only, like everything else in `sanitizeReply`: an emoji in ordinary chat may be
+     * exactly what somebody wants, and this is not the place to decide that for them.
+     */
+    const EMOJI =
+        /[\u{1F1E6}-\u{1F1FF}\u{1F300}-\u{1F5FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F900}-\u{1F9FF}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu;
+
+    function stripEmoji(text) {
+        const original = String(text == null ? '' : text);
+        if (!EMOJI.test(original)) {
+            EMOJI.lastIndex = 0;
+            return original;
+        }
+        EMOJI.lastIndex = 0;
+        return (
+            original
+                .replace(EMOJI, '')
+                // The space the emoji was sitting in, and the one before the punctuation it was
+                // sitting after. Newlines are untouched: her paragraphing is hers.
+                .replace(/[ \t]{2,}/g, ' ')
+                .replace(/[ \t]+([,.!?;:…])/g, '$1')
+                .replace(/^[ \t]+/gm, '')
+                .replace(/[ \t]+$/gm, '')
+                .trim()
+        );
+    }
+
     function sanitizeReply(text) {
         const original = String(text == null ? '' : text);
         const ctx = privateContext();
+        // Outside Private nothing is touched, emoji included.
         if (!ctx) return original;
         const session = ctx.activity && ctx.activity._privateExperience;
 
@@ -728,7 +769,7 @@
         // dialogue choices cost no second round trip — but that means the reply now contains markup
         // which must never reach the bubble, the transcript or the synthesiser. Same seam as the
         // stage directions below, and for the same reason: everything downstream reads this string.
-        let body = original;
+        let body = stripEmoji(original);
         const choices = choicesModel();
         if (choices && typeof choices.parse === 'function') {
             try {
@@ -2801,6 +2842,7 @@
         CLOSE,
         INSTRUCTION,
         attentionLines,
+        stripEmoji,
         privateSessionActive,
         privateChangeAllowed,
         noteUserTurn,

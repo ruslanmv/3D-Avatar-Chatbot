@@ -341,6 +341,24 @@
         /\[{1,2}\s*(?:emote|emotion|action|gesture|motion|anim|animation|expression)\s*[:=]\s*([^\][\n]{1,60})\]{1,2}/gi;
 
     /**
+     * The same marker with the label left off — `[[lean_in thinking]]`.
+     *
+     * Reported on screen, in a Private session, verbatim:
+     *
+     *     HER  [[lean_in thinking]] I'm here to listen and help, but…
+     *
+     * `EMOTE` needs a label (`emote:`, `action:`, `gesture:`) and `BRACKETED` reads the inner
+     * text of a *single* pair, so on `[[lean_in thinking]]` it sees `[lean_in thinking` — a
+     * leading bracket that is not a word a body does — and declines. Between the two patterns the
+     * commonest double-bracket form had nothing that matched it.
+     *
+     * Conservative on purpose: a double bracket is stripped only when what is inside it is
+     * recognisable — a known intent, or a direction on the same allowlist everything else uses.
+     * `[[1]]` and `[[citation needed]]` are left exactly where they are.
+     */
+    const BARE_EMOTE = /\[\[\s*([^\][\n]{1,60}?)\s*\]\]/g;
+
+    /**
      * Every motion name the app can act on, so a payload can be recognised as one directly.
      *
      * `lean_in` is not an English verb and never will be in `VERBS`; it is the name of an intent.
@@ -407,6 +425,17 @@
             // is the defect. Only the *movement* depends on recognising it.
             if (intent) markers.push(intent);
             else markers.push('');
+            return '';
+        });
+        text = text.replace(BARE_EMOTE, (match, payload) => {
+            const intent = emoteIntent(payload);
+            if (intent) {
+                markers.push(intent);
+                return '';
+            }
+            const verb = isCompoundDirection(payload);
+            if (!verb) return match;
+            markers.push(verb);
             return '';
         });
         text = text.replace(BRACKETED, take).replace(ASTERISKED, take);

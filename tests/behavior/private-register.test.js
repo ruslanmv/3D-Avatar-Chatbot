@@ -374,3 +374,65 @@ describe('the evasions that are not refusals (P32)', () => {
         expect(Capability.attentionLines().length).toBeLessThanOrEqual(8);
     });
 });
+
+describe('the markup that kept reaching the screen (P34)', () => {
+    const Capability = require('../../src/features/together/TogetherCapability.js');
+    const Stage = require('../../src/features/chat/StageDirections.js');
+
+    /**
+     * Two more leaks from real sessions, both of them markup rather than meaning:
+     *
+     *     HER  [[lean_in thinking]] I'm here to listen and help, but…
+     *     HER  …a quiet, sophisticated contrast that whispers charm. 😊
+     *
+     * `EMOTE` needs a label — `emote:`, `action:` — and `BRACKETED` reads the inner text of a
+     * single pair, so on `[[lean_in thinking]]` it sees a leading bracket and declines. Between
+     * them the commonest double-bracket form matched nothing.
+     *
+     * The emoji is the older one: `No emoji … You are speaking, not writing` has been in the
+     * prompt the whole time and the model emits them anyway. A rule a model ignores is not a
+     * rule, and the app owns the seam where a reply becomes a bubble.
+     */
+    test('an unlabelled marker in double brackets is stripped, and still moves her', () => {
+        const out = Stage.strip('[[lean_in thinking]] Imagine it.');
+        expect(out.text).toBe('Imagine it.');
+        expect(out.markers.length).toBeGreaterThan(0);
+    });
+
+    test('and the labelled form and single brackets keep working', () => {
+        expect(Stage.strip('[[emote: lean_in thinking]] hi').text).toBe('hi');
+        expect(Stage.strip('[lean_in] hi').text).toBe('hi');
+    });
+
+    test('double brackets that are not markers are left alone', () => {
+        // Conservative on purpose: only a known intent or an allowlisted direction is stripped.
+        for (const said of ['[[1]] hi', '[[citation needed]] hi']) {
+            expect(Stage.strip(said).text).toBe(said);
+        }
+    });
+
+    test('emoji are removed from a Private reply, with the space they sat in', () => {
+        const s = setup();
+        return s.activity.start({ input: { id: 'sensual' } }).then(() => {
+            expect(Capability.sanitizeReply('a quiet contrast that whispers charm. 😊')).toBe(
+                'a quiet contrast that whispers charm.'
+            );
+            expect(Capability.sanitizeReply('✨ Imagine it, darling… 🌌💫')).toBe('Imagine it, darling…');
+            s.activity.stop('user');
+        });
+    });
+
+    test('her words are untouched — only the pictographs go', () => {
+        expect(Capability.stripEmoji('The skirt flows, and the light does too.')).toBe(
+            'The skirt flows, and the light does too.'
+        );
+        // Punctuation and accents are not emoji.
+        expect(Capability.stripEmoji('café — naïve … “quoted”')).toBe('café — naïve … “quoted”');
+    });
+
+    test('and ordinary chat keeps its emoji, because that is not ours to decide', async () => {
+        // `sanitizeReply` returns early outside Private. Somebody using emoji in normal
+        // conversation is doing something this mode has no opinion about.
+        expect(Capability.sanitizeReply('nice one 😊')).toBe('nice one 😊');
+    });
+});
