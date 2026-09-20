@@ -532,3 +532,118 @@ describe('how much of a phone the card is allowed to have (P27)', () => {
         expect(code).not.toMatch(/ResizeObserver|visualViewport|'resize'|getBoundingClientRect/);
     });
 });
+
+describe('following the conversation without being dragged along (P28)', () => {
+    /**
+     * Reported: her answer arrives and you have to scroll down to it by hand, every turn.
+     *
+     * Two things were wrong and the second one hid the first. `_scroll` moved `#chat-history`,
+     * which was the scroller until P27 gave `.nexus-private-card` `overflow-y:auto` — after that
+     * the card overflowed, the history did not, and setting `scrollTop` on the history was a
+     * no-op. And `finish()`, which is where a non-streaming provider delivers the *entire*
+     * reply, never called `_scroll` at all.
+     *
+     * jsdom has no layout, so every box measures zero: `scrollHeight`, `scrollTop` and
+     * `clientHeight` are all 0 and assignments to `scrollTop` are recorded but never clamped.
+     * That is enough to pin *which element is scrolled and when*, which is the whole bug. It is
+     * not enough to prove the pixel landed in the right place — that needs a browser.
+     */
+    function mounted() {
+        page();
+        const view = new PrivateConversationView.View({ doc: document, win: window });
+        view.mount({ preset: { label: 'Romantic' }, scene: '' });
+        // Stand in for layout: a card with content taller than its box.
+        Object.defineProperty(view.card, 'scrollHeight', { value: 1000, configurable: true });
+        Object.defineProperty(view.card, 'clientHeight', { value: 300, configurable: true });
+        view.card.scrollTop = 0;
+        return view;
+    }
+
+    test('the reply landing scrolls the card, which is the thing that scrolls', () => {
+        const view = mounted();
+        const stream = view.beginAssistantTurn();
+        // Opening the turn already follows; zero it so this pins `finish` on its own, which is
+        // where a non-streaming provider delivers the whole reply and where nothing scrolled.
+        view.card.scrollTop = 0;
+
+        stream.finish('I was thinking about you all afternoon.');
+
+        expect(view.card.scrollTop).toBe(view.card.scrollHeight);
+        view.destroy();
+    });
+
+    test('and so does each chunk while she is still typing', () => {
+        const view = mounted();
+        const stream = view.beginAssistantTurn();
+        stream.append('I was');
+        expect(view.card.scrollTop).toBe(view.card.scrollHeight);
+        view.destroy();
+    });
+
+    test('sending something scrolls to it too', () => {
+        const view = mounted();
+        view.renderUserTurn('go on');
+        expect(view.card.scrollTop).toBe(view.card.scrollHeight);
+        view.destroy();
+    });
+
+    test('a reader who scrolled up to re-read is left alone', () => {
+        // The other half of getting this right. Yanking somebody back to the bottom on every
+        // token, while they are reading a line further up, is the classic chat-window annoyance.
+        const view = mounted();
+        view.card.scrollTop = 100; // well above the bottom of a 1000/300 box
+        view.card.dispatchEvent(new window.Event('scroll'));
+
+        view.beginAssistantTurn().finish('a new line');
+
+        expect(view.card.scrollTop).toBe(100);
+        view.destroy();
+    });
+
+    test('and following resumes the moment they come back to the bottom', () => {
+        const view = mounted();
+        view.card.scrollTop = 100;
+        view.card.dispatchEvent(new window.Event('scroll'));
+        view.card.scrollTop = 700; // 1000 - 300 = the bottom
+        view.card.dispatchEvent(new window.Event('scroll'));
+
+        view.beginAssistantTurn().finish('and again');
+
+        expect(view.card.scrollTop).toBe(view.card.scrollHeight);
+        view.destroy();
+    });
+
+    test('taking a turn of your own resumes it as well', () => {
+        // Sending a message is the clearest statement that you want to see the answer.
+        const view = mounted();
+        view.card.scrollTop = 100;
+        view.card.dispatchEvent(new window.Event('scroll'));
+
+        view.renderUserTurn('still here');
+
+        expect(view.card.scrollTop).toBe(view.card.scrollHeight);
+        view.destroy();
+    });
+
+    test('a couple of pixels short of the bottom still counts as the bottom', () => {
+        // Fractional heights and momentum scrolling leave a reader who is plainly at the bottom
+        // a pixel or two off it; an exact comparison would quietly stop following.
+        const view = mounted();
+        view.card.scrollTop = 700 - 8;
+        view.card.dispatchEvent(new window.Event('scroll'));
+
+        view.beginAssistantTurn().finish('still following');
+
+        expect(view.card.scrollTop).toBe(view.card.scrollHeight);
+        view.destroy();
+    });
+
+    test('the listener does not outlive the card', () => {
+        const view = mounted();
+        const card = view.card;
+        view.destroy();
+        // No throw, and nothing left holding a reference to a card that is gone.
+        card.dispatchEvent(new window.Event('scroll'));
+        expect(view.card).toBeNull();
+    });
+});

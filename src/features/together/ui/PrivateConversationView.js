@@ -8,6 +8,9 @@ const PrivateConversationView = (() => {
     'use strict';
 
     const ROW_ID = 'nexus-private-conversation-row';
+
+    /** How far from the bottom still counts as "at the bottom". See `_atBottom`. */
+    const STICK_SLACK_PX = 48;
     const STYLE_ID = 'nexus-private-conversation-styles';
 
     /**
@@ -184,6 +187,12 @@ const PrivateConversationView = (() => {
             this.handlers = { onCloser, onEase, onEnd, onUserMessage };
             this.row = null;
             this.card = null;
+            /**
+             * Whether the transcript follows new lines. True until the reader scrolls away from
+             * the bottom; see `_scroll`.
+             */
+            this._stick = true;
+            this._onScroll = null;
             this.level = null;
             this._composer = null;
             this._hostObserver = null;
@@ -266,6 +275,10 @@ const PrivateConversationView = (() => {
             // `_installSurface`, because it belongs to the card existing rather than to the
             // surface swap — and that call returns early on a page with no surface module.
             this._clearGenericThinking();
+            // A fresh card starts following, and starts listening for the reader stepping away
+            // from the bottom. The listener lives on the card, which is the element that scrolls.
+            this._stickToEnd();
+            this._watchScroll();
             this._watchReset();
             this._scroll(host);
             return true;
@@ -568,8 +581,12 @@ const PrivateConversationView = (() => {
          */
         renderUserTurn(text) {
             this.hideThinking();
+            // Sending something is the clearest possible statement that you want to see what
+            // comes back, so it cancels any scrolling-up you did while waiting.
+            this._stickToEnd();
             const turn = this._turn('you', text);
             this._trim();
+            this._scroll(this.doc && this.doc.getElementById('chat-history'));
             return turn;
         }
 
@@ -602,6 +619,11 @@ const PrivateConversationView = (() => {
                     copy.textContent = String(full == null ? '' : full);
                     if (turn) turn.classList.remove('is-streaming');
                     view._trim();
+                    // The whole point. `append` followed her while she typed, and then the last
+                    // chunk — often the longest, because a non-streaming provider delivers the
+                    // entire reply here — landed with no scroll at all. That is the reported
+                    // bug: the answer arrives and you have to go and find it.
+                    view._scroll(view.doc && view.doc.getElementById('chat-history'));
                 },
                 discard() {
                     // The user pressed CLEAR mid-sentence, or the provider failed. An empty
@@ -974,6 +996,7 @@ const PrivateConversationView = (() => {
             }
             if (this._hostObserver) this._hostObserver.disconnect();
             this._hostObserver = null;
+            this._unwatchScroll();
             this._unbindComposer();
             const old = this.doc && this.doc.getElementById(ROW_ID);
             if (old) old.remove();
@@ -1019,11 +1042,66 @@ const PrivateConversationView = (() => {
             });
             this._hostObserver.observe(host, { childList: true });
         }
+        /**
+         * Keep the newest line in view — and scroll the box that actually scrolls.
+         *
+         * This used to move `#chat-history` and nothing else, which was right until P27 made
+         * `.nexus-private-card` the scroller. After that the card overflowed, the history did
+         * not, and setting `scrollTop` on the history was a no-op: her reply landed below the
+         * fold and the reader had to drag the card's own scrollbar to every answer. Both are
+         * scrolled now, because on desktop the row can still be what moves inside the history.
+         *
+         * `_stick` is what stops this being hostile. Somebody who has scrolled up to re-read a
+         * line is *reading*; yanking them back on the next token is the classic chat-window
+         * annoyance. So a scroll away from the bottom turns following off, and returning to the
+         * bottom — or taking a turn of their own — turns it back on.
+         */
         _scroll(host) {
-            if (!host) return;
+            if (this._stick === false) return;
+            this._scrollToEnd(this.card);
+            this._scrollToEnd(host);
+        }
+
+        _scrollToEnd(el) {
+            if (!el) return;
             try {
-                host.scrollTop = host.scrollHeight;
+                el.scrollTop = el.scrollHeight;
             } catch (_) {}
+        }
+
+        /**
+         * Is the reader at the bottom, near enough?
+         *
+         * A few pixels of slack because a fractional `scrollHeight`, a sub-pixel zoom or a
+         * momentum scroll that stops just short all leave a reader who is plainly at the bottom
+         * one or two pixels off it, and an exact comparison would silently stop following.
+         */
+        _atBottom(el) {
+            if (!el) return true;
+            const slack = Number(el.scrollHeight) - Number(el.scrollTop) - Number(el.clientHeight);
+            return !(slack > STICK_SLACK_PX);
+        }
+
+        /** Follow again from here, whatever the reader was doing. Their own turn says "I'm back". */
+        _stickToEnd() {
+            this._stick = true;
+        }
+
+        _watchScroll() {
+            const card = this.card;
+            if (!card || typeof card.addEventListener !== 'function') return;
+            this._unwatchScroll();
+            this._onScroll = () => {
+                this._stick = this._atBottom(card);
+            };
+            card.addEventListener('scroll', this._onScroll, { passive: true });
+        }
+
+        _unwatchScroll() {
+            if (this.card && this._onScroll && typeof this.card.removeEventListener === 'function') {
+                this.card.removeEventListener('scroll', this._onScroll);
+            }
+            this._onScroll = null;
         }
         _button(label, action, handler) {
             const button = this.doc.createElement('button');
