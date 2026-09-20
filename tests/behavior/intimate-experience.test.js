@@ -301,7 +301,7 @@ describe('Private runtime integration', () => {
         expect(suffix).toContain('Romantic');
         expect(suffix).toContain('Current consent level: 1');
         expect(suffix).toContain('Preset ceiling: 2');
-        expect(suffix).toMatch(/non-explicit/i);
+        expect(suffix).toMatch(/consenting adult/i);
 
         s.activity.stop('user');
         expect(document.getElementById('nexus-private-conversation-row')).toBeNull();

@@ -39,19 +39,17 @@
     const OLLABRIDGE_DEFAULT_BASE_URL = 'https://app.ollabridge.com';
 
     /**
-     * What to ask for when nobody has chosen a model.
+     * The placeholder a fresh install stores before anybody has picked a model.
      *
-     * `'default'` is the sentinel this app has always stored, and it is not a route OllaBridge
-     * serves. Verified against the live gateway: `"default"` returns HTTP 200 with
-     * `content: ""`, `finish_reason: "stop"` and zero tokens — a successful-looking response
-     * with no completion in it. Downstream that becomes an empty-completion error, which is how
-     * a fresh install with a healthy gateway and forty listed models got `✕ Waking the model`
-     * on the Private warm-up and `No response` in the card.
+     * `'default'` is not a route OllaBridge serves. Verified against the live gateway: it returns
+     * HTTP 200 with `content: ""`, `finish_reason: "stop"` and zero tokens — a successful-looking
+     * response with no completion in it, which downstream becomes an empty-completion error.
      *
-     * The gateway's own listing describes `qwen2.5:1.5b` as the "Compatibility route for the
-     * legacy default model", which is precisely this case, so the sentinel resolves to it rather
-     * than to a route this app picked out of the list. Anyone who has chosen a model in Settings
-     * is unaffected — this only replaces the placeholder.
+     * A23 handled that by substituting a model name written here, in source. That was the wrong
+     * shape and is gone: an app must send the model its Settings screen says it will send, or the
+     * screen is lying and nobody can tell which model answered. See `_resolveOllaBridgeModel` —
+     * the placeholder is resolved from *this account's own list* and written back into settings,
+     * so the next call is a plain settings read and the UI shows what is really in use.
      */
     /**
      * How long a direct OllaBridge request may run before this client stops waiting.
@@ -64,12 +62,11 @@
     const OLLABRIDGE_DIRECT_TIMEOUT_MS = 190000;
 
     const OLLABRIDGE_SENTINEL_MODEL = 'default';
-    const OLLABRIDGE_FALLBACK_MODEL = 'qwen2.5:1.5b';
 
-    /** The model to send: whatever was chosen, or a route that actually answers. */
-    function ollaBridgeModel(model) {
+    /** Has the user actually chosen something, as opposed to the placeholder? */
+    function isChosenModel(model) {
         const chosen = String(model || '').trim();
-        return !chosen || chosen === OLLABRIDGE_SENTINEL_MODEL ? OLLABRIDGE_FALLBACK_MODEL : chosen;
+        return Boolean(chosen) && chosen !== OLLABRIDGE_SENTINEL_MODEL;
     }
 
     /**
@@ -671,6 +668,55 @@
          * there is a response. The first time that happens we fall back to the proxy and keep
          * using it, so a deployment that needs the proxy pays one failed fetch, once.
          */
+        /**
+         * The model to send, which must be the one Settings shows.
+         *
+         * Normal case, and the only one that costs anything: the user has chosen a model, so this
+         * returns it and never touches the network. The rest is for a fresh install that still
+         * holds the `'default'` placeholder — and the rule there is that the app does not get to
+         * invent a name. It asks this account what models it actually has, takes the first, and
+         * **writes it into settings**, so the Settings screen stops saying `DEFAULT` and starts
+         * naming the model that is really answering. One request, once, on first use.
+         *
+         * If the list cannot be fetched there is deliberately no substitution. Sending the
+         * placeholder produces an empty completion that reads as the model having nothing to say;
+         * a named error that tells somebody to pick a model is the honest outcome and the one
+         * they can act on.
+         */
+        async _resolveOllaBridgeModel() {
+            const stored = this._settings.ollabridge && this._settings.ollabridge.model;
+            if (isChosenModel(stored)) return String(stored).trim();
+
+            if (!this._ollaBridgeModelPick) {
+                this._ollaBridgeModelPick = (async () => {
+                    const found = await this.fetchAvailableModels();
+                    const models = (found && found.models) || [];
+                    // `isChosenModel`, not `Boolean`: when the listing itself fails,
+                    // `_fetchOllaBridgeModels` returns `['default']` as its own fallback, and
+                    // accepting that would resolve the placeholder to itself — saving it back into
+                    // settings and sending the one name known not to be a route.
+                    const picked = models
+                        .map((m) => (typeof m === 'string' ? m : m && m.id))
+                        .filter((id) => isChosenModel(id))[0];
+                    if (!picked) return '';
+                    this._settings.ollabridge.model = picked;
+                    this._saveSettings();
+                    console.log(
+                        '[LLMManager] No model was chosen; using "%s" from this account and saving it.',
+                        picked
+                    );
+                    return picked;
+                })().catch(() => '');
+            }
+            const picked = await this._ollaBridgeModelPick;
+            if (picked) return picked;
+
+            this._ollaBridgeModelPick = null; // let a later attempt try again
+            throw new Error(
+                'OllaBridge: no model selected. Open Settings, choose a model from the list, and try again.'
+            );
+        }
+
         async _postOllaBridge(url, headers, body, options = {}) {
             const proxyAvailable = this._hasProxy();
 
@@ -1132,8 +1178,9 @@
             }
             messages.push(...this._withCurrentTurn(conversationHistory, userMessage));
 
+            const resolvedModel = await this._resolveOllaBridgeModel();
             const body = {
-                model: ollaBridgeModel(model),
+                model: resolvedModel,
                 messages: messages,
                 max_tokens: this._tokenBudget(800),
             };
@@ -1278,8 +1325,9 @@
             }
             messages.push(...this._withCurrentTurn(conversationHistory, userMessage));
 
+            const resolvedModel = await this._resolveOllaBridgeModel();
             const body = {
-                model: ollaBridgeModel(model),
+                model: resolvedModel,
                 messages: messages,
                 max_tokens: this._tokenBudget(800),
             };
