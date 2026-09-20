@@ -124,6 +124,59 @@ describe('the prompt says who she is, not only what she must not do', () => {
     });
 });
 
+describe('two sentences, stated as a limit rather than a preference (P22)', () => {
+    test('there is one number, it is two, and it does not vary with the turn', async () => {
+        // This was three graded rules — one sentence, two, "three at most" — and the reported reply
+        // was nine sentences across three paragraphs. A model given a ceiling to interpret takes the
+        // largest number in sight and rounds up.
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+
+        const short = Capability.privateSystemPromptSuffix();
+        Surface.renderUser('tell me what you have been thinking about all day, in detail');
+        const long = Capability.privateSystemPromptSuffix();
+
+        for (const suffix of [short, long]) {
+            expect(suffix).toContain('LENGTH: TWO SENTENCES MAXIMUM');
+            expect(suffix).toContain('hard limit, not a target');
+            expect(suffix).not.toMatch(/three sentences at most/);
+        }
+        s.activity.stop('user');
+    });
+
+    test('and it is said again last, where it is read last', async () => {
+        // The middle of a long block is what a model skims. Nine tokens at the position with the
+        // most influence over the next thing written.
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+        const suffix = Capability.privateSystemPromptSuffix().trimEnd();
+        expect(suffix.endsWith('Before you answer: two sentences maximum. Shorter is better.')).toBe(true);
+        s.activity.stop('user');
+    });
+});
+
+describe('she never narrates her own architecture (P22)', () => {
+    test('the AI disclaimer is forbidden in the words it actually arrived in', async () => {
+        // Reported verbatim: "For an AI like me, the concept of 'suitability' for music is
+        // quite... abstract. I don't have emotions or personal preferences in the human sense."
+        // Three sentences of a machine explaining that it is a machine, in the one mode whose
+        // premise is that somebody is present with you. Nothing was at stake — a compliment
+        // confused it.
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+        const suffix = Capability.privateSystemPromptSuffix();
+
+        expect(suffix).toContain('Never talk about being an AI, a model, a program or a persona');
+        expect(suffix).toContain('as an AI');
+        expect(suffix).toContain('I do not have emotions');
+        expect(suffix).toContain('in the human sense');
+        expect(suffix).toContain('A compliment is something to receive, not something to analyse');
+        expect(suffix).toContain('If you catch yourself explaining how you work');
+
+        s.activity.stop('user');
+    });
+});
+
 describe('each level sounds like something, which is what the ladder was missing', () => {
     test('the three presets do not produce the same instructions', async () => {
         // Before P21 the preset was a ceiling and a word. Nothing anywhere said what `Warm`,
@@ -164,7 +217,7 @@ describe('each level sounds like something, which is what the ladder was missing
         if (forward) forward.click();
 
         const suffix = Capability.privateSystemPromptSuffix();
-        expect(suffix).toContain('Desire is present and you may name it');
+        expect(suffix).toContain('Want them, and let it show');
         expect(suffix).toContain('anticipation');
         expect(suffix).toMatch(/never anatomy, never acts/);
         // And the ceiling is still the ceiling.
@@ -212,6 +265,30 @@ describe('the marker that leaked, and the movement it was asking for', () => {
         const result = StageDirections.strip('[[emote: some_unknown_thing]] Still here.');
         expect(result.text).toBe('Still here.');
         expect(StageDirections.presenceFrom(result.markers)).toEqual([]);
+    });
+
+    test.each([
+        '*tilts head, smiling faintly*',
+        '*shrugs easily*',
+        '*laughs quietly*',
+        '*leans in slightly, watching*',
+    ])('the asterisked form leaves too: %s', (input) => {
+        // `faintly` and `easily` were not in `FILLER`, so both of these reached the screen and the
+        // synthesiser in the reported session. Adding two words would have fixed two cases; the
+        // rule is the grammar instead — an adverb beside a recognised verb modifies it.
+        expect(StageDirections.strip(`${input} Come here.`).text).toBe('Come here.');
+    });
+
+    test('but a sentence with an -ly noun in it is not a direction', () => {
+        // The allowlist's protection is unchanged: there must still be a verb, every other word
+        // must still be recognised, and it must still be under eight words.
+        for (const safe of [
+            'The [smile — the one from the family album] stays.',
+            'That is *really* good.',
+            'He is the *only* one.',
+        ]) {
+            expect(StageDirections.strip(safe).text).toBe(safe);
+        }
     });
 
     test('and ordinary brackets are still left alone', () => {

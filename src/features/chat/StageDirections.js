@@ -89,6 +89,11 @@
         'tilt',
         'winks',
         'wink',
+        // Added deliberately, the way the header prescribes: `*leans in slightly, watching*` is a
+        // direction and `watch` is a thing a body does.
+        'watch',
+        'watches',
+        'watching',
         'softly',
         'quietly',
         'gently',
@@ -139,6 +144,9 @@
         looks: 'look_at_user',
         look: 'look_at_user',
         looking: 'look_at_user',
+        watch: 'look_at_user',
+        watches: 'look_at_user',
+        watching: 'look_at_user',
         leans: 'lean_in',
         lean: 'lean_in',
         leaning: 'lean_in',
@@ -205,11 +213,56 @@
     }
 
     /**
+     * Nouns that happen to end in `-ly`, so the adverb rule below cannot swallow a sentence.
+     *
+     * Short on purpose: it only has to cover words that could plausibly sit beside a performance
+     * verb inside eight words. `only` is the one that matters — "the only one" is a phrase this
+     * codebase already had to special-case once, in `PrivateChoices.BANNED`.
+     */
+    const LY_NOT_ADVERBS = new Set([
+        'only',
+        'family',
+        'reply',
+        'supply',
+        'apply',
+        'assembly',
+        'belly',
+        'jelly',
+        'rally',
+        'ally',
+        'folly',
+        'lily',
+        'july',
+        'italy',
+        'anomaly',
+        'monopoly',
+    ]);
+
+    /**
+     * An adverb modifying the verb is part of the direction (P22).
+     *
+     * `FILLER` listed six adverbs — `softly`, `quietly`, `gently`, `warmly`, `slowly`, `slightly` —
+     * and the reported session leaked `*tilts head, smiling faintly*` and `*shrugs easily*` onto
+     * the screen and into the voice, because `faintly` and `easily` were not among them. Adding two
+     * more words would have fixed those two and nothing else; the next adverb would leak next week.
+     *
+     * So the rule is the grammar rather than the vocabulary: a word ending in `-ly`, in a fragment
+     * that already contains a recognised performance verb, is modifying that verb. The allowlist's
+     * real protection is unchanged — there must still *be* a verb, every other word must still be
+     * recognised, and the whole thing must still be under eight words — so `[smile — the one from
+     * the family]` is refused by `one` and `from` long before `family` is reached.
+     */
+    function looksAdverbial(part) {
+        return part.length >= 5 && part.endsWith('ly') && !LY_NOT_ADVERBS.has(part);
+    }
+
+    /**
      * Is this fragment a stage direction?
      *
-     * Needs a recognised verb, and needs every *other* word to be recognised filler. That second
-     * half is what keeps `[smile — the one from the photograph]` out: a fragment containing a verb
-     * plus arbitrary prose is prose, and deleting it would delete somebody's sentence.
+     * Needs a recognised verb, and needs every *other* word to be recognised filler or an adverb
+     * modifying it. That second half is what keeps `[smile — the one from the photograph]` out: a
+     * fragment containing a verb plus arbitrary prose is prose, and deleting it would delete
+     * somebody's sentence.
      */
     function isDirection(inner) {
         const parts = words(inner);
@@ -220,7 +273,7 @@
                 if (!verb) verb = part;
                 continue;
             }
-            if (!FILLER.has(part)) return null;
+            if (!FILLER.has(part) && !looksAdverbial(part)) return null;
         }
         return verb;
     }

@@ -130,8 +130,11 @@ describe('the prompt says the same thing the budget enforces', () => {
 
         Surface.renderUser('mm');
         const prompt = Capability.privateSystemPromptSuffix();
-        expect(prompt).toMatch(/said very little/i);
-        expect(prompt).toMatch(/one short sentence/i);
+        // The property, not the sentence: brevity is asked for in words as well as enforced by the
+        // cap. P22 replaced three graded rules with one hard limit, so the wording moved and the
+        // guarantee did not.
+        expect(prompt).toMatch(/two sentences maximum/i);
+        expect(prompt).toMatch(/they said almost nothing/i);
 
         s.activity.stop('user');
     });
