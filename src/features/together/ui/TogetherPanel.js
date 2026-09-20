@@ -34,16 +34,6 @@ const TogetherPanel = (() => {
     const PANEL_ID = 'nexus-bd-together-panel';
 
     /**
-     * The longest Begin may wait on optional work before starting anyway.
-     *
-     * Preparation begins when a mood is chosen, so by Begin the answer is normally already in
-     * hand and this never fires. When it does, the session starts with the written plan and the
-     * generated one upgrades the later beats if it lands. Nothing optional — least of all a
-     * music lookup — gets to stand between wanting this and having it.
-     */
-    const PRIVATE_START_BUDGET = 2500;
-
-    /**
      * B36. The activity contract and the failure copy, from the module system or the window,
      * so this file works under jest and in the browser without either knowing about the
      * other. Absent, the panel falls back to B30's behaviour rather than breaking — an
@@ -1193,37 +1183,34 @@ const TogetherPanel = (() => {
         }
 
         /**
-         * Begin means begin.
+         * Begin means begin — and now it really does (P22).
          *
-         * Prepared work is usually in hand by now — it started when the mood was chosen — so
-         * the common path is synchronous. When it is not, the session starts anyway once the
-         * budget expires, with the written plan, and the generated one upgrades the later
-         * beats if it ever lands. Nothing optional is allowed to stand between wanting this
-         * and having it.
+         * This used to race a 2.5-second budget against `activity.prepared`, which was the right
+         * patch when `Begin` was the only screen and the work was invisible. With the checklist in
+         * front of it the race is worse than redundant: the preflight has already decided what it
+         * is willing to wait for, said so on screen, and offered this button on the strength of it.
+         * Waiting again here for a promise it deliberately stopped waiting for is the app
+         * disagreeing with the screen the person just read.
+         *
+         * It was also a live defect. `preparedPlan` is null whenever the *generated* plan has not
+         * landed — which is the normal case with a slow or failing provider, and exactly the case
+         * the checklist now passes on the written floor. So pressing `Begin` on a green checklist
+         * dropped into `starting` and sat there for two and a half seconds before starting anyway.
+         *
+         * The written plan is in `PrivateBeats` and the session reaches for it itself when
+         * `preparedPlan` is null; `_planAhead` still upgrades the later beats if the generated one
+         * ever arrives. So there is nothing left to wait for, and `PRIVATE_START_BUDGET` goes with
+         * the race that needed it.
          */
         _beginPrivate(activity) {
             if (!activity || !activity.prepareInput) return null;
-            const go = () =>
-                this.startActivity('intimate', {
-                    ...activity.prepareInput,
-                    soundtrack: activity.soundtrackChoice || 'choose',
-                    scene: activity.sceneChoice || null,
-                    preparedPlan: activity.preparedPlan,
-                    preparedTrack: activity.preparedTrack,
-                });
-            if (!activity.prepared || activity.preparedPlan) return go();
-            activity.sessionState = 'starting';
-            this._paint();
-            const win = this.win || (typeof window !== 'undefined' ? window : null);
-            let started = false;
-            const once = () => {
-                if (started) return null;
-                started = true;
-                return go();
-            };
-            if (win && typeof win.setTimeout === 'function') win.setTimeout(once, PRIVATE_START_BUDGET);
-            activity.prepared.then(once, once);
-            return null;
+            return this.startActivity('intimate', {
+                ...activity.prepareInput,
+                soundtrack: activity.soundtrackChoice || 'choose',
+                scene: activity.sceneChoice || null,
+                preparedPlan: activity.preparedPlan,
+                preparedTrack: activity.preparedTrack,
+            });
         }
 
         /** The room this evening will happen in, named the way the setup screen names it. */

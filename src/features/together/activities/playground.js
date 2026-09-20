@@ -1335,8 +1335,7 @@ const PlaygroundActivity = (() => {
                 speechSynthesis: win.speechSynthesis || null,
                 ttsProvider: win.NEXUS_TTS_PROVIDER || null,
                 probeModel: () => self._probeModel(win),
-                storyReady: () =>
-                    Promise.resolve(self.prepared).then(() => self.preparedPlan || self._writtenPlan(win)),
+                storyReady: () => self._storyReady(win),
                 sceneReady: () => self._preloadScene(win),
                 intentResolves: (name) => self._intentResolves(win, name),
                 trackReady: () => self._preloadTrack(win),
@@ -1367,6 +1366,58 @@ const PlaygroundActivity = (() => {
                 // Includes `EmptyCompletionError`, which is precisely the case worth catching here.
                 return false;
             }
+        }
+
+        /**
+         * How long a step waits for the *better* answer before taking the one it already has.
+         *
+         * Short, because both steps it governs already hold a complete answer and are only ever
+         * waiting on an upgrade. The step deadline is twelve seconds and this is not a smaller
+         * version of it: that one means "give up", this one means "stop holding the door".
+         */
+        get _graceMs() {
+            return 2500;
+        }
+
+        /** Whichever lands first: the work, or the clock. Resolves `null` on the clock. */
+        _withGrace(promise, win) {
+            if (!win || typeof win.setTimeout !== 'function') return Promise.resolve(promise);
+            return new Promise((resolve) => {
+                let settled = false;
+                let timer = null;
+                const done = (value) => {
+                    if (settled) return;
+                    settled = true;
+                    if (timer !== null && typeof win.clearTimeout === 'function') win.clearTimeout(timer);
+                    resolve(value);
+                };
+                timer = win.setTimeout(() => done(null), this._graceMs);
+                Promise.resolve(promise).then(done, () => done(null));
+            });
+        }
+
+        /**
+         * Is there a plan for this evening? There always is (P22).
+         *
+         * This used to be `Promise.resolve(this.prepared).then(() => preparedPlan || written)`,
+         * and the reported checklist showed **✕ Writing the evening** — a required step, so it
+         * blocked `Begin` entirely. Nothing was wrong with the plan. `prepared` waits on the
+         * *generated* one, the provider was in its 504-and-retry loop, and the step hit its
+         * twelve-second deadline and went red — while a complete written plan sat in memory the
+         * whole time, available synchronously.
+         *
+         * That is exactly backwards, and `PrivateBeats` says so in its own header: the written
+         * pools "are the floor, not the fallback-of-last-resort: with no LLM configured this is
+         * the whole experience". An upgrade that has not arrived is not a failure.
+         *
+         * So the generated plan gets a short grace and then the floor is taken. `_planAhead` still
+         * upgrades the later beats if the generated one ever lands, which is what it was always
+         * for. This step can now only fail if `PrivateBeats` is absent altogether — which would
+         * mean she has nothing to say at all, and is worth blocking for.
+         */
+        _storyReady(win) {
+            if (this.preparedPlan) return Promise.resolve(this.preparedPlan);
+            return this._withGrace(this.prepared, win).then(() => this.preparedPlan || this._writtenPlan(win));
         }
 
         /** The written floor, so a planner that never answered is not a blocked evening. */
@@ -1428,19 +1479,36 @@ const PlaygroundActivity = (() => {
             }
         }
 
-        /** The soundtrack, if one was asked for. `null` means "not asked for", never "not found". */
+        /**
+         * The soundtrack, if one was asked for — and "none found" is not a failure (P22).
+         *
+         * The reported checklist showed **✕ Finding a soundtrack**, which is the wrong mark for
+         * what happened. A search that ran and came back with nothing has exactly the same
+         * consequence as music being switched off: the evening plays in silence, which is a
+         * perfectly good evening and is already what the session does with a null track. `·` is
+         * the mark for that, and it is the one "music: off" has always had.
+         *
+         * So `null` here means "no track", from any cause short of a throw: not asked for, no
+         * provider configured, nothing matched, or still searching when the grace ran out. A slow
+         * provider must not hold the checklist open for twelve seconds and then paint it red over
+         * something optional.
+         */
         _preloadTrack(win) {
             if (this.soundtrackChoice !== 'choose') return Promise.resolve(null);
             const presets =
                 (win && win.NEXUS_TOGETHER_CAPABILITY && win.NEXUS_TOGETHER_CAPABILITY.PRIVATE_PRESETS) || {};
             const preset = presets[String((this.prepareInput && this.prepareInput.id) || '')] || null;
             if (!preset || !preset.music) return Promise.resolve(null);
-            return Promise.resolve(this.prepared)
-                .then(() => (this.preparedTrack ? true : this._findTrack(preset.music, win)))
-                .then((found) => {
-                    if (found && found !== true) this.preparedTrack = found;
-                    return Boolean(this.preparedTrack);
-                });
+            if (this.preparedTrack) return Promise.resolve(true);
+            return this._withGrace(
+                Promise.resolve(this.prepared).then(() =>
+                    this.preparedTrack ? true : this._findTrack(preset.music, win)
+                ),
+                win
+            ).then((found) => {
+                if (found && found !== true) this.preparedTrack = found;
+                return this.preparedTrack ? true : null;
+            });
         }
 
         /**

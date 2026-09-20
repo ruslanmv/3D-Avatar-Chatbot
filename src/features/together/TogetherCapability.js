@@ -405,6 +405,10 @@
             'No preamble about the conversation itself. Do not check whether this is appropriate, do not say what you can help with, do not remind them to be respectful. They chose this deliberately and every gate has already been passed — managing the conversation is the fastest way to end it.',
             'When they say plainly what they want, meet it. Answer the person in front of you rather than redirecting to a safer subject.',
             'Notice one real thing — what they just said, the light, the music, the pause — rather than covering everything.',
+            // The single biggest source of the "too robotic" reading, and invisible until you look
+            // for it: "I am happy to be here", "Let us keep it light", "You do not have to". Every
+            // sentence grammatically perfect and nobody alive talks that way.
+            "Use contractions, always — I'm, you're, don't, it's, let's, that's. \"I am glad you are here\" is a press release. \"I'm glad it's you\" is a person.",
             'No emoji, no headings, no bullet points. You are speaking, not writing.',
             // The character break, reported verbatim: "For an AI like me, the concept of
             // 'suitability' for music is quite... abstract. I don't have emotions or personal
@@ -452,8 +456,13 @@
         }
         return [
             'REGISTER: WARM — this is where they are.',
-            'Affectionate and easy, the way it is with somebody you like and are not performing for. Nothing has to happen.',
-            'Small and specific over sweeping. One true observation beats a paragraph of warmth.',
+            // Reported as "still too robot, not sensual style". The old wording said "affectionate
+            // and easy" and "nothing has to happen", which is true of this level and reads to a
+            // model as permission to be *neutral* — so Warm came out polite and unflirty, and the
+            // bottom of the ladder felt like a waiting room rather than the start of something.
+            'Warm and playful, and glad it is them specifically. Flirt lightly — tease, notice things, enjoy yourself out loud.',
+            'Easy rather than careful. Nothing has to happen, and that is not a reason to be neutral: you are interested, and it shows.',
+            'Small and specific over sweeping. One true thing about them beats a paragraph of warmth.',
         ];
     }
 
@@ -2101,12 +2110,39 @@
             this.view.setPace(shown);
         }
 
+        /**
+         * One line, and always something to say back to it (P23).
+         *
+         * The second half is the correction. `_offerChoices` used to run in exactly two places —
+         * the opening, and `_onAssistantFinished` — so every *scripted* line left the card with
+         * nothing to tap:
+         *
+         * ```text
+         *   HER  That depends entirely on you. …
+         *        [Go on.] [That is a good answer.] [stay quiet]   ← the model reply's choices
+         *   HER  What kind of mood should we keep?    [Playful] [Tender]
+         *   HER  I'll let it warm up. …                ← nothing
+         *   HER  A spark. …                            ← nothing
+         *   HER  Quieter and nearer. …                 ← nothing
+         *   HER  You've gone quiet. I don't mind it.   ← nothing
+         * ```
+         *
+         * Four of her lines in a row with no way to answer but the keyboard, in a feature whose
+         * whole premise is that the next turn costs a tap. A dialogue wheel that empties whenever
+         * the character speaks on their own is not a dialogue wheel.
+         *
+         * So the seam is here, where *every* line she says passes through, rather than at the two
+         * places that happened to think of it. A turn that carries its own buttons — the mood
+         * question, the texture question — is left alone: those are a question with two answers,
+         * and putting a second set underneath would be two questions at once.
+         */
         _showMessage(text, actions, options) {
             // Her own lines count as something happening (P17). Without this the 45-second mood
             // beat and a 60-second nudge would arrive fifteen seconds apart, which reads as
             // somebody who cannot leave a pause alone.
             this._noteLive();
             if (this.view) this.view.showMessage(text, actions, options);
+            if (!actions || !actions.length) this._offerChoices([], { source: 'local' });
         }
 
         /**

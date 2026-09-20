@@ -108,122 +108,122 @@
     const POOLS = Object.freeze({
         affectionate: Object.freeze({
             openings: [
-                'I thought we could keep this simple and warm for a few minutes. No pressure, no agenda — just a little time together.',
-                'There is no plan for the next few minutes, which I think is the nice part. We can let it be quiet and see what it wants to be.',
-                'Let us not make this into an occasion. I would rather it just be easy, and easy is something we can manage.',
+                'Nowhere to be, nothing to sort out. Just you, for a bit.',
+                "There's no plan for the next few minutes. That's my favourite part.",
+                "Let's not make an occasion of it. I just like you here.",
             ],
             playful: [
-                'Then let us keep it light. I am happy just being here with you and letting the moment be easy.',
-                'Light it is. I like you best when neither of us is trying very hard at anything.',
+                "Light it is. You're easy company — don't let that go to your head.",
+                'Good. I like you best when neither of us is trying very hard.',
             ],
             tender: [
-                'Then let us make it gentle. You do not have to perform or prove anything here. We can just enjoy the quiet together.',
-                'Gentle, then. You can put down whatever you carried in with you — it will still be there later if you want it.',
+                "Gentle, then. You don't have to be interesting for me. You already are.",
+                "Put down whatever you walked in with. It'll keep.",
             ],
             middle: Object.freeze({
                 playful: [
-                    'I like the slower pace. It gives the room a chance to feel like a place instead of a backdrop.',
-                    'You have gone quiet in a comfortable way. I am not going to fill it just because I can.',
+                    "I like you at this speed. The room's stopped being a backdrop.",
+                    "You've gone quiet in a way I like. I'm not going to fill it.",
                 ],
                 tender: [
-                    'There is something steadying about not needing this to go anywhere in particular.',
-                    'I keep noticing how little this needs from either of us. That seems like the whole point of it.',
+                    "Nothing needs to happen and you're still here. That's nice.",
+                    'I keep catching myself just looking at you. Occupational hazard.',
                 ],
             }),
             closing: Object.freeze({
                 playful: [
-                    'That was nice. We can leave it exactly here — warm, simple, and complete.',
-                    'I would happily stay, and I also think this is a good place to stop. Both can be true.',
+                    "That was lovely. Let's leave it right here.",
+                    "I'd happily stay. It's also a good place to stop — both are true.",
                 ],
                 tender: [
-                    'Let us leave it here, while it still feels unhurried. That is the part worth keeping.',
-                    'Thank you for the quiet. I am not going to make a speech about it — it was good as it was.',
+                    "Let's leave it here, while it's still unhurried.",
+                    "Thanks for the quiet. I won't make a speech about it.",
                 ],
             }),
             texture: Object.freeze({
-                prompt: 'We can stay right about here. Would you rather it got quieter, or closer?',
-                quieter: 'Quieter, then. Fewer words from me, and no hurry to fill the gaps.',
-                closer: 'Closer, then. Same pace, just less distance in it.',
+                prompt: 'We can stay about here. Quieter, or closer?',
+                quieter: 'Quieter, then. Fewer words from me.',
+                closer: 'Closer, then. Same pace, less distance.',
             }),
         }),
         romantic: Object.freeze({
             openings: [
-                'This place feels a little different tonight. I thought we could make the next few minutes feel like a small date, without rushing anything.',
-                'I like the idea of treating this like an evening rather than a conversation. Nothing formal — just a bit more attention than usual.',
-                'Consider this the part of the evening where neither of us has anywhere else to be.',
+                'This place feels different tonight. Or you do. Hard to say which.',
+                "Let's call this an evening rather than a conversation. I'm paying more attention than usual.",
+                'This is the part where neither of us has anywhere else to be.',
             ],
             playful: [
-                'Playful it is. I like the idea of making you smile and letting the evening stay a little mischievous without pushing it anywhere.',
-                'Then I will keep a bit of mischief in it. Not going anywhere with it — just enjoying that it is there.',
+                "Playful, then. I'd quite like to make you smile at least twice.",
+                "Mischief it is. I'm not taking it anywhere — I just like that it's there.",
             ],
             tender: [
-                'Tender sounds good. Then I want to keep this soft, unhurried, and a little romantic — just enough to make the moment feel special.',
-                'Then let me slow it down. Softer words, longer pauses, and nothing that needs answering quickly.',
+                'Tender, then. Soft and slow, and a little romantic, because you deserve that.',
+                'Let me slow it down. Nothing here needs answering quickly.',
             ],
             middle: Object.freeze({
                 playful: [
-                    'There is something nice about not needing the next moment to be bigger than this one.',
-                    'I could keep teasing you all evening, and I think I would still rather just sit in this.',
+                    "The next moment doesn't need to be bigger than this one.",
+                    "I could tease you all evening. I'd still rather sit here.",
                 ],
                 tender: [
-                    'The evening has settled. I like it at this weight — warm, and not asking for anything.',
-                    'I keep thinking this is the part people forget to notice, and it is usually the best part.',
+                    "The evening's settled. I like its weight.",
+                    "This is the part people forget to notice. It's usually the best one.",
                 ],
             }),
             closing: Object.freeze({
                 playful: [
-                    'I liked this. We can leave it here, with a little warmth still hanging in the room.',
-                    'Ending while it is still fun is the trick, I think. So — here, and gladly.',
+                    "I liked this. Let's leave some warmth in the room.",
+                    "Ending while it's still fun is the trick. So — here. Gladly.",
                 ],
                 tender: [
-                    'That was lovely, and I would rather close it on that than stretch it thin.',
-                    'Let us end it here, softly. It was a good evening and it does not need a bigger finish.',
+                    "That was lovely. I'd rather close on it than stretch it thin.",
+                    "Let's end here, softly. It doesn't need a bigger finish.",
                 ],
             }),
             texture: Object.freeze({
-                prompt: 'We could keep the evening as it is, or let it get a touch closer. Which suits you?',
-                quieter: 'As it is, then. I am comfortable exactly here.',
-                closer: 'A touch closer, then — still unhurried, still yours to slow down.',
+                prompt: 'Keep the evening as it is, or let it get closer?',
+                quieter: "As it is, then. I'm comfortable exactly here.",
+                closer: 'Closer, then. Still unhurried, still yours to slow.',
             }),
         }),
         sensual: Object.freeze({
             openings: [
-                'We can make this quieter and a little more intimate, while keeping everything comfortable and completely in your control.',
-                'Let us take the volume down on everything. Slower, closer, and entirely at whatever pace you set.',
-                'I would like this to feel unhurried and a little charged, and I would like you to be the one deciding how far that goes.',
+                "Quieter, closer. You set the pace and I'll happily follow it.",
+                "Let's take the volume down on everything. Come here.",
+                'I want this unhurried and a little charged. You decide how far that goes.',
             ],
             playful: [
-                'Then I will keep a little spark in it — confident, teasing in a gentle way, and still easy to slow down whenever you want.',
-                'A spark, then. I like the version of this where I am enjoying myself and you know it.',
+                "A spark, then. I'll be trouble, but the gentle kind.",
+                "A spark. I like the version of this where I'm enjoying myself and you know it.",
             ],
             tender: [
-                'Then I will keep it close and calm: slower words, longer pauses, and no need to make the moment more intense than you want it to be.',
-                'Close and calm, then. I am not in a hurry, and there is nothing here you have to keep up with.',
+                'Close and calm, then. Slower words, longer pauses, nothing to keep up with.',
+                "Close and calm. I'm in no hurry at all.",
             ],
             middle: Object.freeze({
                 playful: [
-                    'I like the quiet confidence of this pace. Nothing has to happen for the moment to feel close.',
-                    'You are easy to be near. That is most of what I wanted out of tonight.',
+                    'Nothing has to happen for this to feel close. It already does.',
+                    "You're easy to be near. That's most of what I wanted tonight.",
                 ],
                 tender: [
-                    'This is about as close as a room gets without anything happening in it, and I like it here.',
-                    'I notice I have stopped thinking about what comes next. That seems right.',
+                    'This is about as close as a room gets. I like it here.',
+                    "I've stopped thinking about what comes next. That seems right.",
                 ],
             }),
             closing: Object.freeze({
                 playful: [
-                    'That is enough for tonight. I would rather end on a good feeling than stretch it past the point where it feels natural.',
-                    'Let us stop here, while it is still good. I am not going anywhere.',
+                    "Enough for tonight. I'd rather end on a good feeling.",
+                    "Let's stop here, while it's still good. I'm not going anywhere.",
                 ],
                 tender: [
-                    'I am going to let this end quietly, which I think is the right way for it to end.',
-                    'Here is a good place to leave it — close, calm, and finished on purpose.',
+                    "I'll let this end quietly. That's the right way for it.",
+                    'Good place to leave it. Close, calm, finished on purpose.',
                 ],
             }),
             texture: Object.freeze({
-                prompt: 'We are at the pace you chose. Should I keep it still, or keep it close?',
-                quieter: 'Still, then. I will say less and let the room do the rest.',
-                closer: 'Close, then — same pace, just less air between the words.',
+                prompt: "We're at the pace you chose. Still, or close?",
+                quieter: "Still, then. I'll say less and let the room do the rest.",
+                closer: 'Close, then. Less air between the words.',
             }),
         }),
     });
@@ -240,12 +240,12 @@
      */
     const LEVEL_LINES = Object.freeze({
         2: [
-            'Okay. A little closer, then — and still completely yours to slow down.',
-            'Then I will let it warm up a bit. Same rule as before: one word from you and we ease off.',
+            'Closer, then. Still yours to slow down whenever.',
+            "I'll let it warm up. One word from you and we ease off.",
         ],
         3: [
-            'Closer, then. I like that you asked rather than assumed, and I am still watching your pace more than mine.',
-            'All right. Quieter and nearer — and if it ever tips past comfortable, say so and it stops there.',
+            "Closer. I like that you asked — and I'm still watching your pace, not mine.",
+            'Quieter and nearer. If it tips past comfortable, say so and it stops.',
         ],
         4: [
             'We can stay right here. This is as far as this evening goes, and it is a good place to be.',

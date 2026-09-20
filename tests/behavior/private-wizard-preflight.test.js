@@ -46,7 +46,14 @@ class AdultFlowMock {
 }
 
 /** A page where every step can succeed, so a test names only what it breaks. */
-function setup({ reply = 'ready', voices = [{ name: 'a voice' }], intents = true, decodes = true } = {}) {
+function setup({
+    reply = 'ready',
+    voices = [{ name: 'a voice' }],
+    intents = true,
+    decodes = true,
+    music = true,
+    hangPlan = false,
+} = {}) {
     document.body.innerHTML =
         '<div id="host"></div><div id="chat-history"></div><input id="speech-text"><button id="speak-btn">Send</button>';
     const panel = TogetherPanel.attach({
@@ -78,7 +85,7 @@ function setup({ reply = 'ready', voices = [{ name: 'a voice' }], intents = true
         list: () => [{ id: 'candlelit', label: 'Candlelit Room', src: 'assets/ambient/dark/ocean-moonlight.webp' }],
     };
     window.NEXUS_SCENE_AMBIENCE_CONTROLLER = { currentScene: () => 'black', apply: jest.fn(() => ({ changed: true })) };
-    const search = jest.fn(() => Promise.resolve([{ id: 'trk-1', kind: 'music', title: 'Soft piano' }]));
+    const search = jest.fn(() => Promise.resolve(music ? [{ id: 'trk-1', kind: 'music', title: 'Soft piano' }] : []));
     window.NEXUS_DISCOVERY = { warm: () => Promise.resolve([]), forCapability: () => ({ search }) };
     window.speechSynthesis = { getVoices: () => voices, addEventListener: () => {}, removeEventListener: () => {} };
     const sendMessage = jest.fn(() => (reply instanceof Error ? Promise.reject(reply) : Promise.resolve(reply)));
@@ -91,11 +98,17 @@ function setup({ reply = 'ready', voices = [{ name: 'a voice' }], intents = true
         }
     };
 
+    if (hangPlan) {
+        const beats = require('../../src/features/together/PrivateBeats.js');
+        window.NEXUS_PRIVATE_BEATS = { ...beats, plan: jest.fn(() => new Promise(() => {})) };
+    }
     const activity = new PlaygroundActivity.IntimateActivity.Intimate({
         bus,
         adult,
         capability: () => ({ ok: true, why: '' }),
     });
+    // The grace is 2.5s of real time; these tests drive real timers, so shorten it.
+    Object.defineProperty(activity, '_graceMs', { get: () => 20 });
     window.NEXUS_BD.intimate = activity;
     panel.register(activity);
     panel.open();
@@ -148,6 +161,7 @@ afterEach(() => {
         '_nexusLLM',
         'speechSynthesis',
         'Image',
+        'NEXUS_PRIVATE_BEATS',
     ]) {
         delete window[key];
     }
@@ -196,6 +210,65 @@ describe('the checklist is real work, named', () => {
         expect(summary.textContent).toContain(Locale.PACKS['it-IT']['preflight.voice']);
         expect(summary.textContent).not.toContain(Locale.PACKS['en-US']['preflight.voice']);
         delete window.AppLanguage;
+    });
+});
+
+describe('the reported checklist: ✕ Writing the evening, ✕ Finding a soundtrack', () => {
+    test('a planner stuck in a retry loop does not block the evening', async () => {
+        // `story` is required, so a red mark there stopped `Begin` entirely — while a complete
+        // written plan sat in memory the whole time. `PrivateBeats` calls those pools "the floor,
+        // not the fallback-of-last-resort"; an upgrade that has not arrived is not a failure.
+        const s = setup({ hangPlan: true });
+        await toChecklist(s);
+
+        const story = s.activity.preflightShown.list.find((e) => e.id === 'story');
+        expect(story.state).toBe('done');
+        expect(s.activity.preflightShown.ready).toBe(true);
+        expect(action('begin-private')).not.toBeNull();
+    });
+
+    test('and the evening it starts has the written plan in it', async () => {
+        const s = setup({ hangPlan: true });
+        await toChecklist(s);
+        action('begin-private').click();
+        await settle();
+
+        await settle();
+        const session = s.activity._privateExperience;
+        expect(session).toBeTruthy();
+        expect(session.plan).toBeTruthy();
+        expect(String(session.plan.opening || '').length).toBeGreaterThan(0);
+        s.activity.stop('user');
+    });
+
+    test('a search that found nothing is skipped, not failed', async () => {
+        // Same consequence as music being switched off — the evening plays in silence, which is
+        // already what the session does with a null track. `·` is the mark for that.
+        const s = setup({ music: false });
+        await toChecklist(s);
+
+        expect(s.activity.preflightShown.list.find((e) => e.id === 'soundtrack').state).toBe('skipped');
+        expect(s.activity.preflightShown.ready).toBe(true);
+        expect(action('begin-private')).not.toBeNull();
+    });
+
+    test('no provider configured at all is skipped too', async () => {
+        const s = setup();
+        delete window.NEXUS_DISCOVERY;
+        await toChecklist(s);
+        expect(s.activity.preflightShown.list.find((e) => e.id === 'soundtrack').state).toBe('skipped');
+        expect(s.activity.preflightShown.ready).toBe(true);
+    });
+
+    test('a slow provider does not hold the screen open, and does not go red', async () => {
+        const s = setup();
+        window.NEXUS_DISCOVERY = {
+            warm: () => Promise.resolve([]),
+            forCapability: () => ({ search: () => new Promise(() => {}) }),
+        };
+        await toChecklist(s);
+        expect(s.activity.preflightShown.list.find((e) => e.id === 'soundtrack').state).toBe('skipped');
+        expect(s.activity.preflightShown.ready).toBe(true);
     });
 });
 
