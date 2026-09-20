@@ -421,3 +421,114 @@ describe('the footer, and a confirmation that is not conversation (P12)', () => 
         expect(asked).toBeGreaterThan(0);
     });
 });
+
+describe('how much of a phone the card is allowed to have (P27)', () => {
+    /**
+     * These read the stylesheet, not the layout.
+     *
+     * jsdom has no layout engine: every box is 0×0, `getBoundingClientRect` returns zeros and no
+     * media query is ever evaluated. So "the transcript gets more room than 30vh on a 390×844
+     * screen" cannot be asserted here at all — it is a browser measurement, and pretending
+     * otherwise would be a test that passes whatever the CSS says. What *is* worth pinning is the
+     * contract the browser would apply, because every one of these lines was chosen against a
+     * specific failure and a later edit that drops one brings the failure back.
+     */
+    const css = () => document.getElementById('nexus-private-conversation-styles').textContent;
+
+    function mounted() {
+        page();
+        const view = new PrivateConversationView.View({ doc: document, win: window });
+        view.mount({ preset: { label: 'Romantic' }, scene: '' });
+        return view;
+    }
+
+    /** The `@media(max-width:560px)` block that sizes the row, brace-balanced out of the sheet. */
+    function mobileBlock() {
+        const text = css();
+        const start = text.indexOf('@media(max-width:560px){#nexus-private-conversation-row');
+        if (start < 0) return '';
+        let depth = 0;
+        for (let i = text.indexOf('{', start); i < text.length; i += 1) {
+            if (text[i] === '{') depth += 1;
+            else if (text[i] === '}') {
+                depth -= 1;
+                if (depth === 0) return text.slice(start, i + 1);
+            }
+        }
+        return '';
+    }
+
+    test('the transcript is no longer capped at 30vh', () => {
+        // The reported complaint, and the single line that caused it. 30vh of a 390×844 phone is
+        // ~253px, which is four lines of her once the padding is paid — on a screen with room for
+        // fifteen. The cap has no replacement, because the row below bounds the card already.
+        const view = mounted();
+        expect(css()).not.toMatch(/30vh/);
+        expect(mobileBlock()).toMatch(/\.nexus-private-card\{[^}]*max-height:none/);
+        view.destroy();
+    });
+
+    test('the row takes the history box instead, which is already the right box', () => {
+        // On mobile `.chat-main` is `flex:1 1 0;min-height:0;position:relative` and
+        // `.chat-history` fills it, so the history's height *is* the gap between the panel header
+        // and the composer. Asking for 100% of it, less this row's own 14px of margin, is the
+        // whole geometry — and it is re-resolved by the browser on rotation, on the address bar
+        // retracting and on the keyboard opening, none of which we have to hear about.
+        const view = mounted();
+        expect(mobileBlock()).toMatch(
+            /#nexus-private-conversation-row\{[^}]*height:calc\(100% - 14px\)[^}]*max-height:calc\(100% - 14px\)/
+        );
+        expect(mobileBlock()).toMatch(/\.nexus-private-shell\{flex:1 1 auto\}/);
+        view.destroy();
+    });
+
+    test('growing downward is not the same as growing everywhere', () => {
+        // The card extends toward the composer. It must not extend toward her: the avatar is the
+        // reason the screen is on, and reading room bought with her face is not a trade this
+        // layout makes. Nothing in the mobile block moves the row's top — no negative margin, no
+        // offset, no `position` — so the card starts exactly where it started.
+        const block = mounted();
+        expect(mobileBlock()).toMatch(/margin:6px 0 8px/);
+        expect(mobileBlock()).not.toMatch(/margin(-top)?:-/);
+        expect(mobileBlock()).not.toMatch(/position:(absolute|fixed)/);
+        expect(mobileBlock()).not.toMatch(/\btop:/);
+        block.destroy();
+    });
+
+    test('and the controls do not go with it', () => {
+        // The failure mode of "make the card taller" is one tall scroller that takes `Closer` and
+        // `End` down with the transcript. The fixed parts keep `flex:0 0 auto` from the base sheet
+        // and the mobile block overrides none of it, so only `.nexus-private-card` scrolls.
+        const view = mounted();
+        for (const fixed of ['heading', 'bar', 'soundtrack']) {
+            expect(mobileBlock()).not.toMatch(new RegExp(`\\.nexus-private-${fixed}\\{[^}]*flex:1`));
+        }
+        expect(mobileBlock()).not.toMatch(/\.nexus-private-shell\{[^}]*overflow-y:auto/);
+        expect(mobileBlock()).not.toMatch(/#nexus-private-conversation-row\{[^}]*overflow-y:auto/);
+        view.destroy();
+    });
+
+    test('a short screen drops the soundtrack rather than the transcript', () => {
+        // The keyboard-open case: `.chat-main` is itself capped at 30vh there, so the history box
+        // this row fills is a couple of hundred pixels. Something has to go, and the strip naming
+        // a track that is already playing is worth less than the line she just said.
+        const view = mounted();
+        expect(css()).toMatch(
+            /@media\(max-width:560px\) and \(max-height:450px\)\{\.nexus-private-soundtrack\{display:none\}\}/
+        );
+        view.destroy();
+    });
+
+    test('nothing measures anything, so there is nothing to keep in sync', () => {
+        // The obvious implementation is a resize listener that reads the composer's top and sets
+        // a pixel height. It is also a measurement loop that fights the address bar on iOS, runs
+        // during momentum scrolling and is wrong for one frame after every rotation. The CSS above
+        // needs none of it — this pins that no later change quietly adds one.
+        const source = require('fs').readFileSync(
+            require('path').join(__dirname, '../../src/features/together/ui/PrivateConversationView.js'),
+            'utf8'
+        );
+        const code = source.replace(/\/\*\*[\s\S]*?\*\//g, '');
+        expect(code).not.toMatch(/ResizeObserver|visualViewport|'resize'|getBoundingClientRect/);
+    });
+});

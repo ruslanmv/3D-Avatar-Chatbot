@@ -111,6 +111,30 @@ const PrivateConversationView = (() => {
         return api && typeof api.pace === 'function' ? api.pace(level) : String(level);
     }
 
+    /**
+     * The card's geometry, and in particular how much of a phone it is allowed to have (P27).
+     *
+     * The mobile block used to cap the transcript at `max-height:30vh`. On a 390×844 phone that is
+     * roughly 253px for her words — about four lines once the padding is paid — while the avatar
+     * above it kept the rest. The evening reads as a ticker tape, and the reply you are in the
+     * middle of scrolls out from under you.
+     *
+     * The fix takes no measurement, because the host already is the measurement. On mobile
+     * `.chat-main` is `flex:1 1 0; min-height:0; position:relative` and `.chat-history` fills it,
+     * so the history's box **is** the space between the panel header and the composer — the
+     * address bar retracting, the keyboard opening and the device rotating all land in it before
+     * any of our CSS resolves. So the row asks for `100%` of that, minus its own 14px of margin,
+     * and the shell grows into it. Nothing recomputes on resize because nothing was computed.
+     *
+     * What must not follow from "the card is taller" is "the card is one scroller". The header,
+     * the soundtrack strip and the footer with `Closer` and `End` stay `flex:0 0 auto`; only
+     * `.nexus-private-card` has `flex:1 1 auto;min-height:0;overflow-y:auto`. That is the whole
+     * difference between a transcript that grows and controls that disappear.
+     *
+     * The top of the card is deliberately unchanged. She is the reason the screen is on, and a
+     * card that grows upward buys reading room by taking her face — the one trade this layout is
+     * not allowed to make.
+     */
     const CSS = `
 #${ROW_ID}{display:flex;flex-direction:column;width:100%;max-height:calc(100% - 18px);min-height:0;margin:8px 0 10px;box-sizing:border-box;color:inherit}
 #${ROW_ID} *{box-sizing:border-box}.nexus-private-shell{display:flex;flex-direction:column;min-height:0;overflow:hidden;overflow:clip;border:1px solid rgba(244,128,166,.4);border-radius:16px;background:linear-gradient(145deg,rgba(39,15,36,.9),rgba(22,13,28,.82));box-shadow:0 16px 50px rgba(23,5,21,.3);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
@@ -121,7 +145,7 @@ const PrivateConversationView = (() => {
 .nexus-private-choices{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:9px;border-top:1px solid rgba(255,255,255,.07)}.nexus-private-choice{text-align:left;font-size:.82rem;line-height:1.35;padding:8px 11px;border-color:rgba(159,216,234,.3);background:rgba(159,216,234,.07);animation:nexus-private-choice-in .22s ease both}.nexus-private-choice:hover,.nexus-private-choice:focus-visible{background:rgba(159,216,234,.16);border-color:rgba(159,216,234,.5)}.nexus-private-choice:nth-child(2){animation-delay:.05s}.nexus-private-choice:nth-child(3){animation-delay:.1s}@keyframes nexus-private-choice-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){.nexus-private-choice{animation:none}}
 .nexus-private-controls{display:flex;align-items:center;gap:6px;margin-left:auto;flex:0 0 auto}.nexus-private-btn.is-primary{border-color:rgba(244,128,166,.6);background:rgba(244,128,166,.24);font-weight:650}.nexus-private-btn.is-primary:hover,.nexus-private-btn.is-primary:focus-visible{background:rgba(244,128,166,.34)}.nexus-private-btn.is-secondary{border-color:rgba(255,255,255,.14);background:transparent;opacity:.62}.nexus-private-btn.is-secondary:hover,.nexus-private-btn.is-secondary:focus-visible{opacity:.95;background:rgba(255,255,255,.06)}
 @media(max-width:560px){.nexus-private-bar{flex-wrap:wrap}.nexus-private-controls{margin-left:auto}.nexus-private-step{font-size:.7rem}.nexus-private-rung{width:8px}}
-@media(max-width:560px){#${ROW_ID}{margin:6px 0 8px}.nexus-private-card{padding:11px 13px;max-height:30vh}.nexus-private-copy{font-size:.92rem}.nexus-private-soundtrack{margin:0 10px 8px}.nexus-private-soundtrack-player{width:100%}.nexus-private-soundtrack-player .nexus-yt-card{max-width:100%}}
+@media(max-width:560px){#${ROW_ID}{height:calc(100% - 14px);max-height:calc(100% - 14px);margin:6px 0 8px}.nexus-private-shell{flex:1 1 auto}.nexus-private-card{padding:11px 13px;max-height:none}.nexus-private-copy{font-size:.92rem}.nexus-private-soundtrack{margin:0 10px 8px}.nexus-private-soundtrack-player{width:100%}.nexus-private-soundtrack-player .nexus-yt-card{max-width:100%}}@media(max-width:560px) and (max-height:450px){.nexus-private-soundtrack{display:none}}
 `;
 
     /**
