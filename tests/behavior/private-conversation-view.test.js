@@ -73,6 +73,82 @@ describe('PrivateConversationView', () => {
     });
 });
 
+describe('Private owns the conversation, including its waiting indicator (P26)', () => {
+    const mainSource = () => {
+        // eslint-disable-next-line global-require
+        const fs = require('fs');
+        // eslint-disable-next-line global-require
+        const path = require('path');
+        return fs.readFileSync(path.join(__dirname, '../../src/main.js'), 'utf8');
+    };
+
+    test('the generic NEXUS placeholder is never shown through a feature surface', () => {
+        // Three signs of the same fact, one of them in a surface Private had already replaced:
+        //   Top bar      THINKING…       ← global app status, fine
+        //   Private card • • •           ← the one that belongs to the conversation
+        //   #chat-history NEXUS • • •    ← the duplicate
+        const source = mainSource();
+        expect(source).toMatch(/function _conversationOwnedByFeature\(\)/);
+        expect(source).toMatch(/window\.setTypingIndicator\(Boolean\(show\) && !_conversationOwnedByFeature\(\)\)/);
+    });
+
+    test('and every call site goes through the rule rather than around it', () => {
+        // The rule is worth nothing if one of the seven paths keeps calling the global directly.
+        const source = mainSource();
+        const direct = source
+            .split('\n')
+            .filter((line) => !/^\s*(?:\*|\/\/)/.test(line))
+            .filter((line) => /window\.setTypingIndicator\(/.test(line))
+            // The definition inside `_setTyping` is the one place allowed to call it.
+            .filter((line) => !/Boolean\(show\)/.test(line));
+        expect(direct).toEqual([]);
+        expect(source.match(/_setTyping\(/g).length).toBeGreaterThanOrEqual(7);
+    });
+
+    test('mounting clears one that was already on screen', () => {
+        // `main.js` suppresses it from here on, but an indicator showing when Private mounted has
+        // nothing left to clear it and would sit there for the whole session.
+        page();
+        const cleared = [];
+        window.setTypingIndicator = (show) => cleared.push(show);
+        const view = new PrivateConversationView.View({ doc: document, win: window });
+        view.mount({ preset: { label: 'Romantic' }, scene: '' });
+        expect(cleared).toContain(false);
+        view.destroy();
+        delete window.setTypingIndicator;
+    });
+
+    test('a synthesiser that throws does not fail the mount', () => {
+        page();
+        window.setTypingIndicator = () => {
+            throw new Error('no such element');
+        };
+        const view = new PrivateConversationView.View({ doc: document, win: window });
+        expect(view.mount({ preset: { label: 'Romantic' }, scene: '' })).toBe(true);
+        view.destroy();
+        delete window.setTypingIndicator;
+    });
+
+    test('the card keeps its own dots, which are the single inline indicator', () => {
+        page();
+        const view = new PrivateConversationView.View({ doc: document, win: window });
+        view.mount({ preset: { label: 'Romantic' }, scene: '' });
+
+        view.showThinking();
+        expect(document.querySelector('[data-private-thinking="1"]')).not.toBeNull();
+        expect(view.isThinking).toBe(true);
+
+        // And they come down in place when the reply starts, rather than a second bubble opening.
+        const before = document.querySelectorAll('[data-private-turn="her"]').length;
+        const stream = view.beginAssistantTurn();
+        expect(document.querySelector('[data-private-thinking="1"]')).toBeNull();
+        stream.finish('I was thinking about you.');
+        expect(document.querySelectorAll('[data-private-turn="her"]').length).toBe(before + 1);
+
+        view.destroy();
+    });
+});
+
 describe('the header and the controls stay on screen (P25)', () => {
     /** The one stylesheet the view injects, as text. */
     const css = () => document.getElementById('nexus-private-conversation-styles').textContent;
@@ -198,9 +274,10 @@ describe('the footer, and a confirmation that is not conversation (P12)', () => 
         expect(ids()).toEqual(['ease', 'end']);
     });
 
-    test('the ladder shows where the evening is, with one word not three', () => {
-        // Three labels in a phone-width footer is a legend, and a legend is something to read rather
-        // than glance at.
+    test('the ladder is dots, and the header badge carries the word (P26)', () => {
+        // The word used to sit on the current step, which was right when the header showed the
+        // *preset*. The header shows the current level now, so the footer was repeating it two
+        // inches below — one more layer in a card the screenshot already read as too many.
         mount();
         view.setPace({
             pace: 'Romantic',
@@ -218,9 +295,14 @@ describe('the footer, and a confirmation that is not conversation (P12)', () => 
 
         const rungs = [...document.querySelectorAll('[data-private-step]')];
         expect(rungs).toHaveLength(3);
-        expect(rungs.map((n) => n.textContent)).toEqual(['•', 'Romantic', '•']);
+        expect(rungs.map((n) => n.textContent)).toEqual(['•', '•', '•']);
         expect(rungs.filter((n) => n.classList.contains('is-reached'))).toHaveLength(2);
-        expect(document.querySelector('.nexus-private-level').getAttribute('aria-label')).toMatch(/step 2 of 3/);
+        // The word is in the header, once.
+        expect(document.querySelector('.nexus-private-heading-title').textContent).toBe('Romantic');
+        // And the shape is still spoken for anybody who cannot see it.
+        expect(document.querySelector('.nexus-private-level').getAttribute('aria-label')).toMatch(
+            /Romantic, step 2 of 3/
+        );
     });
 
     test('a one-level preset gets the word instead of a one-dot ladder', () => {
