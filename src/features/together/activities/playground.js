@@ -513,15 +513,21 @@ const PlaygroundActivity = (() => {
      * How long each half of preparation is allowed to take before we stop waiting on it.
      *
      * Generous for the plan, because a model writing a whole story with choices and a music
-     * query legitimately takes tens of seconds, and cutting it off at six would throw away work
-     * that was about to land. Tight for the search, because a music lookup that has not answered
-     * in eight seconds is not about to.
+     * query legitimately takes tens of seconds, and cutting it off early throws away work that
+     * was about to land. The number is not a guess: the app's own connection check measures a
+     * single completion on a real setup (`huihui_ai/qwen3-abliterated:4b`, through the serverless
+     * proxy) at **45 seconds**, and `api/proxy.js` aborts upstream at 55s and returns a structured
+     * `UPSTREAM_TIMEOUT`. Sitting just above that means the proxy's own, clearer answer arrives
+     * first and our deadline only catches the case where even it said nothing.
+     *
+     * Tight for the search, because a music lookup that has not answered in eight seconds is not
+     * about to.
      *
      * The numbers matter less than the fact that they exist. Before them this path awaited the
      * provider with no deadline at all, so a hung request left `Creating our story…` on screen
      * with one tick and three empty circles, for as long as the user was willing to look at it.
      */
-    const PLAN_TIMEOUT_MS = 45000;
+    const PLAN_TIMEOUT_MS = 60000;
     const MUSIC_TIMEOUT_MS = 8000;
 
     /**
@@ -1652,22 +1658,48 @@ const PlaygroundActivity = (() => {
         }
 
         /**
-         * One real completion, at the budget Private is about to use.
+         * Is there a model to talk to — not "how fast is it".
          *
-         * A reachability check that asks for the provider's default proves nothing about a session
-         * that will ask for less — and the reported failure was exactly that: the model produced no
-         * visible token inside its allowance and the card printed "No response" under a HER label.
-         * So this asks the question the session will ask, and a provider that cannot answer it is
-         * a required step that failed rather than a surprise in the first turn.
+         * This used to ask for a whole completion, and on a real provider that is the slowest
+         * thing the app ever does. The reported setup is `huihui_ai/qwen3-abliterated:4b` through
+         * a serverless proxy, where the app's own connection check measures a completion at
+         * **45 seconds** and the model listing at 289ms. No warm-up budget can accommodate the
+         * first without making the user wait most of a minute before `Begin` appears, and any
+         * budget shorter than it paints `✕ Waking the model` over a provider that works — which
+         * is exactly the screen that was reported, on a session whose console showed forty models
+         * loaded and completions posting.
+         *
+         * So this asks the question the step's name actually promises. A provider that lists
+         * models is awake, reachable and authenticated: those are the three ways "waking the
+         * model" can genuinely fail, and all three are answered in a fraction of a second.
+         *
+         * Whether a completion comes back *empty* was the other thing the old probe caught, and
+         * it is no longer this step's job: an empty completion on this gateway came from sending
+         * the `'default'` model sentinel, which `LLMManager` now resolves to a route that answers.
+         *
+         * The completion path stays as the fallback for a provider that offers no listing, since
+         * for those there is no cheaper question to ask.
          */
         async _probeModel(win) {
             const llm = win && win._nexusLLM;
-            if (!llm || typeof llm.sendMessage !== 'function') return true;
+            if (!llm) return true;
+            if (typeof llm.fetchAvailableModels === 'function') {
+                try {
+                    const found = await llm.fetchAvailableModels();
+                    const models = (found && found.models) || [];
+                    // An explicit error is a real failure; an empty list from a provider that
+                    // simply does not enumerate is not, and falls through to the ask below.
+                    if (found && found.error) return false;
+                    if (Array.isArray(models) && models.length) return true;
+                } catch (_) {
+                    // Fall through — a listing that throws tells us less than a completion would.
+                }
+            }
+            if (typeof llm.sendMessage !== 'function') return true;
             try {
                 const reply = await llm.sendMessage('Say the single word: ready.', 'Reply with one word.', []);
                 return Boolean(String(reply || '').trim());
             } catch (_) {
-                // Includes `EmptyCompletionError`, which is precisely the case worth catching here.
                 return false;
             }
         }

@@ -354,3 +354,55 @@ describe('the Ready line, and the loop it used to be able to start', () => {
         doc.body.innerHTML = '';
     });
 });
+
+describe('waking the model, which is not the same as timing it (A23)', () => {
+    const Preflight = require('../../src/features/together/PrivatePreflight.js');
+
+    afterEach(() => {
+        delete window._nexusLLM;
+    });
+
+    test('a provider that lists models is awake, without asking it to write anything', async () => {
+        // The reported setup measures a completion at 45 seconds and a model listing at 289ms.
+        // No warm-up can wait for the first, and anything shorter paints `✕ Waking the model`
+        // over a provider that works. Listing answers all three ways this step can really fail:
+        // unreachable, unauthenticated, no models.
+        const sendMessage = jest.fn(() => new Promise(() => {}));
+        window._nexusLLM = {
+            fetchAvailableModels: () => Promise.resolve({ models: ['a', 'b'], error: null }),
+            sendMessage,
+        };
+        // `_probeModel` belongs to Private, whose warm-up screen this is.
+        const activity = new Playground.IntimateActivity.Intimate({ win: window, doc: document });
+        await expect(activity._probeModel(window)).resolves.toBe(true);
+        // The slow question is never asked.
+        expect(sendMessage).not.toHaveBeenCalled();
+    });
+
+    test('a listing that reports an error is a real failure', async () => {
+        window._nexusLLM = {
+            fetchAvailableModels: () => Promise.resolve({ models: [], error: 'credential rejected' }),
+            sendMessage: () => Promise.resolve('ready'),
+        };
+        const activity = new Playground.IntimateActivity.Intimate({ win: window, doc: document });
+        await expect(activity._probeModel(window)).resolves.toBe(false);
+    });
+
+    test('a provider that cannot enumerate still gets asked the slow question', async () => {
+        // Some providers offer no listing; for those a completion is the only question available.
+        const sendMessage = jest.fn(() => Promise.resolve('ready'));
+        window._nexusLLM = { sendMessage };
+        const activity = new Playground.IntimateActivity.Intimate({ win: window, doc: document });
+        await expect(activity._probeModel(window)).resolves.toBe(true);
+        expect(sendMessage).toHaveBeenCalled();
+    });
+
+    test('the model step gets a longer budget than the local ones, and the total clears it', () => {
+        // The total used to be 10s while the model step was allowed 20s, which made the per-step
+        // budget a fiction: the overall valve cut it off first.
+        expect(Preflight.budgetFor('model')).toBe(Preflight.MODEL_TIMEOUT_MS);
+        expect(Preflight.budgetFor('voice')).toBe(Preflight.STEP_TIMEOUT_MS);
+        expect(Preflight.MODEL_TIMEOUT_MS).toBeGreaterThan(Preflight.STEP_TIMEOUT_MS);
+        expect(Preflight.TOTAL_TIMEOUT_MS).toBeGreaterThan(Preflight.MODEL_TIMEOUT_MS);
+    });
+});

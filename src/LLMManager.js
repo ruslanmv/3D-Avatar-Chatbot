@@ -39,6 +39,30 @@
     const OLLABRIDGE_DEFAULT_BASE_URL = 'https://app.ollabridge.com';
 
     /**
+     * What to ask for when nobody has chosen a model.
+     *
+     * `'default'` is the sentinel this app has always stored, and it is not a route OllaBridge
+     * serves. Verified against the live gateway: `"default"` returns HTTP 200 with
+     * `content: ""`, `finish_reason: "stop"` and zero tokens — a successful-looking response
+     * with no completion in it. Downstream that becomes an empty-completion error, which is how
+     * a fresh install with a healthy gateway and forty listed models got `✕ Waking the model`
+     * on the Private warm-up and `No response` in the card.
+     *
+     * The gateway's own listing describes `qwen2.5:1.5b` as the "Compatibility route for the
+     * legacy default model", which is precisely this case, so the sentinel resolves to it rather
+     * than to a route this app picked out of the list. Anyone who has chosen a model in Settings
+     * is unaffected — this only replaces the placeholder.
+     */
+    const OLLABRIDGE_SENTINEL_MODEL = 'default';
+    const OLLABRIDGE_FALLBACK_MODEL = 'qwen2.5:1.5b';
+
+    /** The model to send: whatever was chosen, or a route that actually answers. */
+    function ollaBridgeModel(model) {
+        const chosen = String(model || '').trim();
+        return !chosen || chosen === OLLABRIDGE_SENTINEL_MODEL ? OLLABRIDGE_FALLBACK_MODEL : chosen;
+    }
+
+    /**
      * PersonaUnavailableError — thrown when a persona model is unpublished or not found.
      * Allows the UI to display a friendly message instead of a generic error.
      */
@@ -607,6 +631,17 @@
             const backoffMs = [400, 1200];
             let res = null;
 
+            // A 504 is not the same kind of failure as a 502 or a 503.
+            //
+            // Those mean the gateway is between states — restarting, briefly unreachable — and a
+            // second attempt a moment later is genuinely likely to land. A 504 here means the
+            // request outlived a *time budget*, and on this path that budget is our own serverless
+            // proxy's: `api/proxy.js` aborts upstream at 55s. Asking the same slow model the same
+            // question again takes the same too-long time, so the retries are deterministic
+            // failures that triple the wait. The reported console is three of them back to back
+            // against a model the connection check clocks at 45 seconds.
+            const attemptsFor = (status) => (status === 504 ? Math.min(maxRetries, 1) : maxRetries);
+
             for (let attempt = 0; attempt <= maxRetries; attempt++) {
                 // A caller that has already given up must not start attempt two.
                 if (options.signal && options.signal.aborted) throw new Error('aborted');
@@ -621,7 +656,7 @@
 
                 if (res.ok || !RETRYABLE.includes(res.status)) return res;
 
-                if (attempt < maxRetries) {
+                if (attempt < attemptsFor(res.status)) {
                     const wait = backoffMs[attempt] || 1200;
                     console.warn(
                         `[LLMManager] OllaBridge returned ${res.status}; retrying in ${wait}ms ` +
@@ -1003,7 +1038,7 @@
             messages.push(...this._withCurrentTurn(conversationHistory, userMessage));
 
             const body = {
-                model: model || 'default',
+                model: ollaBridgeModel(model),
                 messages: messages,
                 max_tokens: this._tokenBudget(800),
             };
@@ -1149,7 +1184,7 @@
             messages.push(...this._withCurrentTurn(conversationHistory, userMessage));
 
             const body = {
-                model: model || 'default',
+                model: ollaBridgeModel(model),
                 messages: messages,
                 max_tokens: this._tokenBudget(800),
             };

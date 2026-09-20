@@ -76,8 +76,34 @@
      */
     const STEP_TIMEOUT_MS = 6000;
 
-    /** And the whole preflight, after which whatever landed is what we go with. */
-    const TOTAL_TIMEOUT_MS = 10000;
+    /**
+     * Except the one step that leaves the machine.
+     *
+     * Five of the six checks are local — a voice list, a written plan, an image, a clip table —
+     * and six seconds is luxurious for all of them. `model` asks a provider for a real completion,
+     * which on a cloud route through a serverless proxy is a cold function, a relay hop and a
+     * model that may need loading. Measured against a live OllaBridge gateway: 12 to 25 seconds.
+     *
+     * So the old budget could not be met by a *working* provider, and the reported screen is what
+     * that looks like — `✕ Waking the model` in an app whose console shows forty models loaded and
+     * completions posting. The step was not detecting a broken provider, it was detecting that an
+     * LLM is slower than six seconds.
+     */
+    const MODEL_TIMEOUT_MS = 20000;
+
+    /**
+     * And the whole preflight, after which whatever landed is what we go with.
+     *
+     * The steps run concurrently, so this needs headroom over the *longest* of them, not their
+     * sum. At 10000 it was below `MODEL_TIMEOUT_MS`, which made the per-step budget a fiction: the
+     * overall valve would have cut the model step off at ten seconds however long it was given.
+     */
+    const TOTAL_TIMEOUT_MS = MODEL_TIMEOUT_MS + 5000;
+
+    /** What each step is allowed, falling back to the shared budget. */
+    function budgetFor(id) {
+        return id === 'model' ? MODEL_TIMEOUT_MS : STEP_TIMEOUT_MS;
+    }
 
     /**
      * The voice list, which is populated asynchronously and is empty at boot.
@@ -355,7 +381,7 @@
                 report();
                 return Promise.resolve();
             }
-            return withTimeout(attempt, STEP_TIMEOUT_MS, deps, step.id).then(
+            return withTimeout(attempt, budgetFor(step.id), deps, step.id).then(
                 (outcome) => {
                     if (cancelled()) return;
                     mark(state, step.id, STATES.includes(outcome) ? outcome : 'done');
@@ -396,7 +422,9 @@
         STATES,
         PRIVATE_INTENTS,
         STEP_TIMEOUT_MS,
+        MODEL_TIMEOUT_MS,
         TOTAL_TIMEOUT_MS,
+        budgetFor,
         create,
         mark,
         describe,
