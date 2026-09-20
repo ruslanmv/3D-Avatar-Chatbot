@@ -276,6 +276,16 @@ Things to know before touching it:
   each — and an entry without it behaves exactly as before. A crop is not a
   substitute: a 16:9 plate cropped to 9:16 keeps a third of its width and none
   of its calibration.
+- **Together shows the same plates, read-only (A21).**
+  `src/features/together/SceneArt.js` is the only resolver from a scene id to a
+  picture URL, backed by `assets/ambient/scene-tale-art.json`. It exists so the
+  Scene Tale tile, the `Current place` card and the Preparing/Ready strips can
+  reference production art without any of them getting a way to _select_ a
+  background: the module names no viewport API at all, and
+  `tests/behavior/scene-art.test.js` greps it to keep that true. Its `BUILTIN`
+  table is a synchronous first-paint answer, not a second library — a test fails
+  if one field has drifted from the manifest. Add a scene to the ambience set
+  and the manifest gains a row; nothing in Together needs a matching edit.
 - **Settings has two sections, not one (A17).** `SCENES` holds the grid;
   `FALLBACK BACKGROUND` holds the five colours, which are what shows when no
   scene is chosen or a scene's file will not load. Both still share one

@@ -664,13 +664,21 @@ const TogetherPanel = (() => {
                 const tile = this._button('', 'nexus-bd-together-tile', () => this.choose(activity.id));
                 if (activity.wide) tile.classList.add('is-wide');
                 tile.dataset.activity = activity.id;
-                const icon = this.doc.createElement('span');
-                icon.className = 'nexus-bd-together-icon';
-                icon.textContent = activity.icon || '✦';
                 const name = this.doc.createElement('span');
                 name.className = 'nexus-bd-together-name';
                 name.textContent = activity.title || activity.id;
-                tile.append(icon, name);
+                // Scene Tale is a story about the place she is standing in, so its tile shows
+                // the place rather than a glyph — and it shows whichever place is live, not a
+                // baked-in default. The thumbnail is read-only art: choosing this tile opens
+                // the setup screen and nothing about drawing it touches the background.
+                const thumb = activity.id === 'playground' ? this._sceneTile() : null;
+                if (thumb) tile.append(thumb, name);
+                else {
+                    const icon = this.doc.createElement('span');
+                    icon.className = 'nexus-bd-together-icon';
+                    icon.textContent = activity.icon || '✦';
+                    tile.append(icon, name);
+                }
                 tile.title = name.textContent;
                 grid.appendChild(tile);
             }
@@ -1209,6 +1217,31 @@ const TogetherPanel = (() => {
                 scene: activity.sceneChoice || null,
                 preparedPlan: activity.preparedPlan,
                 preparedTrack: activity.preparedTrack,
+            });
+        }
+
+        /**
+         * The current place as a tile-sized picture, or `null` when there is nothing to show.
+         *
+         * `null` on an unknown scene rather than a placeholder, because the caller's fallback is
+         * the glyph the tile has always had — a tile that loses its icon and gains a grey box is
+         * worse than one that never changed.
+         *
+         * Read-only by construction: this resolves an id to a URL through `SceneArt` and hands
+         * the URL to an `<img>`. There is no path from here to `setDesktopBackground`, and the
+         * scene on screen is unaffected by whether this returns a picture or nothing.
+         */
+        _sceneTile() {
+            const art =
+                (this.win && this.win.NEXUS_SCENE_ART) ||
+                (typeof require === 'function' ? tryRequire('../SceneArt.js') : null);
+            if (!art || typeof art.thumbnailElement !== 'function') return null;
+            const bb = this.win && this.win.NEXUS_BD && this.win.NEXUS_BD.blackboard;
+            const scene = bb && bb.scene;
+            const key = scene && typeof scene === 'object' ? scene.id || scene.sceneId || scene.label : scene;
+            return art.thumbnailElement(this.doc, key, {
+                className: 'nexus-bd-together-tilethumb',
+                eager: true,
             });
         }
 

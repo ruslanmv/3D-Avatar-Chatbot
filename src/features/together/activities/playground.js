@@ -163,6 +163,52 @@ const PlaygroundActivity = (() => {
         }
     }
 
+    /** Same resolution again, for the read-only art catalogue behind every scene thumbnail. */
+    function sceneArt(win) {
+        const w = win || globalObject();
+        if (w && w.NEXUS_SCENE_ART) return w.NEXUS_SCENE_ART;
+        try {
+            // eslint-disable-next-line global-require
+            return typeof require === 'function' ? require('../SceneArt.js') : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /**
+     * The scene, as a small picture and its name, for the screens between Configure and playing.
+     *
+     * Preparing and Ready used to name no place at all. Twelve seconds of `Creating our story…`
+     * with four ticking rows, then a title — and nothing on either screen said which of the ten
+     * places the story belonged to, so choosing a scene and then waiting felt like the choice had
+     * been dropped. It had not been; it was simply invisible.
+     *
+     * This draws from a resolved `{id, label}` and nothing else. It reads the art catalogue,
+     * appends an `<img>` and returns. It does not consult the viewport, and — the part worth
+     * being explicit about — it does not set one either: the environment behind her is whatever
+     * it already was, and a thumbnail is a picture of it, not a request to change it.
+     */
+    function sceneStrip(doc, parent, scene, win) {
+        if (!doc || !parent || !scene) return null;
+        const strip = addEl(doc, parent, 'div', 'nexus-story-scene-strip');
+        const art = sceneArt(win);
+        if (art && typeof art.thumbnailElement === 'function') {
+            // Id first, label second. `currentScene` slugs a label into an id when the blackboard
+            // holds only a name, and that slug is not one of the catalogue's ids — so a lookup on
+            // the id alone finds nothing for exactly the scenes a user picked by hand.
+            const key = art.getSceneArt(scene.id) ? scene.id : scene.label;
+            const img = art.thumbnailElement(doc, key, {
+                className: 'nexus-story-scene-thumb',
+                alt: scene.label || '',
+                eager: true,
+            });
+            if (img) strip.appendChild(img);
+        }
+        addEl(doc, strip, 'span', 'nexus-story-scene-name', scene.label || '');
+        strip.dataset.sceneId = String(scene.id || '');
+        return strip;
+    }
+
     function currentScene(win) {
         const d = win && win.NEXUS_BD;
         const scene = d && d.blackboard && d.blackboard.scene;
@@ -1832,6 +1878,14 @@ const PlaygroundActivity = (() => {
             this.musicChoice = 'auto';
             this.preparedPlan = null;
             this.preparedSoundtrack = null;
+            /**
+             * The place this story belongs to, held across Configure → Preparing → Ready → Playing.
+             *
+             * Presentation only: every screen after Configure shows it so the story never loses
+             * the scene it was asked for, and `Another version` keeps it rather than falling back
+             * to a generic `Current Scene`. Nothing reads it to decide what the viewport renders.
+             */
+            this.prepareScene = null;
             this.prepareProgress = new Set();
             this.prepareError = '';
             this.player = null;
@@ -1869,8 +1923,12 @@ const PlaygroundActivity = (() => {
             this.prepareProgress = new Set();
             this.prepareError = '';
             this.sessionState = 'preparing';
+            // Resolved before the first `preparing` paint, and kept, so every screen from here to
+            // playback can name the place. It used to be a local read *after* the repaint, which
+            // is why Preparing had no scene to show: the only copy of it was inside this call.
+            this.prepareScene = currentScene(this.win);
             this._repaint();
-            const scene = currentScene(this.win);
+            const scene = this.prepareScene;
             busEmit(this.bus, 'playground:prepare', { sceneId: scene.id, idea: this.idea, music: this.musicChoice });
             try {
                 const result = await this.planner.prepare({
@@ -2035,6 +2093,21 @@ const PlaygroundActivity = (() => {
             create.dataset.action = 'create-story';
         }
 
+        /**
+         * Which place the screens after Configure are about.
+         *
+         * The prepared plan is the most authoritative answer, because it is the scene the story
+         * was actually written against; `prepareScene` covers Preparing, before a plan exists;
+         * and a live read covers the first Configure paint and any repaint after a reset. Each
+         * fallback is one step further from "what this story is", never a different place.
+         */
+        _scene() {
+            const plan = this.preparedPlan;
+            if (plan && plan.sceneId) return { id: plan.sceneId, label: plan.sceneLabel || '' };
+            if (this.prepareScene) return this.prepareScene;
+            return currentScene(this.win);
+        }
+
         _paintPreparing(panel) {
             const doc = panel.doc;
             addEl(doc, panel.root, 'p', 'nexus-bd-together-subtitle', 'Creating our story…');
@@ -2045,6 +2118,7 @@ const PlaygroundActivity = (() => {
                 'nexus-bd-together-prompt',
                 'The scene stays with us while I prepare the whole story before playback.'
             );
+            sceneStrip(doc, panel.root, this._scene(), this.win);
             const progress = addEl(doc, panel.root, 'div', 'nexus-story-progress');
             const steps = [
                 ['scene', 'Understanding this place'],
@@ -2074,6 +2148,7 @@ const PlaygroundActivity = (() => {
             const plan = this.preparedPlan;
             addEl(doc, panel.root, 'p', 'nexus-bd-together-subtitle', plan ? plan.title.toUpperCase() : 'SCENE TALE');
             addEl(doc, panel.root, 'p', 'nexus-bd-together-prompt', 'Fictional story inspired by this scene');
+            sceneStrip(doc, panel.root, this._scene(), this.win);
             const soundtrack =
                 this.musicChoice === 'none'
                     ? 'No soundtrack'

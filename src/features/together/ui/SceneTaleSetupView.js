@@ -14,41 +14,31 @@ const SceneTaleSetupView = (() => {
     const PANEL_CLASS = 'is-scene-tale-configure';
     const ROOT_CLASS = 'nexus-scene-tale-configure-active';
 
-    const SCENE_THUMBNAILS = Object.freeze({
-        'Ocean · Sunrise': 'assets/ambient/light/ocean-sunrise.webp',
-        'Ocean · Moonlight': 'assets/ambient/dark/ocean-moonlight.webp',
-        'Mountain Lake · Day': 'assets/ambient/light/mountain-lake-day.webp',
-        'Mountain Lake · Night': 'assets/ambient/dark/mountain-lake-night.webp',
-        'Meditation Garden · Day': 'assets/ambient/light/meditation-garden-day.webp',
-        'Meditation Garden · Night': 'assets/ambient/dark/meditation-garden-night.webp',
-        'Coastal Terrace · Day': 'assets/ambient/light/coastal-terrace-day.webp',
-        'Coastal Terrace · Twilight': 'assets/ambient/dark/coastal-terrace-twilight.webp',
-        'Open Sky · Day': 'assets/ambient/light/open-sky-day.webp',
-        'Open Sky · Starlight': 'assets/ambient/dark/open-sky-starlight.webp',
-    });
+    /**
+     * The canonical art resolver, from the module system or the window.
+     *
+     * This view used to carry two hand-written tables: ten label→file pairs and twenty
+     * id/key→label pairs, both of them copies of `assets/ambient/scene-tale-art.json` and both
+     * of them kept in step by nobody. A scene renamed in the manifest showed the old name here
+     * and a scene added there had no picture here, and neither would have failed anything.
+     *
+     * Resolved once at load rather than per paint because `SceneArt` is in the boot list ahead
+     * of `ConversationPublisher`, which is what injects this file — so by the time this runs
+     * the global is there. Absent it entirely, `sceneThumbnail` returns `''` and the card draws
+     * its label with no picture, which is the same degradation a missing image file produces.
+     */
+    const SceneArt =
+        (typeof require === 'function' ? tryRequire('../SceneArt.js') : null) ||
+        (typeof window !== 'undefined' ? window.NEXUS_SCENE_ART : null) ||
+        null;
 
-    const SCENE_LABELS_BY_ID = Object.freeze({
-        'ambient:ocean:day': 'Ocean · Sunrise',
-        'ambient:ocean:night': 'Ocean · Moonlight',
-        'ambient:lake:day': 'Mountain Lake · Day',
-        'ambient:lake:night': 'Mountain Lake · Night',
-        'ambient:garden:day': 'Meditation Garden · Day',
-        'ambient:garden:night': 'Meditation Garden · Night',
-        'ambient:terrace:day': 'Coastal Terrace · Day',
-        'ambient:terrace:night': 'Coastal Terrace · Twilight',
-        'ambient:sky:day': 'Open Sky · Day',
-        'ambient:sky:night': 'Open Sky · Starlight',
-        'ocean-sunrise': 'Ocean · Sunrise',
-        'ocean-moonlight': 'Ocean · Moonlight',
-        'mountain-lake-day': 'Mountain Lake · Day',
-        'mountain-lake-night': 'Mountain Lake · Night',
-        'meditation-garden-day': 'Meditation Garden · Day',
-        'meditation-garden-night': 'Meditation Garden · Night',
-        'coastal-terrace-day': 'Coastal Terrace · Day',
-        'coastal-terrace-twilight': 'Coastal Terrace · Twilight',
-        'open-sky-day': 'Open Sky · Day',
-        'open-sky-starlight': 'Open Sky · Starlight',
-    });
+    function tryRequire(path) {
+        try {
+            return require(path);
+        } catch (_) {
+            return null;
+        }
+    }
 
     let observer = null;
     let currentDoc = null;
@@ -186,13 +176,7 @@ const SceneTaleSetupView = (() => {
     }
 
     function sceneLabelForId(value) {
-        return (
-            SCENE_LABELS_BY_ID[
-                String(value || '')
-                    .trim()
-                    .toLowerCase()
-            ] || ''
-        );
+        return SceneArt ? SceneArt.getSceneLabel(value) : '';
     }
 
     function catalogLabel(entry) {
@@ -264,10 +248,32 @@ const SceneTaleSetupView = (() => {
         }
     }
 
-    function sceneThumbnail(value) {
+    function sceneThumbnail(value, orientation) {
+        if (!SceneArt) return '';
         const raw = String(value || '').trim();
-        const label = sceneLabelForId(raw) || normalizeSceneLabel(raw);
-        return SCENE_THUMBNAILS[label] || '';
+        // The label route first, because callers hand this both ids and already-formatted
+        // labels; `normalizeSceneLabel` is what turns an em dash somebody typed into the
+        // middot the manifest uses.
+        return SceneArt.getSceneThumbnail(sceneLabelForId(raw) || normalizeSceneLabel(raw) || raw, orientation);
+    }
+
+    /**
+     * The place card's picture, or nothing.
+     *
+     * Landscape at every width, and that is a decision rather than an oversight. The portrait
+     * plates exist because a 16:9 composition cropped into a tall box keeps a third of its width
+     * and none of its calibration — but this box is never tall. It is 7.25×3.65rem on a desktop
+     * and 5.25×3rem on a phone, landscape on both, so the landscape plate is the one that fits.
+     * `SceneArt.getSceneThumbnail(id, 'portrait')` is there for a box that is actually portrait;
+     * asking for one here would crop the scene harder to no end.
+     */
+    function placeThumbnail(doc, label) {
+        if (!SceneArt || typeof SceneArt.thumbnailElement !== 'function') return null;
+        return SceneArt.thumbnailElement(doc, label, {
+            className: 'nexus-scene-tale-place-thumb',
+            alt: label,
+            eager: true,
+        });
     }
 
     function wrapSection(doc, panel, nodes) {
@@ -356,16 +362,11 @@ const SceneTaleSetupView = (() => {
             const label = resolveCurrentScene(doc, place.textContent);
             place.textContent = '';
             place.classList.add('nexus-scene-tale-place-card');
-            const src = sceneThumbnail(label);
-            if (src) {
-                const img = doc.createElement('img');
-                img.className = 'nexus-scene-tale-place-thumb';
-                img.src = src;
-                img.alt = label;
-                img.loading = 'eager';
-                img.decoding = 'async';
-                place.appendChild(img);
-            }
+            // Eager, alone: this is the one visible thumbnail on the screen and it is above the
+            // fold. Nothing here reaches for the other nine — resolving one id loads one file,
+            // and browser caching covers the Ready card and the story hero that follow.
+            const thumb = placeThumbnail(doc, label);
+            if (thumb) place.appendChild(thumb);
             const name = doc.createElement('span');
             name.className = 'nexus-scene-tale-place-name';
             name.textContent = label;
@@ -446,8 +447,6 @@ const SceneTaleSetupView = (() => {
         PANEL_CLASS,
         ROOT_CLASS,
         CSS,
-        SCENE_THUMBNAILS,
-        SCENE_LABELS_BY_ID,
         normalizeSceneLabel,
         resolveCurrentScene,
         sceneThumbnail,

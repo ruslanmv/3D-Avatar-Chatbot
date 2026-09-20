@@ -190,6 +190,13 @@ const TogetherLauncher = (() => {
 .nexus-bd-together-tile:focus-visible { outline: 2px solid var(--accent-cyan, #22d3ee); outline-offset: 2px; }
 .nexus-bd-together-tile.is-wide { grid-column: 1 / -1; flex-direction: row; justify-content: center; gap: .5rem; }
 .nexus-bd-together-icon { font-size: 1.32rem; line-height: 1; }
+/* The scene stamp on the Scene Tale tile. Sized to sit exactly where the glyph sat, so a tile
+   with a picture and a tile without one are the same height and the grid never reflows when a
+   scene is or is not recognised. */
+.nexus-bd-together-tilethumb {
+  width: 2.6rem; height: 1.46rem; object-fit: cover; border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, .12); display: block;
+}
 .nexus-bd-together-name { font-size: .74rem; letter-spacing: .03em; }
 .nexus-bd-together-options { display: flex; flex-direction: column; gap: .45rem; }
 .nexus-bd-together-option {

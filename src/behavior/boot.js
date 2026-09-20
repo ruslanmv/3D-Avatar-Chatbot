@@ -107,6 +107,10 @@
         // PrivateConversationView, which draws one, and before anything else that names media;
         // SceneTaleConversationView is injected later and reads both off the window.
         'src/features/together/MediaTitle.js',
+        // What the current place looks like, read-only, for the thumbnails Together draws.
+        // Before TogetherPanel and Playground, both of which ask it while painting; the two
+        // Scene Tale views are injected later and read it off the window.
+        'src/features/together/SceneArt.js',
         'src/features/together/ui/SoundtrackStrip.js',
         // P14. Every visible word Private says that a model did not write. Before the view, the
         // capability and the choices, all three of which read it at draw time — a module that
