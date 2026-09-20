@@ -167,7 +167,16 @@
          * @param {Array} conversationHistory - Previous messages for context (optional)
          * @returns {Promise<string>} AI response
          */
-        async sendMessage(userMessage, systemPrompt, conversationHistory = []) {
+        /**
+         * @param {object} [options] - `{ signal }` aborts the request at the transport.
+         *
+         * Optional, and every existing caller omits it. It matters for callers that give up on
+         * a slow request: without a signal the fetch keeps running and the provider keeps the
+         * generation slot, so a *second* request queues behind work nobody is waiting for any
+         * more. That is the shape of the reported Scene Tale freeze — the first story prepared
+         * fine and the second sat on `Understanding this place` forever.
+         */
+        async sendMessage(userMessage, systemPrompt, conversationHistory = [], options = {}) {
             const cfg = this._settings;
             const provider = cfg.provider;
 
@@ -180,23 +189,23 @@
             }
 
             if (provider === LLMProvider.OPENAI) {
-                return await this._chatOpenAI(userMessage, systemPrompt, conversationHistory);
+                return await this._chatOpenAI(userMessage, systemPrompt, conversationHistory, options);
             }
 
             if (provider === LLMProvider.CLAUDE) {
-                return await this._chatClaude(userMessage, systemPrompt, conversationHistory);
+                return await this._chatClaude(userMessage, systemPrompt, conversationHistory, options);
             }
 
             if (provider === LLMProvider.WATSONX) {
-                return await this._chatWatsonx(userMessage, systemPrompt, conversationHistory);
+                return await this._chatWatsonx(userMessage, systemPrompt, conversationHistory, options);
             }
 
             if (provider === LLMProvider.OLLAMA) {
-                return await this._chatOllama(userMessage, systemPrompt, conversationHistory);
+                return await this._chatOllama(userMessage, systemPrompt, conversationHistory, options);
             }
 
             if (provider === LLMProvider.OLLABRIDGE) {
-                return await this._chatOllaBridge(userMessage, systemPrompt, conversationHistory);
+                return await this._chatOllaBridge(userMessage, systemPrompt, conversationHistory, options);
             }
 
             throw new Error(`Provider ${provider} is not implemented.`);
@@ -593,15 +602,22 @@
          * @param {number} [maxRetries=2]
          * @returns {Promise<Response>}
          */
-        async _postOllaBridgeWithRetry(url, headers, body, maxRetries = 2) {
+        async _postOllaBridgeWithRetry(url, headers, body, maxRetries = 2, options = {}) {
             const RETRYABLE = [502, 503, 504];
             const backoffMs = [400, 1200];
             let res = null;
 
             for (let attempt = 0; attempt <= maxRetries; attempt++) {
+                // A caller that has already given up must not start attempt two.
+                if (options.signal && options.signal.aborted) throw new Error('aborted');
                 res = this._hasProxy()
-                    ? await this._fetchViaProxy(url, 'POST', headers, body)
-                    : await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+                    ? await this._fetchViaProxy(url, 'POST', headers, body, options)
+                    : await fetch(url, {
+                          method: 'POST',
+                          headers,
+                          body: JSON.stringify(body),
+                          signal: options.signal,
+                      });
 
                 if (res.ok || !RETRYABLE.includes(res.status)) return res;
 
@@ -617,7 +633,7 @@
             return res;
         }
 
-        async _fetchViaProxy(url, method, headers, body) {
+        async _fetchViaProxy(url, method, headers, body, options = {}) {
             // Use proxy_url directly - it already includes /proxy or /api/proxy
             const proxyUrl = this._proxyBase();
 
@@ -632,6 +648,7 @@
                     headers,
                     body,
                 }),
+                signal: options.signal,
             });
 
             // Return upstream response as-is (including non-OK status codes like 401).
@@ -687,7 +704,7 @@
         // Provider API Implementations
         // ===============================================
 
-        async _chatOpenAI(userMessage, systemPrompt, conversationHistory = []) {
+        async _chatOpenAI(userMessage, systemPrompt, conversationHistory = [], options = {}) {
             const { api_key: rawKey, model, base_url } = this._settings.openai;
 
             // Trim whitespace (prevents copy/paste issues)
@@ -724,12 +741,13 @@
 
             let res;
             if (this._hasProxy()) {
-                res = await this._fetchViaProxy(url, 'POST', headers, body);
+                res = await this._fetchViaProxy(url, 'POST', headers, body, options);
             } else {
                 res = await fetch(url, {
                     method: 'POST',
                     headers,
                     body: JSON.stringify(body),
+                    signal: options.signal,
                 });
             }
 
@@ -747,7 +765,7 @@
             });
         }
 
-        async _chatClaude(userMessage, systemPrompt, conversationHistory = []) {
+        async _chatClaude(userMessage, systemPrompt, conversationHistory = [], options = {}) {
             const { api_key: rawKey, model, base_url } = this._settings.claude;
 
             // Trim whitespace (prevents copy/paste issues)
@@ -783,12 +801,13 @@
 
             let res;
             if (this._hasProxy()) {
-                res = await this._fetchViaProxy(url, 'POST', headers, body);
+                res = await this._fetchViaProxy(url, 'POST', headers, body, options);
             } else {
                 res = await fetch(url, {
                     method: 'POST',
                     headers,
                     body: JSON.stringify(body),
+                    signal: options.signal,
                 });
             }
 
@@ -806,7 +825,7 @@
             });
         }
 
-        async _chatWatsonx(userMessage, systemPrompt, conversationHistory = []) {
+        async _chatWatsonx(userMessage, systemPrompt, conversationHistory = [], options = {}) {
             const { project_id, model_id, base_url } = this._settings.watsonx;
             if (!project_id) throw new Error('Watsonx credentials missing');
 
@@ -840,12 +859,13 @@
 
             let res;
             if (this._hasProxy()) {
-                res = await this._fetchViaProxy(url, 'POST', headers, body);
+                res = await this._fetchViaProxy(url, 'POST', headers, body, options);
             } else {
                 res = await fetch(url, {
                     method: 'POST',
                     headers,
                     body: JSON.stringify(body),
+                    signal: options.signal,
                 });
             }
 
@@ -863,7 +883,7 @@
             });
         }
 
-        async _chatOllama(userMessage, systemPrompt, conversationHistory = []) {
+        async _chatOllama(userMessage, systemPrompt, conversationHistory = [], options = {}) {
             const { base_url, model } = this._settings.ollama;
             const url = `${(base_url || 'http://localhost:11434').replace(/\/$/, '')}/api/chat`;
             const headers = { 'Content-Type': 'application/json' };
@@ -883,12 +903,13 @@
             let res;
             // Ollama typically doesn't need proxy (local), but support it anyway
             if (this._hasProxy()) {
-                res = await this._fetchViaProxy(url, 'POST', headers, body);
+                res = await this._fetchViaProxy(url, 'POST', headers, body, options);
             } else {
                 res = await fetch(url, {
                     method: 'POST',
                     headers,
                     body: JSON.stringify(body),
+                    signal: options.signal,
                 });
             }
 
@@ -910,7 +931,7 @@
          * Connects through OllaBridge to chat with HomePilot persona agents
          * or any other model available through the OllaBridge gateway.
          */
-        async _chatOllaBridge(userMessage, systemPrompt, conversationHistory = []) {
+        async _chatOllaBridge(userMessage, systemPrompt, conversationHistory = [], options = {}) {
             const { api_key: rawKey, pair_token: rawPairToken, auth_mode, model, base_url } = this._settings.ollabridge;
 
             const api_key = (rawKey || '').trim();
@@ -987,7 +1008,7 @@
                 max_tokens: this._tokenBudget(800),
             };
 
-            const res = await this._postOllaBridgeWithRetry(url, headers, body);
+            const res = await this._postOllaBridgeWithRetry(url, headers, body, 2, options);
 
             if (!res.ok) {
                 const gatewayMsg = this._gatewayErrorMessage(res.status);

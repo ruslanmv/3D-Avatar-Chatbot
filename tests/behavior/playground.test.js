@@ -183,9 +183,13 @@ describe('Scene Tale customer journey', () => {
             expect(root.textContent).toContain('About 5 minutes · 2 choices');
             expect(root.querySelector('[data-action="start-story"]')).not.toBeNull();
         });
+        // The scene reaches the planner under the catalogue's own id, not whichever alias the
+        // blackboard happened to hold. `currentScene` resolves through `SceneArt` now, so a
+        // generation key (`coastal-terrace-twilight`) and a label both arrive as
+        // `ambient:terrace:night` — one spelling for one place, everywhere downstream.
         expect(planner.prepare).toHaveBeenCalledWith(
             expect.objectContaining({
-                scene: scene(),
+                scene: { id: 'ambient:terrace:night', label: 'Coastal Terrace · Twilight' },
                 idea: 'A letter somebody never delivered',
                 music: 'auto',
             })
@@ -225,7 +229,7 @@ describe('Scene Tale customer journey', () => {
         expect(activity.history.all()).toEqual([
             expect.objectContaining({
                 title: 'The Letter at the Last Light',
-                sceneId: 'coastal-terrace-twilight',
+                sceneId: 'ambient:terrace:night',
                 fiction: true,
             }),
         ]);
