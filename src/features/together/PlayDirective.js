@@ -142,13 +142,21 @@
      */
     function privateActive(options) {
         const capability = (options && options.capability) || (global && global.NEXUS_TOGETHER_CAPABILITY) || null;
-        if (!capability || typeof capability.privateSessionActive !== 'function') return false;
+        if (!capability) return false;
         try {
-            return capability.privateSessionActive() === true;
+            // `privateChangeAllowed` is the question that matters: false only inside a running
+            // session the user has not just asked for a change in. Outside Private it is always
+            // true, so ordinary chat keeps the capability exactly as it was.
+            if (typeof capability.privateChangeAllowed === 'function') {
+                return capability.privateChangeAllowed() !== true;
+            }
+            if (typeof capability.privateSessionActive === 'function') {
+                return capability.privateSessionActive() === true;
+            }
         } catch (_) {
             // A capability that throws is not a Private session anybody can prove is running.
-            return false;
         }
+        return false;
     }
 
     /**

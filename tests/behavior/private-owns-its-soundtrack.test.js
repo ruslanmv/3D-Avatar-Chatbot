@@ -28,6 +28,8 @@
 
 const Capability = require('../../src/features/together/TogetherCapability.js');
 const PlayDirective = require('../../src/features/together/PlayDirective.js');
+const AmbienceDirective = require('../../src/features/ambience/SceneAmbienceDirective.js');
+const AmbienceCapability = require('../../src/features/ambience/SceneAmbienceCapability.js');
 
 /** A director with a Private session genuinely running, the way `privateContext` reads it. */
 function privateRunning() {
@@ -45,12 +47,16 @@ function ordinaryChat() {
 }
 
 beforeEach(() => {
+    Capability.resetChangeWindow();
+    window.NEXUS_TOGETHER_CAPABILITY = Capability;
     window.NEXUS_TOGETHER_SWITCH = { isOn: () => true, onChange: () => () => {} };
     // A discovery provider exists, so `canSearch()` is true and the instruction is on the table.
     window.NEXUS_DISCOVERY = { forCapability: () => ({ search: () => Promise.resolve([]) }) };
 });
 
 afterEach(() => {
+    Capability.resetChangeWindow();
+    delete window.NEXUS_TOGETHER_CAPABILITY;
     delete window.NEXUS_TOGETHER_SWITCH;
     delete window.NEXUS_DISCOVERY;
     delete window.NEXUS_BD;
@@ -156,5 +162,123 @@ describe('execution re-checks, because a prompt is not a guarantee', () => {
             },
         });
         expect(intent.fulfil).toHaveBeenCalled();
+    });
+});
+
+describe('the place is set at setup too, and stays set', () => {
+    /**
+     * The soundtrack was only half of it. A scene change is the same decision by the other door:
+     * the setup screen picked where they are, and a model that moves the room mid-session undoes
+     * the choice the person made there. If the AI can revisit either, the setup screen stops
+     * meaning anything.
+     */
+    test('a running session is not offered the scene vocabulary', () => {
+        privateRunning();
+        const suffix = AmbienceCapability.systemPromptSuffix({
+            switch: { isEnabled: () => true },
+            capability: Capability,
+        });
+        expect(suffix).toBe('');
+    });
+
+    test('and a scene directive from the model is refused', () => {
+        privateRunning();
+        const controller = { requestByIntent: jest.fn() };
+        const out = AmbienceDirective.consume('<ambience intent="beach"></ambience>Somewhere warmer.', {
+            switch: { isEnabled: () => true },
+            controller,
+            capability: Capability,
+        });
+        expect(controller.requestByIntent).not.toHaveBeenCalled();
+        expect(out).toContain('Somewhere warmer.');
+    });
+
+    test('outside Private the scene still changes as it always did', () => {
+        ordinaryChat();
+        const controller = { requestByIntent: jest.fn() };
+        AmbienceDirective.consume('<ambience intent="beach"></ambience>Here we are.', {
+            switch: { isEnabled: () => true },
+            controller,
+            capability: Capability,
+        });
+        expect(controller.requestByIntent).toHaveBeenCalled();
+    });
+});
+
+describe('but the user may still ask, or the setup screen is a one-way door', () => {
+    /**
+     * The rule is about *who decides*, not about freezing the session. She must not reach for a
+     * different track on her own initiative; the person who chose it may change their mind.
+     */
+    test('asking for different music lets the next reply act on it', () => {
+        privateRunning();
+        const intent = { fulfil: jest.fn() };
+        // Blocked on her own initiative...
+        PlayDirective.consume('<play kind="music">jazz</play>', { intent });
+        expect(intent.fulfil).not.toHaveBeenCalled();
+
+        // ...allowed once the person asks.
+        Capability.noteUserTurn('play something else');
+        PlayDirective.consume('<play kind="music">jazz</play>', { intent });
+        expect(intent.fulfil).toHaveBeenCalled();
+    });
+
+    test('asking to stop the music counts as asking', () => {
+        privateRunning();
+        Capability.noteUserTurn('stop the music');
+        expect(Capability.privateChangeAllowed()).toBe(true);
+    });
+
+    test('asking to change the place opens the same door', () => {
+        privateRunning();
+        const controller = { requestByIntent: jest.fn() };
+        Capability.noteUserTurn('can we change the scene to a beach');
+        AmbienceDirective.consume('<ambience intent="beach"></ambience>', {
+            switch: { isEnabled: () => true },
+            controller,
+            capability: Capability,
+        });
+        expect(controller.requestByIntent).toHaveBeenCalled();
+    });
+
+    test('ordinary conversation does not open it by accident', () => {
+        // The scene half is deliberately narrow. Mentioning a place is not asking to go there,
+        // and a session that re-scened itself because somebody described a beach would be the
+        // reported bug wearing a different hat.
+        privateRunning();
+        for (const said of [
+            'Tell me what you had in mind.',
+            'I had in mind a secluded beachside villa surrounded by greenery.',
+            'That is a good answer.',
+            'This music suits you.',
+        ]) {
+            Capability.noteUserTurn(said);
+            expect(Capability.privateChangeAllowed()).toBe(false);
+        }
+    });
+
+    test('permission belongs to the moment, not to the session', () => {
+        // "Put something else on" five minutes ago must not authorise a swap she decides on now.
+        privateRunning();
+        Capability.noteUserTurn('play something else');
+        expect(Capability.privateChangeAllowed()).toBe(true);
+
+        const realNow = Date.now;
+        Date.now = () => realNow() + Capability.CHANGE_WINDOW_MS + 1000;
+        try {
+            expect(Capability.privateChangeAllowed()).toBe(false);
+        } finally {
+            Date.now = realNow;
+        }
+    });
+
+    test('only a user turn can open it — her own words cannot', () => {
+        // `noteUserTurn` is called from `_onUserTurn` and nowhere else, so a reply that says
+        // "let me play something" grants nothing.
+        privateRunning();
+        PlayDirective.consume('Let me play something to match that vibe.', {
+            claim: { honour: jest.fn() },
+        });
+        expect(Capability.privateChangeAllowed()).toBe(false);
     });
 });

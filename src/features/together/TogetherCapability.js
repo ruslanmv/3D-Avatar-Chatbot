@@ -721,6 +721,66 @@
         return Boolean(privateContext());
     }
 
+    /**
+     * How long a request to change the music or the place stays granted.
+     *
+     * One turn's worth of wall clock. The permission is opened by the user's own message and is
+     * meant to cover the reply to it — long enough for a slow local model to finish writing,
+     * short enough that "put something else on" five minutes ago cannot authorise a swap she
+     * decides on later.
+     */
+    const CHANGE_WINDOW_MS = 120000;
+
+    /**
+     * When the user last asked for the music or the place to change, and nothing else.
+     *
+     * Private sets its scene and its soundtrack once, at setup, and the whole point of that
+     * screen is that those decisions are made deliberately and then left alone. So the model
+     * does not get to revisit them — but the *user* must, or the setup screen would be a
+     * one-way door. This is the difference between the two, recorded at the only moment it can
+     * be known: when the person says it.
+     */
+    let _changeAskedAt = 0;
+
+    /** Did this message ask for the music or the place to change? */
+    function asksForChange(text) {
+        const said = String(text == null ? '' : text).trim();
+        if (!said) return false;
+        const media = optional('./MediaCommand.js', 'NEXUS_MEDIA_COMMAND');
+        try {
+            if (media && typeof media.action === 'function' && media.action(said)) return true;
+            if (media && typeof media.transport === 'function' && media.transport(said)) return true;
+        } catch (_) {
+            // A classifier that throws decides nothing; fall through to the scene words.
+        }
+        // The scene half. Deliberately narrow: this opens a door, so it should want a sentence
+        // that is plainly about changing where they are, not merely one that mentions a place.
+        return /\b(change|switch|move|take us|put us|go)\b[^.?!]{0,40}\b(scene|place|room|somewhere|ambience|background)\b/i.test(
+            said
+        );
+    }
+
+    /** Called with the user's own words. Only the user can open this. */
+    function noteUserTurn(text) {
+        if (asksForChange(text)) _changeAskedAt = Date.now();
+    }
+
+    /**
+     * May a scene or soundtrack change run right now?
+     *
+     * Outside Private: always — nothing here narrows ordinary chat. Inside a session: only if
+     * the user asked for it within the window above.
+     */
+    function privateChangeAllowed() {
+        if (!privateSessionActive()) return true;
+        return Date.now() - _changeAskedAt < CHANGE_WINDOW_MS;
+    }
+
+    /** Tests, and a session ending: the next one must not inherit a granted permission. */
+    function resetChangeWindow() {
+        _changeAskedAt = 0;
+    }
+
     function systemPromptSuffix() {
         const state = sw();
         if (!state || !state.isOn()) return '';
@@ -1085,6 +1145,10 @@
          * made of them.
          */
         _onUserTurn(text) {
+            // Asking for different music, or a different room, is a decision only the person gets
+            // to make once a session is running. Recorded here because this is the one place the
+            // user's own words are seen.
+            noteUserTurn(text);
             const at = this.now();
             this._turns += 1;
             this._lastTurnAt = at;
@@ -2677,6 +2741,11 @@
         CLOSE,
         INSTRUCTION,
         privateSessionActive,
+        privateChangeAllowed,
+        noteUserTurn,
+        asksForChange,
+        resetChangeWindow,
+        CHANGE_WINDOW_MS,
         PRIVATE_PRESETS,
         PRIVATE_RUNTIME_VERSION,
         IntimateExperienceSession,
