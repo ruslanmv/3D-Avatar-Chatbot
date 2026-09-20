@@ -225,6 +225,66 @@
         return verb;
     }
 
+    /**
+     * The labelled form — `[[emote: lean_in thinking]]` — which is a different shape entirely (P21).
+     *
+     * Reported from a Private session at Sensual, on screen and in the voice:
+     *
+     *     HER  [[emote: lean_in thinking]] I'd love to dive deeper into some interesting topics…
+     *
+     * The allowlist above could never catch it. `isDirection` splits the inner text into words and
+     * requires every one to be a performance verb or filler, and the first word here is `emote` —
+     * a *label*, not a thing a body does. So the fragment failed the test, stayed in the line, and
+     * the synthesiser read the brackets out.
+     *
+     * Worse than a leak: the model was asking for `lean_in`, which is one of the three intents
+     * Private is allowed to emit. The marker was correct and we both showed it and ignored it.
+     *
+     * Deliberately its own pattern rather than adding `emote` to `VERBS`. The allowlist's rule is
+     * "every word inside is something a body does", and that rule is what keeps `[sic]` and `[1]`
+     * safe; loosening it to admit a label would admit far more. This matches the *syntax* — a
+     * known label, a colon, a payload — so `[emote: anything]` is recognised by its shape and the
+     * payload is then checked separately.
+     */
+    const EMOTE =
+        /\[{1,2}\s*(?:emote|emotion|action|gesture|motion|anim|animation|expression)\s*[:=]\s*([^\][\n]{1,60})\]{1,2}/gi;
+
+    /**
+     * Every motion name the app can act on, so a payload can be recognised as one directly.
+     *
+     * `lean_in` is not an English verb and never will be in `VERBS`; it is the name of an intent.
+     * A model that writes the intent name has done exactly the right thing, and this is what lets
+     * that count.
+     */
+    const INTENTS = new Set([...Object.values(PRESENCE), 'lean_in', 'nod_along', 'breathe']);
+
+    /** `lean-in`, `Lean In`, `LEAN_IN` are one name. */
+    function intentName(value) {
+        return String(value || '')
+            .trim()
+            .toLowerCase()
+            .replace(/[\s-]+/g, '_')
+            .replace(/[^a-z_]/g, '');
+    }
+
+    /**
+     * What a labelled payload was asking for, or null.
+     *
+     * Two ways to be right: the payload names an intent (`lean_in`), or its first word is a verb
+     * the allowlist already knows (`smiling`). Anything else strips the marker — it is markup
+     * either way and must not reach the screen — but asks for no movement, because forwarding an
+     * unrecognised name would be this file guessing at the animation registry's vocabulary.
+     */
+    function emoteIntent(payload) {
+        const whole = intentName(payload);
+        if (INTENTS.has(whole)) return whole;
+        for (const part of words(payload)) {
+            if (VERB_SET.has(part)) return part;
+            if (INTENTS.has(part)) return part;
+        }
+        return '';
+    }
+
     // `[…]` and `*…*`, the two shapes models reach for. A Markdown link's `[label](url)` is
     // excluded by the lookahead: its label is text, not a direction, and eating it would leave a
     // bare `(url)` behind.
@@ -248,8 +308,23 @@
             markers.push(verb);
             return '';
         };
-        let text = original.replace(BRACKETED, take).replace(ASTERISKED, take);
+        // The labelled form first, because `[[emote: …]]` contains a `[…]` the next pattern would
+        // otherwise match and reject, leaving the outer brackets behind as `[]`.
+        let text = original.replace(EMOTE, (match, payload) => {
+            const intent = emoteIntent(payload);
+            // Stripped either way: an unrecognised payload is still markup, and markup on screen
+            // is the defect. Only the *movement* depends on recognising it.
+            if (intent) markers.push(intent);
+            else markers.push('');
+            return '';
+        });
+        text = text.replace(BRACKETED, take).replace(ASTERISKED, take);
         if (!markers.length) return { text: original, markers: [] };
+        // An unrecognised payload pushed an empty marker to force the tidy below; it is not a
+        // marker anybody should receive.
+        for (let i = markers.length - 1; i >= 0; i -= 1) {
+            if (!markers[i]) markers.splice(i, 1);
+        }
         // Removing a fragment leaves the space that was around it, and a leading one leaves the
         // sentence starting with a blank. Tidied without touching newlines: paragraphing is hers.
         text = text
@@ -261,9 +336,18 @@
         return { text, markers };
     }
 
-    /** The presence a marker was asking for, or null for one with no motion behind it. */
+    /**
+     * The presence a marker was asking for, or null for one with no motion behind it.
+     *
+     * A marker may be a verb the allowlist mapped (`smiling` → `smile_soft`) or an intent name the
+     * labelled form supplied directly (`lean_in`). The second is an identity: a model that named
+     * the intent asked for it exactly, and mapping it through a verb table would only be a chance
+     * to lose it.
+     */
     function presenceFor(marker) {
-        return PRESENCE[String(marker || '').toLowerCase()] || null;
+        const name = String(marker || '').toLowerCase();
+        if (PRESENCE[name]) return PRESENCE[name];
+        return INTENTS.has(intentName(name)) ? intentName(name) : null;
     }
 
     /** Every presence a reply asked for, de-duplicated, in the order they appeared. */
@@ -276,7 +360,7 @@
         return out;
     }
 
-    const api = { strip, presenceFor, presenceFrom, VERBS, PRESENCE, MAX_WORDS };
+    const api = { strip, presenceFor, presenceFrom, VERBS, PRESENCE, INTENTS, MAX_WORDS };
 
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_STAGE_DIRECTIONS = api;
