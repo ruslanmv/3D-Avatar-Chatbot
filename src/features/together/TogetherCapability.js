@@ -710,11 +710,34 @@
         return result.text || body;
     }
 
+    /**
+     * Whether a Private session is running right now.
+     *
+     * Named separately from `privateContext()` because the two questions are different: that one
+     * asks "what is the state of the Private experience", this one asks "is one happening", and
+     * the second is what several capabilities need in order to get out of the way.
+     */
+    function privateSessionActive() {
+        return Boolean(privateContext());
+    }
+
     function systemPromptSuffix() {
         const state = sw();
         if (!state || !state.isOn()) return '';
         const chunks = [];
-        if (canSearch()) chunks.push(INSTRUCTION);
+        // The media instruction is withheld while a Private session is running.
+        //
+        // Private picks its soundtrack once, at setup, from the preflight. That choice is part of
+        // the atmosphere: it was made deliberately before anything started and it is meant to sit
+        // under the whole evening. Telling the model in the same breath that it can search for and
+        // play anything it likes invites exactly what was reported — she says "let me play
+        // something to match that vibe", a *different* track starts, and the room the user set up
+        // is gone. There is no version of that which is an improvement, because the alternative
+        // the model reaches for is always "something else".
+        //
+        // Ordinary chat keeps the capability untouched; this only removes it for the minutes a
+        // Private session is open.
+        if (canSearch() && !privateSessionActive()) chunks.push(INSTRUCTION);
         const privateSuffix = privateSystemPromptSuffix();
         if (privateSuffix) chunks.push(privateSuffix.trim());
         return chunks.length ? `\n${chunks.join('\n\n')}\n` : '';
@@ -2653,6 +2676,7 @@
         OPEN,
         CLOSE,
         INSTRUCTION,
+        privateSessionActive,
         PRIVATE_PRESETS,
         PRIVATE_RUNTIME_VERSION,
         IntimateExperienceSession,
