@@ -53,6 +53,16 @@
      * than to a route this app picked out of the list. Anyone who has chosen a model in Settings
      * is unaffected — this only replaces the placeholder.
      */
+    /**
+     * How long a direct OllaBridge request may run before this client stops waiting.
+     *
+     * Slightly above the gateway's own 180s relay budget, so its answer — "the device did not
+     * respond" — arrives before ours and the user gets the diagnosis rather than a bare abort.
+     * It exists because going direct removes the serverless proxy's 55s ceiling, and with it the
+     * only thing that was stopping a wedged gateway from hanging the request forever.
+     */
+    const OLLABRIDGE_DIRECT_TIMEOUT_MS = 190000;
+
     const OLLABRIDGE_SENTINEL_MODEL = 'default';
     const OLLABRIDGE_FALLBACK_MODEL = 'qwen2.5:1.5b';
 
@@ -152,6 +162,12 @@
             this._watsonxTokenCache = null; // Cache for Watsonx IAM token
             this._watsonxTokenExpiry = 0;
             this._modelsStale = false; // Set true when a persona becomes unavailable
+            /**
+             * Whether the browser is allowed to call OllaBridge without the proxy.
+             *
+             * `null` until the first request settles the question. See `_postOllaBridge`.
+             */
+            this._ollaBridgeDirect = null;
             console.log('[LLMManager] Initialized with provider:', this._settings.provider);
         }
 
@@ -626,6 +642,92 @@
          * @param {number} [maxRetries=2]
          * @returns {Promise<Response>}
          */
+        /**
+         * One OllaBridge POST, direct if the browser is allowed to make it.
+         *
+         * The serverless proxy exists because OpenAI, Claude and Watsonx send no CORS headers, so
+         * a browser cannot call them from a page. OllaBridge is not in that group: it answers a
+         * preflight from this app's origin with `access-control-allow-origin`,
+         * `access-control-allow-methods: POST` and `access-control-allow-headers:
+         * authorization,content-type`. Routing it through the proxy anyway bought nothing and
+         * cost the only thing that matters here — a deadline.
+         *
+         * `api/proxy.js` aborts upstream at 55s inside a function capped at 60s, and a chat
+         * relayed to somebody's own PC does not fit in that. A local model measured on the
+         * reported setup takes 45 seconds for one completion; the gateway's own relay budget is
+         * 180. So every request the device *would* have answered came back 504 instead, three
+         * times over, while the device finished the work and found nobody waiting:
+         *
+         *     relay_hub - ERROR   - Request job_… to device dev_… timed out
+         *     relay_hub - WARNING - Received response for unknown/completed request job_…
+         *
+         * Going direct removes the serverless hop and its ceiling entirely. What remains is the
+         * gateway's 180s, which a local model comfortably fits inside.
+         *
+         * The fallback is learned once per session rather than configured. A direct call can
+         * still be impossible — a gateway on a private host with no CORS, a corporate proxy, an
+         * `http://` gateway from an `https://` page — and all of those surface as a thrown
+         * `TypeError` rather than a status code, because the browser blocks the request before
+         * there is a response. The first time that happens we fall back to the proxy and keep
+         * using it, so a deployment that needs the proxy pays one failed fetch, once.
+         */
+        async _postOllaBridge(url, headers, body, options = {}) {
+            const proxyAvailable = this._hasProxy();
+
+            /**
+             * The caller's signal, plus a deadline of our own.
+             *
+             * Without the proxy there is no longer anything upstream that gives up, so a gateway
+             * that accepts the connection and then says nothing would hold the request open for
+             * as long as the tab is. The caller's own abort still wins when it has one.
+             */
+            const withDeadline = () => {
+                if (typeof AbortController !== 'function') return { signal: options.signal, done: () => {} };
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), OLLABRIDGE_DIRECT_TIMEOUT_MS);
+                const relay = () => controller.abort();
+                if (options.signal) {
+                    if (options.signal.aborted) controller.abort();
+                    else options.signal.addEventListener('abort', relay, { once: true });
+                }
+                return {
+                    signal: controller.signal,
+                    done: () => {
+                        clearTimeout(timer);
+                        if (options.signal) options.signal.removeEventListener('abort', relay);
+                    },
+                };
+            };
+
+            if (!proxyAvailable || this._ollaBridgeDirect !== false) {
+                const deadline = withDeadline();
+                try {
+                    return await fetch(url, {
+                        method: 'POST',
+                        headers,
+                        body: JSON.stringify(body),
+                        signal: deadline.signal,
+                    });
+                } catch (error) {
+                    // An abort is this client giving up on purpose, not the browser refusing the
+                    // request. Falling back to the proxy would re-send work we just cancelled.
+                    const aborted =
+                        (options.signal && options.signal.aborted) ||
+                        (error && (error.name === 'AbortError' || /abort/i.test(error.message || '')));
+                    if (aborted || !proxyAvailable) throw error;
+                    this._ollaBridgeDirect = false;
+                    console.warn(
+                        '[LLMManager] OllaBridge direct request blocked (%s) — using the proxy for ' +
+                            'the rest of this session. Long local-model replies may hit its time limit.',
+                        (error && error.message) || error
+                    );
+                } finally {
+                    deadline.done();
+                }
+            }
+            return this._fetchViaProxy(url, 'POST', headers, body, options);
+        }
+
         async _postOllaBridgeWithRetry(url, headers, body, maxRetries = 2, options = {}) {
             const RETRYABLE = [502, 503, 504];
             const backoffMs = [400, 1200];
@@ -645,14 +747,7 @@
             for (let attempt = 0; attempt <= maxRetries; attempt++) {
                 // A caller that has already given up must not start attempt two.
                 if (options.signal && options.signal.aborted) throw new Error('aborted');
-                res = this._hasProxy()
-                    ? await this._fetchViaProxy(url, 'POST', headers, body, options)
-                    : await fetch(url, {
-                          method: 'POST',
-                          headers,
-                          body: JSON.stringify(body),
-                          signal: options.signal,
-                      });
+                res = await this._postOllaBridge(url, headers, body, options);
 
                 if (res.ok || !RETRYABLE.includes(res.status)) return res;
 
