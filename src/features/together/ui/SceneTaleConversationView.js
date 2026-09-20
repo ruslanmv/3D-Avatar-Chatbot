@@ -82,7 +82,15 @@ const SceneTaleConversationView = (() => {
 .${SOUNDTRACK_CLASS}{pointer-events:auto;display:flex;align-items:flex-start;gap:10px;justify-content:space-between;padding:9px 12px;margin:0 12px 10px;border:1px solid rgba(255,255,255,.1);border-radius:11px;background:rgba(0,0,0,.13)}
 .nexus-scene-tale-soundtrack-copy{min-width:0;flex:1}.nexus-scene-tale-soundtrack-kicker{font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;opacity:.56;margin-bottom:2px}.nexus-scene-tale-soundtrack-title{font-size:.8rem;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nexus-scene-tale-soundtrack-creator{font-size:.7rem;line-height:1.3;opacity:.58;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}.nexus-scene-tale-soundtrack-toggle{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:inherit;border-radius:9px;padding:6px 8px;font:inherit;font-size:.72rem;cursor:pointer;flex:0 0 auto}.nexus-scene-tale-soundtrack-toggle:hover,.nexus-scene-tale-soundtrack-toggle:focus-visible{background:rgba(255,255,255,.12);outline:none}
 .${PLAYER_CLASS}{display:none;width:min(280px,calc(100% - 24px));margin:0 12px 10px}.${PLAYER_CLASS}.is-open{display:block}.${PLAYER_CLASS} .nexus-yt-card{width:100%;max-width:280px;margin:0}.${PLAYER_CLASS} .nexus-yt-meta{font-size:.72rem}
-.nexus-story-setup-label{display:block;font-size:.78rem;opacity:.72;margin:12px 0 5px}.nexus-story-setup-input{width:100%;min-height:72px;resize:vertical;border-radius:11px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:inherit;padding:10px;font:inherit}.nexus-story-radio{display:flex;align-items:center;gap:8px;margin:7px 0;font-size:.88rem}.nexus-story-progress{display:grid;gap:7px;margin:12px 0}.nexus-story-progress-row{font-size:.86rem;opacity:.72}.nexus-story-progress-row.is-done{opacity:1}.nexus-story-ready-meta{font-size:.84rem;opacity:.75;line-height:1.55;margin:8px 0 14px;white-space:pre-line}
+.nexus-story-setup-label{display:block;font-size:.78rem;opacity:.72;margin:12px 0 5px}.nexus-story-setup-input{width:100%;min-height:72px;resize:vertical;border-radius:11px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:inherit;padding:10px;font:inherit}.nexus-story-radio{display:flex;align-items:center;gap:8px;margin:7px 0;font-size:.88rem}.nexus-story-progress{display:grid;gap:7px;margin:12px 0}.nexus-story-progress-row{font-size:.86rem;opacity:.72}.nexus-story-progress-row.is-done{opacity:1}.nexus-story-progress-row.is-pending{opacity:.45}.nexus-story-progress-row.is-running{opacity:1;color:#7fe3f5}.nexus-story-progress-row.is-skipped{opacity:.55}.nexus-story-progress-row.is-failed{opacity:.9;color:#f2a0a0}.nexus-story-ready-meta{font-size:.84rem;opacity:.75;line-height:1.55;margin:8px 0 14px;white-space:pre-line}
+/* The scene strip Preparing and Ready draw, and the size is the point of it. The place the
+   story belongs to is a row with a 64px stamp in it — not a banner, and never a second
+   background. The calibrated picture of this scene is already on screen behind her; this one
+   is a label with a thumbnail, and it is small enough that nobody can confuse the two. */
+.nexus-story-scene-strip{display:flex;align-items:center;gap:10px;margin:10px 0 2px;padding:6px 9px;border:1px solid rgba(255,255,255,.1);border-radius:11px;background:rgba(255,255,255,.04);font-size:.84rem}
+.nexus-story-scene-thumb{width:64px;height:36px;flex:0 0 64px;object-fit:cover;border-radius:7px;border:1px solid rgba(255,255,255,.08)}
+.nexus-story-scene-name{min-width:0;opacity:.82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:560px){.nexus-story-scene-strip{gap:8px;padding:5px 7px;font-size:.8rem}.nexus-story-scene-thumb{width:52px;height:30px;flex-basis:52px}}
 @media(max-width:700px){#${ROW_ID}{margin:8px 0 12px}.nexus-story-options{grid-template-columns:1fr}.nexus-story-caption{font-size:.94rem}.${PLAYER_CLASS}{width:calc(100% - 24px)}.${PLAYER_CLASS} .nexus-yt-card{max-width:100%}}
 @media(max-width:560px){#${HUD_ID}:not(.is-conversation){width:calc(100vw - 18px);bottom:max(9px,env(safe-area-inset-bottom))}.nexus-story-bar{gap:6px;flex-wrap:wrap}.nexus-story-btn{padding:7px 9px}.nexus-story-heading{padding:13px 14px 10px}.nexus-story-card{padding:13px 14px}}
 `;
@@ -498,12 +506,15 @@ const SceneTaleConversationView = (() => {
             if (edit.textContent !== 'Edit setup') edit.textContent = 'Edit setup';
         }
         for (const meta of doc.querySelectorAll('.nexus-story-ready-meta')) {
-            if (/Story ready/i.test(meta.textContent || '')) {
-                meta.textContent = String(meta.textContent || '').replace(
-                    '✓ Story ready · ✓ Scene ready · ',
-                    'Ready to begin · '
-                );
-            }
+            // Write only on an actual change. This runs from a `childList` observer on `body`,
+            // so assigning `textContent` re-enters this function — and an assignment that sets
+            // the same string is still a mutation. The old code tested for `Story ready` but
+            // rewrote with a literal `replace`, so any wording the literal did not match left
+            // the guard true and the write a no-op: a hot loop that pegged a CPU and never
+            // returned. The `Edit setup` line above already had the right shape; this matches it.
+            const text = String(meta.textContent || '');
+            const next = text.replace('✓ Story ready · ✓ Scene ready · ', 'Ready to begin · ');
+            if (next !== text) meta.textContent = next;
         }
     }
 

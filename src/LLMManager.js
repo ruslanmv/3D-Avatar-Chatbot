@@ -39,6 +39,40 @@
     const OLLABRIDGE_DEFAULT_BASE_URL = 'https://app.ollabridge.com';
 
     /**
+     * What to ask for when nobody has chosen a model.
+     *
+     * `'default'` is the sentinel this app has always stored, and it is not a route OllaBridge
+     * serves. Verified against the live gateway: `"default"` returns HTTP 200 with
+     * `content: ""`, `finish_reason: "stop"` and zero tokens — a successful-looking response
+     * with no completion in it. Downstream that becomes an empty-completion error, which is how
+     * a fresh install with a healthy gateway and forty listed models got `✕ Waking the model`
+     * on the Private warm-up and `No response` in the card.
+     *
+     * The gateway's own listing describes `qwen2.5:1.5b` as the "Compatibility route for the
+     * legacy default model", which is precisely this case, so the sentinel resolves to it rather
+     * than to a route this app picked out of the list. Anyone who has chosen a model in Settings
+     * is unaffected — this only replaces the placeholder.
+     */
+    /**
+     * How long a direct OllaBridge request may run before this client stops waiting.
+     *
+     * Slightly above the gateway's own 180s relay budget, so its answer — "the device did not
+     * respond" — arrives before ours and the user gets the diagnosis rather than a bare abort.
+     * It exists because going direct removes the serverless proxy's 55s ceiling, and with it the
+     * only thing that was stopping a wedged gateway from hanging the request forever.
+     */
+    const OLLABRIDGE_DIRECT_TIMEOUT_MS = 190000;
+
+    const OLLABRIDGE_SENTINEL_MODEL = 'default';
+    const OLLABRIDGE_FALLBACK_MODEL = 'qwen2.5:1.5b';
+
+    /** The model to send: whatever was chosen, or a route that actually answers. */
+    function ollaBridgeModel(model) {
+        const chosen = String(model || '').trim();
+        return !chosen || chosen === OLLABRIDGE_SENTINEL_MODEL ? OLLABRIDGE_FALLBACK_MODEL : chosen;
+    }
+
+    /**
      * PersonaUnavailableError — thrown when a persona model is unpublished or not found.
      * Allows the UI to display a friendly message instead of a generic error.
      */
@@ -128,6 +162,12 @@
             this._watsonxTokenCache = null; // Cache for Watsonx IAM token
             this._watsonxTokenExpiry = 0;
             this._modelsStale = false; // Set true when a persona becomes unavailable
+            /**
+             * Whether the browser is allowed to call OllaBridge without the proxy.
+             *
+             * `null` until the first request settles the question. See `_postOllaBridge`.
+             */
+            this._ollaBridgeDirect = null;
             console.log('[LLMManager] Initialized with provider:', this._settings.provider);
         }
 
@@ -167,7 +207,16 @@
          * @param {Array} conversationHistory - Previous messages for context (optional)
          * @returns {Promise<string>} AI response
          */
-        async sendMessage(userMessage, systemPrompt, conversationHistory = []) {
+        /**
+         * @param {object} [options] - `{ signal }` aborts the request at the transport.
+         *
+         * Optional, and every existing caller omits it. It matters for callers that give up on
+         * a slow request: without a signal the fetch keeps running and the provider keeps the
+         * generation slot, so a *second* request queues behind work nobody is waiting for any
+         * more. That is the shape of the reported Scene Tale freeze — the first story prepared
+         * fine and the second sat on `Understanding this place` forever.
+         */
+        async sendMessage(userMessage, systemPrompt, conversationHistory = [], options = {}) {
             const cfg = this._settings;
             const provider = cfg.provider;
 
@@ -180,23 +229,23 @@
             }
 
             if (provider === LLMProvider.OPENAI) {
-                return await this._chatOpenAI(userMessage, systemPrompt, conversationHistory);
+                return await this._chatOpenAI(userMessage, systemPrompt, conversationHistory, options);
             }
 
             if (provider === LLMProvider.CLAUDE) {
-                return await this._chatClaude(userMessage, systemPrompt, conversationHistory);
+                return await this._chatClaude(userMessage, systemPrompt, conversationHistory, options);
             }
 
             if (provider === LLMProvider.WATSONX) {
-                return await this._chatWatsonx(userMessage, systemPrompt, conversationHistory);
+                return await this._chatWatsonx(userMessage, systemPrompt, conversationHistory, options);
             }
 
             if (provider === LLMProvider.OLLAMA) {
-                return await this._chatOllama(userMessage, systemPrompt, conversationHistory);
+                return await this._chatOllama(userMessage, systemPrompt, conversationHistory, options);
             }
 
             if (provider === LLMProvider.OLLABRIDGE) {
-                return await this._chatOllaBridge(userMessage, systemPrompt, conversationHistory);
+                return await this._chatOllaBridge(userMessage, systemPrompt, conversationHistory, options);
             }
 
             throw new Error(`Provider ${provider} is not implemented.`);
@@ -593,19 +642,116 @@
          * @param {number} [maxRetries=2]
          * @returns {Promise<Response>}
          */
-        async _postOllaBridgeWithRetry(url, headers, body, maxRetries = 2) {
+        /**
+         * One OllaBridge POST, direct if the browser is allowed to make it.
+         *
+         * The serverless proxy exists because OpenAI, Claude and Watsonx send no CORS headers, so
+         * a browser cannot call them from a page. OllaBridge is not in that group: it answers a
+         * preflight from this app's origin with `access-control-allow-origin`,
+         * `access-control-allow-methods: POST` and `access-control-allow-headers:
+         * authorization,content-type`. Routing it through the proxy anyway bought nothing and
+         * cost the only thing that matters here — a deadline.
+         *
+         * `api/proxy.js` aborts upstream at 55s inside a function capped at 60s, and a chat
+         * relayed to somebody's own PC does not fit in that. A local model measured on the
+         * reported setup takes 45 seconds for one completion; the gateway's own relay budget is
+         * 180. So every request the device *would* have answered came back 504 instead, three
+         * times over, while the device finished the work and found nobody waiting:
+         *
+         *     relay_hub - ERROR   - Request job_… to device dev_… timed out
+         *     relay_hub - WARNING - Received response for unknown/completed request job_…
+         *
+         * Going direct removes the serverless hop and its ceiling entirely. What remains is the
+         * gateway's 180s, which a local model comfortably fits inside.
+         *
+         * The fallback is learned once per session rather than configured. A direct call can
+         * still be impossible — a gateway on a private host with no CORS, a corporate proxy, an
+         * `http://` gateway from an `https://` page — and all of those surface as a thrown
+         * `TypeError` rather than a status code, because the browser blocks the request before
+         * there is a response. The first time that happens we fall back to the proxy and keep
+         * using it, so a deployment that needs the proxy pays one failed fetch, once.
+         */
+        async _postOllaBridge(url, headers, body, options = {}) {
+            const proxyAvailable = this._hasProxy();
+
+            /**
+             * The caller's signal, plus a deadline of our own.
+             *
+             * Without the proxy there is no longer anything upstream that gives up, so a gateway
+             * that accepts the connection and then says nothing would hold the request open for
+             * as long as the tab is. The caller's own abort still wins when it has one.
+             */
+            const withDeadline = () => {
+                if (typeof AbortController !== 'function') return { signal: options.signal, done: () => {} };
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), OLLABRIDGE_DIRECT_TIMEOUT_MS);
+                const relay = () => controller.abort();
+                if (options.signal) {
+                    if (options.signal.aborted) controller.abort();
+                    else options.signal.addEventListener('abort', relay, { once: true });
+                }
+                return {
+                    signal: controller.signal,
+                    done: () => {
+                        clearTimeout(timer);
+                        if (options.signal) options.signal.removeEventListener('abort', relay);
+                    },
+                };
+            };
+
+            if (!proxyAvailable || this._ollaBridgeDirect !== false) {
+                const deadline = withDeadline();
+                try {
+                    return await fetch(url, {
+                        method: 'POST',
+                        headers,
+                        body: JSON.stringify(body),
+                        signal: deadline.signal,
+                    });
+                } catch (error) {
+                    // An abort is this client giving up on purpose, not the browser refusing the
+                    // request. Falling back to the proxy would re-send work we just cancelled.
+                    const aborted =
+                        (options.signal && options.signal.aborted) ||
+                        (error && (error.name === 'AbortError' || /abort/i.test(error.message || '')));
+                    if (aborted || !proxyAvailable) throw error;
+                    this._ollaBridgeDirect = false;
+                    console.warn(
+                        '[LLMManager] OllaBridge direct request blocked (%s) — using the proxy for ' +
+                            'the rest of this session. Long local-model replies may hit its time limit.',
+                        (error && error.message) || error
+                    );
+                } finally {
+                    deadline.done();
+                }
+            }
+            return this._fetchViaProxy(url, 'POST', headers, body, options);
+        }
+
+        async _postOllaBridgeWithRetry(url, headers, body, maxRetries = 2, options = {}) {
             const RETRYABLE = [502, 503, 504];
             const backoffMs = [400, 1200];
             let res = null;
 
+            // A 504 is not the same kind of failure as a 502 or a 503.
+            //
+            // Those mean the gateway is between states — restarting, briefly unreachable — and a
+            // second attempt a moment later is genuinely likely to land. A 504 here means the
+            // request outlived a *time budget*, and on this path that budget is our own serverless
+            // proxy's: `api/proxy.js` aborts upstream at 55s. Asking the same slow model the same
+            // question again takes the same too-long time, so the retries are deterministic
+            // failures that triple the wait. The reported console is three of them back to back
+            // against a model the connection check clocks at 45 seconds.
+            const attemptsFor = (status) => (status === 504 ? Math.min(maxRetries, 1) : maxRetries);
+
             for (let attempt = 0; attempt <= maxRetries; attempt++) {
-                res = this._hasProxy()
-                    ? await this._fetchViaProxy(url, 'POST', headers, body)
-                    : await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+                // A caller that has already given up must not start attempt two.
+                if (options.signal && options.signal.aborted) throw new Error('aborted');
+                res = await this._postOllaBridge(url, headers, body, options);
 
                 if (res.ok || !RETRYABLE.includes(res.status)) return res;
 
-                if (attempt < maxRetries) {
+                if (attempt < attemptsFor(res.status)) {
                     const wait = backoffMs[attempt] || 1200;
                     console.warn(
                         `[LLMManager] OllaBridge returned ${res.status}; retrying in ${wait}ms ` +
@@ -617,7 +763,7 @@
             return res;
         }
 
-        async _fetchViaProxy(url, method, headers, body) {
+        async _fetchViaProxy(url, method, headers, body, options = {}) {
             // Use proxy_url directly - it already includes /proxy or /api/proxy
             const proxyUrl = this._proxyBase();
 
@@ -632,6 +778,7 @@
                     headers,
                     body,
                 }),
+                signal: options.signal,
             });
 
             // Return upstream response as-is (including non-OK status codes like 401).
@@ -687,7 +834,7 @@
         // Provider API Implementations
         // ===============================================
 
-        async _chatOpenAI(userMessage, systemPrompt, conversationHistory = []) {
+        async _chatOpenAI(userMessage, systemPrompt, conversationHistory = [], options = {}) {
             const { api_key: rawKey, model, base_url } = this._settings.openai;
 
             // Trim whitespace (prevents copy/paste issues)
@@ -724,12 +871,13 @@
 
             let res;
             if (this._hasProxy()) {
-                res = await this._fetchViaProxy(url, 'POST', headers, body);
+                res = await this._fetchViaProxy(url, 'POST', headers, body, options);
             } else {
                 res = await fetch(url, {
                     method: 'POST',
                     headers,
                     body: JSON.stringify(body),
+                    signal: options.signal,
                 });
             }
 
@@ -747,7 +895,7 @@
             });
         }
 
-        async _chatClaude(userMessage, systemPrompt, conversationHistory = []) {
+        async _chatClaude(userMessage, systemPrompt, conversationHistory = [], options = {}) {
             const { api_key: rawKey, model, base_url } = this._settings.claude;
 
             // Trim whitespace (prevents copy/paste issues)
@@ -783,12 +931,13 @@
 
             let res;
             if (this._hasProxy()) {
-                res = await this._fetchViaProxy(url, 'POST', headers, body);
+                res = await this._fetchViaProxy(url, 'POST', headers, body, options);
             } else {
                 res = await fetch(url, {
                     method: 'POST',
                     headers,
                     body: JSON.stringify(body),
+                    signal: options.signal,
                 });
             }
 
@@ -806,7 +955,7 @@
             });
         }
 
-        async _chatWatsonx(userMessage, systemPrompt, conversationHistory = []) {
+        async _chatWatsonx(userMessage, systemPrompt, conversationHistory = [], options = {}) {
             const { project_id, model_id, base_url } = this._settings.watsonx;
             if (!project_id) throw new Error('Watsonx credentials missing');
 
@@ -840,12 +989,13 @@
 
             let res;
             if (this._hasProxy()) {
-                res = await this._fetchViaProxy(url, 'POST', headers, body);
+                res = await this._fetchViaProxy(url, 'POST', headers, body, options);
             } else {
                 res = await fetch(url, {
                     method: 'POST',
                     headers,
                     body: JSON.stringify(body),
+                    signal: options.signal,
                 });
             }
 
@@ -863,7 +1013,7 @@
             });
         }
 
-        async _chatOllama(userMessage, systemPrompt, conversationHistory = []) {
+        async _chatOllama(userMessage, systemPrompt, conversationHistory = [], options = {}) {
             const { base_url, model } = this._settings.ollama;
             const url = `${(base_url || 'http://localhost:11434').replace(/\/$/, '')}/api/chat`;
             const headers = { 'Content-Type': 'application/json' };
@@ -883,12 +1033,13 @@
             let res;
             // Ollama typically doesn't need proxy (local), but support it anyway
             if (this._hasProxy()) {
-                res = await this._fetchViaProxy(url, 'POST', headers, body);
+                res = await this._fetchViaProxy(url, 'POST', headers, body, options);
             } else {
                 res = await fetch(url, {
                     method: 'POST',
                     headers,
                     body: JSON.stringify(body),
+                    signal: options.signal,
                 });
             }
 
@@ -910,7 +1061,7 @@
          * Connects through OllaBridge to chat with HomePilot persona agents
          * or any other model available through the OllaBridge gateway.
          */
-        async _chatOllaBridge(userMessage, systemPrompt, conversationHistory = []) {
+        async _chatOllaBridge(userMessage, systemPrompt, conversationHistory = [], options = {}) {
             const { api_key: rawKey, pair_token: rawPairToken, auth_mode, model, base_url } = this._settings.ollabridge;
 
             const api_key = (rawKey || '').trim();
@@ -982,12 +1133,12 @@
             messages.push(...this._withCurrentTurn(conversationHistory, userMessage));
 
             const body = {
-                model: model || 'default',
+                model: ollaBridgeModel(model),
                 messages: messages,
                 max_tokens: this._tokenBudget(800),
             };
 
-            const res = await this._postOllaBridgeWithRetry(url, headers, body);
+            const res = await this._postOllaBridgeWithRetry(url, headers, body, 2, options);
 
             if (!res.ok) {
                 const gatewayMsg = this._gatewayErrorMessage(res.status);
@@ -1128,7 +1279,7 @@
             messages.push(...this._withCurrentTurn(conversationHistory, userMessage));
 
             const body = {
-                model: model || 'default',
+                model: ollaBridgeModel(model),
                 messages: messages,
                 max_tokens: this._tokenBudget(800),
             };

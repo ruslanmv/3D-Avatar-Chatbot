@@ -34,16 +34,6 @@ const TogetherPanel = (() => {
     const PANEL_ID = 'nexus-bd-together-panel';
 
     /**
-     * The longest Begin may wait on optional work before starting anyway.
-     *
-     * Preparation begins when a mood is chosen, so by Begin the answer is normally already in
-     * hand and this never fires. When it does, the session starts with the written plan and the
-     * generated one upgrades the later beats if it lands. Nothing optional — least of all a
-     * music lookup — gets to stand between wanting this and having it.
-     */
-    const PRIVATE_START_BUDGET = 2500;
-
-    /**
      * B36. The activity contract and the failure copy, from the module system or the window,
      * so this file works under jest and in the browser without either knowing about the
      * other. Absent, the panel falls back to B30's behaviour rather than breaking — an
@@ -674,13 +664,21 @@ const TogetherPanel = (() => {
                 const tile = this._button('', 'nexus-bd-together-tile', () => this.choose(activity.id));
                 if (activity.wide) tile.classList.add('is-wide');
                 tile.dataset.activity = activity.id;
-                const icon = this.doc.createElement('span');
-                icon.className = 'nexus-bd-together-icon';
-                icon.textContent = activity.icon || '✦';
                 const name = this.doc.createElement('span');
                 name.className = 'nexus-bd-together-name';
                 name.textContent = activity.title || activity.id;
-                tile.append(icon, name);
+                // Scene Tale is a story about the place she is standing in, so its tile shows
+                // the place rather than a glyph — and it shows whichever place is live, not a
+                // baked-in default. The thumbnail is read-only art: choosing this tile opens
+                // the setup screen and nothing about drawing it touches the background.
+                const thumb = activity.id === 'playground' ? this._sceneTile() : null;
+                if (thumb) tile.append(thumb, name);
+                else {
+                    const icon = this.doc.createElement('span');
+                    icon.className = 'nexus-bd-together-icon';
+                    icon.textContent = activity.icon || '✦';
+                    tile.append(icon, name);
+                }
                 tile.title = name.textContent;
                 grid.appendChild(tile);
             }
@@ -821,6 +819,8 @@ const TogetherPanel = (() => {
             const state = (activity && activity.sessionState) || 'mood';
             this._privateStyles();
             if (state === 'starting') return this._paintPrivateStarting();
+            if (state === 'preparing') return this._paintPrivatePreparing(activity);
+            if (state === 'ready') return this._paintPrivateReady(activity);
             if (state === 'atmosphere') return this._paintPrivateAtmosphere(activity);
             return this._paintPrivateMood(contract, activity);
         }
@@ -1014,9 +1014,15 @@ const TogetherPanel = (() => {
             const begin = doc.createElement('button');
             begin.type = 'button';
             begin.className = 'nexus-private-begin';
-            begin.dataset.action = 'begin-private';
-            begin.textContent = 'Begin →';
-            begin.addEventListener('click', () => this._beginPrivate(activity));
+            // `ready-private`, not `begin-private` (P20). Two buttons on two screens meaning two
+            // different things must not share a name — `begin-private` is the one on the summary
+            // that actually starts the session, and a test clicking the wrong one would pass while
+            // skipping the checklist entirely.
+            begin.dataset.action = 'ready-private';
+            // It no longer begins — it loads. `Begin →` is on the summary screen, after the
+            // checklist, which is where it can honestly mean begin.
+            begin.textContent = this._privateWord('preflight.continue', 'Get ready →');
+            begin.addEventListener('click', () => activity.runPreflight());
             shell.appendChild(begin);
 
             const back = this._button('Back', 'nexus-bd-together-option', () => activity.editSetup());
@@ -1026,6 +1032,153 @@ const TogetherPanel = (() => {
         }
 
         /** Only ever seen when the background work missed its budget. */
+        /**
+         * One word from the card's language, or the English behind it (P14/P20).
+         *
+         * The setup panel predates `PrivateLocale` and reaches for it defensively rather than
+         * assuming it loaded: the wizard can be painted on a page where the boot list has not
+         * finished, and a checklist reading `preflight.voice` would be worse than one in English.
+         */
+        _privateWord(key, fallback) {
+            try {
+                const api = (this.win || (typeof window !== 'undefined' ? window : null)).NEXUS_PRIVATE_LOCALE;
+                if (api && typeof api.t === 'function') {
+                    const word = api.t(key);
+                    if (word && word !== key) return word;
+                }
+            } catch (_) {
+                // English, which is what this screen said before there was a pack.
+            }
+            return fallback;
+        }
+
+        /**
+         * The checklist, while the evening loads (P20).
+         *
+         * Deliberately the shape Scene Tale already uses — a named line per step and a ✓ as each
+         * one lands — because the thing that makes that screen feel good is not the symbol. It is
+         * that every line is real work somebody can name, so the wait reads as preparation rather
+         * than as the app being busy.
+         *
+         * A step reports what it actually did, which is why there are four marks and not two: `○`
+         * pending, `…` running, `✓` done, `·` skipped (nothing to do) and `✕` failed. A checklist
+         * that ticks work it did not perform is the same picture whether or not it worked.
+         */
+        _paintPrivatePreparing(activity) {
+            const doc = this.doc;
+            const shell = this._privateShell(0);
+            const lead = doc.createElement('p');
+            lead.className = 'nexus-private-setup-lead';
+            lead.dataset.privatePreparing = '1';
+            lead.textContent = this._privateWord('preflight.title', 'Getting ready…');
+            shell.appendChild(lead);
+
+            const shown = activity.preflightShown;
+            const list = doc.createElement('div');
+            list.className = 'nexus-story-progress';
+            const MARKS = { pending: '○', running: '…', done: '✓', skipped: '·', failed: '✕' };
+            for (const step of (shown && shown.list) || []) {
+                const row = doc.createElement('div');
+                row.className = `nexus-story-progress-row is-${step.state}`;
+                row.dataset.preflightStep = step.id;
+                row.dataset.preflightState = step.state;
+                row.textContent = `${MARKS[step.state] || '○'} ${this._privateWord(step.key, step.id)}`;
+                list.appendChild(row);
+            }
+            shell.appendChild(list);
+
+            const actions = doc.createElement('div');
+            actions.className = 'nexus-bd-together-options';
+            const cancel = this._button('Cancel', 'nexus-bd-together-option is-stop', () => activity.cancelPreflight());
+            cancel.dataset.action = 'cancel-preflight';
+            actions.appendChild(cancel);
+            shell.appendChild(actions);
+            this.root.appendChild(shell);
+        }
+
+        /**
+         * The outline, and one button that always works (P25).
+         *
+         * Scene Tale's ready screen is the model: what this is, what landed. Everything here is a
+         * fact the preflight established a moment ago rather than a promise.
+         *
+         * There is no blocked branch any more. The first version withheld `Begin →` when a
+         * "required" step failed and offered `Try again` / `Start anyway` instead, and the
+         * reported screen is why that was wrong: one red row — `✕ Waking the model` — in an app
+         * whose provider had answered a minute earlier, and the feature was shut. Every reason
+         * that row goes red is transient, and the cost of being wrong about it is the whole
+         * evening. So a step that did not work is a line under the summary, and `Begin →` is
+         * always there.
+         *
+         * `Try again` stays, secondary, for somebody who would rather warm it properly first.
+         */
+        _paintPrivateReady(activity) {
+            const doc = this.doc;
+            const shell = this._privateShell(0);
+            const preset = activity.prepareInput || {};
+            const shown = activity.preflightShown;
+            const failed = (shown && shown.failed) || [];
+
+            const title = doc.createElement('p');
+            title.className = 'nexus-private-setup-lead';
+            title.dataset.privateReady = '1';
+            title.textContent = String(preset.label || 'Private').toUpperCase();
+            shell.appendChild(title);
+
+            const note = doc.createElement('p');
+            note.className = 'nexus-private-label';
+            note.textContent = this._privatePlace(activity);
+            shell.appendChild(note);
+
+            // The outline: what landed, named, in the order the checklist ran. Skipped steps say
+            // so rather than being dropped — "no soundtrack" is information, not an absence.
+            const summary = doc.createElement('div');
+            summary.className = 'nexus-story-ready-meta';
+            summary.dataset.preflightSummary = '1';
+            const MARKS = { done: '✓', skipped: '·', failed: '✕', pending: '○', running: '…' };
+            summary.textContent = ((shown && shown.list) || [])
+                .map((step) => `${MARKS[step.state] || '○'} ${this._privateWord(step.key, step.id)}`)
+                .join('\n');
+            shell.appendChild(summary);
+
+            if (failed.length) {
+                const problem = doc.createElement('p');
+                problem.className = 'nexus-private-label';
+                problem.dataset.preflightNote = '1';
+                // Phrased as what it is — something that did not warm up — rather than as a
+                // verdict on whether the evening can happen.
+                problem.textContent = `Could not warm up: ${failed
+                    .map((entry) => this._privateWord(entry.key, entry.id))
+                    .join(', ')}. You can start anyway.`;
+                shell.appendChild(problem);
+            }
+
+            const actions = doc.createElement('div');
+            actions.className = 'nexus-bd-together-options';
+            const begin = doc.createElement('button');
+            begin.type = 'button';
+            begin.className = 'nexus-private-begin';
+            begin.dataset.action = 'begin-private';
+            begin.textContent = this._privateWord('ready.begin', 'Begin →');
+            begin.addEventListener('click', () => this._beginPrivate(activity));
+            actions.appendChild(begin);
+            if (failed.length) {
+                const retry = this._button(
+                    this._privateWord('ready.retry', 'Try again'),
+                    'nexus-bd-together-option',
+                    () => activity.runPreflight()
+                );
+                retry.dataset.action = 'retry-preflight';
+                actions.appendChild(retry);
+            }
+            shell.appendChild(actions);
+
+            const back = this._button('Edit setup', 'nexus-bd-together-option', () => activity.cancelPreflight());
+            back.dataset.action = 'edit-private';
+            shell.appendChild(back);
+            this.root.appendChild(shell);
+        }
+
         _paintPrivateStarting() {
             const shell = this._privateShell(0);
             const lead = this.doc.createElement('p');
@@ -1037,37 +1190,59 @@ const TogetherPanel = (() => {
         }
 
         /**
-         * Begin means begin.
+         * Begin means begin — and now it really does (P22).
          *
-         * Prepared work is usually in hand by now — it started when the mood was chosen — so
-         * the common path is synchronous. When it is not, the session starts anyway once the
-         * budget expires, with the written plan, and the generated one upgrades the later
-         * beats if it ever lands. Nothing optional is allowed to stand between wanting this
-         * and having it.
+         * This used to race a 2.5-second budget against `activity.prepared`, which was the right
+         * patch when `Begin` was the only screen and the work was invisible. With the checklist in
+         * front of it the race is worse than redundant: the preflight has already decided what it
+         * is willing to wait for, said so on screen, and offered this button on the strength of it.
+         * Waiting again here for a promise it deliberately stopped waiting for is the app
+         * disagreeing with the screen the person just read.
+         *
+         * It was also a live defect. `preparedPlan` is null whenever the *generated* plan has not
+         * landed — which is the normal case with a slow or failing provider, and exactly the case
+         * the checklist now passes on the written floor. So pressing `Begin` on a green checklist
+         * dropped into `starting` and sat there for two and a half seconds before starting anyway.
+         *
+         * The written plan is in `PrivateBeats` and the session reaches for it itself when
+         * `preparedPlan` is null; `_planAhead` still upgrades the later beats if the generated one
+         * ever arrives. So there is nothing left to wait for, and `PRIVATE_START_BUDGET` goes with
+         * the race that needed it.
          */
         _beginPrivate(activity) {
             if (!activity || !activity.prepareInput) return null;
-            const go = () =>
-                this.startActivity('intimate', {
-                    ...activity.prepareInput,
-                    soundtrack: activity.soundtrackChoice || 'choose',
-                    scene: activity.sceneChoice || null,
-                    preparedPlan: activity.preparedPlan,
-                    preparedTrack: activity.preparedTrack,
-                });
-            if (!activity.prepared || activity.preparedPlan) return go();
-            activity.sessionState = 'starting';
-            this._paint();
-            const win = this.win || (typeof window !== 'undefined' ? window : null);
-            let started = false;
-            const once = () => {
-                if (started) return null;
-                started = true;
-                return go();
-            };
-            if (win && typeof win.setTimeout === 'function') win.setTimeout(once, PRIVATE_START_BUDGET);
-            activity.prepared.then(once, once);
-            return null;
+            return this.startActivity('intimate', {
+                ...activity.prepareInput,
+                soundtrack: activity.soundtrackChoice || 'choose',
+                scene: activity.sceneChoice || null,
+                preparedPlan: activity.preparedPlan,
+                preparedTrack: activity.preparedTrack,
+            });
+        }
+
+        /**
+         * The current place as a tile-sized picture, or `null` when there is nothing to show.
+         *
+         * `null` on an unknown scene rather than a placeholder, because the caller's fallback is
+         * the glyph the tile has always had — a tile that loses its icon and gains a grey box is
+         * worse than one that never changed.
+         *
+         * Read-only by construction: this resolves an id to a URL through `SceneArt` and hands
+         * the URL to an `<img>`. There is no path from here to `setDesktopBackground`, and the
+         * scene on screen is unaffected by whether this returns a picture or nothing.
+         */
+        _sceneTile() {
+            const art =
+                (this.win && this.win.NEXUS_SCENE_ART) ||
+                (typeof require === 'function' ? tryRequire('../SceneArt.js') : null);
+            if (!art || typeof art.thumbnailElement !== 'function') return null;
+            const bb = this.win && this.win.NEXUS_BD && this.win.NEXUS_BD.blackboard;
+            const scene = bb && bb.scene;
+            const key = scene && typeof scene === 'object' ? scene.id || scene.sceneId || scene.label : scene;
+            return art.thumbnailElement(this.doc, key, {
+                className: 'nexus-bd-together-tilethumb',
+                eager: true,
+            });
         }
 
         /** The room this evening will happen in, named the way the setup screen names it. */

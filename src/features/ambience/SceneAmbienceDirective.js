@@ -233,6 +233,21 @@
             return extracted.clean;
         }
 
+        // Private sets its place at setup, and that decision is the atmosphere. A model that
+        // moves the room mid-session undoes the choice the person made on the setup screen — the
+        // same defect as swapping the soundtrack, by the other door. The *user* may still ask;
+        // `privateChangeAllowed` is false only inside a running session nobody asked in, and is
+        // always true outside Private, so ordinary ambience is unaffected.
+        const together = opts.capability || (global && global.NEXUS_TOGETHER_CAPABILITY) || null;
+        try {
+            if (together && typeof together.privateChangeAllowed === 'function' && !together.privateChangeAllowed()) {
+                console.warn('[SceneAmbience] a scene change was requested inside Private — refused');
+                return extracted.clean;
+            }
+        } catch (_) {
+            // A capability that throws decides nothing; behave as before.
+        }
+
         const controller = opts.controller || (global && global.NEXUS_SCENE_AMBIENCE_CONTROLLER) || null;
         if (!controller || typeof controller.requestByIntent !== 'function') {
             console.warn('[SceneAmbience] nothing can apply a scene change right now');

@@ -371,6 +371,53 @@ describe('teardown', () => {
     });
 });
 
+describe('there is always something to tap (P23)', () => {
+    test('every scripted line she says leaves choices under it', async () => {
+        // Reported: four of her lines in a row with nothing to click. `_offerChoices` ran in two
+        // places — the opening and a finished model reply — so every scripted beat emptied the
+        // wheel. A dialogue wheel that empties whenever the character speaks is not one.
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+        const session = s.activity._privateExperience;
+        scriptDone(session);
+
+        // A level line, an idle noticing line, and an ease line: three different routes to the
+        // card, none of which went through the model.
+        for (const say of [
+            () => session._speak('A spark. I like this version of it.'),
+            () => {
+                quietFor(65000);
+                session._tick();
+            },
+            () => session._easeUp(),
+        ]) {
+            say();
+            expect(choices().length).toBeGreaterThanOrEqual(2);
+            // And they are under her most recent line, not stranded under an older one.
+            const last = [...document.querySelectorAll('[data-private-turn="her"]')].pop();
+            expect(last.querySelector('[data-private-choices]')).not.toBeNull();
+        }
+
+        s.activity.stop('user');
+    });
+
+    test('but a question with its own answers is left alone', async () => {
+        // "What kind of mood should we keep?" already has two answers. A second set underneath
+        // would be two questions at once.
+        const s = setup();
+        await s.activity.start({ input: { id: 'romantic' } });
+        jest.advanceTimersByTime(60000);
+
+        const mood = [...document.querySelectorAll('[data-private-turn="her"]')].find((turn) =>
+            turn.querySelector('[data-private-action="playful"]')
+        );
+        expect(mood).not.toBeNull();
+        expect(mood.querySelector('[data-private-choices]')).toBeNull();
+
+        s.activity.stop('user');
+    });
+});
+
 describe('the closed vocabulary, which has now swallowed three batches of events', () => {
     test('every private event the capability emits is one the bus will carry', () => {
         // `private:session-start` and three others were emitted for several batches and heard by
