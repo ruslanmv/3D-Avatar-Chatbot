@@ -135,16 +135,6 @@
 
         <script type="module" src="src/engine-bridge.js"></script>
 
-        <!-- Wardrobe Forge: static looks work without a server; remote generation is opt-in. -->
-        <script defer src="src/wardrobe/WardrobeConfig.js"></script>
-        <script defer src="src/wardrobe/WardrobeClient.js"></script>
-        <script defer src="src/wardrobe/WardrobeController.js"></script>
-        <script defer src="src/wardrobe/StaticWardrobeSource.js"></script>
-        <script defer src="src/wardrobe/RemoteWardrobeSource.js"></script>
-        <script defer src="src/wardrobe/WardrobeService.js"></script>
-        <script defer src="src/wardrobe/WardrobePanel.js"></script>
-        <script defer src="src/wardrobe/WardrobeBootstrap.js"></script>
-
         <script defer>
             (function () {
                 const stamp = () => new Date().toISOString();
@@ -3847,5 +3837,15 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
 
         <!-- Pose Studio floating panel root -->
         <div id="poseStudioRoot" class="pose-studio-root hidden"></div>
+
+        <!-- Wardrobe Forge loads last so frozen boot-script line references above remain stable. -->
+        <script src="src/wardrobe/WardrobeConfig.js"></script>
+        <script src="src/wardrobe/WardrobeClient.js"></script>
+        <script src="src/wardrobe/WardrobeController.js"></script>
+        <script src="src/wardrobe/StaticWardrobeSource.js"></script>
+        <script src="src/wardrobe/RemoteWardrobeSource.js"></script>
+        <script src="src/wardrobe/WardrobeService.js"></script>
+        <script src="src/wardrobe/WardrobePanel.js"></script>
+        <script src="src/wardrobe/WardrobeBootstrap.js"></script>
     </body>
 </html>
