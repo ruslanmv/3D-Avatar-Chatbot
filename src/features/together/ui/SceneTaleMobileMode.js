@@ -45,6 +45,11 @@ const SceneTaleMobileMode = (() => {
      * Deliberately scoped to Scene Tale content only. There are NO rules here for .chat-panel,
      * .chat-main geometry, #chat-overlay-handle, overlay snap heights, or touch behavior.
      * MobileChatOverlay.js remains byte-for-byte the master implementation.
+     *
+     * A26. The scene picture is capped against the viewport, not at a constant. A flat 150px is
+     * a sixth of an upright phone and nearly half of one lying on its side, and the story it
+     * illustrates was the thing that went off the bottom of the screen. `object-fit` moved onto
+     * the image, where it does something: on the wrapper it never had an effect at all.
      */
     const CSS = `
 @media (max-width:767px){
@@ -56,7 +61,8 @@ const SceneTaleMobileMode = (() => {
   html.${ACTIVE_CLASS} .nexus-story-heading-title{font-size:.96rem!important;margin-bottom:1px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   html.${ACTIVE_CLASS} .nexus-story-heading-note{display:none!important}
   html.${ACTIVE_CLASS} .nexus-story-place{font-size:.68rem;line-height:1.25;color:rgba(224,247,250,.62);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  html.${ACTIVE_CLASS} .nexus-scene-tale-hero{max-height:150px!important;object-fit:cover!important}
+  html.${ACTIVE_CLASS} .nexus-scene-tale-hero{flex:0 0 auto!important;min-height:0!important;max-height:min(150px,26vh)!important}
+  html.${ACTIVE_CLASS} .nexus-scene-tale-hero img{object-fit:cover!important}
   html.${ACTIVE_CLASS} .nexus-story-card{padding:10px 13px!important;min-height:0}
   html.${ACTIVE_CLASS} .nexus-story-caption{font-size:.91rem!important;line-height:1.42!important;white-space:pre-wrap;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden}
   html.${ACTIVE_CLASS} #${HUD_ID}.transcript-expanded .nexus-story-caption{-webkit-line-clamp:unset;display:block;overflow:visible}
