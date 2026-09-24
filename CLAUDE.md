@@ -71,9 +71,20 @@ So the rule for new code in `src/gltf-viewer/`:
 > injection or from the global. An ES module there is only testable by reading
 > the file and `eval`-ing it.
 
+**`src/wardrobe/` — IIFE, but loaded by `index.html`, not `boot.js`.** Same dual
+export as `src/features/`, and for the same reason: Jest `require()`s these
+directly. What differs is how they reach the browser — eight plain `<script>`
+tags at the very end of `<body>`, after the Pose Studio root. That placement is
+deliberate and the commit that moved them there says why: the parity harness
+counts boot scripts by line, so adding them near the top of `index.html` shifted
+every frozen line reference below. Load order within those eight matters —
+`WardrobeClient` defines the error class `WardrobeController` and
+`WardrobePanel` read off the window at module scope, and `WardrobeBootstrap` is
+last because it runs.
+
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (142 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (191 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -112,8 +123,8 @@ Know the coverage gaps, because they are not intuitive:
 
 ### The gate passes. Keep it that way.
 
-Measured 2026-09-13 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **3981 tests in 142 suites, all passing.**
+Measured 2026-09-24 with `npm ci` deps installed: `npm run validate` exits **0**
+— lint clean, format clean, **4734 tests in 191 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -168,7 +179,8 @@ will be rewrapped; files under `docs/` are exempt.
 
 **Batch comments.** Work lands in numbered batches and the code says which:
 `// T5. Take the <play> tag out…`, `// B14. …`. Prefixes in use: `B`, `T`, `M`,
-`D`, `L`, `S`, `MS`, and `A` for the ambience work. Commit subjects match:
+`D`, `L`, `S`, `MS`, `A` for the ambience work, `P` for the Private experience
+and `W` for the wardrobe. Commit subjects match:
 `A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
 up.
 
@@ -336,3 +348,41 @@ conversation either).
 Turns capture `currentEpoch()` at the start and check `isCurrent(turn)` before
 writing anything back, so a reply that outlives a CLEAR writes no message, no
 storage and no speech. A new code path that persists a reply needs that check.
+
+## The wardrobe feature (Try-On Haul)
+
+New outfits for the avatar, from a static bundle or from a running
+[3D-Wardrobe-Forge](https://github.com/ruslanmv/3D-Wardrobe-Forge). Eight
+modules in `src/wardrobe/`, a floating 👗 drawer, and `docs/WARDROBE.md` for
+deployment. **The static source is the default and needs no server**; remote
+generation is opt-in through `window.NEXUS_WARDROBE_CONFIG.apiUrl`.
+
+- **The whole feature ends at
+  `AvatarManager.setAvatarByUrl(url, name, index)`.** A look is a VRM URL.
+  Nothing here touches Three.js, the renderer, or the ambience background — a
+  generated outfit loads through the same path the avatar picker already uses,
+  which is why the feature adds no rendering code.
+- **`WardrobeController` is the only owner of snapshot-and-restore**, and it is
+  built whether or not a server is configured (W2). It was previously built only
+  for remote generation, so the static deployment — the one that ships — swapped
+  avatars without snapshotting, `restore()` answered false, and the drawer
+  reported success anyway. Without a server it gets `LOCAL_FORGE`: URLs resolve
+  to themselves and anything needing the pipeline refuses with the reason. A
+  Try-On Haul over looks already in the bundle therefore works offline.
+- **A look is never worn without a snapshot to go back to (W3).** The drawer
+  mounts as soon as `avatarManager` exists, which is before the startup avatar
+  has loaded; inside that window `getCurrent()` answers null, so a tap recorded
+  no original and Restore could never work again. `applyLook` now refuses with
+  "Wait for the avatar to finish loading" rather than stranding the user.
+- **Forge types `avatar.license.conditionsOfUse` as `dict[str, str]` with a
+  default factory, not as optional (W1).** A `null` is a 422 and so is a boolean
+  value. Omit the key when there is nothing to say, and send strings — the "I
+  have permission" path is exactly the path with no conditions to send, so
+  getting this wrong broke only the attestation retry.
+- **The eight `<script>` tags live at the end of `index.html`'s `<body>`, and
+  moving them is not free.** The parity harness counts boot scripts by line;
+  `node scripts/behavior-parity-baseline.mjs --check` is the check.
+- The licence terms come from VRM Manager's `vrm_manager_installed` localStorage
+  entry, which keeps `conditionsOfUse` through `saveInstalled()`'s strip. A
+  source that forbids modification is never overridden — Forge refuses with
+  `source_model_modification_not_permitted` and the drawer says so.

@@ -39,6 +39,15 @@
             if (!url) throw new WardrobeForgeError('look has no vrmUrl');
             var manager = this._requireManager();
             if (!this.original) this.snapshot();
+            // W3. The snapshot is the only way back, so a look is not worth wearing without
+            // one. The drawer mounts as soon as `avatarManager` exists, which is before the
+            // startup avatar has finished loading — tap a look inside that window and
+            // `getCurrent()` answers null, nothing is recorded, and Restore can never do
+            // anything again. Observed in a real browser, not theorised. Refusing costs the
+            // user one more tap; the alternative strands them in the look.
+            if (!this.original || !this.original.url) {
+                throw new WardrobeForgeError('Wait for the avatar to finish loading before trying on a look');
+            }
             await manager.setAvatarByUrl(url, look.name || 'Generated look', -1);
             if (manager.frameAvatar) manager.frameAvatar();
             this.activeLook = look;

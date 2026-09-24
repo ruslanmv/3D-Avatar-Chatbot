@@ -134,8 +134,15 @@
                 if (action === 'close') return this.close();
                 if (action === 'refresh') return this.refresh();
                 if (action === 'restore') {
-                    await this.service.restore();
-                    return this._setStatus('Original avatar restored', false);
+                    // W2. Say what happened. `restore()` answers false when no look has been
+                    // worn yet, and this used to report success regardless — which is how a
+                    // button that did nothing at all read as a button that worked.
+                    try {
+                        var restored = await this.service.restore();
+                        return this._setStatus(restored ? 'Original avatar restored' : 'No look is being worn', false);
+                    } catch (error) {
+                        return this._setStatus(error.message || 'Could not restore the avatar', true);
+                    }
                 }
                 if (action === 'generate') return this._generate();
             }

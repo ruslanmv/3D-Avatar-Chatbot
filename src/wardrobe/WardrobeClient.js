@@ -3,6 +3,24 @@
 
     var TERMINAL = new Set(['completed', 'failed', 'rejected']);
 
+    /**
+     * A conditions-of-use map Forge will accept, or null when there is nothing to say.
+     *
+     * VRM Manager writes eight VRoid Hub licence fields as strings, but its values come
+     * straight off the Hub API and a future field could arrive as a boolean. Forge types the
+     * map as `dict[str, str]`, so one non-string value rejects the whole request.
+     */
+    function stringValues(value) {
+        if (!value || typeof value !== 'object') return null;
+        var out = {};
+        Object.keys(value).forEach(function (key) {
+            var entry = value[key];
+            if (entry === null || entry === undefined || entry === '') return;
+            out[key] = String(entry);
+        });
+        return Object.keys(out).length ? out : null;
+    }
+
     class WardrobeForgeError extends Error {
         constructor(message, options) {
             super(message);
@@ -80,10 +98,18 @@
                 },
             };
             if (options.conditionsOfUse || options.attestModificationAllowed) {
-                body.avatar.license = {
-                    conditionsOfUse: options.conditionsOfUse || null,
+                // W1. The key is omitted rather than sent as null, and the values are strings.
+                // Forge types this as `dict[str, str]` with a default factory, not as optional:
+                // `conditionsOfUse: null` is a 422, and a boolean value is a 422 too. The old
+                // code sent exactly that null on the one path this block exists for — the user
+                // answering "yes, I have permission" for an avatar whose terms are unknown, so
+                // there are no conditions to send. The attestation always failed.
+                var license = {
                     userAttestsModificationAllowed: Boolean(options.attestModificationAllowed),
                 };
+                var conditions = stringValues(options.conditionsOfUse);
+                if (conditions) license.conditionsOfUse = conditions;
+                body.avatar.license = license;
             }
 
             return this.request('/v1/generate', { method: 'POST', body: JSON.stringify(body) });

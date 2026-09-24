@@ -1,6 +1,35 @@
 (function (global) {
     'use strict';
 
+    /**
+     * W2. A forge for a wardrobe with no server behind it.
+     *
+     * The controller is the only thing in this feature that snapshots the avatar it replaced
+     * and puts it back — the house rule is one owner of snapshot-and-restore, not a bespoke
+     * undo per caller. It used to be built only when remote generation was configured, so in
+     * the default static deployment the service swapped avatars itself, nothing was snapshotted,
+     * `restore()` returned false, and the drawer answered "Original avatar restored" anyway.
+     * The button did nothing and said it had.
+     *
+     * So the controller is always built, and without a server it gets this: URLs resolve to
+     * themselves (a static look's URL is already absolute — StaticWardrobeSource resolves it
+     * against the manifest), and anything that would need the pipeline refuses with the reason.
+     * Try-On Haul over the looks already in the bundle needs none of it, and now works.
+     */
+    var LOCAL_ONLY = 'Remote wardrobe generation is disabled — set a Forge apiUrl to generate looks';
+
+    var LOCAL_FORGE = {
+        resolveUrl: function (url) {
+            return url || null;
+        },
+        generateAndWait: function () {
+            return Promise.reject(new Error(LOCAL_ONLY));
+        },
+        getWardrobe: function () {
+            return Promise.reject(new Error(LOCAL_ONLY));
+        },
+    };
+
     class WardrobeService {
         constructor(options) {
             options = options || {};
@@ -13,21 +42,22 @@
             var RemoteSource = global.NEXUS_REMOTE_WARDROBE_SOURCE;
 
             this.staticSource = new StaticSource({ manifestUrl: this.config.staticManifest });
-            this.controller = null;
             this.remoteSource = null;
-
-            if (this.config.remoteGeneration && this.config.apiUrl) {
-                var client = new Client({ baseUrl: this.config.apiUrl, token: this.config.token || '' });
-                this.controller = new Controller({
-                    forge: client,
-                    viewer: this.viewer,
-                    onState: function (state, event) {
-                        if (this.onState) this.onState(state, event);
-                    }.bind(this),
-                });
-                this.remoteSource = new RemoteSource({ controller: this.controller });
-            }
             this.onState = null;
+
+            var remote = Boolean(this.config.remoteGeneration && this.config.apiUrl);
+            var forge = remote
+                ? new Client({ baseUrl: this.config.apiUrl, token: this.config.token || '' })
+                : LOCAL_FORGE;
+
+            this.controller = new Controller({
+                forge: forge,
+                viewer: this.viewer,
+                onState: function (state, event) {
+                    if (this.onState) this.onState(state, event);
+                }.bind(this),
+            });
+            if (remote) this.remoteSource = new RemoteSource({ controller: this.controller });
         }
 
         setStateListener(listener) {
@@ -63,27 +93,25 @@
             return Array.from(byId.values());
         }
 
-        async applyLook(look) {
-            if (this.controller) return this.controller.applyLook(look);
-            var manager = this.viewer && this.viewer.avatarManager;
-            if (!manager) throw new Error('AvatarManager is not ready');
-            await manager.setAvatarByUrl(look.vrmUrl, look.name || 'Wardrobe look', -1);
-            if (manager.frameAvatar) manager.frameAvatar();
-            return look;
+        applyLook(look) {
+            return this.controller.applyLook(look);
         }
 
+        /** True when an avatar was put back, false when nothing had been replaced yet. */
         restore() {
-            if (!this.controller) return Promise.resolve(false);
             return this.controller.restore();
         }
 
         generate(prompt, options) {
-            if (!this.remoteSource) throw new Error('Remote wardrobe generation is disabled');
+            if (!this.remoteSource) throw new Error(LOCAL_ONLY);
             return this.remoteSource.generate(prompt, options || {});
         }
 
+        /**
+         * Wear a run of looks in turn and come back. Entries are looks, or prompts to generate
+         * first — and a prompt is the only part of this that needs a server.
+         */
         tryOnHaul(entries, options) {
-            if (!this.controller) throw new Error('Try-On Haul requires the remote wardrobe controller');
             return this.controller.tryOnHaul(entries, options || {});
         }
     }
