@@ -14,9 +14,7 @@
 
         return {
             enabled: readBool(
-                supplied.enabled !== undefined
-                    ? supplied.enabled
-                    : storage && storage.getItem('wardrobe_enabled'),
+                supplied.enabled !== undefined ? supplied.enabled : storage && storage.getItem('wardrobe_enabled'),
                 true
             ),
             staticManifest:

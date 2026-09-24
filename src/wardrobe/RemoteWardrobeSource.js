@@ -11,11 +11,13 @@
             if (!this.controller) return [];
             try {
                 var looks = await this.controller.getLooks();
-                return (looks || []).filter(function (look) {
-                    return look && look.vrmUrl;
-                }).map(function (look) {
-                    return Object.assign({}, look, { source: 'remote' });
-                });
+                return (looks || [])
+                    .filter(function (look) {
+                        return look && look.vrmUrl;
+                    })
+                    .map(function (look) {
+                        return Object.assign({}, look, { source: 'remote' });
+                    });
             } catch (error) {
                 if (error && error.status === 404) return [];
                 throw error;

@@ -114,9 +114,11 @@
                         detail: job.fitReport || job,
                     });
                 }
-                await new Promise(function (resolve) {
-                    global.setTimeout(resolve, this.pollIntervalMs);
-                }.bind(this));
+                await new Promise(
+                    function (resolve) {
+                        global.setTimeout(resolve, this.pollIntervalMs);
+                    }.bind(this)
+                );
             }
             throw new WardrobeForgeError('Wardrobe generation timed out');
         }
