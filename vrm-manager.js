@@ -3349,6 +3349,9 @@ const VRMManager = {
                 const catalogTab = document.querySelector('.vm-tab[data-tab="catalog"]');
                 if (catalogTab) catalogTab.classList.add('active');
                 if (el('vm-tab-catalog')) el('vm-tab-catalog').classList.add('active');
+                const main = document.querySelector('.vm-main');
+                if (main) main.dataset.tab = 'catalog';
+                this.updateStats();
             }
             return;
         }
@@ -3622,6 +3625,13 @@ const VRMManager = {
         const allInst = Object.values(installedAvatars);
         const coreCount = allInst.filter((a) => a.core).length;
         const userCount = allInst.length - coreCount;
+        // V4. The line sits above the tabs, so My Avatars showed the catalogue's count ("5599 of
+        // 6230 avatars") for a tab holding 18. Each tab counts what it shows.
+        const main = document.querySelector('.vm-main');
+        if (main && main.dataset.tab === 'installed') {
+            statsEl.textContent = `${allInst.length} installed | ${coreCount} core + ${userCount} user-installed`;
+            return;
+        }
         statsEl.textContent = `${shown} of ${total} avatars | ${coreCount} core + ${userCount} user-installed`;
     },
 
@@ -4758,6 +4768,9 @@ const VRMManager = {
     },
 
     switchTab(tabName) {
+        // V4. The status and count lines above the tabs read which tab is open (vrm-manager.css).
+        const main = document.querySelector('.vm-main');
+        if (main) main.dataset.tab = tabName;
         document.querySelectorAll('.vm-tab').forEach((t) => t.classList.remove('active'));
         document.querySelectorAll('.vm-tab-content').forEach((c) => c.classList.remove('active'));
         const tab = document.querySelector(`.vm-tab[data-tab="${tabName}"]`);
@@ -4765,6 +4778,7 @@ const VRMManager = {
         const content = el(`vm-tab-${tabName}`);
         if (content) content.classList.add('active');
         if (tabName === 'installed') this.renderInstalledGrid();
+        this.updateStats();
         if (tabName === 'catalog') {
             // If controls got into a stale state, reset them when opening catalog
             if (allItems.length && (!currentFiltered || !currentFiltered.length)) {

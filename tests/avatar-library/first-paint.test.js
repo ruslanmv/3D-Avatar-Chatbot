@@ -83,3 +83,28 @@ describe('setStatus', () => {
         expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)[\s\S]*\.vm-status-spinner/);
     });
 });
+
+describe('V4: each tab shows its own status and count', () => {
+    const html = fs.readFileSync(path.join(ROOT, 'vrm-manager.html'), 'utf8');
+
+    test('the page opens on My Avatars, and the catalogue status is hidden there', () => {
+        expect(html).toMatch(/<main class="vm-main" data-tab="installed">/);
+        expect(css).toMatch(/\.vm-main\[data-tab='installed'\] \.vm-status \{\s*display: none;/);
+    });
+
+    test('switching tabs records the tab and recounts', () => {
+        const fn = method('    switchTab(tabName) {');
+        expect(fn).toMatch(/main\.dataset\.tab = tabName/);
+        expect(fn).toMatch(/this\.updateStats\(\)/);
+    });
+
+    test('My Avatars counts installed avatars; Browse Catalog keeps its count', () => {
+        const fn = method('    updateStats() {');
+        const installed = fn.indexOf("main.dataset.tab === 'installed'");
+        expect(installed).toBeGreaterThan(-1);
+        expect(fn).toMatch(/\$\{allInst\.length\} installed \| \$\{coreCount\} core \+ \$\{userCount\} user-installed/);
+        expect(fn).toMatch(
+            /\$\{shown\} of \$\{total\} avatars \| \$\{coreCount\} core \+ \$\{userCount\} user-installed/
+        );
+    });
+});

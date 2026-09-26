@@ -444,6 +444,12 @@ body {
     font-size: 14px;
 }
 
+/* V4. The status line is about the catalogue; My Avatars is local and already drawn, so a
+   catalogue still loading is not news there. It shows again on Browse Catalog. */
+.vm-main[data-tab='installed'] .vm-status {
+    display: none;
+}
+
 /* V3. Loading reads as loading: a spinner, the count of sources, and a sliding bar. */
 .vm-status {
     position: relative;
