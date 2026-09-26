@@ -1,6 +1,13 @@
 /**
  * W7. Try-On, as a Together activity.
  *
+ * It lives with the wardrobe, not in Together's activities folder, on purpose. Files
+ * there are behaviour-engine modules: `boot.js` loads them from its flag-guarded list and
+ * nothing else may (the parity baseline and `tests/behavior/composition.test.js` hold
+ * that). This one is the wardrobe's adapter *into* Together — inert on its own, a factory
+ * that `TryOnTogetherBridge` calls only once Together is running — so it loads with the
+ * wardrobe and the engine's loading rules stay exactly as they were.
+ *
  * The wardrobe used to be its own floating 👗 button and drawer — a second launcher beside
  * Together, competing for the same corner of a phone. This is the same capability as one
  * tile of Together's: pick Try-On, choose looks (or make one), wear them one at a time,
@@ -27,7 +34,7 @@
  * wardrobe is read by her library slug. Fail soft throughout — a source that cannot be
  * read is skipped with a warning and the others still show.
  *
- * Exposes: window.NEXUS_BD_TRY_ON_HAUL
+ * Exposes: window.NEXUS_TRY_ON_HAUL_ACTIVITY
  */
 const TryOnHaulActivity = (() => {
     'use strict';
@@ -239,5 +246,5 @@ const TryOnHaulActivity = (() => {
     return { ID, UI, create, loadLooks, ownedBy };
 })();
 
-if (typeof window !== 'undefined') window.NEXUS_BD_TRY_ON_HAUL = TryOnHaulActivity;
+if (typeof window !== 'undefined') window.NEXUS_TRY_ON_HAUL_ACTIVITY = TryOnHaulActivity;
 if (typeof module !== 'undefined' && module.exports) module.exports = TryOnHaulActivity;

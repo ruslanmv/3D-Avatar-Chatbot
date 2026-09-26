@@ -3,7 +3,7 @@
  * was, it shows her looks only, and every way out restores her exactly once.
  */
 const Contract = require('../../src/features/together/activities/contract.js');
-const TryOn = require('../../src/features/together/activities/try-on-haul.js');
+const TryOn = require('../../src/wardrobe/TryOnHaulActivity.js');
 const { TryOnSession } = require('../../src/wardrobe/TryOnSession.js');
 const { TryOnView } = require('../../src/wardrobe/TryOnView.js');
 const Identity = require('../../src/wardrobe/AvatarIdentity.js');
