@@ -444,6 +444,77 @@ body {
     font-size: 14px;
 }
 
+/* V3. Loading reads as loading: a spinner, the count of sources, and a sliding bar. */
+.vm-status {
+    position: relative;
+}
+
+.vm-status-busy {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: var(--vm-text);
+}
+
+.vm-status-spinner {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid rgba(0, 229, 255, 0.2);
+    border-top-color: var(--vm-primary);
+    animation: vm-status-spin 0.8s linear infinite;
+    flex: none;
+}
+
+.vm-status-bar {
+    position: absolute;
+    left: 50%;
+    bottom: 2px;
+    width: min(360px, 70%);
+    height: 2px;
+    transform: translateX(-50%);
+    overflow: hidden;
+    border-radius: 2px;
+    background: rgba(0, 229, 255, 0.12);
+}
+
+.vm-status-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -40%;
+    width: 40%;
+    height: 100%;
+    border-radius: 2px;
+    background: var(--vm-primary);
+    animation: vm-status-slide 1.2s ease-in-out infinite;
+}
+
+@keyframes vm-status-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes vm-status-slide {
+    to {
+        left: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .vm-status-spinner,
+    .vm-status-bar::after {
+        animation: none;
+    }
+    .vm-status-bar::after {
+        left: 0;
+        width: 100%;
+        opacity: 0.5;
+    }
+}
+
 .vm-stats {
     text-align: center;
     padding: 0 0 16px;

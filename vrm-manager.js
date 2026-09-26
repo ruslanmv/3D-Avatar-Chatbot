@@ -496,11 +496,11 @@ const VRMManager = {
         this.buildSourceCards();
         this.wireEvents();
         this.updateSourceStatuses();
-        await this.loadCatalog();
 
         // Check if thumbnail version changed — if so, clear all cached thumbnails
         const savedThumbVer = localStorage.getItem('vrm_thumb_version');
-        if (savedThumbVer !== String(VM_CONFIG.THUMB_VERSION)) {
+        const thumbsReset = savedThumbVer !== String(VM_CONFIG.THUMB_VERSION);
+        if (thumbsReset) {
             console.log('[VRM-Manager] Thumbnail version changed — clearing cached thumbnails for regeneration');
             Object.values(installedAvatars).forEach((it) => {
                 it.preview = '';
@@ -511,6 +511,17 @@ const VRMManager = {
             // Restore thumbnails from IndexedDB
             await restoreThumbnailsFromDB();
         }
+
+        // V3. My Avatars first. It is local (localStorage + IndexedDB), but it was drawn only
+        // after loadCatalog — which waits for every remote source, VRoid Hub's discovery of
+        // thousands of models included — so the page opened on an empty tab under a line of
+        // static text and looked broken for as long as the network took.
+        this.renderInstalledGrid();
+
+        await this.loadCatalog();
+        // The catalogue was rebuilt from scratch; give its cards the restored thumbnails again
+        // (restoreThumbnailsFromDB skips avatars that already have one, so this is cheap).
+        if (!thumbsReset) await restoreThumbnailsFromDB();
 
         this.applyFilters();
         this.renderInstalledGrid();
@@ -1049,7 +1060,7 @@ const VRMManager = {
     },
 
     async loadCatalog() {
-        setStatus('Loading avatar catalog...');
+        setStatus('Loading avatar catalog…', { busy: true });
 
         // Start with built-in catalog — reset everything
         allItems = [...BUILTIN_CATALOG];
@@ -1115,16 +1126,40 @@ const VRMManager = {
             fetchers.push(this.fetchCustomCatalog(cs));
         });
 
-        try {
-            const results = await Promise.allSettled(fetchers);
-            results.forEach((r) => {
-                if (r.status === 'fulfilled' && Array.isArray(r.value)) {
-                    allItems = allItems.concat(r.value);
-                }
-            });
-        } catch (e) {
-            console.warn('[VRM-Manager] API fetch error:', e);
-        }
+        // V3. Show each source as it arrives. Waiting for all of them kept the fast ones (a
+        // custom catalogue, Sketchfab) behind VRoid Hub's discovery, which pages through
+        // thousands of models. The status counts sources down; skeleton cards stay until the
+        // last one lands. The merged catalogue is the same — only when it appears changes.
+        let done = 0;
+        const total = fetchers.length;
+        const sources = total === 1 ? 'source' : 'sources';
+        if (total) setStatus(`Loading avatar catalog… 0 of ${total} ${sources}`, { busy: true });
+        const merged = fetchers.map((fetcher) =>
+            Promise.resolve(fetcher)
+                .then((items) => {
+                    if (Array.isArray(items) && items.length) {
+                        allItems = allItems.concat(items);
+                        this._skipVroidSearch = true; // a merge is not a new search
+                        try {
+                            this.applyFilters();
+                        } finally {
+                            this._skipVroidSearch = false;
+                        }
+                    }
+                })
+                .catch((e) => console.warn('[VRM-Manager] API fetch error:', e))
+                .finally(() => {
+                    done += 1;
+                    if (done < total) {
+                        setStatus(`Loading avatar catalog… ${done} of ${total} ${sources}`, { busy: true });
+                        const grid = el('vm-grid');
+                        if (grid && !grid.querySelector('.vm-skeleton-card') && currentFiltered.length) {
+                            for (let i = 0; i < 3; i++) grid.appendChild(buildSkeletonCard());
+                        }
+                    }
+                })
+        );
+        await Promise.allSettled(merged);
 
         // Rebuild filters and re-render with full merged catalog
         this.populateSourceFilter();
@@ -4967,9 +5002,29 @@ function debounce(fn, ms) {
     };
 }
 
-function setStatus(msg) {
+/**
+ * The status line under the header. `busy` shows it as work in progress — a spinner and a
+ * sliding bar — so a load that takes a while reads as loading, not as a broken page (V3).
+ */
+function setStatus(msg, { busy = false } = {}) {
     const e = el('vm-status');
-    if (e) e.textContent = msg || '';
+    if (!e) return;
+    e.classList.toggle('vm-status-busy', Boolean(busy && msg));
+    e.setAttribute('aria-busy', busy && msg ? 'true' : 'false');
+    if (!busy || !msg) {
+        e.textContent = msg || '';
+        return;
+    }
+    e.innerHTML = '';
+    const spinner = document.createElement('span');
+    spinner.className = 'vm-status-spinner';
+    spinner.setAttribute('aria-hidden', 'true');
+    const text = document.createElement('span');
+    text.textContent = msg;
+    const bar = document.createElement('span');
+    bar.className = 'vm-status-bar';
+    bar.setAttribute('aria-hidden', 'true');
+    e.append(spinner, text, bar);
 }
 
 function setCredStatus(id, connected) {
