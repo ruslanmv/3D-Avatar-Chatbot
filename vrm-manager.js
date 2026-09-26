@@ -1905,16 +1905,20 @@ const VRMManager = {
      * Uses the GET /api/character_models/{id} endpoint.
      */
     async _fetchVroidModelById(modelId) {
+        // V1. A model's details are public on VRoid Hub; only downloading needs a sign-in.
+        // So look it up with the token when there is one, and without it when there is not.
         const token = await this._getVroidToken();
-        if (!token) return null;
 
         try {
             const res = await fetch(`/api/vroid-hub?action=detail&character_model_id=${encodeURIComponent(modelId)}`, {
-                headers: { Authorization: `Bearer ${token}` },
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
             });
             if (!res.ok) return null;
             const data = await res.json();
-            const model = data.data || data;
+            // VRoid Hub nests the model in data.character_model; reading data.data found no id
+            // and made every direct lookup return null (src/avatar-library/VroidLinks.js).
+            const links = window.NEXUS_VROID_LINKS;
+            const model = links ? links.unwrapDetail(data) : (data.data && data.data.character_model) || data.data;
             if (!model || !model.id) return null;
             return this._mapVroidModel(model, false);
         } catch (e) {
@@ -2023,12 +2027,19 @@ const VRMManager = {
             '';
 
         // Name: model name, or character name, or user name as fallback
-        const name =
+        let name =
             modelData.name ||
             modelData.character?.name ||
             modelData.user?.name ||
             modelData.character?.user?.name ||
             'VRoid Hub Avatar';
+        // V1. Creators often use the model name as a note ("VRM 1 - Downloadable",
+        // "ダウンロードOK"), so two different characters showed the same title. Lead with the
+        // character when the model name does not already say it.
+        const characterName = modelData.character?.name;
+        if (modelData.name && characterName && !modelData.name.toLowerCase().includes(characterName.toLowerCase())) {
+            name = `${characterName} · ${modelData.name}`;
+        }
 
         // Creator: user is at model.user (hearts) or model.character.user (staff picks/search)
         const creator =
@@ -2052,7 +2063,7 @@ const VRMManager = {
 
         // Extract conditions of use from VRoid Hub license object (VRM 1.0 fields)
         const lic = modelData.license || {};
-        const conditionsOfUse = {
+        let conditionsOfUse = {
             avatarUse: lic.characterization_allowed_user || 'default',
             violentExpression: lic.violent_expression || 'default',
             sexualExpression: lic.sexual_expression || 'default',
@@ -2062,6 +2073,10 @@ const VRMManager = {
             modification: lic.modification || 'default',
             credit: lic.credit || 'default',
         };
+        // V1. A VRM 1.0 model leaves `license` empty and keeps its terms in the VRM meta, so its
+        // card said "Not set" for every condition. Read them from there when `license` has none.
+        const fromMeta = window.NEXUS_VROID_LINKS && window.NEXUS_VROID_LINKS.conditionsFromVrmMeta(modelData);
+        if (fromMeta && !lic.redistribution && !lic.modification) conditionsOfUse = fromMeta;
 
         // Age/content rating from VRoid Hub AgeLimitSerializer
         const ageLimit = modelData.age_limit || {};
@@ -3148,6 +3163,12 @@ const VRMManager = {
 
         const hasActiveFilter = !!(search || source || format || license || access || rating || hasCouFilter);
 
+        // V1. A VRoid Hub link (or several, or bare model ids) is answered by model id, not by
+        // matching words — the address is in no name or tag. See src/avatar-library/VroidLinks.js.
+        const vroidLinks = window.NEXUS_VROID_LINKS;
+        const linkIds = vroidLinks ? vroidLinks.parseModelIds(rawSearch) : [];
+        const linkIdSet = new Set(linkIds);
+
         // Build sourceId → access type lookup from SOURCES definitions
         const accessTypeMap = {};
         SOURCES.forEach((s) => {
@@ -3193,6 +3214,7 @@ const VRMManager = {
                 return false;
             }
 
+            if (linkIds.length) return linkIdSet.has(String(item.vroidModelId || ''));
             if (search) {
                 const hay = [item.name, item.desc, item.source, (item.tags || []).join(' ')].join(' ').toLowerCase();
                 // Normalize common separators so "r 18" matches "r-18", "r_18", etc.
@@ -3274,8 +3296,27 @@ const VRMManager = {
         });
 
         visibleCount = VM_CONFIG.PAGE_SIZE;
-        this.renderGrid(currentFiltered, { hasActiveFilter });
+        const lookingUp = linkIds.length && linkIds.some((id) => !currentFiltered.some((it) => it.vroidModelId === id));
+        this.renderGrid(currentFiltered, { hasActiveFilter, lookingUp: lookingUp && !this._skipVroidSearch });
         this.updateStats();
+
+        if (linkIds.length) {
+            // A link search is a lookup, not a keyword search: sending the address to VRoid
+            // Hub's keyword search finds nothing, and it would replace the pagination cursor.
+            if (!this._skipVroidSearch) this._resolveVroidLinks(linkIds, rawSearch);
+            // The answer is a catalogue card, and My Avatars does not read the search box: show
+            // the catalogue. Only the tab's visibility changes — switchTab('catalog') would reset
+            // the controls while the lookup is still empty, and clear the link just pasted.
+            const installedTab = document.querySelector('.vm-tab[data-tab="installed"]');
+            if (installedTab && installedTab.classList.contains('active')) {
+                document.querySelectorAll('.vm-tab').forEach((t) => t.classList.remove('active'));
+                document.querySelectorAll('.vm-tab-content').forEach((c) => c.classList.remove('active'));
+                const catalogTab = document.querySelector('.vm-tab[data-tab="catalog"]');
+                if (catalogTab) catalogTab.classList.add('active');
+                if (el('vm-tab-catalog')) el('vm-tab-catalog').classList.add('active');
+            }
+            return;
+        }
 
         // Trigger VRoid Hub API search for longer queries (min 2 chars)
         if (search && search.length >= 2 && !this._skipVroidSearch) {
@@ -3330,9 +3371,59 @@ const VRMManager = {
         }, 500);
     },
 
-    renderGrid(items, { hasActiveFilter = false } = {}) {
+    /**
+     * V1. Look up the VRoid Hub models a pasted link names and add them to the catalogue.
+     *
+     * Additive only: models already in the catalogue are matched where they are, missing ones
+     * are fetched (public details, no sign-in needed) and appended; nothing is removed or
+     * reordered. Installing still needs a VRoid Hub sign-in, as before.
+     */
+    _resolveVroidLinks(ids, query) {
+        if (this._vroidLinkTimer) clearTimeout(this._vroidLinkTimer);
+        this._vroidLinkTimer = setTimeout(async () => {
+            const known = new Set(allItems.map((it) => String(it.vroidModelId || '')));
+            const missing = ids.filter((id) => !known.has(id));
+            const notFound = [];
+            // A few at a time: VRoid Hub answers a burst with 429.
+            for (let i = 0; i < missing.length; i += 4) {
+                const batch = missing.slice(i, i + 4);
+                const found = await Promise.all(batch.map((id) => this._fetchVroidModelById(id)));
+                found.forEach((item, k) => {
+                    if (!item) return notFound.push(batch[k]);
+                    if (!allItems.some((it) => it.id === item.id)) allItems.push(item);
+                });
+            }
+            const current = ((el('vm-search') && el('vm-search').value) || '').trim().toLowerCase();
+            if (current !== query) return; // the user has moved on; their new search is already showing
+            this._skipVroidSearch = true;
+            this.applyFilters();
+            this._skipVroidSearch = false;
+            if (notFound.length) {
+                toast(
+                    notFound.length === 1
+                        ? `VRoid Hub has no public model ${notFound[0]} (removed, private, or mistyped).`
+                        : `${notFound.length} of the linked models are not public on VRoid Hub.`,
+                    'error',
+                    6000
+                );
+            }
+        }, 300);
+    },
+
+    renderGrid(items, { hasActiveFilter = false, lookingUp = false } = {}) {
         const grid = el('vm-grid');
         grid.innerHTML = '';
+
+        if (!items.length && lookingUp) {
+            grid.innerHTML = `
+        <div class="vm-empty" style="grid-column:1/-1">
+          <div class="vm-empty-icon">🔗</div>
+          <div class="vm-empty-title">Looking up on VRoid Hub…</div>
+          <p>Finding the models in that link. Signing in to VRoid Hub is only needed to install them.</p>
+        </div>`;
+            updateLoadMore(0, 0);
+            return;
+        }
 
         if (!items.length) {
             grid.innerHTML = `
@@ -3533,6 +3624,13 @@ const VRMManager = {
                 // VRoid Hub needs special download license flow
                 if (item.vroidModelId || (downloadUrl && downloadUrl.startsWith('vroid-hub:'))) {
                     const modelId = item.vroidModelId || downloadUrl.replace('vroid-hub:', '');
+                    // V1. A card found from a link can be seen signed out; installing cannot.
+                    // Say so, instead of "check that the model allows downloads".
+                    if (!(await this._getVroidToken())) {
+                        throw new Error(
+                            'Sign in to VRoid Hub to install this model: Settings → VRoid Hub → Authorize with VRoid Hub.'
+                        );
+                    }
                     downloadUrl = await this.getVroidHubDownloadUrl(modelId);
                     if (!downloadUrl)
                         throw new Error(

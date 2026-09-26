@@ -810,6 +810,8 @@
             threeWithLoaders.MeshoptDecoder = MeshoptDecoder;
             window.THREE = threeWithLoaders;
         </script>
+        <!-- V1. VRoid Hub links in the search box; read by vrm-manager.js, so it loads first. -->
+        <script defer src="src/avatar-library/VroidLinks.js"></script>
         <script defer src="vrm-manager.js"></script>
     </body>
 </html>

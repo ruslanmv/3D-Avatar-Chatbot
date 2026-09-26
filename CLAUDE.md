@@ -179,10 +179,10 @@ will be rewrapped; files under `docs/` are exempt.
 
 **Batch comments.** Work lands in numbered batches and the code says which:
 `// T5. Take the <play> tag out…`, `// B14. …`. Prefixes in use: `B`, `T`, `M`,
-`D`, `L`, `S`, `MS`, `A` for the ambience work, `P` for the Private experience
-and `W` for the wardrobe. Commit subjects match:
-`A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
-up.
+`D`, `L`, `S`, `MS`, `A` for the ambience work, `P` for the Private experience,
+`W` for the wardrobe and `V` for VRoid Hub in the Avatar Library. Commit
+subjects match: `A4: viewport background manager`. So `git log --grep 'A4'` and
+the comment line up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of
@@ -404,3 +404,24 @@ through `window.NEXUS_WARDROBE_CONFIG.apiUrl`.
   entry, which keeps `conditionsOfUse` through `saveInstalled()`'s strip. A
   source that forbids modification is never overridden — Forge refuses with
   `source_model_modification_not_permitted` and the drawer says so.
+
+## VRoid Hub in the Avatar Library
+
+`vrm-manager.html` / `vrm-manager.js` is the Avatar Library. Its VRoid Hub
+sign-in (OAuth + PKCE, registered redirect origins), keyword search and
+download-licence install predate this note and are unchanged.
+
+- **A pasted model link is a lookup, not a keyword search (V1).**
+  `src/avatar-library/VroidLinks.js` finds model ids in whatever was typed — one
+  link, a pasted list with names between the links, links glued together by an
+  `<input>` dropping newlines, or nothing but bare ids. The Library then matches
+  those ids, fetches the missing models and _appends_ them; nothing is removed,
+  and the text is never sent to VRoid Hub's keyword search.
+- **Model details are public; downloading is not.** `action=detail` works signed
+  out in both proxies (`nexus-proxy/server.js` had no `detail` at all until V1 —
+  keep the two proxies' action lists in step). Every other action still needs
+  the user's token, and installing says "sign in" when there is none.
+- **VRoid Hub nests a detail answer in `data.character_model`**, and a VRM 1.0
+  model keeps its conditions of use in
+  `latest_character_model_version.vrm_meta`, not in `license` (whose fields are
+  null for VRM 1.0). `unwrapDetail` and `conditionsFromVrmMeta` read both.
