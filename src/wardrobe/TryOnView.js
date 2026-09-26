@@ -74,6 +74,14 @@
         'border:1px solid rgba(255,255,255,.12);color:#e8ecf2;font:600 .84rem/1 inherit}',
         '.nexus-try-on-step:disabled{opacity:.42;cursor:default}',
         '.nexus-try-on-studio{display:inline-block;margin-top:.6rem;font-size:.74rem;color:#7fb7c9}',
+        '.nexus-try-on-private{margin:.1rem 0 .7rem;padding:.6rem .65rem;border-radius:10px;text-align:left;',
+        'border:1px solid rgba(240,143,182,.3);background:rgba(240,143,182,.06)}',
+        '.nexus-try-on-private-head{margin:0 0 .45rem;font-size:.66rem;font-weight:700;letter-spacing:.14em;color:#f08fb6}',
+        '.nexus-try-on-picks{display:flex;flex-wrap:wrap;gap:.35rem}',
+        '.nexus-try-on-pick{padding:.42rem .65rem;border-radius:999px;cursor:pointer;font:500 .76rem/1 inherit;',
+        'color:#f6d9e6;background:rgba(240,143,182,.12);border:1px solid rgba(240,143,182,.4)}',
+        '.nexus-try-on-pick:disabled{opacity:.45;cursor:default}',
+        '.nexus-try-on-private p{margin:0;font-size:.78rem;color:#c9b3bf}',
         '.nexus-try-on-live{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}',
         '@media (max-width:640px){#nexus-try-on-view{position:fixed;z-index:1000;left:0;right:0;width:auto;transform:none;',
         'bottom:var(--nexus-composer-inset,calc(88px + env(safe-area-inset-bottom,0px)));',
@@ -120,6 +128,8 @@
             this.createError = null;
             this.draft = '';
             this._abort = null;
+            // W10. What private mode unlocks for her: {mode: off | locked | open}, from TryOnPrivate.
+            this.privateState = { mode: 'off' };
             this._onKey = this._onKey.bind(this);
         }
 
@@ -153,6 +163,47 @@
             if (this._abort) this._abort.abort();
             if (this.root && this.root.parentNode) this.root.parentNode.removeChild(this.root);
             this.root = null;
+        }
+
+        /** W10. Private mode's answer for this avatar (TryOnPrivate.evaluate). */
+        setPrivate(state) {
+            this.privateState = state || { mode: 'off' };
+            this.render();
+        }
+
+        _private() {
+            var doc = this.doc;
+            var self = this;
+            var state = this.privateState || { mode: 'off' };
+            if (state.mode === 'off') return null;
+            var box = h(doc, 'div', { class: 'nexus-try-on-private', role: 'group', 'aria-label': 'Private outfits' }, [
+                h(doc, 'p', { class: 'nexus-try-on-private-head', text: 'PRIVATE' }),
+            ]);
+            if (state.mode === 'locked') {
+                box.appendChild(h(doc, 'p', { text: state.why || 'Private outfits are not available for her.' }));
+                return box;
+            }
+            box.appendChild(
+                h(
+                    doc,
+                    'div',
+                    { class: 'nexus-try-on-picks' },
+                    (state.picks || []).map(function (pick) {
+                        return h(doc, 'button', {
+                            type: 'button',
+                            class: 'nexus-try-on-pick',
+                            'data-key': 'pick:' + pick.label,
+                            disabled: self.creating,
+                            text: pick.label,
+                            onclick: function () {
+                                self.draft = pick.prompt;
+                                self.create(pick.prompt);
+                            },
+                        });
+                    })
+                )
+            );
+            return box;
         }
 
         setLoading(loading) {
@@ -222,6 +273,8 @@
                 );
             }
 
+            var privateBox = this._private();
+            if (privateBox) parts.push(privateBox);
             parts.push(this._create());
             if (state.error) parts.push(h(doc, 'p', { class: 'nexus-try-on-error', role: 'alert', text: state.error }));
             parts.push(

@@ -36,7 +36,7 @@ Together's own *Stop* ends it too; either way she is restored exactly once.
 
 ## How it is built
 
-Nine new files and one edit (script tags). Nothing in Together, `boot.js`,
+Ten new files and one edit (script tags). Nothing in Together, `boot.js`,
 `TogetherPanel` or the existing wardrobe modules was changed.
 
 | File                                    | Owns                                                                                                                                     |
@@ -46,10 +46,11 @@ Nine new files and one edit (script tags). Nothing in Together, `boot.js`,
 | `src/wardrobe/ForgeLibraryClient.js`    | Forge's library routes, through `WardrobeClient.request()`; a cancellable job wait                                                       |
 | `src/wardrobe/TryOnGenerator.js`        | `create(prompt)`: route choice, library hash check, progress, refusals. Never touches the avatar                                         |
 | `src/wardrobe/TryOnSession.js`          | The haul: choose, Previous/Next, Keep, End (idempotent)                                                                                  |
+| `src/wardrobe/TryOnPrivate.js`          | What private mode unlocks for her avatar: `off`, `locked` with the reason, or `open` with quick picks                                    |
 | `src/wardrobe/TryOnView.js`             | The screens; sits where the Together panel sits and reuses its classes                                                                   |
 | `src/wardrobe/TryOnHaulActivity.js`     | The Together activity (native contract, `ui: {Try-On, 👗, 45}`); lists her looks only                                                    |
 | `src/wardrobe/TryOnTogetherBridge.js`   | Registers the tile once Together and the wardrobe both exist; then hides the drawer                                                      |
-| `index.html`                            | Eight script tags after `WardrobeBootstrap.js` (the wardrobe's own end-of-body pattern)                                                  |
+| `index.html`                            | Nine script tags after `WardrobeBootstrap.js` (the wardrobe's own end-of-body pattern)                                                  |
 
 Rules the code keeps, each with a test in `tests/wardrobe/`:
 
@@ -81,6 +82,33 @@ Together when the behaviour engine boots (`window.NEXUS_BD.togetherPanel`).
 They finish in either order, so the bridge polls for both (every 250 ms, up to
 60 s), registers once — `TogetherPanel.register()` repaints the chooser — and
 only then adds `nexus-try-on-in-together` to `<body>`, which hides the drawer.
+
+## Private mode
+
+Turning on private mode in Settings (the 18+ confirmation behind
+`NEXUS_SPICY.isEnabled()`) adds a **Private** box to Try-On's choosing screen.
+It follows the switch live: turn it off in Settings and the box goes away
+without reopening Try-On.
+
+What the box offers depends on her avatar, because two separate questions are
+asked and each has one owner:
+
+| Question                          | Who answers                                                                                 |
+| --------------------------------- | ------------------------------------------------------------------------------------------- |
+| Is the person an adult?           | Private mode — this device's adult confirmation                                             |
+| Does the avatar depict an adult?  | Wardrobe Forge's operator, per avatar, in `assets/library/policy.json` (`depictsAdult`)     |
+
+- **Avatar declared adult by Forge** → quick picks (lace lingerie, bikini,
+  stockings with a suspender belt, satin nightdress, sheer blouse) and any
+  private outfit typed into *Create a new look*. Each pick goes through the
+  same create path as any other look, with Forge's real steps.
+- **Any other avatar** (AvatarSample A/B, an external VRM) → one sentence
+  saying why, and no buttons that would only be refused.
+- **Forge not configured or unreachable** → a sentence saying so.
+
+Private mode never stands in for the avatar's declaration. Forge checks
+`depictsAdult` again on every job whatever the browser sends, so even a
+modified page cannot put an undeclared avatar in a private outfit.
 
 ## Configuration
 

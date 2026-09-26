@@ -117,11 +117,14 @@ const TryOnHaulActivity = (() => {
         const Generator = deps.Generator || (g.NEXUS_TRY_ON_GENERATOR && g.NEXUS_TRY_ON_GENERATOR.TryOnGenerator);
         const Identity = deps.Identity || g.NEXUS_AVATAR_IDENTITY;
         const Reasons = deps.Reasons || g.NEXUS_TRY_ON_REASONS;
+        const Private = deps.Private || g.NEXUS_TRY_ON_PRIVATE;
+        const spicy = () => deps.spicy || g.NEXUS_SPICY || null;
 
         let session = null;
         let view = null;
         let generator = null;
         let ending = null;
+        let unwatchPrivate = null;
 
         const service = () => (deps.wardrobe && deps.wardrobe.service) || null;
 
@@ -137,6 +140,21 @@ const TryOnHaulActivity = (() => {
             return (panel && panel.parentNode) || null;
         }
 
+        async function updatePrivate(identity) {
+            if (!Private || !view) return;
+            const on = Private.privateOn({ NEXUS_SPICY: spicy() });
+            const canCreate = Boolean(generator && generator.availability().ok);
+            let published = null;
+            if (on && canCreate && identity && identity.kind === 'library') {
+                try {
+                    published = await generator.library.library();
+                } catch (_) {
+                    published = null;
+                }
+            }
+            if (view) view.setPrivate(Private.evaluate({ privateOn: on, identity, published, canCreate }));
+        }
+
         async function finish(why) {
             if (!ending) {
                 ending = (async () => {
@@ -146,6 +164,8 @@ const TryOnHaulActivity = (() => {
                     } catch (error) {
                         console.warn('[Try-On] ending the haul failed', error);
                     }
+                    if (unwatchPrivate) unwatchPrivate();
+                    unwatchPrivate = null;
                     if (view) view.unmount();
                     view = null;
                     session = null;
@@ -207,6 +227,13 @@ const TryOnHaulActivity = (() => {
                     },
                 });
                 view.mount(host());
+                // W10. Private mode unlocks private outfits for avatars Forge declares adult.
+                // Asked now and again whenever private mode is switched, so the screen follows
+                // Settings while it is open.
+                const refreshPrivate = () => updatePrivate(identity);
+                refreshPrivate();
+                const gate = spicy();
+                if (gate && typeof gate.onChange === 'function') unwatchPrivate = gate.onChange(refreshPrivate);
                 loadLooks({ service: svc, library: generator && generator.library, identity })
                     .then((looks) => {
                         if (!session) return;
