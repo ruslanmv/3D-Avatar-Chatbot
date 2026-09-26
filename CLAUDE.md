@@ -352,10 +352,12 @@ storage and no speech. A new code path that persists a reply needs that check.
 ## The wardrobe feature (Try-On Haul)
 
 New outfits for the avatar, from a static bundle or from a running
-[3D-Wardrobe-Forge](https://github.com/ruslanmv/3D-Wardrobe-Forge). Eight
-modules in `src/wardrobe/`, a floating 👗 drawer, and `docs/WARDROBE.md` for
-deployment. **The static source is the default and needs no server**; remote
-generation is opt-in through `window.NEXUS_WARDROBE_CONFIG.apiUrl`.
+[3D-Wardrobe-Forge](https://github.com/ruslanmv/3D-Wardrobe-Forge). Sixteen
+modules in `src/wardrobe/`: the original eight behind a floating 👗 drawer
+(`docs/WARDROBE.md`), and eight more that put Try-On inside Together as a tile
+and hide the drawer once that tile exists (`docs/TRY_ON_TOGETHER.md`). **The
+static source is the default and needs no server**; remote generation is opt-in
+through `window.NEXUS_WARDROBE_CONFIG.apiUrl`.
 
 - **The whole feature ends at
   `AvatarManager.setAvatarByUrl(url, name, index)`.** A look is a VRM URL.
@@ -379,9 +381,17 @@ generation is opt-in through `window.NEXUS_WARDROBE_CONFIG.apiUrl`.
   value. Omit the key when there is nothing to say, and send strings — the "I
   have permission" path is exactly the path with no conditions to send, so
   getting this wrong broke only the attestation retry.
-- **The eight `<script>` tags live at the end of `index.html`'s `<body>`, and
+- **The sixteen `<script>` tags live at the end of `index.html`'s `<body>`, and
   moving them is not free.** The parity harness counts boot scripts by line;
-  `node scripts/behavior-parity-baseline.mjs --check` is the check.
+  `node scripts/behavior-parity-baseline.mjs --check` is the check. None of them
+  may point into an engine folder (`src/behavior/`, Together's own tree): those
+  load only through `boot.js`, which is why the Try-On activity is
+  `src/wardrobe/TryOnHaulActivity.js` and not a file among Together's
+  activities.
+- **Try-On keeps the controller as the only avatar swapper (W4–W9).** Its
+  session paces the haul and the controller wears and restores; identity for
+  Forge comes from the controller's snapshot of the original avatar, never the
+  current look. `tryOnInTogether: false` restores the drawer-only behaviour.
 - The licence terms come from VRM Manager's `vrm_manager_installed` localStorage
   entry, which keeps `conditionsOfUse` through `saveInstalled()`'s strip. A
   source that forbids modification is never overridden — Forge refuses with

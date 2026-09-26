@@ -145,6 +145,9 @@
         async _wearTarget() {
             if (this.busy) return this._settled; // the running load picks the new target up
             this.busy = true;
+            // Said at once: a VRM takes seconds to load, and a screen that shows the new look's
+            // name over the old outfit, with nothing saying it is on its way, looks broken.
+            this._changed();
             this._settled = (async () => {
                 try {
                     while (this.phase === 'running') {

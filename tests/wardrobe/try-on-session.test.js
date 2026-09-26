@@ -103,6 +103,19 @@ describe('TryOnSession', () => {
         expect(s.state()).toMatchObject({ index: 2, busy: false });
     });
 
+    test('the screen is told a look is on its way before it lands', async () => {
+        const c = fakeController({ instant: false });
+        const seen = [];
+        const s = new TryOnSession({ controller: c, onChange: (state) => seen.push(state.busy) });
+        s.setLooks(LOOKS);
+        s.toggle('burgundy');
+        const started = s.start();
+        expect(seen[seen.length - 1]).toBe(true); // "putting it on…" is showing while it loads
+        c.land();
+        await started;
+        expect(seen[seen.length - 1]).toBe(false);
+    });
+
     test('End puts her back exactly once, however many times it is asked', async () => {
         const c = fakeController();
         const s = session(c);
