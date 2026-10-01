@@ -71,9 +71,20 @@ So the rule for new code in `src/gltf-viewer/`:
 > injection or from the global. An ES module there is only testable by reading
 > the file and `eval`-ing it.
 
+**`src/wardrobe/` — IIFE, but loaded by `index.html`, not `boot.js`.** Same dual
+export as `src/features/`, and for the same reason: Jest `require()`s these
+directly. What differs is how they reach the browser — twenty plain `<script>`
+tags at the very end of `<body>`, after the Pose Studio root. That placement is
+deliberate and the commit that moved them there says why: the parity harness
+counts boot scripts by line, so adding them near the top of `index.html` shifted
+every frozen line reference below. Load order within those matters —
+`WardrobeClient` defines the error class `WardrobeController` and
+`WardrobePanel` read off the window at module scope, and `WardrobeBootstrap`
+runs on `DOMContentLoaded`, after every tag has loaded.
+
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (142 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (205 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -112,8 +123,8 @@ Know the coverage gaps, because they are not intuitive:
 
 ### The gate passes. Keep it that way.
 
-Measured 2026-09-13 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **3981 tests in 142 suites, all passing.**
+Measured 2026-09-27 with `npm ci` deps installed: `npm run validate` exits **0**
+— lint clean, format clean, **4889 tests in 205 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -168,9 +179,10 @@ will be rewrapped; files under `docs/` are exempt.
 
 **Batch comments.** Work lands in numbered batches and the code says which:
 `// T5. Take the <play> tag out…`, `// B14. …`. Prefixes in use: `B`, `T`, `M`,
-`D`, `L`, `S`, `MS`, and `A` for the ambience work. Commit subjects match:
-`A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
-up.
+`D`, `L`, `S`, `MS`, `A` for the ambience work, `P` for the Private experience,
+`W` for the wardrobe and `V` for VRoid Hub in the Avatar Library. Commit
+subjects match: `A4: viewport background manager`. So `git log --grep 'A4'` and
+the comment line up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of
@@ -336,3 +348,111 @@ conversation either).
 Turns capture `currentEpoch()` at the start and check `isCurrent(turn)` before
 writing anything back, so a reply that outlives a CLEAR writes no message, no
 storage and no speech. A new code path that persists a reply needs that check.
+
+## The wardrobe feature (Try-On Haul)
+
+New outfits for the avatar, from the pack this repository ships or from a
+running [3D-Wardrobe-Forge](https://github.com/ruslanmv/3D-Wardrobe-Forge).
+Twenty modules in `src/wardrobe/`: the original eight behind a floating 👗
+drawer (`docs/WARDROBE.md`), nine that put Try-On inside Together as a tile and
+hide the drawer once that tile exists (`docs/TRY_ON_TOGETHER.md`), and three
+that make every look an artifact and let a pack be imported
+(`docs/WARDROBE_IMPORT.md`). **The shipped pack is the default and needs no
+server**; a Forge is opt-in through `window.NEXUS_WARDROBE_CONFIG.forge.baseUrl`
+(or the older `apiUrl`).
+
+- **`vendor/wardrobe/` is a verified pack, not a folder you edit (W11).** Ten
+  looks, two per bundled avatar, ~137 MB of VRMs made by the Forge's
+  `tools/export_default_wardrobe.py`. Change it only with
+  `npm run wardrobe:import -- <pack>`; `npm run wardrobe:check` — also a Jest
+  test, so `validate` runs it — re-hashes every file, checks each avatar against
+  AvatarIdentity's pins, and fails on a file the manifest does not name.
+  Provenance is `vendor/wardrobe/provenance.json`; the pack refuses a README
+  beside it on purpose.
+- **Every source goes through `WardrobePackValidator`, and a look is keyed
+  `source:pack:avatar:id` (W11).** The pack carries the same look id for five
+  avatars; the old merge by `id` kept one and offered another character's file.
+  `WardrobeRegistry` lists sources in order (built-in, imported, Forge) and
+  never merges by name. A look is shown only on the avatar it was fitted to —
+  per look, not per manifest — and its `rating` can only hide it. The normalized
+  look is built from a field list, so a pack cannot carry `depictsAdult` or any
+  other permission in.
+- **An imported pack is checked whole, kept only on yes, and gated (W14).**
+  `WardrobeArtifactImporter` reads the zip (known paths only; only JSON may be
+  compressed), validates and hashes everything, and stores it in IndexedDB —
+  this browser only. A pack with any non-general look, or an unrated v1 bundle,
+  imports only with private mode on, and its looks still show only when Try-On's
+  private gate is open for her. Look keys, not ids, identify looks in
+  `TryOnSession` and `TryOnView`: an imported look may share a built-in one's id
+  on the same avatar.
+- **A look that names a SHA-256 is worn as a verified `blob:…#look.vrm` (W11).**
+  The fragment is load-bearing: `AvatarManager` picks VRM-or-glTF by the URL's
+  extension. The controller revokes the blob on the next wear or restore; a
+  mismatch refuses before anything is swapped.
+
+- **The whole feature ends at
+  `AvatarManager.setAvatarByUrl(url, name, index)`.** A look is a VRM URL.
+  Nothing here touches Three.js, the renderer, or the ambience background — a
+  generated outfit loads through the same path the avatar picker already uses,
+  which is why the feature adds no rendering code.
+- **`WardrobeController` is the only owner of snapshot-and-restore**, and it is
+  built whether or not a server is configured (W2). It was previously built only
+  for remote generation, so the static deployment — the one that ships — swapped
+  avatars without snapshotting, `restore()` answered false, and the drawer
+  reported success anyway. Without a server it gets `LOCAL_FORGE`: URLs resolve
+  to themselves and anything needing the pipeline refuses with the reason. A
+  Try-On Haul over looks already in the bundle therefore works offline.
+- **A look is never worn without a snapshot to go back to (W3).** The drawer
+  mounts as soon as `avatarManager` exists, which is before the startup avatar
+  has loaded; inside that window `getCurrent()` answers null, so a tap recorded
+  no original and Restore could never work again. `applyLook` now refuses with
+  "Wait for the avatar to finish loading" rather than stranding the user.
+- **Forge types `avatar.license.conditionsOfUse` as `dict[str, str]` with a
+  default factory, not as optional (W1).** A `null` is a 422 and so is a boolean
+  value. Omit the key when there is nothing to say, and send strings — the "I
+  have permission" path is exactly the path with no conditions to send, so
+  getting this wrong broke only the attestation retry.
+- **The twenty `<script>` tags live at the end of `index.html`'s `<body>`, and
+  moving them is not free.** The parity harness counts boot scripts by line;
+  `node scripts/behavior-parity-baseline.mjs --check` is the check. None of them
+  may point into an engine folder (`src/behavior/`, Together's own tree): those
+  load only through `boot.js`, which is why the Try-On activity is
+  `src/wardrobe/TryOnHaulActivity.js` and not a file among Together's
+  activities.
+- **Try-On keeps the controller as the only avatar swapper (W4–W9).** Its
+  session paces the haul and the controller wears and restores; identity for
+  Forge comes from the controller's snapshot of the original avatar, never the
+  current look. `tryOnInTogether: false` restores the drawer-only behaviour.
+- **Private mode unlocks private outfits only for avatars Forge declares adult
+  (W10).** `TryOnPrivate.evaluate()` answers `off`, `locked` with a sentence, or
+  `open` with quick picks. Private mode (`NEXUS_SPICY.isEnabled()`) says the
+  _person_ is an adult; whether the _avatar_ depicts one is Forge's
+  `depictsAdult` from `GET /v1/library`, set by its operator in
+  `assets/library/policy.json`, and Forge checks it again on every job. Never
+  make private mode stand in for the avatar's declaration — the two questions
+  have different owners.
+- The licence terms come from VRM Manager's `vrm_manager_installed` localStorage
+  entry, which keeps `conditionsOfUse` through `saveInstalled()`'s strip. A
+  source that forbids modification is never overridden — Forge refuses with
+  `source_model_modification_not_permitted` and the drawer says so.
+
+## VRoid Hub in the Avatar Library
+
+`vrm-manager.html` / `vrm-manager.js` is the Avatar Library. Its VRoid Hub
+sign-in (OAuth + PKCE, registered redirect origins), keyword search and
+download-licence install predate this note and are unchanged.
+
+- **A pasted model link is a lookup, not a keyword search (V1).**
+  `src/avatar-library/VroidLinks.js` finds model ids in whatever was typed — one
+  link, a pasted list with names between the links, links glued together by an
+  `<input>` dropping newlines, or nothing but bare ids. The Library then matches
+  those ids, fetches the missing models and _appends_ them; nothing is removed,
+  and the text is never sent to VRoid Hub's keyword search.
+- **Model details are public; downloading is not.** `action=detail` works signed
+  out in both proxies (`nexus-proxy/server.js` had no `detail` at all until V1 —
+  keep the two proxies' action lists in step). Every other action still needs
+  the user's token, and installing says "sign in" when there is none.
+- **VRoid Hub nests a detail answer in `data.character_model`**, and a VRM 1.0
+  model keeps its conditions of use in
+  `latest_character_model_version.vrm_meta`, not in `license` (whose fields are
+  null for VRM 1.0). `unwrapDetail` and `conditionsFromVrmMeta` read both.

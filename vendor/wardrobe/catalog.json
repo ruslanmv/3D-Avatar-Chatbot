@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 2,
+  "pack": "homepilot-default",
+  "wardrobe": "wardrobe.json",
+  "looks": [
+    {
+      "id": "crop-top-jeans",
+      "avatarId": "avatar-sample-a",
+      "name": "Crop top & jeans",
+      "previewUrl": "looks/avatar-sample-a/crop-top-jeans/2026.09.27/preview.webp",
+      "tags": [
+        "casual",
+        "denim",
+        "day"
+      ]
+    },
+    {
+      "id": "maxi-sundress",
+      "avatarId": "avatar-sample-a",
+      "name": "Yellow sundress",
+      "previewUrl": "looks/avatar-sample-a/maxi-sundress/2026.09.27/preview.webp",
+      "tags": [
+        "summer",
+        "dress",
+        "day"
+      ]
+    },
+    {
+      "id": "crop-top-jeans",
+      "avatarId": "avatar-sample-b",
+      "name": "Crop top & jeans",
+      "previewUrl": "looks/avatar-sample-b/crop-top-jeans/2026.09.27/preview.webp",
+      "tags": [
+        "casual",
+        "denim",
+        "day"
+      ]
+    },
+    {
+      "id": "maxi-sundress",
+      "avatarId": "avatar-sample-b",
+      "name": "Yellow sundress",
+      "previewUrl": "looks/avatar-sample-b/maxi-sundress/2026.09.27/preview.webp",
+      "tags": [
+        "summer",
+        "dress",
+        "day"
+      ]
+    },
+    {
+      "id": "tee-trousers",
+      "avatarId": "avatar-sample-c",
+      "name": "White tee & trousers",
+      "previewUrl": "looks/avatar-sample-c/tee-trousers/2026.09.27/preview.webp",
+      "tags": [
+        "casual",
+        "day"
+      ]
+    },
+    {
+      "id": "tee-jeans",
+      "avatarId": "avatar-sample-c",
+      "name": "Black tee & jeans",
+      "previewUrl": "looks/avatar-sample-c/tee-jeans/2026.09.27/preview.webp",
+      "tags": [
+        "casual",
+        "denim",
+        "day"
+      ]
+    },
+    {
+      "id": "crop-top-jeans",
+      "avatarId": "fem-vroid",
+      "name": "Crop top & jeans",
+      "previewUrl": "looks/fem-vroid/crop-top-jeans/2026.09.27/preview.webp",
+      "tags": [
+        "casual",
+        "denim",
+        "day"
+      ]
+    },
+    {
+      "id": "maxi-sundress",
+      "avatarId": "fem-vroid",
+      "name": "Yellow sundress",
+      "previewUrl": "looks/fem-vroid/maxi-sundress/2026.09.27/preview.webp",
+      "tags": [
+        "summer",
+        "dress",
+        "day"
+      ]
+    },
+    {
+      "id": "tee-trousers",
+      "avatarId": "masc-vroid",
+      "name": "White tee & trousers",
+      "previewUrl": "looks/masc-vroid/tee-trousers/2026.09.27/preview.webp",
+      "tags": [
+        "casual",
+        "day"
+      ]
+    },
+    {
+      "id": "tee-jeans",
+      "avatarId": "masc-vroid",
+      "name": "Black tee & jeans",
+      "previewUrl": "looks/masc-vroid/tee-jeans/2026.09.27/preview.webp",
+      "tags": [
+        "casual",
+        "denim",
+        "day"
+      ]
+    }
+  ]
+}
