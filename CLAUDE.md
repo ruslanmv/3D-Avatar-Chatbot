@@ -10,7 +10,8 @@ A 3D VRM avatar chatbot: a static site rendered with Three.js, served by a small
 Node proxy. Multi-provider LLM chat, TTS/STT, WebXR (Quest), AR/passthrough, and
 a Desktop Companion picture-in-picture mode.
 
-- Node 20 (`.node-version`, `engines.node: 20.x`)
+- Node 24 (`.node-version`, `engines.node: 24.x`). Vercel discontinued 20.x and
+  refuses to build a project that pins it, so do not move this back.
 - Licence: **Apache-2.0** (`LICENSE`, `package.json`). Anything added — code,
   assets, fixtures — must be Apache-2.0 or compatible, and asset provenance gets
   recorded where the asset lands.
