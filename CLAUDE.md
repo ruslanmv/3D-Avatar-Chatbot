@@ -12,6 +12,10 @@ a Desktop Companion picture-in-picture mode.
 
 - Node 24 (`.node-version`, `engines.node: 24.x`). Vercel discontinued 20.x and
   refuses to build a project that pins it, so do not move this back.
+- Regenerate `package-lock.json` with npm 11 (Node 24's), e.g.
+  `npx npm@11 install --package-lock-only`. npm 10 wrote a lockfile without the
+  macOS-only `fsevents` entry, and npm 11's `npm ci` refuses that as out of
+  sync, which failed every CI job at its install step.
 - Licence: **Apache-2.0** (`LICENSE`, `package.json`). Anything added — code,
   assets, fixtures — must be Apache-2.0 or compatible, and asset provenance gets
   recorded where the asset lands.
