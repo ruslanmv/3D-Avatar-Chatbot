@@ -39,6 +39,21 @@
     var TERMINAL = Object.freeze(['completed', 'failed', 'rejected']);
 
     /**
+     * LT1. The same wait in three words, for the entertainment surface.
+     *
+     * Eleven states are right for Wardrobe Studio and for debugging, and too many for a
+     * haul: a person waiting to see her in a new top does not need to know the garment is
+     * being skinned. Try-On shows the stage and keeps the real steps behind "Details ▾" —
+     * so this is a grouping of Forge's states, never a replacement for them, and a state
+     * Forge adds later lands in a stage by its position rather than vanishing.
+     */
+    var STAGES = Object.freeze([
+        { id: 'designing', label: 'DESIGNING', line: 'Designing your change…', last: 'generating-garment' },
+        { id: 'fitting', label: 'FITTING', line: 'Fitting it…', last: 'validating-output' },
+        { id: 'ready', label: 'READY', line: 'Almost ready…', last: 'rendering-preview' },
+    ]);
+
+    /**
      * A sentence for every refusal and failure code Forge sends (`FailureReason`).
      * `tests/wardrobe/try-on-reasons.test.js` holds this list equal to Forge's.
      */
@@ -99,7 +114,24 @@
             return { state: step.state, label: step.label, status: status };
         });
         var current = at !== -1 ? STEPS[at].label : state === 'completed' ? 'Ready' : String(state || '');
-        return { steps: steps, current: current, index: at, total: STEPS.length };
+        return { steps: steps, current: current, index: at, total: STEPS.length, stage: stage(state) };
+    }
+
+    /** LT1. Which of the three stages a job in `state` is in: {id, label, line, index, total}. */
+    function stage(state) {
+        var at = state === 'completed' ? STEPS.length - 1 : stepIndex(state);
+        var index = 0;
+        if (at !== -1) {
+            for (var i = 0; i < STAGES.length; i += 1) {
+                if (at <= stepIndex(STAGES[i].last)) {
+                    index = i;
+                    break;
+                }
+                index = STAGES.length - 1;
+            }
+        }
+        var found = STAGES[index];
+        return { id: found.id, label: found.label, line: found.line, index: index, total: STAGES.length };
     }
 
     /**
@@ -124,7 +156,9 @@
 
     var api = {
         STEPS: STEPS,
+        STAGES: STAGES,
         TERMINAL: TERMINAL,
+        stage: stage,
         REASONS: REASONS,
         TRANSPORT: TRANSPORT,
         stepIndex: stepIndex,

@@ -118,6 +118,26 @@ describe('TryOnGenerator', () => {
         });
     });
 
+    test('LT1: a change builds on the look she has on — baseLookId goes to Forge with only the new garment', async () => {
+        const { forge, generator } = setup({ url: `vendor/avatars/${SAMPLE_A.file}`, name: 'AvatarSample A' });
+        const look = await generator.create('black satin crop top', { baseLookId: 'look_0' });
+        const post = forge.calls.find((call) => call.method === 'POST');
+        expect(post.body).toMatchObject({ baseLookId: 'look_0', outfit: { prompt: 'black satin crop top' } });
+        expect(look.basedOn).toBe('look_0');
+        // Without one, nothing is sent: a fresh look is made from her base avatar.
+        await generator.create('red midi dress');
+        const second = forge.calls.filter((call) => call.method === 'POST')[1];
+        expect(second.body.baseLookId).toBeUndefined();
+    });
+
+    test('LT1: the generic route cannot build on a look, so it says the look was made fresh', async () => {
+        const { forge, generator } = setup({ url: 'uploads/aiko.vrm', name: 'Aiko' });
+        const look = await generator.create('red skater skirt', { baseLookId: 'look_0' });
+        const post = forge.calls.find((call) => call.path === '/v1/generate');
+        expect(post.body.baseLookId).toBeUndefined();
+        expect(look.basedOn).toBeNull();
+    });
+
     test('progress is Forge’s real states, in order, starting before the first poll', async () => {
         const { generator } = setup({ url: `vendor/avatars/${SAMPLE_A.file}` });
         const seen = [];

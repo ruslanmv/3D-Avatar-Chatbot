@@ -60,6 +60,18 @@ describe('TryOnReasons', () => {
         expect(Reasons.progress('completed').steps.every((step) => step.status === 'done')).toBe(true);
     });
 
+    test('LT1: the eleven states collapse into three stages, in order, for the haul screen', () => {
+        const ids = Reasons.STEPS.map((step) => Reasons.stage(step.state).index);
+        expect(ids).toEqual([...ids].sort((x, y) => x - y)); // never goes backwards
+        expect(Reasons.stage('queued').id).toBe('designing');
+        expect(Reasons.stage('fitting').id).toBe('fitting');
+        expect(Reasons.stage('rendering-preview').id).toBe('ready');
+        expect(Reasons.stage('completed').id).toBe('ready');
+        expect(Reasons.progress('skinning').stage).toMatchObject({ label: 'FITTING', total: 3 });
+        // The real steps are still all there, for "Details".
+        expect(Reasons.progress('skinning').steps).toHaveLength(Reasons.STEPS.length);
+    });
+
     test('a state Forge adds later is shown by name rather than dropped', () => {
         expect(Reasons.progress('draping').current).toBe('draping');
     });

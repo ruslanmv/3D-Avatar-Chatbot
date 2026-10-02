@@ -8,6 +8,8 @@ const { TryOnSession } = require('../../src/wardrobe/TryOnSession.js');
 const { TryOnView } = require('../../src/wardrobe/TryOnView.js');
 const Identity = require('../../src/wardrobe/AvatarIdentity.js');
 const Reasons = require('../../src/wardrobe/TryOnReasons.js');
+const Intent = require('../../src/wardrobe/TryOnIntent.js');
+const Reactions = require('../../src/wardrobe/TryOnReactions.js');
 
 const BASE = { url: 'vendor/avatars/AvatarSample_A.vrm', name: 'AvatarSample A', index: 0 };
 const LOOK = (id, name) => ({ id, name, vrmUrl: `https://f/${id}.vrm` });
@@ -54,10 +56,17 @@ function activityWith(service, panel) {
         View: TryOnView,
         Identity,
         Reasons,
+        Intent,
+        Reactions,
     });
 }
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+/** The sheet folds to the remote as a look arrives (LT2); More opens it again. */
+const more = () => {
+    const button = document.querySelector('[data-key="collapse"]');
+    if (button && button.getAttribute('aria-expanded') === 'false') button.click();
+};
 
 describe('try-on-haul activity', () => {
     beforeEach(() => mountHost());
@@ -86,34 +95,63 @@ describe('try-on-haul activity', () => {
         expect(view.parentNode.className).toBe('avatar-card');
         expect(view.getAttribute('role')).toBe('dialog');
         await flush();
-        expect([...view.querySelectorAll('.nexus-try-on-name')].map((n) => n.textContent)).toEqual([
-            'Burgundy',
-            'Summer',
-        ]);
+        expect(
+            [...view.querySelectorAll('.nexus-try-on-card:not(.is-new) .nexus-try-on-name')].map((n) => n.textContent)
+        ).toEqual(['Burgundy', 'Summer']);
     });
 
     test('a bundled wardrobe that belongs to another avatar is not offered', async () => {
         const activity = activityWith(fakeService({ owner: 'masc-vroid' }));
         await activity.start({});
         await flush();
-        expect(document.querySelectorAll('.nexus-try-on-card')).toHaveLength(0);
+        expect(document.querySelectorAll('.nexus-try-on-card:not(.is-new)')).toHaveLength(0);
         expect(document.querySelector('.nexus-try-on-empty').textContent).toMatch(/No looks for her yet/);
     });
 
-    test('choose, start, step, and the launcher line follows', async () => {
+    test('LT2: tap a look and she wears it; the launcher line follows', async () => {
         const service = fakeService();
         const activity = activityWith(service);
         await activity.start({});
         await flush();
-        document.querySelectorAll('.nexus-try-on-card').forEach((card) => card.click());
-        expect(activity.status()).toEqual({ label: 'Try-On', detail: '2 chosen' });
-        document.querySelector('[data-key="start"]').click();
+        expect(activity.status()).toEqual({ label: 'Try-On', detail: 'Browsing looks' });
+        document.querySelector('[data-key="look:burgundy"]').click();
         await flush();
         expect(activity.status().detail).toBe('Look 1 of 2 · Burgundy');
-        document.querySelector('[data-key="next"]').click();
+        document.querySelector('[data-key="next"]').click(); // the folded remote steps too
         await flush();
         expect(activity.status().detail).toBe('Look 2 of 2 · Summer');
         expect(service.controller.applyLook).toHaveBeenCalledTimes(2);
+    });
+
+    test('LT2: Turn spins the loaded model round and puts the exact yaw back at the end', async () => {
+        const service = fakeService();
+        const root = { rotation: { y: Math.PI } }; // a VRM 0.x file is turned at load
+        service.controller.avatarManager.currentRoot = root;
+        // Reduced motion: the turn is a cut, not an animation, so it can be read at once.
+        const matchMedia = window.matchMedia;
+        window.matchMedia = () => ({ matches: true });
+        const activity = activityWith(service);
+        await activity.start({});
+        await flush();
+        document.querySelector('[data-key="look:burgundy"]').click();
+        await flush();
+        document.querySelector('[data-key="turn"]').click();
+        expect(root.rotation.y).toBeCloseTo(2 * Math.PI);
+        activity.stop('user');
+        await flush();
+        expect(root.rotation.y).toBe(Math.PI);
+        window.matchMedia = matchMedia;
+    });
+
+    test('LT2: a new file is not turned back by a stale snapshot', () => {
+        const manager = { currentRoot: { rotation: { y: 0 } } };
+        const turner = TryOn.makeTurner(manager, {});
+        expect(turner.toggle()).toBe(true);
+        manager.currentRoot = { rotation: { y: 0.5 } }; // a look loaded: a new root
+        turner.reset();
+        expect(manager.currentRoot.rotation.y).toBe(0.5);
+        expect(turner.toggle()).toBe(true); // the new root turns from its own yaw
+        expect(manager.currentRoot.rotation.y).toBeCloseTo(0.5 + Math.PI);
     });
 
     test('the panel’s Stop and the view’s End both restore her, once between them', async () => {
@@ -128,8 +166,8 @@ describe('try-on-haul activity', () => {
         await activity.start({});
         await flush();
         document.querySelector('.nexus-try-on-card').click();
-        document.querySelector('[data-key="start"]').click();
         await flush();
+        more();
         document.querySelector('[data-key="end"]').click();
         activity.stop('user');
         await flush();
@@ -144,8 +182,8 @@ describe('try-on-haul activity', () => {
         await activity.start({});
         await flush();
         document.querySelector('.nexus-try-on-card').click();
-        document.querySelector('[data-key="start"]').click();
         await flush();
+        more();
         document.querySelector('[data-key="keep"]').click();
         await flush();
         expect(service.controller.restore).not.toHaveBeenCalled();

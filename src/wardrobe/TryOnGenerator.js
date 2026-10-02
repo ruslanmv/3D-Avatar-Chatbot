@@ -19,6 +19,9 @@
  * the caller decides whether to wear it; a failure, a refusal or a cancel leaves her
  * exactly as she was, because nothing on those paths calls the viewer.
  *
+ * LT1 adds `baseLookId`: a change to the look she has on is made *from that look*, which
+ * Forge's library route already accepts. TryOnIntent decides when a request is a change.
+ *
  * Exposes: window.NEXUS_TRY_ON_GENERATOR
  */
 (function (global) {
@@ -139,7 +142,9 @@
          * Make a look. Resolves to `{id, name, vrmUrl, previewUrl, prompt, fitPassed, source}`,
          * the shape `WardrobeController.applyLook` and the static bundle already use.
          *
-         * options   {onProgress(progress), signal}
+         * options   {onProgress(progress), signal, baseLookId}
+         *   baseLookId  a Forge look of hers to build on (LT1): the new garment replaces what it
+         *               covers on that look and the rest of it is kept
          * Rejects with a TryOnError whose message is a sentence, or an AbortError on cancel.
          */
         async create(prompt, options) {
@@ -153,6 +158,10 @@
             var identity = this.identity();
             if (identity.kind === 'unknown') throw new TryOnError(identity.why);
 
+            // LT1. Only Forge's library route knows her looks by id; the generic route makes
+            // every look from the avatar file, so a base is not sent there and the look says
+            // it was made fresh (`basedOn: null`) rather than pretending it was built on.
+            var baseLookId = identity.kind === 'library' && options.baseLookId ? String(options.baseLookId) : null;
             this._progress('queued', options.onProgress);
             try {
                 var jobId;
@@ -160,7 +169,13 @@
                     if ((await this._matches(identity)) === false) {
                         throw new TryOnError(MISMATCH, { reason: 'library_mismatch' });
                     }
-                    var accepted = await this.library.createJob(identity.slug, { prompt: text });
+                    // LT1. "Change the top" builds on the look she has on, so everything the
+                    // person did not ask to change — the jeans, the shoes — stays as it is.
+                    var accepted = await this.library.createJob(
+                        identity.slug,
+                        { prompt: text },
+                        baseLookId ? { baseLookId: baseLookId } : undefined
+                    );
                     jobId = accepted && accepted.id;
                 } else {
                     var controller = this.controller;
@@ -182,7 +197,7 @@
                         this._progress(state, options.onProgress);
                     }.bind(this),
                 });
-                return this._look(job, text, identity);
+                return this._look(job, text, identity, baseLookId);
             } catch (error) {
                 if (error && (error.name === 'AbortError' || error.name === 'TryOnError')) throw error;
                 throw new TryOnError(this.Reasons.explain(error), {
@@ -192,7 +207,7 @@
             }
         }
 
-        _look(job, prompt, identity) {
+        _look(job, prompt, identity, baseLookId) {
             var look = (job && job.look) || {};
             if (!look.vrmUrl) throw new TryOnError(this.Reasons.TRANSPORT.generic);
             return {
@@ -204,6 +219,7 @@
                 fitPassed: fitPassed(job.fitReport),
                 source: 'generated',
                 avatar: identity.kind === 'library' ? identity.slug : identity.name,
+                basedOn: baseLookId || null,
             };
         }
     }

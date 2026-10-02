@@ -11,6 +11,7 @@ const { TryOnSession } = require('../../src/wardrobe/TryOnSession.js');
 const { TryOnView } = require('../../src/wardrobe/TryOnView.js');
 const Identity = require('../../src/wardrobe/AvatarIdentity.js');
 const Reasons = require('../../src/wardrobe/TryOnReasons.js');
+const Intent = require('../../src/wardrobe/TryOnIntent.js');
 
 const SAMPLE_A = Identity.resolve({ url: 'vendor/avatars/AvatarSample_A.vrm', name: 'AvatarSample A' });
 const DECLARED = [{ slug: 'avatar-sample-a', depictsAdult: true, declaredBy: 'operator' }];
@@ -124,6 +125,7 @@ describe('Try-On follows private mode', () => {
             Generator: FakeGenerator,
             Identity,
             Reasons,
+            Intent,
             Private,
             spicy,
         });
@@ -136,7 +138,9 @@ describe('Try-On follows private mode', () => {
         const { activity, created } = start(gate(true), DECLARED);
         await activity.start({});
         await flush();
-        const pick = document.querySelector('.nexus-try-on-pick');
+        // LT2. Private is a category beside the others, not a separate box.
+        document.querySelector('[data-key="tab:private"]').click();
+        const pick = document.querySelector('[data-key="pick:Lace lingerie"]');
         expect(pick.textContent).toBe('Lace lingerie');
         pick.click();
         await flush();
@@ -147,8 +151,9 @@ describe('Try-On follows private mode', () => {
         const { activity } = start(gate(true), UNDECLARED);
         await activity.start({});
         await flush();
-        expect(document.querySelector('.nexus-try-on-pick')).toBeNull();
-        expect(document.querySelector('.nexus-try-on-private').textContent).toMatch(/not declared this avatar adult/);
+        document.querySelector('[data-key="tab:private"]').click();
+        expect(document.querySelector('.nexus-try-on-chip.is-private')).toBeNull();
+        expect(document.getElementById('nexus-try-on-view').textContent).toMatch(/not declared this avatar adult/);
     });
 
     test('switching private mode in Settings updates an open Try-On, and closing it stops listening', async () => {
@@ -156,13 +161,15 @@ describe('Try-On follows private mode', () => {
         const { activity } = start(spicy, DECLARED);
         await activity.start({});
         await flush();
-        expect(document.querySelector('.nexus-try-on-private')).toBeNull();
+        expect(document.querySelector('[data-key="tab:private"]')).toBeNull();
         spicy.set(true);
         await flush();
-        expect(document.querySelector('.nexus-try-on-pick')).not.toBeNull();
+        document.querySelector('[data-key="tab:private"]').click();
+        expect(document.querySelector('.nexus-try-on-chip.is-private')).not.toBeNull();
         spicy.set(false);
         await flush();
-        expect(document.querySelector('.nexus-try-on-private')).toBeNull();
+        expect(document.querySelector('[data-key="tab:private"]')).toBeNull();
+        expect(document.querySelector('.nexus-try-on-chip.is-private')).toBeNull();
         activity.stop('user');
         await flush();
         expect(spicy.listeners).toHaveLength(0);

@@ -78,18 +78,18 @@ So the rule for new code in `src/gltf-viewer/`:
 
 **`src/wardrobe/` — IIFE, but loaded by `index.html`, not `boot.js`.** Same dual
 export as `src/features/`, and for the same reason: Jest `require()`s these
-directly. What differs is how they reach the browser — twenty plain `<script>`
-tags at the very end of `<body>`, after the Pose Studio root. That placement is
-deliberate and the commit that moved them there says why: the parity harness
-counts boot scripts by line, so adding them near the top of `index.html` shifted
-every frozen line reference below. Load order within those matters —
-`WardrobeClient` defines the error class `WardrobeController` and
+directly. What differs is how they reach the browser — twenty-two plain
+`<script>` tags at the very end of `<body>`, after the Pose Studio root. That
+placement is deliberate and the commit that moved them there says why: the
+parity harness counts boot scripts by line, so adding them near the top of
+`index.html` shifted every frozen line reference below. Load order within those
+matters — `WardrobeClient` defines the error class `WardrobeController` and
 `WardrobePanel` read off the window at module scope, and `WardrobeBootstrap`
 runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (205 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (207 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -128,8 +128,8 @@ Know the coverage gaps, because they are not intuitive:
 
 ### The gate passes. Keep it that way.
 
-Measured 2026-09-27 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **4889 tests in 205 suites, all passing.**
+Measured 2026-10-02 with `npm ci` deps installed: `npm run validate` exits **0**
+— lint clean, format clean, **4941 tests in 207 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -358,9 +358,9 @@ storage and no speech. A new code path that persists a reply needs that check.
 
 New outfits for the avatar, from the pack this repository ships or from a
 running [3D-Wardrobe-Forge](https://github.com/ruslanmv/3D-Wardrobe-Forge).
-Twenty modules in `src/wardrobe/`: the original eight behind a floating 👗
-drawer (`docs/WARDROBE.md`), nine that put Try-On inside Together as a tile and
-hide the drawer once that tile exists (`docs/TRY_ON_TOGETHER.md`), and three
+Twenty-two modules in `src/wardrobe/`: the original eight behind a floating 👗
+drawer (`docs/WARDROBE.md`), eleven that put Try-On inside Together as a tile
+and hide the drawer once that tile exists (`docs/TRY_ON_TOGETHER.md`), and three
 that make every look an artifact and let a pack be imported
 (`docs/WARDROBE_IMPORT.md`). **The shipped pack is the default and needs no
 server**; a Forge is opt-in through `window.NEXUS_WARDROBE_CONFIG.forge.baseUrl`
@@ -417,8 +417,8 @@ server**; a Forge is opt-in through `window.NEXUS_WARDROBE_CONFIG.forge.baseUrl`
   value. Omit the key when there is nothing to say, and send strings — the "I
   have permission" path is exactly the path with no conditions to send, so
   getting this wrong broke only the attestation retry.
-- **The twenty `<script>` tags live at the end of `index.html`'s `<body>`, and
-  moving them is not free.** The parity harness counts boot scripts by line;
+- **The twenty-two `<script>` tags live at the end of `index.html`'s `<body>`,
+  and moving them is not free.** The parity harness counts boot scripts by line;
   `node scripts/behavior-parity-baseline.mjs --check` is the check. None of them
   may point into an engine folder (`src/behavior/`, Together's own tree): those
   load only through `boot.js`, which is why the Try-On activity is
@@ -428,6 +428,18 @@ server**; a Forge is opt-in through `window.NEXUS_WARDROBE_CONFIG.forge.baseUrl`
   session paces the haul and the controller wears and restores; identity for
   Forge comes from the controller's snapshot of the original avatar, never the
   current look. `tryOnInTogether: false` restores the drawer-only behaviour.
+- **Try-On is live play, not select-then-Start (LT1–LT2).** Tapping a look wears
+  it; the haul begins (and the controller snapshots) on the first wear. Every
+  landed look is a step in `TryOnSession`'s history; a wear that has not landed
+  is the _pending_ head and the next tap replaces it, so coalesced taps never
+  enter the history — keep that, it is what Undo stands on. Compare swaps the
+  VRM without touching the history; favourites are not Keep. Typed text goes
+  through `TryOnIntent`, which is pure and decides navigation versus a Forge
+  request; "change X" is sent as only the new garment with `baseLookId` when
+  Forge made the current look on her library route, and otherwise rebuilt from
+  the look's own recipe with only that part rewritten. Turn rotates
+  `avatarManager.currentRoot` relative to its load-time yaw and writes that yaw
+  back on finish.
 - **Private mode unlocks private outfits only for avatars Forge declares adult
   (W10).** `TryOnPrivate.evaluate()` answers `off`, `locked` with a sentence, or
   `open` with quick picks. Private mode (`NEXUS_SPICY.isEnabled()`) says the

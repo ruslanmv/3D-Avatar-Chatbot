@@ -10,8 +10,8 @@
  *
  * The wardrobe used to be its own floating 👗 button and drawer — a second launcher beside
  * Together, competing for the same corner of a phone. This is the same capability as one
- * tile of Together's: pick Try-On, choose looks (or make one), wear them one at a time,
- * keep one or go back.
+ * tile of Together's: pick Try-On and play — tap a look and she wears it, ask for a change
+ * and Forge makes it, compare, undo, heart a few, keep one or go back (LT1–LT2).
  *
  * It speaks the activity contract natively (`__contract: true`, B36), so `ActivityContract`
  * passes it through untouched and no adapter is written for it; and it carries its own
@@ -27,6 +27,9 @@
  * - `stop()` — the panel's Stop, or the view closing — ends the haul through
  *   `TryOnSession.end()`, which restores her exactly once unless a look was kept.
  * - `status()` is the launcher's one-line running state: "Look 2 of 4 · Burgundy Evening".
+ * - Turn (LT2) spins her round to show the back. It is a view of her, not a change to her:
+ *   it rotates the loaded model's root and puts the exact yaw back when the haul ends, and a
+ *   newly worn look — a new file — faces the camera on its own.
  *
  * Which looks: hers only. A look is a whole avatar file, so wearing another character's
  * look would replace her with someone else. Each bundled look names its owner (its own
@@ -43,6 +46,72 @@ const TryOnHaulActivity = (() => {
     const ID = 'try-on-haul';
     const UI = Object.freeze({ title: 'Try-On', icon: '👗', order: 45 });
     const NOT_READY = 'The wardrobe is still getting ready. Try again in a moment.';
+
+    const TURN_MS = 700;
+
+    /**
+     * Turn her round and back. Relative to the yaw the model loaded with (VRM 0.x files are
+     * turned at load), so "back" is always exactly that yaw again — snapshot and restore.
+     */
+    function makeTurner(manager, g) {
+        let root = null;
+        let base = 0;
+        let turned = false;
+        let frame = null;
+        const raf = g.requestAnimationFrame ? g.requestAnimationFrame.bind(g) : null;
+        const cancel = g.cancelAnimationFrame ? g.cancelAnimationFrame.bind(g) : () => {};
+        const reduced = () => {
+            try {
+                return Boolean(g.matchMedia && g.matchMedia('(prefers-reduced-motion: reduce)').matches);
+            } catch (_) {
+                return false;
+            }
+        };
+        const current = () => {
+            const now = manager && manager.currentRoot;
+            if (now && now !== root) {
+                // A new file: whatever we turned is gone, and this one faces the camera.
+                if (frame !== null) cancel(frame);
+                frame = null;
+                root = now;
+                base = now.rotation ? now.rotation.y : 0;
+                turned = false;
+            }
+            return root && root.rotation ? root : null;
+        };
+        const to = (yaw) => {
+            if (frame !== null) cancel(frame);
+            frame = null;
+            if (!raf || reduced()) {
+                root.rotation.y = yaw;
+                return;
+            }
+            const from = root.rotation.y;
+            const start = Date.now();
+            const target = root;
+            const step = () => {
+                const t = Math.min(1, (Date.now() - start) / TURN_MS);
+                const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+                target.rotation.y = from + (yaw - from) * ease;
+                frame = t < 1 ? raf(step) : null;
+            };
+            frame = raf(step);
+        };
+        return {
+            toggle() {
+                if (!current()) return false;
+                turned = !turned;
+                to(base + (turned ? Math.PI : 0));
+                return turned;
+            },
+            reset() {
+                if (frame !== null) cancel(frame);
+                frame = null;
+                if (root && root.rotation && turned && manager && manager.currentRoot === root) root.rotation.y = base;
+                turned = false;
+            },
+        };
+    }
 
     function keyOf(look) {
         return (look && (look.key || look.id || look.vrmUrl)) || null;
@@ -148,6 +217,8 @@ const TryOnHaulActivity = (() => {
         const Identity = deps.Identity || g.NEXUS_AVATAR_IDENTITY;
         const Reasons = deps.Reasons || g.NEXUS_TRY_ON_REASONS;
         const Private = deps.Private || g.NEXUS_TRY_ON_PRIVATE;
+        const Intent = deps.Intent || g.NEXUS_TRY_ON_INTENT;
+        const Reactions = deps.Reactions || g.NEXUS_TRY_ON_REACTIONS || null;
         const spicy = () => deps.spicy || g.NEXUS_SPICY || null;
 
         let session = null;
@@ -155,6 +226,7 @@ const TryOnHaulActivity = (() => {
         let generator = null;
         let ending = null;
         let unwatchPrivate = null;
+        let turner = null;
 
         const service = () => (deps.wardrobe && deps.wardrobe.service) || null;
 
@@ -196,6 +268,8 @@ const TryOnHaulActivity = (() => {
                     } catch (error) {
                         console.warn('[Try-On] ending the haul failed', error);
                     }
+                    if (turner) turner.reset();
+                    turner = null;
                     if (unwatchPrivate) unwatchPrivate();
                     unwatchPrivate = null;
                     if (view) view.unmount();
@@ -222,7 +296,7 @@ const TryOnHaulActivity = (() => {
             availability() {
                 const svc = service();
                 if (!svc || !svc.controller) return { ok: false, why: NOT_READY };
-                if (!Session || !View) return { ok: false, why: NOT_READY };
+                if (!Session || !View || !Intent) return { ok: false, why: NOT_READY };
                 return { ok: true, why: '' };
             },
 
@@ -242,11 +316,16 @@ const TryOnHaulActivity = (() => {
                     controller: svc.controller,
                     onChange: () => view && view.render(),
                 });
+                const manager = svc.controller.avatarManager;
+                turner = manager && 'currentRoot' in manager ? makeTurner(manager, g) : null;
                 view = new View({
                     doc,
                     session,
                     generator,
                     reasons: Reasons,
+                    intent: Intent,
+                    reactions: Reactions,
+                    turn: turner,
                     studioUrl: studioUrl(identity),
                     importer: svc.importer || null,
                     onImported: () => reload(),
@@ -300,22 +379,24 @@ const TryOnHaulActivity = (() => {
             status() {
                 if (!session) return null;
                 const state = session.state();
-                if (state.phase === 'running' && state.look) {
+                const look = state.going && !state.going.original ? state.going : state.look;
+                if (look) {
+                    const at = state.looks.findIndex((item) => keyOf(item) === keyOf(look));
                     return {
                         label: UI.title,
-                        detail: `Look ${state.index + 1} of ${state.total} · ${state.look.name || 'Look'}`,
+                        detail:
+                            at === -1
+                                ? look.name || 'Look'
+                                : `Look ${at + 1} of ${state.total} · ${look.name || 'Look'}`,
                     };
                 }
-                return {
-                    label: UI.title,
-                    detail: state.chosen.length ? `${state.chosen.length} chosen` : 'Choosing looks',
-                };
+                return { label: UI.title, detail: state.began ? 'Original' : 'Browsing looks' };
             },
         };
         return activity;
     }
 
-    return { ID, UI, create, loadLooks, ownedBy };
+    return { ID, UI, create, loadLooks, ownedBy, makeTurner };
 })();
 
 if (typeof window !== 'undefined') window.NEXUS_TRY_ON_HAUL_ACTIVITY = TryOnHaulActivity;
