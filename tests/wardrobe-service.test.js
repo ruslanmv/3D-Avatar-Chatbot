@@ -11,12 +11,20 @@ describe('Wardrobe Forge integration', () => {
         delete window.NEXUS_WARDROBE_SERVICE;
     });
 
-    test('defaults to static wardrobe with remote generation disabled', () => {
+    test('defaults to the static wardrobe plus the Hugging Face Forge (WF1)', () => {
         const Config = require('../src/wardrobe/WardrobeConfig.js');
         const config = Config.resolveWardrobeConfig();
 
         expect(config.enabled).toBe(true);
         expect(config.staticManifest).toBe('/vendor/wardrobe/wardrobe.json');
+        expect(config.apiUrl).toBe(Config.DEFAULT_FORGE_URL);
+        expect(config.remoteGeneration).toBe(true);
+    });
+
+    test('with the Forge turned off in Settings, remote generation is disabled', () => {
+        const Config = require('../src/wardrobe/WardrobeConfig.js');
+        Config.saveForgeChoice({ mode: 'off' });
+        const config = Config.resolveWardrobeConfig();
         expect(config.apiUrl).toBe('');
         expect(config.remoteGeneration).toBe(false);
     });

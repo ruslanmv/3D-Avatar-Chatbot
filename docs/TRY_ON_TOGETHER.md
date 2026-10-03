@@ -163,18 +163,45 @@ modified page cannot put an undeclared avatar in a private outfit.
 
 ## Configuration
 
+**With nothing configured, Try-On uses the project's Wardrobe Forge on Hugging
+Face** (`https://ruslanmv-3d-wardrobe-forge.hf.space`, WF1). Its five library
+avatars are byte-identical to the five this site pins, it allows any page to
+call it (CORS) and needs no key, so a visitor can create looks without setting
+anything up.
+
+A person can change that in **Settings ▸ Wardrobe Forge**:
+
+| Choice                                  | Stored as                                          |
+| --------------------------------------- | -------------------------------------------------- |
+| Hugging Face — Wardrobe Forge (default) | `wardrobe_forge_mode = default`                    |
+| My own Forge endpoint                   | `wardrobe_forge_mode = custom` + `wardrobe_forge_url` |
+| Off — saved looks only                  | `wardrobe_forge_mode = off`                        |
+
+The change applies at once, without a reload: the running service is re-pointed
+with `setForge()`, which keeps the controller (and the snapshot that puts her
+back). A Try-On already open keeps the Forge it opened with. **Test connection**
+reads `/v1/capabilities` and `/v1/library` and says whether the Forge answers,
+whether it needs a key, and whether it holds her avatars; the check also runs
+whenever Settings opens, because an idle Space sleeps and takes up to a minute to
+wake. A URL typed there is reduced to the Forge's root (`/studio/`, `/v1/…`
+dropped) and must be `http(s)` with no credentials in it. A
+`wardrobe_forge_url` stored before WF1 still counts as that person's choice.
+
+A deployment can still decide for everyone; when it does, Settings shows the
+endpoint as "Set by this site" and offers no control:
+
 ```js
 window.NEXUS_WARDROBE_CONFIG = {
-    apiUrl: 'https://ruslanmv-3d-wardrobe-forge.hf.space', // enables "Create a new look"
+    forge: { baseUrl: 'https://my-forge.example' }, // or { enabled: false } for none
     tryOnInTogether: true, // false: no tile, drawer as before
 };
 ```
 
-Without `apiUrl`, Try-On shows the bundled looks, every one fully playable, and
+With the Forge off, Try-On shows the bundled looks, every one fully playable, and
 the composer says _Creating new looks unavailable_ underneath. Navigation still
 works from the composer. **Wardrobe ···** holds library management — import a
 pack, the packs kept in this browser, and "Open Wardrobe Studio ↗", which
-appears when `apiUrl` is set and her avatar is a library avatar.
+appears when a Forge is set and her avatar is a library avatar.
 
 A keyed Forge (`WARDROBE_AUTH_MODE=api_key`) needs its asset URLs reachable
 without a header, because the VRM loader cannot send one: run the reference

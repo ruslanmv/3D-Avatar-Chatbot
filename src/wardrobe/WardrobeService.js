@@ -47,6 +47,8 @@
             this.importedSource = null;
             this.onState = null;
 
+            this._Client = Client;
+            this._RemoteSource = RemoteSource;
             var remote = Boolean(this.config.remoteGeneration && this.config.apiUrl);
             var forge = remote
                 ? new Client({ baseUrl: this.config.apiUrl, token: this.config.token || '' })
@@ -70,7 +72,6 @@
                     if (this.onState) this.onState(state, event);
                 }.bind(this),
             });
-            if (remote) this.remoteSource = new RemoteSource({ controller: this.controller });
 
             // W11. Sources in order: what ships, then (later) what was imported, then Forge.
             // Without the registry loaded, listLooks() behaves exactly as before it existed.
@@ -115,26 +116,55 @@
                         },
                     });
                 }
-                if (this.remoteSource) {
-                    var remoteSource = this.remoteSource;
-                    this.registry.add({
-                        id: 'forge',
-                        label: 'Created',
-                        priority: 3,
-                        capabilities: { list: true, generate: true },
-                        unratedAs: 'general', // Forge gates on its side and hides private looks
-                        listLooks: async function () {
-                            return (await remoteSource.listLooks()).map(function (look) {
-                                return Object.assign({}, look, {
-                                    key: 'forge:' + (look.id || look.vrmUrl),
-                                    origin: 'forge',
-                                    sourceLabel: 'Created',
-                                });
-                            });
-                        },
-                    });
-                }
             }
+            this._attachForge(remote);
+        }
+
+        /** The Forge's own looks, as the registry's third source — present only with a Forge. */
+        _attachForge(remote) {
+            this.remoteSource = remote ? new this._RemoteSource({ controller: this.controller }) : null;
+            if (!this.registry) return;
+            this.registry.remove('forge');
+            if (!this.remoteSource) return;
+            var remoteSource = this.remoteSource;
+            this.registry.add({
+                id: 'forge',
+                label: 'Created',
+                priority: 3,
+                capabilities: { list: true, generate: true },
+                unratedAs: 'general', // Forge gates on its side and hides private looks
+                listLooks: async function () {
+                    return (await remoteSource.listLooks()).map(function (look) {
+                        return Object.assign({}, look, {
+                            key: 'forge:' + (look.id || look.vrmUrl),
+                            origin: 'forge',
+                            sourceLabel: 'Created',
+                        });
+                    });
+                },
+            });
+        }
+
+        /**
+         * WF1. Point at another Forge (or none, with '') without reloading the page.
+         *
+         * Settings changes the endpoint while she may be wearing a look, and the controller is
+         * the one thing holding the snapshot that puts her back. Building a new service would
+         * build a new controller and lose it — the W2 bug again, by another road. So only the
+         * client, the Forge's own look source and its registry entry are replaced; the
+         * controller stays and is handed the new client. A Try-On already open keeps the Forge
+         * it opened with; the next one uses this.
+         */
+        setForge(apiUrl) {
+            var url = String(apiUrl || '').replace(/\/$/, '');
+            var remote = Boolean(url && this._Client);
+            this.config.apiUrl = url;
+            this.config.remoteGeneration = remote;
+            this.controller.forge = remote
+                ? new this._Client({ baseUrl: url, token: this.config.token || '' })
+                : LOCAL_FORGE;
+            this._attachForge(remote);
+            return remote;
         }
 
         /**

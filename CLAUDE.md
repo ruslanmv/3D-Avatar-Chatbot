@@ -78,7 +78,7 @@ So the rule for new code in `src/gltf-viewer/`:
 
 **`src/wardrobe/` — IIFE, but loaded by `index.html`, not `boot.js`.** Same dual
 export as `src/features/`, and for the same reason: Jest `require()`s these
-directly. What differs is how they reach the browser — twenty-two plain
+directly. What differs is how they reach the browser — twenty-three plain
 `<script>` tags at the very end of `<body>`, after the Pose Studio root. That
 placement is deliberate and the commit that moved them there says why: the
 parity harness counts boot scripts by line, so adding them near the top of
@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (207 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (208 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -128,8 +128,8 @@ Know the coverage gaps, because they are not intuitive:
 
 ### The gate passes. Keep it that way.
 
-Measured 2026-10-02 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **4941 tests in 207 suites, all passing.**
+Measured 2026-10-03 with `npm ci` deps installed: `npm run validate` exits **0**
+— lint clean, format clean, **4954 tests in 208 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -358,13 +358,13 @@ storage and no speech. A new code path that persists a reply needs that check.
 
 New outfits for the avatar, from the pack this repository ships or from a
 running [3D-Wardrobe-Forge](https://github.com/ruslanmv/3D-Wardrobe-Forge).
-Twenty-two modules in `src/wardrobe/`: the original eight behind a floating 👗
+Twenty-three modules in `src/wardrobe/`: the original eight behind a floating 👗
 drawer (`docs/WARDROBE.md`), eleven that put Try-On inside Together as a tile
-and hide the drawer once that tile exists (`docs/TRY_ON_TOGETHER.md`), and three
+and hide the drawer once that tile exists (`docs/TRY_ON_TOGETHER.md`), three
 that make every look an artifact and let a pack be imported
-(`docs/WARDROBE_IMPORT.md`). **The shipped pack is the default and needs no
-server**; a Forge is opt-in through `window.NEXUS_WARDROBE_CONFIG.forge.baseUrl`
-(or the older `apiUrl`).
+(`docs/WARDROBE_IMPORT.md`), and the Settings section that chooses the Forge
+(WF1). **The shipped pack needs no server, and the project's Hugging Face Forge
+is the default for creating looks (WF1)** — see the Forge bullet below.
 
 - **`vendor/wardrobe/` is a verified pack, not a folder you edit (W11).** Ten
   looks, two per bundled avatar, ~137 MB of VRMs made by the Forge's
@@ -417,7 +417,7 @@ server**; a Forge is opt-in through `window.NEXUS_WARDROBE_CONFIG.forge.baseUrl`
   value. Omit the key when there is nothing to say, and send strings — the "I
   have permission" path is exactly the path with no conditions to send, so
   getting this wrong broke only the attestation retry.
-- **The twenty-two `<script>` tags live at the end of `index.html`'s `<body>`,
+- **The twenty-three `<script>` tags live at the end of `index.html`'s `<body>`,
   and moving them is not free.** The parity harness counts boot scripts by line;
   `node scripts/behavior-parity-baseline.mjs --check` is the check. None of them
   may point into an engine folder (`src/behavior/`, Together's own tree): those
@@ -440,6 +440,20 @@ server**; a Forge is opt-in through `window.NEXUS_WARDROBE_CONFIG.forge.baseUrl`
   the look's own recipe with only that part rewritten. Turn rotates
   `avatarManager.currentRoot` relative to its load-time yaw and writes that yaw
   back on finish.
+- **The Forge is the Hugging Face Space unless someone says otherwise (WF1).**
+  `WardrobeConfig.resolveForge` decides, in this order: the page's own
+  `NEXUS_WARDROBE_CONFIG` (`forge.baseUrl`, `apiUrl`, or `forge.enabled: false`
+  — Settings then shows "Set by this site" and offers no control); the person's
+  choice from `Settings ▸ Wardrobe Forge` (`wardrobe_forge_mode` of `default`,
+  `custom` or `off`, the URL in `wardrobe_forge_url` — a URL stored there before
+  WF1 still counts as custom); then `DEFAULT_FORGE_URL`. A change applies
+  without a reload through `WardrobeService.setForge()`, which swaps the client
+  and the Forge source but keeps the controller — never rebuild the service to
+  switch, that drops the snapshot. `WardrobeForgeSettings.js` owns the section
+  (inserted before DEVELOPER, like the YouTube and web-search fields), so
+  `main.js` knows nothing about it. The default works because the Space's five
+  library avatars hash-match AvatarIdentity's pins and its CORS allows any
+  origin; if either changes, Test connection in Settings says so.
 - **Private mode unlocks private outfits only for avatars Forge declares adult
   (W10).** `TryOnPrivate.evaluate()` answers `off`, `locked` with a sentence, or
   `open` with quick picks. Private mode (`NEXUS_SPICY.isEnabled()`) says the

@@ -42,7 +42,7 @@ window.NEXUS_WARDROBE_CONFIG = {
 </script>
 ```
 
-For local testing, `wardrobe_forge_url` and `wardrobe_enabled` can also be placed in localStorage.
+Without that, the wardrobe uses the project's Forge on Hugging Face by default (WF1), and each person can choose their own endpoint, or none, in **Settings ▸ Wardrobe Forge** (stored as `wardrobe_forge_mode` and `wardrobe_forge_url`). A page that sets `forge` decides for everyone, and Settings says so. See `docs/TRY_ON_TOGETHER.md` § Configuration.
 
 Do not put a long-lived production API secret in browser JavaScript. For production, proxy generation through the application backend or mint short-lived tokens. The optional `token` config field is intended for short-lived credentials and controlled deployments.
 
