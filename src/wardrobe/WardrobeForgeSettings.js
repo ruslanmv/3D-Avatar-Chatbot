@@ -130,6 +130,9 @@
                 wardrobe.service.setForge(config.apiUrl);
                 // Same object, updated in place: Try-On's activity holds a reference to it.
                 if (wardrobe.config) Object.assign(wardrobe.config, config);
+                // W15. The outfit dictionary is the new Forge's now.
+                var Dictionary = global.NEXUS_OUTFIT_DICTIONARY;
+                if (Dictionary && typeof Dictionary.forPage === 'function') Dictionary.forPage().refresh();
             } catch (error) {
                 console.warn('[Wardrobe] could not switch Forge', error);
                 return { ok: false, why: 'The new endpoint could not be applied. Reload the page to use it.' };
@@ -163,6 +166,10 @@
             '</div>' +
             '<p id="wardrobe-forge-status" role="status" aria-live="polite"' +
             ' style="font-size: 0.72rem; color: rgba(255, 255, 255, 0.7); margin: 8px 2px 0"></p>' +
+            '<label style="display: flex; align-items: center; gap: 8px; margin-top: 10px; cursor: pointer;' +
+            ' font-size: 0.78rem">' +
+            '<input type="checkbox" id="wardrobe-ai-enabled" /> Let her change her outfit when you ask in the chat' +
+            '</label>' +
             '<p id="wardrobe-forge-hint" style="' +
             STYLE_HINT +
             '">Try-On uses this to create new looks and change the one she has on. Her saved looks work' +
@@ -256,6 +263,18 @@
             }
         });
         test.addEventListener('click', refresh);
+        // W16. The wardrobe tool's switch (WardrobeTool): on by default — asking her to put
+        // something on is the request — and off here for anyone who would rather she did not.
+        var aiToggle = section.querySelector('#wardrobe-ai-enabled');
+        var Tool = options.tool || global.NEXUS_WARDROBE_TOOL || null;
+        if (aiToggle && Tool) {
+            aiToggle.checked = Tool.isEnabled();
+            aiToggle.addEventListener('change', function () {
+                Tool.setEnabled(aiToggle.checked);
+            });
+        } else if (aiToggle) {
+            aiToggle.parentNode.style.display = 'none';
+        }
         // Checked whenever Settings opens, so the line is about now, not about page load.
         var opener = doc.getElementById('settings-btn');
         if (opener) opener.addEventListener('click', refresh);

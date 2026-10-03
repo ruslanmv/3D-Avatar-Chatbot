@@ -1,0 +1,500 @@
+{
+  "version": 1,
+  "source": "3D-Wardrobe-Forge GET /v1/outfits (OD1), exported for offline use. Refresh with: node tools/wardrobe/sync-outfits.mjs [forge-url]",
+  "license": "MIT (3D-Wardrobe-Forge, Copyright (c) 2026 Ruslan Magana Vsevolodovna); compatible with this repository's Apache-2.0",
+  "groups": [
+    {
+      "id": "casual",
+      "title": "Casual",
+      "private": false
+    },
+    {
+      "id": "dressy",
+      "title": "Dressy",
+      "private": false
+    },
+    {
+      "id": "smart",
+      "title": "Smart",
+      "private": false
+    },
+    {
+      "id": "cozy",
+      "title": "Cozy & home",
+      "private": false
+    },
+    {
+      "id": "summer",
+      "title": "Summer",
+      "private": false
+    },
+    {
+      "id": "swim",
+      "title": "Swimwear",
+      "private": true
+    },
+    {
+      "id": "lingerie",
+      "title": "Lingerie",
+      "private": true
+    },
+    {
+      "id": "legwear",
+      "title": "Stockings & legwear",
+      "private": true
+    },
+    {
+      "id": "sheer",
+      "title": "Sheer",
+      "private": true
+    }
+  ],
+  "outfits": [
+    {
+      "id": "crop-top-jeans",
+      "title": "Crop top & jeans",
+      "group": "casual",
+      "request": {
+        "prompt": "black fitted crop top + blue straight jeans"
+      },
+      "rating": "general",
+      "slots": ["top", "bottom"],
+      "tags": ["denim", "day"]
+    },
+    {
+      "id": "tee-jeans",
+      "title": "Tee & jeans",
+      "group": "casual",
+      "request": {
+        "prompt": "white fitted tee + blue straight jeans"
+      },
+      "rating": "general",
+      "slots": ["top", "bottom"],
+      "tags": ["denim", "day"]
+    },
+    {
+      "id": "denim-shorts",
+      "title": "Denim shorts",
+      "group": "casual",
+      "request": {
+        "prompt": "white cropped tee + blue denim shorts"
+      },
+      "rating": "general",
+      "slots": ["top", "bottom"],
+      "tags": ["denim", "summer"]
+    },
+    {
+      "id": "tube-top-baggy-jeans",
+      "title": "Tube top & baggy jeans",
+      "group": "casual",
+      "request": {
+        "prompt": "white tube top + blue baggy jeans"
+      },
+      "rating": "general",
+      "slots": ["top", "bottom"],
+      "tags": ["denim", "y2k"]
+    },
+    {
+      "id": "cami-wide-leg",
+      "title": "Cami & wide-leg trousers",
+      "group": "casual",
+      "request": {
+        "prompt": "black cropped cami + cream wide-leg trousers"
+      },
+      "rating": "general",
+      "slots": ["top", "bottom"],
+      "tags": ["day"]
+    },
+    {
+      "id": "halter-skater",
+      "title": "Halter top & skater skirt",
+      "group": "casual",
+      "request": {
+        "prompt": "red halter crop top + black skater skirt"
+      },
+      "rating": "general",
+      "slots": ["top", "bottom"],
+      "tags": ["party"]
+    },
+    {
+      "id": "leggings-cardigan",
+      "title": "Leggings & cropped cardigan",
+      "group": "casual",
+      "request": {
+        "prompt": "white fitted tee + cream cropped cardigan + black leggings"
+      },
+      "rating": "general",
+      "slots": ["top", "bottom", "outer"],
+      "tags": ["comfy"]
+    },
+    {
+      "id": "little-black-dress",
+      "title": "Little black dress",
+      "group": "dressy",
+      "request": {
+        "prompt": "black satin cocktail dress"
+      },
+      "rating": "general",
+      "slots": ["dress"],
+      "tags": ["evening"]
+    },
+    {
+      "id": "red-bodycon",
+      "title": "Red bodycon mini",
+      "group": "dressy",
+      "request": {
+        "prompt": "red bodycon mini dress"
+      },
+      "rating": "general",
+      "slots": ["dress"],
+      "tags": ["party", "evening"]
+    },
+    {
+      "id": "evening-gown",
+      "title": "Evening gown",
+      "group": "dressy",
+      "request": {
+        "prompt": "black satin evening column gown"
+      },
+      "rating": "general",
+      "slots": ["dress"],
+      "tags": ["evening", "formal"]
+    },
+    {
+      "id": "wrap-dress",
+      "title": "Wrap dress",
+      "group": "dressy",
+      "request": {
+        "prompt": "red long-sleeved wrap dress"
+      },
+      "rating": "general",
+      "slots": ["dress"],
+      "tags": ["evening"]
+    },
+    {
+      "id": "slip-dress",
+      "title": "Satin slip dress",
+      "group": "dressy",
+      "request": {
+        "prompt": "champagne satin slip dress"
+      },
+      "rating": "general",
+      "slots": ["dress"],
+      "tags": ["evening"]
+    },
+    {
+      "id": "skater-dress",
+      "title": "Skater dress",
+      "group": "dressy",
+      "request": {
+        "prompt": "navy skater mini dress"
+      },
+      "rating": "general",
+      "slots": ["dress"],
+      "tags": ["party"]
+    },
+    {
+      "id": "corset-mini",
+      "title": "Corset top & mini",
+      "group": "dressy",
+      "request": {
+        "prompt": "black corset top + black low-rise pleated mini skirt",
+        "preset": "corset_top_low_rise_mini"
+      },
+      "rating": "general",
+      "slots": ["top", "bottom"],
+      "tags": ["party"]
+    },
+    {
+      "id": "blazer-trousers",
+      "title": "Blazer & trousers",
+      "group": "smart",
+      "request": {
+        "prompt": "black blazer + white blouse + black straight trousers"
+      },
+      "rating": "general",
+      "slots": ["top", "bottom", "outer"],
+      "tags": ["work"]
+    },
+    {
+      "id": "blouse-pencil",
+      "title": "Blouse & pencil skirt",
+      "group": "smart",
+      "request": {
+        "prompt": "white blouse + black pencil skirt"
+      },
+      "rating": "general",
+      "slots": ["top", "bottom"],
+      "tags": ["work"]
+    },
+    {
+      "id": "shirt-dress",
+      "title": "Shirt dress",
+      "group": "smart",
+      "request": {
+        "prompt": "light blue shirt dress"
+      },
+      "rating": "general",
+      "slots": ["dress"],
+      "tags": ["work", "day"]
+    },
+    {
+      "id": "trench-jeans",
+      "title": "Trench & slim jeans",
+      "group": "smart",
+      "request": {
+        "prompt": "beige lightweight trench + white fitted tee + blue slim jeans"
+      },
+      "rating": "general",
+      "slots": ["top", "bottom", "outer"],
+      "tags": ["day"]
+    },
+    {
+      "id": "cardigan-trousers",
+      "title": "Cardigan & trousers",
+      "group": "cozy",
+      "request": {
+        "prompt": "grey long cardigan + white fitted tee + black straight trousers"
+      },
+      "rating": "general",
+      "slots": ["top", "bottom", "outer"],
+      "tags": ["comfy"]
+    },
+    {
+      "id": "pajamas",
+      "title": "Pajamas",
+      "group": "cozy",
+      "request": {
+        "prompt": "pink pajama shirt + pink pajama bottoms"
+      },
+      "rating": "general",
+      "slots": ["sleep"],
+      "tags": ["sleep", "comfy"]
+    },
+    {
+      "id": "nightgown",
+      "title": "Satin nightgown",
+      "group": "cozy",
+      "request": {
+        "prompt": "champagne satin nightgown"
+      },
+      "rating": "general",
+      "slots": ["sleep"],
+      "tags": ["sleep"]
+    },
+    {
+      "id": "yellow-sundress",
+      "title": "Yellow sundress",
+      "group": "summer",
+      "request": {
+        "prompt": "yellow maxi sundress"
+      },
+      "rating": "general",
+      "slots": ["dress"],
+      "tags": ["day"]
+    },
+    {
+      "id": "maxi-skirt",
+      "title": "Tee & tiered maxi skirt",
+      "group": "summer",
+      "request": {
+        "prompt": "white fitted tee + blue tiered maxi skirt"
+      },
+      "rating": "general",
+      "slots": ["top", "bottom"],
+      "tags": ["day"]
+    },
+    {
+      "id": "a-line-dress",
+      "title": "A-line dress",
+      "group": "summer",
+      "request": {
+        "prompt": "light blue a-line dress"
+      },
+      "rating": "general",
+      "slots": ["dress"],
+      "tags": ["day"]
+    },
+    {
+      "id": "linen-shorts",
+      "title": "Blouse & linen shorts",
+      "group": "summer",
+      "request": {
+        "prompt": "white blouse + beige linen shorts"
+      },
+      "rating": "general",
+      "slots": ["top", "bottom"],
+      "tags": ["day"]
+    },
+    {
+      "id": "triangle-bikini",
+      "title": "Triangle bikini",
+      "group": "swim",
+      "request": {
+        "prompt": "red triangle bikini"
+      },
+      "rating": "private",
+      "slots": ["swim"],
+      "tags": ["beach"]
+    },
+    {
+      "id": "bandeau-bikini",
+      "title": "Bandeau bikini",
+      "group": "swim",
+      "request": {
+        "prompt": "white bandeau bikini"
+      },
+      "rating": "private",
+      "slots": ["swim", "top"],
+      "tags": ["beach"]
+    },
+    {
+      "id": "one-piece",
+      "title": "One-piece swimsuit",
+      "group": "swim",
+      "request": {
+        "prompt": "black one-piece swimsuit"
+      },
+      "rating": "private",
+      "slots": ["swim"],
+      "tags": ["beach"]
+    },
+    {
+      "id": "skirted-swimsuit",
+      "title": "Skirted swimsuit",
+      "group": "swim",
+      "request": {
+        "prompt": "navy skirted swimsuit"
+      },
+      "rating": "private",
+      "slots": ["swim"],
+      "tags": ["beach"]
+    },
+    {
+      "id": "lace-lingerie-set",
+      "title": "Lace lingerie set",
+      "group": "lingerie",
+      "request": {
+        "prompt": "black lace lingerie set"
+      },
+      "rating": "private",
+      "slots": ["underwear"],
+      "tags": []
+    },
+    {
+      "id": "balconette-set",
+      "title": "Balconette bra & briefs",
+      "group": "lingerie",
+      "request": {
+        "prompt": "red balconette bra + red briefs"
+      },
+      "rating": "private",
+      "slots": ["underwear"],
+      "tags": []
+    },
+    {
+      "id": "plunge-thong",
+      "title": "Plunge bra & thong",
+      "group": "lingerie",
+      "request": {
+        "prompt": "white plunge bra + white thong"
+      },
+      "rating": "private",
+      "slots": ["underwear"],
+      "tags": []
+    },
+    {
+      "id": "bodysuit",
+      "title": "Lace bodysuit",
+      "group": "lingerie",
+      "request": {
+        "prompt": "black lace bodysuit"
+      },
+      "rating": "private",
+      "slots": ["underwear"],
+      "tags": []
+    },
+    {
+      "id": "guepiere",
+      "title": "Guêpière",
+      "group": "lingerie",
+      "request": {
+        "prompt": "black guêpière"
+      },
+      "rating": "private",
+      "slots": ["underwear", "legwear"],
+      "tags": []
+    },
+    {
+      "id": "visible-thong-jeans",
+      "title": "Visible thong & low-rise jeans",
+      "group": "lingerie",
+      "request": {
+        "prompt": "white fitted crop top + blue low-rise straight jeans + black tailored v-string",
+        "preset": "visible_thong_low_rise_jeans"
+      },
+      "rating": "private",
+      "slots": ["underwear", "top", "bottom"],
+      "tags": ["y2k"]
+    },
+    {
+      "id": "stockings-mini-dress",
+      "title": "Mini dress & stockings",
+      "group": "legwear",
+      "request": {
+        "prompt": "black bodycon mini dress",
+        "preset": "classic_black_mini_dress"
+      },
+      "rating": "private",
+      "slots": ["underwear", "legwear", "dress"],
+      "tags": ["evening"]
+    },
+    {
+      "id": "stockings-pencil",
+      "title": "Pencil skirt & seamed stockings",
+      "group": "legwear",
+      "request": {
+        "prompt": "black pencil skirt + white fitted blouse",
+        "preset": "vintage_seamed"
+      },
+      "rating": "private",
+      "slots": ["underwear", "legwear", "bottom", "top"],
+      "tags": ["evening", "vintage"]
+    },
+    {
+      "id": "stockings-discreet",
+      "title": "Knee-length skirt & stockings",
+      "group": "legwear",
+      "request": {
+        "prompt": "black knee-length pencil skirt + white fitted blouse",
+        "preset": "discreet_black"
+      },
+      "rating": "private",
+      "slots": ["underwear", "legwear", "bottom", "top"],
+      "tags": ["work"]
+    },
+    {
+      "id": "fishnets-mini",
+      "title": "Mini skirt & fishnets",
+      "group": "legwear",
+      "request": {
+        "prompt": "black mini skirt + black fitted top",
+        "preset": "fishnet_black"
+      },
+      "rating": "private",
+      "slots": ["underwear", "legwear", "bottom", "top"],
+      "tags": ["party"]
+    },
+    {
+      "id": "sheer-blouse",
+      "title": "Sheer blouse & mini",
+      "group": "sheer",
+      "request": {
+        "prompt": "sheer white blouse + black mini skirt"
+      },
+      "rating": "private",
+      "slots": ["top", "bottom"],
+      "tags": []
+    }
+  ]
+}

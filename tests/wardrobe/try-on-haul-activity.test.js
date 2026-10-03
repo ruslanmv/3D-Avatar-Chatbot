@@ -198,3 +198,99 @@ describe('try-on-haul activity', () => {
         expect(TryOn.ownedBy('avatar-sample-a', identity)).toBe(false);
     });
 });
+
+describe('W16–W17: the companion’s wardrobe tool and the hosted haul', () => {
+    const { OutfitDictionary } = require('../../src/wardrobe/OutfitDictionary.js');
+    const SNAPSHOT = require('../../assets/wardrobe/outfits.json');
+
+    async function setup({ host = null } = {}) {
+        mountHost();
+        const service = fakeService();
+        const dictionary = new OutfitDictionary({ fetch: async () => ({ ok: true, json: async () => SNAPSHOT }) });
+        await dictionary.load();
+        const created = [];
+        class Generator {
+            constructor() {
+                this.library = { available: true, library: async () => [] };
+            }
+            availability() {
+                return { ok: true };
+            }
+            identity() {
+                return { kind: 'library', slug: 'avatar-sample-a', name: 'AvatarSample A' };
+            }
+            async create(prompt, options) {
+                created.push({ prompt, options });
+                return { id: 'made-' + created.length, name: 'Made ' + created.length, vrmUrl: 'https://f/made.vrm' };
+            }
+        }
+        const activity = TryOn.create({
+            wardrobe: { service, config: {} },
+            doc: document,
+            Session: TryOnSession,
+            View: TryOnView,
+            Generator,
+            Identity,
+            Reasons,
+            Intent: require('../../src/wardrobe/TryOnIntent.js'),
+            Reactions: require('../../src/wardrobe/TryOnReactions.js'),
+            dictionary,
+            host,
+            noWarm: true,
+        });
+        return { activity, service, created };
+    }
+
+    test('a tool call opens Try-On and wears a dictionary set by making it — with its request', async () => {
+        const { activity, service, created } = await setup();
+        const result = await activity.request('wear', { outfit: 'stockings-mini-dress' });
+        // Private (stockings) while private outfits are closed: refused, nothing made.
+        expect(result.ok).toBe(false);
+        expect(created).toHaveLength(0);
+        expect(document.getElementById('nexus-try-on-view').textContent).toMatch(/not one she can wear/);
+
+        expect((await activity.request('wear', { outfit: 'little-black-dress' })).ok).toBe(true);
+        expect(created[0].prompt).toBe('black satin cocktail dress');
+        expect(service.controller.applyLook).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'made-1' }));
+        // Asked again, she wears the one she already has rather than making it twice.
+        await activity.request('wear', { outfit: 'little-black-dress' });
+        expect(created).toHaveLength(1);
+    });
+
+    test('tattoos are refused while private outfits are closed', async () => {
+        const { activity, created } = await setup();
+        const result = await activity.request('tattoo', { design: 'lotus-ornament-01', placement: 'lower-back' });
+        expect(result.ok).toBe(false);
+        expect(created).toHaveLength(0);
+    });
+
+    test('the host opens the haul, reveals each look and closes with the recap', async () => {
+        const host = {
+            available: () => true,
+            open: jest.fn(),
+            reveal: jest.fn(async () => ({ line: 'Okay, obsessed.', spin: false })),
+            outro: jest.fn(),
+        };
+        const { activity } = await setup({ host });
+        await activity.start({});
+        await flush();
+        expect(host.open).toHaveBeenCalledWith(expect.objectContaining({ total: 2 }));
+        document.querySelector('[data-key="look:burgundy"]').click();
+        await flush();
+        expect(host.reveal).toHaveBeenCalledWith(
+            expect.objectContaining({ look: expect.objectContaining({ id: 'burgundy' }), private: false })
+        );
+        expect(document.querySelector('.nexus-try-on-react').textContent).toMatch(/obsessed/);
+        activity.stop('user');
+        await flush();
+        expect(host.outro).toHaveBeenCalledWith({ favorites: [], kept: null });
+    });
+
+    test('what the companion is told: her shelf and whether private outfits are open', async () => {
+        const { activity } = await setup();
+        await activity.start({});
+        await flush();
+        expect(activity.shelf()).toMatchObject({ looks: ['Burgundy', 'Summer'], running: true });
+        expect(activity.privateOpen()).toBe(false);
+    });
+});

@@ -219,7 +219,11 @@ const TryOnHaulActivity = (() => {
         const Private = deps.Private || g.NEXUS_TRY_ON_PRIVATE;
         const Intent = deps.Intent || g.NEXUS_TRY_ON_INTENT;
         const Reactions = deps.Reactions || g.NEXUS_TRY_ON_REACTIONS || null;
+        const Dictionary = deps.Dictionary || g.NEXUS_OUTFIT_DICTIONARY || null;
+        const Conversation = deps.Conversation || g.NEXUS_TRY_ON_CONVERSATION || null;
         const spicy = () => deps.spicy || g.NEXUS_SPICY || null;
+        const WARM_EVERY_MS = 60000;
+        const SPIN_HOLD_MS = 2600;
 
         let session = null;
         let view = null;
@@ -227,6 +231,16 @@ const TryOnHaulActivity = (() => {
         let ending = null;
         let unwatchPrivate = null;
         let turner = null;
+        let ready = null; // looks listed and the private gate asked, once per haul
+        let host = null; // W17. the haul's host in the conversation (TryOnConversation)
+        // W16. What the companion is told, kept between hauls: whether private outfits are
+        // open for her, and the names on her shelf. Refreshed in the background (`warm`) so
+        // the prompt can be built synchronously and still be about now.
+        let privateIsOpen = false;
+        let shelfNames = [];
+        let warmedAt = -Infinity;
+        let warming = null;
+        let dictionary = null;
 
         const service = () => (deps.wardrobe && deps.wardrobe.service) || null;
 
@@ -236,38 +250,164 @@ const TryOnHaulActivity = (() => {
             return `${config.apiUrl}/studio/?avatar=${encodeURIComponent(identity.slug)}`;
         }
 
-        function host() {
+        function hostElement() {
             if (!doc) return null;
             const panel = doc.getElementById('nexus-bd-together-panel');
             return (panel && panel.parentNode) || null;
         }
 
-        async function updatePrivate(identity) {
-            if (!Private || !view) return;
+        /** TryOnPrivate's answer for her, with or without a view to show it on. */
+        async function evaluatePrivate(identity, gen) {
+            if (!Private) return { mode: 'off' };
             const on = Private.privateOn({ NEXUS_SPICY: spicy() });
-            const canCreate = Boolean(generator && generator.availability().ok);
+            const canCreate = Boolean(gen && gen.availability().ok);
             let published = null;
             if (on && canCreate && identity && identity.kind === 'library') {
                 try {
-                    published = await generator.library.library();
+                    published = await gen.library.library();
                 } catch (_) {
                     published = null;
                 }
             }
-            const state = Private.evaluate({ privateOn: on, identity, published, canCreate });
+            return Private.evaluate({ privateOn: on, identity, published, canCreate });
+        }
+
+        async function updatePrivate(identity) {
+            if (!Private || !view) return false;
+            const state = await evaluatePrivate(identity, generator);
             if (view) view.setPrivate(state);
-            return Boolean(state && state.mode === 'open');
+            privateIsOpen = Boolean(state && state.mode === 'open');
+            return privateIsOpen;
+        }
+
+        function pageDictionary() {
+            if (deps.dictionary) return deps.dictionary;
+            if (!dictionary && Dictionary && typeof Dictionary.forPage === 'function')
+                dictionary = Dictionary.forPage(g);
+            return dictionary;
+        }
+
+        /**
+         * W16. Refresh what the companion is told — private gate, shelf, dictionary — at most
+         * once a minute, in the background. Never throws; a failure leaves the last answer.
+         */
+        function warm(force) {
+            if (warming || (!force && Date.now() - warmedAt < WARM_EVERY_MS)) return warming;
+            const svc = service();
+            if (!svc || !svc.controller) return null;
+            warmedAt = Date.now();
+            warming = (async () => {
+                try {
+                    const gen = Generator
+                        ? new Generator({ service: svc, identity: Identity, reasons: Reasons })
+                        : null;
+                    const identity = gen ? gen.identity() : Identity ? Identity.resolve(svc.controller.original) : null;
+                    const dict = pageDictionary();
+                    if (dict) await dict.load();
+                    if (!view) {
+                        const state = await evaluatePrivate(identity, gen);
+                        privateIsOpen = Boolean(state && state.mode === 'open');
+                        const looks = await loadLooks({
+                            service: svc,
+                            library: gen && gen.library,
+                            identity,
+                            privateOpen: privateIsOpen,
+                        });
+                        shelfNames = uniqueNames(looks);
+                    }
+                } catch (error) {
+                    console.warn('[Try-On] could not refresh what the companion knows', error);
+                } finally {
+                    warming = null;
+                }
+            })();
+            return warming;
+        }
+
+        /** Her shelf by name, each name once: the same look made twice is one thing to ask for. */
+        function uniqueNames(looks) {
+            return [...new Set(looks.map((look) => look && look.name).filter(Boolean))];
+        }
+
+        /** Is a look one the conversation must not record? Private by rating, by set or by ink. */
+        function isPrivateLook(look) {
+            if (!look) return false;
+            if (look.private) return true;
+            if (look.rating && look.rating !== 'general') return true;
+            if (look.bodyArt && look.bodyArt.length) return true;
+            const dict = pageDictionary();
+            const entry = dict && look.outfitId ? dict.find(look.outfitId, { privateOpen: true }) : null;
+            return Boolean(entry && entry.private);
+        }
+
+        /** The spin: turn her to show the back, then round again. */
+        function spin() {
+            if (!turner) return;
+            if (!turner.toggle()) return;
+            g.setTimeout(() => {
+                if (turner) turner.toggle();
+                if (view) view.turned = false;
+                if (view) view.render();
+            }, SPIN_HOLD_MS);
+        }
+
+        /** W17. A look arrived: the host's reveal, and every third one the spin. */
+        function onLanding(event) {
+            if (!host) return null;
+            return host.reveal({ ...event, private: isPrivateLook(event.look) }).then((result) => {
+                if (result && result.spin) g.setTimeout(spin, 1200);
+                return result;
+            });
+        }
+
+        function hostOpen(looks, canCreate) {
+            if (!host) return;
+            const dict = pageDictionary();
+            const ideas = (dict ? dict.entries({ privateOpen: false }) : []).map((e) => e.title);
+            const shelf = looks.filter((look) => !isPrivateLook(look)).map((look) => look.name);
+            host.open({ total: shelf.length, canCreate, ideas: shuffle(shelf.concat(ideas)).slice(0, 3) });
+        }
+
+        function shuffle(list) {
+            const out = list.slice();
+            for (let i = out.length - 1; i > 0; i -= 1) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [out[i], out[j]] = [out[j], out[i]];
+            }
+            return out;
         }
 
         async function finish(why) {
             if (!ending) {
                 ending = (async () => {
                     let result = { kept: false, restored: false };
+                    // W17. What the outro recaps, read before the session ends: her hearted
+                    // looks and the one she kept — general ones only, by name.
+                    let recap = null;
+                    if (session && host) {
+                        const state = session.state();
+                        const byKey = new Map(state.looks.map((look) => [keyOf(look), look]));
+                        recap = {
+                            favorites: state.favorites
+                                .map((key) => byKey.get(key))
+                                .filter((look) => look && !isPrivateLook(look))
+                                .map((look) => look.name),
+                            kept:
+                                state.phase === 'kept' && state.look && !isPrivateLook(state.look)
+                                    ? state.look.name
+                                    : null,
+                        };
+                    }
+                    // Said as the haul ends, not after: putting her original back can take as
+                    // long as any look, and an outro twenty seconds late reads as an afterthought.
+                    if (recap) host.outro(recap);
                     try {
                         if (session) result = await session.end();
                     } catch (error) {
                         console.warn('[Try-On] ending the haul failed', error);
                     }
+                    host = null;
+                    ready = null;
                     if (turner) turner.reset();
                     turner = null;
                     if (unwatchPrivate) unwatchPrivate();
@@ -316,6 +456,10 @@ const TryOnHaulActivity = (() => {
                     controller: svc.controller,
                     onChange: () => view && view.render(),
                 });
+                // W17. The host, when there is a model to host with.
+                host = deps.host || (Conversation ? new Conversation.TryOnConversation({ global: g }) : null);
+                if (host && typeof host.available === 'function' && !host.available()) host = null;
+                const dict = pageDictionary();
                 const manager = svc.controller.avatarManager;
                 turner = manager && 'currentRoot' in manager ? makeTurner(manager, g) : null;
                 view = new View({
@@ -326,6 +470,8 @@ const TryOnHaulActivity = (() => {
                     intent: Intent,
                     reactions: Reactions,
                     turn: turner,
+                    dictionary: dict,
+                    onLanding,
                     studioUrl: studioUrl(identity),
                     importer: svc.importer || null,
                     onImported: () => reload(),
@@ -339,7 +485,8 @@ const TryOnHaulActivity = (() => {
                         });
                     },
                 });
-                view.mount(host());
+                view.mount(hostElement());
+                if (dict) dict.load().then(() => view && view.render());
                 // W10. Private mode unlocks private outfits for avatars Forge declares adult.
                 // Asked now and again whenever private mode is switched, so the screen follows
                 // Settings while it is open.
@@ -351,7 +498,9 @@ const TryOnHaulActivity = (() => {
                         .then((looks) => {
                             if (!session) return;
                             session.setLooks(looks);
+                            shelfNames = uniqueNames(looks);
                             if (view) view.setLoading(false);
+                            return looks;
                         })
                         .catch((error) => {
                             console.warn('[Try-On] loading looks failed', error);
@@ -364,11 +513,46 @@ const TryOnHaulActivity = (() => {
                             reload();
                         }
                     });
-                refreshPrivate();
+                const firstPrivate = refreshPrivate();
                 const gate = spicy();
                 if (gate && typeof gate.onChange === 'function') unwatchPrivate = gate.onChange(refreshPrivate);
-                reload();
+                const firstLooks = reload();
+                ready = Promise.all([firstPrivate, firstLooks]).catch(() => null);
+                // W17. The haul opens in the conversation once her looks are listed.
+                Promise.resolve(firstLooks).then((looks) =>
+                    hostOpen(looks || [], Boolean(generator && generator.availability().ok))
+                );
                 return { ok: true, why: '' };
+            },
+
+            /**
+             * W16. One wardrobe tool call from the companion (WardrobeTool.call). Opens Try-On
+             * when it is not open — through the panel, so the launcher knows it is running —
+             * waits for her looks and the private gate, then hands it to the view.
+             */
+            async request(action, args) {
+                if (!view) {
+                    const panel = deps.panel;
+                    if (panel && typeof panel.startActivity === 'function') await panel.startActivity(ID, {});
+                    else await activity.start({});
+                }
+                if (!view) return { ok: false, why: NOT_READY };
+                if (ready) await ready;
+                return view.runTool(action, args || {}, { privateOpen: privateIsOpen });
+            },
+
+            /** W16. Whether private outfits are open for her (TryOnPrivate), as last asked. */
+            privateOpen() {
+                warm();
+                return privateIsOpen;
+            },
+
+            /** W16. Her saved looks and what she has on, by name, for the companion's prompt. */
+            shelf() {
+                warm();
+                const state = session ? session.state() : null;
+                const current = state && state.look && !isPrivateLook(state.look) ? state.look.name : null;
+                return { looks: shelfNames.slice(), current, running: Boolean(session) };
             },
 
             stop(why = 'user') {
@@ -393,6 +577,9 @@ const TryOnHaulActivity = (() => {
                 return { label: UI.title, detail: state.began ? 'Original' : 'Browsing looks' };
             },
         };
+        // W16. Know her wardrobe before the first message, not after it: the prompt is built
+        // synchronously, so what it says is whatever was warmed before the person typed.
+        if (!deps.noWarm && typeof g.setTimeout === 'function') g.setTimeout(() => warm(true), 0);
         return activity;
     }
 

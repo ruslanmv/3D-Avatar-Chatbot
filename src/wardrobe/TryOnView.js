@@ -194,6 +194,14 @@
             this.studioUrl = options.studioUrl || null;
             this.onClose = options.onClose || function () {};
             this.turner = options.turn || null;
+            // W15. The outfit dictionary (OutfitDictionary): the tabs and chips, and what the
+            // companion's `wear` resolves against. Absent, TryOnIntent's built-in picks apply.
+            this.dictionary = options.dictionary || null;
+            // W17. The haul's host: given each arrival, it may answer with her line from the
+            // model (posted in the chat). Answering null means "not handled": the canned
+            // reaction plays instead.
+            this.onLanding = options.onLanding || null;
+            this.tattooDesign = null; // the design whose placements are showing
             this.random = options.random || Math.random;
             this.timers = options.timers || {
                 setTimeout: function (fn, ms) {
@@ -471,10 +479,43 @@
             var typing = Boolean(String(this.draft || '').trim());
             if (!this._keepOpen && !typing && !this.menuOpen) this.collapsed = true;
             if (landing.cause === 'wear') this._wears += 1;
-            if (!this.Reactions) return;
             var generated = Boolean(this._made && this._made.key === this._key(look));
             var history = state.history;
             var previous = history.length >= 2 ? this.session.history[history.length - 2] : null;
+            var change = generated && this._made.change ? this._made.change.slot : null;
+            this._reportBodyArt(look);
+            if (this.onLanding && landing.cause === 'wear') {
+                var handled = null;
+                try {
+                    handled = this.onLanding({
+                        look: look,
+                        previous: previous && !previous.original ? previous : null,
+                        generated: generated,
+                        change: change
+                            ? { top: 'top', bottom: 'bottoms', dress: 'dress', outer: 'layer' }[change] || change
+                            : null,
+                        position: state.position,
+                        total: state.total,
+                    });
+                } catch (error) {
+                    console.warn('[Try-On] the host could not take the reveal', error);
+                }
+                if (handled) {
+                    if (generated) this._made = null;
+                    var self = this;
+                    var actions = this.Reactions ? this.Reactions.ACTIONS : null;
+                    Promise.resolve(handled).then(function (result) {
+                        if (!result || !result.line || !self.root) return;
+                        self._showReaction({
+                            line: result.line,
+                            actions: actions ? [actions.turn, actions.save, actions.keep] : [],
+                        });
+                        self.render();
+                    });
+                    return;
+                }
+            }
+            if (!this.Reactions) return;
             var reaction = this.Reactions.react(
                 {
                     look: look,
@@ -780,14 +821,29 @@
             );
         }
 
+        /** W15. The dictionary's groups as tabs, once it has loaded; TryOnIntent's until then. */
+        _categories() {
+            var privateOn = this.privateState && this.privateState.mode !== 'off';
+            var dict = this.dictionary;
+            if (dict && dict.catalogue) {
+                var tabs = [{ id: 'for-you', label: 'For you' }].concat(
+                    dict.groups({ privateOpen: false }).map(function (group) {
+                        return { id: group.id, label: group.title };
+                    })
+                );
+                if (privateOn) tabs.push({ id: 'private', label: 'Private', private: true });
+                return tabs;
+            }
+            return this.Intent.CATEGORIES.filter(function (category) {
+                return !category.private || privateOn;
+            });
+        }
+
         _tabs() {
             if (!this._canCreate()) return null;
             var doc = this.doc;
             var self = this;
-            var privateOn = this.privateState && this.privateState.mode !== 'off';
-            var tabs = this.Intent.CATEGORIES.filter(function (category) {
-                return !category.private || privateOn;
-            });
+            var tabs = this._categories();
             return h(
                 doc,
                 'div',
@@ -917,18 +973,94 @@
                 if (this.privateState.mode === 'locked') {
                     return h(doc, 'p', { class: 'nexus-try-on-note', text: this.privateState.why || '' });
                 }
-                this.Intent.suggestions('private', { privatePicks: this.privateState.picks }).forEach(function (pick) {
+                var privateEntries = this.dictionary
+                    ? this.dictionary.entries({ privateOpen: true }).filter(function (entry) {
+                          return entry.private;
+                      })
+                    : [];
+                var tattoos = this.dictionary ? this.dictionary.tattoos({ privateOpen: true }) : null;
+                if (this.tattooDesign && tattoos) {
+                    // W16. A design picked: where should it go?
+                    var design = this.tattooDesign;
+                    design.placements.forEach(function (placementId) {
+                        var placement = tattoos.placements.find(function (p) {
+                            return p.id === placementId;
+                        });
+                        chips.push(
+                            chip(
+                                'tattoo-at:' + placementId,
+                                (placement && placement.name) || placementId,
+                                function () {
+                                    self.tattooDesign = null;
+                                    self.runTool(
+                                        'tattoo',
+                                        { design: design.id, placement: placementId },
+                                        { privateOpen: true }
+                                    );
+                                },
+                                ' is-private'
+                            )
+                        );
+                    });
+                    chips.push(
+                        chip('tattoo-back', '‹ Back', function () {
+                            self.tattooDesign = null;
+                            self.render();
+                        })
+                    );
+                    return h(doc, 'div', { class: 'nexus-try-on-row nexus-try-on-chips' }, chips);
+                }
+                if (privateEntries.length) {
+                    privateEntries.forEach(function (entry) {
+                        chips.push(
+                            chip(
+                                'outfit:' + entry.id,
+                                entry.title,
+                                function () {
+                                    self.wearOutfit(entry);
+                                },
+                                ' is-private'
+                            )
+                        );
+                    });
+                } else {
+                    this.Intent.suggestions('private', { privatePicks: this.privateState.picks }).forEach(
+                        function (pick) {
+                            chips.push(
+                                chip(
+                                    'pick:' + pick.label,
+                                    pick.label,
+                                    function () {
+                                        self.create({
+                                            prompt: pick.prompt,
+                                            mode: 'fresh',
+                                            baseLookId: null,
+                                            label: pick.label,
+                                            private: true,
+                                        });
+                                    },
+                                    ' is-private'
+                                )
+                            );
+                        }
+                    );
+                }
+                (tattoos ? tattoos.designs : []).forEach(function (design) {
                     chips.push(
                         chip(
-                            'pick:' + pick.label,
-                            pick.label,
+                            'tattoo:' + design.id,
+                            '✒ ' + design.name,
                             function () {
-                                self.create({
-                                    prompt: pick.prompt,
-                                    mode: 'fresh',
-                                    baseLookId: null,
-                                    label: pick.label,
-                                });
+                                if (design.placements.length === 1) {
+                                    return self.runTool(
+                                        'tattoo',
+                                        { design: design.id, placement: design.placements[0] },
+                                        { privateOpen: true }
+                                    );
+                                }
+                                self.tattooDesign = design;
+                                self.render();
+                                return null;
                             },
                             ' is-private'
                         )
@@ -952,6 +1084,20 @@
                         self.say('change colour');
                     })
                 );
+            } else if (canCreate && this.dictionary && this.dictionary.catalogue && this.category !== 'for-you') {
+                var category = this.category;
+                this.dictionary
+                    .entries({ privateOpen: false })
+                    .filter(function (entry) {
+                        return entry.group === category;
+                    })
+                    .forEach(function (entry) {
+                        chips.push(
+                            chip('outfit:' + entry.id, entry.title, function () {
+                                self.wearOutfit(entry);
+                            })
+                        );
+                    });
             } else if (canCreate) {
                 this.Intent.suggestions(this.category).forEach(function (pick) {
                     chips.push(
@@ -1380,6 +1526,8 @@
             try {
                 look = await this.generator.create(request.prompt, {
                     baseLookId: request.baseLookId || undefined,
+                    preset: request.preset || undefined,
+                    bodyArt: request.bodyArt || undefined,
                     signal: this._abort ? this._abort.signal : undefined,
                     onProgress: function (progress) {
                         this.progress = progress;
@@ -1400,6 +1548,21 @@
                 return null;
             }
             this.draft = '';
+            // W15. Remember which dictionary entry this is (so asking for it again wears it
+            // rather than making it twice) and whether it is private (so the host keeps it off
+            // the record) — from the request and from what Forge made.
+            if (request.outfitId) {
+                look.outfitId = request.outfitId;
+                // The name the person asked for ("Little black dress"), not Forge's description
+                // of it: it is how she will be asked for it again, by them and by the companion.
+                if (request.label) look.name = request.label;
+            }
+            if (request.prompt && !look.request) {
+                look.request = request.preset
+                    ? { prompt: request.prompt, preset: request.preset }
+                    : { prompt: request.prompt };
+            }
+            if (request.private || (look.bodyArt && look.bodyArt.length)) look.private = true;
             this.session.add(look);
             this._made = { key: this._key(look), change: request.mode === 'change' ? { slot: request.slot } : null };
             this.render();
@@ -1407,6 +1570,124 @@
             // that exists to be got past.
             await this.session.wear(look);
             return look;
+        }
+
+        /** W15. Wear a dictionary entry: the copy she already has, else make it. */
+        wearOutfit(entry) {
+            var made = this.session.state().looks.find(function (look) {
+                return look.outfitId === entry.id;
+            });
+            if (made) return this.wear(made);
+            return this.create({
+                prompt: entry.request.prompt,
+                preset: entry.request.preset,
+                mode: 'fresh',
+                baseLookId: null,
+                label: entry.title,
+                outfitId: entry.id,
+                private: entry.private,
+            });
+        }
+
+        /** W16. A tattoo on the look she has on: built on it when Forge has it, else remade with it. */
+        tattoo(design, placement) {
+            var look = this.session.state().look;
+            if (!look) {
+                this.notice = 'Put a look on first — a tattoo shows only where her outfit leaves skin bare.';
+                this.render();
+                return Promise.resolve({ ok: false, why: this.notice });
+            }
+            var bodyArt = [{ design: design, placement: placement }];
+            var request = this.Intent.buildable(look)
+                ? { prompt: '', bodyArt: bodyArt, baseLookId: String(look.id), mode: 'tattoo', private: true }
+                : {
+                      prompt: this.Intent.promptOf(look),
+                      preset: look.outfitId && look.request ? look.request.preset : undefined,
+                      bodyArt: bodyArt,
+                      mode: 'tattoo',
+                      private: true,
+                  };
+            return this.create(request).then(function (made) {
+                return { ok: Boolean(made), why: '' };
+            });
+        }
+
+        /** W16. Say what Forge did with the tattoos it was asked for, when one did not go on. */
+        _reportBodyArt(look) {
+            var missed = (look && look.bodyArt ? look.bodyArt : []).filter(function (item) {
+                return !item.applied;
+            });
+            if (missed.length) {
+                this.notice =
+                    'The tattoo did not go on: ' +
+                    (missed[0].message || 'that skin is covered by her outfit') +
+                    '. Try a look that leaves it bare.';
+            }
+        }
+
+        /**
+         * W16. One wardrobe tool call (WardrobeTool → TryOnHaulActivity.request). Resolves
+         * {ok, why}. Everything is checked against what she may be offered now: an id the
+         * dictionary does not have, a private set or a tattoo while private outfits are closed,
+         * a look not on her shelf — each refused with a sentence on the Try-On screen.
+         */
+        async runTool(action, args, context) {
+            args = args || {};
+            var open = Boolean(context && context.privateOpen);
+            var self = this;
+            var refuse = function (why) {
+                self.notice = why;
+                self.collapsed = false;
+                self.render();
+                return { ok: false, why: why };
+            };
+            var state = this.session.state();
+            switch (action) {
+                case 'wear': {
+                    if (args.outfit) {
+                        var entry = this.dictionary ? this.dictionary.find(args.outfit, { privateOpen: open }) : null;
+                        if (!entry) return refuse('That outfit is not one she can wear here.');
+                        if (!this._canCreate() && !state.looks.some((l) => l.outfitId === entry.id)) {
+                            return refuse(this.Intent.UNAVAILABLE);
+                        }
+                        await this.wearOutfit(entry);
+                        return { ok: true, why: '' };
+                    }
+                    var look = this.Intent.findLook(args.look || '', state.looks);
+                    if (!look) return refuse('She has no saved look called “' + (args.look || '') + '”.');
+                    await this.wear(look);
+                    return { ok: true, why: '' };
+                }
+                case 'change': {
+                    var garment = this.Intent.slotOf(args.prompt || '');
+                    await this.say((garment ? 'give her a ' : 'make it ') + args.prompt);
+                    return { ok: true, why: '' };
+                }
+                case 'create':
+                    if (!this._canCreate()) return refuse(this.Intent.UNAVAILABLE);
+                    await this.create({ prompt: args.prompt, mode: 'fresh', baseLookId: null });
+                    return { ok: true, why: '' };
+                case 'tattoo': {
+                    if (!open) return refuse('Tattoos come with private outfits, which are not open for her.');
+                    var catalogue = this.dictionary ? this.dictionary.tattoos({ privateOpen: true }) : null;
+                    var design = catalogue
+                        ? catalogue.designs.find(function (d) {
+                              return d.id === args.design;
+                          })
+                        : null;
+                    if (!design || design.placements.indexOf(args.placement) === -1) {
+                        return refuse('That tattoo is not in the catalogue for that placement.');
+                    }
+                    if (!this._canCreate()) return refuse(this.Intent.UNAVAILABLE);
+                    return this.tattoo(args.design, args.placement);
+                }
+                case 'keep':
+                    return { ok: Boolean(await this.keep()), why: '' };
+                case 'undo':
+                    return { ok: Boolean(await this.session.undo()), why: '' };
+                default:
+                    return refuse('That is not something Try-On can do.');
+            }
         }
 
         close(why) {

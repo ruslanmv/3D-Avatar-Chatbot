@@ -142,15 +142,24 @@
          * Make a look. Resolves to `{id, name, vrmUrl, previewUrl, prompt, fitPassed, source}`,
          * the shape `WardrobeController.applyLook` and the static bundle already use.
          *
-         * options   {onProgress(progress), signal, baseLookId}
+         * options   {onProgress(progress), signal, baseLookId, preset, bodyArt}
          *   baseLookId  a Forge look of hers to build on (LT1): the new garment replaces what it
          *               covers on that look and the rest of it is kept
+         *   preset      W15. a dictionary entry's look or hosiery preset, sent with its prompt
+         *   bodyArt     W16. `[{design, placement}]` tattoos; with no prompt, a tattoo-only job
+         *               on `baseLookId` (Forge accepts no other kind)
          * Rejects with a TryOnError whose message is a sentence, or an AbortError on cancel.
          */
         async create(prompt, options) {
             options = options || {};
             var text = String(prompt || '').trim();
-            if (!text) throw new TryOnError('Describe the look first, like “black satin cocktail dress”.');
+            var bodyArt = Array.isArray(options.bodyArt) && options.bodyArt.length ? options.bodyArt : null;
+            var tattooOnly = !text && bodyArt;
+            if (tattooOnly && !options.baseLookId) {
+                throw new TryOnError('A tattoo goes on a look Forge made for her. Make or choose one of those first.');
+            }
+            if (!text && !tattooOnly)
+                throw new TryOnError('Describe the look first, like “black satin cocktail dress”.');
             if (text.length > MAX_PROMPT) throw new TryOnError('That description is too long. Keep it short.');
             var available = this.availability();
             if (!available.ok) throw new TryOnError(available.why);
@@ -171,13 +180,22 @@
                     }
                     // LT1. "Change the top" builds on the look she has on, so everything the
                     // person did not ask to change — the jeans, the shoes — stays as it is.
-                    var accepted = await this.library.createJob(
-                        identity.slug,
-                        { prompt: text },
-                        baseLookId ? { baseLookId: baseLookId } : undefined
-                    );
+                    var outfit = tattooOnly ? null : { prompt: text };
+                    if (outfit && options.preset) outfit.preset = String(options.preset);
+                    var jobOptions = {};
+                    if (baseLookId) jobOptions.baseLookId = baseLookId;
+                    if (bodyArt) jobOptions.bodyArt = bodyArt;
+                    var accepted = await this.library.createJob(identity.slug, outfit, jobOptions);
                     jobId = accepted && accepted.id;
                 } else {
+                    if (bodyArt || options.preset) {
+                        // The generic route takes a prompt and nothing else.
+                        throw new TryOnError(
+                            bodyArt
+                                ? 'Tattoos are made on the built-in avatars Forge holds, and she is not one of them.'
+                                : 'That set is made on the built-in avatars Forge holds, and she is not one of them.'
+                        );
+                    }
                     var controller = this.controller;
                     var started = await this.library.client.generate({
                         avatarUrl: this._absolute(identity.url),
@@ -197,7 +215,7 @@
                         this._progress(state, options.onProgress);
                     }.bind(this),
                 });
-                return this._look(job, text, identity, baseLookId);
+                return this._look(job, text || 'Tattoo', identity, baseLookId);
             } catch (error) {
                 if (error && (error.name === 'AbortError' || error.name === 'TryOnError')) throw error;
                 throw new TryOnError(this.Reasons.explain(error), {
@@ -220,6 +238,15 @@
                 source: 'generated',
                 avatar: identity.kind === 'library' ? identity.slug : identity.name,
                 basedOn: baseLookId || null,
+                // W16. What Forge did with each tattoo asked for: applied, or why not (covered).
+                bodyArt: ((job.fitReport && job.fitReport.bodyArt) || []).map(function (item) {
+                    return {
+                        design: item.design,
+                        placement: item.placement,
+                        applied: item.state === 'applied' || item.applied === true,
+                        message: item.message || '',
+                    };
+                }),
             };
         }
     }

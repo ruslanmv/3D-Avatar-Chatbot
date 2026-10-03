@@ -107,7 +107,7 @@
     },
     {
       "file": "src/main.js",
-      "line": 5404,
+      "line": 5418,
       "guarded": false,
       "comment": true
     },
@@ -167,6 +167,6 @@
     "adult.available": true
   },
   "informational": {
-    "totalBootScripts": 96
+    "totalBootScripts": 122
   }
 }

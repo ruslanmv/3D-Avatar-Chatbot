@@ -79,20 +79,56 @@
          * Start a job on a library avatar. Resolves to the accepted job (`{id, state, ...}`).
          *
          * outfit    {prompt, mode?, color?, ...}  an OutfitRequest
-         * options   {renderPreview?, engine?, baseLookId?}
+         * options   {renderPreview?, engine?, baseLookId?, bodyArt?}
          */
         createJob(slug, outfit, options) {
             options = options || {};
             var client = this._require();
             var body = {
-                outfit: Object.assign({ mode: 'auto' }, outfit || {}),
                 options: { renderPreview: options.renderPreview !== false, engine: options.engine || 'auto' },
             };
+            // W16. `outfit: null` is a tattoo-only job: Forge accepts body art with no outfit
+            // only on a look of hers (`baseLookId`), and refuses it otherwise with the reason.
+            if (outfit !== null) body.outfit = Object.assign({ mode: 'auto' }, outfit || {});
             if (options.baseLookId) body.baseLookId = options.baseLookId;
+            if (options.bodyArt && options.bodyArt.length) body.bodyArt = options.bodyArt;
             return client.request('/v1/library/' + encodeURIComponent(slug) + '/jobs', {
                 method: 'POST',
                 body: JSON.stringify(body),
             });
+        }
+
+        /**
+         * W15. `GET /v1/outfits`: the outfit dictionary, as this Forge plans and rates it.
+         * Kept like the library: a failure is not remembered, so the next ask tries again.
+         */
+        outfits() {
+            if (!this._outfits) {
+                this._outfits = this._require()
+                    .request('/v1/outfits')
+                    .catch(
+                        function (error) {
+                            this._outfits = null;
+                            throw error;
+                        }.bind(this)
+                    );
+            }
+            return this._outfits;
+        }
+
+        /** W16. `GET /v1/body-art`: placements and tattoo designs. */
+        bodyArt() {
+            if (!this._bodyArt) {
+                this._bodyArt = this._require()
+                    .request('/v1/body-art')
+                    .catch(
+                        function (error) {
+                            this._bodyArt = null;
+                            throw error;
+                        }.bind(this)
+                    );
+            }
+            return this._bodyArt;
         }
 
         job(jobId) {

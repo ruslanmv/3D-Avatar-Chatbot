@@ -78,7 +78,7 @@ So the rule for new code in `src/gltf-viewer/`:
 
 **`src/wardrobe/` — IIFE, but loaded by `index.html`, not `boot.js`.** Same dual
 export as `src/features/`, and for the same reason: Jest `require()`s these
-directly. What differs is how they reach the browser — twenty-three plain
+directly. What differs is how they reach the browser — twenty-six plain
 `<script>` tags at the very end of `<body>`, after the Pose Studio root. That
 placement is deliberate and the commit that moved them there says why: the
 parity harness counts boot scripts by line, so adding them near the top of
@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (208 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (211 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-10-03 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **4954 tests in 208 suites, all passing.**
+— lint clean, format clean, **4988 tests in 211 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -185,9 +185,10 @@ will be rewrapped; files under `docs/` are exempt.
 **Batch comments.** Work lands in numbered batches and the code says which:
 `// T5. Take the <play> tag out…`, `// B14. …`. Prefixes in use: `B`, `T`, `M`,
 `D`, `L`, `S`, `MS`, `A` for the ambience work, `P` for the Private experience,
-`W` for the wardrobe and `V` for VRoid Hub in the Avatar Library. Commit
-subjects match: `A4: viewport background manager`. So `git log --grep 'A4'` and
-the comment line up.
+`W` for the wardrobe (`WF` its Forge settings, `LT` live Try-On) and `V` for
+VRoid Hub in the Avatar Library. Commit subjects match:
+`A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
+up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of
@@ -358,13 +359,15 @@ storage and no speech. A new code path that persists a reply needs that check.
 
 New outfits for the avatar, from the pack this repository ships or from a
 running [3D-Wardrobe-Forge](https://github.com/ruslanmv/3D-Wardrobe-Forge).
-Twenty-three modules in `src/wardrobe/`: the original eight behind a floating 👗
+Twenty-six modules in `src/wardrobe/`: the original eight behind a floating 👗
 drawer (`docs/WARDROBE.md`), eleven that put Try-On inside Together as a tile
 and hide the drawer once that tile exists (`docs/TRY_ON_TOGETHER.md`), three
 that make every look an artifact and let a pack be imported
-(`docs/WARDROBE_IMPORT.md`), and the Settings section that chooses the Forge
-(WF1). **The shipped pack needs no server, and the project's Hugging Face Forge
-is the default for creating looks (WF1)** — see the Forge bullet below.
+(`docs/WARDROBE_IMPORT.md`), the Settings section that chooses the Forge (WF1),
+and three that put her wardrobe in the conversation — the outfit dictionary, the
+wardrobe tool and the hosted haul (`docs/WARDROBE_TOOL.md`). **The shipped pack
+needs no server, and the project's Hugging Face Forge is the default for
+creating looks (WF1)** — see the Forge bullet below.
 
 - **`vendor/wardrobe/` is a verified pack, not a folder you edit (W11).** Ten
   looks, two per bundled avatar, ~137 MB of VRMs made by the Forge's
@@ -417,7 +420,7 @@ is the default for creating looks (WF1)** — see the Forge bullet below.
   value. Omit the key when there is nothing to say, and send strings — the "I
   have permission" path is exactly the path with no conditions to send, so
   getting this wrong broke only the attestation retry.
-- **The twenty-three `<script>` tags live at the end of `index.html`'s `<body>`,
+- **The twenty-six `<script>` tags live at the end of `index.html`'s `<body>`,
   and moving them is not free.** The parity harness counts boot scripts by line;
   `node scripts/behavior-parity-baseline.mjs --check` is the check. None of them
   may point into an engine folder (`src/behavior/`, Together's own tree): those
@@ -454,6 +457,19 @@ is the default for creating looks (WF1)** — see the Forge bullet below.
   `main.js` knows nothing about it. The default works because the Space's five
   library avatars hash-match AvatarIdentity's pins and its CORS allows any
   origin; if either changes, Test connection in Settings says so.
+- **Her wardrobe is a tool, a fifth instance of the capability pattern
+  (W15–W17).** `WardrobeTool` holds the MCP-shaped `TOOLS` and the one executor
+  `call`; the chat reaches it with `<wardrobe action="…"/>`, consumed at both
+  `displayText` seams and suffixed at all three prompt sites. What she is told
+  comes from `OutfitDictionary` (Forge's `GET /v1/outfits`, else
+  `assets/wardrobe/outfits.json` — refresh with
+  `node tools/wardrobe/sync-outfits.mjs`); ratings are Forge's, and an entry is
+  private if its rating _or_ its group says so. Private sets and tattoos reach
+  the prompt only while the activity's `privateOpen()` (TryOnPrivate `open`) is
+  true. `TryOnConversation` hosts the haul in the chat — her lines from
+  `callLLM`, posted with `renderAssistant` + `history().addMessage` + `persist`,
+  epoch-checked, scrubbed of directives, and never for a private look or a
+  tattoo. Do not let a beat run a directive: that is a loop.
 - **Private mode unlocks private outfits only for avatars Forge declares adult
   (W10).** `TryOnPrivate.evaluate()` answers `off`, `locked` with a sentence, or
   `open` with quick picks. Private mode (`NEXUS_SPICY.isEnabled()`) says the
