@@ -1,69 +1,20 @@
 <div align="center">
 
-<!-- Logo -->
-<svg width="180" height="180" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="logo-bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
-    </linearGradient>
-    <linearGradient id="logo-accent" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
-    </linearGradient>
-    <filter id="logo-glow">
-      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#667eea" flood-opacity="0.35"/>
-    </filter>
-  </defs>
-
-  <!-- Outer rings -->
-  <circle cx="100" cy="100" r="95" fill="url(#logo-bg)" opacity="0.08"/>
-  <circle cx="100" cy="100" r="85" fill="url(#logo-bg)" opacity="0.15"/>
-
-  <!-- Robot head -->
-  <g filter="url(#logo-glow)">
-    <rect x="65" y="60" width="70" height="65" rx="12" fill="url(#logo-bg)"/>
-  </g>
-
-  <!-- Antenna -->
-  <line x1="100" y1="60" x2="100" y2="40" stroke="#667eea" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="100" cy="35" r="6" fill="#10b981">
-    <animate attributeName="opacity" values="1;0.4;1" dur="2s" repeatCount="indefinite"/>
-  </circle>
-
-  <!-- Eyes -->
-  <circle cx="80" cy="85" r="8" fill="white"/>
-  <circle cx="120" cy="85" r="8" fill="white"/>
-  <circle cx="82" cy="85" r="4" fill="#667eea">
-    <animate attributeName="cx" values="82;84;82;80;82" dur="4s" repeatCount="indefinite"/>
-  </circle>
-  <circle cx="122" cy="85" r="4" fill="#667eea">
-    <animate attributeName="cx" values="122;124;122;120;122" dur="4s" repeatCount="indefinite"/>
-  </circle>
-
-  <!-- Mouth -->
-  <path d="M 75 105 Q 100 115 125 105" stroke="white" stroke-width="3" fill="none" stroke-linecap="round"/>
-
-  <!-- Speech bubble -->
-  <circle cx="150" cy="68" r="22" fill="url(#logo-accent)" opacity="0.9"/>
-  <path d="M 140 82 L 135 92 L 150 82" fill="url(#logo-accent)" opacity="0.9"/>
-  <text x="150" y="75" font-family="Arial" font-size="18" fill="white" text-anchor="middle" font-weight="bold">AI</text>
-
-  <!-- VR headset hint -->
-  <rect x="62" y="77" width="76" height="18" rx="9" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>
-</svg>
+<img src="assets/logo.svg" alt="3D Avatar Chatbot" width="160" height="160" />
 
 # 3D Avatar Chatbot
 
-**AI-powered conversational platform with 3D avatars, voice interaction, and
-WebXR immersion**
+**A 3D companion you can talk to, take into VR, and dress up — in the browser,
+with no build step**
 
 [![Version](https://img.shields.io/badge/version-2.0.0-667eea.svg?style=flat-square)](https://github.com/ruslanmv/3D-Avatar-Chatbot/releases)
 [![License](https://img.shields.io/badge/license-Apache%202.0-10b981.svg?style=flat-square)](LICENSE)
-[![Node](https://img.shields.io/badge/node-%3E%3D20.0.0-339933.svg?style=flat-square)](https://nodejs.org/)
+[![Node](https://img.shields.io/badge/node-24.x-339933.svg?style=flat-square)](https://nodejs.org/)
 [![CI/CD](https://img.shields.io/github/actions/workflow/status/ruslanmv/3D-Avatar-Chatbot/ci.yml?style=flat-square&label=CI/CD)](https://github.com/ruslanmv/3D-Avatar-Chatbot/actions)
 
 [Live Demo](https://ruslanmv.github.io/3D-Avatar-Chatbot/) &middot;
+[Wardrobe Forge on Hugging Face](https://huggingface.co/spaces/ruslanmv/3D-Wardrobe-Forge)
+&middot;
 [Deploy to Vercel](https://vercel.com/new/clone?repository-url=https://github.com/ruslanmv/3D-Avatar-Chatbot)
 &middot; [Report Issue](https://github.com/ruslanmv/3D-Avatar-Chatbot/issues)
 
@@ -73,16 +24,23 @@ WebXR immersion**
 
 ## Overview
 
-A production-ready web application that combines interactive 3D avatars with
-multi-provider AI chat, real-time voice I/O, and full VR/AR support. No
-framework dependencies — runs on vanilla JavaScript, Three.js, and WebXR.
+A web application that puts a VRM character in your browser and lets you talk to
+her: multi-provider AI chat, voice in and out, VR and AR, and a wardrobe she can
+change on request. Vanilla JavaScript, Three.js r147 and WebXR, served as static
+files by a small Node proxy — nothing is bundled or transpiled.
 
 **Key capabilities:**
 
 - **Multi-AI providers** — OpenAI, Claude, IBM Watsonx, Ollama, OllaBridge
   (HomePilot personas)
-- **3D avatar engine** — 30+ GLB/VRM models with morph-target lip sync,
-  emotions, gaze tracking
+- **3D avatar engine** — bundled VRM/GLB characters plus an Avatar Library
+  (including VRoid Hub), with lip sync, emotions and gaze tracking
+- **Wardrobe & Try-On Haul** — new outfits on the character, from a verified
+  pack that needs no server or made on demand by the
+  [3D Wardrobe Forge](https://huggingface.co/spaces/ruslanmv/3D-Wardrobe-Forge)
+  on Hugging Face; ask her in the chat and she changes —
+  [see below](#wardrobe--try-on-haul)
+- **Scenic ambience** — ten generated scenes composed for this app's camera
 - **Voice interaction** — Speech-to-text and text-to-speech with device/language
   selection. Two TTS engines: your device's built-in voices, or Piper (offline
   neural, identical on every device). If a language has no voice on your phone,
@@ -98,8 +56,8 @@ framework dependencies — runs on vanilla JavaScript, Three.js, and WebXR.
   gaze, mouth, emotions) with smooth camera zoom to face
 - **Mobile-first** — Enterprise mobile layout with drawer navigation, responsive
   panels, and AR access
-- **Privacy-first** — API keys stored in browser localStorage, zero server-side
-  data collection
+- **Privacy-first** — API keys stay in your browser's localStorage; the proxy
+  forwards requests and stores nothing
 
 ### Behavior Director
 
@@ -161,16 +119,17 @@ Setup, browser requirements and a per-feature test recipe:
 ```bash
 git clone https://github.com/ruslanmv/3D-Avatar-Chatbot.git
 cd 3D-Avatar-Chatbot
-npm install
-npm run dev          # http://localhost:8080
+npm ci               # Node 24 (see .node-version)
+npm start            # http://localhost:8080 (next free port if busy)
 ```
 
 ### Run tests
 
 ```bash
+npm run validate     # Lint + format check + the Jest suite — what CI runs
 make test            # Avatar health check + unit tests
 make test-avatars    # Avatar file validation only
-npm run validate     # Lint + format + tests
+npm run wardrobe:check   # Re-hash the shipped wardrobe pack
 
 # Behavior Director gates — the four CI runs
 node scripts/behavior-parity-baseline.mjs --check   # inert with the flag off
@@ -465,8 +424,12 @@ for the full specification.
 │   ├── PoseState.js        # Skeleton pose capture/apply via delta quaternions
 │   ├── PoseLibrary.js      # Built-in presets + localStorage persistence
 │   ├── PoseApplier.js      # High-level bone manipulation and mirroring
-│   ├── FaceTracker.js       # Webcam face tracking (MediaPipe)
+│   ├── FaceTracker.js      # Webcam face tracking (MediaPipe)
 │   ├── MobileDrawerWiring.js # Mobile drawer navigation wiring
+│   ├── behavior/           # Behavior Director (loaded by behavior/boot.js)
+│   ├── features/           # Together, ambience, chat, study… (IIFE modules)
+│   ├── wardrobe/           # Wardrobe, Try-On Haul, Forge client, wardrobe tool
+│   ├── avatar-library/     # Avatar Library helpers (VRoid Hub links)
 │   └── gltf-viewer/        # 3D engine modules
 │       ├── ViewerEngine.js
 │       ├── CameraPresets.js
@@ -484,7 +447,9 @@ for the full specification.
 ├── styles/                 # CSS
 ├── vendor/
 │   ├── three-0.147.0/      # Three.js (vendored)
-│   └── avatars/            # GLB/VRM avatar models + avatars.json manifest
+│   ├── avatars/            # GLB/VRM avatar models + avatars.json manifest
+│   └── wardrobe/           # The verified outfit pack (ten looks, hashed)
+├── assets/                 # Scenes, outfit dictionary, logos, screenshots
 ├── api/                    # Vercel serverless functions (CORS proxy)
 ├── nexus-proxy/            # Express CORS proxy server
 ├── tests/                  # Jest test suite
@@ -515,7 +480,7 @@ The `check-avatars.py` script validates all avatar model files:
 
 ```bash
 python3 check-avatars.py          # Detailed report
-python3 check-avatars.py --test   # CI mode (87 tests)
+python3 check-avatars.py --test   # CI mode
 ```
 
 Checks performed:
@@ -572,10 +537,84 @@ See [docs/deployment.md](docs/deployment.md) for detailed deployment guides.
 git clone https://github.com/YOUR_USERNAME/3D-Avatar-Chatbot.git
 cd 3D-Avatar-Chatbot
 git checkout -b feature/your-feature
-npm test && npm run lint:check
+npm run format && npm run validate
 git commit -m "feat: your feature"
 git push origin feature/your-feature
 ```
+
+---
+
+## Wardrobe & Try-On Haul
+
+She can change clothes. Open **Together ▸ Try-On**, tap a look and she is
+wearing it; type "make it red" or "try the evening gown" and the outfit is
+changed for her; or just ask in the chat, and she puts it on herself.
+
+![The same character four times: in her own cardigan and stockings, in a black crop top and blue jeans, in a yellow sundress, and in a black evening gown that was generated on the Hugging Face Forge during the session](assets/wardrobe/docs/haul.webp)
+
+_Above: one session in the real app. The first three outfits come from the pack
+this repository ships; the evening gown was made for her by the Wardrobe Forge
+on Hugging Face while the page waited, and loaded straight from the Space._
+
+**Where outfits come from**
+
+| Source                                                                             | Needs                   | What it gives                                                                                        |
+| ---------------------------------------------------------------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------- |
+| `vendor/wardrobe/`                                                                 | nothing — works offline | ten looks, two per bundled avatar, every file SHA-256 verified before it is worn                     |
+| [3D Wardrobe Forge](https://huggingface.co/spaces/ruslanmv/3D-Wardrobe-Forge) (HF) | the default; no setup   | new looks on demand, a 42-set outfit dictionary, and "change only the top" edits of the current look |
+| Your own Forge, or a pack you import                                               | Settings / a `.zip`     | the same, from your server or your files                                                             |
+
+A look is a VRM file: wearing one goes through the same loader as choosing an
+avatar, after a snapshot of what she had on, so **End haul** always puts her
+back exactly as she was.
+
+![Try-On while the Forge works: the stage reads Designing, Fitting, Ready, under a strip of her looks and the Dressy tab of the outfit dictionary; and the finished panel with the new evening gown in the strip](assets/wardrobe/docs/try-on-forge.webp)
+
+**She hosts it, YouTube try-on-haul style.** With a chat model configured, the
+haul is a conversation: she opens it, reacts to each new look with one concrete
+detail and a rating or "keep or return?", turns to show the back every few
+looks, and recaps her favourites at the end. Those lines are ordinary replies —
+in the chat history, saved and spoken. Without a model the haul works the same,
+silently. Her wardrobe is also a tool she can use: she knows the outfit
+dictionary, and a request like _"put on the little black dress"_ becomes a
+`<wardrobe>` tag that the app runs once and never shows
+([docs/WARDROBE_TOOL.md](docs/WARDROBE_TOOL.md)).
+
+**Linked to Hugging Face by default — and checked.** Nothing to configure: the
+Forge is
+[`ruslanmv-3d-wardrobe-forge.hf.space`](https://ruslanmv-3d-wardrobe-forge.hf.space)
+unless the site or the person says otherwise. **Settings ▸ Wardrobe Forge**
+shows the connection and lets you choose your own endpoint, or none.
+
+![Settings, Wardrobe Forge section: Hugging Face — Wardrobe Forge (default) selected, Test connection, and the status line Connected, 85 garment templates, ruslanmv-3d-wardrobe-forge.hf.space](assets/wardrobe/docs/forge-settings.webp)
+
+Verified on 2026-10-03 in the real app against the live Space, by recording
+every request the page made to it:
+
+```text
+GET  /v1/capabilities                              Settings: "Connected · 85 garment templates"
+GET  /v1/library, /v1/wardrobes/avatar-sample-a    her avatar matched to the Space's library
+POST /v1/library/avatar-sample-a/jobs              "Evening gown" from the dictionary
+GET  /v1/jobs/job_…                                designing → fitting → ready in 24 s
+GET  /v1/assets/looks/look_…/look.vrm              the file she is wearing in the picture above
+```
+
+A Space that has been idle takes up to a minute to wake on first use; Test
+connection in Settings says when it cannot be reached, and the shipped looks
+keep working either way.
+
+**Private looks stay private.** Swimwear, lingerie and tattoos are offered only
+when private mode is on _and_ the Forge's operator has declared the avatar an
+adult — two separate questions with two separate owners — and the Forge checks
+again on every job. They never enter the chat history.
+
+More: [docs/WARDROBE.md](docs/WARDROBE.md) (the feature and its rules) ·
+[docs/TRY_ON_TOGETHER.md](docs/TRY_ON_TOGETHER.md) (Try-On inside Together) ·
+[docs/WARDROBE_IMPORT.md](docs/WARDROBE_IMPORT.md) (looks as files you can
+share) · [docs/WARDROBE_TOOL.md](docs/WARDROBE_TOOL.md) (the dictionary and the
+hosted haul) ·
+[3D-Wardrobe-Forge](https://github.com/ruslanmv/3D-Wardrobe-Forge) (the
+generator).
 
 ---
 

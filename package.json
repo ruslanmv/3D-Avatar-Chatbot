@@ -17,6 +17,8 @@
     "format": "prettier --write \"**/*.{js,json,css,html,md}\"",
     "format:check": "prettier --check \"**/*.{js,json,css,html,md}\"",
     "validate": "npm run lint:check && npm run format:check && npm run test:ci",
+    "wardrobe:import": "node scripts/import-wardrobe-pack.mjs",
+    "wardrobe:check": "node scripts/import-wardrobe-pack.mjs --check",
     "clean": "rm -rf dist coverage node_modules",
     "docs": "jsdoc -c jsdoc.json",
     "security:audit": "npm audit --audit-level=moderate",
@@ -73,7 +75,7 @@
     "webpack-bundle-analyzer": "^4.9.1"
   },
   "engines": {
-    "node": "20.x",
+    "node": "24.x",
     "npm": ">=10.0.0"
   },
   "lint-staged": {

@@ -3873,7 +3873,11 @@ async function _handleStreamingResponse(text) {
             // turned scene ambience on AND the catalogue can actually answer something, so a
             // chat with it off sends byte-for-byte the prompt it sent before the feature
             // existed.
-            (window.NEXUS_SCENE_AMBIENCE_CAPABILITY?.systemPromptSuffix?.() || '');
+            (window.NEXUS_SCENE_AMBIENCE_CAPABILITY?.systemPromptSuffix?.() || '') +
+            // W16. Her wardrobe, as a tool: what she can wear and how to put it on. Empty
+            // unless the switch is on and Try-On could act on it, so a page without the
+            // wardrobe sends the prompt it always sent.
+            (window.NEXUS_WARDROBE_TOOL?.systemPromptSuffix?.() || '');
         let accumulated = '';
 
         const fullText = await window._nexusLLM.sendMessageStream(text, systemPrompt, history, (token) => {
@@ -3921,6 +3925,9 @@ async function _handleStreamingResponse(text) {
         displayText = window.NEXUS_SCENE_AMBIENCE_DIRECTIVE
             ? window.NEXUS_SCENE_AMBIENCE_DIRECTIVE.consume(displayText)
             : displayText;
+        // W16. Take <wardrobe> out and run it, at the same seam: Try-On opens and does the
+        // rest. `consume` re-checks the switch, Try-On and the private gate when it runs.
+        displayText = window.NEXUS_WARDROBE_TOOL ? window.NEXUS_WARDROBE_TOOL.consume(displayText) : displayText;
         // S4. She asked to look something up. Strip the tag, run the search, then ask her
         // again — the second call carries the results, so the answer comes from her having
         // read them rather than from the app pasting snippets into the chat.
@@ -4017,6 +4024,9 @@ async function _handleNonStreamingResponse(text) {
         displayText = window.NEXUS_SCENE_AMBIENCE_DIRECTIVE
             ? window.NEXUS_SCENE_AMBIENCE_DIRECTIVE.consume(displayText)
             : displayText;
+        // W16. Take <wardrobe> out and run it, at the same seam: Try-On opens and does the
+        // rest. `consume` re-checks the switch, Try-On and the private gate when it runs.
+        displayText = window.NEXUS_WARDROBE_TOOL ? window.NEXUS_WARDROBE_TOOL.consume(displayText) : displayText;
         // S4. She asked to look something up. Strip the tag, run the search, then ask her
         // again — the second call carries the results, so the answer comes from her having
         // read them rather than from the app pasting snippets into the chat.
@@ -4320,7 +4330,11 @@ async function callLLM(userMessage) {
             // turned scene ambience on AND the catalogue can actually answer something, so a
             // chat with it off sends byte-for-byte the prompt it sent before the feature
             // existed.
-            (window.NEXUS_SCENE_AMBIENCE_CAPABILITY?.systemPromptSuffix?.() || '');
+            (window.NEXUS_SCENE_AMBIENCE_CAPABILITY?.systemPromptSuffix?.() || '') +
+            // W16. Her wardrobe, as a tool: what she can wear and how to put it on. Empty
+            // unless the switch is on and Try-On could act on it, so a page without the
+            // wardrobe sends the prompt it always sent.
+            (window.NEXUS_WARDROBE_TOOL?.systemPromptSuffix?.() || '');
 
         // Use structured response for OllaBridge to get attachments
         if (config.provider === 'ollabridge' && typeof window._nexusLLM.sendMessageStructured === 'function') {
@@ -5825,7 +5839,8 @@ function __nexusMediaSuffix() {
             (window.NEXUS_STUDY_PROMPT?.systemPromptSuffix?.() || '') +
             (window.NEXUS_LOOKUP?.systemPromptSuffix?.() || '') +
             (window.NEXUS_TOGETHER_CAPABILITY?.systemPromptSuffix?.() || '') +
-            (window.NEXUS_SCENE_AMBIENCE_CAPABILITY?.systemPromptSuffix?.() || '')
+            (window.NEXUS_SCENE_AMBIENCE_CAPABILITY?.systemPromptSuffix?.() || '') +
+            (window.NEXUS_WARDROBE_TOOL?.systemPromptSuffix?.() || '')
         );
     } catch (_) {
         return '';
