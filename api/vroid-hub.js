@@ -108,6 +108,16 @@ export default async function handler(req) {
 
         const token = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
 
+        // V1. Model details are public on VRoid Hub: the Avatar Library looks up a pasted model
+        // link before anyone has signed in. Every other action still needs the user's token.
+        if (action === 'detail' && !token) {
+            const modelId = searchParams.get('character_model_id') || '';
+            if (!/^\d{1,25}$/.test(modelId)) return jsonResponse({ error: 'Missing character_model_id' }, 400);
+            const res = await vroidFetch(`/api/character_models/${modelId}`, null);
+            const data = await res.json().catch(() => ({}));
+            return jsonResponse(data, res.status);
+        }
+
         if (!token) {
             return jsonResponse({ error: 'Missing Authorization header' }, 401);
         }

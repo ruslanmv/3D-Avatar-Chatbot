@@ -310,6 +310,25 @@ app.get('/api/vroid-hub', async (req, res) => {
 
     const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
 
+    // V1. A model's details are public on VRoid Hub, so `detail` needs no sign-in: the Avatar
+    // Library looks up a pasted model link before anyone has connected an account. Every
+    // other action still needs the user's token. `detail` itself was missing here — only the
+    // Vercel function (api/vroid-hub.js) had it — so `npm start` answered every direct lookup
+    // with 400 "Unknown action".
+    if (action === 'detail') {
+        const modelId = String(req.query.character_model_id || '');
+        if (!/^\d{1,25}$/.test(modelId)) return res.status(400).json({ error: 'Missing character_model_id' });
+        try {
+            const headers = { 'X-Api-Version': VROID_API_VERSION };
+            if (token) headers.Authorization = `Bearer ${token}`;
+            const upstream = await fetch(`${VROID_API}/api/character_models/${modelId}`, { headers });
+            return res.status(upstream.status).json(await upstream.json().catch(() => ({})));
+        } catch (err) {
+            console.error('[vroid-hub] detail error:', err);
+            return res.status(502).json({ error: err?.message || String(err) });
+        }
+    }
+
     if (!token) return res.status(401).json({ error: 'Missing Authorization header' });
 
     const vroidHeaders = {

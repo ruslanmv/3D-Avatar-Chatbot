@@ -1,0 +1,193 @@
+{
+  "schemaVersion": 2,
+  "pack": {
+    "id": "homepilot-default",
+    "version": "2026.09.27",
+    "generatedBy": "3D-Wardrobe-Forge",
+    "generatorVersion": "0.2.0",
+    "createdAt": "2026-09-27T04:43:31Z"
+  },
+  "avatars": [
+    {
+      "avatarId": "avatar-sample-a",
+      "name": "AvatarSample A",
+      "sourceSha256": "b86b0b8a66d48911431d6f920a5211a974226f83aa672eca3f3dfade58ac346e",
+      "license": {
+        "spdx": "CC0-1.0"
+      }
+    },
+    {
+      "avatarId": "avatar-sample-b",
+      "name": "AvatarSample B",
+      "sourceSha256": "4a271bd3b5a3d19e054fd113ee154635b72e7141f4a8ccbcdba3c7f9cea6ee8d",
+      "license": {
+        "spdx": "CC0-1.0"
+      }
+    },
+    {
+      "avatarId": "avatar-sample-c",
+      "name": "AvatarSample C",
+      "sourceSha256": "395d5b04696e888f07bc856ae01bf72a974b7e773132c7443dc59d1688045b8a",
+      "license": {
+        "spdx": "CC0-1.0"
+      }
+    },
+    {
+      "avatarId": "fem-vroid",
+      "name": "VRoid Female",
+      "sourceSha256": "983631034570b7a70e2f158e48f12fe7f0fe3ebcba763363efd6e85a2fbbacb8",
+      "license": {
+        "spdx": "CC0-1.0"
+      }
+    },
+    {
+      "avatarId": "masc-vroid",
+      "name": "VRoid Male",
+      "sourceSha256": "ac5e30b9f875b54b13cddbe86d6351b4a8d2d418c2f885d89199281ad5c937cb",
+      "license": {
+        "spdx": "CC0-1.0"
+      }
+    }
+  ],
+  "looks": [
+    {
+      "id": "crop-top-jeans",
+      "avatarId": "avatar-sample-a",
+      "sha256": "05f2d50975ff5ce553c704401f984252aea2237baed0bef8c9202589742280da",
+      "generator": "3D-Wardrobe-Forge",
+      "generatorVersion": "0.2.0",
+      "engine": "native",
+      "recipeId": "crop-top-jeans@2026.09.27",
+      "prompt": "black fitted crop top + blue straight jeans",
+      "garments": [
+        "top-crop-tee-v1",
+        "jeans-straight-v1"
+      ]
+    },
+    {
+      "id": "maxi-sundress",
+      "avatarId": "avatar-sample-a",
+      "sha256": "0975349502172e1c0264136147c670b72d1171e9805d082271506fe3c1f44f00",
+      "generator": "3D-Wardrobe-Forge",
+      "generatorVersion": "0.2.0",
+      "engine": "native",
+      "recipeId": "maxi-sundress@2026.09.27",
+      "prompt": "yellow maxi sundress",
+      "garments": [
+        "shorts-slip-v1",
+        "dress-maxi-sundress-v1"
+      ]
+    },
+    {
+      "id": "crop-top-jeans",
+      "avatarId": "avatar-sample-b",
+      "sha256": "80d3b9ee36879856256a6df18376b24c4c846274107cb9cde1958140e1da7c71",
+      "generator": "3D-Wardrobe-Forge",
+      "generatorVersion": "0.2.0",
+      "engine": "native",
+      "recipeId": "crop-top-jeans@2026.09.27",
+      "prompt": "black fitted crop top + blue straight jeans",
+      "garments": [
+        "top-crop-tee-v1",
+        "jeans-straight-v1"
+      ]
+    },
+    {
+      "id": "maxi-sundress",
+      "avatarId": "avatar-sample-b",
+      "sha256": "a2ea85103e78fc47afe9d99b77bbd6fb7ed24899f91f5395295cb72310db8e58",
+      "generator": "3D-Wardrobe-Forge",
+      "generatorVersion": "0.2.0",
+      "engine": "native",
+      "recipeId": "maxi-sundress@2026.09.27",
+      "prompt": "yellow maxi sundress",
+      "garments": [
+        "shorts-slip-v1",
+        "dress-maxi-sundress-v1"
+      ]
+    },
+    {
+      "id": "tee-trousers",
+      "avatarId": "avatar-sample-c",
+      "sha256": "ffa8ac3947a64e8aa23bd2fd62a2b12b92cf485ff1025a3850a4ac402025b37e",
+      "generator": "3D-Wardrobe-Forge",
+      "generatorVersion": "0.2.0",
+      "engine": "native",
+      "recipeId": "tee-trousers@2026.09.27",
+      "prompt": "white fitted tee + black straight trousers",
+      "garments": [
+        "top-tee-v1",
+        "trousers-straight-v1"
+      ]
+    },
+    {
+      "id": "tee-jeans",
+      "avatarId": "avatar-sample-c",
+      "sha256": "e946192a35a71ad9b8a34ec8cfd33e734a3ba0282ae1f20443de0e9fc3d33fcc",
+      "generator": "3D-Wardrobe-Forge",
+      "generatorVersion": "0.2.0",
+      "engine": "native",
+      "recipeId": "tee-jeans@2026.09.27",
+      "prompt": "black fitted tee + blue straight jeans",
+      "garments": [
+        "top-tee-v1",
+        "jeans-straight-v1"
+      ]
+    },
+    {
+      "id": "crop-top-jeans",
+      "avatarId": "fem-vroid",
+      "sha256": "cfe02201e44bd7b5e02a3adc603f6c11f5ea9f2835e9bd50b1226ec01123a176",
+      "generator": "3D-Wardrobe-Forge",
+      "generatorVersion": "0.2.0",
+      "engine": "native",
+      "recipeId": "crop-top-jeans@2026.09.27",
+      "prompt": "black fitted crop top + blue straight jeans",
+      "garments": [
+        "top-crop-tee-v1",
+        "jeans-straight-v1"
+      ]
+    },
+    {
+      "id": "maxi-sundress",
+      "avatarId": "fem-vroid",
+      "sha256": "ec3a899025fccfee7561011cfdae756bce61a2bc4faa1e3f3952c654cee4a50c",
+      "generator": "3D-Wardrobe-Forge",
+      "generatorVersion": "0.2.0",
+      "engine": "native",
+      "recipeId": "maxi-sundress@2026.09.27",
+      "prompt": "yellow maxi sundress",
+      "garments": [
+        "dress-maxi-sundress-v1"
+      ]
+    },
+    {
+      "id": "tee-trousers",
+      "avatarId": "masc-vroid",
+      "sha256": "32d8d29d48df183116129adee707a351a79b056179126b843b13400fe32458e4",
+      "generator": "3D-Wardrobe-Forge",
+      "generatorVersion": "0.2.0",
+      "engine": "native",
+      "recipeId": "tee-trousers@2026.09.27",
+      "prompt": "white fitted tee + black straight trousers",
+      "garments": [
+        "top-tee-v1",
+        "trousers-straight-v1"
+      ]
+    },
+    {
+      "id": "tee-jeans",
+      "avatarId": "masc-vroid",
+      "sha256": "8c2149aec92145eea4c83fe88ad929e54b9d87f871914b89142564005d8a8ee9",
+      "generator": "3D-Wardrobe-Forge",
+      "generatorVersion": "0.2.0",
+      "engine": "native",
+      "recipeId": "tee-jeans@2026.09.27",
+      "prompt": "black fitted tee + blue straight jeans",
+      "garments": [
+        "top-tee-v1",
+        "jeans-straight-v1"
+      ]
+    }
+  ]
+}

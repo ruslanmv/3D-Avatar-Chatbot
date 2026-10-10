@@ -1,0 +1,51 @@
+<svg width="180" height="180" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="logo-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="logo-accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
+    </linearGradient>
+    <filter id="logo-glow">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#667eea" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Outer rings -->
+  <circle cx="100" cy="100" r="95" fill="url(#logo-bg)" opacity="0.08"/>
+  <circle cx="100" cy="100" r="85" fill="url(#logo-bg)" opacity="0.15"/>
+
+  <!-- Robot head -->
+  <g filter="url(#logo-glow)">
+    <rect x="65" y="60" width="70" height="65" rx="12" fill="url(#logo-bg)"/>
+  </g>
+
+  <!-- Antenna -->
+  <line x1="100" y1="60" x2="100" y2="40" stroke="#667eea" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="100" cy="35" r="6" fill="#10b981">
+    <animate attributeName="opacity" values="1;0.4;1" dur="2s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Eyes -->
+  <circle cx="80" cy="85" r="8" fill="white"/>
+  <circle cx="120" cy="85" r="8" fill="white"/>
+  <circle cx="82" cy="85" r="4" fill="#667eea">
+    <animate attributeName="cx" values="82;84;82;80;82" dur="4s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="122" cy="85" r="4" fill="#667eea">
+    <animate attributeName="cx" values="122;124;122;120;122" dur="4s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- Mouth -->
+  <path d="M 75 105 Q 100 115 125 105" stroke="white" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+  <!-- Speech bubble -->
+  <circle cx="150" cy="68" r="22" fill="url(#logo-accent)" opacity="0.9"/>
+  <path d="M 140 82 L 135 92 L 150 82" fill="url(#logo-accent)" opacity="0.9"/>
+  <text x="150" y="75" font-family="Arial" font-size="18" fill="white" text-anchor="middle" font-weight="bold">AI</text>
+
+  <!-- VR headset hint -->
+  <rect x="62" y="77" width="76" height="18" rx="9" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>
+</svg>

@@ -1,0 +1,423 @@
+{
+  "schemaVersion": 2,
+  "pack": {
+    "id": "homepilot-default",
+    "version": "2026.09.27",
+    "generatedBy": "3D-Wardrobe-Forge",
+    "generatorVersion": "0.2.0",
+    "createdAt": "2026-09-27T04:43:31Z"
+  },
+  "sourceName": "HomePilot",
+  "visibility": "public",
+  "avatars": [
+    {
+      "avatarId": "avatar-sample-a",
+      "name": "AvatarSample A",
+      "sourceSha256": "b86b0b8a66d48911431d6f920a5211a974226f83aa672eca3f3dfade58ac346e",
+      "license": {
+        "spdx": "CC0-1.0"
+      }
+    },
+    {
+      "avatarId": "avatar-sample-b",
+      "name": "AvatarSample B",
+      "sourceSha256": "4a271bd3b5a3d19e054fd113ee154635b72e7141f4a8ccbcdba3c7f9cea6ee8d",
+      "license": {
+        "spdx": "CC0-1.0"
+      }
+    },
+    {
+      "avatarId": "avatar-sample-c",
+      "name": "AvatarSample C",
+      "sourceSha256": "395d5b04696e888f07bc856ae01bf72a974b7e773132c7443dc59d1688045b8a",
+      "license": {
+        "spdx": "CC0-1.0"
+      }
+    },
+    {
+      "avatarId": "fem-vroid",
+      "name": "VRoid Female",
+      "sourceSha256": "983631034570b7a70e2f158e48f12fe7f0fe3ebcba763363efd6e85a2fbbacb8",
+      "license": {
+        "spdx": "CC0-1.0"
+      }
+    },
+    {
+      "avatarId": "masc-vroid",
+      "name": "VRoid Male",
+      "sourceSha256": "ac5e30b9f875b54b13cddbe86d6351b4a8d2d418c2f885d89199281ad5c937cb",
+      "license": {
+        "spdx": "CC0-1.0"
+      }
+    }
+  ],
+  "looks": [
+    {
+      "id": "crop-top-jeans",
+      "name": "Crop top & jeans",
+      "avatarId": "avatar-sample-a",
+      "vrmUrl": "looks/avatar-sample-a/crop-top-jeans/2026.09.27/look.vrm",
+      "sha256": "05f2d50975ff5ce553c704401f984252aea2237baed0bef8c9202589742280da",
+      "bytes": 15285400,
+      "previewUrl": "looks/avatar-sample-a/crop-top-jeans/2026.09.27/preview.webp",
+      "tags": [
+        "casual",
+        "denim",
+        "day"
+      ],
+      "rating": "general",
+      "fit": {
+        "avatarId": "avatar-sample-a",
+        "quality": "verified",
+        "clipping": "passed"
+      },
+      "provenance": {
+        "generator": "3D-Wardrobe-Forge",
+        "generatorVersion": "0.2.0",
+        "engine": "native",
+        "recipeId": "crop-top-jeans@2026.09.27",
+        "prompt": "black fitted crop top + blue straight jeans",
+        "garments": [
+          "top-crop-tee-v1",
+          "jeans-straight-v1"
+        ]
+      },
+      "license": {
+        "spdx": "CC0-1.0",
+        "derivedFrom": "avatar-sample-a"
+      },
+      "previewSha256": "84b6493484af8cbecbb1b8d8279a13f6290906b7e3e8e0c598db31acf236788d",
+      "previewBytes": 9182
+    },
+    {
+      "id": "maxi-sundress",
+      "name": "Yellow sundress",
+      "avatarId": "avatar-sample-a",
+      "vrmUrl": "looks/avatar-sample-a/maxi-sundress/2026.09.27/look.vrm",
+      "sha256": "0975349502172e1c0264136147c670b72d1171e9805d082271506fe3c1f44f00",
+      "bytes": 15322604,
+      "previewUrl": "looks/avatar-sample-a/maxi-sundress/2026.09.27/preview.webp",
+      "tags": [
+        "summer",
+        "dress",
+        "day"
+      ],
+      "rating": "general",
+      "fit": {
+        "avatarId": "avatar-sample-a",
+        "quality": "verified",
+        "clipping": "passed"
+      },
+      "provenance": {
+        "generator": "3D-Wardrobe-Forge",
+        "generatorVersion": "0.2.0",
+        "engine": "native",
+        "recipeId": "maxi-sundress@2026.09.27",
+        "prompt": "yellow maxi sundress",
+        "garments": [
+          "shorts-slip-v1",
+          "dress-maxi-sundress-v1"
+        ]
+      },
+      "license": {
+        "spdx": "CC0-1.0",
+        "derivedFrom": "avatar-sample-a"
+      },
+      "previewSha256": "afb8d46fa380678a3080c9295f5beb3241220e7d10d526282ff01b29c9421a11",
+      "previewBytes": 10544
+    },
+    {
+      "id": "crop-top-jeans",
+      "name": "Crop top & jeans",
+      "avatarId": "avatar-sample-b",
+      "vrmUrl": "looks/avatar-sample-b/crop-top-jeans/2026.09.27/look.vrm",
+      "sha256": "80d3b9ee36879856256a6df18376b24c4c846274107cb9cde1958140e1da7c71",
+      "bytes": 15614800,
+      "previewUrl": "looks/avatar-sample-b/crop-top-jeans/2026.09.27/preview.webp",
+      "tags": [
+        "casual",
+        "denim",
+        "day"
+      ],
+      "rating": "general",
+      "fit": {
+        "avatarId": "avatar-sample-b",
+        "quality": "verified",
+        "clipping": "passed"
+      },
+      "provenance": {
+        "generator": "3D-Wardrobe-Forge",
+        "generatorVersion": "0.2.0",
+        "engine": "native",
+        "recipeId": "crop-top-jeans@2026.09.27",
+        "prompt": "black fitted crop top + blue straight jeans",
+        "garments": [
+          "top-crop-tee-v1",
+          "jeans-straight-v1"
+        ]
+      },
+      "license": {
+        "spdx": "CC0-1.0",
+        "derivedFrom": "avatar-sample-b"
+      },
+      "previewSha256": "cc30193986aac77bb6594d51854ae8702b6bc50d2d91c303803166f8d36ee0ca",
+      "previewBytes": 13684
+    },
+    {
+      "id": "maxi-sundress",
+      "name": "Yellow sundress",
+      "avatarId": "avatar-sample-b",
+      "vrmUrl": "looks/avatar-sample-b/maxi-sundress/2026.09.27/look.vrm",
+      "sha256": "a2ea85103e78fc47afe9d99b77bbd6fb7ed24899f91f5395295cb72310db8e58",
+      "bytes": 15649556,
+      "previewUrl": "looks/avatar-sample-b/maxi-sundress/2026.09.27/preview.webp",
+      "tags": [
+        "summer",
+        "dress",
+        "day"
+      ],
+      "rating": "general",
+      "fit": {
+        "avatarId": "avatar-sample-b",
+        "quality": "verified",
+        "clipping": "passed"
+      },
+      "provenance": {
+        "generator": "3D-Wardrobe-Forge",
+        "generatorVersion": "0.2.0",
+        "engine": "native",
+        "recipeId": "maxi-sundress@2026.09.27",
+        "prompt": "yellow maxi sundress",
+        "garments": [
+          "shorts-slip-v1",
+          "dress-maxi-sundress-v1"
+        ]
+      },
+      "license": {
+        "spdx": "CC0-1.0",
+        "derivedFrom": "avatar-sample-b"
+      },
+      "previewSha256": "158f3422f3b4c5c594bd2a24172e1a2b9c3e8650ca1ea66439842522e3f00da3",
+      "previewBytes": 14212
+    },
+    {
+      "id": "tee-trousers",
+      "name": "White tee & trousers",
+      "avatarId": "avatar-sample-c",
+      "vrmUrl": "looks/avatar-sample-c/tee-trousers/2026.09.27/look.vrm",
+      "sha256": "ffa8ac3947a64e8aa23bd2fd62a2b12b92cf485ff1025a3850a4ac402025b37e",
+      "bytes": 13368940,
+      "previewUrl": "looks/avatar-sample-c/tee-trousers/2026.09.27/preview.webp",
+      "tags": [
+        "casual",
+        "day"
+      ],
+      "rating": "general",
+      "fit": {
+        "avatarId": "avatar-sample-c",
+        "quality": "verified",
+        "clipping": "passed"
+      },
+      "provenance": {
+        "generator": "3D-Wardrobe-Forge",
+        "generatorVersion": "0.2.0",
+        "engine": "native",
+        "recipeId": "tee-trousers@2026.09.27",
+        "prompt": "white fitted tee + black straight trousers",
+        "garments": [
+          "top-tee-v1",
+          "trousers-straight-v1"
+        ]
+      },
+      "license": {
+        "spdx": "CC0-1.0",
+        "derivedFrom": "avatar-sample-c"
+      },
+      "previewSha256": "711ac885b19cbbd494a7a09d70cd2ed54cc3967fcc3ed46d3c286c909cfc4991",
+      "previewBytes": 8288
+    },
+    {
+      "id": "tee-jeans",
+      "name": "Black tee & jeans",
+      "avatarId": "avatar-sample-c",
+      "vrmUrl": "looks/avatar-sample-c/tee-jeans/2026.09.27/look.vrm",
+      "sha256": "e946192a35a71ad9b8a34ec8cfd33e734a3ba0282ae1f20443de0e9fc3d33fcc",
+      "bytes": 13368780,
+      "previewUrl": "looks/avatar-sample-c/tee-jeans/2026.09.27/preview.webp",
+      "tags": [
+        "casual",
+        "denim",
+        "day"
+      ],
+      "rating": "general",
+      "fit": {
+        "avatarId": "avatar-sample-c",
+        "quality": "verified",
+        "clipping": "passed"
+      },
+      "provenance": {
+        "generator": "3D-Wardrobe-Forge",
+        "generatorVersion": "0.2.0",
+        "engine": "native",
+        "recipeId": "tee-jeans@2026.09.27",
+        "prompt": "black fitted tee + blue straight jeans",
+        "garments": [
+          "top-tee-v1",
+          "jeans-straight-v1"
+        ]
+      },
+      "license": {
+        "spdx": "CC0-1.0",
+        "derivedFrom": "avatar-sample-c"
+      },
+      "previewSha256": "742386a7468ad64dd219bfd37c6a7bad4efa8d936638453968fbe53a2d60ad35",
+      "previewBytes": 8556
+    },
+    {
+      "id": "crop-top-jeans",
+      "name": "Crop top & jeans",
+      "avatarId": "fem-vroid",
+      "vrmUrl": "looks/fem-vroid/crop-top-jeans/2026.09.27/look.vrm",
+      "sha256": "cfe02201e44bd7b5e02a3adc603f6c11f5ea9f2835e9bd50b1226ec01123a176",
+      "bytes": 12227880,
+      "previewUrl": "looks/fem-vroid/crop-top-jeans/2026.09.27/preview.webp",
+      "tags": [
+        "casual",
+        "denim",
+        "day"
+      ],
+      "rating": "general",
+      "fit": {
+        "avatarId": "fem-vroid",
+        "quality": "verified",
+        "clipping": "passed"
+      },
+      "provenance": {
+        "generator": "3D-Wardrobe-Forge",
+        "generatorVersion": "0.2.0",
+        "engine": "native",
+        "recipeId": "crop-top-jeans@2026.09.27",
+        "prompt": "black fitted crop top + blue straight jeans",
+        "garments": [
+          "top-crop-tee-v1",
+          "jeans-straight-v1"
+        ]
+      },
+      "license": {
+        "spdx": "CC0-1.0",
+        "derivedFrom": "fem-vroid"
+      },
+      "previewSha256": "b708958701f7b21e7bc05562172058c5e0b48cc8b71bdc9b178c8aea469fbbcf",
+      "previewBytes": 9048
+    },
+    {
+      "id": "maxi-sundress",
+      "name": "Yellow sundress",
+      "avatarId": "fem-vroid",
+      "vrmUrl": "looks/fem-vroid/maxi-sundress/2026.09.27/look.vrm",
+      "sha256": "ec3a899025fccfee7561011cfdae756bce61a2bc4faa1e3f3952c654cee4a50c",
+      "bytes": 12237244,
+      "previewUrl": "looks/fem-vroid/maxi-sundress/2026.09.27/preview.webp",
+      "tags": [
+        "summer",
+        "dress",
+        "day"
+      ],
+      "rating": "general",
+      "fit": {
+        "avatarId": "fem-vroid",
+        "quality": "verified",
+        "clipping": "passed"
+      },
+      "provenance": {
+        "generator": "3D-Wardrobe-Forge",
+        "generatorVersion": "0.2.0",
+        "engine": "native",
+        "recipeId": "maxi-sundress@2026.09.27",
+        "prompt": "yellow maxi sundress",
+        "garments": [
+          "dress-maxi-sundress-v1"
+        ]
+      },
+      "license": {
+        "spdx": "CC0-1.0",
+        "derivedFrom": "fem-vroid"
+      },
+      "previewSha256": "61d7bd4fbb0e65b341c106ba463c6f41f378becc27f91802fe7f374cf744bd94",
+      "previewBytes": 9876
+    },
+    {
+      "id": "tee-trousers",
+      "name": "White tee & trousers",
+      "avatarId": "masc-vroid",
+      "vrmUrl": "looks/masc-vroid/tee-trousers/2026.09.27/look.vrm",
+      "sha256": "32d8d29d48df183116129adee707a351a79b056179126b843b13400fe32458e4",
+      "bytes": 12075960,
+      "previewUrl": "looks/masc-vroid/tee-trousers/2026.09.27/preview.webp",
+      "tags": [
+        "casual",
+        "day"
+      ],
+      "rating": "general",
+      "fit": {
+        "avatarId": "masc-vroid",
+        "quality": "verified",
+        "clipping": "passed"
+      },
+      "provenance": {
+        "generator": "3D-Wardrobe-Forge",
+        "generatorVersion": "0.2.0",
+        "engine": "native",
+        "recipeId": "tee-trousers@2026.09.27",
+        "prompt": "white fitted tee + black straight trousers",
+        "garments": [
+          "top-tee-v1",
+          "trousers-straight-v1"
+        ]
+      },
+      "license": {
+        "spdx": "CC0-1.0",
+        "derivedFrom": "masc-vroid"
+      },
+      "previewSha256": "3761afdb99b734b82bf893dc4d4eac5de862189a9f04ca1c1d93d770d3f8a887",
+      "previewBytes": 8192
+    },
+    {
+      "id": "tee-jeans",
+      "name": "Black tee & jeans",
+      "avatarId": "masc-vroid",
+      "vrmUrl": "looks/masc-vroid/tee-jeans/2026.09.27/look.vrm",
+      "sha256": "8c2149aec92145eea4c83fe88ad929e54b9d87f871914b89142564005d8a8ee9",
+      "bytes": 12075804,
+      "previewUrl": "looks/masc-vroid/tee-jeans/2026.09.27/preview.webp",
+      "tags": [
+        "casual",
+        "denim",
+        "day"
+      ],
+      "rating": "general",
+      "fit": {
+        "avatarId": "masc-vroid",
+        "quality": "verified",
+        "clipping": "passed"
+      },
+      "provenance": {
+        "generator": "3D-Wardrobe-Forge",
+        "generatorVersion": "0.2.0",
+        "engine": "native",
+        "recipeId": "tee-jeans@2026.09.27",
+        "prompt": "black fitted tee + blue straight jeans",
+        "garments": [
+          "top-tee-v1",
+          "jeans-straight-v1"
+        ]
+      },
+      "license": {
+        "spdx": "CC0-1.0",
+        "derivedFrom": "masc-vroid"
+      },
+      "previewSha256": "847d537b2b5b90a37e46676d1b6bf3b79bd0fd5afcf99cff3505b5ac5f2de36f",
+      "previewBytes": 9040
+    }
+  ]
+}

@@ -1,0 +1,285 @@
+{
+  "source": "https://github.com/ruslanmv/3D-Wardrobe-Forge (assets/body_art), exported from GET /v1/body-art",
+  "license": "Apache-2.0",
+  "placements": [
+    {
+      "id": "nape",
+      "name": "Nape of the neck",
+      "rating": "general",
+      "facing": "back",
+      "region": "upper"
+    },
+    {
+      "id": "upper-back",
+      "name": "Upper back",
+      "rating": "general",
+      "facing": "back",
+      "region": "upper"
+    },
+    {
+      "id": "left-shoulder-blade",
+      "name": "Left shoulder blade",
+      "rating": "general",
+      "facing": "back",
+      "region": "upper"
+    },
+    {
+      "id": "right-shoulder-blade",
+      "name": "Right shoulder blade",
+      "rating": "general",
+      "facing": "back",
+      "region": "upper"
+    },
+    {
+      "id": "spine-upper",
+      "name": "Upper spine",
+      "rating": "general",
+      "facing": "back",
+      "region": "upper"
+    },
+    {
+      "id": "spine-full",
+      "name": "Full spine",
+      "rating": "general",
+      "facing": "back",
+      "region": "upper"
+    },
+    {
+      "id": "lower-back",
+      "name": "Lower back",
+      "rating": "general",
+      "facing": "back",
+      "region": "lower"
+    },
+    {
+      "id": "waistline",
+      "name": "Just above the waistband",
+      "rating": "general",
+      "facing": "back",
+      "region": "lower"
+    }
+  ],
+  "designs": [
+    {
+      "id": "tribal-wings-01",
+      "name": "Tribal Wings",
+      "family": "upper-back-tribal",
+      "placements": ["upper-back"],
+      "ratings": {
+        "upper-back": "general"
+      },
+      "description": "Symmetrical winged tribal across the shoulder blades, narrowing to the spine.",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "thorn-filigree-01",
+      "name": "Thorn Filigree",
+      "family": "upper-back-tribal",
+      "placements": ["upper-back"],
+      "ratings": {
+        "upper-back": "general"
+      },
+      "description": "A central diamond with thorned curls to each shoulder blade.",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "v-tribal-01",
+      "name": "V Tribal",
+      "family": "upper-back-tribal",
+      "placements": ["upper-back"],
+      "ratings": {
+        "upper-back": "general"
+      },
+      "description": "Two blades rising from low on the spine to each shoulder blade, barbed on their outer edge.",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "spine-tribal-01",
+      "name": "Spine Tribal",
+      "family": "upper-back-tribal",
+      "placements": ["upper-back"],
+      "ratings": {
+        "upper-back": "general"
+      },
+      "description": "A tall central blade on the spine with flourishes curling out to each side.",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "geometric-bands-01",
+      "name": "Geometric Bands",
+      "family": "upper-back-tribal",
+      "placements": ["upper-back"],
+      "ratings": {
+        "upper-back": "general"
+      },
+      "description": "Two curved bands over the shoulder blades with shark-teeth between them.",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "lace-ornament-01",
+      "name": "Lace Ornament",
+      "family": "upper-back-tribal",
+      "placements": ["upper-back"],
+      "ratings": {
+        "upper-back": "general"
+      },
+      "description": "A rosette on the spine and scalloped arches to each side: soft, lace-like.",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "flame-01",
+      "name": "Flame",
+      "family": "shoulder-blade",
+      "placements": ["left-shoulder-blade", "right-shoulder-blade"],
+      "ratings": {
+        "left-shoulder-blade": "general",
+        "right-shoulder-blade": "general"
+      },
+      "description": "A single tribal flame on one shoulder blade.",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "spine-vine-01",
+      "name": "Spine Vine",
+      "family": "spine",
+      "placements": ["spine-upper", "spine-full"],
+      "ratings": {
+        "spine-upper": "general",
+        "spine-full": "general"
+      },
+      "description": "A stem with alternating leaves along the spine.",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "lotus-ornament-01",
+      "name": "Lotus Ornament",
+      "family": "lower-back",
+      "placements": ["lower-back", "waistline"],
+      "ratings": {
+        "lower-back": "general",
+        "waistline": "general"
+      },
+      "description": "A lotus at the centre of the lower back with flourishes to the sides.",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "nape-crescent-01",
+      "name": "Crescent and Star",
+      "family": "nape",
+      "placements": ["nape"],
+      "ratings": {
+        "nape": "general"
+      },
+      "description": "A small crescent moon and star at the nape of the neck.",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "tribal-butterfly-01",
+      "name": "Tribal Butterfly",
+      "family": "lower-back-classic",
+      "placements": ["lower-back", "waistline"],
+      "ratings": {
+        "lower-back": "general",
+        "waistline": "general"
+      },
+      "description": "A wide tribal butterfly centred above the waistband, its sweeps running out toward the hips.",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "neotribal-heart-01",
+      "name": "Neotribal Heart",
+      "family": "lower-back-classic",
+      "placements": ["lower-back", "waistline"],
+      "ratings": {
+        "lower-back": "general",
+        "waistline": "general"
+      },
+      "description": "A small outlined heart with sharp neotribal sweeps to each side.",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "waist-filigree-01",
+      "name": "Waist Filigree",
+      "family": "lower-back-ornamental",
+      "placements": ["lower-back", "waistline"],
+      "ratings": {
+        "lower-back": "general",
+        "waistline": "general"
+      },
+      "description": "Lace and jewellery curves following the waist, with a centre drop and scalloped beads.",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "angel-wings-01",
+      "name": "Angel Wings",
+      "family": "lower-back-classic",
+      "placements": ["lower-back", "waistline"],
+      "ratings": {
+        "lower-back": "general",
+        "waistline": "general"
+      },
+      "description": "A small heart with feathered wings reaching toward the hips.",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "thorn-vine-01",
+      "name": "Thorn Vine",
+      "family": "lower-back-ornamental",
+      "placements": ["lower-back", "waistline"],
+      "ratings": {
+        "lower-back": "general",
+        "waistline": "general"
+      },
+      "description": "Thin intertwined vines with thorns and curled ends across the lower back.",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "rose-vine-01",
+      "name": "Rose Vine",
+      "family": "lower-back-ornamental",
+      "placements": ["lower-back", "waistline"],
+      "ratings": {
+        "lower-back": "general",
+        "waistline": "general"
+      },
+      "description": "A rose at the centre with leafy vines along the waistline.",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "heart-stars-01",
+      "name": "Heart and Stars",
+      "family": "lower-back-classic",
+      "placements": ["lower-back", "waistline"],
+      "ratings": {
+        "lower-back": "general",
+        "waistline": "general"
+      },
+      "description": "A double-outlined heart with stars trailing to each side, in fine line.",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "ornamental-butterfly-01",
+      "name": "Ornamental Butterfly",
+      "family": "lower-back-ornamental",
+      "placements": ["lower-back", "waistline"],
+      "ratings": {
+        "lower-back": "general",
+        "waistline": "general"
+      },
+      "description": "A fine-line butterfly with curled ornament and flourishes to the sides.",
+      "license": "Apache-2.0"
+    },
+    {
+      "id": "dragonfly-01",
+      "name": "Dragonfly",
+      "family": "lower-back-ornamental",
+      "placements": ["lower-back", "waistline"],
+      "ratings": {
+        "lower-back": "general",
+        "waistline": "general"
+      },
+      "description": "A delicate dragonfly centrepiece with long curling side flourishes.",
+      "license": "Apache-2.0"
+    }
+  ]
+}
