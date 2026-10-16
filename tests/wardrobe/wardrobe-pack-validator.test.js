@@ -89,6 +89,17 @@ describe('validateManifest', () => {
         );
     });
 
+    // Forge BA8: a look's provenance names the tattoos it wears. The pack validates
+    // unchanged, and the field is dropped — the rating already says what it makes the look.
+    test('a look that carries body art in its provenance validates, the field dropped', () => {
+        const art = [{ design: 'waist-filigree-01', placement: 'waistline', rating: 'general' }];
+        const result = read(v2([look({ provenance: { generator: '3D-Wardrobe-Forge', bodyArt: art } })]));
+        expect(result.ok).toBe(true);
+        expect(result.looks).toHaveLength(1);
+        expect(result.looks[0].rating).toBe('general');
+        expect(JSON.stringify(result.looks[0])).not.toContain('bodyArt');
+    });
+
     test('an unknown rating counts as the strictest', () => {
         expect(read(v2([look({ rating: 'family-friendly' })])).looks[0].rating).toBe('intimate');
     });

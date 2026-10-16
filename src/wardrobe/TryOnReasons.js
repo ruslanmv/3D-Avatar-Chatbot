@@ -82,6 +82,10 @@
         // Forge P3: underwear is never laid over the clothes she is wearing.
         foundation_would_sit_over_worn_clothing:
             "That would go on over what she's wearing. Take her outfit off first, then try it.",
+        // Forge PB1/SR1: clothing painted into her skin texture. Forge now restores her skin
+        // under underwear itself, so this arrives only when that restoration could not run.
+        source_skin_has_painted_clothing:
+            "Her clothes are painted onto this avatar's skin, so underwear can't go on bare skin here. Try another avatar, or keep her clothes on.",
         internal_error: 'Forge ran into a problem. Please try again.',
     });
 
