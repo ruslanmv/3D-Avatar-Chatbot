@@ -36,6 +36,7 @@ const FORGE_REASONS = [
     'requires_adult_declaration',
     'source_body_incomplete_under_clothing',
     'foundation_would_sit_over_worn_clothing',
+    'source_skin_has_painted_clothing',
     'internal_error',
 ];
 
