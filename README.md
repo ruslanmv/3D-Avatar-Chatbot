@@ -14,8 +14,6 @@ with no build step**
 
 [Live Demo](https://www.yourfriend.online/) &middot;
 [Wardrobe Forge on Hugging Face](https://huggingface.co/spaces/ruslanmv/3D-Wardrobe-Forge)
-&middot;
-[Deploy to Vercel](https://vercel.com/new/clone?repository-url=https://github.com/ruslanmv/3D-Avatar-Chatbot)
 &middot; [Report Issue](https://github.com/ruslanmv/3D-Avatar-Chatbot/issues)
 
 </div>
