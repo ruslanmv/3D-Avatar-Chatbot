@@ -12,7 +12,7 @@ with no build step**
 [![Node](https://img.shields.io/badge/node-24.x-339933.svg?style=flat-square)](https://nodejs.org/)
 [![CI/CD](https://img.shields.io/github/actions/workflow/status/ruslanmv/3D-Avatar-Chatbot/ci.yml?style=flat-square&label=CI/CD)](https://github.com/ruslanmv/3D-Avatar-Chatbot/actions)
 
-[Live Demo](https://ruslanmv.github.io/3D-Avatar-Chatbot/) &middot;
+[Live Demo](https://www.yourfriend.online/) &middot;
 [Wardrobe Forge on Hugging Face](https://huggingface.co/spaces/ruslanmv/3D-Wardrobe-Forge)
 &middot;
 [Deploy to Vercel](https://vercel.com/new/clone?repository-url=https://github.com/ruslanmv/3D-Avatar-Chatbot)
