@@ -390,6 +390,8 @@
                 var again = this.root.querySelector('[data-key="' + focusedKey + '"]');
                 if (again) again.focus();
             }
+            // The stage presentation reads session state, never modifies the wardrobe.
+            if (this.stageExperience) this.stageExperience.render(state);
         }
 
         /**
