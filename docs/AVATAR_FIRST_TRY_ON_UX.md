@@ -8,18 +8,24 @@ This feature branch introduces a working first slice of the responsive HomePilot
 
 | Mode | Desktop | Mobile |
 |---|---|---|
-| Watch (default) | Avatar takes 62% of content width; small preview of newest NEXUS reply | Avatar stays full-screen behind compact conversation dock |
+| Watch (default) | **Existing avatar viewport and two-panel proportions unchanged**; small preview of newest NEXUS reply | Existing avatar viewport unchanged; compact conversation dock |
 | Conversation | Recent four chat turns without extra outfit cards | Expandable sheet with the same existing input and voice tools |
 | History | Original scrollable transcript and Clear action | Larger conversation sheet, without duplicate storage |
 
 The Watch preview ignores pre-existing chat messages when a new Try-On session starts. Switching modes never causes a model call, removes a message, reloads the avatar or clears a draft. The existing Try-On panel controls, gestures, wardrobe intents, and session history remain in place.
 
+## Viewport preservation (user-requested correction)
+
+Only add a slim selectable clothing rail over the **right edge of the original avatar preview**. The rail is a sibling of the existing WebGL viewport, not a replacement for it. Do not change the content grid column widths, preview/canvas dimensions, renderer, camera FOV, camera distance, or call the viewer's `frameObject`/`resize` in response to the rail. The earlier draft's custom camera framing, bottom stage footer, floating stage header and 62/38 grid override were deliberately removed. The original wardrobe dialog remains in its original parent and is only hidden until the user selects **Wardrobe** in the rail. Its advanced actions remain fully available. Outfit selection still calls the original view's `wear` method. This is a rail-only change to the avatar area.
+
 ## Files and ownership
 
-- src/wardrobe/TryOnLiveLayout.js — scoped CSS, Watch/Conversation/History presentation and clean teardown
+- src/wardrobe/TryOnLiveLayout.js — scoped CSS, Watch/Conversation/History presentation and clean teardown; **no viewport/grid sizing override**
+- src/wardrobe/TryOnStageExperience.js — rail-only overlay on the untouched avatar preview; retains original wardrobe panel and session
 - src/wardrobe/TryOnHaulActivity.js — mounts presentation when Try-On begins; unmounts it at end
 - index.html — registers the new script before the Try-On activity
 - tests/wardrobe/try-on-live-layout.test.js — focused presentation tests
+- tests/wardrobe/try-on-stage-experience.test.js — guarantees the same DOM parent, inline size, and canvas and no camera calls
 
 ## Do not regress
 
@@ -41,7 +47,7 @@ Do not claim that history search, saved-message filters, avatar zoom, or narrati
 Use Node 24 and run:
 
     npm ci
-    npx jest tests/wardrobe/try-on-live-layout.test.js --runInBand
+    npx jest tests/wardrobe/try-on-live-layout.test.js tests/wardrobe/try-on-stage-experience.test.js --runInBand
     npm run validate
     npm run wardrobe:check
 
