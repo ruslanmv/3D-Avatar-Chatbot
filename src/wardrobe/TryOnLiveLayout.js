@@ -168,7 +168,7 @@
             var historyLink = element(doc, 'button', 'nexus-live-button nexus-live-history-link', 'Full history ↗');
             historyLink.type = 'button';
             historyLink.setAttribute('aria-label', 'Open full conversation history');
-            historyLink.addEventListener('click', function () { self.setMode('history'); });
+            historyLink.addEventListener('click', function () { self.setMode(self.mode === 'history' ? 'conversation' : 'history'); });
             this.controls.appendChild(historyLink);
             this.historyLink = historyLink;
             this.summary = element(doc, 'section', 'nexus-live-summary');
@@ -252,8 +252,6 @@
                 if (self.modeButtons[name]) self.modeButtons[name].setAttribute('aria-pressed', name === mode ? 'true' : 'false');
             });
             if (this.historyLink) this.historyLink.textContent = mode === 'history' ? '‹ Recent' : 'Full history ↗';
-            if (this.historyLink && mode === 'history') this.historyLink.onclick = function () { self.setMode('conversation'); };
-            if (this.historyLink && mode !== 'history') this.historyLink.onclick = null;
             this.update();
             if (mode !== 'watch' && this.history) this.history.scrollTop = this.history.scrollHeight;
         }
