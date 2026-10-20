@@ -235,12 +235,14 @@ const TryOnHaulActivity = (() => {
         const Reactions = deps.Reactions || g.NEXUS_TRY_ON_REACTIONS || null;
         const Dictionary = deps.Dictionary || g.NEXUS_OUTFIT_DICTIONARY || null;
         const Conversation = deps.Conversation || g.NEXUS_TRY_ON_CONVERSATION || null;
+        const LiveLayout = deps.LiveLayout || (g.NEXUS_TRYON_LIVE_LAYOUT && g.NEXUS_TRYON_LIVE_LAYOUT.TryOnLiveLayout);
         const spicy = () => deps.spicy || g.NEXUS_SPICY || null;
         const WARM_EVERY_MS = 60000;
         const SPIN_HOLD_MS = 2600;
 
         let session = null;
         let view = null;
+        let liveLayout = null;
         let generator = null;
         let ending = null;
         let unwatchPrivate = null;
@@ -434,6 +436,8 @@ const TryOnHaulActivity = (() => {
                     turner = null;
                     if (unwatchPrivate) unwatchPrivate();
                     unwatchPrivate = null;
+                    if (liveLayout) liveLayout.unmount();
+                    liveLayout = null;
                     if (view) view.unmount();
                     view = null;
                     session = null;
@@ -508,6 +512,11 @@ const TryOnHaulActivity = (() => {
                     },
                 });
                 view.mount(hostElement());
+                // Presentation-only enhancement: reuse the existing transcript and composer.
+                if (LiveLayout) {
+                    liveLayout = new LiveLayout({ doc });
+                    liveLayout.mount();
+                }
                 if (dict) dict.load().then(() => view && view.render());
                 // W10. Private mode unlocks private outfits for avatars Forge declares adult.
                 // Asked now and again whenever private mode is switched, so the screen follows
