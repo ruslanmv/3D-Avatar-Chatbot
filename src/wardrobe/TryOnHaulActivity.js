@@ -236,6 +236,7 @@ const TryOnHaulActivity = (() => {
         const Dictionary = deps.Dictionary || g.NEXUS_OUTFIT_DICTIONARY || null;
         const Conversation = deps.Conversation || g.NEXUS_TRY_ON_CONVERSATION || null;
         const LiveLayout = deps.LiveLayout || (g.NEXUS_TRYON_LIVE_LAYOUT && g.NEXUS_TRYON_LIVE_LAYOUT.TryOnLiveLayout);
+        const StageExperience = deps.StageExperience || (g.NEXUS_TRY_ON_STAGE && g.NEXUS_TRY_ON_STAGE.TryOnStageExperience);
         const spicy = () => deps.spicy || g.NEXUS_SPICY || null;
         const WARM_EVERY_MS = 60000;
         const SPIN_HOLD_MS = 2600;
@@ -243,6 +244,7 @@ const TryOnHaulActivity = (() => {
         let session = null;
         let view = null;
         let liveLayout = null;
+        let stageExperience = null;
         let generator = null;
         let ending = null;
         let unwatchPrivate = null;
@@ -436,6 +438,8 @@ const TryOnHaulActivity = (() => {
                     turner = null;
                     if (unwatchPrivate) unwatchPrivate();
                     unwatchPrivate = null;
+                    if (stageExperience) stageExperience.unmount();
+                    stageExperience = null;
                     if (liveLayout) liveLayout.unmount();
                     liveLayout = null;
                     if (view) view.unmount();
@@ -516,6 +520,10 @@ const TryOnHaulActivity = (() => {
                 if (LiveLayout) {
                     liveLayout = new LiveLayout({ doc });
                     liveLayout.mount();
+                }
+                if (StageExperience) {
+                    stageExperience = new StageExperience({ doc, view, session });
+                    stageExperience.mount();
                 }
                 if (dict) dict.load().then(() => view && view.render());
                 // W10. Private mode unlocks private outfits for avatars Forge declares adult.
