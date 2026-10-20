@@ -233,7 +233,9 @@
                 action(self.view.turned ? '↺ Front' : '⟳ Show back', 'turn',
                     function () { self.view.turn(); }, !look || state.busy, Boolean(self.view.turned), false);
             }
-            action('⌕ Zoom', 'zoom', function () { self.zoom(); }, !look || state.busy, undefined, false);
+            var viewer = (this.doc.defaultView || global).NEXUS_VIEWER;
+            var canZoom = Boolean(viewer && viewer.camera && viewer.controls);
+            action('⌕ Zoom', 'zoom', function () { self.zoom(); }, !look || state.busy || !canZoom, undefined, false);
             action(state.favorite ? '♥ Saved' : '♡ Save look', 'save',
                 function () { self.view.favorite(); }, !look || state.busy, Boolean(state.favorite), false);
             action('Next look →', 'next', function () { self.view._step(1); },
