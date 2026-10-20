@@ -10,6 +10,24 @@
 
     var STYLE_ID = 'nexus-try-on-stage-style';
     var CSS = [
+        ".nexus-try-on-stage-active .nexus-stage-label{position:absolute;z-index:40;top:14px;left:16px;display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:999px;background:rgba(2,23,35,.84);border:1px solid rgba(20,203,227,.5);color:#a9f9f4;font:700 .68rem/1.2 system-ui;letter-spacing:.1em;pointer-events:none}",
+        ".nexus-stage-label::before{content:\"\";width:6px;height:6px;background:#18d6ad;border-radius:50%}",
+        ".nexus-try-on-stage-active .nexus-stage-info{position:absolute;left:12px;right:112px;bottom:10px;z-index:40;pointer-events:none;padding:34px 4px 2px;color:#f3fbfd;background:linear-gradient(180deg,transparent,rgba(3,15,25,.8) 30%,rgba(3,15,25,.94));font-family:var(--font-sans,system-ui)}",
+        ".nexus-stage-count{margin:0 0 4px;font-size:.75rem;letter-spacing:.09em;color:#b5d5de}",
+        ".nexus-stage-look-name{margin:0 0 2px;font-weight:750;font-size:clamp(1rem,1.5vw,1.35rem);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+        ".nexus-stage-look-desc{margin:0 0 9px;font-size:.75rem;color:#c4d8df;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
+        ".nexus-stage-actions{display:flex;align-items:stretch;gap:6px;pointer-events:auto}",
+        ".nexus-stage-action{flex:1;min-width:0;min-height:44px;padding:8px 6px;border-radius:10px;border:1px solid rgba(8,178,203,.54);background:rgba(2,35,48,.9);color:#e9f8fc;font:600 .76rem/1.1 system-ui;cursor:pointer;white-space:nowrap}",
+        ".nexus-stage-action:disabled{opacity:.42;cursor:not-allowed}",
+        ".nexus-stage-action:focus-visible{outline:2px solid #50e7f5;outline-offset:2px}",
+        ".nexus-stage-action[aria-pressed=\"true\"]{border-color:#5cead2;background:#09525b}",
+        ".nexus-stage-action.is-primary{flex:1.35;border-color:#04ddeb;background:#12d3e8;color:#06202c;font-weight:800}",
+        ".nexus-stage-action.is-primary:hover{background:#60e6f3}",
+        ".nexus-look-rail-tools{align-items:stretch}",
+        ".nexus-look-rail-title{font-size:.73rem;color:#e6f4f7;letter-spacing:.035em;background:rgba(2,25,37,.9);border:1px solid rgba(8,160,190,.4);border-radius:9px;padding:8px 2px;text-transform:none}",
+        ".nexus-try-on-stage-active #nexus-try-on-view:not([hidden]){z-index:60}",
+        "@media(max-width:760px){.nexus-try-on-stage-active .nexus-stage-label{top:8px;left:10px;font-size:.59rem;padding:6px 9px}.nexus-try-on-stage-active .nexus-stage-info{left:8px;right:74px;bottom:8px;padding-top:24px}.nexus-stage-count,.nexus-stage-look-desc{font-size:.65rem}.nexus-stage-look-name{font-size:.89rem}.nexus-stage-actions{gap:4px;flex-wrap:wrap}.nexus-stage-action{min-height:44px;font-size:.67rem;padding:6px 4px;flex-basis:25%}.nexus-stage-action[data-command=\"zoom\"]{display:none}.nexus-stage-action.is-primary{flex-basis:30%}.nexus-look-rail-title{font-size:.63rem;padding:7px 2px}}",
+
         '.avatar-preview-wrap.nexus-try-on-stage-active{position:relative}',
         '.nexus-try-on-look-rail{position:absolute;right:12px;top:12px;bottom:12px;',
         'z-index:40;width:88px;max-width:22%;display:flex;flex-direction:column;gap:8px;',
@@ -89,6 +107,11 @@
             this.root.setAttribute('aria-label', 'Available outfits');
             preview.appendChild(this.root);
             preview.classList.add('nexus-try-on-stage-active');
+            this.badge = el(doc, 'div', 'nexus-stage-label', 'AI · LIVE TRY-ON');
+            this.info = el(doc, 'section', 'nexus-stage-info');
+            this.info.setAttribute('aria-label', 'Current look and try-on controls');
+            preview.appendChild(this.badge);
+            preview.appendChild(this.info);
             this.view.stageExperience = this;
             this.render(this.session.state());
             // TryOnView initially focuses a control inside its dialog. Move focus
@@ -121,8 +144,8 @@
             var activeFocus = doc.activeElement;
             var focusedLookKey = activeFocus && activeFocus.getAttribute('data-look-key');
             var tools = el(doc, 'div', 'nexus-look-rail-tools');
-            tools.appendChild(el(doc, 'span', 'nexus-look-rail-title', 'LOOKS'));
-            var editor = el(doc, 'button', 'nexus-look-rail-edit', this.expanded ? 'Close' : 'Wardrobe');
+            tools.appendChild(el(doc, 'span', 'nexus-look-rail-title', 'Looks (' + (state.total || 0) + ')'));
+            var editor = el(doc, 'button', 'nexus-look-rail-edit', this.expanded ? 'Close ×' : '＋ More');
             editor.type = 'button';
             editor.setAttribute('aria-expanded', String(this.expanded));
             editor.addEventListener('click', function () { self.toggleAdvanced(); });
@@ -159,6 +182,7 @@
             list.scrollTop = scrollTop;
             this.list = list;
             this.editButton = editor;
+            this.renderCurrentLook(state);
             if (focusedLookKey) {
                 var buttons = list.querySelectorAll('[data-look-key]');
                 for (var i = 0; i < buttons.length; i += 1) {
@@ -170,10 +194,60 @@
             }
         }
 
+        zoom() {
+            // User-initiated zoom; do not change viewport dimensions or auto-frame.
+            var viewer = (this.doc.defaultView || global).NEXUS_VIEWER;
+            if (!viewer || !viewer.camera || !viewer.controls) return false;
+            var cam = viewer.camera, controls = viewer.controls;
+            if (!cam.position || !controls.target || !cam.position.clone || !controls.target.clone) return false;
+            var delta = cam.position.clone().sub(controls.target);
+            var distance = delta.length();
+            var desired = Math.max(Number(controls.minDistance) || 0.5, distance * 0.85);
+            if (!(distance > desired)) return false;
+            cam.position.copy(controls.target.clone().add(delta.multiplyScalar(desired / distance)));
+            controls.update();
+            return true;
+        }
+
+        renderCurrentLook(state) {
+            if (!this.info) return;
+            var doc = this.doc, self = this, look = state.look, pieces = [];
+            pieces.push(el(doc, 'p', 'nexus-stage-count',
+                look ? 'LOOK ' + (state.position + 1) + ' / ' + state.total : 'YOUR STYLE STUDIO'));
+            pieces.push(el(doc, 'h3', 'nexus-stage-look-name',
+                look ? look.name || 'Current look' : 'Choose your first look'));
+            var desc = look && (look.prompt || (look.provenance && look.provenance.prompt));
+            pieces.push(el(doc, 'p', 'nexus-stage-look-desc',
+                desc ? String(desc).slice(0, 120) : 'Explore your wardrobe and try a new outfit.'));
+            var actions = el(doc, 'div', 'nexus-stage-actions');
+            function action(label, command, fn, disabled, pressed, primary) {
+                var b = el(doc, 'button', 'nexus-stage-action' + (primary ? ' is-primary' : ''), label);
+                b.type = 'button';
+                b.disabled = Boolean(disabled);
+                b.setAttribute('data-command', command);
+                if (pressed !== undefined) b.setAttribute('aria-pressed', String(pressed));
+                b.addEventListener('click', fn);
+                actions.appendChild(b);
+            }
+            if (self.view.turner) {
+                action(self.view.turned ? '↺ Front' : '⟳ Show back', 'turn',
+                    function () { self.view.turn(); }, !look || state.busy, Boolean(self.view.turned), false);
+            }
+            action('⌕ Zoom', 'zoom', function () { self.zoom(); }, !look || state.busy, undefined, false);
+            action(state.favorite ? '♥ Saved' : '♡ Save look', 'save',
+                function () { self.view.favorite(); }, !look || state.busy, Boolean(state.favorite), false);
+            action('Next look →', 'next', function () { self.view._step(1); },
+                !state.looks || state.looks.length < 2 || state.busy, undefined, true);
+            pieces.push(actions);
+            this.info.replaceChildren.apply(this.info, pieces);
+        }
+
         unmount() {
             if (this.view && this.view.stageExperience === this) this.view.stageExperience = null;
             if (this.preview) this.preview.classList.remove('nexus-try-on-stage-active');
             if (this.root) this.root.remove();
+            if (this.badge) this.badge.remove();
+            if (this.info) this.info.remove();
             if (this.legacy) {
                 this.legacy.hidden = false;
                 this.legacy.setAttribute('aria-modal', 'true');
@@ -182,6 +256,8 @@
             this.legacy = null;
             this.list = null;
             this.editButton = null;
+            this.badge = null;
+            this.info = null;
             this.preview = null;
         }
     }
