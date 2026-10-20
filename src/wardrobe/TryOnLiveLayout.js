@@ -12,9 +12,6 @@
     var STYLE_ID = 'nexus-tryon-live-layout-style';
     var MODES = ['watch', 'conversation', 'history'];
     var CSS = [
-        '.content-layout.nexus-live-tryon{grid-template-columns:minmax(0,62fr) minmax(340px,38fr)}',
-        '.content-layout.nexus-live-tryon.nexus-live-conversation,.content-layout.nexus-live-tryon.nexus-live-history{',
-        'grid-template-columns:minmax(0,46fr) minmax(390px,54fr)}',
         '.nexus-live-tryon .chat-card{display:flex;flex-direction:column;min-height:0;background:linear-gradient(150deg,rgba(6,24,37,.97),rgba(4,14,27,.97));',
         'border:1px solid rgba(34,211,238,.34);box-shadow:0 16px 45px rgba(0,0,0,.24)}',
         '.nexus-live-tryon .chat-main{flex:1;min-height:0}',
@@ -59,14 +56,7 @@
         '.nexus-live-tryon .message-text{line-height:1.5}',
         '.nexus-live-tryon .chat-card-header #clear-history{display:none}',
         '.nexus-live-tryon.nexus-live-history .chat-card-header #clear-history{display:inline-block}',
-        '.nexus-live-tryon #nexus-try-on-view:not(.is-floating){border-color:rgba(34,211,238,.35);',
-        'background:rgba(5,16,27,.93)}',
-        '.nexus-live-tryon #nexus-try-on-view .nexus-try-on-act[data-key="next"]{',
-        'background:#0acfe8;color:#03151d;border-color:#0acfe8;font-weight:800}',
-        '.nexus-live-tryon #nexus-try-on-view .nexus-try-on-remote{gap:.5rem}',
         '@media(max-width:760px){',
-        '.content-layout.nexus-live-tryon,.content-layout.nexus-live-tryon.nexus-live-conversation,',
-        '.content-layout.nexus-live-tryon.nexus-live-history{grid-template-columns:minmax(0,1fr)}',
         'html.is-mobile .nexus-live-tryon.nexus-live-watch .chat-panel{height:min(25dvh,210px)!important;',
         'min-height:170px;transition:height .2s ease}',
         'html.is-mobile .nexus-live-tryon.nexus-live-conversation .chat-panel,',
@@ -84,9 +74,6 @@
         'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}',
         'html.is-mobile .nexus-live-tryon .nexus-live-suggestions{display:none}',
         'html.is-mobile .nexus-live-tryon .nexus-live-button{min-height:38px;padding:.38rem .6rem}',
-        'html.is-mobile .nexus-live-tryon #nexus-try-on-view{',
-        'bottom:calc(var(--nexus-composer-inset,88px) + 8rem);max-height:min(45dvh,',
-        'calc(100dvh - var(--nexus-composer-inset,88px) - 9rem))}',
         '}',
         '@media(prefers-reduced-motion:reduce){.nexus-live-tryon .chat-panel{transition:none!important}}',
     ].join('');
