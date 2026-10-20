@@ -79,6 +79,8 @@
         '.nexus-stage-action{font-size:.7rem;min-height:44px;padding:.52rem .2rem}',
         '.nexus-stage-action.is-primary{min-width:0}',
         '.nexus-stage-look-rail:not(.is-open){display:none}',
+        '.nexus-try-on-stage-active .nexus-stage-bottom{margin-bottom:min(25dvh,210px)}',
+        '.nexus-stage-action.nexus-stage-zoom{display:none}',
         '.nexus-try-on-stage-active #nexus-try-on-view.nexus-stage-legacy:not([hidden]){',
         'position:fixed!important;left:9px!important;right:9px!important;top:auto!important;',
         'bottom:var(--nexus-composer-inset,88px)!important;width:auto!important;',
@@ -114,7 +116,7 @@
             this.doc = options.doc || global.document;
             this.view = options.view;
             this.session = options.session;
-            this.openLooks = true;
+            this.openLooks = !(this.doc.defaultView && this.doc.defaultView.innerWidth < 761);
             this.expanded = false;
             this.lastLanded = null;
         }
@@ -141,6 +143,13 @@
             stage.classList.add('nexus-try-on-stage-active');
             stage.appendChild(this.root);
             this.view.stageExperience = this;
+            // The original Try-On dialog focused a hidden control during its mount.
+            // Transfer that focus to the visible, keyboard-operable stage instead.
+            var focus = doc.activeElement;
+            if (focus && this.legacy.contains(focus)) {
+                var first = this.root.querySelector('button');
+                if (first) first.focus();
+            }
             this.render(this.session.state());
             return this.root;
         }
@@ -248,21 +257,26 @@
                     'nexus-stage-action', function () { self.view.turn(); });
                 back.disabled = !state.look || state.busy;
                 back.setAttribute('aria-pressed', String(this.view.turned));
+                back.setAttribute('data-command', 'turn');
                 actions.appendChild(back);
-            } else {
-                var zoom = button(doc, '⌕ Zoom', 'nexus-stage-action', function () { self.zoom(); });
+            }
+            if (this.viewer() && this.viewer().camera && this.viewer().controls) {
+                var zoom = button(doc, '⌕ Zoom', 'nexus-stage-action nexus-stage-zoom', function () { self.zoom(); });
                 zoom.disabled = !state.look;
+                zoom.setAttribute('data-command', 'zoom');
                 actions.appendChild(zoom);
             }
             var saved = button(doc, state.favorite ? '♥ Saved' : '♡ Save look',
                 'nexus-stage-action', function () { self.view.favorite(); });
             saved.disabled = !state.look || state.busy;
             saved.setAttribute('aria-pressed', String(Boolean(state.favorite)));
+            saved.setAttribute('data-command', 'save');
             actions.appendChild(saved);
             var next = button(doc, 'Next look →', 'nexus-stage-action is-primary', function () {
                 self.view._step(1);
             });
             next.disabled = !(state.looks && state.looks.length);
+            next.setAttribute('data-command', 'next');
             actions.appendChild(next);
             foot.appendChild(actions);
 
