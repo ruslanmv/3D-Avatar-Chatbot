@@ -13,8 +13,10 @@
     var MODES = ['watch', 'conversation', 'history'];
     var CSS = [
         '.content-layout.nexus-live-tryon{grid-template-columns:minmax(0,62fr) minmax(340px,38fr)}',
-        '.nexus-live-tryon .chat-card{background:linear-gradient(150deg,rgba(6,24,37,.97),rgba(4,14,27,.97));',
+        '.nexus-live-tryon .chat-card{display:flex;flex-direction:column;min-height:0;background:linear-gradient(150deg,rgba(6,24,37,.97),rgba(4,14,27,.97));',
         'border:1px solid rgba(34,211,238,.34);box-shadow:0 16px 45px rgba(0,0,0,.24)}',
+        '.nexus-live-tryon .chat-main{flex:1;min-height:0}',
+        '.nexus-live-tryon .chat-input-shell{margin-top:auto}',
         '.nexus-live-tryon .chat-card-header{padding-bottom:.65rem;border-bottom:1px solid rgba(34,211,238,.16)}',
         '.nexus-live-tryon .chat-card-header .section-title{font-size:1.05rem;letter-spacing:.035em}',
         '.nexus-live-tryon .chat-card-header .section-title .title-icon{display:none}',
@@ -190,6 +192,13 @@
         }
 
         ask(text) {
+            if (text === 'Show me the back') {
+                var turn = this.doc.querySelector('#nexus-try-on-view [data-key="turn"]');
+                if (turn && !turn.disabled) {
+                    turn.click();
+                    return;
+                }
+            }
             var input = this.doc.getElementById('speech-text');
             var send = this.doc.getElementById('speak-btn');
             if (!input || !send || send.disabled) return;
