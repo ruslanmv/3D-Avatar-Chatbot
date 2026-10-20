@@ -4341,10 +4341,26 @@ async function callLLM(userMessage) {
             const raw = await window._nexusLLM.sendMessageStructured(userMessage, systemPrompt, history);
             // Normalize via BridgeResponseAdapter if available
             if (typeof window.BridgeResponseAdapter?.normalizeResponse === 'function') {
-                return window.BridgeResponseAdapter.normalizeResponse(raw);
+                const normalized = window.BridgeResponseAdapter.normalizeResponse(raw);
+                // An empty completion is a failed turn. The adapter used to fill that
+                // hole with "No response", which the connection check then reported as
+                // a successful reply and the bubble spoke out loud.
+                if (
+                    !String(normalized.text || '').trim() &&
+                    !(normalized.attachments && normalized.attachments.length)
+                ) {
+                    const reason = raw?.choices?.[0]?.finish_reason || 'unknown';
+                    throw new Error(`OllaBridge returned an empty completion (finish_reason: ${reason})`);
+                }
+                return normalized;
             }
-            // Manual extraction fallback
-            const text = raw?.choices?.[0]?.message?.content || raw?.text || String(raw);
+            // Manual extraction fallback. Same rule as the adapter path: an empty
+            // string is a failed turn, not a line to draw and speak.
+            const text = raw?.choices?.[0]?.message?.content || raw?.text || '';
+            if (!String(text).trim() && !(raw?.x_attachments || []).length) {
+                const reason = raw?.choices?.[0]?.finish_reason || 'unknown';
+                throw new Error(`OllaBridge returned an empty completion (finish_reason: ${reason})`);
+            }
             return {
                 text,
                 attachments: raw?.x_attachments || [],

@@ -150,6 +150,90 @@
     }
 
     /**
+     * The words in one assistant message, wherever this gateway put them.
+     *
+     * `free-best` on OllaBridge is a chain whose first hop is a reasoning model
+     * (`openai/gpt-oss-120b` on Groq, then Gemini, then more reasoning models).
+     * Those answers do not always arrive in `message.content`:
+     *
+     *   - Groq and OpenRouter leave `content` null or `""` and put the text in
+     *     `reasoning` / `reasoning_content`. A reader of `content` alone sees a
+     *     successful HTTP 200 with nothing in it.
+     *   - Some gateways send `content` as parts (`[{type:"text", text:"…"}]`).
+     *     Calling `.trim()` on that array throws, and `|| ''` does not help
+     *     because an array is truthy.
+     *   - Harmony and `<think>` wrappers sometimes carry the answer after the
+     *     thought, or inside `<|channel|>final<|message|>`.
+     *
+     * The chain of thought is not the reply. It is used only when `content`
+     * has no visible words — which is the case that was reaching the bubble as
+     * the literal sentence "No response".
+     */
+    function flattenContent(content) {
+        if (typeof content === 'string') return content;
+        if (content == null) return '';
+        if (Array.isArray(content)) {
+            return content
+                .map((part) => {
+                    if (typeof part === 'string') return part;
+                    if (!part || typeof part !== 'object') return '';
+                    const kind = String(part.type || '');
+                    if (kind === 'reasoning' || kind === 'thinking') return '';
+                    if (typeof part.text === 'string') return part.text;
+                    if (typeof part.content === 'string') return part.content;
+                    return '';
+                })
+                .join('');
+        }
+        if (typeof content === 'object' && typeof content.text === 'string') return content.text;
+        return '';
+    }
+
+    function reasoningDetailsText(message) {
+        const details = message && message.reasoning_details;
+        if (!Array.isArray(details)) return '';
+        return details
+            .map((part) => {
+                if (!part || typeof part !== 'object') return '';
+                if (typeof part.text === 'string') return part.text;
+                if (typeof part.summary === 'string') return part.summary;
+                return '';
+            })
+            .join('\n');
+    }
+
+    function stripReasoningWrappers(text) {
+        // Fresh regexes. A shared /g pattern keeps lastIndex between calls, and the
+        // second reply of a session would then skip a <think> block the first one saw.
+        const thinkBlock = /<think\b[^>]*>[\s\S]*?<\/think>/gi;
+        const harmonyFinal = /<\|channel\|>final<\|message\|>([\s\S]*?)(?:<\|(?:end|return)\|>|$)/i;
+        let body = String(text || '');
+        const harmony = body.match(harmonyFinal);
+        if (harmony) body = harmony[1];
+        body = body.replace(thinkBlock, '');
+        const open = body.search(/<think\b/i);
+        if (open !== -1) body = body.slice(0, open);
+        return body.replace(/\n{3,}/g, '\n\n').trim();
+    }
+
+    function visibleMessageText(message) {
+        if (typeof message === 'string') return stripReasoningWrappers(message);
+        if (!message || typeof message !== 'object') return '';
+        const fromContent = stripReasoningWrappers(flattenContent(message.content));
+        if (fromContent) return fromContent;
+        const fromReasoning = stripReasoningWrappers(
+            flattenContent(message.reasoning_content || message.reasoning || reasoningDetailsText(message))
+        );
+        if (fromReasoning) {
+            // One line in the console the connection check already asks people to
+            // paste. Without it, a reply that came from `reasoning` looks like the
+            // model said the thought out loud for no reason.
+            console.warn('[LLMManager] completion content was empty; the reply was in the reasoning channel.');
+        }
+        return fromReasoning;
+    }
+
+    /**
      * LLMManager Class
      * Handles all LLM provider operations
      */
@@ -1226,7 +1310,7 @@
                 global.PersonaContextBridge._lastModel = model;
             }
 
-            return requireCompletion(data.choices?.[0]?.message?.content, {
+            return requireCompletion(visibleMessageText(data.choices?.[0]?.message), {
                 provider: 'OllaBridge',
                 finishReason: data.choices?.[0]?.finish_reason,
                 budget: body.max_tokens,
@@ -1271,14 +1355,16 @@
         async _chatOllaBridgeStructured(userMessage, systemPrompt, conversationHistory) {
             const { base_url, model, auth_mode } = this._settings.ollabridge;
 
-            let authToken = '';
-            if (auth_mode === 'api_key') {
-                authToken = (this._settings.ollabridge.api_key || '').trim();
-            } else if (auth_mode === 'pairing') {
-                authToken = (this._settings.ollabridge.pair_token || '').trim();
-            }
+            // Same credential rule as `_chatOllaBridge`. This path is the one `callLLM`
+            // uses, and it used to look for `auth_mode === 'api_key'` — Settings stores
+            // `'apikey'`, so an API-key session sent no Authorization header at all while
+            // the text path, which nobody in the chat UI calls first, would have worked.
+            const api_key = (this._settings.ollabridge.api_key || '').trim();
+            const pair_token = (this._settings.ollabridge.pair_token || '').trim();
+            const authToken = api_key || pair_token;
+            const isLocalTrust = auth_mode === 'local-trust';
 
-            if (!authToken && auth_mode !== 'local-trust') {
+            if (!authToken && !isLocalTrust) {
                 throw new Error('OllaBridge: No API key or pairing token.');
             }
 
@@ -1389,6 +1475,19 @@
                     return att;
                 });
             }
+
+            // Callers read `message.content`. A reasoning model that answered in
+            // `reasoning` would otherwise arrive here intact and be normalised back
+            // into an empty string. Writing the visible words into `content` means
+            // every reader — the adapter, VR, the connection check — sees one field.
+            const choice = data.choices && data.choices[0];
+            const message = choice && choice.message;
+            const text = requireCompletion(visibleMessageText(message), {
+                provider: 'OllaBridge',
+                finishReason: choice && choice.finish_reason,
+                budget: body.max_tokens,
+            });
+            if (message) message.content = text;
 
             // Return the full response object — caller uses BridgeResponseAdapter
             return data;
@@ -2098,6 +2197,7 @@
     // ===============================================
     // Expose to global scope
     // ===============================================
+    LLMManager.visibleMessageText = visibleMessageText;
     global.LLMManager = LLMManager;
     global.LLMProvider = LLMProvider;
 })(window);

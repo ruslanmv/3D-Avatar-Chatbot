@@ -77,11 +77,27 @@ function normalizeResponse(raw) {
     if (raw && typeof raw === 'object') {
         let text = '';
 
-        // Extract text from choices array
+        // Extract text from choices array.
+        // `visibleMessageText` is what reads a reasoning model's answer when
+        // `content` is empty. Without it this layer used to write the words
+        // "No response" into `text`, and that string then travelled through the
+        // bubble, the transcript and the voice as if she had said it.
         const choices = raw.choices || [];
+        const read = (msg) => {
+            const via =
+                typeof window !== 'undefined' &&
+                window.LLMManager &&
+                typeof window.LLMManager.visibleMessageText === 'function'
+                    ? window.LLMManager.visibleMessageText(msg)
+                    : '';
+            if (via && String(via).trim()) return String(via);
+            if (msg && typeof msg.content === 'string') return msg.content;
+            if (msg && typeof msg.text === 'string') return msg.text;
+            return '';
+        };
         if (choices.length > 0) {
             const msg = choices[0].message || choices[0];
-            text = (msg.content || msg.text || '').trim();
+            text = read(msg);
         } else if (typeof raw.content === 'string') {
             text = raw.content;
         } else if (typeof raw.text === 'string') {
@@ -101,7 +117,7 @@ function normalizeResponse(raw) {
         const personaContext = raw.x_persona_context || null;
 
         return {
-            text: text || 'No response',
+            text,
             attachments,
             avatar_directives: directives,
             persona_context: personaContext,
