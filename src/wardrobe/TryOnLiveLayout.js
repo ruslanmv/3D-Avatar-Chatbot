@@ -43,7 +43,7 @@
         '.nexus-live-tryon .nexus-live-last-question[hidden]{display:none}',
         '.nexus-live-tryon .nexus-live-answer{font:500 clamp(1rem,1.45vw,1.3rem)/1.6 ',
         'var(--font-sans,system-ui);color:#e6f8fb;overflow-wrap:anywhere;margin:0}',
-        '.nexus-live-tryon .nexus-live-suggestions{display:flex;flex-wrap:wrap;gap:.45rem;padding:0 1rem .8rem}',
+        '.nexus-live-tryon .nexus-live-suggestions{display:flex;flex-wrap:wrap;gap:.45rem;padding:0 1rem .8rem;margin-top:auto}',
         '.nexus-live-tryon .nexus-live-suggestions .nexus-live-button{font-weight:500;font-size:.76rem}',
         '.nexus-live-tryon.nexus-live-watch .chat-main{display:none}',
         '.nexus-live-tryon.nexus-live-watch #typing-indicator{display:none}',
@@ -54,8 +54,7 @@
         '.nexus-live-tryon .chat-message.user{background:rgba(31,58,83,.72);border-color:rgba(61,136,173,.24)}',
         '.nexus-live-tryon .chat-message.avatar{background:rgba(5,75,65,.56);border-color:rgba(31,179,150,.24)}',
         '.nexus-live-tryon .message-text{line-height:1.5}',
-        '.nexus-live-tryon .chat-card-header #clear-history{display:none}',
-        '.nexus-live-tryon.nexus-live-history .chat-card-header #clear-history{display:inline-block}',
+        '.nexus-live-tryon .chat-card-header #clear-history{display:inline-flex}',
         '@media(max-width:760px){',
         'html.is-mobile .nexus-live-tryon.nexus-live-watch .chat-panel{height:min(25dvh,210px)!important;',
         'min-height:170px;transition:height .2s ease}',
@@ -178,7 +177,7 @@
             var main = this.card.querySelector('.chat-main');
             this.card.insertBefore(this.controls, main);
             this.card.insertBefore(this.summary, main);
-            this.card.insertBefore(this.suggestions, main);
+            this.card.insertBefore(this.suggestions, this.card.querySelector('.chat-input-shell'));
             this.layout.classList.add('nexus-live-tryon');
             this.observer = new (doc.defaultView || global).MutationObserver(function () {
                 self.update();
@@ -220,6 +219,16 @@
                 if (turn && !turn.disabled) {
                     turn.click();
                     return;
+                }
+            }
+            // Add the currently shown look to chip queries so the AI has context.
+            var lookTitle = this.doc.querySelector('.nexus-stage-look-name');
+            var lookName = lookTitle && lookTitle.textContent ? lookTitle.textContent.trim() : '';
+            if (lookName && lookName !== 'Choose your first look') {
+                if (text === 'How would you style it?') {
+                    text = 'For my current outfit (' + lookName + '), how would you style it? Give two specific, concise fashion suggestions.';
+                } else if (text === 'What should we try next?') {
+                    text = 'We are trying on ' + lookName + '. Suggest one different style direction for our next outfit and explain briefly.';
                 }
             }
             var input = this.doc.getElementById('speech-text');
