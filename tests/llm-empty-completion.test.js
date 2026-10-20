@@ -169,3 +169,85 @@ describe.each(PROVIDERS)('$name', (provider) => {
         expect(String(warned.mock.calls[0][0])).toMatch(/token limit/i);
     });
 });
+
+describe('OllaBridge reasoning models', () => {
+    const read = (message) => window.LLMManager.visibleMessageText(message);
+
+    test('an empty content field still yields the reasoning channel', () => {
+        // free-best's first hop (Groq gpt-oss) does this: HTTP 200, content null,
+        // the words in `reasoning`. Reading only content is how the bubble got "No response".
+        warned = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        expect(read({ content: null, reasoning: 'Hello — I am here.' })).toBe('Hello — I am here.');
+        expect(String(warned.mock.calls[0][0])).toMatch(/reasoning channel/);
+    });
+
+    test('content wins when both channels have text, so the thought is not spoken', () => {
+        expect(read({ content: 'OK', reasoning: 'The user wants the word OK.' })).toBe('OK');
+    });
+
+    test('a parts array is text, not an object string and not a throw', () => {
+        expect(
+            read({
+                content: [
+                    { type: 'reasoning', text: 'draft' },
+                    { type: 'text', text: 'Hello.' },
+                ],
+            })
+        ).toBe('Hello.');
+    });
+
+    test('a think block is not the reply, and the sentence after it is', () => {
+        expect(read({ content: '<think>planning the greeting</think>\n\nHello.' })).toBe('Hello.');
+    });
+
+    test('a harmony final channel is the reply', () => {
+        expect(
+            read({
+                content: '<|channel|>analysis<|message|>draft<|end|><|channel|>final<|message|>Hello.<|return|>',
+            })
+        ).toBe('Hello.');
+    });
+
+    test('the chat path returns that text instead of throwing', async () => {
+        configure(PROVIDERS[2]);
+        warned = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        answerWith({
+            choices: [{ message: { content: '', reasoning: 'Hello — I am here.' }, finish_reason: 'stop' }],
+        });
+        await expect(mgr._chatOllaBridge('hi', 'rules')).resolves.toBe('Hello — I am here.');
+    });
+
+    test('the structured path, which is what the bubble calls, writes it back into content', async () => {
+        configure(PROVIDERS[2]);
+        warned = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        answerWith({
+            choices: [{ message: { content: null, reasoning_content: 'Hello — I am here.' }, finish_reason: 'stop' }],
+        });
+        const raw = await mgr._chatOllaBridgeStructured('hi', 'rules', []);
+        expect(raw.choices[0].message.content).toBe('Hello — I am here.');
+    });
+
+    test('still empty when the only text was a thought', async () => {
+        configure(PROVIDERS[2]);
+        answerWith({
+            choices: [{ message: { content: '<think>nothing else</think>', reasoning: '' }, finish_reason: 'length' }],
+        });
+        await expect(mgr._chatOllaBridge('hi', 'rules')).rejects.toMatchObject({
+            name: 'EmptyCompletionError',
+            cutOff: true,
+        });
+    });
+
+    test('the adapter no longer turns that emptiness into the sentence "No response"', () => {
+        require('../src/BridgeResponseAdapter.js');
+        warned = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        const said = window.BridgeResponseAdapter.normalizeResponse({
+            choices: [{ message: { content: '', reasoning: 'Hello — I am here.' } }],
+        });
+        expect(said.text).toBe('Hello — I am here.');
+        const silent = window.BridgeResponseAdapter.normalizeResponse({
+            choices: [{ message: { content: '' } }],
+        });
+        expect(silent.text).toBe('');
+    });
+});

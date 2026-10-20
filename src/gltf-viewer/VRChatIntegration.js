@@ -797,7 +797,7 @@ export class VRChatIntegration {
                 if (window.BridgeResponseAdapter) {
                     reply = window.BridgeResponseAdapter.normalizeResponse(rawResponse);
                 } else {
-                    reply = rawResponse?.choices?.[0]?.message?.content || rawResponse?.text || 'No response';
+                    reply = rawResponse?.choices?.[0]?.message?.content || rawResponse?.text || '';
                 }
             } else {
                 reply = await window._nexusLLM.sendMessage(text, systemPrompt, history);
