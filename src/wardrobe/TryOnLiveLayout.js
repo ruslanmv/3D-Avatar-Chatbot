@@ -13,16 +13,22 @@
     var MODES = ['watch', 'conversation', 'history'];
     var CSS = [
         '.content-layout.nexus-live-tryon{grid-template-columns:minmax(0,62fr) minmax(340px,38fr)}',
+        '.content-layout.nexus-live-tryon.nexus-live-conversation,.content-layout.nexus-live-tryon.nexus-live-history{',
+        'grid-template-columns:minmax(0,46fr) minmax(390px,54fr)}',
         '.nexus-live-tryon .chat-card{display:flex;flex-direction:column;min-height:0;background:linear-gradient(150deg,rgba(6,24,37,.97),rgba(4,14,27,.97));',
         'border:1px solid rgba(34,211,238,.34);box-shadow:0 16px 45px rgba(0,0,0,.24)}',
         '.nexus-live-tryon .chat-main{flex:1;min-height:0}',
         '.nexus-live-tryon .chat-input-shell{margin-top:auto}',
-        '.nexus-live-tryon .chat-card-header{padding-bottom:.65rem;border-bottom:1px solid rgba(34,211,238,.16)}',
+        '.nexus-live-tryon .chat-card-header{padding:.95rem 1.1rem;border-bottom:1px solid rgba(34,211,238,.16)}',
+        '.nexus-live-tryon .nexus-live-subtitle{margin:.25rem 0 0;color:#83afbe;font-size:.75rem;line-height:1.4}',
         '.nexus-live-tryon .chat-card-header .section-title{font-size:1.05rem;letter-spacing:.035em}',
         '.nexus-live-tryon .chat-card-header .section-title .title-icon{display:none}',
         '.nexus-live-tryon .nexus-live-controls{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;',
         'justify-content:space-between;padding:.75rem 1rem .4rem}',
         '.nexus-live-tryon .nexus-live-modes{display:flex;gap:.4rem;align-items:center}',
+        '.nexus-live-tryon .nexus-live-history-link{background:none;border-color:transparent;',
+        'font-size:.76rem;color:#80c4d4}',
+        '.nexus-live-tryon.nexus-live-watch .nexus-live-history-link{display:none}',
         '.nexus-live-tryon .nexus-live-button{appearance:none;border:1px solid rgba(34,211,238,.3);',
         'border-radius:11px;background:rgba(34,211,238,.055);padding:.52rem .8rem;color:#c6e9f0;',
         'font:600 .8rem/1.25 var(--font-sans,system-ui,sans-serif);cursor:pointer}',
@@ -35,6 +41,9 @@
         '.nexus-live-tryon.nexus-live-watch .nexus-live-summary{display:block}',
         '.nexus-live-tryon .nexus-live-kicker{color:#44e5bb;font:700 .72rem/1.4 var(--font-display,system-ui);',
         'letter-spacing:.1em;margin:0 0 .8rem}',
+        '.nexus-live-tryon .nexus-live-last-question{color:#9fc5d4;font-size:.83rem;',
+        'margin:0 0 .6rem;line-height:1.35}',
+        '.nexus-live-tryon .nexus-live-last-question[hidden]{display:none}',
         '.nexus-live-tryon .nexus-live-answer{font:500 clamp(1rem,1.45vw,1.3rem)/1.6 ',
         'var(--font-sans,system-ui);color:#e6f8fb;overflow-wrap:anywhere;margin:0}',
         '.nexus-live-tryon .nexus-live-suggestions{display:flex;flex-wrap:wrap;gap:.45rem;padding:0 1rem .8rem}',
@@ -56,8 +65,9 @@
         'background:#0acfe8;color:#03151d;border-color:#0acfe8;font-weight:800}',
         '.nexus-live-tryon #nexus-try-on-view .nexus-try-on-remote{gap:.5rem}',
         '@media(max-width:760px){',
-        '.content-layout.nexus-live-tryon{grid-template-columns:minmax(0,1fr)}',
-        'html.is-mobile .nexus-live-tryon.nexus-live-watch .chat-panel{height:min(26dvh,225px)!important;',
+        '.content-layout.nexus-live-tryon,.content-layout.nexus-live-tryon.nexus-live-conversation,',
+        '.content-layout.nexus-live-tryon.nexus-live-history{grid-template-columns:minmax(0,1fr)}',
+        'html.is-mobile .nexus-live-tryon.nexus-live-watch .chat-panel{height:min(25dvh,210px)!important;',
         'min-height:170px;transition:height .2s ease}',
         'html.is-mobile .nexus-live-tryon.nexus-live-conversation .chat-panel,',
         'html.is-mobile .nexus-live-tryon.nexus-live-history .chat-panel{height:min(60dvh,530px)!important;',
@@ -128,15 +138,22 @@
                 (doc.head || doc.documentElement).appendChild(style);
             }
             this.baseline = this.rows().length;
+            this.heading = this.card.querySelector('.chat-card-header .section-title');
+            this.headingOriginal = this.heading ? this.heading.textContent : null;
+            if (this.heading) {
+                this.heading.textContent = 'CONVERSATION WITH NEXUS';
+                var wrapper = this.heading.parentNode;
+                this.subtitle = element(doc, 'p', 'nexus-live-subtitle', 'Your AI stylist · Live fashion and ideas');
+                wrapper.appendChild(this.subtitle);
+            }
             this.controls = element(doc, 'div', 'nexus-live-controls');
             this.controls.setAttribute('aria-label', 'Try-On conversation view');
             var group = element(doc, 'div', 'nexus-live-modes');
             this.modeButtons = {};
             var self = this;
             [
-                ['watch', 'Watch'],
+                ['watch', '● Live'],
                 ['conversation', 'Conversation'],
-                ['history', 'History'],
             ].forEach(function (entry) {
                 var button = element(doc, 'button', 'nexus-live-button', entry[1]);
                 button.type = 'button';
@@ -148,9 +165,18 @@
                 group.appendChild(button);
             });
             this.controls.appendChild(group);
+            var historyLink = element(doc, 'button', 'nexus-live-button nexus-live-history-link', 'Full history ↗');
+            historyLink.type = 'button';
+            historyLink.setAttribute('aria-label', 'Open full conversation history');
+            historyLink.addEventListener('click', function () { self.setMode('history'); });
+            this.controls.appendChild(historyLink);
+            this.historyLink = historyLink;
             this.summary = element(doc, 'section', 'nexus-live-summary');
             this.summary.setAttribute('aria-label', 'Latest NEXUS commentary');
             this.summary.appendChild(element(doc, 'p', 'nexus-live-kicker', '● NEXUS · LIVE COMMENTARY'));
+            this.lastQuestion = element(doc, 'p', 'nexus-live-last-question');
+            this.lastQuestion.hidden = true;
+            this.summary.appendChild(this.lastQuestion);
             this.answer = element(doc, 'p', 'nexus-live-answer', 'Choose a look or ask me what to try next.');
             this.summary.appendChild(this.answer);
             this.suggestions = element(doc, 'div', 'nexus-live-suggestions');
@@ -185,6 +211,15 @@
             var live = rows.slice(this.baseline);
             var latest = latestAssistantText(live);
             if (latest && this.answer && this.answer.textContent !== latest) this.answer.textContent = latest;
+            var latestQuestion = '';
+            for (var i = live.length - 1; i >= 0; i -= 1) {
+                var user = live[i].querySelector('.chat-message.user .message-text');
+                if (user && user.textContent.trim()) { latestQuestion = user.textContent.trim(); break; }
+            }
+            if (this.lastQuestion) {
+                this.lastQuestion.hidden = !latestQuestion;
+                this.lastQuestion.textContent = latestQuestion ? 'YOU · ' + latestQuestion : '';
+            }
             var visible = recentRows(rows, 4);
             rows.forEach(function (row) {
                 row.classList.toggle('nexus-live-older', visible.indexOf(row) === -1);
@@ -193,7 +228,8 @@
 
         ask(text) {
             if (text === 'Show me the back') {
-                var turn = this.doc.querySelector('#nexus-try-on-view [data-key="turn"]');
+                var turn = this.doc.querySelector('.nexus-stage-action[data-command="turn"]') ||
+                    this.doc.querySelector('#nexus-try-on-view [data-key="turn"]');
                 if (turn && !turn.disabled) {
                     turn.click();
                     return;
@@ -213,8 +249,11 @@
             var self = this;
             MODES.forEach(function (name) {
                 self.layout.classList.toggle('nexus-live-' + name, name === mode);
-                self.modeButtons[name].setAttribute('aria-pressed', name === mode ? 'true' : 'false');
+                if (self.modeButtons[name]) self.modeButtons[name].setAttribute('aria-pressed', name === mode ? 'true' : 'false');
             });
+            if (this.historyLink) this.historyLink.textContent = mode === 'history' ? '‹ Recent' : 'Full history ↗';
+            if (this.historyLink && mode === 'history') this.historyLink.onclick = function () { self.setMode('conversation'); };
+            if (this.historyLink && mode !== 'history') this.historyLink.onclick = null;
             this.update();
             if (mode !== 'watch' && this.history) this.history.scrollTop = this.history.scrollHeight;
         }
@@ -232,6 +271,8 @@
             this.rows().forEach(function (row) {
                 row.classList.remove('nexus-live-older');
             });
+            if (this.heading && this.headingOriginal !== null) this.heading.textContent = this.headingOriginal;
+            if (this.subtitle) this.subtitle.remove();
             [this.controls, this.summary, this.suggestions].forEach(function (node) {
                 if (node && node.parentNode) node.parentNode.removeChild(node);
             });
@@ -241,6 +282,8 @@
             this.layout = null;
             this.card = null;
             this.history = null;
+            this.historyLink = null;
+            this.lastQuestion = null;
         }
     }
 
