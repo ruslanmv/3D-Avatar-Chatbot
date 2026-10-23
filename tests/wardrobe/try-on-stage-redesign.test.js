@@ -444,3 +444,75 @@ describe('a look is loaded the way every avatar is (LT5)', () => {
         expect(load).toHaveBeenCalledWith('/looks/red.vrm', 'Red Cropped Tee', -1);
     });
 });
+
+describe('Customize as a workspace (LT6)', () => {
+    const { changeSummary, shortName } = require('../../src/wardrobe/TryOnStageExperience');
+    const jeans = { name: 'Crop top & jeans', prompt: 'black fitted crop top + blue straight jeans' };
+    const red = { name: 'Red Cropped Tee + Blue Straight Jeans', prompt: 'red fitted crop top + blue straight jeans' };
+
+    it('says what a change changed and what it kept, and nothing for a different look', () => {
+        expect(changeSummary(jeans, red)).toBe(
+            'Changed: black fitted crop top → red fitted crop top. Kept: blue straight jeans.'
+        );
+        expect(changeSummary(jeans, { name: 'Sundress', prompt: 'yellow maxi sundress' })).toBe('');
+        expect(changeSummary({ original: true }, red)).toBe('');
+        expect(changeSummary(null, red)).toBe('');
+    });
+
+    it("shortens a made look's name to its first garment and what goes with it", () => {
+        expect(shortName(red)).toBe('Red Cropped Tee & jeans');
+        expect(shortName({ name: 'Black Bodycon Mini Dress + Black Glossy Platform Boots' })).toBe(
+            'Black Bodycon Mini Dress & boots'
+        );
+        expect(shortName(jeans)).toBe('Crop top & jeans');
+    });
+
+    function setUp() {
+        document.body.innerHTML = [
+            '<div class="content-layout"><div class="avatar-preview-wrap"><div id="avatar-viewport"></div>',
+            '<div id="host"><div id="nexus-try-on-view"></div><span id="after"></span></div></div>',
+            '<section class="chat-panel"><div class="chat-card"></div></section></div>',
+        ].join('');
+        const view = {
+            root: document.getElementById('nexus-try-on-view'),
+            _key: (l) => l.key,
+            render: jest.fn(),
+        };
+        const stage = new TryOnStageExperience({
+            doc: document,
+            view,
+            session: { state: () => ({ look: null, looks: [], total: 0, position: 0 }) },
+        });
+        stage.mount();
+        return { stage, panel: view.root };
+    }
+
+    afterEach(() => {
+        document.documentElement.classList.remove('is-mobile', 'nexus-customize-open');
+        document.body.innerHTML = '';
+    });
+
+    it('opens in the chat card on a desktop and goes back exactly where it was', () => {
+        const { stage, panel } = setUp();
+        const home = document.getElementById('host');
+        document.querySelector('.nexus-look-rail-edit').click();
+        expect(panel.parentElement).toBe(document.querySelector('.chat-panel .chat-card'));
+        expect(document.documentElement.classList.contains('nexus-customize-open')).toBe(true);
+        document.querySelector('.nexus-look-rail-edit').click();
+        expect(panel.parentElement).toBe(home);
+        expect(panel.nextElementSibling).toBe(document.getElementById('after'));
+        expect(document.documentElement.classList.contains('nexus-customize-open')).toBe(false);
+        document.querySelector('.nexus-look-rail-edit').click();
+        stage.unmount(); // closing the haul with Customize open still puts it back
+        expect(panel.parentElement).toBe(home);
+    });
+
+    it('stays a bottom sheet on a phone, with the chat sheet stepped away', () => {
+        document.documentElement.classList.add('is-mobile');
+        const { stage, panel } = setUp();
+        document.querySelector('.nexus-look-rail-edit').click();
+        expect(panel.parentElement).toBe(document.getElementById('host'));
+        expect(document.documentElement.classList.contains('nexus-customize-open')).toBe(true);
+        stage.unmount();
+    });
+});

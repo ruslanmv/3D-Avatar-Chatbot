@@ -68,6 +68,18 @@
         // and More.
         '.nexus-try-on-look-rail.is-folded .nexus-look-rail-list,.nexus-try-on-look-rail.is-folded .nexus-look-rail-edit{display:none}',
         '.nexus-look-rail-title[aria-expanded]{cursor:pointer;min-height:40px}',
+        // LT6. Customize: in the conversation's place on a desktop or tablet, the bottom sheet on a
+        // phone (placeWorkspace); its ideas on one scrolling line; Keep (it ends the haul) an
+        // outline button, not the loudest thing on the panel; End readable.
+        'html.nexus-customize-open .chat-panel .chat-card{position:relative}',
+        '#nexus-try-on-view.nexus-customize-workspace:not([hidden]){position:absolute;inset:0;left:0;right:0;top:0;bottom:0;width:auto;max-width:none;max-height:none;transform:none;margin:0;overflow-y:auto;box-sizing:border-box;z-index:30;border-radius:inherit}',
+        'html.is-mobile.nexus-customize-open .chat-panel{display:none!important}',
+        'html.is-mobile.nexus-customize-open #nexus-try-on-view:not([hidden]){bottom:0!important;max-height:min(46dvh,calc(100dvh - 176px))!important;padding-bottom:max(.9rem,env(safe-area-inset-bottom,0px))}',
+        'html.nexus-try-on-stage-on #nexus-try-on-view .nexus-try-on-chips{display:flex;flex-wrap:nowrap;justify-content:flex-start;gap:.4rem;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}',
+        'html.nexus-try-on-stage-on #nexus-try-on-view .nexus-try-on-chips::-webkit-scrollbar{display:none}',
+        'html.nexus-try-on-stage-on #nexus-try-on-view .nexus-try-on-chip{flex:none;white-space:nowrap}',
+        'html.nexus-try-on-stage-on #nexus-try-on-view .nexus-try-on-primary{background:transparent;color:#7ae9f7;border:1px solid rgba(34,211,238,.55);font-weight:700}',
+        'html.nexus-try-on-stage-on #nexus-try-on-view .nexus-bd-together-cancel{color:#b8ccd6;opacity:1}',
         // More on a phone: the panel ends at the sheet's top edge (not the composer's, which hid
         // Keep this look on a 360×640 screen) and stops short of the rail's Close button; the
         // thumbnails fold while it is open. The floating fullscreen button (also in the menu
@@ -126,6 +138,57 @@
         '}',
     ].join('');
 
+    /**
+     * LT6. A look's name as the stage shows it. Forge names a made look after every garment in
+     * it ("Red Cropped Tee + Blue Straight Jeans"), which the rail and the summary cut to "Red
+     * Crop…"; shown as the first garment and what goes with it: "Red Cropped Tee & jeans". The
+     * full name stays in the title and the label.
+     */
+    function shortName(look) {
+        var name = String((look && look.name) || '').trim();
+        var parts = name.split(/\s+\+\s+/);
+        if (parts.length < 2) return name;
+        var rest = parts.slice(1).map(function (part) {
+            var words = part.trim().split(/\s+/);
+            return words[words.length - 1].toLowerCase();
+        });
+        return parts[0] + ' & ' + rest.join(', ');
+    }
+
+    /** A look's recipe as its pieces: "black crop top + blue jeans" → ["black crop top", "blue jeans"]. */
+    function pieces(look) {
+        var recipe = (look && (look.prompt || (look.provenance && look.provenance.prompt))) || '';
+        return String(recipe)
+            .split(/\s*[+&]\s*/)
+            .map(function (piece) {
+                return piece.trim();
+            })
+            .filter(Boolean);
+    }
+
+    /**
+     * LT6. What a change did, from the two recipes: "Changed: black fitted crop top → red fitted
+     * crop top. Kept: blue straight jeans." Only when the new look kept something of the last
+     * one and changed something; otherwise '' (a different look, not a change to this one).
+     */
+    function changeSummary(before, after) {
+        if (!before || before.original || !after) return '';
+        var was = pieces(before),
+            now = pieces(after);
+        var kept = now.filter(function (piece) {
+            return was.indexOf(piece) !== -1;
+        });
+        var gone = was.filter(function (piece) {
+            return now.indexOf(piece) === -1;
+        });
+        var added = now.filter(function (piece) {
+            return was.indexOf(piece) === -1;
+        });
+        if (!kept.length || !added.length) return '';
+        var change = gone.length === 1 && added.length === 1 ? gone[0] + ' → ' + added[0] : 'added ' + added.join(', ');
+        return 'Changed: ' + change + '. Kept: ' + kept.join(', ') + '.';
+    }
+
     /** "casual", "denim", "day" → ["Casual", "Denim"]: the look's own manifest tags, two at most. */
     function lookTags(look) {
         var tags = look && Array.isArray(look.tags) ? look.tags : [];
@@ -160,6 +223,37 @@
             this.railOpen = !this._phone();
             this._landed = undefined;
             this._commented = '';
+        }
+
+        /**
+         * LT6. Customize is a workspace beside her, never a panel over her. On a desktop or tablet
+         * the panel moves into the chat card for as long as it is open (the same element, its
+         * handlers and state with it) and goes back exactly where it was after; on a phone it is
+         * the bottom sheet, and the chat sheet steps away while it is open, so there is one place
+         * to type. Open over her, it covered her from the shoulders down and the outfit being
+         * changed could not be seen; pinned with position:fixed it was caught by the avatar
+         * card's backdrop filter, which makes the card its containing block.
+         */
+        placeWorkspace(open) {
+            var doc = this.doc,
+                root = doc.documentElement,
+                panel = this.legacy;
+            if (!root) return;
+            root.classList.toggle('nexus-customize-open', Boolean(open));
+            if (open && panel && !this._phone()) {
+                var card = doc.querySelector('.chat-panel .chat-card');
+                if (card && panel.parentNode !== card) {
+                    this._home = { parent: panel.parentNode, next: panel.nextSibling };
+                    card.appendChild(panel);
+                    panel.classList.add('nexus-customize-workspace');
+                }
+            } else if (this._home) {
+                if (panel) {
+                    panel.classList.remove('nexus-customize-workspace');
+                    if (this._home.parent) this._home.parent.insertBefore(panel, this._home.next || null);
+                }
+                this._home = null;
+            }
         }
 
         _phone() {
@@ -230,6 +324,7 @@
             this.view.collapsed = !this.expanded;
             this.view._keepOpen = this.expanded;
             if (this.preview) this.preview.classList.toggle('nexus-try-on-advanced-open', this.expanded);
+            this.placeWorkspace(this.expanded);
             this.view.render();
             if (this.expanded) {
                 var first = this.legacy.querySelector('button:not([disabled]), input:not([disabled])');
@@ -291,7 +386,7 @@
                 } else {
                     item.appendChild(el(doc, 'span', 'nexus-look-rail-no-image', '👗'));
                 }
-                item.appendChild(el(doc, 'span', 'nexus-look-rail-caption', look.name || 'Look ' + (index + 1)));
+                item.appendChild(el(doc, 'span', 'nexus-look-rail-caption', shortName(look) || 'Look ' + (index + 1)));
                 item.addEventListener('click', function () {
                     self.view.wear(look);
                 });
@@ -330,12 +425,19 @@
             var line = '';
             if (state.landed !== this._landed) {
                 this._landed = state.landed;
+                var before = this._wearing;
+                this._wearing = look;
                 if (!look || look.original) return;
+                var change = changeSummary(before, look);
+                if (change) {
+                    this.showChange(change);
+                    if (!reaction) reaction = change;
+                }
                 var desc = look.prompt || (look.provenance && look.provenance.prompt) || '';
                 line =
                     reaction ||
                     'Now wearing ' +
-                        (look.name || 'this look') +
+                        (shortName(look) || 'this look') +
                         (desc
                             ? ': ' +
                               String(desc)
@@ -362,6 +464,22 @@
          * One step of 15 % read as a broken button. Only ever on the person's press: wearing a
          * look never zooms, and a new look keeps whichever view they chose.
          */
+        /**
+         * The change, said where the person is looking: in the Customize panel (her reaction
+         * line there, with Turn and Save) unless she already has one to say. Only ever called
+         * for a landing, so never before the look is on her.
+         */
+        showChange(line) {
+            var view = this.view;
+            if (!view || view.reaction || typeof view._showReaction !== 'function') return;
+            var actions = view.Reactions && view.Reactions.ACTIONS;
+            view._showReaction({ line: line, actions: actions ? [actions.turn, actions.save].filter(Boolean) : [] });
+            var win = this.doc.defaultView || global;
+            win.setTimeout(function () {
+                if (view.root) view.render();
+            }, 0);
+        }
+
         zoom() {
             var viewer = (this.doc.defaultView || global).NEXUS_VIEWER;
             if (!viewer || !viewer.camera || !viewer.controls) return false;
@@ -403,7 +521,12 @@
                 )
             );
             pieces.push(
-                el(doc, 'h3', 'nexus-stage-look-name', look ? look.name || 'Current look' : 'Choose your first look')
+                el(
+                    doc,
+                    'h3',
+                    'nexus-stage-look-name',
+                    look ? shortName(look) || 'Current look' : 'Choose your first look'
+                )
             );
             var desc = look && (look.prompt || (look.provenance && look.provenance.prompt));
             pieces.push(
@@ -509,6 +632,7 @@
                     'nexus-try-on-advanced-open',
                     'nexus-try-on-stage-short'
                 );
+            this.placeWorkspace(false);
             if (this.doc && this.doc.documentElement)
                 this.doc.documentElement.classList.remove('nexus-try-on-stage-on');
             if (this.root) this.root.remove();
@@ -529,7 +653,7 @@
         }
     }
 
-    var api = { TryOnStageExperience: TryOnStageExperience };
+    var api = { TryOnStageExperience: TryOnStageExperience, changeSummary: changeSummary, shortName: shortName };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_TRY_ON_STAGE = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);

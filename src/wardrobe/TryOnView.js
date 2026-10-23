@@ -786,6 +786,8 @@
                         'aria-label': 'New look',
                         onclick: function () {
                             self.notice = self._canCreate() || !self.Intent ? null : self.Intent.UNAVAILABLE;
+                            // LT6. New says what it is for: the box asks for a new look, not a change.
+                            self._newLook = self._canCreate();
                             self.render();
                             var input = self.root && self.root.querySelector('[data-key="prompt"]');
                             if (input) input.focus();
@@ -893,11 +895,13 @@
                 maxlength: '300',
                 'data-key': 'prompt',
                 'aria-label': 'Tell me what to change',
-                placeholder: this.session.state().look
-                    ? 'Tell me what to change…'
-                    : canCreate
-                      ? 'or tell me: “Try a black evening dress…”'
-                      : 'Say next, go back, compare…',
+                placeholder: this._newLook
+                    ? 'Describe a new look: “a cozy autumn outfit”…'
+                    : this.session.state().look
+                      ? 'Tell me what to change…'
+                      : canCreate
+                        ? 'or tell me: “Try a black evening dress…”'
+                        : 'Say next, go back, compare…',
                 disabled: this.creating,
             });
             input.value = this.draft;
@@ -911,6 +915,7 @@
                     class: 'nexus-try-on-composer',
                     onsubmit: function (event) {
                         event.preventDefault();
+                        self._newLook = false;
                         self.say(input.value);
                     },
                 },
