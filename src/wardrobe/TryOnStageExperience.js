@@ -85,7 +85,16 @@
             this.doc = options.doc || global.document;
             this.view = options.view;
             this.session = options.session;
+            this.workspace = options.workspace || null;
             this.expanded = false;
+            if (this.workspace) {
+                var self = this;
+                this.workspace.onState = function (opened) {
+                    self.expanded = opened;
+                    if (self.root) self.render(self.session.state());
+                };
+                this.workspace.onAdvanced = function () { self.openLegacy(); };
+            }
         }
 
         mount() {
@@ -122,6 +131,25 @@
         }
 
         toggleAdvanced() {
+            if (this.workspace && this.workspace.opened) {
+                this.workspace.close();
+                return;
+            }
+            if (this.expanded) {
+                this.openLegacy();
+                return;
+            }
+            if (this.workspace) {
+                var self = this;
+                Promise.resolve(this.workspace.open()).then(function (mounted) {
+                    if (!mounted) self.openLegacy();
+                });
+                return;
+            }
+            this.openLegacy();
+        }
+
+        openLegacy() {
             if (!this.legacy || !this.view) return;
             this.expanded = !this.expanded;
             this.legacy.hidden = !this.expanded;
@@ -245,6 +273,7 @@
         }
 
         unmount() {
+            if (this.workspace) this.workspace.destroy();
             if (this.view && this.view.stageExperience === this) this.view.stageExperience = null;
             if (this.preview) this.preview.classList.remove('nexus-try-on-stage-active');
             if (this.root) this.root.remove();
