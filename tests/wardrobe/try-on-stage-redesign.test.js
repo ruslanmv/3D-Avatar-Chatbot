@@ -419,3 +419,28 @@ describe('Try-On on a phone (LT4)', () => {
         });
     });
 });
+
+describe('a look is loaded the way every avatar is (LT5)', () => {
+    const look = { name: 'Red Cropped Tee', vrmUrl: '/looks/red.vrm' };
+
+    it('goes through the viewer, so Pose Studio and the other pose systems get the new model', async () => {
+        const viewer = fakeViewer();
+        viewer.loadAvatar = jest.fn(async (url, name, index) => viewer.avatarManager.setAvatarByUrl(url, name, index));
+        const wardrobe = new WardrobeController({ forge: { resolveUrl: (u) => u }, viewer });
+        await wardrobe.applyLook(look);
+        expect(viewer.loadAvatar).toHaveBeenCalledWith('/looks/red.vrm', 'Red Cropped Tee', -1);
+        await wardrobe.restore();
+        expect(viewer.loadAvatar).toHaveBeenLastCalledWith('/vendor/avatars/fem_vroid.vrm', 'VRoid Female', 0);
+        expect(viewer.camera.position.z).toBe(4.391); // and still holds the camera
+    });
+
+    it('uses the manager in VR, where the viewer skips desktop loads', async () => {
+        const viewer = fakeViewer();
+        viewer.loadAvatar = jest.fn();
+        viewer.renderer = { xr: { isPresenting: true } };
+        const load = jest.spyOn(viewer.avatarManager, 'setAvatarByUrl');
+        await new WardrobeController({ forge: { resolveUrl: (u) => u }, viewer }).applyLook(look);
+        expect(viewer.loadAvatar).not.toHaveBeenCalled();
+        expect(load).toHaveBeenCalledWith('/looks/red.vrm', 'Red Cropped Tee', -1);
+    });
+});

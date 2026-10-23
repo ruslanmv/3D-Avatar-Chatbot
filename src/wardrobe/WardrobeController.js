@@ -61,7 +61,7 @@
             }
             var hold = this._holdCamera();
             try {
-                await manager.setAvatarByUrl(url, look.name || 'Generated look', -1);
+                await this._load(manager, url, look.name || 'Generated look', -1);
             } catch (error) {
                 if (verified) verified.revoke();
                 if (hold) hold();
@@ -73,6 +73,25 @@
             else if (manager.frameAvatar) manager.frameAvatar();
             this.activeLook = look;
             return look;
+        }
+
+        /**
+         * LT5. A look is loaded the way every avatar is: through the viewer, which hands the new
+         * model to everything that drives her (the pose system behind Pose Studio's presets, the
+         * bone grabber, puppet/IK, locomotion, motion) and keeps her pose preset. Loaded with
+         * AvatarManager alone, all of those kept the model the look had replaced, and Pose
+         * Studio did nothing on a new outfit. In VR (the viewer skips desktop loads there) or
+         * without a viewer, the manager loads it as before.
+         */
+        async _load(manager, url, name, index) {
+            var viewer = this.viewer;
+            var presenting = Boolean(
+                viewer && viewer.renderer && viewer.renderer.xr && viewer.renderer.xr.isPresenting
+            );
+            if (viewer && typeof viewer.loadAvatar === 'function' && !presenting) {
+                return viewer.loadAvatar(url, name, index);
+            }
+            return manager.setAvatarByUrl(url, name, index);
         }
 
         /**
@@ -119,7 +138,8 @@
             if (!this.original || !this.original.url) return false;
             var manager = this._requireManager();
             var hold = this._holdCamera();
-            await manager.setAvatarByUrl(
+            await this._load(
+                manager,
                 this.original.url,
                 this.original.name || 'Avatar',
                 this.original.index === undefined ? -1 : this.original.index
