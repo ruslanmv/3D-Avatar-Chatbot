@@ -113,31 +113,31 @@
     },
     {
       "file": "src/PoseStudioPanel.js",
-      "line": 287,
-      "guarded": true,
-      "comment": true
-    },
-    {
-      "file": "src/PoseStudioPanel.js",
       "line": 289,
       "guarded": true,
-      "comment": false
-    },
-    {
-      "file": "src/PoseStudioPanel.js",
-      "line": 582,
-      "guarded": true,
       "comment": true
     },
     {
       "file": "src/PoseStudioPanel.js",
-      "line": 587,
+      "line": 291,
       "guarded": true,
       "comment": false
+    },
+    {
+      "file": "src/PoseStudioPanel.js",
+      "line": 584,
+      "guarded": true,
+      "comment": true
     },
     {
       "file": "src/PoseStudioPanel.js",
       "line": 589,
+      "guarded": true,
+      "comment": false
+    },
+    {
+      "file": "src/PoseStudioPanel.js",
+      "line": 591,
       "guarded": true,
       "comment": false
     }
@@ -167,6 +167,6 @@
     "adult.available": true
   },
   "informational": {
-    "totalBootScripts": 122
+    "totalBootScripts": 125
   }
 }

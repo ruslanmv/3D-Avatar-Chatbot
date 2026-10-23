@@ -530,7 +530,8 @@ const TryOnHaulActivity = (() => {
                 }
                 if (CatalogWorkspace) {
                     // Use the same existing Forge client as the try-on generator.
-                    const forge = (generator && generator.library && generator.library.client) ||
+                    const forge =
+                        (generator && generator.library && generator.library.client) ||
                         (svc.controller && svc.controller.forge);
                     catalogWorkspace = new CatalogWorkspace({ doc, view, client: forge });
                 }

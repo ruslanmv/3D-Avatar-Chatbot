@@ -161,19 +161,31 @@
             title.appendChild(node(doc, 'h2', '', 'Customize This Look'));
             title.appendChild(node(doc, 'p', 'nexus-catalog-muted', 'Real Forge garments · choose before applying'));
             header.appendChild(title);
-            header.appendChild(this.button('Close ×', function () { self.close(); }));
+            header.appendChild(
+                this.button('Close ×', function () {
+                    self.close();
+                })
+            );
             var tabs = node(doc, 'nav', 'nexus-catalog-cats');
             tabs.setAttribute('aria-label', 'Garment category');
             this.categories.forEach(function (group) {
-                tabs.appendChild(self.button(
-                    group.label + ' (' + group.count + ')',
-                    function () { self.category = group.id; self.selected = null; self.render(); },
-                    self.category === group.id
-                ));
+                tabs.appendChild(
+                    self.button(
+                        group.label + ' (' + group.count + ')',
+                        function () {
+                            self.category = group.id;
+                            self.selected = null;
+                            self.render();
+                        },
+                        self.category === group.id
+                    )
+                );
             });
             var main = node(doc, 'div', 'nexus-catalog-main');
             var grid = node(doc, 'div', 'nexus-catalog-grid');
-            var current = this.categories.find(function (g) { return g.id === self.category; });
+            var current = this.categories.find(function (g) {
+                return g.id === self.category;
+            });
             ((current && current.garments) || []).forEach(function (item) {
                 var card = node(doc, 'button', 'nexus-catalog-card');
                 card.type = 'button';
@@ -190,13 +202,17 @@
                     card.appendChild(node(doc, 'span', 'nexus-catalog-placeholder', 'Preview not ready'));
                 }
                 card.appendChild(node(doc, 'span', 'nexus-catalog-name', item.name));
-                card.addEventListener('click', function () { self.select(item); });
+                card.addEventListener('click', function () {
+                    self.select(item);
+                });
                 grid.appendChild(card);
             });
             main.appendChild(grid);
             if (!this.client) main.appendChild(node(doc, 'p', 'nexus-catalog-error', 'Wardrobe Forge is unavailable.'));
-            else if (!this.loaded && !this.error) main.appendChild(node(doc, 'p', 'nexus-catalog-muted', 'Loading garments…'));
-            else if (this.loaded && !this.categories.length) main.appendChild(node(doc, 'p', 'nexus-catalog-muted', 'No public garments available.'));
+            else if (!this.loaded && !this.error)
+                main.appendChild(node(doc, 'p', 'nexus-catalog-muted', 'Loading garments…'));
+            else if (this.loaded && !this.categories.length)
+                main.appendChild(node(doc, 'p', 'nexus-catalog-muted', 'No public garments available.'));
             var foot = node(doc, 'div', 'nexus-catalog-detail');
             if (this.selected) {
                 foot.appendChild(node(doc, 'strong', '', this.selected.name));
@@ -210,7 +226,10 @@
                         swatch.setAttribute('aria-label', name);
                         swatch.setAttribute('aria-pressed', String(self.color === name));
                         swatch.disabled = self.busy;
-                        swatch.addEventListener('click', function () { self.color = name; self.render(); });
+                        swatch.addEventListener('click', function () {
+                            self.color = name;
+                            self.render();
+                        });
                         colors.appendChild(swatch);
                     });
                     foot.appendChild(colors);
@@ -220,10 +239,22 @@
             }
             if (this.error) foot.appendChild(node(doc, 'p', 'nexus-catalog-error', this.error));
             var actions = node(doc, 'div', 'nexus-catalog-actions');
-            var apply = this.button(this.busy ? 'Generating…' : 'Apply garment', function () { self.apply(); }, undefined, ' nexus-catalog-primary');
+            var apply = this.button(
+                this.busy ? 'Generating…' : 'Apply garment',
+                function () {
+                    self.apply();
+                },
+                undefined,
+                ' nexus-catalog-primary'
+            );
             apply.disabled = !this.selected || this.busy || !this.view || !this.view.generator;
             actions.appendChild(apply);
-            actions.appendChild(this.button('Advanced', function () { self.close(); self.onAdvanced(); }));
+            actions.appendChild(
+                this.button('Advanced', function () {
+                    self.close();
+                    self.onAdvanced();
+                })
+            );
             foot.appendChild(actions);
             this.overlay.replaceChildren(header, tabs, main, foot);
         }
@@ -245,7 +276,8 @@
                 var garment = this.selected;
                 var text = (garment.supportsColor ? this.color + ' ' : '') + garment.name;
                 var made = await this.view.create({
-                    prompt: text, templateId: garment.id,
+                    prompt: text,
+                    templateId: garment.id,
                     color: garment.supportsColor ? this.color : undefined,
                     mode: canBuild ? 'change' : 'fresh',
                     slot: garment.category,

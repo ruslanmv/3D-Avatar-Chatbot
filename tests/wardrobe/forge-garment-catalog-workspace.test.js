@@ -15,16 +15,44 @@ function mountPage() {
 
 const CATALOG = {
     categories: [
-        { id: 'top', label: 'Tops', count: 2, garments: [
-            { id: 'top-crop-tee-v1', name: 'Crop top', category: 'top',
-              supportsColor: true, previewStatus: 'ready', previewUrl: '/v1/catalog/garments/top-crop-tee-v1/preview' },
-            { id: 'top-basic-tee-v1', name: 'Basic tee', category: 'top',
-              supportsColor: true, previewStatus: 'pending', previewUrl: null },
-        ] },
-        { id: 'dress', label: 'Dresses', count: 1, garments: [
-            { id: 'dress-a-line-v1', name: 'A-line dress', category: 'dress',
-              supportsColor: true, previewStatus: 'pending', previewUrl: null },
-        ] },
+        {
+            id: 'top',
+            label: 'Tops',
+            count: 2,
+            garments: [
+                {
+                    id: 'top-crop-tee-v1',
+                    name: 'Crop top',
+                    category: 'top',
+                    supportsColor: true,
+                    previewStatus: 'ready',
+                    previewUrl: '/v1/catalog/garments/top-crop-tee-v1/preview',
+                },
+                {
+                    id: 'top-basic-tee-v1',
+                    name: 'Basic tee',
+                    category: 'top',
+                    supportsColor: true,
+                    previewStatus: 'pending',
+                    previewUrl: null,
+                },
+            ],
+        },
+        {
+            id: 'dress',
+            label: 'Dresses',
+            count: 1,
+            garments: [
+                {
+                    id: 'dress-a-line-v1',
+                    name: 'A-line dress',
+                    category: 'dress',
+                    supportsColor: true,
+                    previewStatus: 'pending',
+                    previewUrl: null,
+                },
+            ],
+        },
     ],
 };
 
@@ -83,9 +111,13 @@ describe('real garment catalog within Try-On', () => {
         red.click();
         await document.querySelector('.nexus-catalog-primary').click();
         await new Promise((resolve) => setTimeout(resolve, 0));
-        expect(view.create).toHaveBeenCalledWith(expect.objectContaining({
-            templateId: 'top-crop-tee-v1', color: 'red', prompt: 'red Crop top',
-        }));
+        expect(view.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                templateId: 'top-crop-tee-v1',
+                color: 'red',
+                prompt: 'red Crop top',
+            })
+        );
         expect(workspace.opened).toBe(false);
     });
 
@@ -101,9 +133,15 @@ describe('real garment catalog within Try-On', () => {
     });
 
     test('More opens catalog in right workspace, leaving legacy overlay hidden', async () => {
-        const session = { state: jest.fn(() => ({
-            look: null, looks: [], busy: false, position: 0, total: 0,
-        })) };
+        const session = {
+            state: jest.fn(() => ({
+                look: null,
+                looks: [],
+                busy: false,
+                position: 0,
+                total: 0,
+            })),
+        };
         stage = new TryOnStageExperience({ doc: document, view, session, workspace });
         stage.mount();
         const originalParent = canvas.parentElement;
