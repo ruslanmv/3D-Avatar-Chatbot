@@ -1641,6 +1641,8 @@
             try {
                 look = await this.generator.create(request.prompt, {
                     baseLookId: request.baseLookId || undefined,
+                    templateId: request.templateId || undefined,
+                    color: request.color || undefined,
                     preset: request.preset || undefined,
                     bodyArt: request.bodyArt || undefined,
                     signal: this._abort ? this._abort.signal : undefined,
