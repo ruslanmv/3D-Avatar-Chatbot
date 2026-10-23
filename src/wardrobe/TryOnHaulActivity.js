@@ -236,7 +236,8 @@ const TryOnHaulActivity = (() => {
         const Dictionary = deps.Dictionary || g.NEXUS_OUTFIT_DICTIONARY || null;
         const Conversation = deps.Conversation || g.NEXUS_TRY_ON_CONVERSATION || null;
         const LiveLayout = deps.LiveLayout || (g.NEXUS_TRYON_LIVE_LAYOUT && g.NEXUS_TRYON_LIVE_LAYOUT.TryOnLiveLayout);
-        const StageExperience = deps.StageExperience || (g.NEXUS_TRY_ON_STAGE && g.NEXUS_TRY_ON_STAGE.TryOnStageExperience);
+        const StageExperience =
+            deps.StageExperience || (g.NEXUS_TRY_ON_STAGE && g.NEXUS_TRY_ON_STAGE.TryOnStageExperience);
         const spicy = () => deps.spicy || g.NEXUS_SPICY || null;
         const WARM_EVERY_MS = 60000;
         const SPIN_HOLD_MS = 2600;
@@ -522,7 +523,12 @@ const TryOnHaulActivity = (() => {
                     liveLayout.mount();
                 }
                 if (StageExperience) {
-                    stageExperience = new StageExperience({ doc, view, session });
+                    stageExperience = new StageExperience({
+                        doc,
+                        view,
+                        session,
+                        onCommentary: (line) => liveLayout && liveLayout.commentate && liveLayout.commentate(line),
+                    });
                     stageExperience.mount();
                 }
                 if (dict) dict.load().then(() => view && view.render());

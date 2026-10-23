@@ -9,24 +9,37 @@
     'use strict';
 
     var STYLE_ID = 'nexus-try-on-stage-style';
+    // Zoom: how far in (a share of the distance) and how much higher it aims (per metre away).
+    var ZOOM_SHARE = 0.55;
+    var ZOOM_LIFT = 0.1;
     var CSS = [
-        ".nexus-try-on-stage-active .nexus-stage-label{position:absolute;z-index:40;top:14px;left:16px;display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:999px;background:rgba(2,23,35,.84);border:1px solid rgba(20,203,227,.5);color:#a9f9f4;font:700 .68rem/1.2 system-ui;letter-spacing:.1em;pointer-events:none}",
-        ".nexus-stage-label::before{content:\"\";width:6px;height:6px;background:#18d6ad;border-radius:50%}",
-        ".nexus-try-on-stage-active .nexus-stage-info{position:absolute;left:12px;right:112px;bottom:10px;z-index:40;pointer-events:none;padding:34px 4px 2px;color:#f3fbfd;background:linear-gradient(180deg,transparent,rgba(3,15,25,.8) 30%,rgba(3,15,25,.94));font-family:var(--font-sans,system-ui)}",
-        ".nexus-stage-count{margin:0 0 4px;font-size:.75rem;letter-spacing:.09em;color:#b5d5de}",
-        ".nexus-stage-look-name{margin:0 0 2px;font-weight:750;font-size:clamp(1rem,1.5vw,1.35rem);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
-        ".nexus-stage-look-desc{margin:0 0 9px;font-size:.75rem;color:#c4d8df;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}",
-        ".nexus-stage-actions{display:flex;align-items:stretch;gap:6px;pointer-events:auto}",
-        ".nexus-stage-action{flex:1;min-width:0;min-height:44px;padding:8px 6px;border-radius:10px;border:1px solid rgba(8,178,203,.54);background:rgba(2,35,48,.9);color:#e9f8fc;font:600 .76rem/1.1 system-ui;cursor:pointer;white-space:nowrap}",
-        ".nexus-stage-action:disabled{opacity:.42;cursor:not-allowed}",
-        ".nexus-stage-action:focus-visible{outline:2px solid #50e7f5;outline-offset:2px}",
-        ".nexus-stage-action[aria-pressed=\"true\"]{border-color:#5cead2;background:#09525b}",
-        ".nexus-stage-action.is-primary{flex:1.35;border-color:#04ddeb;background:#12d3e8;color:#06202c;font-weight:800}",
-        ".nexus-stage-action.is-primary:hover{background:#60e6f3}",
-        ".nexus-look-rail-tools{align-items:stretch}",
-        ".nexus-look-rail-title{font-size:.73rem;color:#e6f4f7;letter-spacing:.035em;background:rgba(2,25,37,.9);border:1px solid rgba(8,160,190,.4);border-radius:9px;padding:8px 2px;text-transform:none}",
-        ".nexus-try-on-stage-active #nexus-try-on-view:not([hidden]){z-index:60}",
-        "@media(max-width:760px){.nexus-try-on-stage-active .nexus-stage-label{top:8px;left:10px;font-size:.59rem;padding:6px 9px}.nexus-try-on-stage-active .nexus-stage-info{left:8px;right:74px;bottom:8px;padding-top:24px}.nexus-stage-count,.nexus-stage-look-desc{font-size:.65rem}.nexus-stage-look-name{font-size:.89rem}.nexus-stage-actions{gap:4px;flex-wrap:wrap}.nexus-stage-action{min-height:44px;font-size:.67rem;padding:6px 4px;flex-basis:25%}.nexus-stage-action[data-command=\"zoom\"]{display:none}.nexus-stage-action.is-primary{flex-basis:30%}.nexus-look-rail-title{font-size:.63rem;padding:7px 2px}}",
+        '.nexus-try-on-stage-active .nexus-stage-label{position:absolute;z-index:40;top:14px;left:16px;display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:999px;background:rgba(2,23,35,.84);border:1px solid rgba(20,203,227,.5);color:#a9f9f4;font:700 .68rem/1.2 system-ui;letter-spacing:.1em;pointer-events:none}',
+        '.nexus-stage-label::before{content:"";width:6px;height:6px;background:#18d6ad;border-radius:50%}',
+        '.nexus-try-on-stage-active .nexus-stage-info{position:absolute;left:12px;right:112px;bottom:10px;z-index:40;pointer-events:none;padding:34px 4px 2px;color:#f3fbfd;background:linear-gradient(180deg,transparent,rgba(3,15,25,.8) 30%,rgba(3,15,25,.94));font-family:var(--font-sans,system-ui)}',
+        '.nexus-stage-count{margin:0 0 4px;font-size:.75rem;letter-spacing:.09em;color:#b5d5de}',
+        '.nexus-stage-look-name{margin:0 0 2px;font-weight:750;font-size:clamp(1rem,1.5vw,1.35rem);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+        '.nexus-stage-look-desc{margin:0 0 9px;font-size:.75rem;color:#c4d8df;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+        '.nexus-stage-actions{display:flex;align-items:stretch;gap:6px;pointer-events:auto}',
+        '.nexus-stage-action{flex:1;min-width:0;min-height:44px;padding:8px 6px;border-radius:10px;border:1px solid rgba(8,178,203,.54);background:rgba(2,35,48,.9);color:#e9f8fc;font:600 .76rem/1.1 system-ui;cursor:pointer;white-space:nowrap}',
+        '.nexus-stage-action:disabled{opacity:.42;cursor:not-allowed}',
+        '.nexus-stage-action:focus-visible{outline:2px solid #50e7f5;outline-offset:2px}',
+        '.nexus-stage-action[aria-pressed="true"]{border-color:#5cead2;background:#09525b}',
+        '.nexus-stage-action.is-primary{flex:1.35;border-color:#04ddeb;background:#12d3e8;color:#06202c;font-weight:800}',
+        '.nexus-stage-action.is-primary:hover{background:#60e6f3}',
+        '.nexus-look-rail-tools{align-items:stretch}',
+        '.nexus-look-rail-title{font-size:.73rem;color:#e6f4f7;letter-spacing:.035em;background:rgba(2,25,37,.9);border:1px solid rgba(8,160,190,.4);border-radius:9px;padding:8px 2px;text-transform:none}',
+        '.nexus-try-on-stage-active #nexus-try-on-view:not([hidden]){z-index:60}',
+        // LT3. The stage's own frame: the viewport's HUD corners and READY badge sat under the
+        // AI badge and showed through behind Save look. Hidden while the haul runs, back after.
+        '.nexus-try-on-stage-active .hud-corner,.nexus-try-on-stage-active .status-badge{display:none}',
+        // The advanced panel and the stage summary are never on screen together: open, the
+        // panel's own Keep and End sat underneath the summary and could not be read or reached.
+        '.nexus-try-on-advanced-open .nexus-stage-info{display:none}',
+        // Its style chips on one line that scrolls, never wrapping a long name onto four lines.
+        'html.nexus-try-on-stage-on #nexus-try-on-view .nexus-try-on-tabs{justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:2px}',
+        'html.nexus-try-on-stage-on #nexus-try-on-view .nexus-try-on-tabs::-webkit-scrollbar{display:none}',
+        'html.nexus-try-on-stage-on #nexus-try-on-view .nexus-try-on-tab{flex:none;white-space:nowrap}',
+        '@media(max-width:760px){.nexus-try-on-stage-active .nexus-stage-label{top:8px;left:10px;font-size:.59rem;padding:6px 9px}.nexus-try-on-stage-active .nexus-stage-info{left:8px;right:74px;bottom:8px;padding-top:24px}.nexus-stage-count,.nexus-stage-look-desc{font-size:.65rem}.nexus-stage-look-name{font-size:.89rem}.nexus-stage-actions{gap:4px;flex-wrap:wrap}.nexus-stage-action{min-height:44px;font-size:.67rem;padding:6px 4px;flex-basis:25%}.nexus-stage-action[data-command="zoom"]{display:none}.nexus-stage-action.is-primary{flex-basis:30%}.nexus-look-rail-title{font-size:.63rem;padding:7px 2px}}',
 
         '.avatar-preview-wrap.nexus-try-on-stage-active{position:relative}',
         '.nexus-try-on-look-rail{position:absolute;right:12px;top:12px;bottom:12px;',
@@ -85,7 +98,11 @@
             this.doc = options.doc || global.document;
             this.view = options.view;
             this.session = options.session;
+            // (line) -> void: where the stage's live commentary goes (TryOnLiveLayout.commentate).
+            this.onCommentary = options.onCommentary || null;
             this.expanded = false;
+            this._landed = undefined;
+            this._commented = '';
         }
 
         mount() {
@@ -107,6 +124,7 @@
             this.root.setAttribute('aria-label', 'Available outfits');
             preview.appendChild(this.root);
             preview.classList.add('nexus-try-on-stage-active');
+            if (doc.documentElement) doc.documentElement.classList.add('nexus-try-on-stage-on');
             this.badge = el(doc, 'div', 'nexus-stage-label', 'AI · LIVE TRY-ON');
             this.info = el(doc, 'section', 'nexus-stage-info');
             this.info.setAttribute('aria-label', 'Current look and try-on controls');
@@ -128,6 +146,7 @@
             this.legacy.setAttribute('aria-modal', this.expanded ? 'true' : 'false');
             this.view.collapsed = !this.expanded;
             this.view._keepOpen = this.expanded;
+            if (this.preview) this.preview.classList.toggle('nexus-try-on-advanced-open', this.expanded);
             this.view.render();
             if (this.expanded) {
                 var first = this.legacy.querySelector('button:not([disabled]), input:not([disabled])');
@@ -148,7 +167,9 @@
             var editor = el(doc, 'button', 'nexus-look-rail-edit', this.expanded ? 'Close ×' : '＋ More');
             editor.type = 'button';
             editor.setAttribute('aria-expanded', String(this.expanded));
-            editor.addEventListener('click', function () { self.toggleAdvanced(); });
+            editor.addEventListener('click', function () {
+                self.toggleAdvanced();
+            });
             tools.appendChild(editor);
 
             var list = el(doc, 'div', 'nexus-look-rail-list');
@@ -160,7 +181,10 @@
                 item.type = 'button';
                 item.disabled = Boolean(state.busy);
                 item.setAttribute('aria-label', 'Try ' + (look.name || 'Look ' + (index + 1)));
-                item.setAttribute('aria-pressed', String(Boolean(state.look && self.view._key(look) === self.view._key(state.look))));
+                item.setAttribute(
+                    'aria-pressed',
+                    String(Boolean(state.look && self.view._key(look) === self.view._key(state.look)))
+                );
                 item.setAttribute('data-look-key', self.view._key(look));
                 item.title = look.name || 'Look ' + (index + 1);
                 if (look.previewUrl) {
@@ -172,8 +196,10 @@
                 } else {
                     item.appendChild(el(doc, 'span', 'nexus-look-rail-no-image', '👗'));
                 }
-                item.appendChild(el(doc, 'span', 'nexus-look-rail-caption', 'Look ' + (index + 1)));
-                item.addEventListener('click', function () { self.view.wear(look); });
+                item.appendChild(el(doc, 'span', 'nexus-look-rail-caption', look.name || 'Look ' + (index + 1)));
+                item.addEventListener('click', function () {
+                    self.view.wear(look);
+                });
                 list.appendChild(item);
             });
             if (!looks.length) list.appendChild(el(doc, 'p', 'nexus-look-rail-empty', 'No outfits yet'));
@@ -183,6 +209,7 @@
             this.list = list;
             this.editButton = editor;
             this.renderCurrentLook(state);
+            this.commentate(state);
             if (focusedLookKey) {
                 var buttons = list.querySelectorAll('[data-look-key]');
                 for (var i = 0; i < buttons.length; i += 1) {
@@ -194,31 +221,104 @@
             }
         }
 
+        /**
+         * LT3. What she is wearing, said in the commentary as each look lands. Her reaction when
+         * there is one (the host's line from the model, else TryOnReactions' canned line); else
+         * the look's real name and recipe. The card said "Choose a look or ask me what to try
+         * next." through every look, and with no model configured nothing ever replaced it.
+         * Never before the look has landed: the line is only written for `state.landed`.
+         */
+        commentate(state) {
+            if (!this.onCommentary || !state) return;
+            var look = state.look;
+            var reaction = this.view && this.view.reaction && this.view.reaction.line;
+            var line = '';
+            if (state.landed !== this._landed) {
+                this._landed = state.landed;
+                if (!look || look.original) return;
+                var desc = look.prompt || (look.provenance && look.provenance.prompt) || '';
+                line =
+                    reaction ||
+                    'Now wearing ' +
+                        (look.name || 'this look') +
+                        (desc
+                            ? ': ' +
+                              String(desc)
+                                  .split(/\s*[+&]\s*/)
+                                  .filter(Boolean)
+                                  .join(', ') +
+                              '.'
+                            : '.');
+            } else if (reaction && look && !look.original) {
+                line = reaction; // her reaction arrived after the look (the model answers later)
+            }
+            if (!line || line === this._commented) return;
+            this._commented = line;
+            try {
+                this.onCommentary(line);
+            } catch (error) {
+                console.warn('[Try-On] the commentary could not be shown', error);
+            }
+        }
+
+        /**
+         * Zoom, pressed: a close view of the outfit (the camera ZOOM_SHARE of the way in, aimed a
+         * little higher, at her top half); pressed again: exactly the camera the person had.
+         * One step of 15 % read as a broken button. Only ever on the person's press: wearing a
+         * look never zooms, and a new look keeps whichever view they chose.
+         */
         zoom() {
-            // User-initiated zoom; do not change viewport dimensions or auto-frame.
             var viewer = (this.doc.defaultView || global).NEXUS_VIEWER;
             if (!viewer || !viewer.camera || !viewer.controls) return false;
-            var cam = viewer.camera, controls = viewer.controls;
+            var cam = viewer.camera,
+                controls = viewer.controls;
             if (!cam.position || !controls.target || !cam.position.clone || !controls.target.clone) return false;
+            if (this._zoomedFrom) {
+                cam.position.copy(this._zoomedFrom.position);
+                controls.target.copy(this._zoomedFrom.target);
+                this._zoomedFrom = null;
+                controls.update();
+                return true;
+            }
             var delta = cam.position.clone().sub(controls.target);
             var distance = delta.length();
-            var desired = Math.max(Number(controls.minDistance) || 0.5, distance * 0.85);
+            var desired = Math.max(Number(controls.minDistance) || 0.35, distance * ZOOM_SHARE);
             if (!(distance > desired)) return false;
-            cam.position.copy(controls.target.clone().add(delta.multiplyScalar(desired / distance)));
+            this._zoomedFrom = { position: cam.position.clone(), target: controls.target.clone() };
+            var target = controls.target.clone();
+            target.y += distance * ZOOM_LIFT;
+            controls.target.copy(target);
+            cam.position.copy(target.clone().add(delta.multiplyScalar(desired / distance)));
             controls.update();
             return true;
         }
 
         renderCurrentLook(state) {
             if (!this.info) return;
-            var doc = this.doc, self = this, look = state.look, pieces = [];
-            pieces.push(el(doc, 'p', 'nexus-stage-count',
-                look ? 'LOOK ' + (state.position + 1) + ' / ' + state.total : 'YOUR STYLE STUDIO'));
-            pieces.push(el(doc, 'h3', 'nexus-stage-look-name',
-                look ? look.name || 'Current look' : 'Choose your first look'));
+            var doc = this.doc,
+                self = this,
+                look = state.look,
+                pieces = [];
+            pieces.push(
+                el(
+                    doc,
+                    'p',
+                    'nexus-stage-count',
+                    look ? 'LOOK ' + (state.position + 1) + ' / ' + state.total : 'YOUR STYLE STUDIO'
+                )
+            );
+            pieces.push(
+                el(doc, 'h3', 'nexus-stage-look-name', look ? look.name || 'Current look' : 'Choose your first look')
+            );
             var desc = look && (look.prompt || (look.provenance && look.provenance.prompt));
-            pieces.push(el(doc, 'p', 'nexus-stage-look-desc',
-                desc ? String(desc).slice(0, 120) : 'Explore your wardrobe and try a new outfit.'));
+            pieces.push(
+                el(
+                    doc,
+                    'p',
+                    'nexus-stage-look-desc',
+                    desc ? String(desc).slice(0, 120) : 'Explore your wardrobe and try a new outfit.'
+                )
+            );
             var actions = el(doc, 'div', 'nexus-stage-actions');
             function action(label, command, fn, disabled, pressed, primary) {
                 var b = el(doc, 'button', 'nexus-stage-action' + (primary ? ' is-primary' : ''), label);
@@ -230,23 +330,60 @@
                 actions.appendChild(b);
             }
             if (self.view.turner) {
-                action(self.view.turned ? '↺ Front' : '⟳ Show back', 'turn',
-                    function () { self.view.turn(); }, !look || state.busy, Boolean(self.view.turned), false);
+                action(
+                    self.view.turned ? '↺ Front' : '⟳ Show back',
+                    'turn',
+                    function () {
+                        self.view.turn();
+                    },
+                    !look || state.busy,
+                    Boolean(self.view.turned),
+                    false
+                );
             }
             var viewer = (this.doc.defaultView || global).NEXUS_VIEWER;
             var canZoom = Boolean(viewer && viewer.camera && viewer.controls);
-            action('⌕ Zoom', 'zoom', function () { self.zoom(); }, !look || state.busy || !canZoom, undefined, false);
-            action(state.favorite ? '♥ Saved' : '♡ Save look', 'save',
-                function () { self.view.favorite(); }, !look || state.busy, Boolean(state.favorite), false);
-            action('Next look →', 'next', function () { self.view._step(1); },
-                !state.looks || state.looks.length < 2 || state.busy, undefined, true);
+            var zoomed = Boolean(this._zoomedFrom);
+            action(
+                zoomed ? '⤢ Full body' : '⌕ Zoom',
+                'zoom',
+                function () {
+                    self.zoom();
+                    self.renderCurrentLook(self.session.state());
+                },
+                !look || state.busy || !canZoom,
+                zoomed,
+                false
+            );
+            action(
+                state.favorite ? '♥ Saved' : '♡ Save look',
+                'save',
+                function () {
+                    self.view.favorite();
+                },
+                !look || state.busy,
+                Boolean(state.favorite),
+                false
+            );
+            action(
+                'Next look →',
+                'next',
+                function () {
+                    self.view._step(1);
+                },
+                !state.looks || state.looks.length < 2 || state.busy,
+                undefined,
+                true
+            );
             pieces.push(actions);
             this.info.replaceChildren.apply(this.info, pieces);
         }
 
         unmount() {
             if (this.view && this.view.stageExperience === this) this.view.stageExperience = null;
-            if (this.preview) this.preview.classList.remove('nexus-try-on-stage-active');
+            if (this.preview) this.preview.classList.remove('nexus-try-on-stage-active', 'nexus-try-on-advanced-open');
+            if (this.doc && this.doc.documentElement)
+                this.doc.documentElement.classList.remove('nexus-try-on-stage-on');
             if (this.root) this.root.remove();
             if (this.badge) this.badge.remove();
             if (this.info) this.info.remove();
@@ -254,6 +391,7 @@
                 this.legacy.hidden = false;
                 this.legacy.setAttribute('aria-modal', 'true');
             }
+            this._zoomedFrom = null;
             this.root = null;
             this.legacy = null;
             this.list = null;

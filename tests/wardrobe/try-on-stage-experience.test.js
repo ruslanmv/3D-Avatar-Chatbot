@@ -13,17 +13,37 @@ describe('reference-v2 Try-On stage: functional actions, untouched viewport', ()
         canvas = document.createElement('canvas');
         viewport.appendChild(canvas);
         dialog = document.getElementById('nexus-try-on-view');
-        look = { key: 'jeans', name: 'Crop top & jeans', prompt: 'Black crop top + blue jeans', previewUrl: '/jeans.png' };
-        session = { state: jest.fn(() => ({
-            look, looks: [look, { key: 'dress', name: 'Evening dress' }],
-            favorite: false, busy: false, landed: 1, position: 0, total: 2,
-        })) };
-        view = {
-            root: dialog, collapsed: true, _keepOpen: false, turned: false, turner: {toggle: jest.fn()},
-            _key: l => l.key,
-            wear: jest.fn(), favorite: jest.fn(), turn: jest.fn(), _step: jest.fn(), render: jest.fn(),
+        look = {
+            key: 'jeans',
+            name: 'Crop top & jeans',
+            prompt: 'Black crop top + blue jeans',
+            previewUrl: '/jeans.png',
         };
-        stage = new TryOnStageExperience({doc: document, view, session});
+        session = {
+            state: jest.fn(() => ({
+                look,
+                looks: [look, { key: 'dress', name: 'Evening dress' }],
+                favorite: false,
+                busy: false,
+                landed: 1,
+                position: 0,
+                total: 2,
+            })),
+        };
+        view = {
+            root: dialog,
+            collapsed: true,
+            _keepOpen: false,
+            turned: false,
+            turner: { toggle: jest.fn() },
+            _key: (l) => l.key,
+            wear: jest.fn(),
+            favorite: jest.fn(),
+            turn: jest.fn(),
+            _step: jest.fn(),
+            render: jest.fn(),
+        };
+        stage = new TryOnStageExperience({ doc: document, view, session });
     });
     afterEach(() => {
         stage.unmount();
@@ -83,11 +103,11 @@ describe('reference-v2 Try-On stage: functional actions, untouched viewport', ()
     });
 
     it('never automatically resizes or reframes the avatar when looks change', () => {
-        const viewer = {frameObject: jest.fn(), resetCamera: jest.fn(), resize: jest.fn()};
+        const viewer = { frameObject: jest.fn(), resetCamera: jest.fn(), resize: jest.fn() };
         window.NEXUS_VIEWER = viewer;
         stage.mount();
         stage.render(session.state());
-        stage.render({...session.state(), landed: 2});
+        stage.render({ ...session.state(), landed: 2 });
         expect(viewer.frameObject).not.toHaveBeenCalled();
         expect(viewer.resize).not.toHaveBeenCalled();
         expect(viewer.resetCamera).not.toHaveBeenCalled();
@@ -106,7 +126,7 @@ describe('reference-v2 Try-On stage: functional actions, untouched viewport', ()
     });
 
     it('handles an empty collection and blocks unavailable actions', () => {
-        session.state.mockReturnValue({look: null, looks: [], total: 0, position: 0, busy: false});
+        session.state.mockReturnValue({ look: null, looks: [], total: 0, position: 0, busy: false });
         stage.mount();
         expect(document.querySelector('.nexus-stage-look-name').textContent).toContain('Choose your first');
         expect(document.querySelector('[data-command="save"]').disabled).toBe(true);

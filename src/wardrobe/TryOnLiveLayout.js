@@ -45,6 +45,10 @@
         'var(--font-sans,system-ui);color:#e6f8fb;overflow-wrap:anywhere;margin:0}',
         '.nexus-live-tryon .nexus-live-suggestions{display:flex;flex-wrap:wrap;gap:.45rem;padding:0 1rem .8rem;margin-top:auto}',
         '.nexus-live-tryon .nexus-live-suggestions .nexus-live-button{font-weight:500;font-size:.76rem}',
+        // LT3. Live: the quick prompts sit right under the commentary they follow up, not
+        // floating half-way down an empty column (the summary's auto margin took the space).
+        '.nexus-live-tryon.nexus-live-watch .nexus-live-summary{margin-bottom:.75rem}',
+        '.nexus-live-tryon.nexus-live-watch .nexus-live-suggestions{margin-top:0}',
         '.nexus-live-tryon.nexus-live-watch .chat-main{display:none}',
         '.nexus-live-tryon.nexus-live-watch #typing-indicator{display:none}',
         '.nexus-live-tryon.nexus-live-conversation .nexus-live-older{display:none!important}',
@@ -154,7 +158,9 @@
             var historyLink = element(doc, 'button', 'nexus-live-button nexus-live-history-link', 'Full history ↗');
             historyLink.type = 'button';
             historyLink.setAttribute('aria-label', 'Open full conversation history');
-            historyLink.addEventListener('click', function () { self.setMode(self.mode === 'history' ? 'conversation' : 'history'); });
+            historyLink.addEventListener('click', function () {
+                self.setMode(self.mode === 'history' ? 'conversation' : 'history');
+            });
             this.controls.appendChild(historyLink);
             this.historyLink = historyLink;
             this.summary = element(doc, 'section', 'nexus-live-summary');
@@ -196,11 +202,18 @@
             if (rows.length < this.baseline) this.baseline = 0; // after CLEAR
             var live = rows.slice(this.baseline);
             var latest = latestAssistantText(live);
-            if (latest && this.answer && this.answer.textContent !== latest) this.answer.textContent = latest;
+            // A stage line (commentate) stays until the chat has a reply it has not shown yet.
+            if (latest && this.answer && this.answer.textContent !== latest && latest !== this._latestSeen) {
+                this.answer.textContent = latest;
+                this._latestSeen = latest;
+            }
             var latestQuestion = '';
             for (var i = live.length - 1; i >= 0; i -= 1) {
                 var user = live[i].querySelector('.chat-message.user .message-text');
-                if (user && user.textContent.trim()) { latestQuestion = user.textContent.trim(); break; }
+                if (user && user.textContent.trim()) {
+                    latestQuestion = user.textContent.trim();
+                    break;
+                }
             }
             if (this.lastQuestion) {
                 this.lastQuestion.hidden = !latestQuestion;
@@ -212,9 +225,30 @@
             });
         }
 
+        /**
+         * LT3. A line from the stage (a look landing, her reaction to it). Shown in the Live
+         * card until a newer chat reply replaces it; never written into the chat, which keeps
+         * only what the conversation itself said.
+         */
+        commentate(line) {
+            var text = String(line == null ? '' : line).trim();
+            if (!text || !this.answer) return;
+            this.answer.textContent = text;
+            if (this.lastQuestion) {
+                this.lastQuestion.hidden = true;
+                this.lastQuestion.textContent = '';
+            }
+            this._latestSeen = this.latestReply();
+        }
+
+        latestReply() {
+            return latestAssistantText(this.rows().slice(this.baseline));
+        }
+
         ask(text) {
             if (text === 'Show me the back') {
-                var turn = this.doc.querySelector('.nexus-stage-action[data-command="turn"]') ||
+                var turn =
+                    this.doc.querySelector('.nexus-stage-action[data-command="turn"]') ||
                     this.doc.querySelector('#nexus-try-on-view [data-key="turn"]');
                 if (turn && !turn.disabled) {
                     turn.click();
@@ -226,9 +260,15 @@
             var lookName = lookTitle && lookTitle.textContent ? lookTitle.textContent.trim() : '';
             if (lookName && lookName !== 'Choose your first look') {
                 if (text === 'How would you style it?') {
-                    text = 'For my current outfit (' + lookName + '), how would you style it? Give two specific, concise fashion suggestions.';
+                    text =
+                        'For my current outfit (' +
+                        lookName +
+                        '), how would you style it? Give two specific, concise fashion suggestions.';
                 } else if (text === 'What should we try next?') {
-                    text = 'We are trying on ' + lookName + '. Suggest one different style direction for our next outfit and explain briefly.';
+                    text =
+                        'We are trying on ' +
+                        lookName +
+                        '. Suggest one different style direction for our next outfit and explain briefly.';
                 }
             }
             var input = this.doc.getElementById('speech-text');
@@ -245,7 +285,8 @@
             var self = this;
             MODES.forEach(function (name) {
                 self.layout.classList.toggle('nexus-live-' + name, name === mode);
-                if (self.modeButtons[name]) self.modeButtons[name].setAttribute('aria-pressed', name === mode ? 'true' : 'false');
+                if (self.modeButtons[name])
+                    self.modeButtons[name].setAttribute('aria-pressed', name === mode ? 'true' : 'false');
             });
             if (this.historyLink) this.historyLink.textContent = mode === 'history' ? '‹ Recent' : 'Full history ↗';
             this.update();
