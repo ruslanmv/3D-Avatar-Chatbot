@@ -238,6 +238,9 @@ const TryOnHaulActivity = (() => {
         const LiveLayout = deps.LiveLayout || (g.NEXUS_TRYON_LIVE_LAYOUT && g.NEXUS_TRYON_LIVE_LAYOUT.TryOnLiveLayout);
         const StageExperience =
             deps.StageExperience || (g.NEXUS_TRY_ON_STAGE && g.NEXUS_TRY_ON_STAGE.TryOnStageExperience);
+        const CatalogWorkspace =
+            deps.CatalogWorkspace ||
+            (g.NEXUS_FORGE_GARMENT_CATALOG && g.NEXUS_FORGE_GARMENT_CATALOG.ForgeGarmentCatalogWorkspace);
         const spicy = () => deps.spicy || g.NEXUS_SPICY || null;
         const WARM_EVERY_MS = 60000;
         const SPIN_HOLD_MS = 2600;
@@ -246,6 +249,7 @@ const TryOnHaulActivity = (() => {
         let view = null;
         let liveLayout = null;
         let stageExperience = null;
+        let catalogWorkspace = null;
         let generator = null;
         let ending = null;
         let unwatchPrivate = null;
@@ -441,6 +445,8 @@ const TryOnHaulActivity = (() => {
                     unwatchPrivate = null;
                     if (stageExperience) stageExperience.unmount();
                     stageExperience = null;
+                    if (catalogWorkspace) catalogWorkspace.destroy();
+                    catalogWorkspace = null;
                     if (liveLayout) liveLayout.unmount();
                     liveLayout = null;
                     if (view) view.unmount();
@@ -522,11 +528,18 @@ const TryOnHaulActivity = (() => {
                     liveLayout = new LiveLayout({ doc });
                     liveLayout.mount();
                 }
+                if (CatalogWorkspace) {
+                    // Use the same existing Forge client as the try-on generator.
+                    const forge = (generator && generator.library && generator.library.client) ||
+                        (svc.controller && svc.controller.forge);
+                    catalogWorkspace = new CatalogWorkspace({ doc, view, client: forge });
+                }
                 if (StageExperience) {
                     stageExperience = new StageExperience({
                         doc,
                         view,
                         session,
+                        workspace: catalogWorkspace,
                         onCommentary: (line) => liveLayout && liveLayout.commentate && liveLayout.commentate(line),
                     });
                     stageExperience.mount();
