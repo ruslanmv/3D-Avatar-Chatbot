@@ -151,19 +151,26 @@ async function tour(pw, opts, viewport) {
             e.scrollIntoView({ block: 'center' });
             e.click();
         });
-        await page.waitForSelector('.nexus-look-rail-item', { timeout: 60000 });
+        await page.waitForSelector('.nexus-look-rail-title', { timeout: 60000 });
+        await page.waitForSelector('.nexus-look-rail-item', { state: 'attached', timeout: 60000 });
+        // On a phone the rail starts folded to its Looks button: open it, as a person would.
+        if (await page.$('.nexus-try-on-look-rail.is-folded')) {
+            await page.waitForTimeout(800);
+            await shot('02a-folded');
+            await page.click('.nexus-look-rail-title');
+        }
         await page.waitForTimeout(1500);
         await shot('02-try-on');
         const before = await camera();
 
-        const looks = await page.$$('.nexus-look-rail-item');
-        for (let i = 0; i < Math.min(looks.length, 3); i += 1) {
+        const count = (await page.$$('.nexus-look-rail-item')).length;
+        for (let i = 0; i < Math.min(count, 3); i += 1) {
             const landed = page.waitForFunction(
                 (n) => (document.querySelector('.nexus-stage-count')?.textContent || '').includes(`${n} /`),
                 i + 1,
                 { timeout: 90000 }
             );
-            await (await page.$$('.nexus-look-rail-item'))[i].click();
+            await page.click(`.nexus-look-rail-item >> nth=${i}`);
             await landed;
             await page.waitForTimeout(1500);
             await shot(`03-look-${i + 1}`);
@@ -178,20 +185,23 @@ async function tour(pw, opts, viewport) {
             }
         }
 
-        const turn = await page.$('.nexus-stage-action[data-command="turn"]');
-        if (turn) {
-            await turn.click();
+        // Click by selector, never through a held element: the stage redraws its buttons on
+        // every state change, and a held one is detached by the time it is clicked.
+        const turn = '.nexus-stage-action[data-command="turn"]';
+        if (await page.$(turn)) {
+            await page.click(turn);
             await page.waitForTimeout(1200);
             await shot('04-back');
-            await page.click('.nexus-stage-action[data-command="turn"]');
+            await page.click(turn);
             await page.waitForTimeout(900);
         }
-        const zoom = await page.$('.nexus-stage-action[data-command="zoom"]');
-        if (zoom && (await zoom.isVisible())) {
-            await zoom.click();
+        const zoom = '.nexus-stage-action[data-command="zoom"]';
+        if (await page.isVisible(zoom).catch(() => false)) {
+            await page.click(zoom);
             await page.waitForTimeout(600);
             await shot('05-zoom');
-            await page.click('.nexus-stage-action[data-command="zoom"]');
+            await page.click(zoom);
+            await page.waitForTimeout(300);
             if ((await camera()) !== before) failures.push('Zoom, pressed twice, did not return to the same camera');
         }
 
@@ -203,9 +213,15 @@ async function tour(pw, opts, viewport) {
         await page.click('.nexus-look-rail-edit');
         await page.waitForTimeout(500);
 
-        const conversation = await page.$('.nexus-live-button[aria-label="Conversation mode"]');
-        if (conversation) {
-            await conversation.click();
+        const conversation = '.nexus-live-button[aria-label="Conversation mode"]';
+        if (mobile && (await page.isVisible('.nexus-live-summary').catch(() => false))) {
+            await page.click('.nexus-live-summary');
+            await page.waitForTimeout(800);
+            await shot('07-conversation');
+            if (await visible('.nexus-stage-action[data-command="next"]'))
+                failures.push('on a phone, the stage controls stay over her in Conversation');
+        } else if (await page.isVisible(conversation).catch(() => false)) {
+            await page.click(conversation);
             await page.waitForTimeout(800);
             await shot('07-conversation');
         }

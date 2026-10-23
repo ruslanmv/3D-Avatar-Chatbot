@@ -60,10 +60,16 @@
         '.nexus-live-tryon .message-text{line-height:1.5}',
         '.nexus-live-tryon .chat-card-header #clear-history{display:inline-flex}',
         '@media(max-width:760px){',
-        'html.is-mobile .nexus-live-tryon.nexus-live-watch .chat-panel{height:min(25dvh,210px)!important;',
-        'min-height:170px;transition:height .2s ease}',
+        // LT4. Live on a phone: the sheet is the NEXUS caption and the composer, nothing else,
+        // so she keeps the screen; tap the caption for the conversation.
+        'html.is-mobile .nexus-live-tryon.nexus-live-watch .chat-panel{height:auto!important;',
+        'min-height:0;transition:height .2s ease}',
+        'html.is-mobile .nexus-live-tryon.nexus-live-watch .nexus-live-controls{display:none}',
+        'html.is-mobile .nexus-live-tryon .nexus-live-summary{cursor:pointer}',
+        'html.is-mobile .nexus-live-tryon .nexus-live-kicker-more{display:none}',
+        'html.is-mobile .nexus-live-tryon #chat-overlay-toggle,html.is-mobile .nexus-live-tryon #chat-overlay-handle{display:none!important}',
         'html.is-mobile .nexus-live-tryon.nexus-live-conversation .chat-panel,',
-        'html.is-mobile .nexus-live-tryon.nexus-live-history .chat-panel{height:min(60dvh,530px)!important;',
+        'html.is-mobile .nexus-live-tryon.nexus-live-history .chat-panel{height:min(52dvh,460px)!important;',
         'min-height:260px;transition:height .2s ease}',
         'html.is-mobile .nexus-live-tryon .chat-panel .chat-card{',
         'background:rgba(4,17,29,.96)!important;border:1px solid rgba(34,211,238,.24)!important;',
@@ -165,7 +171,14 @@
             this.historyLink = historyLink;
             this.summary = element(doc, 'section', 'nexus-live-summary');
             this.summary.setAttribute('aria-label', 'Latest NEXUS commentary');
-            this.summary.appendChild(element(doc, 'p', 'nexus-live-kicker', '● NEXUS · LIVE COMMENTARY'));
+            // On a phone the caption is the way into the conversation (the mode buttons are
+            // folded away in Live to keep the sheet to two lines and the composer).
+            this.summary.addEventListener('click', function () {
+                if (self.phone() && self.mode === 'watch') self.setMode('conversation');
+            });
+            var kicker = element(doc, 'p', 'nexus-live-kicker', '● NEXUS');
+            kicker.appendChild(element(doc, 'span', 'nexus-live-kicker-more', ' · LIVE COMMENTARY'));
+            this.summary.appendChild(kicker);
             this.lastQuestion = element(doc, 'p', 'nexus-live-last-question');
             this.lastQuestion.hidden = true;
             this.summary.appendChild(this.lastQuestion);
@@ -189,8 +202,48 @@
                 self.update();
             });
             this.observer.observe(this.history, { childList: true, subtree: true, characterData: true });
+            this.input = doc.getElementById('speech-text');
+            if (this.input) {
+                this.placeholderOriginal = this.input.getAttribute('placeholder');
+                this.input.setAttribute('placeholder', 'Ask NEXUS…');
+            }
+            this.watchSheet();
             this.setMode('watch');
             return this.layout;
+        }
+
+        phone() {
+            var root = this.doc && this.doc.documentElement;
+            return Boolean(root && root.classList.contains('is-mobile'));
+        }
+
+        /**
+         * LT4. How much of the bottom of the screen the conversation sheet owns, published as
+         * --nexus-try-on-sheet on the root, so the stage's controls sit on its top edge instead
+         * of underneath it. Measured, not written down, for the same reasons as composerInset:
+         * the sheet changes height with the mode, the keyboard and the browser's own bars.
+         */
+        watchSheet() {
+            var doc = this.doc;
+            var win = doc.defaultView || global;
+            var panel = this.card && this.card.closest ? this.card.closest('.chat-panel') : null;
+            var root = doc.documentElement;
+            if (!panel || !root || !win) return;
+            var publish = function () {
+                var height = win.visualViewport ? win.visualViewport.height : win.innerHeight;
+                var top = panel.getBoundingClientRect().top;
+                var owned = Math.max(0, Math.round(height - top));
+                if (owned > 0 && owned < height) root.style.setProperty('--nexus-try-on-sheet', owned + 'px');
+                else root.style.removeProperty('--nexus-try-on-sheet');
+            };
+            this._publishSheet = publish;
+            if (win.ResizeObserver) {
+                this._sheetObserver = new win.ResizeObserver(publish);
+                this._sheetObserver.observe(panel);
+            }
+            win.addEventListener('resize', publish);
+            if (win.visualViewport) win.visualViewport.addEventListener('resize', publish);
+            publish();
         }
 
         rows() {
@@ -291,6 +344,7 @@
             if (this.historyLink) this.historyLink.textContent = mode === 'history' ? '‹ Recent' : 'Full history ↗';
             this.update();
             if (mode !== 'watch' && this.history) this.history.scrollTop = this.history.scrollHeight;
+            if (this._publishSheet) this._publishSheet();
         }
 
         unmount() {
@@ -308,6 +362,21 @@
             });
             if (this.heading && this.headingOriginal !== null) this.heading.textContent = this.headingOriginal;
             if (this.subtitle) this.subtitle.remove();
+            if (this.input && this.placeholderOriginal !== undefined) {
+                if (this.placeholderOriginal === null) this.input.removeAttribute('placeholder');
+                else this.input.setAttribute('placeholder', this.placeholderOriginal);
+            }
+            this.input = null;
+            var win = this.doc && (this.doc.defaultView || global);
+            if (this._sheetObserver) this._sheetObserver.disconnect();
+            this._sheetObserver = null;
+            if (this._publishSheet && win) {
+                win.removeEventListener('resize', this._publishSheet);
+                if (win.visualViewport) win.visualViewport.removeEventListener('resize', this._publishSheet);
+            }
+            this._publishSheet = null;
+            if (this.doc && this.doc.documentElement)
+                this.doc.documentElement.style.removeProperty('--nexus-try-on-sheet');
             [this.controls, this.summary, this.suggestions].forEach(function (node) {
                 if (node && node.parentNode) node.parentNode.removeChild(node);
             });

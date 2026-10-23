@@ -12,6 +12,8 @@
     // Zoom: how far in (a share of the distance) and how much higher it aims (per metre away).
     var ZOOM_SHARE = 0.55;
     var ZOOM_LIFT = 0.1;
+    // Under this height the stage summary is compact (no recipe line, no tags).
+    var SHORT_STAGE_PX = 480;
     var CSS = [
         '.nexus-try-on-stage-active .nexus-stage-label{position:absolute;z-index:40;top:14px;left:16px;display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:999px;background:rgba(2,23,35,.84);border:1px solid rgba(20,203,227,.5);color:#a9f9f4;font:700 .68rem/1.2 system-ui;letter-spacing:.1em;pointer-events:none}',
         '.nexus-stage-label::before{content:"";width:6px;height:6px;background:#18d6ad;border-radius:50%}',
@@ -39,7 +41,46 @@
         'html.nexus-try-on-stage-on #nexus-try-on-view .nexus-try-on-tabs{justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:2px}',
         'html.nexus-try-on-stage-on #nexus-try-on-view .nexus-try-on-tabs::-webkit-scrollbar{display:none}',
         'html.nexus-try-on-stage-on #nexus-try-on-view .nexus-try-on-tab{flex:none;white-space:nowrap}',
-        '@media(max-width:760px){.nexus-try-on-stage-active .nexus-stage-label{top:8px;left:10px;font-size:.59rem;padding:6px 9px}.nexus-try-on-stage-active .nexus-stage-info{left:8px;right:74px;bottom:8px;padding-top:24px}.nexus-stage-count,.nexus-stage-look-desc{font-size:.65rem}.nexus-stage-look-name{font-size:.89rem}.nexus-stage-actions{gap:4px;flex-wrap:wrap}.nexus-stage-action{min-height:44px;font-size:.67rem;padding:6px 4px;flex-basis:25%}.nexus-stage-action[data-command="zoom"]{display:none}.nexus-stage-action.is-primary{flex-basis:30%}.nexus-look-rail-title{font-size:.63rem;padding:7px 2px}}',
+        '@media(max-width:760px){.nexus-try-on-stage-active .nexus-stage-label{top:8px;left:10px;font-size:.59rem;padding:6px 9px}.nexus-try-on-stage-active .nexus-stage-info{left:8px;right:74px;bottom:8px;padding-top:24px}.nexus-stage-count,.nexus-stage-look-desc{font-size:.65rem}.nexus-stage-look-name{font-size:.89rem}.nexus-stage-actions{gap:4px;flex-wrap:wrap}.nexus-stage-action{min-height:44px;font-size:.67rem;padding:6px 4px;flex-basis:25%}.nexus-stage-action.is-primary{flex-basis:30%}.nexus-look-rail-title{font-size:.63rem;padding:7px 2px}}',
+        // Tag chips under the look's name, from the look's own manifest tags.
+        '.nexus-stage-tags{display:flex;flex-wrap:wrap;gap:5px;margin:2px 0 8px}',
+        '.nexus-stage-tag{font-size:.66rem;line-height:1.2;padding:3px 8px;border-radius:999px;border:1px solid rgba(8,178,203,.45);background:rgba(2,35,48,.75);color:#cfeef5}',
+        '.nexus-stage-action .nexus-stage-icon{margin-right:5px}',
+        '.nexus-stage-action.is-primary{display:inline-flex;flex-direction:row-reverse;align-items:center;justify-content:center;gap:6px}',
+        '.nexus-stage-action.is-primary .nexus-stage-icon{margin:0}',
+        '.nexus-stage-action .nexus-stage-short{display:none}',
+        // LT4. Phones: one thumb bar of four, icon over label, Next widest; the summary sits on
+        // the conversation sheet's top edge (TryOnLiveLayout publishes the sheet's height as
+        // --nexus-try-on-sheet), never under it: the sheet is a later stacking context and hid
+        // Turn, Save and Next completely. In Conversation the stage gives way to her.
+        'html.is-mobile .nexus-try-on-stage-active .nexus-stage-info{left:10px;right:10px;bottom:calc(var(--nexus-try-on-sheet,160px) + 6px);padding:26px 2px 2px;background:linear-gradient(180deg,transparent,rgba(3,15,25,.7) 30%,rgba(3,15,25,.9))}',
+        'html.is-mobile .nexus-stage-look-desc{display:none}',
+        'html.is-mobile .nexus-stage-look-name{font-size:1.05rem}',
+        'html.is-mobile .nexus-stage-actions{flex-wrap:nowrap;gap:6px}',
+        'html.is-mobile .nexus-stage-action{flex:1 1 0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:54px;padding:6px 2px;font-size:.68rem}',
+        'html.is-mobile .nexus-stage-action .nexus-stage-icon{margin:0;font-size:1.1rem;line-height:1}',
+        'html.is-mobile .nexus-stage-action .nexus-stage-long{display:none}',
+        'html.is-mobile .nexus-stage-action .nexus-stage-short{display:inline}',
+        'html.is-mobile .nexus-stage-action.is-primary{flex:1.7 1 0;flex-direction:row-reverse;gap:6px;font-size:.84rem}',
+        'html.is-mobile .nexus-try-on-look-rail{width:64px;max-width:none;right:8px;top:8px;bottom:calc(var(--nexus-try-on-sheet,160px) + 160px)}',
+        'html.is-mobile .nexus-live-tryon:not(.nexus-live-watch) .nexus-stage-info,html.is-mobile .nexus-live-tryon:not(.nexus-live-watch) .nexus-try-on-look-rail{display:none}',
+        // The rail folds to its Looks button (by default on phones); open, it shows the looks
+        // and More.
+        '.nexus-try-on-look-rail.is-folded .nexus-look-rail-list,.nexus-try-on-look-rail.is-folded .nexus-look-rail-edit{display:none}',
+        '.nexus-look-rail-title[aria-expanded]{cursor:pointer;min-height:40px}',
+        // More on a phone: the panel ends at the sheet's top edge (not the composer's, which hid
+        // Keep this look on a 360×640 screen) and stops short of the rail's Close button; the
+        // thumbnails fold while it is open. The floating fullscreen button (also in the menu
+        // drawer) sat under the Looks button and is hidden while the haul runs.
+        'html.is-mobile.nexus-try-on-stage-on #nexus-try-on-view{bottom:var(--nexus-try-on-sheet,calc(88px + env(safe-area-inset-bottom,0px)));max-height:calc(100dvh - var(--nexus-try-on-sheet,88px) - 176px);overflow-y:auto}',
+        // While More is open its own strip shows the looks: the rail keeps only Looks and Close
+        // (two copies of every thumbnail, and at 1366 px the panel slid under the rail's).
+        '.nexus-try-on-advanced-open .nexus-look-rail-list{display:none}',
+        // A short stage (a tablet's stacked layout gives her ~300 px): the summary keeps the name
+        // and the buttons and drops the recipe and tags, so it does not cover her.
+        '.nexus-try-on-stage-short .nexus-stage-look-desc,.nexus-try-on-stage-short .nexus-stage-tags{display:none}',
+        '.nexus-try-on-stage-short .nexus-stage-info{padding-top:10px}',
+        'html.is-mobile.nexus-try-on-stage-on #fullscreen-btn{display:none}',
 
         '.avatar-preview-wrap.nexus-try-on-stage-active{position:relative}',
         '.nexus-try-on-look-rail{position:absolute;right:12px;top:12px;bottom:12px;',
@@ -85,6 +126,20 @@
         '}',
     ].join('');
 
+    /** "casual", "denim", "day" → ["Casual", "Denim"]: the look's own manifest tags, two at most. */
+    function lookTags(look) {
+        var tags = look && Array.isArray(look.tags) ? look.tags : [];
+        return tags
+            .filter(function (tag) {
+                return typeof tag === 'string' && tag.trim();
+            })
+            .slice(0, 2)
+            .map(function (tag) {
+                tag = tag.trim();
+                return tag.charAt(0).toUpperCase() + tag.slice(1);
+            });
+    }
+
     function el(doc, tag, klass, text) {
         var item = doc.createElement(tag);
         if (klass) item.className = klass;
@@ -101,8 +156,35 @@
             // (line) -> void: where the stage's live commentary goes (TryOnLiveLayout.commentate).
             this.onCommentary = options.onCommentary || null;
             this.expanded = false;
+            // The rail starts folded to its Looks button on a phone, open elsewhere.
+            this.railOpen = !this._phone();
             this._landed = undefined;
             this._commented = '';
+        }
+
+        _phone() {
+            var root = this.doc && this.doc.documentElement;
+            return Boolean(root && root.classList.contains('is-mobile'));
+        }
+
+        /** Marks the stage short (under SHORT_STAGE_PX tall) for the compact summary. */
+        _watchHeight(preview) {
+            var win = this.doc.defaultView || global;
+            var mark = function () {
+                var height = preview.getBoundingClientRect().height;
+                preview.classList.toggle('nexus-try-on-stage-short', height > 0 && height < SHORT_STAGE_PX);
+            };
+            if (win && win.ResizeObserver) {
+                this._heightObserver = new win.ResizeObserver(mark);
+                this._heightObserver.observe(preview);
+            }
+            mark();
+        }
+
+        toggleRail() {
+            this.railOpen = !this.railOpen;
+            this.render(this.session.state());
+            if (this.railTitle) this.railTitle.focus();
         }
 
         mount() {
@@ -131,6 +213,7 @@
             preview.appendChild(this.badge);
             preview.appendChild(this.info);
             this.view.stageExperience = this;
+            this._watchHeight(preview);
             this.render(this.session.state());
             // TryOnView initially focuses a control inside its dialog. Move focus
             // to a visible control when that dialog is initially hidden.
@@ -163,7 +246,19 @@
             var activeFocus = doc.activeElement;
             var focusedLookKey = activeFocus && activeFocus.getAttribute('data-look-key');
             var tools = el(doc, 'div', 'nexus-look-rail-tools');
-            tools.appendChild(el(doc, 'span', 'nexus-look-rail-title', 'Looks (' + (state.total || 0) + ')'));
+            var title = el(doc, 'button', 'nexus-look-rail-title', 'Looks (' + (state.total || 0) + ')');
+            title.type = 'button';
+            title.setAttribute('aria-expanded', String(this.railOpen));
+            title.setAttribute(
+                'aria-label',
+                (this.railOpen ? 'Hide' : 'Show') + ' the looks (' + (state.total || 0) + ')'
+            );
+            title.addEventListener('click', function () {
+                self.toggleRail();
+            });
+            tools.appendChild(title);
+            this.railTitle = title;
+            this.root.classList.toggle('is-folded', !this.railOpen);
             var editor = el(doc, 'button', 'nexus-look-rail-edit', this.expanded ? 'Close ×' : '＋ More');
             editor.type = 'button';
             editor.setAttribute('aria-expanded', String(this.expanded));
@@ -304,7 +399,7 @@
                     doc,
                     'p',
                     'nexus-stage-count',
-                    look ? 'LOOK ' + (state.position + 1) + ' / ' + state.total : 'YOUR STYLE STUDIO'
+                    look ? 'CURRENT LOOK · LOOK ' + (state.position + 1) + ' / ' + state.total : 'YOUR STYLE STUDIO'
                 )
             );
             pieces.push(
@@ -319,25 +414,44 @@
                     desc ? String(desc).slice(0, 120) : 'Explore your wardrobe and try a new outfit.'
                 )
             );
+            var tags = lookTags(look);
+            if (tags.length) {
+                var chips = el(doc, 'div', 'nexus-stage-tags');
+                tags.forEach(function (tag) {
+                    chips.appendChild(el(doc, 'span', 'nexus-stage-tag', tag));
+                });
+                pieces.push(chips);
+            }
             var actions = el(doc, 'div', 'nexus-stage-actions');
-            function action(label, command, fn, disabled, pressed, primary) {
-                var b = el(doc, 'button', 'nexus-stage-action' + (primary ? ' is-primary' : ''), label);
+            // Each action carries a long label (desktop) and a short one (a phone's thumb bar);
+            // the CSS shows one, and screen readers hear the long one.
+            function action(icon, long, short, command, fn, disabled, pressed, primary) {
+                var b = el(doc, 'button', 'nexus-stage-action' + (primary ? ' is-primary' : ''));
                 b.type = 'button';
                 b.disabled = Boolean(disabled);
                 b.setAttribute('data-command', command);
+                b.setAttribute('aria-label', long);
                 if (pressed !== undefined) b.setAttribute('aria-pressed', String(pressed));
+                var glyph = el(doc, 'span', 'nexus-stage-icon', icon);
+                glyph.setAttribute('aria-hidden', 'true');
+                b.appendChild(glyph);
+                b.appendChild(el(doc, 'span', 'nexus-stage-long', long));
+                b.appendChild(el(doc, 'span', 'nexus-stage-short', short));
                 b.addEventListener('click', fn);
                 actions.appendChild(b);
             }
             if (self.view.turner) {
+                var turned = Boolean(self.view.turned);
                 action(
-                    self.view.turned ? '↺ Front' : '⟳ Show back',
+                    turned ? '↺' : '⟳',
+                    turned ? 'Front' : 'Show back',
+                    turned ? 'Front' : 'Turn',
                     'turn',
                     function () {
                         self.view.turn();
                     },
                     !look || state.busy,
-                    Boolean(self.view.turned),
+                    turned,
                     false
                 );
             }
@@ -345,7 +459,9 @@
             var canZoom = Boolean(viewer && viewer.camera && viewer.controls);
             var zoomed = Boolean(this._zoomedFrom);
             action(
-                zoomed ? '⤢ Full body' : '⌕ Zoom',
+                zoomed ? '⤢' : '⌕',
+                zoomed ? 'Full body' : 'Zoom',
+                zoomed ? 'Full' : 'Zoom',
                 'zoom',
                 function () {
                     self.zoom();
@@ -356,7 +472,9 @@
                 false
             );
             action(
-                state.favorite ? '♥ Saved' : '♡ Save look',
+                state.favorite ? '♥' : '♡',
+                state.favorite ? 'Saved' : 'Save look',
+                state.favorite ? 'Saved' : 'Save',
                 'save',
                 function () {
                     self.view.favorite();
@@ -366,7 +484,9 @@
                 false
             );
             action(
-                'Next look →',
+                '→',
+                'Next look',
+                'Next',
                 'next',
                 function () {
                     self.view._step(1);
@@ -381,7 +501,14 @@
 
         unmount() {
             if (this.view && this.view.stageExperience === this) this.view.stageExperience = null;
-            if (this.preview) this.preview.classList.remove('nexus-try-on-stage-active', 'nexus-try-on-advanced-open');
+            if (this._heightObserver) this._heightObserver.disconnect();
+            this._heightObserver = null;
+            if (this.preview)
+                this.preview.classList.remove(
+                    'nexus-try-on-stage-active',
+                    'nexus-try-on-advanced-open',
+                    'nexus-try-on-stage-short'
+                );
             if (this.doc && this.doc.documentElement)
                 this.doc.documentElement.classList.remove('nexus-try-on-stage-on');
             if (this.root) this.root.remove();

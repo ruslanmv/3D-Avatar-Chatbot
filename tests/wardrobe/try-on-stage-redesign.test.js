@@ -296,3 +296,126 @@ describe('the Live commentary card', () => {
         expect(document.querySelectorAll('#chat-history .chat-row')).toHaveLength(2); // nothing written into the chat
     });
 });
+
+describe('Try-On on a phone (LT4)', () => {
+    const jeans = {
+        key: 'jeans',
+        name: 'Crop top & jeans',
+        prompt: 'black fitted crop top + blue straight jeans',
+        tags: ['casual', 'denim', 'day'],
+    };
+
+    function mountStage() {
+        document.body.innerHTML = [
+            '<div class="content-layout"><div class="avatar-preview-wrap"><div id="avatar-viewport"></div></div></div>',
+            '<div id="nexus-try-on-view"></div>',
+        ].join('');
+        const state = { look: jeans, looks: [jeans], favorite: false, busy: false, landed: 1, position: 0, total: 1 };
+        const view = {
+            root: document.getElementById('nexus-try-on-view'),
+            turner: {},
+            _key: (l) => l.key,
+            wear: jest.fn(),
+            favorite: jest.fn(),
+            turn: jest.fn(),
+            _step: jest.fn(),
+            render: jest.fn(),
+        };
+        const stage = new TryOnStageExperience({ doc: document, view, session: { state: () => state } });
+        stage.mount();
+        return stage;
+    }
+
+    afterEach(() => {
+        document.documentElement.classList.remove('is-mobile');
+        document.body.innerHTML = '';
+    });
+
+    it('folds the rail to its Looks button on a phone, and opens it on a tap', () => {
+        document.documentElement.classList.add('is-mobile');
+        const stage = mountStage();
+        const rail = document.querySelector('.nexus-try-on-look-rail');
+        const looks = () => document.querySelector('.nexus-look-rail-title');
+        expect(rail.classList.contains('is-folded')).toBe(true);
+        expect(looks().getAttribute('aria-expanded')).toBe('false');
+        looks().click();
+        expect(rail.classList.contains('is-folded')).toBe(false);
+        expect(looks().getAttribute('aria-expanded')).toBe('true');
+        stage.unmount();
+    });
+
+    it('keeps the rail open on a desktop', () => {
+        const stage = mountStage();
+        expect(document.querySelector('.nexus-try-on-look-rail').classList.contains('is-folded')).toBe(false);
+        stage.unmount();
+    });
+
+    it("shows the look's own tags, and gives every action a long and a short label", () => {
+        const stage = mountStage();
+        const tags = [...document.querySelectorAll('.nexus-stage-tag')].map((t) => t.textContent);
+        expect(tags).toEqual(['Casual', 'Denim']);
+        const next = document.querySelector('[data-command="next"]');
+        expect(next.getAttribute('aria-label')).toBe('Next look');
+        expect(next.querySelector('.nexus-stage-short').textContent).toBe('Next');
+        const turn = document.querySelector('[data-command="turn"]');
+        expect(turn.querySelector('.nexus-stage-long').textContent).toBe('Show back');
+        expect(turn.querySelector('.nexus-stage-short').textContent).toBe('Turn');
+        stage.unmount();
+    });
+
+    it('makes the summary compact on a short stage', () => {
+        document.body.innerHTML = '';
+        const preview = document.createElement('div');
+        preview.className = 'avatar-preview-wrap';
+        preview.getBoundingClientRect = () => ({ height: 300, width: 700, top: 0, left: 0, right: 700, bottom: 300 });
+        document.body.appendChild(preview);
+        const dialog = document.createElement('div');
+        dialog.id = 'nexus-try-on-view';
+        document.body.appendChild(dialog);
+        const stage = new TryOnStageExperience({
+            doc: document,
+            view: { root: dialog, _key: (l) => l.key, render: jest.fn() },
+            session: { state: () => ({ look: null, looks: [], total: 0, position: 0 }) },
+        });
+        stage.mount();
+        expect(preview.classList.contains('nexus-try-on-stage-short')).toBe(true);
+        stage.unmount();
+        expect(preview.classList.contains('nexus-try-on-stage-short')).toBe(false);
+    });
+
+    describe('the conversation sheet', () => {
+        let layout;
+
+        beforeEach(() => {
+            document.body.innerHTML = [
+                '<main class="content-layout"><section class="chat-panel"><div class="chat-card">',
+                '<header class="chat-card-header"><span class="section-title">Conversation</span></header>',
+                '<div class="chat-main"><div id="chat-history"></div></div>',
+                '<footer class="chat-input-shell"><input id="speech-text" placeholder="Type your message...">',
+                '<button id="speak-btn">Send</button></footer>',
+                '</div></section></main>',
+            ].join('');
+            layout = new TryOnLiveLayout({ doc: document });
+        });
+
+        it('asks NEXUS in the composer while Try-On runs, and gives the placeholder back', () => {
+            layout.mount();
+            const input = document.getElementById('speech-text');
+            expect(input.getAttribute('placeholder')).toBe('Ask NEXUS…');
+            layout.unmount();
+            expect(input.getAttribute('placeholder')).toBe('Type your message...');
+            expect(document.documentElement.style.getPropertyValue('--nexus-try-on-sheet')).toBe('');
+        });
+
+        it('opens the conversation from the caption on a phone, and not on a desktop', () => {
+            layout.mount();
+            const layoutEl = document.querySelector('.content-layout');
+            document.querySelector('.nexus-live-summary').click();
+            expect(layoutEl.classList.contains('nexus-live-watch')).toBe(true);
+            document.documentElement.classList.add('is-mobile');
+            document.querySelector('.nexus-live-summary').click();
+            expect(layoutEl.classList.contains('nexus-live-conversation')).toBe(true);
+            layout.unmount();
+        });
+    });
+});
