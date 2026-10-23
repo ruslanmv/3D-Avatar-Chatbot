@@ -156,6 +156,27 @@
             return this.waitForJob(accepted.jobId, waitOptions);
         }
 
+        /** Read-only metadata for the clothing picker. Browsing never runs a Forge job. */
+        getGarmentCatalog(category) {
+            var query = category ? '?category=' + encodeURIComponent(category) : '';
+            return this.request('/v1/catalog/garments' + query);
+        }
+
+        /** Direct Forge facade; callers still wait and validate the completed job. */
+        async customizeGarment(options) {
+            options = options || {};
+            return this.request('/v1/catalog/customize', {
+                method: 'POST',
+                body: JSON.stringify({
+                    avatar: options.avatar,
+                    prompt: options.prompt,
+                    templateId: options.templateId || null,
+                    color: options.color || null,
+                    options: Object.assign({ renderPreview: true, engine: 'auto' }, options.options || {}),
+                }),
+            });
+        }
+
         getWardrobe(avatarId) {
             return this.request('/v1/wardrobes/' + encodeURIComponent(avatarId));
         }
