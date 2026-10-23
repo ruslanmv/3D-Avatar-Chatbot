@@ -59,17 +59,67 @@
                 verified = await this.verifyLook(look);
                 url = verified.url;
             }
+            var hold = this._holdCamera();
             try {
-                await manager.setAvatarByUrl(url, look.name || 'Generated look', -1);
+                await this._load(manager, url, look.name || 'Generated look', -1);
             } catch (error) {
                 if (verified) verified.revoke();
+                if (hold) hold();
                 throw error;
             }
             this._release();
             this._verified = verified;
-            if (manager.frameAvatar) manager.frameAvatar();
+            if (hold) hold();
+            else if (manager.frameAvatar) manager.frameAvatar();
             this.activeLook = look;
             return look;
+        }
+
+        /**
+         * LT5. A look is loaded the way every avatar is: through the viewer, which hands the new
+         * model to everything that drives her (the pose system behind Pose Studio's presets, the
+         * bone grabber, puppet/IK, locomotion, motion) and keeps her pose preset. Loaded with
+         * AvatarManager alone, all of those kept the model the look had replaced, and Pose
+         * Studio did nothing on a new outfit. In VR (the viewer skips desktop loads there) or
+         * without a viewer, the manager loads it as before.
+         */
+        async _load(manager, url, name, index) {
+            var viewer = this.viewer;
+            var presenting = Boolean(
+                viewer && viewer.renderer && viewer.renderer.xr && viewer.renderer.xr.isPresenting
+            );
+            if (viewer && typeof viewer.loadAvatar === 'function' && !presenting) {
+                return viewer.loadAvatar(url, name, index);
+            }
+            return manager.setAvatarByUrl(url, name, index);
+        }
+
+        /**
+         * LT3. A look is her in other clothes, not another avatar, so the camera stays exactly
+         * where it is across the swap and across the restore. AvatarManager frames every file it
+         * loads with its own fallback (further out than ViewerEngine.frameObject frames her at
+         * startup), and she shrank to about 60 % of her height on the stage the moment a look was
+         * worn. Returns a function that puts the camera back, or null when there is no camera to
+         * hold, and then the manager's framing stands as before.
+         */
+        _holdCamera() {
+            var viewer = this.viewer;
+            var camera = viewer && viewer.camera;
+            var controls = viewer && viewer.controls;
+            if (!camera || !camera.position || !camera.position.clone) return null;
+            if (!controls || !controls.target || !controls.target.clone) return null;
+            var position = camera.position.clone();
+            var target = controls.target.clone();
+            var minDistance = controls.minDistance;
+            var maxDistance = controls.maxDistance;
+            return function () {
+                camera.position.copy(position);
+                controls.target.copy(target);
+                if (minDistance !== undefined) controls.minDistance = minDistance;
+                if (maxDistance !== undefined) controls.maxDistance = maxDistance;
+                if (camera.updateProjectionMatrix) camera.updateProjectionMatrix();
+                if (controls.update) controls.update();
+            };
         }
 
         /** Let go of the verified look's blob URL once it is no longer what she wears. */
@@ -87,13 +137,16 @@
         async restore() {
             if (!this.original || !this.original.url) return false;
             var manager = this._requireManager();
-            await manager.setAvatarByUrl(
+            var hold = this._holdCamera();
+            await this._load(
+                manager,
                 this.original.url,
                 this.original.name || 'Avatar',
                 this.original.index === undefined ? -1 : this.original.index
             );
             this._release();
-            if (manager.frameAvatar) manager.frameAvatar();
+            if (hold) hold();
+            else if (manager.frameAvatar) manager.frameAvatar();
             this.activeLook = null;
             return true;
         }
