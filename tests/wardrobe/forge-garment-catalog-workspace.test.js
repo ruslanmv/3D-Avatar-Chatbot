@@ -70,7 +70,7 @@ describe('real garment catalog within Try-On', () => {
         expect(document.querySelector('.nexus-catalog-placeholder').textContent).toMatch(/not ready/);
         expect(canvas.parentElement).toBe(originalParent);
         expect(document.querySelectorAll('canvas')).toHaveLength(1);
-        expect(legacy.hidden).not.toBe(false);
+        expect(legacy.parentElement.id).toBe('legacy-host');
     });
 
     test('selection alone does not change the worn look; apply awaits real generation', async () => {
