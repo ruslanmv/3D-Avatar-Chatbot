@@ -1,0 +1,28 @@
+name: Forge Catalog UI validation
+
+on:
+  push:
+    branches:
+      - feat/forge-garment-catalog-workspace
+
+permissions:
+  contents: read
+
+concurrency:
+  group: forge-catalog-ui-tests
+  cancel-in-progress: true
+
+jobs:
+  catalog-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Catalog component and existing Try-On tests
+        run: |
+          npx jest --ci --runInBand             tests/wardrobe/forge-garment-catalog-workspace.test.js             tests/wardrobe/try-on-stage-experience.test.js             tests/wardrobe/try-on-generator.test.js             tests/wardrobe/try-on-haul-activity.test.js
