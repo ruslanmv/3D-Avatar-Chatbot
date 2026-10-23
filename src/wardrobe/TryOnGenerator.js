@@ -182,6 +182,8 @@
                     // person did not ask to change — the jeans, the shoes — stays as it is.
                     var outfit = tattooOnly ? null : { prompt: text };
                     if (outfit && options.preset) outfit.preset = String(options.preset);
+                    if (outfit && options.templateId) outfit.templateId = String(options.templateId);
+                    if (outfit && options.color) outfit.color = String(options.color);
                     var jobOptions = {};
                     // MG3. Try-On always dresses her over a foundation Forge adds only where she
                     // has none: a dress VRoid filed as a top then comes off under a skirt instead
@@ -206,7 +208,8 @@
                         avatarUrl: this._absolute(identity.url),
                         avatarId: (controller && controller.avatarId) || identity.name,
                         prompt: text,
-                        mode: 'auto',
+                        mode: options.templateId ? 'template' : 'auto',
+                        templateId: options.templateId || null,
                         renderPreview: true,
                         ensureFoundation: true,
                         conditionsOfUse: identity.conditionsOfUse,
