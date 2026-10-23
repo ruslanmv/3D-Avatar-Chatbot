@@ -156,6 +156,27 @@
             return this.waitForJob(accepted.jobId, waitOptions);
         }
 
+        /** Browsing only: returns the Forge catalog without running expensive jobs. */
+        getGarmentCatalog(category) {
+            var query = category ? '?category=' + encodeURIComponent(category) : '';
+            return this.request('/v1/catalog/garments' + query);
+        }
+
+        /** Queue Forge's customization facade; do not apply until the job succeeds. */
+        customizeGarment(options) {
+            options = options || {};
+            return this.request('/v1/catalog/customize', {
+                method: 'POST',
+                body: JSON.stringify({
+                    avatar: options.avatar,
+                    prompt: options.prompt,
+                    templateId: options.templateId || null,
+                    color: options.color || null,
+                    options: Object.assign({ renderPreview: true, engine: 'auto' }, options.options || {}),
+                }),
+            });
+        }
+
         getWardrobe(avatarId) {
             return this.request('/v1/wardrobes/' + encodeURIComponent(avatarId));
         }
