@@ -21,6 +21,7 @@ const THONG = /thong|tanga/i;
 const LEG = /upperleg|lowerleg|thigh|shin|calf|foot|toe|knee/i;
 const HIPS = /hips|pelvis/i;
 const _hipPoint = new THREE.Vector3();
+const _bindHip = new THREE.Matrix4();
 
 function isBodyMesh(mesh) {
     const api = globalThis.NEXUS_POSE_GARMENT_CORRECTION;
@@ -78,8 +79,25 @@ function restoreSkin(mesh) {
 }
 
 /**
+ * Hip height in the same space as the position attribute: the bind pose.
+ * A seated hip sits lower than that. Cutting on the posed joint left the
+ * hem on the thighs, and Sitting Wide pulled it into the triangles.
+ */
+function bindHipCut(mesh, hips, hipsIndex) {
+    const inverses = mesh.skeleton && mesh.skeleton.boneInverses;
+    const inverse = inverses && inverses[hipsIndex];
+    if (inverse && inverse.elements) {
+        _bindHip.copy(inverse).invert();
+        const y = _bindHip.elements[13];
+        if (Number.isFinite(y)) return y + 0.01;
+    }
+    mesh.updateMatrixWorld(true);
+    return mesh.worldToLocal(hips.getWorldPosition(_hipPoint)).y + 0.01;
+}
+
+/**
  * Move leg influence of every vertex below the hip joint onto the hips.
- * A second pass finds no leg weight left to move.
+ * Starts from the file's weights, so a later pose can cut again.
  */
 function hangFromPelvis(mesh) {
     const geometry = mesh.geometry;
@@ -97,10 +115,14 @@ function hangFromPelvis(mesh) {
     });
     if (!leg.size) return false;
 
-    mesh.updateMatrixWorld(true);
-    const hipLocal = mesh.worldToLocal(hips.getWorldPosition(_hipPoint));
-    const cut = hipLocal.y + 0.01;
     rememberSkin(mesh);
+    const saved = mesh.userData.poseGarmentSkin;
+    if (saved && saved.index && saved.weight && skinIndex.array && skinWeight.array
+        && skinIndex.array.length === saved.index.length && skinWeight.array.length === saved.weight.length) {
+        skinIndex.array.set(saved.index);
+        skinWeight.array.set(saved.weight);
+    }
+    const cut = bindHipCut(mesh, hips, hipsIndex);
 
     let movedVertices = 0;
     for (let i = 0; i < position.count; i += 1) {
