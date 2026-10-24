@@ -3,7 +3,7 @@
  * and it pushes a vertex back out of the body. The body array is only read.
  */
 
-const { correct, maxEdgeStretch, isBodyName, STRETCH_LIMIT } = require('../../src/wardrobe/PoseGarmentCorrection.js');
+const { correct, maxEdgeStretch, isBodyName, STRETCH_LIMIT, widenCollapsedGusset, moundPanel } = require('../../src/wardrobe/PoseGarmentCorrection.js');
 
 function lapAll(count) {
     return new Uint8Array(count).fill(1);
@@ -173,5 +173,144 @@ describe('PS4 pose garment correction', () => {
         const once = correct(input);
         const twice = correct(input);
         for (let i = 0; i < once.length; i += 1) expect(twice[i]).toBeCloseTo(once[i], 6);
+    });
+});
+
+function rowOf(z, widthM, y) {
+    const out = [];
+    for (let i = 0; i < 5; i += 1) {
+        const x = -widthM / 2 + (widthM * i) / 4;
+        out.push(x, y, z);
+    }
+    return out;
+}
+
+function spanOf(positions, offset, count) {
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (let i = 0; i < count; i += 1) {
+        const x = positions[(offset + i) * 3];
+        if (x < lo) lo = x;
+        if (x > hi) hi = x;
+    }
+    return hi - lo;
+}
+
+/** Two islands: a high panel, and a 3-row gusset under it. Triangles just need connectivity. */
+function briefWithGusset(seamM, middleM) {
+    const panel = [0, 0.95, 0, 0.08, 0.95, 0, 0.04, 0.95, 0.02];
+    const gusset = [
+        ...rowOf(-0.08, seamM, 0.80),
+        ...rowOf(0.0, middleM, 0.80),
+        ...rowOf(0.08, seamM, 0.80),
+    ];
+    // The panel has to be the larger island. The gusset is the small one under it.
+    const band = [];
+    for (let i = 0; i < 20; i += 1) band.push(i * 0.01, 0.96, 0);
+    const positions = new Float32Array([...panel, ...gusset, ...band]);
+    function stitch(a0, b0) {
+        const idx = [];
+        for (let i = 0; i < 4; i += 1) {
+            idx.push(a0 + i, b0 + i, b0 + i + 1, a0 + i, b0 + i + 1, a0 + i + 1);
+        }
+        return idx;
+    }
+    const bandIdx = [];
+    for (let i = 0; i < 19; i += 1) bandIdx.push(0, 18 + i, 19 + i);
+    const indices = [0, 1, 2, ...stitch(3, 8), ...stitch(8, 13), ...bandIdx];
+    return { positions, indices: new Uint32Array(indices) };
+}
+
+describe('a pinched brief gusset', () => {
+    test('opens back to 24 mm and leaves the seams where they meet the panels', () => {
+        const { positions, indices } = briefWithGusset(0.070, 0.005);
+        const seams = [spanOf(positions, 3, 5), spanOf(positions, 13, 5)];
+        expect(widenCollapsedGusset(positions, indices)).toBeGreaterThan(0);
+        expect(spanOf(positions, 8, 5)).toBeCloseTo(0.024, 5);
+        expect(spanOf(positions, 3, 5)).toBeCloseTo(seams[0], 5);
+        expect(spanOf(positions, 13, 5)).toBeCloseTo(seams[1], 5);
+    });
+
+    test('a string stays narrow', () => {
+        const { positions, indices } = briefWithGusset(0.012, 0.005);
+        const before = Array.from(positions);
+        expect(widenCollapsedGusset(positions, indices)).toBe(0);
+        expect(Array.from(positions)).toEqual(before);
+    });
+
+    test('opening it twice does not open it further', () => {
+        const { positions, indices } = briefWithGusset(0.070, 0.005);
+        widenCollapsedGusset(positions, indices);
+        const once = spanOf(positions, 8, 5);
+        expect(widenCollapsedGusset(positions, indices)).toBe(0);
+        expect(spanOf(positions, 8, 5)).toBeCloseTo(once, 5);
+    });
+});
+
+function gridSheet(x0, x1, y0, y1, z, cols, rows) {
+    const positions = [];
+    const indices = [];
+    function vid(c, r) { return r * cols + c; }
+    for (let r = 0; r < rows; r += 1) {
+        for (let c = 0; c < cols; c += 1) {
+            const x = x0 + (x1 - x0) * (c / (cols - 1));
+            const y = y0 + (y1 - y0) * (r / (rows - 1));
+            positions.push(x, y, z);
+        }
+    }
+    for (let r = 0; r < rows - 1; r += 1) {
+        for (let c = 0; c < cols - 1; c += 1) {
+            const a = vid(c, r);
+            const b = vid(c + 1, r);
+            const d = vid(c, r + 1);
+            const e = vid(c + 1, r + 1);
+            indices.push(a, b, e, a, e, d);
+        }
+    }
+    return { positions: new Float32Array(positions), indices: new Uint32Array(indices) };
+}
+
+describe('the mound panel', () => {
+    const hips = [0, 0.893, 0];
+    const front = [0, 0, -1];
+    const up = [0, 1, 0];
+    const eye = [0, 0.66, -0.42];
+    const target = [0, 0.83, -0.02];
+
+    test('covers mound skin the brief leaves below its hem', () => {
+        const skin = gridSheet(-0.04, 0.04, 0.798, 0.816, -0.02, 8, 4);
+        const brief = gridSheet(-0.07, 0.07, 0.86, 0.94, -0.07, 6, 3);
+        const panel = moundPanel({
+            skin: skin.positions,
+            skinFaces: skin.indices,
+            brief: brief.positions,
+            briefFaces: brief.indices,
+            hips, front, up, eye, target,
+        });
+        expect(panel).not.toBeNull();
+        let inFront = 0;
+        const n = panel.positions.length / 3;
+        for (let i = 0; i < n; i += 1) {
+            const dx = panel.positions[i * 3] - eye[0];
+            const dy = panel.positions[i * 3 + 1] - eye[1];
+            const dz = panel.positions[i * 3 + 2] - eye[2];
+            const skinD = Math.hypot(0 - eye[0], 0.81 - eye[1], -0.02 - eye[2]);
+            if (Math.hypot(dx, dy, dz) < skinD - 0.001) inFront += 1;
+        }
+        expect(inFront).toBeGreaterThan(n * 0.5);
+        expect(panel.indices.length).toBeGreaterThan(0);
+    });
+
+    test('adds nothing when the brief already covers the mound', () => {
+        const skin = gridSheet(-0.04, 0.04, 0.798, 0.816, -0.02, 6, 3);
+        const brief = gridSheet(-0.08, 0.08, 0.78, 0.90, -0.05, 6, 4);
+        const panel = moundPanel({
+            skin: skin.positions,
+            skinFaces: skin.indices,
+            brief: brief.positions,
+            briefFaces: brief.indices,
+            hips, front, up, eye, target,
+        });
+        expect(panel).toBeNull();
     });
 });

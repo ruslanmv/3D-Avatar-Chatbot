@@ -22,7 +22,7 @@
  */
 
 import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
-import { clearPosedGarments, correctPosedGarments, dropPosedOverlays } from './PoseGarmentCorrector.js';
+import { clearPosedGarments, correctPosedGarments, dropPosedOverlays, seatMoundPanels } from './PoseGarmentCorrector.js';
 
 // =========================================================================
 // IK CHAIN DEFINITIONS (humanoid bone chains for CCD-IK)
@@ -2334,6 +2334,13 @@ export class VRPoseSystem {
             return;
         }
 
+        // The raw skeleton is synced by vrm.update() before this runs.
+        // The mound panel is built from those bones, one frame after the
+        // preset lands, so it covers the pose she is actually in.
+        if (this._moundPending && !this._isBlending) {
+            this._flushMound();
+        }
+
         // 1. Pose blending (smooth transition between presets)
         if (this._isBlending) {
             this._updateBlending(dt);
@@ -2389,6 +2396,7 @@ export class VRPoseSystem {
      * Avatar swaps use clearPosedGarments, which puts the file's weights back.
      */
     releaseGarments() {
+        this._moundPending = false;
         dropPosedOverlays(this.avatarRoot);
     }
 
@@ -2396,8 +2404,21 @@ export class VRPoseSystem {
         if (!this.avatarRoot) return;
         try {
             correctPosedGarments(this.avatarRoot);
+            // Built next frame, after vrm.update has copied the pose onto
+            // the bones that actually skin the body.
+            this._moundPending = true;
         } catch (error) {
             console.warn('[VRPoseSystem] Garment correction skipped', error);
+        }
+    }
+
+    _flushMound() {
+        this._moundPending = false;
+        if (!this.avatarRoot) return;
+        try {
+            seatMoundPanels(this.avatarRoot);
+        } catch (error) {
+            console.warn('[VRPoseSystem] Mound panel skipped', error);
         }
     }
 
