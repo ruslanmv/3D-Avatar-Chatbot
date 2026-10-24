@@ -29,9 +29,15 @@ const FIXED_BONE = /foot|toe/i;
 const NOT_A_SURFACE = /arm|hand|thumb|index|middle|ring|little|finger/i;
 
 function forgeTag(object) {
+    const node = forgeNode(object);
+    return node ? node.userData.wardrobeForge : null;
+}
+
+/** The glTF node a garment piece belongs to: the one Forge tagged (several materials, one node). */
+function forgeNode(object) {
     for (let node = object; node; node = node.parent) {
         const tag = node.userData && node.userData.wardrobeForge;
-        if (tag && tag.kind === 'garment') return tag;
+        if (tag && tag.kind === 'garment') return node;
     }
     return null;
 }
@@ -50,7 +56,7 @@ export function collect(root) {
         const name = materialName(object);
         const tag = forgeTag(object);
         if (tag || /\[Forge_/.test(name)) {
-            garments.push({ mesh: object, tag, name });
+            garments.push({ mesh: object, tag, name, node: forgeNode(object) || object });
         } else if (/_SKIN|^Body$/.test(name)) {
             body.push(object);
         }
@@ -280,6 +286,12 @@ export class PoseClothCorrector {
                 rest: world,
                 indices: triangles(g.mesh.geometry),
                 movable: movableOf(g.mesh),
+                // SW2. A shoe is corrected gently: firm relaxation tore a boot's shaft at her knee.
+                profile: /shoes/i.test((g.tag && g.tag.slot) || '') || /Shoes/.test(g.name) ? 'shoe' : undefined,
+                // SW3. A boot's shell, sole and lining are one garment (one glTF node, three
+                // materials, three meshes here): corrected apart, the lining was pushed out
+                // through the shell as if it were a layer beneath it.
+                group: g.node.uuid,
             };
         });
         const input = { bodyPos: join(bodyPos), bodyNrm: join(bodyNrm), garments };

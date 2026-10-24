@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (211 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (218 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -128,8 +128,8 @@ Know the coverage gaps, because they are not intuitive:
 
 ### The gate passes. Keep it that way.
 
-Measured 2026-10-03 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5009 tests in 211 suites, all passing.**
+Measured 2026-10-24 with `npm ci` deps installed: `npm run validate` exits **0**
+— lint clean, format clean, **5088 tests in 218 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -502,7 +502,13 @@ creating looks (WF1)** — see the Forge bullet below.
   in `PoseClothWorker` via `src/gltf-viewer/PoseClothCorrector.js`, two frames
   after `VRPoseSystem` settles a preset; garments' original positions are
   snapshotted and restored when she moves. `docs/SITTING_WIDE.md` has the
-  measurements.
+  measurements. SW3: a seam's split vertices are welded and corrected as one
+  (corrected apart, the bodycon's seams opened 41 mm), pieces of one Forge node
+  share a `group` and are one cloth (a boot's lining went out through its
+  shell), and a shoe moves at most `SHOE.maxMove` — behind her knee her skin
+  meets itself and there is no outside. Verify a change with Forge's
+  `bake_pose_correction.py` + `fit_checks.py --baked`, which run this file on
+  the real look; a screenshot cannot show a torn seam.
 - **Private mode unlocks private outfits only for avatars Forge declares adult
   (W10).** `TryOnPrivate.evaluate()` answers `off`, `locked` with a sentence, or
   `open` with quick picks. Private mode (`NEXUS_SPICY.isEnabled()`) says the

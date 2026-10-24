@@ -31,17 +31,36 @@
         clearance: 0.0015, // metres outside the surface beneath
         cell: 0.025, // spatial hash cell
         reach: 2, // cells searched each way: 5 cm, deeper than any penetration measured (34 mm)
-        stretchLimit: 1.3, // an edge longer than this × rest is pulled back
-        stiffness: 0.5,
-        iterations: 16,
+        // Cloth (SW2): pulled firmly back towards its length. Measured on the bodycon over briefs
+        // in Sitting (Wide): at 16 rounds, half strength and a 1.3x limit the briefs' worst edge
+        // went from 3.55x to 5.33x — the final pushes stretched the short binding edges round the
+        // seat — and at these it is 2.19x, the dress 1.20x, nothing inside her either way.
+        stretchLimit: 1.15, // an edge longer than this × rest is pulled back
+        stiffness: 1,
+        iterations: 48,
         layerReach: 0.015, // a layer below counts only this close: farther, it is not beneath this cloth
         penetrating: 0.001, // what counts as inside, for the report (pose_contact's 1 mm)
         stretched: 1.5, // what counts as stretched, for the report (pose_contact's 1.5×)
+        maxMove: Infinity, // metres a vertex may move from where skinning put it (SW3: shoes only)
+        unfoldRounds: 30, // passes of unfolding at most, each followed by clearing her surface again
+        creaseWindow: 0.002, // in the last passes, also clear skin points this much farther than the nearest
     };
 
-    function options(input) {
+    /**
+     * SW2. A shoe is not cloth: firm relaxation tore a boot's shaft where her calf and thigh press
+     * together behind her knee (0.95x to 10.6x), while the gentle settings left it better than
+     * skinning did (6.66x to 5.89x). A garment says which it is with `profile: 'shoe'`.
+     */
+    var SHOE = { stretchLimit: 1.3, stiffness: 0.5, iterations: 16, maxMove: 0.025 };
+
+    function options(input, garment) {
         var out = {};
-        for (var key in DEFAULTS) out[key] = input && input[key] !== undefined ? input[key] : DEFAULTS[key];
+        var profile = garment && garment.profile === 'shoe' ? SHOE : {};
+        for (var key in DEFAULTS) {
+            if (input && input[key] !== undefined) out[key] = input[key];
+            else if (profile[key] !== undefined) out[key] = profile[key];
+            else out[key] = DEFAULTS[key];
+        }
         return out;
     }
 
@@ -90,6 +109,39 @@
             }
         }
         return best;
+    };
+
+    /** The `k` nearest surface points within `reach` cells, nearest first. */
+    Surface.prototype.nearestK = function (x, y, z, reach, k) {
+        var cx = Math.floor(x / this.cell);
+        var cy = Math.floor(y / this.cell);
+        var cz = Math.floor(z / this.cell);
+        var best = [];
+        for (var ix = cx - reach; ix <= cx + reach; ix += 1) {
+            for (var iy = cy - reach; iy <= cy + reach; iy += 1) {
+                for (var iz = cz - reach; iz <= cz + reach; iz += 1) {
+                    var bucket = this.map.get(ix + ',' + iy + ',' + iz);
+                    if (!bucket) continue;
+                    for (var n = 0; n < bucket.length; n += 1) {
+                        var i = bucket[n];
+                        var dx = x - this.pos[i * 3];
+                        var dy = y - this.pos[i * 3 + 1];
+                        var dz = z - this.pos[i * 3 + 2];
+                        var d = dx * dx + dy * dy + dz * dz;
+                        if (best.length < k || d < best[best.length - 1][0]) {
+                            best.push([d, i]);
+                            best.sort(function (a, b) {
+                                return a[0] - b[0];
+                            });
+                            if (best.length > k) best.pop();
+                        }
+                    }
+                }
+            }
+        }
+        return best.map(function (b) {
+            return b[1];
+        });
     };
 
     /** Signed distance of (x,y,z) from the surface at point i, along its normal. */
@@ -211,10 +263,11 @@
      * counts only within `layerReach`; farther away it is not beneath this cloth.
      * `movable` (optional, 1 per vertex) says which vertices may move: a boot's foot is meant to
      * hold her foot inside it, and pushing it out of her toes only crumpled the boot.
+     * `indices` (optional) are its triangles, for unfolding (SW3).
      * `posed` is not modified.
      * @returns {Float32Array} corrected positions
      */
-    function correctOne(posed, edges, body, layers, o, movable) {
+    function correctOne(posed, edges, body, layers, o, movable, indices) {
         var out = new Float32Array(posed.length);
         out.set(posed);
         var count = posed.length / 3;
@@ -233,6 +286,26 @@
             out[v * 3 + 1] += surface.nrm[i * 3 + 1] * push;
             out[v * 3 + 2] += surface.nrm[i * 3 + 2] * push;
         }
+        // SW3. Where her skin folds into itself (behind her knee at 90 degrees, calf against thigh)
+        // there is no outside: out of her calf is into her thigh. A boot's rim there was pushed out
+        // of one and back out of the other until it stood 60 mm off, its 5 mm rim edge torn to 13x.
+        // A shoe's vertex goes no farther from where skinning put it than `maxMove`, deeper than
+        // any penetration measured (23 mm). Not cloth's: briefs and a dress are carried out of
+        // her and then out of each other, legitimately farther, and capped they ended inside.
+        var maxMove2 = o.maxMove * o.maxMove;
+        function tether() {
+            for (var v = 0; v < count; v += 1) {
+                var tx = out[v * 3] - posed[v * 3];
+                var ty = out[v * 3 + 1] - posed[v * 3 + 1];
+                var tz = out[v * 3 + 2] - posed[v * 3 + 2];
+                var d2 = tx * tx + ty * ty + tz * tz;
+                if (d2 <= maxMove2) continue;
+                var k = o.maxMove / Math.sqrt(d2);
+                out[v * 3] = posed[v * 3] + tx * k;
+                out[v * 3 + 1] = posed[v * 3 + 1] + ty * k;
+                out[v * 3 + 2] = posed[v * 3 + 2] + tz * k;
+            }
+        }
         function project(fresh) {
             for (var v = 0; v < count; v += 1) {
                 if (movable && !movable[v]) continue;
@@ -247,7 +320,27 @@
                     asked[v * 3 + 2] = out[v * 3 + 2];
                 }
                 var i = nearBody[v];
-                if (i >= 0) pushOut(body, v, i);
+                if (fresh) {
+                    // SW2. In a crease (her thighs into her pelvis) the nearest point is a toss-up
+                    // between patches, and cloth outside one can be inside the next: Forge's
+                    // measurement found three brief vertices 5 mm inside where this pass, trusting
+                    // one point, saw none. The last passes clear the few nearest.
+                    // SW3. Only those about as near as the nearest (`creaseWindow`): a point across
+                    // a wide fold — her calf, seen from the boot's thigh — is not the surface this
+                    // vertex lies on, and pushing out along its normal threw a boot's rim 60 mm and
+                    // took the briefs' worst edge from 2.6x to 3.8x, the dress's from 1.4x to 3.9x.
+                    var near = body.nearestK(out[v * 3], out[v * 3 + 1], out[v * 3 + 2], o.reach, 4);
+                    var first = -1;
+                    for (var q = 0; q < near.length; q += 1) {
+                        var ex = out[v * 3] - body.pos[near[q] * 3];
+                        var ey = out[v * 3 + 1] - body.pos[near[q] * 3 + 1];
+                        var ez = out[v * 3 + 2] - body.pos[near[q] * 3 + 2];
+                        var dist = Math.sqrt(ex * ex + ey * ey + ez * ez);
+                        if (first < 0) first = dist;
+                        else if (dist > first + o.creaseWindow) break;
+                        pushOut(body, v, near[q]);
+                    }
+                } else if (i >= 0) pushOut(body, v, i);
                 for (var l = 0; l < layers.length; l += 1) {
                     var layer = layers[l];
                     var j = layer.nearest(out[v * 3], out[v * 3 + 1], out[v * 3 + 2], layerCells);
@@ -259,6 +352,7 @@
                     pushOut(layer, v, j);
                 }
             }
+            tether();
         }
         function relax() {
             for (var e = 0; e < edges.length; e += 1) {
@@ -294,40 +388,241 @@
         // The last word is the surface's, searched afresh. Where her surface folds (thigh into
         // seat) a push along one point's normal can land nearer another, so it is repeated.
         for (var last = 0; last < 3; last += 1) project(true);
+        if (indices) {
+            // SW3. Pushed out along different normals in a crease, neighbouring vertices crossed
+            // and their triangles turned over: Forge's check counted 53 on the boots where skinning
+            // left 2, 72 on the boot lining's rim, 37 new on the dress at her hip. A triangle facing
+            // against the way skinning faced it is folded; its corners (only theirs) move half way
+            // to their neighbours' mean, the cloth is pulled back to length and the surface clears it again. As Forge's own fit does
+            // (wardrobe/lingerie/fit.py `_unfold`).
+            var reference = facesOf(posed, indices);
+            var around = neighboursOf(edges, count);
+            for (var round = 0; round < o.unfoldRounds; round += 1) {
+                if (!unfold(out, indices, reference, around, movable)) break;
+                relax();
+                project(true);
+            }
+        }
         return out;
+    }
+
+    /** Each triangle's (unnormalised) normal. */
+    function facesOf(pos, indices) {
+        var faces = new Float32Array(indices.length);
+        for (var t = 0; t + 2 < indices.length; t += 3) {
+            var a = indices[t] * 3;
+            var b = indices[t + 1] * 3;
+            var c = indices[t + 2] * 3;
+            var ux = pos[b] - pos[a];
+            var uy = pos[b + 1] - pos[a + 1];
+            var uz = pos[b + 2] - pos[a + 2];
+            var vx = pos[c] - pos[a];
+            var vy = pos[c + 1] - pos[a + 1];
+            var vz = pos[c + 2] - pos[a + 2];
+            faces[t] = uy * vz - uz * vy;
+            faces[t + 1] = uz * vx - ux * vz;
+            faces[t + 2] = ux * vy - uy * vx;
+        }
+        return faces;
+    }
+
+    function neighboursOf(edges, count) {
+        var around = [];
+        for (var v = 0; v < count; v += 1) around.push([]);
+        for (var e = 0; e < edges.length; e += 1) {
+            around[edges[e][0]].push(edges[e][1]);
+            around[edges[e][1]].push(edges[e][0]);
+        }
+        return around;
+    }
+
+    /** One unfolding pass; true when something was folded. In place. */
+    function unfold(out, indices, reference, around, movable) {
+        var now = facesOf(out, indices);
+        var moving = new Set();
+        for (var t = 0; t + 2 < indices.length; t += 3) {
+            var dot = now[t] * reference[t] + now[t + 1] * reference[t + 1] + now[t + 2] * reference[t + 2];
+            if (dot >= 0) continue;
+            for (var k = 0; k < 3; k += 1) {
+                var v = indices[t + k];
+                if (!movable || movable[v]) moving.add(v);
+            }
+        }
+        if (!moving.size) return false;
+        var moved = [];
+        moving.forEach(function (v) {
+            var ring = around[v];
+            if (!ring.length) return;
+            var mx = 0;
+            var my = 0;
+            var mz = 0;
+            for (var r = 0; r < ring.length; r += 1) {
+                mx += out[ring[r] * 3];
+                my += out[ring[r] * 3 + 1];
+                mz += out[ring[r] * 3 + 2];
+            }
+            moved.push([v, mx / ring.length, my / ring.length, mz / ring.length]);
+        });
+        moved.forEach(function (m) {
+            var v = m[0];
+            out[v * 3] = out[v * 3] * 0.5 + m[1] * 0.5;
+            out[v * 3 + 1] = out[v * 3 + 1] * 0.5 + m[2] * 0.5;
+            out[v * 3 + 2] = out[v * 3 + 2] * 0.5 + m[3] * 0.5;
+        });
+        return true;
+    }
+
+    /**
+     * SW3. A glTF mesh splits a vertex wherever its UVs or normals do, so one point of the cloth is
+     * several vertices sharing a rest position. Corrected one by one, each copy found its own
+     * nearest skin point and its own edges to relax, and Forge's seam check measured the bodycon's
+     * seams 41 mm apart in Sitting (Wide) — the cloth torn along every UV island. Copies are welded
+     * (same rest position within 0.1 mm) into one particle, corrected once, and written back to
+     * every copy. Returns {of: copy → particle, reps: particle → first copy, count}.
+     */
+    function weldOf(rest) {
+        var count = rest.length / 3;
+        var of = new Int32Array(count);
+        var reps = [];
+        var seen = new Map();
+        for (var v = 0; v < count; v += 1) {
+            var key =
+                Math.round(rest[v * 3] / 1e-4) +
+                ',' +
+                Math.round(rest[v * 3 + 1] / 1e-4) +
+                ',' +
+                Math.round(rest[v * 3 + 2] / 1e-4);
+            var p = seen.get(key);
+            if (p === undefined) {
+                p = reps.length;
+                seen.set(key, p);
+                reps.push(v);
+            }
+            of[v] = p;
+        }
+        return { of: of, reps: reps, count: reps.length };
+    }
+
+    /**
+     * SW3. One garment can arrive as several pieces — a glTF mesh with three materials is three
+     * meshes in three.js: a boot's shell, sole and lining. Corrected one after another, the lining
+     * met the shell as a layer beneath it and was pushed out through it, and the shell's worst
+     * edge went from 6.66x to 11.4x. Pieces that name the same `group` are corrected as one cloth:
+     * concatenated, welded across pieces where they meet, and split back afterwards.
+     */
+    function unitsOf(garments) {
+        var units = [];
+        var byGroup = new Map();
+        garments.forEach(function (g, index) {
+            var key = g.group !== undefined && g.group !== null ? String(g.group) : null;
+            var unit = key !== null ? byGroup.get(key) : undefined;
+            if (!unit) {
+                unit = { members: [], profile: g.profile };
+                units.push(unit);
+                if (key !== null) byGroup.set(key, unit);
+            }
+            unit.members.push(index);
+        });
+        return units;
     }
 
     /**
      * Correct a stack of garments, innermost first.
      *
-     * input = {bodyPos, bodyNrm, garments: [{name, posed, rest, indices, movable?}], ...options}
-     * Returns {garments: [{name, positions, before, after}]}; before/after are the pose_contact
-     * numbers against her skin, so the improvement is measured, not assumed.
+     * input = {bodyPos, bodyNrm, garments: [{name, posed, rest, indices, movable?, profile?, group?}], ...options}
+     * Returns {garments: [{name, positions, before, after}]}, one per input garment in input order;
+     * before/after are the pose_contact numbers against her skin, so the improvement is measured,
+     * not assumed.
      */
     function correct(input) {
-        var o = options(input);
+        var o = options(input, null);
         var body = new Surface(Float32Array.from(input.bodyPos), Float32Array.from(input.bodyNrm), o.cell);
+        var garments = input.garments || [];
         var layers = [];
-        var results = [];
-        (input.garments || []).forEach(function (g) {
-            var posed = Float32Array.from(g.posed);
-            var rest = Float32Array.from(g.rest);
-            var edges = edgesOf(g.indices, rest);
-            var movable = g.movable ? Uint8Array.from(g.movable) : null;
-            var before = measure(posed, rest, edges, body, o, movable);
-            var positions = correctOne(posed, edges, body, layers, o, movable);
-            var after = measure(positions, rest, edges, body, o, movable);
-            results.push({ name: g.name, positions: positions, before: before, after: after });
-            // This layer is now part of what the next one clears.
-            layers.push(new Surface(positions, normalsOf(positions, g.indices, body, o.reach), o.cell));
+        var results = new Array(garments.length);
+        unitsOf(garments).forEach(function (unit) {
+            var total = 0;
+            var faces = 0;
+            unit.members.forEach(function (m) {
+                total += garments[m].rest.length / 3;
+                faces += garments[m].indices.length;
+            });
+            var fullRest = new Float32Array(total * 3);
+            var fullPosed = new Float32Array(total * 3);
+            var fullMovable = new Uint8Array(total).fill(1);
+            var fullIndices = new Uint32Array(faces);
+            var anyMovable = false;
+            var offsets = [];
+            var at = 0;
+            var face = 0;
+            unit.members.forEach(function (m) {
+                var g = garments[m];
+                offsets.push(at);
+                fullRest.set(g.rest, at * 3);
+                fullPosed.set(g.posed, at * 3);
+                if (g.movable) {
+                    anyMovable = true;
+                    for (var k = 0; k < g.movable.length; k += 1) fullMovable[at + k] = g.movable[k] ? 1 : 0;
+                }
+                for (var t = 0; t < g.indices.length; t += 1) fullIndices[face + t] = g.indices[t] + at;
+                face += g.indices.length;
+                at += g.rest.length / 3;
+            });
+            var weld = weldOf(fullRest);
+            // One particle per welded point: its posed position is its copies' mean (skinning can
+            // part them by a hair where their weights differ), and it moves only if all may.
+            var posed = new Float32Array(weld.count * 3);
+            var rest = new Float32Array(weld.count * 3);
+            var copies = new Uint16Array(weld.count);
+            var movable = anyMovable ? new Uint8Array(weld.count).fill(1) : null;
+            for (var v = 0; v < total; v += 1) {
+                var p = weld.of[v];
+                copies[p] += 1;
+                for (var c = 0; c < 3; c += 1) posed[p * 3 + c] += fullPosed[v * 3 + c];
+                if (movable && !fullMovable[v]) movable[p] = 0;
+            }
+            for (var q = 0; q < weld.count; q += 1) {
+                for (var d = 0; d < 3; d += 1) {
+                    posed[q * 3 + d] /= copies[q];
+                    rest[q * 3 + d] = fullRest[weld.reps[q] * 3 + d];
+                }
+            }
+            var indices = new Uint32Array(faces);
+            for (var f = 0; f < faces; f += 1) indices[f] = weld.of[fullIndices[f]];
+            var og = options(input, { profile: unit.profile });
+            var welded = correctOne(posed, edgesOf(indices, rest), body, layers, og, movable, indices);
+            var corrected = new Float32Array(total * 3);
+            for (var w = 0; w < total; w += 1) {
+                for (var e = 0; e < 3; e += 1) corrected[w * 3 + e] = welded[weld.of[w] * 3 + e];
+            }
+            // Each piece is reported on its own, with its own edges, as pose_contact measures it.
+            unit.members.forEach(function (m, n) {
+                var g = garments[m];
+                var count = g.rest.length / 3;
+                var pieceRest = fullRest.subarray(offsets[n] * 3, (offsets[n] + count) * 3);
+                var piecePosed = fullPosed.subarray(offsets[n] * 3, (offsets[n] + count) * 3);
+                var positions = corrected.slice(offsets[n] * 3, (offsets[n] + count) * 3);
+                var pieceMovable = g.movable ? Uint8Array.from(g.movable) : null;
+                var edges = edgesOf(g.indices, pieceRest);
+                results[m] = {
+                    name: g.name,
+                    positions: positions,
+                    before: measure(piecePosed, pieceRest, edges, body, og, pieceMovable),
+                    after: measure(positions, pieceRest, edges, body, og, pieceMovable),
+                };
+            });
+            // This cloth is now part of what the next one clears.
+            layers.push(new Surface(corrected, normalsOf(corrected, fullIndices, body, o.reach), o.cell));
         });
         return { garments: results };
     }
 
     var api = {
         DEFAULTS: DEFAULTS,
+        SHOE: SHOE,
         correct: correct,
         edgesOf: edgesOf,
+        weldOf: weldOf,
         normalsOf: normalsOf,
         Surface: Surface,
     };

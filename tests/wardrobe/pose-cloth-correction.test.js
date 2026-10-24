@@ -123,3 +123,106 @@ describe('SW1 — pushing cloth back out of her', () => {
         expect(cloth.pos[1]).toBe(R - 0.02); // the input is not modified
     });
 });
+
+/**
+ * The square again, split down its middle column the way a glTF exporter splits a UV seam: the
+ * right half's triangles use their own copies of that column's vertices, at the same positions.
+ */
+function seamed(y, h, n) {
+    const { pos, indices } = square(y, h, n);
+    const mid = Math.floor(n / 2);
+    const copy = {};
+    for (let j = 0; j < n; j += 1) {
+        const v = mid * n + j;
+        copy[v] = pos.length / 3;
+        pos.push(pos[v * 3], pos[v * 3 + 1], pos[v * 3 + 2]);
+    }
+    for (let t = 0; t < indices.length; t += 3) {
+        const tri = indices.slice(t, t + 3);
+        const right = tri.some((v) => Math.floor(v / n) > mid);
+        if (right) for (let k = 0; k < 3; k += 1) if (copy[tri[k]] !== undefined) indices[t + k] = copy[tri[k]];
+    }
+    return { pos, indices, copy };
+}
+
+function faceNormal(p, indices, t) {
+    const [a, b, c] = [indices[t] * 3, indices[t + 1] * 3, indices[t + 2] * 3];
+    const u = [p[b] - p[a], p[b + 1] - p[a + 1], p[b + 2] - p[a + 2]];
+    const w = [p[c] - p[a], p[c + 1] - p[a + 1], p[c + 2] - p[a + 2]];
+    return [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]];
+}
+
+describe('SW3 — seams, pieces of one garment, folds and shoes', () => {
+    test("a seam's two copies of a vertex are corrected as one and end where each other is", () => {
+        const cloth = seamed(R - 0.02, 0.03, 9);
+        const { garments } = C.correct({
+            bodyPos: body.pos,
+            bodyNrm: body.nrm,
+            garments: [{ name: 'dress', posed: cloth.pos, rest: cloth.pos, indices: cloth.indices }],
+        });
+        const out = garments[0].positions;
+        for (const [v, c] of Object.entries(cloth.copy)) {
+            for (let k = 0; k < 3; k += 1) expect(out[c * 3 + k]).toBe(out[Number(v) * 3 + k]);
+        }
+        expect(garments[0].after.maxPenetrationMm).toBeLessThan(1);
+    });
+
+    test("pieces of one garment are one cloth: a boot's lining is not pushed out through its shell", () => {
+        const shell = square(R - 0.006, 0.02, 7);
+        const lining = square(R - 0.01, 0.02, 7);
+        const run = (group) =>
+            C.correct({
+                bodyPos: body.pos,
+                bodyNrm: body.nrm,
+                garments: [
+                    { name: 'shell', posed: shell.pos, rest: shell.pos, indices: shell.indices, group },
+                    { name: 'lining', posed: lining.pos, rest: lining.pos, indices: lining.indices, group },
+                ],
+            }).garments.map((g) => g.positions);
+        const centre = 24;
+        const [s1, l1] = run(undefined);
+        expect(radiusOf(l1, centre)).toBeGreaterThan(radiusOf(s1, centre) + C.DEFAULTS.clearance * 0.5);
+        const [s2, l2] = run('boot');
+        expect(radiusOf(l2, centre)).toBeLessThan(radiusOf(s2, centre) + 0.0005);
+    });
+
+    test('no triangle the correction moves ends turned over against the way skinning faced it', () => {
+        const cloth = square(R - 0.03, 0.04, 11);
+        const { garments } = C.correct({
+            bodyPos: body.pos,
+            bodyNrm: body.nrm,
+            garments: [{ name: 'dress', posed: cloth.pos, rest: cloth.pos, indices: cloth.indices }],
+        });
+        const out = garments[0].positions;
+        for (let t = 0; t < cloth.indices.length; t += 3) {
+            const before = faceNormal(cloth.pos, cloth.indices, t);
+            const after = faceNormal(out, cloth.indices, t);
+            expect(before[0] * after[0] + before[1] * after[1] + before[2] * after[2]).toBeGreaterThan(0);
+        }
+    });
+
+    test("a shoe's vertex goes no farther than maxMove from where skinning put it; cloth's may", () => {
+        const deep = square(R - 0.045, 0.02, 7); // 45 mm inside her
+        const moved = (profile) => {
+            const out = C.correct({
+                bodyPos: body.pos,
+                bodyNrm: body.nrm,
+                garments: [{ name: 'x', posed: deep.pos, rest: deep.pos, indices: deep.indices, profile }],
+            }).garments[0].positions;
+            let most = 0;
+            for (let v = 0; v < out.length / 3; v += 1) {
+                most = Math.max(
+                    most,
+                    Math.hypot(
+                        out[v * 3] - deep.pos[v * 3],
+                        out[v * 3 + 1] - deep.pos[v * 3 + 1],
+                        out[v * 3 + 2] - deep.pos[v * 3 + 2]
+                    )
+                );
+            }
+            return most;
+        };
+        expect(moved('shoe')).toBeLessThanOrEqual(C.SHOE.maxMove + 1e-6);
+        expect(moved(undefined)).toBeGreaterThan(C.SHOE.maxMove);
+    });
+});
