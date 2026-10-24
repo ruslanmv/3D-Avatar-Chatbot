@@ -78,12 +78,12 @@ So the rule for new code in `src/gltf-viewer/`:
 
 **`src/wardrobe/` — IIFE, but loaded by `index.html`, not `boot.js`.** Same dual
 export as `src/features/`, and for the same reason: Jest `require()`s these
-directly. What differs is how they reach the browser — twenty-six plain
-`<script>` tags at the very end of `<body>`, after the Pose Studio root. That
-placement is deliberate and the commit that moved them there says why: the
-parity harness counts boot scripts by line, so adding them near the top of
-`index.html` shifted every frozen line reference below. Load order within those
-matters — `WardrobeClient` defines the error class `WardrobeController` and
+directly. What differs is how they reach the browser — thirty plain `<script>`
+tags at the very end of `<body>`, after the Pose Studio root. That placement is
+deliberate and the commit that moved them there says why: the parity harness
+counts boot scripts by line, so adding them near the top of `index.html` shifted
+every frozen line reference below. Load order within those matters —
+`WardrobeClient` defines the error class `WardrobeController` and
 `WardrobePanel` read off the window at module scope, and `WardrobeBootstrap`
 runs on `DOMContentLoaded`, after every tag has loaded.
 
@@ -359,7 +359,7 @@ storage and no speech. A new code path that persists a reply needs that check.
 
 New outfits for the avatar, from the pack this repository ships or from a
 running [3D-Wardrobe-Forge](https://github.com/ruslanmv/3D-Wardrobe-Forge).
-Twenty-six modules in `src/wardrobe/`: the original eight behind a floating 👗
+Thirty-two modules in `src/wardrobe/`: the original eight behind a floating 👗
 drawer (`docs/WARDROBE.md`), eleven that put Try-On inside Together as a tile
 and hide the drawer once that tile exists (`docs/TRY_ON_TOGETHER.md`), three
 that make every look an artifact and let a pack be imported
@@ -420,8 +420,8 @@ creating looks (WF1)** — see the Forge bullet below.
   value. Omit the key when there is nothing to say, and send strings — the "I
   have permission" path is exactly the path with no conditions to send, so
   getting this wrong broke only the attestation retry.
-- **The twenty-six `<script>` tags live at the end of `index.html`'s `<body>`,
-  and moving them is not free.** The parity harness counts boot scripts by line;
+- **The thirty `<script>` tags live at the end of `index.html`'s `<body>`, and
+  moving them is not free.** The parity harness counts boot scripts by line;
   `node scripts/behavior-parity-baseline.mjs --check` is the check. None of them
   may point into an engine folder (`src/behavior/`, Together's own tree): those
   load only through `boot.js`, which is why the Try-On activity is
@@ -485,6 +485,24 @@ creating looks (WF1)** — see the Forge bullet below.
   another colour where the new clothes go (a half under clothes she keeps
   changes with them). Nothing chosen sends nothing. Every value must be in
   Forge's vocabulary — anything else is a 422 on every look.
+- **What she wears underneath changes colour on her, and only that (FC2).** The
+  companion's `<wardrobe action="underneath" color="black"/>` opens
+  `TryOnUnderneath` (White/Black product cards in the Live panel, more colours
+  as chips) with its pick highlighted; the person chooses.
+  `TryOnView.underneath` asks Forge for a recolour-only job (no outfit,
+  `baseLookId`, `foundationColor`) so the dress and boots come back byte for
+  byte, wears an already-made sibling colour instead of asking again, and
+  answers ok only once the VRM has loaded. Her prompt hears what she has
+  underneath only for a look Forge made here, and for a private look (a dress
+  over adult underwear is rated intimate) only while Try-On's private gate is
+  open.
+- **Cloth is pushed out of her once a pose settles (SW1).** Skinning alone left
+  a bodycon's lap 23 mm inside her thighs in Sitting (Wide); no weighting fixes
+  a vertex that bridges two surfaces. `PoseClothCorrection` (pure, tested) runs
+  in `PoseClothWorker` via `src/gltf-viewer/PoseClothCorrector.js`, two frames
+  after `VRPoseSystem` settles a preset; garments' original positions are
+  snapshotted and restored when she moves. `docs/SITTING_WIDE.md` has the
+  measurements.
 - **Private mode unlocks private outfits only for avatars Forge declares adult
   (W10).** `TryOnPrivate.evaluate()` answers `off`, `locked` with a sentence, or
   `open` with quick picks. Private mode (`NEXUS_SPICY.isEnabled()`) says the
