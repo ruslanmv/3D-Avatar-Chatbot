@@ -22,6 +22,7 @@
  */
 
 import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
+import { clearPosedGarments, correctPosedGarments } from './PoseGarmentCorrector.js';
 
 // =========================================================================
 // IK CHAIN DEFINITIONS (humanoid bone chains for CCD-IK)
@@ -1846,6 +1847,7 @@ export class VRPoseSystem {
     // =========================================================================
 
     setAvatar(root) {
+        if (this.avatarRoot && this.avatarRoot !== root) clearPosedGarments(this.avatarRoot);
         this.avatarRoot = root;
         this._bones.clear();
         this._restPoses.clear();
@@ -2107,6 +2109,7 @@ export class VRPoseSystem {
                 }
             }
             this._isBlending = false;
+            this._correctGarments();
             console.log(`[VRPoseSystem] Applying preset: ${preset.label} (instant)`);
             return;
         }
@@ -2366,7 +2369,22 @@ export class VRPoseSystem {
 
         if (t >= 1) {
             this._isBlending = false;
+            this._correctGarments();
             console.log(`[VRPoseSystem] Blend complete: ${this._currentPreset}`);
+        }
+    }
+
+    /**
+     * PS4. Once the bones have arrived, push the lap of each garment out of the
+     * posed body. Starts from the bind pose every time, so a later preset does
+     * not inherit the previous push. The body mesh is left as it was loaded.
+     */
+    _correctGarments() {
+        if (!this.avatarRoot) return;
+        try {
+            correctPosedGarments(this.avatarRoot);
+        } catch (error) {
+            console.warn('[VRPoseSystem] Garment correction skipped', error);
         }
     }
 

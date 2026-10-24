@@ -93,6 +93,7 @@
             // MG3. A foundation under her clothes, added by Forge only where she has none, kept
             // from look to look. Sent only when asked for, so other callers' jobs are unchanged.
             if (options.ensureFoundation) body.options.ensureFoundation = true;
+            if (options.foundationPolicy) body.options.foundationPolicy = options.foundationPolicy;
             if (options.baseLookId) body.baseLookId = options.baseLookId;
             if (options.bodyArt && options.bodyArt.length) body.bodyArt = options.bodyArt;
             return client.request('/v1/library/' + encodeURIComponent(slug) + '/jobs', {
