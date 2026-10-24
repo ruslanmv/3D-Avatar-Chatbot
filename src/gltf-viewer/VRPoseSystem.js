@@ -351,12 +351,31 @@ const POSE_PRESETS = {
         },
     },
 
+    // PS2. Knee over knee, measured on a loaded VRM (tools/try-on-playground's pose sheets): the
+    // right thigh lifted over the left (98° flexion) and brought across her (−24° on z, where
+    // the old values rotated both thighs outward), its shin hanging over the left one. The pose
+    // that used to carry this name spread both thighs apart; it is kept, named for what it is,
+    // as sittingWide below, so a saved choice of it is not lost.
     sittingCrossed: {
         label: 'Sitting (Crossed)',
         bones: {
             hips: eulerDegToQuat(5, 0, 0),
-            leftUpperLeg: eulerDegToQuat(88, -20, -18), // Wider spread, more open
-            rightUpperLeg: eulerDegToQuat(82, 14, 22), // Crossing leg more open
+            leftUpperLeg: eulerDegToQuat(88, 0, -2),
+            rightUpperLeg: eulerDegToQuat(98, 0, -24),
+            leftLowerLeg: eulerDegToQuat(-90, 0, 0),
+            rightLowerLeg: eulerDegToQuat(-80, 0, 0),
+            leftFoot: eulerDegToQuat(10, 0, 0),
+            rightFoot: eulerDegToQuat(25, 0, 0),
+            spine: eulerDegToQuat(-5, 0, 0),
+        },
+    },
+
+    sittingWide: {
+        label: 'Sitting (Wide)',
+        bones: {
+            hips: eulerDegToQuat(5, 0, 0),
+            leftUpperLeg: eulerDegToQuat(88, -20, -18),
+            rightUpperLeg: eulerDegToQuat(82, 14, 22),
             leftLowerLeg: eulerDegToQuat(-95, 0, 0),
             rightLowerLeg: eulerDegToQuat(-80, 0, 0),
             leftFoot: eulerDegToQuat(10, 0, 0),
@@ -1187,6 +1206,7 @@ const PRESET_ORDER = [
     'conversational',
     'sitting',
     'sittingCrossed',
+    'sittingWide',
     'sittingDesk',
     'sittingLegsUp',
     'kneelingUp',

@@ -216,6 +216,18 @@
             this.doc = options.doc || global.document;
             this.view = options.view;
             this.session = options.session;
+            this.workspace = options.workspace || null;
+            if (this.workspace) {
+                var self = this;
+                this.workspace.onState = function (opened) {
+                    self.expanded = opened;
+                    if (self.root) self.render(self.session.state());
+                };
+                this.workspace.onAdvanced = function () {
+                    // The existing technical editor is a secondary action, never the default.
+                    self.toggleLegacy();
+                };
+            }
             // (line) -> void: where the stage's live commentary goes (TryOnLiveLayout.commentate).
             this.onCommentary = options.onCommentary || null;
             this.expanded = false;
@@ -317,6 +329,25 @@
         }
 
         toggleAdvanced() {
+            if (this.workspace) {
+                if (this.workspace.opened) {
+                    this.workspace.close();
+                    return;
+                }
+                if (this.expanded) {
+                    this.toggleLegacy();
+                    return;
+                }
+                var self = this;
+                Promise.resolve(this.workspace.open()).then(function (mounted) {
+                    if (!mounted) self.toggleLegacy();
+                });
+                return;
+            }
+            this.toggleLegacy();
+        }
+
+        toggleLegacy() {
             if (!this.legacy || !this.view) return;
             this.expanded = !this.expanded;
             this.legacy.hidden = !this.expanded;
@@ -623,6 +654,7 @@
         }
 
         unmount() {
+            if (this.workspace) this.workspace.destroy();
             if (this.view && this.view.stageExperience === this) this.view.stageExperience = null;
             if (this._heightObserver) this._heightObserver.disconnect();
             this._heightObserver = null;
