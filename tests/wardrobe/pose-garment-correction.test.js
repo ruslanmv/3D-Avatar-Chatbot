@@ -60,6 +60,74 @@ describe('PS4 pose garment correction', () => {
         expect(maxEdgeStretch(out, rest, [0, 1, 2])).toBeLessThanOrEqual(STRETCH_LIMIT + 0.2);
     });
 
+    test('contact and stretch both hold when the push is across the cloth', () => {
+        const rest = new Float32Array([0, 0, 0, 0.04, 0, 0, 0.02, 0, 0.01]);
+        const posed = new Float32Array([0, -0.02, 0, 0.1, -0.02, 0, 0.02, -0.02, 0.01]);
+        const bodyPos = new Float32Array([0, 0, 0, 0.1, 0, 0, 0.02, 0, 0.01]);
+        const bodyNrm = new Float32Array([0, 1, 0, 0, 1, 0, 0, 1, 0]);
+        const out = correct({
+            posed,
+            rest,
+            indices: new Uint32Array([0, 1, 2]),
+            lap: lapAll(3),
+            bodyPos,
+            bodyNrm,
+        });
+        expect(out[1]).toBeGreaterThanOrEqual(0.0015 - 1e-4);
+        expect(out[4]).toBeGreaterThanOrEqual(0.0015 - 1e-4);
+        expect(maxEdgeStretch(out, rest, [0, 1, 2])).toBeLessThanOrEqual(STRETCH_LIMIT + 0.2);
+    });
+
+    test('shortening a chord does not leave the cloth inside a curved surface', () => {
+        const angles = [0, (2 * Math.PI) / 3, (4 * Math.PI) / 3];
+        const radius = 0.03;
+        const rest = new Float32Array(9);
+        const posed = new Float32Array(9);
+        const bodyPos = new Float32Array(9);
+        const bodyNrm = new Float32Array(9);
+        angles.forEach((angle, i) => {
+            const nx = Math.cos(angle);
+            const ny = Math.sin(angle);
+            bodyPos[i * 3] = nx * radius;
+            bodyPos[i * 3 + 1] = ny * radius;
+            bodyNrm[i * 3] = nx;
+            bodyNrm[i * 3 + 1] = ny;
+            posed[i * 3] = nx * (radius + 0.0015);
+            posed[i * 3 + 1] = ny * (radius + 0.0015);
+            rest[i * 3] = nx * 0.01;
+            rest[i * 3 + 1] = ny * 0.01;
+        });
+        const out = correct({
+            posed,
+            rest,
+            indices: new Uint32Array([0, 1, 2]),
+            lap: lapAll(3),
+            bodyPos,
+            bodyNrm,
+        });
+        for (let i = 0; i < 3; i += 1) {
+            let best = 0;
+            let bestD = Infinity;
+            for (let j = 0; j < 3; j += 1) {
+                const d = Math.hypot(
+                    out[i * 3] - bodyPos[j * 3],
+                    out[i * 3 + 1] - bodyPos[j * 3 + 1],
+                    out[i * 3 + 2] - bodyPos[j * 3 + 2]
+                );
+                if (d < bestD) {
+                    bestD = d;
+                    best = j;
+                }
+            }
+            const signed =
+                (out[i * 3] - bodyPos[best * 3]) * bodyNrm[best * 3] +
+                (out[i * 3 + 1] - bodyPos[best * 3 + 1]) * bodyNrm[best * 3 + 1] +
+                (out[i * 3 + 2] - bodyPos[best * 3 + 2]) * bodyNrm[best * 3 + 2];
+            expect(signed).toBeGreaterThanOrEqual(0.0015 - 1e-4);
+        }
+        expect(Number.isFinite(maxEdgeStretch(out, rest, [0, 1, 2]))).toBe(true);
+    });
+
     test('a hem vertex is pulled back to a pinned skirt vertex', () => {
         const rest = new Float32Array([0, 0, 0, 0, 0.04, 0, 0.01, 0.02, 0]);
         const posed = new Float32Array([0, -0.12, 0, 0, 0.04, 0, 0.01, -0.04, 0]);
@@ -83,6 +151,8 @@ describe('PS4 pose garment correction', () => {
     test('a bodycon dress is cloth, and the VRM body primitives are the skin', () => {
         expect(isBodyName('Body')).toBe(true);
         expect(isBodyName('Body_(merged)baked')).toBe(true);
+        expect(isBodyName('Body.baked')).toBe(true);
+        expect(isBodyName('Body.baked_1')).toBe(true);
         expect(isBodyName('Black Bodycon Mini Dress')).toBe(false);
         expect(isBodyName('Black_Bodycon_Mini_Dress')).toBe(false);
         expect(isBodyName('Beige Tailored Briefs')).toBe(false);

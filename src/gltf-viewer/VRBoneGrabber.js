@@ -373,6 +373,7 @@ export class VRBoneGrabber {
         }
 
         console.log(`[VRBoneGrabber] tryGrab: resolved bone "${bone.name}" for key "${boneKey}"`);
+        this.poseSystem?.releaseGarments?.();
 
         // Try IK-based manipulation first (grab hand → whole arm follows)
         this._usingIK = false;
@@ -535,9 +536,12 @@ export class VRBoneGrabber {
             return;
         }
 
-        // End IK if it was active
+        // End IK if it was active. A direct grab never started IK, so settle
+        // the cloth on the bones the hand left behind.
         if (this._usingIK && this.poseSystem) {
             this.poseSystem.endIK();
+        } else if (this.poseSystem?._correctGarments) {
+            this.poseSystem._correctGarments();
         }
 
         console.log(`[VRBoneGrabber] Released: ${this._grabbedBoneKey}`);

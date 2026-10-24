@@ -1871,6 +1871,7 @@ export class VRPoseSystem {
         if (!enabled) {
             this._isBlending = false;
             this._activeIKTarget = null;
+            this.releaseGarments();
         }
     }
 
@@ -2114,6 +2115,9 @@ export class VRPoseSystem {
             return;
         }
 
+        // The body is about to move. A mesh baked from the previous preset
+        // would stay behind until the blend finished.
+        this.releaseGarments();
         this._blendTime = 0;
         this._blendDuration = duration;
         this._isBlending = true;
@@ -2192,6 +2196,7 @@ export class VRPoseSystem {
             grabOffset.subVectors(boneWorldPos, controllerWorldPos);
         }
 
+        this.releaseGarments();
         this._activeIKTarget = {
             chainName,
             chainBones,
@@ -2248,6 +2253,7 @@ export class VRPoseSystem {
             resetLegDampState(chainName);
         }
         this._activeIKTarget = null;
+        if (!this._isBlending) this._correctGarments();
     }
 
     /**
@@ -2333,8 +2339,10 @@ export class VRPoseSystem {
             this._updateBlending(dt);
         }
 
-        // 2. IK solving
+        // 2. IK solving. The baked cloth is the settled pose; while a hand
+        // is dragging a bone the skinned garment has to follow.
         if (this._activeIKTarget) {
+            this.releaseGarments();
             this.updateIK();
         }
 
@@ -2379,8 +2387,29 @@ export class VRPoseSystem {
      * posed body. Starts from the bind pose every time, so a later preset does
      * not inherit the previous push. The body mesh is left as it was loaded.
      */
+    /**
+     * Pose Studio writes normalized proxy bones. boneTransform reads the raw
+     * skeleton, and the viewer's vrm.update() copies one onto the other on
+     * the next frame. Copy now, or the garment is baked from the pose she
+     * just left.
+     */
+    _syncHumanoid() {
+        const humanoid = this.avatarRoot?.userData?.vrmHumanoid;
+        if (!humanoid || typeof humanoid.update !== 'function') return;
+        const previous = humanoid.autoUpdateHumanBones;
+        humanoid.autoUpdateHumanBones = true;
+        humanoid.update();
+        humanoid.autoUpdateHumanBones = previous;
+    }
+
+    /** Show the skinned garments again. Used while bones are still moving. */
+    releaseGarments() {
+        clearPosedGarments(this.avatarRoot);
+    }
+
     _correctGarments() {
         if (!this.avatarRoot) return;
+        this._syncHumanoid();
         try {
             correctPosedGarments(this.avatarRoot);
         } catch (error) {
@@ -2435,6 +2464,7 @@ export class VRPoseSystem {
     }
 
     dispose() {
+        this.releaseGarments();
         this._bones.clear();
         this._restPoses.clear();
         this._springs.clear();

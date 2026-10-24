@@ -150,37 +150,40 @@
                 if (restLen > 1e-6) edges.push([a, b, restLen]);
             }
         }
-        for (var iter = 0; iter < ITERATIONS; iter += 1) {
-            if (hash) {
-                for (var v = 0; v < count; v += 1) {
-                    if (!lap[v]) continue;
-                    var x = out[v * 3];
-                    var y = out[v * 3 + 1];
-                    var z = out[v * 3 + 2];
-                    var i = nearest(hash, bodyPos, x, y, z);
-                    if (i < 0) continue;
-                    var nx = bodyNrm[i * 3];
-                    var ny = bodyNrm[i * 3 + 1];
-                    var nz = bodyNrm[i * 3 + 2];
-                    var signed =
-                        (x - bodyPos[i * 3]) * nx + (y - bodyPos[i * 3 + 1]) * ny + (z - bodyPos[i * 3 + 2]) * nz;
-                    if (signed < CLEARANCE_M) {
-                        // An inner-thigh normal points away from the midline and
-                        // pins the hem open. Keep the push that lifts cloth off
-                        // the pelvis; do not use it to spread the lap.
-                        var away = (x - centerX) * nx;
-                        if (away > 0 && Math.abs(nx) >= Math.abs(ny) && Math.abs(nx) >= Math.abs(nz)) continue;
-                        var push = CLEARANCE_M - signed;
-                        out[v * 3] += nx * push;
-                        out[v * 3 + 1] += ny * push;
-                        out[v * 3 + 2] += nz * push;
-                    }
-                }
+        function projectOut(allowLateral) {
+            if (!hash) return;
+            for (var v = 0; v < count; v += 1) {
+                if (!lap[v]) continue;
+                var x = out[v * 3];
+                var y = out[v * 3 + 1];
+                var z = out[v * 3 + 2];
+                var i = nearest(hash, bodyPos, x, y, z);
+                if (i < 0) continue;
+                var nx = bodyNrm[i * 3];
+                var ny = bodyNrm[i * 3 + 1];
+                var nz = bodyNrm[i * 3 + 2];
+                var signed =
+                    (x - bodyPos[i * 3]) * nx + (y - bodyPos[i * 3 + 1]) * ny + (z - bodyPos[i * 3 + 2]) * nz;
+                if (signed >= CLEARANCE_M) continue;
+                // An inner-thigh normal points away from the midline and pins
+                // the hem open. The iterative pass skips it. The last pass
+                // does not: shortening a chord has already pulled the cloth in.
+                var away = (x - centerX) * nx;
+                var lateral = away > 0 && Math.abs(nx) >= Math.abs(ny) && Math.abs(nx) >= Math.abs(nz);
+                if (lateral && !allowLateral) continue;
+                var push = CLEARANCE_M - signed;
+                out[v * 3] += nx * push;
+                out[v * 3 + 1] += ny * push;
+                out[v * 3 + 2] += nz * push;
             }
+        }
+
+        for (var iter = 0; iter < ITERATIONS; iter += 1) {
+            projectOut(false);
             relaxEdges(out, edges, lap);
         }
-        // The cloth limit is the last word, so a push cannot leave the hem open.
         for (var closing = 0; closing < 32; closing += 1) relaxEdges(out, edges, lap, 1);
+        projectOut(true);
         return out;
     }
 
