@@ -22,7 +22,7 @@
  */
 
 import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
-import { clearPosedGarments, correctPosedGarments } from './PoseGarmentCorrector.js';
+import { clearPosedGarments, correctPosedGarments, dropPosedOverlays } from './PoseGarmentCorrector.js';
 
 // =========================================================================
 // IK CHAIN DEFINITIONS (humanoid bone chains for CCD-IK)
@@ -2383,33 +2383,17 @@ export class VRPoseSystem {
     }
 
     /**
-     * PS4. Once the bones have arrived, push the lap of each garment out of the
-     * posed body. Starts from the bind pose every time, so a later preset does
-     * not inherit the previous push. The body mesh is left as it was loaded.
+     * A dress hangs from the pelvis. Rewriting its weights does not freeze a
+     * copy of the cloth, so the skinned mesh keeps following the bones and
+     * there is nothing to drop while a blend or a grab is in progress.
+     * Avatar swaps use clearPosedGarments, which puts the file's weights back.
      */
-    /**
-     * Pose Studio writes normalized proxy bones. boneTransform reads the raw
-     * skeleton, and the viewer's vrm.update() copies one onto the other on
-     * the next frame. Copy now, or the garment is baked from the pose she
-     * just left.
-     */
-    _syncHumanoid() {
-        const humanoid = this.avatarRoot?.userData?.vrmHumanoid;
-        if (!humanoid || typeof humanoid.update !== 'function') return;
-        const previous = humanoid.autoUpdateHumanBones;
-        humanoid.autoUpdateHumanBones = true;
-        humanoid.update();
-        humanoid.autoUpdateHumanBones = previous;
-    }
-
-    /** Show the skinned garments again. Used while bones are still moving. */
     releaseGarments() {
-        clearPosedGarments(this.avatarRoot);
+        dropPosedOverlays(this.avatarRoot);
     }
 
     _correctGarments() {
         if (!this.avatarRoot) return;
-        this._syncHumanoid();
         try {
             correctPosedGarments(this.avatarRoot);
         } catch (error) {
@@ -2464,7 +2448,7 @@ export class VRPoseSystem {
     }
 
     dispose() {
-        this.releaseGarments();
+        clearPosedGarments(this.avatarRoot);
         this._bones.clear();
         this._restPoses.clear();
         this._springs.clear();
