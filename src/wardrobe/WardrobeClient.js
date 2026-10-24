@@ -99,6 +99,7 @@
             };
             // MG3. Auto Foundation, as on the library route: only when the caller asks.
             if (options.ensureFoundation) body.options.ensureFoundation = true;
+            if (options.foundationPolicy) body.options.foundationPolicy = options.foundationPolicy;
             if (options.conditionsOfUse || options.attestModificationAllowed) {
                 // W1. The key is omitted rather than sent as null, and the values are strings.
                 // Forge types this as `dict[str, str]` with a default factory, not as optional:

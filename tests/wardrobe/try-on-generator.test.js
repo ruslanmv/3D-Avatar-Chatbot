@@ -148,6 +148,14 @@ describe('TryOnGenerator', () => {
         expect(generic.body.ensureFoundation).toBe(true); // the fake records generate()'s arguments
     });
 
+    test('a foundation policy of none does not ask Forge to add underwear under the black dress', async () => {
+        const library = setup({ url: `vendor/avatars/${SAMPLE_A.file}`, name: 'AvatarSample A' });
+        await library.generator.create('black matte strapless bodycon mini dress', { foundationPolicy: 'none' });
+        const post = library.forge.calls.find((call) => call.method === 'POST');
+        expect(post.body.options.foundationPolicy).toBe('none');
+        expect(post.body.options.ensureFoundation).toBeUndefined();
+    });
+
     test('LT1: the generic route cannot build on a look, so it says the look was made fresh', async () => {
         const { forge, generator } = setup({ url: 'uploads/aiko.vrm', name: 'Aiko' });
         const look = await generator.create('red skater skirt', { baseLookId: 'look_0' });

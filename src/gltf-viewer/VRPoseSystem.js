@@ -22,6 +22,7 @@
  */
 
 import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
+import { clearPosedGarments, correctPosedGarments, dropPosedOverlays } from './PoseGarmentCorrector.js';
 
 // =========================================================================
 // IK CHAIN DEFINITIONS (humanoid bone chains for CCD-IK)
@@ -1846,6 +1847,7 @@ export class VRPoseSystem {
     // =========================================================================
 
     setAvatar(root) {
+        if (this.avatarRoot && this.avatarRoot !== root) clearPosedGarments(this.avatarRoot);
         this.avatarRoot = root;
         this._bones.clear();
         this._restPoses.clear();
@@ -1869,6 +1871,7 @@ export class VRPoseSystem {
         if (!enabled) {
             this._isBlending = false;
             this._activeIKTarget = null;
+            this.releaseGarments();
         }
     }
 
@@ -2107,10 +2110,14 @@ export class VRPoseSystem {
                 }
             }
             this._isBlending = false;
+            this._correctGarments();
             console.log(`[VRPoseSystem] Applying preset: ${preset.label} (instant)`);
             return;
         }
 
+        // The body is about to move. A mesh baked from the previous preset
+        // would stay behind until the blend finished.
+        this.releaseGarments();
         this._blendTime = 0;
         this._blendDuration = duration;
         this._isBlending = true;
@@ -2189,6 +2196,7 @@ export class VRPoseSystem {
             grabOffset.subVectors(boneWorldPos, controllerWorldPos);
         }
 
+        this.releaseGarments();
         this._activeIKTarget = {
             chainName,
             chainBones,
@@ -2245,6 +2253,7 @@ export class VRPoseSystem {
             resetLegDampState(chainName);
         }
         this._activeIKTarget = null;
+        if (!this._isBlending) this._correctGarments();
     }
 
     /**
@@ -2330,8 +2339,10 @@ export class VRPoseSystem {
             this._updateBlending(dt);
         }
 
-        // 2. IK solving
+        // 2. IK solving. The baked cloth is the settled pose; while a hand
+        // is dragging a bone the skinned garment has to follow.
         if (this._activeIKTarget) {
+            this.releaseGarments();
             this.updateIK();
         }
 
@@ -2366,7 +2377,27 @@ export class VRPoseSystem {
 
         if (t >= 1) {
             this._isBlending = false;
+            this._correctGarments();
             console.log(`[VRPoseSystem] Blend complete: ${this._currentPreset}`);
+        }
+    }
+
+    /**
+     * A dress hangs from the pelvis. Rewriting its weights does not freeze a
+     * copy of the cloth, so the skinned mesh keeps following the bones and
+     * there is nothing to drop while a blend or a grab is in progress.
+     * Avatar swaps use clearPosedGarments, which puts the file's weights back.
+     */
+    releaseGarments() {
+        dropPosedOverlays(this.avatarRoot);
+    }
+
+    _correctGarments() {
+        if (!this.avatarRoot) return;
+        try {
+            correctPosedGarments(this.avatarRoot);
+        } catch (error) {
+            console.warn('[VRPoseSystem] Garment correction skipped', error);
         }
     }
 
@@ -2417,6 +2448,7 @@ export class VRPoseSystem {
     }
 
     dispose() {
+        clearPosedGarments(this.avatarRoot);
         this._bones.clear();
         this._restPoses.clear();
         this._springs.clear();

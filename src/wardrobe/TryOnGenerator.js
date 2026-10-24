@@ -28,6 +28,19 @@
     'use strict';
 
     var MAX_PROMPT = 300;
+
+    /**
+     * MG3, with an explicit policy. Absent, Try-On still asks for a foundation
+     * (ensureFoundation), which Forge adds only where she has none. ``none`` and
+     * ``preserve-existing`` do not ask, so a black dress is not given a second
+     * layer the request did not name. ``auto-compatible`` is the same ask, named.
+     */
+    function foundationJobOptions(options) {
+        var policy = options && options.foundationPolicy;
+        if (policy === 'none' || policy === 'preserve-existing') return { foundationPolicy: policy };
+        if (policy === 'auto-compatible') return { foundationPolicy: policy, ensureFoundation: true };
+        return { ensureFoundation: true };
+    }
     var NO_FORGE = 'Creating new looks needs Wardrobe Forge. Your saved looks still work.';
     var MISMATCH =
         'This Forge holds a different version of her, so a look made there would not fit her. ' +
@@ -185,11 +198,10 @@
                     if (outfit && options.templateId) outfit.templateId = String(options.templateId);
                     if (outfit && options.color) outfit.color = String(options.color);
                     var jobOptions = {};
-                    // MG3. Try-On always dresses her over a foundation Forge adds only where she
-                    // has none: a dress VRoid filed as a top then comes off under a skirt instead
-                    // of the skirt going over its hem, and the foundation is carried from look
-                    // to look with whatever else did not change.
-                    if (outfit) jobOptions.ensureFoundation = true;
+                    // MG3. By default Try-On still asks for a foundation Forge adds only where
+                    // she has none. foundationPolicy "none" or "preserve-existing" does not ask,
+                    // so a dress is not given a layer the request did not name.
+                    if (outfit) Object.assign(jobOptions, foundationJobOptions(options));
                     if (baseLookId) jobOptions.baseLookId = baseLookId;
                     if (bodyArt) jobOptions.bodyArt = bodyArt;
                     var accepted = await this.library.createJob(identity.slug, outfit, jobOptions);
@@ -211,7 +223,7 @@
                         mode: options.templateId ? 'template' : 'auto',
                         templateId: options.templateId || null,
                         renderPreview: true,
-                        ensureFoundation: true,
+                        ...foundationJobOptions(options),
                         conditionsOfUse: identity.conditionsOfUse,
                     });
                     jobId = started && started.jobId;

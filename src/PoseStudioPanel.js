@@ -388,6 +388,7 @@
                     var vps = window.vrPoseSystem;
                     if (vps) {
                         vps._isBlending = false;
+                        vps.releaseGarments?.();
                     }
                 } catch (_) {}
 
@@ -453,6 +454,7 @@
                     if (vps) {
                         vps._isBlending = false;
                         vps._blendTime = 0;
+                        vps.releaseGarments?.();
                     }
                 } catch (_) {}
 
