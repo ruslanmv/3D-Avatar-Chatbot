@@ -35,6 +35,8 @@
         // Sitting
         { name: 'sitting', label: 'Sitting', category: 'Sitting' },
         { name: 'sittingCrossed', label: 'Crossed', category: 'Sitting' },
+        // PS2. The pose 'Crossed' used to be: both thighs apart. Kept under its own name.
+        { name: 'sittingWide', label: 'Wide', category: 'Sitting' },
         { name: 'sittingDesk', label: 'Desk', category: 'Sitting' },
         { name: 'sittingLegsUp', label: 'Lounging', category: 'Sitting' },
         // Kneeling
