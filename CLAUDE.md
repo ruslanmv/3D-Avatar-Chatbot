@@ -477,6 +477,14 @@ creating looks (WF1)** — see the Forge bullet below.
   Forge declares adult. It is also what lets a dress VRoid filed as _Tops_
   (Model Girl's) come off under a new skirt instead of the skirt going over its
   hem. Other callers do not send it, so their requests are unchanged.
+- **She chooses what she wears underneath, once for the haul (FC1).**
+  Customize's _Underneath_ row (beige, nude, white, black, red, pink) stores
+  `nexus_tryon_foundation_color` through `TryOnGenerator.setFoundationColor`,
+  and every look then sends `foundationColor` with `ensureFoundation`. Forge
+  colours the foundation it adds, keeps one in that colour, and replaces one in
+  another colour where the new clothes go (a half under clothes she keeps
+  changes with them). Nothing chosen sends nothing. Every value must be in
+  Forge's vocabulary — anything else is a 422 on every look.
 - **Private mode unlocks private outfits only for avatars Forge declares adult
   (W10).** `TryOnPrivate.evaluate()` answers `off`, `locked` with a sentence, or
   `open` with quick picks. Private mode (`NEXUS_SPICY.isEnabled()`) says the

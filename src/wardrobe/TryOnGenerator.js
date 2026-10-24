@@ -43,6 +43,64 @@
         }
     }
 
+    /**
+     * FC1. What she wears under every look of the haul: the colour of the foundation Forge's
+     * Auto Foundation adds (`options.foundationColor`). Chosen once, kept in this browser, and
+     * sent with every look until changed. Each name is one Forge's vocabulary reads as a colour;
+     * Forge refuses anything else with a 422, so a typo here would fail every look, not just
+     * look wrong. Nothing chosen sends nothing, and Forge's beige stays — the request is then
+     * exactly what it was before FC1. Beige is offered too, so a person can go back to it: a
+     * black foundation is only replaced when a colour is asked for.
+     */
+    var FOUNDATION_KEY = 'nexus_tryon_foundation_color';
+    var FOUNDATION_COLORS = [
+        { value: 'beige', label: 'Beige', hex: '#ddccb0' },
+        { value: 'nude', label: 'Nude', hex: '#d9b39a' },
+        { value: 'white', label: 'White', hex: '#f3f2ee' },
+        { value: 'black', label: 'Black', hex: '#15151a' },
+        { value: 'red', label: 'Red', hex: '#b3202b' },
+        { value: 'pink', label: 'Pink', hex: '#e59ab8' },
+    ];
+
+    function storage() {
+        try {
+            return global && global.localStorage ? global.localStorage : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function foundationColor() {
+        var store = storage();
+        var value = null;
+        try {
+            value = store ? store.getItem(FOUNDATION_KEY) : null;
+        } catch (e) {
+            value = null;
+        }
+        return FOUNDATION_COLORS.some(function (c) {
+            return c.value === value;
+        })
+            ? value
+            : null;
+    }
+
+    /** Remember `value` (one of FOUNDATION_COLORS), or forget the choice with null. */
+    function setFoundationColor(value) {
+        var store = storage();
+        if (!store) return foundationColor();
+        var known = FOUNDATION_COLORS.some(function (c) {
+            return c.value === value;
+        });
+        try {
+            if (known) store.setItem(FOUNDATION_KEY, value);
+            else if (value === null) store.removeItem(FOUNDATION_KEY);
+        } catch (e) {
+            console.warn('[TryOn] could not keep the colour underneath:', e);
+        }
+        return foundationColor();
+    }
+
     /** Forge's own "passed" (`FitReport.passed`), which it computes but does not serialise. */
     function fitPassed(report) {
         if (!report) return null;
@@ -190,6 +248,9 @@
                     // of the skirt going over its hem, and the foundation is carried from look
                     // to look with whatever else did not change.
                     if (outfit) jobOptions.ensureFoundation = true;
+                    // FC1. Its colour, when she has chosen one; the look's own colour is `color`.
+                    var underneath = outfit ? this._foundationColor(options) : null;
+                    if (underneath) jobOptions.foundationColor = underneath;
                     if (baseLookId) jobOptions.baseLookId = baseLookId;
                     if (bodyArt) jobOptions.bodyArt = bodyArt;
                     var accepted = await this.library.createJob(identity.slug, outfit, jobOptions);
@@ -212,6 +273,7 @@
                         templateId: options.templateId || null,
                         renderPreview: true,
                         ensureFoundation: true,
+                        foundationColor: this._foundationColor(options),
                         conditionsOfUse: identity.conditionsOfUse,
                     });
                     jobId = started && started.jobId;
@@ -232,6 +294,19 @@
                     cause: error,
                 });
             }
+        }
+
+        /** FC1. This look's colour underneath: the caller's, else the one she chose, else none. */
+        _foundationColor(options) {
+            var asked = options && options.foundationColor;
+            if (
+                asked &&
+                FOUNDATION_COLORS.some(function (c) {
+                    return c.value === asked;
+                })
+            )
+                return asked;
+            return foundationColor();
         }
 
         _look(job, prompt, identity, baseLookId) {
@@ -260,7 +335,14 @@
         }
     }
 
-    var api = { TryOnGenerator: TryOnGenerator, TryOnError: TryOnError, fitPassed: fitPassed };
+    var api = {
+        TryOnGenerator: TryOnGenerator,
+        TryOnError: TryOnError,
+        fitPassed: fitPassed,
+        FOUNDATION_COLORS: FOUNDATION_COLORS,
+        foundationColor: foundationColor,
+        setFoundationColor: setFoundationColor,
+    };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_TRY_ON_GENERATOR = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);

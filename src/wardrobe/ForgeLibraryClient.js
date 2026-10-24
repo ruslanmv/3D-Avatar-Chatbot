@@ -79,7 +79,7 @@
          * Start a job on a library avatar. Resolves to the accepted job (`{id, state, ...}`).
          *
          * outfit    {prompt, mode?, color?, ...}  an OutfitRequest
-         * options   {renderPreview?, engine?, baseLookId?, bodyArt?, ensureFoundation?}
+         * options   {renderPreview?, engine?, baseLookId?, bodyArt?, ensureFoundation?, foundationColor?}
          */
         createJob(slug, outfit, options) {
             options = options || {};
@@ -93,6 +93,10 @@
             // MG3. A foundation under her clothes, added by Forge only where she has none, kept
             // from look to look. Sent only when asked for, so other callers' jobs are unchanged.
             if (options.ensureFoundation) body.options.ensureFoundation = true;
+            // FC1. The colour of that foundation, only with it and only when one was chosen.
+            if (options.ensureFoundation && options.foundationColor) {
+                body.options.foundationColor = String(options.foundationColor);
+            }
             if (options.baseLookId) body.baseLookId = options.baseLookId;
             if (options.bodyArt && options.bodyArt.length) body.bodyArt = options.bodyArt;
             return client.request('/v1/library/' + encodeURIComponent(slug) + '/jobs', {
