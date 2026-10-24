@@ -322,9 +322,8 @@
 
     // The mound panel. Sitting wide leaves the front of the mound bare under
     // the leg opening: the cloth stays on the hips while that skin swings
-    // forward. A sheet of new triangles, 3.5 mm in front of the skin a
-    // canonical front eye can still see, covers it. The skinned brief is
-    // not rewritten and not hidden.
+    // forward. A sheet of new triangles sits just in front of that skin.
+    // The skinned brief is not rewritten and not hidden.
     var MOUND_SIZE = 168;
     var MOUND_CLEAR_M = 0.005;
     var MOUND_FOV = 26 * Math.PI / 180;
@@ -463,40 +462,14 @@
             if (who[p] !== 1) continue;
             var point = [posx[p], posy[p], posz[p]];
             var L = localOf(point);
-            // In front of the hips, on the mound, below the waistband.
-            if (Math.abs(L[0]) < 0.048 && L[1] > -0.100 && L[1] < -0.023 && L[2] > -0.002 && L[2] < 0.12) {
+            // On the mound, below the waistband. A fold just behind the
+            // hip plane is still this surface: the front camera sees it
+            // in the notch, so it has to be cloth too.
+            if (Math.abs(L[0]) < 0.052 && L[1] > -0.108 && L[1] < -0.016 && L[2] > -0.020 && L[2] < 0.12) {
                 bare.push(point);
             }
         }
         if (bare.length < 24) return null;
-
-        // The hem is the brief's boundary just above the bare skin. The
-        // panel's top row sits on it, so the sheet meets the cloth.
-        var edgeCount = new Map();
-        function countEdge(a, b) {
-            var key = a < b ? a + ',' + b : b + ',' + a;
-            edgeCount.set(key, (edgeCount.get(key) || 0) + 1);
-        }
-        for (var ef = 0; ef < briefFaces.length; ef += 3) {
-            countEdge(briefFaces[ef], briefFaces[ef + 1]);
-            countEdge(briefFaces[ef + 1], briefFaces[ef + 2]);
-            countEdge(briefFaces[ef + 2], briefFaces[ef]);
-        }
-        var bareLx = bare.map(function (pt) { return localOf(pt)[0]; });
-        var bareLy = bare.map(function (pt) { return localOf(pt)[1]; });
-        var hem = [];
-        edgeCount.forEach(function (count, key) {
-            if (count !== 1) return;
-            var ids = key.split(',');
-            for (var h = 0; h < ids.length; h += 1) {
-                var hv = at(brief, +ids[h]);
-                var hl = localOf(hv);
-                if (Math.abs(hl[0]) > Math.max(Math.abs(minOf(bareLx)), Math.abs(maxOf(bareLx))) + 0.02) continue;
-                if (hl[1] < minOf(bareLy) - 0.01 || hl[1] > maxOf(bareLy) + 0.04) continue;
-                if (hl[2] < -0.02) continue;
-                hem.push(hv);
-            }
-        });
 
         var bsx = [];
         var bsy = [];
@@ -505,22 +478,18 @@
             bsx.push(pr[0]);
             bsy.push(pr[1]);
         }
-        var hemSx = [];
-        var hemSy = [];
-        for (var hs = 0; hs < hem.length; hs += 1) {
-            var hp = project(hem[hs]);
-            hemSx.push(hp[0]);
-            hemSy.push(hp[1]);
-        }
         function minOf(a) { var m = a[0]; for (var k = 1; k < a.length; k += 1) if (a[k] < m) m = a[k]; return m; }
         function maxOf(a) { var m = a[0]; for (var k = 1; k < a.length; k += 1) if (a[k] > m) m = a[k]; return m; }
-        var pad = 8;
-        var gx0 = Math.floor(Math.min(minOf(bsx), hemSx.length ? minOf(hemSx) : minOf(bsx))) - pad;
-        var gx1 = Math.ceil(Math.max(maxOf(bsx), hemSx.length ? maxOf(hemSx) : maxOf(bsx))) + pad;
-        var gy0 = Math.floor(Math.min(minOf(bsy), hemSy.length ? minOf(hemSy) : minOf(bsy))) - pad;
-        var gy1 = Math.ceil(maxOf(bsy)) + 6;
+        var pad = 10;
+        var gx0 = Math.floor(minOf(bsx)) - pad;
+        var gx1 = Math.ceil(maxOf(bsx)) + pad;
+        var gy0 = Math.floor(minOf(bsy)) - pad;
+        var gy1 = Math.ceil(maxOf(bsy)) + 12;
 
-        // Skin-only depth, so a grid point sits just in front of her.
+        // Skin-only hits. Each grid vertex is placed on the skin under that
+        // pixel, a few millimetres toward the eye. A thigh in front of the
+        // mound is closer than every bare sample and is left out, so it
+        // cannot drag the sheet off the body.
         zbuf = new Float32Array(size * size);
         who = new Uint8Array(size * size);
         posx = new Float32Array(size * size);
@@ -529,11 +498,13 @@
         for (var z = 0; z < zbuf.length; z += 1) zbuf[z] = Infinity;
         draw(skin, skinFaces, 1);
 
-        var COLS = 13;
-        var ROWS = 8;
-        // Every vertex stays on its own pixel's ray, a few millimetres in
-        // front of the skin. A missing pixel borrows the depth of a neighbour
-        // so the sheet does not collapse into a hole.
+        var COLS = 21;
+        var ROWS = 12;
+        var bareZ = [];
+        for (var bz = 0; bz < bare.length; bz += 1) bareZ.push(project(bare[bz])[2]);
+        bareZ.sort(function (a, b) { return a - b; });
+        var minBareZ = bareZ[0];
+
         function onRay(sx, sy, depth) {
             var nx = (sx / size - 0.5) * span;
             var ny = (0.5 - sy / size) * span;
@@ -544,86 +515,153 @@
                 eye[2] + (forward[2] + camRight[2] * nx + camUp[2] * ny) * t,
             ];
         }
-        function skinDepth(sx, sy) {
+        function eyeDist(p) {
+            return Math.hypot(p[0] - eye[0], p[1] - eye[1], p[2] - eye[2]);
+        }
+        function skinUnder(sx, sy) {
             var ix = Math.max(0, Math.min(size - 1, Math.round(sx)));
             var iy = Math.max(0, Math.min(size - 1, Math.round(sy)));
-            // A couple of pixels of slack. Anything further is a different
-            // surface (the belly, a thigh) and would pull the sheet off the mound.
-            var best = null;
-            for (var rad = 0; rad <= 2; rad += 1) {
+            for (var rad = 0; rad <= 6; rad += 1) {
+                var best = null;
+                var bestD = Infinity;
                 var yA = Math.max(0, iy - rad);
                 var yB = Math.min(size - 1, iy + rad);
                 var xA = Math.max(0, ix - rad);
                 var xB = Math.min(size - 1, ix + rad);
                 for (var yy = yA; yy <= yB; yy += 1) {
+                    var yEdge = rad > 0 && yy !== yA && yy !== yB;
                     for (var xx = xA; xx <= xB; xx += 1) {
+                        if (yEdge && xx !== xA && xx !== xB) continue;
                         var id = yy * size + xx;
-                        if (who[id] === 1 && (best == null || zbuf[id] < best)) best = zbuf[id];
+                        if (who[id] !== 1) continue;
+                        if (zbuf[id] < minBareZ - 0.008) continue;
+                        var point = [posx[id], posy[id], posz[id]];
+                        var Lp = localOf(point);
+                        if (Math.abs(Lp[0]) > 0.07 || Lp[1] < -0.13 || Lp[1] > 0.02 || Lp[2] < -0.03 || Lp[2] > 0.16) continue;
+                        var dist = eyeDist(point);
+                        if (dist < bestD) {
+                            best = point;
+                            bestD = dist;
+                        }
                     }
                 }
-                if (best != null) return best;
+                if (best) return best;
             }
             return null;
         }
-        var bareZ = [];
-        for (var bz = 0; bz < bare.length; bz += 1) bareZ.push(project(bare[bz])[2]);
-        bareZ.sort(function (a, b) { return a - b; });
-        var moundZ = bareZ[Math.floor(bareZ.length / 2)];
-        var depthGrid = [];
-        for (var c = 0; c < COLS; c += 1) {
-            var sx = gx0 + (gx1 - gx0) * (c / (COLS - 1));
+
+        var xs = [];
+        var ys = [];
+        for (var c = 0; c < COLS; c += 1) xs.push(gx0 + (gx1 - gx0) * (c / (COLS - 1)));
+        for (var r = 0; r < ROWS; r += 1) ys.push(gy0 + (gy1 - gy0) * (r / (ROWS - 1)));
+        var depth = [];
+        var known = 0;
+        for (var c1 = 0; c1 < COLS; c1 += 1) {
             var colD = [];
-            for (var r = 0; r < ROWS; r += 1) {
-                var sy = gy0 + (gy1 - gy0) * (r / (ROWS - 1));
-                var hit = skinDepth(sx, sy);
-                // A thigh in the foreground is closer than the mound. Leave
-                // that cell empty so the bridge stays on the mound.
-                if (hit != null && Math.abs(hit - moundZ) > 0.035) hit = null;
-                colD.push(hit);
+            for (var r1 = 0; r1 < ROWS; r1 += 1) {
+                var hit = skinUnder(xs[c1], ys[r1]);
+                var hz = hit ? project(hit)[2] : null;
+                if (hz != null) known += 1;
+                colD.push(hz);
             }
-            depthGrid.push(colD);
+            depth.push(colD);
         }
-        var known = [];
-        for (var kc = 0; kc < COLS; kc += 1) {
-            for (var kr = 0; kr < ROWS; kr += 1) {
-                if (depthGrid[kc][kr] != null) known.push(depthGrid[kc][kr]);
-            }
-        }
-        if (!known.length) return null;
-        var fallback = moundZ;
-        // A cell with no skin of its own (the notch between the two lobes)
-        // takes the nearer of its neighbours, so the sheet bridges the notch
-        // instead of falling into it.
-        for (var fr = 0; fr < ROWS; fr += 1) {
-            for (var fc = 0; fc < COLS; fc += 1) {
-                if (depthGrid[fc][fr] != null) continue;
-                var bridge = null;
-                for (var step = 1; step < COLS; step += 1) {
-                    if (fc - step >= 0 && depthGrid[fc - step][fr] != null) {
-                        bridge = bridge == null ? depthGrid[fc - step][fr] : Math.min(bridge, depthGrid[fc - step][fr]);
-                        break;
+        if (!known) return null;
+        // A bare sample closer than its cell pulls that cell forward. The
+        // vertex stays on its own ray, so the sheet cannot fold open.
+        var cellW = Math.max((gx1 - gx0) / Math.max(COLS - 1, 1), (gy1 - gy0) / Math.max(ROWS - 1, 1));
+        var reach2 = cellW * cellW * 1.6;
+        for (var bi = 0; bi < bare.length; bi += 1) {
+            var bp = project(bare[bi]);
+            var bestC = 0;
+            var bestR = 0;
+            var bestS = Infinity;
+            for (var sc = 0; sc < COLS; sc += 1) {
+                var dxs = xs[sc] - bp[0];
+                for (var sr = 0; sr < ROWS; sr += 1) {
+                    var dys = ys[sr] - bp[1];
+                    var sd = dxs * dxs + dys * dys;
+                    if (sd < bestS) {
+                        bestS = sd;
+                        bestC = sc;
+                        bestR = sr;
                     }
                 }
-                for (var step2 = 1; step2 < COLS; step2 += 1) {
-                    if (fc + step2 < COLS && depthGrid[fc + step2][fr] != null) {
-                        bridge = bridge == null ? depthGrid[fc + step2][fr] : Math.min(bridge, depthGrid[fc + step2][fr]);
-                        break;
-                    }
-                }
-                depthGrid[fc][fr] = bridge;
             }
+            if (bestS > reach2) continue;
+            if (depth[bestC][bestR] == null || bp[2] < depth[bestC][bestR]) depth[bestC][bestR] = bp[2];
+        }
+        // A valley between two closer sides is pulled up to the chord, so
+        // the notch stays cloth instead of a crack you can see through.
+        for (var pass = 0; pass < 2; pass += 1) {
+            for (var fr = 0; fr < ROWS; fr += 1) {
+                for (var fc = 1; fc < COLS - 1; fc += 1) {
+                    if (depth[fc][fr] == null) continue;
+                    var leftD = null;
+                    var leftStep = 0;
+                    var rightD = null;
+                    var rightStep = 0;
+                    for (var step = 1; step < COLS; step += 1) {
+                        if (leftD == null && fc - step >= 0 && depth[fc - step][fr] != null && depth[fc - step][fr] < depth[fc][fr]) {
+                            leftD = depth[fc - step][fr];
+                            leftStep = step;
+                        }
+                        if (rightD == null && fc + step < COLS && depth[fc + step][fr] != null && depth[fc + step][fr] < depth[fc][fr]) {
+                            rightD = depth[fc + step][fr];
+                            rightStep = step;
+                        }
+                        if (leftD != null && rightD != null) break;
+                    }
+                    if (leftD == null || rightD == null) continue;
+                    var chord = leftD + (rightD - leftD) * (leftStep / (leftStep + rightStep));
+                    if (depth[fc][fr] > chord) depth[fc][fr] = chord;
+                }
+            }
+        }
+        function bridgeDepth(col, row) {
+            var leftD = null;
+            var leftStep = 0;
+            var rightD = null;
+            var rightStep = 0;
+            for (var step = 1; step < COLS; step += 1) {
+                if (leftD == null && col - step >= 0 && depth[col - step][row] != null) {
+                    leftD = depth[col - step][row];
+                    leftStep = step;
+                }
+                if (rightD == null && col + step < COLS && depth[col + step][row] != null) {
+                    rightD = depth[col + step][row];
+                    rightStep = step;
+                }
+                if (leftD != null && rightD != null) break;
+            }
+            if (leftD != null && rightD != null) return leftD + (rightD - leftD) * (leftStep / (leftStep + rightStep));
+            if (leftD != null) return leftD;
+            if (rightD != null) return rightD;
+            for (var vr = 0; vr < ROWS; vr += 1) {
+                if (depth[col][vr] != null) return depth[col][vr];
+            }
+            return minBareZ;
         }
         var grid = [];
         for (var c2 = 0; c2 < COLS; c2 += 1) {
-            var sx2 = gx0 + (gx1 - gx0) * (c2 / (COLS - 1));
             var col = [];
             for (var r2 = 0; r2 < ROWS; r2 += 1) {
-                var sy2 = gy0 + (gy1 - gy0) * (r2 / (ROWS - 1));
-                var depth = depthGrid[c2][r2];
-                if (depth == null) depth = fallback;
-                col.push(onRay(sx2, sy2, depth));
+                var dz = depth[c2][r2];
+                if (dz == null) dz = bridgeDepth(c2, r2);
+                col.push(onRay(xs[c2], ys[r2], dz));
             }
             grid.push(col);
+        }
+        // The centre of the notch faces downward. Drop that cloth a few
+        // millimetres toward the underside so the fold stays covered.
+        for (var tc = 0; tc < COLS; tc += 1) {
+            for (var tr = 0; tr < ROWS; tr += 1) {
+                var tuck = grid[tc][tr];
+                var Lt = localOf(tuck);
+                if (Math.abs(Lt[0]) > 0.028 || Lt[1] < -0.096 || Lt[1] > -0.055) continue;
+                tuck[1] -= 0.005;
+                tuck[2] += front[2] * 0.004;
+            }
         }
 
         var positions = new Float32Array(COLS * ROWS * 3);
