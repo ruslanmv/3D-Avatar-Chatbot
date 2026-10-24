@@ -101,6 +101,44 @@
         return foundationColor();
     }
 
+    var UPPER = /bra|top|bandeau|bralette|bustier|camisole|corset/i;
+
+    /** The colour this request asked for underneath, as `create` sends it (null: Forge's beige). */
+    function outfitColor(options, generator) {
+        return generator._foundationColor(options) || null;
+    }
+
+    /**
+     * FC2. {color, pieces} for what she wears underneath a made look: the garments Forge's plan
+     * put on her as the foundation, named without their colour word ("Tailored Briefs").
+     */
+    function jobUnderneath(job, color) {
+        // Forge serialises a plan's garments as `layers`, inner first (`garments` is Python-side only).
+        var plan = (job && job.plan) || {};
+        var garments = plan.layers || plan.garments || [];
+        var pieces = garments
+            .filter(function (g) {
+                return g && g.role === 'foundation';
+            })
+            .map(function (g) {
+                var words = String(g.name || '').split(/\s+/);
+                if (
+                    words.length > 1 &&
+                    FOUNDATION_COLORS.some(function (c) {
+                        return c.value === words[0].toLowerCase();
+                    })
+                )
+                    words.shift();
+                return words.join(' ');
+            })
+            .filter(Boolean)
+            // Upper first, as it is worn and said: "tube top · tailored briefs".
+            .sort(function (a, b) {
+                return Number(!UPPER.test(a)) - Number(!UPPER.test(b));
+            });
+        return { color: color, pieces: pieces };
+    }
+
     /** Forge's own "passed" (`FitReport.passed`), which it computes but does not serialise. */
     function fitPassed(report) {
         if (!report) return null;
@@ -213,10 +251,16 @@
             var text = String(prompt || '').trim();
             var bodyArt = Array.isArray(options.bodyArt) && options.bodyArt.length ? options.bodyArt : null;
             var tattooOnly = !text && bodyArt;
+            // FC2. Only the colour underneath, on the look she has on: no outfit, so Forge carries
+            // the dress and boots over byte for byte and rewrites the foundation's colour alone.
+            var recolourOnly = !text && !bodyArt && Boolean(options.recolour) && Boolean(options.foundationColor);
             if (tattooOnly && !options.baseLookId) {
                 throw new TryOnError('A tattoo goes on a look Forge made for her. Make or choose one of those first.');
             }
-            if (!text && !tattooOnly)
+            if (recolourOnly && !options.baseLookId) {
+                throw new TryOnError('Only a look Forge made for her can change colour underneath.');
+            }
+            if (!text && !tattooOnly && !recolourOnly)
                 throw new TryOnError('Describe the look first, like “black satin cocktail dress”.');
             if (text.length > MAX_PROMPT) throw new TryOnError('That description is too long. Keep it short.');
             var available = this.availability();
@@ -238,7 +282,7 @@
                     }
                     // LT1. "Change the top" builds on the look she has on, so everything the
                     // person did not ask to change — the jeans, the shoes — stays as it is.
-                    var outfit = tattooOnly ? null : { prompt: text };
+                    var outfit = tattooOnly || recolourOnly ? null : { prompt: text };
                     if (outfit && options.preset) outfit.preset = String(options.preset);
                     if (outfit && options.templateId) outfit.templateId = String(options.templateId);
                     if (outfit && options.color) outfit.color = String(options.color);
@@ -250,18 +294,21 @@
                     if (outfit) jobOptions.ensureFoundation = true;
                     // FC1. Its colour, when she has chosen one; the look's own colour is `color`.
                     var underneath = outfit ? this._foundationColor(options) : null;
+                    if (recolourOnly) underneath = this._foundationColor(options);
                     if (underneath) jobOptions.foundationColor = underneath;
                     if (baseLookId) jobOptions.baseLookId = baseLookId;
                     if (bodyArt) jobOptions.bodyArt = bodyArt;
                     var accepted = await this.library.createJob(identity.slug, outfit, jobOptions);
                     jobId = accepted && accepted.id;
                 } else {
-                    if (bodyArt || options.preset) {
+                    if (bodyArt || options.preset || recolourOnly) {
                         // The generic route takes a prompt and nothing else.
                         throw new TryOnError(
                             bodyArt
                                 ? 'Tattoos are made on the built-in avatars Forge holds, and she is not one of them.'
-                                : 'That set is made on the built-in avatars Forge holds, and she is not one of them.'
+                                : recolourOnly
+                                  ? 'The colour underneath changes on the built-in avatars Forge holds, and she is not one of them.'
+                                  : 'That set is made on the built-in avatars Forge holds, and she is not one of them.'
                         );
                     }
                     var controller = this.controller;
@@ -286,7 +333,12 @@
                         this._progress(state, options.onProgress);
                     }.bind(this),
                 });
-                return this._look(job, text || 'Tattoo', identity, baseLookId);
+                var made = this._look(job, text || (recolourOnly ? '' : 'Tattoo'), identity, baseLookId);
+                // FC1/FC2. What she wears underneath this look, as asked of Forge: the colour (null
+                // when none was chosen — Forge's beige) and the pieces. A recolour has no plan of
+                // its own; its pieces are the base look's, which the caller carries over.
+                made.underneath = jobUnderneath(job, outfitColor(options, this));
+                return made;
             } catch (error) {
                 if (error && (error.name === 'AbortError' || error.name === 'TryOnError')) throw error;
                 throw new TryOnError(this.Reasons.explain(error), {

@@ -99,15 +99,30 @@
             inputSchema: { type: 'object' },
         },
         { name: 'wardrobe_undo', description: 'Go back to the previous look.', inputSchema: { type: 'object' } },
+        {
+            // FC2. Her suggestion only: it opens a colour chooser for the person, with this colour
+            // highlighted, on the look she has on. The person chooses; the tag changes nothing.
+            name: 'wardrobe_underneath',
+            description:
+                'Offer another colour for what she wears underneath the look she has on (white, black, nude, ' +
+                'beige, red, pink): shows the person a chooser with that colour suggested. Only after they agree.',
+            inputSchema: {
+                type: 'object',
+                properties: { color: { type: 'string', enum: ['beige', 'nude', 'white', 'black', 'red', 'pink'] } },
+                required: ['color'],
+            },
+        },
     ]);
 
-    var ACTIONS = { wear: 1, change: 1, create: 1, tattoo: 1, keep: 1, undo: 1 };
+    var ACTIONS = { wear: 1, change: 1, create: 1, tattoo: 1, keep: 1, undo: 1, underneath: 1 };
+    var UNDERNEATH = { beige: 1, nude: 1, white: 1, black: 1, red: 1, pink: 1 };
     var ALLOWED = {
         wear: ['outfit', 'look'],
         change: ['prompt'],
         create: ['prompt'],
         tattoo: ['design', 'placement'],
         keep: [],
+        underneath: ['color'],
         undo: [],
     };
     var ID = /^[a-z0-9][a-z0-9_-]{0,47}$/;
@@ -251,6 +266,20 @@
             }
         }
         lines.push('  ' + OPEN + ' action="undo"/>   back to the previous look', '  ' + OPEN + ' action="keep"/>');
+        if (context.canCreate && context.underneath) {
+            // FC2. What she has on underneath, and how to offer a change. The person chooses in
+            // the chooser the tag opens; the tag itself changes nothing, so it is safe to offer.
+            lines.push(
+                '',
+                'UNDERNEATH: under this look you are wearing ' +
+                    context.underneath +
+                    '. If the person asks about the colour underneath, give your honest styling view',
+                '(what goes with the outfit and the shoes). Only after they agree to try a colour, write one',
+                'short sentence and this tag on its own line; it shows them a chooser with your pick:',
+                '  ' + OPEN + ' action="underneath" color="black"/>   colours: white, black, nude, beige, red, pink',
+                'Never say the colour has changed: the person chooses, and the screen says when it is on.'
+            );
+        }
         if (context.running) {
             // W17. While a haul is open, the chat is its commentary track.
             lines.push(
@@ -328,6 +357,7 @@
             looks: (mine.looks || []).slice(0, 12),
             current: mine.current || null,
             running: Boolean(mine.running),
+            underneath: mine.underneath || null,
         };
     }
 
@@ -391,6 +421,11 @@
             if (!ID.test(design) || !ID.test(placement)) return { reason: 'tattoo needs a design and a placement id' };
             args.design = design;
             args.placement = placement;
+        }
+        if (action === 'underneath') {
+            var color = String(attributes.color || '').toLowerCase();
+            if (!UNDERNEATH[color]) return { reason: 'underneath needs a colour she can wear underneath' };
+            args.color = color;
         }
         return { name: 'wardrobe_' + action, args: args };
     }

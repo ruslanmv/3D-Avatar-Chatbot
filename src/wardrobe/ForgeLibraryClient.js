@@ -94,7 +94,8 @@
             // from look to look. Sent only when asked for, so other callers' jobs are unchanged.
             if (options.ensureFoundation) body.options.ensureFoundation = true;
             // FC1. The colour of that foundation, only with it and only when one was chosen.
-            if (options.ensureFoundation && options.foundationColor) {
+            // FC2. Or alone, with no outfit: the colour underneath the look named by baseLookId.
+            if (options.foundationColor && (options.ensureFoundation || outfit === null)) {
                 body.options.foundationColor = String(options.foundationColor);
             }
             if (options.baseLookId) body.baseLookId = options.baseLookId;
