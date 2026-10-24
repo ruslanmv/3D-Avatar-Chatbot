@@ -78,6 +78,36 @@
      * @param {Float32Array|number[]} input.bodyNrm posed skin normals, outward
      * @returns {Float32Array}
      */
+    function relaxEdges(out, edges, lap, gain) {
+        for (var n = 0; n < edges.length; n += 1) {
+            var edge = edges[n];
+            var ia = edge[0];
+            var ib = edge[1];
+            if (!lap[ia] && !lap[ib]) continue;
+            var ex = out[ib * 3] - out[ia * 3];
+            var ey = out[ib * 3 + 1] - out[ia * 3 + 1];
+            var ez = out[ib * 3 + 2] - out[ia * 3 + 2];
+            var len = Math.hypot(ex, ey, ez);
+            var limit = edge[2] * STRETCH_LIMIT;
+            if (len <= limit || len < 1e-8) continue;
+            // A vertex outside the lap stays put, so the hem is pulled back
+            // up to the skirt instead of dragging the waist down with it.
+            var excess = (len - limit) * (gain || RELAX);
+            var shareA = lap[ia] ? (lap[ib] ? 0.5 : 1) : 0;
+            var shareB = lap[ib] ? (lap[ia] ? 0.5 : 1) : 0;
+            var inv = 1 / len;
+            var dx = ex * inv * excess;
+            var dy = ey * inv * excess;
+            var dz = ez * inv * excess;
+            out[ia * 3] += dx * shareA;
+            out[ia * 3 + 1] += dy * shareA;
+            out[ia * 3 + 2] += dz * shareA;
+            out[ib * 3] -= dx * shareB;
+            out[ib * 3 + 1] -= dy * shareB;
+            out[ib * 3 + 2] -= dz * shareB;
+        }
+    }
+
     function correct(input) {
         var posed = input.posed;
         var rest = input.rest;
@@ -89,6 +119,14 @@
         var out = new Float32Array(posed.length);
         out.set(posed);
         var hash = bodyPos && bodyPos.length ? buildHash(bodyPos) : null;
+        var centerX = 0;
+        var lapCount = 0;
+        for (var c = 0; c < count; c += 1) {
+            if (!lap[c]) continue;
+            centerX += rest[c * 3];
+            lapCount += 1;
+        }
+        centerX = lapCount ? centerX / lapCount : 0;
         var edges = [];
         var seen = new Set();
         for (var t = 0; t < indices.length; t += 3) {
@@ -127,6 +165,11 @@
                     var signed =
                         (x - bodyPos[i * 3]) * nx + (y - bodyPos[i * 3 + 1]) * ny + (z - bodyPos[i * 3 + 2]) * nz;
                     if (signed < CLEARANCE_M) {
+                        // An inner-thigh normal points away from the midline and
+                        // pins the hem open. Keep the push that lifts cloth off
+                        // the pelvis; do not use it to spread the lap.
+                        var away = (x - centerX) * nx;
+                        if (away > 0 && Math.abs(nx) >= Math.abs(ny) && Math.abs(nx) >= Math.abs(nz)) continue;
                         var push = CLEARANCE_M - signed;
                         out[v * 3] += nx * push;
                         out[v * 3 + 1] += ny * push;
@@ -134,30 +177,10 @@
                     }
                 }
             }
-            for (var n = 0; n < edges.length; n += 1) {
-                var edge = edges[n];
-                var ia = edge[0];
-                var ib = edge[1];
-                if (!lap[ia] || !lap[ib]) continue;
-                var ex = out[ib * 3] - out[ia * 3];
-                var ey = out[ib * 3 + 1] - out[ia * 3 + 1];
-                var ez = out[ib * 3 + 2] - out[ia * 3 + 2];
-                var len = Math.hypot(ex, ey, ez);
-                var limit = edge[2] * STRETCH_LIMIT;
-                if (len <= limit || len < 1e-8) continue;
-                var excess = (len - limit) * RELAX;
-                var inv = 1 / len;
-                var dx = ex * inv * excess * 0.5;
-                var dy = ey * inv * excess * 0.5;
-                var dz = ez * inv * excess * 0.5;
-                out[ia * 3] += dx;
-                out[ia * 3 + 1] += dy;
-                out[ia * 3 + 2] += dz;
-                out[ib * 3] -= dx;
-                out[ib * 3 + 1] -= dy;
-                out[ib * 3 + 2] -= dz;
-            }
+            relaxEdges(out, edges, lap);
         }
+        // The cloth limit is the last word, so a push cannot leave the hem open.
+        for (var closing = 0; closing < 32; closing += 1) relaxEdges(out, edges, lap, 1);
         return out;
     }
 
@@ -184,11 +207,18 @@
         return worst;
     }
 
+    // "Body" and three-vrm's "Body_(merged)baked" are the skin. "Bodycon" is a dress.
+    function isBodyName(name) {
+        if (!name || /bodycon/i.test(name)) return false;
+        return /(^|[^a-z0-9])body([^a-z0-9]|$)/i.test(name);
+    }
+
     var api = {
         CLEARANCE_M: CLEARANCE_M,
         STRETCH_LIMIT: STRETCH_LIMIT,
         correct: correct,
         maxEdgeStretch: maxEdgeStretch,
+        isBodyName: isBodyName,
     };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_POSE_GARMENT_CORRECTION = api;

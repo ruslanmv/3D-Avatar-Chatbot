@@ -12,7 +12,6 @@
 import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
 
 const SKIP = /hair|eye|teeth|brow|tongue|lash|face|tear|highlight/i;
-const BODY = /body/i;
 const _bind = new THREE.Vector3();
 const _posed = new THREE.Vector3();
 
@@ -27,6 +26,62 @@ function localSkinned(mesh) {
         out[i * 3] = _bind.x;
         out[i * 3 + 1] = _bind.y;
         out[i * 3 + 2] = _bind.z;
+    }
+    return out;
+}
+
+const LEG = /leg|thigh|foot|toe|knee/i;
+
+/**
+ * The lap of a dress is one sheet. Sitting (Wide) gives that sheet both thighs,
+ * so the hem follows the legs apart and the crotch cloth leaves the pelvis.
+ * Re-skin those vertices with the hips and spine only, then the cloth solver
+ * runs. Vertices with no other bone keep the posed result.
+ */
+function unpinThighs(mesh, posed, lap) {
+    const skinIndex = mesh.geometry.attributes.skinIndex;
+    const skinWeight = mesh.geometry.attributes.skinWeight;
+    if (!skinIndex || !skinWeight || !mesh.skeleton) return posed;
+    const bones = mesh.skeleton.bones;
+    const out = new Float32Array(posed.length);
+    out.set(posed);
+    const position = mesh.geometry.attributes.position;
+    const vertex = new THREE.Vector3();
+    const accum = new THREE.Vector3();
+    const temp = new THREE.Vector3();
+    const boneMat = new THREE.Matrix4();
+    const read = (attribute, index, corner) => {
+        if (corner === 0) return attribute.getX(index);
+        if (corner === 1) return attribute.getY(index);
+        if (corner === 2) return attribute.getZ(index);
+        return attribute.getW(index);
+    };
+    for (let i = 0; i < lap.length; i += 1) {
+        if (!lap[i]) continue;
+        let kept = 0;
+        const weights = [0, 0, 0, 0];
+        const joints = [0, 0, 0, 0];
+        for (let corner = 0; corner < 4; corner += 1) {
+            joints[corner] = read(skinIndex, i, corner);
+            const bone = bones[joints[corner]];
+            const weight = read(skinWeight, i, corner);
+            if (!bone || LEG.test(bone.name || '')) continue;
+            weights[corner] = weight;
+            kept += weight;
+        }
+        if (kept < 1e-4) continue;
+        vertex.fromBufferAttribute(position, i).applyMatrix4(mesh.bindMatrix);
+        accum.set(0, 0, 0);
+        for (let corner = 0; corner < 4; corner += 1) {
+            if (weights[corner] <= 0) continue;
+            boneMat.fromArray(mesh.skeleton.boneMatrices, joints[corner] * 16);
+            temp.copy(vertex).applyMatrix4(boneMat).multiplyScalar(weights[corner] / kept);
+            accum.add(temp);
+        }
+        accum.applyMatrix4(mesh.bindMatrixInverse);
+        out[i * 3] = accum.x;
+        out[i * 3 + 1] = accum.y;
+        out[i * 3 + 2] = accum.z;
     }
     return out;
 }
@@ -123,6 +178,40 @@ function bodyNormals(positions, index) {
     return normals;
 }
 
+function chainName(object) {
+    const parts = [];
+    let node = object;
+    while (node) {
+        if (node.name) parts.push(node.name);
+        node = node.parent;
+    }
+    return parts.join(' ');
+}
+
+/** Skin, including a VRM body split into several primitives. Never a bodycon garment. */
+function isBodyMesh(mesh, api) {
+    let node = mesh;
+    while (node) {
+        if (api.isBodyName(node.name || '')) return true;
+        node = node.parent;
+    }
+    return false;
+}
+
+function bodyCloud(bodies, garment) {
+    const parts = bodies.map((mesh) => bodyInGarmentSpace(mesh, garment));
+    const length = parts.reduce((sum, part) => sum + part.positions.length, 0);
+    const positions = new Float32Array(length);
+    const normals = new Float32Array(length);
+    let offset = 0;
+    for (const part of parts) {
+        positions.set(part.positions, offset);
+        normals.set(part.normals, offset);
+        offset += part.positions.length;
+    }
+    return { positions, normals };
+}
+
 function indexArray(geometry) {
     if (geometry.index) return geometry.index.array;
     const count = geometry.attributes.position.count;
@@ -175,23 +264,21 @@ export function correctPosedGarments(root) {
             skinned.push(object);
         }
     });
-    const body =
-        skinned.find((mesh) => BODY.test(mesh.name || '')) ||
-        skinned.reduce((largest, mesh) => {
-            if (!largest) return mesh;
-            return mesh.geometry.attributes.position.count > largest.geometry.attributes.position.count
-                ? mesh
-                : largest;
-        }, null);
+    const bodies = skinned.filter((mesh) => isBodyMesh(mesh, api));
+    const pool = bodies.length ? bodies : skinned;
+    const body = pool.reduce((largest, mesh) => {
+        if (!largest) return mesh;
+        return mesh.geometry.attributes.position.count > largest.geometry.attributes.position.count ? mesh : largest;
+    }, null);
     if (!body) return 0;
     let corrected = 0;
     for (const mesh of skinned) {
-        if (mesh === body) continue;
-        if (SKIP.test(mesh.name || '')) continue;
-        const posed = localSkinned(mesh);
+        if (bodies.includes(mesh) || mesh === body) continue;
+        if (SKIP.test(mesh.name || '') || SKIP.test(chainName(mesh))) continue;
         const rest = localRest(mesh);
         const lap = lapOf(rest);
-        const bodyLocal = bodyInGarmentSpace(body, mesh);
+        const posed = unpinThighs(mesh, localSkinned(mesh), lap);
+        const bodyLocal = bodyCloud(bodies.length ? bodies : [body], mesh);
         const bodyPos = bodyLocal.positions;
         const bodyNrm = bodyLocal.normals;
         if (!lap.some((flag) => flag)) continue;
