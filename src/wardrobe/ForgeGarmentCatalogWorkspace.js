@@ -41,6 +41,13 @@
         '.nexus-catalog-swatch{width:32px;height:32px;min-height:32px;border-radius:50%;',
         'border:2px solid #47758a;box-shadow:0 0 0 2px #071b2b;cursor:pointer}',
         '.nexus-catalog-swatch[aria-pressed="true"]{outline:2px solid #00d8ef;outline-offset:3px}',
+        '.nexus-catalog-under{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}',
+        '.nexus-catalog-under-label{font-size:12px;color:#9ab5c0;margin-right:2px}',
+        '.nexus-catalog-chip{display:inline-flex;gap:6px;align-items:center;min-height:32px;',
+        'padding:4px 10px;border-radius:999px;border:1px solid #1d5263;background:#0b2938;color:#d9f5f8;',
+        'font:500 12px system-ui;cursor:pointer}',
+        '.nexus-catalog-chip[aria-checked="true"]{border-color:#12d9ec;background:#075669}',
+        '.nexus-catalog-chip i{width:12px;height:12px;border-radius:50%;border:1px solid #6b8b96}',
         '.nexus-catalog-actions{display:flex;gap:8px}',
         '.nexus-catalog-primary{background:#0fd6e9;color:#032231;border-color:#08ddea;',
         'font-weight:800;flex:1}',
@@ -237,6 +244,7 @@
             } else {
                 foot.appendChild(node(doc, 'p', 'nexus-catalog-muted', 'Select one real garment to propose a change.'));
             }
+            foot.appendChild(this.underneath());
             if (this.error) foot.appendChild(node(doc, 'p', 'nexus-catalog-error', this.error));
             var actions = node(doc, 'div', 'nexus-catalog-actions');
             var apply = this.button(
@@ -257,6 +265,48 @@
             );
             foot.appendChild(actions);
             this.overlay.replaceChildren(header, tabs, main, foot);
+        }
+
+        /**
+         * FC1. What she wears under every look, chosen here once for the whole haul. It is the
+         * colour of the foundation Forge adds under clothes, so it shows from the next look made,
+         * not on the one she has on: changing it remakes nothing behind her back. A radio group
+         * with words on every chip, never colour alone, and the choice is kept at once — closing
+         * the workspace without applying a garment keeps it too.
+         */
+        underneath() {
+            var doc = this.doc;
+            var self = this;
+            var Gen = global.NEXUS_TRY_ON_GENERATOR || {};
+            var colors = Gen.FOUNDATION_COLORS || [];
+            var row = node(doc, 'div', 'nexus-catalog-under');
+            if (!colors.length || !Gen.setFoundationColor) return row;
+            var current = Gen.foundationColor() || 'beige';
+            var labelId = 'nexus-catalog-under-label';
+            var label = node(doc, 'span', 'nexus-catalog-under-label', 'Underneath:');
+            label.id = labelId;
+            row.setAttribute('role', 'radiogroup');
+            row.setAttribute('aria-labelledby', labelId);
+            row.appendChild(label);
+            colors.forEach(function (color) {
+                var chip = node(doc, 'button', 'nexus-catalog-chip');
+                chip.type = 'button';
+                chip.setAttribute('role', 'radio');
+                chip.setAttribute('aria-checked', String(current === color.value));
+                chip.disabled = self.busy;
+                var dot = node(doc, 'i');
+                dot.style.backgroundColor = color.hex;
+                dot.setAttribute('aria-hidden', 'true');
+                chip.appendChild(dot);
+                chip.appendChild(doc.createTextNode(color.label));
+                chip.addEventListener('click', function () {
+                    Gen.setFoundationColor(color.value);
+                    self.render();
+                });
+                row.appendChild(chip);
+            });
+            row.appendChild(node(doc, 'span', 'nexus-catalog-muted', 'Used from the next look you make.'));
+            return row;
         }
 
         async apply() {

@@ -8,10 +8,14 @@
  * `index.html`) and finish in either order, so this waits for both rather than assuming
  * one. `TogetherPanel.register()` repaints the chooser, so a tile added late simply appears.
  *
- * The floating 👗 button is not deleted. It is hidden by a class on `<body>`, and only
- * after the tile is registered — if Together never arrives (behaviour engine off, an older
- * page), the drawer is still there and still works. `NEXUS_WARDROBE_CONFIG.tryOnInTogether
- * = false` leaves everything exactly as it was before this batch.
+ * The floating 👗 button is not deleted, but it is never offered on the landing page: the
+ * wardrobe is reached through Together ▸ Try-On Haul. W18. It used to be hidden only once the
+ * tile had registered, and the bridge gave up after 60 s: on a phone the button sat on the
+ * landing page while the avatar loaded (5 s on a desktop, far longer on a phone), and where
+ * loading took longer than a minute the old drawer stayed for good. It is hidden from the
+ * moment this script runs, before the drawer mounts, and the bridge keeps waiting for
+ * Together instead of giving up. `NEXUS_WARDROBE_CONFIG.tryOnInTogether = false` leaves
+ * everything exactly as it was before W8, drawer included.
  *
  * Nothing here is edited into `boot.js` or the panel: this file and its script tag are
  * the whole of the wiring.
@@ -81,17 +85,20 @@
     function start(options) {
         options = options || {};
         var interval = options.intervalMs || 250;
+        // W18. Long enough for a phone on a slow network; past it, polling slows rather than stops.
         var timeout = options.timeoutMs || 60000;
+        if (enabled()) hideDrawer(global.document);
         return new Promise(function (resolve) {
             var first = attach();
             if (first.ok || first.why === 'disabled') return resolve(first);
             var waited = 0;
             var timer = global.setInterval(function () {
                 waited += interval;
+                if (waited > timeout && waited % (interval * 8) !== 0) return; // after the first minute, every 2 s
                 var result = attach();
-                if (result.ok || result.why === 'refused' || waited >= timeout) {
+                if (result.ok || result.why === 'refused') {
                     global.clearInterval(timer);
-                    resolve(result.ok ? result : { ok: false, why: result.why === 'refused' ? 'refused' : 'timeout' });
+                    resolve(result);
                 }
             }, interval);
         });

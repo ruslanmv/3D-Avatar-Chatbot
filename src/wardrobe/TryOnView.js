@@ -206,6 +206,7 @@
             this.session = options.session;
             this.generator = options.generator || null;
             this.Reasons = options.reasons || global.NEXUS_TRY_ON_REASONS;
+            this.Generator = options.generatorApi || global.NEXUS_TRY_ON_GENERATOR;
             this.Intent = options.intent || global.NEXUS_TRY_ON_INTENT;
             this.Reactions = options.reactions || global.NEXUS_TRY_ON_REACTIONS || null;
             this.studioUrl = options.studioUrl || null;
@@ -1650,6 +1651,8 @@
                     color: request.color || undefined,
                     preset: request.preset || undefined,
                     bodyArt: request.bodyArt || undefined,
+                    foundationColor: request.foundationColor || undefined,
+                    recolour: Boolean(request.recolour),
                     signal: this._abort ? this._abort.signal : undefined,
                     onProgress: function (progress) {
                         this.progress = progress;
@@ -1685,6 +1688,21 @@
                     : { prompt: request.prompt };
             }
             if (request.private || (look.bodyArt && look.bodyArt.length)) look.private = true;
+            if (request.recolour && request.base) {
+                // FC2. The same outfit with another colour underneath: it keeps the base look's
+                // name and recipe (Forge carried them over unchanged), and the two are a family,
+                // so switching back is wearing the other one rather than asking Forge again.
+                var base = request.base;
+                look.name = base.name;
+                look.prompt = base.prompt;
+                if (base.request) look.request = base.request;
+                if (base.outfitId) look.outfitId = base.outfitId;
+                look.family = base.family || this._key(base);
+                if (!base.family) base.family = look.family;
+                if (look.underneath && !look.underneath.pieces.length && base.underneath) {
+                    look.underneath.pieces = base.underneath.pieces.slice();
+                }
+            }
             this.session.add(look);
             this._made = { key: this._key(look), change: request.mode === 'change' ? { slot: request.slot } : null };
             this.render();
@@ -1739,6 +1757,68 @@
             return this.create(request).then(function (made) {
                 return { ok: Boolean(made), why: '' };
             });
+        }
+
+        /**
+         * FC2. What she wears underneath the look she has on, in `color`. Resolves {ok, why, look}
+         * and claims nothing early: ok is true only once the look in that colour has loaded and
+         * is the one she has on. The same outfit already made in that colour (switching back to
+         * white after trying black) is worn, not made again; otherwise Forge recolours the
+         * foundation of this exact look, carrying the dress and boots over unchanged.
+         */
+        async underneath(color) {
+            var state = this.session.state();
+            var look = state.look;
+            var known = (this.Generator && this.Generator.FOUNDATION_COLORS) || [];
+            if (
+                !known.some(function (c) {
+                    return c.value === color;
+                })
+            )
+                return { ok: false, why: 'That is not a colour she can wear underneath.' };
+            if (!look) return { ok: false, why: 'Put a look on first, then choose what goes underneath.' };
+            // Unknown for a look from her saved wardrobe: Forge says so if it is already that colour.
+            var current = look.underneath ? look.underneath.color || 'beige' : null;
+            if (current === color) return { ok: true, why: '', look: look, already: true };
+            var family = look.family || this._key(look);
+            var sibling = state.looks.find(function (other) {
+                return (
+                    other !== look &&
+                    (other.family || null) === family &&
+                    other.underneath &&
+                    (other.underneath.color || 'beige') === color
+                );
+            });
+            var made = sibling || null;
+            if (!made) {
+                if (!this.Intent.buildable(look)) {
+                    return {
+                        ok: false,
+                        why: 'Only a look Forge made for her here can change colour underneath. Make one first.',
+                    };
+                }
+                if (!this._canCreate()) return { ok: false, why: this.Intent.UNAVAILABLE };
+                made = await this.create({
+                    prompt: '',
+                    recolour: true,
+                    foundationColor: color,
+                    baseLookId: String(look.id),
+                    base: look,
+                    mode: 'underneath',
+                });
+                if (!made) return { ok: false, why: this.createError || 'Forge could not change the colour.' };
+            } else {
+                await this.wear(made);
+            }
+            var now = this.session.state();
+            var on = now.look && this._key(now.look) === this._key(made) && !now.error && !this.session.busy;
+            if (!on) {
+                return {
+                    ok: false,
+                    why: now.error || 'The look in ' + color + ' did not load. Her outfit is unchanged.',
+                };
+            }
+            return { ok: true, why: '', look: made };
         }
 
         /** W16. Say what Forge did with the tattoos it was asked for, when one did not go on. */
@@ -1813,6 +1893,14 @@
                     }
                     if (!this._canCreate()) return refuse(this.Intent.UNAVAILABLE);
                     return this.tattoo(args.design, args.placement);
+                }
+                case 'underneath': {
+                    // FC2. The companion offers; the person chooses. The tag opens the chooser
+                    // with her suggestion highlighted and changes nothing by itself.
+                    if (!state.look) return refuse('Put a look on first, then choose what goes underneath.');
+                    if (typeof this.onUnderneath !== 'function') return refuse('That is not something Try-On can do.');
+                    this.onUnderneath({ suggested: args.color || null, look: state.look });
+                    return { ok: true, why: '' };
                 }
                 case 'keep':
                     return { ok: Boolean(await this.keep()), why: '' };

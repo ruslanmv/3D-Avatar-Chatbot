@@ -63,14 +63,22 @@ describe('TryOnTogetherBridge', () => {
         await expect(done).resolves.toEqual({ ok: true, why: '' });
     });
 
-    test('a page without Together gives up quietly and keeps the drawer', async () => {
+    test('W18: the floating 👗 is never on the landing page, and a late Together still gets its tile', async () => {
         jest.useFakeTimers();
+        window.NEXUS_TRY_ON_HAUL_ACTIVITY = TryOn;
         const Bridge = load();
         const done = Bridge.start({ intervalMs: 100, timeoutMs: 300 });
-        jest.advanceTimersByTime(400);
+        // Hidden before anything has loaded: a phone sat on the landing page with the drawer.
+        expect(document.body.classList.contains(Bridge.HIDE_CLASS)).toBe(true);
+        jest.advanceTimersByTime(5000); // long past the timeout: it slows, it does not give up
+        const panel = fakePanel();
+        window.NEXUS_BD = { togetherPanel: panel };
+        window.NEXUS_WARDROBE = { service: { controller: {} }, config: {} };
+        jest.advanceTimersByTime(1000);
         jest.useRealTimers();
-        await expect(done).resolves.toEqual({ ok: false, why: 'timeout' });
-        expect(document.body.classList.contains(Bridge.HIDE_CLASS)).toBe(false);
+        await expect(done).resolves.toEqual({ ok: true, why: '' });
+        expect(panel.register).toHaveBeenCalledTimes(1);
+        expect(document.body.classList.contains(Bridge.HIDE_CLASS)).toBe(true);
     });
 
     test('tryOnInTogether: false leaves everything as it was', () => {
