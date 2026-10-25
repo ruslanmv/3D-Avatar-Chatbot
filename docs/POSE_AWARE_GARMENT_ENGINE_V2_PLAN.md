@@ -1,215 +1,364 @@
-# HomePilot Pose-Aware Garment Engine V2 — Implementation Plan
+# HomePilot Avatar — Pose-Aware Garment Engine V2
+## Revised architecture, implementation plan and release gates
 
-**Status:** Proposed architecture and delivery plan only. No runtime changes are made by this document.  
-**Owners:** 3D-Avatar-Chatbot (viewer/runtime/UI) and 3D-Wardrobe-Forge (asset authoring/export/QA).  
-**Scope:** Existing and generated VRM looks; Pose Studio's currently displayed 43 positions; pose presets, manual bone edits, Puppet IK, VRMA/BVH/procedural animations, live try-on, desktop, Android WebGL and VR/AR.  
-**Baseline:** Preserve full character identity, VRM 0.x/1.0 support, expression/gaze/lipsync, current wardrobe and safety/licensing gates. Do not silently replace or re-skin the original avatar.
+> **Status: DESIGN / DRAFT ONLY.** This plan documents future work; it does not mean the clothing bug is fixed, the engine has been implemented, or the live site has been deployed. Work in small follow-up PRs. Do not merge this documentation PR as a substitute for implementation.
 
-## Decision
+**Reviewed:** 2026-10-25.  
+**Primary repository:** [3D-Avatar-Chatbot](https://github.com/ruslanmv/3D-Avatar-Chatbot), draft [PR #119](https://github.com/ruslanmv/3D-Avatar-Chatbot/pull/119).  
+**Asset-generation repository:** [3D-Wardrobe-Forge](https://github.com/ruslanmv/3D-Wardrobe-Forge), tracking [issue #22](https://github.com/ruslanmv/3D-Wardrobe-Forge/issues/22).  
+**Claude Code task execution:** [CLAUDE_CODE_GARMENT_ENGINE_V2_RUNBOOK.md](CLAUDE_CODE_GARMENT_ENGINE_V2_RUNBOOK.md).  
+**Target experience:** HomePilot Avatar at yourfriend.online, Live Try-On, Pose Studio, VRMA/BVH/procedural animation, desktop and mobile WebGL.
 
-Build a **hybrid, pose-aware clothing system**, not a new general-purpose physics engine and not a blanket re-skin pass. The garment runtime must use the avatar's **final animated bone pose** every frame, deform garments with existing skinning plus joint-angle corrective morphs, then apply fabric-class-specific cloth simulation against moving collision proxies. Retain the existing after-settle PoseClothCorrection as a compatibility/low-end fallback until the new pipeline passes geometric and browser tests.
+### Executive decision
 
-This is based on repository inspection, **not** a claim that the production URL is fixed or that screenshot artifacts have been reproduced in a browser. Prior measurements are historical regression baselines, not a substitute for testing the exact deployed 3 looks.
+**Do not build one global XPBD cloth stage for every outfit.** All three sampled looks are already skinned VRM characters. Keep VRM skeletal skinning, retain the existing settled-pose collision correction for legacy looks, author targeted joint-angle corrective shapes for constrained apparel, and **introduce continuous coarse-mesh cloth only for garments that actually need drape** (first: the yellow sundress's flowing lower skirt). The authoritative final skeleton transform must be shared by Pose Studio, Puppet IK, animation mixers, locomotion and the cloth runtime. Optimize and expand to other garments only after the three exact deployed examples pass objective tests.
 
-## A. Verified current state and causes to investigate
+**The first release is diagnostics and low-risk corrections, not AAA full-body cloth.** AAA-quality results are a progressive direction requiring asset authoring, simulation and testing; we do not claim equivalence to a proprietary game engine or internal Genshin Impact techniques.
 
-- Forge outfits are already rigged and skinned VRMs. Forge's "wardrobe/vrm/weight_transfer.py" transfers weights from avatar skin; "docs/GARMENT_TEMPLATE_SPEC.md" distinguishes garment **coverage** from **anchors**, explicitly warning not to bind a floor-length gown hem to the shins. Re-skinning everything blindly is neither necessary nor sufficient.
-- HomePilot "src/gltf-viewer/VRPoseSystem.js" constructs a "PoseClothCorrector", calls "_releaseCloth()" when applying a pose, schedules "_settleCloth()" two frames after a blend, and invokes the correction from "update(dt)" after settling. No continuous simulated garment update is provided for animated motion. "src/gltf-viewer/PoseClothCorrector.js" CPU-skins Forge-tagged skinned garments and a material-name-selected body, runs "src/wardrobe/PoseClothWorker.js", and writes corrected positions back through inverse per-vertex skin matrices.
-- "src/wardrobe/PoseClothCorrection.js" is a quasi-static push/edge-relaxation method. It includes seam welding, piece grouping, separate shoe defaults, layer correction and unfold passes. It is **not** a time-integrating simulation with velocities, gravity, persistent constraints or moving colliders.
-- "docs/SITTING_WIDE.md" records an earlier black-bodycon + briefs + boots benchmark: before correction approximately 23 mm inside the bodycon; after correction 0–0.1 mm dress penetration in that test. It also records unresolved knee/hip inversions, brief stretching, and up to 13.2 mm boot penetration in re-baked validation. Browser correction reportedly arrived seconds after applying a pose. Do **not** transfer those outcomes to the yellow sundress or jeans without new tests.
-- "src/gltf-viewer/ViewerEngine.js" currently updates the avatar/VRM near the beginning of the frame, then procedural motion, VRPoseSystem, puppeting, locomotion and motion; the cloth corrector runs only from VRPoseSystem. VRMA's normalised bone writes, raw bone syncing, and final collider capture need a formally defined per-frame order.
-- The user screenshots show **more severe silhouette failures** than the black-bodycon measured set: yellow maxi skirt becomes a torus/long slab in "sittingWide" and "sittingDesk"; blue jeans bridge the separated legs in "sittingWide". These can arise from topology, weight distribution, loose-panel anchors, mesh deformation, or missing collision/contact. Treat that as a diagnostic hypothesis, not yet a proved single root cause.
-- Current Forge docs "docs/POSE_CONTACT_QA.md" already have pose export, numerical contact checks, baking and engineering sheets. Forge "wardrobe/body_surface/xpbd.py" already implements optional **quasi-static** XPBD relaxation for generated shell fitting; it is off by default and does not provide a real-time animation solver.
+---
 
-### Minimum production debugging before redesign
+## 1. Reproduce the actual failures, not assumptions
 
-1. Capture the deployed JavaScript and asset versions (commit SHA, look.vrm SHA-256, generator version, browser/version, mobile GPU), and compare them to GitHub, the bundled wardrobe and remote HF Forge. Verify that the live page actually serves the expected worker module and the exact expected look.
-2. Add DEBUG diagnostics with per-pose/animation source, actual humanoid bone angles, garment count, simulated-vertex count, body collider count, worker load/status/errors, correction request generation, cancellation counts, duration, and last applied timestamp.
-3. On every look load, classify **all** skinned meshes by Forge extras/garment IDs and inspect skinIndex, skinWeight, skeleton, bind/inverseBind matrices, vertices, indices, connected components, cloth UV splits and vertex topology. A missing Forge tag or a body material-name mismatch currently leads to silent fallback; report this explicitly.
-4. Render skin-only, current-after-settle, and proposed-solver variants with identical camera, pose and mesh; capture front, side, back and wireframe, plus penetration/strain heatmaps and skirt hem position.
-5. Isolate "sittingWide" and "sittingDesk" by actual preset **keys**, not presentation index. The UI currently shows 17/43 and 18/43; older docs mention 17/26. The test must be robust to ordering changes.
-6. Test a "static screenshot" frame after 0.5, 2 and 12 seconds, and animated transitions/VRMA throughout; distinguish late correction, never-started correction and insufficient correction.
-7. Capture the same look as a native Forge export, bundled look and remote generated look to find contract/cache/source regressions.
+The user supplied three examples (look labels are product names, not guaranteed asset filenames):
 
-## B. Engine pipeline and data ownership
-
-**Single writer rule:** only the render pipeline's garment simulation stage writes final garment positions; ordinary avatar bones remain owned by Pose Studio, animation mixers, IK and VRM. No garment algorithm moves the character body to solve contact.
-
-Frame stages:
-1. Sample all active animation tracks (VRMA, BVH, procedural, idle, locomotion, talk) and Pose Studio blend/IK/custom bone deltas into the authoritative humanoid pose. Use explicit ownership/priority of layers (e.g. Pose Studio overrides base locomotion, face controls separate).
-2. Update normalized VRM proxy → raw skeleton once at the correct point, preserving VRM expressions and SpringBone ordering. Capture final world matrices *after* all bone writers and avatar root/root-motion changes.
-3. Evaluate garment skinning and compact joint-angle corrective morphs. Generate animated pin targets for fabric areas attached to the body.
-4. Update body collision capsules (hips, thighs, calves, knees, chest, upper arms, feet) and optional refined body surface/SDF. Detect when proxies self-overlap; prevent impossible contradictory contact rather than repeatedly pushing a cloth vertex between two colliders.
-5. Step hybrid XPBD solver with deterministic fixed substeps (initial target 60 Hz with bounded catch-up); satisfy stretch, shear, bend, seam/weld, pin and unilateral contact constraints. Enable self-collision/layer collision where budgets allow.
-6. Transfer low-res cloth simulation mesh to the render mesh via barycentric attachment or author-provided correspondence; only one GPU-visible skin/cloth displacement result. Update bounds/normals as needed and render once.
-7. On user drag, animated pose and clip transitions, simulate continuously. On look/avatar switch, reset persistent positions/velocities and collision cache. On tab resume, large time jump, teleport or severe solver divergence, do bounded stable reset to the current animated pin target.
-8. Run optional VRM SpringBone for existing hair and accessory secondary motion; avoid treating SpringBone as a substitute for deformable skirt/crotch collision.
-
-**Implementation choice:** pure JS/WASM XPBD worker for CPU mobile fallback, coarse simulation surface per garment and skin-space/GPU-compatible output. Do not claim a WebGL compute-shader solver is universally available. Keep WebGPU GPU compute as a separately gated future option. Use no external game-engine binary dependency in the browser MVP.
-
-## C. Garment-specific policies
-
-| Garment | Default deformation path | Physics/contact | Critical authored data |
+| Actual look | Observed failure in screenshots | Key test cases | First classification |
 | --- | --- | --- | --- |
-| Crop top / fitted tee | Existing skinning + shoulder/armpit correctives | Body clearance only, small optional hem | Chest/shoulder/upper-arm attachment |
-| Jeans / slim trousers / leggings | Independent left/right leg topology, skin-weighted knee/hip correctives, crotch gusset corrective | Targeted crotch/thigh and leg-to-leg collision, limited cloth | Two leg shells, pelvis bridge, seam and knee twist limits |
-| Black bodycon mini dress | Skinning + hip/buttock/thigh fold correctives | Short skirt XPBD region, body/layer collision | Pelvis and thigh attachments, closed skirt topology |
-| Yellow maxi sundress | Fitted skinned bodice + pelvis-pinned flowing lower skirt | Gravity-aware cloth, thigh/seat collision, optional self-collision and hem | **No shin/ankle anchor**, waist pins, free-flowing panel topology, simulation/render mesh mapping |
-| Jackets, coats, capes | Skinned shoulder/upper arm + free hem/tail simulation | Body collision, self-collision where needed | Back/shoulder pins, sleeve and coat panel segmentation |
-| Stockings/underlayers | Second-skin bind and corrective shapes | Strict layer order and occlusion, no free cloth by default | Leg skin weights, crotch segmentation |
-| High boots | Foot/ankle largely rigid, calf shaft constrained, knee flexion corrective | Bounded shaft relaxation at knee; shoe cap retained | Separate sole/shaft, knee bend blend, no contradictory calf/thigh pushing |
+| Yellow sundress | At Sitting (Wide), lower skirt forms a torus/ring; at Sitting (Desk), lower skirt stretches into a large rigid horizontal slab | sittingWide, sittingDesk | Check exported skirt topology, final hem bone influences, and old pose correction; later coarse cloth + gravity |
+| Crop top & jeans | The blue trousers become one unnatural tube bridging the separated thighs; knee/shin behavior may be wrong | sittingWide, sittingDesk | Inspect actual left/right leg components, exported knee weights and crotch gusset; repair skin or add morph as measurements dictate |
+| Black Bodycon Mini Dress & boots | Lap/hip folding, severe edge strain and boot shaft collapse/intersections at knee | sittingWide, sittingDesk and 90° knee | Existing corrector + targeted hip/knee corrective shapes and better collision masks |
 
-**Hard stop:** a physically impossible mesh (a one-piece trouser tube spanning two distant legs, or a gown hem permanently bound to both shins) must be repaired in Forge's authoring/binding stage. More iterations of a collider solver will not correct its geometry.
+**Reference pose identifiers:** Pose Studio keys **sittingWide** and **sittingDesk** are stable for current source. **Do not** hardcode screenshot list positions 17/43 or 18/43. Inspected master has **51 entries** in PRESET_ORDER, **25 adult-flagged** and **26 non-adult** presets; sittingWide and sittingDesk are positions 10 and 11 in the full ordering. The screenshots display 43 and different positions. This means the **live deployment is not demonstrated to match the inspected source**. Phase 0 must record the JS hash and script URL actually served at yourfriend.online, the deployed preset ordering and the exact look.vrm bytes.
 
-## D. Versioned Forge → HomePilot physics contract
+**Historical reference, not new live measurements:** [docs/SITTING_WIDE.md](SITTING_WIDE.md) documents previous black-bodycon/brief/boot geometry measurements including about **23 mm bodycon penetration before** after-sit correction, reduced to near zero in some tests, but unresolved inverted hip-fold triangles, knee intersections and deformation. Timings cited in that document are approximately **4–12 seconds in browser examples**, not suitable for real-time animation. It does not establish that either yellow sundress or jeans currently passes, nor that all live worker code and exported VRM assets match the repo.
 
-Introduce optional "clothPhysics" metadata per generated look without breaking old "wardrobe.json" packs. Suggested **v3** manifest field (the schema is proposal, not yet supported by either repo):
+### Required Phase 0 artifacts (blocking all asset rebuilds)
+
+1. A versioned **reproduction manifest**: origin URL, built JS URLs + SHA-256, source git SHA if known, Forge generator SHA, each look VRM URL + SHA-256, palette/skin/avatar identity, browser version/device/GPU, date, selected pose key and exposure settings. Do not include private tokens/user data in issue logs.
+2. Mesh inventory **for each deployed VRM**: node / mesh / primitive IDs, Forge extras tags, name, render material, vertex/triangle counts, connected components, boundary and UV split weld groups, material/layer classification, skin inverse-bind and bind matrices, actual weighted humanoid bones, and per-vertex dominant bone counts separated by anatomical region (bodice, front/back skirt hem, crotch, L/R jean legs, boot sole/shaft).
+3. Before/after visual set: rest pose; skinning-only; existing correction after it finishes; 0.25 s, 0.5 s, 2 s and 12 s after Apply; animated transitions; front/side/back/wireframe/contact heatmaps, with consistent camera/asset SHA.
+4. Worker/renderer trace: correction enabled flag, body and garment collector counts, worker URL, HTTP status/Content-Type, worker creation/ready/error, pending and canceled jobs, input/output vertex counts, stale-generation drops, measured worker compute time, CPU skin/inverse-skin time, upload time and correction-visible timestamp.
+5. Numerical geometry snapshot: posed body/garment coordinate frames, signed/contact depth and fraction penetrating, edge-strain histogram, UV seam gaps, triangle inversion count, hem line/length/silhouette, crotch width, leg-to-leg and boot-knee contact.
+6. Comparison against **one freshly generated file from the same Forge source** (if generation is permitted) and one bundled or imported look. Any discrepancy is evidence for deployment/version drift, not proof of an XPBD solver defect.
+
+If the live app cannot be accessed from the development environment, STOP claiming it is reproduced; commit an offline reproducible fixture, a diagnostic console script and an exact evidence-request checklist. Do not rebuild every wardrobe item on an unsupported hypothesis.
+
+### Existing runtime failure modes to inspect
+
+- src/gltf-viewer/PoseClothCorrector.js **collect()** requires tagged Forge garments (or a Forge material-name match) and recognizes body skinned meshes by material names resembling _SKIN or Body. A correct outfit can silently skip work if the current exported VRM uses unexpected tags/materials. Instrument the reason explicitly; do not silently assume no cloth.
+- VRPoseSystem **_releaseCloth()** intentionally restores original vertices at movement start and **_settleCloth()** queues an after-pose pass. This is not continuous simulation and explains uncorrected cloth during transitions.
+- PoseClothWorker.js is a **classic worker** using importScripts. Verify the deployed URL, Content-Type, CSP and absence of SPA HTML fallback. Add worker error, messageerror and timeout handling; cancellation/disposal must settle promises and clean listeners. Preserve stale-generation safety.
+- Verify raw vs normalized VRM bone transforms and the ordering in ViewerEngine.animate(). At present avatarManager.update(dt) happens early, before later procedural, Pose Studio, puppet, locomotion and motion updates. No cloth implementation should capture colliders before the **final bone transforms** are applied.
+- Screen-space torus and slab artifacts may be **asset topology/weighting or posed-shape failures**, and a collision projection cannot restore a properly draped skirt from an invalid resting/render mesh.
+
+---
+
+## 2. Source-verified review corrections (replace older assumptions)
+
+### 2.1 Jeans: lower-leg candidate bones are **already added by native Forge**
+
+The JSON files assets/garment_templates/trousers/jeans-straight-v1.json and jeans-baggy-v1.json list anchors waist/hips and cover upperLegs/lowerLegs. Crucially, wardrobe/engines/native.py already has **LEG_TUBE_KINDS** logic: for trousers and related garments it appends upper-/lower-leg bone candidates from *coverage*, even when not in *anchors*. wardrobe/vrm/skinning.py has a connected-component-based lateral bone mask.
+
+**Therefore DO NOT blindly add lowerLegs to the JSON and declare fixed, nor assume jeans are one tube.** First inspect the exported blue-jeans JOINTS_0/WEIGHTS_0, their left/right component topology, whether the generator path used this native logic, and which bone dominates the shin/knee vertices. A deployed older asset or another generator path can still lack the right weights. If shin weights are correct, prioritize the **crotch/seat gusset and hip-abduction corrective** plus collision geometry. Confirm old-vs-new asset hashes before regeneration.
+
+### 2.2 Yellow sundress: template **already omits lower-leg anchors**, but hips can include thighs
+
+assets/garment_templates/dresses/dress-maxi-sundress-v1.json declares coverage down to lowerLegs and anchors only chest, waist, hips. tests/unit/test_templates.py enforces that long non-trouser garments do not anchor lowerLegs. The existing template is **not** plainly a shin-anchored dress. Yet wardrobe/vrm/skinning.py expands the hips region into hips **and left/right upper legs**; weight-transfer code can redistribute above/below hip and for back panel regions.
+
+**Therefore DO NOT start by rewriting the dress JSON.** Export final weights and world-space posed vertex positions for hem front/back at multiple heights. Shin weights imply a generator/export/mapping discrepancy. Heavy bilateral upper-leg weights across the skirt can produce a ring/slab even with no shin weights: investigate authored panel construction, hip-abduction sit correctives and a pelvis-pinned **flowing hem simulation**. Keep waist/bodice attached; free only suitable lower panels. Ensure an explicit stable sim-to-render correspondence.
+
+### 2.3 Black bodycon and boots: preserve existing successes and address measured folds
+
+src/wardrobe/PoseClothCorrection.js already implements seam welding, correction grouping, layer clearance, shoe distance caps and unfolding; src/gltf-viewer/PoseClothCorrector.js performs CPU forward skinning and **inverse-skinning back into bind space**. Rebinding alone previously did not resolve bridging between thighs. The next intervention is **joint-angle corrective shape(s)** for hip flexion/abduction and knee flexion, tested with and without the old corrector. Preserve one garment's shell + lining as a single grouping and treat the sole as rigid. Do not use a thigh capsule as the sole contact source for a bodycon/boot; use posed body surface/refined proxies. Where body calf and thigh overlap, use constrained corrective geometry and stable exemptions rather than impossible repetitive pushes.
+
+### 2.4 XPBD reference is quasi-static, not a ready-made browser animation loop
+
+Forge wardrobe/body_surface/xpbd.py provides optional stretch/bend/contact relaxation, **without gravity, persistent velocity or continuous cloth playback**; it is off by default. Use its constraints, seam treatment and tests as a reference for portable JS/WASM implementation. Do not claim porting that function alone makes Live Try-On work with VRMA.
+
+---
+
+## 3. Product architecture: garment families beat a universal solver
+
+**Core principle:** Every garment receives one deformation policy. Skinning and correctives are the base. Only loose regions get continuous cloth dynamics. Do not double-solve each mesh.
+
+| Garment | Authoring / skinning | Runtime contact and deformation | First release |
+| --- | --- | --- | --- |
+| Crop top / fitted shirts | Existing VRM skinning; sleeve/shoulder corrective only if measured | Current correction or no sim | preserve |
+| Jeans, trousers, leggings | Two legs verified, shin/knee weights verified, crotch topology/gusset morph | Hip-abduction/flexion and knee corrective, local posed body contact | **initial targeted fix** |
+| Bodycon mini | Existing skinned dress with corrective hip/seat fold shapes | Existing PoseClothCorrection after settling | **initial targeted fix** |
+| Over-the-knee boots | Sole/heel stays rigid to foot, knee shaft corrective | Existing shoe-capped correction, refined leg contact | **initial targeted fix** |
+| Maxi sundress | Skinned upper bodice/waist; author a pelvis/waist-pinned low-res flowing skirt surface | **Continuous XPBD only for free lower skirt**, gravity, thigh/hip/seat/floor contact, optional self-contact | **first dynamic pilot** |
+| A-line short skirts, trench tails, capes | Skinning near attachment + sim surface on moving panels | Class-appropriate coarse cloth with body/seat contact | subsequent opt-in |
+| Underwear/stockings/second skin | Skin following body plus joint correctives | Existing posed collision/skin-space fit | later |
+| Hair/ornaments | Existing springBone and/or anchored object | Secondary spring movement | unchanged |
+
+**Collision is garment-specific.** Loose skirt: moving hip/thigh capsules, pelvis, a **chair/seat proxy** and floor plane (pose-specific virtual seat if no object). Slim bodycon/boots: use the more accurate skinned body or signed surface where available, not capsules alone. Separate cloth/body, cloth/self, layer/other cloth collision; only enable expensive self collision on profiles/devices that can support it. Existing collision body arm exclusions should be revisited *per garment*, never removed globally.
+
+### Target animation/cloth order (design invariant)
+
+1. Sample base animation mixers (VRMA/BVH), procedural behavior, Pose Studio blends, IK edits, locomotion and root motion under **explicit ownership and priority**; prevent two systems from blindly overwriting the same bone late in frame.
+2. Apply final normalized VRM bone transforms to raw skeleton **at the correct point**. Investigate the existing avatarManager.update() before moving or adding calls; VRM.update may also change SpringBone/expressions. Do not simply call it twice.
+3. Capture immutable **final-pose snapshot** (avatar generation, pose generation, frame id, root/world transforms, raw bone matrices, joint angles and collision shapes) after all active bone writers.
+4. Evaluate skinning and pose-dependent morphs. Build particle pin/target positions and colliders from snapshot. **No physics stage modifies skeleton bones.**
+5. Run chosen profile only: none, legacy settled-pose correction, or fixed-step cloth. When transitioning to continuous cloth, prevent the legacy worker from simultaneously writing the same geometry.
+6. Map cloth-particle solution to render mesh, apply one consistent GPU-visible deformation and recalc bounds/normals when needed. Render exactly once with final positions.
+7. On avatar/look swaps, drag start/stop, key pose switches, clip interruption, teleport or tab resume: reset/cancel jobs deterministically, preserve skin-only fallback and never apply corrections from the previous avatar/pose.
+8. Keep VRM 0.x/1.0 humanoid mapping, lookAt, springBone, facial expressions, face tracking and lip-sync unchanged unless a test proves the integration requires a targeted change.
+
+### Rendering decision for pilot: keep SkinnedMesh with inverse-skin writeback
+
+**Selected initial design:** Retain SkinnedMesh and VRM/MToon, with world-space solved targets transformed through each render vertex's inverse blended skin matrix back into bind-space POSITION, as the current PoseClothCorrector does. The GPU then skins **once** into intended world-space positions. Do not also add solved displacement in a shader (double deformation).
+
+For vertex i with current blended forward matrix S_i and solver world point q_i:
+
+~~~text
+bindPosition_i = inverse(S_i) * q_i
+GPU result approximately = S_i * bindPosition_i = q_i
+~~~
+
+Validate the actual bind matrices and mesh.matrixWorld with a multi-bone mesh, root rotation/scale, VRM 0.x/1.0 and normals. Handle near-singular S_i gracefully; never let NaNs reach GPU. Worker may solve on coarse particles; main thread maps result to render vertices. **This path must be benchmarked:** CPU skinning, inverse matrices, buffer update and normals are costs that may require a later optimized CPU/WASM or custom shader composition. Alternative non-SkinnedMesh dynamic-position path is **not** Phase 2 default and needs its own VRM compatibility proof.
+
+### Physics pilot: constraints and limits
+
+- Persistent positions/previous positions or velocities; semi-implicit / Verlet variant, gravity and damping; **fixed time step** with capped accumulator, reset after long suspend; deterministic substeps.
+- Stretch and shear constraints by authored woven fabric parameters, bending constraints by adjacent triangles, persistent pin targets at bodice/waist, seam welding constraints, collision projection (body, seat and floor), optional fabric self-contact on high tier.
+- XPBD compliance scaled by dt² and warm-start lambdas where appropriate; convergence and penetration diagnostics. Use real rest lengths on the **simulation mesh**, not every split render UV vertex as a new particle.
+- Low-res simulation mesh + stable barycentric transfer (no freehand nearest point each frame); author strict caps on particle/edge counts, memory, frame time, vertex movement and contact iterations.
+- On worker lag, reuse a safe interpolated/degraded pose; when a job becomes stale, discard it and advance rather than updating current geometry. Never block render loop waiting for worker.
+- Use joint-angle pose-space morphs before physics when a narrow knee/crotch/hip volume requires authored fold corrections. This is *not* keying a morph to a single named pose: manual sliders and VRMA must trigger it.
+
+---
+
+## 4. Staged delivery — small PRs with verifiable exits
+
+**Do not implement later stages until earlier exits pass. Do not silently modify master or deploy production for a documentation task.**
+
+| Cut / owner | Deliverables | Explicit exit / first deployment |
+| --- | --- | --- |
+| **0. Observability & exact live reproduction** — HomePilot + Forge | Deployed hashes; three exact look byte hashes; mesh/weights/worker inventory; screenshots; current vs generated comparison; test fixtures | Failure classified for each look; if live URL inaccessible, failure marked unverified and Phase 0 tooling committed. No changes to asset recipes |
+| **1A. Targeted Forge authoring** — Forge | Only evidence-backed fixes: jeans exported shin if absent; hip-abduction crotch/gusset corrective; bodycon hip + boot knee shapes; inspect sundress weights/hem before changing builder; keep pack/VRM validity | Offline 3-look paired before/after metrics under named poses, no regressed rest pose, existing license/skin validation passes |
+| **1B. Safe HomePilot compatibility** — HomePilot | Improve worker error/loading/cancellation telemetry; additive rest/posed morph support; existing corrector remains default; only verified updated looks opt in | Desktop/mobile render identical in idle; after-settle quality passes for jeans/bodycon/boot, robust fallback if worker missing |
+| **2. Unified final-pose snapshot** — HomePilot | One final post-animation snapshot for Pose Studio, manual Puppet IK, VRMA/BVH/procedural motion; no duplicate skin/VRM update | Geometry and transform tests during clip blend, root motion, undo, avatar and outfit switches; **no continuous cloth required yet** |
+| **3. Sundress-only continuous XPBD** — HomePilot + Forge | Optional coarse skirt sim mesh/pins and contact proxies; persistent solver; gravity/seat/floor; selective sidecar; backwards compatible current corrector | SittingWide and SittingDesk transition no torus/slab; key VRMA movement test; mobile quality tier proven with measurements |
+| **4. Selective expansion** — both | Coats, skirts/capes, layered cloth, optional self-collision, better render/skin optimization, migration | Add one garment family at a time with same testing gates; maintain performance/fallback and source license |
+
+**Recommended short-term ship:** cuts 0 + 1A/1B after proven regression metrics. Only after that ship cut 2 and sundress pilot 3. Continuous all-outfit XPBD/AAA coverage is a **later** rollout, not an acceptance requirement for the first correction PR.
+
+### Hotfix safety rules
+
+- **Do not blindly re-skin** existing garments, especially black bodycon and boots already deliberately tuned via weight-transfer.
+- **Do not blindly re-export all wardrobe packs**: identify SHA/generator mismatch first. Incrementally regenerate affected looks, record generated VRM source hashes and update manifest integrity values.
+- Legacy v1/v2 wardrobe packs with no physics sidecar must keep working; they run skinning + existing optional after-settle correction.
+- A sidecar mismatch, unsupported old VRM, missing worker, failed physics solver or low-end device means **explicit graceful fallback**, not invisible claims of physics enabled.
+
+---
+
+## 5. Optional Forge → HomePilot sidecar contract (later, not a prerequisite for hotfix)
+
+### Principles
+
+A sidecar is an optional per-look/per-garment physics profile; it does **not** replace look.vrm or change avatar identity. It must survive static bundles, remote assets and imported packs with integrity checks. Pack schemaVersion 3 is only a **proposed** extension; do not change v1/v2 parser constraints until importer/exporter are both updated and tested.
+
+Proposed v3 manifest pointer:
 
 ~~~json
 {
   "schemaVersion": 3,
-  "looks": [{
-    "id": "maxi-sundress",
-    "vrmUrl": "looks/maxi-sundress/look.vrm",
-    "clothPhysics": {
-      "schemaVersion": 1,
-      "url": "looks/maxi-sundress/cloth-physics.json",
-      "sha256": "<64-lowercase-hex-bytes-hash>",
-      "meshSha256": "<64-lowercase-hex-render-mesh-hash>"
+  "looks": [
+    {
+      "id": "maxi-sundress",
+      "vrmUrl": "looks/maxi-sundress/look.vrm",
+      "sha256": "<VRM_SHA256_HEX>",
+      "clothPhysics": {
+        "schemaVersion": 1,
+        "url": "looks/maxi-sundress/cloth-physics.json",
+        "sha256": "<SIDECAR_SHA256_HEX>",
+        "bytes": 16400
+      }
     }
+  ]
+}
+~~~
+
+Proposed sidecar (illustrative structure; not a frozen schema):
+
+~~~json
+{
+  "schemaVersion": 1,
+  "units": {"length": "m", "time": "s", "mass": "kg"},
+  "sourceVrmSha256": "<VRM_SHA256_HEX>",
+  "garments": [{
+    "garmentId": "yellow-sundress/skirt",
+    "meshNode": "ForgeGarmentPersistentNodeId",
+    "renderMeshHash": "<MESH_SHA256_HEX>",
+    "profile": "loose-skirt-xpbd",
+    "layer": 1,
+    "fabric": {
+      "densityKgM2": 0.2,
+      "thicknessM": 0.002,
+      "stretchCompliance": 1e-7,
+      "bendCompliance": 1e-4,
+      "damping": 0.04,
+      "friction": 0.4
+    },
+    "simulationMesh": {
+      "positions": "cloth-sim.bin",
+      "triangles": "cloth-triangles.bin",
+      "renderBarycentricMap": "sim-to-render.bin"
+    },
+    "pins": [{"bone": "hips", "group": "waist", "weight": 1.0}],
+    "collision": {
+      "bodyGroups": ["pelvis", "leftUpperLeg", "rightUpperLeg", "seat", "floor"],
+      "selfCollision": false
+    },
+    "lods": [{"name": "mobile", "particleLimit": 350}]
   }]
 }
 ~~~
 
-"cloth-physics.json" contains a topology/vertex-count-validated list of garment pieces, where each entry has:
-- Persistent garment ID, slot, layer, mesh primitive fingerprint and relevant VRM node/primitive reference; exact mapping to the exported VRM mesh. Do not depend only on material strings.
-- Fabric class and physical parameters (thickness, mass/inverse mass, stretch/shear/bend compliance, damping, friction, drag, collision margins), versioned units (metres, seconds).
-- Simulation mesh positions, triangles, welded seam vertex groups, rest edge lengths and bending constraints; render-mesh ↔ simulation-mesh barycentric map.
-- Per-vertex pin weights and parent bone groups (waist, shoulders, etc.), corrective morph definitions keyed by continuous joint angles and rotation axes, max motion cap for shoes, collision group/mask and layered order.
-- Body collider descriptors (bone-relative capsule or sphere shapes, body proxy reference), profile name, max budget LOD and deterministic reset/teleport threshold. Distinguish body collision groups from cloth self-collision.
-- Checksum of source VRM bytes and stable mesh geometry hash; renderer refuses mismatched sidecar metadata and falls back to legacy physics.
+All numbers are illustrative and require fabric calibration; checksums are placeholders. Production format should prefer bounded typed binary assets and strict schema validation, with byte-size caps and exact VRM mesh/topology fingerprints. Immutable asset URLs/manifest checksums should invalidate old caches on regeneration. Reject unsafe paths, traversal, oversized files, mismatched source hashes and unexpected URLs. Update src/wardrobe/WardrobePackValidator.js, WardrobeArtifactImporter.js, pack exporters and docs as one contract change. Preserve existing adult/private/licensing gates and never grant permissions from a sidecar.
 
-Use packaged JSON/typed binary arrays only from integrity-verified same-origin or securely provided sources. Apply strict size/vertex limits, prototype-safe parsing and schema validation. Existing v1/v2 assets continue to load and use the current correction, or an explicitly approved precomputed generic profile. No implicit user privacy/age/rights changes from asset metadata. Confirm pack importer allowlist before adding sidecars.
+**Do not build this entire contract in Cut 0 or 1 unless a pilot needs it.** First validate the minimal standalone skirt particle map/pin schema in offline fixtures; version more generally in Cut 3.
 
-## E. Code work packages (reviewable PRs)
+---
 
-**PR-A: Reproduce and observe (both repos)**  
-3D-Avatar-Chatbot:
-- "src/gltf-viewer/PoseClothCorrector.js": expose counts, worker health, worker errors/timeouts, mesh/pose SHA, source and elapsed correction time; avoid worker pending-message handler leakage when generations are invalidated; do not swallow failures without debug metrics.
-- "src/gltf-viewer/VRPoseSystem.js": instrument preset selection, blend and settle/release events with pose generation IDs.
-- "src/gltf-viewer/ViewerEngine.js": add final-pose snapshot telemetry and a debug geometry overlay, disabled by default.
-- "tests/wardrobe/pose-cloth-correction.test.js": keep unit tests, add real VRM and screenshot integration test.
-3D-Wardrobe-Forge:
-- Extend "tools/inspect/pose_contact.py" and "tools/inspect/fit_checks.py" to reproduce maxi sundress, jeans and black bodycon with real assets, with exported HomePilot preset keys and visible geometry metrics. Store baselines under tests/fixtures.
+## 6. Explicit file ownership and proposed changes
 
-**PR-B: Forge authored metadata and asset repairs**
-- "wardrobe/vrm/weight_transfer.py", "wardrobe/engines/native.py", garment templates and build/export functions: garment family classification, coverage/anchor assertions, correct two-leg topology, correct maxi-hem anchoring, knee/crotch/hip blend-shape bake.
-- "wardrobe/body_surface/xpbd.py": extract test vectors/config defaults for a portable constraint solver; this Python fitter is only a *reference*, not a browser physics update loop.
-- "wardrobe/domain/manifests.py", wardrobe pack exporters and schema validation: write optional v3 clothPhysics sidecar with checksums and asset metadata.
-- Add fast validation rejecting missing skin attributes, un-normalized weights, wrong skeleton reference, inverted rest triangles, disconnected seams, incorrect hem anchors, degenerate/rest edges, incompatible collision references.
-- Keep all existing normal and adult-gated garment provenance/permissions checks.
+### 3D-Avatar-Chatbot (HomePilot)
 
-**PR-C: Browser pipeline foundations**
-- New "src/gltf-viewer/GarmentPhysicsManager.js": load and validate optional sidecar, choose garment profile/LOD, manage lifecycle (load, reset, dispose, rebind, fallback).
-- New "src/gltf-viewer/FinalPoseSnapshot.js": authoritative post-animation bone matrix snapshot and pose generation token.
-- Modify "src/gltf-viewer/ViewerEngine.js" to establish final bone -> corrective -> simulation -> render ordering.
-- Modify "src/gltf-viewer/AvatarManager.js" and wardrobe swap boundaries so a new VRM binds to its own garment state. Never reuse correction arrays across looks.
-- Preserve "src/gltf-viewer/PoseClothCorrector.js" for old looks and low-end fallback.
+| Path | Intended work |
+| --- | --- |
+| src/gltf-viewer/VRPoseSystem.js | Pose key and generation telemetry; remove assumption cloth only exists in settle callback when dynamic profile active; preserve legacy correction for older looks |
+| src/gltf-viewer/PoseClothCorrector.js | Debuggable garment/body collection; worker error/timeout/promise cleanup; baseline numeric metrics; preserve bind-space inverse correction and snapshots |
+| src/wardrobe/PoseClothCorrection.js; PoseClothWorker.js | Keep legacy solver, fix diagnosed defects only; add tests; **not** per-frame XPBD engine |
+| src/gltf-viewer/ViewerEngine.js | Deliberate per-frame order; sample final pose and collision transforms once all movement writers finished; single garment render ownership |
+| src/gltf-viewer/AvatarManager.js | On model replacement cancel cloth + reset geometry before VRM disposal; associate sidecar to exact look/avatar bytes |
+| src/VRMAAnimationLoader.js; src/ClipAnimationLoader.js; src/PosePuppetIK.js; src/PoseEditor.js; src/behavior/ | Ensure common final-pose binding; add integration tests and no new independent cloth pose writers |
+| src/gltf-viewer/FinalPoseSnapshot.js (**new, Cut 2**) | Immutable final raw bone matrices, joint angles, avatar/pose generation, root transform |
+| src/gltf-viewer/GarmentPhysicsManager.js (**new, Cut 3**) | Per-garment profiles, sidecar/LOD validation, single mesh-write owner, fallback/reset and worker lifecycle |
+| src/wardrobe/physics/GarmentXPBDWorker.js; ConstraintBuilder.js; CollisionProxies.js (**new, Cut 3**) | Coarse skirt XPBD, moving colliders/seat/floor, sim-to-render mapping and numerical instrumentation |
+| src/wardrobe/WardrobePackValidator.js; WardrobeArtifactImporter.js; associated clients (**Cut 3**) | Optional versioned sidecar integrity + safe fallback; do not reject valid v1/v2 looks |
+| tests/wardrobe/pose-cloth-correction.test.js; new tests/wardrobe/garment-physics* | Existing unit tests + real VRM physics/geometric and stale-job integration coverage |
+| browser Playwright / screenshot fixtures | Match actual three deployed look hashes, pose keys and Android device/emulation result; manual representative Android check |
 
-**PR-D: Continuous XPBD solver**
-- New "src/wardrobe/physics/GarmentXPBDWorker.js", "ConstraintBuilder.js", "CollisionProxies.js", "GarmentProfiles.js" (or corresponding WASM implementation).
-- Persistent positions/velocities, fixed dt, stretch/shear/bend/pins, seam welds, body capsule contacts; deterministic constraint order and reset.
-- Separate body collision from leg-to-leg and cloth self-collision. Add garment layering after the basic solver is stable.
-- Renderer mapping: low-res simulation particles to render positions. Avoid repeatedly inverse-baking new geometry then running GPU skinning a second time; choose one validated skin/deform composition.
-- Runtime load shedding: LOD, reduced collision detail, solver iterations and update rate when FPS degrades; never remove mandatory crotch/seat contact or show a wildly folded skirt.
+### 3D-Wardrobe-Forge
 
-**PR-E: Pose-space correctives and motion integrations**
-- Joint angle-driven continuous corrective morph weights (not string-based "sittingWide" only). Prioritize hip flexion, knee flexion, hip abduction, pelvis tilt, upper-arm raise.
-- Bind all animation sources: "src/VRMAAnimationLoader.js", "src/ClipAnimationLoader.js", "src/PoseEditor.js", "src/PosePuppetIK.js", "src/gltf-viewer/VRPoseSystem.js", "src/behavior/" and locomotion update to the same *final transform* pipeline.
-- Test VRM 0.x and 1.0 normalized/raw skeleton semantics, scene rotation, hips translation/root motion, both imported Forge look VRMs and avatar swaps.
-- Include face tracking, idle/talk, emotional gestures, dancing and multi-clip blending; no cloth sticking to a previously played clip.
+| Path | Intended work |
+| --- | --- |
+| wardrobe/engines/native.py | **Already adds leg candidate bones for LEG_TUBE_KINDS**. Do not duplicate this as a fix. Confirm actual export path and correct by evidence |
+| wardrobe/vrm/skinning.py; wardrobe/vrm/weight_transfer.py | Dump vertex-level weights/region classifications; change only if evidence shows wrongly transferred or side-masked weights |
+| assets/garment_templates/dresses/dress-maxi-sundress-v1.json | **Already no lowerLegs anchors**; retain unless actual generated geometry disproves authoring intent |
+| assets/garment_templates/trousers/jeans-*.json | Metadata alone is insufficient; first test exported shin influences, leg components, crotch and known generator version |
+| wardrobe/engines/shell.py; wardrobe/geometry/* (actual builder confirmed during Cut 0) | Targeted gusset/skirt panels and hip/knee corrective export; avoid full re-topology before evidence |
+| wardrobe/body_surface/xpbd.py | Static fitting XPBD reference and test vectors only, no claim of live animation solver |
+| wardrobe/vrm/merge.py; wardrobe/pipeline/assemble_vrm.py; wardrobe/domain/manifests.py; wardrobe/targets/pack.py | Add only necessary morph / later optional physics sidecar metadata; enforce identity and old manifest compatibility |
+| tools/inspect/export_homepilot_poses.mjs; pose_contact.py; fit_checks.py; engineering_sheet.py | Pose key-based artifact exports and real-mesh depth, seams, inverted faces, stretch, gusset and silhouette checks |
+| tests/integration/test_pose_contact.py; tests/unit/test_templates.py; additional fixture tests | Regression assertions and source license-sensitive test data |
 
-**PR-F: Performance, rollout, migration**
-- UI in Settings/Avatar Manager: Cloth Quality (Auto, Low, Balanced, High), debug status, legacy fallback; no advanced controls cluttering Live Try-On by default.
-- Build/bundle physics metadata for current static looks and for remote Forge response; cache by VRM SHA + physics manifest SHA, invalidate on change.
-- Feature flag: legacy → passive shadow evaluation → opt-in experimental → default for verified looks/GPUs, with server/browser kill switch and clear rollback.
-- Never mark the feature production-ready until the matrix below passes in real mobile browsers and CI.
+Cross-repo changes that affect asset schema must have a **pair of companion PRs** with a versioned contract test. Keep [Forge issue #22](https://github.com/ruslanmv/3D-Wardrobe-Forge/issues/22) synchronized with the corrected facts about already-present jeans shin candidates and dress anchoring.
 
-## F. Tests, fixtures and release gates
+---
 
-Required **look × movement** matrix, measured in Forge and also in the actual viewer:
+## 7. Acceptance matrix: geometry, motion and device budgets are **different gates**
 
-- 3 supplied looks: "Crop top & jeans", "Yellow sundress", "Black Bodycon Mini Dress & boots".
-- Pose keys "sittingWide" and "sittingDesk" (currently displayed at 17/43 and 18/43), "sitting", "sittingCrossed", "standing", "tPose"; all 43 currently exposed entries enumerated by key rather than index.
-- Custom hip/knee edits (0°, 45°, 90°, 120°), arms down/raised, IK dragging while pointer is down, Undo/Redo, reset, outfit-switch and avatar-switch.
-- Live animations: at least one walking, one running, one dancing, one seated idle, one gesture/talk, plus VRMA animation loop and blend/interrupt/resume.
-- Compare VRM 0.x and 1.0, fast and slow devices, desktop and mobile Chromium WebGL. Test remote-generated, bundled and imported pack looks.
+### Required test matrix
 
-**Recommended target gates** (engineering targets to tune per fabric; not claims already reached):
-- No visibly catastrophic long-panel ring/slab, detached giant tube, broken two-leg topology or unbounded bounding box in any supported standard pose.
-- 0 nonfinite positions/normals, 0 runtime uncaught worker errors, 0 persistent stale correction after look changes.
-- Seam gap <= 1 mm at authored weld seams (unless intentionally open); no new mesh-connected-component tears.
-- At least 99% of garment samples (vertices **and** face-interior samples) no deeper than 2 mm inside collision body; any deeper contact localized, quantified and reviewed; maximum should not exceed 5 mm in ordinary poses. Unavoidable self-intersecting avatar knees need documented proxy/LOD treatment.
-- No newly inverted visible triangles in the core dress/jeans/boot regression set. Track total inversion count and require improving or zero for high-quality assets; don't report depth alone as success.
-- Stretch: p99 edge ratio <= 1.25 for relatively inelastic clothes, and max <= 1.8 unless the fabric template explicitly allows elasticity; evaluate against per-fabric authored stretch limits. Verify crotch gusset width and skirt hem continuity.
-- Hem anchors and floor contact visually plausible; skirt follows pelvis and gravity rather than knees; shoes stay aligned to feet.
-- Dynamic motion: no >100 ms frame freeze on Apply from cloth work, no >1 s "uncorrected clothes" window on interactive sitting in target hardware, and stable physics within first few frames. Use event telemetry in browser, not modelled estimates.
-- Performance: initially budget median <= 4 ms per physics update on representative desktop, <= 8 ms on target Android in Balanced mode, and <= 16 ms total simulation/render integration frame contribution in degraded mode; verify with representative 2024–2026 lower/mid Android devices. Allow dynamic cloth rate of 30 Hz and interpolation while rendering at display rate. All targets must be measured and may need per-device revision.
-- Reproducibility: identical source hashes, pose clip and deterministic step count produce close geometric metrics; visual regression photos from front/side/back and Android Playwright. Include corrupted/mismatched physics sidecar, unsupported GLB, worker missing/CSP blocked, context loss, simulated low memory and tab resume.
+- Actual SHA-pinned 3 looks; all current standard Pose Studio keys including sittingWide, sittingDesk, sittingCrossed, sitting, standing and T-Pose; full current PRESET_ORDER under relevant feature controls (51 inspected, 26 non-adult) but **do not assume live list count**.
+- Fine-grained knee/hip flexion and abduction, seat tilts, manual bone sliders, puppet drag start/move/release, Undo/Redo, reset, pose blends and rapid preset changes.
+- One each representative idle, talk gesture, walk/run, seated, dance, and VRMA loop/interrupt/resume with scene root translation/rotation and avatar outfit switch.
+- VRM 0.x/1.0 and multi-skin asset, imported/static/generated look, desktop Chrome and **physical mid-range Android WebGL** plus browser automation.
+- Failure modes: worker 404/CSP, tab background/resume, very large dt, invalid mesh fingerprints, imported pack with no metadata, multiple in-flight jobs, WebGL context loss.
 
-QA tooling: existing Forge "tools/inspect/export_homepilot_poses.mjs", "pose_contact.py", "engineering_sheet.py"; add CI fixtures with artifact/pose manifests, detached garment render and before/after metric JSON, and browser Playwright screenshot/mesh readback where practical. Ensure the exact deployed look SHA is included before signing off.
+### A. Settled geometry release gates (on render mesh, compare baseline)
 
-## G. Delivery milestones and dependencies
+These are **proposed, per-family thresholds** for a pose that has settled, not a claim the initial continuous solver meets them at every transition frame.
 
-| Phase | Deliverable | Suggested duration* | Exit criterion |
-| --- | --- | --- | --- |
-| 0 | Live reproduction & telemetry | 2–4 dev days | Exact three looks / pose keys reproduced; deployed hashes and failure reason verified |
-| 1 | Authoring/topology & v3 metadata | 1–2 weeks | Maxi hem, jeans leg/crotch topology and bodycon corrective data validate on Forge fixtures |
-| 2 | Viewer pipeline & compatibility | 1 week | One final-pose snapshot; no VRMA, Puppet IK or outfit-switch races; legacy fallback intact |
-| 3 | Worker XPBD MVP | 2–3 weeks | Sundress and bodycon corrected *during* seating/animations, with stable body contact |
-| 4 | Correctives/boots/jeans + layer collision | 2–3 weeks | Knee/hip/crotch and 3-look visual regressions meet geometric gates |
-| 5 | Mobile tuning & progressive rollout | 1–2 weeks | Android/desktop tests, workers, perf budgets and rollback verified |
+| Metric | Proposed gate / interpretation |
+| --- | --- |
+| Catastrophic silhouette | 0 torus/ring/long slab or joined blue-jeans tube in named screenshot poses; front/side/back human review plus disconnected/shape metrics |
+| Finite mesh | 0 NaN or infinity positions/normals; no permanently detached garment components |
+| Weld seam | <= 1 mm unintentional duplicate-vertex seam gap; intentionally open garment edges excluded and tagged |
+| Contact | Target >=99% of sampled garment vertices **and sampled triangle interior** within 2 mm of intended collision clearance; localized remaining deeper folds explicitly reviewed. No claim closest-normal estimates are watertight signed distances |
+| Stretch | Report p50/p99/max ratios **by authored fabric**; initial inelastic fabric p99 goal <= 1.25 where physically plausible, not universal for gusset/stretch knit |
+| Inverted faces | No newly introduced visible inversions in target hip/knee/boot zones; quantify count and normal sign against skinned reference |
+| Shape features | Separate jeans legs through seated pose, crotch gusset width, skirt hem continuity/length, foot/sole alignment and layer priority |
+| Regression | Standing silhouette/UV/material/expression unchanged except documented intentional geometry improvement |
 
-*Indicative effort with small team and reusable Forge assets; not a delivery promise or guarantee of AAA parity. Parallel tracks can shorten elapsed time but raise integration risk.
+A 1 mm seam or p99 1.25 constraint is a **settled render-mesh** target; do not require the first low-res dynamic skirt to satisfy arbitrary render-mesh limits on every transient frame before implementing render transfer/LOD properly.
 
-**Critical order:** Phase 0 first, then asset topology correctness and authoritative animation/pose capture. Do not simply port "xpbd.py" and declare done: it is quasi-static, omits gravity/velocity and does not resolve topology or raw/normalised rig ordering. Implement dress and jeans as separate reference families.
+### B. Continuous pilot-specific gates
 
-## H. Risk register / things not to claim
+- Sundress stays attached at bodice/waist and behaves stably *throughout* sittingWide → sittingDesk → standing and one looping VRMA, with gravity and seat/floor collision; no unbounded velocity, NaNs, extreme overshoot or 12-second catch-up.
+- Worker result belongs to correct avatar+look+pose generation. Switching outfits under load cannot write the previous outfit's geometry. No runaway promise or listener accumulation.
+- Capped work under frame spikes; interpolation/LOD can reduce sim frequency to 30 Hz while rendering smoothly. Report transient max penetration and skirt volume/hem trajectory as **separate dynamic metrics**.
 
-- **Production deployment unknown:** repository inspection cannot verify yourfriend.online's current commit, cache, worker CSP, or exact 3-look VRM bytes. Require real deployment evidence.
-- **Existing success is narrower than requested scope:** "SITTING_WIDE.md" measures one black bodycon, not the yellow maxi dress or jeans, and explicitly documents remaining inverted triangles and knee failures.
-- **Skinning alone cannot physically drape broad fabric**, but XPBD alone cannot repair incorrect assets. Both asset authoring and runtime must change.
-- **Penetration metrics can lie in tight folds** if closest-vertex normals are used instead of real signed distance; augment with face sampling, representative signed-distance proxies and visual review.
-- **SpringBone** is useful for hair and accessory sway, not a replacement for cloth panels with body/self collision.
-- **AAA goal** means borrowing documented hybrid techniques. Do not assert details of proprietary Genshin Impact implementation or promise equivalent quality without artist-authored shapes and benchmark results.
-- **Performance constraints:** CPU cloth, particularly self-collision and multiple layers, can be expensive on mobile. Start with coarse sim mesh and adaptive LOD; prioritize contact-critical garment regions.
-- **Licensing:** prefer implementation based on papers/documentation or license-compatible dependencies, audit bundle licenses before shipping any third-party solvers and preserve avatar/garment license metadata.
+### C. Performance targets (hypotheses, hardware-gated)
 
-## I. References and cross-repo source anchors
+- Existing after-settle full-resolution corrector can take **seconds**. Do not compare it numerically as if it were the planned per-frame coarse solver; claiming a 500x speedup is not meaningful.
+- Pilot **only** for a few hundred coarse skirt particles, with representative mobile/desktop profiling. Initial candidate target: 30 Hz physics on mid-range Android without major regressions to measured frame time; aspirational budget approximately 4 ms on desktop and 8 ms per mobile physics step **after** particle counts/collisions are fixed. These are benchmarks to evaluate, **not** universal mandatory gates for Cut 1 or Cut 2.
+- Profile CPU matrix extraction + inverse skin, worker transfer/postMessage, buffer uploads, rendering, memory allocations and GPU synchronization separately. Include P50/P95 and frame drops on physical devices, not only headless software Chromium.
+- Auto/Low/Balanced/High (later) degrade free hem simulation first; preserve essential body/seat/crotch attachment and avoid returning catastrophic old poses.
 
-HomePilot:
-- https://github.com/ruslanmv/3D-Avatar-Chatbot/blob/master/docs/SITTING_WIDE.md
-- https://github.com/ruslanmv/3D-Avatar-Chatbot/blob/master/src/gltf-viewer/VRPoseSystem.js
-- https://github.com/ruslanmv/3D-Avatar-Chatbot/blob/master/src/gltf-viewer/ViewerEngine.js
-- https://github.com/ruslanmv/3D-Avatar-Chatbot/blob/master/src/gltf-viewer/PoseClothCorrector.js
-- https://github.com/ruslanmv/3D-Avatar-Chatbot/blob/master/src/wardrobe/PoseClothCorrection.js
-- https://github.com/ruslanmv/3D-Avatar-Chatbot/blob/master/src/wardrobe/PoseClothWorker.js
-- https://github.com/ruslanmv/3D-Avatar-Chatbot/blob/master/src/VRMAAnimationLoader.js
-- https://github.com/ruslanmv/3D-Avatar-Chatbot/blob/master/src/wardrobe/WardrobePackValidator.js
+### D. Validation commands (verify setup first)
 
-Forge:
-- https://github.com/ruslanmv/3D-Wardrobe-Forge/blob/main/docs/POSE_CONTACT_QA.md
-- https://github.com/ruslanmv/3D-Wardrobe-Forge/blob/main/docs/GARMENT_TEMPLATE_SPEC.md
-- https://github.com/ruslanmv/3D-Wardrobe-Forge/blob/main/wardrobe/body_surface/xpbd.py
-- https://github.com/ruslanmv/3D-Wardrobe-Forge/blob/main/wardrobe/vrm/weight_transfer.py
+HomePilot: npm test -- --runInBand tests/wardrobe/pose-cloth-correction.test.js; npm run test:ci; npm run wardrobe:check; npm run format:check (existing npm scripts).  
+Forge: python -m pytest tests/integration/test_pose_contact.py tests/unit/test_templates.py; python -m pytest; python -m ruff check . (when dev deps available).  
+Pose export/geometry: follow 3D-Wardrobe-Forge/docs/POSE_CONTACT_QA.md; capture actual pose fixture SHA.  
+Browser/mobile: use existing Playwright configuration where available and add a dedicated garment test; software-rendered Chromium is not a physical Android GPU test.
 
-Industry patterns:
-- Unreal Chaos Cloth Panel Editor: https://dev.epicgames.com/documentation/en-us/unreal-engine/panel-cloth-editor-overview
-- XPBD (Macklin, Müller & Chentanez, 2016): https://doi.org/10.1145/2994258.2994272
-- Three.js SkinnedMesh contract: https://threejs.org/docs/pages/SkinnedMesh.html
-- VRM 1.0 humanoid and animation update ordering: https://github.com/vrm-c/vrm-specification/blob/master/specification/VRMC_vrm-1.0/README.md
-- VRM SpringBone 1.0: https://github.com/vrm-c/vrm-specification/blob/master/specification/VRMC_springBone-1.0/README.md
+**Never state tests passed unless they were actually executed with captured output in that implementation PR.**
 
-## Definition of Done
+---
 
-This feature is accepted only when **every supported current look** can transition across the pose and animation test matrix without major garment tears or tunnels, critical geometry is validated independently of pretty renders, exact failing screenshot looks are fixed in the deployed site, and Android/desktop target performance is verified. Unsupported old looks must fail back safely with an honest status rather than silently claiming simulated cloth.
+## 8. Release, migration, rollback and explicit no-go rules
+
+1. Documentation PR #119 stays **draft** and contains the decision and runbook, not a replacement of deployed physics code.
+2. Each code cut uses **its own branch/PR** with baseline-vs-updated screenshots, exact artifact SHA, test results, telemetry and release notes. Never silently commit directly to master or main.
+3. Preview deployment first. Deploy a corrected Forge VRM only after real SHA-specific geometry tests, provenance/licensing/identity checks and pack integrity. Do not retroactively edit immutable VRM URLs in place; use content/versioned names so CDN/browser cache cannot mix assets.
+4. Feature flags are off by default for unverified garment family/device combinations: e.g. legacy, targeted-corrective, dynamic-skirt-v1. Full static/imported/remote wardrobe behavior must survive flag rollback. Explicit worker status and reason are visible in diagnostic mode.
+5. Promote low-risk authoring/corrective fixes to canary test devices, then measured traffic cohorts. Promote continuous cloth only after long animation/session stability, memory and Android performance are documented.
+6. Runtime rollback = disable new garment profile and restore snapshot without reloading avatar; asset rollback = pin previous SHA/manifest. Keep a known-good signed/versioned pack artifact.
+7. No-go if a pose regression creates NaNs or scene freeze; a worker is silently missing; a new cloth stage fights existing animation/VRM updates; an outfit/identity switches without cancellation; adult/licensing gate is bypassed; mobile FPS substantially regresses with no fallback.
+
+### Definition of Done by release (not all-or-nothing)
+
+- **First release:** exact deployed assets diagnosed and safely repaired using the existing skinned VRM and legacy corrector where possible; bodycon/boots/jeans tests meet their relevant settled gates. Sundress may remain an explicitly tracked pilot if real dynamics are required.
+- **Sundress pilot release:** coarse continuous cloth on actual deployed yellow sundress meets both settled/transition visual and physical Android stability gates, with a safe fallback.
+- **Broader Engine V2 release:** supported loose garments progressively enrolled by class and measured, animations share authoritative final-pose transforms, and imported/old packs remain backward compatible.
+
+### Open decisions that must be answered in a follow-up implementation PR
+
+- Is the live 43-item UI a different JS build or a separate Pose Studio enumeration? Record page/network evidence.
+- What *actual* jeans leg components and shin weights exist in the three current look.vrm files?
+- Does the yellow sundress have bilateral upper-leg influence over its lower panel, and which code path emitted it?
+- Does the worker load and apply corrections on live mobile, and why does the visual stay malformed after settling?
+- Is final bone ordering correct when VRMA+Puppet+procedural animators run at once?
+- Can inverse-skin per-frame render mapping satisfy Android target, or does a later custom GPU render path become necessary?
+- Which physical seat/floor shape is available in camera-only Live Try-On, and how do we make virtual seat placement consistent with the pose?
+
+---
+
+## 9. Claude Code execution contract
+
+The canonical, actionable task checklist is [CLAUDE_CODE_GARMENT_ENGINE_V2_RUNBOOK.md](CLAUDE_CODE_GARMENT_ENGINE_V2_RUNBOOK.md). Claude Code must read **both** repo docs, begin at **Cut 0**, report verified observations separately from hypotheses, and stop at the cut's exit gate instead of beginning full universal XPBD. For each change provide files touched, before/after metrics, completed tests, unverified deployment status and any necessary manual live evidence. Do not assume access to the user's production session or deploy credentials.
+
+### Source anchor index
+
+**HomePilot:**
+- [docs/SITTING_WIDE.md](SITTING_WIDE.md)
+- [src/gltf-viewer/VRPoseSystem.js](../src/gltf-viewer/VRPoseSystem.js)
+- [src/gltf-viewer/ViewerEngine.js](../src/gltf-viewer/ViewerEngine.js)
+- [src/gltf-viewer/PoseClothCorrector.js](../src/gltf-viewer/PoseClothCorrector.js)
+- [src/wardrobe/PoseClothCorrection.js](../src/wardrobe/PoseClothCorrection.js)
+- [src/wardrobe/PoseClothWorker.js](../src/wardrobe/PoseClothWorker.js)
+- [src/VRMAAnimationLoader.js](../src/VRMAAnimationLoader.js)
+- [src/wardrobe/WardrobePackValidator.js](../src/wardrobe/WardrobePackValidator.js)
+
+**Forge:**
+- [docs/POSE_CONTACT_QA.md](https://github.com/ruslanmv/3D-Wardrobe-Forge/blob/main/docs/POSE_CONTACT_QA.md)
+- [docs/GARMENT_TEMPLATE_SPEC.md](https://github.com/ruslanmv/3D-Wardrobe-Forge/blob/main/docs/GARMENT_TEMPLATE_SPEC.md)
+- [wardrobe/engines/native.py](https://github.com/ruslanmv/3D-Wardrobe-Forge/blob/main/wardrobe/engines/native.py)
+- [wardrobe/vrm/skinning.py](https://github.com/ruslanmv/3D-Wardrobe-Forge/blob/main/wardrobe/vrm/skinning.py)
+- [wardrobe/vrm/weight_transfer.py](https://github.com/ruslanmv/3D-Wardrobe-Forge/blob/main/wardrobe/vrm/weight_transfer.py)
+- [wardrobe/body_surface/xpbd.py](https://github.com/ruslanmv/3D-Wardrobe-Forge/blob/main/wardrobe/body_surface/xpbd.py)
+
+**Public reference algorithms:** [XPBD paper](https://doi.org/10.1145/2994258.2994272), [Unreal Chaos cloth overview](https://dev.epicgames.com/documentation/en-us/unreal-engine/panel-cloth-editor-overview), [Three.js SkinnedMesh](https://threejs.org/docs/#api/en/objects/SkinnedMesh), [VRM specification](https://github.com/vrm-c/vrm-specification). These are documented patterns, not evidence of proprietary anime-game implementations.
