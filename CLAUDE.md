@@ -4,6 +4,23 @@ Standing context for coding sessions. Everything here was verified against the
 tree, not assumed. If something below is wrong, fix this file in the same
 change.
 
+## Pose-Aware Garment Engine V2: task-specific execution context
+
+For tasks involving Pose Studio clothing deformation, 3D-Wardrobe-Forge garments,
+Live Try-On physics, VRMA-compatible cloth, or the Yellow sundress / blue jeans /
+black bodycon & boot regressions, first read:
+
+- [docs/POSE_AWARE_GARMENT_ENGINE_V2_PLAN.md](docs/POSE_AWARE_GARMENT_ENGINE_V2_PLAN.md)
+- [docs/CLAUDE_CODE_GARMENT_ENGINE_V2_RUNBOOK.md](docs/CLAUDE_CODE_GARMENT_ENGINE_V2_RUNBOOK.md)
+- [3D-Wardrobe-Forge issue #22](https://github.com/ruslanmv/3D-Wardrobe-Forge/issues/22)
+
+These documents are **design context**, not implemented functionality. Start with
+**Cut 0 (exact deployed asset and worker diagnosis)**, work on reviewable branches,
+do not blindly re-skin/re-export assets, and keep the existing corrector as a
+compatibility fallback. The checked source has 51 preset entries / 26 standard;
+the 43-item screenshot indicates a still-unverified deployed-version mismatch.
+Do not merge or deploy code just because the planning PR is present.
+
 ## What this is
 
 A 3D VRM avatar chatbot: a static site rendered with Three.js, served by a small
