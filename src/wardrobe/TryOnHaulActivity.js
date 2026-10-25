@@ -241,6 +241,9 @@ const TryOnHaulActivity = (() => {
         const CatalogWorkspace =
             deps.CatalogWorkspace ||
             (g.NEXUS_FORGE_GARMENT_CATALOG && g.NEXUS_FORGE_GARMENT_CATALOG.ForgeGarmentCatalogWorkspace);
+        // FC2. The colour-underneath chooser, opened by the companion's suggestion.
+        const Underneath =
+            deps.Underneath || (g.NEXUS_TRY_ON_UNDERNEATH && g.NEXUS_TRY_ON_UNDERNEATH.TryOnUnderneath) || null;
         const spicy = () => deps.spicy || g.NEXUS_SPICY || null;
         const WARM_EVERY_MS = 60000;
         const SPIN_HOLD_MS = 2600;
@@ -250,6 +253,7 @@ const TryOnHaulActivity = (() => {
         let liveLayout = null;
         let stageExperience = null;
         let catalogWorkspace = null;
+        let underneath = null;
         let generator = null;
         let ending = null;
         let unwatchPrivate = null;
@@ -447,6 +451,8 @@ const TryOnHaulActivity = (() => {
                     stageExperience = null;
                     if (catalogWorkspace) catalogWorkspace.destroy();
                     catalogWorkspace = null;
+                    if (underneath) underneath.destroy();
+                    underneath = null;
                     if (liveLayout) liveLayout.unmount();
                     liveLayout = null;
                     if (view) view.unmount();
@@ -527,6 +533,10 @@ const TryOnHaulActivity = (() => {
                 if (LiveLayout) {
                     liveLayout = new LiveLayout({ doc });
                     liveLayout.mount();
+                }
+                if (Underneath) {
+                    underneath = new Underneath({ doc, view });
+                    view.onUnderneath = (offer) => underneath && underneath.show(offer);
                 }
                 if (CatalogWorkspace) {
                     // Use the same existing Forge client as the try-on generator.
@@ -610,8 +620,17 @@ const TryOnHaulActivity = (() => {
             shelf() {
                 warm();
                 const state = session ? session.state() : null;
-                const current = state && state.look && !isPrivateLook(state.look) ? state.look.name : null;
-                return { looks: shelfNames.slice(), current, running: Boolean(session) };
+                // A private look (a dress over an adult foundation is rated intimate) is described
+                // only while private outfits are open for her, as W16 lets private sets reach the
+                // prompt: then the stylist may talk about what she wears underneath.
+                const look = state && state.look && (!isPrivateLook(state.look) || privateIsOpen) ? state.look : null;
+                const current = look ? look.name : null;
+                // FC2. What she has on under that look, when Forge made it and says what it is.
+                const under = look && look.underneath && look.underneath.pieces && look.underneath.pieces.length;
+                const underneath = under
+                    ? `${look.underneath.color || 'beige'} ${look.underneath.pieces.join(' and ').toLowerCase()}`
+                    : null;
+                return { looks: shelfNames.slice(), current, running: Boolean(session), underneath };
             },
 
             stop(why = 'user') {

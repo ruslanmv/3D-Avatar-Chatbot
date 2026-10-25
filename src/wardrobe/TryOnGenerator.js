@@ -43,6 +43,102 @@
         }
     }
 
+    /**
+     * FC1. What she wears under every look of the haul: the colour of the foundation Forge's
+     * Auto Foundation adds (`options.foundationColor`). Chosen once, kept in this browser, and
+     * sent with every look until changed. Each name is one Forge's vocabulary reads as a colour;
+     * Forge refuses anything else with a 422, so a typo here would fail every look, not just
+     * look wrong. Nothing chosen sends nothing, and Forge's beige stays — the request is then
+     * exactly what it was before FC1. Beige is offered too, so a person can go back to it: a
+     * black foundation is only replaced when a colour is asked for.
+     */
+    var FOUNDATION_KEY = 'nexus_tryon_foundation_color';
+    var FOUNDATION_COLORS = [
+        { value: 'beige', label: 'Beige', hex: '#ddccb0' },
+        { value: 'nude', label: 'Nude', hex: '#d9b39a' },
+        { value: 'white', label: 'White', hex: '#f3f2ee' },
+        { value: 'black', label: 'Black', hex: '#15151a' },
+        { value: 'red', label: 'Red', hex: '#b3202b' },
+        { value: 'pink', label: 'Pink', hex: '#e59ab8' },
+    ];
+
+    function storage() {
+        try {
+            return global && global.localStorage ? global.localStorage : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function foundationColor() {
+        var store = storage();
+        var value = null;
+        try {
+            value = store ? store.getItem(FOUNDATION_KEY) : null;
+        } catch (e) {
+            value = null;
+        }
+        return FOUNDATION_COLORS.some(function (c) {
+            return c.value === value;
+        })
+            ? value
+            : null;
+    }
+
+    /** Remember `value` (one of FOUNDATION_COLORS), or forget the choice with null. */
+    function setFoundationColor(value) {
+        var store = storage();
+        if (!store) return foundationColor();
+        var known = FOUNDATION_COLORS.some(function (c) {
+            return c.value === value;
+        });
+        try {
+            if (known) store.setItem(FOUNDATION_KEY, value);
+            else if (value === null) store.removeItem(FOUNDATION_KEY);
+        } catch (e) {
+            console.warn('[TryOn] could not keep the colour underneath:', e);
+        }
+        return foundationColor();
+    }
+
+    var UPPER = /bra|top|bandeau|bralette|bustier|camisole|corset/i;
+
+    /** The colour this request asked for underneath, as `create` sends it (null: Forge's beige). */
+    function outfitColor(options, generator) {
+        return generator._foundationColor(options) || null;
+    }
+
+    /**
+     * FC2. {color, pieces} for what she wears underneath a made look: the garments Forge's plan
+     * put on her as the foundation, named without their colour word ("Tailored Briefs").
+     */
+    function jobUnderneath(job, color) {
+        // Forge serialises a plan's garments as `layers`, inner first (`garments` is Python-side only).
+        var plan = (job && job.plan) || {};
+        var garments = plan.layers || plan.garments || [];
+        var pieces = garments
+            .filter(function (g) {
+                return g && g.role === 'foundation';
+            })
+            .map(function (g) {
+                var words = String(g.name || '').split(/\s+/);
+                if (
+                    words.length > 1 &&
+                    FOUNDATION_COLORS.some(function (c) {
+                        return c.value === words[0].toLowerCase();
+                    })
+                )
+                    words.shift();
+                return words.join(' ');
+            })
+            .filter(Boolean)
+            // Upper first, as it is worn and said: "tube top · tailored briefs".
+            .sort(function (a, b) {
+                return Number(!UPPER.test(a)) - Number(!UPPER.test(b));
+            });
+        return { color: color, pieces: pieces };
+    }
+
     /** Forge's own "passed" (`FitReport.passed`), which it computes but does not serialise. */
     function fitPassed(report) {
         if (!report) return null;
@@ -155,10 +251,16 @@
             var text = String(prompt || '').trim();
             var bodyArt = Array.isArray(options.bodyArt) && options.bodyArt.length ? options.bodyArt : null;
             var tattooOnly = !text && bodyArt;
+            // FC2. Only the colour underneath, on the look she has on: no outfit, so Forge carries
+            // the dress and boots over byte for byte and rewrites the foundation's colour alone.
+            var recolourOnly = !text && !bodyArt && Boolean(options.recolour) && Boolean(options.foundationColor);
             if (tattooOnly && !options.baseLookId) {
                 throw new TryOnError('A tattoo goes on a look Forge made for her. Make or choose one of those first.');
             }
-            if (!text && !tattooOnly)
+            if (recolourOnly && !options.baseLookId) {
+                throw new TryOnError('Only a look Forge made for her can change colour underneath.');
+            }
+            if (!text && !tattooOnly && !recolourOnly)
                 throw new TryOnError('Describe the look first, like “black satin cocktail dress”.');
             if (text.length > MAX_PROMPT) throw new TryOnError('That description is too long. Keep it short.');
             var available = this.availability();
@@ -180,7 +282,7 @@
                     }
                     // LT1. "Change the top" builds on the look she has on, so everything the
                     // person did not ask to change — the jeans, the shoes — stays as it is.
-                    var outfit = tattooOnly ? null : { prompt: text };
+                    var outfit = tattooOnly || recolourOnly ? null : { prompt: text };
                     if (outfit && options.preset) outfit.preset = String(options.preset);
                     if (outfit && options.templateId) outfit.templateId = String(options.templateId);
                     if (outfit && options.color) outfit.color = String(options.color);
@@ -190,17 +292,23 @@
                     // of the skirt going over its hem, and the foundation is carried from look
                     // to look with whatever else did not change.
                     if (outfit) jobOptions.ensureFoundation = true;
+                    // FC1. Its colour, when she has chosen one; the look's own colour is `color`.
+                    var underneath = outfit ? this._foundationColor(options) : null;
+                    if (recolourOnly) underneath = this._foundationColor(options);
+                    if (underneath) jobOptions.foundationColor = underneath;
                     if (baseLookId) jobOptions.baseLookId = baseLookId;
                     if (bodyArt) jobOptions.bodyArt = bodyArt;
                     var accepted = await this.library.createJob(identity.slug, outfit, jobOptions);
                     jobId = accepted && accepted.id;
                 } else {
-                    if (bodyArt || options.preset) {
+                    if (bodyArt || options.preset || recolourOnly) {
                         // The generic route takes a prompt and nothing else.
                         throw new TryOnError(
                             bodyArt
                                 ? 'Tattoos are made on the built-in avatars Forge holds, and she is not one of them.'
-                                : 'That set is made on the built-in avatars Forge holds, and she is not one of them.'
+                                : recolourOnly
+                                  ? 'The colour underneath changes on the built-in avatars Forge holds, and she is not one of them.'
+                                  : 'That set is made on the built-in avatars Forge holds, and she is not one of them.'
                         );
                     }
                     var controller = this.controller;
@@ -212,6 +320,7 @@
                         templateId: options.templateId || null,
                         renderPreview: true,
                         ensureFoundation: true,
+                        foundationColor: this._foundationColor(options),
                         conditionsOfUse: identity.conditionsOfUse,
                     });
                     jobId = started && started.jobId;
@@ -224,7 +333,12 @@
                         this._progress(state, options.onProgress);
                     }.bind(this),
                 });
-                return this._look(job, text || 'Tattoo', identity, baseLookId);
+                var made = this._look(job, text || (recolourOnly ? '' : 'Tattoo'), identity, baseLookId);
+                // FC1/FC2. What she wears underneath this look, as asked of Forge: the colour (null
+                // when none was chosen — Forge's beige) and the pieces. A recolour has no plan of
+                // its own; its pieces are the base look's, which the caller carries over.
+                made.underneath = jobUnderneath(job, outfitColor(options, this));
+                return made;
             } catch (error) {
                 if (error && (error.name === 'AbortError' || error.name === 'TryOnError')) throw error;
                 throw new TryOnError(this.Reasons.explain(error), {
@@ -232,6 +346,19 @@
                     cause: error,
                 });
             }
+        }
+
+        /** FC1. This look's colour underneath: the caller's, else the one she chose, else none. */
+        _foundationColor(options) {
+            var asked = options && options.foundationColor;
+            if (
+                asked &&
+                FOUNDATION_COLORS.some(function (c) {
+                    return c.value === asked;
+                })
+            )
+                return asked;
+            return foundationColor();
         }
 
         _look(job, prompt, identity, baseLookId) {
@@ -260,7 +387,14 @@
         }
     }
 
-    var api = { TryOnGenerator: TryOnGenerator, TryOnError: TryOnError, fitPassed: fitPassed };
+    var api = {
+        TryOnGenerator: TryOnGenerator,
+        TryOnError: TryOnError,
+        fitPassed: fitPassed,
+        FOUNDATION_COLORS: FOUNDATION_COLORS,
+        foundationColor: foundationColor,
+        setFoundationColor: setFoundationColor,
+    };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_TRY_ON_GENERATOR = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);

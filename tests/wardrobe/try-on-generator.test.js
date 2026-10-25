@@ -242,3 +242,61 @@ describe('ForgeLibraryClient', () => {
         expect(new ForgeLibraryClient({}).available).toBe(false);
     });
 });
+
+describe('FC1: the colour underneath, chosen once for the haul', () => {
+    const Gen = require('../../src/wardrobe/TryOnGenerator.js');
+
+    beforeEach(() => {
+        localStorage.clear();
+    });
+
+    test('nothing chosen sends nothing, so the request is what it was before', async () => {
+        const { forge, generator } = setup({ url: `vendor/avatars/${SAMPLE_A.file}`, name: 'AvatarSample A' });
+        await generator.create('black bodycon mini dress');
+        const post = forge.calls.find((call) => call.method === 'POST');
+        expect(post.body.options.ensureFoundation).toBe(true);
+        expect(post.body.options).not.toHaveProperty('foundationColor');
+    });
+
+    test('a chosen colour goes with every look, on both routes, and not with a tattoo', async () => {
+        Gen.setFoundationColor('black');
+        const library = setup({ url: `vendor/avatars/${SAMPLE_A.file}`, name: 'AvatarSample A' });
+        await library.generator.create('white bodycon mini dress');
+        await library.generator.create('red midi dress');
+        const posts = library.forge.calls.filter((call) => call.method === 'POST');
+        expect(posts.map((p) => p.body.options.foundationColor)).toEqual(['black', 'black']);
+        await library.generator.create('', {
+            baseLookId: 'look_0',
+            bodyArt: [{ design: 'x', placement: 'upper-back' }],
+        });
+        const tattoo = library.forge.calls.filter((call) => call.method === 'POST')[2];
+        expect(tattoo.body.options).not.toHaveProperty('foundationColor');
+
+        const external = setup({ url: 'uploads/aiko.vrm', name: 'Aiko' });
+        await external.generator.create('red skater skirt');
+        expect(external.forge.calls.find((call) => call.path === '/v1/generate').body.foundationColor).toBe('black');
+    });
+
+    test('a look may ask for its own colour underneath; an unknown one falls back to the choice', async () => {
+        Gen.setFoundationColor('white');
+        const { forge, generator } = setup({ url: `vendor/avatars/${SAMPLE_A.file}`, name: 'AvatarSample A' });
+        await generator.create('black satin slip dress', { foundationColor: 'black' });
+        await generator.create('black satin slip dress', { foundationColor: 'see-through' });
+        const posts = forge.calls.filter((call) => call.method === 'POST');
+        expect(posts.map((p) => p.body.options.foundationColor)).toEqual(['black', 'white']);
+    });
+
+    test('only a colour Forge reads as a colour is kept; null forgets the choice', () => {
+        expect(Gen.foundationColor()).toBeNull();
+        expect(Gen.setFoundationColor('red')).toBe('red');
+        expect(Gen.setFoundationColor('red lace')).toBe('red'); // ignored, the choice stands
+        localStorage.setItem('nexus_tryon_foundation_color', 'mauve'); // edited by hand
+        expect(Gen.foundationColor()).toBeNull();
+        Gen.setFoundationColor('beige');
+        expect(Gen.setFoundationColor(null)).toBeNull();
+        // Every value offered is one Forge's vocabulary has: a typo would fail every look.
+        const forgeColours = ['beige', 'nude', 'white', 'black', 'red', 'pink'];
+        expect(Gen.FOUNDATION_COLORS.map((c) => c.value)).toEqual(forgeColours);
+        Gen.FOUNDATION_COLORS.forEach((c) => expect(c.label).toMatch(/^[A-Z][a-z]+$/));
+    });
+});

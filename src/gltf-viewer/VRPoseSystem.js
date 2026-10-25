@@ -22,6 +22,7 @@
  */
 
 import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
+import { PoseClothCorrector } from './PoseClothCorrector.js';
 
 // =========================================================================
 // IK CHAIN DEFINITIONS (humanoid bone chains for CCD-IK)
@@ -1839,6 +1840,28 @@ export class VRPoseSystem {
 
         // Snap points (detected surfaces for avatar placement)
         this._snapPoints = [];
+
+        // SW1. Cloth pushed back out of her once a pose has settled (PoseClothCorrector): skinning
+        // alone left a bodycon's lap 23 mm inside her thighs in Sitting (Wide). Frames to wait
+        // before correcting, so vrm.update has copied the pose onto the bones that skin her.
+        this.cloth = new PoseClothCorrector();
+        this._clothPending = 0;
+    }
+
+    /** SW1. She is about to move: the cloth goes back to plain skinning until she settles. */
+    _releaseCloth() {
+        this._clothPending = 0;
+        try {
+            this.cloth.release(this.avatarRoot);
+        } catch (error) {
+            console.warn('[VRPoseSystem] cloth release skipped', error);
+        }
+    }
+
+    /** SW1. She has settled in a pose: correct the cloth two frames from now. */
+    _settleCloth() {
+        if (typeof window !== 'undefined' && window.NEXUS_POSE_CLOTH_ENABLED === false) return;
+        this._clothPending = 2;
     }
 
     // =========================================================================
@@ -1846,6 +1869,7 @@ export class VRPoseSystem {
     // =========================================================================
 
     setAvatar(root) {
+        if (this.avatarRoot && this.avatarRoot !== root) this._releaseCloth();
         this.avatarRoot = root;
         this._bones.clear();
         this._restPoses.clear();
@@ -1869,6 +1893,7 @@ export class VRPoseSystem {
         if (!enabled) {
             this._isBlending = false;
             this._activeIKTarget = null;
+            this._releaseCloth();
         }
     }
 
@@ -2043,6 +2068,9 @@ export class VRPoseSystem {
             return;
         }
 
+        // SW1. The body is about to move: a correction made for the old pose would lag behind it.
+        this._releaseCloth();
+
         // Capture current bone rotations as blend-from
         this._blendFrom.clear();
         this._blendTo.clear();
@@ -2107,6 +2135,7 @@ export class VRPoseSystem {
                 }
             }
             this._isBlending = false;
+            this._settleCloth();
             console.log(`[VRPoseSystem] Applying preset: ${preset.label} (instant)`);
             return;
         }
@@ -2132,6 +2161,7 @@ export class VRPoseSystem {
      * @returns {boolean} true if IK was activated
      */
     startIK(boneKey, controller) {
+        this._releaseCloth(); // SW1. a dragged bone moves her; plain skinning follows it
         if (!this.ikEnabled) {
             console.log(`[VRPoseSystem] startIK("${boneKey}"): BLOCKED — IK disabled`);
             return false;
@@ -2243,6 +2273,7 @@ export class VRPoseSystem {
             console.log(`[VRPoseSystem] IK ended: ${chainName}`);
             // Reset SLERP damping state so next grab starts fresh
             resetLegDampState(chainName);
+            if (!this._isBlending) this._settleCloth();
         }
         this._activeIKTarget = null;
     }
@@ -2325,6 +2356,21 @@ export class VRPoseSystem {
             return;
         }
 
+        // SW1. A settled pose: correct the cloth once the skinning bones have caught up.
+        if (this._clothPending > 0 && !this._isBlending && !this._activeIKTarget) {
+            this._clothPending -= 1;
+            if (this._clothPending === 0) {
+                // Fail soft: this runs inside the render loop, and an exception here stopped it.
+                try {
+                    this.cloth.correct(this.avatarRoot).catch((error) => {
+                        console.warn('[VRPoseSystem] cloth correction skipped', error);
+                    });
+                } catch (error) {
+                    console.warn('[VRPoseSystem] cloth correction skipped', error);
+                }
+            }
+        }
+
         // 1. Pose blending (smooth transition between presets)
         if (this._isBlending) {
             this._updateBlending(dt);
@@ -2366,6 +2412,7 @@ export class VRPoseSystem {
 
         if (t >= 1) {
             this._isBlending = false;
+            this._settleCloth();
             console.log(`[VRPoseSystem] Blend complete: ${this._currentPreset}`);
         }
     }

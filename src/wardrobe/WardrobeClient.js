@@ -99,6 +99,10 @@
             };
             // MG3. Auto Foundation, as on the library route: only when the caller asks.
             if (options.ensureFoundation) body.options.ensureFoundation = true;
+            // FC1. The colour of that foundation, only with it and only when one was chosen.
+            if (options.ensureFoundation && options.foundationColor) {
+                body.options.foundationColor = String(options.foundationColor);
+            }
             if (options.conditionsOfUse || options.attestModificationAllowed) {
                 // W1. The key is omitted rather than sent as null, and the values are strings.
                 // Forge types this as `dict[str, str]` with a default factory, not as optional:

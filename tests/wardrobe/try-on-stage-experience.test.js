@@ -133,4 +133,23 @@ describe('reference-v2 Try-On stage: functional actions, untouched viewport', ()
         expect(document.querySelector('[data-command="next"]').disabled).toBe(true);
         expect(document.querySelector('.nexus-look-rail-edit')).not.toBeNull();
     });
+
+    it('W18: an Underneath chip on a Forge look with a foundation opens the colour chooser; none otherwise', () => {
+        window.NEXUS_TRY_ON_GENERATOR = { FOUNDATION_COLORS: [{ value: 'white', label: 'White', hex: '#f4f1ea' }] };
+        view.onUnderneath = jest.fn();
+        stage.mount();
+        // A look with nothing Forge put under it: no chip, nothing to recolour.
+        expect(document.querySelector('.nexus-stage-under')).toBeNull();
+        look.underneath = { color: 'white', pieces: ['Tailored Briefs', 'Tube Top'] };
+        stage.render(session.state());
+        const chip = document.querySelector('.nexus-stage-under');
+        expect(chip.textContent).toMatch(/Underneath · White/);
+        expect(chip.getAttribute('aria-haspopup')).toBe('dialog');
+        chip.click();
+        expect(view.onUnderneath).toHaveBeenCalledWith({ suggested: null, look });
+        delete view.onUnderneath; // the activity did not wire a chooser: no chip
+        stage.render(session.state());
+        expect(document.querySelector('.nexus-stage-under')).toBeNull();
+        delete window.NEXUS_TRY_ON_GENERATOR;
+    });
 });

@@ -105,6 +105,14 @@
         '.nexus-look-rail-tools{display:flex;flex-direction:column;gap:6px;flex:0 0 auto}',
         '.nexus-look-rail-title{color:#5ce6f8;letter-spacing:.12em;text-transform:uppercase;',
         'text-align:center;font-size:.65rem;font-weight:800;text-shadow:0 2px 4px #000}',
+        '.nexus-stage-under{display:inline-flex;align-items:center;gap:8px;min-height:44px;margin:2px 0 8px;pointer-events:auto;',
+        'padding:4px 6px 4px 10px;border-radius:999px;border:1px solid rgba(28,201,222,.45);',
+        'background:rgba(6,40,54,.85);color:#e6f7fa;font:600 12px/1 system-ui;cursor:pointer}',
+        '.nexus-stage-under:disabled{opacity:.55;cursor:default}',
+        '.nexus-stage-under-dot{width:14px;height:14px;border-radius:999px;background:#d9c2a6;',
+        'border:1px solid rgba(255,255,255,.45)}',
+        '.nexus-stage-under-change{padding:5px 10px;border-radius:999px;background:#0fd6e9;color:#032231;',
+        'font:700 11px/1 system-ui}',
         '.nexus-look-rail-edit{border:1px solid rgba(28,201,222,.55);border-radius:9px;',
         'background:rgba(2,19,30,.92);color:#dbf5fc;font-size:.69rem;font-weight:650;',
         'padding:.6rem .2rem;min-height:40px}',
@@ -537,6 +545,41 @@
             return true;
         }
 
+        /**
+         * W18. What she wears underneath, as a chip on the current look, which opens the colour
+         * chooser (TryOnUnderneath). It was reachable only by asking the companion: there was no
+         * way to tap a colour. Shown only for a look Forge made here with a foundation under it —
+         * the only looks Forge can recolour — and only where the activity wired the chooser.
+         */
+        underneathChip(look, state) {
+            var view = this.view;
+            var under = look && look.underneath;
+            if (!under || !under.pieces || !under.pieces.length) return null;
+            if (!view || typeof view.onUnderneath !== 'function') return null;
+            var doc = this.doc;
+            var value = under.color || 'beige';
+            var colors = ((this.doc.defaultView || global).NEXUS_TRY_ON_GENERATOR || {}).FOUNDATION_COLORS || [];
+            var known = colors.filter(function (c) {
+                return c.value === value;
+            })[0];
+            var label = known ? known.label : value.charAt(0).toUpperCase() + value.slice(1);
+            var chip = el(doc, 'button', 'nexus-stage-under');
+            chip.type = 'button';
+            chip.disabled = Boolean(state.busy);
+            chip.setAttribute('aria-haspopup', 'dialog');
+            chip.setAttribute('aria-label', 'Underneath: ' + label + '. Change the colour');
+            var dot = el(doc, 'i', 'nexus-stage-under-dot');
+            dot.setAttribute('aria-hidden', 'true');
+            if (known) dot.style.backgroundColor = known.hex;
+            chip.appendChild(dot);
+            chip.appendChild(el(doc, 'span', 'nexus-stage-under-label', 'Underneath · ' + label));
+            chip.appendChild(el(doc, 'span', 'nexus-stage-under-change', 'Change'));
+            chip.addEventListener('click', function () {
+                view.onUnderneath({ suggested: null, look: look });
+            });
+            return chip;
+        }
+
         renderCurrentLook(state) {
             if (!this.info) return;
             var doc = this.doc,
@@ -576,6 +619,8 @@
                 });
                 pieces.push(chips);
             }
+            var under = this.underneathChip(look, state);
+            if (under) pieces.push(under);
             var actions = el(doc, 'div', 'nexus-stage-actions');
             // Each action carries a long label (desktop) and a short one (a phone's thumb bar);
             // the CSS shows one, and screen readers hear the long one.
