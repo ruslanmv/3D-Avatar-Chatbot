@@ -10,9 +10,16 @@ For tasks involving Pose Studio clothing deformation, 3D-Wardrobe-Forge garments
 Live Try-On physics, VRMA-compatible cloth, or the Yellow sundress / blue jeans /
 black bodycon & boot regressions, first read:
 
+- [docs/IMMERSIVE_AVATAR_GARMENT_ENGINE_VISION.md](docs/IMMERSIVE_AVATAR_GARMENT_ENGINE_VISION.md) — *product north star: immersive AI companion / AAA-inspired MMORPG-NPC clothing in desktop/mobile/WebXR VR/AR*
 - [docs/POSE_AWARE_GARMENT_ENGINE_V2_PLAN.md](docs/POSE_AWARE_GARMENT_ENGINE_V2_PLAN.md)
 - [docs/CLAUDE_CODE_GARMENT_ENGINE_V2_RUNBOOK.md](docs/CLAUDE_CODE_GARMENT_ENGINE_V2_RUNBOOK.md)
 - [3D-Wardrobe-Forge issue #22](https://github.com/ruslanmv/3D-Wardrobe-Forge/issues/22)
+
+The long-term system should let one Hugging Face Forge-generated VRM outfit move
+through walking, sitting, talking, expressive gestures, VRMA/BVH clips, and
+compatible XR sessions. Favor **garment-family hybrid skinning + corrective morphs
++ selective cloth**, high material/fit quality and stable frame pacing; do not
+turn this vision into an unscoped universal XPBD project.
 
 These documents are **design context**, not implemented functionality. Start with
 **Cut 0 (exact deployed asset and worker diagnosis)**, work on reviewable branches,
