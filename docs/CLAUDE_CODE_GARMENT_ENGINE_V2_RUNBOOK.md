@@ -1,5 +1,6 @@
 # Claude Code Runbook: HomePilot Avatar Clothing Deformation / Engine V2
 
+**Long-term product goal:** [Immersive Avatar & Garment Engine Vision](IMMERSIVE_AVATAR_GARMENT_ENGINE_VISION.md) — AAA-inspired NPC wardrobe quality for conversational AI, locomotion, expressive motion and verified WebXR/AR device tiers.  
 **Entry point:** [Pose-Aware Garment Engine V2 implementation plan](POSE_AWARE_GARMENT_ENGINE_V2_PLAN.md) in [HomePilot draft PR #119](https://github.com/ruslanmv/3D-Avatar-Chatbot/pull/119), with [Wardrobe Forge issue #22](https://github.com/ruslanmv/3D-Wardrobe-Forge/issues/22).  
 **Job:** Diagnose and incrementally repair three deployed VRM looks, then establish a safe animation/physics architecture.  
 **Mode:** Small code PRs, evidence before mutation, test/review gates. Never infer that planning documentation or prior offline measurements prove production has been repaired.
@@ -13,7 +14,8 @@ Copy into Claude Code, adjust the two local paths and target cut:
 ~~~text
 You are the implementation engineer for HomePilot Avatar and 3D-Wardrobe-Forge.
 
-Read and follow BOTH documents on GitHub draft PR #119:
+Read and follow ALL THREE context documents on GitHub draft PR #119:
+- docs/IMMERSIVE_AVATAR_GARMENT_ENGINE_VISION.md
 - docs/POSE_AWARE_GARMENT_ENGINE_V2_PLAN.md
 - docs/CLAUDE_CODE_GARMENT_ENGINE_V2_RUNBOOK.md
 and Forge issue #22.
@@ -51,6 +53,14 @@ List tests you actually ran, their outputs, and remaining blockers.
 Commit only on a feature branch and open a draft PR; do not change master/main
 or deploy to production.
 ~~~
+
+## Product acceptance guidance for every Claude Code cut
+
+HomePilot's **long-term target is an embodied AI companion with high-quality, physically believable VRM clothing**, not just a no-clipping screenshot. Each implementation PR should describe how it protects eventual support for: interactive NPC **walking, turning, sitting, gestures, dancing and VRMA/BVH**, conversation with **face tracking, gaze and lip sync**, and immersive **WebXR VR / supported AR** without sacrificing frame stability, materials or identity. See the [vision document](IMMERSIVE_AVATAR_GARMENT_ENGINE_VISION.md).
+
+**Do not expand the approved cut:** Cut 0 is still deployed-source/asset/worker diagnostics only. For later cuts, use distinct scorecards for settled render-mesh geometry, dynamic motion, material/silhouette fidelity, desktop/mobile performance, XR comfort and avatar/legacy compatibility. Record which device or clip was actually tested. An untested AR headset is never labeled supported merely because look.vrm opens.
+
+**Forge-to-client distinction:** Hugging Face Forge generates a reusable ordinary skinned look.vrm (with optional physics-ready sidecar). HomePilot's browser drives skeleton/morphs and physics at playback time; do not introduce a cloud request on each animation frame. Generic VRM viewers keep basic skeletal motion, not guaranteed proprietary cloth simulation.
 
 ## 1. Workspace and safety setup
 
