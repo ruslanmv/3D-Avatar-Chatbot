@@ -138,9 +138,14 @@ describe('edit 3 — leaving VR restores the image, not black', () => {
 
     test('VR entry is untouched: it still snapshots and paints a solid colour', () => {
         expect(src).toContain('this._vrSavedBackground = this.scene.background;');
-        expect(src).toContain(
-            "this.scene.background = new THREE.Color(this._vrBackgroundColor === 'blue' ? 0x1a1a2e : 0x000000);"
-        );
+        // XP1 moved the colour choice into XRBackground (so a Quest AR session is not painted);
+        // the property this test guards is that a VR session still gets a solid Color, and the
+        // same one as before — asserted on the rule itself rather than on one line of source.
+        expect(src).toContain('this.scene.background = new THREE.Color(startBg.color);');
+        const XB = require('../src/gltf-viewer/XRBackground.js');
+        expect(XB.sessionStartBackground({ value: 'black', isAR: false }).color).toBe(0x000000);
+        expect(XB.sessionStartBackground({ value: 'blue', isAR: false }).color).toBe(0x1a1a2e);
+        expect(XB.sessionStartBackground({ value: 'blue', isAR: false, isQuest: true }).color).toBe(0x1a1a2e);
     });
 
     test('the four VR background options are unchanged', () => {

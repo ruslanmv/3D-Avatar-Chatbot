@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (218 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (223 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -128,8 +128,8 @@ Know the coverage gaps, because they are not intuitive:
 
 ### The gate passes. Keep it that way.
 
-Measured 2026-10-24 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5090 tests in 218 suites, all passing.**
+Measured 2026-10-31 with `npm ci` deps installed: `npm run validate` exits **0**
+— lint clean, format clean, **5166 tests in 223 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -523,6 +523,47 @@ creating looks (WF1)** — see the Forge bullet below.
   entry, which keeps `conditionsOfUse` through `saveInstalled()`'s strip. A
   source that forbids modification is never overridden — Forge refuses with
   `source_model_modification_not_permitted` and the drawer says so.
+
+## Speech engines and the Meta Quest voice switch
+
+`src/TTSProvider.js` keeps two engines apart: the **stored** one (`tts_engine`,
+written only by `setEngine()` — a person's choice in Settings) and the
+**active** one (what speaks). `boot()` makes the stored engine active at
+`DOMContentLoaded` (Q2; before that, a saved Piper choice was ignored after
+every reload). Desktop replies go through `speakText()` in `main.js`; the VR
+panel goes through `js/speech-service.js` — two speech paths, not one.
+
+- **"Natural voice on Meta Quest" is off by default, and off means unchanged
+  (Q1–Q6).** `src/tts/QuestVoice.js` holds the switch (`nexus_quest_voice`) and
+  every decision, pure and tested; every function answers "what you had" unless
+  the page is in a Quest browser _and_ the switch is on. On, Piper speaks every
+  reply — the VR panel too, via `TTSProvider.routesVR()` — except languages
+  Piper has no voice for, falls back to the system voice when Piper can't load,
+  and preloads the model at idle. The person asked for this to be opt-in; do not
+  make it the default without asking.
+- **The switch's engine is an in-memory override, never written to
+  `tts_engine`.** While it is in force, TTS ENGINE is locked and Save/TEST VOICE
+  skip `setEngine()`; an unlocked dropdown would save the override as the
+  person's own choice, and turning the switch off could no longer restore it.
+- The three script tags (`QuestVoice` before `TTSProvider`, `QuestVoiceSettings`
+  after Piper) sit after every line the parity harness has frozen. The toggle is
+  drawn from JS, not written into `index.html`, for the same reason.
+- `?questVoice=1` makes any browser count as a Quest, so this is testable from a
+  desk. Docs: `docs/TTS.md` ▸ _Natural voice on Meta Quest_.
+
+## Quest passthrough (XP1)
+
+`vr-session-start` fires for **AR sessions too** — VRSupport's `sessionstart`
+listener has no mode check, and it is registered before ARSupport's. On a Meta
+Quest, an AR session therefore must not be painted, gridded or offset by that
+handler: `src/gltf-viewer/XRBackground.js` (pure, imported by `ViewerEngine` for
+its side effect, tested in `tests/xr-background.test.js`) answers "paint
+nothing, no grid, no eye-level boost" for Quest AR and the old answer for
+everything else. **Quest VR stays black and phone AR stays as it was — both at
+the person's request; do not widen this without asking.** `ar-session-start`
+re-nulls the background on a Quest, and `ARSupport.forceExit()` resets
+`_arSessionSetupDone`, without which the next AR session skipped its setup.
+Docs: `docs/AR.md` ▸ _Quest: ENTER AR lands in passthrough_.
 
 ## VRoid Hub in the Avatar Library
 

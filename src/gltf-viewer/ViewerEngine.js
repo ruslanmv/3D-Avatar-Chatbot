@@ -24,6 +24,9 @@ import { VRIntimacySystem } from './VRIntimacySystem.js';
 import { VRGazeController } from './VRGazeController.js';
 import { DesktopShadowEnhancer } from './DesktopShadowEnhancer.js';
 import { XRModuleRegistry } from './XRModuleRegistry.js';
+// XP1. An IIFE with a dual export, imported for its side effect: it publishes
+// window.NEXUS_XR_BACKGROUND, and Jest can require() the same file to test the rule.
+import './XRBackground.js';
 
 export class ViewerEngine {
     constructor(containerEl) {
@@ -347,10 +350,26 @@ export class ViewerEngine {
             // Disable post-processing in XR (direct framebuffer rendering required)
             this.postProcessing?.onXRSessionStart();
 
+            // XP1. This event fires for AR sessions too — VRSupport's `sessionstart` listener has
+            // no mode check — so on a Meta Quest it was painting a solid background and a VR
+            // floor grid over passthrough. A Quest AR session now leaves both to ARSupport.
+            // VR keeps its black default, and phone AR keeps exactly what it had.
+            const xrBg = window.NEXUS_XR_BACKGROUND;
+            const xrCtx = {
+                value: this._vrBackgroundColor || 'black',
+                isAR: !!this.arSupport?._isARSession?.(),
+                isQuest: !!xrBg?.isQuestUA(navigator.userAgent),
+            };
+
             // Set VR background (default: black; can be changed via VR settings panel)
             this._vrSavedBackground = this.scene.background;
             this._vrBackgroundColor = this._vrBackgroundColor || 'black';
-            this.scene.background = new THREE.Color(this._vrBackgroundColor === 'blue' ? 0x1a1a2e : 0x000000);
+            const startBg = xrBg
+                ? xrBg.sessionStartBackground(xrCtx)
+                : { color: this._vrBackgroundColor === 'blue' ? 0x1a1a2e : 0x000000, ground: true };
+            if (startBg) {
+                this.scene.background = new THREE.Color(startBg.color);
+            }
 
             // Adjust lighting for VR (different balance than desktop studio lighting)
             if (this._hemiLight) {
@@ -361,8 +380,9 @@ export class ViewerEngine {
             this._vrSavedExposure = this.renderer.toneMappingExposure;
             this.renderer.toneMappingExposure = 1.0;
 
-            // Show VR ground grid (hidden in 'void' mode — character only)
-            if (this._vrBackgroundColor !== 'void') {
+            // Show VR ground grid (hidden in 'void' mode — character only). XP1: never over a
+            // real floor in Quest passthrough — `startBg` is null there.
+            if (startBg && startBg.ground && this._vrBackgroundColor !== 'void') {
                 this._showVRGround();
             }
 
@@ -423,16 +443,22 @@ export class ViewerEngine {
             // VRoid avatars have head bones at ~1.35–1.45m; a +0.15m Y boost
             // ensures the user looks at the avatar's face rather than chest,
             // matching the "comfortable standing" offset used in AAA VR titles.
+            //
+            // XP1. Not in Quest passthrough: mixed reality keeps content registered 1:1 to the
+            // real room, and this offset would move her 15 cm against the person's real floor.
+            const boost = xrBg ? xrBg.eyeLevelBoost(xrCtx) : 0.15;
             try {
                 const baseRefSpace = this.renderer.xr.getReferenceSpace();
-                if (baseRefSpace?.getOffsetReferenceSpace) {
+                if (boost > 0 && baseRefSpace?.getOffsetReferenceSpace) {
                     const offset = new XRRigidTransform(
-                        { x: 0, y: -0.15, z: 0, w: 1 }, // negative Y = raise viewpoint
+                        { x: 0, y: -boost, z: 0, w: 1 }, // negative Y = raise viewpoint
                         { x: 0, y: 0, z: 0, w: 1 }
                     );
                     const newRefSpace = baseRefSpace.getOffsetReferenceSpace(offset);
                     this.renderer.xr.setReferenceSpace(newRefSpace);
-                    console.log('[ViewerEngine] VR eye-level boost applied (+0.15m)');
+                    console.log(`[ViewerEngine] VR eye-level boost applied (+${boost}m)`);
+                } else if (boost === 0) {
+                    console.log('[ViewerEngine] Quest passthrough — no eye-level offset (world-registered)');
                 }
             } catch (e) {
                 console.warn('[ViewerEngine] Could not offset VR reference space:', e);
@@ -678,6 +704,15 @@ export class ViewerEngine {
 
             // Transparent clear color required for AR passthrough on Quest 3
             this.renderer.setClearColor(0x000000, 0);
+
+            // XP1. On a Quest, make passthrough hold whichever `sessionstart` listener ran
+            // first: no background over the cameras, no VR floor grid over the real floor.
+            // ARSupport has already nulled the background on the normal path; this covers the
+            // others. Phone AR is left exactly as it was.
+            if (window.NEXUS_XR_BACKGROUND?.isQuestUA(navigator.userAgent)) {
+                this.scene.background = null;
+                this._hideVRGround();
+            }
 
             // Update panel state to reflect AR mode
             if (this.vrChatPanel) {

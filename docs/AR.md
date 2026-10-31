@@ -217,6 +217,32 @@ Passthrough is **automatic** on Quest 3 when you use `immersive-ar`. The browser
 
 **Result:** The avatar renders solid, everything else is transparent, and you see your real room behind it.
 
+### Quest: ENTER AR lands in passthrough, not black (XP1)
+
+Step 2 was not enough on its own. `VRSupport` and `ARSupport` both listen to three's
+`sessionstart`, and `VRSupport`'s listener has no mode check, so an AR session also fires
+`vr-session-start` — whose handler painted a solid background, put the VR floor grid down and
+raised the viewpoint 15 cm. ARSupport's null came after the paint, so the room showed only when
+every step ran in that order, and after a `forceExit()` (which never reset ARSupport's setup
+guard) it did not run at all: black where the room should be.
+
+On a **Meta Quest** (`OculusBrowser|Quest` user agent), an AR session now gets what mixed reality
+expects, decided in one pure, tested place (`src/gltf-viewer/XRBackground.js`,
+`tests/xr-background.test.js`):
+
+| | Quest AR (ENTER AR) | Quest VR (ENTER VR) | Phone AR |
+| --- | --- | --- | --- |
+| Background | none — passthrough | black (BG choice) | as before |
+| VR floor grid | none — the real floor is the floor | shown | as before |
+| Eye-level boost | none — content stays registered 1:1 to the room | +0.15 m | as before |
+| In-headset panel | **BG PASS · VIEW PASS** | BG BLK · VIEW VR | as before |
+
+`ar-session-start` also nulls the background and hides the grid on a Quest, so passthrough holds
+whichever listener runs first, and `forceExit()` now resets the setup guard. VR keeps its black
+default and phone AR is untouched — both by request. (Passthrough cannot show through an
+`immersive-vr` session on Quest; its compositor is opaque. That is why BG PASS inside VR reads
+black, and why the way into the room is ENTER AR.)
+
 ### Why `alpha: true` Matters
 
 ```js

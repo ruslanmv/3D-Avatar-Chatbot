@@ -367,6 +367,10 @@ export class ARSupport {
         console.log('[AR] Force exiting AR session');
         this.isARActive = false;
         this.isToggling = false;
+        // XP1. onSessionEnd() resets this guard and forceExit() did not, so after a forced
+        // exit the next AR session's onSessionStart() returned at its first line: background
+        // never nulled, no 'ar-session-start' — on a Quest, black where the room should be.
+        this._arSessionSetupDone = false;
         if (this.arButton) this.arButton.textContent = 'ENTER AR';
         window.dispatchEvent(new CustomEvent('ar-session-end'));
     }

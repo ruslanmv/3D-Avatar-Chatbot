@@ -191,6 +191,7 @@
     let _selectedVoiceId = localStorage.getItem('piper_voice') || 'en_US-hfc_female-medium';
     let _lastSpokenVoiceId = null; // Track which model is actually loaded
     let _loading = false;
+    let _warming = null; // in-flight warmUp() promise, so two callers share one download
 
     /* ----------------------------------------------------------
        Lazy-load the @mintplex-labs/piper-tts-web ESM module
@@ -258,10 +259,11 @@
          * Synthesize and play speech.
          *
          * @param {string} text
-         * @param {object} opts  { rate, pitch, onEnd, onError }
+         * @param {object} opts  { rate, pitch, onStart, onEnd, onError } — onStart fires
+         *   when audio actually begins, which for Piper is after synthesis, not at the call
          */
         async speak(text, opts) {
-            const { rate = 1.0, onEnd, onError } = opts || {};
+            const { rate = 1.0, onStart, onEnd, onError } = opts || {};
 
             try {
                 const predict = await _loadModule();
@@ -332,6 +334,7 @@
 
                 _currentSource = source;
                 source.start(0);
+                _notifyStart(onStart);
                 console.log('[PiperWasm] playing audio (' + audioBlob.size + ' bytes)');
             } catch (err) {
                 console.error('[PiperWasm] speak error:', err);
@@ -371,6 +374,7 @@
                             };
                             _currentSource = source;
                             source.start(0);
+                            _notifyStart(onStart);
                             console.log('[PiperWasm] fallback playing (' + audioBlob.size + ' bytes)');
                             _selectedVoiceId = prevVoice; // restore user selection
                             return;
@@ -387,6 +391,45 @@
 
         stop() {
             _stopCurrent();
+        },
+
+        /**
+         * Q5. Fetch the selected voice's model and build its ONNX session, without a sound.
+         *
+         * The first reply otherwise pays for all of it — a ~60 MB download on a cold cache,
+         * then session creation — before a word is heard, and in a headset that wait reads
+         * as "she is broken". `TtsSession.create()` is the library's own path for exactly
+         * this: its constructor claims the singleton synchronously and shares one
+         * `waitReady`, so a speak() that arrives mid-preload joins it instead of downloading
+         * the model a second time.
+         */
+        async warmUp() {
+            if (_warming) return _warming;
+            const voiceId = _selectedVoiceId;
+            _warming = (async () => {
+                await _loadModule();
+                if (!_TtsSession || typeof _TtsSession.create !== 'function') return false;
+                if (_lastSpokenVoiceId === voiceId && _TtsSession._instance) return true; // already warm
+                // Same rule speak() follows: a session built for another voice keeps that
+                // voice's model, so it has to go before this one can be built.
+                if (_TtsSession._instance && _lastSpokenVoiceId !== voiceId) _TtsSession._instance = null;
+                try {
+                    await _TtsSession.create({ voiceId });
+                    _lastSpokenVoiceId = voiceId;
+                    console.log('[PiperWasm] preloaded voice:', voiceId);
+                    return true;
+                } catch (err) {
+                    // A singleton whose waitReady rejected would fail every later predict()
+                    // with the same error. Drop it so the next reply starts clean.
+                    _TtsSession._instance = null;
+                    throw err;
+                }
+            })();
+            try {
+                return await _warming;
+            } finally {
+                _warming = null;
+            }
         },
 
         isAvailable() {
@@ -409,6 +452,16 @@
             console.log('[PiperWasm] voice changed:', prev, '→', _selectedVoiceId);
         },
     };
+
+    /** Tell the caller sound has begun. A throwing callback must not stop the audio. */
+    function _notifyStart(onStart) {
+        if (typeof onStart !== 'function') return;
+        try {
+            onStart();
+        } catch (err) {
+            console.warn('[PiperWasm] onStart callback failed:', err);
+        }
+    }
 
     function _stopCurrent() {
         if (_currentSource) {

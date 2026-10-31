@@ -3746,8 +3746,12 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <script defer src="src/AvatarPicker.js"></script>
 
         <!-- TTS Provider System (pluggable TTS engines — additive, non-destructive) -->
+        <!-- Q1: "Natural voice on Meta Quest" switch — before TTSProvider, which asks it at boot -->
+        <script defer src="src/tts/QuestVoice.js"></script>
         <script defer src="src/TTSProvider.js"></script>
         <script defer src="src/tts/PiperWasmTTSProvider.js"></script>
+        <!-- Q6: its toggle under Settings ▸ TTS ENGINE (drawn only in a Quest browser) -->
+        <script defer src="src/tts/QuestVoiceSettings.js"></script>
 
         <script defer src="src/main.js"></script>
 
