@@ -194,9 +194,6 @@ export class VRChatPanel {
             textDim: 'rgba(255,255,255,0.72)',
             accent: 'rgba(120, 220, 255, 0.95)',
 
-            chipBg: 'rgba(255,255,255,0.06)',
-            chipText: 'rgba(255,255,255,0.92)',
-
             btnBg: 'rgba(255,255,255,0.08)',
             btnBgHot: 'rgba(120, 220, 255, 0.18)',
             dangerBg: 'rgba(255, 80, 80, 0.18)',
@@ -842,6 +839,22 @@ export class VRChatPanel {
         return this.currentAvatarIndex;
     }
 
+    /**
+     * VR1. Say once why AR is unavailable, in the panel where the button was pressed. Over Quest
+     * Link the page runs in Chrome on the PC, and desktop Chrome offers no 'immersive-ar' session
+     * at all (`isSessionSupported('immersive-ar')` is false), so passthrough exists only in the
+     * Quest's own browser. The button already read "AR N/A"; a log line was the only answer to
+     * pressing it, and a headset cannot show a console — one tester pressed it eight times.
+     */
+    _explainNoAR() {
+        if (this._noArExplained) return;
+        this._noArExplained = true;
+        this.appendMessage(
+            'bot',
+            'AR passthrough opens in the Quest’s own browser. Over Quest Link the page runs in Chrome on the PC, which has no passthrough.'
+        );
+    }
+
     appendMessage(role, text) {
         this.messages.push({ role, text: String(text ?? '').trim() });
         if (this.messages.length > 10) {
@@ -956,16 +969,10 @@ export class VRChatPanel {
         const chatContentH = statusBarY - chatContentY - 10;
         const chatArea = { x: P, y: chatContentY, w: W - P * 2, h: chatContentH };
 
-        // Quick chips (at bottom of chat area)
-        const chipH = 56;
-        const chipY = chatArea.y + chatArea.h - chipH - 8;
-        const chipGap = 14;
-        const chipW = (chatArea.w - chipGap * 2) / 3;
-        const chips = [
-            { key: 'q_sum', label: 'Summarize', x: P, y: chipY, w: chipW, h: chipH },
-            { key: 'q_exp', label: 'Explain', x: P + chipW + chipGap, y: chipY, w: chipW, h: chipH },
-            { key: 'q_nxt', label: 'Continue', x: P + (chipW + chipGap) * 2, y: chipY, w: chipW, h: chipH },
-        ];
+        // VR1. No quick chips. "Summarize", "Explain" and "Continue" sat under the conversation
+        // and each sent its own word as a message — "Continue" made her say more about whatever
+        // came last. Talking to a companion in the headset is speech or the keyboard; three canned
+        // words were a chatbot's affordance, and the person asked for them gone.
 
         // ─── LAYER 2: CONTROLS (Avatar Controls Panel) ──────────────
         const ctrlTopY = handle.y + handle.h + 14;
@@ -1079,7 +1086,6 @@ export class VRChatPanel {
             inputBar,
             statusBar,
             chatArea,
-            chips,
             // Layer 2: Controls
             ctrlBack,
             poseLabelRect,
@@ -1147,15 +1153,6 @@ export class VRChatPanel {
         this.buttons.chatArea.userData.mode = 'chat';
         this.group.remove(this.buttons.chatArea);
         this.chatGroup.add(this.buttons.chatArea);
-
-        // Chips
-        L.chips.forEach((c) => {
-            const chip = this._makeHitbox(`Chip:${c.key}`, c, 'chip', { key: c.key, label: c.label });
-            chip.userData.mode = 'chat';
-            this.group.remove(chip);
-            this.chatGroup.add(chip);
-            this.buttons[c.key] = chip;
-        });
 
         // ─── LAYER 2: CONTROLS (Avatar Controls Panel) ───
         this.controlsGroup = new THREE.Group();
@@ -1403,7 +1400,9 @@ export class VRChatPanel {
             ctx.font = '700 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
             ctx.fillStyle = isUser ? T.accent : 'rgba(140, 255, 180, 0.85)';
             ctx.fillText(label, area.x + 18, y + 18);
-            y += 28;
+            // VR1. 38, not 28: the 30 px message line rose 22 px above its baseline and ran into the
+            // "You" / "AI" label on top of it (seen in tools/vr/screenshot-vr-panel.mjs output).
+            y += 38;
 
             // Message text
             ctx.font = '500 30px system-ui, -apple-system, Segoe UI, Roboto, Arial';
@@ -1438,21 +1437,6 @@ export class VRChatPanel {
             ctx.font = `${isInterim ? 'italic' : 'normal'} 28px system-ui, -apple-system, Segoe UI, Roboto, Arial`;
             ctx.fillStyle = T.text;
             this._wrapText(ctx, this.transcript, area.x + 18, transcriptY + 30, area.x + area.w - 18, 34);
-        }
-
-        // Quick chips (only when no messages or idle)
-        if (this.messages.length === 0 || this.status === 'idle') {
-            L.chips.forEach((c) => {
-                this._roundRect(ctx, c.x, c.y, c.w, c.h, 16);
-                ctx.fillStyle = T.chipBg;
-                ctx.fill();
-
-                ctx.fillStyle = T.chipText;
-                ctx.font = '700 24px system-ui, -apple-system, Segoe UI, Roboto, Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(c.label, c.x + c.w / 2, c.y + 38);
-                ctx.textAlign = 'left';
-            });
         }
 
         // ─── Status Bar: Pose name + Controls + Settings ───
@@ -2389,6 +2373,7 @@ export class VRChatPanel {
         if (key === 'xr_mode') {
             if (!this.xrSettings.arSupported) {
                 console.log('[VRChatPanel] AR/Passthrough not supported on this device');
+                this._explainNoAR();
                 return true;
             }
             const newMode = this.xrSettings.sessionMode === 'vr' ? 'ar' : 'vr';
@@ -2482,9 +2467,10 @@ export class VRChatPanel {
         if (key === 'xr_pose_reset') {
             const vps = window.vrPoseSystem;
             if (vps && vps.enabled) {
-                vps.resetToRest();
-                console.log('[VRChatPanel] Pose reset to standing');
-                this.appendMessage('bot', 'Pose: Standing (Rest / T-Pose)');
+                // VP1. A held pose eases back into her own idle; nothing held keeps the old reset.
+                const released = vps.resetToRest();
+                console.log(`[VRChatPanel] Pose reset → ${released ? 'her own idle' : 'standing'}`);
+                this.appendMessage('bot', released ? 'Pose: her own idle again' : 'Pose: Standing (Rest / T-Pose)');
             } else {
                 const pn = window.NEXUS_POSE_NORMALIZER;
                 if (pn) {
@@ -2549,6 +2535,7 @@ export class VRChatPanel {
         if (key === 'xr_ar') {
             if (!this.xrSettings.arSupported) {
                 console.log('[VRChatPanel] AR passthrough not supported on this device');
+                this._explainNoAR();
                 return true;
             }
             const isAR = this.xrSettings.sessionMode === 'ar';
@@ -2587,9 +2574,9 @@ export class VRChatPanel {
                     })
                 );
 
-                // 3. Reset pose to relaxed standing
+                // 3. VP1. Give her back to her own idle (eased); nothing held → relaxed standing
                 const vps = window.vrPoseSystem;
-                if (vps && vps.enabled) {
+                if (vps && vps.enabled && !vps.releaseBones?.({ blendSeconds: 0.5 })) {
                     vps.applyPreset('standingRelaxed', 0.5);
                 }
 
@@ -2605,9 +2592,10 @@ export class VRChatPanel {
                     })
                 );
 
-                // 2. Apply sitting pose
+                // 2. Apply sitting pose — VP1: held, or it never reaches her skeleton
                 const vps = window.vrPoseSystem;
                 if (vps && vps.enabled) {
+                    vps.claimBones?.();
                     vps.applyPreset('sitting', 0.6);
                 }
 

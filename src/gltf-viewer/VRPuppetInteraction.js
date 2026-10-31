@@ -270,10 +270,14 @@ export class VRPuppetInteraction {
         }
     }
 
-    /** Update handle positions to match current bone world positions. */
+    /**
+     * Put each handle on her: on the bone her mesh is drawn with. VP1 — they used to sit on the
+     * pose system's proxy rig, ~6 cm off her visible body at rest (the idle sway moves only the
+     * skeleton she is drawn with), so a person reaching for her hand could miss its grab zone.
+     */
     _updateHandlePositions() {
         for (const [boneKey, handle] of this.handles.entries()) {
-            const bone = this._getBone(boneKey);
+            const bone = this._getVisualBone(boneKey);
             if (!bone) {
                 continue;
             }
@@ -320,6 +324,14 @@ export class VRPuppetInteraction {
         }
         // Direct map access as fallback
         return this.poseSystem?._bones?.get(boneKey) || null;
+    }
+
+    /** VP1. Where that bone is drawn — for placing handles. Falls back to the bone itself. */
+    _getVisualBone(boneKey) {
+        if (typeof this.poseSystem?.getVisualBone === 'function') {
+            return this.poseSystem.getVisualBone(boneKey);
+        }
+        return this._getBone(boneKey);
     }
 
     // =========================================================================
@@ -676,6 +688,9 @@ export class VRPuppetInteraction {
             return;
         }
 
+        // VP1. Move her first, then put the handles where she now is: the held sphere stays on
+        // her hand in the frame it is drawn, instead of one solve behind.
+        this._updateActiveInteraction(dt);
         this._updateHandlePositions();
 
         // Hover-only mode: reveal handles near controller, hide distant ones
@@ -684,7 +699,6 @@ export class VRPuppetInteraction {
         }
 
         this._updateHover(dt);
-        this._updateActiveInteraction(dt);
     }
 
     /**
@@ -731,6 +745,7 @@ export class VRPuppetInteraction {
         // ─── IK DRAG: VRPoseSystem solves the chain ───
         if (this.state.mode === 'ikDrag') {
             this.poseSystem?.updateIK?.();
+            this.poseSystem?.syncSkeleton?.(); // VP1. this solve, on her mesh, this frame
             return;
         }
 
@@ -739,6 +754,7 @@ export class VRPuppetInteraction {
             const controller = this._getControllerByHand(this.state.primaryHand);
             if (controller) {
                 this.boneGrabber?.updateGrab?.(controller);
+                this.poseSystem?.syncSkeleton?.(); // VP1.
             }
             return;
         }

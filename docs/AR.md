@@ -237,6 +237,14 @@ expects, decided in one pure, tested place (`src/gltf-viewer/XRBackground.js`,
 | Eye-level boost | none — content stays registered 1:1 to the room | +0.15 m | as before |
 | In-headset panel | **BG PASS · VIEW PASS** | BG BLK · VIEW VR | as before |
 
+**Phone AR, XP2:** the VR floor grid is gone from every AR session — on a phone it cut through the room
+at waist height, because it sits at y = 0 of the AR space (where the phone started), not on the floor.
+Detected surfaces are shown the way ARCore, ARKit and Meta show them: a small floor guide (2 m, 20 cm
+squares, `ARSupport._updateFloorGuide`) on the surface the hit test found, **only while she is being
+placed**, then gone once TAP TO PLACE has put her down — her shadow keeps her grounded. Settings ▸
+Companion ▸ **Show floor grid in AR (mobile)** (`overlay_arfloorgrid`, off by default) keeps it on,
+under her. The rule is `XRBackground.arFloorGuide`; it never shows on a Quest, where nothing places her.
+
 `ar-session-start` also nulls the background and hides the grid on a Quest, so passthrough holds
 whichever listener runs first, and `forceExit()` now resets the setup guard. VR keeps its black
 default and phone AR is untouched — both by request. (Passthrough cannot show through an
