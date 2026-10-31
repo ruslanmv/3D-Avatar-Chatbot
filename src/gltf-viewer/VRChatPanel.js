@@ -2482,9 +2482,10 @@ export class VRChatPanel {
         if (key === 'xr_pose_reset') {
             const vps = window.vrPoseSystem;
             if (vps && vps.enabled) {
-                vps.resetToRest();
-                console.log('[VRChatPanel] Pose reset to standing');
-                this.appendMessage('bot', 'Pose: Standing (Rest / T-Pose)');
+                // VP1. A held pose eases back into her own idle; nothing held keeps the old reset.
+                const released = vps.resetToRest();
+                console.log(`[VRChatPanel] Pose reset → ${released ? 'her own idle' : 'standing'}`);
+                this.appendMessage('bot', released ? 'Pose: her own idle again' : 'Pose: Standing (Rest / T-Pose)');
             } else {
                 const pn = window.NEXUS_POSE_NORMALIZER;
                 if (pn) {
@@ -2587,9 +2588,9 @@ export class VRChatPanel {
                     })
                 );
 
-                // 3. Reset pose to relaxed standing
+                // 3. VP1. Give her back to her own idle (eased); nothing held → relaxed standing
                 const vps = window.vrPoseSystem;
-                if (vps && vps.enabled) {
+                if (vps && vps.enabled && !vps.releaseBones?.({ blendSeconds: 0.5 })) {
                     vps.applyPreset('standingRelaxed', 0.5);
                 }
 
@@ -2605,9 +2606,10 @@ export class VRChatPanel {
                     })
                 );
 
-                // 2. Apply sitting pose
+                // 2. Apply sitting pose — VP1: held, or it never reaches her skeleton
                 const vps = window.vrPoseSystem;
                 if (vps && vps.enabled) {
+                    vps.claimBones?.();
                     vps.applyPreset('sitting', 0.6);
                 }
 
