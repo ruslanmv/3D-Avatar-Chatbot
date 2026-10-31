@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (232 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (233 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-10-31 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5281 tests in 232 suites, all passing.**
+— lint clean, format clean, **5291 tests in 233 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -679,6 +679,16 @@ button. Rules:
 - **VR1: the VR chat panel has no quick chips.** "Summarize", "Explain" and
   "Continue" were removed at the person's request;
   `tests/vr-panel-chips.test.js` keeps them out.
+- **VR2: hold the right trigger to talk, let go to send.** The trigger is also
+  the panel's click, so `src/gltf-viewer/TriggerTalk.js` (pure,
+  `tests/trigger-talk.test.js`) decides: a hit on a panel button you can _see_
+  is a click; anywhere else the right controller's trigger is push-to-talk. Only
+  a real right controller in VR (`environmentBlendMode` `'opaque'`) — never a
+  phone AR tap (`targetRayMode: 'screen'`), a Quest AR session or a
+  hand-tracking pinch. Trigger, Y and B share one recording (`createHolders`),
+  each edge buzzes the controller, and disconnecting or leaving VR mid-hold ends
+  it. Hidden panel hit-boxes used to catch clicks (hiding with X keeps them
+  registered); `firstVisibleHit` ignores them now.
 
 ## Quest passthrough (XP1)
 

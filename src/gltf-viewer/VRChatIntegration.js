@@ -95,7 +95,7 @@ export class VRChatIntegration {
             // the only hint was the mic button, which needs aiming a ray at a small target.
             this.vrChatPanel.appendMessage(
                 'bot',
-                "Hello! I'm ready to chat in VR. Hold Y or B to talk, or tap the microphone. X or A shows or hides this panel."
+                "Hello! I'm ready to chat in VR. Hold the right trigger to talk and let go to send — or hold Y or B. X or A shows or hides this panel."
             );
 
             return true;
@@ -286,7 +286,7 @@ export class VRChatIntegration {
             }
         );
 
-        console.log('[VRChatIntegration] ✅ Push-to-talk enabled (hold Y button or grip on left controller)');
+        console.log('[VRChatIntegration] ✅ Push-to-talk enabled (hold the right trigger off the panel, or Y / B)');
     }
 
     /**
@@ -487,7 +487,10 @@ export class VRChatIntegration {
     handleSendButton() {
         // In VR, we primarily use voice input
         // This could open a VR keyboard in a future version
-        this.vrChatPanel.appendMessage('bot', 'Voice input recommended. Hold Y or B to talk, or tap the microphone.');
+        this.vrChatPanel.appendMessage(
+            'bot',
+            'Voice input recommended. Hold the right trigger to talk and let go to send.'
+        );
     }
 
     /**
