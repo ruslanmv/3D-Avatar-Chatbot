@@ -27,6 +27,10 @@
     const CARD = 0.6; // m wide, square
     const FOLLOW_RATE = 3; // 1/s — catches up with a turned head in about a second
     const MIN_MS = 900;
+    // XL7. If the headset never shows the session (it stays 'hidden'), stop waiting to be seen this
+    // long after she is ready. Nothing is drawn while hidden anyway; her loop must be armed for
+    // the moment the session does become visible.
+    const MAX_UNSEEN_MS = 6000;
 
     /** Where the card wants to be: `distance` ahead of the head, level, facing back at it. */
     function targetPose(head, forward, distance, fallbackYaw) {
@@ -68,6 +72,28 @@
         return Math.max(readyAt, startedAt + (minMs == null ? MIN_MS : minMs));
     }
 
+    /**
+     * XL7. When the card may give way, counted from what the headset SHOWED, not from when the card
+     * was made.
+     *
+     * Over Air Link the session went 'hidden' 59 ms after it started and became 'visible' only a
+     * second later: the Link runtime shows its own loading screen meanwhile and asks the page for
+     * no frames. The card's minimum was counted from its creation, so it ran out while hidden and
+     * the card was disposed 80 ms before the headset could first have shown it — one frame drawn,
+     * none seen. In the Quest's own browser the session is visible from the start, which is why the
+     * card always showed there.
+     *
+     * `visibleSince` is the time of the first card frame drawn while the session was 'visible'.
+     * Answers the time to hand over: when she is ready AND the card has been visible `minMs` — or,
+     * if it has not been visible at all, `maxUnseenMs` after she was ready, so a session the runtime
+     * keeps hidden can never hold the card forever. `null` while she is not ready.
+     */
+    function handOverAt({ readyAt, visibleSince, minMs, maxUnseenMs } = {}) {
+        if (readyAt == null) return null;
+        if (visibleSince == null) return readyAt + (maxUnseenMs == null ? MAX_UNSEEN_MS : maxUnseenMs);
+        return Math.max(readyAt, visibleSince + (minMs == null ? MIN_MS : minMs));
+    }
+
     /** Paint the card: icon (when it has loaded), name, and a quiet line under it. */
     function paint(ctx, size, image, title, subtitle) {
         ctx.clearRect(0, 0, size, size);
@@ -93,7 +119,7 @@
     /**
      * Build the splash. `THREE` is the module ViewerEngine uses; `image` an <img> that may still
      * be loading (the card repaints when it arrives).
-     * Returns { scene, update(dt, camera), setStatus(text), dispose }.
+     * Returns { scene, update(dt, camera), setStatus(text), refresh(), dispose }.
      * Call update() AFTER rendering a frame: that is when three has written the head pose into the
      * XR camera, so the card is placed for the next frame from a pose that is real.
      */
@@ -169,6 +195,15 @@
             repaint();
         }
 
+        /**
+         * XL7. Upload the card's picture again — after a WebGL context restore. three rebuilds its
+         * GPU state on restore and re-uploads a texture whose version it no longer knows; marking
+         * it here makes that explicit, and repaints in case the icon arrived meanwhile.
+         */
+        function refresh() {
+            repaint();
+        }
+
         function dispose() {
             if (onLoad && o.image && o.image.removeEventListener) o.image.removeEventListener('load', onLoad);
             scene.remove(group);
@@ -179,7 +214,7 @@
             texture.dispose();
         }
 
-        return { scene, update, setStatus, dispose };
+        return { scene, update, setStatus, refresh, dispose };
     }
 
     const api = {
@@ -188,10 +223,12 @@
         CARD,
         FOLLOW_RATE,
         MIN_MS,
+        MAX_UNSEEN_MS,
         targetPose,
         angleDelta,
         follow,
         endAt,
+        handOverAt,
         paint,
         create,
     };

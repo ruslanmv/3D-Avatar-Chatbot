@@ -20,6 +20,7 @@
     "wardrobe:import": "node scripts/import-wardrobe-pack.mjs",
     "wardrobe:check": "node scripts/import-wardrobe-pack.mjs --check",
     "vr:panel-shot": "node tools/vr/screenshot-vr-panel.mjs",
+    "vr:entry-scenarios": "node tools/vr/xr-entry-scenarios.mjs",
     "clean": "rm -rf dist coverage node_modules",
     "docs": "jsdoc -c jsdoc.json",
     "security:audit": "npm audit --audit-level=moderate",

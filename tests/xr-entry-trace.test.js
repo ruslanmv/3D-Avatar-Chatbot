@@ -66,7 +66,7 @@ describe('steps', () => {
         t.trace.frame('scene');
         t.trace.frame('scene');
         const snap = t.trace.snapshot();
-        expect(snap.frames).toEqual({ card: 2, scene: 2 });
+        expect(snap.frames).toMatchObject({ card: 2, scene: 2 });
         expect(snap.steps.scene).toBeTruthy();
         expect(t.steps.filter((s) => s.id === 'scene')).toHaveLength(1);
     });
@@ -246,11 +246,15 @@ describe('wiring', () => {
         expect(loop).toContain("this._xrTrace?.frame('scene')");
     });
 
-    test('the loading card loop is guarded and counts only frames the headset asked for', () => {
-        const start = engine.indexOf('    _beginXRSplash() {');
+    test('the loading card loop is guarded and counts only frames the headset asked for, and which were seen', () => {
+        const start = engine.indexOf('    _runSplashLoop() {');
         const card = engine.slice(start, engine.indexOf('\n    }\n', start));
-        expect(card).toMatch(/if \(this\.renderer\.xr\.isPresenting\) this\._xrTrace\?\.frame\('card'\)/);
+        expect(card).toMatch(
+            /if \(this\.renderer\.xr\.isPresenting\) \{[\s\S]*this\._xrTrace\?\.frame\('card', \{ visible \}\)/
+        );
+        expect(card).toMatch(/visibilityState === 'visible'/);
         expect(card.indexOf('try {')).toBeLessThan(card.indexOf('this.renderer.render(splash.scene'));
+        expect(card).toContain('this._maybeEndSplash()');
     });
 
     test('entry records its steps in order, its failure, its end, and prints the report on session end', () => {

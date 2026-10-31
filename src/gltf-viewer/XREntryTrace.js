@@ -90,6 +90,20 @@
         if (at('gpu') != null && at('card') == null && since('gpu') > 10000) {
             return 'Stuck moving the 3D context to the headset’s GPU (makeXRCompatible). Restarting the browser usually clears this.';
         }
+        // XL7. A hidden session gets no frames by design: say so, instead of blaming the page.
+        if (
+            !snap.ended &&
+            snap.visibility === 'hidden' &&
+            snap.visibilityAt != null &&
+            now - snap.visibilityAt > 3000 &&
+            (snap.frames.scene === 0 || at('finished') == null)
+        ) {
+            return (
+                `The headset has kept this session hidden since +${Math.round(snap.visibilityAt - snap.started)} ms: ` +
+                'the XR runtime (Link’s loading environment or the system menu) is showing its own screen, and a ' +
+                'hidden session is asked for no frames. Nothing a page draws can appear until it turns visible.'
+            );
+        }
         if (at('session') != null && snap.frames.card === 0 && snap.frames.scene === 0 && since('session') > 3000) {
             return 'The headset is not asking this page for frames: the session started but no frame callback has run. The XR runtime is not delivering frames to the browser (Link app, focus, or the headset’s own menu in front).';
         }
@@ -143,8 +157,12 @@
                 info: info || {},
                 steps: {},
                 current: null,
-                frames: { card: 0, scene: 0 },
-                firstFrame: { card: null, scene: null },
+                // XL7. `cardVisible`: card frames drawn while the session was 'visible' — what the
+                // person could actually see. Over Air Link the card drew 1 frame and 0 visible ones.
+                frames: { card: 0, cardVisible: 0, scene: 0 },
+                firstFrame: { card: null, cardVisible: null, scene: null },
+                visibility: null, // the session's last reported visibility, and since when
+                visibilityAt: null,
                 lastFrame: { card: null, scene: null },
                 errors: {},
                 events: [],
@@ -176,7 +194,7 @@
             }
         }
 
-        function frame(kind) {
+        function frame(kind, info) {
             if (!snap || (kind !== 'card' && kind !== 'scene')) return;
             const t = now();
             snap.frames[kind] += 1;
@@ -185,6 +203,13 @@
                 snap.firstFrame[kind] = t;
                 if (kind === 'scene') step('scene');
                 else log(`[VR entry] first loading-card frame +${rel(t)} ms`);
+            }
+            if (kind === 'card' && info && info.visible) {
+                snap.frames.cardVisible += 1;
+                if (snap.firstFrame.cardVisible == null) {
+                    snap.firstFrame.cardVisible = t;
+                    log(`[VR entry] loading card first seen in the headset +${rel(t)} ms`);
+                }
             }
         }
 
@@ -219,12 +244,28 @@
                 `  frames: loading card ${snap.frames.card}, her scene ${snap.frames.scene}` +
                     (snap.lastFrame.scene ? ` (last ${Math.round(t - snap.lastFrame.scene)} ms ago)` : '')
             );
+            // XL7. The card's life, as the headset saw it.
+            const fc = snap.firstFrame;
+            lines.push(
+                `  loading card: ${snap.frames.cardVisible} of ${snap.frames.card} frames while visible` +
+                    (fc.card != null ? `, first frame +${rel(fc.card)} ms` : '') +
+                    (fc.cardVisible != null ? `, first seen +${rel(fc.cardVisible)} ms` : ', never seen in the headset')
+            );
+            if (fc.scene != null) lines.push(`  her scene: first frame +${rel(fc.scene)} ms`);
             for (const ev of snap.events) lines.push(`  event +${rel(ev.at)} ms: ${ev.what}`);
             for (const [where, e] of Object.entries(snap.errors)) {
                 lines.push(`  ✖ ${where} threw ${e.count}× — ${e.message}`);
             }
             if (snap.failed) lines.push(`  ✖ failed at ${snap.failed.step}: ${snap.failed.message}`);
-            if (snap.ended) lines.push(`  session ended +${rel(snap.ended.at)} ms`);
+            if (snap.ended) {
+                lines.push(`  session ended +${rel(snap.ended.at)} ms`);
+                // XL7. WebXR's 'end' event carries no reason; whether this page asked is what is knowable.
+                lines.push(
+                    snap.endedBy
+                        ? `  ended by: this page (${snap.endedBy})`
+                        : '  ended by: the headset or its XR runtime (this page did not ask)'
+                );
+            }
             const slow = slowGrant(snap);
             if (slow) lines.push(`  ⚠ ${slow}`);
             const why = diagnose(snap, t);
@@ -245,8 +286,14 @@
             /** Something worth a line in the report (visibility changes, the context moving). */
             note(what) {
                 if (snap) {
-                    snap.events.push({ at: now(), what: String(what) });
+                    const t = now();
+                    snap.events.push({ at: t, what: String(what) });
                     if (/^session visibility → hidden/.test(String(what))) snap.wentHidden = true;
+                    const vis = /^session visibility → (\S+)/.exec(String(what));
+                    if (vis) {
+                        snap.visibility = vis[1];
+                        snap.visibilityAt = t;
+                    }
                 }
                 log(`[VR entry] ${what}`);
             },

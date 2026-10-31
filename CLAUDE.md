@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (233 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (234 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-10-31 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5291 tests in 233 suites, all passing.**
+— lint clean, format clean, **5304 tests in 234 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -614,10 +614,11 @@ order in `VRSupport.toggleVR` is request → `_makeXRCompatible` → `beginSplas
 `src/gltf-viewer/XRSplash.js` (THREE injected, pure placement maths tested in
 `tests/xr-splash.test.js`) draws its own tiny scene — app colour #071821,
 `assets/app-icon-512.png` with the name, a turning ring — lazily following the
-gaze (yaw only, never head-locked) for at least `MIN_MS`; the warm-up runs
-behind it, then the loop is hers and the card is disposed. Its icon is fetched
-on the first ENTER VR, never on page load. three r147 already sets fixed
-foveation to maximum in `setSession` — do not add a second call.
+gaze (yaw only, never head-locked) for at least `MIN_MS` _after the headset
+first shows it_ (XL7); the warm-up runs behind it, then the loop is hers and the
+card is disposed. Its icon is fetched on the first ENTER VR, never on page load.
+three r147 already sets fixed foveation to maximum in `setSession` — do not add
+a second call.
 
 **XL4: every step of entering VR is recorded, and a frame cannot freeze the
 headset.** A Quest Link log showed the warm-up finish and then nothing until the
@@ -638,7 +639,9 @@ button. Rules:
   checks the list.
 - **`VRSupport.onSessionStart()` clears `isToggling` before the warm-up runs** —
   use `_entering` for "entry still in progress".
-- A watchdog 2.5 s after entry re-arms her loop once if she has drawn nothing.
+- A watchdog 2.5 s after entry re-arms her loop once if she has drawn nothing —
+  but waits while the session is hidden (XL7): that is the runtime's screen, not
+  her loop failing.
 - The "Multiple instances of Three.js" warning is expected (a global r147 for
   classic scripts, a module r147 for the engine and three-vrm; her scene and VRM
   materials are all module objects). Its silencer was an inline
@@ -670,6 +673,29 @@ button. Rules:
   judged whole — 0 frames is a finding, never "no problem detected" — and the
   page names its own ends (`pageEnding`), so the report can say whether the
   headset or the page closed it.
+- **XL7: over Air Link the card was disposed before it could be seen.** Link
+  hides the session ~60 ms after it starts, for about a second; the card's 900
+  ms was counted from its creation, so it was gone 86 ms before the session
+  turned visible (1 frame drawn, 0 seen). The Quest's own browser is visible
+  from the first frame, which is why only the PC lost it. Now the hand-over is
+  `XRSplash.handOverAt`: ready **and** `MIN_MS` since the first card frame drawn
+  while `visibilityState === 'visible'`, or `MAX_UNSEEN_MS` (6 s) after ready if
+  the session is never shown — a timer, since a hidden session gets no frames.
+  **Never call `renderer.setAnimationLoop` directly — use `_setLoop(fn)`.**
+  three r147's `setAnimationLoop` always starts its _window_ rAF loop, even
+  mid-session, so every switch inside a session made her frame run twice (once
+  per XR frame, once per desktop frame — the real log shows her drawn while the
+  session was hidden); `_setLoop` hands three one trampoline once and only swaps
+  the function it calls. A context restore with the card up re-arms the card
+  (and repaints it), not her loop; a context loss after entry ends the real
+  session. The report gives `loading card: V of N frames while visible`, when it
+  was first seen, her first frame, and `ended by:` the page (with its reason) or
+  the headset/runtime. `npm run vr:entry-scenarios`
+  (`tools/vr/xr-entry-scenarios.mjs`, IWER in headless Chromium) runs five
+  startups — Quest native, Air Link hidden-then-visible, a GPU move, a context
+  loss mid-card, a session ended while hidden. That is simulation; the procedure
+  on a real Quest 3 + Air Link is in `docs/VR_STARTUP.md`. Link's own loading
+  screen is the runtime's, and no page can draw into it.
 - **Over Link there is no AR, by design of the platform.** Desktop Chrome offers
   no `immersive-ar` session, so passthrough exists only in the Quest's own
   browser. The VR panel's AR buttons read "AR N/A" there, and pressing one now

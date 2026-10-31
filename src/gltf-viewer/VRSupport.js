@@ -34,7 +34,19 @@ export class VRSupport {
             // failure that has nothing to do with the context.
             this._contextLosses = (this._contextLosses || 0) + 1;
             console.warn('[VR] WebGL context lost — VR disabled until restored');
-            if (this.isVRActive) this.forceExit();
+            if (this.isVRActive) {
+                // XL7. End the real session. forceExit() alone told the page VR was over and left the
+                // headset holding a session nobody could draw into any more (three r147 cannot rebuild
+                // its XR layer on a restored context): a frozen picture, the person stuck in it. The
+                // ordinary 'sessionend' path then cleans up; forceExit stays the fallback.
+                const session = this.renderer.xr.getSession?.();
+                if (session) {
+                    this.trace?.pageEnding('WebGL context lost in VR');
+                    session.end().catch(() => this.forceExit());
+                } else {
+                    this.forceExit();
+                }
+            }
             if (this.vrButton) {
                 this.vrButton.textContent = 'CONTEXT LOST';
                 this.vrButton.classList.add('xr-btn--disabled');

@@ -193,7 +193,8 @@ export class ViewerEngine {
         this.renderer.domElement.addEventListener('webglcontextlost', (e) => {
             e.preventDefault(); // allow WebGL context to be restored
             console.warn('[ViewerEngine] WebGL context lost — stopping animation loop');
-            this.renderer.setAnimationLoop(null);
+            this._setLoop(null);
+            if (this.vrSupport?._entering || this._splash) this._xrTrace?.note('WebGL context lost');
         });
         this.renderer.domElement.addEventListener('webglcontextrestored', () => {
             // XL2. Not while VR is being entered. This restore is the context arriving on the
@@ -202,7 +203,21 @@ export class ViewerEngine {
             // long enough for Chrome to call the page hung. VR entry warms up first (_prepareForXR)
             // and restarts the loop itself, and VRSupport.onEntryFinished restarts it if the entry
             // fails instead, so the desktop view always comes back.
-            if (this.vrSupport?.isToggling) {
+            if (this.vrSupport?._entering || this._splash) this._xrTrace?.note('WebGL context restored');
+            // XL7. The loading card is up: keep it, not her loop. `isToggling` alone was not enough
+            // — VRSupport clears it when the session starts, before the warm-up — so a restore
+            // during the card started her loop mid-warm-up, the long first frame XL2 exists to avoid.
+            if (this._splash) {
+                console.log('[ViewerEngine] WebGL context restored — loading card re-armed');
+                try {
+                    this._splash.refresh?.(); // its picture is re-uploaded on the new context
+                } catch (_) {
+                    /* a card without its picture still shows the name and the ring */
+                }
+                this._runSplashLoop();
+                return;
+            }
+            if (this.vrSupport?.isToggling || this.vrSupport?._entering) {
                 console.log('[ViewerEngine] WebGL context restored — loop held until VR warm-up');
                 return;
             }
@@ -1335,7 +1350,7 @@ export class ViewerEngine {
         if (!warm || typeof warm.warmUp !== 'function') return;
         // XL3. With the loading card up, the loop is the card's (it draws only its own tiny scene,
         // so it compiles nothing of hers); without it, hold the loop as XL2 did.
-        if (!this._splash) this.renderer.setAnimationLoop(null);
+        if (!this._splash) this._setLoop(null);
         // The VR floor grid is otherwise created inside session start, after this warm-up, and its
         // program compiled in the first VR frame. Build it now, hidden, for the duration.
         const grid = this._vrGround();
@@ -1413,9 +1428,15 @@ export class ViewerEngine {
      * where it is stuck — and re-arm her loop once, since a loop that never started (or was
      * replaced) is the one cause of that this page can fix by itself.
      */
-    _xrWatchdog(attempt) {
+    _xrWatchdog(attempt, hiddenWaits = 0) {
         const trace = this._xrTrace;
         if (!trace || !this.renderer.xr.isPresenting) return;
+        // XL7. A hidden session gets no frames by design (Link shows its own screen meanwhile):
+        // that is not her loop failing, so wait for the headset instead of re-arming it.
+        if (this.renderer.xr.getSession?.()?.visibilityState === 'hidden') {
+            if (hiddenWaits < 30) setTimeout(() => this._xrWatchdog(attempt, hiddenWaits + 1), 1000);
+            return;
+        }
         const snap = trace.snapshot();
         const why = trace.check();
         if (snap && snap.frames.scene === 0 && attempt === 0) {
@@ -1435,30 +1456,59 @@ export class ViewerEngine {
     _beginXRSplash() {
         const S = window.NEXUS_XR_SPLASH;
         if (!S || typeof S.create !== 'function' || this._splash) return;
+        const trace = this._xrTrace;
         if (!this._splashIcon) {
             // Fetched on the first ENTER VR only, never on page load: most visitors never enter VR.
             const img = new Image();
             img.decoding = 'async';
+            // XL7. Say in the report whether the picture arrived: a card without it still shows,
+            // so a missing icon must not be mistaken for a missing card (or the other way round).
+            img.addEventListener('load', () => trace?.note('loading card icon loaded'), { once: true });
+            img.addEventListener('error', () => trace?.note('loading card icon FAILED to load'), { once: true });
             img.src = 'assets/app-icon-512.png';
             this._splashIcon = img;
+        } else if (this._splashIcon.complete) {
+            trace?.note(
+                this._splashIcon.naturalWidth ? 'loading card icon ready (cached)' : 'loading card icon unavailable'
+            );
         }
         try {
             this._splash = S.create(THREE, { image: this._splashIcon });
         } catch (err) {
             console.warn('[ViewerEngine] VR loading card skipped:', err);
+            trace?.note(`loading card could not be created: ${(err && err.message) || err}`);
             this._splash = null;
             return;
         }
+        trace?.note('loading card created');
         this._splashStarted = performance.now();
-        let last = this._splashStarted;
+        this._splashVisibleSince = null; // XL7. first card frame drawn while the headset showed it
+        this._splashReadyAt = null;
+        this._splashHandOver = null;
+        this._runSplashLoop();
+    }
+
+    /**
+     * XL7. The loading card's frame loop. Each frame drawn while the session is 'visible' counts as
+     * seen, and the first such frame starts the card's minimum time — see XRSplash.handOverAt.
+     * Re-armed on a WebGL context restore so the card survives one.
+     */
+    _runSplashLoop() {
         const splash = this._splash;
-        this.renderer.setAnimationLoop(() => {
+        if (!splash) return;
+        let last = performance.now();
+        this._setLoop(() => {
+            if (this._splash !== splash) return;
             const now = performance.now();
             const dt = Math.min(0.1, (now - last) / 1000);
             last = now;
             // XL4. Counted only once the headset asks for frames: a card frame drawn on the
             // desktop before setSession() is not one the person saw.
-            if (this.renderer.xr.isPresenting) this._xrTrace?.frame('card');
+            if (this.renderer.xr.isPresenting) {
+                const visible = this.renderer.xr.getSession?.()?.visibilityState === 'visible';
+                this._xrTrace?.frame('card', { visible });
+                if (visible && this._splashVisibleSince == null) this._splashVisibleSince = now;
+            }
             // XL4. Guarded: an exception escaping a WebXR frame callback stops three's XR loop for
             // good — the headset then holds its last picture, which reads as a frozen load.
             try {
@@ -1468,7 +1518,24 @@ export class ViewerEngine {
             } catch (err) {
                 this._frameError('loading card', err);
             }
+            this._maybeEndSplash();
         });
+    }
+
+    /** XL7. Hand the loop to her once XRSplash.handOverAt says so (or the session has ended). */
+    _maybeEndSplash() {
+        const handOver = this._splashHandOver;
+        if (!handOver) return;
+        const S = window.NEXUS_XR_SPLASH;
+        const ended = !this.renderer.xr.isPresenting;
+        const at = S ? S.handOverAt({ readyAt: this._splashReadyAt, visibleSince: this._splashVisibleSince }) : 0;
+        if (!ended && at != null && performance.now() < at) return;
+        this._splashHandOver = null;
+        clearTimeout(this._splashFallback);
+        if (!ended && this._splashVisibleSince == null) {
+            this._xrTrace?.note('loading card handed over unseen — the session stayed hidden while it was up');
+        }
+        handOver();
     }
 
     /**
@@ -1498,9 +1565,38 @@ export class ViewerEngine {
             done();
             return;
         }
-        const wait = S.endAt(this._splashStarted, performance.now()) - performance.now();
-        if (wait > 0) setTimeout(done, wait);
-        else done();
+        // XL7. Hand over when she is ready AND the card has been seen for its minimum — checked on
+        // every card frame (which only arrive while the headset shows the session) — or, if the
+        // session is never shown, after XRSplash.MAX_UNSEEN_MS. The fallback timer is the only
+        // thing that can fire while the session is hidden, since a hidden session gets no frames.
+        this._splashReadyAt = performance.now();
+        this._splashHandOver = done;
+        clearTimeout(this._splashFallback);
+        this._splashFallback = setTimeout(() => this._maybeEndSplash(), (S.MAX_UNSEEN_MS || 6000) + 50);
+        this._maybeEndSplash();
+    }
+
+    /**
+     * XL7. Which frame function runs — the loading card's, hers, or none. three is handed ONE
+     * trampoline, once; after that only `_loopFn` changes.
+     *
+     * three r147's renderer.setAnimationLoop(fn) always calls `animation.start()`, which starts its
+     * DESKTOP requestAnimationFrame loop — even during an XR session, where three itself had
+     * stopped that loop at 'sessionstart'. So every switch made inside a session (card → her scene,
+     * a re-armed loop) started the desktop loop again, and from then on her whole frame ran twice:
+     * on the headset's XR frames and on the PC page's frames, drawing the XR views outside any XR
+     * frame. The emulator showed it as "scene frames" drawn while the session was hidden. With one
+     * trampoline, three's own session start/end are the only things that start or stop that loop.
+     * `null` holds the loop: the trampoline still runs, and does nothing.
+     */
+    _setLoop(fn) {
+        this._loopFn = typeof fn === 'function' ? fn : null;
+        if (this._loopInstalled) return;
+        this._loopInstalled = true;
+        this.renderer.setAnimationLoop((time, frame) => {
+            const run = this._loopFn;
+            if (run) run(time, frame);
+        });
     }
 
     /**
@@ -1512,7 +1608,7 @@ export class ViewerEngine {
      * try/catch costs nothing in V8 when nothing throws, and no closure is allocated per frame.
      */
     animate() {
-        this.renderer.setAnimationLoop(() => {
+        this._setLoop(() => {
             const dt = this.clock.getDelta();
             const xr = this.renderer.xr.isPresenting;
             if (xr) this._xrTrace?.frame('scene');
