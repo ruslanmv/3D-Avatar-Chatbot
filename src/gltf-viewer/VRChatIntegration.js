@@ -323,10 +323,6 @@ export class VRChatIntegration {
         else if (name === 'Btn:ctrl_back' || name === 'Btn:set_back') {
             // Already handled above
         }
-        // Quick prompts
-        else if (name.startsWith('Chip:')) {
-            this.handleQuickPrompt(userData.label);
-        }
         // Avatar cards
         else if (name.startsWith('AvatarCard:')) {
             this.handleAvatarSwitch(userData.avatarIndex);
@@ -547,14 +543,6 @@ export class VRChatIntegration {
         const newState = !this.vrChatPanel.ttsEnabled;
         this.vrChatPanel.setTTSEnabled(newState);
         console.log(`[VRChatIntegration] TTS ${newState ? 'enabled' : 'disabled'}`);
-    }
-
-    /**
-     * Handle quick prompt chip
-     * @param {string} prompt - Prompt text
-     */
-    handleQuickPrompt(prompt) {
-        this.handleUserMessage(prompt);
     }
 
     /**

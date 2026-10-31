@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (231 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (232 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-10-31 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5277 tests in 231 suites, all passing.**
+— lint clean, format clean, **5281 tests in 232 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -187,9 +187,9 @@ will be rewrapped; files under `docs/` are exempt.
 `D`, `L`, `S`, `MS`, `A` for the ambience work, `P` for the Private experience
 (`PT` its tattoos), `W` for the wardrobe (`WF` its Forge settings, `LT` live
 Try-On, `OD` the outfit dictionary shared with Forge), `V` for VRoid Hub in the
-Avatar Library, `VP` for the VR puppet and `AR` for the AR conversation. Commit
-subjects match: `A4: viewport background manager`. So `git log --grep 'A4'` and
-the comment line up.
+Avatar Library, `VP` for the VR puppet, `AR` for the AR conversation and `VR`
+for the VR chat panel. Commit subjects match: `A4: viewport background manager`.
+So `git log --grep 'A4'` and the comment line up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of
@@ -670,6 +670,15 @@ button. Rules:
   judged whole — 0 frames is a finding, never "no problem detected" — and the
   page names its own ends (`pageEnding`), so the report can say whether the
   headset or the page closed it.
+- **Over Link there is no AR, by design of the platform.** Desktop Chrome offers
+  no `immersive-ar` session, so passthrough exists only in the Quest's own
+  browser. The VR panel's AR buttons read "AR N/A" there, and pressing one now
+  says why once in the panel (`VRChatPanel._explainNoAR`, VR1) instead of only
+  logging it. A Link session with the classic layer was confirmed working end to
+  end: 36 327 frames, puppet IK on her skeleton, Web Speech recognition.
+- **VR1: the VR chat panel has no quick chips.** "Summarize", "Explain" and
+  "Continue" were removed at the person's request;
+  `tests/vr-panel-chips.test.js` keeps them out.
 
 ## Quest passthrough (XP1)
 
