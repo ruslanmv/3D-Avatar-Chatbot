@@ -27,6 +27,8 @@ import { XRModuleRegistry } from './XRModuleRegistry.js';
 // XP1. An IIFE with a dual export, imported for its side effect: it publishes
 // window.NEXUS_XR_BACKGROUND, and Jest can require() the same file to test the rule.
 import './XRBackground.js';
+// XL2. Same pattern: publishes window.NEXUS_XR_WARMUP (compile + upload without a long task).
+import './XRWarmUp.js';
 
 export class ViewerEngine {
     constructor(containerEl) {
@@ -190,12 +192,28 @@ export class ViewerEngine {
             this.renderer.setAnimationLoop(null);
         });
         this.renderer.domElement.addEventListener('webglcontextrestored', () => {
+            // XL2. Not while VR is being entered. This restore is the context arriving on the
+            // headset's GPU (XL1), with every program and texture still to rebuild — and the first
+            // frame of a restarted loop would rebuild all of them in one task, which on Windows is
+            // long enough for Chrome to call the page hung. VR entry warms up first (_prepareForXR)
+            // and restarts the loop itself, and VRSupport.onEntryFinished restarts it if the entry
+            // fails instead, so the desktop view always comes back.
+            if (this.vrSupport?.isToggling) {
+                console.log('[ViewerEngine] WebGL context restored — loop held until VR warm-up');
+                return;
+            }
             console.log('[ViewerEngine] WebGL context restored — restarting animation loop');
             this.animate();
         });
 
         // VR Systems
         this.vrSupport = new VRSupport(this.renderer, this.camera, this.scene, containerEl);
+        // XL2. VR entry calls these: warm up between the GPU move and the first VR frame, and make
+        // sure the render loop is running once entry has finished, however it finished.
+        this.vrSupport.prepareForSession = () => this._prepareForXR();
+        this.vrSupport.onEntryFinished = () => {
+            if (!this.renderer.getContext().isContextLost()) this.animate(); // idempotent
+        };
         this.vrControllers = new VRControllers(this.renderer, this.scene, this.camera);
 
         // AR Support
@@ -1274,6 +1292,53 @@ export class ViewerEngine {
         return info;
     }
 
+    /**
+     * XL2. Between the GPU being ready and the first VR frame: build every program and upload every
+     * texture the session will draw, in small tasks (src/gltf-viewer/XRWarmUp.js).
+     *
+     * The loop is held meanwhile — one frame now would do all of that in a single task, the hang
+     * this exists for — and it is NOT restarted here. A frame drawn between the warm-up and
+     * setSession() is a desktop frame, and after a GPU move it compiled the desktop-only passes
+     * (post-processing, contact shadow) in one task: 1.2 s measured, for a frame nobody sees.
+     * VRSupport's onEntryFinished restarts the loop after setSession(), and on every failure path,
+     * so the next frame drawn is a VR frame.
+     */
+    async _prepareForXR() {
+        const warm = window.NEXUS_XR_WARMUP;
+        if (!warm || typeof warm.warmUp !== 'function') return;
+        this.renderer.setAnimationLoop(null);
+        // The VR floor grid is otherwise created inside session start, after this warm-up, and its
+        // program compiled in the first VR frame. Build it now, hidden, for the duration.
+        const grid = this._vrGround();
+        const borrowed = !grid.parent;
+        if (borrowed) {
+            grid.visible = false;
+            this.scene.add(grid);
+        }
+        try {
+            const report = await warm.warmUp({
+                renderer: this.renderer,
+                scene: this.scene,
+                camera: this.camera,
+                gl: this.renderer.getContext(),
+            });
+            console.log(
+                `[ViewerEngine] VR warm-up: ${report.programs} programs` +
+                    (report.parallel ? ' compiled in parallel' : '') +
+                    (report.pending ? ` (${report.pending} still compiling)` : '') +
+                    `, ${report.textures} textures, ${report.ms} ms` +
+                    (report.ok ? '' : ` — ${report.reason}`)
+            );
+        } catch (err) {
+            console.warn('[ViewerEngine] VR warm-up skipped:', err);
+        } finally {
+            if (borrowed) {
+                this.scene.remove(grid);
+                grid.visible = true;
+            }
+        }
+    }
+
     animate() {
         this.renderer.setAnimationLoop(() => {
             const dt = this.clock.getDelta();
@@ -1780,7 +1845,8 @@ export class ViewerEngine {
     // VR GROUND GRID (spatial reference in VR mode)
     // =========================================================================
 
-    _showVRGround() {
+    /** The VR floor grid, created on first use (and by the VR warm-up, XL2). */
+    _vrGround() {
         if (!this.vrGroundGrid) {
             // Create a grid helper at floor level
             this.vrGroundGrid = new THREE.GridHelper(20, 40, 0x00e5ff, 0x0a1628);
@@ -1788,7 +1854,11 @@ export class ViewerEngine {
             this.vrGroundGrid.material.opacity = 0.3;
             this.vrGroundGrid.name = 'VRGroundGrid';
         }
-        this.scene.add(this.vrGroundGrid);
+        return this.vrGroundGrid;
+    }
+
+    _showVRGround() {
+        this.scene.add(this._vrGround());
     }
 
     _hideVRGround() {

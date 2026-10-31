@@ -96,8 +96,17 @@ test('the session is requested before the GPU work, while the click still counts
     const enter = src.slice(src.indexOf('async toggleVR'), src.indexOf('forceExit() {'));
     const request = enter.indexOf("requestSession('immersive-vr'");
     const compatible = enter.indexOf('this._makeXRCompatible(gl)');
+    // XL2: then the warm-up, and only then the first frame (setSession).
+    const warm = enter.indexOf('this.prepareForSession()');
+    const start = enter.indexOf('this.renderer.xr.setSession(session)');
     expect(request).toBeGreaterThan(-1);
     expect(compatible).toBeGreaterThan(request);
+    expect(warm).toBeGreaterThan(compatible);
+    expect(start).toBeGreaterThan(warm);
+    // XL2: no throwaway XRWebGLLayer before three's own.
+    expect(enter).not.toMatch(/new XRWebGLLayer\(/);
+    // XL2: the render loop is handed back however entry ends.
+    expect(enter).toMatch(/finally \{[\s\S]*this\.onEntryFinished\(\)/);
     // And a session the page could not draw into is ended, not left hanging in the headset.
     expect(enter).toContain('await session.end();');
 });

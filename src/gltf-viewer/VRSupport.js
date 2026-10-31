@@ -206,19 +206,24 @@ export class VRSupport {
                 try {
                     await this._makeXRCompatible(gl);
 
-                    // Configure XRWebGLLayer with alpha:true to enable Quest 3
-                    // passthrough toggle mid-session. When scene.background is null
-                    // and clear color alpha is 0, transparent pixels reveal the
-                    // camera feed. Opaque scenes are unaffected (black bg renders solid).
-                    try {
-                        const xrLayer = new XRWebGLLayer(session, gl, { alpha: true });
-                        session.updateRenderState({ baseLayer: xrLayer });
-                        console.log('[VR] Custom XRWebGLLayer created (alpha:true — passthrough-ready)');
-                    } catch (e) {
-                        console.warn('[VR] Could not set custom XRWebGLLayer, using default:', e);
+                    // XL2. Build every shader program and upload every texture before the first VR
+                    // frame, in small tasks, so that frame does not do it all in one — on Windows
+                    // over Link that single task ran long enough for Chrome to declare the page
+                    // unresponsive. ViewerEngine provides it; without it entry proceeds as before.
+                    if (typeof this.prepareForSession === 'function') {
+                        try {
+                            await this.prepareForSession();
+                        } catch (e) {
+                            console.warn('[VR] VR warm-up failed, entering anyway:', e);
+                        }
                     }
 
-                    // Set session on renderer
+                    // XL2. No custom XRWebGLLayer any more. One used to be created here with
+                    // alpha:true "for passthrough", but setSession() below always replaces it with
+                    // three's own layer — an XRWebGLLayer with the context's alpha (three r147
+                    // creates every context with alpha: true) or an RGBA8 projection layer — so it
+                    // only ever allocated a second full-resolution headset framebuffer, on the
+                    // frame path the hang lived on, and threw it away.
                     await this.renderer.xr.setSession(session);
                 } catch (err) {
                     // XL1. A session the page cannot draw into is a headset showing a frozen
@@ -262,6 +267,15 @@ export class VRSupport {
             this.isToggling = false;
             if (this.vrButton) {
                 this.vrButton.style.cursor = 'pointer';
+            }
+            // XL2. While entering, a context restore leaves the render loop stopped (ViewerEngine
+            // holds it for the warm-up). Whatever happened above, make sure it runs again.
+            if (typeof this.onEntryFinished === 'function') {
+                try {
+                    this.onEntryFinished();
+                } catch (e) {
+                    console.warn('[VR] could not restart the render loop:', e);
+                }
             }
         }
     }

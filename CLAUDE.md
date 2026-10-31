@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (225 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (226 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-10-31 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5184 tests in 225 suites, all passing.**
+— lint clean, format clean, **5190 tests in 226 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -590,6 +590,22 @@ loss handler then ran `forceExit()` mid-session. Do not create the context
 `xrCompatible` up front instead: in desktop Chrome that starts the installed VR
 runtime on page load for every visitor. Tested in
 `tests/vr-entry-gpu-move.test.js`.
+
+**XL2: no frame may build the GPU's work in one task.** After that move every
+shader and texture is rebuilt, and three r147 does it inside the first frame,
+one program waited on after another — on Windows (ANGLE/Direct3D) long enough
+for Chrome's "page not responding". `VRSupport` now calls
+`ViewerEngine._prepareForXR()` between `_makeXRCompatible()` and `setSession()`:
+it holds the loop and runs `src/gltf-viewer/XRWarmUp.js` — `renderer.compile()`
+with `debug.checkShaderErrors` off (so programs compile in parallel off-thread),
+`COMPLETION_STATUS_KHR` polling, textures two per task. Rules: the loop is not
+restarted on a context restore while `vrSupport.isToggling`, nor at the end of
+the warm-up (a desktop frame there recompiled post-processing: 1.2 s) —
+`vrSupport.onEntryFinished` restarts it after `setSession()` and on every
+failure. No custom `XRWebGLLayer`: three's own layer already has alpha, and the
+extra one allocated a second full-resolution framebuffer. A new object that only
+appears in VR should exist in the scene (hidden) before the warm-up, as the
+floor grid now does via `_vrGround()`. Tested in `tests/xr-warmup.test.js`.
 
 ## Quest passthrough (XP1)
 
