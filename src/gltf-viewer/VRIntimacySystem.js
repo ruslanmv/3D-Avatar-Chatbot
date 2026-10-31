@@ -131,6 +131,7 @@ export class VRIntimacySystem {
         if (!profile) return;
 
         if (this.poseSystem?.enabled && profile.posePreset && profile.posePreset !== this._lastAppliedPose) {
+            this.poseSystem.claimBones?.(); // VP1. otherwise the pose never reaches her skeleton
             this.poseSystem.applyPreset(profile.posePreset, 0.45);
             this._lastAppliedPose = profile.posePreset;
         }

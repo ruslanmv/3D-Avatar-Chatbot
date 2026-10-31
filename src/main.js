@@ -5523,7 +5523,6 @@ if (document.readyState === 'loading') {
     }
     const arSendBtn = document.getElementById('ar-send-btn');
     const arVoiceBtn = document.getElementById('ar-voice-btn');
-    let arVoiceStateTimer = null;
     const arExitBtn = document.getElementById('ar-exit-btn');
     const arPlaceBtn = document.getElementById('ar-place-btn');
     const arScaleBtn = document.getElementById('ar-scale-btn');
@@ -5535,7 +5534,25 @@ if (document.readyState === 'loading') {
     window.addEventListener('ar-session-start', () => {
         overlay.classList.add('ar-active');
         if (arStatus) arStatus.textContent = 'Point at a surface';
+        seedARTranscript();
     });
+
+    // AR1. The transcript opens on the conversation she is in — the last turns of the store the
+    // model reads — rebuilt on every entry, so leaving and re-entering AR neither loses nor
+    // repeats a turn (src/gltf-viewer/ARConversation.js).
+    function seedARTranscript() {
+        if (!arChat) return;
+        arChat.innerHTML = '';
+        const AR = window.NEXUS_AR_CONVERSATION;
+        if (!AR) return;
+        let history = [];
+        try {
+            history = _surface().history().getHistory();
+        } catch (e) {
+            console.warn('[AR Overlay] conversation not readable — transcript starts empty:', e);
+        }
+        for (const m of AR.seedTranscript(history)) appendARTranscript(m.role, m.text);
+    }
 
     window.addEventListener('ar-session-end', () => {
         overlay.classList.remove('ar-active');
@@ -5557,8 +5574,8 @@ if (document.readyState === 'loading') {
         const text = arInput.value.trim();
         if (!text) return;
         arInput.value = '';
-        appendARBubble('user', text);
-        // Reuse the main chat pipeline
+        // AR1. No bubble of our own: handleUserMessage draws the turn, and its renderer mirrors
+        // it here. Drawing it first as well showed every typed message twice.
         if (typeof handleUserMessage === 'function') {
             handleUserMessage(text);
         }
@@ -5572,28 +5589,46 @@ if (document.readyState === 'loading') {
     }
 
     // --- Voice input in AR ---
+    // AR2. Through CompanionMode's public conversation API, and shown from what it reports. This
+    // used to call `_startLive()` and mark the button listening at once, then poll `_convState`
+    // every 300 ms; a blocked or busy microphone was announced only in the companion's toast,
+    // outside the AR overlay, so in AR the pill said "Listening…" over a dead mic.
+    const arT = (k, fb) => window.AppLanguage?.t?.(k) || fb;
+    function renderARVoice(detail) {
+        const AR = window.NEXUS_AR_CONVERSATION;
+        if (!AR) return;
+        const view = AR.voiceView(detail, arT);
+        arVoiceActive = view.active;
+        if (arVoiceBtn) arVoiceBtn.classList.toggle('ar-listening', view.listening);
+        if (arStatus && view.status) arStatus.textContent = view.status;
+    }
+
+    window.addEventListener('companion-conversation', (e) => {
+        if (!overlay.classList.contains('ar-active')) return;
+        if (!arVoiceActive && e.detail?.event !== 'error') return; // not ours to show
+        renderARVoice(e.detail);
+    });
+
     function startARVoice() {
-        arVoiceActive = true;
-        if (arVoiceBtn) arVoiceBtn.classList.add('ar-listening');
         // Hands-free conversation: reuse the companion's live loop — full
         // sentence endpointing, echo-safety, auto-resume after each reply.
         const cm = window.companionMode;
-        if (cm && typeof cm._startLive === 'function') {
-            if (!cm._live) cm._startLive();
-            // Mirror the conversation state into the AR status pill.
-            clearInterval(arVoiceStateTimer);
-            arVoiceStateTimer = setInterval(() => {
-                if (!arStatus || !arVoiceActive) return;
-                const t = (k, fb) => window.AppLanguage?.t?.(k) || fb;
-                const map = {
-                    listening: t('listening', '🎙️ Listening…'),
-                    thinking: t('thinking', '💭 Thinking…'),
-                    speaking: t('speaking', '🗣️ Speaking…'),
-                };
-                const label = map[cm._convState];
-                if (label) arStatus.textContent = label;
-            }, 300);
+        if (cm && typeof cm.startConversation === 'function') {
+            arVoiceActive = true;
+            const started = cm.startConversation();
+            if (!started.ok && started.reason === 'host') {
+                // A host page owns the microphone and was asked instead: its voice input is on.
+                if (arVoiceBtn) arVoiceBtn.classList.add('ar-listening');
+                return;
+            }
+            if (!started.ok) {
+                renderARVoice({ event: 'error', reason: started.reason, message: started.message });
+                return;
+            }
+            renderARVoice(cm.conversationStatus());
         } else if (typeof startVoiceInput === 'function') {
+            arVoiceActive = true;
+            if (arVoiceBtn) arVoiceBtn.classList.add('ar-listening');
             startVoiceInput(); // fallback: legacy push-to-talk
         }
     }
@@ -5601,9 +5636,8 @@ if (document.readyState === 'loading') {
     function stopARVoice() {
         arVoiceActive = false;
         if (arVoiceBtn) arVoiceBtn.classList.remove('ar-listening');
-        clearInterval(arVoiceStateTimer);
         const cm = window.companionMode;
-        if (cm && cm._live) cm._stopLive();
+        if (cm && typeof cm.stopConversation === 'function') cm.stopConversation();
         else if (typeof stopVoiceInput === 'function') {
             stopVoiceInput();
         }
@@ -5635,14 +5669,21 @@ if (document.readyState === 'loading') {
         arPlaceBtn.addEventListener('click', () => {
             try {
                 const engine = window.NEXUS_VIEWER;
-                if (engine?.arSupport && engine?.avatarManager?.currentRoot) {
-                    engine.arSupport.placeAvatarAtReticle(engine.avatarManager.currentRoot);
-                    if (arStatus) arStatus.textContent = 'Avatar placed — talk to me!';
-                    // AAA NPC: placing the character starts the conversation.
-                    // This runs inside the tap handler ON PURPOSE — it is the
-                    // user gesture that authorizes the microphone.
-                    if (!arVoiceActive) startARVoice();
-                }
+                if (!engine?.arSupport) return;
+                // AR1. Only a placement that happened starts the conversation. A tap before a
+                // surface was found used to say "Avatar placed" and open the mic regardless.
+                const result = engine.arSupport.placeAvatarAtReticle(engine.avatarManager?.currentRoot || null);
+                const t = (k, fb) => window.AppLanguage?.t?.(k) || fb;
+                const AR = window.NEXUS_AR_CONVERSATION;
+                const next = AR
+                    ? AR.afterPlaceTap(result, t)
+                    : { placed: !!result?.placed, voice: !!result?.placed, status: '', haptic: 0 };
+                if (arStatus && next.status) arStatus.textContent = next.status;
+                if (next.haptic && navigator.vibrate) navigator.vibrate(next.haptic);
+                // AAA NPC: placing the character starts the conversation.
+                // This runs inside the tap handler ON PURPOSE — it is the
+                // user gesture that authorizes the microphone.
+                if (next.voice && !arVoiceActive) startARVoice();
             } catch (e) {
                 console.warn('[AR Overlay] Place error:', e);
             }
@@ -5719,18 +5760,25 @@ if (document.readyState === 'loading') {
         capTimer = setTimeout(arAdvanceChunk, Math.max(1500, chunk.text.length * 75));
     }
 
-    function appendARBubble(role, text) {
+    function appendARTranscript(role, text) {
         // Transcript (on demand): keep, capped at the last 8 messages.
-        if (arChat) {
-            const bubble = document.createElement('div');
-            bubble.className = `ar-chat-bubble ar-chat-bubble--${role === 'user' ? 'user' : 'bot'}`;
-            bubble.textContent = text;
-            arChat.appendChild(bubble);
-            while (arChat.children.length > 8) {
-                arChat.removeChild(arChat.firstChild);
-            }
-            arChat.scrollTop = arChat.scrollHeight;
+        if (!arChat) return;
+        const bubble = document.createElement('div');
+        bubble.className = `ar-chat-bubble ar-chat-bubble--${role === 'user' ? 'user' : 'bot'}`;
+        bubble.textContent = text;
+        arChat.appendChild(bubble);
+        while (arChat.children.length > 8) {
+            arChat.removeChild(arChat.firstChild);
         }
+        arChat.scrollTop = arChat.scrollHeight;
+    }
+
+    function appendARBubble(role, text) {
+        // AR1. Only while AR is open. Every chat message is mirrored here; outside AR that only
+        // filled a hidden transcript (and ran caption timers) with desktop turns. Entry seeds the
+        // transcript from the conversation instead, so nothing is lost by ignoring them.
+        if (!overlay.classList.contains('ar-active')) return;
+        appendARTranscript(role, text);
         // Caption: replies play as chunks; user messages flash briefly.
         if (!arCaption) return;
         if (role === 'user') {

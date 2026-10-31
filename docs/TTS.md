@@ -150,6 +150,31 @@ Android, but a headset has no way to add system voices.
 today and works for many of them, and Piper's first use downloads ~60 MB. What
 somebody hears in their headset, and their bandwidth, is their call.
 
+### Synthesis runs in a worker (Q7)
+
+piper-tts-web asks ONNX Runtime for `hardwareConcurrency` threads, but threads
+need `crossOriginIsolated`, which this site is not (it would take COOP/COEP
+headers that break every cross-origin asset it loads). ORT therefore ran the
+model on the main thread. Measured on a 4-core machine, worst main-thread block:
+
+| | before | after |
+| --- | --- | --- |
+| Short reply | 1035 ms | 513–560 ms |
+| Long reply | 2674 ms | 390–648 ms |
+| Page idle, nothing speaking | 319 ms | 319 ms |
+
+The "after" figures are the page's own idle frame cost in that (software-GL)
+test browser, so Piper's share is gone. In a headset the "before" freeze was the
+whole frame loop — no rendering, no controller tracking, puppet handles that
+would not drag — once per reply.
+
+`PiperWasmTTSProvider._offMainThread()` sets `ort.env.wasm.proxy = true` before
+Piper creates any session. A classic script's `import('onnxruntime-web')`
+resolves through the page's import map to the same module instance Piper uses,
+so the setting reaches Piper's inference. If the proxy worker itself fails,
+`_degradeProxy()` turns it off once and retries on the main thread; other
+failures (a blocked CDN, a missing model) leave it on.
+
 ### Saved engine after a reload (Q2)
 
 Before Q2, nothing initialised the stored engine at page load — `isActive()`

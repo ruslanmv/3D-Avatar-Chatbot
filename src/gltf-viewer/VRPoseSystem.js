@@ -23,6 +23,7 @@
 
 import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
 import { PoseClothCorrector } from './PoseClothCorrector.js';
+import './PuppetSkeleton.js'; // VP1. side effect: window.NEXUS_PUPPET_SKELETON
 
 // =========================================================================
 // IK CHAIN DEFINITIONS (humanoid bone chains for CCD-IK)
@@ -1846,6 +1847,22 @@ export class VRPoseSystem {
         // before correcting, so vrm.update has copied the pose onto the bones that skin her.
         this.cloth = new PoseClothCorrector();
         this._clothPending = 0;
+
+        // VP1. Who moves her skeleton. This system writes three-vrm's normalized proxy rig, which
+        // reaches her mesh only while the idle animator has yielded — so anything the person does
+        // to her in VR claims the bones first, and Reset or leaving VR gives them back
+        // (src/gltf-viewer/PuppetSkeleton.js has the whole story).
+        this._visualBones = new Map(); // key → the bone her mesh is drawn with
+        const PS = typeof window !== 'undefined' ? window.NEXUS_PUPPET_SKELETON : null;
+        this._own = PS
+            ? PS.create({
+                  animator: () => window.NEXUS_PROCEDURAL_ANIMATOR,
+                  clips: () => window.NEXUS_CLIP_LOADER,
+                  resolver: () => window.NEXUS_ANIMATION_RESOLVER,
+                  warn: (msg, err) => console.warn(`[VRPoseSystem] ${msg}`, err || ''),
+              })
+            : null;
+        this._claimedPreset = null;
     }
 
     /** SW1. She is about to move: the cloth goes back to plain skinning until she settles. */
@@ -1869,9 +1886,17 @@ export class VRPoseSystem {
     // =========================================================================
 
     setAvatar(root) {
-        if (this.avatarRoot && this.avatarRoot !== root) this._releaseCloth();
+        if (this.avatarRoot && this.avatarRoot !== root) {
+            this._releaseCloth();
+            // VP1. A new avatar starts in her own idle: hand the old one's bones back (instantly —
+            // she is being replaced) and forget them, or the animator stays in pose mode and the
+            // new avatar never moves.
+            this.releaseBones({ blendSeconds: 0 });
+            this._own?.forget();
+        }
         this.avatarRoot = root;
         this._bones.clear();
+        this._visualBones.clear();
         this._restPoses.clear();
         this._springs.clear();
 
@@ -1894,7 +1919,67 @@ export class VRPoseSystem {
             this._isBlending = false;
             this._activeIKTarget = null;
             this._releaseCloth();
+            // VP1. Leaving VR gives her back to her idle animation. No blend: nothing would run it.
+            this.releaseBones({ blendSeconds: 0 });
+            this._own?.forget();
         }
+    }
+
+    // =========================================================================
+    // VP1. OWNERSHIP OF HER SKELETON
+    // =========================================================================
+
+    /** The three-vrm humanoid of the current avatar, or null for a plain glTF. */
+    _humanoid() {
+        return this.avatarRoot?.userData?.vrmHumanoid || null;
+    }
+
+    /**
+     * The person has taken hold of her: from now until Reset or leaving VR, what this system writes
+     * is what she does. Idempotent. Her visible pose is carried into the bones this system writes,
+     * so nothing jumps. Returns true only for the call that took hold.
+     */
+    claimBones() {
+        if (!this._own || !this.avatarRoot || this._own.isClaimed()) return false;
+        this._releaseCloth(); // SW1. she is about to move
+        const claimed = this._own.claim({ humanoid: this._humanoid(), bones: [...this._bones.values()] });
+        if (claimed) {
+            this._claimedPreset = this._currentPreset;
+            console.log('[VRPoseSystem] VP1: holding her skeleton (idle animation paused)');
+        }
+        return claimed;
+    }
+
+    /**
+     * Give her back to her idle animation. Everything the claim changed is restored as it was;
+     * with `blendSeconds` her pose eases into the idle instead of snapping. False if nothing was held.
+     */
+    releaseBones({ blendSeconds = 0.4 } = {}) {
+        if (!this._own || !this._own.isClaimed()) return false;
+        if (this._activeIKTarget) this.endIK();
+        this._isBlending = false;
+        this._hipsPositionFrom = null;
+        this._hipsPositionTo = null;
+        this._releaseCloth();
+        this._own.release({ blendSeconds });
+        if (this._claimedPreset) this._currentPreset = this._claimedPreset;
+        this._claimedPreset = null;
+        console.log('[VRPoseSystem] VP1: her skeleton is hers again');
+        return true;
+    }
+
+    /** True while the person's posing owns her skeleton. */
+    isHoldingBones() {
+        return !!this._own?.isClaimed();
+    }
+
+    /**
+     * Copy what this system wrote onto her skeleton right now. Callers that solve after this
+     * system's update() (the puppet's second IK pass, a direct bone grab) call it so the mesh
+     * shows this frame's pose, not last frame's.
+     */
+    syncSkeleton() {
+        return this._own ? this._own.sync() : false;
     }
 
     /**
@@ -1935,6 +2020,9 @@ export class VRPoseSystem {
                     const bone = rigMap.getBone(key);
                     if (bone) {
                         this._bones.set(key, bone);
+                        // VP1. The bone her mesh is drawn with — handles sit on her, not the proxy.
+                        const visual = typeof rigMap.getVisualBone === 'function' ? rigMap.getVisualBone(key) : null;
+                        this._visualBones.set(key, visual || bone);
                     }
                 }
                 return;
@@ -1974,6 +2062,7 @@ export class VRPoseSystem {
             for (const [key, pattern] of Object.entries(patterns)) {
                 if (!this._bones.has(key) && pattern.test(obj.name)) {
                     this._bones.set(key, obj);
+                    this._visualBones.set(key, obj); // a plain glTF has one skeleton
                     break;
                 }
             }
@@ -2037,6 +2126,7 @@ export class VRPoseSystem {
      * @returns {string} The new preset name
      */
     cyclePreset() {
+        this.claimBones(); // VP1. a pose chosen in the headset has to reach her
         const order = VRPoseSystem.getPresetNames();
         const idx = order.indexOf(this._currentPreset);
         const next = order[(idx + 1) % order.length];
@@ -2049,6 +2139,7 @@ export class VRPoseSystem {
      * @returns {string} The new preset name
      */
     cyclePrevPreset() {
+        this.claimBones(); // VP1.
         const order = VRPoseSystem.getPresetNames();
         const idx = order.indexOf(this._currentPreset);
         const prev = order[(idx - 1 + order.length) % order.length];
@@ -2201,6 +2292,10 @@ export class VRPoseSystem {
                 resolvedKeys.push(key);
             }
         }
+
+        // VP1. Take hold of her before measuring anything: the claim carries her visible pose into
+        // these bones, so the grab offset below is measured from the hand the person sees.
+        this.claimBones();
 
         // ── Capture grab offset ──
         // The controller is at the user's hand, NOT at the bone.
@@ -2381,6 +2476,14 @@ export class VRPoseSystem {
             this.updateIK();
         }
 
+        // VP1. While she is held, what was just solved is what she shows — after the idle
+        // animator ran, so a behaviour mode cannot take her body from the person's hand. Once she
+        // is let go, ease her from the held pose into whatever the animator now produces.
+        if (this._own) {
+            if (this._own.isClaimed()) this._own.sync();
+            else this._own.update(dt);
+        }
+
         // 3. Spring smoothing (applied to all active bones)
         if (this.smoothingEnabled && !this._isBlending) {
             this._updateSprings(dt);
@@ -2448,6 +2551,16 @@ export class VRPoseSystem {
     }
 
     /**
+     * VP1. The bone her mesh is drawn with (the raw skeleton of a VRM). Read positions from this:
+     * getBone()'s proxy is where this system writes, and it is not where she is until claimed.
+     * @param {string} boneKey
+     * @returns {THREE.Object3D|null}
+     */
+    getVisualBone(boneKey) {
+        return this._visualBones.get(boneKey) || this._bones.get(boneKey) || null;
+    }
+
+    /**
      * Check if a bone key is resolved.
      * @param {string} boneKey
      * @returns {boolean}
@@ -2457,14 +2570,22 @@ export class VRPoseSystem {
     }
 
     /**
-     * Reset all bones to rest pose with smooth blend.
+     * Reset: a held pose goes back to her idle animation (true); otherwise the rest-pose preset.
+     * @returns {boolean} true if she was let go
      */
     resetToRest() {
+        // VP1. Reset in the headset means "let her be herself again": a held pose eases back into
+        // her idle animation. Nothing held — the old behaviour, which only the desktop can see.
+        if (this.releaseBones({ blendSeconds: 0.4 })) return true;
         this.applyPreset('standing', 0.4);
+        return false;
     }
 
     dispose() {
+        this.releaseBones({ blendSeconds: 0 }); // VP1. never leave the animator yielded to nobody
+        this._own?.forget();
         this._bones.clear();
+        this._visualBones.clear();
         this._restPoses.clear();
         this._springs.clear();
         this._snapPoints = [];

@@ -12,6 +12,8 @@
  */
 
 import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
+// XP2. The floor guide's rule (arFloorGuide) — an IIFE that publishes window.NEXUS_XR_BACKGROUND.
+import './XRBackground.js';
 
 export class ARSupport {
     constructor(renderer, camera, scene, containerEl) {
@@ -404,6 +406,86 @@ export class ARSupport {
             this.reticle.material?.dispose();
             this.reticle = null;
         }
+        this._removeFloorGuide();
+    }
+
+    // =========================================================================
+    // XP2. FLOOR GUIDE — detected surface, shown while placing
+    // =========================================================================
+
+    /**
+     * A 2 m patch of 20 cm squares lying on the surface under the reticle. Small on purpose:
+     * it says "this floor, here" — a 20 m grid runs through walls and furniture and reads as a
+     * second room. Subtle, and drawn without writing depth so it never hides her feet.
+     */
+    _createFloorGuide() {
+        if (this.floorGuide) return;
+        const grid = new THREE.GridHelper(2, 10, 0xffffff, 0xffffff);
+        const materials = Array.isArray(grid.material) ? grid.material : [grid.material];
+        for (const m of materials) {
+            m.transparent = true;
+            m.opacity = 0.28;
+            m.depthWrite = false;
+        }
+        grid.name = 'ARFloorGuide';
+        grid.visible = false;
+        grid.renderOrder = 1;
+        this.floorGuide = grid;
+        this.scene.add(grid);
+    }
+
+    _removeFloorGuide() {
+        if (!this.floorGuide) return;
+        this.scene.remove(this.floorGuide);
+        this.floorGuide.geometry?.dispose();
+        const materials = Array.isArray(this.floorGuide.material)
+            ? this.floorGuide.material
+            : [this.floorGuide.material];
+        materials.forEach((m) => m?.dispose());
+        this.floorGuide = null;
+    }
+
+    /** "Show floor grid in AR" — read at most 4×/second, like isFollowUserEnabled(). */
+    isFloorGridAlwaysOn() {
+        const now = performance.now();
+        if (this._floorGridPrefAt === undefined || now - this._floorGridPrefAt > 250) {
+            this._floorGridPrefAt = now;
+            try {
+                this._floorGridPref = localStorage.getItem('overlay_arfloorgrid') === 'on';
+            } catch (_) {
+                this._floorGridPref = false;
+            }
+        }
+        return this._floorGridPref;
+    }
+
+    /** Place or hide the floor guide for this frame; the rule is XRBackground.arFloorGuide. */
+    _updateFloorGuide() {
+        const rule = window.NEXUS_XR_BACKGROUND;
+        if (!rule || typeof rule.arFloorGuide !== 'function') return;
+        this._createFloorGuide();
+        const guide = this.floorGuide;
+        const placed = !!this._placedRoot;
+        const plan = rule.arFloorGuide({
+            surfaceFound: !!(this.reticle && this.reticle.visible),
+            placed,
+            alwaysShow: this.isFloorGridAlwaysOn(),
+            isQuest: rule.isQuestUA(navigator.userAgent),
+        });
+        if (!plan.visible) {
+            guide.visible = false;
+            return;
+        }
+        if (plan.at === 'reticle') {
+            // Position only: a floor is level, and the hit pose's rotation would tilt the grid
+            // on a slightly noisy normal.
+            guide.position.setFromMatrixPosition(this.reticle.matrix);
+        } else {
+            const root = this._placedRoot;
+            root.getWorldPosition(guide.position);
+            guide.position.y = this.floorDetected ? this.floorY : guide.position.y;
+        }
+        guide.visible = true;
     }
 
     // =========================================================================
@@ -517,6 +599,17 @@ export class ARSupport {
                 this.reticle.visible = false;
             }
         }
+
+        // XP2. After the reticle has its answer for this frame.
+        try {
+            this._updateFloorGuide();
+        } catch (err) {
+            // Fail soft: a guide that cannot be drawn must not stop the AR frame loop.
+            if (!this._floorGuideWarned) {
+                this._floorGuideWarned = true;
+                console.warn('[AR] floor guide skipped:', err);
+            }
+        }
     }
 
     // =========================================================================
@@ -526,10 +619,17 @@ export class ARSupport {
     /**
      * Place avatar at the current reticle position.
      * Call this when user taps in AR mode.
+     *
+     * AR1. Says whether it did: { placed: true, position } or { placed: false, reason } with reason
+     * 'no-avatar' or 'no-surface'. It used to return nothing either way, so a tap before any surface
+     * was found announced "Avatar placed" and opened the microphone with her placed nowhere. A real
+     * placement also dispatches `ar-avatar-placed`, which ends the coaching animation.
      * @param {THREE.Object3D} avatarRoot - The avatar root to reposition
+     * @returns {{placed: boolean, reason?: string, position?: {x: number, y: number, z: number}}}
      */
     placeAvatarAtReticle(avatarRoot) {
-        if (!this.reticle || !this.reticle.visible || !avatarRoot) return;
+        if (!avatarRoot) return { placed: false, reason: 'no-avatar' };
+        if (!this.reticle || !this.reticle.visible) return { placed: false, reason: 'no-surface' };
 
         // Extract position from reticle matrix
         const pos = new THREE.Vector3();
@@ -548,6 +648,13 @@ export class ARSupport {
         }
 
         console.log(`[AR] Avatar placed at (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})`);
+        const position = { x: pos.x, y: pos.y, z: pos.z };
+        try {
+            window.dispatchEvent(new CustomEvent('ar-avatar-placed', { detail: { position } }));
+        } catch (_) {
+            /* the coaching card is decoration; placement has happened either way */
+        }
+        return { placed: true, position };
     }
 
     /** Yaw the avatar toward the XR camera. instant=true snaps (placement);

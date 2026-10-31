@@ -27,6 +27,12 @@ import { XRModuleRegistry } from './XRModuleRegistry.js';
 // XP1. An IIFE with a dual export, imported for its side effect: it publishes
 // window.NEXUS_XR_BACKGROUND, and Jest can require() the same file to test the rule.
 import './XRBackground.js';
+// XL2. Same pattern: publishes window.NEXUS_XR_WARMUP (compile + upload without a long task).
+import './XRWarmUp.js';
+// XL3. Same pattern: publishes window.NEXUS_XR_SPLASH (the HomePilot loading card in the headset).
+import './XRSplash.js';
+// XL4. Same pattern: publishes window.NEXUS_XR_ENTRY_TRACE (every step of entering VR, recorded).
+import './XREntryTrace.js';
 
 export class ViewerEngine {
     constructor(containerEl) {
@@ -59,6 +65,12 @@ export class ViewerEngine {
             alpha: true,
             powerPreference: 'high-performance',
             preserveDrawingBuffer: false,
+            // XL1. Ignored: three r147 builds its context attributes from a fixed list that does
+            // not include xrCompatible, so the context starts on whatever GPU Chrome chooses.
+            // Entering VR makes it XR-compatible, and on a PC with Quest Link that can move it to
+            // the headset's GPU — VRSupport._makeXRCompatible waits that move out. Creating the
+            // context xrCompatible up front would avoid it, but in desktop Chrome that starts the
+            // installed VR runtime (Oculus, SteamVR) on page load for every desktop visitor.
             xrCompatible: true,
         });
 
@@ -184,12 +196,51 @@ export class ViewerEngine {
             this.renderer.setAnimationLoop(null);
         });
         this.renderer.domElement.addEventListener('webglcontextrestored', () => {
+            // XL2. Not while VR is being entered. This restore is the context arriving on the
+            // headset's GPU (XL1), with every program and texture still to rebuild — and the first
+            // frame of a restarted loop would rebuild all of them in one task, which on Windows is
+            // long enough for Chrome to call the page hung. VR entry warms up first (_prepareForXR)
+            // and restarts the loop itself, and VRSupport.onEntryFinished restarts it if the entry
+            // fails instead, so the desktop view always comes back.
+            if (this.vrSupport?.isToggling) {
+                console.log('[ViewerEngine] WebGL context restored — loop held until VR warm-up');
+                return;
+            }
             console.log('[ViewerEngine] WebGL context restored — restarting animation loop');
             this.animate();
         });
 
         // VR Systems
         this.vrSupport = new VRSupport(this.renderer, this.camera, this.scene, containerEl);
+        // XL2. VR entry calls these: warm up between the GPU move and the first VR frame, and make
+        // sure the render loop is running once entry has finished, however it finished.
+        this.vrSupport.prepareForSession = () => this._prepareForXR();
+        // XL3. The HomePilot loading card the headset shows while she gets ready.
+        this.vrSupport.beginSplash = () => this._beginXRSplash();
+        this.vrSupport.onEntryFinished = (entered) => this._finishXREntry(entered);
+        // XL4. Every step of entering VR, written down; the report prints when the session ends.
+        // `NEXUS_XR_ENTRY.report()` in the console prints it at any time.
+        const TraceApi = window.NEXUS_XR_ENTRY_TRACE;
+        this._xrTrace = TraceApi
+            ? TraceApi.create({
+                  now: () => performance.now(),
+                  log: (...a) => console.log(...a),
+                  warn: (...a) => console.warn(...a),
+                  onStep: (id, label, short) => this._showXRStep(id, label, short),
+              })
+            : null;
+        this.vrSupport.trace = this._xrTrace;
+        if (this._xrTrace) {
+            window.NEXUS_XR_ENTRY = {
+                report: () => {
+                    const text = this._xrTrace.report();
+                    console.log(text);
+                    return text;
+                },
+                snapshot: () => this._xrTrace.snapshot(),
+                check: () => this._xrTrace.check(),
+            };
+        }
         this.vrControllers = new VRControllers(this.renderer, this.scene, this.camera);
 
         // AR Support
@@ -711,8 +762,10 @@ export class ViewerEngine {
             // others. Phone AR is left exactly as it was.
             if (window.NEXUS_XR_BACKGROUND?.isQuestUA(navigator.userAgent)) {
                 this.scene.background = null;
-                this._hideVRGround();
             }
+            // XP2. The VR floor grid is never right in AR — on a phone it cut through the room at
+            // waist height. ARSupport's floor guide shows detected surfaces while placing instead.
+            this._hideVRGround();
 
             // Update panel state to reflect AR mode
             if (this.vrChatPanel) {
@@ -1266,88 +1319,331 @@ export class ViewerEngine {
         return info;
     }
 
+    /**
+     * XL2. Between the GPU being ready and the first VR frame: build every program and upload every
+     * texture the session will draw, in small tasks (src/gltf-viewer/XRWarmUp.js).
+     *
+     * The loop is held meanwhile — one frame now would do all of that in a single task, the hang
+     * this exists for — and it is NOT restarted here. A frame drawn between the warm-up and
+     * setSession() is a desktop frame, and after a GPU move it compiled the desktop-only passes
+     * (post-processing, contact shadow) in one task: 1.2 s measured, for a frame nobody sees.
+     * VRSupport's onEntryFinished restarts the loop after setSession(), and on every failure path,
+     * so the next frame drawn is a VR frame.
+     */
+    async _prepareForXR() {
+        const warm = window.NEXUS_XR_WARMUP;
+        if (!warm || typeof warm.warmUp !== 'function') return;
+        // XL3. With the loading card up, the loop is the card's (it draws only its own tiny scene,
+        // so it compiles nothing of hers); without it, hold the loop as XL2 did.
+        if (!this._splash) this.renderer.setAnimationLoop(null);
+        // The VR floor grid is otherwise created inside session start, after this warm-up, and its
+        // program compiled in the first VR frame. Build it now, hidden, for the duration.
+        const grid = this._vrGround();
+        const borrowed = !grid.parent;
+        if (borrowed) {
+            grid.visible = false;
+            this.scene.add(grid);
+        }
+        let report = null;
+        try {
+            report = await warm.warmUp({
+                renderer: this.renderer,
+                scene: this.scene,
+                camera: this.camera,
+                gl: this.renderer.getContext(),
+            });
+            console.log(
+                `[ViewerEngine] VR warm-up: ${report.programs} programs` +
+                    (report.parallel ? ' compiled in parallel' : '') +
+                    (report.pending ? ` (${report.pending} still compiling)` : '') +
+                    `, ${report.textures} textures, ${report.ms} ms` +
+                    (report.ok ? '' : ` — ${report.reason}`)
+            );
+        } catch (err) {
+            console.warn('[ViewerEngine] VR warm-up skipped:', err);
+        } finally {
+            if (borrowed) {
+                this.scene.remove(grid);
+                grid.visible = true;
+            }
+        }
+        return report; // XL4. into the entry trace
+    }
+
+    /**
+     * XL4. Show which step of entering VR is running: on the loading card in the headset (the
+     * full sentence) and on the desktop ENTER VR button (a word, so the launch row keeps its
+     * width; the sentence is its tooltip).
+     */
+    _showXRStep(id, label, short) {
+        if (label && this._splash && typeof this._splash.setStatus === 'function') {
+            this._splash.setStatus(label);
+        }
+        const btn = this.vrSupport?.vrButton;
+        if (!btn) return;
+        if (id === 'request') btn.dataset.xrTitle = btn.title || '';
+        if (id === 'finished' || id === 'scene') {
+            // Entry is over: the button already says EXIT VR or ENTER VR again.
+            if (btn.dataset.xrTitle !== undefined) btn.title = btn.dataset.xrTitle;
+            return;
+        }
+        // Not `isToggling`: VRSupport.onSessionStart() clears that the moment three starts the
+        // session, before the warm-up — `_entering` lasts until entry is really over.
+        if (this.vrSupport._entering && short) {
+            btn.innerHTML = `<span class="xr-btn__icon">&#x23F3;</span> ${short}`;
+            btn.title = label;
+        }
+    }
+
+    /** XL4. A per-frame subsystem threw: report it (once, with its stack) and keep the loop alive. */
+    _frameError(where, err) {
+        if (this._xrTrace) {
+            this._xrTrace.error(where, err);
+            return;
+        }
+        this._frameErrorsSeen = this._frameErrorsSeen || new Set();
+        if (!this._frameErrorsSeen.has(where)) {
+            this._frameErrorsSeen.add(where);
+            console.warn(`[ViewerEngine] ${where} threw in the render loop — carrying on without it:`, err);
+        }
+    }
+
+    /**
+     * XL4. After entry: if the headset is presenting and her scene has not drawn a frame, say
+     * where it is stuck — and re-arm her loop once, since a loop that never started (or was
+     * replaced) is the one cause of that this page can fix by itself.
+     */
+    _xrWatchdog(attempt) {
+        const trace = this._xrTrace;
+        if (!trace || !this.renderer.xr.isPresenting) return;
+        const snap = trace.snapshot();
+        const why = trace.check();
+        if (snap && snap.frames.scene === 0 && attempt === 0) {
+            trace.note('her scene had drawn no frame 2.5 s after entry — re-arming the render loop');
+            this._splash = null;
+            this.animate();
+        }
+        if (why && attempt < 2) setTimeout(() => this._xrWatchdog(attempt + 1), 3000);
+    }
+
+    /**
+     * XL3. Show the HomePilot loading card (src/gltf-viewer/XRSplash.js) from the session's first
+     * frame until she is ready. VRSupport calls this after the GPU is the headset's and before
+     * setSession(), so the first thing the headset shows of the app is the app — not darkness while
+     * the warm-up runs. The render loop becomes the card's until _finishXREntry().
+     */
+    _beginXRSplash() {
+        const S = window.NEXUS_XR_SPLASH;
+        if (!S || typeof S.create !== 'function' || this._splash) return;
+        if (!this._splashIcon) {
+            // Fetched on the first ENTER VR only, never on page load: most visitors never enter VR.
+            const img = new Image();
+            img.decoding = 'async';
+            img.src = 'assets/app-icon-512.png';
+            this._splashIcon = img;
+        }
+        try {
+            this._splash = S.create(THREE, { image: this._splashIcon });
+        } catch (err) {
+            console.warn('[ViewerEngine] VR loading card skipped:', err);
+            this._splash = null;
+            return;
+        }
+        this._splashStarted = performance.now();
+        let last = this._splashStarted;
+        const splash = this._splash;
+        this.renderer.setAnimationLoop(() => {
+            const now = performance.now();
+            const dt = Math.min(0.1, (now - last) / 1000);
+            last = now;
+            // XL4. Counted only once the headset asks for frames: a card frame drawn on the
+            // desktop before setSession() is not one the person saw.
+            if (this.renderer.xr.isPresenting) this._xrTrace?.frame('card');
+            // XL4. Guarded: an exception escaping a WebXR frame callback stops three's XR loop for
+            // good — the headset then holds its last picture, which reads as a frozen load.
+            try {
+                this.renderer.render(splash.scene, this.camera);
+                // After render: three has just written this frame's head pose into the XR camera.
+                splash.update(dt, this.renderer.xr.isPresenting ? this.renderer.xr.getCamera() : this.camera);
+            } catch (err) {
+                this._frameError('loading card', err);
+            }
+        });
+    }
+
+    /**
+     * XL3. VR entry is over, however it went. Entered: keep the card up for at least its minimum
+     * (a fast load should still read as a moment, not a one-frame flash), then hand the loop to
+     * her. Not entered: drop the card at once and bring the desktop view back.
+     */
+    _finishXREntry(entered) {
+        const done = () => {
+            const splash = this._splash;
+            this._splash = null;
+            if (splash) {
+                try {
+                    splash.dispose();
+                } catch (_) {
+                    /* a card that will not dispose is a few KB the GC takes later */
+                }
+            }
+            if (!this.renderer.getContext().isContextLost())
+                this.animate(); // idempotent
+            else this._xrTrace?.note('context lost when entry finished — her loop waits for the restore');
+            // XL4. Then make sure she actually drew.
+            if (entered) setTimeout(() => this._xrWatchdog(0), 2500);
+        };
+        const S = window.NEXUS_XR_SPLASH;
+        if (!this._splash || !entered || !S) {
+            done();
+            return;
+        }
+        const wait = S.endAt(this._splashStarted, performance.now()) - performance.now();
+        if (wait > 0) setTimeout(done, wait);
+        else done();
+    }
+
+    /**
+     * The render loop. XL4: every subsystem runs inside its own try/catch. In a WebXR session this
+     * callback is called from three's XR animation loop, which schedules the next frame only after
+     * this one returns — an exception escaping it stops the headset's frames for good, and the
+     * person sees the last picture held: a frozen load. A subsystem that throws is now reported
+     * once (with its stack, into the VR entry trace) and skipped for that frame; she still draws.
+     * try/catch costs nothing in V8 when nothing throws, and no closure is allocated per frame.
+     */
     animate() {
         this.renderer.setAnimationLoop(() => {
             const dt = this.clock.getDelta();
+            const xr = this.renderer.xr.isPresenting;
+            if (xr) this._xrTrace?.frame('scene');
 
             // VRM update FIRST — syncs normalized bone proxies → raw skeleton.
             // This must happen before ProceduralAnimator so that procedural
             // offsets (breathing, head-look, basePose) are applied ON TOP of
             // the VRM-normalized rest pose and are not overwritten.
-            this.avatarManager?.update(dt);
+            try {
+                this.avatarManager?.update(dt);
+            } catch (e) {
+                this._frameError('avatar', e);
+            }
 
             // Follow-me eyes: set gaze override BEFORE ProceduralAnimator
             // so the head rotation uses current HMD position, not stale data.
             // Runs in VR AND AR — in phone AR the XR camera IS the user's
             // eyes, so the same head/eye tracking gives the AAA NPC feel.
-            if (this.renderer.xr.isPresenting) {
+            if (xr) {
                 // In AR, both head/eye tracking and body turning obey the
                 // Settings ▸ "Follow me in AR" toggle (default on) — they switch
                 // together, because a character whose body follows you while her
                 // eyes don't (or the reverse) reads as uncanny. Off keeps the
                 // pre-existing static behavior. VR is unaffected by the toggle.
-                const inAR = !!this.arSupport?.isARActive;
-                const followAR = !inAR || this.arSupport.isFollowUserEnabled();
-                if (followAR) this.vrGazeController?.update(dt);
-                if (inAR && followAR) this.arSupport.updateFollowUser?.(dt);
+                try {
+                    const inAR = !!this.arSupport?.isARActive;
+                    const followAR = !inAR || this.arSupport.isFollowUserEnabled();
+                    if (followAR) this.vrGazeController?.update(dt);
+                    if (inAR && followAR) this.arSupport.updateFollowUser?.(dt);
+                } catch (e) {
+                    this._frameError('gaze', e);
+                }
             }
 
             try {
                 const t = this.clock.getElapsedTime();
                 window.NEXUS_PROCEDURAL_ANIMATOR?.update?.(t, dt);
-            } catch (_e) {
-                // Procedural animator may not be loaded
+            } catch (e) {
+                this._frameError('idle animator', e);
             }
-            this.vrControllers.update(dt);
-            this.vrPoseSystem?.update(dt);
-            this.vrPuppetInteraction?.update(dt);
-            this.vrIntimacySystem?.update(dt);
+            try {
+                this.vrControllers.update(dt);
+            } catch (e) {
+                this._frameError('controllers', e);
+            }
+            try {
+                this.vrPoseSystem?.update(dt);
+            } catch (e) {
+                this._frameError('pose system', e);
+            }
+            try {
+                this.vrPuppetInteraction?.update(dt);
+            } catch (e) {
+                this._frameError('puppet', e);
+            }
+            try {
+                this.vrIntimacySystem?.update(dt);
+            } catch (e) {
+                this._frameError('intimacy', e);
+            }
 
             // ── LOCOMOTION_HOOK: Update avatar locomotion state machine ──
             // Non-destructive: if NEXUS_LOCOMOTION doesn't exist, this is a no-op.
-            // To remove: delete this line.
-            window.NEXUS_LOCOMOTION?.update?.(dt);
-
             // ── MOTION_HOOK: Update Living NPC (follow, contact IK, expressions) ──
             // Non-destructive: if NEXUS_MOTION doesn't exist, this is a no-op.
-            // To remove: delete this line.
-            window.NEXUS_MOTION?.update?.(dt);
+            try {
+                window.NEXUS_LOCOMOTION?.update?.(dt);
+            } catch (e) {
+                this._frameError('locomotion', e);
+            }
+            try {
+                window.NEXUS_MOTION?.update?.(dt);
+            } catch (e) {
+                this._frameError('motion', e);
+            }
 
-            if (this.renderer.xr.isPresenting) {
+            if (xr) {
                 if (this.arSupport?.isARActive) {
-                    // AR mode: update hit-test for surface placement
-                    const frame = this.renderer.xr.getFrame?.();
-                    this.arSupport.updateHitTest(this.renderer, frame);
+                    try {
+                        // AR mode: update hit-test for surface placement
+                        const frame = this.renderer.xr.getFrame?.();
+                        this.arSupport.updateHitTest(this.renderer, frame);
 
-                    // Update passthrough enhancements (contact shadow tracking, light estimation)
-                    const refSpace = this.renderer.xr.getReferenceSpace?.();
-                    this.passthroughEnhancer?.update(dt, frame, refSpace);
+                        // Update passthrough enhancements (contact shadow tracking, light estimation)
+                        const refSpace = this.renderer.xr.getReferenceSpace?.();
+                        this.passthroughEnhancer?.update(dt, frame, refSpace);
 
-                    // Update lazy-loaded AR/MR modules (RATK planes, avatar grounding)
-                    this.xrModules?.update(dt, frame);
+                        // Update lazy-loaded AR/MR modules (RATK planes, avatar grounding)
+                        this.xrModules?.update(dt, frame);
+                    } catch (e) {
+                        this._frameError('AR', e);
+                    }
                 } else {
-                    // VR mode: update chat panel and mic indicator
-                    this.vrChatPanel?.update();
-                    this.vrChatPanel?._animateMicIndicator(dt);
-                    this.vrChatPanel?._updateMicIndicatorPosition();
+                    try {
+                        // VR mode: update chat panel and mic indicator
+                        this.vrChatPanel?.update();
+                        this.vrChatPanel?._animateMicIndicator(dt);
+                        this.vrChatPanel?._updateMicIndicatorPosition();
+                    } catch (e) {
+                        this._frameError('VR panel', e);
+                    }
 
                     // Update passthrough enhancements in VR passthrough mode
-                    if (this.passthroughEnhancer?.active) {
-                        const frame = this.renderer.xr.getFrame?.();
-                        const refSpace = this.renderer.xr.getReferenceSpace?.();
-                        this.passthroughEnhancer.update(dt, frame, refSpace);
+                    try {
+                        if (this.passthroughEnhancer?.active) {
+                            const frame = this.renderer.xr.getFrame?.();
+                            const refSpace = this.renderer.xr.getReferenceSpace?.();
+                            this.passthroughEnhancer.update(dt, frame, refSpace);
+                        }
+                    } catch (e) {
+                        this._frameError('passthrough', e);
                     }
                 }
             } else {
-                this.controls.update();
-                // Adaptive quality only outside XR
-                this.perfMonitor?.update(dt);
-                // Update desktop contact shadow position (follows avatar root)
-                this.desktopShadowEnhancer?.update(this.avatarManager?.currentRoot);
+                try {
+                    this.controls.update();
+                    // Adaptive quality only outside XR
+                    this.perfMonitor?.update(dt);
+                    // Update desktop contact shadow position (follows avatar root)
+                    this.desktopShadowEnhancer?.update(this.avatarManager?.currentRoot);
+                } catch (e) {
+                    this._frameError('desktop view', e);
+                }
             }
 
             // Render through post-processing pipeline (falls back to direct render during XR)
-            this.postProcessing.render();
+            try {
+                this.postProcessing.render();
+            } catch (e) {
+                this._frameError('render', e);
+            }
         });
     }
 
@@ -1772,7 +2068,8 @@ export class ViewerEngine {
     // VR GROUND GRID (spatial reference in VR mode)
     // =========================================================================
 
-    _showVRGround() {
+    /** The VR floor grid, created on first use (and by the VR warm-up, XL2). */
+    _vrGround() {
         if (!this.vrGroundGrid) {
             // Create a grid helper at floor level
             this.vrGroundGrid = new THREE.GridHelper(20, 40, 0x00e5ff, 0x0a1628);
@@ -1780,7 +2077,11 @@ export class ViewerEngine {
             this.vrGroundGrid.material.opacity = 0.3;
             this.vrGroundGrid.name = 'VRGroundGrid';
         }
-        this.scene.add(this.vrGroundGrid);
+        return this.vrGroundGrid;
+    }
+
+    _showVRGround() {
+        this.scene.add(this._vrGround());
     }
 
     _hideVRGround() {

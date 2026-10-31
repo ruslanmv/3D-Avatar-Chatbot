@@ -35,6 +35,8 @@
  */
 
 import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
+// VR2. IIFE imported for its side effect: window.NEXUS_TRIGGER_TALK (hold the right trigger to talk).
+import './TriggerTalk.js';
 
 // =========================================================================
 // xr-standard button index constants (W3C WebXR Gamepads Module spec)
@@ -90,6 +92,8 @@ export class VRControllers {
         this.interactables = []; // Avatar interactables
         this.uiInteractables = []; // UI panel interactables (full list, all modes)
         this._activeUIInteractables = []; // Mode-filtered subset (updated on mode change)
+        // VR2. One recording, whichever of trigger / Y / B holds it.
+        this._talk = window.NEXUS_TRIGGER_TALK ? window.NEXUS_TRIGGER_TALK.createHolders() : null;
         this.chatPanel = null; // Reference to VRChatPanel for dragging
 
         // Reusable vectors to avoid allocations each frame (important on Quest)
@@ -226,6 +230,8 @@ export class VRControllers {
 
         controller.addEventListener('disconnected', (e) => {
             const hand = getHand(e.data);
+            // VR2. A controller that goes away mid-sentence must not leave the mic recording.
+            if (hand === 'right') this._talkRelease('trigger', hand);
             this.controllers[hand] = null;
             if (this.grabState.active && this.grabState.hand === hand) {
                 this._endGrab(hand);
@@ -240,12 +246,12 @@ export class VRControllers {
         // Used for UI click / ray-based selection (NOT grab)
         controller.addEventListener('selectstart', (e) => {
             const hand = getHand(e.data);
-            this._onTriggerDown(controller, hand);
+            this._onTriggerDown(controller, hand, e.data);
         });
 
         controller.addEventListener('selectend', (e) => {
             const hand = getHand(e.data);
-            this._onTriggerUp(controller, hand);
+            this._onTriggerUp(controller, hand, e.data);
         });
 
         // squeezestart/squeezeend fires on GRIP press (buttons[1])
@@ -289,7 +295,7 @@ export class VRControllers {
     // TRIGGER — Select / UI Click (industry standard: trigger = point & click)
     // =========================================================================
 
-    _onTriggerDown(controller, _hand) {
+    _onTriggerDown(controller, hand, inputSource) {
         this.tempMatrix.identity().extractRotation(controller.matrixWorld);
         this.raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
         this.raycaster.ray.direction.set(0, 0, -1).applyMatrix4(this.tempMatrix);
@@ -297,16 +303,56 @@ export class VRControllers {
         // Check UI interactions (trigger = click on UI)
         // Only raycast against active-mode interactables (prevents ghost clicks on hidden layers)
         const uiIntersects = this.raycaster.intersectObjects(this._activeUIInteractables, false);
-        if (uiIntersects.length > 0) {
-            const uiTarget = uiIntersects[0].object;
-            const hit = uiIntersects[0];
-            this._handleUIClick(uiTarget, hit.point);
+        // VR2. Only a button you can see is clicked. Hiding the panel with X keeps its hit-boxes
+        // registered, so this used to click invisible buttons where the panel had been.
+        const TT = window.NEXUS_TRIGGER_TALK;
+        const hit = TT ? TT.firstVisibleHit(uiIntersects) : uiIntersects[0] || null;
+        if (hit) {
+            this._handleUIClick(hit.object, hit.point);
             return;
+        }
+
+        // VR2. Not on the panel: the right trigger is hold-to-talk (VR only — see TriggerTalk.js).
+        const blend = this.renderer?.xr?.getSession?.()?.environmentBlendMode;
+        if (TT && TT.isTalkTrigger(inputSource, blend)) {
+            this._talkPress('trigger', hand);
         }
     }
 
-    _onTriggerUp(_controller, _hand) {
-        // Trigger release — no action needed for click-based UI
+    _onTriggerUp(_controller, hand) {
+        // A click needs nothing on release; a held trigger ends its recording.
+        this._talkRelease('trigger', hand);
+    }
+
+    /**
+     * VR2. Push-to-talk, shared by the right trigger and Y / B: the first hold starts one
+     * recording, the last release ends it (and sends what was said). A short haptic marks each
+     * edge — the panel is usually hidden, so the hand is where the person learns it worked.
+     */
+    _talkPress(source, hand) {
+        const started = this._talk ? this._talk.press(source) : true;
+        if (!started) return;
+        console.log(`[VRControllers] Push-to-talk START (${source})`);
+        this._talkPulse(hand, 0.35, 40);
+        if (this.onPushToTalkStart) this.onPushToTalkStart();
+    }
+
+    _talkRelease(source, hand) {
+        // Without the module only Y / B can talk, as before; a trigger release is then just a click.
+        const ended = this._talk ? this._talk.release(source) : source !== 'trigger';
+        if (!ended) return;
+        console.log(`[VRControllers] Push-to-talk END (${source})`);
+        this._talkPulse(hand, 0.2, 25);
+        if (this.onPushToTalkEnd) this.onPushToTalkEnd();
+    }
+
+    _talkPulse(hand, strength, ms) {
+        try {
+            const actuator = this.controllers?.[hand]?.gamepad?.hapticActuators?.[0];
+            if (actuator && typeof actuator.pulse === 'function') actuator.pulse(strength, ms);
+        } catch (_) {
+            /* no haptics on this controller — the recording still works */
+        }
     }
 
     // =========================================================================
@@ -744,16 +790,10 @@ export class VRControllers {
             const yBtn = gp.buttons[BTN.Y_OR_B];
             if (yBtn && yBtn.pressed && !this._leftYWasPressed) {
                 this._leftYWasPressed = true;
-                if (this.onPushToTalkStart) {
-                    console.log('[VRControllers] Y button (PTT): START');
-                    this.onPushToTalkStart();
-                }
+                this._talkPress('Y', 'left');
             } else if ((!yBtn || !yBtn.pressed) && this._leftYWasPressed) {
                 this._leftYWasPressed = false;
-                if (this.onPushToTalkEnd) {
-                    console.log('[VRControllers] Y button (PTT): END');
-                    this.onPushToTalkEnd();
-                }
+                this._talkRelease('Y', 'left');
             }
 
             // ── ARC_POINTER_HOOK: Left thumbstick click (L3) activates teleport arc ──
@@ -821,16 +861,10 @@ export class VRControllers {
             const bBtn = gp.buttons[BTN.Y_OR_B];
             if (bBtn && bBtn.pressed && !this._rightBWasPressed) {
                 this._rightBWasPressed = true;
-                if (this.onPushToTalkStart) {
-                    console.log('[VRControllers] B button (PTT): START');
-                    this.onPushToTalkStart();
-                }
+                this._talkPress('B', 'right');
             } else if ((!bBtn || !bBtn.pressed) && this._rightBWasPressed) {
                 this._rightBWasPressed = false;
-                if (this.onPushToTalkEnd) {
-                    console.log('[VRControllers] B button (PTT): END');
-                    this.onPushToTalkEnd();
-                }
+                this._talkRelease('B', 'right');
             }
 
             // Right stick → Snap Turn (X) / Fly Up-Down (Y)
@@ -958,7 +992,7 @@ export class VRControllers {
     setPushToTalkCallbacks(onStart, onEnd) {
         this.onPushToTalkStart = onStart;
         this.onPushToTalkEnd = onEnd;
-        console.log('[VRControllers] Push-to-talk callbacks registered (Y / B buttons)');
+        console.log('[VRControllers] Push-to-talk callbacks registered (right trigger off the panel, Y / B)');
     }
 
     /**
@@ -1010,6 +1044,12 @@ export class VRControllers {
     setEnabled(enabled) {
         this.enabled = enabled;
         console.log(`[VRControllers] System ${enabled ? 'Enabled' : 'Disabled'}`);
+        // VR2. Leaving VR with a button held must not leave the microphone recording.
+        if (!enabled && this._talk && this._talk.releaseAll()) {
+            this._leftYWasPressed = false;
+            this._rightBWasPressed = false;
+            if (this.onPushToTalkEnd) this.onPushToTalkEnd();
+        }
         if (enabled) {
             this.playerRig.position.set(0, 0, 0);
             this.playerRig.rotation.set(0, 0, 0);

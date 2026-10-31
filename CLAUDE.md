@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (223 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (233 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-10-31 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5166 tests in 223 suites, all passing.**
+— lint clean, format clean, **5291 tests in 233 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -186,9 +186,10 @@ will be rewrapped; files under `docs/` are exempt.
 `// T5. Take the <play> tag out…`, `// B14. …`. Prefixes in use: `B`, `T`, `M`,
 `D`, `L`, `S`, `MS`, `A` for the ambience work, `P` for the Private experience
 (`PT` its tattoos), `W` for the wardrobe (`WF` its Forge settings, `LT` live
-Try-On, `OD` the outfit dictionary shared with Forge) and `V` for VRoid Hub in
-the Avatar Library. Commit subjects match: `A4: viewport background manager`. So
-`git log --grep 'A4'` and the comment line up.
+Try-On, `OD` the outfit dictionary shared with Forge), `V` for VRoid Hub in the
+Avatar Library, `VP` for the VR puppet, `AR` for the AR conversation and `VR`
+for the VR chat panel. Commit subjects match: `A4: viewport background manager`.
+So `git log --grep 'A4'` and the comment line up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of
@@ -550,6 +551,151 @@ panel goes through `js/speech-service.js` — two speech paths, not one.
   drawn from JS, not written into `index.html`, for the same reason.
 - `?questVoice=1` makes any browser count as a Quest, so this is testable from a
   desk. Docs: `docs/TTS.md` ▸ _Natural voice on Meta Quest_.
+- **Piper must never synthesize on the main thread (Q7).** This site is not
+  crossOriginIsolated, so ONNX Runtime ignored Piper's thread count and ran the
+  model on the main thread: 1.0–2.7 s frozen per reply, which in VR stops the
+  frame loop — no rendering, no controller tracking, puppet handles that will
+  not drag. `_offMainThread()` sets `env.wasm.proxy` on the import-map instance
+  of `onnxruntime-web` before any session exists; `_degradeProxy()` retries on
+  the main thread only when the worker itself failed.
+
+## The page in Meta Quest Browser (Q8)
+
+The 2D page looks **exactly** like desktop Chrome at the same window size — the
+person asked for that, and a Playwright check compared every toolbar icon and
+the chat row pixel for pixel. Headset-only CSS in `styles/main.css` may add
+invisible hit area for controller rays (`::after` with `inset: -5px`) and size
+ENTER VR/AR, nothing else; the old headset block that resized icons and text
+also hid the ☰ menu, so its drawer could not be opened in the headset.
+
+**The app's icon is the HomePilot mark (Q9).** `assets/app-icon.svg` and its
+padded `app-icon-maskable.svg` are the sources; every PNG and `favicon.ico` is
+rendered from them by `node tools/brand/render-app-icons.mjs` — edit the SVGs,
+never the PNGs. A Quest shows these (and `short_name`, "HomePilot") for an
+installed PWA; the headset's own loading transition for a browser tab is drawn
+by the system and no page can change it. `tests/app-icons.test.js` guards the
+favicon (it used to 404) and the maskable safe zone.
+
+## Entering VR from a PC (XL1)
+
+Quest Link and SteamVR put the headset on a GPU the page may not be rendering
+on. `xrCompatible: true` in `ViewerEngine`'s renderer options is **ignored** by
+three r147 (its context attributes are a fixed list), so ENTER VR's
+`makeXRCompatible()` can _move_ the context: Chrome loses it, restores it on the
+headset's GPU, and rejects that first call with `InvalidStateError`.
+`VRSupport.toggleVR` requests the session first (the click's activation is spent
+at once), then `_makeXRCompatible()` waits a move out and retries; a rejection
+with no context loss behind it is thrown, and a session the page cannot draw
+into is ended. The old "continuing anyway" entered VR with a dead context whose
+loss handler then ran `forceExit()` mid-session. Do not create the context
+`xrCompatible` up front instead: in desktop Chrome that starts the installed VR
+runtime on page load for every visitor. Tested in
+`tests/vr-entry-gpu-move.test.js`.
+
+**XL2: no frame may build the GPU's work in one task.** After that move every
+shader and texture is rebuilt, and three r147 does it inside the first frame,
+one program waited on after another — on Windows (ANGLE/Direct3D) long enough
+for Chrome's "page not responding". `VRSupport` now calls
+`ViewerEngine._prepareForXR()` between `_makeXRCompatible()` and `setSession()`:
+it holds the loop and runs `src/gltf-viewer/XRWarmUp.js` — `renderer.compile()`
+with `debug.checkShaderErrors` off (so programs compile in parallel off-thread),
+`COMPLETION_STATUS_KHR` polling, textures two per task. Rules: the loop is not
+restarted on a context restore while `vrSupport.isToggling`, nor at the end of
+the warm-up (a desktop frame there recompiled post-processing: 1.2 s) —
+`vrSupport.onEntryFinished` restarts it after `setSession()` and on every
+failure. No custom `XRWebGLLayer`: three's own layer already has alpha, and the
+extra one allocated a second full-resolution framebuffer. A new object that only
+appears in VR should exist in the scene (hidden) before the warm-up, as the
+floor grid now does via `_vrGround()`. Tested in `tests/xr-warmup.test.js`.
+
+**XL3: the headset shows the HomePilot loading card while she gets ready.** The
+order in `VRSupport.toggleVR` is request → `_makeXRCompatible` → `beginSplash` →
+`setSession` → `prepareForSession` (the XL2 warm-up) → `onEntryFinished`.
+`src/gltf-viewer/XRSplash.js` (THREE injected, pure placement maths tested in
+`tests/xr-splash.test.js`) draws its own tiny scene — app colour #071821,
+`assets/app-icon-512.png` with the name, a turning ring — lazily following the
+gaze (yaw only, never head-locked) for at least `MIN_MS`; the warm-up runs
+behind it, then the loop is hers and the card is disposed. Its icon is fetched
+on the first ENTER VR, never on page load. three r147 already sets fixed
+foveation to maximum in `setSession` — do not add a second call.
+
+**XL4: every step of entering VR is recorded, and a frame cannot freeze the
+headset.** A Quest Link log showed the warm-up finish and then nothing until the
+person quit — and "no frames asked for", "stuck on the card", "her loop never
+started" and "her loop died" all look identical from inside the headset.
+`src/gltf-viewer/XREntryTrace.js` (pure, `tests/xr-entry-trace.test.js`) records
+request → granted → gpu → card → session → warmup → warmed → finished → scene
+with times, counts `card` and `scene` frames, and prints a report **when the
+session ends, however it ends** (`NEXUS_XR_ENTRY.report()` any time). The
+running step is shown on the loading card and, as one word, on the desktop VR
+button. Rules:
+
+- **Every subsystem call in `animate()` is in its own `try`.** three's XR loop
+  schedules the next frame only after the callback returns, so one exception
+  stopped the headset for good — measured: 0 frames in 4 s after one throw,
+  still presenting. A throwing subsystem is now reported once with its stack and
+  skipped; she still draws. Add new per-frame calls inside a `try`; a test
+  checks the list.
+- **`VRSupport.onSessionStart()` clears `isToggling` before the warm-up runs** —
+  use `_entering` for "entry still in progress".
+- A watchdog 2.5 s after entry re-arms her loop once if she has drawn nothing.
+- The "Multiple instances of Three.js" warning is expected (a global r147 for
+  classic scripts, a module r147 for the engine and three-vrm; her scene and VRM
+  materials are all module objects). Its silencer was an inline
+  `<script defer>`, which `defer` does not affect; it is now
+  `src/three-instance-marker.js`.
+- **XL5: `'layers'` is requested only in a headset's own browser**
+  (`VRSupport.wantsLayers`; `?xrLayers=1|0` forces it). Nothing here draws a
+  layer, but asking for one moves three r147 off the classic `XRWebGLLayer` onto
+  its projection-layer path. Desktop Chrome on Windows now offers layers too (an
+  older comment said it did not), and there the path blits a 4× multisampled
+  buffer into the layer every frame — untested anywhere, and a Chrome 157 / Link
+  session granted it stayed on the loading screen. The trace also prints a
+  status line 3, 8 and 20 s into a session (`pulse()`), so a log copied from
+  inside a stuck headset says whether frames are being drawn.
+- `[Violation] … unload is not allowed` from `jquery.js` is a browser
+  extension's injected jQuery; this repository ships no jQuery.
+- **XL6: what the first full Link report showed.** Request → granted took **55
+  s** (Chrome's sandboxed XR service and the Meta Horizon Link runtime — a
+  report on Meta's tracker matches it; nothing of the page runs then), the
+  session went hidden and ended 1.6 s later with **0 frames**, and the warm-up
+  took 34 s because a hidden page's timers fire once a second. So: three r147
+  picks its path from `session.renderState.layers === undefined`, which Chrome
+  on Windows defines without the `'layers'` feature — XL5 alone did not keep a
+  PC off the projection-layer path; `VRSupport.hideLayersFromThree` shadows it
+  for three's one read, and the report says whether that held (`layersHidden`).
+  The session step records the path three took (`XRWebGLLayer` / projection
+  layer) and the granted features, not just what was asked. The warm-up yields
+  through a `MessageChannel` while the page is hidden. A session that ended is
+  judged whole — 0 frames is a finding, never "no problem detected" — and the
+  page names its own ends (`pageEnding`), so the report can say whether the
+  headset or the page closed it.
+- **Over Link there is no AR, by design of the platform.** Desktop Chrome offers
+  no `immersive-ar` session, so passthrough exists only in the Quest's own
+  browser. The VR panel's AR buttons read "AR N/A" there, and pressing one now
+  says why once in the panel (`VRChatPanel._explainNoAR`, VR1) instead of only
+  logging it. A Link session with the classic layer was confirmed working end to
+  end: 36 327 frames, puppet IK on her skeleton, Web Speech recognition.
+- **VR1: the VR chat panel has no quick chips.** "Summarize", "Explain" and
+  "Continue" were removed at the person's request;
+  `tests/vr-panel-chips.test.js` keeps them out.
+- **VR2: hold the right trigger to talk, let go to send.** The trigger is also
+  the panel's click, so `src/gltf-viewer/TriggerTalk.js` (pure,
+  `tests/trigger-talk.test.js`) decides: a hit on a panel button you can _see_
+  is a click; anywhere else the right controller's trigger is push-to-talk. Only
+  a real right controller in VR (`environmentBlendMode` `'opaque'`) — never a
+  phone AR tap (`targetRayMode: 'screen'`), a Quest AR session or a
+  hand-tracking pinch. Trigger, Y and B share one recording (`createHolders`),
+  each edge buzzes the controller, and disconnecting or leaving VR mid-hold ends
+  it. Hidden panel hit-boxes used to catch clicks (hiding with X keeps them
+  registered); `firstVisibleHit` ignores them now.
+- **See the VR panel without a headset: `npm run vr:panel-shot`**
+  (`tools/vr/screenshot-vr-panel.mjs`). It loads the real page in headless
+  Chromium, fills the real panel and saves its canvas for each layer (chat,
+  Controls, More) to `tmp/vr-panel/`; `--transcript`, `--status`, `--messages`,
+  `--ar on|off` set the state. `docs/VR_PANEL_SCREENSHOTS.md` has the how-to. It
+  found the "You" / "AI" labels overlapping each message's first line (fixed: 38
+  px under the label, not 28).
 
 ## Quest passthrough (XP1)
 
@@ -559,11 +705,90 @@ Quest, an AR session therefore must not be painted, gridded or offset by that
 handler: `src/gltf-viewer/XRBackground.js` (pure, imported by `ViewerEngine` for
 its side effect, tested in `tests/xr-background.test.js`) answers "paint
 nothing, no grid, no eye-level boost" for Quest AR and the old answer for
-everything else. **Quest VR stays black and phone AR stays as it was — both at
-the person's request; do not widen this without asking.** `ar-session-start`
-re-nulls the background on a Quest, and `ARSupport.forceExit()` resets
-`_arSessionSetupDone`, without which the next AR session skipped its setup.
-Docs: `docs/AR.md` ▸ _Quest: ENTER AR lands in passthrough_.
+everything else. **Quest VR stays black and phone AR keeps its background and
+viewpoint — both at the person's request; do not widen this without asking.**
+`ar-session-start` re-nulls the background on a Quest, and
+`ARSupport.forceExit()` resets `_arSessionSetupDone`, without which the next AR
+session skipped its setup. Docs: `docs/AR.md` ▸ _Quest: ENTER AR lands in
+passthrough_.
+
+**XP2: the VR floor grid is never drawn in AR, on any device** — on a phone it
+cut through the room at waist height (it sits at y = 0 of the AR space, which is
+where the phone started, not the floor). Surfaces in phone AR are shown the
+industry way instead: `ARSupport`'s floor guide, a 2 m grid on the surface the
+hit test found, only while she is being placed (before TAP TO PLACE), then gone.
+`Settings ▸ Companion ▸ Show floor grid in AR` (`overlay_arfloorgrid`, off by
+default, wired in `CompanionMode`'s settings map beside `overlay_arfollow`)
+keeps it under her. The rule is `XRBackground.arFloorGuide`, pure and tested; it
+never shows on a Quest, where nothing calls `placeAvatarAtReticle`.
+
+## Talking to her in phone AR (AR1)
+
+AR is another surface for the same conversation, not a mode of its own.
+`initAROverlay` in `src/main.js` is the bridge (TAP TO PLACE, mic, SEND,
+captions, the 💬 transcript); `src/gltf-viewer/ARConversation.js` (IIFE,
+`tests/ar-conversation.test.js`, loaded after `ARCoachingOverlay.js`) holds its
+rules.
+
+- **`ARSupport.placeAvatarAtReticle` answers `{ placed, reason }`** and
+  dispatches `ar-avatar-placed` on success, which ends the coaching card at
+  once. It used to return nothing, so a tap before any surface said "Avatar
+  placed" and opened the mic with her placed nowhere. The mic opens only on a
+  real placement (`afterPlaceTap`); the tap stays the gesture that authorises
+  it.
+- **The pipeline draws every turn once.** `handleUserMessage` renders through
+  `addMessageToHistory`, which mirrors into AR — so SEND must not draw a bubble
+  itself (it did, and every typed message showed twice).
+- **The transcript is the conversation.** Each `ar-session-start` rebuilds it
+  from `_surface().history()` (replies there are already tag-stripped), and
+  mirroring is ignored while AR is closed — so leave/re-enter neither loses nor
+  repeats a turn.
+- **AR2: AR drives voice only through CompanionMode's public conversation API**
+  — `startConversation()` (answers `{ ok, reason, message }`),
+  `stopConversation()`, `conversationStatus()`
+  (`{ live, state, micReady, muted }`) and the window event
+  `companion-conversation` (`event`: `state`, `mic-open` or `error` with
+  `reason`). `micReady` turns true only when the browser really opened the mic
+  (recognition `onstart`, or the silent between-turns listener got its stream)
+  and stays true across turn gaps. A blocked or busy mic is an `error` event
+  _before_ the call goes idle — the companion's own toast is outside the AR DOM
+  overlay and invisible in AR, so AR shows the sentence itself
+  (`ARConversation.voiceView`, `tests/ar-voice.test.js` with a scripted
+  recognizer). Never read `_live`, `_convState` or call `_startLive()` from
+  outside CompanionMode; a test checks the AR overlay.
+- Not done yet (the plan's phases 4–5): `domOverlayState` checks,
+  `beforexrselect` on the controls, barge-in while she speaks.
+
+## The VR puppet moves her skeleton (VP1)
+
+three-vrm 2.x gives a VRM two skeletons: the **raw** bones skin the mesh, the
+**normalized** rig is a proxy that `vrm.update()` copies onto them — only while
+`humanoid.autoUpdateHumanBones` is true. This app keeps it **false** so
+ProceduralAnimator can write the raw bones (breathing, base pose). VRPoseSystem
+resolves the _normalized_ bones (PoseRigMap's `getBone`), so until VP1 every VR
+IK drag, direct bone grab and VR-panel pose moved a skeleton nobody draws: the
+sphere moved, she did not (measured: 0.261 m vs 0.000 m).
+
+- **Anything in VR that poses her calls `vrPoseSystem.claimBones()` first**
+  (`startIK`, the bone grabber's direct grab, `cyclePreset`, Place mode,
+  intimacy presets). `src/gltf-viewer/PuppetSkeleton.js` (IIFE, tested in
+  `tests/puppet-skeleton.test.js` against a transcribed three-vrm rig) snapshots
+  both skeletons, the copy flag and the animator's pose/edit modes, carries her
+  visible pose into the proxy (N = P·raw·B⁻¹·P⁻¹ — the inverse of three-vrm's
+  copy, so a grab does not pop), puts the animator in pose mode, and stops a
+  clip only if one is playing (the resolver's `stop()` turns the animator's
+  mixer permission off for good).
+- **While held, `VRPoseSystem.update` copies proxy → skeleton after solving**,
+  and the puppet does again after its own solve/grab (`syncSkeleton()`), so the
+  mesh shows this frame's pose and a BehaviorEngine talk/think mode cannot take
+  her body from the person's hand. She keeps the pose after release — that is
+  the feature.
+- **Reset, Place mode off, leaving VR, or a new avatar release** —
+  `releaseBones()` writes the snapshot back verbatim and, in the headset, blends
+  into her idle over 0.4 s. Restoring edit mode matters: `setPoseMode(false)`
+  leaves `editMode` on, and an animator left in edit mode never moves her again.
+- **Handles sit on the drawn skeleton** (`getVisualBone`), not the proxy, which
+  was ~6 cm off her body at rest.
 
 ## VRoid Hub in the Avatar Library
 
