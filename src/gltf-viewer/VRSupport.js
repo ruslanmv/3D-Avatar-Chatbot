@@ -30,6 +30,9 @@ export class VRSupport {
         canvas.addEventListener('webglcontextlost', (e) => {
             e.preventDefault(); // allow restore
             this.contextLost = true;
+            // XL1. Counted, so _makeXRCompatible can tell a GPU move (a loss happened) from a
+            // failure that has nothing to do with the context.
+            this._contextLosses = (this._contextLosses || 0) + 1;
             console.warn('[VR] WebGL context lost — VR disabled until restored');
             if (this.isVRActive) this.forceExit();
             if (this.vrButton) {
@@ -186,34 +189,48 @@ export class VRSupport {
 
                 const sessionInit = { optionalFeatures };
 
-                // Ensure WebGL context is XR-compatible before requesting session.
-                // Three.js r147+ handles this internally via setSession(), so
-                // this is a safety net, not strictly required.
-                if (gl.makeXRCompatible) {
-                    try {
-                        await gl.makeXRCompatible();
-                        console.log('[VR] WebGL context marked as XR compatible');
-                    } catch (e) {
-                        console.warn('[VR] makeXRCompatible failed, continuing anyway:', e);
-                    }
-                }
-
+                // XL1. The session first, then the GPU — the order WebXR expects.
+                //
+                // On a PC driving a headset over Quest Link (or SteamVR), the page usually starts
+                // on a GPU the headset is not attached to: ViewerEngine passes `xrCompatible: true`
+                // to the renderer, but three r147 builds its context attributes from a fixed list
+                // that omits it, so that option has never reached the context. Making the context
+                // XR-compatible then MOVES it to the headset's GPU — Chrome loses it and restores
+                // it there — and makeXRCompatible() rejects with InvalidStateError while it does.
+                // This used to log "continuing anyway", request the session with the context
+                // still lost, and spend the seconds of the move after the click, which is the
+                // user activation requestSession() needs. Requesting first uses the click while
+                // it is fresh; nothing after that needs one.
                 const session = await navigator.xr.requestSession('immersive-vr', sessionInit);
 
-                // Configure XRWebGLLayer with alpha:true to enable Quest 3
-                // passthrough toggle mid-session. When scene.background is null
-                // and clear color alpha is 0, transparent pixels reveal the
-                // camera feed. Opaque scenes are unaffected (black bg renders solid).
                 try {
-                    const xrLayer = new XRWebGLLayer(session, gl, { alpha: true });
-                    session.updateRenderState({ baseLayer: xrLayer });
-                    console.log('[VR] Custom XRWebGLLayer created (alpha:true — passthrough-ready)');
-                } catch (e) {
-                    console.warn('[VR] Could not set custom XRWebGLLayer, using default:', e);
-                }
+                    await this._makeXRCompatible(gl);
 
-                // Set session on renderer
-                await this.renderer.xr.setSession(session);
+                    // Configure XRWebGLLayer with alpha:true to enable Quest 3
+                    // passthrough toggle mid-session. When scene.background is null
+                    // and clear color alpha is 0, transparent pixels reveal the
+                    // camera feed. Opaque scenes are unaffected (black bg renders solid).
+                    try {
+                        const xrLayer = new XRWebGLLayer(session, gl, { alpha: true });
+                        session.updateRenderState({ baseLayer: xrLayer });
+                        console.log('[VR] Custom XRWebGLLayer created (alpha:true — passthrough-ready)');
+                    } catch (e) {
+                        console.warn('[VR] Could not set custom XRWebGLLayer, using default:', e);
+                    }
+
+                    // Set session on renderer
+                    await this.renderer.xr.setSession(session);
+                } catch (err) {
+                    // XL1. A session the page cannot draw into is a headset showing a frozen
+                    // loading screen. End it, so the person is back in the browser with a message
+                    // instead of stuck in the dark.
+                    try {
+                        await session.end();
+                    } catch (_) {
+                        /* already ended */
+                    }
+                    throw err;
+                }
 
                 if (this.vrButton) {
                     this.vrButton.innerHTML = '<span class="xr-btn__icon">&#x23F9;</span> EXIT VR';
@@ -247,6 +264,66 @@ export class VRSupport {
                 this.vrButton.style.cursor = 'pointer';
             }
         }
+    }
+
+    /**
+     * XL1. Make the WebGL context usable by the headset, surviving the GPU move this can cause.
+     *
+     * When the context has to move to the headset's GPU, Chrome loses it, restores it there, and
+     * rejects this first call. That is not a failure — wait for the restore (three.js rebuilds
+     * its state in its own 'webglcontextrestored' listener, registered before ours), then ask
+     * again; on the right GPU it resolves at once. A rejection with no context loss behind it
+     * is a real failure and is thrown as it came.
+     * @param {WebGLRenderingContext|WebGL2RenderingContext} gl
+     */
+    async _makeXRCompatible(gl) {
+        if (!gl || typeof gl.makeXRCompatible !== 'function') {
+            return;
+        }
+        const lossesBefore = this._contextLosses || 0;
+        try {
+            await gl.makeXRCompatible();
+            console.log('[VR] WebGL context marked as XR compatible');
+            return;
+        } catch (err) {
+            // The 'webglcontextlost' event can still be queued behind this rejection.
+            await new Promise((r) => setTimeout(r, 300));
+            const moved = (this._contextLosses || 0) > lossesBefore || gl.isContextLost();
+            if (!moved) {
+                throw err;
+            }
+            console.log("[VR] Moving the 3D context to the headset's GPU — waiting for it to come back...");
+        }
+        await this._waitForContextRestore(gl, 8000);
+        await gl.makeXRCompatible();
+        console.log("[VR] WebGL context restored on the headset's GPU and marked XR compatible");
+    }
+
+    /**
+     * Resolve once the context is back (immediately if it already is), after three.js's own
+     * restore handler has run; reject if it does not come back in time.
+     */
+    _waitForContextRestore(gl, timeoutMs) {
+        const canvas = this.renderer.domElement;
+        return new Promise((resolve, reject) => {
+            if (!gl.isContextLost()) {
+                resolve();
+                return;
+            }
+            let timer = null;
+            const onRestored = () => {
+                clearTimeout(timer);
+                canvas.removeEventListener('webglcontextrestored', onRestored);
+                // A turn later, so every other restore listener (three's, ViewerEngine's,
+                // PostProcessing's) has rebuilt what it owns before XR starts drawing.
+                setTimeout(resolve, 0);
+            };
+            canvas.addEventListener('webglcontextrestored', onRestored);
+            timer = setTimeout(() => {
+                canvas.removeEventListener('webglcontextrestored', onRestored);
+                reject(new Error('The WebGL context did not come back after moving to the headset GPU.'));
+            }, timeoutMs);
+        });
     }
 
     forceExit() {

@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (223 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (224 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-10-31 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5166 tests in 223 suites, all passing.**
+— lint clean, format clean, **5171 tests in 224 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -566,6 +566,22 @@ the chat row pixel for pixel. Headset-only CSS in `styles/main.css` may add
 invisible hit area for controller rays (`::after` with `inset: -5px`) and size
 ENTER VR/AR, nothing else; the old headset block that resized icons and text
 also hid the ☰ menu, so its drawer could not be opened in the headset.
+
+## Entering VR from a PC (XL1)
+
+Quest Link and SteamVR put the headset on a GPU the page may not be rendering
+on. `xrCompatible: true` in `ViewerEngine`'s renderer options is **ignored** by
+three r147 (its context attributes are a fixed list), so ENTER VR's
+`makeXRCompatible()` can _move_ the context: Chrome loses it, restores it on the
+headset's GPU, and rejects that first call with `InvalidStateError`.
+`VRSupport.toggleVR` requests the session first (the click's activation is spent
+at once), then `_makeXRCompatible()` waits a move out and retries; a rejection
+with no context loss behind it is thrown, and a session the page cannot draw
+into is ended. The old "continuing anyway" entered VR with a dead context whose
+loss handler then ran `forceExit()` mid-session. Do not create the context
+`xrCompatible` up front instead: in desktop Chrome that starts the installed VR
+runtime on page load for every visitor. Tested in
+`tests/vr-entry-gpu-move.test.js`.
 
 ## Quest passthrough (XP1)
 

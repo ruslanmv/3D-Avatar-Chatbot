@@ -59,6 +59,12 @@ export class ViewerEngine {
             alpha: true,
             powerPreference: 'high-performance',
             preserveDrawingBuffer: false,
+            // XL1. Ignored: three r147 builds its context attributes from a fixed list that does
+            // not include xrCompatible, so the context starts on whatever GPU Chrome chooses.
+            // Entering VR makes it XR-compatible, and on a PC with Quest Link that can move it to
+            // the headset's GPU — VRSupport._makeXRCompatible waits that move out. Creating the
+            // context xrCompatible up front would avoid it, but in desktop Chrome that starts the
+            // installed VR runtime (Oculus, SteamVR) on page load for every desktop visitor.
             xrCompatible: true,
         });
 
