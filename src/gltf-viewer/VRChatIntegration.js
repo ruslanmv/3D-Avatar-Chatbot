@@ -173,6 +173,12 @@ export class VRChatIntegration {
                     console.log('[VRChatIntegration] Push-to-talk ignored: STT disabled');
                     return;
                 }
+                // ST3. Held until the release callback says otherwise. Every await below can
+                // outlive the hold (a permission prompt, the microphone opening); a start that
+                // resumes after the release must not begin a recording nobody is holding.
+                this._pttHeld = true;
+                this.speechService._syncRecognizer?.();
+                const local = !!this.speechService.isLocalRecognizer?.();
 
                 // Check if Web Speech API is available, otherwise use VR fallback
                 const useFallback = !this.speechService.isRecognitionAvailable();
@@ -184,8 +190,9 @@ export class VRChatIntegration {
                     }
                 }
 
-                // Request microphone permission if not granted
-                if (!this.speechService.hasMicrophonePermission()) {
+                // Request microphone permission if not granted (on-device Whisper opens the
+                // microphone itself, and reports a refusal as an error)
+                if (!local && !this.speechService.hasMicrophonePermission()) {
                     this.vrChatPanel.appendMessage('bot', 'Requesting microphone permission...');
                     const granted = await this.speechService.requestMicrophonePermission();
                     if (!granted) {
@@ -193,6 +200,10 @@ export class VRChatIntegration {
                         return;
                     }
                     this.vrChatPanel.appendMessage('bot', '✅ Microphone ready!');
+                }
+                if (!this._pttHeld) {
+                    console.log('[VRChatIntegration] PTT released before the microphone opened — not recording');
+                    return;
                 }
 
                 // Use VR fallback if Web Speech API not available
@@ -232,11 +243,17 @@ export class VRChatIntegration {
                     return;
                 }
 
-                // Use standard Web Speech API
+                // Use standard Web Speech API — or on-device Whisper (ST3), same callbacks
+                let heard = false;
                 await this.speechService.startRecognition({
+                    holdToTalk: true,
+                    onTranscribing: () => {
+                        this.vrChatPanel.setStatus('thinking');
+                        this.vrChatPanel.setTranscript('Transcribing…', 'interim');
+                    },
                     onStart: () => {
                         this.vrChatPanel.setStatus('listening');
-                        this.vrChatPanel.setTranscript('Listening...', 'interim');
+                        this.vrChatPanel.setTranscript(local ? 'Recording…' : 'Listening...', 'interim');
                         console.log('[VRChatIntegration] 🎤 PTT: Listening...');
                     },
                     onInterim: (interimText) => {
@@ -244,45 +261,50 @@ export class VRChatIntegration {
                         this.vrChatPanel.setTranscript(interimText, 'interim');
                     },
                     onResult: (text, confidence) => {
-                        const confidencePercent = Math.round(confidence * 100);
-                        console.log(
-                            `[VRChatIntegration] ✅ PTT Transcribed: "${text}" (${confidencePercent}% confidence)`
-                        );
+                        heard = true;
+                        console.log(`[VRChatIntegration] ✅ PTT Transcribed: "${text}"`);
 
                         // Show final transcript
                         this.vrChatPanel.setTranscript(text, 'final');
-                        this.vrChatPanel.appendMessage('bot', `🎤 Heard: "${text}" (${confidencePercent}% confidence)`);
+                        this.vrChatPanel.appendMessage('bot', this._heardLine(text, confidence));
 
-                        // Send to chatbot after brief delay to show transcript
-                        setTimeout(() => {
-                            this.vrChatPanel.clearTranscript();
-                            console.log(`[VRChatIntegration] 📤 PTT Sending to chatbot: "${text}"`);
-                            this.handleUserMessage(text);
-                        }, 1500);
+                        // Send to chatbot after brief delay to show transcript (shorter for
+                        // on-device Whisper: the person has already waited for the transcription)
+                        setTimeout(
+                            () => {
+                                this.vrChatPanel.clearTranscript();
+                                console.log(`[VRChatIntegration] 📤 PTT Sending to chatbot: "${text}"`);
+                                this.handleUserMessage(text);
+                            },
+                            confidence == null ? 400 : 1500
+                        );
                     },
                     onError: (error, context) => {
+                        heard = true; // an error explains itself; no second sentence on top
                         console.error('[VRChatIntegration] PTT error:', error);
                         this.vrChatPanel.setStatus('idle');
                         this.vrChatPanel.clearTranscript();
                         const errorMsg = context ? `${error}\n${context}` : error;
                         this.vrChatPanel.appendMessage('bot', `Speech error: ${errorMsg}`);
+                        this._questSttHint();
                     },
                     onEnd: () => {
                         this.vrChatPanel.setStatus('idle');
+                        if (!heard) this._questSttHint();
                     },
                 });
             },
             // On PTT end (button released)
             () => {
-                if (this.speechService.isRecognizing) {
-                    // Stop either Web Speech or VR fallback recording
-                    if (!this.speechService.isRecognitionAvailable()) {
-                        this.speechService.stopVRFallbackRecording();
-                    } else {
-                        this.speechService.stopRecognition();
-                    }
-                    console.log('[VRChatIntegration] 🎤 PTT: Stopped');
+                this._pttHeld = false;
+                if (!this.speechService.isRecognitionAvailable()) {
+                    if (this.speechService.isRecognizing) this.speechService.stopVRFallbackRecording();
+                } else {
+                    // ST3. Always: stopRecognition() also cancels a start still waiting for the
+                    // microphone, which `isRecognizing` (false until it opens) used to miss.
+                    this.speechService.stopRecognition();
                 }
+                console.log('[VRChatIntegration] 🎤 PTT: Stopped');
             }
         );
 
@@ -361,6 +383,30 @@ export class VRChatIntegration {
     }
 
     /**
+     * ST3. "Heard: …" for the panel. The browser's recognizer reports a confidence; on-device
+     * Whisper has none (null), and a made-up percentage would read as a real one.
+     */
+    _heardLine(text, confidence) {
+        if (confidence == null) return `🎤 Heard: "${text}"`;
+        return `🎤 Heard: "${text}" (${Math.round(confidence * 100)}% confidence)`;
+    }
+
+    /**
+     * ST3. Once per session: in Meta Quest Browser, with the browser's own recognizer in use,
+     * a listen that heard nothing or failed is that recognizer having no service behind it. Say
+     * where on-device recognition is switched on, instead of letting the mic look broken.
+     */
+    _questSttHint() {
+        if (this._questHintShown) return;
+        const R = window.NEXUS_STT_ROUTER;
+        const engine = window.NEXUS_STT ? window.NEXUS_STT.decision().engine : 'browser';
+        const text = R ? R.hint({ isQuest: !!this.speechService?.browserInfo?.isQuest, engine }) : null;
+        if (!text) return;
+        this._questHintShown = true;
+        this.vrChatPanel.appendMessage('bot', text);
+    }
+
+    /**
      * Handle microphone button (improved with permission handling for VR)
      * Uses the unified startSTT() API with automatic fallback chain:
      *   Web Speech → WASM Whisper → OpenAI → Google
@@ -418,7 +464,12 @@ export class VRChatIntegration {
         }
 
         // Shared callbacks for all STT paths
+        let heard = false;
         const sttCallbacks = {
+            onTranscribing: () => {
+                this.vrChatPanel.setStatus('thinking');
+                this.vrChatPanel.setTranscript('Transcribing…', 'interim');
+            },
             onStart: () => {
                 this.vrChatPanel.setStatus('listening');
                 this.vrChatPanel.setTranscript('Listening...', 'interim');
@@ -431,23 +482,29 @@ export class VRChatIntegration {
             onEnd: () => {
                 this.vrChatPanel.setStatus('idle');
                 console.log('[VRChatIntegration] Listening ended');
+                if (!heard) this._questSttHint();
             },
             onResult: (text, confidence) => {
-                const pct = Math.round((confidence || 0) * 100);
-                console.log(`[VRChatIntegration] 🎤 Transcribed: "${text}" (${pct}%)`);
+                heard = true;
+                console.log(`[VRChatIntegration] 🎤 Transcribed: "${text}"`);
                 this.vrChatPanel.setTranscript(text, 'final');
-                this.vrChatPanel.appendMessage('bot', `🎤 Heard: "${text}" (${pct}% confidence)`);
-                setTimeout(() => {
-                    this.vrChatPanel.clearTranscript();
-                    this.handleUserMessage(text);
-                }, 1500);
+                this.vrChatPanel.appendMessage('bot', this._heardLine(text, confidence));
+                setTimeout(
+                    () => {
+                        this.vrChatPanel.clearTranscript();
+                        this.handleUserMessage(text);
+                    },
+                    confidence == null ? 400 : 1500
+                );
             },
             onError: (error, context) => {
+                heard = true;
                 console.error('[VRChatIntegration] Speech error:', error);
                 this.vrChatPanel.setStatus('idle');
                 this.vrChatPanel.clearTranscript();
                 const errorMsg = context ? `${error}\n${context}` : error;
                 this.vrChatPanel.appendMessage('bot', `Speech error: ${errorMsg}`);
+                this._questSttHint();
             },
         };
 

@@ -2,7 +2,9 @@
 
 ## Quest-local Whisper STT and Piper TTS for 3D-Avatar-Chatbot
 
-**Status:** Implementation plan — not yet implemented  
+**Status:** ST0–ST4 and ST6 implemented, ST5 with an energy endpointer instead of
+Silero VAD, ST7 automated parts done — see `docs/QUEST_STT.md`. Physical Quest
+validation outstanding.  
 **Target:** Meta Quest 3 Browser, WebXR VR/MR, desktop Chrome and mobile
 browsers  
 **Primary repository:** https://github.com/ruslanmv/3D-Avatar-Chatbot  

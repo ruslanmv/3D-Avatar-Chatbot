@@ -1856,7 +1856,7 @@ function saveSTTSettingsFromUI() {
         interimResults: sttInterimResults ? sttInterimResults.checked : true,
         microphoneDeviceId: sttMicrophone ? sttMicrophone.value : '',
         wasm: {
-            modelSize: wasmModelSize ? wasmModelSize.value : 'base',
+            modelSize: wasmModelSize ? wasmModelSize.value : 'tiny',
         },
         openai: {
             apiKey: openaiSTTKey ? openaiSTTKey.value.trim() : '',
@@ -4666,8 +4666,43 @@ function _speakWithWebSpeech(text) {
     window.speechSynthesis.speak(utterance);
 }
 
+/**
+ * ST4. The recognizer class for the mic button: on-device Whisper when STT PROVIDER is
+ * "On-device Whisper" (src/stt/LocalWhisperSTT.js — same surface as the browser's), otherwise
+ * the browser's own. Read again on every press, so a changed setting applies without a reload.
+ */
+function micRecognizerClass() {
+    try {
+        if (window.NEXUS_STT) return window.NEXUS_STT.recognitionClass();
+    } catch (err) {
+        console.warn('[Desktop STT] on-device routing failed, using the browser recognizer:', err);
+    }
+    return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
+
+/** ST4. Once per page: tell a Quest user whose browser recognizer heard nothing where the switch is. */
+let questSttHintShown = false;
+function maybeQuestSttHint() {
+    if (questSttHintShown || !window.NEXUS_STT_ROUTER || !window.NEXUS_STT) return;
+    const text = window.NEXUS_STT_ROUTER.hint({
+        isQuest: /OculusBrowser|Quest/i.test(navigator.userAgent),
+        engine: window.NEXUS_STT.decision().engine,
+    });
+    if (!text) return;
+    questSttHintShown = true;
+    showMessage(text, 'info');
+}
+
 function initSpeechRecognition() {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SR = micRecognizerClass();
+    if (recognition) {
+        try {
+            recognition.onend = null;
+            recognition.abort();
+        } catch (_) {}
+    }
+    recognition = null;
+    let heardThisTurn = false;
     if (!SR) {
         logWarn('Speech recognition not supported in this browser.');
         return;
@@ -4683,6 +4718,7 @@ function initSpeechRecognition() {
 
     recognition.onstart = () => {
         isListening = true;
+        heardThisTurn = false;
         setStatus('listening', 'LISTENING...');
 
         console.log('[Desktop STT] 🎙️ Recognition started');
@@ -4742,12 +4778,16 @@ function initSpeechRecognition() {
         // Check if this is the final result
         const result = event.results[event.results.length - 1];
         const transcript = result[0].transcript || '';
-        const confidence = result[0].confidence || 0;
+        // ST4. On-device Whisper reports no confidence (undefined): treat it as "no score" —
+        // never as 0 (which blocked auto-send) and never as a made-up percentage.
+        const scored = typeof result[0].confidence === 'number';
+        const confidence = scored ? result[0].confidence || 0 : null;
         const isFinal = result.isFinal;
+        heardThisTurn = true;
 
         if (isFinal) {
             // Final result - show with confidence
-            const confidencePercent = Math.round(confidence * 100);
+            const confidencePercent = scored ? Math.round(confidence * 100) : null;
 
             console.log(`[Desktop STT] ✅ FINAL: "${transcript}" (${confidencePercent}% confidence)`);
             if (window.NEXUS_LOGGER) {
@@ -4766,10 +4806,15 @@ function initSpeechRecognition() {
 
             // Auto-send if enabled and confidence > 80%
             const isMobileTouch = 'ontouchstart' in window;
-            if (SpeechSettings.autoSend && confidence >= 0.8 && transcript.trim().length > 0) {
-                console.log(`[Desktop STT] Auto-sending (${confidencePercent}% confidence)`);
+            if (SpeechSettings.autoSend && (!scored || confidence >= 0.8) && transcript.trim().length > 0) {
+                console.log('[Desktop STT] Auto-sending', scored ? `(${confidencePercent}% confidence)` : '');
                 if (SpeechSettings.showConfidence) {
-                    showMessage(`🎤 Auto-sent (${confidencePercent}% confidence): "${transcript}"`, 'info');
+                    showMessage(
+                        scored
+                            ? `🎤 Auto-sent (${confidencePercent}% confidence): "${transcript}"`
+                            : `🎤 Auto-sent: "${transcript}"`,
+                        'info'
+                    );
                 }
                 handleUserMessage(transcript.trim());
                 inputField.value = '';
@@ -4780,7 +4825,7 @@ function initSpeechRecognition() {
                 // Show confidence feedback only if enabled
                 if (SpeechSettings.showConfidence) {
                     showMessage(
-                        `🎤 Transcribed (${confidencePercent}% confidence): "${transcript}"\nReview and press SEND, or click ACTIVATE VOICE to record again.`,
+                        `🎤 Transcribed${scored ? ` (${confidencePercent}% confidence)` : ''}: "${transcript}"\nReview and press SEND, or click ACTIVATE VOICE to record again.`,
                         'info'
                     );
                 }
@@ -4813,10 +4858,27 @@ function initSpeechRecognition() {
             window.NEXUS_LOGGER.error('Desktop STT error', { error: errorType });
         }
         logError('Speech recognition error', errorType);
+        heardThisTurn = true; // the error is the answer; no hint on top of it
+        // ST4. On-device Whisper names what went wrong (model not loaded, HTTPS missing, …).
+        if (recognition && recognition.isLocalWhisper && event.message && errorType !== 'aborted') {
+            showMessage(event.message, errorType === 'no-speech' ? 'info' : 'error');
+        } else if (errorType !== 'aborted') {
+            maybeQuestSttHint();
+        }
         stopVoiceInput();
     };
 
+    // ST4. On-device Whisper writes the text after the microphone closes: say so meanwhile.
+    recognition.onaudioend = () => {
+        if (!recognition || !recognition.isLocalWhisper) return;
+        setStatus('thinking', 'TRANSCRIBING...');
+        const inputField = $('speech-text');
+        if (inputField) inputField.placeholder = 'Transcribing…';
+        if ($('recognition-status')) $('recognition-status').textContent = 'Transcribing on this device…';
+    };
+
     recognition.onend = () => {
+        if (!heardThisTurn) maybeQuestSttHint();
         console.log('[Desktop STT] ⏹️ Recognition ended');
         if (window.NEXUS_LOGGER) {
             window.NEXUS_LOGGER.info('Desktop STT ended');
@@ -4831,6 +4893,9 @@ function toggleVoiceInput() {
 }
 
 function startVoiceInput() {
+    // ST4. The provider may have changed in Settings since the recognizer was made.
+    const SR = micRecognizerClass();
+    if (SR && !(recognition instanceof SR)) initSpeechRecognition();
     if (!recognition) return showMessage('Speech recognition not supported in this browser', 'error');
     try {
         recognition.lang = SpeechSettings.lang; // ✅ ensure current setting

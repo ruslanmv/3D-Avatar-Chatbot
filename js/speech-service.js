@@ -26,8 +26,7 @@ class SpeechService {
         // STT Provider Configuration
         this.sttConfig = this.loadSTTConfig();
         this.currentSTTProvider = null; // Current active provider
-        this.whisperWorker = null; // WASM Whisper worker
-        this.whisperModelLoaded = false;
+        this._startSeq = 0; // ST3. bumped by stopRecognition(): a start still awaiting permission is void
 
         // Speech Synthesis (Text-to-Speech)
         this.synthesis = window.speechSynthesis;
@@ -85,9 +84,44 @@ class SpeechService {
     /**
      * Initialize Speech Recognition
      */
+    /**
+     * ST3. The recognizer class to construct now. With STT PROVIDER set to "On-device Whisper"
+     * (or ?localStt=1) that is src/stt/LocalWhisperSTT.js's, which has the browser's
+     * SpeechRecognition surface and runs Whisper on this device — the only recognizer that works
+     * in Meta Quest Browser, whose own has no service behind it. Otherwise the browser's own.
+     */
+    _recognitionClass() {
+        try {
+            if (window.NEXUS_STT && typeof window.NEXUS_STT.recognitionClass === 'function') {
+                return window.NEXUS_STT.recognitionClass();
+            }
+        } catch (err) {
+            console.warn('[SpeechService] on-device STT routing failed, using the browser recognizer:', err);
+        }
+        return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+    }
+
+    /** ST3. Rebuild the recognizer if the provider setting changed since it was made. */
+    _syncRecognizer() {
+        if (this.isRecognizing) {
+            return;
+        }
+        const SR = this._recognitionClass();
+        const current = this.recognition ? this.recognition.constructor : null;
+        if (current === (SR || null)) {
+            return;
+        }
+        this.initializeSpeechRecognition();
+    }
+
+    /** ST3. True while the recognizer is on-device Whisper. */
+    isLocalRecognizer() {
+        return !!(this.recognition && this.recognition.isLocalWhisper);
+    }
+
     initializeSpeechRecognition() {
-        // Check for Speech Recognition API
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        // Check for Speech Recognition API (ST3: or on-device Whisper, when chosen)
+        const SpeechRecognition = this._recognitionClass();
 
         if (SpeechRecognition) {
             this.isRecognitionSupported = true;
@@ -137,6 +171,11 @@ class SpeechService {
                     window.NEXUS_LOGGER.info('STT audio capture ended');
                 }
                 this._stopAudioMonitoring();
+                // ST3. On-device Whisper writes the text after the microphone closes; this is the
+                // moment a surface should say "Transcribing…" rather than "Listening".
+                if (this.isLocalRecognizer() && this.recognitionCallbacks.onTranscribing) {
+                    this.recognitionCallbacks.onTranscribing();
+                }
             };
 
             this.recognition.onsoundstart = () => {
@@ -194,10 +233,15 @@ class SpeechService {
 
                 // Call result callback for final transcripts
                 if (finalTranscript && this.recognitionCallbacks.onResult) {
-                    const confidence = event.results[event.resultIndex][0].confidence || 1.0;
-                    const confidencePercent = Math.round(confidence * 100);
+                    // ST3. On-device Whisper has no calibrated confidence: pass null, never a
+                    // made-up 100%. The browser's recognizer keeps its old behaviour.
+                    const raw = event.results[event.resultIndex][0].confidence;
+                    const confidence = this.isLocalRecognizer() ? null : raw || 1.0;
+                    const confidencePercent = confidence === null ? null : Math.round(confidence * 100);
                     console.log(
-                        `[SpeechService] ✅ Final: "${finalTranscript.trim()}" (${confidencePercent}% confidence)`
+                        `[SpeechService] ✅ Final: "${finalTranscript.trim()}"${
+                            confidencePercent === null ? ' (on-device Whisper)' : ` (${confidencePercent}% confidence)`
+                        }`
                     );
                     if (window.NEXUS_LOGGER) {
                         window.NEXUS_LOGGER.info('STT final', {
@@ -257,6 +301,17 @@ class SpeechService {
                         errorContext = 'This may happen in VR or incognito mode.';
                         break;
                 }
+                // ST3. On-device Whisper says exactly what went wrong (the model did not load,
+                // HTTPS is missing, …); its sentence beats the browser-recognizer guesses above.
+                if (this.isLocalRecognizer() && event.message) {
+                    if (event.error === 'network') {
+                        errorMessage = 'On-device speech recognition failed.';
+                    }
+                    if (event.error === 'service-not-allowed') {
+                        errorMessage = 'On-device speech recognition is unavailable.';
+                    }
+                    errorContext = event.message;
+                }
 
                 if (window.NEXUS_LOGGER) {
                     window.NEXUS_LOGGER.error('STT error', { error: event.error, message: errorMessage });
@@ -278,6 +333,9 @@ class SpeechService {
                 }
             };
         } else {
+            // ST3. A rebuild after the provider changed must not leave the previous recognizer.
+            this.recognition = null;
+            this.isRecognitionSupported = false;
             console.warn('[SpeechService] ❌ Speech Recognition API not supported in this browser');
             if (window.NEXUS_LOGGER) {
                 window.NEXUS_LOGGER.warn('STT not supported', { browser: this.browserInfo.userAgent });
@@ -589,6 +647,8 @@ class SpeechService {
      * @param {boolean} requestPermission - Whether to request mic permission first (default: true)
      */
     async startRecognition(callbacks = {}, requestPermission = true) {
+        this._syncRecognizer(); // ST3. the provider may have changed in Settings
+        const token = ++this._startSeq;
         if (!this.isRecognitionSupported) {
             const error = 'Speech recognition is not supported in your browser. Please use Chrome, Edge, or Safari.';
             if (callbacks.onError) {
@@ -602,8 +662,9 @@ class SpeechService {
             return false;
         }
 
-        // Request microphone permission first (important for VR)
-        if (requestPermission && !this.micPermissionGranted) {
+        // Request microphone permission first (important for VR). On-device Whisper opens the
+        // microphone itself (MicrophoneSession), so the separate permission stream is skipped.
+        if (requestPermission && !this.micPermissionGranted && !this.isLocalRecognizer()) {
             const granted = await this.requestMicrophonePermission();
             if (!granted) {
                 const error = 'Microphone permission required for speech recognition';
@@ -614,8 +675,25 @@ class SpeechService {
             }
         }
 
-        // Set callbacks
-        this.recognitionCallbacks = { ...this.recognitionCallbacks, ...callbacks };
+        // ST3. stopRecognition() was called while the permission prompt was up (push-to-talk
+        // pressed and released quickly): do not start a recording nobody is holding.
+        if (token !== this._startSeq) {
+            console.log('[SpeechService] start cancelled: released before the microphone opened');
+            return false;
+        }
+
+        // Set callbacks (merged over setRecognitionCallbacks' defaults, as before; ST3: the
+        // "Transcribing…" hook is per recording, so one surface's never fires for another's)
+        this.recognitionCallbacks = {
+            ...this.recognitionCallbacks,
+            ...callbacks,
+            onTranscribing: callbacks.onTranscribing || null,
+        };
+        if (this.isLocalRecognizer()) {
+            // Push-to-talk keeps everything until release; a tap-to-talk stops after a pause.
+            this.recognition.holdToTalk = !!callbacks.holdToTalk;
+            this.recognition.deviceId = this.sttConfig.microphoneDeviceId || null;
+        }
 
         try {
             this.recognition.start();
@@ -633,7 +711,10 @@ class SpeechService {
      * Stop speech recognition
      */
     stopRecognition() {
-        if (this.isRecognizing && this.recognition) {
+        this._startSeq++; // ST3. a start still waiting for permission must not begin after this
+        // On-device Whisper may still be opening the microphone (isRecognizing is false until it
+        // has): stop() then cancels the open, so a released push-to-talk records nothing.
+        if (this.recognition && (this.isRecognizing || this.isLocalRecognizer())) {
             this.recognition.stop();
         }
     }
@@ -1131,8 +1212,7 @@ class SpeechService {
             interimResults: true,
             microphoneDeviceId: '', // Empty = use browser default microphone
             wasm: {
-                modelSize: 'base', // 'tiny' | 'base' | 'small'
-                modelPath: '/models/whisper',
+                modelSize: 'tiny', // 'tiny' | 'base' | 'small' — see src/stt/QuestWhisperConfig.js
             },
             openai: {
                 apiKey: '', // Empty = use main API key
@@ -1162,6 +1242,8 @@ class SpeechService {
             this.sttConfig = { ...this.sttConfig, ...config };
             localStorage.setItem('stt_config', JSON.stringify(this.sttConfig));
             console.log('[SpeechService] STT config saved:', this.sttConfig);
+            // ST6. The on-device engine and its Settings section read the provider from here.
+            window.dispatchEvent(new CustomEvent('nexus-stt', { detail: { type: 'config' } }));
         } catch (error) {
             console.error('[SpeechService] Failed to save STT config:', error);
         }
@@ -1261,12 +1343,10 @@ class SpeechService {
                 break;
 
             case 'wasm':
-                if (this.isWASMWhisperAvailable()) {
-                    this.currentSTTProvider = 'wasm';
-                    return this.startWASMWhisper(callbacks);
-                }
-                console.warn('[SpeechService] WASM Whisper not available, trying fallback...');
-                break;
+                // ST3. On-device was chosen: never fall through to a cloud provider. If it cannot
+                // run here, the recognizer itself fails with the reason.
+                this.currentSTTProvider = 'wasm';
+                return this.startRecognition(callbacks);
 
             case 'openai':
                 this.currentSTTProvider = 'openai';
@@ -1282,12 +1362,6 @@ class SpeechService {
             console.log('[SpeechService] Fallback: Using Web Speech API');
             this.currentSTTProvider = 'webspeech';
             return this.startRecognition(callbacks);
-        }
-
-        if (this.isWASMWhisperAvailable()) {
-            console.log('[SpeechService] Fallback: Using WASM Whisper');
-            this.currentSTTProvider = 'wasm';
-            return this.startWASMWhisper(callbacks);
         }
 
         // Try OpenAI/Google as last resort
@@ -1325,7 +1399,7 @@ class SpeechService {
                 this.stopRecognition();
                 break;
             case 'wasm':
-                this.stopWASMWhisper();
+                this.stopRecognition();
                 break;
             case 'openai':
             case 'google':
@@ -1337,240 +1411,27 @@ class SpeechService {
     }
 
     // ============================================================================
-    // WASM Whisper Implementation
+    // On-device Whisper (ST3)
     // ============================================================================
+    //
+    // These two used to record with MediaRecorder and post the audio to workers/whisper-worker.js,
+    // which answered every recording with a placeholder sentence. On-device recognition is now
+    // src/stt/LocalWhisperSTT.js, a recognizer with the browser's SpeechRecognition surface:
+    // `_recognitionClass()` picks it when STT PROVIDER is "On-device Whisper", so it runs through
+    // startRecognition()/stopRecognition() with every handler above. These names stay for any
+    // caller that still uses them.
 
     /**
-     * Start WASM Whisper transcription
+     * Start on-device Whisper (same as startRecognition with that provider chosen).
      * @param {object} callbacks - Event callbacks
      * @returns {Promise<boolean>}
      */
     async startWASMWhisper(callbacks = {}) {
-        console.log('[SpeechService] 🎙️ Starting WASM Whisper transcription');
-        if (window.NEXUS_LOGGER) {
-            window.NEXUS_LOGGER.info('STT WASM Whisper started');
-        }
-
-        try {
-            // Ensure worker is loaded
-            await this._ensureWhisperWorker();
-
-            // Request microphone access with selected device
-            const stream = await navigator.mediaDevices.getUserMedia(this._getAudioConstraints());
-
-            const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-                ? 'audio/webm;codecs=opus'
-                : 'audio/webm';
-
-            this.vrRecorder = new MediaRecorder(stream, { mimeType });
-            this.vrRecordingChunks = [];
-
-            this.vrRecorder.onstart = () => {
-                console.log('[SpeechService] 🎤 WASM recording started');
-                this.isRecognizing = true;
-                if (callbacks.onStart) {
-                    callbacks.onStart();
-                }
-            };
-
-            this.vrRecorder.ondataavailable = (event) => {
-                if (event.data && event.data.size > 0) {
-                    this.vrRecordingChunks.push(event.data);
-                }
-            };
-
-            this.vrRecorder.onstop = async () => {
-                console.log('[SpeechService] ⏹️ WASM recording stopped, transcribing...');
-                this.isRecognizing = false;
-
-                if (callbacks.onEnd) {
-                    callbacks.onEnd();
-                }
-
-                try {
-                    const blob = new Blob(this.vrRecordingChunks, { type: this.vrRecorder.mimeType });
-                    console.log(`[SpeechService] Transcribing ${blob.size} bytes with WASM...`);
-
-                    // Convert audio to PCM and transcribe
-                    const transcript = await this._transcribeWithWhisperWasm(blob);
-
-                    console.log(`[SpeechService] ✅ WASM transcription: "${transcript}"`);
-                    if (window.NEXUS_LOGGER) {
-                        window.NEXUS_LOGGER.info('STT WASM result', { text: transcript });
-                    }
-
-                    if (callbacks.onResult) {
-                        callbacks.onResult(transcript, 1.0); // WASM doesn't return confidence
-                    }
-                } catch (error) {
-                    console.error('[SpeechService] ⚠️ WASM transcription failed:', error);
-                    if (window.NEXUS_LOGGER) {
-                        window.NEXUS_LOGGER.error('STT WASM failed', { error: error.message });
-                    }
-                    if (callbacks.onError) {
-                        callbacks.onError('wasm-transcription-failed', error.message);
-                    }
-                } finally {
-                    stream.getTracks().forEach((track) => track.stop());
-                    this.vrRecordingChunks = [];
-                }
-            };
-
-            this.vrRecorder.start();
-            return true;
-        } catch (error) {
-            console.error('[SpeechService] ⚠️ Failed to start WASM Whisper:', error);
-            if (callbacks.onError) {
-                callbacks.onError('wasm-mic-failed', error.message);
-            }
-            this.isRecognizing = false;
-            return false;
-        }
+        return this.startRecognition(callbacks);
     }
 
-    /**
-     * Stop WASM Whisper transcription
-     */
     stopWASMWhisper() {
-        if (this.vrRecorder && this.vrRecorder.state !== 'inactive') {
-            console.log('[SpeechService] Stopping WASM recording...');
-            this.vrRecorder.stop();
-        }
-        this.isRecognizing = false;
-    }
-
-    /**
-     * Ensure Whisper worker is loaded
-     * @returns {Promise<void>}
-     */
-    async _ensureWhisperWorker() {
-        if (this.whisperWorker && this.whisperModelLoaded) {
-            return;
-        }
-
-        console.log('[SpeechService] Loading Whisper WASM worker...');
-
-        return new Promise((resolve, reject) => {
-            try {
-                this.whisperWorker = new Worker('/workers/whisper-worker.js');
-
-                this.whisperWorker.onmessage = (event) => {
-                    const { type, error } = event.data;
-
-                    if (type === 'model-loaded') {
-                        this.whisperModelLoaded = true;
-                        console.log('[SpeechService] ✅ Whisper model loaded');
-                        resolve();
-                    } else if (type === 'model-load-error') {
-                        console.error('[SpeechService] ❌ Whisper model load failed:', error);
-                        reject(new Error(error));
-                    }
-                };
-
-                this.whisperWorker.onerror = (error) => {
-                    console.error('[SpeechService] ❌ Worker error:', error);
-                    reject(error);
-                };
-
-                // Load model
-                this.whisperWorker.postMessage({
-                    type: 'load-model',
-                    modelSize: this.sttConfig.wasm.modelSize,
-                    modelPath: this.sttConfig.wasm.modelPath,
-                });
-            } catch (error) {
-                console.error('[SpeechService] ❌ Failed to create worker:', error);
-                reject(error);
-            }
-        });
-    }
-
-    /**
-     * Transcribe audio with Whisper WASM
-     * @param {Blob} audioBlob - Audio blob
-     * @returns {Promise<string>} Transcript
-     */
-    async _transcribeWithWhisperWasm(audioBlob) {
-        // Convert blob to PCM Float32Array @ 16kHz
-        const pcmData = await this._decodeBlobToMonoPCM(audioBlob);
-
-        return new Promise((resolve, reject) => {
-            const onMessage = (event) => {
-                const { type, transcript, error } = event.data;
-
-                if (type === 'transcription-complete') {
-                    this.whisperWorker.removeEventListener('message', onMessage);
-                    resolve(transcript);
-                } else if (type === 'transcription-error') {
-                    this.whisperWorker.removeEventListener('message', onMessage);
-                    reject(new Error(error));
-                }
-            };
-
-            this.whisperWorker.addEventListener('message', onMessage);
-
-            // Send audio to worker
-            this.whisperWorker.postMessage(
-                {
-                    type: 'transcribe',
-                    audio: pcmData,
-                    language: this.sttConfig.language.split('-')[0], // 'en-US' → 'en'
-                },
-                [pcmData.buffer]
-            );
-        });
-    }
-
-    /**
-     * Decode audio blob to mono PCM Float32Array @ 16kHz
-     * @param {Blob} blob - Audio blob
-     * @returns {Promise<Float32Array>} PCM data
-     */
-    async _decodeBlobToMonoPCM(blob) {
-        const arrayBuffer = await blob.arrayBuffer();
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-
-        // Get mono channel
-        let pcm = audioBuffer.getChannelData(0);
-
-        // Resample to 16kHz if needed
-        if (audioBuffer.sampleRate !== 16000) {
-            pcm = this._resampleFloat32(pcm, audioBuffer.sampleRate, 16000);
-        }
-
-        return pcm;
-    }
-
-    /**
-     * Resample Float32Array to target sample rate
-     * @param {Float32Array} samples - Input samples
-     * @param {number} fromRate - Source sample rate
-     * @param {number} toRate - Target sample rate
-     * @returns {Float32Array} Resampled data
-     */
-    _resampleFloat32(samples, fromRate, toRate) {
-        if (fromRate === toRate) {
-            return samples;
-        }
-
-        const ratio = fromRate / toRate;
-        const newLength = Math.round(samples.length / ratio);
-        const result = new Float32Array(newLength);
-
-        for (let i = 0; i < newLength; i++) {
-            const srcIndex = i * ratio;
-            const srcIndexInt = Math.floor(srcIndex);
-            const fraction = srcIndex - srcIndexInt;
-
-            const sample1 = samples[srcIndexInt] || 0;
-            const sample2 = samples[srcIndexInt + 1] || samples[srcIndexInt] || 0;
-
-            // Linear interpolation
-            result[i] = sample1 + (sample2 - sample1) * fraction;
-        }
-
-        return result;
+        this.stopRecognition();
     }
 
     // ============================================================================

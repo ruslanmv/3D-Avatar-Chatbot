@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (234 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (237 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-10-31 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5304 tests in 234 suites, all passing.**
+— lint clean, format clean, **5365 tests in 237 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -188,10 +188,9 @@ will be rewrapped; files under `docs/` are exempt.
 (`PT` its tattoos), `W` for the wardrobe (`WF` its Forge settings, `LT` live
 Try-On, `OD` the outfit dictionary shared with Forge), `V` for VRoid Hub in the
 Avatar Library, `VP` for the VR puppet, `AR` for the AR conversation, `VR` for
-the VR chat panel and `ST` for on-device speech-to-text on Quest (planned:
-`docs/QUEST_STT_PLAN.md`). Commit subjects match:
-`A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
-up.
+the VR chat panel and `ST` for on-device speech-to-text (`docs/QUEST_STT.md`).
+Commit subjects match: `A4: viewport background manager`. So
+`git log --grep 'A4'` and the comment line up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of
@@ -526,6 +525,42 @@ creating looks (WF1)** — see the Forge bullet below.
   entry, which keeps `conditionsOfUse` through `saveInstalled()`'s strip. A
   source that forbids modification is never overridden — Forge refuses with
   `source_model_modification_not_permitted` and the drawer says so.
+
+## On-device speech-to-text (ST)
+
+Meta Quest Browser has `webkitSpeechRecognition` with no service behind it, so
+every listener heard nothing there. **STT PROVIDER ▸ On-device Whisper** (the
+old "WASM Whisper" option, `stt_config.provider === 'wasm'`; `?localStt=1`
+forces it) runs Whisper in `workers/whisper-worker.js` through Transformers.js.
+Off by default. `docs/QUEST_STT.md` has the design, results and the Quest
+procedure.
+
+- **One switch, three listeners.** `NEXUS_STT.recognitionClass()` answers the
+  class to construct: `WhisperRecognition` (the browser recognizer's surface
+  over Whisper) or the browser's own. `main.js`'s mic button
+  (`micRecognizerClass`), `SpeechService._recognitionClass` (VR panel and
+  push-to-talk) and `CompanionMode._SR()` all ask it, so their endpointing and
+  UI are unchanged. Construct recognizers only through these.
+- **On-device chosen but impossible is an error, never the browser's
+  recognizer** (`SttRouter` `unavailable`), and `startSTT` never falls through
+  from `wasm` to a cloud provider.
+- **No interim text, no confidence.** Surfaces show "Transcribing…" at
+  `onaudioend` (SpeechService passes `onTranscribing`); `confidence` is
+  `undefined` → `null` to callers, which show no percentage and treat it as "no
+  score" for auto-send.
+- **A release before the microphone opened records nothing** — in
+  `MicrophoneSession` (lease closed before open stops the stream on arrival),
+  `SpeechService.stopRecognition()` (`_startSeq` voids a pending start) and VR
+  push-to-talk (`_pttHeld`).
+- **Pinned**: Transformers.js 3.8.1 and each model's Hugging Face commit and
+  file SHA-256 in `QuestWhisperConfig.js`; a site can self-host via
+  `NEXUS_STT_CONFIG`. Transformers.js assumes English when no language is given,
+  so the app's language is always passed.
+- **Test with the real model**: `npm run stt:real-model` (Piper makes the speech
+  in the browser, Whisper transcribes it, then the real app is driven through
+  Chromium's fake microphone). English is gated; Italian is reported (29–57% WER
+  on Tiny, 14–36% on Base with Piper's synthetic voice). That is this machine's
+  CPU — Quest timings come from `stt-check.html` on the headset.
 
 ## Speech engines and the Meta Quest voice switch
 

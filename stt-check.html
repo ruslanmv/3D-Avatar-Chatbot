@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Speech Check</title>
+        <!--
+            ST0/ST1. Speech check — open this in Meta Quest Browser (or any browser) to see, step by
+            step, whether the microphone delivers audio and whether on-device Whisper turns it into
+            text, with the timings. It uses the same modules the app does (src/stt/), so a pass here
+            is a pass of the app's own path. Nothing is uploaded: the model runs in this browser.
+        -->
+        <style>
+            :root {
+                --bg: #071821;
+                --panel: #0d2633;
+                --text: #e6f1f5;
+                --muted: #8fb0bd;
+                --ok: #34d399;
+                --bad: #f87171;
+                --info: #60a5fa;
+                --accent: #22d3ee;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+                background: var(--bg);
+                color: var(--text);
+                font:
+                    16px/1.5 system-ui,
+                    -apple-system,
+                    'Segoe UI',
+                    Roboto,
+                    sans-serif;
+            }
+            main {
+                max-width: 860px;
+                margin: 0 auto;
+                padding: 24px 16px 64px;
+            }
+            h1 {
+                font-size: 1.6rem;
+                margin: 0 0 4px;
+            }
+            p.lead {
+                color: var(--muted);
+                margin: 0 0 20px;
+            }
+            section {
+                background: var(--panel);
+                border-radius: 12px;
+                padding: 16px;
+                margin-bottom: 16px;
+            }
+            h2 {
+                font-size: 1.1rem;
+                margin: 0 0 10px;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            td {
+                padding: 4px 6px;
+                border-bottom: 1px solid #16394a;
+                vertical-align: top;
+            }
+            td.st {
+                width: 28px;
+            }
+            .ok {
+                color: var(--ok);
+            }
+            .bad {
+                color: var(--bad);
+            }
+            .info {
+                color: var(--info);
+            }
+            .row {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                align-items: center;
+                margin: 8px 0;
+            }
+            button,
+            select {
+                font: inherit;
+                border-radius: 8px;
+                border: 1px solid #2a5a70;
+                background: #12384a;
+                color: var(--text);
+                padding: 10px 16px;
+                min-height: 44px;
+            }
+            button.primary {
+                background: var(--accent);
+                color: #04202a;
+                border-color: var(--accent);
+                font-weight: 600;
+            }
+            button:disabled {
+                opacity: 0.5;
+            }
+            .meter {
+                height: 12px;
+                background: #0a1f29;
+                border-radius: 6px;
+                overflow: hidden;
+                flex: 1;
+                min-width: 160px;
+            }
+            .meter > div {
+                height: 100%;
+                width: 0;
+                background: var(--ok);
+                transition: width 60ms linear;
+            }
+            .out {
+                font-size: 1.25rem;
+                margin-top: 8px;
+                min-height: 1.5em;
+            }
+            pre {
+                white-space: pre-wrap;
+                word-break: break-word;
+                background: #051219;
+                border-radius: 8px;
+                padding: 10px;
+                font-size: 0.85rem;
+                max-height: 260px;
+                overflow: auto;
+            }
+            .muted {
+                color: var(--muted);
+            }
+        </style>
+    </head>
+    <body>
+        <main>
+            <h1>🎤 Speech check</h1>
+            <p class="lead">
+                Is the microphone delivering audio, and can this device turn it into text by itself? Everything runs in
+                this browser — nothing is uploaded.
+            </p>
+
+            <section>
+                <h2>1 · This browser</h2>
+                <table id="env"></table>
+            </section>
+
+            <section>
+                <h2>2 · Microphone</h2>
+                <p class="muted">Records five seconds. Say something, then listen to it played back.</p>
+                <div class="row">
+                    <button id="mic-test" class="primary">Record 5 seconds</button>
+                    <div class="meter"><div id="level"></div></div>
+                </div>
+                <div id="mic-result" class="out"></div>
+                <audio id="playback" controls hidden></audio>
+            </section>
+
+            <section>
+                <h2>3 · On-device speech model</h2>
+                <div class="row">
+                    <label
+                        >Model
+                        <select id="size"></select
+                    ></label>
+                    <button id="load">Download &amp; prepare</button>
+                    <button id="clear">Clear downloaded model</button>
+                </div>
+                <div class="row">
+                    <div class="meter"><div id="dl"></div></div>
+                    <span id="model-state" class="muted">not downloaded</span>
+                </div>
+            </section>
+
+            <section>
+                <h2>4 · Speak and transcribe</h2>
+                <div class="row">
+                    <label
+                        >Language
+                        <select id="lang">
+                            <option value="en">English</option>
+                            <option value="it">Italiano</option>
+                        </select>
+                    </label>
+                    <button id="talk" class="primary">Hold to talk</button>
+                </div>
+                <p class="muted">Hold the button (or press Space) while you speak; let go to transcribe.</p>
+                <div id="transcript" class="out"></div>
+                <div id="timing" class="muted"></div>
+            </section>
+
+            <section>
+                <h2>Log</h2>
+                <pre id="log"></pre>
+            </section>
+        </main>
+
+        <script src="src/stt/SpeechAudio.js"></script>
+        <script src="src/stt/WhisperProtocol.js"></script>
+        <script src="src/stt/QuestWhisperConfig.js"></script>
+        <script src="src/stt/WhisperModelManager.js"></script>
+        <script src="src/stt/MicrophoneSession.js"></script>
+        <script src="src/stt/SttRouter.js"></script>
+        <script src="src/stt/LocalWhisperSTT.js"></script>
+        <script src="src/stt/QuestAudioDiagnostics.js"></script>
+        <script>
+            (function () {
+                'use strict';
+                const $ = (id) => document.getElementById(id);
+                const A = window.NEXUS_STT_AUDIO;
+                const D = window.NEXUS_STT_DIAGNOSTICS;
+                const C = window.NEXUS_WHISPER_CONFIG;
+                const STT = window.NEXUS_STT;
+                const mics = window.NEXUS_MIC_SESSION.get();
+
+                function log(...parts) {
+                    const line = `[${new Date().toLocaleTimeString()}] ${parts.join(' ')}`;
+                    $('log').textContent += line + '\n';
+                    $('log').scrollTop = $('log').scrollHeight;
+                    console.log('[stt-check]', ...parts);
+                }
+
+                // 1 · environment
+                const facts = D.collect(window);
+                for (const row of D.checklist(facts)) {
+                    const tr = document.createElement('tr');
+                    const mark = row.ok === true ? '✔' : row.ok === false ? '✖' : 'ℹ';
+                    const cls = row.ok === true ? 'ok' : row.ok === false ? 'bad' : 'info';
+                    tr.innerHTML = `<td class="st ${cls}">${mark}</td><td>${row.label}</td><td class="muted"></td>`;
+                    tr.lastChild.textContent = row.detail || '';
+                    $('env').appendChild(tr);
+                }
+                log('browser:', facts.userAgent);
+
+                // Model size: the app's own setting (stt_config.wasm.modelSize), Tiny by default.
+                const cfg = STT.readSttConfig();
+                for (const [key, m] of Object.entries(C.MODELS)) {
+                    const o = document.createElement('option');
+                    o.value = key;
+                    o.textContent = m.label;
+                    $('size').appendChild(o);
+                }
+                $('size').value = (cfg.wasm && cfg.wasm.modelSize) || 'tiny';
+                $('size').addEventListener('change', () => {
+                    const c = STT.readSttConfig();
+                    c.wasm = Object.assign({}, c.wasm, { modelSize: $('size').value });
+                    localStorage.setItem('stt_config', JSON.stringify(c));
+                    log('model size →', $('size').value, '(also used by the app)');
+                });
+
+                // 2 · microphone
+                function record(ms, onLevel) {
+                    const chunks = [];
+                    let rate = 48000;
+                    let finish;
+                    const done = new Promise((resolve) => (finish = resolve));
+                    const lease = mics.open({
+                        owner: 'stt-check',
+                        onFrames: (s, r) => {
+                            rate = r;
+                            chunks.push(s);
+                            let peak = 0;
+                            for (let i = 0; i < s.length; i++) peak = Math.max(peak, Math.abs(s[i]));
+                            if (onLevel) onLevel(peak);
+                        },
+                    });
+                    function stop() {
+                        lease.close();
+                        finish({ samples: A.concat(chunks), rate });
+                    }
+                    lease.ready.then((r) => {
+                        if (!r.ok) return finish({ error: r });
+                        log('microphone open at', r.sampleRate, 'Hz');
+                        if (ms) setTimeout(stop, ms);
+                    });
+                    return { done, stop };
+                }
+
+                $('mic-test').addEventListener('click', async () => {
+                    $('mic-test').disabled = true;
+                    $('mic-result').textContent = 'Recording… speak now';
+                    const r = await record(5000, (p) => ($('level').style.width = Math.min(100, p * 140) + '%')).done;
+                    $('mic-test').disabled = false;
+                    $('level').style.width = '0';
+                    if (r.error) {
+                        $('mic-result').textContent = '✖ ' + r.error.message;
+                        $('mic-result').className = 'out bad';
+                        log('microphone failed:', r.error.reason);
+                        return;
+                    }
+                    const a = A.analyze(r.samples, r.rate);
+                    const j = D.judgeRecording(a);
+                    $('mic-result').textContent = (j.ok ? '✔ ' : '✖ ') + j.finding;
+                    $('mic-result').className = 'out ' + (j.ok ? 'ok' : 'bad');
+                    log(
+                        `recorded ${a.durationMs} ms, peak ${a.peak.toFixed(3)}, level ${a.rmsDb.toFixed(1)} dBFS, ` +
+                            `speech ${a.speechMs} ms`
+                    );
+                    const wav = new Blob([A.encodeWav(A.resample(r.samples, r.rate, 16000), 16000)], {
+                        type: 'audio/wav',
+                    });
+                    $('playback').src = URL.createObjectURL(wav);
+                    $('playback').hidden = false;
+                });
+
+                // 3 · model
+                function showModel() {
+                    const s = STT.status();
+                    const p = s.progress;
+                    let text = s.model;
+                    if (s.model === 'downloading' && p && p.total) {
+                        text = `downloading ${(p.loaded / 1e6).toFixed(1)} of ${(p.total / 1e6).toFixed(1)} MB`;
+                    }
+                    if (s.model === 'loading') text = 'preparing (first run compiles the model)…';
+                    if (s.model === 'ready') text = 'ready';
+                    if (s.model === 'error') text = 'error: ' + s.error;
+                    $('model-state').textContent = text;
+                    $('dl').style.width =
+                        (p && p.fraction != null ? p.fraction * 100 : s.model === 'ready' ? 100 : 0) + '%';
+                }
+                window.addEventListener('nexus-stt', (e) => {
+                    const d = e.detail || {};
+                    if (d.type === 'model-state' || d.type === 'model-progress') showModel();
+                    if (d.type === 'model-state') log('model:', d.state, d.message || '');
+                });
+                $('load').addEventListener('click', async () => {
+                    const t0 = performance.now();
+                    log('loading', STT.status().config.modelId, '@', STT.status().config.revision.slice(0, 8));
+                    try {
+                        const info = await STT.preload();
+                        log(`model ready in ${Math.round(performance.now() - t0)} ms`, info.cached ? '(cached)' : '');
+                    } catch (err) {
+                        log('model failed:', err.message);
+                    }
+                    showModel();
+                });
+                $('clear').addEventListener('click', async () => {
+                    const n = await STT.clearCache();
+                    log(`cleared ${n} cached file(s); the next use downloads again`);
+                    showModel();
+                });
+
+                // 4 · talk
+                let holding = null;
+                async function down() {
+                    if (holding) return;
+                    $('transcript').textContent = 'Listening…';
+                    $('transcript').className = 'out';
+                    $('timing').textContent = '';
+                    holding = record(0, (p) => ($('level').style.width = Math.min(100, p * 140) + '%'));
+                    STT.preload().catch(() => {});
+                }
+                async function up() {
+                    if (!holding) return;
+                    const take = holding;
+                    holding = null;
+                    take.stop();
+                    $('level').style.width = '0';
+                    const r = await take.done;
+                    if (r.error) {
+                        $('transcript').textContent = '✖ ' + r.error.message;
+                        return;
+                    }
+                    $('transcript').textContent = 'Transcribing…';
+                    const t0 = performance.now();
+                    try {
+                        const out = await STT.transcribeSamples(r.samples, r.rate, { language: $('lang').value });
+                        const wall = Math.round(performance.now() - t0);
+                        if (out.accept) {
+                            $('transcript').textContent = '“' + out.text + '”';
+                            $('transcript').className = 'out ok';
+                        } else {
+                            $('transcript').textContent = 'Nothing usable heard (' + out.reason + ')';
+                            $('transcript').className = 'out bad';
+                        }
+                        if (out.ms != null) {
+                            $('timing').textContent =
+                                `inference ${out.ms} ms for ${out.audioMs} ms of audio ` +
+                                `(real-time factor ${D.realTimeFactor(out.ms, out.audioMs)}), ${wall} ms end to end`;
+                        }
+                        log(
+                            'transcript:',
+                            JSON.stringify(out.raw || ''),
+                            out.accept ? 'accepted' : 'refused: ' + out.reason
+                        );
+                    } catch (err) {
+                        $('transcript').textContent = '✖ ' + err.message;
+                        $('transcript').className = 'out bad';
+                        log('transcription failed:', err.message);
+                    }
+                }
+                const talk = $('talk');
+                talk.addEventListener('pointerdown', down);
+                talk.addEventListener('pointerup', up);
+                talk.addEventListener('pointerleave', up);
+                document.addEventListener('keydown', (e) => {
+                    if (e.code === 'Space' && !e.repeat && e.target === document.body) {
+                        e.preventDefault();
+                        down();
+                    }
+                });
+                document.addEventListener('keyup', (e) => {
+                    if (e.code === 'Space' && e.target === document.body) up();
+                });
+                showModel();
+            })();
+        </script>
+    </body>
+</html>
