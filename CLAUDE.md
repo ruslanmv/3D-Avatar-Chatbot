@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-10-31 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5237 tests in 229 suites, all passing.**
+— lint clean, format clean, **5242 tests in 229 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -644,6 +644,17 @@ button. Rules:
   materials are all module objects). Its silencer was an inline
   `<script defer>`, which `defer` does not affect; it is now
   `src/three-instance-marker.js`.
+- **XL5: `'layers'` is requested only in a headset's own browser**
+  (`VRSupport.wantsLayers`; `?xrLayers=1|0` forces it). Nothing here draws a
+  layer, but asking for one moves three r147 off the classic `XRWebGLLayer` onto
+  its projection-layer path. Desktop Chrome on Windows now offers layers too (an
+  older comment said it did not), and there the path blits a 4× multisampled
+  buffer into the layer every frame — untested anywhere, and a Chrome 157 / Link
+  session granted it stayed on the loading screen. The trace also prints a
+  status line 3, 8 and 20 s into a session (`pulse()`), so a log copied from
+  inside a stuck headset says whether frames are being drawn.
+- `[Violation] … unload is not allowed` from `jquery.js` is a browser
+  extension's injected jQuery; this repository ships no jQuery.
 
 ## Quest passthrough (XP1)
 

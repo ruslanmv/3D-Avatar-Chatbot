@@ -273,3 +273,60 @@ describe('wiring', () => {
         expect(fin).toMatch(/setTimeout\(\(\) => this\._xrWatchdog\(0\), 2500\)/);
     });
 });
+
+describe('XL5 — WebXR layers only in a headset’s own browser', () => {
+    const vrSrc = fs
+        .readFileSync(path.resolve(__dirname, '../src/gltf-viewer/VRSupport.js'), 'utf-8')
+        .replace(/^export class VRSupport/m, 'class VRSupport');
+    // eslint-disable-next-line no-new-func
+    const VRSupport = new Function(`${vrSrc}\nreturn VRSupport;`)();
+    const QUEST =
+        'Mozilla/5.0 (X11; Linux x86_64; Quest 3) AppleWebKit/537.36 (KHTML, like Gecko) OculusBrowser/33.0 Chrome/126.0';
+    const WINDOWS_LINK =
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36';
+
+    test('Quest Browser keeps the layer path it has been working on', () => {
+        expect(VRSupport.wantsLayers({ userAgent: QUEST, hasQuadLayer: true })).toBe(true);
+    });
+
+    test('desktop Chrome driving Link gets the classic XRWebGLLayer, even though it offers layers', () => {
+        expect(VRSupport.wantsLayers({ userAgent: WINDOWS_LINK, hasQuadLayer: true })).toBe(false);
+    });
+
+    test('?xrLayers forces either way, but never asks a browser that cannot do layers', () => {
+        expect(VRSupport.wantsLayers({ userAgent: WINDOWS_LINK, search: '?xrLayers=1', hasQuadLayer: true })).toBe(
+            true
+        );
+        expect(VRSupport.wantsLayers({ userAgent: QUEST, search: '?a=b&xrLayers=off', hasQuadLayer: true })).toBe(
+            false
+        );
+        expect(VRSupport.wantsLayers({ userAgent: QUEST, search: '?xrLayers=1', hasQuadLayer: false })).toBe(false);
+    });
+
+    test('toggleVR asks through that rule, and pulses status after the session starts', () => {
+        const enter = vrSrc.slice(vrSrc.indexOf('async toggleVR'), vrSrc.indexOf('    async _makeXRCompatible'));
+        expect(enter).toMatch(/if \(\s*VRSupport\.wantsLayers\(/);
+        expect(enter.indexOf("optionalFeatures.push('layers')")).toBeGreaterThan(enter.indexOf('wantsLayers'));
+        expect(enter.indexOf('trace?.pulse()')).toBeGreaterThan(enter.indexOf("mark('session'"));
+    });
+});
+
+describe('XL5 — a status line while the session runs', () => {
+    test('says how many frames each loop drew and what is wrong, warning once', () => {
+        const t = traced();
+        enterUpTo(t, 'warmup');
+        t.trace.frame('card');
+        t.c.advance(1000);
+        expect(t.trace.pulse()).toBeNull();
+        expect(t.logs[t.logs.length - 1]).toMatch(
+            /status .*loading card 1 frames, her scene 0 frames, step warmup — ok/
+        );
+
+        const s = traced();
+        enterUpTo(s, 'warmup');
+        s.c.advance(3500);
+        expect(s.trace.pulse()).toMatch(/not asking this page for frames/);
+        s.trace.pulse();
+        expect(s.warns.filter((w) => /not asking this page/.test(w))).toHaveLength(1);
+    });
+});

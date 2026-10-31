@@ -71,6 +71,27 @@ export class VRSupport {
         });
     }
 
+    /**
+     * XL5. Whether to ask for the WebXR Layers feature. Only in a headset's own browser (Quest
+     * Browser, Pico, Wolvic…), or when `?xrLayers=1` forces it; `?xrLayers=0` forbids it.
+     *
+     * Nothing in this app draws a layer of its own. Asking for the feature changes one thing: three
+     * r147 then renders through a projection layer instead of the classic XRWebGLLayer. In Quest
+     * Browser that path is the native one (single-sampled render-to-texture) and has been working.
+     * Desktop Chrome driving Quest Link or SteamVR also offers it now — the comment this replaces
+     * said it did not — and there it is a different path: no multisampled render-to-texture, so
+     * three draws into a 4× multisampled buffer and blits into the layer's texture every frame. A
+     * Chrome 157 / Windows / Link session was granted layers and stayed on the loading screen;
+     * every test this app has (the IWER emulator included) runs the classic path. On a PC there is
+     * nothing to gain from layers here, so the PC gets the path WebXR guarantees.
+     */
+    static wantsLayers({ userAgent = '', search = '', hasQuadLayer = false } = {}) {
+        if (!hasQuadLayer) return false;
+        const forced = /[?&]xrLayers=(1|on|true|0|off|false)\b/i.exec(search || '');
+        if (forced) return /^(1|on|true)$/i.test(forced[1]);
+        return /OculusBrowser|Quest|Vive|Pico|Wolvic|SamsungXR/i.test(userAgent || '');
+    }
+
     _isHeadsetBrowser() {
         const ua = navigator.userAgent || '';
         return /OculusBrowser|Quest|Vive|Pico|Wolvic|SamsungXR/i.test(ua);
@@ -175,17 +196,17 @@ export class VRSupport {
                 // Only request features supported for immersive-vr.
                 // 'plane-detection' and 'light-estimation' are AR-only and
                 // cause console warnings when requested in VR mode.
-                // 'layers' is Quest 3+ only — probe before requesting.
                 const optionalFeatures = ['local-floor', 'bounded-floor', 'hand-tracking'];
 
-                // layers API: only request when the browser *actually* supports
-                // XRWebGLBinding.prototype.createQuadLayer (the compositing entry
-                // point). Checking only for XRWebGLBinding is too broad — desktop
-                // Chrome exposes XRWebGLBinding but not the layers feature, which
-                // triggers an "Unsupported feature: layers" console warning.
+                // XL5. 'layers' only in a headset's own browser — see VRSupport.wantsLayers.
                 if (
-                    typeof XRWebGLBinding !== 'undefined' &&
-                    typeof XRWebGLBinding.prototype?.createQuadLayer === 'function'
+                    VRSupport.wantsLayers({
+                        userAgent: navigator.userAgent,
+                        search: typeof location !== 'undefined' ? location.search : '',
+                        hasQuadLayer:
+                            typeof XRWebGLBinding !== 'undefined' &&
+                            typeof XRWebGLBinding.prototype?.createQuadLayer === 'function',
+                    })
                 ) {
                     optionalFeatures.push('layers');
                 }
@@ -260,6 +281,13 @@ export class VRSupport {
                         layers: !!(session.renderState && session.renderState.layers),
                         frameRate: session.frameRate || null,
                     });
+                    // XL5. Say how it is going while the person is still in the headset: a log
+                    // copied mid-session used to end at "VR Started" with no word about frames.
+                    for (const ms of [3000, 8000, 20000]) {
+                        setTimeout(() => {
+                            if (this.isVRActive) trace?.pulse();
+                        }, ms);
+                    }
 
                     // XL2. Build every shader program and upload every texture in small tasks, so no
                     // frame of hers does it all in one — on Windows over Link that single task ran

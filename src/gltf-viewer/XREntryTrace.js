@@ -226,6 +226,26 @@
                     log(report());
                 }
             },
+            /**
+             * XL5. One status line while the session runs — frames so far and the finding, if
+             * any — so a log copied from inside a stuck session already says whether the headset
+             * is drawing anything.
+             */
+            pulse() {
+                if (!snap) return null;
+                const t = now();
+                const why = diagnose(snap, t);
+                log(
+                    `[VR entry] status +${rel(t)} ms: loading card ${snap.frames.card} frames, ` +
+                        `her scene ${snap.frames.scene} frames, step ${snap.current || '—'}` +
+                        (why ? ` — ${why}` : ' — ok')
+                );
+                if (why && why !== snap.lastWarned) {
+                    snap.lastWarned = why;
+                    warn(`[VR entry] ${why}`);
+                }
+                return why;
+            },
             /** Check now; warn once per distinct finding. Returns the finding or null. */
             check() {
                 if (!snap) return null;
