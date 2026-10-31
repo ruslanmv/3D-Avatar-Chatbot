@@ -92,7 +92,8 @@
 
     /**
      * Build the splash. `THREE` is the module ViewerEngine uses; `image` an <img> that may still
-     * be loading (the card repaints when it arrives). Returns { scene, update(dt, camera), dispose }.
+     * be loading (the card repaints when it arrives).
+     * Returns { scene, update(dt, camera), setStatus(text), dispose }.
      * Call update() AFTER rendering a frame: that is when three has written the head pose into the
      * XR camera, so the card is placed for the next frame from a pose that is real.
      */
@@ -100,7 +101,7 @@
         const o = options || {};
         const doc = o.doc || (global && global.document);
         const title = o.title || 'HomePilot';
-        const subtitle = o.subtitle || 'Getting ready…';
+        let subtitle = o.subtitle || 'Getting ready…';
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(o.background == null ? BACKGROUND : o.background);
 
@@ -158,6 +159,16 @@
             ring.rotation.z -= (dt || 0) * 4;
         }
 
+        /**
+         * XL4. The line under the name says which step of entry is running, so a card that stops
+         * moving in the headset tells the person (and whoever reads their report) where.
+         */
+        function setStatus(text) {
+            if (!text || text === subtitle) return;
+            subtitle = String(text);
+            repaint();
+        }
+
         function dispose() {
             if (onLoad && o.image && o.image.removeEventListener) o.image.removeEventListener('load', onLoad);
             scene.remove(group);
@@ -168,7 +179,7 @@
             texture.dispose();
         }
 
-        return { scene, update, dispose };
+        return { scene, update, setStatus, dispose };
     }
 
     const api = {

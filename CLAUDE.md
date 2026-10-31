@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (228 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (229 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-10-31 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5220 tests in 228 suites, all passing.**
+— lint clean, format clean, **5237 tests in 229 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -618,6 +618,32 @@ gaze (yaw only, never head-locked) for at least `MIN_MS`; the warm-up runs
 behind it, then the loop is hers and the card is disposed. Its icon is fetched
 on the first ENTER VR, never on page load. three r147 already sets fixed
 foveation to maximum in `setSession` — do not add a second call.
+
+**XL4: every step of entering VR is recorded, and a frame cannot freeze the
+headset.** A Quest Link log showed the warm-up finish and then nothing until the
+person quit — and "no frames asked for", "stuck on the card", "her loop never
+started" and "her loop died" all look identical from inside the headset.
+`src/gltf-viewer/XREntryTrace.js` (pure, `tests/xr-entry-trace.test.js`) records
+request → granted → gpu → card → session → warmup → warmed → finished → scene
+with times, counts `card` and `scene` frames, and prints a report **when the
+session ends, however it ends** (`NEXUS_XR_ENTRY.report()` any time). The
+running step is shown on the loading card and, as one word, on the desktop VR
+button. Rules:
+
+- **Every subsystem call in `animate()` is in its own `try`.** three's XR loop
+  schedules the next frame only after the callback returns, so one exception
+  stopped the headset for good — measured: 0 frames in 4 s after one throw,
+  still presenting. A throwing subsystem is now reported once with its stack and
+  skipped; she still draws. Add new per-frame calls inside a `try`; a test
+  checks the list.
+- **`VRSupport.onSessionStart()` clears `isToggling` before the warm-up runs** —
+  use `_entering` for "entry still in progress".
+- A watchdog 2.5 s after entry re-arms her loop once if she has drawn nothing.
+- The "Multiple instances of Three.js" warning is expected (a global r147 for
+  classic scripts, a module r147 for the engine and three-vrm; her scene and VRM
+  materials are all module objects). Its silencer was an inline
+  `<script defer>`, which `defer` does not affect; it is now
+  `src/three-instance-marker.js`.
 
 ## Quest passthrough (XP1)
 

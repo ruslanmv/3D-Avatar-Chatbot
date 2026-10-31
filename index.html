@@ -69,12 +69,12 @@
              for legacy defer scripts, the module one for ES imports + three-vrm.
              MUST be defer (not inline) so it runs AFTER three.min.js sets __THREE__
              but BEFORE ES module scripts execute. -->
-        <script defer>
-            if (window.__THREE__) {
-                window.__THREE_REVISION_BACKUP__ = window.__THREE__;
-                delete window.__THREE__;
-            }
-        </script>
+        <!-- XL4. Was an inline <script defer>: defer does nothing on inline
+             scripts, so it ran before three.min.js and never cleared the marker.
+             External, it is deferred for real (src/three-instance-marker.js).
+             Same line count on purpose: the parity harness freezes lines below.
+        -->
+        <script defer src="src/three-instance-marker.js"></script>
 
         <script>
             // Single source of truth for enabling the high-quality engine:

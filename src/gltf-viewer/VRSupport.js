@@ -64,6 +64,9 @@ export class VRSupport {
             this.isVRActive = false;
             this.isToggling = false; // Release lock
             console.log('[VR] Session ended');
+            // XL4. However it ended — including a person giving up on a frozen headset — print
+            // what every step of entry did and how many frames were drawn.
+            this.trace?.ended();
             this.onSessionEnd();
         });
     }
@@ -189,6 +192,20 @@ export class VRSupport {
 
                 const sessionInit = { optionalFeatures };
 
+                // XL4. Every step from here is recorded (src/gltf-viewer/XREntryTrace.js).
+                const trace = this.trace || null;
+                this._entering = true;
+                let stepNow = 'request';
+                const mark = (id, detail) => {
+                    stepNow = id;
+                    trace?.step(id, detail);
+                };
+                trace?.begin({
+                    features: optionalFeatures,
+                    userAgent: (navigator.userAgent || '').slice(0, 120),
+                    visibility: document.visibilityState,
+                });
+
                 // XL1. The session first, then the GPU — the order WebXR expects.
                 //
                 // On a PC driving a headset over Quest Link (or SteamVR), the page usually starts
@@ -201,10 +218,25 @@ export class VRSupport {
                 // still lost, and spend the seconds of the move after the click, which is the
                 // user activation requestSession() needs. Requesting first uses the click while
                 // it is fresh; nothing after that needs one.
-                const session = await navigator.xr.requestSession('immersive-vr', sessionInit);
+                let session;
+                try {
+                    session = await navigator.xr.requestSession('immersive-vr', sessionInit);
+                } catch (err) {
+                    trace?.fail('request', err);
+                    throw err;
+                }
+                mark('granted');
+                // XL4. A headset that stops showing the page (its own menu, Link losing focus) says
+                // so here; the report keeps every change.
+                session.addEventListener('visibilitychange', () => {
+                    trace?.note(`session visibility → ${session.visibilityState}`);
+                });
 
                 try {
+                    const lossesBefore = this._contextLosses || 0;
+                    mark('gpu');
                     await this._makeXRCompatible(gl);
+                    mark('card', { gpuMoved: (this._contextLosses || 0) > lossesBefore });
 
                     // XL3. The HomePilot loading card: the session's first frames show the app, not
                     // darkness while the warm-up below runs. ViewerEngine provides it.
@@ -223,19 +255,31 @@ export class VRSupport {
                     // only ever allocated a second full-resolution headset framebuffer, on the
                     // frame path the hang lived on, and threw it away.
                     await this.renderer.xr.setSession(session);
+                    mark('session', {
+                        visibility: session.visibilityState,
+                        layers: !!(session.renderState && session.renderState.layers),
+                        frameRate: session.frameRate || null,
+                    });
 
                     // XL2. Build every shader program and upload every texture in small tasks, so no
                     // frame of hers does it all in one — on Windows over Link that single task ran
                     // long enough for Chrome to declare the page unresponsive. XL3: this now runs
                     // behind the loading card, which draws only its own tiny scene meanwhile.
                     if (typeof this.prepareForSession === 'function') {
+                        mark('warmup');
                         try {
-                            await this.prepareForSession();
+                            const r = await this.prepareForSession();
+                            mark(
+                                'warmed',
+                                r ? { programs: r.programs, textures: r.textures, ms: r.ms, ok: r.ok } : null
+                            );
                         } catch (e) {
                             console.warn('[VR] VR warm-up failed, entering anyway:', e);
+                            mark('warmed', { failed: String((e && e.message) || e) });
                         }
                     }
                 } catch (err) {
+                    trace?.fail(stepNow, err);
                     // XL1. A session the page cannot draw into is a headset showing a frozen
                     // loading screen. End it, so the person is back in the browser with a message
                     // instead of stuck in the dark.
@@ -277,6 +321,11 @@ export class VRSupport {
             this.isToggling = false;
             if (this.vrButton) {
                 this.vrButton.style.cursor = 'pointer';
+            }
+            // XL4. Entry is over, entered or not: the last step of the trace.
+            if (this._entering) {
+                this._entering = false;
+                this.trace?.finished(Boolean(this.renderer.xr.isPresenting));
             }
             // XL2. While entering, a context restore leaves the render loop stopped (ViewerEngine
             // holds it for the warm-up). Whatever happened above, make sure it runs again.
