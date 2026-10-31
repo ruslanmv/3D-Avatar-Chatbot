@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (224 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (225 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-10-31 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5178 tests in 224 suites, all passing.**
+— lint clean, format clean, **5184 tests in 225 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -566,6 +566,14 @@ the chat row pixel for pixel. Headset-only CSS in `styles/main.css` may add
 invisible hit area for controller rays (`::after` with `inset: -5px`) and size
 ENTER VR/AR, nothing else; the old headset block that resized icons and text
 also hid the ☰ menu, so its drawer could not be opened in the headset.
+
+**The app's icon is the HomePilot mark (Q9).** `assets/app-icon.svg` and its
+padded `app-icon-maskable.svg` are the sources; every PNG and `favicon.ico` is
+rendered from them by `node tools/brand/render-app-icons.mjs` — edit the SVGs,
+never the PNGs. A Quest shows these (and `short_name`, "HomePilot") for an
+installed PWA; the headset's own loading transition for a browser tab is drawn
+by the system and no page can change it. `tests/app-icons.test.js` guards the
+favicon (it used to 404) and the maskable safe zone.
 
 ## Entering VR from a PC (XL1)
 
