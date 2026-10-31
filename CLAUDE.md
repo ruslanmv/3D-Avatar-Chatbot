@@ -550,6 +550,22 @@ panel goes through `js/speech-service.js` — two speech paths, not one.
   drawn from JS, not written into `index.html`, for the same reason.
 - `?questVoice=1` makes any browser count as a Quest, so this is testable from a
   desk. Docs: `docs/TTS.md` ▸ _Natural voice on Meta Quest_.
+- **Piper must never synthesize on the main thread (Q7).** This site is not
+  crossOriginIsolated, so ONNX Runtime ignored Piper's thread count and ran the
+  model on the main thread: 1.0–2.7 s frozen per reply, which in VR stops the
+  frame loop — no rendering, no controller tracking, puppet handles that will
+  not drag. `_offMainThread()` sets `env.wasm.proxy` on the import-map instance
+  of `onnxruntime-web` before any session exists; `_degradeProxy()` retries on
+  the main thread only when the worker itself failed.
+
+## The page in Meta Quest Browser (Q8)
+
+The 2D page looks **exactly** like desktop Chrome at the same window size — the
+person asked for that, and a Playwright check compared every toolbar icon and
+the chat row pixel for pixel. Headset-only CSS in `styles/main.css` may add
+invisible hit area for controller rays (`::after` with `inset: -5px`) and size
+ENTER VR/AR, nothing else; the old headset block that resized icons and text
+also hid the ☰ menu, so its drawer could not be opened in the headset.
 
 ## Quest passthrough (XP1)
 

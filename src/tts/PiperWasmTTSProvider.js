@@ -192,6 +192,63 @@
     let _lastSpokenVoiceId = null; // Track which model is actually loaded
     let _loading = false;
     let _warming = null; // in-flight warmUp() promise, so two callers share one download
+    let _ort = null; // the onnxruntime-web instance Piper runs on (see _offMainThread)
+    let _proxyDegraded = false;
+
+    /* ----------------------------------------------------------
+       Q7. Synthesize off the main thread.
+
+       piper-tts-web asks ONNX Runtime for `navigator.hardwareConcurrency` threads, but
+       threads need crossOriginIsolated (COOP/COEP headers this site does not send, and
+       could not without breaking every cross-origin asset it loads), so ORT fell back to
+       running the model ON THE MAIN THREAD. Measured on a 4-core machine: every reply froze
+       the page for 1.0 s (short) to 2.7 s (long). In a headset that is the whole frame loop
+       — no rendering, no controller tracking, puppet handles that will not drag — once per
+       reply, which is how "Natural voice on Meta Quest" made VR unresponsive.
+
+       ORT's own proxy mode runs inference in a worker it manages, with no isolation needed.
+       Piper imports ORT through the page's import map, and a classic script's import() of
+       the same bare specifier resolves through that map to the same module instance, so
+       setting `env.wasm.proxy` here, before Piper creates any session, moves Piper's
+       inference into that worker. Same measurement after: 2.7 s → 0.38 s worst block on a
+       long reply, which is the page's own idle frame cost — Piper's share is gone.
+       ---------------------------------------------------------- */
+    async function _offMainThread() {
+        if (_ort || _proxyDegraded) return;
+        try {
+            const ort = await import(/* webpackIgnore: true */ 'onnxruntime-web');
+            if (ort && ort.env && ort.env.wasm) {
+                ort.env.wasm.proxy = true;
+                _ort = ort;
+                console.log('[PiperWasm] ONNX inference runs in a worker (proxy mode)');
+            }
+        } catch (err) {
+            // No import map (another page), or ORT changed shape: Piper still works, as before.
+            console.warn('[PiperWasm] could not move synthesis off the main thread:', err);
+        }
+    }
+
+    /**
+     * A failure that looks like the proxy worker itself (it could not start, or died) turns
+     * proxy mode off once and drops the half-built session, so the caller can retry on the
+     * main thread: a voice that freezes the page now and then beats no voice. Anything else
+     * — a blocked CDN, a missing model — is not the worker's fault and is left alone, so a
+     * network blip cannot quietly put synthesis back on the main thread for the session.
+     */
+    function _degradeProxy(err) {
+        if (_proxyDegraded || !_ort || !_ort.env.wasm.proxy) return false;
+        const text = String((err && err.message) || err);
+        const workerish =
+            /worker|proxy|ErrorEvent|\[object Event\]/i.test(text) ||
+            (typeof Event !== 'undefined' && err instanceof Event);
+        if (!workerish) return false;
+        _proxyDegraded = true;
+        _ort.env.wasm.proxy = false;
+        if (_TtsSession) _TtsSession._instance = null;
+        _lastSpokenVoiceId = null;
+        console.warn('[PiperWasm] ONNX worker unavailable — synthesizing on the main thread:', err);
+        return true;
+    }
 
     /* ----------------------------------------------------------
        Lazy-load the @mintplex-labs/piper-tts-web ESM module
@@ -215,6 +272,8 @@
             if (typeof mod.predict !== 'function') {
                 throw new Error('predict() not found in piper-tts-web module');
             }
+            // Q7. Before _predict is published: no session may be created on the main thread.
+            await _offMainThread();
             _predict = mod.predict;
             _TtsSession = mod.TtsSession || null;
             _flush = typeof mod.flush === 'function' ? mod.flush : null;
@@ -302,6 +361,9 @@
                         console.warn('[PiperWasm] OPFS quota hit, flushing cache and retrying...');
                         await _flush();
                         if (_TtsSession) _TtsSession._instance = null;
+                        audioBlob = await predict({ voiceId: _selectedVoiceId, text });
+                    } else if (_degradeProxy(predictErr)) {
+                        // Q7. The ONNX worker failed: say it on the main thread rather than not at all.
                         audioBlob = await predict({ voiceId: _selectedVoiceId, text });
                     } else {
                         throw predictErr;
@@ -414,7 +476,13 @@
                 // voice's model, so it has to go before this one can be built.
                 if (_TtsSession._instance && _lastSpokenVoiceId !== voiceId) _TtsSession._instance = null;
                 try {
-                    await _TtsSession.create({ voiceId });
+                    try {
+                        await _TtsSession.create({ voiceId });
+                    } catch (err) {
+                        // Q7. Only a failed ONNX worker is retried, on the main thread.
+                        if (!_degradeProxy(err)) throw err;
+                        await _TtsSession.create({ voiceId });
+                    }
                     _lastSpokenVoiceId = voiceId;
                     console.log('[PiperWasm] preloaded voice:', voiceId);
                     return true;

@@ -4224,44 +4224,33 @@ html.os-android .app-shell {
     }
 }
 
-/* ── Headset / VR UI mode ── */
-html.is-headset .topbar {
-    padding: 12px 20px;
-    min-height: 56px;
-}
+/* ── Headset / VR UI mode ──
+   Q8. The page in Meta Quest Browser looks exactly as it does in desktop Chrome at the same
+   window size — the person asked for the two to match. A headset block here used to resize it:
+   48 px toolbar icons on a 58 px pitch (desktop: 40 px on 50), a taller top bar, an 18 px / 52 px
+   chat row, larger message text and wider panel gaps — and it hid the ☰ menu with !important,
+   so the drawer desktop users open (Upload VRM, Settings) could not be opened in the headset.
 
-html.is-headset .mobile-only {
-    display: none !important;
-}
-
-html.is-headset .content-layout {
-    grid-template-columns: minmax(300px, 45%) minmax(0, 1fr);
-    gap: 20px;
-    padding: 20px;
-}
-
-html.is-headset .chat-input {
-    font-size: 18px;
-    height: 52px;
-}
-
-html.is-headset .chat-message {
-    font-size: 1.05rem;
-    line-height: 1.5;
-}
-
-html.is-headset .send-btn {
-    height: 52px;
-    min-width: 64px;
-}
-
-html.is-headset .voice-btn-compact {
-    width: 52px;
-    height: 52px;
-}
-
-/* Quest-specific: larger touch targets for controller pointing */
+   What a controller ray does need is a forgiving target, so that is kept without changing a
+   pixel of the layout: on a Quest the area that takes the click grows invisibly past each icon.
+   5 px a side makes the toolbar's 40 px icons 50 px targets that meet their neighbours (50 px
+   pitch) without overlapping; the chat row's 46 px buttons become 56 px. */
 html.is-quest .icon-btn,
+html.is-quest .send-btn,
+html.is-quest .voice-btn-compact {
+    position: relative;
+}
+
+html.is-quest .icon-btn::after,
+html.is-quest .send-btn::after,
+html.is-quest .voice-btn-compact::after {
+    content: '';
+    position: absolute;
+    inset: -5px;
+}
+
+/* ENTER VR / ENTER AR have no desktop counterpart to match, and are the headset's primary
+   actions: they keep their larger size. */
 html.is-quest .xr-btn {
     min-height: 48px;
     min-width: 48px;
