@@ -1400,7 +1400,9 @@ export class VRChatPanel {
             ctx.font = '700 22px system-ui, -apple-system, Segoe UI, Roboto, Arial';
             ctx.fillStyle = isUser ? T.accent : 'rgba(140, 255, 180, 0.85)';
             ctx.fillText(label, area.x + 18, y + 18);
-            y += 28;
+            // VR1. 38, not 28: the 30 px message line rose 22 px above its baseline and ran into the
+            // "You" / "AI" label on top of it (seen in tools/vr/screenshot-vr-panel.mjs output).
+            y += 38;
 
             // Message text
             ctx.font = '500 30px system-ui, -apple-system, Segoe UI, Roboto, Arial';

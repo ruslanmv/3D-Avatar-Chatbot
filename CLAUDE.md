@@ -689,6 +689,13 @@ button. Rules:
   each edge buzzes the controller, and disconnecting or leaving VR mid-hold ends
   it. Hidden panel hit-boxes used to catch clicks (hiding with X keeps them
   registered); `firstVisibleHit` ignores them now.
+- **See the VR panel without a headset: `npm run vr:panel-shot`**
+  (`tools/vr/screenshot-vr-panel.mjs`). It loads the real page in headless
+  Chromium, fills the real panel and saves its canvas for each layer (chat,
+  Controls, More) to `tmp/vr-panel/`; `--transcript`, `--status`, `--messages`,
+  `--ar on|off` set the state. `docs/VR_PANEL_SCREENSHOTS.md` has the how-to. It
+  found the "You" / "AI" labels overlapping each message's first line (fixed: 38
+  px under the label, not 28).
 
 ## Quest passthrough (XP1)
 
