@@ -26,6 +26,10 @@
     /* ------------------------------------------------------------------ */
     function platform() {
         const ua = navigator.userAgent || '';
+        // Before Android (Q6): the Quest Browser's user agent says "Android" too, and on a
+        // headset the Android steps below — a TTS settings screen, a voice-data download —
+        // lead nowhere. Quest has no way to add system voices at all.
+        if (window.NEXUS_QUEST_VOICE?.detect?.()) return 'quest';
         if (/android/i.test(ua)) return 'android';
         // iPadOS 13+ reports as Macintosh; touch points give it away.
         if (/iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && (navigator.maxTouchPoints || 0) > 1))
@@ -90,6 +94,12 @@
     /* ------------------------------------------------------------------ */
     function steps(p) {
         switch (p) {
+            case 'quest':
+                return [
+                    'Meta Quest Browser only has the headset’s one or two system voices, and there is no way to add more.',
+                    'For a natural voice, turn on <b>Natural voice on Meta Quest</b> just below. It uses Piper, ' +
+                        'which downloads its own voice once (~60 MB) and keeps working inside VR.',
+                ];
             case 'android':
                 return [
                     'Open <b>Settings → System → Languages &amp; input → Text-to-speech output</b>.',
@@ -154,6 +164,8 @@
 
             // React to the things that change the answer — all read-only hooks.
             document.getElementById('tts-engine')?.addEventListener('change', () => this.refresh());
+            // The Quest switch changes the engine without a 'change' event on the dropdown (Q6).
+            window.addEventListener('nexus-tts-engine', () => this.refresh());
             document.getElementById('speech-lang')?.addEventListener('change', () => this.refresh());
             document
                 .getElementById('app-language')
@@ -199,7 +211,9 @@
                 S.wrap +
                 S.calm +
                 '">' +
-                '<b>Built-in voices come from your device</b>, not from this app — ' +
+                '<b>Built-in voices come from your ' +
+                (p === 'quest' ? 'headset' : 'device') +
+                '</b>, not from this app — ' +
                 found.length +
                 ' ' +
                 name +
@@ -209,6 +223,7 @@
                 escapeHtml(names) +
                 (found.length > 3 ? ', …' : '') +
                 '). ' +
+                (p === 'quest' ? 'On Quest they can go silent inside VR. ' : '') +
                 '<button type="button" style="' +
                 S.link +
                 '" data-vh="how">Want better ones?</button>' +
@@ -231,6 +246,7 @@
                     '<div style="margin-top:6px;opacity:.85">iOS doesn’t let a web page open Settings — ' +
                     'use the steps below.</div>';
             }
+            if (p === 'quest') return this._questMissingHtml(name);
             return (
                 '<div style="' +
                 S.wrap +
@@ -257,6 +273,26 @@
                 '<div data-vh="msg" style="margin-top:6px" hidden></div>' +
                 '<div style="margin-top:8px;opacity:.75">Prefer not to install anything? Switch <b>TTS ENGINE</b> to ' +
                 '<b>Piper</b> — it downloads its own voice and sounds the same on every device.</div>' +
+                '</div>'
+            );
+        },
+
+        /**
+         * Quest: nothing to install and nothing to re-scan, so neither button is offered —
+         * a Re-scan that can never find anything is a button that teaches people to distrust
+         * the panel. The way out is the switch under TTS ENGINE.
+         */
+        _questMissingHtml(name) {
+            return (
+                '<div style="' +
+                S.wrap +
+                S.warn +
+                '">' +
+                '<b>Your Quest has no ' +
+                escapeHtml(name) +
+                ' system voice.</b><br />' +
+                'Meta Quest Browser can’t add system voices. Turn on <b>Natural voice on Meta Quest</b> ' +
+                'below to use Piper, which brings its own voice.' +
                 '</div>'
             );
         },

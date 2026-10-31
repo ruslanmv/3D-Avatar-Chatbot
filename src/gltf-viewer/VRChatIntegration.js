@@ -90,10 +90,12 @@ export class VRChatIntegration {
             this.isInitialized = true;
             console.log('[VRChatIntegration] ✅ VR chatbot system ready!');
 
-            // Show welcome message
+            // Show welcome message. Q6: name the push-to-talk buttons. VRControllers binds
+            // Y (left) and B (right) to hold-to-talk, and nothing in the headset said so —
+            // the only hint was the mic button, which needs aiming a ray at a small target.
             this.vrChatPanel.appendMessage(
                 'bot',
-                "Hello! I'm ready to chat in VR. Tap the microphone button to speak."
+                "Hello! I'm ready to chat in VR. Hold Y or B to talk, or tap the microphone. X or A shows or hides this panel."
             );
 
             return true;
@@ -489,7 +491,7 @@ export class VRChatIntegration {
     handleSendButton() {
         // In VR, we primarily use voice input
         // This could open a VR keyboard in a future version
-        this.vrChatPanel.appendMessage('bot', 'Voice input recommended. Tap microphone to speak.');
+        this.vrChatPanel.appendMessage('bot', 'Voice input recommended. Hold Y or B to talk, or tap the microphone.');
     }
 
     /**

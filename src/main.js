@@ -1598,7 +1598,8 @@ function saveSpeechSettingsFromUI() {
     // Save TTS engine + Piper voice settings
     const engineEl = document.getElementById('tts-engine');
     const piperVoiceEl = document.getElementById('piper-voice');
-    if (engineEl && window.TTSProvider) {
+    // A locked dropdown holds the Quest switch's choice, not the person's (Q6).
+    if (engineEl && window.TTSProvider && !engineEl.disabled) {
         window.TTSProvider.setEngine(engineEl.value);
         _togglePiperVoiceUI(engineEl.value);
     }
@@ -1651,13 +1652,39 @@ function loadSpeechSettingsIntoUI() {
     if (voiceEl) voiceEl.value = SpeechSettings.voiceURI || '';
 
     // Restore TTS engine + Piper voice
-    const engineEl = document.getElementById('tts-engine');
     const piperVoiceEl = document.getElementById('piper-voice');
-    const savedEngine = localStorage.getItem('tts_engine') || 'web-speech-api';
-    if (engineEl) engineEl.value = savedEngine;
     if (piperVoiceEl) piperVoiceEl.value = localStorage.getItem('piper_voice') || 'en_US-lessac-medium';
-    _togglePiperVoiceUI(savedEngine);
+    _syncEngineUI();
 }
+
+/**
+ * Q6. Put the engine that will actually speak into TTS ENGINE.
+ *
+ * Normally that is the saved choice. While the Meta Quest switch has put Piper in front,
+ * the dropdown shows Piper and is locked: Save writes the dropdown into `tts_engine`, and
+ * an unlocked dropdown would save the switch's choice as the person's own — after which
+ * turning the switch off could no longer give back the engine they had picked.
+ */
+function _syncEngineUI() {
+    const engineEl = document.getElementById('tts-engine');
+    const tp = window.TTSProvider;
+    const overridden = !!tp?.isOverridden?.();
+    const engine = overridden ? tp.getEngine() : localStorage.getItem('tts_engine') || 'web-speech-api';
+    if (engineEl) {
+        engineEl.value = engine;
+        engineEl.disabled = overridden;
+        engineEl.title = overridden ? 'Set by “Natural voice on Meta Quest” below' : '';
+    }
+    _togglePiperVoiceUI(engine);
+}
+
+// The engine can change without Settings being touched: the Quest switch, or Piper failing
+// to load at startup. Keep the dropdown telling the truth either way.
+window.addEventListener('nexus-tts-engine', () => {
+    try {
+        _syncEngineUI();
+    } catch (_) {}
+});
 
 /** Show/hide Piper vs Web Speech API voice controls, and populate Piper voices for current language. */
 function _togglePiperVoiceUI(engine) {
@@ -2237,7 +2264,8 @@ function setupEventListeners() {
         const piperVoiceEl = document.getElementById('piper-voice');
         const statusEl = document.getElementById('test-tts-status');
         if (statusEl) statusEl.textContent = '';
-        if (engineEl && window.TTSProvider) {
+        // Locked by the Quest switch (Q6): test what will speak, do not re-pick it.
+        if (engineEl && window.TTSProvider && !engineEl.disabled) {
             // setEngine() returns false when the engine can't start (Piper
             // downloads its WASM module from a CDN, so a blocked/slow network
             // fails here) and silently falls back to the built-in voice. Ignoring
@@ -2249,8 +2277,11 @@ function setupEventListeners() {
                 if (statusEl)
                     statusEl.textContent =
                         '⚠ Could not start that engine (it downloads from a CDN) — using the built-in voice.';
+                // This called `updateTTSEngineUI`, which exists nowhere: the ReferenceError
+                // was swallowed by the catch, so the Piper voice list stayed on screen after
+                // the engine had fallen back to built-in. _togglePiperVoiceUI is the real one.
                 try {
-                    updateTTSEngineUI(engineEl.value);
+                    _togglePiperVoiceUI(engineEl.value);
                 } catch (_) {}
             }
         }
@@ -4479,57 +4510,80 @@ function speakText(rawText) {
             }
         }
 
-        window.TTSProvider.speak(text, {
-            rate,
-            pitch,
-            onEnd: () => {
-                try {
-                    window.NEXUS_LIP_SYNC?.stop?.();
-                } catch (_) {}
-                try {
-                    window.NEXUS_BEHAVIOR?.onSpeechEnd?.();
-                } catch (_) {}
-                try {
-                    window.NEXUS_VIEWER?.avatarManager?.vrmLoader?.stopLipSync?.();
-                } catch (_) {}
-                const personaMode =
-                    typeof window.PersonaContextBridge !== 'undefined'
-                        ? window.PersonaContextBridge.getDefaultAvatarMode()
-                        : 'waiting';
-                try {
-                    window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.(
-                        personaMode,
-                        personaMode === 'idle' || personaMode === 'waiting' ? 0 : 5000
-                    );
-                } catch (_) {}
-                setStatus('idle', 'READY');
-                try {
-                    const clipName = personaMode === 'happy' ? 'Happy' : 'Idle';
-                    window.NEXUS_VIEWER?.playAnimationByName?.(clipName);
-                } catch (_) {}
-            },
-            onError: () => {
-                try {
-                    window.NEXUS_LIP_SYNC?.stop?.();
-                } catch (_) {}
-                try {
-                    window.NEXUS_BEHAVIOR?.onSpeechEnd?.();
-                } catch (_) {}
-                try {
-                    window.NEXUS_VIEWER?.avatarManager?.vrmLoader?.stopLipSync?.();
-                } catch (_) {}
-                try {
-                    window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.('waiting', 0);
-                } catch (_) {}
-                setStatus('idle', 'READY');
-                try {
-                    window.NEXUS_VIEWER?.playAnimationByName?.('Idle');
-                } catch (_) {}
-            },
-        });
+        // Q3. With the Meta Quest switch on, Piper is the voice the headset relies on, and its
+        // runtime comes from a CDN and its model from Hugging Face. When either is out of reach
+        // this reply is said with the built-in voice instead of not at all. fallbackFor()
+        // answers null whenever the switch is off, so every other profile fails as it did.
+        const onEngineError = (err) => {
+            const next = window.TTSProvider.fallbackFor?.(window.TTSProvider.getEngine());
+            if (next === 'web-speech-api') {
+                console.warn('[Speech] voice engine failed before speaking — using the built-in voice:', err);
+                _speakWithWebSpeech(text);
+                return;
+            }
+            try {
+                window.NEXUS_LIP_SYNC?.stop?.();
+            } catch (_) {}
+            try {
+                window.NEXUS_BEHAVIOR?.onSpeechEnd?.();
+            } catch (_) {}
+            try {
+                window.NEXUS_VIEWER?.avatarManager?.vrmLoader?.stopLipSync?.();
+            } catch (_) {}
+            try {
+                window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.('waiting', 0);
+            } catch (_) {}
+            setStatus('idle', 'READY');
+            try {
+                window.NEXUS_VIEWER?.playAnimationByName?.('Idle');
+            } catch (_) {}
+        };
+
+        Promise.resolve(
+            window.TTSProvider.speak(text, {
+                rate,
+                pitch,
+                onEnd: () => {
+                    try {
+                        window.NEXUS_LIP_SYNC?.stop?.();
+                    } catch (_) {}
+                    try {
+                        window.NEXUS_BEHAVIOR?.onSpeechEnd?.();
+                    } catch (_) {}
+                    try {
+                        window.NEXUS_VIEWER?.avatarManager?.vrmLoader?.stopLipSync?.();
+                    } catch (_) {}
+                    const personaMode =
+                        typeof window.PersonaContextBridge !== 'undefined'
+                            ? window.PersonaContextBridge.getDefaultAvatarMode()
+                            : 'waiting';
+                    try {
+                        window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.(
+                            personaMode,
+                            personaMode === 'idle' || personaMode === 'waiting' ? 0 : 5000
+                        );
+                    } catch (_) {}
+                    setStatus('idle', 'READY');
+                    try {
+                        const clipName = personaMode === 'happy' ? 'Happy' : 'Idle';
+                        window.NEXUS_VIEWER?.playAnimationByName?.(clipName);
+                    } catch (_) {}
+                },
+                onError: onEngineError,
+            })
+        ).catch(onEngineError);
         return; // skip Web Speech API path
     }
 
+    _speakWithWebSpeech(text);
+}
+
+/**
+ * The built-in voice. Moved out of speakText() unchanged (Q3) so that a reply an engine
+ * failed to start can be said through it without running the whole of speakText() again —
+ * the status, the talk animation and the lip-sync are already running for that reply.
+ */
+function _speakWithWebSpeech(text) {
     // --- Existing Web Speech API path (unchanged) ---
     if (!('speechSynthesis' in window)) {
         setStatus('idle', 'READY');

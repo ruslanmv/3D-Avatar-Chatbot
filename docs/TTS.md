@@ -126,6 +126,39 @@ built-in voices are supplied by the OS and differ per device.
 Recommendation: use `medium` quality voices on Quest. (The `low`/`x_low` tier is
 gone — every model in it was a piper 0.2.0 build that this runtime cannot play.)
 
+### Natural voice on Meta Quest (Q1–Q6)
+
+One switch, **off by default**, drawn under **Settings ▸ Speech ▸ TTS ENGINE**
+only in the Meta Quest Browser (or anywhere with `?questVoice=1`, for testing).
+Off is exactly the behaviour before it existed. On:
+
+| What | How |
+| --- | --- |
+| Piper speaks every reply | `TTSProvider` puts Piper in front **in memory only**. `tts_engine` is never written, so turning the switch off hands back the engine the person chose. TTS ENGINE shows Piper and is locked while the switch decides it. |
+| …the VR panel included | The headset panel speaks through `js/speech-service.js`, which only knew Web Speech. With the switch on it hands the reply to the active engine (`TTSProvider.routesVR()`). Off, its old path runs untouched. |
+| Japanese / Korean | Piper has no voice for them, so the system voice speaks those languages. |
+| Piper can't load | CDN or Hugging Face blocked: the reply is spoken by the system voice instead, and Settings says why. Turning a voice on is never how she goes silent. |
+| First reply isn't a 60 MB wait | The voice model is fetched and its ONNX session built once the page is idle (`PiperWasmTTSProvider.warmUp()`, via the library's own `TtsSession.create`). A reply that arrives mid-preload joins it rather than downloading twice. |
+
+Stored as `nexus_quest_voice` (`on` / `off`). The rules live in
+`src/tts/QuestVoice.js` (pure; `tests/quest-voice.test.js`), the toggle in
+`src/tts/QuestVoiceSettings.js`. Settings ▸ Speech's help notice also stops
+offering Android's "install voice data" steps on a Quest — its user agent says
+Android, but a headset has no way to add system voices.
+
+**Why a switch and not the default:** the built-in voice is what people have
+today and works for many of them, and Piper's first use downloads ~60 MB. What
+somebody hears in their headset, and their bandwidth, is their call.
+
+### Saved engine after a reload (Q2)
+
+Before Q2, nothing initialised the stored engine at page load — `isActive()`
+stayed false until Settings ▸ Save or TEST VOICE called `setEngine()` — so a
+person who had chosen Piper heard the built-in voice after every reload while
+Settings said Piper. `TTSProvider.boot()` now runs at `DOMContentLoaded`. If the
+engine cannot start, the built-in voice speaks for that session only; the stored
+choice is kept, so the next load tries again.
+
 ## How to Switch Engines
 
 1. Open **Settings**

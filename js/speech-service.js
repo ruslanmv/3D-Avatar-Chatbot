@@ -643,7 +643,18 @@ class SpeechService {
      * @param text
      * @param callbacks
      */
-    async speak(text, callbacks = {}) {
+    async speak(text, callbacks = {}, options = {}) {
+        // Q4. The VR panel speaks through this method, which only ever knew Web Speech — so
+        // a Quest in VR heard its one or two system voices whatever Settings said. With the
+        // "Natural voice on Meta Quest" switch on, the reply goes to the active engine
+        // instead. routesVR() is false with the switch off, and then everything below runs
+        // exactly as before. `options.fellBack` marks a reply the engine already failed, so
+        // it is never routed back to that engine.
+        const tp = window.TTSProvider;
+        if (!options.fellBack && tp && typeof tp.routesVR === 'function' && tp.routesVR()) {
+            return this._speakWithEngine(text, callbacks);
+        }
+
         if (!this.isSynthesisSupported) {
             console.warn('Speech synthesis not supported');
             if (callbacks.onError) {
@@ -743,9 +754,99 @@ class SpeechService {
     }
 
     /**
+     * Q4. Speak through TTSProvider's active engine (Piper, with the Quest switch on).
+     *
+     * Keeps this service's contract: the VOICE OUT toggle is honoured, `isSpeaking` is true
+     * for as long as the audio plays — CompanionMode's turn-taking polls it — and the
+     * caller's onStart fires when sound begins, not when synthesis starts, so the VR
+     * panel's lip-sync does not run for the seconds Piper spends synthesizing.
+     * @param {string} text
+     * @param {object} callbacks - { onStart, onEnd, onError }
+     * @returns {Promise<boolean>}
+     */
+    async _speakWithEngine(text, callbacks = {}) {
+        const prefs = this._getSpeechPrefs();
+        if (!prefs.ttsEnabled) {
+            console.log('[SpeechService] 🔇 TTS disabled (prefs.ttsEnabled=false). Skipping speak().');
+            if (callbacks.onEnd) {
+                callbacks.onEnd();
+            }
+            return true;
+        }
+
+        const tp = window.TTSProvider;
+        this.stopSpeaking();
+        this.speakingCallbacks = callbacks;
+        this.isSpeaking = true;
+        this._engineSpeaking = true;
+        // A newer reply replaces this one, and stopping the old audio fires its onEnd; the
+        // ticket keeps that late onEnd from marking the newer reply as finished.
+        const ticket = (this._engineTicket = (this._engineTicket || 0) + 1);
+        const finish = () => {
+            if (ticket === this._engineTicket) {
+                this.isSpeaking = false;
+                this._engineSpeaking = false;
+            }
+        };
+
+        let failedOnce = false;
+        const onError = (err) => {
+            if (failedOnce) {
+                return;
+            }
+            failedOnce = true;
+            finish();
+            // Q3. Piper could not start (CDN or Hugging Face unreachable): say this reply with
+            // the built-in voice rather than leave the headset silent.
+            const next = typeof tp.fallbackFor === 'function' ? tp.fallbackFor(tp.getEngine()) : null;
+            if (next === 'web-speech-api' && ticket === this._engineTicket) {
+                console.warn('[SpeechService] voice engine failed — using the built-in voice:', err);
+                this.speak(text, callbacks, { fellBack: true });
+                return;
+            }
+            if (callbacks.onError) {
+                callbacks.onError('Text-to-speech failed');
+            }
+        };
+
+        try {
+            await tp.speak(text, {
+                rate: prefs.speechRate,
+                pitch: prefs.speechPitch,
+                onStart: () => {
+                    if (callbacks.onStart) {
+                        callbacks.onStart();
+                    }
+                },
+                onEnd: () => {
+                    finish();
+                    if (callbacks.onEnd) {
+                        callbacks.onEnd();
+                    }
+                },
+                onError,
+            });
+        } catch (error) {
+            onError(error);
+        }
+        return true;
+    }
+
+    /**
      * Stop speaking (improved to prevent interrupted errors)
      */
     stopSpeaking() {
+        // Q4. A reply this service handed to the engine is not in speechSynthesis, so
+        // cancel() alone would leave it talking.
+        if (this._engineSpeaking) {
+            try {
+                window.TTSProvider?.stop?.();
+            } catch (e) {
+                console.warn('[SpeechService] Error stopping engine speech (non-fatal):', e);
+            }
+            this._engineSpeaking = false;
+            this.isSpeaking = false;
+        }
         try {
             if (this.isSpeaking || this.synthesis.speaking) {
                 this.synthesis.cancel();
