@@ -73,7 +73,43 @@
         };
     }
 
-    const api = { TRANSCRIPT_MAX, seedTranscript, afterPlaceTap };
+    /**
+     * AR2. What the AR microphone button and status line show for one `companion-conversation`
+     * event (or a CompanionMode.conversationStatus() snapshot): { active, listening, status }.
+     *
+     * `listening` — the button's listening ring — is true only once the browser really opened the
+     * microphone (`micReady`), never on the request alone. Errors come with a sentence that says
+     * what to do, shown here because the companion's own toast is outside the AR overlay and
+     * invisible in AR. `status: null` means leave the line as it is.
+     */
+    const ERROR_TEXT = {
+        'mic-blocked': ['ar_mic_blocked', 'Microphone blocked — allow it for this site, then tap 🎤'],
+        'mic-busy': ['ar_mic_busy', 'Microphone busy — tap 🎤 to try again'],
+        unsupported: ['ar_mic_unsupported', 'Voice isn’t available in this browser — type to her instead'],
+    };
+    function voiceView(detail, t) {
+        const tr = typeof t === 'function' ? t : (_k, fb) => fb;
+        const d = detail || {};
+        if (d.event === 'error') {
+            const [key, fb] = ERROR_TEXT[d.reason] || [
+                'ar_mic_error',
+                d.message || 'Voice stopped — tap 🎤 to try again',
+            ];
+            return { active: false, listening: false, status: tr(key, fb) };
+        }
+        if (!d.live) return { active: false, listening: false, status: null };
+        if (d.muted || d.state === 'muted') {
+            return { active: true, listening: false, status: tr('ar_muted', '🔇 Muted — tap 🎤 to talk') };
+        }
+        if (d.state === 'thinking') return { active: true, listening: false, status: tr('thinking', '💭 Thinking…') };
+        if (d.state === 'speaking') return { active: true, listening: false, status: tr('speaking', '🗣️ Speaking…') };
+        if (!d.micReady) {
+            return { active: true, listening: false, status: tr('ar_mic_opening', 'Opening the microphone…') };
+        }
+        return { active: true, listening: true, status: tr('listening', '🎙️ Listening…') };
+    }
+
+    const api = { TRANSCRIPT_MAX, seedTranscript, afterPlaceTap, voiceView };
 
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_AR_CONVERSATION = api;

@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (230 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (231 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-10-31 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5266 tests in 230 suites, all passing.**
+— lint clean, format clean, **5277 tests in 231 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -717,9 +717,21 @@ rules.
   from `_surface().history()` (replies there are already tag-stripped), and
   mirroring is ignored while AR is closed — so leave/re-enter neither loses nor
   repeats a turn.
-- Not done yet (the plan's phases 3–5): a public voice-session API instead of
-  `companionMode._startLive()`, a mic state that waits for recognition to really
-  start, `domOverlayState` checks, `beforexrselect` on the controls.
+- **AR2: AR drives voice only through CompanionMode's public conversation API**
+  — `startConversation()` (answers `{ ok, reason, message }`),
+  `stopConversation()`, `conversationStatus()`
+  (`{ live, state, micReady, muted }`) and the window event
+  `companion-conversation` (`event`: `state`, `mic-open` or `error` with
+  `reason`). `micReady` turns true only when the browser really opened the mic
+  (recognition `onstart`, or the silent between-turns listener got its stream)
+  and stays true across turn gaps. A blocked or busy mic is an `error` event
+  _before_ the call goes idle — the companion's own toast is outside the AR DOM
+  overlay and invisible in AR, so AR shows the sentence itself
+  (`ARConversation.voiceView`, `tests/ar-voice.test.js` with a scripted
+  recognizer). Never read `_live`, `_convState` or call `_startLive()` from
+  outside CompanionMode; a test checks the AR overlay.
+- Not done yet (the plan's phases 4–5): `domOverlayState` checks,
+  `beforexrselect` on the controls, barge-in while she speaks.
 
 ## The VR puppet moves her skeleton (VP1)
 

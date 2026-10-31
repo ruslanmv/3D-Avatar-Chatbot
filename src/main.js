@@ -5523,7 +5523,6 @@ if (document.readyState === 'loading') {
     }
     const arSendBtn = document.getElementById('ar-send-btn');
     const arVoiceBtn = document.getElementById('ar-voice-btn');
-    let arVoiceStateTimer = null;
     const arExitBtn = document.getElementById('ar-exit-btn');
     const arPlaceBtn = document.getElementById('ar-place-btn');
     const arScaleBtn = document.getElementById('ar-scale-btn');
@@ -5590,28 +5589,46 @@ if (document.readyState === 'loading') {
     }
 
     // --- Voice input in AR ---
+    // AR2. Through CompanionMode's public conversation API, and shown from what it reports. This
+    // used to call `_startLive()` and mark the button listening at once, then poll `_convState`
+    // every 300 ms; a blocked or busy microphone was announced only in the companion's toast,
+    // outside the AR overlay, so in AR the pill said "Listening…" over a dead mic.
+    const arT = (k, fb) => window.AppLanguage?.t?.(k) || fb;
+    function renderARVoice(detail) {
+        const AR = window.NEXUS_AR_CONVERSATION;
+        if (!AR) return;
+        const view = AR.voiceView(detail, arT);
+        arVoiceActive = view.active;
+        if (arVoiceBtn) arVoiceBtn.classList.toggle('ar-listening', view.listening);
+        if (arStatus && view.status) arStatus.textContent = view.status;
+    }
+
+    window.addEventListener('companion-conversation', (e) => {
+        if (!overlay.classList.contains('ar-active')) return;
+        if (!arVoiceActive && e.detail?.event !== 'error') return; // not ours to show
+        renderARVoice(e.detail);
+    });
+
     function startARVoice() {
-        arVoiceActive = true;
-        if (arVoiceBtn) arVoiceBtn.classList.add('ar-listening');
         // Hands-free conversation: reuse the companion's live loop — full
         // sentence endpointing, echo-safety, auto-resume after each reply.
         const cm = window.companionMode;
-        if (cm && typeof cm._startLive === 'function') {
-            if (!cm._live) cm._startLive();
-            // Mirror the conversation state into the AR status pill.
-            clearInterval(arVoiceStateTimer);
-            arVoiceStateTimer = setInterval(() => {
-                if (!arStatus || !arVoiceActive) return;
-                const t = (k, fb) => window.AppLanguage?.t?.(k) || fb;
-                const map = {
-                    listening: t('listening', '🎙️ Listening…'),
-                    thinking: t('thinking', '💭 Thinking…'),
-                    speaking: t('speaking', '🗣️ Speaking…'),
-                };
-                const label = map[cm._convState];
-                if (label) arStatus.textContent = label;
-            }, 300);
+        if (cm && typeof cm.startConversation === 'function') {
+            arVoiceActive = true;
+            const started = cm.startConversation();
+            if (!started.ok && started.reason === 'host') {
+                // A host page owns the microphone and was asked instead: its voice input is on.
+                if (arVoiceBtn) arVoiceBtn.classList.add('ar-listening');
+                return;
+            }
+            if (!started.ok) {
+                renderARVoice({ event: 'error', reason: started.reason, message: started.message });
+                return;
+            }
+            renderARVoice(cm.conversationStatus());
         } else if (typeof startVoiceInput === 'function') {
+            arVoiceActive = true;
+            if (arVoiceBtn) arVoiceBtn.classList.add('ar-listening');
             startVoiceInput(); // fallback: legacy push-to-talk
         }
     }
@@ -5619,9 +5636,8 @@ if (document.readyState === 'loading') {
     function stopARVoice() {
         arVoiceActive = false;
         if (arVoiceBtn) arVoiceBtn.classList.remove('ar-listening');
-        clearInterval(arVoiceStateTimer);
         const cm = window.companionMode;
-        if (cm && cm._live) cm._stopLive();
+        if (cm && typeof cm.stopConversation === 'function') cm.stopConversation();
         else if (typeof stopVoiceInput === 'function') {
             stopVoiceInput();
         }

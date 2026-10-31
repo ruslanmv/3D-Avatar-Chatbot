@@ -144,6 +144,7 @@
 
             // Silent standby front-end (VAD) + earcons.
             this._vadStream = null; // silent getUserMedia stream for energy monitoring
+            this._micConfirmed = false; // AR2. the browser really opened the mic in this call
             this._vadCtx = null; // AudioContext used by the analyser
             this._vadTimer = null; // RMS polling interval
             this._earconCtx = null; // shared AudioContext for wake/sleep chimes
@@ -1329,12 +1330,86 @@
                 this._speakObserver = null;
             }
             this._stopVoice();
+            this._micConfirmed = false;
             this._setConvState('idle');
             clearTimeout(this._wakeIdleTimer);
             // Wake-word mode: ending a conversation returns to standby.
             if (CompanionMode.getSettings().wakeWord) {
                 setTimeout(() => this.startStandby(), 300);
             }
+        }
+
+        /* ------------------------------------------------------------------ */
+        /* AR2. The live conversation, for other surfaces                       */
+        /* ------------------------------------------------------------------ */
+        //
+        // Phone AR drove this loop through `_startLive()`, `_live` and `_convState` and polled them
+        // every 300 ms. Two things went wrong that way. It marked its microphone "listening" the
+        // moment it asked, before the browser had opened anything — and when the mic was blocked
+        // or busy, this class said so in its own toast, which is not inside the AR DOM overlay, so
+        // in AR nothing said so at all: the pill kept its last label, "Listening…", forever.
+        //
+        // The supported surface is these three methods plus one window event,
+        // `companion-conversation`, whose detail is `conversationStatus()` and an `event`:
+        // 'state' (any conversation state change), 'mic-open' (the browser really opened the
+        // microphone) or 'error' (with `reason` and a `message` the caller can show).
+
+        /**
+         * Start the hands-free conversation. Answers what happened: { ok: true } once the call is
+         * live (the mic may still be opening — watch for 'mic-open'), or { ok: false, reason,
+         * message } with reason 'unsupported' (no speech recognition) or 'host' (a host page owns
+         * the microphone and was asked instead).
+         */
+        startConversation() {
+            if (this._live) return { ok: true, already: true };
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SR) {
+                const message = 'Voice input isn’t supported in this browser — type instead.';
+                this._emitConversation('error', { reason: 'unsupported', message });
+                return { ok: false, reason: 'unsupported', message };
+            }
+            this._micConfirmed = false;
+            this._startLive();
+            if (!this._live) return { ok: false, reason: 'host', message: '' };
+            return { ok: true };
+        }
+
+        /** End the hands-free conversation (and release the microphone). */
+        stopConversation() {
+            if (this._live) this._stopLive();
+        }
+
+        /**
+         * Where the conversation is: { live, state, micReady, muted }. `micReady` turns true only
+         * once the browser has really opened the microphone in this call — a recognition session
+         * started, or the silent between-turns listener got its stream — and stays true across
+         * the gaps between turns, so a caller showing it does not flicker.
+         */
+        conversationStatus() {
+            return {
+                live: !!this._live,
+                state: this._convState,
+                micReady: !!this._micConfirmed,
+                muted: !!this._muted,
+            };
+        }
+
+        _emitConversation(event, extra) {
+            try {
+                window.dispatchEvent(
+                    new CustomEvent('companion-conversation', {
+                        detail: Object.assign(this.conversationStatus(), { event }, extra || {}),
+                    })
+                );
+            } catch (_) {
+                /* a listener's failure is not the conversation's */
+            }
+        }
+
+        _confirmMic() {
+            if (!this._live || this._micConfirmed) return;
+            this._micConfirmed = true;
+            this._emitConversation('mic-open');
         }
 
         /* ------------------------------------------------------------------ */
@@ -1691,6 +1766,7 @@
                     this._turnStartIndex = 0;
                     this._lastResultsLen = 0;
                     this._turnText = '';
+                    this._confirmMic(); // AR2. the browser really is listening now
                 };
                 sr.onresult = (event) => {
                     this._srFails = 0; // any result proves the mic works
@@ -1747,16 +1823,20 @@
                     this._lastSrError = null;
                     // Permission revoked → retrying would just beep forever.
                     if (err === 'not-allowed' || err === 'service-not-allowed') {
+                        const message = 'Microphone access is blocked — allow the mic to talk hands-free.';
+                        this._emitConversation('error', { reason: 'mic-blocked', message }); // AR2.
                         this._stopLive();
-                        this._toast('Microphone access is blocked — allow the mic to talk hands-free.');
+                        this._toast(message);
                         return;
                     }
                     // Mic busy/unavailable: back off, give up after a few tries.
                     if (err === 'audio-capture' || err === 'aborted' || err === 'network') {
                         this._srFails = (this._srFails || 0) + 1;
                         if (this._srFails >= 4) {
+                            const message = 'The microphone seems busy — hands-free paused. Tap 📞 to retry.';
+                            this._emitConversation('error', { reason: 'mic-busy', message }); // AR2.
                             this._stopLive();
-                            this._toast('The microphone seems busy — hands-free paused. Tap 📞 to retry.');
+                            this._toast(message);
                             return;
                         }
                     }
@@ -1803,6 +1883,7 @@
                     return;
                 }
                 this._vadStream = stream;
+                this._confirmMic(); // AR2. the silent listener holds the microphone
                 const AC = window.AudioContext || window.webkitAudioContext;
                 this._vadCtx = new AC();
                 const analyser = this._vadCtx.createAnalyser();
@@ -2168,6 +2249,7 @@
 
         _setConvState(state) {
             this._convState = state;
+            this._emitConversation('state'); // AR2.
             const T = (k, fb) => window.AppLanguage?.t?.(k) || fb;
             const labels = {
                 listening: T('listening', '🎙️ Listening…'),
