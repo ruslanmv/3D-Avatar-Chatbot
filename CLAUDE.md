@@ -187,9 +187,11 @@ will be rewrapped; files under `docs/` are exempt.
 `D`, `L`, `S`, `MS`, `A` for the ambience work, `P` for the Private experience
 (`PT` its tattoos), `W` for the wardrobe (`WF` its Forge settings, `LT` live
 Try-On, `OD` the outfit dictionary shared with Forge), `V` for VRoid Hub in the
-Avatar Library, `VP` for the VR puppet, `AR` for the AR conversation and `VR`
-for the VR chat panel. Commit subjects match: `A4: viewport background manager`.
-So `git log --grep 'A4'` and the comment line up.
+Avatar Library, `VP` for the VR puppet, `AR` for the AR conversation, `VR` for
+the VR chat panel and `ST` for on-device speech-to-text on Quest (planned:
+`docs/QUEST_STT_PLAN.md`). Commit subjects match:
+`A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
+up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of
