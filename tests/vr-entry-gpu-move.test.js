@@ -96,17 +96,21 @@ test('the session is requested before the GPU work, while the click still counts
     const enter = src.slice(src.indexOf('async toggleVR'), src.indexOf('forceExit() {'));
     const request = enter.indexOf("requestSession('immersive-vr'");
     const compatible = enter.indexOf('this._makeXRCompatible(gl)');
-    // XL2: then the warm-up, and only then the first frame (setSession).
-    const warm = enter.indexOf('this.prepareForSession()');
+    // XL3: then the HomePilot loading card, then the session starts showing it, and the XL2
+    // warm-up runs behind the card — her first frame comes only after it.
+    const splash = enter.indexOf('this.beginSplash()');
     const start = enter.indexOf('this.renderer.xr.setSession(session)');
+    const warm = enter.indexOf('this.prepareForSession()');
     expect(request).toBeGreaterThan(-1);
     expect(compatible).toBeGreaterThan(request);
-    expect(warm).toBeGreaterThan(compatible);
-    expect(start).toBeGreaterThan(warm);
+    expect(splash).toBeGreaterThan(compatible);
+    expect(start).toBeGreaterThan(splash);
+    expect(warm).toBeGreaterThan(start);
     // XL2: no throwaway XRWebGLLayer before three's own.
     expect(enter).not.toMatch(/new XRWebGLLayer\(/);
     // XL2: the render loop is handed back however entry ends.
-    expect(enter).toMatch(/finally \{[\s\S]*this\.onEntryFinished\(\)/);
+    // …and is told whether VR was entered (XL3: the loading card stays its minimum only then).
+    expect(enter).toMatch(/finally \{[\s\S]*this\.onEntryFinished\(Boolean\(this\.renderer\.xr\.isPresenting\)\)/);
     // And a session the page could not draw into is ended, not left hanging in the headset.
     expect(enter).toContain('await session.end();');
 });

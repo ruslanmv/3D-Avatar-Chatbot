@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (226 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (227 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-10-31 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5190 tests in 226 suites, all passing.**
+— lint clean, format clean, **5202 tests in 227 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -606,6 +606,17 @@ failure. No custom `XRWebGLLayer`: three's own layer already has alpha, and the
 extra one allocated a second full-resolution framebuffer. A new object that only
 appears in VR should exist in the scene (hidden) before the warm-up, as the
 floor grid now does via `_vrGround()`. Tested in `tests/xr-warmup.test.js`.
+
+**XL3: the headset shows the HomePilot loading card while she gets ready.** The
+order in `VRSupport.toggleVR` is request → `_makeXRCompatible` → `beginSplash` →
+`setSession` → `prepareForSession` (the XL2 warm-up) → `onEntryFinished`.
+`src/gltf-viewer/XRSplash.js` (THREE injected, pure placement maths tested in
+`tests/xr-splash.test.js`) draws its own tiny scene — app colour #071821,
+`assets/app-icon-512.png` with the name, a turning ring — lazily following the
+gaze (yaw only, never head-locked) for at least `MIN_MS`; the warm-up runs
+behind it, then the loop is hers and the card is disposed. Its icon is fetched
+on the first ENTER VR, never on page load. three r147 already sets fixed
+foveation to maximum in `setSession` — do not add a second call.
 
 ## Quest passthrough (XP1)
 

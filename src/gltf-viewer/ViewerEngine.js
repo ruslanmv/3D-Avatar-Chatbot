@@ -29,6 +29,8 @@ import { XRModuleRegistry } from './XRModuleRegistry.js';
 import './XRBackground.js';
 // XL2. Same pattern: publishes window.NEXUS_XR_WARMUP (compile + upload without a long task).
 import './XRWarmUp.js';
+// XL3. Same pattern: publishes window.NEXUS_XR_SPLASH (the HomePilot loading card in the headset).
+import './XRSplash.js';
 
 export class ViewerEngine {
     constructor(containerEl) {
@@ -211,9 +213,9 @@ export class ViewerEngine {
         // XL2. VR entry calls these: warm up between the GPU move and the first VR frame, and make
         // sure the render loop is running once entry has finished, however it finished.
         this.vrSupport.prepareForSession = () => this._prepareForXR();
-        this.vrSupport.onEntryFinished = () => {
-            if (!this.renderer.getContext().isContextLost()) this.animate(); // idempotent
-        };
+        // XL3. The HomePilot loading card the headset shows while she gets ready.
+        this.vrSupport.beginSplash = () => this._beginXRSplash();
+        this.vrSupport.onEntryFinished = (entered) => this._finishXREntry(entered);
         this.vrControllers = new VRControllers(this.renderer, this.scene, this.camera);
 
         // AR Support
@@ -1306,7 +1308,9 @@ export class ViewerEngine {
     async _prepareForXR() {
         const warm = window.NEXUS_XR_WARMUP;
         if (!warm || typeof warm.warmUp !== 'function') return;
-        this.renderer.setAnimationLoop(null);
+        // XL3. With the loading card up, the loop is the card's (it draws only its own tiny scene,
+        // so it compiles nothing of hers); without it, hold the loop as XL2 did.
+        if (!this._splash) this.renderer.setAnimationLoop(null);
         // The VR floor grid is otherwise created inside session start, after this warm-up, and its
         // program compiled in the first VR frame. Build it now, hidden, for the duration.
         const grid = this._vrGround();
@@ -1337,6 +1341,70 @@ export class ViewerEngine {
                 grid.visible = true;
             }
         }
+    }
+
+    /**
+     * XL3. Show the HomePilot loading card (src/gltf-viewer/XRSplash.js) from the session's first
+     * frame until she is ready. VRSupport calls this after the GPU is the headset's and before
+     * setSession(), so the first thing the headset shows of the app is the app — not darkness while
+     * the warm-up runs. The render loop becomes the card's until _finishXREntry().
+     */
+    _beginXRSplash() {
+        const S = window.NEXUS_XR_SPLASH;
+        if (!S || typeof S.create !== 'function' || this._splash) return;
+        if (!this._splashIcon) {
+            // Fetched on the first ENTER VR only, never on page load: most visitors never enter VR.
+            const img = new Image();
+            img.decoding = 'async';
+            img.src = 'assets/app-icon-512.png';
+            this._splashIcon = img;
+        }
+        try {
+            this._splash = S.create(THREE, { image: this._splashIcon });
+        } catch (err) {
+            console.warn('[ViewerEngine] VR loading card skipped:', err);
+            this._splash = null;
+            return;
+        }
+        this._splashStarted = performance.now();
+        let last = this._splashStarted;
+        const splash = this._splash;
+        this.renderer.setAnimationLoop(() => {
+            const now = performance.now();
+            const dt = Math.min(0.1, (now - last) / 1000);
+            last = now;
+            this.renderer.render(splash.scene, this.camera);
+            // After render: three has just written this frame's head pose into the XR camera.
+            splash.update(dt, this.renderer.xr.isPresenting ? this.renderer.xr.getCamera() : this.camera);
+        });
+    }
+
+    /**
+     * XL3. VR entry is over, however it went. Entered: keep the card up for at least its minimum
+     * (a fast load should still read as a moment, not a one-frame flash), then hand the loop to
+     * her. Not entered: drop the card at once and bring the desktop view back.
+     */
+    _finishXREntry(entered) {
+        const done = () => {
+            const splash = this._splash;
+            this._splash = null;
+            if (splash) {
+                try {
+                    splash.dispose();
+                } catch (_) {
+                    /* a card that will not dispose is a few KB the GC takes later */
+                }
+            }
+            if (!this.renderer.getContext().isContextLost()) this.animate(); // idempotent
+        };
+        const S = window.NEXUS_XR_SPLASH;
+        if (!this._splash || !entered || !S) {
+            done();
+            return;
+        }
+        const wait = S.endAt(this._splashStarted, performance.now()) - performance.now();
+        if (wait > 0) setTimeout(done, wait);
+        else done();
     }
 
     animate() {

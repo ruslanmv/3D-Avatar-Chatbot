@@ -206,15 +206,13 @@ export class VRSupport {
                 try {
                     await this._makeXRCompatible(gl);
 
-                    // XL2. Build every shader program and upload every texture before the first VR
-                    // frame, in small tasks, so that frame does not do it all in one — on Windows
-                    // over Link that single task ran long enough for Chrome to declare the page
-                    // unresponsive. ViewerEngine provides it; without it entry proceeds as before.
-                    if (typeof this.prepareForSession === 'function') {
+                    // XL3. The HomePilot loading card: the session's first frames show the app, not
+                    // darkness while the warm-up below runs. ViewerEngine provides it.
+                    if (typeof this.beginSplash === 'function') {
                         try {
-                            await this.prepareForSession();
+                            this.beginSplash();
                         } catch (e) {
-                            console.warn('[VR] VR warm-up failed, entering anyway:', e);
+                            console.warn('[VR] loading card failed, entering without it:', e);
                         }
                     }
 
@@ -225,6 +223,18 @@ export class VRSupport {
                     // only ever allocated a second full-resolution headset framebuffer, on the
                     // frame path the hang lived on, and threw it away.
                     await this.renderer.xr.setSession(session);
+
+                    // XL2. Build every shader program and upload every texture in small tasks, so no
+                    // frame of hers does it all in one — on Windows over Link that single task ran
+                    // long enough for Chrome to declare the page unresponsive. XL3: this now runs
+                    // behind the loading card, which draws only its own tiny scene meanwhile.
+                    if (typeof this.prepareForSession === 'function') {
+                        try {
+                            await this.prepareForSession();
+                        } catch (e) {
+                            console.warn('[VR] VR warm-up failed, entering anyway:', e);
+                        }
+                    }
                 } catch (err) {
                     // XL1. A session the page cannot draw into is a headset showing a frozen
                     // loading screen. End it, so the person is back in the browser with a message
@@ -272,7 +282,8 @@ export class VRSupport {
             // holds it for the warm-up). Whatever happened above, make sure it runs again.
             if (typeof this.onEntryFinished === 'function') {
                 try {
-                    this.onEntryFinished();
+                    // XL3. Whether VR was entered decides whether the card stays its minimum.
+                    this.onEntryFinished(Boolean(this.renderer.xr.isPresenting));
                 } catch (e) {
                     console.warn('[VR] could not restart the render loop:', e);
                 }
