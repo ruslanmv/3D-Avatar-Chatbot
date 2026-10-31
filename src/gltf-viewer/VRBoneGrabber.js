@@ -390,6 +390,9 @@ export class VRBoneGrabber {
         }
 
         // Fallback: direct quaternion rotation (single bone)
+        // VP1. These are the pose system's proxy bones: take hold of her skeleton first, which
+        // also carries her visible pose into them, so the rotation starts from what the person sees.
+        this.poseSystem?.claimBones?.();
         this._grabbing = true;
         this._grabbedBoneKey = boneKey;
         this._grabStartQuat.copy(bone.quaternion);

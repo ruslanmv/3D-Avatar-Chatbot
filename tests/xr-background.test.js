@@ -54,9 +54,12 @@ describe('Quest VR — unchanged, black by default', () => {
     });
 });
 
-describe('phone AR — unchanged', () => {
-    test.each(VALUES)('BG %s: exactly the old behaviour', (value) => {
-        expect(XB.sessionStartBackground({ value, isAR: true, isQuest: false })).toEqual(legacy(value));
+describe('phone AR — the old background, but never the VR floor grid (XP2)', () => {
+    test.each(VALUES)('BG %s: the colour it always had, and no grid', (value) => {
+        expect(XB.sessionStartBackground({ value, isAR: true, isQuest: false })).toEqual({
+            color: legacy(value).color,
+            ground: false,
+        });
     });
 
     test('keeps the eye-level boost it had', () => {
@@ -67,4 +70,44 @@ describe('phone AR — unchanged', () => {
 test('no context at all behaves like today (black, grid, boost)', () => {
     expect(XB.sessionStartBackground()).toEqual({ color: 0x000000, ground: true });
     expect(XB.eyeLevelBoost()).toBe(0.15);
+});
+
+describe('XP2 — the AR floor guide on a phone', () => {
+    test('while placing, it lies on the surface under the reticle', () => {
+        expect(XB.arFloorGuide({ surfaceFound: true, placed: false })).toEqual({ visible: true, at: 'reticle' });
+    });
+
+    test('no surface under the aim yet: nothing to show', () => {
+        expect(XB.arFloorGuide({ surfaceFound: false, placed: false })).toEqual({ visible: false, at: null });
+    });
+
+    test('once she is placed it goes away — the industry default', () => {
+        expect(XB.arFloorGuide({ surfaceFound: true, placed: true })).toEqual({ visible: false, at: null });
+    });
+
+    test('"Show floor grid in AR" keeps it on, under her', () => {
+        expect(XB.arFloorGuide({ surfaceFound: false, placed: true, alwaysShow: true })).toEqual({
+            visible: true,
+            at: 'avatar',
+        });
+    });
+
+    test('the setting does not change the placing phase', () => {
+        expect(XB.arFloorGuide({ surfaceFound: true, placed: false, alwaysShow: true })).toEqual({
+            visible: true,
+            at: 'reticle',
+        });
+    });
+
+    test('never on a Quest — nothing places her there, so it would trail the gaze forever', () => {
+        for (const placed of [false, true]) {
+            for (const alwaysShow of [false, true]) {
+                expect(XB.arFloorGuide({ surfaceFound: true, placed, alwaysShow, isQuest: true }).visible).toBe(false);
+            }
+        }
+    });
+
+    test('no context at all shows nothing', () => {
+        expect(XB.arFloorGuide().visible).toBe(false);
+    });
 });

@@ -1054,5 +1054,9 @@
         setFaceTrackingActive,
         setFaceTrackingHead,
         captureRestPose,
+        // VP1. Read by the VR puppet before it takes her skeleton, so it can hand both modes back
+        // exactly as they were (src/gltf-viewer/PuppetSkeleton.js).
+        isPoseMode: () => poseMode,
+        isEditMode: () => editMode,
     };
 })();

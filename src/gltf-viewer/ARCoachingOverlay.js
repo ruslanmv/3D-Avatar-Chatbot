@@ -192,8 +192,18 @@
         transitionTo(IDLE);
     }
 
+    /* AR1. The person placed her (ARSupport.placeAvatarAtReticle succeeded): the coaching is
+       over now, not when the surface-found timers run out — and placing her again bounces her
+       again, which is the confirmation that the tap did something. */
+    function onARAvatarPlaced() {
+        clearTimers();
+        if (state === PLACED) startBounceAnimation();
+        else transitionTo(PLACED);
+    }
+
     /* ── Init: wire up event listeners ── */
     window.addEventListener('ar-session-start', onARSessionStart);
     window.addEventListener('ar-floor-detected', onARFloorDetected);
     window.addEventListener('ar-session-end', onARSessionEnd);
+    window.addEventListener('ar-avatar-placed', onARAvatarPlaced);
 })();

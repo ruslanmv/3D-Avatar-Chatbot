@@ -1,6 +1,6 @@
 {
     "name": "HomePilot Avatar Companion",
-    "short_name": "Companion",
+    "short_name": "HomePilot",
     "description": "Your 3D AI companion — float it in a corner and talk to it, hands-free, on desktop or mobile.",
     "start_url": "/?utm=pwa",
     "scope": "/",
@@ -10,10 +10,30 @@
     "theme_color": "#071821",
     "categories": ["productivity", "entertainment", "utilities"],
     "icons": [
-        { "src": "assets/companion-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-        { "src": "assets/companion-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-        { "src": "assets/companion-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-        { "src": "assets/companion-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+        {
+            "src": "assets/app-icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "assets/app-icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "assets/app-icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "assets/app-icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
     ],
     "shortcuts": [
         {
@@ -21,14 +41,26 @@
             "short_name": "Call",
             "description": "Open the companion and start a hands-free voice conversation",
             "url": "/?mode=call",
-            "icons": [{ "src": "assets/companion-192.png", "sizes": "192x192", "type": "image/png" }]
+            "icons": [
+                {
+                    "src": "assets/app-icon-192.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                }
+            ]
         },
         {
             "name": "Open companion window",
             "short_name": "Companion",
             "description": "Pop the avatar into a floating companion window",
             "url": "/?mode=companion",
-            "icons": [{ "src": "assets/companion-192.png", "sizes": "192x192", "type": "image/png" }]
+            "icons": [
+                {
+                    "src": "assets/app-icon-192.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                }
+            ]
         }
     ]
 }
