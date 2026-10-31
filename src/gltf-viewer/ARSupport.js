@@ -619,10 +619,17 @@ export class ARSupport {
     /**
      * Place avatar at the current reticle position.
      * Call this when user taps in AR mode.
+     *
+     * AR1. Says whether it did: { placed: true, position } or { placed: false, reason } with reason
+     * 'no-avatar' or 'no-surface'. It used to return nothing either way, so a tap before any surface
+     * was found announced "Avatar placed" and opened the microphone with her placed nowhere. A real
+     * placement also dispatches `ar-avatar-placed`, which ends the coaching animation.
      * @param {THREE.Object3D} avatarRoot - The avatar root to reposition
+     * @returns {{placed: boolean, reason?: string, position?: {x: number, y: number, z: number}}}
      */
     placeAvatarAtReticle(avatarRoot) {
-        if (!this.reticle || !this.reticle.visible || !avatarRoot) return;
+        if (!avatarRoot) return { placed: false, reason: 'no-avatar' };
+        if (!this.reticle || !this.reticle.visible) return { placed: false, reason: 'no-surface' };
 
         // Extract position from reticle matrix
         const pos = new THREE.Vector3();
@@ -641,6 +648,13 @@ export class ARSupport {
         }
 
         console.log(`[AR] Avatar placed at (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})`);
+        const position = { x: pos.x, y: pos.y, z: pos.z };
+        try {
+            window.dispatchEvent(new CustomEvent('ar-avatar-placed', { detail: { position } }));
+        } catch (_) {
+            /* the coaching card is decoration; placement has happened either way */
+        }
+        return { placed: true, position };
     }
 
     /** Yaw the avatar toward the XR camera. instant=true snaps (placement);

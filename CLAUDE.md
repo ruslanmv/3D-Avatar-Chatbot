@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (229 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (230 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-10-31 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5252 tests in 229 suites, all passing.**
+— lint clean, format clean, **5266 tests in 230 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -187,9 +187,9 @@ will be rewrapped; files under `docs/` are exempt.
 `D`, `L`, `S`, `MS`, `A` for the ambience work, `P` for the Private experience
 (`PT` its tattoos), `W` for the wardrobe (`WF` its Forge settings, `LT` live
 Try-On, `OD` the outfit dictionary shared with Forge), `V` for VRoid Hub in the
-Avatar Library and `VP` for the VR puppet. Commit subjects match:
-`A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
-up.
+Avatar Library, `VP` for the VR puppet and `AR` for the AR conversation. Commit
+subjects match: `A4: viewport background manager`. So `git log --grep 'A4'` and
+the comment line up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of
@@ -695,6 +695,31 @@ hit test found, only while she is being placed (before TAP TO PLACE), then gone.
 default, wired in `CompanionMode`'s settings map beside `overlay_arfollow`)
 keeps it under her. The rule is `XRBackground.arFloorGuide`, pure and tested; it
 never shows on a Quest, where nothing calls `placeAvatarAtReticle`.
+
+## Talking to her in phone AR (AR1)
+
+AR is another surface for the same conversation, not a mode of its own.
+`initAROverlay` in `src/main.js` is the bridge (TAP TO PLACE, mic, SEND,
+captions, the 💬 transcript); `src/gltf-viewer/ARConversation.js` (IIFE,
+`tests/ar-conversation.test.js`, loaded after `ARCoachingOverlay.js`) holds its
+rules.
+
+- **`ARSupport.placeAvatarAtReticle` answers `{ placed, reason }`** and
+  dispatches `ar-avatar-placed` on success, which ends the coaching card at
+  once. It used to return nothing, so a tap before any surface said "Avatar
+  placed" and opened the mic with her placed nowhere. The mic opens only on a
+  real placement (`afterPlaceTap`); the tap stays the gesture that authorises
+  it.
+- **The pipeline draws every turn once.** `handleUserMessage` renders through
+  `addMessageToHistory`, which mirrors into AR — so SEND must not draw a bubble
+  itself (it did, and every typed message showed twice).
+- **The transcript is the conversation.** Each `ar-session-start` rebuilds it
+  from `_surface().history()` (replies there are already tag-stripped), and
+  mirroring is ignored while AR is closed — so leave/re-enter neither loses nor
+  repeats a turn.
+- Not done yet (the plan's phases 3–5): a public voice-session API instead of
+  `companionMode._startLive()`, a mic state that waits for recognition to really
+  start, `domOverlayState` checks, `beforexrselect` on the controls.
 
 ## The VR puppet moves her skeleton (VP1)
 
