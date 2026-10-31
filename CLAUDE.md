@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-10-31 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5171 tests in 224 suites, all passing.**
+— lint clean, format clean, **5178 tests in 224 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -591,11 +591,22 @@ Quest, an AR session therefore must not be painted, gridded or offset by that
 handler: `src/gltf-viewer/XRBackground.js` (pure, imported by `ViewerEngine` for
 its side effect, tested in `tests/xr-background.test.js`) answers "paint
 nothing, no grid, no eye-level boost" for Quest AR and the old answer for
-everything else. **Quest VR stays black and phone AR stays as it was — both at
-the person's request; do not widen this without asking.** `ar-session-start`
-re-nulls the background on a Quest, and `ARSupport.forceExit()` resets
-`_arSessionSetupDone`, without which the next AR session skipped its setup.
-Docs: `docs/AR.md` ▸ _Quest: ENTER AR lands in passthrough_.
+everything else. **Quest VR stays black and phone AR keeps its background and
+viewpoint — both at the person's request; do not widen this without asking.**
+`ar-session-start` re-nulls the background on a Quest, and
+`ARSupport.forceExit()` resets `_arSessionSetupDone`, without which the next AR
+session skipped its setup. Docs: `docs/AR.md` ▸ _Quest: ENTER AR lands in
+passthrough_.
+
+**XP2: the VR floor grid is never drawn in AR, on any device** — on a phone it
+cut through the room at waist height (it sits at y = 0 of the AR space, which is
+where the phone started, not the floor). Surfaces in phone AR are shown the
+industry way instead: `ARSupport`'s floor guide, a 2 m grid on the surface the
+hit test found, only while she is being placed (before TAP TO PLACE), then gone.
+`Settings ▸ Companion ▸ Show floor grid in AR` (`overlay_arfloorgrid`, off by
+default, wired in `CompanionMode`'s settings map beside `overlay_arfollow`)
+keeps it under her. The rule is `XRBackground.arFloorGuide`, pure and tested; it
+never shows on a Quest, where nothing calls `placeAvatarAtReticle`.
 
 ## VRoid Hub in the Avatar Library
 

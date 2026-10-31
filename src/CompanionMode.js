@@ -3068,6 +3068,8 @@
             ['overlay-floatoverapps', 'floatoverapps', 'off'],
             ['overlay-wakeword', 'wakeword', 'off'],
             ['ar-followme', 'arfollow', 'on'],
+            // XP2. Read by ARSupport.isFloorGridAlwaysOn(); off = the guide only while placing.
+            ['ar-floorgrid', 'arfloorgrid', 'off'],
         ];
         for (const [id, key, def] of map) {
             const el = document.getElementById(id);

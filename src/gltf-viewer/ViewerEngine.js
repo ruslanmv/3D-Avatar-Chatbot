@@ -717,8 +717,10 @@ export class ViewerEngine {
             // others. Phone AR is left exactly as it was.
             if (window.NEXUS_XR_BACKGROUND?.isQuestUA(navigator.userAgent)) {
                 this.scene.background = null;
-                this._hideVRGround();
             }
+            // XP2. The VR floor grid is never right in AR — on a phone it cut through the room at
+            // waist height. ARSupport's floor guide shows detected surfaces while placing instead.
+            this._hideVRGround();
 
             // Update panel state to reflect AR mode
             if (this.vrChatPanel) {
