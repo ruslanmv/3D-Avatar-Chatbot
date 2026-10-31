@@ -255,7 +255,7 @@ describe('wiring', () => {
 
     test('entry records its steps in order, its failure, its end, and prints the report on session end', () => {
         const enter = vr.slice(vr.indexOf('async toggleVR'), vr.indexOf('    async _makeXRCompatible'));
-        const order = ["mark('granted')", "mark('gpu')", "mark('card'", "mark('session'", "mark('warmup')"];
+        const order = ["mark('granted')", "mark('gpu')", "mark('card'", "mark('session'", "mark('warmup'"];
         let last = -1;
         for (const m of order) {
             const at = enter.indexOf(m);
@@ -305,8 +305,8 @@ describe('XL5 — WebXR layers only in a headset’s own browser', () => {
 
     test('toggleVR asks through that rule, and pulses status after the session starts', () => {
         const enter = vrSrc.slice(vrSrc.indexOf('async toggleVR'), vrSrc.indexOf('    async _makeXRCompatible'));
-        expect(enter).toMatch(/if \(\s*VRSupport\.wantsLayers\(/);
-        expect(enter.indexOf("optionalFeatures.push('layers')")).toBeGreaterThan(enter.indexOf('wantsLayers'));
+        expect(enter).toMatch(/const wantLayers = VRSupport\.wantsLayers\(/);
+        expect(enter).toMatch(/if \(wantLayers\) optionalFeatures\.push\('layers'\)/);
         expect(enter.indexOf('trace?.pulse()')).toBeGreaterThan(enter.indexOf("mark('session'"));
     });
 });
@@ -328,5 +328,166 @@ describe('XL5 — a status line while the session runs', () => {
         expect(s.trace.pulse()).toMatch(/not asking this page for frames/);
         s.trace.pulse();
         expect(s.warns.filter((w) => /not asking this page/.test(w))).toHaveLength(1);
+    });
+});
+
+describe('XL6 — the report says what only the machine knows', () => {
+    test('a grant that took 55 s is named as the browser and runtime, not the page', () => {
+        const t = traced();
+        t.trace.begin({});
+        t.c.advance(55166);
+        t.trace.step('granted');
+        t.trace.ended();
+        const r = t.logs.find((l) => l.startsWith('[VR entry] report'));
+        expect(r).toMatch(/⚠ the headset took 55 s to grant the session/);
+        expect(T.slowGrant(t.trace.snapshot())).toMatch(/browser and the XR runtime/);
+    });
+
+    test('a quick grant says nothing about it', () => {
+        const t = traced();
+        enterUpTo(t, 'finished');
+        expect(T.slowGrant(t.trace.snapshot())).toBeNull();
+        expect(t.trace.report()).not.toMatch(/to grant the session/);
+    });
+
+    test('entry records secure context and the GPU before and after the move', () => {
+        const vr = fs.readFileSync(path.resolve(__dirname, '../src/gltf-viewer/VRSupport.js'), 'utf-8');
+        const begin = vr.slice(vr.indexOf('trace?.begin({'), vr.indexOf('});', vr.indexOf('trace?.begin({')));
+        expect(begin).toMatch(/secure:/);
+        expect(begin).toMatch(/gpu: VRSupport\.gpuName\(gl\)/);
+        const card = vr.slice(vr.indexOf("mark('card'"), vr.indexOf('});', vr.indexOf("mark('card'")));
+        expect(card).toMatch(/gpu: VRSupport\.gpuName\(gl\)/);
+    });
+});
+
+describe('XL6 — a Link session that drew nothing, told as it was', () => {
+    const vrSrc = fs
+        .readFileSync(path.resolve(__dirname, '../src/gltf-viewer/VRSupport.js'), 'utf-8')
+        .replace(/^export class VRSupport/m, 'class VRSupport');
+    // eslint-disable-next-line no-new-func
+    const VRSupport = new Function(`${vrSrc}\nreturn VRSupport;`)();
+
+    /** The Chrome 157 / Windows / Link report, step for step. */
+    function linkReport(endedBy) {
+        const t = traced();
+        t.trace.begin({});
+        t.c.advance(55142);
+        t.trace.step('granted');
+        t.trace.step('gpu');
+        t.c.advance(1418);
+        t.trace.step('card');
+        t.c.advance(12);
+        t.trace.step('session');
+        t.trace.step('warmup');
+        t.c.advance(1570);
+        if (endedBy) t.trace.pageEnding(endedBy);
+        else t.trace.note('session visibility → hidden');
+        t.c.advance(5);
+        t.trace.ended();
+        return t;
+    }
+
+    test('zero frames and an early end is a finding, not "no problem detected"', () => {
+        const t = linkReport(null);
+        const r = t.logs.find((l) => l.startsWith('[VR entry] report'));
+        expect(r).not.toMatch(/no problem detected/);
+        expect(r).toMatch(/ended 1\.6 s after it started without the headset asking for a single frame/);
+        expect(r).toMatch(/went hidden first: it was closed from the headset/);
+        expect(r).toMatch(/only started this session 55 s after ENTER VR/);
+    });
+
+    test('a session this page ended says so, with the reason', () => {
+        const t = linkReport('EXIT VR pressed');
+        expect(t.trace.report()).toMatch(/This page ended it \(EXIT VR pressed\)/);
+    });
+
+    test('the page names its own ends: EXIT VR, a failed entry, a forced exit', () => {
+        expect(vrSrc).toMatch(/pageEnding\('EXIT VR pressed'\);\s*await session\.end\(\)/);
+        expect(vrSrc).toMatch(/trace\?\.pageEnding\(`entry failed at \$\{stepNow\}`\)/);
+        expect(vrSrc).toMatch(/forceExit\(\) \{[\s\S]{0,120}pageEnding\('forced exit'\)/);
+    });
+
+    test('three is shown no renderState.layers when layers are not wanted, so it builds an XRWebGLLayer', () => {
+        class RenderState {
+            get layers() {
+                return []; // what Chrome on Windows answers without the 'layers' feature
+            }
+        }
+        const rs = new RenderState();
+        const session = { renderState: rs }; // the same object on every read, as in Chrome
+        expect(VRSupport.hideLayersFromThree(session)).toBe(true);
+        expect(session.renderState.layers).toBeUndefined(); // three r147's test for the classic path
+        expect(VRSupport.hideLayersFromThree({ renderState: {} })).toBe(false); // nothing to hide
+        // A browser that builds a fresh render state per read defeats the shadow — and says so.
+        const fresh = {
+            get renderState() {
+                return new RenderState();
+            },
+        };
+        expect(VRSupport.hideLayersFromThree(fresh)).toBe(false);
+        const enter = vrSrc.slice(vrSrc.indexOf('async toggleVR'), vrSrc.indexOf('    async _makeXRCompatible'));
+        expect(enter.indexOf('!wantLayers && VRSupport.hideLayersFromThree(session)')).toBeLessThan(
+            enter.indexOf('this.renderer.xr.setSession(session)')
+        );
+    });
+
+    test('the session step reports the path three took and the features granted', () => {
+        global.XRWebGLLayer = class {};
+        const base = new global.XRWebGLLayer();
+        const facts = VRSupport.sessionFacts(
+            { visibilityState: 'visible', enabledFeatures: ['viewer', 'local-floor'] },
+            { xr: { getBaseLayer: () => base } }
+        );
+        expect(facts).toEqual({
+            visibility: 'visible',
+            path: 'XRWebGLLayer',
+            granted: ['viewer', 'local-floor'],
+            frameRate: null,
+        });
+        expect(VRSupport.sessionFacts({}, { xr: { getBaseLayer: () => ({}) } }).path).toBe('projection layer');
+        delete global.XRWebGLLayer;
+    });
+});
+
+describe('XL6 — the warm-up is not slowed by a hidden page', () => {
+    const W = require('../src/gltf-viewer/XRWarmUp.js');
+
+    test('while the page is hidden, a yield does not wait on a (throttled) timer', async () => {
+        const vis = Object.getOwnPropertyDescriptor(Document.prototype, 'visibilityState');
+        Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+        // jsdom has no MessageChannel; a browser does. A minimal one that delivers asynchronously.
+        const hadChannel = 'MessageChannel' in window;
+        const realChannel = window.MessageChannel;
+        window.MessageChannel = class {
+            constructor() {
+                const port1 = { onmessage: null };
+                this.port1 = port1;
+                this.port2 = {
+                    postMessage: () => Promise.resolve().then(() => port1.onmessage && port1.onmessage({})),
+                };
+            }
+        };
+        const spy = jest.spyOn(global, 'setTimeout');
+        try {
+            await W.defaultYield(0);
+            await W.defaultYield(5);
+            expect(spy).not.toHaveBeenCalled();
+        } finally {
+            spy.mockRestore();
+            if (hadChannel) window.MessageChannel = realChannel;
+            else delete window.MessageChannel;
+            delete document.visibilityState;
+            if (vis) Object.defineProperty(Document.prototype, 'visibilityState', vis);
+        }
+    });
+
+    test('while the page is visible, it keeps the cheap timer', async () => {
+        const spy = jest.spyOn(global, 'setTimeout');
+        try {
+            await W.defaultYield(0);
+            expect(spy).toHaveBeenCalled();
+        } finally {
+            spy.mockRestore();
+        }
     });
 });

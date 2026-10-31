@@ -65,6 +65,25 @@
         if (snap.failed) return `Entry failed at "${snap.failed.step}": ${snap.failed.message}`;
         if (snap.ended && !at('session'))
             return 'The session ended before it started drawing (refused or closed by the headset).';
+        // XL6. A session that has ended is judged whole, not against "has it been 3 s yet": a Link
+        // session that went hidden and ended 1.6 s in, having drawn nothing, was reported as
+        // "no problem detected".
+        if (snap.ended && snap.frames.card === 0 && snap.frames.scene === 0) {
+            const lived = ((snap.ended.at - at('session')) / 1000).toFixed(1);
+            const who = snap.endedBy
+                ? `This page ended it (${snap.endedBy}).`
+                : 'This page did not end it' +
+                  (snap.wentHidden ? ', and it went hidden first' : '') +
+                  ': it was closed from the headset (someone exiting) or by its XR runtime.';
+            const waited = slowGrant(snap)
+                ? ` The headset only started this session ${Math.round((at('granted') - at('request')) / 1000)} s ` +
+                  'after ENTER VR — if it was exited because nothing seemed to happen, that wait is the problem.'
+                : '';
+            return (
+                `The session ended ${lived} s after it started without the headset asking for a single frame ` +
+                `(loading card 0, her scene 0). ${who}${waited}`
+            );
+        }
         if (at('request') != null && at('granted') == null && since('request') > 15000) {
             return 'Still waiting for the headset to grant the session — is Quest Link / Air Link active and the headset awake?';
         }
@@ -88,6 +107,25 @@
             return `Her scene is running, but ${failing.join(', ')} threw during frames (first: ${first.message}).`;
         }
         return null;
+    }
+
+    /**
+     * XL6. A grant that took this long is the browser and the XR runtime, not the page: nothing of
+     * this app runs between requestSession() and its answer. A Chrome 157 / Windows / Quest Link
+     * log showed 55 166 ms here, matching a report on Meta's tracker ("WebXR Immersive VR Session
+     * Startup Delay on Meta Horizon Link 207"): Chrome's sandboxed XR service retries in ~11 s
+     * cycles before the runtime creates the session. Said in the report so it is not chased in code.
+     */
+    const SLOW_GRANT_MS = 20000;
+    function slowGrant(snap) {
+        const req = snap && snap.steps.request;
+        const got = snap && snap.steps.granted;
+        if (!req || !got || got.at - req.at < SLOW_GRANT_MS) return null;
+        const s = Math.round((got.at - req.at) / 1000);
+        return (
+            `the headset took ${s} s to grant the session. Nothing of this page runs in that time: it is ` +
+            'the browser and the XR runtime (on Chrome + Meta Horizon Link, a known sandbox start-up delay).'
+        );
     }
 
     function create(deps) {
@@ -187,6 +225,8 @@
             }
             if (snap.failed) lines.push(`  ✖ failed at ${snap.failed.step}: ${snap.failed.message}`);
             if (snap.ended) lines.push(`  session ended +${rel(snap.ended.at)} ms`);
+            const slow = slowGrant(snap);
+            if (slow) lines.push(`  ⚠ ${slow}`);
             const why = diagnose(snap, t);
             lines.push(why ? `  → ${why}` : '  → no problem detected');
             return lines.join('\n');
@@ -204,13 +244,22 @@
             error,
             /** Something worth a line in the report (visibility changes, the context moving). */
             note(what) {
-                if (snap) snap.events.push({ at: now(), what: String(what) });
+                if (snap) {
+                    snap.events.push({ at: now(), what: String(what) });
+                    if (/^session visibility → hidden/.test(String(what))) snap.wentHidden = true;
+                }
                 log(`[VR entry] ${what}`);
             },
             finished(entered) {
                 if (!snap) return;
                 snap.entered = !!entered;
                 step('finished', { entered: !!entered });
+            },
+            /** XL6. This page is about to end the session itself — and why — so the report can tell. */
+            pageEnding(reason) {
+                if (!snap || snap.ended) return;
+                snap.endedBy = String(reason || 'this page');
+                snap.events.push({ at: now(), what: `this page ends the session: ${snap.endedBy}` });
             },
             fail(stepId, err) {
                 if (!snap) return;
@@ -261,7 +310,7 @@
         };
     }
 
-    const api = { STEPS, labelOf, shortOf, diagnose, create };
+    const api = { STEPS, labelOf, shortOf, diagnose, slowGrant, SLOW_GRANT_MS, create };
 
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_XR_ENTRY_TRACE = api;

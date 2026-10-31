@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-10-31 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5242 tests in 229 suites, all passing.**
+— lint clean, format clean, **5252 tests in 229 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -655,6 +655,21 @@ button. Rules:
   inside a stuck headset says whether frames are being drawn.
 - `[Violation] … unload is not allowed` from `jquery.js` is a browser
   extension's injected jQuery; this repository ships no jQuery.
+- **XL6: what the first full Link report showed.** Request → granted took **55
+  s** (Chrome's sandboxed XR service and the Meta Horizon Link runtime — a
+  report on Meta's tracker matches it; nothing of the page runs then), the
+  session went hidden and ended 1.6 s later with **0 frames**, and the warm-up
+  took 34 s because a hidden page's timers fire once a second. So: three r147
+  picks its path from `session.renderState.layers === undefined`, which Chrome
+  on Windows defines without the `'layers'` feature — XL5 alone did not keep a
+  PC off the projection-layer path; `VRSupport.hideLayersFromThree` shadows it
+  for three's one read, and the report says whether that held (`layersHidden`).
+  The session step records the path three took (`XRWebGLLayer` / projection
+  layer) and the granted features, not just what was asked. The warm-up yields
+  through a `MessageChannel` while the page is hidden. A session that ended is
+  judged whole — 0 frames is a finding, never "no problem detected" — and the
+  page names its own ends (`pageEnding`), so the report can say whether the
+  headset or the page closed it.
 
 ## Quest passthrough (XP1)
 

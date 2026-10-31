@@ -41,8 +41,46 @@
         texturesPerTask: 2,
     });
 
+    /**
+     * XL6. Hand the thread back for `ms`, in a way a hidden page cannot slow down.
+     *
+     * Chrome throttles timers to one wake-up a second while it considers a page hidden — and a
+     * PC page often is hidden or covered while its person is wearing the headset. A Quest Link
+     * log showed this warm-up take 34 418 ms for work that took 226 ms with the page in view:
+     * about thirty-four yields at a second each. Message events are not throttled, so while the
+     * page is hidden a yield goes through a MessageChannel, and a wait of N ms is a run of such
+     * yields until the clock has moved N ms. While the page is visible a timer is exact and
+     * cheaper, so it stays.
+     */
+    let channel = null;
+    const queued = [];
+    function post(fn) {
+        if (!channel) {
+            channel = new global.MessageChannel();
+            channel.port1.onmessage = () => {
+                const next = queued.shift();
+                if (next) next();
+            };
+        }
+        queued.push(fn);
+        channel.port2.postMessage(0);
+    }
+
+    function pageHidden() {
+        const doc = global && global.document;
+        return !!(doc && doc.visibilityState === 'hidden');
+    }
+
     function defaultYield(ms) {
-        return new Promise((resolve) => setTimeout(resolve, ms || 0));
+        const wait = ms || 0;
+        if (!pageHidden() || !global || typeof global.MessageChannel !== 'function') {
+            return new Promise((resolve) => setTimeout(resolve, wait));
+        }
+        return new Promise((resolve) => {
+            const end = defaultNow() + wait;
+            const step = () => (defaultNow() >= end ? resolve() : post(step));
+            post(step);
+        });
     }
 
     function defaultNow() {
@@ -139,7 +177,12 @@
         return report;
     }
 
-    const api = { DEFAULTS, warmUp, collectTextures };
+    const api = {
+        defaultYield,
+        DEFAULTS,
+        warmUp,
+        collectTextures,
+    };
 
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_XR_WARMUP = api;

@@ -92,6 +92,71 @@ export class VRSupport {
         return /OculusBrowser|Quest|Vive|Pico|Wolvic|SamsungXR/i.test(userAgent || '');
     }
 
+    /**
+     * XL6. The GPU a WebGL context runs on, as the browser names it (on Windows the ANGLE string
+     * carries vendor, model and Direct3D backend). Null if the browser will not say.
+     */
+    static gpuName(gl) {
+        try {
+            if (!gl || (gl.isContextLost && gl.isContextLost())) return null;
+            const ext = gl.getExtension('WEBGL_debug_renderer_info');
+            const name = gl.getParameter(ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER);
+            return name ? String(name).slice(0, 140) : null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /**
+     * XL6. Make three r147 see no `renderState.layers` on this session, so its setSession() takes
+     * the classic XRWebGLLayer path. An own property on the render-state object shadows the
+     * prototype getter; three reads it twice, synchronously, before any frame, and the next
+     * updateRenderState() replaces the object anyway. Returns true if it had anything to hide.
+     */
+    static hideLayersFromThree(session) {
+        try {
+            const rs = session && session.renderState;
+            if (!rs || rs.layers === undefined) return false;
+            Object.defineProperty(rs, 'layers', { value: undefined, configurable: true });
+            // Read back through the session, as three will: if this browser hands out a fresh
+            // render-state object per read, the shadow is lost and this says so in the report.
+            return session.renderState.layers === undefined;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    /**
+     * XL6. What the session really is, for the entry trace: which features the browser granted
+     * (not which were asked for), which path three is drawing through, and the frame rate.
+     */
+    static sessionFacts(session, renderer) {
+        let path = null;
+        try {
+            const base = renderer && renderer.xr && renderer.xr.getBaseLayer ? renderer.xr.getBaseLayer() : null;
+            if (base) {
+                path =
+                    typeof XRWebGLLayer !== 'undefined' && base instanceof XRWebGLLayer
+                        ? 'XRWebGLLayer'
+                        : 'projection layer';
+            }
+        } catch (_) {
+            /* unknown */
+        }
+        let granted = null;
+        try {
+            if (session && session.enabledFeatures) granted = Array.from(session.enabledFeatures);
+        } catch (_) {
+            /* not exposed by this browser */
+        }
+        return {
+            visibility: session ? session.visibilityState : null,
+            path,
+            granted,
+            frameRate: (session && session.frameRate) || null,
+        };
+    }
+
     _isHeadsetBrowser() {
         const ua = navigator.userAgent || '';
         return /OculusBrowser|Quest|Vive|Pico|Wolvic|SamsungXR/i.test(ua);
@@ -175,6 +240,7 @@ export class VRSupport {
                 // Exit VR
                 const session = this.renderer.xr.getSession();
                 if (session) {
+                    this.trace?.pageEnding('EXIT VR pressed');
                     await session.end();
                 } else {
                     // Force state cleanup if session is null but flag is true
@@ -199,17 +265,14 @@ export class VRSupport {
                 const optionalFeatures = ['local-floor', 'bounded-floor', 'hand-tracking'];
 
                 // XL5. 'layers' only in a headset's own browser — see VRSupport.wantsLayers.
-                if (
-                    VRSupport.wantsLayers({
-                        userAgent: navigator.userAgent,
-                        search: typeof location !== 'undefined' ? location.search : '',
-                        hasQuadLayer:
-                            typeof XRWebGLBinding !== 'undefined' &&
-                            typeof XRWebGLBinding.prototype?.createQuadLayer === 'function',
-                    })
-                ) {
-                    optionalFeatures.push('layers');
-                }
+                const wantLayers = VRSupport.wantsLayers({
+                    userAgent: navigator.userAgent,
+                    search: typeof location !== 'undefined' ? location.search : '',
+                    hasQuadLayer:
+                        typeof XRWebGLBinding !== 'undefined' &&
+                        typeof XRWebGLBinding.prototype?.createQuadLayer === 'function',
+                });
+                if (wantLayers) optionalFeatures.push('layers');
 
                 const sessionInit = { optionalFeatures };
 
@@ -221,10 +284,14 @@ export class VRSupport {
                     stepNow = id;
                     trace?.step(id, detail);
                 };
+                // XL6. What a report has to say about the machine, so nobody has to ask for it:
+                // secure context, and which GPU draws her before and after the move to the headset.
                 trace?.begin({
                     features: optionalFeatures,
                     userAgent: (navigator.userAgent || '').slice(0, 120),
                     visibility: document.visibilityState,
+                    secure: typeof isSecureContext === 'boolean' ? isSecureContext : null,
+                    gpu: VRSupport.gpuName(gl),
                 });
 
                 // XL1. The session first, then the GPU — the order WebXR expects.
@@ -252,12 +319,22 @@ export class VRSupport {
                 session.addEventListener('visibilitychange', () => {
                     trace?.note(`session visibility → ${session.visibilityState}`);
                 });
+                // XL6. And the desktop page's own visibility: Chrome throttles a hidden page's
+                // timers to one a second, which is what turned a 226 ms warm-up into 34 s.
+                const onPageVisibility = () => trace?.note(`desktop page visibility → ${document.visibilityState}`);
+                document.addEventListener('visibilitychange', onPageVisibility);
+                session.addEventListener('end', () =>
+                    document.removeEventListener('visibilitychange', onPageVisibility)
+                );
 
                 try {
                     const lossesBefore = this._contextLosses || 0;
                     mark('gpu');
                     await this._makeXRCompatible(gl);
-                    mark('card', { gpuMoved: (this._contextLosses || 0) > lossesBefore });
+                    mark('card', {
+                        gpuMoved: (this._contextLosses || 0) > lossesBefore,
+                        gpu: VRSupport.gpuName(gl),
+                    });
 
                     // XL3. The HomePilot loading card: the session's first frames show the app, not
                     // darkness while the warm-up below runs. ViewerEngine provides it.
@@ -275,12 +352,16 @@ export class VRSupport {
                     // creates every context with alpha: true) or an RGBA8 projection layer — so it
                     // only ever allocated a second full-resolution headset framebuffer, on the
                     // frame path the hang lived on, and threw it away.
+                    // XL6. three r147 picks its rendering path from `session.renderState.layers ===
+                    // undefined`, not from the features granted — and Chrome on Windows exposes
+                    // that attribute (as an empty list) without the 'layers' feature. So XL5 alone
+                    // did not keep a PC off the projection-layer path: a Link log reported layers
+                    // with 'layers' never requested. Where layers are not wanted, hide the
+                    // attribute from three for the one synchronous read setSession() makes, and it
+                    // builds the classic XRWebGLLayer every immersive session supports.
+                    const layersHidden = !wantLayers && VRSupport.hideLayersFromThree(session);
                     await this.renderer.xr.setSession(session);
-                    mark('session', {
-                        visibility: session.visibilityState,
-                        layers: !!(session.renderState && session.renderState.layers),
-                        frameRate: session.frameRate || null,
-                    });
+                    mark('session', { ...VRSupport.sessionFacts(session, this.renderer), layersHidden });
                     // XL5. Say how it is going while the person is still in the headset: a log
                     // copied mid-session used to end at "VR Started" with no word about frames.
                     for (const ms of [3000, 8000, 20000]) {
@@ -294,12 +375,20 @@ export class VRSupport {
                     // long enough for Chrome to declare the page unresponsive. XL3: this now runs
                     // behind the loading card, which draws only its own tiny scene meanwhile.
                     if (typeof this.prepareForSession === 'function') {
-                        mark('warmup');
+                        mark('warmup', { page: document.visibilityState });
                         try {
                             const r = await this.prepareForSession();
                             mark(
                                 'warmed',
-                                r ? { programs: r.programs, textures: r.textures, ms: r.ms, ok: r.ok } : null
+                                r
+                                    ? {
+                                          programs: r.programs,
+                                          textures: r.textures,
+                                          ms: r.ms,
+                                          ok: r.ok,
+                                          page: document.visibilityState,
+                                      }
+                                    : null
                             );
                         } catch (e) {
                             console.warn('[VR] VR warm-up failed, entering anyway:', e);
@@ -308,6 +397,7 @@ export class VRSupport {
                     }
                 } catch (err) {
                     trace?.fail(stepNow, err);
+                    trace?.pageEnding(`entry failed at ${stepNow}`);
                     // XL1. A session the page cannot draw into is a headset showing a frozen
                     // loading screen. End it, so the person is back in the browser with a message
                     // instead of stuck in the dark.
@@ -430,6 +520,7 @@ export class VRSupport {
 
     forceExit() {
         console.log('[VR] Force exiting VR session');
+        this.trace?.pageEnding('forced exit');
         this.isVRActive = false;
         this.isToggling = false;
         if (this.vrButton) this.vrButton.innerHTML = '<span class="xr-btn__icon">&#x1F576;</span> ENTER VR';
