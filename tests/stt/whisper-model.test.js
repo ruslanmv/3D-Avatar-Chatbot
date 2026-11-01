@@ -32,13 +32,37 @@ describe('protocol', () => {
 });
 
 describe('pinned configuration', () => {
-    test('every model is a multilingual onnx-community Whisper at a full commit hash', () => {
-        for (const m of Object.values(C.MODELS)) {
-            expect(m.id).toMatch(/^onnx-community\/whisper-(tiny|base|small)$/); // never a .en model
+    test('every model is pinned; Whisper ones are multilingual (never .en); Moonshine says it is English only', () => {
+        for (const [key, m] of Object.entries(C.MODELS)) {
             expect(m.revision).toMatch(/^[0-9a-f]{40}$/);
             for (const sha of Object.values(m.files)) expect(sha).toMatch(/^[0-9a-f]{64}$/);
+            if (C.familyOf(key) === 'whisper') {
+                expect(m.id).toMatch(/^onnx-community\/whisper-(tiny|base|small)$/);
+                expect(m.languages).toBeUndefined();
+            } else {
+                expect(m.id).toBe('onnx-community/moonshine-tiny-ONNX');
+                expect(m.languages).toEqual(['en']);
+            }
         }
     });
+
+    test('ST17 Auto: Moonshine for English, Whisper Tiny for anything else or unknown', () => {
+        expect(C.pickModel('auto', 'en-US')).toEqual({ model: 'moonshine-tiny', reason: 'auto' });
+        expect(C.pickModel('auto', 'it-IT')).toEqual({ model: 'tiny', reason: 'auto' });
+        expect(C.pickModel('auto', '')).toEqual({ model: 'tiny', reason: 'auto' });
+        expect(C.pickModel(undefined, 'en')).toMatchObject({ model: 'moonshine-tiny' });
+        expect(C.pickModel('base', 'en')).toEqual({ model: 'base', reason: 'chosen' });
+        // An explicit choice is honoured — unless the model cannot hear the language.
+        expect(C.pickModel('moonshine-tiny', 'it')).toEqual({
+            model: 'tiny',
+            reason: 'language-not-supported',
+            wanted: 'moonshine-tiny',
+        });
+        const r = C.resolve({}, 'auto', 'en-GB');
+        expect(r).toMatchObject({ model: 'moonshine-tiny', family: 'moonshine', choice: 'auto' });
+        expect(C.resolve({}, 'tiny', 'en').family).toBe('whisper');
+    });
+
     test('the runtime is an exact version, and Tiny is the default', () => {
         expect(C.DEFAULTS.runtimeUrl).toContain(`@huggingface/transformers@${C.RUNTIME_VERSION}/`);
         expect(C.RUNTIME_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
@@ -281,5 +305,47 @@ describe('ST10 — the worker sends durations, not timestamps', () => {
         expect(src).toMatch(/text: String\(text\)\.trim\(\),\s+ms: Math\.round/);
         expect(src).toMatch(/encoderMs: null/); // not exposed by the runtime: not invented
         expect(src).toMatch(/max_new_tokens: maxNewTokens/);
+    });
+});
+
+describe('ST17 — Moonshine in the worker', () => {
+    const src = fs.readFileSync(path.resolve(__dirname, '../../workers/whisper-worker.js'), 'utf-8');
+    test('no language/task for Moonshine, and a budget that does not floor the seconds', () => {
+        const block = src.slice(
+            src.indexOf("if (msg.family === 'moonshine') {"),
+            src.indexOf('} else {', src.indexOf("if (msg.family === 'moonshine') {"))
+        );
+        expect(block).toMatch(/max_new_tokens: Math\.min\(maxNewTokens, Math\.ceil\(sec \* 8\) \+ 4\)/);
+        expect(block).toMatch(/options = \{ max_new_tokens: [^}]*\};/); // one key: no language, no task
+    });
+    test('the manager tells the worker which family, and re-reads the model for the language', async () => {
+        const seen = [];
+        const workers = [];
+        const m = M.create({
+            config: (lang) => {
+                seen.push(lang);
+                return C.resolve({}, 'auto', lang);
+            },
+            createWorker: () => {
+                const w = fakeWorker();
+                workers.push(w);
+                return w;
+            },
+        });
+        const p = m.transcribe(Float32Array.of(0.1), 16000, { language: 'en' });
+        await flush();
+        const w = workers[0];
+        expect(w.last('load').config.modelId).toBe('onnx-community/moonshine-tiny-ONNX');
+        w.reply({ type: P.FROM_WORKER.READY, id: w.last('load').id, ms: 1 });
+        await flush();
+        expect(w.last('transcribe').family).toBe('moonshine');
+        w.reply({ type: P.FROM_WORKER.DONE, id: w.last('transcribe').id, text: 'hi' });
+        await p;
+        // Italian next: Whisper, a different model — the old worker goes, a new one loads.
+        m.transcribe(Float32Array.of(0.1), 16000, { language: 'it' });
+        await flush();
+        expect(workers).toHaveLength(2);
+        expect(workers[1].last('load').config.modelId).toBe('onnx-community/whisper-tiny');
+        expect(seen).toContain('it');
     });
 });

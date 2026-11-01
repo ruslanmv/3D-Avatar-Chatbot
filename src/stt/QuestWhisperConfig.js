@@ -66,6 +66,26 @@
                     'ec07c3cbb64172c39791e26ee870a65ac22b458c36722bfe2776b3dbf741e0c9',
             }),
         }),
+        // ST17. Moonshine (Useful Sensors, MIT): reads the audio's own length instead of a padded
+        // 30-second window, so a 2-5 s command costs a fraction of Whisper's fixed encoder pass.
+        // The first Quest 3 report measured Whisper Tiny at 8.3 s inference for 4.1 s of speech
+        // (RTF 2.0, one WASM thread); on this repo's test machine Moonshine Tiny transcribed the
+        // same English phrases exactly in 0.24-0.48 s against Whisper Tiny's 2.05-2.29 s. English
+        // only: on Italian it writes nonsense ("Chao, come stayagi"), so it is never used for a
+        // language it does not list — see pickModel.
+        'moonshine-tiny': Object.freeze({
+            id: 'onnx-community/moonshine-tiny-ONNX',
+            revision: 'a6da1241cd305dcd64eab1edbd615f2bb9aabb95',
+            downloadMB: 28,
+            family: 'moonshine',
+            languages: Object.freeze(['en']),
+            label: 'Moonshine Tiny — English only, fastest (~28 MB)',
+            files: Object.freeze({
+                'onnx/encoder_model_quantized.onnx': 'c6fc4b7bc5af75c0591fd157a1f3829b533d18e9769a888fd95a62e470dd4f4a',
+                'onnx/decoder_model_merged_quantized.onnx':
+                    'eed87831c3a6103534aae7d47a5d485025c659a1323901513961c39fe8a1a367',
+            }),
+        }),
     });
 
     // The config files the pipeline also reads (small, JSON). Listed so the asset tool can host them.
@@ -96,16 +116,57 @@
         return MODELS[size] || MODELS[DEFAULTS.model];
     }
 
+    /** The model's family: 'whisper' (multilingual, 30 s window) unless it says otherwise. */
+    function familyOf(size) {
+        return (MODELS[size] && MODELS[size].family) || 'whisper';
+    }
+
+    /** Can this model hear this language? Whisper: every language; Moonshine: the ones it lists. */
+    function speaks(size, language) {
+        const m = MODELS[size];
+        if (!m) return false;
+        if (!m.languages) return true;
+        const lang = String(language || '')
+            .toLowerCase()
+            .split(/[-_]/)[0];
+        return m.languages.includes(lang);
+    }
+
+    /**
+     * ST17. Which model to run for a choice and a language. 'auto' (the default for a new
+     * install): Moonshine Tiny for English, Whisper Tiny for every other language — or when the
+     * language is not known, since Whisper hears them all. An explicit choice is honoured unless
+     * that model cannot hear the language (Moonshine with Italian): then Whisper Tiny, and the
+     * reason is returned so Settings can say so. Pure.
+     */
+    function pickModel(choice, language) {
+        const lang = String(language || '')
+            .toLowerCase()
+            .split(/[-_]/)[0];
+        if (MODELS[choice]) {
+            if (speaks(choice, lang)) return { model: choice, reason: 'chosen' };
+            return { model: 'tiny', reason: 'language-not-supported', wanted: choice };
+        }
+        if (lang && speaks('moonshine-tiny', lang)) return { model: 'moonshine-tiny', reason: 'auto' };
+        return { model: 'tiny', reason: 'auto' };
+    }
+
     /**
      * The configuration in force: defaults, then the page's NEXUS_STT_CONFIG, then the model
      * size the person chose. Unknown keys are dropped; a bad model size falls back to Tiny.
      */
-    function resolve(siteConfig, chosenSize) {
+    function resolve(siteConfig, chosenSize, language) {
         const site = siteConfig && typeof siteConfig === 'object' ? siteConfig : {};
         const out = {};
         for (const k of Object.keys(DEFAULTS)) out[k] = site[k] !== undefined ? site[k] : DEFAULTS[k];
-        const size = MODELS[chosenSize] ? chosenSize : MODELS[site.model] ? site.model : DEFAULTS.model;
+        const choice =
+            MODELS[chosenSize] || chosenSize === 'auto' ? chosenSize : MODELS[site.model] ? site.model : 'auto';
+        const pick = pickModel(choice, language);
+        const size = pick.model;
         const m = modelFor(size);
+        out.choice = choice;
+        out.pickReason = pick.reason;
+        out.family = familyOf(size);
         out.model = size;
         out.modelId = m.id;
         out.revision = m.revision;
@@ -113,7 +174,7 @@
         return out;
     }
 
-    const api = { RUNTIME_VERSION, MODELS, MODEL_JSON, DEFAULTS, modelFor, resolve };
+    const api = { RUNTIME_VERSION, MODELS, MODEL_JSON, DEFAULTS, modelFor, familyOf, speaks, pickModel, resolve };
 
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_WHISPER_CONFIG = api;

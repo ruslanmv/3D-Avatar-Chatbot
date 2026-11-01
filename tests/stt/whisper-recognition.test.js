@@ -356,6 +356,28 @@ describe('Settings copy and diagnostics', () => {
         expect(SS.advice({ provider: 'wasm', size: 'tiny', lang: 'it-IT' })).toEqual([SS.COPY.italian]);
         expect(SS.advice({ provider: 'wasm', size: 'base', lang: 'it-IT' })).toEqual([]);
     });
+    test('ST17 hints: Auto is faster for English on Whisper; Moonshine is English only', () => {
+        expect(SS.advice({ provider: 'wasm', size: 'tiny', lang: 'en-US' })).toEqual([SS.COPY.fasterEnglish]);
+        expect(SS.advice({ provider: 'wasm', size: 'auto', lang: 'en-US' })).toEqual([]);
+        expect(SS.advice({ provider: 'wasm', size: 'moonshine-tiny', lang: 'it-IT' })).toEqual([
+            SS.COPY.moonshineEnglishOnly,
+        ]);
+        expect(SS.advice({ provider: 'webspeech', size: 'tiny', lang: 'en-US' })).toEqual([]);
+    });
+    test('ST17 the model select gains Auto (selected for a new install) and Moonshine', () => {
+        document.body.innerHTML = '<select id="wasm-model-size"><option value="tiny" selected>Tiny</option></select>';
+        window.NEXUS_WHISPER_CONFIG = require('../../src/stt/QuestWhisperConfig.js');
+        window.NEXUS_STT = { readSttConfig: () => ({}) };
+        SS.addModelChoices(document);
+        const sel = document.getElementById('wasm-model-size');
+        expect(Array.from(sel.options).map((o) => o.value)).toEqual(['auto', 'tiny', 'moonshine-tiny']);
+        expect(sel.value).toBe('auto');
+        window.NEXUS_STT = { readSttConfig: () => ({ wasm: { modelSize: 'tiny' } }) };
+        SS.addModelChoices(document); // idempotent, and a saved choice wins
+        expect(sel.options).toHaveLength(3);
+        expect(sel.value).toBe('tiny');
+        delete window.NEXUS_STT;
+    });
     test('the meter is the real input level: silence 0, quiet room low, speech high', () => {
         expect(SS.levelOf(new Float32Array(1024))).toBe(0);
         const room = Float32Array.from({ length: 1024 }, (_, i) => 0.001 * Math.sin(i));

@@ -1215,7 +1215,9 @@ class SpeechService {
             interimResults: true,
             microphoneDeviceId: '', // Empty = use browser default microphone
             wasm: {
-                modelSize: 'tiny', // 'tiny' | 'base' | 'small' — see src/stt/QuestWhisperConfig.js
+                // 'auto' (ST17: Moonshine for English, Whisper Tiny otherwise) | 'tiny' | 'base' |
+                // 'small' | 'moonshine-tiny' — see src/stt/QuestWhisperConfig.js
+                modelSize: 'auto',
             },
             openai: {
                 apiKey: '', // Empty = use main API key

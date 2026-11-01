@@ -110,6 +110,26 @@
                 padding: 10px 16px;
                 min-height: 44px;
             }
+            /* ST18. In Quest Browser a held controller trigger on a button starts a text selection, and
+               the ray drifting off the button counted as "let go". Controls never select text, and
+               the talk button is a tap toggle with a large target. */
+            button,
+            label,
+            .row {
+                -webkit-user-select: none;
+                user-select: none;
+                -webkit-touch-callout: none;
+            }
+            button.talk {
+                min-height: 56px;
+                min-width: 200px;
+                touch-action: manipulation;
+            }
+            button.talk[aria-pressed='true'] {
+                background: #f87171;
+                border-color: #f87171;
+                color: #2a0606;
+            }
             button.primary {
                 background: var(--accent);
                 color: #04202a;
@@ -203,9 +223,9 @@
                             <option value="it">Italiano</option>
                         </select>
                     </label>
-                    <button id="talk" class="primary">Hold to talk</button>
+                    <button id="talk" class="primary talk" aria-pressed="false">🎤 Start recording</button>
                 </div>
-                <p class="muted">Hold the button (or press Space) while you speak; let go to transcribe.</p>
+                <p class="muted">Tap once to start, speak, then tap again to transcribe (Space works the same way).</p>
                 <div id="transcript" class="out"></div>
                 <div id="timing" class="muted"></div>
             </section>
@@ -332,13 +352,17 @@
 
                 // Model size: the app's own setting (stt_config.wasm.modelSize), Tiny by default.
                 const cfg = STT.readSttConfig();
+                const autoOpt = document.createElement('option');
+                autoOpt.value = 'auto';
+                autoOpt.textContent = 'Auto — Moonshine for English, Whisper for other languages';
+                $('size').appendChild(autoOpt);
                 for (const [key, m] of Object.entries(C.MODELS)) {
                     const o = document.createElement('option');
                     o.value = key;
                     o.textContent = m.label;
                     $('size').appendChild(o);
                 }
-                $('size').value = (cfg.wasm && cfg.wasm.modelSize) || 'tiny';
+                $('size').value = (cfg.wasm && cfg.wasm.modelSize) || 'auto';
                 $('size').addEventListener('change', () => {
                     const c = STT.readSttConfig();
                     c.wasm = Object.assign({}, c.wasm, { modelSize: $('size').value });
@@ -446,9 +470,20 @@
 
                 // 4 · talk
                 let holding = null;
+                function talkButton(recording, busy) {
+                    const b = $('talk');
+                    b.setAttribute('aria-pressed', recording ? 'true' : 'false');
+                    b.disabled = !!busy;
+                    b.textContent = busy
+                        ? '⏳ Transcribing…'
+                        : recording
+                          ? '■ Stop & transcribe'
+                          : '🎤 Start recording';
+                }
                 async function down() {
                     if (holding) return;
-                    $('transcript').textContent = 'Listening…';
+                    talkButton(true, false);
+                    $('transcript').textContent = 'Listening… tap again when you are done';
                     $('transcript').className = 'out';
                     $('timing').textContent = '';
                     const trace = PERF.createTrace({ surface: 'stt-check' });
@@ -464,8 +499,10 @@
                     take.trace.mark('recording_stopped');
                     take.stop();
                     $('level').style.width = '0';
+                    talkButton(false, true);
                     const r = await take.done;
                     if (r.error) {
+                        talkButton(false, false);
                         $('transcript').textContent = '✖ ' + r.error.message;
                         return;
                     }
@@ -503,20 +540,24 @@
                         log('transcription failed:', err.message);
                         lastResult = take.trace.end({ error: err.code || 'error' });
                     }
+                    talkButton(false, false);
                     renderPerf();
                 }
+                // ST18. Tap to start, tap again to stop and transcribe — a click, never a hold. A held
+                // Quest controller trigger selected the page's text and its ray slipping off the
+                // button ended the recording; a click survives both.
                 const talk = $('talk');
-                talk.addEventListener('pointerdown', down);
-                talk.addEventListener('pointerup', up);
-                talk.addEventListener('pointerleave', up);
+                function toggleTalk() {
+                    if ($('talk').disabled) return;
+                    if (holding) up();
+                    else down();
+                }
+                talk.addEventListener('click', toggleTalk);
                 document.addEventListener('keydown', (e) => {
                     if (e.code === 'Space' && !e.repeat && e.target === document.body) {
                         e.preventDefault();
-                        down();
+                        toggleTalk();
                     }
-                });
-                document.addEventListener('keyup', (e) => {
-                    if (e.code === 'Space' && e.target === document.body) up();
                 });
                 showModel();
 

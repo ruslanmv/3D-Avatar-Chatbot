@@ -100,11 +100,16 @@
         return (global && global.NEXUS_STT_CONFIG) || {};
     }
 
-    function resolvedConfig() {
+    /**
+     * The model configuration for a language. ST17: the model depends on it — "Auto" runs
+     * Moonshine for English and Whisper for everything else — so a transcription passes its own
+     * language; a preload passes none and uses STT LANGUAGE (else the app's language).
+     */
+    function resolvedConfig(language) {
         const C = lib('NEXUS_WHISPER_CONFIG');
         const cfg = readSttConfig();
         const size = (cfg.wasm && cfg.wasm.modelSize) || null;
-        return C ? C.resolve(siteConfig(), size) : {};
+        return C ? C.resolve(siteConfig(), size, language || cfg.language || appLanguage()) : {};
     }
 
     function model() {
@@ -229,11 +234,14 @@
 
     /** The facts every trace carries: provider, model, language, runtime, where the page is. */
     function traceFacts(language) {
-        const cfg = resolvedConfig();
+        const cfg = resolvedConfig(language);
         const P = perf();
         return {
             provider: 'local-whisper',
             model: cfg.model || null,
+            family: cfg.family || null,
+            modelChoice: cfg.choice || null,
+            modelPickReason: cfg.pickReason || null,
             modelId: cfg.modelId || null,
             revision: cfg.revision || null,
             dtype: cfg.dtype || null,

@@ -128,6 +128,58 @@ same filter (within 6e-8 at 48 kHz, 4e-5 at 44.1 kHz; a test compares it to the
 old one), 26 ms instead of 195 ms at 48 kHz. Stop → text in the benchmark went
 from ~350 ms above inference to ~50 ms above it.
 
+## The first Meta Quest 3 report (2026-11-01, physical headset)
+
+Quest Browser 144 (Chromium 144), `hardware_concurrency` 3, 8 GB, WebGPU
+available (not used), not cross-origin isolated (one WASM thread). Settings
+test, Whisper Tiny, warm, 2D browser, 4.1 s of English:
+
+| Stage                       | Measured  |
+| --------------------------- | --------- |
+| **Stop → transcript**       | 8 538 ms (very slow; target 3 000) |
+| **Whisper inference**       | 8 348 ms — 98 % of it, **RTF 2.02** |
+| Resampling (worker)         | 97 ms     |
+| Queue / messaging           | 1 / 18 ms |
+| Analysis + preprocessing    | 32 ms     |
+| Mic acquisition             | 609 ms (before recording, not in latency) |
+| Frames during transcription | 295, avg 28.7 ms, p95 55.6 ms, 33 gaps > 50 ms |
+| Tokens                      | 6         |
+
+Reading: everything except inference is negligible; inference is ~4× this
+repo's desktop CPU (2.0–2.2 s) and twice real time. With six tokens the decoder
+is not the cost — Whisper's fixed 30-second encoder pass on one WASM thread is.
+The page itself kept rendering at ~35 fps with 33 long gaps: the avatar and the
+worker share three cores.
+
+**What changed because of it (ST17): Moonshine for English.** Moonshine Tiny
+(Useful Sensors, MIT, ~28 MB) encodes the audio's own length. On this repo's
+test machine it transcribed both English phrases exactly in **0.24–0.48 s**
+against Whisper Tiny's 2.05–2.29 s (≈6×), and the whole Settings test went from
+2.5–3.0 s to **0.66 s** stop → text. It cannot do Italian (it wrote "Chao, come
+stayagi…"), so:
+
+- WASM MODEL SIZE gains **Auto — fastest for your language** (the default for
+  a new install) and **Moonshine Tiny — English only**. Auto runs Moonshine for
+  English and Whisper Tiny for every other language, per utterance's language.
+  An explicit Whisper choice is kept as it is (Settings suggests Auto for
+  English); Moonshine chosen for another language falls back to Whisper Tiny.
+- The runtime's Moonshine budget is `6 × floor(seconds)` tokens — 1.97 s of
+  speech got 6 and lost "Rome today?". The worker passes
+  `min(cap, ceil(seconds × 8) + 4)` instead.
+
+Expected on the Quest, by the same ratio, roughly 1.5 s for that phrase — an
+estimate, not a measurement. **Run the Settings test again with Auto** and send
+the report; that number replaces this estimate.
+
+Also fixed from the report: the IP scrubber turned the Quest Browser version
+into `OculusBrowser/[redacted-ip].31…`; an address must now stand alone.
+
+**ST18 — the stt-check talk button is a tap toggle.** In the headset, holding
+the controller trigger on "Hold to talk" selected the page's text and the ray
+slipping off the button ended the recording. It is now **🎤 Start recording →
+■ Stop & transcribe** (tap, speak, tap), no control selects text, and Space
+toggles the same way. The Settings microphone test was already tap-to-toggle.
+
 ## Recommendations, ranked (expected benefit × risk) — to be confirmed on a Quest
 
 1. **Collect the Quest numbers first** (procedure below). If inference dominates
