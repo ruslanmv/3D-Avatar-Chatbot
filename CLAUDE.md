@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-01 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5562 tests in 248 suites, all passing.**
+— lint clean, format clean, **5565 tests in 248 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -639,6 +639,11 @@ the OllaBridge Cloud this app pairs with for chat. **Off by default; additive.**
   `#sonic-stt-consent`, the same `consent` as ADVANCED VOICE ▸ I agree, shown
   only while STT PROVIDER is SonicAgent and OllaBridge is paired. Only the
   person's tick grants it; choosing SonicAgent never does.
+- **In VR, SonicAgent speaks the VR panel too (HV-FIX 9)**: `routesVR()` is true
+  for an active `sonicagent-stream` engine with the Quest switch off, and
+  `QuestVoice.effectiveEngine` never moves a stored SonicAgent to Piper. A
+  remote failure in VR is not silently replaced (same rule as desktop). Quick
+  start with pictures: `docs/SONICAGENT_QUICKSTART.md`.
 - **The Settings mic test with SonicAgent runs `RemoteSonicAgentRecognition`**
   (one capture; the meter reads its `onlevel`), never the browser recognizer.
 

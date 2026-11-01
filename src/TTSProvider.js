@@ -366,8 +366,13 @@
      * path, exactly as it always has.
      */
     function routesVR() {
+        if (!isActive()) return false;
+        // HV-FIX 9. A person who chose SonicAgent hears it in the headset too. The VR panel
+        // spoke with the Quest's system voice unless the Meta Quest switch was on, so a Quest 3
+        // user who had picked Kristin in Settings heard her only outside VR.
+        if (_activeEngine === 'sonicagent-stream') return true;
         const q = _quest();
-        return !!q && q.applies(_questCtx()) && isActive();
+        return !!q && q.applies(_questCtx());
     }
 
     /**

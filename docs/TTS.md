@@ -136,6 +136,7 @@ Off is exactly the behaviour before it existed. On:
 | --- | --- |
 | Piper speaks every reply | `TTSProvider` puts Piper in front **in memory only**. `tts_engine` is never written, so turning the switch off hands back the engine the person chose. TTS ENGINE shows Piper and is locked while the switch decides it. |
 | …the VR panel included | The headset panel speaks through `js/speech-service.js`, which only knew Web Speech. With the switch on it hands the reply to the active engine (`TTSProvider.routesVR()`). Off, its old path runs untouched. |
+| SonicAgent chosen | Left alone (HV-FIX 9): SonicAgent is already a natural voice and the person chose it. It speaks the VR panel too, switch on or off. |
 | Japanese / Korean | Piper has no voice for them, so the system voice speaks those languages. |
 | Piper can't load | CDN or Hugging Face blocked: the reply is spoken by the system voice instead, and Settings says why. Turning a voice on is never how she goes silent. |
 | First reply isn't a 60 MB wait | The voice model is fetched and its ONNX session built once the page is idle (`PiperWasmTTSProvider.warmUp()`, via the library's own `TtsSession.create`). A reply that arrives mid-preload joins it rather than downloading twice. |

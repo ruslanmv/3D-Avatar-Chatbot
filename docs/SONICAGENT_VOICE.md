@@ -1,5 +1,7 @@
 # SonicAgent voice through OllaBridge Cloud (HV1–HV8)
 
+> New here? Start with the short [quick start](SONICAGENT_QUICKSTART.md) (phone, PC, Meta Quest 3).
+
 Optional, low-latency speech for the Avatar:
 
 - **Speech-to-text:** SonicAgent's faster-whisper.
