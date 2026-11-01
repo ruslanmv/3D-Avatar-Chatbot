@@ -4680,6 +4680,24 @@ function micRecognizerClass() {
     return window.SpeechRecognition || window.webkitSpeechRecognition || null;
 }
 
+/**
+ * ST15. On-device Whisper reports when stop → transcript passes the warning threshold. Say so
+ * where the mic button's state is shown; the transcription keeps running (never cancelled).
+ */
+let sttSlowListener = false;
+function listenForSlowStt() {
+    if (sttSlowListener) return;
+    sttSlowListener = true;
+    window.addEventListener('nexus-stt', (e) => {
+        const d = e.detail || {};
+        if (d.type !== 'slow' || !recognition || !recognition.isLocalWhisper) return;
+        setStatus('thinking', 'STILL TRANSCRIBING...');
+        if ($('recognition-status')) {
+            $('recognition-status').textContent = 'Speech recognition is taking longer than expected…';
+        }
+    });
+}
+
 /** ST4. Once per page: tell a Quest user whose browser recognizer heard nothing where the switch is. */
 let questSttHintShown = false;
 function maybeQuestSttHint() {
@@ -4709,6 +4727,8 @@ function initSpeechRecognition() {
     }
 
     recognition = new SR();
+    // ST15. Labels this surface's timings in Settings ▸ performance (ignored by the browser's own).
+    recognition.perfSurface = 'mic-button';
 
     // ✅ Apply persisted language
     recognition.lang = SpeechSettings.lang;
@@ -4895,6 +4915,7 @@ function toggleVoiceInput() {
 }
 
 function startVoiceInput() {
+    listenForSlowStt();
     // ST4. The provider may have changed in Settings since the recognizer was made.
     const SR = micRecognizerClass();
     if (SR && !(recognition instanceof SR)) initSpeechRecognition();

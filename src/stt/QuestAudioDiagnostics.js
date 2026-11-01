@@ -125,7 +125,219 @@
         return audioMs > 0 ? Math.round((inferenceMs / audioMs) * 100) / 100 : null;
     }
 
-    const api = { collect, checklist, judgeRecording, realTimeFactor };
+    // ---- ST12. The environment, for a report someone can act on ----------------------------
+    //
+    // Only what a page is told. A website cannot read the Horizon OS version, the exact headset
+    // model, the CPU clock or the thermal state; those are 'not_exposed', and a tester may type
+    // them in — kept apart and marked 'user-entered', never presented as detected.
+
+    const NOT_EXPOSED = 'not_exposed';
+    const UNSUPPORTED = 'unsupported';
+    const MANUAL_KEY = 'nexus_stt_manual_env';
+    const MANUAL_FIELDS = Object.freeze({
+        headset_model: ['Quest 3', 'Quest 3S', 'Quest 2', 'Quest Pro', 'Other'],
+        horizon_os_version: null,
+        quest_browser_version: null,
+        test_environment: ['Browser 2D', 'Immersive VR', 'Mixed reality', 'Air Link'],
+    });
+
+    /** Browser and family from a user-agent string. Pure. Versions only when the string has them. */
+    function parseBrowser(ua) {
+        const u = String(ua || '');
+        const pick = (re) => {
+            const m = re.exec(u);
+            return m ? m[1] : null;
+        };
+        const quest = /OculusBrowser|Quest/i.test(u);
+        let name = 'unknown';
+        let version = null;
+        if (/OculusBrowser\//.test(u)) {
+            name = 'Quest Browser';
+            version = pick(/OculusBrowser\/([\d.]+)/);
+        } else if (/EdgA?\//.test(u)) {
+            name = 'Edge';
+            version = pick(/EdgA?\/([\d.]+)/);
+        } else if (/SamsungBrowser\//.test(u)) {
+            name = 'Samsung Internet';
+            version = pick(/SamsungBrowser\/([\d.]+)/);
+        } else if (/Firefox\//.test(u)) {
+            name = 'Firefox';
+            version = pick(/Firefox\/([\d.]+)/);
+        } else if (/Chrome\//.test(u)) {
+            name = 'Chrome';
+            version = pick(/Chrome\/([\d.]+)/);
+        } else if (/Safari\//.test(u) && /Version\//.test(u)) {
+            name = 'Safari';
+            version = pick(/Version\/([\d.]+)/);
+        }
+        const engine = /Chrome\//.test(u)
+            ? 'Blink'
+            : /Gecko\//.test(u) && /Firefox/.test(u)
+              ? 'Gecko'
+              : /AppleWebKit/.test(u)
+                ? 'WebKit'
+                : 'unknown';
+        const family = quest
+            ? 'Meta Quest'
+            : /Android/.test(u)
+              ? 'Android'
+              : /iPhone|iPad|iPod/.test(u)
+                ? 'iOS'
+                : /Windows/.test(u)
+                  ? 'Windows'
+                  : /Mac OS X/.test(u)
+                    ? 'macOS'
+                    : /Linux/.test(u)
+                      ? 'Linux'
+                      : 'unknown';
+        return {
+            name,
+            version: version || NOT_EXPOSED,
+            engine,
+            chromiumVersion: pick(/Chrome\/([\d.]+)/) || NOT_EXPOSED,
+            deviceFamily: family,
+            questBrowser: name === 'Quest Browser',
+        };
+    }
+
+    /** WebAssembly SIMD, by validating a 30-byte module that uses one SIMD instruction. */
+    function wasmSimd(g) {
+        try {
+            const W = g.WebAssembly;
+            if (!W || typeof W.validate !== 'function') return UNSUPPORTED;
+            return W.validate(
+                new Uint8Array([
+                    0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 123, 3, 2, 1, 0, 10, 10, 1, 8, 0, 65, 0, 253, 15,
+                    253, 98, 11,
+                ])
+            );
+        } catch (_) {
+            return UNSUPPORTED;
+        }
+    }
+
+    function manualEnv(g) {
+        try {
+            const raw = JSON.parse(((g || global).localStorage || {}).getItem(MANUAL_KEY) || '{}') || {};
+            const out = {};
+            for (const k of Object.keys(MANUAL_FIELDS)) if (raw[k]) out[k] = String(raw[k]).slice(0, 60);
+            return out;
+        } catch (_) {
+            return {};
+        }
+    }
+
+    function setManualEnv(patch, g) {
+        const next = Object.assign(manualEnv(g), patch || {});
+        for (const k of Object.keys(next)) if (!(k in MANUAL_FIELDS) || !next[k]) delete next[k];
+        try {
+            (g || global).localStorage.setItem(MANUAL_KEY, JSON.stringify(next));
+        } catch (_) {}
+        return manualEnv(g);
+    }
+
+    /**
+     * The environment snapshot. Async because storage estimates and client hints are. Every
+     * field is a measured value, `not_exposed` (the browser does not tell pages) or `unsupported`
+     * (the API is missing). `opts.sttLanguage` and `opts.xrMode` come from the app.
+     */
+    async function environment(env, opts) {
+        const g = env || global || {};
+        const o = opts || {};
+        const nav = g.navigator || {};
+        const b = parseBrowser(nav.userAgent);
+        const caps = collect(g);
+        const manual = manualEnv(g);
+        let hints = NOT_EXPOSED;
+        try {
+            if (nav.userAgentData) {
+                const base = {
+                    brands: (nav.userAgentData.brands || []).map((x) => `${x.brand} ${x.version}`),
+                    mobile: !!nav.userAgentData.mobile,
+                    platform: nav.userAgentData.platform || null,
+                };
+                if (typeof nav.userAgentData.getHighEntropyValues === 'function') {
+                    const h = await nav.userAgentData.getHighEntropyValues(['platformVersion', 'model']);
+                    base.platformVersion = h.platformVersion || NOT_EXPOSED;
+                    base.model = h.model || NOT_EXPOSED; // as the browser reports it — not verified hardware
+                }
+                hints = base;
+            }
+        } catch (_) {}
+        let storage = UNSUPPORTED;
+        try {
+            if (nav.storage && typeof nav.storage.estimate === 'function') {
+                const e = await nav.storage.estimate();
+                storage = {
+                    quotaMB: e.quota != null ? Math.round(e.quota / 1e6) : NOT_EXPOSED,
+                    usageMB: e.usage != null ? Math.round(e.usage / 1e6) : NOT_EXPOSED,
+                    persisted:
+                        typeof nav.storage.persisted === 'function' ? await nav.storage.persisted() : NOT_EXPOSED,
+                };
+            }
+        } catch (_) {}
+        let heap = NOT_EXPOSED;
+        try {
+            const m = g.performance && g.performance.memory;
+            if (m && m.usedJSHeapSize)
+                heap = { usedMB: Math.round(m.usedJSHeapSize / 1e6), limitMB: Math.round(m.jsHeapSizeLimit / 1e6) };
+        } catch (_) {}
+        const scr = g.screen || {};
+        return {
+            device_family: b.deviceFamily,
+            browser_name: b.name,
+            browser_version: b.version,
+            browser_engine: b.engine,
+            chromium_version: b.chromiumVersion,
+            user_agent: String(nav.userAgent || ''),
+            client_hints: hints,
+            platform: nav.platform || NOT_EXPOSED,
+            browser_language: nav.language || NOT_EXPOSED,
+            stt_language: o.sttLanguage || NOT_EXPOSED,
+            screen: scr.width ? `${scr.width}x${scr.height}` : NOT_EXPOSED,
+            viewport: g.innerWidth ? `${g.innerWidth}x${g.innerHeight}` : NOT_EXPOSED,
+            device_pixel_ratio: g.devicePixelRatio || NOT_EXPOSED,
+            max_touch_points: nav.maxTouchPoints != null ? nav.maxTouchPoints : NOT_EXPOSED,
+            hardware_concurrency: nav.hardwareConcurrency || NOT_EXPOSED,
+            device_memory_gb: nav.deviceMemory || NOT_EXPOSED,
+            horizon_os_version: NOT_EXPOSED,
+            headset_model: NOT_EXPOSED,
+            secure_context: caps.secureContext,
+            cross_origin_isolated: caps.crossOriginIsolated,
+            webassembly: caps.webAssembly,
+            wasm_simd: wasmSimd(g),
+            shared_array_buffer: typeof g.SharedArrayBuffer === 'function',
+            // ONNX Runtime threads need SharedArrayBuffer, which browsers only give an isolated page.
+            wasm_threads_available: !!(caps.crossOriginIsolated && typeof g.SharedArrayBuffer === 'function'),
+            web_workers: caps.workers,
+            audio_worklet: caps.audioWorklet,
+            web_audio: caps.audioContext,
+            media_recorder: caps.mediaRecorder,
+            get_user_media: caps.getUserMedia,
+            webgpu_available: caps.webgpu,
+            webgpu_in_use: false, // the worker runs ONNX Runtime on WASM; WebGPU is not used
+            webxr: caps.webxr,
+            xr_mode: o.xrMode || 'browser-2d',
+            storage,
+            js_heap: heap,
+            manual: Object.keys(manual).length ? Object.assign({ source: 'user-entered' }, manual) : null,
+        };
+    }
+
+    const api = {
+        collect,
+        checklist,
+        judgeRecording,
+        realTimeFactor,
+        parseBrowser,
+        wasmSimd,
+        environment,
+        manualEnv,
+        setManualEnv,
+        MANUAL_FIELDS,
+        NOT_EXPOSED,
+        UNSUPPORTED,
+    };
 
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_STT_DIAGNOSTICS = api;

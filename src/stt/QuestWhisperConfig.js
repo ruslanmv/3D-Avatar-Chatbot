@@ -87,6 +87,9 @@
         loadTimeoutMs: 180000, // a 41 MB download on a slow Wi-Fi, then session creation
         transcribeTimeoutMs: 60000, // longer than any honest inference of ≤ 30 s of speech
         maxRecordMs: 30000,
+        // ST16. Decoding budget per utterance. 128 is the measured-safe default (a runaway decode
+        // took 35 s before any cap); lower values are for the benchmark, not a tuned setting.
+        maxNewTokens: 128,
     });
 
     function modelFor(size) {

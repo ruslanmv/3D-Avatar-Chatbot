@@ -1755,6 +1755,7 @@
                 const sr = new SR();
                 this._sr = sr;
                 this._srOwner = 'live';
+                sr.perfSurface = 'companion'; // ST15. timings label (ignored by the browser's own)
                 sr.lang = this._srLang();
                 sr.interimResults = true;
                 sr.continuous = true; // one long session; stays hot across turns
@@ -2321,6 +2322,7 @@
                 const sr = new SR();
                 this._sr = sr;
                 this._srOwner = 'ptt';
+                sr.perfSurface = 'companion-ptt'; // ST15
                 sr.lang = this._srLang();
                 sr.interimResults = true;
                 sr.continuous = false;

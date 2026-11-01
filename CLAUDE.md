@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (238 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (240 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -128,8 +128,8 @@ Know the coverage gaps, because they are not intuitive:
 
 ### The gate passes. Keep it that way.
 
-Measured 2026-10-31 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5378 tests in 238 suites, all passing.**
+Measured 2026-11-01 with `npm ci` deps installed: `npm run validate` exits **0**
+— lint clean, format clean, **5418 tests in 240 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -564,6 +564,17 @@ procedure.
   file SHA-256 in `QuestWhisperConfig.js`; a site can self-host via
   `NEXUS_STT_CONFIG`. Transformers.js assumes English when no language is given,
   so the app's language is always passed.
+- **Every utterance is timed (ST10–ST16, `docs/QUEST_STT_PERFORMANCE.md`).**
+  `SttPerformance` traces one utterance per surface (`perfSurface` on the
+  recognizer: `mic-button`, `vr-ptt`, `vr-panel`, `companion`, …); the primary
+  number is recording stopped → text displayed, never the time spent speaking.
+  Worker numbers are durations measured in the worker (two clocks, two time
+  origins — never subtract across them); a stage that did not happen is `null` /
+  `not_measured`, never 0; a threshold (`sttWarningMs` 3000) is a label and
+  never cancels. `SttDiagnosticReport` builds the schema-1 report: no audio, no
+  transcript text, scrubbed strings. Frames are sampled only inside a trace.
+  `runTranscription` in `LocalWhisperSTT` is the one instrumented gate → worker
+  → judge path — keep new transcription callers on it.
 - **Test with the real model**: `npm run stt:real-model` (Piper makes the speech
   in the browser, Whisper transcribes it, then the real app is driven through
   Chromium's fake microphone). English is gated; Italian is reported (29–57% WER
