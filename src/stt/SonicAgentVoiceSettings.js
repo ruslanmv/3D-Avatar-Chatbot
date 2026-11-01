@@ -133,7 +133,14 @@
         } catch (_) {}
         try {
             const saved = (JSON.parse(global.localStorage.getItem('stt_config') || '{}') || {}).provider;
-            if (saved === C.ENGINE && sttSelect) sttSelect.value = C.ENGINE;
+            if (saved === C.ENGINE && sttSelect) {
+                sttSelect.value = C.ENGINE;
+                // HV-FIX 8. SttSettings drew the sentence under STT PROVIDER before this option
+                // existed, so a saved SonicAgent choice read "Uses your browser's recognizer, which
+                // sends audio to the browser vendor" — the opposite of where the audio goes.
+                const S = global.NEXUS_STT_SETTINGS;
+                if (S && S.render) S.render(doc);
+            }
         } catch (_) {}
 
         // HV-FIX. Choosing SonicAgent in TTS ENGINE or STT PROVIDER is the switch. Before this the
@@ -172,9 +179,46 @@
                         ? NOT_PAIRED
                         : c.consent
                           ? 'Microphone upload to SonicAgent: allowed.'
-                          : 'Allow microphone upload to SonicAgent below (ADVANCED VOICE ▸ I agree) before speaking.'
+                          : 'Allow microphone upload to SonicAgent with the box below before speaking.'
                     : ''
             );
+            consentUnderStt(sttRemote && paired, c);
+        }
+        /**
+         * HV-FIX 8. The microphone permission, where the person chose SonicAgent. It lived only in
+         * ADVANCED VOICE, a dozen sections further down; on a phone the MICROPHONE TEST answered
+         * "Allow microphone upload to SonicAgent before testing remote recognition." and there was
+         * nothing to tick anywhere on screen. This is the same permission as ADVANCED VOICE ▸
+         * I agree — one value, `consent`, two places to give it — and it is still only ever given
+         * by the person's own tick, with the sentence saying what is sent beside it. Choosing
+         * SonicAgent never ticks it.
+         */
+        function consentUnderStt(show, c) {
+            if (!sttSelect) return;
+            let box = doc.getElementById('sonic-stt-consent');
+            if (!box) {
+                box = doc.createElement('div');
+                box.id = 'sonic-stt-consent';
+                box.style.cssText =
+                    'margin-top: 6px; padding: 8px 10px; border: 1px solid rgba(255, 200, 120, 0.35); border-radius: 6px';
+                box.innerHTML =
+                    `<p style="margin: 0; font-size: 0.74rem">${esc(C.CONSENT_TEXT)}</p>` +
+                    `<label style="${ROW}; min-height: 44px; margin-top: 4px">` +
+                    '<input type="checkbox" id="sonic-stt-consent-check" style="width: 20px; height: 20px" />' +
+                    ' Allow microphone upload to SonicAgent</label>';
+                const after = doc.getElementById('sonic-stt-notice') || sttSelect;
+                after.insertAdjacentElement('afterend', box);
+                box.querySelector('#sonic-stt-consent-check').addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        C.set({ enabled: true, userDisabled: false });
+                        C.grantConsent();
+                    } else C.revokeConsent();
+                    syncNotices();
+                    render();
+                });
+            }
+            box.style.display = show ? '' : 'none';
+            box.querySelector('#sonic-stt-consent-check').checked = !!c.consent;
         }
         function onEngineChosen(e) {
             if (e.target.value === C.ENGINE) C.set({ enabled: true, userDisabled: false });

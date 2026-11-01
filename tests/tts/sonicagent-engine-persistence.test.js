@@ -207,6 +207,38 @@ describe('the disclosures', () => {
         expect(document.getElementById('sonic-stt-notice').textContent).toMatch(/Allow microphone upload/);
         expect(Config.get().consent).toBe(false);
     });
+
+    test('HV-FIX 8: the microphone permission is ticked under STT PROVIDER, by the person only', () => {
+        document.body.innerHTML =
+            '<div id="settings-modal"><div class="modal-content">' +
+            '<select id="stt-provider"><option value="webspeech">W</option></select>' +
+            '<select id="tts-engine"><option value="web-speech-api">B</option></select>' +
+            '<div class="config-section"><h3 class="config-title">DEVELOPER</h3></div></div></div>';
+        paired();
+        global.NEXUS_SONIC_VOICE = Config;
+        const S = require('../../src/stt/SonicAgentVoiceSettings.js');
+        S.attach({ doc: document, config: Config });
+        const box = () => document.getElementById('sonic-stt-consent');
+        expect(box().style.display).toBe('none'); // the browser recognizer needs no upload permission
+        const stt = document.getElementById('stt-provider');
+        stt.value = 'sonicagent-stream';
+        stt.dispatchEvent(new Event('change'));
+        expect(box().style.display).toBe('');
+        expect(box().textContent).toContain(Config.CONSENT_TEXT);
+        const tick = document.getElementById('sonic-stt-consent-check');
+        expect(tick.checked).toBe(false);
+        expect(Config.allowed('stt')).toEqual({ ok: false, code: 'no_consent' });
+        tick.checked = true;
+        tick.dispatchEvent(new Event('change'));
+        expect(Config.allowed('stt')).toEqual({ ok: true });
+        expect(document.getElementById('sonic-consent').checked).toBe(true); // the same permission
+        expect(document.getElementById('sonic-stt-notice').textContent).toBe(
+            'Microphone upload to SonicAgent: allowed.'
+        );
+        tick.checked = false;
+        tick.dispatchEvent(new Event('change'));
+        expect(Config.get().consent).toBe(false);
+    });
 });
 
 describe('the gateway', () => {

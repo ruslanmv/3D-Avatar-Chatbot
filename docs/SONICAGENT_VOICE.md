@@ -24,8 +24,11 @@ It is **off by default** and **additive**:
    on and the ADVANCED VOICE checkbox shows the same state. A SonicAgent engine already stored in
    TTS ENGINE or STT PROVIDER counts as that choice after a reload, unless remote voice was
    switched off in ADVANCED VOICE (`userDisabled`).
-3. For speech-to-text only: tick **I agree** under _"Your microphone audio will be sent to
-   OllaBridge Cloud and SonicAgent for transcription."_ Choosing the provider never ticks it.
+3. For speech-to-text only: tick **Allow microphone upload to SonicAgent**, right under STT
+   PROVIDER, beside _"Your microphone audio will be sent to OllaBridge Cloud and SonicAgent for
+   transcription."_ (HV-FIX 8 — it was only in ADVANCED VOICE ▸ I agree, which is the same
+   permission and still works; on a phone the MICROPHONE TEST refused with nothing to tick on
+   screen). Choosing the provider never ticks it.
    Her voice needs no microphone permission: the notice under TTS ENGINE says _"The text of your
    avatar's replies is sent through OllaBridge Cloud to SonicAgent to generate speech."_
 4. Under TTS ENGINE, pick **VOICE STYLE** (Companion / Secretary / All Voices), the **VOICE

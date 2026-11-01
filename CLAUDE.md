@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-01 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5561 tests in 248 suites, all passing.**
+— lint clean, format clean, **5562 tests in 248 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -635,6 +635,10 @@ the OllaBridge Cloud this app pairs with for chat. **Off by default; additive.**
   language, never a local Piper id, never `piper_voice`. The voice goes as
   `voice_id` on every `tts.speak`. Rate and pitch do not apply to SonicAgent and
   are disabled for it.
+- **The microphone permission is ticked under STT PROVIDER too (HV-FIX 8)** —
+  `#sonic-stt-consent`, the same `consent` as ADVANCED VOICE ▸ I agree, shown
+  only while STT PROVIDER is SonicAgent and OllaBridge is paired. Only the
+  person's tick grants it; choosing SonicAgent never does.
 - **The Settings mic test with SonicAgent runs `RemoteSonicAgentRecognition`**
   (one capture; the meter reads its `onlevel`), never the browser recognizer.
 

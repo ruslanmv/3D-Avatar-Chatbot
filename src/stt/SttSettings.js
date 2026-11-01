@@ -698,7 +698,7 @@
             if (!R || !gate.ok) {
                 const text =
                     gate.code === 'no_consent'
-                        ? 'Allow microphone upload to SonicAgent before testing remote recognition.'
+                        ? 'Allow microphone upload to SonicAgent before testing remote recognition: tick the box under STT PROVIDER.'
                         : gate.code === 'not_configured'
                           ? 'Connect OllaBridge Cloud to use SonicAgent speech recognition.'
                           : !R

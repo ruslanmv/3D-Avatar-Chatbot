@@ -162,7 +162,9 @@ test('no microphone permission: nothing opened, nothing sent, the exact sentence
     await flush();
     expect(t.leases).toHaveLength(0);
     expect(t.link.binary).toHaveLength(0);
-    expect(t.heard()).toBe('Allow microphone upload to SonicAgent before testing remote recognition.');
+    expect(t.heard()).toBe(
+        'Allow microphone upload to SonicAgent before testing remote recognition: tick the box under STT PROVIDER.'
+    );
 });
 
 test('no OllaBridge connection says so', async () => {

@@ -77,7 +77,7 @@
                 return {
                     error: 'not-allowed',
                     message:
-                        'Remote speech needs your permission first: Settings ▸ Advanced Voice — SonicAgent Streaming.',
+                        'Remote speech needs your permission first: Settings ▸ STT PROVIDER ▸ Allow microphone upload to SonicAgent.',
                 };
             case 'not_configured':
                 return {
