@@ -130,7 +130,15 @@
                     break;
                 }
                 case OUT.READY:
-                    readyInfo = { ms: m.ms, backend: m.backend, model: m.model, cached: !!m.cached };
+                    readyInfo = {
+                        ms: m.ms,
+                        backend: m.backend,
+                        model: m.model,
+                        cached: !!m.cached,
+                        // ST10 (additive): the worker's own load split, and what runtime it built.
+                        timings: m.timings || (readyInfo && readyInfo.timings) || null,
+                        runtime: m.runtime || (readyInfo && readyInfo.runtime) || null,
+                    };
                     setState('ready', { info: readyInfo });
                     settle(m.id, 'resolve', readyInfo);
                     break;
@@ -144,7 +152,17 @@
                     emit({ type: 'transcribing', id: m.id });
                     break;
                 case OUT.DONE:
-                    settle(m.id, 'resolve', { text: m.text || '', ms: m.ms, audioMs: m.audioMs, language: m.language });
+                    settle(m.id, 'resolve', {
+                        text: m.text || '',
+                        ms: m.ms,
+                        audioMs: m.audioMs,
+                        language: m.language,
+                        // ST10 (additive; absent from an older worker, so callers must not need them)
+                        timings: m.timings || null,
+                        outputTokens: m.outputTokens == null ? null : m.outputTokens,
+                        maxNewTokens: m.maxNewTokens == null ? null : m.maxNewTokens,
+                        runtime: m.runtime || null,
+                    });
                     break;
                 case OUT.ERROR:
                     settle(m.id, 'reject', Object.assign(new Error(m.message), { code: 'inference-failed' }));
@@ -227,15 +245,35 @@
             const o = opts || {};
             const id = P.nextId('tx');
             active.add(id);
+            // ST10. Page-side measurements, all on this page's clock: whether the model was warm
+            // when asked, how long the request waited for it, and the worker round trip.
+            const tCall = now();
+            const cold = state !== 'ready';
             try {
                 await load();
+                const modelWaitMs = Math.round(now() - tCall);
                 if (!active.has(id)) throw Object.assign(new Error('cancelled'), { code: 'cancelled' });
                 const cfg = configOf();
-                const copy = Float32Array.from(samples); // the caller keeps its own buffer
-                const msg = P.transcribeRequest(id, copy, sampleRate, o.language || null);
+                // The caller keeps its own buffer, unless it says it is a throw-away copy already
+                // (`transfer`), which saves one copy of the recording on the way to the worker.
+                const buf = o.transfer && samples instanceof Float32Array ? samples : Float32Array.from(samples);
+                const msg = P.transcribeRequest(id, buf, sampleRate, o.language || null);
+                const maxNewTokens = o.maxNewTokens || cfg.maxNewTokens;
+                if (maxNewTokens) msg.maxNewTokens = maxNewTokens;
                 const t0 = now();
-                const result = await request('transcribe', msg, cfg.transcribeTimeoutMs || 60000, [copy.buffer]);
-                emit({ type: 'transcribed', id, ms: result.ms, audioMs: result.audioMs, wallMs: now() - t0 });
+                const result = await request('transcribe', msg, cfg.transcribeTimeoutMs || 60000, [buf.buffer]);
+                const roundTripMs = Math.round(now() - t0);
+                const workerTotal = result.timings && result.timings.workerTotalMs;
+                result.page = {
+                    cold,
+                    modelWaitMs,
+                    roundTripMs,
+                    // Round trip minus the worker's own total: message delivery both ways (and any
+                    // structured-clone cost). Never negative; null when the worker did not say.
+                    messagingMs: workerTotal == null ? null : Math.max(0, roundTripMs - workerTotal),
+                };
+                if (cold && readyInfo) result.page.load = readyInfo;
+                emit({ type: 'transcribed', id, ms: result.ms, audioMs: result.audioMs, wallMs: roundTripMs, result });
                 return result;
             } finally {
                 active.delete(id);

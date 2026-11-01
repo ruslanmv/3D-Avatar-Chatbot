@@ -103,7 +103,7 @@ test('meter from real input; dark after Stop; locked while transcribing; then th
     await tick();
     expect(t.lit()).toBe(0);
     expect(t.button().disabled).toBe(true);
-    expect(t.chip()).toBe('Transcribing…');
+    expect(t.chip()).toMatch(/Transcribing… \d+\.\d s/); // ST11: a live count from the stop
     t.button().click(); // ignored while transcribing
     expect(t.mic.opens).toHaveLength(1);
     t.release();
@@ -112,7 +112,7 @@ test('meter from real input; dark after Stop; locked while transcribing; then th
     expect(t.chip()).toBe('Mic works · recognized');
     expect(t.heard()).toBe('testing one two three');
     expect(t.button().disabled).toBe(false);
-    expect(t.transcribe.mock.calls[0][2]).toEqual({ language: 'en-US' });
+    expect(t.transcribe.mock.calls[0][2]).toMatchObject({ language: 'en-US' });
 });
 
 test('sound but no words is not "recognized"', async () => {
@@ -254,5 +254,116 @@ describe('ST9 — the test drives the browser recognizer the way the app does', 
         await tick();
         await tick();
         expect(t.chip()).toBe('Microphone blocked');
+    });
+});
+
+describe('ST11 — the performance result under the test', () => {
+    const P = require('../../src/stt/SttPerformance.js');
+    require('../../src/stt/QuestAudioDiagnostics.js');
+    require('../../src/stt/SttDiagnosticReport.js');
+    beforeEach(() => {
+        localStorage.clear();
+        P._reset();
+    });
+
+    test('pure summary: measured rows only, the verdict, the bottleneck', () => {
+        let t = 0;
+        const tr = P.createTrace({ now: () => t });
+        tr.mark('recording_stopped');
+        t = 8400;
+        tr.mark('transcript_displayed');
+        const r = tr.end({
+            provider: 'local-whisper',
+            model: 'tiny',
+            audioMs: 4800,
+            workerTimings: { inferenceMs: 7600 },
+            modelWarmAtStart: true,
+        });
+        const s = SS.perfSummary(r);
+        expect(s.headline).toMatch(/Very slow/);
+        expect(s.short).toBe('8.4 s after you stopped · Very slow transcription');
+        const labels = s.rows.map(([k]) => k);
+        expect(labels).toEqual(
+            expect.arrayContaining([
+                'Time after microphone stopped',
+                'Target',
+                'Whisper inference',
+                'Model already loaded',
+            ])
+        );
+        expect(labels).not.toContain('Queue in the worker'); // not measured: not shown as 0
+        expect(s.bottleneck).toMatch(/inference/);
+    });
+
+    test('after an on-device test: the result line, details, and a report without the transcript', async () => {
+        window.NEXUS_STT_PERF = P;
+        const t = setup();
+        window.NEXUS_STT_DIAGNOSTICS = require('../../src/stt/QuestAudioDiagnostics.js');
+        window.NEXUS_STT_REPORT = require('../../src/stt/SttDiagnosticReport.js');
+        const written = [];
+        Object.defineProperty(window.navigator, 'clipboard', {
+            value: { writeText: async (x) => written.push(x) },
+            configurable: true,
+        });
+        document.getElementById('stt-provider').value = 'wasm';
+        t.button().click();
+        await tick();
+        t.feed(voice());
+        t.button().click();
+        await tick();
+        t.release();
+        await tick();
+        await tick();
+        const line = document.querySelector('#stt-mic-test .stt-perf-line');
+        expect(document.querySelector('#stt-mic-test .stt-perf').hidden).toBe(false);
+        expect(line.textContent).toMatch(/after you stopped · Fast/);
+        expect(P.last().surface).toBe('settings-mic-test');
+        const copyBtn = [...document.querySelectorAll('#stt-mic-test button')].find((b) =>
+            /Copy diagnostic/.test(b.textContent)
+        );
+        copyBtn.click();
+        await new Promise((r) => setTimeout(r, 20));
+        expect(written).toHaveLength(1);
+        const rep = JSON.parse(written[0]);
+        expect(rep.schema_version).toBe(1);
+        expect(written[0]).not.toMatch(/testing one two three/);
+        delete window.NEXUS_STT_PERF;
+        delete window.NEXUS_STT_DIAGNOSTICS;
+        delete window.NEXUS_STT_REPORT;
+    });
+
+    test('ST9 holds with diagnostics loaded: no second capture on a phone, and the browser run is filed', async () => {
+        window.NEXUS_STT_PERF = P;
+        Object.defineProperty(window.navigator, 'userAgent', {
+            value: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/132 Mobile Safari/537.36',
+            configurable: true,
+        });
+        const made = [];
+        class SR {
+            constructor() {
+                made.push(this);
+            }
+            start() {}
+            stop() {}
+        }
+        const t = setup();
+        window.NEXUS_STT.recognitionClass = () => SR;
+        document.getElementById('stt-provider').value = 'webspeech';
+        t.button().click();
+        await tick();
+        expect(t.mic.opens).toHaveLength(0);
+        made[0].onaudiostart();
+        made[0].onspeechend();
+        const res = [{ transcript: 'ciao' }];
+        res.isFinal = true;
+        made[0].onresult({ resultIndex: 0, results: [res] });
+        made[0].onend();
+        await tick();
+        await tick();
+        const r = P.last();
+        expect(r.data.provider).toBe('webspeech');
+        expect(r.metrics.sttMs).not.toBeNull();
+        expect(r.diagnosis.likely_bottleneck).toBe('unknown'); // the browser reports no stages
+        delete window.NEXUS_STT_PERF;
     });
 });

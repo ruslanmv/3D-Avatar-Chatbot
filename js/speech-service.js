@@ -692,6 +692,9 @@ class SpeechService {
         if (this.isLocalRecognizer()) {
             // Push-to-talk keeps everything until release; a tap-to-talk stops after a pause.
             this.recognition.holdToTalk = !!callbacks.holdToTalk;
+            // ST15. Which surface the timings in Settings ▸ performance belong to.
+            this.recognition.perfSurface =
+                callbacks.perfSurface || (callbacks.holdToTalk ? 'vr-ptt' : 'speech-service');
             this.recognition.deviceId = this.sttConfig.microphoneDeviceId || null;
         }
 

@@ -48,6 +48,21 @@
         return (global && global.NEXUS_STT) || null;
     }
 
+    function perf() {
+        return (global && global.NEXUS_STT_PERF) || null;
+    }
+
+    // Results from the app's own listeners (not the tests) — what "last real use" shows.
+    const REAL_SURFACES = new Set([
+        'mic-button',
+        'vr-ptt',
+        'vr-panel',
+        'speech-service',
+        'companion',
+        'companion-ptt',
+        'app',
+    ]);
+
     function isQuest() {
         return /OculusBrowser|Quest/i.test((global && global.navigator && global.navigator.userAgent) || '');
     }
@@ -171,6 +186,102 @@
         return { tone: 'warn', status: 'Sound detected · no words recognized', text: tail };
     }
 
+    // ---- ST11. The performance result, in words ---------------------------------------------
+
+    const STATUS_LABEL = Object.freeze({
+        fast: { icon: '✓', text: 'Fast', tone: 'ok' },
+        slow: { icon: '⚠️', text: 'Slow transcription', tone: 'warn' },
+        very_slow: { icon: '⚠️', text: 'Very slow transcription', tone: 'error' },
+        failed: { icon: '✖', text: 'Failed', tone: 'error' },
+        not_measured: { icon: '·', text: 'Not measured', tone: 'idle' },
+    });
+
+    const BOTTLENECK_LABEL = Object.freeze({
+        model_load: 'Loading the speech model',
+        inference: 'Whisper inference on this device',
+        worker_queue: 'Waiting behind another transcription',
+        messaging: 'Moving audio to the worker',
+        audio_processing: 'Audio processing',
+        postprocessing: 'Checking and showing the text',
+        unknown: 'Not enough timings to tell',
+        none: '—',
+    });
+
+    function sec(ms) {
+        return ms == null ? '—' : `${(ms / 1000).toFixed(1)} s`;
+    }
+
+    function msText(ms) {
+        return ms == null ? 'not measured' : `${Math.round(ms).toLocaleString('en-US')} ms`;
+    }
+
+    /**
+     * A performance result for people. Pure. { headline, tone, rows: [[label, value]], bottleneck,
+     * suggestions } — only measured rows (a stage that did not happen is left out, not shown as 0).
+     */
+    function perfSummary(result) {
+        if (!result) return null;
+        const m = result.metrics || {};
+        const d = result.data || {};
+        const th = result.thresholds || {};
+        const st = STATUS_LABEL[result.status] || STATUS_LABEL.not_measured;
+        const rows = [];
+        const add = (label, value) => {
+            if (value != null && value !== '') rows.push([label, value]);
+        };
+        add('Time after microphone stopped', m.sttMs == null ? null : msText(m.sttMs));
+        add('Target', th.sttWarningMs ? msText(th.sttWarningMs) : null);
+        add(
+            'Provider',
+            d.provider === 'webspeech'
+                ? 'Browser recognizer'
+                : d.provider === 'local-whisper'
+                  ? 'On-device Whisper'
+                  : null
+        );
+        add('Model', d.model ? `Whisper ${d.model[0].toUpperCase()}${d.model.slice(1)}` : null);
+        add(
+            'Backend',
+            d.runtime && d.runtime.backend
+                ? String(d.runtime.backend).toUpperCase()
+                : d.backend
+                  ? String(d.backend).toUpperCase()
+                  : null
+        );
+        add(
+            'Model already loaded',
+            m.modelWarmAtStart == null ? null : m.modelWarmAtStart ? 'Yes' : 'No (loaded during this test)'
+        );
+        add('Audio duration', m.recordedAudioMs == null ? null : msText(m.recordedAudioMs));
+        add('Whisper inference', m.inferenceMs == null ? null : msText(m.inferenceMs));
+        add('Real-time factor', m.realTimeFactor == null ? null : String(m.realTimeFactor));
+        add('Waiting for the model', m.modelWaitMs ? msText(m.modelWaitMs) : null);
+        add('Queue in the worker', m.workerQueueMs == null ? null : msText(m.workerQueueMs));
+        add(
+            'Audio processing',
+            m.analysisMs == null && m.preprocessingMs == null
+                ? null
+                : msText((m.analysisMs || 0) + (m.preprocessingMs || 0) + (m.workerResampleMs || 0))
+        );
+        add('Microphone setup', m.micAcquisitionMs == null ? null : msText(m.micAcquisitionMs));
+        add('Tokens produced', m.outputTokens == null ? null : String(m.outputTokens));
+        add('Mode', d.xrMode || null);
+        add(
+            'Frames during transcription',
+            m.frames ? `${m.frames.count} frames, avg ${m.frames.avgMs} ms, ${m.frames.longGaps} long gaps` : null
+        );
+        const diag = result.diagnosis || {};
+        return {
+            headline: `${st.icon} ${st.text}`,
+            tone: st.tone,
+            short: m.sttMs == null ? st.text : `${sec(m.sttMs)} after you stopped · ${st.text}`,
+            rows,
+            bottleneck: BOTTLENECK_LABEL[diag.likely_bottleneck] || null,
+            confidence: diag.confidence || null,
+            suggestions: diag.suggestions || [],
+        };
+    }
+
     // ---- applying choices at once -----------------------------------------------------------
 
     function applyNow(d) {
@@ -220,6 +331,11 @@
             if (run !== r || r.done) return;
             r.done = true;
             clearTimeout(r.timer);
+            if (r.trace) {
+                r.trace.mark('recording_stopped');
+                const P = perf();
+                r.stopFrames = P ? P.sampleFrames(global) : null;
+            }
             // While the result is worked out (Whisper can take seconds), a click must not start a
             // second recording whose meter the first run's result would then sit on top of.
             ui.button.disabled = true;
@@ -239,16 +355,32 @@
             if (!(r.heard || (analysis && analysis.peak > 0.02))) return end(r, verdict(base));
             if (r.provider === 'wasm') {
                 const ready = stt().status().model === 'ready';
-                show({
-                    running: false,
-                    status: ready ? 'Transcribing…' : 'Downloading the speech model (first time)…',
-                    tone: 'busy',
-                    text: '',
-                });
+                // ST11. A live count from the moment the microphone stopped, and a notice once it
+                // passes the warning threshold. Labels only: the transcription is never cancelled.
+                const warnAt = perf() ? perf().thresholds().sttWarningMs : 3000;
+                const t0 = Date.now();
+                const tick = () => {
+                    if (run !== r) return;
+                    const ms = Date.now() - t0;
+                    const loading = !ready && stt().status().model !== 'ready';
+                    show({
+                        running: false,
+                        status: loading
+                            ? `⏳ Downloading the speech model (first time)… ${sec(ms)}`
+                            : ms > warnAt
+                              ? `⚠️ Transcription is taking longer than expected… ${sec(ms)}`
+                              : `⏳ Transcribing… ${sec(ms)}`,
+                        tone: ms > warnAt ? 'warn' : 'busy',
+                        text: '',
+                    });
+                };
+                tick();
+                r.ticker = setInterval(tick, 100);
                 try {
-                    const res = await stt().transcribeSamples(samples, r.rate, { language: r.lang });
+                    const res = await stt().transcribeSamples(samples, r.rate, { language: r.lang, trace: r.trace });
                     return end(r, verdict(Object.assign(base, { result: res })), res.accept);
                 } catch (err) {
+                    if (r.trace) r.trace.set('error', (err && (err.code || err.message)) || 'error');
                     return end(r, verdict(Object.assign(base, { failure: (err && err.message) || String(err) })));
                 }
             }
@@ -283,14 +415,32 @@
                 );
             }
             const result = text ? { accept: true, text } : { accept: false };
+            if (r.trace && text) r.trace.mark('transcript_validation_completed');
             return end(r, verdict(Object.assign(base, { result, heardSound: r.heard, levelKnown: !!r.lease })), !!text);
         }
 
         function end(r, v, recognized) {
             if (run !== r) return; // a newer test owns the display
             run = null;
+            clearInterval(r.ticker);
             ui.button.disabled = false;
             show({ running: false, status: v.status, tone: v.tone, text: v.text, recognized });
+            // ST11. The run's timings, beside the verdict. Only a recognised transcript is a
+            // measured success; a model failure is 'failed'; anything else is not measured.
+            if (r.trace) {
+                if (recognized) r.trace.mark('transcript_displayed');
+                if (
+                    v.tone === 'error' &&
+                    r.provider !== 'webspeech' &&
+                    !r.trace.trace.data.error &&
+                    /failed/i.test(v.status)
+                ) {
+                    r.trace.set('error', 'recognition-failed');
+                }
+                const frames = r.stopFrames ? r.stopFrames() : null;
+                const result = r.trace.end({ frames });
+                if (ui.onResult) ui.onResult(result, recognized ? v.text : null);
+            }
         }
 
         async function start() {
@@ -300,6 +450,15 @@
             const deviceId = (d.getElementById('stt-microphone') || {}).value || null;
             const r = { provider, lang, chunks: [], rate: 16000, heard: false, done: false };
             run = r;
+            const P = perf();
+            if (P) {
+                r.trace = P.createTrace({ surface: 'settings-mic-test' });
+                r.trace.set('provider', provider === 'wasm' ? 'local-whisper' : provider);
+                r.trace.set('xrMode', P.xrMode(global));
+                r.trace.set('mode', provider === 'webspeech' ? 'browser-recognizer' : 'settings-test');
+                if (provider === 'webspeech') r.trace.set('language', lang || null);
+                r.trace.mark('microphone_request_started');
+            }
             show({ running: true, status: 'Opening microphone…', tone: 'busy', text: '' });
             if (provider === 'webspeech') return startBrowser(r, mics, deviceId);
             if (provider === 'wasm' && stt())
@@ -311,6 +470,7 @@
                 deviceId,
                 onFrames: (samples, rate) => {
                     if (run !== r || r.done) return;
+                    if (r.trace && !r.chunks.length) r.trace.mark('first_audio_frame');
                     r.rate = rate;
                     r.chunks.push(samples);
                     const level = levelOf(samples);
@@ -334,6 +494,10 @@
             if (!opened.ok) {
                 r.error = opened;
                 return finish(r, 'error');
+            }
+            if (r.trace) {
+                r.trace.mark('microphone_permission_completed');
+                r.trace.mark('microphone_capture_started');
             }
             show({ running: true, status: 'Listening — speak now', tone: 'busy', text: '' });
             if (provider === 'webspeech') {
@@ -389,6 +553,16 @@
                 if (run !== r || r.done || r.heard) return;
                 r.heard = true;
                 show({ running: true, status: 'Sound detected', tone: 'ok', text: r.srInterim || 'Keep talking…' });
+            };
+            sr.onaudiostart = () => {
+                if (r.trace) {
+                    r.trace.mark('microphone_permission_completed');
+                    r.trace.mark('microphone_capture_started');
+                }
+            };
+            // The browser decides the end of speech itself; that is when "stopped" is, for it.
+            sr.onspeechend = () => {
+                if (r.trace) r.trace.mark('recording_stopped');
             };
             sr.onstart = () => {
                 if (run === r && !r.done && !r.heard) {
@@ -465,6 +639,7 @@
             if (run && !run.done && run.provider === 'webspeech' && run.sr && !run.stopping) {
                 // Stop listening and let the recognizer deliver its last words (onend finishes).
                 run.stopping = true;
+                if (run.trace) run.trace.mark('recording_stopped');
                 try {
                     run.sr.stop();
                 } catch (_) {}
@@ -511,6 +686,22 @@
 #${TEST_ID} .stt-heard { margin-top: 8px; min-height: 1.4em; color: var(--text-primary); }
 #${TEST_ID} .stt-heard:empty { margin: 0; min-height: 0; }
 #${TEST_ID} .stt-heard-ok::before { content: 'Recognized: '; color: var(--text-muted); }
+#${TEST_ID} .stt-perf { margin-top: 6px; font-size: 0.85rem; color: var(--text-secondary); }
+#${TEST_ID} .stt-perf[hidden] { display: none; }
+#${TEST_ID} .stt-perf-line { color: var(--text-primary); }
+#${TEST_ID} .stt-perf-line.stt-warn { color: var(--accent-orange); }
+#${TEST_ID} .stt-perf-line.stt-error { color: var(--status-error); }
+#${TEST_ID} .stt-perf-line.stt-ok { color: var(--accent-green); }
+#${TEST_ID} details { margin-top: 6px; }
+#${TEST_ID} summary { cursor: pointer; min-height: 32px; line-height: 32px; color: var(--text-secondary); }
+#${TEST_ID} table { width: 100%; border-collapse: collapse; margin: 4px 0; }
+#${TEST_ID} td { padding: 2px 6px 2px 0; vertical-align: top; }
+#${TEST_ID} td:first-child { color: var(--text-muted); white-space: nowrap; }
+#${TEST_ID} .stt-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 6px; }
+#${TEST_ID} .stt-actions a { color: var(--text-secondary); }
+#${TEST_ID} pre { max-height: 180px; overflow: auto; white-space: pre-wrap; word-break: break-word; font-size: 0.72rem; background: rgba(0, 0, 0, 0.3); padding: 6px; border-radius: 6px; }
+#${TEST_ID} select.stt-th { min-height: 36px; }
+#${TEST_ID} .stt-last { margin-top: 6px; font-size: 0.8rem; color: var(--text-muted); }
 `;
         (d.head || d.documentElement).appendChild(s);
     }
@@ -545,6 +736,169 @@
         const note = group.querySelector('[data-stt="advice"]');
         note.textContent = adv.join(' ');
         note.hidden = !adv.length;
+    }
+
+    // ---- ST11. The performance block under the test -------------------------------------------
+
+    async function reportText(result, transcript) {
+        const R = global.NEXUS_STT_REPORT;
+        const D = global.NEXUS_STT_DIAGNOSTICS;
+        if (!R) return '';
+        const P = perf();
+        const env =
+            D && D.environment
+                ? await D.environment(global, {
+                      sttLanguage: result.data && result.data.language,
+                      xrMode: result.data && result.data.xrMode,
+                  })
+                : null;
+        return R.toText(R.build(result, env, { transcript, history: P ? P.history() : [] }));
+    }
+
+    async function copyText(text) {
+        try {
+            if (global.navigator.clipboard && global.navigator.clipboard.writeText) {
+                await global.navigator.clipboard.writeText(text);
+                return true;
+            }
+        } catch (_) {}
+        // Fallback for browsers without the async clipboard (or without permission for it).
+        try {
+            const ta = global.document.createElement('textarea');
+            ta.value = text;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            global.document.body.appendChild(ta);
+            ta.select();
+            const ok = global.document.execCommand && global.document.execCommand('copy');
+            ta.remove();
+            return !!ok;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function buildPerfUi(d, test) {
+        const box = el(d, 'div', 'stt-perf');
+        box.hidden = true;
+        const line = el(d, 'div', 'stt-perf-line');
+        line.setAttribute('aria-live', 'polite');
+        const details = el(d, 'details');
+        details.appendChild(el(d, 'summary', null, 'Performance details'));
+        const table = el(d, 'table');
+        const why = el(d, 'p', 'stt-note');
+        const tips = el(d, 'ul', 'stt-note');
+        const thRow = el(d, 'div', 'stt-actions');
+        const thLabel = el(d, 'label', null, 'Warn when slower than ');
+        const thSel = el(d, 'select', 'select-input stt-th');
+        for (const ms of [2000, 3000, 5000, 8000]) {
+            const o = el(d, 'option', null, `${ms / 1000} s`);
+            o.value = String(ms);
+            thSel.appendChild(o);
+        }
+        thLabel.appendChild(thSel);
+        thRow.appendChild(thLabel);
+        const preview = el(d, 'details');
+        preview.appendChild(
+            el(d, 'summary', null, 'Report preview (shows your browser and platform; no audio, no transcript)')
+        );
+        const pre = el(d, 'pre');
+        preview.appendChild(pre);
+        details.appendChild(table);
+        details.appendChild(why);
+        details.appendChild(tips);
+        details.appendChild(thRow);
+        details.appendChild(preview);
+        const actions = el(d, 'div', 'stt-actions');
+        const copy = el(d, 'button', 'secondary-btn', 'Copy diagnostic report');
+        copy.type = 'button';
+        const copied = el(d, 'span', 'stt-note');
+        copied.style.margin = '0';
+        const adv = el(d, 'a', null, 'Advanced speech test ↗');
+        adv.href = 'stt-check.html';
+        adv.target = '_blank';
+        adv.rel = 'noopener';
+        actions.appendChild(copy);
+        actions.appendChild(adv);
+        actions.appendChild(copied);
+        box.appendChild(line);
+        box.appendChild(details);
+        box.appendChild(actions);
+        const last = el(d, 'div', 'stt-last');
+        last.hidden = true;
+        test.appendChild(box);
+        test.appendChild(last);
+
+        let current = null;
+        let currentText = null;
+
+        function show(result, transcript) {
+            current = result;
+            currentText = transcript || null;
+            const sum = perfSummary(result);
+            if (!sum) return;
+            box.hidden = false;
+            line.textContent = sum.short;
+            line.className = `stt-perf-line stt-${sum.tone}`;
+            table.textContent = '';
+            for (const [k, v] of sum.rows) {
+                const tr = el(d, 'tr');
+                tr.appendChild(el(d, 'td', null, k));
+                tr.appendChild(el(d, 'td', null, v));
+                table.appendChild(tr);
+            }
+            why.textContent = sum.bottleneck
+                ? `Likely bottleneck: ${sum.bottleneck}${sum.confidence ? ` (${sum.confidence})` : ''}`
+                : '';
+            tips.textContent = '';
+            for (const t of sum.suggestions) tips.appendChild(el(d, 'li', null, t));
+            const P = perf();
+            if (P) thSel.value = String(P.thresholds().sttWarningMs);
+            copied.textContent = '';
+            pre.textContent = '';
+        }
+
+        preview.addEventListener('toggle', async () => {
+            if (preview.open && current) pre.textContent = await reportText(current, currentText);
+        });
+        thSel.addEventListener('change', () => {
+            const P = perf();
+            if (!P || !current) return;
+            P.setThresholds({ sttWarningMs: Number(thSel.value) });
+            current.thresholds = P.thresholds();
+            current.status = P.classify(
+                current.metrics.sttMs,
+                current.thresholds,
+                !!(current.data && current.data.error)
+            );
+            current.diagnosis = P.diagnose(current.metrics, {
+                thresholds: current.thresholds,
+                xrMode: current.data.xrMode,
+            });
+            show(current, currentText);
+        });
+        copy.addEventListener('click', async () => {
+            if (!current) return;
+            const ok = await copyText(await reportText(current, currentText));
+            copied.textContent = ok ? 'Copied.' : 'Could not copy — open the report preview and select it.';
+        });
+
+        // The app's own listeners: the last real microphone use, beside the test.
+        const P = perf();
+        if (P) {
+            const showLast = (r) => {
+                if (!r || !REAL_SURFACES.has(r.surface)) return;
+                const sum = perfSummary(r);
+                last.hidden = false;
+                last.textContent = `Last real use (${r.surface}): ${sum.short}`;
+            };
+            showLast(P.last((r) => REAL_SURFACES.has(r.surface)));
+            P.on((e) => {
+                if (e && e.result) showLast(e.result);
+            });
+        }
+        return { show };
     }
 
     function mount(doc) {
@@ -621,8 +975,9 @@
             heard.setAttribute('aria-live', 'polite');
             test.appendChild(trow);
             test.appendChild(heard);
+            const perfUi = buildPerfUi(d, test);
             langGroup.parentNode.insertBefore(test, langGroup.nextSibling);
-            createMicTest(d, { button, status: chip, text: heard, segments });
+            createMicTest(d, { button, status: chip, text: heard, segments, onResult: perfUi.show });
         }
 
         download.addEventListener('click', () => {
@@ -665,6 +1020,7 @@
         advice,
         levelOf,
         verdict,
+        perfSummary,
         browserMeterSafe,
         SOUND_LEVEL,
         mount,
