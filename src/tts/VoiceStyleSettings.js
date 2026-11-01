@@ -122,10 +122,20 @@
             }
         }
 
+        /** The static note under TTS ENGINE is about Piper WASM's ~60 MB download — not SonicAgent. */
+        function setPiperNoteVisible(on) {
+            const box = engineEl.closest('.input-group');
+            if (!box) return;
+            for (const p of box.querySelectorAll('p.voice-status')) {
+                if (/WebAssembly|60 MB/.test(p.textContent || '')) p.style.display = on ? '' : 'none';
+            }
+        }
+
         function render() {
             const visible = remoteSelected();
             group.style.display = visible ? '' : 'none';
             setRateEnabled(!visible);
+            setPiperNoteVisible(!visible);
             if (!visible) return;
             const c = C.get();
             for (const r of group.querySelectorAll('input[name="sonic-voice-style"]'))

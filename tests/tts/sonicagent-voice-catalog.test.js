@@ -36,7 +36,8 @@ function page(engine = 'sonicagent-stream') {
     document.body.innerHTML = `
       <div class="input-group"><select id="tts-engine">
         <option value="web-speech-api">Browser</option><option value="piper-wasm">Piper</option>
-        <option value="sonicagent-stream">SonicAgent</option></select></div>
+        <option value="sonicagent-stream">SonicAgent</option></select>
+        <p class="voice-status" id="piper-note">Piper runs fully in-browser via WebAssembly (~60 MB, cached).</p></div>
       <input id="speech-rate" value="0.9" /><input id="speech-pitch" value="1.0" />
       <select id="speech-voice-pref"><option value="female">Female</option></select>`;
     document.getElementById('tts-engine').value = engine;
@@ -101,6 +102,11 @@ describe('Settings ▸ SPEECH with SonicAgent as TTS ENGINE', () => {
         await ui.load(true);
         expect($('sonic-voice-select').value).toBe('en_US-hfc_female-medium');
         expect(Config.voiceFor()).toBe('en_US-hfc_female-medium');
+    });
+
+    test('the Piper WASM download note is not shown for SonicAgent', () => {
+        expect(page('piper-wasm').$('piper-note').style.display).toBe('');
+        expect(page('sonicagent-stream').$('piper-note').style.display).toBe('none');
     });
 
     test('rate and pitch are disabled and explained for SonicAgent', () => {

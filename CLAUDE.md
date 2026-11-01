@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-01 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5556 tests in 248 suites, all passing.**
+— lint clean, format clean, **5559 tests in 248 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -624,9 +624,10 @@ the OllaBridge Cloud this app pairs with for chat. **Off by default; additive.**
   holds; SonicAgent budgets unplayed audio across the session.
 - **Choosing SonicAgent is the switch (HV-FIX).** `TTSProvider.setEngine()`
   calls a provider's `onSelected()` (remote: `enabled = true`, never consent);
-  page load (`_resolve`) never does. **An init failure is session-only**:
-  `tts_engine` keeps the choice, `lastFailureDetail()` says why, Settings shows
-  "Selected / Currently speaking / Reason". Never write the fallback to storage.
+  so does a stored SonicAgent TTS/STT choice unless ADVANCED VOICE was switched
+  off (`userDisabled`). **An init failure is session-only**: `tts_engine` keeps
+  the choice, `lastFailureDetail()` says why, Settings shows "Selected /
+  Currently speaking / Reason". Never write the fallback to storage.
 - **Voices: `VoiceSelectionPolicy` decides Auto**, from SonicAgent's catalogue
   (`GET /v1/voice/voices`, all 49 entries, in Settings ▸ SPEECH under TTS ENGINE
   via `VoiceStyleSettings`). Preset per locale and style first; never another

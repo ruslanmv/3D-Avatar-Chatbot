@@ -21,8 +21,9 @@ It is **off by default** and **additive**:
    SonicAgent's own key never reaches the browser.
 2. Choose **SonicAgent Piper — Cloud streaming** under TTS ENGINE, and/or **SonicAgent — Cloud
    streaming** under STT PROVIDER. **Choosing it is the switch** (HV-FIX): remote voice is turned
-   on (`nexus_sonic_voice.enabled`) and the ADVANCED VOICE checkbox shows the same state. Page
-   load never turns it on; only a person's choice does.
+   on and the ADVANCED VOICE checkbox shows the same state. A SonicAgent engine already stored in
+   TTS ENGINE or STT PROVIDER counts as that choice after a reload, unless remote voice was
+   switched off in ADVANCED VOICE (`userDisabled`).
 3. For speech-to-text only: tick **I agree** under _"Your microphone audio will be sent to
    OllaBridge Cloud and SonicAgent for transcription."_ Choosing the provider never ticks it.
    Her voice needs no microphone permission: the notice under TTS ENGINE says _"The text of your
@@ -181,6 +182,9 @@ headset, and none are claimed here.
 The run found two server bugs, fixed in SonicAgent HV3. The playback budget was
 per phrase, so 6 s of speech arrived in 2.2 s. And a client acknowledging only
 the phrase being received deadlocked the queue.
+
+![TTS ENGINE = SonicAgent, Companion](images/sonicagent-voice/settings-companion.png)
+![Secretary](images/sonicagent-voice/settings-secretary.png)
 
 ## Measured end to end (HV-FIX)
 

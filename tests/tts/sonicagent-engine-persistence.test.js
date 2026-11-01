@@ -80,17 +80,40 @@ describe('choosing SonicAgent switches remote voice on', () => {
         expect(localStorage.getItem('tts_engine')).toBe('sonicagent-stream');
     });
 
-    test('page load restores but never switches anything on', async () => {
+    test('after a reload a stored SonicAgent choice speaks with SonicAgent — the reported state', async () => {
+        // The person chose SonicAgent before this fix: tts_engine says so, the ADVANCED switch was
+        // never ticked. The stored choice counts; the browser voice must not come back on reload.
         paired();
         localStorage.setItem('tts_engine', 'sonicagent-stream');
         const tp = loadProvider();
         const { provider } = remoteWith(READY);
         tp.registerProvider('sonicagent-stream', provider);
         await tp.boot();
-        expect(Config.get().enabled).toBe(false);
-        expect(tp.getEngine()).toBe('web-speech-api'); // for this session, with the reason
+        expect(Config.get().enabled).toBe(true);
+        expect(Config.get().consent).toBe(false);
+        expect(tp.getEngine()).toBe('sonicagent-stream');
+    });
+
+    test('switched off in ADVANCED VOICE stays off on reload, with the reason, and the choice kept', async () => {
+        paired();
+        localStorage.setItem('tts_engine', 'sonicagent-stream');
+        Config.set({ enabled: false, userDisabled: true });
+        const tp = loadProvider();
+        const { provider } = remoteWith(READY);
+        tp.registerProvider('sonicagent-stream', provider);
+        await tp.boot();
+        expect(tp.getEngine()).toBe('web-speech-api');
         expect(tp.getStoredEngine()).toBe('sonicagent-stream');
-        expect(localStorage.getItem('tts_engine')).toBe('sonicagent-stream');
+        expect(tp.lastFailureDetail().code).toBe('disabled');
+        // Choosing it again is the person turning it back on.
+        expect(await tp.setEngine('sonicagent-stream')).toBe(true);
+        expect(Config.get()).toMatchObject({ enabled: true, userDisabled: false });
+    });
+
+    test('an STT choice of SonicAgent also counts as on — but never as microphone consent', () => {
+        localStorage.setItem('stt_config', JSON.stringify({ provider: 'sonicagent-stream' }));
+        expect(Config.get().enabled).toBe(true);
+        expect(Config.allowed('stt')).toEqual({ ok: false, code: 'no_consent' });
     });
 });
 

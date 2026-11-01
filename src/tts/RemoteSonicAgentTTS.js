@@ -376,7 +376,7 @@
              */
             onSelected() {
                 const c = cfg();
-                if (c && !c.get().enabled) c.set({ enabled: true });
+                if (c && (!c.get().enabled || c.get().userDisabled)) c.set({ enabled: true, userDisabled: false });
             },
             /**
              * Can SonicAgent speak now? Throws { code, message } with the real reason, which

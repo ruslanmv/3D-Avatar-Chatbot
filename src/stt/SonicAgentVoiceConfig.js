@@ -31,6 +31,7 @@
 
     const DEFAULTS = Object.freeze({
         enabled: false,
+        userDisabled: false, // HV-FIX: the person switched remote voice off in ADVANCED VOICE
         consent: false,
         consentAt: null,
         language: '', // '' → the app's language (speech-to-text)
@@ -53,6 +54,19 @@
         }
     }
 
+    /** Is SonicAgent the chosen TTS engine or STT provider? (Read from their own keys.) */
+    function engineChosen() {
+        const s = storage();
+        if (!s) return false;
+        try {
+            if (s.getItem('tts_engine') === ENGINE) return true;
+            const stt = JSON.parse(s.getItem('stt_config') || '{}') || {};
+            return stt.provider === ENGINE;
+        } catch (_) {
+            return false;
+        }
+    }
+
     function get() {
         const s = storage();
         let saved = {};
@@ -63,7 +77,12 @@
         }
         const out = Object.assign({}, DEFAULTS);
         for (const k of Object.keys(DEFAULTS)) if (k in saved) out[k] = saved[k];
-        out.enabled = out.enabled === true;
+        out.userDisabled = out.userDisabled === true;
+        // HV-FIX. A SonicAgent engine chosen in TTS ENGINE or STT PROVIDER is itself the choice to
+        // use remote voice: it counts as on unless the person switched it off in ADVANCED VOICE
+        // (`userDisabled`). Before this, people who picked SonicAgent heard the browser voice on
+        // every reload because a second switch, elsewhere, was still off.
+        out.enabled = out.enabled === true || (!out.userDisabled && engineChosen());
         out.consent = out.consent === true;
         out.autoFallback = out.autoFallback === true;
         out.speakWhileStreaming = out.speakWhileStreaming === true;

@@ -177,7 +177,7 @@
             );
         }
         function onEngineChosen(e) {
-            if (e.target.value === C.ENGINE && !C.get().enabled) C.set({ enabled: true });
+            if (e.target.value === C.ENGINE) C.set({ enabled: true, userDisabled: false });
             syncNotices();
             render();
         }
@@ -304,7 +304,11 @@
 
         $('sonic-enabled').addEventListener('change', (e) => {
             // Turning the feature off also withdraws consent: switching it back on asks again.
-            C.set(e.target.checked ? { enabled: true } : { enabled: false, consent: false, consentAt: null });
+            C.set(
+                e.target.checked
+                    ? { enabled: true, userDisabled: false }
+                    : { enabled: false, userDisabled: true, consent: false, consentAt: null }
+            );
             if (!e.target.checked) clear();
             render();
             if (e.target.checked) check();
