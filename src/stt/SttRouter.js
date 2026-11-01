@@ -18,6 +18,8 @@
  *
  *  - 'local'       on-device Whisper (provider 'wasm', or `?localStt=1`), where it can run
  *  - 'browser'     the browser's own recognizer — what every surface had before ST, unchanged
+ *  - 'remote'      HV1: SonicAgent through OllaBridge Cloud (provider 'sonicagent-stream'). The
+ *                  recognizer itself checks consent and pairing at start, before any audio moves.
  *  - 'unavailable' on-device was chosen but cannot run here. NOT silently replaced by the
  *                  browser's recognizer: a person who chose on-device recognition chose to keep
  *                  their voice on the device, and on a Quest the browser's would not work anyway.
@@ -40,6 +42,7 @@
             mic: !!(nav.mediaDevices && typeof nav.mediaDevices.getUserMedia === 'function'),
             worklet: typeof g.AudioWorkletNode === 'function',
             webgpu: !!nav.gpu,
+            websocket: typeof g.WebSocket === 'function',
         };
     }
 
@@ -63,8 +66,31 @@
         return null;
     }
 
+    /**
+     * HV1. Can the remote engine (SonicAgent through OllaBridge Cloud) run here? It needs the
+     * microphone and Web Audio like on-device, and a WebSocket; it needs no WASM or workers.
+     */
+    function remoteSupport(caps) {
+        const c = caps || {};
+        if (!c.secure) return { ok: false, reason: 'insecure-context' };
+        if (!c.mic) return { ok: false, reason: 'no-microphone-api' };
+        if (!c.audio) return { ok: false, reason: 'no-web-audio' };
+        if (c.websocket === false) return { ok: false, reason: 'no-websocket' };
+        return { ok: true };
+    }
+
     function decide(input) {
         const i = input || {};
+        // HV1. 'sonicagent-stream' is chosen only in STT PROVIDER, never inferred. `?localStt`
+        // still wins (it is a person forcing a choice for this page), and remote never becomes
+        // the browser's recognizer when it cannot run: like on-device, the choice was where the
+        // audio goes, and quietly sending it to another service would break that.
+        if (i.provider === 'sonicagent-stream' && !i.forced) {
+            const remote = remoteSupport(i.capabilities);
+            return remote.ok
+                ? { engine: 'remote', reason: 'setting' }
+                : { engine: 'unavailable', reason: remote.reason };
+        }
         const support = localSupport(i.capabilities);
         const wantLocal = i.forced === 'local' || (i.forced !== 'browser' && i.provider === 'wasm');
         if (!wantLocal) return { engine: 'browser', reason: i.forced === 'browser' ? 'forced' : 'setting' };
@@ -78,6 +104,7 @@
         'no-web-audio': 'This browser has no Web Audio, which on-device speech recognition needs.',
         'no-workers': 'This browser cannot run on-device speech recognition (no Web Workers).',
         'no-webassembly': 'This browser cannot run on-device speech recognition (no WebAssembly).',
+        'no-websocket': 'This browser cannot open the connection remote speech recognition needs (no WebSocket).',
     });
 
     /**
@@ -94,7 +121,7 @@
         );
     }
 
-    const api = { capabilities, localSupport, forcedFrom, decide, hint, UNAVAILABLE };
+    const api = { capabilities, localSupport, remoteSupport, forcedFrom, decide, hint, UNAVAILABLE };
 
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_STT_ROUTER = api;

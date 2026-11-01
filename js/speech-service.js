@@ -1353,6 +1353,14 @@ class SpeechService {
                 this.currentSTTProvider = 'wasm';
                 return this.startRecognition(callbacks);
 
+            case 'sonicagent-stream':
+                // HV1. SonicAgent through OllaBridge Cloud. Like on-device, this choice says where
+                // the audio goes: it never falls through to the browser's recognizer (Google on
+                // Chrome) below. NEXUS_STT.recognitionClass() answers the remote recognizer, which
+                // checks consent and pairing itself and fails with the reason.
+                this.currentSTTProvider = 'sonicagent-stream';
+                return this.startRecognition(callbacks);
+
             case 'openai':
                 this.currentSTTProvider = 'openai';
                 return this.startOpenAIWhisper(callbacks);
@@ -1404,6 +1412,7 @@ class SpeechService {
                 this.stopRecognition();
                 break;
             case 'wasm':
+            case 'sonicagent-stream':
                 this.stopRecognition();
                 break;
             case 'openai':

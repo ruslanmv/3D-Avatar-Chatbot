@@ -1302,6 +1302,7 @@
             }
 
             const data = await res.json();
+            this._noteOllaBridgeServed(data);
 
             // If OllaBridge returned inline persona context, update the bridge cache
             if (data.x_persona_context && typeof global.PersonaContextBridge !== 'undefined') {
@@ -1315,6 +1316,28 @@
                 finishReason: data.choices?.[0]?.finish_reason,
                 budget: body.max_tokens,
             });
+        }
+
+        /**
+         * Remember which provider of a cloud route answered the last OllaBridge turn.
+         *
+         * A route such as "Free Best" tries several providers in order, and the reply's own
+         * `model` is the upstream's name (`grok-4.3` for a `grok-4` request), so nothing in
+         * the app could say who actually spoke. The gateway now names the rung in
+         * `x_ollabridge`; Test connection shows it, and `lastServed` is there for a console
+         * reader. An older gateway sends nothing and this stays null — never a guess.
+         */
+        _noteOllaBridgeServed(data) {
+            const info = data && typeof data === 'object' ? data.x_ollabridge : null;
+            this.lastServed =
+                info && typeof info === 'object' && info.provider
+                    ? {
+                          route: String(info.route || ''),
+                          provider: String(info.provider),
+                          model: String(info.model || ''),
+                          attempts: Number.isFinite(info.attempts) ? info.attempts : null,
+                      }
+                    : null;
         }
 
         // ===============================================
@@ -1448,6 +1471,7 @@
             }
 
             const data = await res.json();
+            this._noteOllaBridgeServed(data);
 
             // Update persona context cache if returned inline
             if (data.x_persona_context && typeof global.PersonaContextBridge !== 'undefined') {
@@ -1793,6 +1817,8 @@
                         deviceId: m.x_device_id || null,
                         deviceName: m.x_device_name || null,
                         available: m.x_available !== false,
+                        // How many providers back a cloud route; null when the gateway did not say.
+                        candidateCount: Number.isFinite(m.x_candidate_count) ? m.x_candidate_count : null,
                         requiresDeviceOnline: m.x_requires_device_online === true,
                         description: m.description || '',
                     };
