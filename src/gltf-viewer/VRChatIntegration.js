@@ -245,6 +245,7 @@ export class VRChatIntegration {
 
                 // Use standard Web Speech API — or on-device Whisper (ST3), same callbacks
                 let heard = false;
+                this._listenForSlowStt();
                 await this.speechService.startRecognition({
                     holdToTalk: true,
                     onTranscribing: () => {
@@ -386,6 +387,20 @@ export class VRChatIntegration {
      * ST3. "Heard: …" for the panel. The browser's recognizer reports a confidence; on-device
      * Whisper has none (null), and a made-up percentage would read as a real one.
      */
+    /**
+     * ST15. When on-device transcription passes the warning threshold, say so on the panel — the
+     * status stays "thinking" and the transcription keeps running (never cancelled for this).
+     */
+    _listenForSlowStt() {
+        if (this._slowSttListener) return;
+        this._slowSttListener = (e) => {
+            const d = (e && e.detail) || {};
+            if (d.type !== 'slow' || !this.speechService?.isLocalRecognizer?.()) return;
+            this.vrChatPanel.setTranscript('Transcribing… taking longer than expected', 'interim');
+        };
+        window.addEventListener('nexus-stt', this._slowSttListener);
+    }
+
     _heardLine(text, confidence) {
         if (confidence == null) return `🎤 Heard: "${text}"`;
         return `🎤 Heard: "${text}" (${Math.round(confidence * 100)}% confidence)`;
@@ -465,7 +480,9 @@ export class VRChatIntegration {
 
         // Shared callbacks for all STT paths
         let heard = false;
+        this._listenForSlowStt();
         const sttCallbacks = {
+            perfSurface: 'vr-panel',
             onTranscribing: () => {
                 this.vrChatPanel.setStatus('thinking');
                 this.vrChatPanel.setTranscript('Transcribing…', 'interim');

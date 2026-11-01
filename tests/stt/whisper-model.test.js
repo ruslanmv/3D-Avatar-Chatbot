@@ -218,3 +218,68 @@ describe('the worker', () => {
         expect(src).toMatch(/warm-up/i);
     });
 });
+
+describe('ST10 — the manager reports page-side timings', () => {
+    test('cold vs warm, model wait, round trip, messaging; worker timings passed through', async () => {
+        let t = 0;
+        const { m, workers } = manager({ now: () => t });
+        const first = m.transcribe(Float32Array.of(0.1), 16000);
+        await flush();
+        const w = workers[0];
+        t = 4000; // the model took 4 s to arrive
+        w.reply({
+            type: P.FROM_WORKER.READY,
+            id: w.last('load').id,
+            ms: 3900,
+            timings: { downloadMs: 2500, initMs: 800, warmupMs: 600 },
+        });
+        await flush();
+        t = 6100;
+        w.reply({
+            type: P.FROM_WORKER.DONE,
+            id: w.last('transcribe').id,
+            text: 'hi',
+            timings: { inferenceMs: 2000, workerTotalMs: 2050, workerQueueMs: 1, resampleMs: 9 },
+            outputTokens: 2,
+        });
+        const r1 = await first;
+        expect(r1.page).toMatchObject({ cold: true, modelWaitMs: 4000, roundTripMs: 2100, messagingMs: 50 });
+        expect(r1.page.load.timings).toMatchObject({ downloadMs: 2500, warmupMs: 600 });
+        expect(r1.timings.inferenceMs).toBe(2000);
+        const second = m.transcribe(Float32Array.of(0.1), 16000);
+        await flush();
+        w.reply({ type: P.FROM_WORKER.DONE, id: w.last('transcribe').id, text: 'again' });
+        const r2 = await second;
+        expect(r2.page.cold).toBe(false);
+        expect(r2.page.messagingMs).toBeNull(); // an older worker that sent no timings: not measured
+        expect(r2.timings).toBeNull();
+    });
+
+    test('`transfer` hands a throw-away copy to the worker without copying it again; default copies', async () => {
+        const { m, workers } = manager();
+        const loaded = m.load();
+        workers[0].reply({ type: P.FROM_WORKER.READY, id: workers[0].last('load').id, ms: 1 });
+        await loaded;
+        const mine = Float32Array.of(0.1, 0.2);
+        m.transcribe(mine, 16000, { transfer: true, maxNewTokens: 32 });
+        await flush();
+        expect(workers[0].last('transcribe').samples).toBe(mine);
+        expect(workers[0].last('transcribe').maxNewTokens).toBe(32);
+        const keep = Float32Array.of(0.3);
+        m.transcribe(keep, 16000);
+        await flush();
+        expect(workers[0].last('transcribe').samples).not.toBe(keep);
+        expect(workers[0].last('transcribe').maxNewTokens).toBe(C.DEFAULTS.maxNewTokens);
+    });
+});
+
+describe('ST10 — the worker sends durations, not timestamps', () => {
+    const src = fs.readFileSync(path.resolve(__dirname, '../../workers/whisper-worker.js'), 'utf-8');
+    test('timings are differences of its own clock; the old fields are still sent', () => {
+        expect(src).toMatch(/inferenceMs = Math\.round\(performance\.now\(\) - tInfer\)/);
+        expect(src).toMatch(/workerQueueMs: receivedAt != null \? Math\.round\(tStart - receivedAt\)/);
+        expect(src).toMatch(/text: String\(text\)\.trim\(\),\s+ms: Math\.round/);
+        expect(src).toMatch(/encoderMs: null/); // not exposed by the runtime: not invented
+        expect(src).toMatch(/max_new_tokens: maxNewTokens/);
+    });
+});

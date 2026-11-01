@@ -60,6 +60,36 @@
      * folds everything above 8 kHz back into the speech band (sibilants turn into hiss under the
      * vowels); with it, the result is what a 16 kHz microphone would have recorded.
      */
+    // ST16. Kernel tables, by (rates, phase). Measured: the per-tap sin/cos version spent 418 ms
+    // resampling 4.1 s of 44.1 kHz audio in the worker — 17% of a 2.5 s stop → transcript on a
+    // desktop CPU, more on a headset's. The filter is the same; its weights are computed once per
+    // fractional phase (1/PHASES of an input sample) instead of once per tap per output sample.
+    // 48 kHz → 16 kHz (a Quest microphone) has a single phase, so a single table.
+    const PHASES = 1024;
+    const kernelCache = new Map();
+
+    function kernelFor(fromRate, to, phase) {
+        const key = `${fromRate}>${to}:${phase}`;
+        let k = kernelCache.get(key);
+        if (k) return k;
+        const ratio = fromRate / to;
+        const cutoff = Math.min(1, to / fromRate) * 0.95; // a little under Nyquist
+        const half = Math.ceil(16 * Math.max(1, ratio)); // taps either side
+        const frac = phase / PHASES;
+        k = new Float32Array(2 * half + 1); // offsets -half … +half from floor(center)
+        for (let o = -half; o <= half; o++) {
+            const x = o - frac;
+            if (x < -half || x > half) continue;
+            const sinc = x === 0 ? 1 : Math.sin(Math.PI * cutoff * x) / (Math.PI * cutoff * x);
+            // Blackman window: ~-58 dB side lobes, so what is above the new Nyquist stays out.
+            const t = (Math.PI * x) / (half + 1);
+            k[o + half] = sinc * (0.42 + 0.5 * Math.cos(t) + 0.08 * Math.cos(2 * t));
+        }
+        if (kernelCache.size > 4096) kernelCache.clear(); // bounded: a few rate pairs × PHASES
+        kernelCache.set(key, k);
+        return k;
+    }
+
     function resample(input, fromRate, toRate) {
         const to = toRate || TARGET_RATE;
         if (!input || !input.length) return new Float32Array(0);
@@ -67,23 +97,25 @@
         const ratio = fromRate / to;
         const outLen = Math.floor(input.length / ratio);
         const out = new Float32Array(outLen);
-        const cutoff = Math.min(1, to / fromRate) * 0.95; // a little under Nyquist
-        const half = Math.ceil(16 * Math.max(1, ratio)); // taps either side
+        const half = Math.ceil(16 * Math.max(1, ratio));
+        const last = input.length - 1;
         for (let i = 0; i < outLen; i++) {
             const center = i * ratio;
-            const start = Math.max(0, Math.ceil(center - half));
-            const end = Math.min(input.length - 1, Math.floor(center + half));
+            let base = Math.floor(center);
+            let phase = Math.round((center - base) * PHASES);
+            if (phase === PHASES) {
+                base += 1;
+                phase = 0;
+            }
+            const k = kernelFor(fromRate, to, phase);
+            const from = Math.max(-half, -base);
+            const toO = Math.min(half, last - base);
             let acc = 0;
             let wsum = 0;
-            for (let j = start; j <= end; j++) {
-                const x = j - center;
-                const sinc = x === 0 ? 1 : Math.sin(Math.PI * cutoff * x) / (Math.PI * cutoff * x);
-                // Blackman window: ~-58 dB side lobes, so what is above the new Nyquist stays out.
-                const t = (Math.PI * x) / (half + 1);
-                const w = 0.42 + 0.5 * Math.cos(t) + 0.08 * Math.cos(2 * t);
-                const k = sinc * w;
-                acc += input[j] * k;
-                wsum += k;
+            for (let o = from; o <= toO; o++) {
+                const w = k[o + half];
+                acc += input[base + o] * w;
+                wsum += w;
             }
             out[i] = wsum ? acc / wsum : 0;
         }

@@ -157,6 +157,110 @@
         return list;
     }
 
+    // ---- ST10/ST15: one instrumented transcription, for every surface --------------------------
+
+    function perf() {
+        return lib('NEXUS_STT_PERF');
+    }
+
+    function nowMs() {
+        return global && global.performance && typeof global.performance.now === 'function'
+            ? global.performance.now()
+            : Date.now();
+    }
+
+    /**
+     * Gate → normalize → worker → judge, marking each stage on `trace` (when one is given) and
+     * filing the worker's own timings beside them. Returns { analysis, gate, out, verdict, error }.
+     * The guards and their order are exactly what the recognizer always did; only marks are added.
+     */
+    async function runTranscription(job) {
+        const A = lib('NEXUS_STT_AUDIO');
+        const t = job.trace || null;
+        const mdl = job.model;
+        if (t) t.mark('audio_analysis_started');
+        const analysis = A ? A.analyze(job.samples, job.rate) : null;
+        const g = A ? A.gate(analysis) : { ok: true };
+        if (t) {
+            t.mark('audio_analysis_completed');
+            if (analysis)
+                t.merge({ audioMs: analysis.durationMs, inputRate: job.rate, inputSamples: job.samples.length });
+        }
+        if (!g.ok) return { analysis, gate: g };
+        if (typeof job.onQueued === 'function') job.onQueued(analysis);
+        if (t) t.mark('audio_preprocessing_started');
+        const audio = A ? A.normalize(job.samples) : job.samples;
+        if (t) {
+            t.mark('audio_preprocessing_completed');
+            t.set('modelWarmAtStart', typeof mdl.isReady === 'function' ? mdl.isReady() : null);
+            t.mark('worker_request_queued');
+        }
+        let out;
+        try {
+            // `transfer`: `audio` is a fresh copy made by normalize(), so the manager may hand it
+            // to the worker without copying the recording once more.
+            out = await mdl.transcribe(audio, job.rate, {
+                language: job.language,
+                transfer: audio !== job.samples,
+                maxNewTokens: job.maxNewTokens || undefined,
+            });
+        } catch (error) {
+            if (t) t.set('error', (error && (error.code || error.message)) || 'error');
+            return { analysis, gate: g, error };
+        }
+        if (t) {
+            t.mark('worker_inference_completed');
+            t.merge({
+                workerTimings: out.timings || null,
+                pageTimings: out.page || null,
+                loadTimings: (out.page && out.page.load && out.page.load.timings) || null,
+                outputTokens: out.outputTokens == null ? null : out.outputTokens,
+                maxNewTokens: out.maxNewTokens == null ? null : out.maxNewTokens,
+                runtime: out.runtime || null,
+            });
+        }
+        const verdict = A ? A.judgeTranscript(out.text, analysis) : { accept: !!out.text, text: out.text };
+        if (t) {
+            t.mark('transcript_validation_completed');
+            t.merge({ accepted: !!verdict.accept, rejectedReason: verdict.accept ? null : verdict.reason });
+        }
+        return { analysis, gate: g, out, verdict };
+    }
+
+    /** The facts every trace carries: provider, model, language, runtime, where the page is. */
+    function traceFacts(language) {
+        const cfg = resolvedConfig();
+        const P = perf();
+        return {
+            provider: 'local-whisper',
+            model: cfg.model || null,
+            modelId: cfg.modelId || null,
+            revision: cfg.revision || null,
+            dtype: cfg.dtype || null,
+            backend: cfg.device || null,
+            runtimeVersion: (lib('NEXUS_WHISPER_CONFIG') || {}).RUNTIME_VERSION || null,
+            language: language || null,
+            xrMode: P ? P.xrMode(global) : null,
+        };
+    }
+
+    /**
+     * ST15. "Speech recognition is taking longer than expected": once stop → now passes the
+     * warning threshold, tell the surfaces (window 'nexus-stt' { type: 'slow' }). A label only —
+     * the transcription keeps running and is never cancelled by this.
+     */
+    function armSlowNotice(t) {
+        const P = perf();
+        if (!P || !t) return () => {};
+        const warnAt = P.thresholds().sttWarningMs;
+        const since = t.elapsedSince('recording_stopped') || 0;
+        const timer = setTimeout(
+            () => emitStatus({ type: 'slow', elapsedMs: Math.round(t.elapsedSince('recording_stopped') || 0) }),
+            Math.max(0, warnAt - since)
+        );
+        return () => clearTimeout(timer);
+    }
+
     // ---- the recognizer --------------------------------------------------------------------
 
     class WhisperRecognition {
@@ -256,6 +360,8 @@
             const mode = this._mode();
             const A = lib('NEXUS_STT_AUDIO');
             const cfg = readSttConfig();
+            // ST15. The run's microphone moments, on this page's clock, for the first utterance's trace.
+            this._perfRun = perf() ? { requestAt: nowMs() } : null;
             this._lease = mics.open({
                 owner: 'whisper-recognition',
                 deviceId: this.deviceId || cfg.microphoneDeviceId || null,
@@ -281,6 +387,7 @@
                 }
                 this._rate = r.sampleRate;
                 this._state = 'capturing';
+                if (this._perfRun) this._perfRun.captureAt = nowMs();
                 this._startedAt = Date.now();
                 if (mode !== 'hold' && A) this._endpointer = A.createEndpointer(r.sampleRate);
                 this._fire('start');
@@ -321,6 +428,7 @@
 
         _onFrames(gen, samples, rate) {
             if (gen !== this._gen || this._state !== 'capturing') return;
+            if (this._perfRun && this._perfRun.firstFrameAt == null) this._perfRun.firstFrameAt = nowMs();
             const mode = this._mode();
             const maxMs = (resolvedConfig().maxRecordMs || 30000) + 100;
             if (mode === 'hold') {
@@ -347,37 +455,79 @@
                     emitStatus({ type: 'speech-start' });
                 } else if (ev.type === 'speech-end') {
                     this._fire('speechend');
-                    this._queue(gen, ev.samples, rate);
+                    this._queue(gen, ev.samples, rate, { endpointed: true });
                     if (mode === 'auto-stop') this._finishCapture(gen);
                 }
             }
         }
 
-        _queue(gen, samples, rate) {
-            const job = this._transcribe(gen, samples, rate);
+        _queue(gen, samples, rate, how) {
+            const job = this._transcribe(gen, samples, rate, this._newTrace(how || {}));
             this._jobs.push(job);
             return job;
         }
 
-        async _transcribe(gen, samples, rate) {
+        /**
+         * ST15. One trace per utterance. The first utterance of a run starts at the microphone
+         * request and carries its mic timings; later ones (the hands-free call) start at their own
+         * end of speech, with no mic marks (the mic opened long before). For an endpointed sentence
+         * "recording stopped" is the endpoint, and the trailing silence it waited for is reported
+         * separately — the time the person spoke never counts as latency.
+         */
+        _newTrace(how) {
+            const P = perf();
+            if (!P) return null;
+            const nowT = nowMs();
+            const run = this._perfRun;
+            const first = !!run && !run.used;
+            const t = P.createTrace({ surface: this.perfSurface || 'app', startAt: first ? run.requestAt : nowT });
+            if (first) {
+                run.used = true;
+                t.mark('microphone_request_started', run.requestAt);
+                if (run.captureAt != null) {
+                    t.mark('microphone_permission_completed', run.captureAt);
+                    t.mark('microphone_capture_started', run.captureAt);
+                }
+                if (run.firstFrameAt != null) t.mark('first_audio_frame', run.firstFrameAt);
+            }
+            t.mark('recording_stopped', nowT);
             const A = lib('NEXUS_STT_AUDIO');
-            const analysis = A ? A.analyze(samples, rate) : null;
-            const g = A ? A.gate(analysis) : { ok: true };
-            if (!g.ok) {
-                this._rejected = g.reason;
-                emitStatus({ type: 'rejected', reason: g.reason, stage: 'audio' });
+            t.merge(traceFacts(this.lang || appLanguage()));
+            t.set('mode', this._mode());
+            if (how.endpointed && A) t.set('endpointWaitMs', A.ENDPOINT_DEFAULTS.endSilenceMs);
+            t.stopFrames = P.sampleFrames(global);
+            return t;
+        }
+
+        async _transcribe(gen, samples, rate, trace) {
+            const A = lib('NEXUS_STT_AUDIO');
+            const disarm = armSlowNotice(trace);
+            const finishTrace = (extra) => {
+                disarm();
+                if (!trace) return;
+                const frames = trace.stopFrames ? trace.stopFrames() : null;
+                trace.end(Object.assign({ frames }, extra || {}));
+            };
+            const res = await runTranscription({
+                samples,
+                rate,
+                model: this._model,
+                trace,
+                language: A ? A.whisperLanguage(this.lang || appLanguage()) : null,
+                onQueued: () => emitStatus({ type: 'transcribing' }),
+            });
+            if (!res.gate.ok) {
+                this._rejected = res.gate.reason;
+                emitStatus({ type: 'rejected', reason: res.gate.reason, stage: 'audio' });
+                finishTrace();
                 return;
             }
-            emitStatus({ type: 'transcribing', audioMs: analysis ? analysis.durationMs : null });
-            let out;
-            try {
-                const audio = A ? A.normalize(samples) : samples;
-                const C = lib('NEXUS_STT_AUDIO');
-                out = await this._model.transcribe(audio, rate, {
-                    language: C ? C.whisperLanguage(this.lang || appLanguage()) : null,
-                });
-            } catch (err) {
-                if (gen !== this._gen || (err && err.code === 'cancelled')) return;
+            if (res.error) {
+                const err = res.error;
+                if (gen !== this._gen || (err && err.code === 'cancelled')) {
+                    finishTrace({ error: 'cancelled' });
+                    return;
+                }
                 const loadFailed =
                     err && (err.code === 'load-failed' || err.code === 'timeout' || err.code === 'worker-reset');
                 const message = loadFailed
@@ -385,18 +535,32 @@
                     : 'On-device speech recognition failed: ' + ((err && err.message) || 'unknown error') + '.';
                 this._error = { error: 'network', message };
                 emitStatus({ type: 'error', message });
+                finishTrace({ error: err.code || 'error' });
                 return;
             }
-            if (gen !== this._gen) return;
-            const verdict = A ? A.judgeTranscript(out.text, analysis) : { accept: !!out.text, text: out.text };
+            if (gen !== this._gen) {
+                finishTrace({ error: 'cancelled' });
+                return;
+            }
+            const out = res.out;
+            const verdict = res.verdict;
             if (!verdict.accept) {
                 this._rejected = verdict.reason;
                 emitStatus({ type: 'rejected', reason: verdict.reason, stage: 'transcript', ms: out.ms });
+                finishTrace();
                 return;
             }
             this._results.push(makeResult(verdict.text));
             emitStatus({ type: 'result', text: verdict.text, ms: out.ms, audioMs: out.audioMs });
             this._fire('result', { results: resultList(this._results), resultIndex: this._results.length - 1 });
+            // The handlers above put the text on screen synchronously (the mic button's input, the
+            // VR panel's transcript, the companion's input): this is when it was displayed.
+            if (trace) {
+                trace.mark('transcript_displayed');
+                finishTrace();
+                const P = perf();
+                if (P && trace.trace.surface !== 'settings-mic-test') P.watchConversation(trace);
+            }
         }
 
         _finishCapture(gen) {
@@ -459,15 +623,33 @@
      * recording. Resolves { accept, text, reason, ms, audioMs, analysis }.
      */
     async function transcribeSamples(samples, sampleRate, opts) {
+        const o = opts || {};
         const A = lib('NEXUS_STT_AUDIO');
-        const analysis = A.analyze(samples, sampleRate);
-        const g = A.gate(analysis);
-        if (!g.ok) return { accept: false, reason: g.reason, analysis };
-        const out = await model().transcribe(A.normalize(samples), sampleRate, {
-            language: A.whisperLanguage((opts && opts.language) || appLanguage()),
+        const language = A.whisperLanguage(o.language || appLanguage());
+        if (o.trace) o.trace.merge(traceFacts(language));
+        const res = await runTranscription({
+            samples,
+            rate: sampleRate,
+            model: model(),
+            trace: o.trace,
+            language,
+            maxNewTokens: o.maxNewTokens,
         });
-        const v = A.judgeTranscript(out.text, analysis);
-        return Object.assign({ raw: out.text, ms: out.ms, audioMs: out.audioMs, analysis }, v);
+        if (!res.gate.ok) return { accept: false, reason: res.gate.reason, analysis: res.analysis };
+        if (res.error) throw res.error;
+        const out = res.out;
+        return Object.assign(
+            {
+                raw: out.text,
+                ms: out.ms,
+                audioMs: out.audioMs,
+                analysis: res.analysis,
+                timings: out.timings || null,
+                page: out.page || null,
+                outputTokens: out.outputTokens == null ? null : out.outputTokens,
+            },
+            res.verdict
+        );
     }
 
     const api = {
@@ -495,6 +677,8 @@
             };
         },
         transcribeSamples,
+        runTranscription,
+        traceFacts,
         readSttConfig,
         /**
          * Forget the downloaded model (Settings ▸ "Remove downloaded model", stt-check.html).

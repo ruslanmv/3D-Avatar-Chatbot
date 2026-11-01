@@ -62,7 +62,7 @@ const PHRASES = [
 const MAX_WER = { tiny: { en: 0.25, it: null }, base: { en: 0.25, it: null }, small: { en: 0.2, it: null } };
 
 function parseArgs(argv) {
-    const o = { port: 8099, only: ['speech', 'model', 'capture'], model: 'tiny' };
+    const o = { port: 8099, only: ['speech', 'model', 'capture', 'perf'], model: 'tiny' };
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i];
         const next = () => argv[++i];
@@ -321,6 +321,152 @@ async function phaseCapture(chromium, base, o) {
 }
 
 /** Copy a 16-bit PCM WAV and append `seconds` of silence (Piper writes plain PCM WAVs). */
+/**
+ * ST10–ST15. The performance diagnostics, end to end with the real model: the Settings test shows
+ * a measured stop → transcript with its stages and a report that holds no audio or transcript;
+ * the app's own mic button files a "real" run that Settings shows; stt-check's benchmark runs three
+ * warm transcriptions without opening the microphone again. Prints the measured numbers — this
+ * machine's CPU, not a Quest.
+ */
+async function phasePerf(chromium, base, o) {
+    const wav = path.join(OUT, 'en-mic.wav');
+    if (!fs.existsSync(wav)) padWav(path.join(OUT, 'en.wav'), wav, 2.0);
+    const browser = await chromium.launch({
+        args: [
+            '--use-fake-ui-for-media-stream',
+            '--use-fake-device-for-media-stream',
+            `--use-file-for-fake-audio-capture=${wav}`,
+        ],
+    });
+    let ok = true;
+    const check = (pass, what) => {
+        ok = ok && pass;
+        console.log(`   ${pass ? '✔' : '✖'} ${what}`);
+    };
+    try {
+        const ctx = await browser.newContext({ permissions: ['microphone'] });
+        await ctx.addInitScript((size) => {
+            localStorage.setItem('stt_config', JSON.stringify({ provider: 'wasm', wasm: { modelSize: size } }));
+        }, o.model);
+        const page = await ctx.newPage();
+        const errors = [];
+        page.on('pageerror', (e) => errors.push(e.message));
+        await page.goto(`${base}/index.html`, { waitUntil: 'domcontentloaded' });
+        await page.waitForFunction(() => window.NEXUS_STT_PERF && document.getElementById('stt-mic-test'), null, {
+            timeout: 120000,
+        });
+        await page.evaluate(() => {
+            const s = document.getElementById('stt-provider');
+            s.value = 'wasm';
+            s.dispatchEvent(new Event('change'));
+            return window.NEXUS_STT.preload();
+        });
+        // Settings test: 3 s of the fake mic, Stop, wait for the verdict.
+        await page.evaluate(() => document.querySelector('#stt-mic-test button').click());
+        await page.waitForTimeout(3500);
+        await page.evaluate(() => document.querySelector('#stt-mic-test button').click());
+        await page.waitForFunction(() => !document.querySelector('#stt-mic-test .stt-perf').hidden, null, {
+            timeout: 90000,
+        });
+        const settings = await page.evaluate(async () => {
+            const r = window.NEXUS_STT_PERF.last((x) => x.surface === 'settings-mic-test');
+            const rep = window.NEXUS_STT_REPORT.build(r, await window.NEXUS_STT_DIAGNOSTICS.environment(window), {
+                transcript: document.querySelector('#stt-mic-test .stt-heard').textContent,
+            });
+            return {
+                line: document.querySelector('#stt-mic-test .stt-perf-line').textContent,
+                rows: document.querySelectorAll('#stt-mic-test .stt-perf table tr').length,
+                status: r.status,
+                m: r.metrics,
+                marks: r.marks,
+                bottleneck: r.diagnosis.likely_bottleneck,
+                report: rep,
+            };
+        });
+        console.log(`   · Settings test: ${settings.line}`);
+        console.log(
+            `     stop→text ${settings.m.sttMs} ms · inference ${settings.m.inferenceMs} ms · queue ${settings.m.workerQueueMs} ms · ` +
+                `messaging ${settings.m.messagingMs} ms · audio ${settings.m.recordedAudioMs} ms · RTF ${settings.m.realTimeFactor} · ` +
+                `tokens ${settings.m.outputTokens} · mic ${settings.m.micAcquisitionMs} ms · bottleneck ${settings.bottleneck}`
+        );
+        check(
+            settings.m.sttMs > 0 && settings.m.inferenceMs > 0,
+            'Settings test measured stop → transcript and inference'
+        );
+        check(
+            settings.marks.recording_stopped - settings.marks.microphone_capture_started >= 3000 &&
+                settings.m.sttMs <= settings.marks.test_completed - settings.marks.recording_stopped,
+            'the 3 s spent speaking is not part of stop → transcript'
+        );
+        check(settings.rows >= 5, `performance details listed (${settings.rows} rows)`);
+        const text = JSON.stringify(settings.report);
+        check(
+            settings.report.schema_version === 1 &&
+                !/weather like in Rome/i.test(text) &&
+                !('transcript' in settings.report.stt),
+            'report: schema 1, no transcript text'
+        );
+        // The app's own mic button, then Settings shows it as the last real use.
+        await page.evaluate(() => {
+            window.handleUserMessage = () => {};
+            document.getElementById('listen-btn').click();
+        });
+        await page.waitForFunction(() => window.NEXUS_STT_PERF.last((x) => x.surface === 'mic-button'), null, {
+            timeout: 60000,
+        });
+        const real = await page.evaluate(() => ({
+            r: window.NEXUS_STT_PERF.last((x) => x.surface === 'mic-button'),
+            last: document.querySelector('#stt-mic-test .stt-last').textContent,
+        }));
+        console.log(
+            `   · mic button: stop→text ${real.r.metrics.sttMs} ms, endpoint wait ${real.r.metrics.endpointWaitMs} ms (reported apart)`
+        );
+        check(
+            real.r.metrics.sttMs > 0 && /mic-button/.test(real.last),
+            'the mic button filed a real run; Settings shows it'
+        );
+        // stt-check: record via the page's own talk control, then the 3-run benchmark.
+        const chk = await ctx.newPage();
+        chk.on('pageerror', (e) => errors.push(e.message));
+        await chk.goto(`${base}/stt-check.html`);
+        await chk.evaluate(() => window.NEXUS_STT.preload());
+        await chk.dispatchEvent('#talk', 'pointerdown');
+        await chk.waitForTimeout(3500);
+        await chk.dispatchEvent('#talk', 'pointerup');
+        await chk.waitForFunction(
+            () => /“|Nothing usable|✖/.test(document.getElementById('transcript').textContent),
+            null,
+            {
+                timeout: 90000,
+            }
+        );
+        const opensBefore = await chk.evaluate(() => window.NEXUS_MIC_SESSION.get().owner());
+        await chk.click('#bench');
+        await chk.waitForFunction(
+            () => /Aggregate|Error/.test(document.getElementById('bench-out').textContent),
+            null,
+            {
+                timeout: 180000,
+            }
+        );
+        const bench = await chk.evaluate(() => ({
+            out: document.getElementById('bench-out').innerText,
+            verdict: document.getElementById('perf-verdict').textContent,
+            owner: window.NEXUS_MIC_SESSION.get().owner(),
+        }));
+        console.log(`   · stt-check: ${bench.verdict}`);
+        console.log(bench.out.replace(/^/gm, '     '));
+        check(
+            /Aggregate/.test(bench.out) && opensBefore === null && bench.owner === null,
+            'benchmark ran 3 times without the microphone'
+        );
+        if (errors.length) check(false, `page errors: ${errors.slice(0, 3).join(' | ')}`);
+    } finally {
+        await browser.close();
+    }
+    return ok;
+}
+
 function padWav(src, dst, seconds) {
     const buf = fs.readFileSync(src);
     const rate = buf.readUInt32LE(24);
@@ -360,6 +506,10 @@ async function main() {
         if (o.only.includes('capture')) {
             console.log('\ncapture (Chromium fake microphone → the app)');
             results.push(await phaseCapture(chromium, server.url, o));
+        }
+        if (o.only.includes('perf')) {
+            console.log('\nperf (ST10–ST15 diagnostics with the real model — this machine, not a Quest)');
+            results.push(await phasePerf(chromium, server.url, o));
         }
     } finally {
         server.stop();

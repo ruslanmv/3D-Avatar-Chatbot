@@ -1,5 +1,7 @@
 # On-device speech recognition (Whisper) — Meta Quest and everywhere
 
+Performance diagnostics (ST10–ST16): `docs/QUEST_STT_PERFORMANCE.md`.
+
 Batch **ST** (plan: `docs/QUEST_STT_PLAN.md`). Speech is turned into text **on
 the device** by OpenAI's Whisper, running in a Web Worker through
 Transformers.js. Nothing is uploaded; there is no speech server and no paid API.

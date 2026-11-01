@@ -164,3 +164,47 @@ describe('small helpers', () => {
         expect(v.getInt16(46, true)).toBe(32767);
     });
 });
+
+describe('ST16 — the cached-kernel resampler is the same filter', () => {
+    // The per-tap reference the cached version replaced (sin/cos per tap per output sample).
+    function reference(input, fromRate, to) {
+        const ratio = fromRate / to;
+        const out = new Float32Array(Math.floor(input.length / ratio));
+        const cutoff = Math.min(1, to / fromRate) * 0.95;
+        const half = Math.ceil(16 * Math.max(1, ratio));
+        for (let i = 0; i < out.length; i++) {
+            const center = i * ratio;
+            let acc = 0;
+            let wsum = 0;
+            for (
+                let j = Math.max(0, Math.ceil(center - half));
+                j <= Math.min(input.length - 1, Math.floor(center + half));
+                j++
+            ) {
+                const x = j - center;
+                const sinc = x === 0 ? 1 : Math.sin(Math.PI * cutoff * x) / (Math.PI * cutoff * x);
+                const t = (Math.PI * x) / (half + 1);
+                const k = sinc * (0.42 + 0.5 * Math.cos(t) + 0.08 * Math.cos(2 * t));
+                acc += input[j] * k;
+                wsum += k;
+            }
+            out[i] = wsum ? acc / wsum : 0;
+        }
+        return out;
+    }
+    const signal = (rate) =>
+        Float32Array.from(
+            { length: rate / 4 },
+            (_, i) => 0.4 * Math.sin((2 * Math.PI * 220 * i) / rate) + 0.2 * Math.sin((2 * Math.PI * 1800 * i) / rate)
+        );
+
+    test.each([48000, 44100, 22050])('%i Hz → 16 kHz matches the reference within 1e-4', (rate) => {
+        const x = signal(rate);
+        const a = reference(x, rate, 16000);
+        const b = A.resample(x, rate, 16000);
+        expect(b.length).toBe(a.length);
+        let maxd = 0;
+        for (let i = 0; i < a.length; i++) maxd = Math.max(maxd, Math.abs(a[i] - b[i]));
+        expect(maxd).toBeLessThan(1e-4);
+    });
+});

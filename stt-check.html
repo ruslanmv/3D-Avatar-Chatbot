@@ -58,6 +58,20 @@
                 font-size: 1.1rem;
                 margin: 0 0 10px;
             }
+            h3 {
+                font-size: 0.95rem;
+                margin: 14px 0 6px;
+                color: var(--muted);
+            }
+            input {
+                font: inherit;
+                border-radius: 8px;
+                border: 1px solid #2a5a70;
+                background: #12384a;
+                color: var(--text);
+                padding: 8px;
+                min-height: 40px;
+            }
             table {
                 width: 100%;
                 border-collapse: collapse;
@@ -196,6 +210,79 @@
                 <div id="timing" class="muted"></div>
             </section>
 
+            <section id="perf">
+                <h2>5 · Performance analysis</h2>
+                <p class="muted">
+                    Where the time went after you stopped talking, measured on this device. Speak in section 4 first;
+                    every run is added here. Nothing leaves this page unless you copy, download or share the report.
+                </p>
+                <h3>Device overview</h3>
+                <table id="perf-device"></table>
+                <details>
+                    <summary>Add what the browser cannot tell (optional, marked as entered by you)</summary>
+                    <div class="row">
+                        <label
+                            >Headset
+                            <select id="m-headset">
+                                <option value="">—</option>
+                                <option>Quest 3</option>
+                                <option>Quest 3S</option>
+                                <option>Quest 2</option>
+                                <option>Quest Pro</option>
+                                <option>Other</option>
+                            </select></label
+                        >
+                        <label>Horizon OS <input id="m-os" size="10" /></label>
+                        <label>Quest Browser <input id="m-qb" size="10" /></label>
+                        <label
+                            >Environment
+                            <select id="m-env">
+                                <option value="">—</option>
+                                <option>Browser 2D</option>
+                                <option>Immersive VR</option>
+                                <option>Mixed reality</option>
+                                <option>Air Link</option>
+                            </select></label
+                        >
+                    </div>
+                </details>
+                <h3>Last run</h3>
+                <div id="perf-verdict" class="out"></div>
+                <table id="perf-timeline"></table>
+                <ul id="perf-tips" class="muted"></ul>
+                <h3>History (this page)</h3>
+                <table id="perf-history"></table>
+                <div id="perf-stats" class="muted"></div>
+                <h3>Benchmark</h3>
+                <div class="row">
+                    <button id="bench">Run 3-test benchmark</button>
+                    <label
+                        >Decoding budget
+                        <select id="bench-tokens">
+                            <option value="128">128 tokens (default)</option>
+                            <option value="64">64 tokens</option>
+                            <option value="32">32 tokens</option>
+                        </select></label
+                    >
+                </div>
+                <p class="muted">
+                    Transcribes your last recording from section 4 three times with the model already loaded — no new
+                    recording, no microphone. A first-time model load is reported separately.
+                </p>
+                <table id="bench-out"></table>
+                <h3>Report</h3>
+                <div class="row">
+                    <button id="rep-copy" class="primary">Copy report</button>
+                    <button id="rep-download">Download JSON</button>
+                    <button id="rep-share" hidden>Share…</button>
+                    <span id="rep-note" class="muted"></span>
+                </div>
+                <details>
+                    <summary>Preview (includes your browser's user agent; no audio, no transcript text)</summary>
+                    <pre id="rep-preview"></pre>
+                </details>
+            </section>
+
             <section>
                 <h2>Log</h2>
                 <pre id="log"></pre>
@@ -208,6 +295,8 @@
         <script src="src/stt/WhisperModelManager.js"></script>
         <script src="src/stt/MicrophoneSession.js"></script>
         <script src="src/stt/SttRouter.js"></script>
+        <script src="src/stt/SttPerformance.js"></script>
+        <script src="src/stt/SttDiagnosticReport.js"></script>
         <script src="src/stt/LocalWhisperSTT.js"></script>
         <script src="src/stt/QuestAudioDiagnostics.js"></script>
         <script>
@@ -218,6 +307,8 @@
                 const D = window.NEXUS_STT_DIAGNOSTICS;
                 const C = window.NEXUS_WHISPER_CONFIG;
                 const STT = window.NEXUS_STT;
+                const PERF = window.NEXUS_STT_PERF;
+                const R = window.NEXUS_STT_REPORT;
                 const mics = window.NEXUS_MIC_SESSION.get();
 
                 function log(...parts) {
@@ -256,14 +347,16 @@
                 });
 
                 // 2 · microphone
-                function record(ms, onLevel) {
+                function record(ms, onLevel, trace) {
                     const chunks = [];
                     let rate = 48000;
                     let finish;
                     const done = new Promise((resolve) => (finish = resolve));
+                    if (trace) trace.mark('microphone_request_started');
                     const lease = mics.open({
                         owner: 'stt-check',
                         onFrames: (s, r) => {
+                            if (trace && !chunks.length) trace.mark('first_audio_frame');
                             rate = r;
                             chunks.push(s);
                             let peak = 0;
@@ -277,6 +370,10 @@
                     }
                     lease.ready.then((r) => {
                         if (!r.ok) return finish({ error: r });
+                        if (trace) {
+                            trace.mark('microphone_permission_completed');
+                            trace.mark('microphone_capture_started');
+                        }
                         log('microphone open at', r.sampleRate, 'Hz');
                         if (ms) setTimeout(stop, ms);
                     });
@@ -354,13 +451,17 @@
                     $('transcript').textContent = 'Listening…';
                     $('transcript').className = 'out';
                     $('timing').textContent = '';
-                    holding = record(0, (p) => ($('level').style.width = Math.min(100, p * 140) + '%'));
+                    const trace = PERF.createTrace({ surface: 'stt-check' });
+                    trace.set('xrMode', PERF.xrMode(window));
+                    holding = record(0, (p) => ($('level').style.width = Math.min(100, p * 140) + '%'), trace);
+                    holding.trace = trace;
                     STT.preload().catch(() => {});
                 }
                 async function up() {
                     if (!holding) return;
                     const take = holding;
                     holding = null;
+                    take.trace.mark('recording_stopped');
                     take.stop();
                     $('level').style.width = '0';
                     const r = await take.done;
@@ -369,10 +470,16 @@
                         return;
                     }
                     $('transcript').textContent = 'Transcribing…';
+                    lastTake = { samples: r.samples, rate: r.rate, language: $('lang').value };
                     const t0 = performance.now();
                     try {
-                        const out = await STT.transcribeSamples(r.samples, r.rate, { language: $('lang').value });
+                        const out = await STT.transcribeSamples(r.samples, r.rate, {
+                            language: $('lang').value,
+                            trace: take.trace,
+                        });
                         const wall = Math.round(performance.now() - t0);
+                        if (out.accept) take.trace.mark('transcript_displayed');
+                        lastResult = take.trace.end();
                         if (out.accept) {
                             $('transcript').textContent = '“' + out.text + '”';
                             $('transcript').className = 'out ok';
@@ -394,7 +501,9 @@
                         $('transcript').textContent = '✖ ' + err.message;
                         $('transcript').className = 'out bad';
                         log('transcription failed:', err.message);
+                        lastResult = take.trace.end({ error: err.code || 'error' });
                     }
+                    renderPerf();
                 }
                 const talk = $('talk');
                 talk.addEventListener('pointerdown', down);
@@ -410,6 +519,284 @@
                     if (e.code === 'Space' && e.target === document.body) up();
                 });
                 showModel();
+
+                // ---- 5 · Performance analysis (ST13) -------------------------------------------
+                function rows(tbl, list) {
+                    tbl.textContent = '';
+                    for (const [k, v] of list) {
+                        const tr = document.createElement('tr');
+                        const a = document.createElement('td');
+                        const b = document.createElement('td');
+                        a.textContent = k;
+                        b.textContent = v == null ? '—' : String(v);
+                        tr.appendChild(a);
+                        tr.appendChild(b);
+                        tbl.appendChild(tr);
+                    }
+                }
+                const ms = (v) => (v == null ? 'not measured' : `${Math.round(v).toLocaleString('en-US')} ms`);
+
+                async function renderDevice() {
+                    const env = await D.environment(window, { xrMode: PERF.xrMode(window) });
+                    const st = STT.status();
+                    const info = st && STT.model().info ? STT.model().info() : null;
+                    const rt = (info && info.runtime) || {};
+                    const man = env.manual || {};
+                    rows($('perf-device'), [
+                        ['Device family', env.device_family],
+                        ['Browser', `${env.browser_name} ${env.browser_version}`],
+                        [
+                            'Horizon OS',
+                            man.horizon_os_version
+                                ? `${man.horizon_os_version} (entered by you)`
+                                : 'Not exposed to websites',
+                        ],
+                        ['Headset model', man.headset_model ? `${man.headset_model} (entered by you)` : 'Not verified'],
+                        ['Mode', env.xr_mode],
+                        ['Model', `${st.config.modelId} @ ${String(st.config.revision).slice(0, 8)} (${st.model})`],
+                        ['Runtime', `Transformers.js ${C.RUNTIME_VERSION}`],
+                        ['Backend', rt.backend ? String(rt.backend).toUpperCase() : 'WASM (configured)'],
+                        [
+                            'WASM threads',
+                            env.wasm_threads_available ? 'Available' : 'Unavailable (page not cross-origin isolated)',
+                        ],
+                        ['WASM SIMD', String(env.wasm_simd)],
+                        ['WebGPU', `${env.webgpu_available ? 'Available' : 'Unavailable'} · not in use`],
+                        ['CPU threads', env.hardware_concurrency],
+                        [
+                            'Device memory',
+                            env.device_memory_gb === 'not_exposed' ? 'not exposed' : `${env.device_memory_gb} GB`,
+                        ],
+                        [
+                            'Storage',
+                            typeof env.storage === 'object'
+                                ? `${env.storage.usageMB} MB used of ${env.storage.quotaMB} MB · persisted ${env.storage.persisted}`
+                                : env.storage,
+                        ],
+                    ]);
+                }
+
+                function renderPerf() {
+                    const r = lastResult;
+                    if (r) {
+                        const m = r.metrics;
+                        const st = {
+                            fast: '✓ Fast',
+                            slow: '⚠️ Slow',
+                            very_slow: '⚠️ Very slow',
+                            failed: '✖ Failed',
+                            not_measured: '· Not measured',
+                        }[r.status];
+                        $('perf-verdict').textContent =
+                            `${st} — ${ms(m.sttMs)} after you stopped (target ${ms(r.thresholds.sttWarningMs)})`;
+                        $('perf-verdict').className =
+                            'out ' + (r.status === 'fast' ? 'ok' : r.status === 'not_measured' ? '' : 'bad');
+                        rows($('perf-timeline'), [
+                            ['Mic acquisition', ms(m.micAcquisitionMs)],
+                            ['First audio frame', ms(m.firstAudioFrameMs)],
+                            ['Recorded audio', ms(m.recordedAudioMs)],
+                            [
+                                'Audio processing (page)',
+                                ms(m.analysisMs == null ? null : (m.analysisMs || 0) + (m.preprocessingMs || 0)),
+                            ],
+                            ['Resampling (worker)', ms(m.workerResampleMs)],
+                            ['Waiting for the model', ms(m.modelWaitMs)],
+                            [
+                                'Model download / init / warm-up (this run)',
+                                m.modelWarmAtStart === false
+                                    ? `${ms(m.modelDownloadMs)} / ${ms(m.modelInitMs)} / ${ms(m.modelWarmupMs)}`
+                                    : 'model was already loaded',
+                            ],
+                            ['Queue in the worker', ms(m.workerQueueMs)],
+                            ['Whisper inference', ms(m.inferenceMs)],
+                            ['Messaging to/from the worker', ms(m.messagingMs)],
+                            ['Transcript processing', ms(m.postprocessingMs)],
+                            ['Real-time factor', m.realTimeFactor == null ? 'not measured' : m.realTimeFactor],
+                            ['Tokens produced', m.outputTokens == null ? 'not measured' : m.outputTokens],
+                            [
+                                'Frames during transcription',
+                                m.frames
+                                    ? `${m.frames.count} (avg ${m.frames.avgMs} ms, p95 ${m.frames.p95Ms ?? '—'} ms, ${m.frames.longGaps} gaps > 50 ms)`
+                                    : 'not measured',
+                            ],
+                        ]);
+                        const tips = $('perf-tips');
+                        tips.textContent = '';
+                        const head = document.createElement('li');
+                        head.textContent = `Likely bottleneck: ${r.diagnosis.likely_bottleneck} (${r.diagnosis.confidence})`;
+                        tips.appendChild(head);
+                        for (const t of r.diagnosis.suggestions) {
+                            const li = document.createElement('li');
+                            li.textContent = t;
+                            tips.appendChild(li);
+                        }
+                    }
+                    const hist = PERF.history((h) => h.surface === 'stt-check' || h.surface === 'benchmark');
+                    const tbl = $('perf-history');
+                    tbl.textContent = '';
+                    const head = [
+                        '#',
+                        'kind',
+                        'model',
+                        'lang',
+                        'audio',
+                        'stop→text',
+                        'inference',
+                        'RTF',
+                        'warm',
+                        'mode',
+                        'frames avg',
+                    ];
+                    const tr0 = document.createElement('tr');
+                    for (const h of head) {
+                        const th = document.createElement('td');
+                        th.textContent = h;
+                        tr0.appendChild(th);
+                    }
+                    tbl.appendChild(tr0);
+                    hist.forEach((h, i) => {
+                        const m = h.metrics;
+                        const tr = document.createElement('tr');
+                        for (const v of [
+                            i + 1,
+                            h.surface,
+                            h.data.model,
+                            h.data.language,
+                            m.recordedAudioMs,
+                            m.sttMs,
+                            m.inferenceMs,
+                            m.realTimeFactor,
+                            m.modelWarmAtStart,
+                            h.data.xrMode,
+                            m.frames ? m.frames.avgMs : null,
+                        ]) {
+                            const td = document.createElement('td');
+                            td.textContent = v == null ? '—' : String(v);
+                            tr.appendChild(td);
+                        }
+                        tbl.appendChild(tr);
+                    });
+                    const warm = hist.filter((h) => h.metrics.modelWarmAtStart);
+                    const sStt = PERF.stats(warm.map((h) => h.metrics.sttMs));
+                    const sInf = PERF.stats(warm.map((h) => h.metrics.inferenceMs));
+                    $('perf-stats').textContent = sStt.n
+                        ? `Warm runs: ${sStt.n} · stop→text min ${sStt.min} / median ${sStt.median} / p95 ${sStt.p95 == null ? 'needs 5 runs' : sStt.p95} ms · inference median ${sInf.median} ms`
+                        : 'No warm runs yet.';
+                }
+
+                let lastTake = null;
+                let lastResult = null;
+                $('bench').addEventListener('click', async () => {
+                    if (!lastTake) return log('benchmark: record something in section 4 first');
+                    if (mics.owner()) return log('benchmark: the microphone is in use — finish that first');
+                    $('bench').disabled = true;
+                    const out = [];
+                    try {
+                        if (STT.status().model !== 'ready') {
+                            const t0 = performance.now();
+                            await STT.preload();
+                            out.push(['Model load (cold, once)', ms(performance.now() - t0)]);
+                        }
+                        const budget = Number($('bench-tokens').value);
+                        const runs = [];
+                        for (let i = 1; i <= 3; i++) {
+                            const t = PERF.createTrace({ surface: 'benchmark' });
+                            t.set('xrMode', PERF.xrMode(window));
+                            t.set('benchmarkTokens', budget);
+                            t.mark('recording_stopped'); // the same recording, processed again: no speaking time
+                            const res = await STT.transcribeSamples(lastTake.samples, lastTake.rate, {
+                                language: lastTake.language,
+                                trace: t,
+                                maxNewTokens: budget,
+                            });
+                            t.mark('transcript_displayed');
+                            const r = t.end();
+                            runs.push(r);
+                            out.push([
+                                `Run ${i}`,
+                                `${ms(r.metrics.sttMs)} · inference ${ms(r.metrics.inferenceMs)} · ${r.metrics.outputTokens ?? '—'} tokens · ${res.accept ? 'accepted' : 'refused: ' + res.reason}`,
+                            ]);
+                            rows($('bench-out'), out);
+                        }
+                        const s = PERF.stats(runs.map((r) => r.metrics.sttMs));
+                        out.push([
+                            'Aggregate (warm)',
+                            `min ${s.min} · median ${s.median} · max ${s.max} ms (n=${s.n}; too few for a p95)`,
+                        ]);
+                        lastBenchmark = {
+                            runs: runs.length,
+                            max_new_tokens: budget,
+                            min_ms: s.min,
+                            median_ms: s.median,
+                            max_ms: s.max,
+                            inference_ms: runs.map((r) => r.metrics.inferenceMs),
+                        };
+                    } catch (err) {
+                        out.push(['Error', err.message]);
+                    }
+                    rows($('bench-out'), out);
+                    $('bench').disabled = false;
+                    renderPerf();
+                });
+                let lastBenchmark = null;
+
+                async function report() {
+                    const env = await D.environment(window, {
+                        xrMode: PERF.xrMode(window),
+                        sttLanguage: $('lang').value,
+                    });
+                    const r = lastResult || PERF.last() || { status: 'not_measured', metrics: {}, data: {} };
+                    return R.build(r, env, { surface: 'stt-check', history: PERF.history(), benchmark: lastBenchmark });
+                }
+                $('rep-copy').addEventListener('click', async () => {
+                    const text = R.toText(await report());
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        $('rep-note').textContent = 'Copied.';
+                    } catch (_) {
+                        $('rep-preview').textContent = text;
+                        $('rep-note').textContent = 'Could not copy: open the preview and select the text.';
+                    }
+                });
+                $('rep-download').addEventListener('click', async () => {
+                    const rep = await report();
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(new Blob([R.toText(rep)], { type: 'application/json' }));
+                    a.download = R.fileName(rep);
+                    a.click();
+                    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+                });
+                if (navigator.share) {
+                    $('rep-share').hidden = false;
+                    $('rep-share').addEventListener('click', async () => {
+                        try {
+                            await navigator.share({
+                                title: 'Speech performance report',
+                                text: R.toText(await report()),
+                            });
+                        } catch (_) {}
+                    });
+                }
+                document.querySelector('#perf details:last-of-type').addEventListener('toggle', async (e) => {
+                    if (e.target.open) $('rep-preview').textContent = R.toText(await report());
+                });
+                const man = D.manualEnv(window);
+                const bind = (id, key) => {
+                    $(id).value = man[key] || '';
+                    $(id).addEventListener('change', () => {
+                        D.setManualEnv({ [key]: $(id).value }, window);
+                        renderDevice();
+                    });
+                };
+                bind('m-headset', 'headset_model');
+                bind('m-os', 'horizon_os_version');
+                bind('m-qb', 'quest_browser_version');
+                bind('m-env', 'test_environment');
+                renderDevice();
+                renderPerf();
+                window.addEventListener('nexus-stt', (e) => {
+                    if (e.detail && e.detail.type === 'model-state') renderDevice();
+                });
             })();
         </script>
     </body>
