@@ -153,9 +153,28 @@
     }
 
     /**
-     * The whole catalogue for the VOICE list, grouped by locale: nothing is hidden. The chosen
-     * language's locales come first, and within a locale the preferred gender and the style.
+     * The catalogue for the VOICE list, grouped by locale — the whole of it, or with
+     * `onlyLanguage` just `forLanguage`'s voices. The chosen language's locales come first, and
+     * within a locale the preferred gender and the style.
      */
+    /**
+     * HV-FIX 7. The voices the VOICE list offers for one language. On a phone the native picker
+     * showed all 49 entries in one scrolling sheet — English, German, Spanish, French, Italian and
+     * Portuguese together — when VOICE LANGUAGE had already said which one she speaks; every
+     * entry of another language is a voice Auto would never send anyway. So: the voices of that
+     * exact locale (English (US) → the en_US voices). Only when the catalogue has none for the
+     * locale (en-AU, pt-PT) is it widened to the language, so a language SonicAgent speaks never
+     * shows an empty list; a bare language code ('en') takes every locale of it.
+     */
+    function forLanguage(library, language) {
+        const voices = (library && library.voices) || [];
+        const loc = locale(language);
+        const exact = loc ? voices.filter((v) => (v.locale || '') === loc) : [];
+        if (exact.length) return exact;
+        const base = lang(language);
+        return voices.filter((v) => lang(v.locale || v.language) === base);
+    }
+
     function grouped(library, opts) {
         const o = opts || {};
         if (!library) return [];
@@ -163,7 +182,7 @@
         const gender = genderOf(o.gender);
         const style = o.style === 'secretary' ? 'secretary' : o.style === 'all' ? null : 'companion';
         const groups = new Map();
-        for (const v of library.voices) {
+        for (const v of o.onlyLanguage ? forLanguage(library, o.language) : library.voices) {
             const key = v.locale || v.language;
             if (!groups.has(key)) groups.set(key, { locale: key, label: v.languageLabel || key, voices: [] });
             groups.get(key).voices.push(v);
@@ -225,6 +244,7 @@
         resolveRemote,
         inputFromSettings,
         grouped,
+        forLanguage,
         label,
         isRemoteVoice,
         locale,

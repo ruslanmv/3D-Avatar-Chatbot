@@ -9,9 +9,10 @@
  *
  *   VOICE STYLE   Companion · Secretary / Productivity · All Voices
  *   LANGUAGE      her voice's language (default: the app's)
- *   VOICE         Auto — <what Auto resolves to>, then EVERY catalogue entry grouped by
- *                 locale: name — role — gender — locale — quality, unavailable ones disabled
- *                 with the reason. Nothing is hidden; "Prefer Female" only orders the list.
+ *   VOICE         Auto — <what Auto resolves to>, then the catalogue's voices FOR THAT
+ *                 LANGUAGE (HV-FIX 7: VOICE LANGUAGE filters the list; English (US) offers the
+ *                 en_US voices, not all 49): name — role — gender — locale — quality,
+ *                 unavailable ones disabled with the reason. "Prefer Female" only orders it.
  *   Status, a note on rate and pitch, ▶ Preview, Test streaming latency.
  *
  * Rules: the catalogue is SonicAgent's (`GET /v1/voice/voices` through OllaBridge), never the
@@ -158,7 +159,13 @@
                     : auto.voice
                 : 'no voice for this language';
             let html = `<option value="">Auto — ${esc(autoText)}</option>`;
-            for (const grp of P.grouped(lib_, { language: input.language, gender: input.gender, style: input.style })) {
+            const shown = P.grouped(lib_, {
+                language: input.language,
+                gender: input.gender,
+                style: input.style,
+                onlyLanguage: true,
+            });
+            for (const grp of shown) {
                 html += `<optgroup label="${esc(grp.label)}">`;
                 for (const v of grp.voices) {
                     const why = v.playable
@@ -175,8 +182,11 @@
 
             const unsupported = !auto.voice && auto.reason === 'no-voice-for-language';
             $('sonic-voice-other-engine').style.display = unsupported ? '' : 'none';
+            const inLanguage = shown.reduce((n, g) => n + g.voices.length, 0);
+            const langLabel = shown.length === 1 ? shown[0].label : 'this language';
             const count = lib_
-                ? ` · ${lib_.voices.length} voices in the catalog, ${lib_.voices.filter((v) => v.playable).length} playable`
+                ? ` · ${inLanguage} ${inLanguage === 1 ? 'voice' : 'voices'} in ${langLabel}, ` +
+                  `${lib_.voices.length} in the catalog (${lib_.voices.filter((v) => v.playable).length} playable)`
                 : '';
             if (chosen.ignoredExplicit) {
                 status(`“${chosen.ignoredExplicit}” is not a SonicAgent voice; using Auto.${count}`, 'warn');

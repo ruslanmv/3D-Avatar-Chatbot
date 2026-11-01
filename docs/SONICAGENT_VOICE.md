@@ -33,11 +33,16 @@ It is **off by default** and **additive**:
 
 ## Voices: the catalogue, Companion and Secretary (HV9, HV-FIX)
 
-The VOICE list is SonicAgent's whole registry through OllaBridge (`GET /v1/voice/voices`): today
-49 entries, 44 model files, 8 locales, grouped by locale, each labelled name — role — gender —
-locale — quality. Entries the server cannot play are listed, disabled, with the reason. Shared-
-model presets stay separate entries (Paola Companion / Secretary, Sharvard Companion /
-Secretary / Male, Ald, UPMC Jessica / Pierre). "Prefer Female" orders the list; it hides nothing.
+The catalogue is SonicAgent's whole registry through OllaBridge (`GET /v1/voice/voices`): today
+49 entries, 44 model files, 8 locales. The VOICE list shows the part of it in VOICE LANGUAGE
+(HV-FIX 7, `VoiceSelectionPolicy.forLanguage`): English (US) lists the en_US voices only — on a
+phone the native picker had shown all 49, six languages in one sheet, though Auto never sends a
+voice of another language. A locale the catalogue lacks (en-AU, pt-PT) widens to its language
+rather than show nothing. Each entry is labelled name — role — gender — locale — quality; ones the
+server cannot play are listed, disabled, with the reason. Shared-model presets stay separate
+entries (Paola Companion / Secretary, Sharvard Companion / Secretary / Male, Ald, UPMC Jessica /
+Pierre). "Prefer Female" orders the list; it hides nothing. Changing VOICE LANGUAGE clears an
+explicit pick, so a voice never carries into another language.
 
 Auto (`src/tts/VoiceSelectionPolicy.js`) resolves, in order: the person's explicit pick (a
 SonicAgent voice, this language, playable) → the documented preset for the locale and style →

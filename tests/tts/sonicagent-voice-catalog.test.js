@@ -70,15 +70,48 @@ describe('Settings ▸ SPEECH with SonicAgent as TTS ENGINE', () => {
         expect(sel.value).toBe('');
     });
 
-    test('every one of the 49 catalogue entries is in the VOICE list, grouped by locale', () => {
+    // HV-FIX 7: the phone's picker showed all 49 voices of six languages in one sheet.
+    const listed = (sel) => Array.from(sel.querySelectorAll('optgroup option')).map((o) => o.value);
+    const inCatalog = (pred) => raw.voices.filter(pred).map((v) => v.id);
+
+    test('the VOICE list holds only the voices of VOICE LANGUAGE', () => {
         const { $ } = page();
         const sel = $('sonic-voice-select');
-        const ids = Array.from(sel.querySelectorAll('optgroup option')).map((o) => o.value);
-        expect(ids).toHaveLength(49);
-        expect(new Set(ids).size).toBe(49);
-        expect(sel.querySelectorAll('optgroup')).toHaveLength(8);
+        const ids = listed(sel);
+        expect(ids.length).toBeGreaterThan(1);
+        expect(ids.every((id) => id.startsWith('en_US-'))).toBe(true);
+        expect(ids.sort()).toEqual(inCatalog((v) => v.id.startsWith('en_US-')).sort());
+        expect(sel.querySelectorAll('optgroup')).toHaveLength(1);
         expect(sel.querySelector('optgroup').label).toBe('English (US)');
-        expect($('sonic-voice-status').textContent).toMatch(/49 voices in the catalog, 49 playable/);
+        expect($('sonic-voice-status').textContent).toMatch(
+            new RegExp(`${ids.length} voices in English \\(US\\), 49 in the catalog \\(49 playable\\)`)
+        );
+    });
+
+    test('changing VOICE LANGUAGE swaps the list and drops a pick from the old language', () => {
+        const { $ } = page();
+        const sel = $('sonic-voice-select');
+        sel.value = 'en_US-hfc_female-medium';
+        sel.dispatchEvent(new Event('change'));
+        const language = $('sonic-voice-language');
+        language.value = 'it-IT';
+        language.dispatchEvent(new Event('change'));
+        expect(listed(sel).sort()).toEqual(inCatalog((v) => v.id.startsWith('it_IT-')).sort());
+        expect(sel.value).toBe('');
+        expect(Config.get().voice).toBe('');
+        expect(sel.options[0].textContent).toBe('Auto — Paola (Companion, Italiano)');
+        language.value = 'en-GB';
+        language.dispatchEvent(new Event('change'));
+        expect(listed(sel).every((id) => id.startsWith('en_GB-'))).toBe(true);
+    });
+
+    test('a locale the catalogue lacks widens to its language instead of an empty list', () => {
+        const P = Policy;
+        const lib = Library.normalize(raw);
+        expect(P.forLanguage(lib, 'pt-PT').every((v) => v.id.startsWith('pt_BR-'))).toBe(true);
+        expect(P.forLanguage(lib, 'pt-PT').length).toBeGreaterThan(0);
+        expect(P.forLanguage(lib, 'en').length).toBe(inCatalog((v) => /^en_/.test(v.id)).length);
+        expect(P.forLanguage(lib, 'ja-JP')).toEqual([]);
     });
 
     test('Secretary switches the voice, not just the label', () => {

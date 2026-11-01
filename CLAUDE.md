@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-01 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5559 tests in 248 suites, all passing.**
+— lint clean, format clean, **5561 tests in 248 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -630,7 +630,8 @@ the OllaBridge Cloud this app pairs with for chat. **Off by default; additive.**
   Currently speaking / Reason". Never write the fallback to storage.
 - **Voices: `VoiceSelectionPolicy` decides Auto**, from SonicAgent's catalogue
   (`GET /v1/voice/voices`, all 49 entries, in Settings ▸ SPEECH under TTS ENGINE
-  via `VoiceStyleSettings`). Preset per locale and style first; never another
+  via `VoiceStyleSettings`; the VOICE list shows only VOICE LANGUAGE's voices —
+  HV-FIX 7, `forLanguage`). Preset per locale and style first; never another
   language, never a local Piper id, never `piper_voice`. The voice goes as
   `voice_id` on every `tts.speak`. Rate and pitch do not apply to SonicAgent and
   are disabled for it.
