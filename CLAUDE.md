@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-10-31 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5372 tests in 238 suites, all passing.**
+— lint clean, format clean, **5378 tests in 238 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -548,7 +548,10 @@ procedure.
   chose On-device Whisper and closed Settings with ✕ stayed on the browser's
   recognizer and heard nothing. `SttSettings` writes provider, model size,
   language and microphone at once, and draws the section's MICROPHONE TEST (real
-  input meter; "No sound" vs "no words recognized" vs "recognized").
+  input meter; "No sound" vs "no words recognized" vs "recognized"). ST9: its
+  Web Speech test runs the recognizer exactly as the mic button does and opens a
+  meter capture only on desktop (`browserMeterSafe`) — on a phone a second
+  capture took the audio and the recognizer heard nothing.
 - **No interim text, no confidence.** Surfaces show "Transcribing…" at
   `onaudioend` (SpeechService passes `onTranscribing`); `confidence` is
   `undefined` → `null` to callers, which show no percentage and treat it as "no

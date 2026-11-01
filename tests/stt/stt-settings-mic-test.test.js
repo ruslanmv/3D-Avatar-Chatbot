@@ -141,3 +141,118 @@ test('a silent microphone says so, and the model is never asked', async () => {
     expect(t.chip()).toBe('No sound');
     expect(t.transcribe).not.toHaveBeenCalled();
 });
+
+describe('ST9 — the test drives the browser recognizer the way the app does', () => {
+    let made;
+    class FakeSR {
+        constructor() {
+            made.push(this);
+            this.starts = 0;
+            this.stops = 0;
+        }
+        start() {
+            this.starts++;
+            this.startedAt = made.order++;
+        }
+        stop() {
+            this.stops++;
+        }
+    }
+    const ua = (s) => Object.defineProperty(window.navigator, 'userAgent', { value: s, configurable: true });
+    const ANDROID = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/132 Mobile Safari/537.36';
+    const DESKTOP = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/132 Safari/537.36';
+    const original = window.navigator.userAgent;
+
+    function browserSetup(agent) {
+        ua(agent);
+        made = [];
+        made.order = 0;
+        const t = setup();
+        window.NEXUS_STT.recognitionClass = () => FakeSR; // the class the app's mic button would build
+        const open = t.mic.open;
+        t.mic.open = (o) => {
+            t.meterOpenedAt = made.order++;
+            return open(o);
+        };
+        document.getElementById('stt-provider').value = 'webspeech';
+        document.getElementById('stt-language').value = 'it-IT';
+        return t;
+    }
+    afterEach(() => ua(original));
+
+    test('pure: only a desktop browser shares the microphone with the meter', () => {
+        expect(SS.browserMeterSafe({ userAgent: ANDROID })).toBe(false);
+        expect(SS.browserMeterSafe({ userAgent: 'x OculusBrowser/38 Quest 3' })).toBe(false);
+        expect(SS.browserMeterSafe({ userAgent: DESKTOP, touch: false })).toBe(true);
+        expect(SS.browserMeterSafe({ userAgent: DESKTOP, touch: true })).toBe(false);
+    });
+
+    test('on a phone: the recognizer runs alone, configured like the mic button, and its words count', async () => {
+        const t = browserSetup(ANDROID);
+        t.button().click();
+        await tick();
+        const sr = made[0];
+        expect(sr.starts).toBe(1);
+        expect(t.mic.opens).toHaveLength(0); // no second capture to steal the audio
+        expect(sr).toMatchObject({ continuous: false, interimResults: true, lang: 'it-IT' });
+        sr.onstart();
+        sr.onsoundstart();
+        expect(t.chip()).toBe('Sound detected');
+        const r = [{ transcript: 'ciao come stai' }];
+        r.isFinal = true;
+        sr.onresult({ resultIndex: 0, results: [r] });
+        sr.onend();
+        await tick();
+        await tick();
+        expect(t.chip()).toBe('Mic works · recognized');
+        expect(t.heard()).toBe('ciao come stai');
+    });
+
+    test('on a desktop: the recognizer starts first, then the meter takes its own capture', async () => {
+        const t = browserSetup(DESKTOP);
+        t.button().click();
+        await tick();
+        expect(made[0].starts).toBe(1);
+        expect(t.mic.opens).toHaveLength(1);
+        expect(made[0].startedAt).toBeLessThan(t.meterOpenedAt);
+    });
+
+    test('nothing recognised and no meter: "No speech heard", never "No sound"', async () => {
+        const t = browserSetup(ANDROID);
+        t.button().click();
+        await tick();
+        const sr = made[0];
+        sr.onerror({ error: 'no-speech' });
+        sr.onend();
+        await tick();
+        await tick();
+        expect(t.chip()).toBe('No speech heard');
+    });
+
+    test('Stop asks the recognizer to stop and waits for its last words', async () => {
+        const t = browserSetup(ANDROID);
+        t.button().click();
+        await tick();
+        const sr = made[0];
+        t.button().click(); // Stop
+        expect(sr.stops).toBe(1);
+        const r = [{ transcript: 'hello there' }];
+        r.isFinal = true;
+        sr.onresult({ resultIndex: 0, results: [r] });
+        sr.onend();
+        await tick();
+        await tick();
+        expect(t.heard()).toBe('hello there');
+    });
+
+    test('a blocked microphone is named', async () => {
+        const t = browserSetup(ANDROID);
+        t.button().click();
+        await tick();
+        made[0].onerror({ error: 'not-allowed' });
+        made[0].onend();
+        await tick();
+        await tick();
+        expect(t.chip()).toBe('Microphone blocked');
+    });
+});

@@ -99,6 +99,20 @@
         return Math.max(0, Math.min(1, (dbfs + 60) / 50));
     }
 
+    /**
+     * ST9. Can the meter take its own capture while the browser's recognizer listens? On a phone
+     * (and in a headset) only one capture of the microphone receives audio: the test opened the
+     * meter's first, so the meter moved and the recognizer heard silence — "Sound detected · no
+     * words recognized", while the app's mic button (which runs the recognizer alone) worked.
+     * Desktop browsers share the microphone. Pure: answers from the user agent and touch support.
+     */
+    function browserMeterSafe(env) {
+        const e = env || {};
+        const ua = String(e.userAgent || '');
+        if (/Android|iPhone|iPad|iPod|Mobile|OculusBrowser|Quest/i.test(ua)) return false;
+        return !e.touch;
+    }
+
     const SOUND_LEVEL = 0.3; // ≈ -45 dBFS: above a quiet room, below quiet speech
 
     /**
@@ -117,7 +131,21 @@
                 text: blocked ? 'Allow the microphone for this site, then try again.' : i.error.message || '',
             };
         }
+        // ST9. A recognised sentence proves the microphone works whatever the meter saw (on a phone
+        // the browser's recognizer runs without one).
+        if (!i.failure && i.result && i.result.accept) {
+            return { tone: 'ok', status: 'Mic works · recognized', text: i.result.text };
+        }
         const sound = i.heardSound || (i.analysis && i.analysis.peak > 0.02);
+        if (!sound && i.levelKnown === false) {
+            return {
+                tone: 'warn',
+                status: 'No speech heard',
+                text: i.quest
+                    ? COPY.webspeechQuest
+                    : 'The browser’s recognizer heard no speech. Speak after “Listening”, a little louder or closer.',
+            };
+        }
         if (!sound) {
             return {
                 tone: 'error',
@@ -207,6 +235,7 @@
             const analysis = A && samples.length ? A.analyze(samples, r.rate) : null;
             const base = { provider: r.provider, heardSound: r.heard, analysis, quest: isQuest() };
             if (why === 'error') return end(r, verdict(Object.assign(base, { error: r.error })));
+            if (r.provider === 'webspeech') return finishBrowser(r, base);
             if (!(r.heard || (analysis && analysis.peak > 0.02))) return end(r, verdict(base));
             if (r.provider === 'wasm') {
                 const ready = stt().status().model === 'ready';
@@ -223,13 +252,38 @@
                     return end(r, verdict(Object.assign(base, { failure: (err && err.message) || String(err) })));
                 }
             }
-            if (r.provider === 'webspeech') {
-                // The browser's recognizer delivers its final text asynchronously after stop().
-                await new Promise((res) => setTimeout(res, r.srEnded ? 0 : 1500));
-                const result = r.srText ? { accept: true, text: r.srText } : { accept: false };
-                return end(r, verdict(Object.assign(base, { result })), !!r.srText);
-            }
             return end(r, verdict(base));
+        }
+
+        /** ST9. The browser recognizer's verdict, once it has ended (or after a grace period). */
+        async function finishBrowser(r, base) {
+            if (!r.srEnded) {
+                show({ running: false, status: 'Finishing…', tone: 'busy', text: r.srInterim || '' });
+                await new Promise((res) => {
+                    r.onSrEnd = res;
+                    setTimeout(res, 3000); // a recognizer that never fires onend must not hang the test
+                });
+            }
+            const text = (r.srText || r.srInterim || '').trim();
+            const err = r.srError;
+            if (!text && (err === 'not-allowed' || err === 'service-not-allowed' || err === 'audio-capture')) {
+                const reason = err === 'not-allowed' ? 'denied' : 'unavailable';
+                const message =
+                    err === 'audio-capture'
+                        ? 'The browser’s recognizer could not open the microphone.'
+                        : err === 'service-not-allowed'
+                          ? 'The browser’s speech service is not available here.'
+                          : '';
+                return end(r, verdict(Object.assign(base, { error: { reason, message } })));
+            }
+            if (!text && err === 'network') {
+                return end(
+                    r,
+                    verdict(Object.assign(base, { failure: 'The browser’s speech service could not be reached.' }))
+                );
+            }
+            const result = text ? { accept: true, text } : { accept: false };
+            return end(r, verdict(Object.assign(base, { result, heardSound: r.heard, levelKnown: !!r.lease })), !!text);
         }
 
         function end(r, v, recognized) {
@@ -247,6 +301,7 @@
             const r = { provider, lang, chunks: [], rate: 16000, heard: false, done: false };
             run = r;
             show({ running: true, status: 'Opening microphone…', tone: 'busy', text: '' });
+            if (provider === 'webspeech') return startBrowser(r, mics, deviceId);
             if (provider === 'wasm' && stt())
                 stt()
                     .preload()
@@ -307,7 +362,116 @@
             r.timer = setTimeout(() => finish(r), MAX_TEST_MS);
         }
 
+        /**
+         * ST9. Test the browser's recognizer the way the app's mic button runs it (src/main.js
+         * initSpeechRecognition: the same class, not continuous, interim results, the chosen
+         * language) and start it FIRST. The meter gets its own capture only where the browser
+         * shares the microphone (desktop); elsewhere the status follows the recognizer's own
+         * sound and speech events, and the meter stays dark rather than pretend.
+         */
+        function startBrowser(r, mics, deviceId) {
+            let SR = null;
+            try {
+                SR = global.NEXUS_STT && global.NEXUS_STT.recognitionClass ? global.NEXUS_STT.recognitionClass() : null;
+            } catch (_) {}
+            SR = SR || global.SpeechRecognition || global.webkitSpeechRecognition;
+            if (!SR) {
+                r.error = { reason: 'unavailable', message: 'This browser has no speech recognizer.' };
+                return finish(r, 'error');
+            }
+            const sr = new SR();
+            r.sr = sr;
+            sr.lang = r.lang || 'en-US';
+            sr.continuous = false;
+            sr.interimResults = true;
+            sr.maxAlternatives = 1;
+            const heardSomething = () => {
+                if (run !== r || r.done || r.heard) return;
+                r.heard = true;
+                show({ running: true, status: 'Sound detected', tone: 'ok', text: r.srInterim || 'Keep talking…' });
+            };
+            sr.onstart = () => {
+                if (run === r && !r.done && !r.heard) {
+                    show({
+                        running: true,
+                        status: 'Listening — speak now',
+                        tone: 'busy',
+                        // On a phone or headset the recognizer needs the microphone to itself.
+                        text: r.lease ? '' : 'The level meter is off while the browser’s recognizer listens.',
+                    });
+                }
+            };
+            sr.onsoundstart = heardSomething;
+            sr.onspeechstart = heardSomething;
+            sr.onresult = (e) => {
+                let interim = '';
+                for (let k = e.resultIndex; k < e.results.length; k++) {
+                    const t = (e.results[k][0] && e.results[k][0].transcript) || '';
+                    if (e.results[k].isFinal) r.srText = `${r.srText || ''} ${t}`.trim();
+                    else interim += t;
+                }
+                r.srInterim = interim.trim();
+                heardSomething();
+                if (run === r && !r.done) {
+                    show({
+                        running: true,
+                        status: 'Sound detected',
+                        tone: 'ok',
+                        text: (r.srText || r.srInterim || '').trim(),
+                    });
+                }
+            };
+            sr.onerror = (e) => {
+                r.srError = (e && e.error) || 'unknown';
+            };
+            sr.onend = () => {
+                r.srEnded = true;
+                if (r.onSrEnd) r.onSrEnd();
+                if (run === r && !r.done) finish(r); // the recognizer stops by itself after a sentence
+            };
+            try {
+                sr.start();
+            } catch (err) {
+                r.error = { reason: 'unavailable', message: String((err && err.message) || err) };
+                return finish(r, 'error');
+            }
+            if (
+                mics &&
+                browserMeterSafe({
+                    userAgent: global.navigator && global.navigator.userAgent,
+                    touch: 'ontouchstart' in global,
+                })
+            ) {
+                r.lease = mics.open({
+                    owner: 'stt-settings-meter',
+                    deviceId,
+                    onFrames: (samples) => {
+                        if (run !== r || r.done) return;
+                        const level = levelOf(samples);
+                        meter(level);
+                        if (level >= SOUND_LEVEL) heardSomething();
+                    },
+                });
+            }
+            r.timer = setTimeout(() => {
+                try {
+                    sr.stop();
+                } catch (_) {}
+                setTimeout(() => finish(r), 3500);
+            }, MAX_TEST_MS);
+        }
+
         ui.button.addEventListener('click', () => {
+            if (run && !run.done && run.provider === 'webspeech' && run.sr && !run.stopping) {
+                // Stop listening and let the recognizer deliver its last words (onend finishes).
+                run.stopping = true;
+                try {
+                    run.sr.stop();
+                } catch (_) {}
+                const r = run;
+                setTimeout(() => finish(r), 3500);
+                return;
+            }
             if (run && !run.done) finish(run);
             else {
                 start().catch((err) => {
@@ -501,6 +665,7 @@
         advice,
         levelOf,
         verdict,
+        browserMeterSafe,
         SOUND_LEVEL,
         mount,
         render,

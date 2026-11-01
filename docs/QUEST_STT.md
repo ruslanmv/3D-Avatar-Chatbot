@@ -38,7 +38,20 @@ row — **⬇ Download model**, the status, a progress bar while downloading,
 TEST**: start/stop, a live meter from the real input level, a status, and what
 was recognized. It uses the provider, model and language currently chosen, and
 tells "No sound" (the mic hears nothing), "Sound detected · no words
-recognized" and "Mic works · recognized" apart. WASM MODEL
+recognized" and "Mic works · recognized" apart.
+
+**ST9: the test of the browser's own recognizer is wired like the app.** On a
+phone the test said "Sound detected · no words recognized" while the app's mic
+button worked: the test opened its own capture for the level meter before
+starting the recognizer, and on a phone (or a headset) only one capture of the
+microphone receives audio — the meter moved, the recognizer heard silence. The
+Web Speech test now builds the same recognizer class as the mic button, with
+the same settings (not continuous, interim results, the chosen language),
+starts it first, and opens the meter's capture only where the browser shares
+the microphone (desktop; `browserMeterSafe`). On a phone or Quest the status
+follows the recognizer's own sound/speech events and the meter stays dark, with
+a line saying why. With no meter, "nothing recognized" reads "No speech heard",
+never "No sound". The On-device Whisper test is unchanged. WASM MODEL
 SIZE: **Tiny** (default, ~41 MB), **Base** (~77 MB, better Italian, about 2×
 slower), Small (~250 MB, desktop only). The model downloads once and the
 browser's Cache API keeps it.
