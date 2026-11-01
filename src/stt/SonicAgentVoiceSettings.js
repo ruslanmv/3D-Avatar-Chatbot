@@ -27,6 +27,8 @@
     'use strict';
 
     const SECTION_ID = 'sonicagent-voice-section';
+    const NOT_PAIRED =
+        'SonicAgent needs an OllaBridge Cloud connection. Connect OllaBridge in Settings → LLM to use remote voice.';
     const HINT = 'font-size: 0.68rem; color: rgba(255, 255, 255, 0.5); margin: 6px 2px 0';
     const ROW = 'display: flex; align-items: center; gap: 8px; margin-top: 10px; cursor: pointer; font-size: 0.78rem';
     const LANGS = [
@@ -79,12 +81,12 @@
             '</div>' +
             '<p id="sonic-status" role="status" aria-live="polite" style="font-size: 0.72rem;' +
             ' color: rgba(255, 255, 255, 0.75); margin: 8px 2px 0"></p>' +
-            '<label class="input-label" for="sonic-language" style="margin-top: 10px">SPEECH LANGUAGE</label>' +
+            '<label class="input-label" for="sonic-language" style="margin-top: 10px">LISTENING LANGUAGE (speech-to-text)</label>' +
             '<select id="sonic-language" class="select-input">' +
             LANGS.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('') +
             '</select>' +
-            '<label class="input-label" for="sonic-voice" style="margin-top: 10px">REMOTE VOICE</label>' +
-            '<select id="sonic-voice" class="select-input"><option value="">Automatic for the language</option></select>' +
+            `<p style="${HINT}">Her SonicAgent voice and speaking style (Companion / Secretary) are chosen under` +
+            ' SPEECH ▸ VOICE STYLE once TTS ENGINE is SonicAgent.</p>' +
             `<label style="${ROW}"><input type="checkbox" id="sonic-stream-speak" /> Speak while the reply is still being written</label>` +
             `<label style="${ROW}"><input type="checkbox" id="sonic-fallback" /> If the remote voice fails before speaking, use Piper on this device</label>` +
             '<label class="input-label" for="sonic-jitter" style="margin-top: 10px">PLAYBACK BUFFER (ms)</label>' +
@@ -134,6 +136,55 @@
             if (saved === C.ENGINE && sttSelect) sttSelect.value = C.ENGINE;
         } catch (_) {}
 
+        // HV-FIX. Choosing SonicAgent in TTS ENGINE or STT PROVIDER is the switch. Before this the
+        // switch lived only in this section, so a person who picked SonicAgent above got
+        // "not set up (disabled)" and the browser voice. It switches on `enabled` only; the
+        // microphone permission stays a separate, explicit tick.
+        function noticeUnder(select, id, text) {
+            if (!select) return null;
+            let note = doc.getElementById(id);
+            if (!note) {
+                note = doc.createElement('p');
+                note.id = id;
+                note.className = 'voice-status';
+                note.style.cssText = 'margin-top: 6px; font-size: 0.72rem';
+                select.insertAdjacentElement('afterend', note);
+            }
+            note.textContent = text || '';
+            note.style.display = text ? '' : 'none';
+            return note;
+        }
+        function syncNotices() {
+            const c = C.get();
+            const ttsRemote = ttsSelect && ttsSelect.value === C.ENGINE;
+            const sttRemote = sttSelect && sttSelect.value === C.ENGINE;
+            const paired = !!C.gatewayInfo();
+            noticeUnder(
+                ttsSelect,
+                'sonic-tts-notice',
+                ttsRemote ? C.TTS_NOTICE + (paired ? '' : ' ' + NOT_PAIRED) : ''
+            );
+            noticeUnder(
+                sttSelect,
+                'sonic-stt-notice',
+                sttRemote
+                    ? !paired
+                        ? NOT_PAIRED
+                        : c.consent
+                          ? 'Microphone upload to SonicAgent: allowed.'
+                          : 'Allow microphone upload to SonicAgent below (ADVANCED VOICE ▸ I agree) before speaking.'
+                    : ''
+            );
+        }
+        function onEngineChosen(e) {
+            if (e.target.value === C.ENGINE) C.set({ enabled: true, userDisabled: false });
+            syncNotices();
+            render();
+        }
+        if (ttsSelect) ttsSelect.addEventListener('change', onEngineChosen);
+        if (sttSelect) sttSelect.addEventListener('change', onEngineChosen);
+        if (C.onChange) C.onChange(syncNotices);
+
         const $ = (id) => section.querySelector('#' + id);
         const status = $('sonic-status');
         const say = (text, tone) => {
@@ -152,10 +203,6 @@
             $('sonic-stream-speak').checked = c.speakWhileStreaming;
             $('sonic-fallback').checked = c.autoFallback;
             $('sonic-jitter').value = c.jitterMs;
-            const voice = $('sonic-voice');
-            const installed = C.installedVoices() || [];
-            for (const id of installed) addOption(voice, id, id);
-            voice.value = installed.includes(c.voice) || !c.voice ? c.voice : '';
             for (const id of ['sonic-check', 'sonic-test-stt', 'sonic-test-tts']) $(id).disabled = !c.enabled;
             $('sonic-test-stt').disabled = !c.enabled || !c.consent;
             if (!c.enabled) say('Remote voice is off.');
@@ -257,7 +304,11 @@
 
         $('sonic-enabled').addEventListener('change', (e) => {
             // Turning the feature off also withdraws consent: switching it back on asks again.
-            C.set(e.target.checked ? { enabled: true } : { enabled: false, consent: false, consentAt: null });
+            C.set(
+                e.target.checked
+                    ? { enabled: true, userDisabled: false }
+                    : { enabled: false, userDisabled: true, consent: false, consentAt: null }
+            );
             if (!e.target.checked) clear();
             render();
             if (e.target.checked) check();
@@ -268,7 +319,6 @@
             render();
         });
         $('sonic-language').addEventListener('change', (e) => C.set({ language: e.target.value }));
-        $('sonic-voice').addEventListener('change', (e) => C.set({ voice: e.target.value }));
         $('sonic-stream-speak').addEventListener('change', (e) => C.set({ speakWhileStreaming: e.target.checked }));
         $('sonic-fallback').addEventListener('change', (e) => C.set({ autoFallback: e.target.checked }));
         $('sonic-jitter').addEventListener('change', (e) => {
@@ -282,7 +332,8 @@
         const opener = doc.getElementById('settings-btn');
         if (opener) opener.addEventListener('click', render);
         render();
-        return { render, check, clear, section };
+        syncNotices();
+        return { render, check, clear, section, syncNotices };
     }
 
     const api = { SECTION_ID, attach };

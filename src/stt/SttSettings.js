@@ -38,6 +38,10 @@
     const COPY = Object.freeze({
         wasm: 'Runs on this device — your voice is never uploaded. Works on Meta Quest.',
         webspeech: 'Uses your browser’s recognizer, which sends audio to the browser vendor.',
+        // HV-FIX. Without its own sentence SonicAgent was described as the browser's recognizer.
+        sonicagent:
+            'Streams your microphone audio through OllaBridge Cloud to SonicAgent. Uses the remote speech engine, ' +
+            'not your browser’s recognition service. Requires a paired connection and your permission to upload audio.',
         webspeechQuest: 'Meta Quest Browser has no recognizer of its own — choose On-device Whisper to talk here.',
         openai: 'Sends each recording to OpenAI with your API key.',
         google: 'Sends each recording to Google Cloud with your API key.',
@@ -76,6 +80,7 @@
         if (provider === 'wasm') return COPY.wasm;
         if (provider === 'openai') return COPY.openai;
         if (provider === 'google') return COPY.google;
+        if (provider === 'sonicagent-stream') return COPY.sonicagent;
         return quest ? `${COPY.webspeech} ${COPY.webspeechQuest}` : COPY.webspeech;
     }
 
@@ -495,7 +500,7 @@
             const r = { provider, lang, chunks: [], rate: 16000, heard: false, done: false };
             run = r;
             const P = perf();
-            if (P) {
+            if (P && provider !== 'sonicagent-stream') {
                 r.trace = P.createTrace({ surface: 'settings-mic-test' });
                 r.trace.set('provider', provider === 'wasm' ? 'local-whisper' : provider);
                 r.trace.set('xrMode', P.xrMode(global));
@@ -505,6 +510,7 @@
             }
             show({ running: true, status: 'Opening microphone…', tone: 'busy', text: '' });
             if (provider === 'webspeech') return startBrowser(r, mics, deviceId);
+            if (provider === 'sonicagent-stream') return startRemote(r);
             if (provider === 'wasm' && stt())
                 stt()
                     .preload()
@@ -679,7 +685,125 @@
             }, MAX_TEST_MS);
         }
 
+        /**
+         * HV-FIX. SonicAgent, tested the way the app uses it: the same remote recognizer the mic
+         * button constructs, one microphone capture (its own; the meter reads its level), held
+         * until Stop, then one final transcript. The text is shown here and goes nowhere else —
+         * this recognizer's results reach only these handlers, never the chat.
+         */
+        function startRemote(r) {
+            const C = global.NEXUS_SONIC_VOICE;
+            const R = global.NEXUS_REMOTE_STT;
+            const gate = C ? C.allowed('stt') : { ok: false, code: 'disabled' };
+            if (!R || !gate.ok) {
+                const text =
+                    gate.code === 'no_consent'
+                        ? 'Allow microphone upload to SonicAgent before testing remote recognition.'
+                        : gate.code === 'not_configured'
+                          ? 'Connect OllaBridge Cloud to use SonicAgent speech recognition.'
+                          : !R
+                            ? 'SonicAgent speech recognition is not loaded on this page.'
+                            : 'Turn on remote voice in ADVANCED VOICE — SONICAGENT STREAMING.';
+                // Nothing was opened and nothing was sent.
+                return end(r, { tone: 'error', status: 'SonicAgent not ready', text });
+            }
+            const rec = new R.Recognition();
+            r.rec = rec;
+            rec.lang = r.lang || (C.language ? C.language() : 'en');
+            rec.holdToTalk = true;
+            rec.perfSurface = 'settings-mic-test';
+            rec.onlevel = (level) => {
+                if (run !== r || r.done) return;
+                meter(level);
+                if (level >= SOUND_LEVEL && !r.heard) r.heard = true;
+            };
+            rec.onstatechange = (e) => {
+                if (run !== r || r.done) return;
+                if (e.state === 'connecting')
+                    show({ running: true, status: 'Connecting to SonicAgent…', tone: 'busy' });
+                if (e.state === 'listening' || e.state === 'ready')
+                    show({
+                        running: true,
+                        status: 'Listening through SonicAgent…',
+                        tone: 'busy',
+                        text: 'Speak, then press Stop.',
+                    });
+                if (e.state === 'speech-detected')
+                    show({
+                        running: true,
+                        status: 'Listening through SonicAgent…',
+                        tone: 'ok',
+                        text: 'Sound detected — press Stop when done.',
+                    });
+            };
+            rec.onaudioend = () => {
+                if (run !== r) return;
+                r.stopAt = Date.now();
+                meter(0);
+                ui.button.disabled = true; // one test at a time while the transcript is on its way
+                show({ running: false, status: 'Transcribing with SonicAgent…', tone: 'busy', text: '' });
+            };
+            rec.onresult = (e) => {
+                if (r.remoteText != null) return; // one final per test
+                r.remoteText = e.results[e.resultIndex][0].transcript;
+            };
+            rec.onerror = (e) => {
+                r.remoteError = e;
+            };
+            rec.onend = () => {
+                if (run !== r) return;
+                r.done = true;
+                clearTimeout(r.timer);
+                const ms = r.stopAt ? Date.now() - r.stopAt : null;
+                const latency = ms == null ? '' : ` · ${ms.toLocaleString('en-US')} ms after Stop`;
+                if (r.remoteText != null) {
+                    end(r, { tone: 'ok', status: `Recognized by SonicAgent${latency}`, text: r.remoteText }, true);
+                } else {
+                    const e = r.remoteError || {};
+                    const code = e.detail || e.error;
+                    const text =
+                        code === 'timeout'
+                            ? 'SonicAgent did not return a transcription before the timeout.'
+                            : code === 'backend_warming'
+                              ? 'SonicAgent is warming up.'
+                              : code === 'no_speech' || e.error === 'no-speech'
+                                ? 'No speech recognized by SonicAgent.'
+                                : e.error === 'aborted'
+                                  ? 'The test was stopped.'
+                                  : e.message || 'SonicAgent could not transcribe this recording.';
+                    const tone = code === 'no_speech' || e.error === 'no-speech' ? 'warn' : 'error';
+                    end(r, { tone, status: tone === 'warn' ? 'No speech recognized' : 'SonicAgent error', text });
+                }
+                const P = perf();
+                const last = P && P.last ? P.last() : null;
+                if (
+                    ui.onResult &&
+                    last &&
+                    last.surface === 'settings-mic-test' &&
+                    last.data &&
+                    last.data.provider === 'sonicagent-stream'
+                ) {
+                    ui.onResult(last, r.remoteText || null);
+                }
+            };
+            try {
+                rec.start();
+            } catch (err) {
+                return end(r, { tone: 'error', status: 'SonicAgent error', text: String((err && err.message) || err) });
+            }
+            r.timer = setTimeout(() => {
+                if (run === r && !r.done) rec.stop();
+            }, MAX_TEST_MS);
+        }
+
         ui.button.addEventListener('click', () => {
+            if (run && !run.done && run.provider === 'sonicagent-stream' && run.rec) {
+                if (!run.stopping) {
+                    run.stopping = true;
+                    run.rec.stop(); // commit; onend delivers the verdict
+                }
+                return;
+            }
             if (run && !run.done && run.provider === 'webspeech' && run.sr && !run.stopping) {
                 // Stop listening and let the recognizer deliver its last words (onend finishes).
                 run.stopping = true;
@@ -701,7 +825,19 @@
             }
         });
         show({ running: false, status: 'Not tested', tone: 'idle', text: '' });
-        return { stop: () => run && finish(run) };
+        /** Settings closed mid-test: release the microphone and the connection, show nothing. */
+        function cancel() {
+            const r = run;
+            if (!r || r.done) return;
+            if (r.rec) {
+                try {
+                    r.rec.abort(); // closes its microphone lease and tells SonicAgent to drop the turn
+                } catch (_) {}
+                return;
+            }
+            finish(r);
+        }
+        return { stop: () => run && finish(run), cancel };
     }
 
     // ---- DOM --------------------------------------------------------------------------------
@@ -1022,7 +1158,10 @@
             test.appendChild(heard);
             const perfUi = buildPerfUi(d, test);
             langGroup.parentNode.insertBefore(test, langGroup.nextSibling);
-            createMicTest(d, { button, status: chip, text: heard, segments, onResult: perfUi.show });
+            const micTest = createMicTest(d, { button, status: chip, text: heard, segments, onResult: perfUi.show });
+            // A test left running when Settings closes must not keep the microphone open.
+            const closer = d.getElementById('close-settings');
+            if (closer) closer.addEventListener('click', () => micTest.cancel());
         }
 
         download.addEventListener('click', () => {

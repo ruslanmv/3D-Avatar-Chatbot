@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (244 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (248 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-01 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5490 tests in 244 suites, all passing.**
+— lint clean, format clean, **5559 tests in 248 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -622,6 +622,20 @@ the OllaBridge Cloud this app pairs with for chat. **Off by default; additive.**
 - **Streamed TTS needs SonicAgent HV3** (a v1 server cut replies at 2 s); it
   refuses with `requires_hv3`. The player acknowledges every phrase it still
   holds; SonicAgent budgets unplayed audio across the session.
+- **Choosing SonicAgent is the switch (HV-FIX).** `TTSProvider.setEngine()`
+  calls a provider's `onSelected()` (remote: `enabled = true`, never consent);
+  so does a stored SonicAgent TTS/STT choice unless ADVANCED VOICE was switched
+  off (`userDisabled`). **An init failure is session-only**: `tts_engine` keeps
+  the choice, `lastFailureDetail()` says why, Settings shows "Selected /
+  Currently speaking / Reason". Never write the fallback to storage.
+- **Voices: `VoiceSelectionPolicy` decides Auto**, from SonicAgent's catalogue
+  (`GET /v1/voice/voices`, all 49 entries, in Settings ▸ SPEECH under TTS ENGINE
+  via `VoiceStyleSettings`). Preset per locale and style first; never another
+  language, never a local Piper id, never `piper_voice`. The voice goes as
+  `voice_id` on every `tts.speak`. Rate and pitch do not apply to SonicAgent and
+  are disabled for it.
+- **The Settings mic test with SonicAgent runs `RemoteSonicAgentRecognition`**
+  (one capture; the meter reads its `onlevel`), never the browser recognizer.
 
 ## Speech engines and the Meta Quest voice switch
 

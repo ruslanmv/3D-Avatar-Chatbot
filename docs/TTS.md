@@ -324,3 +324,11 @@ These require API keys but offer higher quality and lip-sync features:
 | [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) | Alternative WASM TTS (VITS, Piper, Kokoro models) |
 | [TalkingHead](https://github.com/met4citizen/TalkingHead) | 3D avatar lip-sync with Azure visemes + Three.js |
 | [piper-tts-web-demo](https://github.com/clowerweb/piper-tts-web-demo) | 904-voice Piper browser demo |
+
+
+## SonicAgent Piper — Cloud streaming
+
+A remote engine through OllaBridge Cloud, beside the built-in voice and Piper on this device.
+Choosing it switches remote voice on; its VOICE list, Companion/Secretary styles and Auto rules
+are in `docs/SONICAGENT_VOICE.md`. The ~60 MB download note above is Piper WASM's, not
+SonicAgent's. A failure falls back for the session only and never rewrites `tts_engine`.

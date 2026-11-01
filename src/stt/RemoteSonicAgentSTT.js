@@ -214,10 +214,9 @@
             this._language = language;
 
             // Both at once: the person can start talking while the socket opens.
-            const connected = link.ensure({
-                language,
-                voiceId: (cfg && cfg.voiceFor && cfg.voiceFor(language)) || undefined,
-            });
+            // The session's language is the transcription language. Her voice is chosen per phrase
+            // (HV9), so listening never needs to reopen the link for a voice.
+            const connected = link.ensure({ language });
             this._setRemote(gen, 'mic-opening');
             const mode = this._mode();
             const A = lib('NEXUS_STT_AUDIO');
@@ -325,6 +324,15 @@
 
         _onFrames(gen, samples, rate) {
             if (gen !== this._gen || this._state !== 'capturing') return;
+            if (typeof this.onlevel === 'function') {
+                // The Settings test's meter reads the level from THIS capture: on a Quest a second
+                // capture just for a meter takes the microphone from the recognizer (ST9).
+                let sum = 0;
+                for (let i = 0; i < samples.length; i++) sum += samples[i] * samples[i];
+                try {
+                    this.onlevel(Math.min(1, Math.sqrt(sum / (samples.length || 1)) * 4));
+                } catch (_) {}
+            }
             if (this._perfRun.firstFrameAt == null) this._perfRun.firstFrameAt = nowMs();
             const mode = this._mode();
             if (mode === 'hold') {

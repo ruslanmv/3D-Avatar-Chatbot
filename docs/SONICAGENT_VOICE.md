@@ -17,24 +17,65 @@ It is **off by default** and **additive**:
 
 ## Turning it on
 
-1. **Pair OllaBridge Cloud** under Settings ▸ LLM, as for chat. Remote voice
-   reuses that pairing token; SonicAgent's own key never reaches the browser.
-2. **Enable remote voice** under Settings ▸ ADVANCED VOICE — SONICAGENT
-   STREAMING.
-3. **Consent.** Read the sentence _"Your microphone audio will be sent to
-   OllaBridge Cloud and SonicAgent for transcription."_ and tick **I agree**.
-   Turning the feature on does not tick it, and turning the feature off
-   withdraws it.
-4. **Choose the engines.** Pick **SonicAgent — Cloud streaming** under STT
-   PROVIDER and/or **SonicAgent Piper — Cloud streaming** under TTS ENGINE. Each
-   is independent: you can listen remotely and speak with Piper WASM, or the
-   other way round.
-5. **Optional: speak while streaming.** Turn on **Speak while the reply is still
-   being written** to start her voice at the first sentence (HV5).
+1. Pair OllaBridge Cloud in Settings ▸ LLM (as for chat). Remote voice uses that pairing token;
+   SonicAgent's own key never reaches the browser.
+2. Choose **SonicAgent Piper — Cloud streaming** under TTS ENGINE, and/or **SonicAgent — Cloud
+   streaming** under STT PROVIDER. **Choosing it is the switch** (HV-FIX): remote voice is turned
+   on and the ADVANCED VOICE checkbox shows the same state. A SonicAgent engine already stored in
+   TTS ENGINE or STT PROVIDER counts as that choice after a reload, unless remote voice was
+   switched off in ADVANCED VOICE (`userDisabled`).
+3. For speech-to-text only: tick **I agree** under _"Your microphone audio will be sent to
+   OllaBridge Cloud and SonicAgent for transcription."_ Choosing the provider never ticks it.
+   Her voice needs no microphone permission: the notice under TTS ENGINE says _"The text of your
+   avatar's replies is sent through OllaBridge Cloud to SonicAgent to generate speech."_
+4. Under TTS ENGINE, pick **VOICE STYLE** (Companion / Secretary / All Voices), the **VOICE
+   LANGUAGE**, and a **VOICE** — or leave **Auto**, which names the voice it resolves to.
 
-The **Check readiness**, **Test STT** and **Test TTS** buttons do real round
-trips and show the measured times. For per-run numbers, open
-`stt-check.html#remote`.
+## Voices: the catalogue, Companion and Secretary (HV9, HV-FIX)
+
+The VOICE list is SonicAgent's whole registry through OllaBridge (`GET /v1/voice/voices`): today
+49 entries, 44 model files, 8 locales, grouped by locale, each labelled name — role — gender —
+locale — quality. Entries the server cannot play are listed, disabled, with the reason. Shared-
+model presets stay separate entries (Paola Companion / Secretary, Sharvard Companion /
+Secretary / Male, Ald, UPMC Jessica / Pierre). "Prefer Female" orders the list; it hides nothing.
+
+Auto (`src/tts/VoiceSelectionPolicy.js`) resolves, in order: the person's explicit pick (a
+SonicAgent voice, this language, playable) → the documented preset for the locale and style →
+another playable voice of the style, preferred gender first → the preferred gender → any voice
+of the language, saying the preference could not be met → nothing. Never a voice of another
+language, never a local Piper id (`en_US-lessac-high`, `en_GB-cori-high`, … are on-device ids
+SonicAgent does not have), and no longer the on-device `piper_voice`.
+
+| Locale | Companion | Secretary |
+| --- | --- | --- |
+| en-US | Kristin `en_US-kristin-medium` | Lessac `en_US-lessac-medium` |
+| en-GB | Cori `en_GB-cori-medium` | Alba `en_GB-alba-medium` |
+| es-ES | Sharvard `es_ES-sharvard-companion` (speaker 1) | Sharvard `es_ES-sharvard-secretary` (speaker 1) |
+| es-MX | Ald `es_MX-ald-companion` | Ald `es_MX-ald-medium` |
+| fr-FR | Jessica `fr_FR-upmc-medium` (speaker 0) | Siwis `fr_FR-siwis-medium` |
+| de-DE | Eva K `de_DE-eva_k-x_low` | Kerstin `de_DE-kerstin-low` |
+| it-IT | Paola `it_IT-paola-companion` | Paola `it_IT-paola-medium` |
+
+Brazilian Portuguese has only male voices (Edresson, Faber): Auto uses one and says no female
+voice exists there. Japanese, Korean and Chinese have no SonicAgent voice: Settings says so and
+offers the browser voice as an explicit choice. Companion uses `length_scale 1.16, noise 0.8,
+noise_w 0.92` (slower, softer); Secretary `0.94, 0.48, 0.6` (quicker, clearer). These shape
+pace and variation; they are not acted emotion. **Rate and pitch do not apply to SonicAgent**
+(the protocol carries no such control): the sliders are disabled and say why.
+
+The chosen voice travels as `voice_id` on every `tts.speak` of a reply; a server that answers in
+another voice ends the turn rather than speak in it.
+
+## When it cannot start
+
+A failed engine falls back to the browser voice **for the session only**: `tts_engine` keeps the
+person's choice, Settings shows _Selected: SonicAgent Piper · Currently speaking: Browser voice
+(temporary fallback) · Reason: …_, and choosing again retries. Reasons are the real ones: no
+pairing, the gateway has voice switched off, a gateway without `/v1/voice` routes, unreachable,
+no voice for the language. TEST VOICE for SonicAgent never plays the browser voice; it says
+_"SonicAgent could not start: …"_ or reports engine, voice, role, language and measured first
+audio. The Settings microphone test with SonicAgent runs the real remote recognizer (one
+capture, held until Stop, one final) and never mentions the browser's recognizer.
 
 ## What leaves the device, and when
 
@@ -142,8 +183,37 @@ The run found two server bugs, fixed in SonicAgent HV3. The playback budget was
 per phrase, so 6 s of speech arrived in 2.2 s. And a client acknowledging only
 the phrase being received deadlocked the queue.
 
+![TTS ENGINE = SonicAgent, Companion](images/sonicagent-voice/settings-companion.png)
+![Secretary](images/sonicagent-voice/settings-secretary.png)
+
+## Measured end to end (HV-FIX)
+
+The Avatar's own modules in Node → OllaBridge Cloud's voice router (master) → SonicAgent
+(plan branch) with **real Piper** and four registry voice files (SHA-256 checked); STT a
+stand-in. Build machine, loopback network — not a Space or a Quest:
+
+| Case | Auto → voice (server-confirmed) | First audio | Notes |
+| --- | --- | --- | --- |
+| en-US Companion | `en_US-kristin-medium`, role companion | 8133 ms | cold model load |
+| en-US Secretary | `en_US-lessac-medium`, role secretary | 92 ms | warm |
+| it-IT Secretary | `it_IT-paola-medium` | 7409 ms | cold model load |
+| it-IT Companion | `it_IT-paola-companion` | 67 ms | **same model, no reload** |
+| es-ES Companion | `es_ES-sharvard-companion` (speaker 1) | 7200 ms | cold model load |
+
+Paola Companion audio was 2995 ms against Secretary's 2647 ms for the same sentence. Warm
+synthesis RTF 0.05–0.11; no underruns. A first use of a model costs seconds — which is why the
+chosen voice is warmed when it is chosen and when the engine starts.
+
+## Live deployment (2026-11-01)
+
+- The SonicAgent Space serves HV9: 49 voices, all installed, TTS ready, presets for 7 locales.
+- **app.ollabridge.com has the voice routes but voice switched off**: `GET /v1/voice/capabilities`
+  answers `mode: disabled`, "voice is disabled on this gateway". Until its operator sets
+  `OLLAMBRIDGE_VOICE_MODE=huggingface`, `OLLAMBRIDGE_VOICE_BASE_URL` (the Space) and
+  `OLLAMBRIDGE_VOICE_API_KEY` (a SonicAgent service key), choosing SonicAgent here says exactly
+  that and keeps the choice. No browser change can work around it, by design.
+
 ## Rollback
 
-Untick **Enable remote voice**, or set STT PROVIDER and TTS ENGINE back. To
-remove everything, delete `nexus_sonic_voice`. Nothing else references these
-modules.
+Untick **Enable remote voice**, or set STT PROVIDER and TTS ENGINE back. To remove everything,
+delete `nexus_sonic_voice`. Nothing else references these modules.

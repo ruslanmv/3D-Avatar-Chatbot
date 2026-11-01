@@ -77,6 +77,7 @@
     // An engine that failed to start this session, so Settings can say why the built-in
     // voice is speaking. Cleared by the next successful resolve.
     let _lastFailure = null;
+    let _lastFailureDetail = null;
     // Every resolve takes a ticket. An init that resolves after a newer resolve has run
     // must not write its outcome over the newer one's.
     let _resolveToken = 0;
@@ -99,6 +100,24 @@
 
     function lastFailure() {
         return _lastFailure;
+    }
+
+    /**
+     * The failure behind `lastFailure()`, with what went wrong:
+     * `{ engine, code, message }`, or null. Settings shows it as "Selected: … · Currently
+     * speaking: … · Reason: …" so a temporary fallback is never mistaken for the chosen voice.
+     */
+    function lastFailureDetail() {
+        return _lastFailureDetail ? Object.assign({}, _lastFailureDetail) : null;
+    }
+
+    function _fail(engine, err) {
+        _lastFailure = engine;
+        _lastFailureDetail = {
+            engine,
+            code: (err && err.code) || 'init_failed',
+            message: String((err && err.message) || err || 'the engine could not start'),
+        };
     }
 
     function _announce(detail) {
@@ -135,6 +154,7 @@
         _storedEngine = name;
         _override = null;
         _lastFailure = null;
+        _lastFailureDetail = null;
         _initialized = false;
         _writeStored(name);
 
@@ -147,29 +167,43 @@
         }
 
         const provider = _providers[name];
+        // HV-FIX. A failure below is for THIS SESSION ONLY. It used to write the built-in
+        // voice into `tts_engine`: a person who picked SonicAgent while the gateway had voice
+        // switched off lost that choice for good and heard the browser voice on every reload,
+        // with nothing saying why. `_resolve()` already worked this way at page load; an
+        // explicit choice now does too. Choosing the engine again (Save, TEST VOICE) retries.
         if (!provider) {
-            console.warn('[TTSProvider] unknown engine:', name, '— falling back to web-speech-api');
+            console.warn('[TTSProvider] unknown engine:', name, '— the built-in voice speaks for this session');
             _activeEngine = BUILTIN;
-            _storedEngine = BUILTIN;
             _initialized = true;
-            _writeStored(BUILTIN);
-            _announce({ reason: 'setEngine' });
+            _fail(name, { code: 'unknown_engine', message: 'this voice engine is not loaded on this page' });
+            _announce({ reason: 'init-failed' });
             return false;
+        }
+
+        // An explicit choice of an engine that needs switching on (SonicAgent's remote voice)
+        // switches it on. Never on page load: that is `_resolve`, which only restores.
+        if (typeof provider.onSelected === 'function') {
+            try {
+                provider.onSelected();
+            } catch (err) {
+                console.warn('[TTSProvider] onSelected failed for', name, err);
+            }
         }
 
         try {
             await provider.init();
             _initialized = true;
+            _lastFailureDetail = null;
             console.log('[TTSProvider] engine ready:', name);
             _announce({ reason: 'setEngine' });
             return true;
         } catch (err) {
             console.error('[TTSProvider] init failed for', name, err);
             _activeEngine = BUILTIN;
-            _storedEngine = BUILTIN;
             _initialized = true;
-            _writeStored(BUILTIN);
-            _announce({ reason: 'setEngine' });
+            _fail(name, err);
+            _announce({ reason: 'init-failed' });
             return false;
         }
     }
@@ -239,6 +273,7 @@
         _override = target !== _storedEngine && engine === target ? engine : null;
         _activeEngine = engine;
         _lastFailure = null;
+        _lastFailureDetail = null;
         _initialized = true;
         _announce({ reason });
 
@@ -254,7 +289,7 @@
             console.warn('[TTSProvider] could not start', engine, '— using the built-in voice for now:', err);
             _activeEngine = BUILTIN;
             _override = null;
-            _lastFailure = engine;
+            _fail(engine, err);
             _announce({ reason: 'init-failed' });
             return false;
         }
@@ -421,6 +456,7 @@
         getStoredEngine,
         isOverridden,
         lastFailure,
+        lastFailureDetail,
         setEngine,
         boot,
         isActive,
