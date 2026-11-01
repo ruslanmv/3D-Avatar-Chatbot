@@ -3110,8 +3110,15 @@ function ollabridgeSourceHint(entry) {
             return `Local${where} · ${online}`;
         }
         case 'route_alias':
-        case 'route':
+        case 'route': {
+            // "Provider may vary" was shown for every route, including Grok Best, whose
+            // only provider is xAI. The gateway says how many providers back a route
+            // (`x_candidate_count`); say "may vary" only when that is true.
+            const n = entry.candidateCount;
+            if (n === 1) return 'Cloud route · single provider';
+            if (Number.isFinite(n) && n > 1) return `Cloud route · ${n} providers, first available answers`;
             return 'Cloud route · provider may vary';
+        }
         case 'cloud_catalog':
             return 'Cloud model';
         case 'managed_dedicated':
@@ -6192,15 +6199,37 @@ async function __nexusTestConnection() {
         // bug thread; the summary is what fits on one line in Settings.
         console[report.ok ? 'log' : 'warn']('[Nexus] connection check\n' + report.report);
         __nexusLastConnectionReport = report;
-        return { ok: report.ok, message: `${report.ok ? '✅' : '❌'} ${report.summary}`, report };
+        return {
+            ok: report.ok,
+            message: `${report.ok ? '✅' : '❌'} ${report.summary}${report.ok ? __nexusServedSuffix() : ''}`,
+            report,
+        };
     }
 
     try {
         const reply = await callLLM(ping);
         const short = (check ? check.textOf(reply) : String(reply || '')).trim().slice(0, 120);
-        return { ok: true, message: `✅ Connected. Reply: ${short || 'OK'}` };
+        return { ok: true, message: `✅ Connected. Reply: ${short || 'OK'}${__nexusServedSuffix()}` };
     } catch (e) {
         return { ok: false, message: `❌ ${e.message || e}` };
+    }
+}
+
+/**
+ * " · answered by xai-grok (grok-4)" for an OllaBridge route, else ''. Only what the gateway
+ * said: an older gateway names no provider and nothing is appended.
+ */
+function __nexusServedSuffix() {
+    try {
+        if (!config || config.provider !== 'ollabridge') return '';
+        const manager = typeof window !== 'undefined' ? window._nexusLLM : null;
+        const served = manager && manager.lastServed;
+        if (!served || !served.provider) return '';
+        const model = served.model ? ` (${served.model})` : '';
+        const tries = served.attempts > 1 ? ` after ${served.attempts - 1} fallback(s)` : '';
+        return ` · answered by ${served.provider}${model}${tries}`;
+    } catch (_) {
+        return '';
     }
 }
 
