@@ -3910,5 +3910,17 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <script src="src/stt/SttDiagnosticReport.js"></script>
         <script src="src/stt/LocalWhisperSTT.js"></script>
         <script src="src/stt/SttSettings.js"></script>
+        <!-- HV1/HV6: SonicAgent voice through OllaBridge Cloud. Off until Settings ▸ ADVANCED VOICE. -->
+        <script src="src/stt/SonicAgentVoiceConfig.js"></script>
+        <script src="src/stt/StreamingSttSession.js"></script>
+        <script src="src/stt/RemoteSttEvents.js"></script>
+        <script src="src/stt/RemoteSonicAgentSTT.js"></script>
+        <script src="src/stt/SonicAgentVoiceSettings.js"></script>
+        <!-- HV4/HV5: streamed SonicAgent Piper. Deferred, so it registers after TTSProvider. -->
+        <script defer src="src/tts/AudioJitterBuffer.js"></script>
+        <script defer src="src/tts/StreamingAudioPlayer.js"></script>
+        <script defer src="src/tts/PhraseSpeechScheduler.js"></script>
+        <script defer src="src/tts/VoiceTurnController.js"></script>
+        <script defer src="src/tts/RemoteSonicAgentTTS.js"></script>
     </body>
 </html>

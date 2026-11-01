@@ -120,6 +120,8 @@
         smoothing: 0.14,
         // Face tracking pause — when true, update() is a no-op
         paused: false,
+        // HV4. When set, a function answering the audible level (0..1) drives the mouth.
+        levelSource: null,
     };
 
     /**
@@ -162,7 +164,18 @@
         if (!vrmLoader) return;
         if (state.paused) return; // face tracking owns mouth expressions
 
-        if (state.active && state.sequence.length > 0) {
+        if (state.levelSource) {
+            // HV4. A streamed voice: the mouth follows what is audible now. The text-timed
+            // sequence would run ahead of a voice that is still arriving over the network.
+            let level = 0;
+            try {
+                level = Number(state.levelSource()) || 0;
+            } catch (_) {
+                level = 0;
+            }
+            const open = Math.min(1, Math.max(0, (level - 0.01) * 6));
+            state.target = { aa: open * 0.7, ee: 0, oh: open * 0.25 };
+        } else if (state.active && state.sequence.length > 0) {
             _advanceSequence(dt);
         }
 
@@ -240,6 +253,21 @@
         update: update,
         get isActive() {
             return state.active;
+        },
+        /**
+         * HV4. Drive the mouth from an audio level (0..1) instead of the text sequence, for as
+         * long as it is set: `drive(() => player.level())` when streamed speech starts,
+         * `undrive()` when it ends. Additive — nothing changes while no source is set.
+         */
+        drive: function (levelFn) {
+            state.levelSource = typeof levelFn === 'function' ? levelFn : null;
+        },
+        undrive: function () {
+            state.levelSource = null;
+            state.target = { aa: 0, ee: 0, oh: 0 };
+        },
+        get isDriven() {
+            return !!state.levelSource;
         },
         /** Pause/resume viseme output (face tracking override). */
         setPaused: function (paused) {
