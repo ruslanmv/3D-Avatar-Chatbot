@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (240 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (244 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-01 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5426 tests in 240 suites, all passing.**
+— lint clean, format clean, **5490 tests in 244 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -188,7 +188,8 @@ will be rewrapped; files under `docs/` are exempt.
 (`PT` its tattoos), `W` for the wardrobe (`WF` its Forge settings, `LT` live
 Try-On, `OD` the outfit dictionary shared with Forge), `V` for VRoid Hub in the
 Avatar Library, `VP` for the VR puppet, `AR` for the AR conversation, `VR` for
-the VR chat panel and `ST` for on-device speech-to-text (`docs/QUEST_STT.md`).
+the VR chat panel, `ST` for on-device speech-to-text (`docs/QUEST_STT.md`) and
+`HV` for SonicAgent voice through OllaBridge Cloud (`docs/SONICAGENT_VOICE.md`).
 Commit subjects match: `A4: viewport background manager`. So
 `git log --grep 'A4'` and the comment line up.
 
@@ -590,6 +591,37 @@ procedure.
   Chromium's fake microphone). English is gated; Italian is reported (29–57% WER
   on Tiny, 14–36% on Base with Piper's synthetic voice). That is this machine's
   CPU — Quest timings come from `stt-check.html` on the headset.
+
+## SonicAgent voice through OllaBridge Cloud (HV)
+
+Optional remote speech: SonicAgent's faster-whisper and streamed Piper, through
+the OllaBridge Cloud this app pairs with for chat. **Off by default; additive.**
+`docs/SONICAGENT_VOICE.md` has the design and the measurements.
+
+- **Three gates, all checked when audio would leave:** `nexus_sonic_voice`
+  `enabled`, then `consent`, ticked separately under Settings ▸ ADVANCED VOICE
+  (turning the feature off withdraws consent), then a paired OllaBridge. The
+  engines are new values, `sonicagent-stream`, in STT PROVIDER and TTS ENGINE.
+  No existing key changes shape.
+- **Never a silent fallback.** `SpeechService.startSTT` has an explicit
+  `sonicagent-stream` case: an unknown provider falls through to Web Speech
+  (Google on Chrome). A remote failure never writes `stt_config` or
+  `tts_engine`.
+- **One recognizer class for the three surfaces**, via
+  `NEXUS_STT.recognitionClass()` (engine `remote` in SttRouter). It sets
+  `isLocalWhisper` (the surfaces read it as "app-owned recognizer") and
+  `isRemoteSonic`.
+- **Exactly one final per commit** (`commit_seq`, SonicAgent HV3 client
+  endpointing). **Only the newest turn speaks** (`VoiceTurnController`).
+  `onStart`/`onEnd` follow real playback, and lip-sync is driven by the player's
+  level (`NEXUS_LIP_SYNC.drive`).
+- **HV5 streamed speech** is `__nexusStreamedSpeech()` in `main.js`, used only
+  with the remote engine active and "speak while streaming" on.
+  `finish(displayText)` speaks the rest only if what was already spoken is still
+  in the final text; otherwise `speakText()` as before.
+- **Streamed TTS needs SonicAgent HV3** (a v1 server cut replies at 2 s); it
+  refuses with `requires_hv3`. The player acknowledges every phrase it still
+  holds; SonicAgent budgets unplayed audio across the session.
 
 ## Speech engines and the Meta Quest voice switch
 

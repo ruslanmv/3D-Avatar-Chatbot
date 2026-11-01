@@ -303,6 +303,23 @@
                 </details>
             </section>
 
+            <section id="remote">
+                <h2>6 · SonicAgent through OllaBridge Cloud (remote)</h2>
+                <p class="muted">
+                    Remote recognition and streamed speech (HV7). Uses the OllaBridge pairing, the consent and the
+                    options from the app's Settings ▸ ADVANCED VOICE — this page never sends audio without them. Numbers
+                    are this device on this network, measured; nothing is estimated.
+                </p>
+                <div class="row">
+                    <button id="rm-check">Check readiness</button>
+                    <button id="rm-talk" class="primary talk">🎤 Start recording</button>
+                    <button id="rm-tts">Time streamed speech ×3</button>
+                    <button id="rm-copy">Copy remote report</button>
+                </div>
+                <div id="rm-status" class="out"></div>
+                <table id="rm-table"></table>
+            </section>
+
             <section>
                 <h2>Log</h2>
                 <pre id="log"></pre>
@@ -319,6 +336,15 @@
         <script src="src/stt/SttDiagnosticReport.js"></script>
         <script src="src/stt/LocalWhisperSTT.js"></script>
         <script src="src/stt/QuestAudioDiagnostics.js"></script>
+        <script src="src/stt/SonicAgentVoiceConfig.js"></script>
+        <script src="src/stt/StreamingSttSession.js"></script>
+        <script src="src/stt/RemoteSttEvents.js"></script>
+        <script src="src/stt/RemoteSonicAgentSTT.js"></script>
+        <script src="src/tts/AudioJitterBuffer.js"></script>
+        <script src="src/tts/StreamingAudioPlayer.js"></script>
+        <script src="src/tts/PhraseSpeechScheduler.js"></script>
+        <script src="src/tts/VoiceTurnController.js"></script>
+        <script src="src/tts/RemoteSonicAgentTTS.js"></script>
         <script>
             (function () {
                 'use strict';
@@ -838,6 +864,150 @@
                 window.addEventListener('nexus-stt', (e) => {
                     if (e.detail && e.detail.type === 'model-state') renderDevice();
                 });
+            })();
+        </script>
+        <script>
+            // HV7. The remote section. Its own script so the on-device sections above are untouched.
+            (function () {
+                'use strict';
+                const $ = (id) => document.getElementById(id);
+                const CFG = window.NEXUS_SONIC_VOICE;
+                const PERF = window.NEXUS_STT_PERF;
+                const REP = window.NEXUS_STT_REPORT;
+                const rows = [];
+                const now = () => performance.now();
+                const say = (t) => ($('rm-status').textContent = t);
+
+                function gate(kind) {
+                    const g = CFG.allowed(kind);
+                    if (g.ok) return true;
+                    say(window.NEXUS_REMOTE_STT_EVENTS.errorFor(g.code).message);
+                    return false;
+                }
+
+                function render() {
+                    const head = '<tr><th>run</th><th>kind</th><th>result</th><th>ms</th><th>detail</th></tr>';
+                    $('rm-table').innerHTML = head;
+                    for (const r of rows) {
+                        const tr = document.createElement('tr');
+                        for (const v of [r.n, r.kind, r.result, r.ms, r.detail]) {
+                            const td = document.createElement('td');
+                            td.textContent = v == null ? '—' : String(v);
+                            tr.appendChild(td);
+                        }
+                        $('rm-table').appendChild(tr);
+                    }
+                }
+
+                $('rm-check').onclick = async () => {
+                    if (!gate('tts')) return;
+                    const t0 = now();
+                    try {
+                        const caps = await CFG.gateway().capabilities(true);
+                        CFG.rememberCapabilities(caps);
+                        const ms = Math.round(now() - t0);
+                        rows.push({
+                            n: rows.length + 1,
+                            kind: 'readiness',
+                            result: caps.available ? 'ready' : (caps.backend && caps.backend.state) || 'unavailable',
+                            ms,
+                            detail: caps.reason || `${((caps.tts && caps.tts.voices) || []).length} voices`,
+                        });
+                        say(caps.available ? `Ready · ${ms} ms` : `Not ready: ${caps.reason}`);
+                    } catch (err) {
+                        say(String(err && err.message));
+                    }
+                    render();
+                };
+
+                let rec = null;
+                $('rm-talk').onclick = () => {
+                    if (rec) {
+                        rec.stop();
+                        return;
+                    }
+                    if (!gate('stt')) return;
+                    rec = new window.NEXUS_REMOTE_STT.Recognition();
+                    rec.holdToTalk = true; // a tap toggle, like section 4 (ST18)
+                    rec.lang = CFG.language();
+                    rec.perfSurface = 'stt-check-remote';
+                    let stopAt = null;
+                    $('rm-talk').textContent = '■ Stop & transcribe';
+                    rec.onstatechange = (e) => say(e.label);
+                    rec.onaudioend = () => (stopAt = now());
+                    rec.onresult = (e) => {
+                        const ms = stopAt == null ? null : Math.round(now() - stopAt);
+                        rows.push({
+                            n: rows.length + 1,
+                            kind: 'stt',
+                            result: 'final',
+                            ms,
+                            detail: `${e.results[e.resultIndex][0].transcript.length} chars`,
+                        });
+                        render();
+                    };
+                    rec.onerror = (e) => {
+                        rows.push({ n: rows.length + 1, kind: 'stt', result: e.error, ms: null, detail: e.message });
+                        render();
+                    };
+                    rec.onend = () => {
+                        rec = null;
+                        $('rm-talk').textContent = '🎤 Start recording';
+                    };
+                    rec.start();
+                };
+
+                $('rm-tts').onclick = async () => {
+                    if (!gate('tts')) return;
+                    const tts = window.NEXUS_REMOTE_TTS.shared();
+                    const lines = [
+                        'Hello there.',
+                        'This is a short test of streamed speech.',
+                        'One more sentence, then we are done.',
+                    ];
+                    for (const line of lines) {
+                        const t0 = now();
+                        const result = await new Promise((resolve) => {
+                            let first = null;
+                            tts.speak(line, {
+                                onStart: () => (first = Math.round(now() - t0)),
+                                onEnd: () => resolve({ ok: true, first, total: Math.round(now() - t0) }),
+                                onError: (err) => resolve({ ok: false, message: err && err.message }),
+                            });
+                        });
+                        rows.push({
+                            n: rows.length + 1,
+                            kind: 'tts',
+                            result: result.ok ? 'played' : 'failed',
+                            ms: result.ok ? result.first : null,
+                            detail: result.ok
+                                ? `first sound ${result.first} ms · done ${result.total} ms`
+                                : result.message,
+                        });
+                        render();
+                        if (!result.ok) break;
+                    }
+                };
+
+                $('rm-copy').onclick = async () => {
+                    const last = (PERF.history ? PERF.history() : [])
+                        .filter((h) => h.data && h.data.provider === 'sonicagent-stream')
+                        .pop();
+                    const D = window.NEXUS_STT_DIAGNOSTICS;
+                    const env = await D.environment(window, {
+                        xrMode: PERF.xrMode(window),
+                        sttLanguage: CFG.language(),
+                    });
+                    const report = last ? REP.build(last, env, { surface: 'stt-check-remote' }) : null;
+                    const out = JSON.stringify({ remote_runs: rows, last_stt_report: report }, null, 2);
+                    try {
+                        await navigator.clipboard.writeText(out);
+                        say('Copied.');
+                    } catch (_) {
+                        say(out);
+                    }
+                };
+                render();
             })();
         </script>
     </body>

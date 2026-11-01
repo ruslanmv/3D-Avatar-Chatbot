@@ -3895,6 +3895,7 @@ async function _handleStreamingResponse(text) {
     const stream = _surface().beginAssistant();
     const textDiv = stream.textNode;
     const row = stream.node;
+    let voiceStream = null; // HV5
 
     _setTyping(true);
 
@@ -3922,11 +3923,16 @@ async function _handleStreamingResponse(text) {
             // wardrobe sends the prompt it always sent.
             (window.NEXUS_WARDROBE_TOOL?.systemPromptSuffix?.() || '');
         let accumulated = '';
+        // HV5. Her first sentence spoken while the rest is still being written — only with the
+        // SonicAgent streaming voice active and "speak while streaming" on; null otherwise, and
+        // then this reply is spoken by speakText() at the end exactly as before.
+        voiceStream = __nexusStreamedSpeech();
 
         const fullText = await window._nexusLLM.sendMessageStream(text, systemPrompt, history, (token) => {
             // Hide typing indicator on first token
             if (!accumulated) _setTyping(false);
             accumulated += token;
+            if (voiceStream) voiceStream.push(token);
             // Living NPC: hide the ```motion block while it streams in
             stream.append(window.NEXUS_MOTION ? window.NEXUS_MOTION.maskStreaming(accumulated) : accumulated);
         });
@@ -3937,6 +3943,7 @@ async function _handleStreamingResponse(text) {
         // that no longer exists: take the half-written bubble off screen and write nothing —
         // no message, no storage, no speech. Anything else resurrects what they just erased.
         if (!_turnIsCurrent(turn)) {
+            if (voiceStream) voiceStream.cancel();
             stream.discard();
             setStatus('idle', 'READY');
             return;
@@ -4000,10 +4007,25 @@ async function _handleStreamingResponse(text) {
         store.addMessage('assistant', displayText);
         store.persist();
         _applyEmotionFromText(displayText);
-        speakText(displayText);
-        setStatus('idle', 'READY');
+        if (voiceStream) {
+            // HV5. What was spoken must still be what the app kept after every seam above. When
+            // it is, the rest of the final text is spoken; when it is not, the streamed voice is
+            // cancelled and the reply is spoken the usual way.
+            const streamed = voiceStream;
+            voiceStream = null;
+            const kept = await streamed.finish(__nexusTextForSpeech(displayText));
+            if (!kept) speakText(displayText);
+            else if (!streamed.audible()) setStatus('idle', 'READY');
+        } else {
+            speakText(displayText);
+            setStatus('idle', 'READY');
+        }
     } catch (error) {
         _setTyping(false);
+        if (voiceStream) {
+            voiceStream.cancel();
+            voiceStream = null;
+        }
         logError('Streaming error, falling back', error);
 
         // Remove the empty streaming turn
@@ -4466,6 +4488,101 @@ function _applyEmotionFromText(text) {
     );
 }
 
+/**
+ * HV5. The text a reply is spoken from: the same Markdown normalisation speakText() applies, so
+ * a phrase spoken while streaming and the final text compare like for like.
+ */
+function __nexusTextForSpeech(rawText) {
+    try {
+        if (window.NEXUS_SPEECH_TEXT) {
+            const lang = (window.SpeechSettings?.lang || window.AppLanguage?.get?.() || 'en').slice(0, 2);
+            return window.NEXUS_SPEECH_TEXT.forSpeech(rawText, { lang }) || '';
+        }
+    } catch (_) {}
+    return rawText;
+}
+
+/**
+ * HV5. A streamed-speech handle for this reply, or null. Null unless every one of these holds,
+ * so a profile that never turned it on behaves byte for byte as before:
+ *   - the active TTS engine is SonicAgent streaming (TTSProvider decided, Settings ▸ TTS ENGINE),
+ *   - "Speak while the reply is still being written" is on (Advanced Voice — SonicAgent),
+ *   - the engine says it can run (enabled, paired OllaBridge).
+ * Talk animation and status begin when she is actually audible, and end after the last sample,
+ * through the same calls speakText() makes.
+ */
+function __nexusStreamedSpeech() {
+    try {
+        const tts = window.TTSProvider;
+        const remote = window.NEXUS_REMOTE_TTS;
+        const cfg = window.NEXUS_SONIC_VOICE;
+        if (!tts || !remote || !cfg) return null;
+        if (tts.getEngine() !== remote.ENGINE || !tts.isActive()) return null;
+        if (!cfg.get().speakWhileStreaming) return null;
+        const provider = remote.shared();
+        if (!provider.isAvailable()) return null;
+        let audible = false;
+        let failed = false;
+        const handle = provider.streamReply({
+            clean: (t) => __nexusTextForSpeech(t),
+            onStart: () => {
+                audible = true;
+                setStatus('speaking', 'SPEAKING...');
+                try {
+                    window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.('talk', 30000);
+                } catch (_) {}
+                try {
+                    window.NEXUS_VIEWER?.playAnimationByName?.('Talk');
+                } catch (_) {}
+            },
+            onEnd: () => __nexusSpeechFinished(),
+            onError: (err) => {
+                failed = true;
+                console.warn('[Speech] streamed voice unavailable for this reply:', err && err.message);
+            },
+        });
+        return {
+            push: (d) => {
+                if (!failed) handle.push(d);
+            },
+            // A streamed voice that failed before speaking hands the whole reply to speakText().
+            finish: async (finalText) => (failed ? false : handle.finish(finalText)),
+            cancel: () => handle.cancel(),
+            audible: () => audible,
+        };
+    } catch (err) {
+        console.warn('[Speech] streamed voice skipped:', err);
+        return null;
+    }
+}
+
+/** The end of a spoken reply: the same steps speakText()'s engine path runs in its onEnd. */
+function __nexusSpeechFinished() {
+    try {
+        window.NEXUS_LIP_SYNC?.stop?.();
+    } catch (_) {}
+    try {
+        window.NEXUS_BEHAVIOR?.onSpeechEnd?.();
+    } catch (_) {}
+    try {
+        window.NEXUS_VIEWER?.avatarManager?.vrmLoader?.stopLipSync?.();
+    } catch (_) {}
+    const personaMode =
+        typeof window.PersonaContextBridge !== 'undefined'
+            ? window.PersonaContextBridge.getDefaultAvatarMode()
+            : 'waiting';
+    try {
+        window.NEXUS_PROCEDURAL_ANIMATOR?.setMode?.(
+            personaMode,
+            personaMode === 'idle' || personaMode === 'waiting' ? 0 : 5000
+        );
+    } catch (_) {}
+    setStatus('idle', 'READY');
+    try {
+        window.NEXUS_VIEWER?.playAnimationByName?.(personaMode === 'happy' ? 'Happy' : 'Idle');
+    } catch (_) {}
+}
+
 function speakText(rawText) {
     // Markdown is for the eye. The transcript keeps whatever the model wrote;
     // only the audio path gets the normalised form, so nothing on screen
@@ -4908,7 +5025,11 @@ function initSpeechRecognition() {
         setStatus('thinking', 'TRANSCRIBING...');
         const inputField = $('speech-text');
         if (inputField) inputField.placeholder = 'Transcribing…';
-        if ($('recognition-status')) $('recognition-status').textContent = 'Transcribing on this device…';
+        if ($('recognition-status')) {
+            $('recognition-status').textContent = recognition.isRemoteSonic
+                ? 'Transcribing on SonicAgent…'
+                : 'Transcribing on this device…';
+        }
     };
 
     recognition.onend = () => {
