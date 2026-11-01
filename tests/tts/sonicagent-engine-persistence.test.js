@@ -185,3 +185,56 @@ describe('the disclosures', () => {
         expect(Config.get().consent).toBe(false);
     });
 });
+
+describe('the gateway', () => {
+    test('a Cloud without /v1/voice routes is named as such, and the choice is kept', async () => {
+        paired();
+        const fetch = async () => ({
+            ok: false,
+            status: 404,
+            headers: { get: () => 'application/json' },
+            json: async () => ({ detail: 'Not Found' }),
+        });
+        const gateway = Config.createGateway({ fetch, info: () => ({ baseUrl: 'https://old.example', token: 't' }) });
+        const config = Object.assign({}, Config, { gateway: () => gateway });
+        const provider = Remote.create({
+            config,
+            stream: Stream,
+            jitter: Jitter,
+            phrases: Phrases,
+            turns: Turns,
+            lipSync: null,
+        });
+        const tp = loadProvider();
+        tp.registerProvider('sonicagent-stream', provider);
+        expect(await tp.setEngine('sonicagent-stream')).toBe(false);
+        expect(tp.lastFailureDetail()).toMatchObject({ code: 'voice_routes_missing' });
+        expect(tp.lastFailureDetail().message).toMatch(/no voice routes/);
+        expect(localStorage.getItem('tts_engine')).toBe('sonicagent-stream');
+    });
+
+    test('the browser only ever presents the pairing token; never a SonicAgent key', async () => {
+        const calls = [];
+        const fetch = async (url, init) => {
+            calls.push({ url, init });
+            return {
+                ok: true,
+                status: 200,
+                headers: { get: () => 'application/json' },
+                json: async () => ({ voices: [] }),
+            };
+        };
+        const g = Config.createGateway({
+            fetch,
+            info: () => ({ baseUrl: 'https://app.ollabridge.com', token: 'pair-tok' }),
+        });
+        await g.voices(true);
+        await g.warmVoice('en_US-kristin-medium');
+        expect(calls.map((c) => c.url)).toEqual([
+            'https://app.ollabridge.com/v1/voice/voices?fresh=1',
+            'https://app.ollabridge.com/v1/voice/voices/warm',
+        ]);
+        expect(calls.every((c) => c.init.headers.Authorization === 'Bearer pair-tok')).toBe(true);
+        expect(calls.some((c) => /realtime|\/v1\/audio/.test(c.url))).toBe(false);
+    });
+});

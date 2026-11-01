@@ -35,28 +35,28 @@
     /** Short preview sentences, per language and profile. Never sent to the conversation. */
     const PREVIEWS = Object.freeze({
         en: {
-            companion: "Hello, I'm here. How can I help you today?",
-            secretary: "Good morning. Let's review your schedule.",
+            companion: "Hello, it's lovely to hear your voice. I'm right here.",
+            secretary: 'Good morning. Your schedule is ready. How may I assist you?',
         },
         it: {
-            companion: 'Ciao, sono qui con te. Come stai oggi?',
-            secretary: 'Buongiorno. Vediamo insieme gli impegni di oggi.',
+            companion: 'Ciao, è bello sentire la tua voce. Sono qui con te.',
+            secretary: 'Buongiorno. La sua agenda è pronta. Come posso aiutarla?',
         },
         es: {
-            companion: 'Hola, estoy aquí contigo. ¿Cómo estás hoy?',
-            secretary: 'Buenos días. Revisemos tu agenda de hoy.',
+            companion: 'Hola, qué alegría oír tu voz. Estoy aquí contigo.',
+            secretary: 'Buenos días. Su agenda está lista. ¿En qué puedo ayudarle?',
         },
         fr: {
-            companion: "Bonjour, je suis là. Comment puis-je t'aider aujourd'hui ?",
-            secretary: 'Bonjour. Passons en revue votre agenda.',
+            companion: "Bonjour, ça me fait plaisir d'entendre ta voix. Je suis là.",
+            secretary: 'Bonjour. Votre agenda est prêt. Comment puis-je vous aider ?',
         },
         de: {
-            companion: 'Hallo, ich bin da. Wie geht es dir heute?',
-            secretary: 'Guten Morgen. Gehen wir Ihren Terminplan durch.',
+            companion: 'Hallo, wie schön, deine Stimme zu hören. Ich bin für dich da.',
+            secretary: 'Guten Morgen. Ihr Terminplan ist bereit. Wie kann ich Ihnen helfen?',
         },
         pt: {
-            companion: 'Olá, estou aqui. Como posso ajudar você hoje?',
-            secretary: 'Bom dia. Vamos revisar a sua agenda.',
+            companion: 'Olá, que bom ouvir a sua voz. Estou aqui com você.',
+            secretary: 'Bom dia. A sua agenda está pronta. Como posso ajudar?',
         },
     });
 

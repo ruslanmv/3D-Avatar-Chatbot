@@ -85,8 +85,8 @@
             '<select id="sonic-language" class="select-input">' +
             LANGS.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('') +
             '</select>' +
-            '<label class="input-label" for="sonic-voice" style="margin-top: 10px">REMOTE VOICE</label>' +
-            '<select id="sonic-voice" class="select-input"><option value="">Automatic for the language</option></select>' +
+            `<p style="${HINT}">Her SonicAgent voice and speaking style (Companion / Secretary) are chosen under` +
+            ' SPEECH ▸ VOICE STYLE once TTS ENGINE is SonicAgent.</p>' +
             `<label style="${ROW}"><input type="checkbox" id="sonic-stream-speak" /> Speak while the reply is still being written</label>` +
             `<label style="${ROW}"><input type="checkbox" id="sonic-fallback" /> If the remote voice fails before speaking, use Piper on this device</label>` +
             '<label class="input-label" for="sonic-jitter" style="margin-top: 10px">PLAYBACK BUFFER (ms)</label>' +
@@ -203,10 +203,6 @@
             $('sonic-stream-speak').checked = c.speakWhileStreaming;
             $('sonic-fallback').checked = c.autoFallback;
             $('sonic-jitter').value = c.jitterMs;
-            const voice = $('sonic-voice');
-            const installed = C.installedVoices() || [];
-            for (const id of installed) addOption(voice, id, id);
-            voice.value = installed.includes(c.voice) || !c.voice ? c.voice : '';
             for (const id of ['sonic-check', 'sonic-test-stt', 'sonic-test-tts']) $(id).disabled = !c.enabled;
             $('sonic-test-stt').disabled = !c.enabled || !c.consent;
             if (!c.enabled) say('Remote voice is off.');
@@ -319,7 +315,6 @@
             render();
         });
         $('sonic-language').addEventListener('change', (e) => C.set({ language: e.target.value }));
-        $('sonic-voice').addEventListener('change', (e) => C.set({ voice: e.target.value }));
         $('sonic-stream-speak').addEventListener('change', (e) => C.set({ speakWhileStreaming: e.target.checked }));
         $('sonic-fallback').addEventListener('change', (e) => C.set({ autoFallback: e.target.checked }));
         $('sonic-jitter').addEventListener('change', (e) => {

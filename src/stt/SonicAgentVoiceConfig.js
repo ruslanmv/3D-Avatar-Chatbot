@@ -166,9 +166,7 @@
     /**
      * The voice for `language`. Pure given its inputs:
      *   1. the voice chosen in this section, if any — the person's choice wins;
-     *   2. the local Piper voice (`piper_voice`) when it speaks this language and SonicAgent has
-     *      it — so turning streaming on does not change who she sounds like;
-     *   3. the first installed voice for the language, "medium" quality first.
+     *   2. the first installed voice for the language, "medium" quality first.
      * Never a voice of another language: an Italian reply in an English voice is worse than an
      * error that says no Italian voice is installed. Returns null when there is none.
      */
@@ -183,33 +181,44 @@
                 .toLowerCase()
                 .startsWith(lang + '_');
         if (i.chosen) return i.chosen;
-        if (i.piperVoice && speaks(i.piperVoice) && (!list || list.includes(i.piperVoice))) return i.piperVoice;
         if (!list) return null;
         const mine = list.filter(speaks);
         return mine.find((id) => /-medium$/.test(id)) || mine[0] || null;
     }
 
+    /**
+     * The SonicAgent voice to speak with: VoiceSelectionPolicy's answer for the current language,
+     * speaking style, explicit pick and gender preference — null when there is none. HV-FIX: the
+     * on-device Piper voice (`piper_voice`) is no longer a candidate; it is another engine's
+     * namespace, and it made Companion/Secretary change a label instead of the voice.
+     */
     function voiceFor(lang) {
-        const L = global && global.NEXUS_VOICE_LIBRARY;
-        if (library && L) {
-            // HV9: the library knows languages, profiles, presets and what is playable.
-            const c = get();
-            return L.choose(library, { language: lang || ttsLanguage(), profile: c.profile, current: c.voice || null })
-                .voice;
+        const P = global && global.NEXUS_VOICE_POLICY;
+        if (P) {
+            const input = P.inputFromSettings(api, global.localStorage);
+            if (lang)
+                input.language =
+                    P.locale(lang) || (input.language.slice(0, 2) === lang.slice(0, 2) ? input.language : lang);
+            return P.resolve(input).voice;
         }
-        let piperVoice = null;
-        try {
-            piperVoice = global.localStorage ? global.localStorage.getItem('piper_voice') : null;
-        } catch (_) {}
-        return pickVoice({ language: lang || language(), installed, chosen: get().voice || null, piperVoice });
+        return pickVoice({ language: lang || ttsLanguage(), installed, chosen: get().voice || null });
     }
 
     // ---- the OllaBridge voice client ----------------------------------------------------------
 
     function gatewayError(status, body, retryAfter) {
         const detail = (body && (body.detail || body)) || {};
-        const err = new Error(detail.message || `OllaBridge voice answered HTTP ${status}`);
-        err.code = detail.error || (status === 401 ? 'unauthenticated' : 'backend_unavailable');
+        // A gateway deployed before the voice bridge has no /v1/voice routes at all: say that,
+        // rather than "HTTP 404", so nobody hunts for a bug in the browser.
+        const missing = status === 404 && !detail.error;
+        const err = new Error(
+            missing
+                ? 'This OllaBridge Cloud has no voice routes (/v1/voice). The voice bridge must be deployed there.'
+                : detail.message || `OllaBridge voice answered HTTP ${status}`
+        );
+        err.code = missing
+            ? 'voice_routes_missing'
+            : detail.error || (status === 401 ? 'unauthenticated' : 'backend_unavailable');
         err.status = status;
         err.retryAfter = Number(retryAfter || detail.retry_after) || null;
         return err;

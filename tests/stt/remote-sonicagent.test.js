@@ -339,15 +339,13 @@ describe('the switch', () => {
 });
 
 describe('voice choice', () => {
-    test('the person’s pick wins; then their Piper voice if it speaks the language; never another language', () => {
+    test('the person’s pick wins; the on-device Piper voice is never a candidate; never another language', () => {
+        // HV-FIX: `piper_voice` belongs to the on-device engine; it used to outrank the presets.
         const installed = ['en_US-lessac-medium', 'it_IT-paola-medium', 'it_IT-riccardo-x_low'];
         expect(Config.pickVoice({ language: 'it', installed, chosen: 'it_IT-riccardo-x_low' })).toBe(
             'it_IT-riccardo-x_low'
         );
         expect(Config.pickVoice({ language: 'it', installed, piperVoice: 'it_IT-riccardo-x_low' })).toBe(
-            'it_IT-riccardo-x_low'
-        );
-        expect(Config.pickVoice({ language: 'it', installed, piperVoice: 'en_US-hfc_female-medium' })).toBe(
             'it_IT-paola-medium'
         );
         expect(Config.pickVoice({ language: 'de', installed })).toBeNull();

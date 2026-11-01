@@ -116,8 +116,15 @@
             // HV9. A preview names its voice; a reply uses the chosen voice for her language and
             // speaking style. Never a voice of another language: none → say so, do not substitute.
             const voiceId = h.voiceId || c.voiceFor(language);
-            if (!voiceId && (c.installedVoices() || (c.library && c.library()))) {
-                throw err('voice_unavailable', `SonicAgent has no playable voice for "${language}".`);
+            if (!voiceId) {
+                // HV-FIX: no SonicAgent voice for this language (Japanese, Korean, Chinese…), or
+                // none playable. Say so; never send another language's voice or a local Piper id.
+                const P = lib('NEXUS_VOICE_POLICY');
+                const why = P ? P.resolveRemote(c) : null;
+                throw err(
+                    'voice_unavailable',
+                    (why && why.message) || 'No SonicAgent voice is available for the selected language.'
+                );
             }
             t.voiceId = voiceId || null;
             const l = link();
@@ -391,6 +398,7 @@
                     }
                     if (e && e.code === 'timeout')
                         throw err('backend_timeout', 'OllaBridge Cloud did not answer in time.');
+                    if (e && e.code === 'voice_routes_missing') throw err(e.code, e.message);
                     throw err((e && e.code) || 'backend_unavailable', 'OllaBridge Cloud cannot be reached right now.');
                 });
                 if (caps && caps.mode && caps.mode !== 'huggingface' && caps.available === false) {

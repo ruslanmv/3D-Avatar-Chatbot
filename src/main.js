@@ -1736,7 +1736,10 @@ function _togglePiperVoiceUI(engine) {
     // Keep VOICE PREFERENCE visible — it filters Piper voices by gender too
     const webVoiceEl = document.getElementById('speech-voice');
     if (webVoiceEl && webVoiceEl.closest('.input-group')) {
-        webVoiceEl.closest('.input-group').style.display = isPiper ? 'none' : '';
+        // HV-FIX. SonicAgent has its own VOICE list (VoiceStyleSettings, under TTS ENGINE): the
+        // browser's voices are another engine's namespace and would never be used by it.
+        const remote = engine === 'sonicagent-stream';
+        webVoiceEl.closest('.input-group').style.display = isPiper || remote ? 'none' : '';
     }
 
     if (isPiper) _refreshPiperVoiceList();
