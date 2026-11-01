@@ -59,7 +59,14 @@ const PHRASES = [
 // not gated (null): on Piper's synthetic Italian voice Tiny scored 29–57% and Base 14–36%
 // from run to run ("Molano" for "Milano", "a gui" for "oggi") — usable, not promisable. Gate
 // it once a recorded human Italian fixture exists. Tighten these; never loosen one to pass.
-const MAX_WER = { tiny: { en: 0.25, it: null }, base: { en: 0.25, it: null }, small: { en: 0.2, it: null } };
+const MAX_WER = {
+    tiny: { en: 0.25, it: null },
+    base: { en: 0.25, it: null },
+    small: { en: 0.2, it: null },
+    // ST17. Auto = Moonshine Tiny for English (gated like Whisper), Whisper Tiny for Italian.
+    auto: { en: 0.25, it: null },
+    'moonshine-tiny': { en: 0.25, it: null },
+};
 
 function parseArgs(argv) {
     const o = { port: 8099, only: ['speech', 'model', 'capture', 'perf'], model: 'tiny' };
@@ -430,9 +437,9 @@ async function phasePerf(chromium, base, o) {
         chk.on('pageerror', (e) => errors.push(e.message));
         await chk.goto(`${base}/stt-check.html`);
         await chk.evaluate(() => window.NEXUS_STT.preload());
-        await chk.dispatchEvent('#talk', 'pointerdown');
+        await chk.click('#talk'); // ST18: tap to start…
         await chk.waitForTimeout(3500);
-        await chk.dispatchEvent('#talk', 'pointerup');
+        await chk.click('#talk'); // …tap to stop and transcribe
         await chk.waitForFunction(
             () => /“|Nothing usable|✖/.test(document.getElementById('transcript').textContent),
             null,

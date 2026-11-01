@@ -167,11 +167,24 @@ async function transcribe(msg, receivedAt) {
         // model's limit — one test inference took 35 s for 3 s of audio, which in a headset reads
         // as the microphone hanging.
         const maxNewTokens = msg.maxNewTokens > 0 ? Math.min(448, Math.round(msg.maxNewTokens)) : 128;
-        const options = { task: 'transcribe', return_timestamps: false, max_new_tokens: maxNewTokens };
-        if (msg.language) options.language = msg.language;
-        if (audioMs > 30000) {
-            options.chunk_length_s = 30;
-            options.stride_length_s = 5;
+        let options;
+        if (msg.family === 'moonshine') {
+            // ST17. Moonshine reads the audio's length and takes no language or task. Its runtime
+            // budget is 6 tokens per WHOLE second (floor): 1.97 s of speech got 6 tokens and lost
+            // its last words ("What is the weather like in"). ~8 tokens a second plus 4, never more
+            // than the cap, keeps the sentence and still stops a runaway decode.
+            const sec = audio.length / A.TARGET_RATE;
+            options = { max_new_tokens: Math.min(maxNewTokens, Math.ceil(sec * 8) + 4) };
+        } else {
+            // max_new_tokens: ~30 s of speech is ~100 tokens. Without a cap a decoding loop runs to
+            // the model's limit — one test inference took 35 s for 3 s of audio, which in a headset
+            // reads as the microphone hanging.
+            options = { task: 'transcribe', return_timestamps: false, max_new_tokens: maxNewTokens };
+            if (msg.language) options.language = msg.language;
+            if (audioMs > 30000) {
+                options.chunk_length_s = 30;
+                options.stride_length_s = 5;
+            }
         }
         const tInfer = performance.now();
         const out = await asr(audio, options);

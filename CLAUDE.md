@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-01 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5418 tests in 240 suites, all passing.**
+— lint clean, format clean, **5424 tests in 240 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -575,6 +575,16 @@ procedure.
   transcript text, scrubbed strings. Frames are sampled only inside a trace.
   `runTranscription` in `LocalWhisperSTT` is the one instrumented gate → worker
   → judge path — keep new transcription callers on it.
+- **Auto runs Moonshine for English (ST17).** The first Quest 3 report: Whisper
+  Tiny 8.3 s inference for 4.1 s of speech (RTF 2.0, one WASM thread, three
+  cores) — the fixed 30 s encoder pass. `QuestWhisperConfig.pickModel`: `auto`
+  (default for a new install) → `moonshine-tiny` for English, Whisper Tiny
+  otherwise; Moonshine is never used for a language it does not list. The worker
+  gives Moonshine no language/task and a budget of `ceil(seconds × 8) + 4`
+  tokens — the runtime's own `6 × floor(seconds)` cut sentences short. The
+  manager re-reads the model for each transcription's language. stt-check's talk
+  button is a tap toggle (ST18): a held Quest trigger selected text and lost the
+  hold.
 - **Test with the real model**: `npm run stt:real-model` (Piper makes the speech
   in the browser, Whisper transcribes it, then the real app is driven through
   Chromium's fake microphone). English is gated; Italian is reported (29–57% WER

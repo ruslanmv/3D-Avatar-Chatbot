@@ -125,6 +125,14 @@ describe('the report', () => {
         expect(R.scrub(`mic ${'ab'.repeat(32)}`)).toBe('mic [redacted-id]');
     });
 
+    test('a browser version is not an IP address (the first Quest report lost its version to this)', () => {
+        const ua =
+            'Mozilla/5.0 (X11; Linux x86_64; Quest 3) OculusBrowser/144.0.0.36.31.893927508 Chrome/144.0.7559.132';
+        expect(R.scrub(ua)).toBe(ua);
+        expect(R.scrub('server 192.168.1.20 said no')).toBe('server [redacted-ip] said no');
+        expect(R.scrub('see http://10.0.0.7:8080/x')).toBe('see http://[redacted-ip]:8080/x');
+    });
+
     test('a typed headset model says so; a client-hint model is browser-reported', () => {
         const rep = R.build(sampleResult(), {
             headset_model: 'not_exposed',
