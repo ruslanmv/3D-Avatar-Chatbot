@@ -42,6 +42,10 @@
         openai: 'Sends each recording to OpenAI with your API key.',
         google: 'Sends each recording to Google Cloud with your API key.',
         italian: 'For Italian, Base is more accurate than Tiny.',
+        // ST17. From the first Quest 3 report (Whisper Tiny: 8.3 s inference for 4.1 s of speech)
+        // and this repo's measurements (Moonshine Tiny ~6× faster on English).
+        fasterEnglish: 'For English, Auto (Moonshine) is several times faster than Whisper on a headset.',
+        moonshineEnglishOnly: 'Moonshine understands English only — Whisper Tiny is used for this language.',
     });
 
     function stt() {
@@ -97,7 +101,40 @@
     /** Extra advice for the model row. Pure. */
     function advice(ctx) {
         const c = ctx || {};
-        return c.provider === 'wasm' && c.size === 'tiny' && /^it/i.test(c.lang || '') ? [COPY.italian] : [];
+        const out = [];
+        if (c.provider !== 'wasm') return out;
+        const english = /^en/i.test(c.lang || '');
+        if (c.size === 'tiny' && /^it/i.test(c.lang || '')) out.push(COPY.italian);
+        if (english && /^(tiny|base|small)$/.test(c.size || '')) out.push(COPY.fasterEnglish);
+        if (c.size === 'moonshine-tiny' && c.lang && !english) out.push(COPY.moonshineEnglishOnly);
+        return out;
+    }
+
+    /**
+     * ST17. WASM MODEL SIZE gains "Auto" and "Moonshine Tiny", added here so no index.html line
+     * moves (the parity harness counts them). Then the saved choice is shown — Auto when nothing
+     * was ever saved.
+     */
+    function addModelChoices(d) {
+        const sel = d.getElementById('wasm-model-size');
+        const C = global && global.NEXUS_WHISPER_CONFIG;
+        if (!sel || !C) return;
+        const has = (v) => Array.from(sel.options || []).some((o) => o.value === v);
+        if (!has('auto')) {
+            const o = d.createElement('option');
+            o.value = 'auto';
+            o.textContent = 'Auto — fastest for your language (Moonshine for English)';
+            sel.insertBefore(o, sel.firstChild);
+        }
+        if (!has('moonshine-tiny') && C.MODELS['moonshine-tiny']) {
+            const o = d.createElement('option');
+            o.value = 'moonshine-tiny';
+            o.textContent = C.MODELS['moonshine-tiny'].label;
+            sel.appendChild(o);
+        }
+        const saved = stt() ? stt().readSttConfig() : {};
+        const want = (saved.wasm && saved.wasm.modelSize) || 'auto';
+        if (has(want)) sel.value = want;
     }
 
     /**
@@ -239,7 +276,14 @@
                   ? 'On-device Whisper'
                   : null
         );
-        add('Model', d.model ? `Whisper ${d.model[0].toUpperCase()}${d.model.slice(1)}` : null);
+        add(
+            'Model',
+            d.model
+                ? /^moonshine/.test(d.model)
+                    ? 'Moonshine Tiny (English)'
+                    : `Whisper ${d.model[0].toUpperCase()}${d.model.slice(1)}`
+                : null
+        );
         add(
             'Backend',
             d.runtime && d.runtime.backend
@@ -921,6 +965,7 @@
         }
 
         // 2. The model row, inside the WASM block (shown only for On-device Whisper).
+        addModelChoices(d);
         const sizeSel = d.getElementById('wasm-model-size');
         const sizeGroup = sizeSel && sizeSel.closest ? sizeSel.closest('.input-group') : null;
         const group = el(d, 'div');
@@ -1021,6 +1066,7 @@
         levelOf,
         verdict,
         perfSummary,
+        addModelChoices,
         browserMeterSafe,
         SOUND_LEVEL,
         mount,

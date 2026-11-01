@@ -27,7 +27,9 @@
         [/\bBearer\s+[A-Za-z0-9._~+/-]+=*/gi, 'Bearer [redacted]'],
         [/\b(api[_-]?key|token|secret|password|auth|session|key)\s*[:=]\s*["']?[^\s"'&,;]+/gi, '$1=[redacted]'],
         [/\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g, '[redacted-jwt]'],
-        [/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, '[redacted-ip]'],
+        // An IP stands alone: not inside a version string. The first Quest report lost its browser
+        // version to this pattern ("OculusBrowser/[redacted-ip].31.893927508" for 144.0.0.36.31…).
+        [/(?<![\w.-])(?:\d{1,3}\.){3}\d{1,3}(?![\w.-])/g, '[redacted-ip]'],
         [/\b[0-9a-f]{64}\b/gi, '[redacted-id]'], // device ids are 64-hex in Chromium
     ];
 
@@ -42,6 +44,8 @@
     }
 
     const NM = 'not_measured';
+    /** 'tiny' → 'whisper-tiny'; 'moonshine-tiny' stays itself. */
+    const modelName = (m) => (!m ? 'unknown' : /^moonshine/.test(m) ? m : `whisper-${m}`);
     const num = (v) => (v == null || !Number.isFinite(v) ? NM : Math.round(v));
 
     function pick(obj, keys) {
@@ -143,7 +147,10 @@
             environment: environmentPart(env),
             stt: {
                 provider: d.provider || 'unknown',
-                model: d.model ? `whisper-${d.model}` : 'unknown',
+                model: modelName(d.model),
+                model_family:
+                    d.family || (d.model && /^moonshine/.test(d.model) ? 'moonshine' : d.model ? 'whisper' : 'unknown'),
+                model_choice: d.modelChoice || 'unknown',
                 model_id: scrub(d.modelId || 'unknown'),
                 model_revision: d.revision || 'unknown',
                 dtype: d.dtype || rt.dtype || 'unknown',
@@ -207,7 +214,7 @@
             report.history = o.history.slice(-20).map((h) => ({
                 surface: h.surface,
                 status: h.status,
-                model: h.data && h.data.model ? `whisper-${h.data.model}` : 'unknown',
+                model: modelName(h.data && h.data.model),
                 language: (h.data && h.data.language) || 'unknown',
                 xr_mode: (h.data && h.data.xrMode) || 'unknown',
                 warm_model: h.data && h.data.modelWarmAtStart != null ? !!h.data.modelWarmAtStart : NM,

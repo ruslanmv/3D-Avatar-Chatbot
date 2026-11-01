@@ -1802,7 +1802,12 @@ function loadSTTSettingsIntoUI() {
     const sttMicrophone = $('stt-microphone');
 
     if (sttProvider) sttProvider.value = sttConfig.provider;
-    if (wasmModelSize) wasmModelSize.value = sttConfig.wasm.modelSize;
+    if (wasmModelSize) {
+        // ST17. 'auto' and 'moonshine-tiny' are added by SttSettings; if they are not there yet,
+        // keep whatever the select shows rather than blanking it.
+        const want = sttConfig.wasm.modelSize || 'auto';
+        if (Array.from(wasmModelSize.options).some((o) => o.value === want)) wasmModelSize.value = want;
+    }
     if (openaiWhisperModel) openaiWhisperModel.value = sttConfig.openai.model;
     if (openaiSTTKey) openaiSTTKey.value = sttConfig.openai.apiKey;
     if (googleSTTKey) googleSTTKey.value = sttConfig.google.apiKey;

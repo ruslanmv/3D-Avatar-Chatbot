@@ -45,7 +45,10 @@
         const later = d.setTimeout || ((fn, ms) => setTimeout(fn, ms));
         const cancelLater = d.clearTimeout || ((t) => clearTimeout(t));
         const now = d.now || (() => Date.now());
-        const configOf = () => (typeof d.config === 'function' ? d.config() : d.config) || {};
+        // ST17. The model can depend on the language (Moonshine for English), so the config is
+        // read for the language of the transcription being served (null for a plain preload).
+        let configLanguage = null;
+        const configOf = () => (typeof d.config === 'function' ? d.config(configLanguage) : d.config) || {};
 
         let worker = null;
         let state = 'not-installed';
@@ -214,9 +217,13 @@
         }
 
         /** Download (once) and prepare the model. Resolves with { ms, backend, model }. */
+        function keyOf(cfg) {
+            return `${cfg.modelId}@${cfg.revision}@${cfg.runtimeUrl}@${cfg.localModelPath || ''}`;
+        }
+
         function load() {
             const cfg = configOf();
-            const key = `${cfg.modelId}@${cfg.revision}@${cfg.runtimeUrl}@${cfg.localModelPath || ''}`;
+            const key = keyOf(cfg);
             if (loadPromise && loadKey === key) return loadPromise;
             if (loadPromise && loadKey !== key) teardown('model changed');
             lastError = null;
@@ -248,7 +255,8 @@
             // ST10. Page-side measurements, all on this page's clock: whether the model was warm
             // when asked, how long the request waited for it, and the worker round trip.
             const tCall = now();
-            const cold = state !== 'ready';
+            if (o.language) configLanguage = o.language;
+            const cold = state !== 'ready' || loadKey !== keyOf(configOf());
             try {
                 await load();
                 const modelWaitMs = Math.round(now() - tCall);
@@ -260,6 +268,7 @@
                 const msg = P.transcribeRequest(id, buf, sampleRate, o.language || null);
                 const maxNewTokens = o.maxNewTokens || cfg.maxNewTokens;
                 if (maxNewTokens) msg.maxNewTokens = maxNewTokens;
+                msg.family = cfg.family || 'whisper';
                 const t0 = now();
                 const result = await request('transcribe', msg, cfg.transcribeTimeoutMs || 60000, [buf.buffer]);
                 const roundTripMs = Math.round(now() - t0);
