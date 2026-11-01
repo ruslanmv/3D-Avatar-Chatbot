@@ -1296,12 +1296,12 @@
                             <label class="input-label" for="stt-provider">STT PROVIDER</label>
                             <select id="stt-provider" class="select-input">
                                 <option value="webspeech">Web Speech API (Browser Native)</option>
-                                <option value="wasm">WASM Whisper (Client-side, Offline)</option>
+                                <option value="wasm">On-device Whisper (private · works on Meta Quest)</option>
                                 <option value="openai">OpenAI Whisper API (Server-side)</option>
                                 <option value="google">Google Cloud STT (Server-side)</option>
                             </select>
                             <p class="voice-status" style="margin-top: 8px; opacity: 0.8">
-                                Auto-fallback: Web Speech → WASM → OpenAI/Google
+                                On-device Whisper runs on this device and never falls back to a cloud service.
                             </p>
                         </div>
 
@@ -1310,9 +1310,9 @@
                             <div class="input-group">
                                 <label class="input-label" for="wasm-model-size">WASM MODEL SIZE</label>
                                 <select id="wasm-model-size" class="select-input">
-                                    <option value="tiny">Tiny (75MB, Fastest)</option>
-                                    <option value="base" selected>Base (142MB, Balanced)</option>
-                                    <option value="small">Small (466MB, Better Quality)</option>
+                                    <option value="tiny" selected>Tiny — fastest (~41 MB download)</option>
+                                    <option value="base">Base — more accurate, best for Italian (~77 MB)</option>
+                                    <option value="small">Small — desktop only (~250 MB)</option>
                                 </select>
                             </div>
                         </div>
@@ -3897,5 +3897,15 @@ You are a helpful AI assistant named Nexus. You are friendly, professional, and 
         <script src="src/wardrobe/TryOnHaulActivity.js"></script>
         <script src="src/wardrobe/TryOnTogetherBridge.js"></script>
         <script src="src/wardrobe/WardrobeForgeSettings.js"></script>
+        <!-- ST. On-device speech-to-text (Whisper in a worker). Plain tags after every frozen
+             line, before the deferred speech-service.js / main.js / CompanionMode.js run. -->
+        <script src="src/stt/SpeechAudio.js"></script>
+        <script src="src/stt/WhisperProtocol.js"></script>
+        <script src="src/stt/QuestWhisperConfig.js"></script>
+        <script src="src/stt/WhisperModelManager.js"></script>
+        <script src="src/stt/MicrophoneSession.js"></script>
+        <script src="src/stt/SttRouter.js"></script>
+        <script src="src/stt/LocalWhisperSTT.js"></script>
+        <script src="src/stt/SttSettings.js"></script>
     </body>
 </html>
