@@ -1282,7 +1282,7 @@
         _startLive() {
             if (this._live) return;
             this.stopStandby(); // one SpeechRecognition owner at a time
-            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const SR = CompanionMode._SR();
             if (!SR) {
                 this._toast('Voice input isn’t supported in this browser — type instead.');
                 return;
@@ -1362,7 +1362,7 @@
          */
         startConversation() {
             if (this._live) return { ok: true, already: true };
-            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const SR = CompanionMode._SR();
             if (!SR) {
                 const message = 'Voice input isn’t supported in this browser — type instead.';
                 this._emitConversation('error', { reason: 'unsupported', message });
@@ -1428,7 +1428,7 @@
             // default chat the mic belongs to the app's own controls.
             if (!this.active) return;
             if (!cfg.wakeWord || this._standby || this._live) return;
-            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const SR = CompanionMode._SR();
             if (!SR) return;
             this._standby = true;
             this._standbyFails = 0;
@@ -1630,7 +1630,7 @@
 
         _standbyListen() {
             if (!this._standby || this._live) return;
-            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const SR = CompanionMode._SR();
             try {
                 const sr = new SR();
                 this._standbySr = sr;
@@ -1750,7 +1750,7 @@
             // session — it's one-shot with different handlers, so the call would
             // go deaf after one turn. Release it and open our own.
             if (this._sr) this._stopVoice();
-            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const SR = CompanionMode._SR();
             try {
                 const sr = new SR();
                 this._sr = sr;
@@ -1871,6 +1871,13 @@
          */
         async _liveVadWait() {
             if (!this._live || this._sr || this._muted) return;
+            // ST5. On-device Whisper has its own endpointer and ignores the microphone while she
+            // speaks, so it stays open across turns; a second silent stream here would only fight
+            // it for the device. Re-open the call's recognizer instead.
+            if (CompanionMode._localSR()) {
+                this._liveListen();
+                return;
+            }
             if (!navigator.mediaDevices?.getUserMedia || !(window.AudioContext || window.webkitAudioContext)) {
                 this._liveListen(); // no VAD available — fall back to direct SR
                 return;
@@ -1946,6 +1953,31 @@
          *   merge("how", "are you")               = "how are you"
          *   merge("thank you", "thank you")       = "thank you"
          */
+        /**
+         * ST5. The recognizer class every companion listener constructs: on-device Whisper when
+         * STT PROVIDER is "On-device Whisper" (src/stt/LocalWhisperSTT.js, which has the browser
+         * recognizer's surface — so the call's endpointing, echo guard and AR2 events below work
+         * unchanged), otherwise the browser's own. In Meta Quest Browser the browser's has no
+         * service behind it, which is why the hands-free call heard nothing there.
+         */
+        static _SR() {
+            try {
+                if (window.NEXUS_STT) return window.NEXUS_STT.recognitionClass();
+            } catch (err) {
+                console.warn('[CompanionMode] on-device STT routing failed:', err);
+            }
+            return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+        }
+
+        /** ST5. True when the companion is listening through on-device Whisper. */
+        static _localSR() {
+            try {
+                return !!(window.NEXUS_STT && window.NEXUS_STT.isLocal());
+            } catch (_) {
+                return false;
+            }
+        }
+
         static _mergeTranscripts(base, add) {
             const b = String(base || '').trim();
             const a = String(add || '').trim();
@@ -2280,7 +2312,7 @@
                 this._onToggleMic();
                 return;
             }
-            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const SR = CompanionMode._SR();
             if (!SR) {
                 this._toast('Voice input isn’t supported in this browser — type instead.');
                 return;
