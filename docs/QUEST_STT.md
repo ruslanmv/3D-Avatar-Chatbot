@@ -24,8 +24,21 @@ on Meta Quest)** ▸ SAVE. Off by default (the plan's beta decision); in Meta
 Quest Browser, a listen that hears nothing says where this switch is.
 `?localStt=1` forces it on in any browser for testing (`?localStt=0` off).
 
-Below the select: download state with a progress bar, **Download now**,
-**Remove downloaded model**, and a link to the speech check page. WASM MODEL
+**The choice applies at once (ST8)** — no SAVE needed. It used to be written
+only by SAVE, and a Quest user who chose On-device Whisper and closed Settings
+with ✕ was still on the browser's recognizer, which hears nothing there: the
+speech check page worked and the app did not. Reproduced with a Quest user
+agent (✕ → engine `browser`, no text; SAVE → `local`, the sentence) and fixed;
+provider, model size, language and microphone now apply on change.
+
+The section, in the panel's own style: one helper sentence under STT PROVIDER
+saying what the provider does with the voice; under WASM MODEL SIZE a compact
+row — **⬇ Download model**, the status, a progress bar while downloading,
+**Remove** once it is on the device; and under STT LANGUAGE a **MICROPHONE
+TEST**: start/stop, a live meter from the real input level, a status, and what
+was recognized. It uses the provider, model and language currently chosen, and
+tells "No sound" (the mic hears nothing), "Sound detected · no words
+recognized" and "Mic works · recognized" apart. WASM MODEL
 SIZE: **Tiny** (default, ~41 MB), **Base** (~77 MB, better Italian, about 2×
 slower), Small (~250 MB, desktop only). The model downloads once and the
 browser's Cache API keeps it.

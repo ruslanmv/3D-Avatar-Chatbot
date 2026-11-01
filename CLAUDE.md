@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (237 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (238 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-10-31 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5365 tests in 237 suites, all passing.**
+— lint clean, format clean, **5372 tests in 238 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -544,6 +544,11 @@ procedure.
 - **On-device chosen but impossible is an error, never the browser's
   recognizer** (`SttRouter` `unavailable`), and `startSTT` never falls through
   from `wasm` to a cloud provider.
+- **The STT choice applies on change, not on SAVE (ST8).** A Quest user who
+  chose On-device Whisper and closed Settings with ✕ stayed on the browser's
+  recognizer and heard nothing. `SttSettings` writes provider, model size,
+  language and microphone at once, and draws the section's MICROPHONE TEST (real
+  input meter; "No sound" vs "no words recognized" vs "recognized").
 - **No interim text, no confidence.** Surfaces show "Transcribing…" at
   `onaudioend` (SpeechService passes `onTranscribing`); `confidence` is
   `undefined` → `null` to callers, which show no percentage and treat it as "no

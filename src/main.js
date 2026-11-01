@@ -4789,7 +4789,9 @@ function initSpeechRecognition() {
             // Final result - show with confidence
             const confidencePercent = scored ? Math.round(confidence * 100) : null;
 
-            console.log(`[Desktop STT] ✅ FINAL: "${transcript}" (${confidencePercent}% confidence)`);
+            console.log(
+                `[Desktop STT] ✅ FINAL: "${transcript}"${scored ? ` (${confidencePercent}% confidence)` : ' (on-device)'}`
+            );
             if (window.NEXUS_LOGGER) {
                 window.NEXUS_LOGGER.info('Desktop STT final', { text: transcript, confidence: confidencePercent });
             }

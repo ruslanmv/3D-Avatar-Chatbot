@@ -344,15 +344,46 @@ describe('Settings copy and diagnostics', () => {
         expect(SS.statusText({ model: 'downloading', progress: { loaded: 20e6, total: 41e6 } })).toMatch(
             /20\.0 of 41\.0 MB/
         );
-        expect(SS.statusText({ model: 'ready' })).toMatch(/Ready/);
+        expect(SS.statusText({ model: 'ready' })).toMatch(/On this device/);
         expect(SS.statusText({ model: 'error', error: 'offline' })).toMatch(/offline/);
-        expect(SS.statusText({ model: 'not-installed', config: { downloadMB: 41 } })).toMatch(/41 MB/);
+        expect(SS.statusText({ model: 'not-installed', config: { downloadMB: 77 } })).toMatch(/77 MB/);
     });
-    test('advice: Quest, unsaved choice, Italian on Tiny', () => {
-        expect(SS.advice({ isQuest: true, selected: 'webspeech' })).toEqual([SS.COPY.quest]);
-        expect(SS.advice({ isQuest: false, selected: 'webspeech' })).toEqual([]);
-        expect(SS.advice({ selected: 'wasm', saved: 'webspeech' })).toEqual([SS.COPY.apply]);
-        expect(SS.advice({ selected: 'wasm', saved: 'wasm', size: 'tiny', lang: 'it-IT' })).toEqual([SS.COPY.italian]);
+    test('one helper sentence per provider; the Quest line only on a Quest with the browser recognizer', () => {
+        expect(SS.providerText('wasm', true)).toBe(SS.COPY.wasm);
+        expect(SS.providerText('webspeech', false)).toBe(SS.COPY.webspeech);
+        expect(SS.providerText('webspeech', true)).toContain(SS.COPY.webspeechQuest);
+        expect(SS.providerText('openai', true)).toMatch(/OpenAI/);
+        expect(SS.advice({ provider: 'wasm', size: 'tiny', lang: 'it-IT' })).toEqual([SS.COPY.italian]);
+        expect(SS.advice({ provider: 'wasm', size: 'base', lang: 'it-IT' })).toEqual([]);
+    });
+    test('the meter is the real input level: silence 0, quiet room low, speech high', () => {
+        expect(SS.levelOf(new Float32Array(1024))).toBe(0);
+        const room = Float32Array.from({ length: 1024 }, (_, i) => 0.001 * Math.sin(i));
+        const voice = Float32Array.from({ length: 1024 }, (_, i) => 0.2 * Math.sin(i / 3));
+        expect(SS.levelOf(room)).toBeLessThan(SS.SOUND_LEVEL);
+        expect(SS.levelOf(voice)).toBeGreaterThan(0.7);
+    });
+    test('the verdict tells "the mic hears sound" apart from "speech was recognised"', () => {
+        const heard = { heardSound: true };
+        expect(SS.verdict({ provider: 'wasm', error: { reason: 'denied' } })).toMatchObject({
+            tone: 'error',
+            status: 'Microphone blocked',
+        });
+        expect(SS.verdict({ provider: 'wasm', heardSound: false, analysis: { peak: 0 } }).status).toBe('No sound');
+        expect(
+            SS.verdict({ provider: 'wasm', ...heard, result: { accept: true, text: 'testing one two three' } })
+        ).toMatchObject({ tone: 'ok', text: 'testing one two three' });
+        expect(SS.verdict({ provider: 'wasm', ...heard, result: { accept: false, reason: 'phantom' } })).toMatchObject({
+            tone: 'warn',
+            status: 'Sound detected · no words recognized',
+        });
+        expect(SS.verdict({ provider: 'wasm', ...heard, failure: 'model 404' })).toMatchObject({
+            tone: 'error',
+            text: 'model 404',
+        });
+        expect(SS.verdict({ provider: 'webspeech', ...heard, quest: true, result: { accept: false } }).text).toBe(
+            SS.COPY.webspeechQuest
+        );
     });
     test('a recording of silence is named as such, not as a permission problem', () => {
         expect(D.judgeRecording({ durationMs: 5000, peak: 0 }).finding).toMatch(/silence/);
