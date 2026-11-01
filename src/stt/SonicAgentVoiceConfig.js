@@ -26,14 +26,18 @@
     const ENGINE = 'sonicagent-stream';
 
     const CONSENT_TEXT = 'Your microphone audio will be sent to OllaBridge Cloud and SonicAgent for transcription.';
-    const TTS_NOTICE = 'Her replies will be sent to OllaBridge Cloud and SonicAgent to be turned into speech.';
+    const TTS_NOTICE =
+        "The text of your avatar's replies is sent through OllaBridge Cloud to SonicAgent to generate speech.";
 
     const DEFAULTS = Object.freeze({
         enabled: false,
         consent: false,
         consentAt: null,
-        language: '', // '' → the app's language
-        voice: '', // '' → the voice SonicAgent picks for the language
+        language: '', // '' → the app's language (speech-to-text)
+        ttsLanguage: '', // HV9: '' → same as `language`; her voice may speak another language
+        voice: '', // '' → the preset for the language and profile
+        profile: 'companion', // HV9: 'companion' | 'secretary' | 'all'
+        ttsEnginePrevious: '', // HV9: the engine before "Voice & Speaking Style" changed it
         autoFallback: false, // HV6: off; never silently send audio somewhere else
         speakWhileStreaming: false, // HV5: off until the person turns it on
         jitterMs: 120, // HV4: playback starts once this much audio is buffered
@@ -137,9 +141,21 @@
         return (get().language || appLanguage()).slice(0, 2).toLowerCase();
     }
 
+    /** HV9. Her voice's language: its own setting, else the speech-to-text language. */
+    function ttsLanguage() {
+        return (get().ttsLanguage || get().language || appLanguage()).slice(0, 2).toLowerCase();
+    }
+
     // ---- which Piper voice SonicAgent should use ------------------------------------------------
 
     let installed = null; // voice ids SonicAgent reported, once capabilities have been read
+    let library = null; // HV9: the normalized voice library, once GET /v1/voice/voices answered
+
+    function rememberLibrary(lib) {
+        library = lib || null;
+        if (library) installed = library.voices.filter((v) => v.playable).map((v) => v.id);
+        return library;
+    }
 
     function rememberCapabilities(caps) {
         const voices = caps && caps.tts && Array.isArray(caps.tts.voices) ? caps.tts.voices : null;
@@ -174,6 +190,13 @@
     }
 
     function voiceFor(lang) {
+        const L = global && global.NEXUS_VOICE_LIBRARY;
+        if (library && L) {
+            // HV9: the library knows languages, profiles, presets and what is playable.
+            const c = get();
+            return L.choose(library, { language: lang || ttsLanguage(), profile: c.profile, current: c.voice || null })
+                .voice;
+        }
         let piperVoice = null;
         try {
             piperVoice = global.localStorage ? global.localStorage.getItem('piper_voice') : null;
@@ -238,6 +261,8 @@
             baseUrl: () => (info() || {}).baseUrl || '',
             capabilities: (fresh) => call('GET', '/v1/voice/capabilities' + (fresh ? '?fresh=1' : '')),
             createStreamSession: (body) => call('POST', '/v1/voice/stream-sessions', body),
+            voices: (fresh) => call('GET', '/v1/voice/voices' + (fresh ? '?fresh=1' : '')),
+            warmVoice: (voiceId) => call('POST', '/v1/voice/voices/warm', { voice_id: voiceId }),
             speech: (body) => call('POST', '/v1/voice/speech', body, { binary: true }),
             transcribe: (form) => call('POST', '/v1/voice/transcriptions', form),
         };
@@ -260,6 +285,9 @@
         revokeConsent: () => set({ consent: false, consentAt: null }),
         allowed,
         language,
+        ttsLanguage,
+        rememberLibrary,
+        library: () => library,
         pickVoice,
         voiceFor,
         rememberCapabilities,

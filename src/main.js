@@ -1676,6 +1676,46 @@ function _syncEngineUI() {
         engineEl.title = overridden ? 'Set by “Natural voice on Meta Quest” below' : '';
     }
     _togglePiperVoiceUI(engine);
+    _renderEngineState(engineEl);
+}
+
+const _ENGINE_NAMES = {
+    'web-speech-api': 'Browser voice',
+    'piper-wasm': 'Piper (on this device)',
+    'sonicagent-stream': 'SonicAgent Piper',
+};
+
+/**
+ * HV-FIX. Say which engine was chosen and which one is actually speaking, when they differ.
+ * A failed engine falls back to the browser voice for the session only; without this line the
+ * dropdown said "SonicAgent" while the browser spoke, and nothing said why.
+ */
+function _renderEngineState(engineEl) {
+    const tp = window.TTSProvider;
+    if (!engineEl || !tp) return;
+    let line = document.getElementById('tts-engine-state');
+    if (!line) {
+        line = document.createElement('p');
+        line.id = 'tts-engine-state';
+        line.className = 'voice-status';
+        line.setAttribute('role', 'status');
+        line.style.cssText = 'margin-top: 6px; font-size: 0.74rem';
+        engineEl.insertAdjacentElement('afterend', line);
+    }
+    const stored = tp.getStoredEngine ? tp.getStoredEngine() : engineEl.value;
+    const active = tp.getEngine();
+    const detail = tp.lastFailureDetail ? tp.lastFailureDetail() : null;
+    if (stored === active || tp.isOverridden?.()) {
+        line.textContent = '';
+        line.style.display = 'none';
+        return;
+    }
+    line.style.display = '';
+    line.style.color = '#fbbf24';
+    line.textContent =
+        `Selected: ${_ENGINE_NAMES[stored] || stored} · Currently speaking: ${_ENGINE_NAMES[active] || active}` +
+        ' (temporary fallback)' +
+        (detail && detail.engine === stored ? ` · Reason: ${detail.message}` : '');
 }
 
 // The engine can change without Settings being touched: the Quest switch, or Piper failing
@@ -2271,23 +2311,30 @@ function setupEventListeners() {
         if (statusEl) statusEl.textContent = '';
         // Locked by the Quest switch (Q6): test what will speak, do not re-pick it.
         if (engineEl && window.TTSProvider && !engineEl.disabled) {
-            // setEngine() returns false when the engine can't start (Piper
-            // downloads its WASM module from a CDN, so a blocked/slow network
-            // fails here) and silently falls back to the built-in voice. Ignoring
-            // that return is why "Piper doesn't work" showed no error at all —
-            // the dropdown still said Piper while the built-in voice spoke.
-            const ok = await window.TTSProvider.setEngine(engineEl.value);
-            if (!ok && engineEl.value !== 'web-speech-api') {
-                engineEl.value = window.TTSProvider.getEngine(); // reflect reality
+            // setEngine() returns false when the engine can't start. It keeps the person's choice
+            // (HV-FIX) and the built-in voice speaks for the session; say which engine failed and
+            // why, rather than blaming a CDN for every engine.
+            const chosen = engineEl.value;
+            const ok = await window.TTSProvider.setEngine(chosen);
+            _renderEngineState(engineEl);
+            if (!ok && chosen !== 'web-speech-api') {
+                const detail = window.TTSProvider.lastFailureDetail?.();
+                if (chosen === 'sonicagent-stream') {
+                    // Never play the browser voice here: it would sound like SonicAgent failing
+                    // quietly, or worse, like SonicAgent working.
+                    if (statusEl)
+                        statusEl.textContent = `⚠ SonicAgent could not start: ${detail?.message || 'unknown reason'}.`;
+                    return;
+                }
                 if (statusEl)
                     statusEl.textContent =
-                        '⚠ Could not start that engine (it downloads from a CDN) — using the built-in voice.';
-                // This called `updateTTSEngineUI`, which exists nowhere: the ReferenceError
-                // was swallowed by the catch, so the Piper voice list stayed on screen after
-                // the engine had fallen back to built-in. _togglePiperVoiceUI is the real one.
-                try {
-                    _togglePiperVoiceUI(engineEl.value);
-                } catch (_) {}
+                        chosen === 'piper-wasm'
+                            ? '⚠ Piper could not start (it downloads its voice from a CDN) — using the built-in voice for now.'
+                            : `⚠ That engine could not start (${detail?.message || 'unknown reason'}) — using the built-in voice for now.`;
+            }
+            if (ok && chosen === 'sonicagent-stream') {
+                await __nexusTestSonicVoice(statusEl);
+                return;
             }
         }
         // Only let the Piper dropdown drive the voice when Piper is the engine —
@@ -4712,6 +4759,44 @@ function speakText(rawText) {
  * failed to start can be said through it without running the whole of speakText() again —
  * the status, the talk animation and the lip-sync are already running for that reply.
  */
+/**
+ * HV-FIX. TEST VOICE for SonicAgent: speak a preview in the voice and speaking style that
+ * replies will use, through the same player and lip-sync, and report what was actually used
+ * and the measured time to first sound. A failure says SonicAgent's reason; it never falls back
+ * to another voice here.
+ */
+async function __nexusTestSonicVoice(statusEl) {
+    const T = window.NEXUS_REMOTE_TTS?.shared?.();
+    const C = window.NEXUS_SONIC_VOICE;
+    const L = window.NEXUS_VOICE_LIBRARY;
+    const P = window.NEXUS_VOICE_POLICY;
+    const say = (t) => {
+        if (statusEl) statusEl.textContent = t;
+    };
+    if (!T || !C) return say('⚠ SonicAgent voice is not loaded on this page.');
+    say('Preparing SonicAgent voice…');
+    await T.refreshLibrary?.(false);
+    const choice = P ? P.resolveRemote(C) : { voice: C.voiceFor(C.ttsLanguage()) };
+    if (!choice.voice)
+        return say(`⚠ ${choice.message || 'No SonicAgent voice is available for the selected language.'}`);
+    const lib = C.library?.();
+    const v = lib?.voices?.find((x) => x.id === choice.voice) || { id: choice.voice, name: choice.voice, role: '' };
+    const role = v.role === 'secretary' ? 'secretary' : 'companion';
+    const text = (L && L.previewText(C.ttsLanguage(), role)) || 'Hello.';
+    const label = `Engine: SonicAgent Piper · Voice: ${v.name} · Role: ${v.role || '—'} · Language: ${v.locale || C.ttsLanguage()}`;
+    const t0 = performance.now();
+    say(`${label} · Status: requesting…`);
+    await T.preview(choice.voice, text, {
+        onStart: () => say(`${label} · Status: Speaking · First audio: ${Math.round(performance.now() - t0)} ms`),
+        onEnd: () => {
+            const s = T.lastStats?.();
+            const first = s && s.startedAt ? s.startedAt - s.requestAt : null;
+            say(`${label} · Status: Done${first != null ? ` · First audio: ${first} ms` : ''}`);
+        },
+        onError: (e) => say(`⚠ SonicAgent could not start: ${e?.message || 'unknown reason'}.`),
+    });
+}
+
 function _speakWithWebSpeech(text) {
     // --- Existing Web Speech API path (unchanged) ---
     if (!('speechSynthesis' in window)) {

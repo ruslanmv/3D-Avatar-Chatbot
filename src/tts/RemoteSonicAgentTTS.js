@@ -43,6 +43,26 @@
         return e;
     }
 
+    const NOT_PAIRED =
+        'SonicAgent needs an OllaBridge Cloud connection. Connect OllaBridge in Settings → LLM to use remote voice.';
+    const CAPS_TIMEOUT_MS = 8000;
+
+    function withTimeout(promise, ms) {
+        return new Promise((resolve, reject) => {
+            const timer = setTimeout(() => reject(Object.assign(new Error('timeout'), { code: 'timeout' })), ms);
+            Promise.resolve(promise).then(
+                (v) => {
+                    clearTimeout(timer);
+                    resolve(v);
+                },
+                (e) => {
+                    clearTimeout(timer);
+                    reject(e);
+                }
+            );
+        });
+    }
+
     function create(deps) {
         const d = deps || {};
         const turns = (d.turns || lib('NEXUS_VOICE_TURNS')).create();
@@ -56,6 +76,8 @@
         const later = d.setInterval || setInterval;
         const stopLater = d.clearInterval || clearInterval;
         let lastStats = null;
+        let lastReadiness = null;
+        let perPhraseVoice = true; // HV9: false once a server shows it ignores a phrase's voice
 
         /** Open a turn: link, player, listeners. Resolves the turn or throws { code, message }. */
         async function openTurn(handlers) {
@@ -74,18 +96,37 @@
                 playingIdx: 0,
                 h,
                 t0: Date.now(),
-                stats: { requestAt: Date.now(), firstAudioAt: null, startedAt: null, endedAt: null, phrases: 0 },
+                stats: {
+                    requestAt: Date.now(),
+                    firstAudioAt: null,
+                    startedAt: null,
+                    endedAt: null,
+                    cancelledAt: null,
+                    phrases: 0,
+                    underruns: 0,
+                    cold: false,
+                    voice: null,
+                    server: [],
+                },
             };
             const c = cfg();
             const gate = c ? c.allowed('tts') : { ok: false, code: 'disabled' };
             if (!gate.ok) throw err(gate.code, 'Streaming voice is not available: ' + gate.code);
-            const language = c.language();
-            const voiceId = c.voiceFor(language);
-            if (!voiceId && c.installedVoices()) {
-                throw err('voice_unavailable', `SonicAgent has no Piper voice installed for "${language}".`);
+            const language = c.ttsLanguage ? c.ttsLanguage() : c.language();
+            // HV9. A preview names its voice; a reply uses the chosen voice for her language and
+            // speaking style. Never a voice of another language: none → say so, do not substitute.
+            const voiceId = h.voiceId || c.voiceFor(language);
+            if (!voiceId && (c.installedVoices() || (c.library && c.library()))) {
+                throw err('voice_unavailable', `SonicAgent has no playable voice for "${language}".`);
             }
+            t.voiceId = voiceId || null;
             const l = link();
-            const res = await l.ensure({ language, voiceId: voiceId || undefined });
+            // The voice travels with each phrase (HV9), so an open link is reused as it is. Only a
+            // server that ignored a phrase's voice (pre-HV9) makes the link carry the voice.
+            const res =
+                l.isOpen && l.isOpen() && perPhraseVoice
+                    ? await l.ensure({})
+                    : await l.ensure(perPhraseVoice ? {} : { voiceId: voiceId || undefined });
             if (!turns.isCurrent(id)) throw err('cancelled', 'superseded');
             if (!res.ok)
                 throw err(res.code || 'backend_unavailable', res.message || 'The speech service is unavailable.');
@@ -113,6 +154,10 @@
             p.on('end', (key) => {
                 if (key === id) finish(t);
             });
+            p.on('underrun', (key) => {
+                if (key === id) t.stats.underruns++;
+            });
+            t.stats.voice = t.voiceId;
             t.offs = [l.on('event', (ev) => onEvent(t, ev)), l.on('audio', (frame) => onAudio(t, frame))];
             t.offs.push(
                 l.on('close', () => {
@@ -125,6 +170,7 @@
             const ls = lipSync();
             if (ls && typeof ls.drive === 'function') ls.drive(() => p.level());
             turns.onCancel(id, () => {
+                t.stats.cancelledAt = Date.now();
                 try {
                     l.sendControl({ type: 'turn.cancel', target: 'tts', turn_id: id });
                 } catch (_) {}
@@ -189,7 +235,9 @@
                 if (inFlight(t) >= cap) break;
                 const ph = t.phrases[t.nextPhrase++];
                 ph.sent = true;
-                l.sendControl({ type: 'tts.speak', text: ph.text, turn_id: ph.id });
+                const speak = { type: 'tts.speak', text: ph.text, turn_id: ph.id };
+                if (t.voiceId) speak.voice_id = t.voiceId;
+                l.sendControl(speak);
             }
             maybeEnd(t);
         }
@@ -202,7 +250,14 @@
             if (t.finished || !turns.isCurrent(t.id) || !ev) return;
             const ph = ev.turn_id ? phraseOf(t, ev.turn_id) : null;
             if (ev.type === 'tts.started' && ph) {
+                if (t.voiceId && ev.voice_id && ev.voice_id !== t.voiceId) {
+                    // A server from before HV9 spoke in the session's voice, not the phrase's:
+                    // stop rather than speak in the wrong voice; the next turn carries it in the link.
+                    perPhraseVoice = false;
+                    return fail(t, 'voice_unavailable', 'The speech service could not switch to the chosen voice.');
+                }
                 t.serverPhrase = ph.id;
+                if (ev.cold != null) t.stats.cold = t.stats.cold || ev.cold === true;
                 const first = t.phrases.indexOf(ph) === 0;
                 t.buffers.set(ph.id, Jitter().create({ startMs: first ? cfg().get().jitterMs : 0, maxMs: 30000 }));
             } else if (ev.type === 'tts.audio.done' && ph) {
@@ -216,6 +271,17 @@
                 b.end();
                 pumpPlay(t);
                 pumpSend(t);
+            } else if (ev.type === 'metrics.turn' && ph) {
+                // HV9: per voice and profile, as SonicAgent measured it.
+                t.stats.server.push({
+                    voice: ev.voice_id || t.voiceId,
+                    role: ev.role || null,
+                    cold: ev.cold == null ? null : ev.cold,
+                    firstMs: ev.tts_first_ms == null ? null : ev.tts_first_ms,
+                    synthMs: ev.synth_ms == null ? null : ev.synth_ms,
+                    rtf: ev.rtf == null ? null : ev.rtf,
+                    audioMs: ev.audio_ms == null ? null : ev.audio_ms,
+                });
             } else if (ev.type === 'session.error' && ph) {
                 fail(t, ev.code || 'backend_error', ev.message || 'Speech synthesis failed.');
             } else if (ev.type === 'session.error' && !ev.turn_id && ev.code === 'backpressure') {
@@ -295,16 +361,87 @@
         const provider = {
             displayName: 'SonicAgent Piper — Cloud streaming',
             id: ENGINE,
+            /**
+             * HV-FIX. The person chose this engine (TTS ENGINE, Save or TEST VOICE). Choosing it is
+             * the switch: before this, the choice failed with "not set up (disabled)" because the
+             * real switch sat in ADVANCED VOICE, and the person heard the browser voice instead.
+             * Only `enabled` — never microphone consent, which speaking her replies does not need.
+             */
+            onSelected() {
+                const c = cfg();
+                if (c && !c.get().enabled) c.set({ enabled: true });
+            },
+            /**
+             * Can SonicAgent speak now? Throws { code, message } with the real reason, which
+             * TTSProvider keeps as `lastFailureDetail()` (the stored choice is left alone).
+             */
             async init() {
                 const c = cfg();
                 const gate = c ? c.allowed('tts') : { ok: false, code: 'disabled' };
-                if (!gate.ok) throw err(gate.code, 'Streaming voice is not set up (' + gate.code + ').');
-                // Learn the installed voices without holding up boot; a sleeping Space is not a
-                // reason to give up on the engine for the whole session.
+                if (!gate.ok) {
+                    if (gate.code === 'not_configured') throw err('not_configured', NOT_PAIRED);
+                    throw err(gate.code, 'SonicAgent voice is switched off in Settings ▸ ADVANCED VOICE.');
+                }
+                const caps = await withTimeout(c.gateway().capabilities(), CAPS_TIMEOUT_MS).catch((e) => {
+                    if (e && e.code === 'unauthenticated') {
+                        throw err(
+                            'unauthenticated',
+                            'OllaBridge Cloud did not accept this device. Pair it again in Settings ▸ LLM.'
+                        );
+                    }
+                    if (e && e.code === 'timeout')
+                        throw err('backend_timeout', 'OllaBridge Cloud did not answer in time.');
+                    throw err((e && e.code) || 'backend_unavailable', 'OllaBridge Cloud cannot be reached right now.');
+                });
+                if (caps && caps.mode && caps.mode !== 'huggingface' && caps.available === false) {
+                    // The gateway is up but its operator has not switched voice on (or chose a
+                    // mode with no streaming). Nothing on this device can fix that; say so.
+                    throw err(
+                        'voice_unavailable',
+                        `OllaBridge Cloud has remote voice switched off (${caps.reason || caps.mode}). Its operator must enable it.`
+                    );
+                }
+                lastReadiness = caps || null;
+                // Learn the voice library and warm the ONE chosen voice, without holding up the
+                // choice; a sleeping Space is not a reason to give up on the engine.
                 Promise.resolve()
-                    .then(() => c.gateway().capabilities())
-                    .then((caps) => c.rememberCapabilities(caps))
+                    .then(() => provider.refreshLibrary())
+                    .then(() => provider.warm())
                     .catch(() => {});
+            },
+            /** What the gateway said at the last init: `available`, `backend.state`, `reason`. */
+            readiness: () => (lastReadiness ? Object.assign({}, lastReadiness) : null),
+            /** HV9. Read the library through OllaBridge and remember it. Resolves it, or null. */
+            async refreshLibrary(fresh) {
+                const c = cfg();
+                const L = lib('NEXUS_VOICE_LIBRARY');
+                const g = c && c.gateway();
+                if (!L || !g || typeof g.voices !== 'function') return null;
+                try {
+                    return c.rememberLibrary(await L.load(g, fresh));
+                } catch (e) {
+                    // A gateway without HV9 has no /v1/voice/voices: fall back to capabilities.
+                    try {
+                        c.rememberCapabilities(await g.capabilities());
+                    } catch (_) {}
+                    return null;
+                }
+            },
+            /** HV9. Load the chosen voice's model on SonicAgent before her first sentence needs it. */
+            async warm(voiceId) {
+                const c = cfg();
+                const g = c && c.gateway();
+                const v = voiceId || (c && c.voiceFor(c.ttsLanguage ? c.ttsLanguage() : c.language()));
+                if (!v || !g || typeof g.warmVoice !== 'function') return null;
+                return g.warmVoice(v);
+            },
+            /**
+             * HV9. Say a short sample in `voiceId` through the same player and lip-sync as her
+             * replies. Starting it cancels whatever she was saying (never two voices at once);
+             * `stop()` cancels it. Nothing here touches the conversation or its history.
+             */
+            preview(voiceId, text, handlers) {
+                return provider.speak(text, Object.assign({}, handlers || {}, { voiceId }));
             },
             isAvailable() {
                 const c = cfg();
@@ -323,7 +460,7 @@
                 const o = opts || {};
                 let t;
                 try {
-                    t = await openTurn({ onStart: o.onStart, onEnd: o.onEnd, onError: o.onError });
+                    t = await openTurn({ onStart: o.onStart, onEnd: o.onEnd, onError: o.onError, voiceId: o.voiceId });
                 } catch (e) {
                     if (e.code === 'cancelled') return;
                     if (cfg() && cfg().get().autoFallback && global.TTSProvider && fallbackEngine()) {

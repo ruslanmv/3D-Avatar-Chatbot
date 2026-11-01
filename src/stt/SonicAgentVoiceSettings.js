@@ -27,6 +27,8 @@
     'use strict';
 
     const SECTION_ID = 'sonicagent-voice-section';
+    const NOT_PAIRED =
+        'SonicAgent needs an OllaBridge Cloud connection. Connect OllaBridge in Settings → LLM to use remote voice.';
     const HINT = 'font-size: 0.68rem; color: rgba(255, 255, 255, 0.5); margin: 6px 2px 0';
     const ROW = 'display: flex; align-items: center; gap: 8px; margin-top: 10px; cursor: pointer; font-size: 0.78rem';
     const LANGS = [
@@ -79,7 +81,7 @@
             '</div>' +
             '<p id="sonic-status" role="status" aria-live="polite" style="font-size: 0.72rem;' +
             ' color: rgba(255, 255, 255, 0.75); margin: 8px 2px 0"></p>' +
-            '<label class="input-label" for="sonic-language" style="margin-top: 10px">SPEECH LANGUAGE</label>' +
+            '<label class="input-label" for="sonic-language" style="margin-top: 10px">LISTENING LANGUAGE (speech-to-text)</label>' +
             '<select id="sonic-language" class="select-input">' +
             LANGS.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('') +
             '</select>' +
@@ -133,6 +135,55 @@
             const saved = (JSON.parse(global.localStorage.getItem('stt_config') || '{}') || {}).provider;
             if (saved === C.ENGINE && sttSelect) sttSelect.value = C.ENGINE;
         } catch (_) {}
+
+        // HV-FIX. Choosing SonicAgent in TTS ENGINE or STT PROVIDER is the switch. Before this the
+        // switch lived only in this section, so a person who picked SonicAgent above got
+        // "not set up (disabled)" and the browser voice. It switches on `enabled` only; the
+        // microphone permission stays a separate, explicit tick.
+        function noticeUnder(select, id, text) {
+            if (!select) return null;
+            let note = doc.getElementById(id);
+            if (!note) {
+                note = doc.createElement('p');
+                note.id = id;
+                note.className = 'voice-status';
+                note.style.cssText = 'margin-top: 6px; font-size: 0.72rem';
+                select.insertAdjacentElement('afterend', note);
+            }
+            note.textContent = text || '';
+            note.style.display = text ? '' : 'none';
+            return note;
+        }
+        function syncNotices() {
+            const c = C.get();
+            const ttsRemote = ttsSelect && ttsSelect.value === C.ENGINE;
+            const sttRemote = sttSelect && sttSelect.value === C.ENGINE;
+            const paired = !!C.gatewayInfo();
+            noticeUnder(
+                ttsSelect,
+                'sonic-tts-notice',
+                ttsRemote ? C.TTS_NOTICE + (paired ? '' : ' ' + NOT_PAIRED) : ''
+            );
+            noticeUnder(
+                sttSelect,
+                'sonic-stt-notice',
+                sttRemote
+                    ? !paired
+                        ? NOT_PAIRED
+                        : c.consent
+                          ? 'Microphone upload to SonicAgent: allowed.'
+                          : 'Allow microphone upload to SonicAgent below (ADVANCED VOICE ▸ I agree) before speaking.'
+                    : ''
+            );
+        }
+        function onEngineChosen(e) {
+            if (e.target.value === C.ENGINE && !C.get().enabled) C.set({ enabled: true });
+            syncNotices();
+            render();
+        }
+        if (ttsSelect) ttsSelect.addEventListener('change', onEngineChosen);
+        if (sttSelect) sttSelect.addEventListener('change', onEngineChosen);
+        if (C.onChange) C.onChange(syncNotices);
 
         const $ = (id) => section.querySelector('#' + id);
         const status = $('sonic-status');
@@ -282,7 +333,8 @@
         const opener = doc.getElementById('settings-btn');
         if (opener) opener.addEventListener('click', render);
         render();
-        return { render, check, clear, section };
+        syncNotices();
+        return { render, check, clear, section, syncNotices };
     }
 
     const api = { SECTION_ID, attach };

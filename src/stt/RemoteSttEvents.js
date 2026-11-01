@@ -82,7 +82,8 @@
             case 'not_configured':
                 return {
                     error: 'service-not-allowed',
-                    message: 'Remote speech uses OllaBridge Cloud. Choose and pair OllaBridge in Settings ▸ LLM first.',
+                    message:
+                        'SonicAgent needs an OllaBridge Cloud connection. Connect OllaBridge in Settings → LLM to use remote voice.',
                 };
             case 'disabled':
                 return {
