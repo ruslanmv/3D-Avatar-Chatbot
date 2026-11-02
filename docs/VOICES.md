@@ -94,3 +94,11 @@ Because built-in voices are device-supplied, the built-in columns legitimately d
 between your phone and your desktop — that comparison is the point. The Piper columns
 should be identical everywhere; if they aren't, run
 `node tests/piper-catalog-audit.mjs`.
+
+
+## Three namespaces, kept apart
+
+Browser voices (`speech_voice_uri`), on-device Piper voices (`piper_voice`) and SonicAgent voices
+(`nexus_sonic_voice.voice`) are different engines' ids and are never mixed: a local Piper id such
+as `en_US-lessac-high` is not sent to SonicAgent, and SonicAgent's catalogue is shown only while
+TTS ENGINE is SonicAgent. See `docs/SONICAGENT_VOICE.md`.

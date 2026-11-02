@@ -195,6 +195,30 @@
                 error: d.error ? scrub(d.error) : null,
                 frames: m.frames || NM,
             },
+            // HV7. Present only for a remote (SonicAgent) run, so an on-device report is unchanged.
+            ...(d.provider === 'sonicagent-stream'
+                ? {
+                      remote: {
+                          backend: 'sonicagent',
+                          link_reused: d.remoteLinkReused == null ? NM : !!d.remoteLinkReused,
+                          session_ms: num(m.remoteSessionMs),
+                          connect_ms: num(m.remoteConnectMs),
+                          first_frame_ms: num(m.remoteFirstFrameMs),
+                          commit_to_final_ms: num(m.remoteCommitToFinalMs),
+                          server_stt_ms: num(m.remoteServerSttMs),
+                          transport_ms: num(m.remoteTransportMs),
+                          endpointing: (d.remoteOptions && d.remoteOptions.endpointing) || NM,
+                          protocol_options: d.remoteOptions
+                              ? {
+                                    endpointing: d.remoteOptions.endpointing || NM,
+                                    output_frame_ms: d.remoteOptions.output_frame_ms || NM,
+                                    flow_control: d.remoteOptions.flow_control || NM,
+                                    tts_queue: d.remoteOptions.tts_queue == null ? NM : !!d.remoteOptions.tts_queue,
+                                }
+                              : NM,
+                      },
+                  }
+                : {}),
             conversation: {
                 submit_to_llm_ms: num(m.submitToLlmMs),
                 llm_to_voice_ms: num(m.llmToVoiceMs),

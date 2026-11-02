@@ -126,3 +126,52 @@ describe('OllaBridge _fetchOllaBridgeModels', () => {
         expect(bySource['personality:assistant']).toBe('homepilot');
     });
 });
+
+describe('OllaBridge cloud routes say who answered', () => {
+    let sandbox;
+    let LLMManager;
+
+    beforeAll(() => {
+        sandbox = loadLLMManager();
+        LLMManager = sandbox.window.LLMManager;
+    });
+
+    test('a route carries its candidate count, and null when the gateway omits it', async () => {
+        const mgr = new LLMManager();
+        mgr.updateSettings({
+            provider: sandbox.window.LLMProvider.OLLABRIDGE,
+            ollabridge: { api_key: 'k', auth_mode: 'api-key', base_url: 'https://app.ollabridge.com' },
+            proxy: { enable_proxy: false },
+        });
+        sandbox.fetch = jest.fn(async () => ({
+            ok: true,
+            status: 200,
+            json: async () => ({
+                data: [
+                    { id: 'grok-best', x_source: 'route_alias', x_candidate_count: 1 },
+                    { id: 'free-best', x_source: 'route_alias', x_candidate_count: 12 },
+                    { id: 'old-route', x_source: 'route_alias' },
+                ],
+            }),
+        }));
+        const { modelEntries } = await mgr._fetchOllaBridgeModels();
+        expect(modelEntries.map((e) => e.candidateCount)).toEqual([1, 12, null]);
+    });
+
+    test('lastServed records the rung the gateway names, and only that', () => {
+        const mgr = new LLMManager();
+        mgr._noteOllaBridgeServed({
+            model: 'grok-4.3',
+            x_ollabridge: { route: 'grok-best', provider: 'xai-grok', model: 'grok-4', attempts: 1 },
+        });
+        expect({ ...mgr.lastServed }).toEqual({
+            route: 'grok-best',
+            provider: 'xai-grok',
+            model: 'grok-4',
+            attempts: 1,
+        });
+        // An older gateway names nothing: no guess from the upstream's `model`.
+        mgr._noteOllaBridgeServed({ model: 'grok-4.3' });
+        expect(mgr.lastServed).toBeNull();
+    });
+});

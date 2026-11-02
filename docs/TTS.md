@@ -136,6 +136,7 @@ Off is exactly the behaviour before it existed. On:
 | --- | --- |
 | Piper speaks every reply | `TTSProvider` puts Piper in front **in memory only**. `tts_engine` is never written, so turning the switch off hands back the engine the person chose. TTS ENGINE shows Piper and is locked while the switch decides it. |
 | …the VR panel included | The headset panel speaks through `js/speech-service.js`, which only knew Web Speech. With the switch on it hands the reply to the active engine (`TTSProvider.routesVR()`). Off, its old path runs untouched. |
+| SonicAgent chosen | Left alone (HV-FIX 9): SonicAgent is already a natural voice and the person chose it. It speaks the VR panel too, switch on or off. |
 | Japanese / Korean | Piper has no voice for them, so the system voice speaks those languages. |
 | Piper can't load | CDN or Hugging Face blocked: the reply is spoken by the system voice instead, and Settings says why. Turning a voice on is never how she goes silent. |
 | First reply isn't a 60 MB wait | The voice model is fetched and its ONNX session built once the page is idle (`PiperWasmTTSProvider.warmUp()`, via the library's own `TtsSession.create`). A reply that arrives mid-preload joins it rather than downloading twice. |
@@ -324,3 +325,11 @@ These require API keys but offer higher quality and lip-sync features:
 | [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) | Alternative WASM TTS (VITS, Piper, Kokoro models) |
 | [TalkingHead](https://github.com/met4citizen/TalkingHead) | 3D avatar lip-sync with Azure visemes + Three.js |
 | [piper-tts-web-demo](https://github.com/clowerweb/piper-tts-web-demo) | 904-voice Piper browser demo |
+
+
+## SonicAgent Piper — Cloud streaming
+
+A remote engine through OllaBridge Cloud, beside the built-in voice and Piper on this device.
+Choosing it switches remote voice on; its VOICE list, Companion/Secretary styles and Auto rules
+are in `docs/SONICAGENT_VOICE.md`. The ~60 MB download note above is Piper WASM's, not
+SonicAgent's. A failure falls back for the session only and never rewrites `tts_engine`.
