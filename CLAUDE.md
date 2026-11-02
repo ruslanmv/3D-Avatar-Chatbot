@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (248 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (250 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -128,8 +128,8 @@ Know the coverage gaps, because they are not intuitive:
 
 ### The gate passes. Keep it that way.
 
-Measured 2026-11-01 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5565 tests in 248 suites, all passing.**
+Measured 2026-11-02 with `npm ci` deps installed: `npm run validate` exits **0**
+— lint clean, format clean, **5577 tests in 250 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -958,3 +958,9 @@ download-licence install predate this note and are unchanged.
   model keeps its conditions of use in
   `latest_character_model_version.vrm_meta`, not in `license` (whose fields are
   null for VRM 1.0). `unwrapDetail` and `conditionsFromVrmMeta` read both.
+- **A thumbnail shows on its card as soon as it is made (V5).** The first visit
+  renders every core avatar's thumbnail in turn (each a 10–15 MB VRM) and used
+  to redraw the grid only when all were done, so the page sat on emoji
+  placeholders until reloaded. `generateAndSaveThumbnail` now calls
+  `showCardPreview`, which swaps the placeholder on every card carrying that
+  `data-avatar-id`; one avatar that fails no longer ends the run.

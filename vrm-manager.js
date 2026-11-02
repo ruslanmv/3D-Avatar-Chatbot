@@ -603,7 +603,15 @@ const VRMManager = {
 
         console.log(`[VRM-Manager] Auto-generating ${valid.length} missing thumbnails...`);
         for (const item of valid) {
-            await generateAndSaveThumbnail(item);
+            // V5. Each thumbnail shows on its card as soon as it is made (generateAndSaveThumbnail),
+            // and one avatar that will not render no longer ends the run: the loop used to throw out
+            // before the redraw below, and every card kept its emoji until the page was reloaded.
+            try {
+                await generateAndSaveThumbnail(item);
+            } catch (e) {
+                console.warn(`[VRM-Manager] Thumbnail for ${item.id} failed:`, e);
+                continue;
+            }
             const catalogItem = allItems.find((x) => x.id === item.id);
             if (catalogItem && item.preview) catalogItem.preview = item.preview;
         }
@@ -3509,6 +3517,8 @@ const VRMManager = {
         const card = document.createElement('div');
         card.className = 'vm-card';
         card.style.cursor = 'pointer';
+        // V5. Which avatar this card shows, so a thumbnail that finishes later can find it.
+        card.dataset.avatarId = item.id;
 
         // Click anywhere on the card opens preview (unless clicking a button)
         card.addEventListener('click', (e) => {
@@ -5164,6 +5174,12 @@ const THUMB_POSE_PRESETS = {
  * @returns {Promise<string>} data-URL or empty string on failure
  */
 async function generateAvatarThumbnail(item, pose) {
+    // V5. three.js reaches this page from a module script; where the import-map shim runs it (Safari
+    // before 16.4) it can land after DOMContentLoaded, and the first visit's thumbnails all came back
+    // empty with only a console line. Wait for it a few seconds before giving up.
+    for (let waited = 0; (typeof THREE === 'undefined' || !THREE.GLTFLoader) && waited < 5000; waited += 100) {
+        await new Promise((r) => setTimeout(r, 100));
+    }
     if (typeof THREE === 'undefined') {
         console.warn('[VM] Three.js not loaded — cannot generate thumbnail');
         return '';
@@ -5436,10 +5452,47 @@ async function generateAndSaveThumbnail(item) {
         catalogItem.preview = preview;
     }
 
+    // V5. On screen now, not at the next full redraw. The first visit makes every core avatar's
+    // thumbnail one after another (each a 10-15 MB VRM) and redrew the grid only when all were
+    // done, so the page sat on emoji placeholders for minutes; a reload showed the pictures because
+    // each had already been saved below. Every caller gets this, whatever it redraws afterwards.
+    showCardPreview(item.id, preview, item.name);
+
     // Persist in IndexedDB (avoids localStorage bloat from large base64)
     await saveThumbToDB(item.id, preview);
 
     return preview;
+}
+
+/**
+ * V5. Put a finished thumbnail on every card already drawn for this avatar (My Avatars and the
+ * Browse Catalog), replacing its placeholder in place: no grid rebuild, so scroll position and a
+ * card being hovered or clicked are left alone. A card drawn later reads item.preview itself.
+ */
+function showCardPreview(id, preview, name) {
+    if (!id || !preview || typeof document === 'undefined') return 0;
+    let shown = 0;
+    document.querySelectorAll('.vm-card').forEach((card) => {
+        if (card.dataset.avatarId !== id) return;
+        const current = card.querySelector('.vm-card-preview');
+        if (!current) return;
+        if (current.tagName === 'IMG' && current.getAttribute('src') === preview) return;
+        const icon = current.tagName === 'IMG' ? '' : current.textContent;
+        const img = document.createElement('img');
+        img.className = 'vm-card-preview';
+        img.alt = name || '';
+        img.src = preview;
+        img.addEventListener('error', () => {
+            // As buildCard's own onerror: a picture that will not load goes back to the icon.
+            const fallback = document.createElement('div');
+            fallback.className = 'vm-card-preview vm-placeholder';
+            fallback.textContent = icon || '🎭';
+            img.replaceWith(fallback);
+        });
+        current.replaceWith(img);
+        shown += 1;
+    });
+    return shown;
 }
 
 /**
