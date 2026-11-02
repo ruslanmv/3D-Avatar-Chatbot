@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (250 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (251 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -631,10 +631,12 @@ the OllaBridge Cloud this app pairs with for chat. **Off by default; additive.**
 - **Voices: `VoiceSelectionPolicy` decides Auto**, from SonicAgent's catalogue
   (`GET /v1/voice/voices`, all 49 entries, in Settings ▸ SPEECH under TTS ENGINE
   via `VoiceStyleSettings`; the VOICE list shows only VOICE LANGUAGE's voices —
-  HV-FIX 7, `forLanguage`). Preset per locale and style first; never another
-  language, never a local Piper id, never `piper_voice`. The voice goes as
-  `voice_id` on every `tts.speak`. Rate and pitch do not apply to SonicAgent and
-  are disabled for it.
+  HV-FIX 7, `forLanguage`). A locale with no preset of its own (es-AR) takes a
+  voice of that exact locale before a neighbour's preset (HV-FIX 10: Daniela,
+  and Serena beside Paola — 52 voices). Preset per locale and style first; never
+  another language, never a local Piper id, never `piper_voice`. The voice goes
+  as `voice_id` on every `tts.speak`. Rate and pitch do not apply to SonicAgent
+  and are disabled for it.
 - **The microphone permission is ticked under STT PROVIDER too (HV-FIX 8)** —
   `#sonic-stt-consent`, the same `consent` as ADVANCED VOICE ▸ I agree, shown
   only while STT PROVIDER is SonicAgent and OllaBridge is paired. Only the

@@ -74,6 +74,7 @@
         ['it-IT', 'Italiano'],
         ['es-ES', 'Español (España)'],
         ['es-MX', 'Español (México)'],
+        ['es-AR', 'Español (Argentina)'], // HV-FIX 10: Daniela
         ['fr-FR', 'Français'],
         ['de-DE', 'Deutsch'],
         ['pt-BR', 'Português (Brasil)'],
