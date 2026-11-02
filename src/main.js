@@ -425,8 +425,27 @@ function hideLoading() {
     if (overlay) safeClass(overlay, 'add', 'hidden');
 }
 
+// L1. The watchdog measures a stall, not a duration: a 15 MB avatar on a phone took longer than
+// the old fixed 20 s to download, and the person was told to give up while she was still
+// arriving. AvatarLoadWatch says "timed out" only after 20 s with no bytes, and shows the
+// percentage meanwhile. Without that module the old fixed timer runs, as before.
+let loaderWatch = null;
+
 function startLoaderWatchdog(ms = 20000) {
     stopLoaderWatchdog();
+    const W = window.NEXUS_AVATAR_LOAD_WATCH;
+    if (W && typeof W.create === 'function') {
+        loaderWatch = W.create({
+            stallMs: ms,
+            onText: (text) => showLoading(text),
+            onStall: () => {
+                showLoading(W.STALL_TEXT);
+                setStatus('idle', 'TIMEOUT');
+            },
+        });
+        loaderWatch.start();
+        return;
+    }
     loaderWatchdogTimer = setTimeout(() => {
         showLoading('Avatar load timed out. Try another avatar.');
         setStatus('idle', 'TIMEOUT');
@@ -434,11 +453,19 @@ function startLoaderWatchdog(ms = 20000) {
 }
 
 function stopLoaderWatchdog() {
+    if (loaderWatch) {
+        loaderWatch.stop();
+        loaderWatch = null;
+    }
     if (loaderWatchdogTimer) {
         clearTimeout(loaderWatchdogTimer);
         loaderWatchdogTimer = null;
     }
 }
+
+window.addEventListener('nexus-avatar-progress', (e) => {
+    if (loaderWatch && e && e.detail) loaderWatch.progress(e.detail.loaded, e.detail.total);
+});
 
 /* ============================
    Status Indicator
@@ -1339,6 +1366,7 @@ function loadAvatar(url, source) {
         (progress) => {
             const loaded = progress && typeof progress.loaded === 'number' ? progress.loaded : 0;
             const total = progress && typeof progress.total === 'number' ? progress.total : 0;
+            if (loaderWatch) loaderWatch.progress(loaded, total); // L1: bytes arriving are not a stall
 
             if (total > 0) {
                 const percent = Math.round((loaded / total) * 100);

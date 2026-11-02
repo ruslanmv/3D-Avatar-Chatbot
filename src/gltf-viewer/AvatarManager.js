@@ -390,8 +390,21 @@ export class AvatarManager {
             }
 
             // Load new avatar
+            // L1. Report bytes as they arrive, so the page can show a percentage and tell a slow
+            // download from a dead one (src/gltf-viewer/AvatarLoadWatch.js). Only this load's
+            // own progress: a superseded load stays quiet.
+            const onProgress = (e) => {
+                if (thisGeneration !== this._loadGeneration || typeof window === 'undefined') return;
+                try {
+                    window.dispatchEvent(
+                        new CustomEvent('nexus-avatar-progress', {
+                            detail: { url, loaded: (e && e.loaded) || 0, total: (e && e.total) || 0 },
+                        })
+                    );
+                } catch (_) {}
+            };
             const gltf = await new Promise((resolve, reject) => {
-                this.loader.load(url, resolve, undefined, reject);
+                this.loader.load(url, resolve, onProgress, reject);
             });
 
             // ── Stale-load guard ──
