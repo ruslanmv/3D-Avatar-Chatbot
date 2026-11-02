@@ -40,6 +40,7 @@
     const OFF = 'off';
 
     const PIPER = 'piper-wasm';
+    const REMOTE = 'sonicagent-stream';
     const BUILTIN = 'web-speech-api';
 
     /**
@@ -205,6 +206,12 @@
      */
     function effectiveEngine(ctx) {
         const stored = (ctx && ctx.stored) || BUILTIN;
+        // HV-FIX 9. SonicAgent is already the natural voice this switch exists to give a Quest,
+        // and the person chose it. Moving it to on-device Piper swapped her Kristin for a
+        // different voice synthesized on the headset's CPU — the opposite of what was asked.
+        if (stored === REMOTE) {
+            return stored;
+        }
         if (applies(ctx) && ctx.piperAvailable) {
             return PIPER;
         }

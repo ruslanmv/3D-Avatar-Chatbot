@@ -284,6 +284,10 @@ Browser
 
 ### VR Mode (Quest 2/3, Pico, any WebXR headset)
 
+> **Natural voice and speech recognition on Quest 3:** see the
+> [SonicAgent quick start](docs/SONICAGENT_QUICKSTART.md) — four steps, with
+> pictures.
+
 1. Open the app in **Meta Quest Browser** (HTTPS or localhost required)
 2. Click **Enter VR** in the avatar footer
 3. Controls (industry-standard Meta Quest mapping):

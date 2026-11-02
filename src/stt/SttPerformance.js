@@ -48,6 +48,13 @@
         'worker_inference_started',
         'worker_inference_completed',
         'transcript_validation_completed',
+        // HV7. Remote recognition (SonicAgent through OllaBridge Cloud). Additive: an on-device
+        // or browser trace never has these marks, and its metrics come out exactly as before.
+        'remote_connection_started',
+        'remote_connection_ready',
+        'remote_first_frame_sent',
+        'remote_commit_sent',
+        'remote_transcript_received',
         'transcript_displayed',
         'chat_message_submitted',
         'llm_response_received',
@@ -233,6 +240,22 @@
             // From the end of speech to her first audible word: the whole conversation, kept apart.
             stopToVoiceMs: span(m, 'recording_stopped', 'tts_playback_started'),
             frames: d.frames || null,
+            // HV7. Remote stages; null for every trace that did not go to SonicAgent.
+            remoteConnectMs: span(m, 'remote_connection_started', 'remote_connection_ready'),
+            remoteSessionMs: d.remoteSessionMs != null ? round(d.remoteSessionMs) : null,
+            remoteFirstFrameMs: span(m, 'microphone_capture_started', 'remote_first_frame_sent'),
+            remoteCommitToFinalMs: span(m, 'remote_commit_sent', 'remote_transcript_received'),
+            remoteServerSttMs: d.remoteServerSttMs != null ? round(d.remoteServerSttMs) : null,
+            // Commit → final, minus the time SonicAgent says it spent transcribing: the network,
+            // OllaBridge's relay and queueing, both ways. Two clocks are never subtracted here —
+            // the server reports a duration, not a timestamp.
+            remoteTransportMs:
+                span(m, 'remote_commit_sent', 'remote_transcript_received') != null && d.remoteServerSttMs != null
+                    ? Math.max(
+                          0,
+                          round(span(m, 'remote_commit_sent', 'remote_transcript_received') - d.remoteServerSttMs)
+                      )
+                    : null,
         };
     }
 
@@ -253,6 +276,9 @@
             return out;
         }
         const parts = [
+            ['remote_transcription', x.remoteServerSttMs],
+            ['remote_transport', x.remoteTransportMs],
+            ['remote_connection', x.remoteConnectMs],
             ['model_load', x.modelWaitMs],
             ['inference', x.inferenceMs],
             ['worker_queue', x.workerQueueMs],
@@ -287,6 +313,19 @@
                     'Inference ran slower than real time (RTF > 1): the model is too heavy for this device as configured.'
                 );
             }
+        }
+        if (out.likely_bottleneck === 'remote_connection' && slow) {
+            say(
+                'Most of the delay was opening the voice connection. The first listen after a pause pays it; later ones reuse the link.'
+            );
+        }
+        if (out.likely_bottleneck === 'remote_transport' && slow) {
+            say('Most of the delay was the network between this device, OllaBridge Cloud and SonicAgent.');
+        }
+        if (out.likely_bottleneck === 'remote_transcription' && slow) {
+            say(
+                'Most of the delay was transcription on SonicAgent. A Space that just woke up is slower on its first turns.'
+            );
         }
         if (out.likely_bottleneck === 'worker_queue' && x.workerQueueMs > 300) {
             say(

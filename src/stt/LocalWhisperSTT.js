@@ -347,6 +347,14 @@
             this._heardSpeech = false;
             this._endpointer = null;
             const route = this._deps.route ? this._deps.route() : decision();
+            if (route.engine === 'remote') {
+                // HV1. Only reached when the remote recognizer's script is missing: refuse with a
+                // reason rather than record on the device the person did not choose.
+                Promise.resolve().then(() =>
+                    this._failAndEnd(gen, 'service-not-allowed', 'Remote speech recognition is not loaded.')
+                );
+                return;
+            }
             if (route.engine === 'unavailable') {
                 const R = lib('NEXUS_STT_ROUTER');
                 const message = (R && R.UNAVAILABLE[route.reason]) || 'On-device speech recognition cannot run here.';
@@ -665,12 +673,19 @@
         decision,
         /** true when the app's recognizers should use on-device Whisper right now. */
         isLocal: () => decision().engine !== 'browser',
+        /** HV1. true when the app's recognizers send audio to SonicAgent through OllaBridge. */
+        isRemote: () => decision().engine === 'remote',
         /**
          * The class a recognizer should construct now: on-device Whisper (or its "cannot run
          * here" form), else the browser's own, else null.
          */
         recognitionClass() {
-            return decision().engine === 'browser' ? nativeClass() : WhisperRecognition;
+            const engine = decision().engine;
+            if (engine === 'browser') return nativeClass();
+            // HV1. The remote engine is its own recognizer with the same surface; when its script
+            // is missing the person still gets an explained refusal, never the browser's.
+            if (engine === 'remote') return (lib('NEXUS_REMOTE_STT') || {}).Recognition || WhisperRecognition;
+            return WhisperRecognition;
         },
         model,
         preload: () => model().load(),

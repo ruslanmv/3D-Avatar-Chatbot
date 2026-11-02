@@ -270,3 +270,43 @@ describe('Q5. preload', () => {
         expect(piper.warmUp).not.toHaveBeenCalled();
     });
 });
+
+describe('HV-FIX 9. SonicAgent in the headset', () => {
+    function withRemote(tp) {
+        const remote = fakePiper({ displayName: 'Fake SonicAgent', getVoices: () => [] });
+        tp.registerProvider('sonicagent-stream', remote);
+        return remote;
+    }
+
+    test('a stored SonicAgent choice speaks the VR panel too, with the Quest switch off', async () => {
+        setUA(QUEST_UA);
+        localStorage.setItem('tts_engine', 'sonicagent-stream');
+        const { QV, tp } = load();
+        withRemote(tp);
+        QV.set(false);
+        await tp.boot();
+        expect(tp.getEngine()).toBe('sonicagent-stream');
+        expect(tp.routesVR()).toBe(true);
+    });
+
+    test('the Quest switch never replaces SonicAgent with on-device Piper', async () => {
+        setUA(QUEST_UA);
+        localStorage.setItem('tts_engine', 'sonicagent-stream');
+        const { QV, tp } = load();
+        withRemote(tp);
+        QV.set(true);
+        await tp.boot();
+        expect(tp.getEngine()).toBe('sonicagent-stream');
+        expect(tp.isOverridden()).toBe(false);
+        expect(tp.routesVR()).toBe(true);
+        expect(QV.effectiveEngine({ stored: 'sonicagent-stream', isQuest: true, on: true, piperAvailable: true })).toBe(
+            'sonicagent-stream'
+        );
+    });
+
+    test('the built-in voice still does not route through the engine path', async () => {
+        const { tp } = load();
+        await tp.boot();
+        expect(tp.routesVR()).toBe(false);
+    });
+});
