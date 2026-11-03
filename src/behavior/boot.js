@@ -228,6 +228,32 @@
         'src/features/clips/ui/ClipButton.js',
         'src/behavior/debug/PickLog.js',
         'src/behavior/debug/DebugHUD.js',
+        // IC1–IC3. Destinations and the experience runtime. After the activities
+        // they call, so Together's panel exists before the bar asks it to open
+        // a setup screen. Loaded with the engine: with the engine off, the page
+        // does not fetch them.
+        'src/companion/CompanionSession.js',
+        'src/companion/MemoryScopes.js',
+        'src/companion/PrivacyGate.js',
+        'src/companion/BehaviorRouter.js',
+        'src/companion/PromptContext.js',
+        'src/companion/DestinationCatalog.js',
+        'src/companion/TaskBoard.js',
+        'src/companion/ActivityBridge.js',
+        'src/experiences/SceneManifest.js',
+        'src/experiences/ExperienceMemory.js',
+        'src/experiences/SceneRuntime.js',
+        'src/experiences/SpatialAudioManager.js',
+        'src/experiences/InteractionRouter.js',
+        'src/experiences/ExperienceRegistry.js',
+        'src/experiences/ExperienceSession.js',
+        'src/experiences/formats.js',
+        'src/experiences/seaside/layout.js',
+        'src/experiences/seaside/story.js',
+        'src/experiences/seaside/SeasideEvening.js',
+        'src/experiences/ExperienceDirector.js',
+        'src/companion/DestinationBar.js',
+        'src/companion/index.js',
     ];
 
     const CONFIG_URL = 'config/behavior.config.json';
@@ -798,6 +824,23 @@
             bus.on('intent', (intent) => director.handleIntent(intent));
 
             global.NEXUS_BD = director;
+
+            // IC1. Life, Copilot, Experiences. Failure here must not take the
+            // behavior director down with it — the chat and the existing
+            // activities already booted.
+            if (global.NEXUS_COMPANION && typeof global.NEXUS_COMPANION.attach === 'function') {
+                try {
+                    director.companion = global.NEXUS_COMPANION.attach({
+                        panel: director.togetherPanel || null,
+                        bus: bus,
+                        behaviorDirector: director,
+                        doc: global.document,
+                    });
+                    if (director.companion) director.adapters.push(director.companion);
+                } catch (error) {
+                    console.warn('[BD] companion destinations failed to attach — continuing', error);
+                }
+            }
 
             const ms = Math.round((global.performance || Date).now() - started);
             const names = director.adapters.map((a) => a.name).join(', ') || 'none';

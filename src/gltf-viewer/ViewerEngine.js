@@ -1685,6 +1685,38 @@ export class ViewerEngine {
                 this._frameError('motion', e);
             }
 
+            // IC3. The experience group updates inside this loop. It must not
+            // install another animation loop — this function is already it.
+            try {
+                const experience = window.NEXUS_EXPERIENCE_RUNTIME;
+                if (experience) {
+                    if (!this._experienceBound && typeof experience.bindViewer === 'function') {
+                        this._experienceBound = true;
+                        experience.bindViewer({
+                            THREE: {
+                                Group: THREE.Group,
+                                Mesh: THREE.Mesh,
+                                BoxGeometry: THREE.BoxGeometry,
+                                SphereGeometry: THREE.SphereGeometry,
+                                CylinderGeometry: THREE.CylinderGeometry,
+                                PlaneGeometry: THREE.PlaneGeometry,
+                                MeshBasicMaterial: THREE.MeshBasicMaterial,
+                                BackSide: THREE.BackSide,
+                                FrontSide: THREE.FrontSide,
+                            },
+                            parent: this.scene,
+                            xrPresenting: () => this.renderer.xr.isPresenting,
+                            blendMode: () => this.renderer.xr.getSession?.()?.environmentBlendMode || null,
+                            narrow: () => window.matchMedia?.('(max-width: 640px)')?.matches === true,
+                            cores: navigator.hardwareConcurrency || 8,
+                        });
+                    }
+                    experience.update?.(dt);
+                }
+            } catch (e) {
+                this._frameError('experience', e);
+            }
+
             if (xr) {
                 if (this.arSupport?.isARActive) {
                     try {
