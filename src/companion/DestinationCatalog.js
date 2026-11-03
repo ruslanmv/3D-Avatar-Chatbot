@@ -26,6 +26,7 @@ const DestinationCatalog = (() => {
 
     const ACTIONS = Object.freeze({
         life: [
+            { id: 'life-evening', label: 'Life Evening', kind: 'playground', mode: 'life-evening' },
             { id: 'talk', label: 'Talk', kind: 'focus-chat' },
             {
                 id: 'relax',
@@ -40,6 +41,7 @@ const DestinationCatalog = (() => {
             { id: 'preferences', label: 'Preferences', kind: 'preferences' },
         ],
         copilot: [
+            { id: 'copilot-hour', label: 'Copilot Hour', kind: 'playground', mode: 'copilot-hour' },
             { id: 'tasks', label: 'Tasks', kind: 'tasks' },
             { id: 'projects', label: 'Projects', kind: 'projects' },
             { id: 'planning', label: 'Planning', kind: 'planning' },
@@ -50,7 +52,7 @@ const DestinationCatalog = (() => {
         ],
         experiences: [
             { id: 'seaside', label: 'Seaside Evening', kind: 'experience', experienceId: 'seaside-evening' },
-            { id: 'scene-tale', label: 'Scene Tale', kind: 'together-open', activity: 'playground' },
+            { id: 'scene-tale', label: 'Scene Tale', kind: 'playground', mode: 'scene-tale' },
             { id: 'studio', label: 'Character studio', kind: 'pose-studio' },
             { id: 'saved', label: 'Saved experiences', kind: 'saved' },
         ],

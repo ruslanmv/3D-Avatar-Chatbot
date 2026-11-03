@@ -99,6 +99,7 @@ describe('Scene Tale visible destination', () => {
 
         panel.open();
         document.querySelector('[data-activity="playground"]').click();
+        document.querySelector('[data-playground="scene-tale"]').click();
         const root = document.getElementById(TogetherPanel.PANEL_ID);
         root.querySelector('[data-action="create-story"]').click();
 

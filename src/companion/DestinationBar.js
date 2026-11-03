@@ -475,6 +475,12 @@ const DestinationBar = (() => {
                   paint();
               })
             : function () {};
+        const unsubscribeSession =
+            session && typeof session.on === 'function'
+                ? session.on(function (detail) {
+                      if (detail && detail.type === 'destination:changed') paintBar();
+                  })
+                : function () {};
 
         paint();
 
@@ -485,9 +491,19 @@ const DestinationBar = (() => {
                 sheet.hidden = false;
                 paint();
             },
+            show: function (destination, nextView) {
+                if (destination && session && typeof session.setDestination === 'function') {
+                    session.setDestination(destination);
+                }
+                view = nextView && nextView !== 'home' ? nextView : 'home';
+                notice = '';
+                sheet.hidden = false;
+                paint();
+            },
             paint: paint,
             detach: function () {
                 unsubscribe();
+                unsubscribeSession();
                 if (bar.parentNode) bar.parentNode.removeChild(bar);
                 if (sheet.parentNode) sheet.parentNode.removeChild(sheet);
                 if (exit.parentNode) exit.parentNode.removeChild(exit);

@@ -108,6 +108,8 @@ describe('Playground activity contract', () => {
         expect(activity.title).toBe('Playground');
         expect(activity.order).toBe(45);
         expect(activity.inputs()).toEqual([
+            expect.objectContaining({ id: 'life-evening', label: 'Life Evening', permission: null }),
+            expect.objectContaining({ id: 'copilot-hour', label: 'Copilot Hour', permission: null }),
             expect.objectContaining({ id: 'scene-tale', label: 'Scene Tale', permission: null }),
         ]);
         expect(activity.availability()).toEqual({ ok: true, why: '' });
@@ -156,6 +158,7 @@ describe('Scene Tale customer journey', () => {
         const tile = document.querySelector('[data-activity="playground"]');
         expect(tile).not.toBeNull();
         tile.click();
+        document.querySelector('[data-playground="scene-tale"]').click();
 
         const root = document.getElementById(TogetherPanel.PANEL_ID);
         expect(p.view).toBe('setup');
@@ -245,6 +248,20 @@ describe('Scene Tale customer journey', () => {
         activity.detach();
     });
 
+    test('Life Evening and Copilot Hour are complete family-safe stories', () => {
+        const place = scene();
+        for (const id of ['life-evening', 'copilot-hour', 'scene-tale']) {
+            const plan = PlaygroundActivity.playgroundStory(id, place, '', false);
+            expect(PlaygroundActivity.validateStoryPlan(plan, { musicEnabled: false }).ok).toBe(true);
+            expect(plan.title).toBeTruthy();
+            expect(plan.audience).toBe('family');
+        }
+        expect(PlaygroundActivity.playgroundStory('life-evening', place, '', false).title).toBe('The Evening We Kept');
+        expect(PlaygroundActivity.playgroundStory('copilot-hour', place, 'write the note', false).title).toBe(
+            'One Hour, One Thing'
+        );
+    });
+
     test('StoryPlan validation rejects unsafe, cyclic and non-deterministic plans', () => {
         const valid = PlaygroundActivity.fallbackStory(scene(), '', false);
         expect(PlaygroundActivity.validateStoryPlan(valid, { musicEnabled: false }).ok).toBe(true);
@@ -282,7 +299,7 @@ describe('Scene Tale customer journey', () => {
 });
 
 describe('Together chooser access', () => {
-    test('Playground is a normal chooser tile and opens Scene Tale setup directly', () => {
+    test('Playground offers Life, Copilot and Scene Tale, then opens the one you pick', () => {
         const p = panel();
         wireDirector(p);
         const activity = PlaygroundActivity.attach({ win: window, doc: document });
@@ -296,6 +313,10 @@ describe('Together chooser access', () => {
 
         tile.click();
         const root = document.getElementById(TogetherPanel.PANEL_ID);
+        expect(root.textContent).toContain('Life Evening');
+        expect(root.textContent).toContain('Copilot Hour');
+        expect(root.textContent).toContain('Scene Tale');
+        document.querySelector('[data-playground="scene-tale"]').click();
         expect(root.textContent).toContain('SCENE TALE');
         expect(root.textContent).toContain('A little story inspired by this place.');
         expect(root.querySelector('[data-action="create-story"]')).not.toBeNull();

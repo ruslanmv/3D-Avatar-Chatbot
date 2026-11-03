@@ -153,6 +153,7 @@ describe('Scene Tale mobile Ready -> Playing handoff', () => {
 
         panel.open();
         document.querySelector('[data-activity="playground"]').click();
+        document.querySelector('[data-playground="scene-tale"]').click();
         SetupView.decorate(document);
         expect(document.documentElement.classList.contains(MobileMode.CONFIGURE_CLASS)).toBe(true);
 

@@ -76,6 +76,16 @@ const ActivityBridge = (() => {
                 if (typeof button.click === 'function') button.click();
                 return { ok: true, why: 'pose-studio' };
             }
+            if (action.kind === 'playground') {
+                const host = panel();
+                const activity = host && host.activities && host.activities.get && host.activities.get('playground');
+                if (!host || !activity || typeof host.choose !== 'function')
+                    return { ok: false, why: 'playground-unavailable' };
+                activity.playgroundId = action.mode;
+                activity.sessionState = 'configure';
+                if (typeof host.open === 'function') host.open();
+                return host.choose('playground');
+            }
             if (action.kind === 'experience') {
                 const experiences = options_.experiences;
                 if (!experiences || typeof experiences.start !== 'function') return { ok: false, why: 'no-director' };
