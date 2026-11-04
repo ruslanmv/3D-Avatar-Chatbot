@@ -239,7 +239,10 @@ describe('each tile completes the journey its button promises', () => {
             consent,
             activities: [journey],
         } = panelWith((c) => [make('journey', { consent: c })]);
-        const ocean = panel.contractFor('journey').inputs().find((input) => input.id === 'ocean');
+        const ocean = panel
+            .contractFor('journey')
+            .inputs()
+            .find((input) => input.id === 'ocean');
         await panel.startActivity('journey', ocean);
         expect(journey.started).toEqual(['ocean']);
         expect(consent.asked).toEqual([]);
@@ -278,7 +281,10 @@ describe('each tile completes the journey its button promises', () => {
             'Squat',
             'Push-up',
         ]);
-        await panel.startActivity('coach', inputs.find((input) => input.id === 'push-up'));
+        await panel.startActivity(
+            'coach',
+            inputs.find((input) => input.id === 'push-up')
+        );
         expect(coach.started).toEqual(['push-up']);
         expect(consent.asked).toEqual(['camera']);
     });
@@ -327,7 +333,10 @@ describe('each tile completes the journey its button promises', () => {
         const { panel } = panelWith([{ id: 'cohost', start: () => ({ ok: true }), stop: () => true }]);
         expect(panel.choices().map((c) => c.id)).toEqual(['cohost']);
 
-        const share = panel.contractFor('cohost').inputs().find((input) => input.id === 'screen');
+        const share = panel
+            .contractFor('cohost')
+            .inputs()
+            .find((input) => input.id === 'screen');
         const result = await panel.startActivity('cohost', share);
         expect(result.ok).toBe(false);
         expect(html()).toMatch(/moment detection/i);
@@ -344,7 +353,10 @@ describe('a failed start never leaves a grant behind', () => {
         const { panel, consent } = panelWith((c) => [
             make('cohost', { consent: c, fail: { ok: false, why: 'no play profile — refusing to start' } }),
         ]);
-        const share = panel.contractFor('cohost').inputs().find((input) => input.id === 'screen');
+        const share = panel
+            .contractFor('cohost')
+            .inputs()
+            .find((input) => input.id === 'screen');
         const result = await panel.startActivity('cohost', share);
         expect(result.ok).toBe(false);
         expect(consent.asked).toEqual(['screen']);
@@ -400,7 +412,10 @@ describe('a failed start never leaves a grant behind', () => {
             activities: [cohost],
         } = panelWith((c) => [make('cohost', { consent: c })]);
         consent.allow = false;
-        const share = panel.contractFor('cohost').inputs().find((input) => input.id === 'screen');
+        const share = panel
+            .contractFor('cohost')
+            .inputs()
+            .find((input) => input.id === 'screen');
         const result = await panel.startActivity('cohost', share);
         expect(result.ok).toBe(false);
         expect(panel.activeActivity).toBeNull();
@@ -503,7 +518,10 @@ describe('why it did not start', () => {
             activities: [coach],
         } = panelWith((c) => [make('coach', { consent: c })]);
         consent.allow = false;
-        const pushUp = panel.contractFor('coach').inputs().find((input) => input.id === 'push-up');
+        const pushUp = panel
+            .contractFor('coach')
+            .inputs()
+            .find((input) => input.id === 'push-up');
         await panel.startActivity('coach', pushUp);
         expect(panel.view).toBe('failure');
 
@@ -518,7 +536,10 @@ describe('why it did not start', () => {
         const { panel } = panelWith((c) => [
             make('cohost', { consent: c, fail: { ok: false, why: 'no play profile — refusing to start' } }),
         ]);
-        const share = panel.contractFor('cohost').inputs().find((input) => input.id === 'screen');
+        const share = panel
+            .contractFor('cohost')
+            .inputs()
+            .find((input) => input.id === 'screen');
         await panel.startActivity('cohost', share);
         optionNamed('Back').click();
         expect(panel.view).toBe('chooser');

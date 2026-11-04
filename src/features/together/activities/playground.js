@@ -2546,7 +2546,13 @@ const PlaygroundActivity = (() => {
         _paintPicker(panel) {
             const doc = panel.doc;
             addEl(doc, panel.root, 'p', 'nexus-bd-together-subtitle', 'PLAYGROUND');
-            addEl(doc, panel.root, 'p', 'nexus-bd-together-prompt', 'Three ways to spend time together. Each one is a short story with two choices.');
+            addEl(
+                doc,
+                panel.root,
+                'p',
+                'nexus-bd-together-prompt',
+                'Three ways to spend time together. Each one is a short story with two choices.'
+            );
             const list = addEl(doc, panel.root, 'div', 'nexus-bd-together-options');
             for (const item of PLAYGROUNDS) {
                 const choice = button(doc, list, item.label, 'nexus-bd-together-option', () => {
