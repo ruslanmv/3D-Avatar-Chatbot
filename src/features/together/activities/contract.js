@@ -299,18 +299,50 @@ const ActivityContract = (() => {
         },
 
         coach: {
-            title: 'Coach',
-            icon: '🏋',
+            title: 'Copilot',
+            icon: '🧭',
             order: 60,
-            prompt: 'What are we doing? I need the camera to count your movement — nothing is stored.',
-            inputs: (a) =>
-                exercisesOf(a).map((id) => ({
+            prompt: 'What do you want to get done?',
+            inputs: (a) => [
+                {
+                    id: 'copilot-hour',
+                    label: 'Copilot Hour',
+                    permission: null,
+                    destination: 'copilot',
+                    playground: 'copilot-hour',
+                },
+                {
+                    id: 'tasks',
+                    label: 'Tasks',
+                    permission: null,
+                    destination: 'copilot',
+                    action: { id: 'tasks', label: 'Tasks', kind: 'tasks' },
+                },
+                {
+                    id: 'focus-block',
+                    label: 'Focus block',
+                    permission: null,
+                    destination: 'copilot',
+                    openActivity: 'focus',
+                },
+                {
+                    id: 'learn',
+                    label: 'Learn a topic',
+                    permission: null,
+                    destination: 'copilot',
+                    action: { id: 'learn', label: 'Learn', kind: 'study' },
+                },
+                ...exercisesOf(a).map((id) => ({
                     id,
                     label: titleCase(id),
                     permission: 'self',
                     arg: id,
                 })),
-            start: (a, { input }) => a.start(input.arg || input.id),
+            ],
+            start: (a, { input }) => {
+                if (input && (input.playground || input.openActivity || input.action)) return handOff(input);
+                return a.start(input.arg || input.id);
+            },
             stop: (a, why) => a.stop(why),
             status: (a) => ({
                 label: titleCase(a.exercise || 'Coach'),
@@ -346,19 +378,38 @@ const ActivityContract = (() => {
         },
 
         journey: {
-            title: 'Journey',
-            icon: '🌊',
+            title: 'Experiences',
+            icon: '🌙',
             order: 20,
-            prompt: 'Where should we go?',
-            inputs: (a) =>
-                scenesOf(a).map((scene) => ({
+            prompt: 'Where do you want to go?',
+            inputs: (a) => [
+                {
+                    id: 'seaside',
+                    label: 'Seaside Evening',
+                    permission: null,
+                    destination: 'experiences',
+                    action: { id: 'seaside', kind: 'experience', experienceId: 'seaside-evening' },
+                },
+                {
+                    id: 'scene-tale',
+                    label: 'Scene Tale',
+                    permission: null,
+                    destination: 'experiences',
+                    playground: 'scene-tale',
+                },
+                ...scenesOf(a).map((scene) => ({
                     id: scene.id,
                     label: `${scene.icon || ''} ${scene.title}`.trim(),
                     permission: null,
                     arg: scene.id,
                 })),
+            ],
             // `enter`/`exit`, not `start`/`stop`. The whole of the Journey bug.
-            start: (a, { input }) => a.enter(input.arg || input.id),
+            // Seaside and Scene Tale hand off before any scene is entered.
+            start: (a, { input }) => {
+                if (input && (input.playground || input.openActivity || input.action)) return handOff(input);
+                return a.enter(input.arg || input.id);
+            },
             stop: (a, why) => a.exit(why),
             status: (a) => ({ label: titleCase(a.current || a.sceneId || 'Journey'), detail: '' }),
         },
@@ -412,11 +463,34 @@ const ActivityContract = (() => {
         },
 
         cohost: {
-            title: 'Play',
-            icon: '🎮',
+            title: 'Life',
+            icon: '💬',
             order: 40,
-            prompt: 'Share your game so I can react with you.',
-            inputs: () => [{ id: 'screen', label: 'Share game', permission: 'screen' }],
+            prompt: 'How do you want to be together?',
+            inputs: () => [
+                {
+                    id: 'life-evening',
+                    label: 'Life Evening',
+                    permission: null,
+                    destination: 'life',
+                    playground: 'life-evening',
+                },
+                {
+                    id: 'talk',
+                    label: 'Talk',
+                    permission: null,
+                    destination: 'life',
+                    action: { id: 'talk', label: 'Talk', kind: 'focus-chat' },
+                },
+                {
+                    id: 'relax',
+                    label: 'Relax',
+                    permission: null,
+                    destination: 'life',
+                    openActivity: 'focus',
+                },
+                { id: 'screen', label: 'Share game', permission: 'screen' },
+            ],
             /**
              * Honest availability.
              *
@@ -427,11 +501,13 @@ const ActivityContract = (() => {
              * hides itself. The reaction engine, the tier table and the overlay are all real
              * and all tested; what is missing is the detector that feeds them.
              */
-            availability: (a) =>
-                a && a.momentSource
-                    ? OK
-                    : no('Reacting to your game needs moment detection, which is not in this build yet.'),
-            start: (a, { pipeline }) => {
+            // Life itself needs nothing. Sharing a game still needs a moment source,
+            // and that check happens when that option is chosen, not when the tile opens.
+            availability: () => OK,
+            start: (a, { input, pipeline }) => {
+                if (input && (input.playground || input.openActivity || input.action)) return handOff(input);
+                if (!a || !a.momentSource)
+                    return no('Reacting to your game needs moment detection, which is not in this build yet.');
                 if (pipeline) a.pipeline = pipeline;
                 return a.start();
             },
@@ -485,6 +561,59 @@ const ActivityContract = (() => {
     const FREEFORM_STEP = { title: 'Looking with you', text: 'Watching what you are doing and helping when asked.' };
 
     // ── small helpers, all pure ─────────────────────────────────────────────
+
+    function companionLive() {
+        if (typeof window === 'undefined') return null;
+        return window.__NEXUS_COMPANION_LIVE || null;
+    }
+
+    /**
+     * A Together tile that now stands for Life, Copilot, or Experiences.
+     * Device capture stays on the activity that already owns it. These
+     * hand-offs only select a destination, open a playground, or open a
+     * setup screen that already explains a permission.
+     */
+    function handOff(input) {
+        const destination = input && input.destination;
+        const live = companionLive();
+        if (destination && live && live.session && typeof live.session.setDestination === 'function') {
+            try {
+                live.session.setDestination(destination);
+            } catch (_) {
+                /* the chooser still opens */
+            }
+        }
+        if (input && input.playground) {
+            const director = typeof window !== 'undefined' ? window.NEXUS_BD : null;
+            const host = director && director.togetherPanel;
+            const activity = host && host.activities && host.activities.get && host.activities.get('playground');
+            if (!activity) return no('That playground is not loaded on this page yet.');
+            activity.playgroundId = input.playground;
+            activity.sessionState = 'configure';
+            return { ok: true, why: input.playground, openActivity: 'playground' };
+        }
+        if (input && input.openActivity) {
+            return { ok: true, why: input.openActivity, openActivity: input.openActivity };
+        }
+        if (input && input.action) {
+            const local = ['memories', 'preferences', 'tasks', 'projects', 'planning', 'saved'];
+            if (local.indexOf(input.action.kind) !== -1) {
+                if (live && live.bar && typeof live.bar.show === 'function') {
+                    live.bar.show(destination, input.action.kind);
+                    return { ok: true, why: input.action.kind, handedOff: true };
+                }
+                return no('Open the companion bar to use that. It is not on this page yet.');
+            }
+            if (!live || !live.bridge || typeof live.bridge.run !== 'function') {
+                return no('Life, Copilot and Experiences are not loaded on this page yet.');
+            }
+            return Promise.resolve(live.bridge.run(input.action)).then((result) => {
+                if (!result || result.ok === false) return result || no('could not start');
+                return Object.assign({ handedOff: true }, result);
+            });
+        }
+        return no('nothing to open');
+    }
 
     function clock(ms) {
         const total = Math.max(0, Math.floor((Number(ms) || 0) / 1000));

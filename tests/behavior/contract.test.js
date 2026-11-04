@@ -171,7 +171,7 @@ describe('the tiles that could not complete', () => {
                 .inputs()
                 .map((i) => i.id)
                 .sort()
-        ).toEqual(['forest', 'ocean']);
+        ).toEqual(['forest', 'ocean', 'scene-tale', 'seaside']);
     });
 
     test('copilot: "just look and help" starts without a checklist', async () => {
@@ -244,7 +244,10 @@ describe('exactly one permission owner', () => {
         expect(table.watch.tab).toBe('self');
         expect(table.watch.file).toBeNull();
         expect(Object.values(table.meeting)).toEqual(['self']);
-        expect(new Set(Object.values(table.coach))).toEqual(new Set(['self']));
+        expect(table.coach.squat).toBe('self');
+        expect(table.coach['push-up']).toBe('self');
+        expect(table.coach.tasks).toBeNull();
+        expect(table.coach['copilot-hour']).toBeNull();
         expect(new Set(Object.values(table.copilot))).toEqual(new Set(['self']));
     });
 
@@ -269,7 +272,9 @@ describe('exactly one permission owner', () => {
     test('the one panel-owned grant is the one whose activity never requests', () => {
         // CoHost takes a pipeline and never touches the consent machine, so the panel is
         // the right owner there and only there.
-        expect(Object.values(owners().cohost)).toEqual(['screen']);
+        expect(owners().cohost.screen).toBe('screen');
+        expect(owners().cohost.talk).toBeNull();
+        expect(owners().cohost['life-evening']).toBeNull();
     });
 
     test('a permission value is always null, self, or a consent source', () => {
@@ -355,14 +360,18 @@ describe('a tile that cannot complete says so', () => {
         expect(Contract.adapt(fakes.music()).availability().ok).toBe(true);
     });
 
-    test('play refuses while nothing produces game moments', () => {
-        // The reactions, the tier table and the overlay are all real. What is missing is the
-        // detector that feeds them, so sharing a game would start a co-host that never sees
-        // a moment.
+    test('sharing a game refuses while nothing produces game moments', async () => {
+        // Life itself is available. The reactions, the tier table and the overlay are all
+        // real. What is missing is the detector that feeds them, so sharing a game would
+        // start a co-host that never sees a moment.
         const bare = { id: 'cohost', start: jest.fn(), stop: jest.fn() };
-        const why = Contract.adapt(bare).availability();
-        expect(why.ok).toBe(false);
-        expect(why.why).toMatch(/moment detection/i);
+        const adapted = Contract.adapt(bare);
+        expect(adapted.availability().ok).toBe(true);
+        const share = adapted.inputs().find((input) => input.id === 'screen');
+        const result = await adapted.start({ input: share });
+        expect(result.ok).toBe(false);
+        expect(result.why).toMatch(/moment detection/i);
+        expect(bare.start).not.toHaveBeenCalled();
     });
 
     test('an availability check that throws becomes a reason, not a crash', () => {

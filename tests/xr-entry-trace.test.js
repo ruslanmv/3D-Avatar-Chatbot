@@ -233,6 +233,7 @@ describe('wiring', () => {
             'this.vrIntimacySystem?.update(dt)',
             'NEXUS_LOCOMOTION?.update?.(dt)',
             'NEXUS_MOTION?.update?.(dt)',
+            'experience.update?.(dt)',
             'this.vrChatPanel?.update()',
             'this.postProcessing.render()',
         ];

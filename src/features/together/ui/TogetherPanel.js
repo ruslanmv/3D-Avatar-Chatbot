@@ -79,11 +79,13 @@ const TogetherPanel = (() => {
             ],
         },
         journey: {
-            title: 'Journey',
-            icon: '🌊',
+            title: 'Experiences',
+            icon: '🌙',
             order: 20,
-            prompt: 'Where should we go?',
+            prompt: 'Where do you want to go?',
             options: [
+                { label: 'Seaside Evening' },
+                { label: 'Scene Tale' },
                 { label: '🌊 Ocean', arg: 'ocean' },
                 { label: '🌲 Forest', arg: 'forest' },
                 { label: '🕯 Meditation', arg: 'meditation' },
@@ -92,11 +94,16 @@ const TogetherPanel = (() => {
         },
         music: { title: 'Music', icon: '🎧', order: 30, direct: true },
         cohost: {
-            title: 'Play',
-            icon: '🎮',
+            title: 'Life',
+            icon: '💬',
             order: 40,
-            prompt: 'Share your game so I can react with you.',
-            options: [{ label: 'Share game', needs: 'screen' }],
+            prompt: 'How do you want to be together?',
+            options: [
+                { label: 'Life Evening' },
+                { label: 'Talk' },
+                { label: 'Relax' },
+                { label: 'Share game', needs: 'screen' },
+            ],
         },
         focus: {
             title: 'Focus',
@@ -106,11 +113,16 @@ const TogetherPanel = (() => {
             options: [{ label: 'Start' }],
         },
         coach: {
-            title: 'Coach',
-            icon: '🏋',
+            title: 'Copilot',
+            icon: '🧭',
             order: 60,
-            prompt: 'I need the camera to see your movement.',
-            options: [{ label: 'Use camera', needs: 'camera', arg: 'squat' }],
+            prompt: 'What do you want to get done?',
+            options: [
+                { label: 'Copilot Hour' },
+                { label: 'Tasks' },
+                { label: 'Focus block' },
+                { label: 'Use camera', needs: 'camera', arg: 'squat' },
+            ],
         },
         copilot: {
             title: 'Help me with this',
@@ -391,6 +403,23 @@ const TogetherPanel = (() => {
                 grant: this.consent ? this.consent.grant : null,
                 pipeline: opened,
             });
+
+            // Life, Copilot and Experiences hand the chooser to a playground or
+            // to another activity's own setup. That is not this tile running.
+            if (result && result.openActivity) {
+                this.failure = null;
+                this.pending = null;
+                return this.choose(result.openActivity);
+            }
+            if (result && result.handedOff) {
+                this.failure = null;
+                this.pending = null;
+                this.view = 'chooser';
+                this.open_ = false;
+                this._paint();
+                this._announce();
+                return { ok: true, why: 'handed-off' };
+            }
 
             if (!result || result.ok === false) {
                 // Whatever *this* call opened goes with the failure. An activity that owns

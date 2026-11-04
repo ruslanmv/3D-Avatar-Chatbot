@@ -405,7 +405,7 @@ describe('opening the chooser starts nothing at all', () => {
         harness();
         button().click();
         const names = tiles().map((t) => t.querySelector('.nexus-bd-together-name').textContent);
-        expect(names).toEqual(['Watch', 'Journey', 'Music', 'Play', 'Focus', 'Coach', 'Help me with this']);
+        expect(names).toEqual(['Watch', 'Experiences', 'Music', 'Life', 'Focus', 'Copilot', 'Help me with this']);
         // "Help me with this" is the only wide tile, so it is the only one that leaves the
         // three-column rhythm — and it is last, below the activities rather than among them.
         const wide = tiles().filter((t) => t.classList.contains('is-wide'));
@@ -433,7 +433,7 @@ describe('opening the chooser starts nothing at all', () => {
         button().click();
         expect(tiles().map((t) => t.querySelector('.nexus-bd-together-name').textContent)).toEqual([
             'Music',
-            'Play',
+            'Life',
             'Focus',
         ]);
     });
@@ -445,7 +445,7 @@ describe('opening the chooser starts nothing at all', () => {
         const names = tiles()
             .map((t) => t.querySelector('.nexus-bd-together-name').textContent)
             .join(' ');
-        for (const internal of ['Screen Insight', 'Copilot', 'Capture', 'Co-host', 'Pipeline', 'Behavior Director']) {
+        for (const internal of ['Screen Insight', 'Capture', 'Co-host', 'Pipeline', 'Behavior Director']) {
             expect(names).not.toContain(internal);
         }
     });
@@ -477,11 +477,11 @@ describe('opening the chooser starts nothing at all', () => {
 // ── permission is activity-scoped ────────────────────────────────────────────
 
 describe('permission comes after the choice, never before', () => {
-    test('Journey never asks for anything', async () => {
+    test('Experiences never asks for anything to open a saved place', async () => {
         const h = harness();
         button().click();
-        tileNamed('Journey').click();
-        expect(overlay().textContent).toContain('Where should we go?');
+        tileNamed('Experiences').click();
+        expect(overlay().textContent).toContain('Where do you want to go?');
         optionNamed('🌊 Ocean').click();
         await flush();
         expect(h.consent.asked).toEqual([]);
@@ -531,7 +531,7 @@ describe('permission comes after the choice, never before', () => {
     test('Coach asks for the camera exactly once, and says so before it does', async () => {
         const h = harness();
         button().click();
-        tileNamed('Coach').click();
+        tileNamed('Copilot').click();
         const squat = optionNamed('Squat');
         expect(squat.title).toMatch(/access/);
         squat.click();
@@ -546,15 +546,22 @@ describe('permission comes after the choice, never before', () => {
         // unsupported exercise by name; the setup screen now reads its list.
         harness();
         button().click();
-        tileNamed('Coach').click();
-        expect(options().map((o) => o.firstChild.textContent)).toEqual(['Squat', 'Push-up']);
+        tileNamed('Copilot').click();
+        expect(options().map((o) => o.firstChild.textContent)).toEqual([
+            'Copilot Hour',
+            'Tasks',
+            'Focus block',
+            'Learn a topic',
+            'Squat',
+            'Push-up',
+        ]);
     });
 
     test('declining leaves nothing running, and says so instead of going quiet', async () => {
         const h = harness();
         h.consent.grant = false;
         button().click();
-        tileNamed('Play').click();
+        tileNamed('Life').click();
         optionNamed('Share game').click();
         await flush();
         expect(h.activities.cohost.started).toEqual([]);
@@ -583,7 +590,7 @@ describe('permission comes after the choice, never before', () => {
         TogetherLauncher.attach({ panel, doc: document, viewer: null });
 
         button().click();
-        tileNamed('Play').click();
+        tileNamed('Life').click();
         optionNamed('Share game').click();
         await flush();
 
@@ -673,7 +680,7 @@ describe('dismissing the menu and leaving the activity are different', () => {
     test('Back from a setup view returns to the chooser without starting anything', () => {
         const h = harness();
         button().click();
-        tileNamed('Coach').click();
+        tileNamed('Copilot').click();
         document.querySelector('.nexus-bd-together-cancel').click();
         expect(overlay().textContent).toContain('What should we do?');
         expect(h.consent.asked).toEqual([]);

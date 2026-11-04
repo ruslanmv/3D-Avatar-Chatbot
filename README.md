@@ -67,8 +67,13 @@ orchestration. It ships **on**, so the launcher is there on a fresh install;
 nothing under `src/behavior/` is fetched at all. Tune it in
 `config/behavior.config.json`.
 
-A **two-person button** in the avatar toolbar is the one entry point to every
-experience below. Nothing else in the toolbar moves.
+A **two-person button** in the avatar toolbar still opens the Together chooser
+(Watch, Journey, Music, Focus, Coach, and the rest). Life, Copilot, and
+Experiences are the newer primary destinations, drawn on the avatar card when
+the Behavior Director is on. They share her avatar and the same chat.
+[docs/LIFE_COPILOT_EXPERIENCES_MIGRATION.md](docs/LIFE_COPILOT_EXPERIENCES_MIGRATION.md)
+describes what moved and what is still the old chooser. Set
+`nexus_companion_nav` to `false` in localStorage to hide the new bar.
 
 **Most of it needs no server.** Focus, Journey, Music, Watch and Coach run
 entirely in the browser. Only _Help me with this_ and _Meeting_ need HomePilot —

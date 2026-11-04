@@ -1074,6 +1074,14 @@ function animate() {
 
     /* NEXUS_BD — Tier 0 tick. One boolean while behaviorEngine.enabled is false. */
     if (window.NEXUS_BD_ENABLED) window.NEXUS_BD?.update?.(delta);
+    // IC3. Legacy render path only. The shipped ViewerEngine loop calls the
+    // same runtime from inside its own frame, and never via setAnimationLoop
+    // from the experience.
+    try {
+        window.NEXUS_EXPERIENCE_RUNTIME?.update?.(delta);
+    } catch (_) {
+        /* an experience frame must not stop the avatar loop */
+    }
 
     /* NEXUS_PATCH_LIFE_ENGINE_UPDATE_LOOP */
     try {
@@ -3999,7 +4007,12 @@ async function _handleStreamingResponse(text) {
             // W16. Her wardrobe, as a tool: what she can wear and how to put it on. Empty
             // unless the switch is on and Try-On could act on it, so a page without the
             // wardrobe sends the prompt it always sent.
-            (window.NEXUS_WARDROBE_TOOL?.systemPromptSuffix?.() || '');
+            (window.NEXUS_WARDROBE_TOOL?.systemPromptSuffix?.() || '') +
+            // IC1. Empty until a destination has actually been used, so an
+            // untouched page sends the prompt it sent before Life / Copilot /
+            // Experiences existed. Copilot's paragraph never includes Life
+            // memories.
+            (window.NEXUS_COMPANION?.systemPromptSuffix?.() || '');
         let accumulated = '';
         // HV5. Her first sentence spoken while the rest is still being written — only with the
         // SonicAgent streaming voice active and "speak while streaming" on; null otherwise, and
@@ -4477,7 +4490,12 @@ async function callLLM(userMessage) {
             // W16. Her wardrobe, as a tool: what she can wear and how to put it on. Empty
             // unless the switch is on and Try-On could act on it, so a page without the
             // wardrobe sends the prompt it always sent.
-            (window.NEXUS_WARDROBE_TOOL?.systemPromptSuffix?.() || '');
+            (window.NEXUS_WARDROBE_TOOL?.systemPromptSuffix?.() || '') +
+            // IC1. Empty until a destination has actually been used, so an
+            // untouched page sends the prompt it sent before Life / Copilot /
+            // Experiences existed. Copilot's paragraph never includes Life
+            // memories.
+            (window.NEXUS_COMPANION?.systemPromptSuffix?.() || '');
 
         // Use structured response for OllaBridge to get attachments
         if (config.provider === 'ollabridge' && typeof window._nexusLLM.sendMessageStructured === 'function') {
@@ -6295,7 +6313,8 @@ function __nexusMediaSuffix() {
             (window.NEXUS_LOOKUP?.systemPromptSuffix?.() || '') +
             (window.NEXUS_TOGETHER_CAPABILITY?.systemPromptSuffix?.() || '') +
             (window.NEXUS_SCENE_AMBIENCE_CAPABILITY?.systemPromptSuffix?.() || '') +
-            (window.NEXUS_WARDROBE_TOOL?.systemPromptSuffix?.() || '')
+            (window.NEXUS_WARDROBE_TOOL?.systemPromptSuffix?.() || '') +
+            (window.NEXUS_COMPANION?.systemPromptSuffix?.() || '')
         );
     } catch (_) {
         return '';
