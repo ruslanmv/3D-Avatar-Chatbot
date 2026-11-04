@@ -6481,6 +6481,7 @@ function __nexusServedSuffix() {
         const manager = typeof window !== 'undefined' ? window._nexusLLM : null;
         const served = manager && manager.lastServed;
         if (!served || !served.provider) return '';
+        if (served.notice) return ` · ⚠️ ${served.notice}`; // OB2: the route fell back, say why
         const model = served.model ? ` (${served.model})` : '';
         const tries = served.attempts > 1 ? ` after ${served.attempts - 1} fallback(s)` : '';
         return ` · answered by ${served.provider}${model}${tries}`;
@@ -6888,3 +6889,10 @@ if (window.NEXUS_SPICY) {
         console.log('[main] Spicy mode changed:', window.NEXUS_SPICY.isEnabled() ? 'ON' : 'OFF');
     });
 }
+
+// OB2. The gateway answered with its fallback route because the chosen one is out of credits or at
+// capacity. LLMManager announces it at most once per ten minutes; show it where the person looks.
+window.addEventListener('ollabridge-notice', (e) => {
+    const notice = e && e.detail && e.detail.notice;
+    if (notice) showMessage(notice, 'warning');
+});
