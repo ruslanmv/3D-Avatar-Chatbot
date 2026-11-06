@@ -80,13 +80,25 @@
         }
 
         inputs() {
-            return this._places().map((p) => ({
-                id: p.id,
-                label: p.title,
-                note: p.note,
-                permission: null,
-                destination: 'experiences',
-            }));
+            // PG1. A place with a playground template is shown as a venue card: its preview
+            // picture and category. The template only decorates the card — which places are
+            // listed is still `placesFor`, above — and a place without one is listed as before.
+            const templates = global && global.NEXUS_PLAYGROUND_TEMPLATES;
+            return this._places().map((p) => {
+                const card = templates && typeof templates.cardFor === 'function' ? templates.cardFor(p.id) : null;
+                const input = {
+                    id: p.id,
+                    label: p.title,
+                    note: p.note,
+                    permission: null,
+                    destination: 'experiences',
+                };
+                if (card) {
+                    input.image = card.image;
+                    input.category = card.category;
+                }
+                return input;
+            });
         }
 
         async start({ input = {} } = {}) {

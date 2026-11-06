@@ -366,6 +366,21 @@ const TogetherLauncher = (() => {
   display: block; margin-top: .25rem;
   color: #7d8797; font: 400 .68rem/1.35 inherit; letter-spacing: 0;
 }
+/* PG1. A venue card: picture left, name and one line right, its category as a small tag. The
+   picture is a fixed 4:3 box so a list of places does not jump while pictures arrive. */
+.nexus-bd-together-option.has-image {
+  display: grid; grid-template-columns: 72px 1fr; grid-template-rows: auto auto auto;
+  column-gap: .7rem; align-items: center; text-align: left;
+}
+.nexus-bd-together-option.has-image > .nexus-bd-together-optionart {
+  grid-row: 1 / span 3; width: 72px; height: 54px; object-fit: cover; border-radius: 8px;
+  background: rgba(255,255,255,.06);
+}
+.nexus-bd-together-optiontag {
+  display: inline-block; justify-self: start; margin-top: .25rem; padding: .05rem .4rem; border-radius: 6px;
+  background: rgba(255,255,255,.08); color: #aeb9c8; font: 600 .6rem/1.5 inherit; letter-spacing: .06em;
+  text-transform: uppercase;
+}
 /* What is being captured, kept separate from what is running (§2a). */
 .nexus-bd-together-sharing {
   margin: .35rem 0 0; color: #9aa6b8; font: 400 .7rem/1.4 inherit;

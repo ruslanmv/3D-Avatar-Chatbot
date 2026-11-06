@@ -868,6 +868,27 @@ const TogetherPanel = (() => {
                 // including the ones the activity itself will ask for.
                 const asks = input.permission === 'self' ? 'access' : input.permission;
                 if (asks) b.title = `Asks for ${asks === 'meeting' ? 'screen and microphone' : asks} access`;
+                // PG1. A venue card: a preview picture and its category beside the name. Only an
+                // input that brings a picture changes; every other option is drawn as before.
+                // The picture is decoration (alt ""), the name is the label, and a picture that
+                // will not load is removed rather than shown broken.
+                if (input.image) {
+                    b.classList.add('has-image');
+                    const img = this.doc.createElement('img');
+                    img.className = 'nexus-bd-together-optionart';
+                    img.alt = '';
+                    img.loading = 'lazy';
+                    img.decoding = 'async';
+                    img.src = String(input.image);
+                    img.addEventListener('error', () => img.remove());
+                    b.insertBefore(img, b.firstChild);
+                }
+                if (input.category) {
+                    const tag = this.doc.createElement('span');
+                    tag.className = 'nexus-bd-together-optiontag';
+                    tag.textContent = String(input.category);
+                    b.appendChild(tag);
+                }
                 if (input.note) {
                     const note = this.doc.createElement('span');
                     note.className = 'nexus-bd-together-note';
@@ -905,7 +926,7 @@ const TogetherPanel = (() => {
             const style = doc.createElement('style');
             style.id = styleId;
             style.textContent =
-                '.nexus-private-setup{display:grid;gap:13px}.nexus-private-setup .nexus-private-setup-kicker{text-align:center;color:#f08fb6;font-weight:750;letter-spacing:.08em;font-size:.72rem}.nexus-private-setup-lead{text-align:center;opacity:.85;margin:0;font-size:1rem;font-weight:650}.nexus-private-preset-grid{display:grid;gap:9px}.nexus-private-preset{display:block;width:100%;text-align:left;border:1px solid rgba(255,255,255,.13);border-radius:14px;padding:13px;background:rgba(255,255,255,.05);color:inherit;font:inherit;cursor:pointer}.nexus-private-preset:hover,.nexus-private-preset:focus-visible{border-color:rgba(240,143,182,.6);background:rgba(240,143,182,.1);outline:none}.nexus-private-preset strong,.nexus-private-preset span{display:block}.nexus-private-preset span{font-size:.8rem;opacity:.68;margin-top:4px}.nexus-private-safety{font-size:.76rem;line-height:1.5;opacity:.62;text-align:center}.nexus-private-begin{width:100%;padding:12px;border:0;border-radius:12px;background:linear-gradient(120deg,#c34f7b,#9a4f9e);color:#fff;font:inherit;font-weight:700;cursor:pointer}.nexus-private-begin:disabled{opacity:.45;cursor:default}.nexus-private-locked{margin:0;padding:12px 13px;border:1px dashed rgba(240,143,182,.3);border-radius:12px;font-size:.82rem;line-height:1.5;opacity:.75}.nexus-private-steps{display:flex;gap:6px;justify-content:center}.nexus-private-steps span{width:18px;height:3px;border-radius:2px;background:rgba(255,255,255,.16)}.nexus-private-steps span.is-on{background:#f08fb6}.nexus-private-label{display:block;opacity:.6;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase}.nexus-private-scene-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.nexus-private-scene-card{display:grid;gap:2px;text-align:left;padding:11px 12px;border-radius:13px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.045);color:inherit;font:inherit;cursor:pointer}.nexus-private-scene-card.is-selected{border-color:rgba(240,143,182,.7);background:rgba(240,143,182,.13)}.nexus-private-scene-name{font-weight:650;font-size:.86rem}.nexus-private-scene-note{font-size:.72rem;opacity:.62}.nexus-private-more{width:100%;text-align:center;font-size:.78rem;opacity:.75}.nexus-private-segmented{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid rgba(255,255,255,.13);border-radius:12px;overflow:hidden}.nexus-private-segment{padding:9px 6px;border:0;background:transparent;color:inherit;font:inherit;font-size:.82rem;cursor:pointer}.nexus-private-segment.is-selected{background:rgba(240,143,182,.18);font-weight:650}.nexus-private-again{display:grid;gap:8px;padding:13px;border-radius:14px;border:1px solid rgba(240,143,182,.28);background:rgba(240,143,182,.08)}.nexus-private-again small{opacity:.6;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase}.nexus-private-again-summary{font-size:.9rem;font-weight:650}.nexus-private-or{text-align:center;margin:0;opacity:.45;font-size:.76rem}';
+                '.nexus-private-setup{display:grid;gap:13px}.nexus-private-setup .nexus-private-setup-kicker{text-align:center;color:#f08fb6;font-weight:750;letter-spacing:.08em;font-size:.72rem}.nexus-private-setup-lead{text-align:center;opacity:.85;margin:0;font-size:1rem;font-weight:650}.nexus-private-preset-grid{display:grid;gap:9px}.nexus-private-preset{display:block;width:100%;text-align:left;border:1px solid rgba(255,255,255,.13);border-radius:14px;padding:13px;background:rgba(255,255,255,.05);color:inherit;font:inherit;cursor:pointer}.nexus-private-preset:hover,.nexus-private-preset:focus-visible{border-color:rgba(240,143,182,.6);background:rgba(240,143,182,.1);outline:none}.nexus-private-preset strong,.nexus-private-preset span{display:block}.nexus-private-preset span{font-size:.8rem;opacity:.68;margin-top:4px}.nexus-private-safety{font-size:.76rem;line-height:1.5;opacity:.62;text-align:center}.nexus-private-begin{width:100%;padding:12px;border:0;border-radius:12px;background:linear-gradient(120deg,#c34f7b,#9a4f9e);color:#fff;font:inherit;font-weight:700;cursor:pointer}.nexus-private-begin:disabled{opacity:.45;cursor:default}.nexus-private-locked{margin:0;padding:12px 13px;border:1px dashed rgba(240,143,182,.3);border-radius:12px;font-size:.82rem;line-height:1.5;opacity:.75}.nexus-private-steps{display:flex;gap:6px;justify-content:center}.nexus-private-steps span{width:18px;height:3px;border-radius:2px;background:rgba(255,255,255,.16)}.nexus-private-steps span.is-on{background:#f08fb6}.nexus-private-label{display:block;opacity:.6;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase}.nexus-private-scene-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.nexus-private-scene-card{display:grid;gap:2px;text-align:left;padding:11px 12px;border-radius:13px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.045);color:inherit;font:inherit;cursor:pointer}.nexus-private-scene-card.is-selected{border-color:rgba(240,143,182,.7);background:rgba(240,143,182,.13)}.nexus-private-scene-name{font-weight:650;font-size:.86rem}.nexus-private-scene-note{font-size:.72rem;opacity:.62}.nexus-private-more{width:100%;text-align:center;font-size:.78rem;opacity:.75}.nexus-private-segmented{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid rgba(255,255,255,.13);border-radius:12px;overflow:hidden}.nexus-private-segment{padding:9px 6px;border:0;background:transparent;color:inherit;font:inherit;font-size:.82rem;cursor:pointer}.nexus-private-segment.is-selected{background:rgba(240,143,182,.18);font-weight:650}.nexus-private-again{display:grid;gap:8px;padding:13px;border-radius:14px;border:1px solid rgba(240,143,182,.28);background:rgba(240,143,182,.08)}.nexus-private-again small{opacity:.6;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase}.nexus-private-again-summary{font-size:.9rem;font-weight:650}.nexus-private-or{text-align:center;margin:0;opacity:.45;font-size:.76rem}.nexus-private-scene-art{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:9px;margin-bottom:5px;background:rgba(255,255,255,.06)}';
             (doc.head || doc.documentElement).appendChild(style);
         }
 
@@ -1107,6 +1128,19 @@ const TogetherPanel = (() => {
                     card.querySelector('.nexus-private-scene-name').textContent = room.title;
                     card.querySelector('.nexus-private-scene-note').textContent =
                         room.rating === 'private' ? 'Private' : '';
+                    // PG1. A venue with a playground template shows its preview picture.
+                    const templates = this.doc.defaultView && this.doc.defaultView.NEXUS_PLAYGROUND_TEMPLATES;
+                    const venue =
+                        templates && typeof templates.cardFor === 'function' ? templates.cardFor(room.id) : null;
+                    if (venue && venue.image) {
+                        const img = doc.createElement('img');
+                        img.className = 'nexus-private-scene-art';
+                        img.alt = '';
+                        img.loading = 'lazy';
+                        img.src = venue.image;
+                        img.addEventListener('error', () => img.remove());
+                        card.insertBefore(img, card.firstChild);
+                    }
                     card.addEventListener('click', () => activity.setAtmosphere({ world: room.id }));
                     roomCards.appendChild(card);
                 }

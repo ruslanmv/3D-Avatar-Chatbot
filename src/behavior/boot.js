@@ -258,6 +258,12 @@
         'src/companion/ActivityMarks.js',
         'src/companion/ActivityVoice.js',
         'src/companion/ActivityDirective.js',
+        // PG1. What there is to do in a place: presets, templates, then the chips that read both.
+        // After ActivityMarks (the chips sit under its status bar), and they only listen for the
+        // engine's nexus-world-shown, so nothing here needs the companion to have booted.
+        'src/experiences/playgrounds/PlaygroundMoodPresets.js',
+        'src/experiences/playgrounds/PlaygroundTemplateCatalog.js',
+        'src/experiences/playgrounds/PlaygroundInteractionRouter.js',
         'src/companion/index.js',
     ];
 
