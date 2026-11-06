@@ -108,7 +108,7 @@ describe('Playground activity contract', () => {
         expect(activity.title).toBe('Playground');
         expect(activity.order).toBe(45);
         expect(activity.inputs()).toEqual([
-            expect.objectContaining({ id: 'life-evening', label: 'Life Evening', permission: null }),
+            expect.objectContaining({ id: 'life-evening', label: 'An evening together', permission: null }),
             expect.objectContaining({ id: 'copilot-hour', label: 'Copilot Hour', permission: null }),
             expect.objectContaining({ id: 'scene-tale', label: 'Scene Tale', permission: null }),
         ]);
@@ -313,7 +313,7 @@ describe('Together chooser access', () => {
 
         tile.click();
         const root = document.getElementById(TogetherPanel.PANEL_ID);
-        expect(root.textContent).toContain('Life Evening');
+        expect(root.textContent).toContain('An evening together');
         expect(root.textContent).toContain('Copilot Hour');
         expect(root.textContent).toContain('Scene Tale');
         document.querySelector('[data-playground="scene-tale"]').click();

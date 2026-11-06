@@ -288,7 +288,6 @@ describe('each tile completes the journey its button promises', () => {
         expect(life.map((i) => i.label)).toEqual([
             'Talk',
             'Relax together',
-            'An evening together',
             'Move together · Squat',
             'Move together · Push-up',
         ]);

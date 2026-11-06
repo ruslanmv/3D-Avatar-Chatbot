@@ -26,7 +26,7 @@ const PlaygroundActivity = (() => {
 
     const LIFE_EVENING = Object.freeze({
         id: 'life-evening',
-        label: 'Life Evening',
+        label: 'An evening together',
         destination: 'life',
         kicker: 'LIFE EVENING',
         prompt: 'A quiet hour together. Nothing is recorded.',
@@ -34,7 +34,7 @@ const PlaygroundActivity = (() => {
         title: 'An evening together',
         startLabel: 'Begin',
         permission: null,
-        note: 'Companionship, with two choices and no capture.',
+        note: 'A quiet story for the two of you.',
     });
     const COPILOT_HOUR = Object.freeze({
         id: 'copilot-hour',
@@ -46,7 +46,7 @@ const PlaygroundActivity = (() => {
         title: 'Copilot Hour',
         startLabel: 'Begin',
         permission: null,
-        note: 'A short planning story, with two choices and no capture.',
+        note: 'One small thing, finished together.',
     });
     const SCENE_TALE = Object.freeze({
         id: 'scene-tale',
@@ -58,7 +58,7 @@ const PlaygroundActivity = (() => {
         title: 'Scene Tale',
         startLabel: 'Create story',
         permission: null,
-        note: 'A short interactive story inspired by where we are.',
+        note: 'A short story set where we are.',
     });
     const PLAYGROUNDS = Object.freeze([LIFE_EVENING, COPILOT_HOUR, SCENE_TALE]);
 
@@ -2562,7 +2562,9 @@ const PlaygroundActivity = (() => {
                 panel.root,
                 'p',
                 'nexus-bd-together-prompt',
-                'Three ways to spend time together. Each one is a short story with two choices.'
+                // TG1. The one home of her stories: Life, Copilot and Experiences no longer offer
+                // these too, so this says what they are rather than how many.
+                'Short stories we play together. You choose twice.'
             );
             const list = addEl(doc, panel.root, 'div', 'nexus-bd-together-options');
             for (const item of PLAYGROUNDS) {

@@ -109,6 +109,7 @@ const TogetherPanel = (() => {
             title: 'Focus',
             icon: '🎯',
             order: 50,
+            hidden: true, // TG1: started from Life and Copilot, no tile of its own
             prompt: '25 min focus · 5 min break',
             options: [{ label: 'Start' }],
         },
@@ -125,7 +126,7 @@ const TogetherPanel = (() => {
             ],
         },
         copilot: {
-            title: 'Help me with this',
+            title: 'Help me',
             icon: '👀',
             order: 70,
             wide: true,
@@ -153,7 +154,7 @@ const TogetherPanel = (() => {
     /** Activities a person would set out to do, in the order the chooser shows them. */
     function choosable(activities) {
         return [...activities.values()]
-            .filter((a) => STEPS[a.id] || a.ui)
+            .filter((a) => (STEPS[a.id] || a.ui) && !metaFor(a).hidden)
             .sort((a, b) => (metaFor(a).order || 99) - (metaFor(b).order || 99));
     }
 
@@ -579,7 +580,11 @@ const TogetherPanel = (() => {
          * sentence with a reason and a way back (`_fail`). The tile stays.
          */
         choices() {
-            return [...this.adapted.values()].sort((a, b) => (a.order || 99) - (b.order || 99));
+            // TG1. `hidden` is not "unavailable" (that still shows, and says why when chosen):
+            // it is an engine other tiles start, with no door of its own.
+            return [...this.adapted.values()]
+                .filter((a) => !a.hidden)
+                .sort((a, b) => (a.order || 99) - (b.order || 99));
         }
 
         /**

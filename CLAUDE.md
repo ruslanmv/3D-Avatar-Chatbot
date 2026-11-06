@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-06 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5648 tests in 254 suites, all passing.**
+— lint clean, format clean, **5649 tests in 254 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -190,9 +190,9 @@ Try-On, `OD` the outfit dictionary shared with Forge), `V` for VRoid Hub in the
 Avatar Library, `VP` for the VR puppet, `AR` for the AR conversation, `VR` for
 the VR chat panel, `ST` for on-device speech-to-text (`docs/QUEST_STT.md`) and
 `HV` for SonicAgent voice through OllaBridge Cloud (`docs/SONICAGENT_VOICE.md`),
-`IC` for Life/Copilot/Experiences and `MV` for music levels in sessions. Commit
-subjects match: `A4: viewport background manager`. So `git log --grep 'A4'` and
-the comment line up.
+`IC` for Life/Copilot/Experiences, `MV` for music levels in sessions and `TG`
+for the Together grid. Commit subjects match: `A4: viewport background manager`.
+So `git log --grep 'A4'` and the comment line up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of
@@ -369,15 +369,20 @@ she is switched into. `src/companion/` (IIFE, loaded by `boot.js`) holds them.
   the activity line, and `STYLE` (one to three sentences, no question every
   turn, never name a mode). `session.end()` makes the suffix `''` again. Copilot
   never receives Life relationship text or memories.
+- **One door per thing (TG1).** The grid is nine tiles: Life, Copilot,
+  Experiences / Watch, Music, Playground / Try-On, Meeting, Help me. The three
+  stories (An evening together, Copilot Hour, Scene Tale) live only in
+  Playground; Focus has no tile (`hidden: true` on its adapter, filtered out of
+  `choices()`) because Life ▸ Relax together and Copilot ▸ Work on something
+  start it. A test fails if a destination tile offers a playground again.
 - **Every Together choice does what its name says, in one step (IC3).** Life:
-  Talk, Relax together, An evening together, Move together. Copilot: Work on
-  something (a 25-minute focus block), My tasks, Learn something. Experiences:
-  Seaside evening, A story here, the scenes. An option that is really another
-  activity carries `startActivity` + `startInput` and the panel starts it
-  directly (no second menu); `startInput.as` is the name a failure screen uses,
-  so Move together under Life never says "Copilot needs permission", and
-  `context` is the session activity when the option id is more specific
-  (`move-squat` → `move`).
+  Talk, Relax together, Move together. Copilot: Work on something (a 25-minute
+  focus block), My tasks, Learn something. Experiences: Seaside evening and the
+  scenes. An option that is really another activity carries `startActivity` +
+  `startInput` and the panel starts it directly (no second menu);
+  `startInput.as` is the name a failure screen uses, so Move together under Life
+  never says "Copilot needs permission", and `context` is the session activity
+  when the option id is more specific (`move-squat` → `move`).
 - **She says one line when it starts or ends (IC3).** `ActivityVoice`: one
   bounded `callLLM` per Together start, newest start wins, epoch-checked,
   nothing while the person is mid-turn or with no model configured, posted like

@@ -109,6 +109,9 @@ const ActivityContract = (() => {
      *
      * Each is `{title, icon, order, prompt, inputs, availability, start, stop, status}`.
      *
+     * TG1: one door per thing. An adapter marked `hidden` (Focus) is started from another
+     * tile and has none of its own; everything else is on the first screen.
+     *
      * **Every activity is on the first screen**, in the order the chooser has always shown
      * them. An earlier draft of this batch cut that to four tiles with the rest behind a
      * "More together" disclosure, and hid two more entirely — which removed working features
@@ -121,6 +124,11 @@ const ActivityContract = (() => {
             title: 'Focus',
             icon: '🎯',
             order: 50,
+            // TG1. No tile of its own. Its two choices are Life ▸ Relax together (the quiet
+            // block) and Copilot ▸ Work on something (25 minutes), which start it directly; a
+            // Focus tile beside them was the same two things a third time. It stays registered,
+            // so those, the <activity> tag and the End pill still run it.
+            hidden: true,
             // S3. Focus was a pomodoro clock behind a panel you close in order to work, and a
             // streak nobody read. It is now a study session: name a topic, she reads up on it
             // first, then works through it in questions. Body doubling survives inside it —
@@ -273,13 +281,16 @@ const ActivityContract = (() => {
         },
 
         copilot: {
-            title: 'Help me with this',
+            // TG1. Two words: "Help me with this" wrapped onto two lines in its tile and made
+            // the last row taller than the others. The prompt says the rest.
+            title: 'Help me',
             icon: '👀',
             // Last, and `wide`, so it lands as one full-width secondary action *below* the
             // activity grid rather than inside it — the reference layout. Ordering only:
             // the tile, its handler, its id and its styling are untouched.
+            // TG1. A tile like the others, not a full-width bar: with Focus gone the grid is
+            // exactly nine, and one odd-shaped button under it read as a different kind of thing.
             order: 90,
-            wide: true,
             prompt: 'Point your camera at what you are working on.',
             /**
              * Without HomePilot this opened the camera, sampled a frame, and returned `null`:
@@ -404,13 +415,8 @@ const ActivityContract = (() => {
                     destination: 'experiences',
                     action: { id: 'seaside', kind: 'experience', experienceId: 'seaside-evening' },
                 },
-                {
-                    id: 'scene-tale',
-                    label: 'A story here',
-                    permission: null,
-                    destination: 'experiences',
-                    playground: 'scene-tale',
-                },
+                // TG1. "A story here" lives in Playground with the other two stories. Offered in
+                // both places it was one feature reached by two names.
                 ...scenesOf(a)
                     .filter((scene) => scene.id !== 'ocean')
                     .map((scene) => ({
@@ -509,13 +515,7 @@ const ActivityContract = (() => {
                     startActivity: 'focus',
                     startInput: { id: 'sit', permission: null, as: 'Relax together' },
                 },
-                {
-                    id: 'life-evening',
-                    label: 'An evening together',
-                    permission: null,
-                    destination: 'life',
-                    playground: 'life-evening',
-                },
+                // TG1. "An evening together" is a Playground story; it is there, not here too.
                 // The exercises are the coach's own list (exercisesOf), so Life never offers
                 // one the coach would refuse; with one exercise it reads "Move together".
                 ...movesOf().map((id, i, all) => ({
@@ -773,6 +773,7 @@ const ActivityContract = (() => {
             icon: spec.icon,
             order: spec.order,
             wide: Boolean(spec.wide),
+            hidden: Boolean(spec.hidden),
             prompt: spec.prompt || '',
 
             inputs() {

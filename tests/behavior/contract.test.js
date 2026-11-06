@@ -173,7 +173,7 @@ describe('the tiles that could not complete', () => {
                 .inputs()
                 .map((i) => i.id)
                 .sort()
-        ).toEqual(['forest', 'scene-tale', 'seaside']);
+        ).toEqual(['forest', 'seaside']);
     });
 
     test('copilot: "just look and help" starts without a checklist', async () => {
@@ -286,7 +286,6 @@ describe('exactly one permission owner', () => {
         expect(owners().cohost.screen).toBeUndefined();
         expect(owners().cohost.talk).toBeNull();
         expect(owners().cohost.relax).toBeNull();
-        expect(owners().cohost['life-evening']).toBeNull();
     });
 
     test('a permission value is always null, self, or a consent source', () => {
@@ -488,8 +487,8 @@ describe('the chooser shows every activity, in the grid order', () => {
         const byOrder = Object.values(adapted)
             .sort((a, b) => a.order - b.order)
             .map((a) => a.id);
-        // Reference layout: three columns of activities, then "Help me with this" as one
-        // full-width secondary action below them, then Cancel.
+        // TG1: a three-by-three grid, "Help me" last; Focus keeps its place in the order
+        // although it has no tile, so the grid order never shifts when it is shown again.
         expect(byOrder).toEqual(['cohost', 'coach', 'journey', 'watch', 'music', 'focus', 'meeting', 'copilot']);
     });
 
@@ -518,5 +517,27 @@ describe('the adapter layer stays an adapter layer', () => {
         // `pickFile` is a file dialog, which is not capture and never reaches the machine.
         const creates = code.match(/createElement\(([^)]*)\)/g) || [];
         expect(creates).toEqual(["createElement('input')"]);
+    });
+});
+
+// ── TG1: one door per thing ─────────────────────────────────────────────────
+
+describe('each thing in Together has one door', () => {
+    test('the stories live only in Playground, and Focus has no tile of its own', () => {
+        window.NEXUS_BD = { togetherPanel: { activities: new Map([['coach', fakes.coach()]]) } };
+        const adapted = adaptAll({ conversationId: 'c1' });
+        // Life, Copilot and Experiences used to offer An evening together and A story here
+        // too: one feature reached by two names. Playground is where the stories are.
+        for (const id of ['cohost', 'coach', 'journey']) {
+            const stories = adapted[id].inputs().filter((i) => i.playground);
+            expect(`${id}: ${stories.map((i) => i.id).join(', ')}`).toBe(`${id}: `);
+        }
+        // Relax together and Work on something start Focus; a Focus tile was the same twice.
+        expect(adapted.focus.hidden).toBe(true);
+        expect(
+            Object.values(adapted)
+                .filter((a) => a.hidden)
+                .map((a) => a.id)
+        ).toEqual(['focus']);
     });
 });

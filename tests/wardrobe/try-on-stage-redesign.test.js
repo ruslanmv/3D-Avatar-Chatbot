@@ -101,7 +101,7 @@ describe('Together keeps its activities', () => {
             cohost: '💬 Life',
             focus: '🎯 Focus',
             coach: '🧭 Copilot',
-            copilot: '👀 Help me with this',
+            copilot: '👀 Help me',
         });
     });
 
