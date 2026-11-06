@@ -1,4 +1,4 @@
-# Worlds (VW1–VW3)
+# Worlds (VW1–VW3, PG1)
 
 Places to be in, in the headset: a 360° photograph around you, a few real 3D
 objects near her, and light that matches. 13 worlds, all CC0
@@ -91,6 +91,79 @@ activities that bring it.
 - **Budget:** panoramas ≤ 4096 px, kit textures ≤ 1024 px, no real-time shadows,
   anisotropic filtering on the photo's ground. Measured frame times on a Quest
   are still to be taken — see below.
+
+## Playgrounds: places with things to do (PG1, the V4 release)
+
+Five venues, each a world in `worlds.json` plus a **template** of things to do
+there:
+
+| Venue                 | Rating  | Desktop                  | Phone (light stand-in)   | VR          |
+| --------------------- | ------- | ------------------------ | ------------------------ | ----------- |
+| Irish pub             | general | bar room, 94 872 tris    | 29 058 tris              | light       |
+| Neon discoteca        | general | club room, 138 814 tris  | 27 904 tris              | light       |
+| Private cabaret       | private | stage, 68 044 tris       | 25 160 tris              | full        |
+| Private stream studio | private | Kenney props, 1 912 tris | the same                 | the same    |
+| Creative academy      | general | seminar room, 41 160     | 29 356 tris              | full        |
+
+The general three are listed in Experiences ▸ Visit a place as **venue cards**
+(preview picture, category, one line). The private two are listed only in
+Private ▸ Atmosphere ▸ "Or a 3D room", and load only through the VW3 rule:
+`nexus-world-request` from the `intimate` owner after `adult.enter()`. Nothing in
+PG1 adds a way in: `tests/playgrounds.test.js` checks Places, Settings, a guessed
+`place-` id, a request without `privateOpen`, an activity mapping and the
+preview for both, on every tier.
+
+**Light stand-ins are cut by recipe.** `tools/vr/playground-subsets.json` names
+each output's source and the top-level nodes it keeps (index ranges, as the kits
+number them) with a triangle budget; `node tools/vr/subset-scene.mjs` rebuilds
+them with three r147's own loader and exporter in headless Chromium, and fails
+an output over its budget. Spots were found by raycast (floor under her, 0.55 m
+clear around her, a 3.6 m corridor to the camera, a backdrop 2.5–9 m behind).
+
+**Templates** (`src/experiences/playgrounds/PlaygroundTemplateCatalog.js`) are
+data: up to four actions per venue, each an existing system —
+
+- `say` sends one line as the person's turn through `NEXUS_CONVERSATION_SURFACE`
+  (Cheers, A story, Quiz me, Pretend chat). Never a tag.
+- `clip` plays a shipped clip by short name (`CLIPS`: wave, bow, dance, groove)
+  through `NEXUS_CLIP_LOADER`; a looping clip is a toggle and stops with the
+  place.
+- `mood` cycles the venue's light presets
+  (`PlaygroundMoodPresets.js`: cozy-warm, pub-amber, neon-blue-purple,
+  cabaret-gold, studio-soft, classroom-day, romantic-evening).
+- `timer` is the academy's 25-minute study block, counted in the chip. It does
+  not start the Focus activity: that would end the place.
+- `pretend-live` is the studio's badge — "Pretend show · Not recording · nothing
+  leaves this device". It draws a label and opens nothing; the playground files
+  name no capture or network API, and a test reads them to keep it so.
+
+**The chips** (`PlaygroundInteractionRouter.js`) appear when the engine reports
+`nexus-world-shown` for a world with a template — a private template only for a
+private world shown at the `intimate` owner's request — and go with the world.
+Desktop: a row under the status bar in the composer. Phone portrait: docked in
+`<body>` above the status bar's mini-player (or the chat sheet), one row that
+scrolls sideways, 44 px targets.
+
+**Moods are light only, and never flash.** `runtime.setMood(light)` (event
+`nexus-world-mood`) blends the world's lights to a preset over `MOOD_SECONDS`
+(0.9 s), or cuts under `prefers-reduced-motion`. It does not touch the snapshot
+`hide()` restores, and it is refused with no world up. A preset goes through
+`normalizeLight`, so the floors that keep her face lit still apply. Nothing
+alternates, and nothing is animated: no strobe, no pulsing badge.
+
+**The academy is for adults learning together.** Its title, card and lines are
+checked against `LEARNING_BANNED` (school-age words, uniforms, student/teacher
+roles). The guard is in `validate`, and a test proves it would catch a slip.
+
+**Partner demo, in order:** Together ▸ Playground ▸ Experiences ▸ Visit a place
+▸ Irish pub → Cheers, then Light (Amber → Cozy) → End experience → Neon
+discoteca → Dance, Dance again to stop → Creative academy → Study 25 min → End.
+Private, after its own gates: Atmosphere ▸ Or a 3D room ▸ Private cabaret or
+Private stream studio → Begin → the chips appear (Pretend show in the studio).
+
+Not done: sitting on a seat (she has no seat-aligned pose, and a sitting clip
+in mid-air looked wrong), venue music (no licensed tracks), and any measurement
+on a real phone or headset — all of the above is headless Chromium.
 
 ## Not done yet
 

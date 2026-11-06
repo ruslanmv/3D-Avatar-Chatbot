@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (257 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (258 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-06 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5697 tests in 257 suites, all passing.**
+— lint clean, format clean, **5727 tests in 258 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -191,8 +191,9 @@ Avatar Library, `VP` for the VR puppet, `AR` for the AR conversation, `VR` for
 the VR chat panel, `ST` for on-device speech-to-text (`docs/QUEST_STT.md`) and
 `HV` for SonicAgent voice through OllaBridge Cloud (`docs/SONICAGENT_VOICE.md`),
 `IC` for Life/Copilot/Experiences, `MV` for music levels in sessions, `TG` for
-the Together grid, `VW` for VR worlds (`docs/VR_WORLDS.md`) and `DX` for desktop
-control layout. Commit subjects match: `A4: viewport background manager`. So
+the Together grid, `VW` for VR worlds (`docs/VR_WORLDS.md`), `PG` for the
+playgrounds (the V4 release; not a VRoid `V` batch) and `DX` for desktop control
+layout. Commit subjects match: `A4: viewport background manager`. So
 `git log --grep 'A4'` and the comment line up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
@@ -436,7 +437,7 @@ she is switched into. `src/companion/` (IIFE, loaded by `boot.js`) holds them.
   that `AMBIENT_VOLUME` sets are not in the repository — the manifests name
   files that were never added — so that change has nothing to play yet.
 
-## Worlds, in VR and on the screen (VW1–VW3)
+## Worlds, in VR and on the screen (VW1–VW3, PG1)
 
 Places in the headset: a Poly Haven panorama, CC0 kit props (Kenney, Quaternius,
 KayKit) and retinted light. `src/gltf-viewer/VRWorlds.js` (IIFE, imported by
@@ -495,6 +496,24 @@ KayKit) and retinted light. `src/gltf-viewer/VRWorlds.js` (IIFE, imported by
   passes `privateOpen` only for that owner, so a private world is refused by
   `chooseWorld`, the Settings list, activity mappings and the `?vrWorld=`
   preview alike — `tests/vr-places.test.js` holds all four.
+- **Playgrounds: venues with things to do (PG1, the V4 release).** Irish pub,
+  Neon discoteca, Creative academy (general, in Visit a place as venue cards
+  with a preview and category) and Private cabaret, Private stream studio
+  (private, only in Private's rooms). `src/experiences/playgrounds/` (boot list,
+  after ActivityMarks): `PlaygroundMoodPresets` (seven lights),
+  `…TemplateCatalog` (data: up to four actions per venue, kinds `say` / `clip` /
+  `mood` / `timer` / `pretend-live`, `validate`, `forShown`) and
+  `…InteractionRouter` (the chip row, shown on the engine's `nexus-world-shown`
+  and gone with the world). A template never chooses a world; a private one
+  answers only for a private world shown at the `intimate` owner's request.
+  Moods go through `nexus-world-mood` → `runtime.setMood` (a blend over
+  `MOOD_SECONDS`, a cut under reduced motion, refused with no world up, snapshot
+  untouched) — **no strobe, nothing animated**. The studio is pretend: its badge
+  says nothing is recorded or sent, and a test greps the playground files for
+  any capture or network API. The academy's text is checked against
+  `LEARNING_BANNED`. Light stand-ins are cut by recipe
+  (`tools/vr/playground-subsets.json`, `node tools/vr/subset-scene.mjs`), not by
+  hand. `tests/playgrounds.test.js`; `docs/VR_WORLDS.md` ▸ Playgrounds.
 
 ## Clearing a conversation
 
