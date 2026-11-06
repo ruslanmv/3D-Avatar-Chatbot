@@ -1017,6 +1017,11 @@ const PlaygroundActivity = (() => {
         }
     }
 
+    // MV1. How far other sound drops while she narrates. 0.16 took the scene's music almost
+    // to silence under every line, which across a story read as "the music is too low"; 0.4
+    // still clears the way for her voice and keeps the music in the room.
+    const DUCK_VOLUME = 0.4;
+
     class AudioFocusManager {
         constructor({ win, bus } = {}) {
             this.win = win || globalObject();
@@ -1037,11 +1042,11 @@ const PlaygroundActivity = (() => {
                     if (!Number.isFinite(volume)) continue;
                     this.saved.push({ media, volume });
                     try {
-                        media.volume = Math.min(volume, 0.16);
+                        media.volume = Math.min(volume, DUCK_VOLUME);
                     } catch (_) {}
                 }
             }
-            busEmit(this.bus, 'story:audio-duck', { volume: 0.16 });
+            busEmit(this.bus, 'story:audio-duck', { volume: DUCK_VOLUME });
         }
 
         restore() {

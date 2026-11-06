@@ -289,8 +289,8 @@ describe('Scene Tale customer journey', () => {
         const focus = new PlaygroundActivity.AudioFocusManager({ win: window, bus });
 
         focus.duck();
-        expect(media.volume).toBeCloseTo(0.16);
-        expect(bus.emit).toHaveBeenCalledWith('story:audio-duck', { volume: 0.16 });
+        expect(media.volume).toBeCloseTo(0.4);
+        expect(bus.emit).toHaveBeenCalledWith('story:audio-duck', { volume: 0.4 });
 
         focus.restore();
         expect(media.volume).toBeCloseTo(0.72);

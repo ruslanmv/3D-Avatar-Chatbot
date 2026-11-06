@@ -26,7 +26,10 @@ const PrivateConversationView = (() => {
      * deliberately not shared with Scene Tale, whose soundtrack *is* the point of the scene
      * and which nobody has complained about.
      */
-    const VOLUME = 15;
+    //
+    // MV1. 15 turned out to be too low to hear at all on most speakers — the person asked for
+    // the music to be louder during sessions. 40 is still well under her voice.
+    const VOLUME = 40;
 
     /**
      * Where the soundtrack goes once somebody has asked for less (P11).
@@ -35,7 +38,7 @@ const PrivateConversationView = (() => {
      * change in the app; lowering it lets the room get quieter, which is what was asked for. Still
      * audible, so nobody has to wonder whether the player broke.
      */
-    const QUIET_VOLUME = 10;
+    const QUIET_VOLUME = 26;
 
     /**
      * How many turns stay on screen.

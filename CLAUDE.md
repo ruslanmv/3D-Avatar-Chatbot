@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-06 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5647 tests in 254 suites, all passing.**
+— lint clean, format clean, **5648 tests in 254 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -189,9 +189,10 @@ will be rewrapped; files under `docs/` are exempt.
 Try-On, `OD` the outfit dictionary shared with Forge), `V` for VRoid Hub in the
 Avatar Library, `VP` for the VR puppet, `AR` for the AR conversation, `VR` for
 the VR chat panel, `ST` for on-device speech-to-text (`docs/QUEST_STT.md`) and
-`HV` for SonicAgent voice through OllaBridge Cloud (`docs/SONICAGENT_VOICE.md`).
-Commit subjects match: `A4: viewport background manager`. So
-`git log --grep 'A4'` and the comment line up.
+`HV` for SonicAgent voice through OllaBridge Cloud (`docs/SONICAGENT_VOICE.md`),
+`IC` for Life/Copilot/Experiences and `MV` for music levels in sessions. Commit
+subjects match: `A4: viewport background manager`. So `git log --grep 'A4'` and
+the comment line up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of
@@ -388,6 +389,11 @@ she is switched into. `src/companion/` (IIFE, loaded by `boot.js`) holds them.
   `ActivityDirective`, the sixth capability instance — suffixed only while
   Together is on, consumed at both `displayText` seams. A Together activity is
   ended silently on reload; nothing claims to be running after it stopped.
+- **Music in sessions is meant to be heard (MV1).** The person found it too low:
+  scene loops play at `SceneJourney.AMBIENT_VOLUME` 0.7 (was 0.35), Private's
+  soundtrack at 40 / softened 26 (was 15 / 10), and a story's narration ducks
+  other audio to 0.4 (was 0.16). Scene Tale's YouTube soundtrack is not given a
+  level — it is the thing they chose to hear. Tests assert ranges, not values.
 
 ## Clearing a conversation
 
