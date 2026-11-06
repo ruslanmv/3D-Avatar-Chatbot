@@ -153,11 +153,13 @@ describe('the tiles that could not complete', () => {
     test('journey: start/stop reach enter/exit', async () => {
         const raw = fakes.journey();
         const journey = Contract.adapt(raw);
-        const ocean = journey.inputs().find((i) => i.id === 'ocean');
-        expect(ocean.label).toContain('Ocean');
+        // IC3: the ocean scene is not offered beside Seaside evening; the other places are.
+        expect(journey.inputs().find((i) => i.id === 'ocean')).toBeUndefined();
+        const forest = journey.inputs().find((i) => i.id === 'forest');
+        expect(forest.label).toContain('Forest');
 
-        await journey.start({ input: ocean });
-        expect(raw.enter).toHaveBeenCalledWith('ocean');
+        await journey.start({ input: forest });
+        expect(raw.enter).toHaveBeenCalledWith('forest');
         journey.stop('user');
         expect(raw.exit).toHaveBeenCalledWith('user');
     });
@@ -171,7 +173,7 @@ describe('the tiles that could not complete', () => {
                 .inputs()
                 .map((i) => i.id)
                 .sort()
-        ).toEqual(['forest', 'ocean', 'scene-tale', 'seaside']);
+        ).toEqual(['forest', 'scene-tale', 'seaside']);
     });
 
     test('copilot: "just look and help" starts without a checklist', async () => {
@@ -223,6 +225,8 @@ describe('the tiles that could not complete', () => {
 
 describe('exactly one permission owner', () => {
     const owners = () => {
+        // Life ▸ Move together reads the coach's exercises off the live panel.
+        window.NEXUS_BD = { togetherPanel: { activities: new Map([['coach', fakes.coach()]]) } };
         const adapted = adaptAll({ conversationId: 'c1' });
         const out = {};
         for (const [id, activity] of Object.entries(adapted)) {
@@ -244,10 +248,17 @@ describe('exactly one permission owner', () => {
         expect(table.watch.tab).toBe('self');
         expect(table.watch.file).toBeNull();
         expect(Object.values(table.meeting)).toEqual(['self']);
-        expect(table.coach.squat).toBe('self');
-        expect(table.coach['push-up']).toBe('self');
+        // IC3: exercise moved from Copilot to Life ▸ Move together. The coach still asks for
+        // its own camera ('self'), so the panel must not.
+        expect(table.coach.work).toBeNull();
         expect(table.coach.tasks).toBeNull();
-        expect(table.coach['copilot-hour']).toBeNull();
+        expect(table.coach.learn).toBeNull();
+        expect(table.cohost['move-squat']).toBe('self');
+        expect(table.cohost['move-push-up']).toBe('self');
+        const life = adaptAll({ conversationId: 'c1' }).cohost.inputs();
+        for (const move of life.filter((i) => i.startActivity === 'coach')) {
+            expect(move.startInput.permission).toBe('self');
+        }
         expect(new Set(Object.values(table.copilot))).toEqual(new Set(['self']));
     });
 
@@ -269,11 +280,12 @@ describe('exactly one permission owner', () => {
         }
     });
 
-    test('the one panel-owned grant is the one whose activity never requests', () => {
-        // CoHost takes a pipeline and never touches the consent machine, so the panel is
-        // the right owner there and only there.
-        expect(owners().cohost.screen).toBe('screen');
+    test('Life offers nothing it cannot finish, and its everyday choices ask for nothing', () => {
+        // IC3: "Share game" was the one panel-owned grant here, and it could never work —
+        // nothing produces the game moments CoHost reacts to — so it is not offered.
+        expect(owners().cohost.screen).toBeUndefined();
         expect(owners().cohost.talk).toBeNull();
+        expect(owners().cohost.relax).toBeNull();
         expect(owners().cohost['life-evening']).toBeNull();
     });
 

@@ -167,6 +167,19 @@ const ActivityContract = (() => {
                         // always worked rather than leaving the tile dead.
                     }
                 }
+                // IC3. Work on something: a focus block of the chosen length, with what you
+                // are working on kept as a task, so she knows what the quiet is for.
+                if (input && input.id === 'work') {
+                    const minutes = Math.min(90, Math.max(5, Number(input.minutes) || 25));
+                    a.focusMs = minutes * 60 * 1000;
+                    a.workTask =
+                        String(input.text || '')
+                            .trim()
+                            .slice(0, 120) || null;
+                    if (a.workTask) rememberTask(a.workTask);
+                    const started = a.start();
+                    return started && started.ok === false ? started : { ok: true, mode: 'work', task: a.workTask };
+                }
                 if (input && input.id === 'study' && loop && typeof loop.open === 'function') {
                     // They pressed Start with an empty box. Asking in the chat is the right
                     // recovery — better than refusing the tap.
@@ -220,7 +233,7 @@ const ActivityContract = (() => {
                 const left = typeof a.remainingMs === 'function' ? a.remainingMs() : null;
                 const phase = a.phase || (a.onBreak ? 'break' : 'focus');
                 return {
-                    label: phase === 'break' ? 'Break' : 'Focus',
+                    label: phase === 'break' ? 'Break' : a.workTask ? `Working on ${a.workTask}` : 'Focus',
                     detail: left != null ? clock(left) : '',
                 };
             },
@@ -303,44 +316,42 @@ const ActivityContract = (() => {
             icon: '🧭',
             order: 2, // IC2: Life, Copilot, Experiences lead the chooser
             prompt: 'What do you want to get done?',
-            inputs: (a) => [
+            // IC3. Three choices, named by what happens. "Copilot Hour" (a story about
+            // finishing something) and the camera exercise coach (Squat) used to sit here:
+            // the first said nothing about what it does, the second is not getting things done.
+            // The coach moved to Life ▸ Move together; Copilot Hour stays reachable from the
+            // Playground tile.
+            inputs: () => [
                 {
-                    id: 'copilot-hour',
-                    label: 'Copilot Hour',
+                    id: 'work',
+                    label: 'Work on something',
+                    note: '25 minutes. She stays quiet while you work.',
                     permission: null,
+                    wantsText: true,
+                    rows: 1,
+                    placeholder: 'What are you working on?',
                     destination: 'copilot',
-                    playground: 'copilot-hour',
+                    startActivity: 'focus',
+                    startInput: { id: 'work', permission: null, minutes: 25, as: 'Work on something' },
                 },
                 {
                     id: 'tasks',
-                    label: 'Tasks',
+                    label: 'My tasks',
                     permission: null,
                     destination: 'copilot',
                     action: { id: 'tasks', label: 'Tasks', kind: 'tasks' },
                 },
                 {
-                    id: 'focus-block',
-                    label: 'Focus block',
-                    permission: null,
-                    destination: 'copilot',
-                    openActivity: 'focus',
-                },
-                {
                     id: 'learn',
-                    label: 'Learn a topic',
+                    label: 'Learn something',
                     permission: null,
                     destination: 'copilot',
                     action: { id: 'learn', label: 'Learn', kind: 'study' },
                 },
-                ...exercisesOf(a).map((id) => ({
-                    id,
-                    label: titleCase(id),
-                    permission: 'self',
-                    arg: id,
-                })),
             ],
             start: (a, { input }) => {
-                if (input && (input.playground || input.openActivity || input.action)) return handOff(input);
+                if (input && (input.playground || input.openActivity || input.action || input.startActivity))
+                    return handOff(input);
                 return a.start(input.arg || input.id);
             },
             stop: (a, why) => a.stop(why),
@@ -382,32 +393,40 @@ const ActivityContract = (() => {
             icon: '🌙',
             order: 3, // IC2: Life, Copilot, Experiences lead the chooser
             prompt: 'Where do you want to go?',
+            // IC3. Four places. "By the sea" was a second beach beside Seaside Evening, the
+            // richer of the two, so it is not offered twice. The other places now tell the
+            // companion where you are and get the quiet line in the chat, like every choice.
             inputs: (a) => [
                 {
                     id: 'seaside',
-                    label: 'Seaside Evening',
+                    label: 'Seaside evening',
                     permission: null,
                     destination: 'experiences',
                     action: { id: 'seaside', kind: 'experience', experienceId: 'seaside-evening' },
                 },
                 {
                     id: 'scene-tale',
-                    label: 'Scene Tale',
+                    label: 'A story here',
                     permission: null,
                     destination: 'experiences',
                     playground: 'scene-tale',
                 },
-                ...scenesOf(a).map((scene) => ({
-                    id: scene.id,
-                    label: `${scene.icon || ''} ${scene.title}`.trim(),
-                    permission: null,
-                    arg: scene.id,
-                })),
+                ...scenesOf(a)
+                    .filter((scene) => scene.id !== 'ocean')
+                    .map((scene) => ({
+                        id: scene.id,
+                        label: `${scene.icon || ''} ${scene.title}`.trim(),
+                        permission: null,
+                        arg: scene.id,
+                        destination: 'experiences',
+                    })),
             ],
             // `enter`/`exit`, not `start`/`stop`. The whole of the Journey bug.
             // Seaside and Scene Tale hand off before any scene is entered.
             start: (a, { input }) => {
-                if (input && (input.playground || input.openActivity || input.action)) return handOff(input);
+                if (input && (input.playground || input.openActivity || input.action || input.startActivity))
+                    return handOff(input);
+                enterContext('experiences', input && input.id);
                 return a.enter(input.arg || input.id);
             },
             stop: (a, why) => a.exit(why),
@@ -467,14 +486,13 @@ const ActivityContract = (() => {
             icon: '💬',
             order: 1, // IC2: Life, Copilot, Experiences lead the chooser
             prompt: 'How do you want to be together?',
+            // IC3. Four choices that each do one thing at once. Relax used to open the Focus
+            // tile's "What would you like to understand?" with "Just sit with me" under it — a
+            // question about studying, one tap too many; it now starts the quiet company
+            // directly. "Share game" never worked (nothing produces the game moments it reacts
+            // to) and is gone until it can. Move together is the camera coach, moved here from
+            // Copilot, where exercise did not belong.
             inputs: () => [
-                {
-                    id: 'life-evening',
-                    label: 'Life Evening',
-                    permission: null,
-                    destination: 'life',
-                    playground: 'life-evening',
-                },
                 {
                     id: 'talk',
                     label: 'Talk',
@@ -484,12 +502,34 @@ const ActivityContract = (() => {
                 },
                 {
                     id: 'relax',
-                    label: 'Relax',
+                    label: 'Relax together',
+                    note: 'Quiet company. No topic, no talking.',
                     permission: null,
                     destination: 'life',
-                    openActivity: 'focus',
+                    startActivity: 'focus',
+                    startInput: { id: 'sit', permission: null, as: 'Relax together' },
                 },
-                { id: 'screen', label: 'Share game', permission: 'screen' },
+                {
+                    id: 'life-evening',
+                    label: 'An evening together',
+                    permission: null,
+                    destination: 'life',
+                    playground: 'life-evening',
+                },
+                // The exercises are the coach's own list (exercisesOf), so Life never offers
+                // one the coach would refuse; with one exercise it reads "Move together".
+                ...movesOf().map((id, i, all) => ({
+                    id: all.length > 1 ? `move-${id}` : 'move',
+                    label: all.length > 1 ? `Move together · ${titleCase(id)}` : 'Move together',
+                    note: 'Exercise with the camera. Nothing is recorded.',
+                    // 'self': the coach asks for the camera itself, once; marking it here is
+                    // what puts "needs camera access" on the button before you tap it.
+                    permission: 'self',
+                    destination: 'life',
+                    context: 'move',
+                    startActivity: 'coach',
+                    startInput: { id, permission: 'self', arg: id, as: 'Move together' },
+                })),
             ],
             /**
              * Honest availability.
@@ -505,7 +545,8 @@ const ActivityContract = (() => {
             // and that check happens when that option is chosen, not when the tile opens.
             availability: () => OK,
             start: (a, { input, pipeline }) => {
-                if (input && (input.playground || input.openActivity || input.action)) return handOff(input);
+                if (input && (input.playground || input.openActivity || input.action || input.startActivity))
+                    return handOff(input);
                 if (!a || !a.momentSource)
                     return no('Reacting to your game needs moment detection, which is not in this build yet.');
                 if (pipeline) a.pipeline = pipeline;
@@ -562,6 +603,21 @@ const ActivityContract = (() => {
 
     // ── small helpers, all pure ─────────────────────────────────────────────
 
+    /** IC3. The thing a focus block is for, added to Copilot's task list (this device only). */
+    function rememberTask(title) {
+        const live = companionLive();
+        const Tasks = typeof window !== 'undefined' ? window.NEXUS_COMPANION_TASKS : null;
+        if (!live || !live.memory || !Tasks || typeof Tasks.addTask !== 'function') return;
+        try {
+            const open = ((live.memory.read('copilot') || {}).tasks || []).some(
+                (t) => t && !t.done && t.title === title
+            );
+            if (!open) Tasks.addTask(live.memory, title, { priority: 'normal' });
+        } catch (_) {
+            /* the block still starts */
+        }
+    }
+
     function companionLive() {
         if (typeof window === 'undefined') return null;
         return window.__NEXUS_COMPANION_LIVE || null;
@@ -573,6 +629,25 @@ const ActivityContract = (() => {
      * hand-offs only select a destination, open a playground, or open a
      * setup screen that already explains a permission.
      */
+    /** IC3. The coach's exercises, read from the registered coach; none when it is not loaded. */
+    function movesOf() {
+        const director = typeof window !== 'undefined' ? window.NEXUS_BD : null;
+        const host = director && director.togetherPanel;
+        const coach = host && host.activities && host.activities.get && host.activities.get('coach');
+        return coach ? exercisesOf(coach) : [];
+    }
+
+    /** IC3. Tell the companion where you are, for a choice that does not go through handOff. */
+    function enterContext(destination, activity) {
+        const live = companionLive();
+        if (!live || !live.session || typeof live.session.enter !== 'function') return;
+        try {
+            live.session.enter(destination, activity);
+        } catch (_) {
+            /* the place still opens */
+        }
+    }
+
     function handOff(input) {
         const destination = input && input.destination;
         const live = companionLive();
@@ -581,7 +656,10 @@ const ActivityContract = (() => {
         // which destination and activity it is in from the next turn on.
         if (destination && live && live.session) {
             try {
-                if (typeof live.session.enter === 'function') live.session.enter(destination, input.id);
+                // `context` names the activity when the option id is more specific than the
+                // companion needs (move-squat and move-push-up are both "Moving together").
+                if (typeof live.session.enter === 'function')
+                    live.session.enter(destination, input.context || input.id);
                 else if (typeof live.session.setDestination === 'function') live.session.setDestination(destination);
             } catch (_) {
                 /* the chooser still opens */
@@ -598,6 +676,14 @@ const ActivityContract = (() => {
         }
         if (input && input.openActivity) {
             return { ok: true, why: input.openActivity, openActivity: input.openActivity };
+        }
+        // IC3. Start another activity at once, with a known option — Relax is Focus's quiet
+        // block, Work on something is a 25-minute block, Move together is the coach. Text
+        // typed into this option ("What are you working on?") goes with it.
+        if (input && input.startActivity) {
+            const option = Object.assign({}, input.startInput || {});
+            if (input.text) option.text = input.text;
+            return { ok: true, why: input.startActivity, startActivity: input.startActivity, startInput: option };
         }
         if (input && input.action) {
             const local = ['memories', 'preferences', 'tasks', 'projects', 'planning', 'saved'];

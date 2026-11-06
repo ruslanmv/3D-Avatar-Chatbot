@@ -482,10 +482,12 @@ describe('permission comes after the choice, never before', () => {
         button().click();
         tileNamed('Experiences').click();
         expect(overlay().textContent).toContain('Where do you want to go?');
-        optionNamed('🌊 Ocean').click();
+        // IC3: the ocean is Seaside evening's; the other saved places are still one tap.
+        expect(options().some((o) => o.textContent === '🌊 Ocean')).toBe(false);
+        optionNamed('🌲 Forest').click();
         await flush();
         expect(h.consent.asked).toEqual([]);
-        expect(h.activities.journey.started).toEqual(['ocean']);
+        expect(h.activities.journey.started).toEqual(['forest']);
     });
 
     test('Focus asks what to understand, and still asks for no permission', async () => {
@@ -528,33 +530,43 @@ describe('permission comes after the choice, never before', () => {
         expect(h.consent.asked).toEqual([]);
     });
 
-    test('Coach asks for the camera exactly once, and says so before it does', async () => {
+    test('Move together asks for the camera exactly once, and says so before it does', async () => {
+        // IC3: the camera coach is Life ▸ Move together; the coach still owns the prompt.
         const h = harness();
+        window.NEXUS_BD = { togetherPanel: h.panel };
         button().click();
-        tileNamed('Copilot').click();
-        const squat = optionNamed('Squat');
+        tileNamed('Life').click();
+        const squat = optionNamed('Move together · Squat');
         expect(squat.title).toMatch(/access/);
         squat.click();
         await flush();
         // Coach reaches consent through ScreenInsight. One owner, one prompt.
         expect(h.consent.asked).toEqual(['camera']);
         expect(h.activities.coach.started).toEqual(['squat']);
+        delete window.NEXUS_BD;
     });
 
-    test('Coach offers the exercises Coach actually supports', () => {
+    test('Life offers the exercises Coach actually supports; Copilot is about getting things done', () => {
         // The tile used to hardcode `arg: 'squat'`. B27 has real validation and refuses an
-        // unsupported exercise by name; the setup screen now reads its list.
-        harness();
+        // unsupported exercise by name; Move together reads its list.
+        const h = harness();
+        window.NEXUS_BD = { togetherPanel: h.panel };
         button().click();
-        tileNamed('Copilot').click();
+        tileNamed('Life').click();
         expect(options().map((o) => o.firstChild.textContent)).toEqual([
-            'Copilot Hour',
-            'Tasks',
-            'Focus block',
-            'Learn a topic',
-            'Squat',
-            'Push-up',
+            'Talk',
+            'Relax together',
+            'An evening together',
+            'Move together · Squat',
+            'Move together · Push-up',
         ]);
+        h.panel.choose('coach');
+        expect(options().map((o) => o.firstChild.textContent)).toEqual([
+            'Work on something',
+            'My tasks',
+            'Learn something',
+        ]);
+        delete window.NEXUS_BD;
     });
 
     test('declining leaves nothing running, and says so instead of going quiet', async () => {
@@ -562,7 +574,8 @@ describe('permission comes after the choice, never before', () => {
         h.consent.grant = false;
         button().click();
         tileNamed('Life').click();
-        optionNamed('Share game').click();
+        // IC3: Share game is off the menu; the panel-owned screen grant is passed directly.
+        await h.panel.startActivity('cohost', { id: 'screen', label: 'Share game', permission: 'screen' });
         await flush();
         expect(h.activities.cohost.started).toEqual([]);
         expect(h.panel.activeActivity).toBeNull();
@@ -591,7 +604,7 @@ describe('permission comes after the choice, never before', () => {
 
         button().click();
         tileNamed('Life').click();
-        optionNamed('Share game').click();
+        await panel.startActivity('cohost', { id: 'screen', label: 'Share game', permission: 'screen' });
         await flush();
 
         expect(panel.activeActivity).toBeNull();

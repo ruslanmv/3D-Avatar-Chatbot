@@ -32,7 +32,19 @@ const ActivityMarks = (() => {
     });
 
     /** Activities with a beginning and an end. Only these get the End pill. */
-    const EXPLICIT = Object.freeze(['focus-block', 'seaside', 'scene-tale', 'life-evening', 'copilot-hour']);
+    const EXPLICIT = Object.freeze([
+        'relax',
+        'work',
+        'move',
+        'focus-block',
+        'seaside',
+        'scene-tale',
+        'life-evening',
+        'copilot-hour',
+        'forest',
+        'ocean',
+        'meditation',
+    ]);
 
     const CSS = `
 .nexus-activity-mark {
@@ -95,6 +107,15 @@ const ActivityMarks = (() => {
         let last = null; // "destination:activity" of the last line posted
 
         function end() {
+            // IC3. End ends the thing itself, not only the label: the Together activity that
+            // is running (a focus block, a place, the coach) and an experience.
+            const panel = o.panel ? o.panel() : null;
+            try {
+                if (panel && panel.activeActivity && typeof panel.stopActivity === 'function')
+                    panel.stopActivity('end');
+            } catch (error) {
+                console.warn('[Companion] the activity did not stop cleanly', error);
+            }
             const director = o.director || null;
             try {
                 const status = director && director.status ? director.status() : null;

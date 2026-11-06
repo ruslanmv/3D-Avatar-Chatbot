@@ -26,7 +26,7 @@ const ContextIntent = (() => {
     const RULES = Object.freeze([
         {
             destination: 'copilot',
-            activity: 'work',
+            activity: 'help',
             label: 'Ready to help',
             patterns: [
                 /\bhelp me (?:to )?(?:finish|with|write|fix|plan|prepare|organi[sz]e|understand|study)\b/i,
@@ -116,15 +116,20 @@ const ContextIntent = (() => {
     const LABELS = Object.freeze({
         talk: 'Talking',
         relax: 'Relaxing together',
-        'life-evening': 'Life Evening',
+        'life-evening': 'An evening together',
         'copilot-hour': 'Copilot Hour',
         tasks: 'Tasks',
         'focus-block': 'Focus block',
         learn: 'Learning',
-        work: 'Ready to help',
+        work: 'Working',
+        help: 'Ready to help',
         seaside: 'Seaside Evening',
         'scene-tale': 'Scene Tale',
         explore: 'Exploring together',
+        move: 'Moving together',
+        forest: 'Under the trees',
+        ocean: 'By the sea',
+        meditation: 'Ten quiet minutes',
     });
 
     function label(activity) {

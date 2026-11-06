@@ -31,6 +31,8 @@ const PlaygroundActivity = (() => {
         kicker: 'LIFE EVENING',
         prompt: 'A quiet hour together. Nothing is recorded.',
         placeholder: 'Something you want to say tonight',
+        title: 'An evening together',
+        startLabel: 'Begin',
         permission: null,
         note: 'Companionship, with two choices and no capture.',
     });
@@ -41,6 +43,8 @@ const PlaygroundActivity = (() => {
         kicker: 'COPILOT HOUR',
         prompt: 'One small thing, finished together. Nothing is recorded.',
         placeholder: 'The one thing you want done',
+        title: 'Copilot Hour',
+        startLabel: 'Begin',
         permission: null,
         note: 'A short planning story, with two choices and no capture.',
     });
@@ -51,6 +55,8 @@ const PlaygroundActivity = (() => {
         kicker: 'SCENE TALE',
         prompt: 'A little story inspired by this place.',
         placeholder: 'A letter somebody never delivered',
+        title: 'Scene Tale',
+        startLabel: 'Create story',
         permission: null,
         note: 'A short interactive story inspired by where we are.',
     });
@@ -2600,11 +2606,15 @@ const PlaygroundActivity = (() => {
             noneRadio.checked = this.musicChoice === 'none';
             addEl(doc, none, 'span', '', 'No music');
             const list = addEl(doc, panel.root, 'div', 'nexus-bd-together-options');
-            const create = button(doc, list, 'Create story', 'nexus-bd-together-option', () => {
+            const create = button(doc, list, spec.startLabel || 'Create story', 'nexus-bd-together-option', () => {
                 create.disabled = true;
                 this.prepare({ idea: area.value, music: noneRadio.checked ? 'none' : 'auto' });
             });
             create.dataset.action = 'create-story';
+            // IC3. Which story this screen is for. SceneTaleSetupView decorates every
+            // configure screen and used to write Scene Tale's title, question and example over
+            // all of them — Life Evening and Copilot Hour both opened as "Scene Tale".
+            create.dataset.playground = spec.id;
             button(doc, list, 'Other playgrounds', 'nexus-bd-together-option', () => {
                 this.playgroundId = null;
                 this.sessionState = 'pick';

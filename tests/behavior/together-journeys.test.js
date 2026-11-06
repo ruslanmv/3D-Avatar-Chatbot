@@ -128,7 +128,10 @@ function make(id, { consent = null, fail = null } = {}) {
             stop: (w) => record.stopped.push(w),
         },
         journey: {
-            scenes: new Map([['ocean', { id: 'ocean', title: 'Ocean', icon: '🌊' }]]),
+            scenes: new Map([
+                ['ocean', { id: 'ocean', title: 'Ocean', icon: '🌊' }],
+                ['forest', { id: 'forest', title: 'Forest', icon: '🌲' }],
+            ]),
             enter: (sceneId) => {
                 record.started.push(sceneId);
                 return true;
@@ -239,12 +242,12 @@ describe('each tile completes the journey its button promises', () => {
             consent,
             activities: [journey],
         } = panelWith((c) => [make('journey', { consent: c })]);
-        const ocean = panel
+        const forest = panel
             .contractFor('journey')
             .inputs()
-            .find((input) => input.id === 'ocean');
-        await panel.startActivity('journey', ocean);
-        expect(journey.started).toEqual(['ocean']);
+            .find((input) => input.id === 'forest');
+        await panel.startActivity('journey', forest);
+        expect(journey.started).toEqual(['forest']);
         expect(consent.asked).toEqual([]);
         panel.stopActivity('user');
         expect(journey.stopped).toEqual(['user']);
@@ -266,27 +269,36 @@ describe('each tile completes the journey its button promises', () => {
         expect(copilot.requests).toEqual(['camera']);
     });
 
-    test('Coach: the exercise comes from Coach, and the camera is asked for once', async () => {
+    test('Move together: the exercise comes from Coach, and the camera is asked for once', async () => {
+        // IC3: Copilot is three choices about getting things done; exercise is Life ▸ Move
+        // together, one option per exercise the coach really supports.
         const {
             panel,
             consent,
             activities: [coach],
-        } = panelWith((c) => [make('coach', { consent: c })]);
-        const inputs = panel.contractFor('coach').inputs();
-        expect(inputs.map((i) => i.label)).toEqual([
-            'Copilot Hour',
-            'Tasks',
-            'Focus block',
-            'Learn a topic',
-            'Squat',
-            'Push-up',
+        } = panelWith((c) => [make('coach', { consent: c }), make('cohost', { consent: c })]);
+        window.NEXUS_BD = { togetherPanel: panel };
+        expect(
+            panel
+                .contractFor('coach')
+                .inputs()
+                .map((i) => i.label)
+        ).toEqual(['Work on something', 'My tasks', 'Learn something']);
+        const life = panel.contractFor('cohost').inputs();
+        expect(life.map((i) => i.label)).toEqual([
+            'Talk',
+            'Relax together',
+            'An evening together',
+            'Move together · Squat',
+            'Move together · Push-up',
         ]);
         await panel.startActivity(
-            'coach',
-            inputs.find((input) => input.id === 'push-up')
+            'cohost',
+            life.find((input) => input.id === 'move-push-up')
         );
         expect(coach.started).toEqual(['push-up']);
         expect(consent.asked).toEqual(['camera']);
+        delete window.NEXUS_BD;
     });
 
     test('Meeting: registered, given a conversation, and recording', async () => {
@@ -326,17 +338,20 @@ describe('each tile completes the journey its button promises', () => {
         expect(panel.activeActivity).toBe('music');
     });
 
-    test('Play: on the grid, and says why when nothing produces game moments', async () => {
-        // The tile stays. CoHost's reactions, tier table and overlay are all real and
-        // tested; what is missing is the detector that feeds them, and a control that
-        // vanishes tells nobody that.
+    test('Life: on the grid, Share game is not offered, and it still says why if asked for', async () => {
+        // IC3: the tile stays; the option that could never finish is not on it. CoHost's
+        // reactions are real and tested — what is missing is the detector that feeds them —
+        // so a direct start still explains rather than going quiet.
         const { panel } = panelWith([{ id: 'cohost', start: () => ({ ok: true }), stop: () => true }]);
         expect(panel.choices().map((c) => c.id)).toEqual(['cohost']);
+        expect(
+            panel
+                .contractFor('cohost')
+                .inputs()
+                .some((input) => input.id === 'screen')
+        ).toBe(false);
 
-        const share = panel
-            .contractFor('cohost')
-            .inputs()
-            .find((input) => input.id === 'screen');
+        const share = { id: 'screen', label: 'Share game', permission: 'screen' };
         const result = await panel.startActivity('cohost', share);
         expect(result.ok).toBe(false);
         expect(html()).toMatch(/moment detection/i);
@@ -353,10 +368,9 @@ describe('a failed start never leaves a grant behind', () => {
         const { panel, consent } = panelWith((c) => [
             make('cohost', { consent: c, fail: { ok: false, why: 'no play profile — refusing to start' } }),
         ]);
-        const share = panel
-            .contractFor('cohost')
-            .inputs()
-            .find((input) => input.id === 'screen');
+        // A panel-owned screen grant, passed directly: Share game is no longer on the menu
+        // (IC3), but the panel's cleanup on a failed start is still the guarantee under test.
+        const share = { id: 'screen', label: 'Share game', permission: 'screen' };
         const result = await panel.startActivity('cohost', share);
         expect(result.ok).toBe(false);
         expect(consent.asked).toEqual(['screen']);
@@ -518,10 +532,7 @@ describe('why it did not start', () => {
             activities: [coach],
         } = panelWith((c) => [make('coach', { consent: c })]);
         consent.allow = false;
-        const pushUp = panel
-            .contractFor('coach')
-            .inputs()
-            .find((input) => input.id === 'push-up');
+        const pushUp = { id: 'push-up', label: 'Push-up', permission: 'self', arg: 'push-up' };
         await panel.startActivity('coach', pushUp);
         expect(panel.view).toBe('failure');
 
@@ -632,10 +643,12 @@ describe('choose → explain → ask, always in that order', () => {
     });
 
     test('the setup screen says a permission is coming before it arrives', () => {
-        const { panel } = panelWith((c) => [make('coach', { consent: c })]);
+        const { panel } = panelWith((c) => [make('coach', { consent: c }), make('cohost', { consent: c })]);
+        window.NEXUS_BD = { togetherPanel: panel };
         panel.open();
-        panel.choose('coach');
-        expect(optionNamed('Squat').title).toMatch(/access/i);
+        panel.choose('cohost');
+        expect(optionNamed('Move together · Squat').title).toMatch(/access/i);
+        delete window.NEXUS_BD;
     });
 
     test('Watch spells out what stops when you leave', () => {

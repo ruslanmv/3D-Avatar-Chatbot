@@ -261,12 +261,14 @@ const CompanionSession = (() => {
                     destination: next,
                     activity: state.activeActivity,
                     source: state.activitySource,
+                    // IC3: she started it herself and has already said so (ActivityVoice).
+                    silent: Boolean(how && how.silent),
                     conversationId: state.conversationId,
                 });
                 return { ok: true, destination: next, activity: state.activeActivity, changed: changed };
             },
             /** IC2. End the destination session. The conversation itself is untouched. */
-            end: function () {
+            end: function (how) {
                 if (!loaded) load();
                 if (!state.sessionActive) return { ok: true, ended: false };
                 const destination = state.activeDestination;
@@ -274,7 +276,11 @@ const CompanionSession = (() => {
                 state.activeActivity = null;
                 state.activitySource = null;
                 persist();
-                emit('session:ended', { destination: destination, conversationId: state.conversationId });
+                emit('session:ended', {
+                    destination: destination,
+                    conversationId: state.conversationId,
+                    silent: Boolean(how && how.silent),
+                });
                 return { ok: true, ended: true, destination: destination };
             },
             active: function () {

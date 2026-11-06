@@ -54,7 +54,7 @@
         session.enter(found.destination, found.activity, { source: 'conversation' });
     }
 
-    function suffix() {
+    function contextSuffix() {
         const sessionApi = global.NEXUS_COMPANION_SESSION;
         const memoryApi = global.NEXUS_COMPANION_MEMORY;
         const prompt = global.NEXUS_COMPANION_PROMPT;
@@ -104,6 +104,44 @@
         return prompt.suffix(input);
     }
 
+    function togetherOn() {
+        try {
+            const sw = global.NEXUS_TOGETHER_SWITCH;
+            return Boolean(sw && typeof sw.isOn === 'function' && sw.isOn());
+        } catch (_) {
+            return false;
+        }
+    }
+
+    function panelOf() {
+        const live = global.__NEXUS_COMPANION_LIVE;
+        return (live && live.panel && live.panel()) || (global.NEXUS_BD && global.NEXUS_BD.togetherPanel) || null;
+    }
+
+    /**
+     * What all three prompt sites append: what is going on now (empty until there is
+     * something), then — IC3 — how she can start an activity herself, only while Together is on.
+     */
+    function suffix() {
+        const Directive = global.NEXUS_COMPANION_DIRECTIVE;
+        const tags =
+            Directive && global.__NEXUS_COMPANION_LIVE ? Directive.systemPromptSuffix(togetherOn() && !!panelOf()) : '';
+        return contextSuffix() + tags;
+    }
+
+    /** IC3. Her reply, with an `<activity>` tag taken out and run. Replies only — main.js's displayText seam. */
+    function consume(text) {
+        const Directive = global.NEXUS_COMPANION_DIRECTIVE;
+        const live = global.__NEXUS_COMPANION_LIVE;
+        if (!Directive || !live) return text;
+        return Directive.consume(text, {
+            session: live.session,
+            director: live.director,
+            panel: panelOf,
+            enabled: togetherOn,
+        });
+    }
+
     function attach(options) {
         const options_ = options || {};
         const Session = global.NEXUS_COMPANION_SESSION;
@@ -131,6 +169,22 @@
         const storage = options_.storage || (global.localStorage ? global.localStorage : null);
         const session = Session.create({ storage: storage });
         session.load();
+        // IC3. An activity with a beginning and an end does not survive a reload — the focus
+        // timer, the place and the story are gone with the old page. Bringing its context back
+        // showed "Scene Tale · End" with nothing running. Conversation context stays.
+        try {
+            const MarksApi = global.NEXUS_COMPANION_MARKS;
+            if (
+                session.active() &&
+                session.source() === 'together' &&
+                MarksApi &&
+                MarksApi.EXPLICIT.indexOf(session.activity()) !== -1
+            ) {
+                session.end({ silent: true });
+            }
+        } catch (_) {
+            /* a stale label is the worst case */
+        }
         const memory = Memory.create({ storage: storage });
         const privacy = Privacy.create({
             spicyEnabled: function () {
@@ -229,6 +283,9 @@
         // IC2. One quiet line in the chat when the context changes, and an End pill above
         // the composer while a real activity runs. Missing module, missing chat: the
         // destinations still work.
+        const panelGetter = function () {
+            return options_.panel || (global.NEXUS_BD && global.NEXUS_BD.togetherPanel) || null;
+        };
         let marks = null;
         const Marks = global.NEXUS_COMPANION_MARKS;
         const Intent = global.NEXUS_COMPANION_INTENT;
@@ -239,11 +296,80 @@
                     session: session,
                     director: director,
                     label: Intent && Intent.label ? Intent.label : null,
+                    panel: panelGetter,
                 });
             } catch (error) {
                 console.warn('[Companion] activity marks failed to attach — continuing', error);
             }
         }
+
+        // IC3. She says one line when an activity starts or ends, and her posture follows.
+        let voice = null;
+        const Voice = global.NEXUS_COMPANION_VOICE;
+        if (Voice && typeof Voice.attach === 'function') {
+            try {
+                voice = Voice.attach({
+                    session: session,
+                    behavior: behavior,
+                    label: Intent && Intent.label ? Intent.label : null,
+                    panel: panelGetter,
+                    global: global,
+                });
+            } catch (error) {
+                console.warn('[Companion] activity voice failed to attach — continuing', error);
+            }
+        }
+
+        // IC3. The activity and its context end together, whichever side ends it: the panel's
+        // own Stop, a focus block running out, Seaside finishing or its Exit. The End pill
+        // already ends both (ActivityMarks).
+        const MarksApi = global.NEXUS_COMPANION_MARKS;
+        const ownsPanelActivity = () =>
+            session.active() &&
+            session.source() === 'together' &&
+            MarksApi &&
+            MarksApi.EXPLICIT.indexOf(session.activity()) !== -1 &&
+            session.activity() !== 'seaside';
+        const STORIES = ['scene-tale', 'life-evening', 'copilot-hour'];
+        const storyNotStarted = function (panel) {
+            if (STORIES.indexOf(session.activity()) === -1) return false;
+            const pg = panel.activities && panel.activities.get && panel.activities.get('playground');
+            return !pg || !(pg.active || pg.player || pg.sessionState === 'preparing' || pg.sessionState === 'ready');
+        };
+        let wasActive = null;
+        let offPanel = function () {};
+        const watchPanel = function () {
+            const panel = panelGetter();
+            if (!panel || typeof panel.onChange !== 'function') return false;
+            wasActive = panel.activeActivity || null;
+            offPanel = panel.onChange(function (snap) {
+                const now = snap ? snap.active : null;
+                if (wasActive && !now && ownsPanelActivity()) session.end();
+                else if (snap && snap.view === 'failure' && !now && ownsPanelActivity()) {
+                    // It did not start (a blocked camera, say): no "· End" for nothing, and
+                    // she does not greet an activity that is not happening.
+                    session.end({ silent: true });
+                } else if (snap && !snap.open && !now && ownsPanelActivity() && storyNotStarted(panel)) {
+                    // The story setup was closed without starting a story.
+                    session.end({ silent: true });
+                }
+                wasActive = now || null;
+            });
+            return true;
+        };
+        if (!watchPanel()) setTimeout(watchPanel, 0);
+        // Only a real ending counts: the director reports intermediate states while it loads,
+        // and ending on those dropped Seaside's context the moment it began.
+        let wasRunning = false;
+        const offDirector =
+            typeof director.on === 'function'
+                ? director.on(function () {
+                      const status = director.status();
+                      const running = Boolean(status && (status.status === 'active' || status.status === 'paused'));
+                      if (wasRunning && !running && session.active() && session.activity() === 'seaside') session.end();
+                      wasRunning = running;
+                  })
+                : function () {};
 
         session.on(function (detail) {
             if (detail.type === 'permission:revoked') director.onPermissionRevoked(detail.capability);
@@ -273,6 +399,7 @@
             bridge: bridge,
             bar: bar,
             marks: marks,
+            panel: panelGetter,
             registry: registry,
             behavior: behavior,
         };
@@ -304,6 +431,9 @@
                 }
                 if (bar && bar.detach) bar.detach();
                 if (marks && marks.detach) marks.detach();
+                if (voice && voice.detach) voice.detach();
+                offPanel();
+                offDirector();
                 if (global.removeEventListener) {
                     global.removeEventListener('vr-session-start', onVrStart);
                     global.removeEventListener('vr-session-end', onVrEnd);
@@ -317,6 +447,7 @@
     const api = {
         attach: attach,
         systemPromptSuffix: suffix,
+        consume: consume,
     };
 
     if (global) global.NEXUS_COMPANION = api;

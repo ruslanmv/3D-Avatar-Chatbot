@@ -34,12 +34,12 @@ afterEach(() => {
 describe('the conversation moves the context, only on a clear signal', () => {
     test.each([
         ["I'm tired. Can we spend some time together?", 'life', 'relax'],
-        ['Actually, I need help finishing something first.', 'copilot', 'work'],
-        ['Help me write the summary for tomorrow', 'copilot', 'work'],
+        ['Actually, I need help finishing something first.', 'copilot', 'help'],
+        ['Help me write the summary for tomorrow', 'copilot', 'help'],
         ["Let's go somewhere peaceful", 'experiences', 'explore'],
         ['Can we just talk for a bit?', 'life', 'talk'],
         ['Sono stanca, vorrei rilassarmi', 'life', 'relax'],
-        ['Aiutami a finire la relazione', 'copilot', 'work'],
+        ['Aiutami a finire la relazione', 'copilot', 'help'],
     ])('%s → %s', (text, destination, activity) => {
         expect(Intent.classify(text)).toMatchObject({ destination, activity });
     });
@@ -77,7 +77,7 @@ describe('one quiet line per change, no cards', () => {
         const { session } = setup();
         session.enter('life', 'relax', { source: 'conversation' });
         session.enter('life', 'relax', { source: 'conversation' });
-        session.enter('copilot', 'work', { source: 'conversation' });
+        session.enter('copilot', 'help', { source: 'conversation' });
         expect(lines().map((l) => l.textContent)).toEqual(['Life· Relaxing together', 'Copilot· Ready to help']);
         expect(lines()[1].dataset.destination).toBe('copilot');
         expect(document.querySelector('.nexus-session-card')).toBeNull();

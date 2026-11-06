@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (253 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (254 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -128,8 +128,8 @@ Know the coverage gaps, because they are not intuitive:
 
 ### The gate passes. Keep it that way.
 
-Measured 2026-11-02 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5630 tests in 253 suites, all passing.**
+Measured 2026-11-06 with `npm ci` deps installed: `npm run validate` exits **0**
+— lint clean, format clean, **5647 tests in 254 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -344,7 +344,7 @@ Things to know before touching it:
   goes stale. Dropping the argument silently discards a scene chosen in the
   headset (finding A12-1). Both XR exit handlers pass `this._desktopBgKey`.
 
-## Life, Copilot and Experiences (IC1–IC2)
+## Life, Copilot and Experiences (IC1–IC3)
 
 One companion and one conversation; the three are what is going on, not modes
 she is switched into. `src/companion/` (IIFE, loaded by `boot.js`) holds them.
@@ -368,6 +368,26 @@ she is switched into. `src/companion/` (IIFE, loaded by `boot.js`) holds them.
   the activity line, and `STYLE` (one to three sentences, no question every
   turn, never name a mode). `session.end()` makes the suffix `''` again. Copilot
   never receives Life relationship text or memories.
+- **Every Together choice does what its name says, in one step (IC3).** Life:
+  Talk, Relax together, An evening together, Move together. Copilot: Work on
+  something (a 25-minute focus block), My tasks, Learn something. Experiences:
+  Seaside evening, A story here, the scenes. An option that is really another
+  activity carries `startActivity` + `startInput` and the panel starts it
+  directly (no second menu); `startInput.as` is the name a failure screen uses,
+  so Move together under Life never says "Copilot needs permission", and
+  `context` is the session activity when the option id is more specific
+  (`move-squat` → `move`).
+- **She says one line when it starts or ends (IC3).** `ActivityVoice`: one
+  bounded `callLLM` per Together start, newest start wins, epoch-checked,
+  nothing while the person is mid-turn or with no model configured, posted like
+  any reply. Tasks and Learn are skipped (their loops already ask), a start she
+  made herself is `silent`, and Move together waits until the panel runs the
+  coach — a fast model otherwise greeted an exercise the camera then refused.
+- **She can start it from the chat (IC3):**
+  `<activity name="relax|focus|seaside|story|end" minutes="…"/>`,
+  `ActivityDirective`, the sixth capability instance — suffixed only while
+  Together is on, consumed at both `displayText` seams. A Together activity is
+  ended silently on reload; nothing claims to be running after it stopped.
 
 ## Clearing a conversation
 

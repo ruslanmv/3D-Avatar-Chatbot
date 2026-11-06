@@ -4069,6 +4069,8 @@ async function _handleStreamingResponse(text) {
         // W16. Take <wardrobe> out and run it, at the same seam: Try-On opens and does the
         // rest. `consume` re-checks the switch, Try-On and the private gate when it runs.
         displayText = window.NEXUS_WARDROBE_TOOL ? window.NEXUS_WARDROBE_TOOL.consume(displayText) : displayText;
+        // IC3. <activity name="relax"/> — she starts what the person asked for, at the same seam.
+        displayText = window.NEXUS_COMPANION?.consume ? window.NEXUS_COMPANION.consume(displayText) : displayText;
         // S4. She asked to look something up. Strip the tag, run the search, then ask her
         // again — the second call carries the results, so the answer comes from her having
         // read them rather than from the app pasting snippets into the chat.
@@ -4183,6 +4185,8 @@ async function _handleNonStreamingResponse(text) {
         // W16. Take <wardrobe> out and run it, at the same seam: Try-On opens and does the
         // rest. `consume` re-checks the switch, Try-On and the private gate when it runs.
         displayText = window.NEXUS_WARDROBE_TOOL ? window.NEXUS_WARDROBE_TOOL.consume(displayText) : displayText;
+        // IC3. <activity name="relax"/> — she starts what the person asked for, at the same seam.
+        displayText = window.NEXUS_COMPANION?.consume ? window.NEXUS_COMPANION.consume(displayText) : displayText;
         // S4. She asked to look something up. Strip the tag, run the search, then ask her
         // again — the second call carries the results, so the answer comes from her having
         // read them rather than from the app pasting snippets into the chat.

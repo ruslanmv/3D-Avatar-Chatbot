@@ -255,6 +255,8 @@
         'src/companion/DestinationBar.js',
         'src/companion/ContextIntent.js',
         'src/companion/ActivityMarks.js',
+        'src/companion/ActivityVoice.js',
+        'src/companion/ActivityDirective.js',
         'src/companion/index.js',
     ];
 

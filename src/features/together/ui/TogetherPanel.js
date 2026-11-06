@@ -391,7 +391,7 @@ const TogetherPanel = (() => {
                     return this._fail(
                         activity,
                         Failures
-                            ? Failures.declined(activity.title)
+                            ? Failures.declined(resolved.as || activity.title)
                             : { ok: false, why: this.consent.reason || 'declined' },
                         { declined: true }
                     );
@@ -410,6 +410,13 @@ const TogetherPanel = (() => {
                 this.failure = null;
                 this.pending = null;
                 return this.choose(result.openActivity);
+            }
+            // IC3. Start another activity straight away with a known option (Relax → Focus's
+            // quiet block), instead of opening its menu and asking again.
+            if (result && result.startActivity && result.startActivity !== id) {
+                this.failure = null;
+                this.pending = null;
+                return this.startActivity(result.startActivity, result.startInput || null);
             }
             if (result && result.handedOff) {
                 this.failure = null;
@@ -485,7 +492,11 @@ const TogetherPanel = (() => {
          * them and went back to the chooser. Never "Something went wrong" — see `failures.js`.
          */
         _fail(activity, result, { declined = false } = {}) {
-            const name = (activity && activity.title) || 'This activity';
+            // IC3. A start handed over from another tile names itself (`as`): Move together
+            // chosen under Life runs on Copilot's coach, and "Copilot needs permission" named
+            // a place the person never went.
+            const attempt = this.lastAttempt && this.lastAttempt.input;
+            const name = (attempt && attempt.as) || (activity && activity.title) || 'This activity';
             this.failure = Failures
                 ? declined
                     ? Failures.declined(name)

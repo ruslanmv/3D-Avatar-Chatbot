@@ -37,27 +37,36 @@ const DestinationBar = (() => {
   padding: .45rem .7rem; border-radius: 999px; cursor: pointer;
 }
 #${BAR_ID} button[aria-pressed="true"] { background: rgba(34, 211, 238, .22); color: #f4fbff; }
+/* IC3. One look: this sheet (Tasks, memories, preferences, Seaside's controls) is the
+   Together panel's card — same place, size, glass, headings and buttons. It used to be a
+   different-looking box along the bottom of the avatar. */
 #${SHEET_ID} {
-  position: absolute; left: .5rem; right: .5rem; bottom: .5rem; z-index: 33;
-  max-height: 46%; overflow: auto; padding: .75rem .8rem .85rem; border-radius: 12px;
-  background: rgba(11, 16, 23, .94); border: 1px solid rgba(34, 211, 238, .28); color: #e8ecf2;
-  font: 400 .8rem/1.35 system-ui, sans-serif;
+  position: absolute; left: 50%; bottom: 4.6rem; transform: translateX(-50%); z-index: 33;
+  width: min(78%, 27rem); max-height: 52%; overflow: auto; padding: 1.05rem 1.15rem 1rem;
+  border-radius: 14px; background: rgba(11, 16, 23, .93); border: 1px solid rgba(34, 211, 238, .26);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, .5); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  color: #e8ecf2; font: 400 .84rem/1.4 var(--font-sans, system-ui, sans-serif);
 }
 #${SHEET_ID}[hidden] { display: none; }
-#${SHEET_ID} h2 { margin: 0 0 .2rem; font-size: .68rem; letter-spacing: .14em; color: #22d3ee; }
-#${SHEET_ID} .nexus-companion-actions, #${SHEET_ID} .nexus-companion-row { display: flex; flex-wrap: wrap; gap: .35rem; }
-#${SHEET_ID} button, #${EXIT_ID} {
-  border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.05); color: inherit;
-  border-radius: 8px; padding: .4rem .6rem; cursor: pointer; font: inherit;
+#${SHEET_ID} h2 { margin: 0 0 .35rem; font-size: .66rem; font-weight: 700; letter-spacing: .16em; color: #22d3ee; text-transform: uppercase; }
+#${SHEET_ID} .nexus-companion-actions, #${SHEET_ID} .nexus-companion-row { display: flex; flex-wrap: wrap; gap: .4rem; margin: .3rem 0; }
+#${SHEET_ID} button {
+  padding: .55rem .8rem; border-radius: 9px; cursor: pointer; text-align: left;
+  background: rgba(34, 211, 238, .1); border: 1px solid rgba(34, 211, 238, .32); color: #e8ecf2; font: 500 .82rem/1.2 inherit;
 }
-#${SHEET_ID} .nexus-companion-muted { color: #93a0b0; margin: .35rem 0; }
+#${SHEET_ID} button:hover { background: rgba(34, 211, 238, .19); }
+#${SHEET_ID} button.nexus-companion-close {
+  display: block; margin: .7rem auto 0; background: none; border: 0; color: #93a0b0; text-align: center;
+}
+#${SHEET_ID} .nexus-companion-muted { color: #a9b3c1; margin: .35rem 0; }
 #${SHEET_ID} input, #${SHEET_ID} select {
-  width: 100%; margin: .15rem 0 .4rem; padding: .35rem .45rem; border-radius: 8px;
-  border: 1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.35); color: inherit; font: inherit;
+  width: 100%; margin: .15rem 0 .45rem; padding: .55rem .65rem; border-radius: 9px; box-sizing: border-box;
+  border: 1px solid rgba(255,255,255,.14); background: rgba(0,0,0,.35); color: inherit; font: inherit;
 }
 #${EXIT_ID} {
   position: absolute; left: .55rem; bottom: .55rem; z-index: 34;
-  background: rgba(80, 24, 24, .88); border-color: rgba(224, 121, 106, .7);
+  background: rgba(80, 24, 24, .88); border: 1px solid rgba(224, 121, 106, .7); color: #f8ddd7;
+  border-radius: 9px; padding: .45rem .75rem; cursor: pointer; font: 500 .8rem/1.2 system-ui, sans-serif;
 }
 #${EXIT_ID}[hidden] { display: none; }
 @media (max-width: 640px) {
@@ -451,7 +460,7 @@ const DestinationBar = (() => {
         function paint() {
             paintBar();
             sheet.textContent = '';
-            const back = el(doc, 'button', '', view === 'home' ? 'Close' : 'Back');
+            const back = el(doc, 'button', 'nexus-companion-close', view === 'home' ? 'Close' : 'Back');
             back.type = 'button';
             back.addEventListener('click', function () {
                 if (view === 'home') sheet.hidden = true;
@@ -460,7 +469,6 @@ const DestinationBar = (() => {
                     paint();
                 }
             });
-            sheet.appendChild(back);
             experienceBlock();
             if (view === 'memories') paintMemories();
             else if (view === 'preferences') paintPreferences();
@@ -468,6 +476,8 @@ const DestinationBar = (() => {
             else if (view === 'saved') paintSaved();
             else paintHome();
             if (notice) sheet.appendChild(el(doc, 'p', 'nexus-companion-muted', notice));
+            // At the bottom, like Together's own Back.
+            sheet.appendChild(back);
             const status = director && director.status();
             exit.hidden = !(status && (status.status === 'active' || status.status === 'paused'));
         }
