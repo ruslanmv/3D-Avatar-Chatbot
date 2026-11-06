@@ -56,21 +56,28 @@ const ActivityMarks = (() => {
 .nexus-activity-mark[data-destination="experiences"] { --mark: #F2C94C; }
 .nexus-activity-mark .nexus-activity-dot { width: .42rem; height: .42rem; border-radius: 50%; background: var(--mark); }
 .nexus-activity-mark .nexus-activity-where { color: var(--mark); font-weight: 650; }
+/* DX1. A status bar, not a floating pill: its own full-width row at the top of the composer
+   area, in normal flow, so it can never cover a message, the microphone or the input. Title on
+   the left (truncated, never wrapping into the controls), the End action on the right. */
 #${PILL_ID} {
   --mark: #38A9FF;
-  display: flex; align-items: center; gap: .4rem; margin: 0 0 .35rem; padding: .22rem .6rem;
-  width: fit-content; max-width: 100%; border-radius: 999px; color: #cfe0ec;
-  border: 1px solid color-mix(in srgb, var(--mark) 55%, transparent);
-  background: color-mix(in srgb, var(--mark) 10%, #0b1620); font: 500 .72rem/1.2 system-ui, sans-serif;
+  display: flex; align-items: center; gap: .5rem; margin: 0 0 .5rem; padding: .3rem .4rem .3rem .7rem;
+  width: 100%; box-sizing: border-box; min-height: 34px; border-radius: 10px; color: #cfe0ec;
+  border: 1px solid color-mix(in srgb, var(--mark) 45%, transparent);
+  background: color-mix(in srgb, var(--mark) 9%, #0b1620); font: 500 .76rem/1.2 system-ui, sans-serif;
 }
+#${PILL_ID} .nexus-activity-words { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #${PILL_ID}[hidden] { display: none; }
 #${PILL_ID}[data-destination="copilot"] { --mark: #26D89A; }
 #${PILL_ID}[data-destination="experiences"] { --mark: #F2C94C; }
 #${PILL_ID} .nexus-activity-dot { width: .42rem; height: .42rem; border-radius: 50%; background: var(--mark); }
 #${PILL_ID} button {
-  border: 0; background: none; color: var(--mark); font: inherit; font-weight: 650;
-  text-decoration: underline; cursor: pointer; padding: .2rem .2rem; min-height: 26px;
+  flex: 0 0 auto; border: 1px solid color-mix(in srgb, var(--mark) 55%, transparent); border-radius: 8px;
+  background: color-mix(in srgb, var(--mark) 14%, transparent); color: #eef6fb; font: inherit; font-weight: 650;
+  cursor: pointer; padding: .3rem .7rem; min-height: 28px;
 }
+#${PILL_ID} button:hover { background: color-mix(in srgb, var(--mark) 26%, transparent); }
+#${PILL_ID} button:focus-visible { outline: 2px solid var(--mark); outline-offset: 2px; }
 `;
 
     function where(destination) {
@@ -133,7 +140,7 @@ const ActivityMarks = (() => {
         pill.hidden = true;
         const dot = el(doc, 'span', 'nexus-activity-dot');
         dot.setAttribute('aria-hidden', 'true');
-        const words = el(doc, 'span');
+        const words = el(doc, 'span', 'nexus-activity-words');
         const endButton = el(doc, 'button', '', 'End');
         endButton.type = 'button';
         endButton.addEventListener('click', end);
@@ -154,6 +161,12 @@ const ActivityMarks = (() => {
             const destination = session.destination();
             pill.dataset.destination = destination;
             words.textContent = text(destination, activity, label(activity));
+            words.title = words.textContent;
+            // DX1. Say what it ends. "End experience" for an experience; elsewhere "End" with
+            // the activity in its accessible name, so a screen reader hears "End Relaxing together".
+            endButton.textContent = destination === 'experiences' ? 'End experience' : 'End';
+            endButton.setAttribute('aria-label', 'End ' + (label(activity) || 'activity'));
+            endButton.title = endButton.getAttribute('aria-label');
         }
 
         // ── the line in the chat ────────────────────────────────────────────

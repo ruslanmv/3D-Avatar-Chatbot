@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (255 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (256 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-06 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5670 tests in 255 suites, all passing.**
+— lint clean, format clean, **5673 tests in 256 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -191,9 +191,9 @@ Avatar Library, `VP` for the VR puppet, `AR` for the AR conversation, `VR` for
 the VR chat panel, `ST` for on-device speech-to-text (`docs/QUEST_STT.md`) and
 `HV` for SonicAgent voice through OllaBridge Cloud (`docs/SONICAGENT_VOICE.md`),
 `IC` for Life/Copilot/Experiences, `MV` for music levels in sessions, `TG` for
-the Together grid and `VW` for VR worlds (`docs/VR_WORLDS.md`). Commit subjects
-match: `A4: viewport background manager`. So `git log --grep 'A4'` and the
-comment line up.
+the Together grid, `VW` for VR worlds (`docs/VR_WORLDS.md`) and `DX` for desktop
+control layout. Commit subjects match: `A4: viewport background manager`. So
+`git log --grep 'A4'` and the comment line up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of
@@ -392,6 +392,15 @@ she is switched into. `src/companion/` (IIFE, loaded by `boot.js`) holds them.
   screen uses, so Move together under Life never says "Copilot needs
   permission", and `context` is the session activity when the option id is more
   specific (`move-squat` → `move`).
+- **One place to end an experience on desktop, and nothing floats (DX1).** The
+  conversation panel's status bar (`ActivityMarks` pill: a full-width row at the
+  top of `.chat-input-shell`, in normal flow, title left, "End experience" or
+  "End" right with the activity in its `aria-label`) is where it ends. The old
+  red Exit chip was absolutely positioned over the avatar footer's 🎯 Reset
+  Camera; it is now "End experience" inside the DestinationBar sheet's
+  experience row. The sheet's Close only dismisses the sheet. Footer buttons get
+  `aria-label` from their `title` at runtime (index.html's lines are pinned by
+  the parity harness). `tests/companion/desktop-controls.test.js`.
 - **She says one line when it starts or ends (IC3).** `ActivityVoice`: one
   bounded `callLLM` per Together start, newest start wins, epoch-checked,
   nothing while the person is mid-turn or with no model configured, posted like

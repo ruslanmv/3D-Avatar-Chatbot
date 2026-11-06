@@ -63,17 +63,38 @@ const DestinationBar = (() => {
   width: 100%; margin: .15rem 0 .45rem; padding: .55rem .65rem; border-radius: 9px; box-sizing: border-box;
   border: 1px solid rgba(255,255,255,.14); background: rgba(0,0,0,.35); color: inherit; font: inherit;
 }
-#${EXIT_ID} {
-  position: absolute; left: .55rem; bottom: .55rem; z-index: 34;
-  background: rgba(80, 24, 24, .88); border: 1px solid rgba(224, 121, 106, .7); color: #f8ddd7;
-  border-radius: 9px; padding: .45rem .75rem; cursor: pointer; font: 500 .8rem/1.2 system-ui, sans-serif;
+/* DX1. End experience is a button in the sheet's experience row, beside Pause — not a red
+   chip floating in the avatar card's corner. Floating at left/bottom .55rem it sat exactly on
+   the footer's first button (🎯 Reset Camera): two controls, one spot, and a tap meant to reset
+   the view ended Seaside Evening. In the flow of the sheet it cannot cover anything. */
+#${SHEET_ID} #${EXIT_ID} {
+  background: rgba(80, 24, 24, .6); border-color: rgba(224, 121, 106, .7); color: #f8ddd7;
 }
+#${SHEET_ID} #${EXIT_ID}:hover { background: rgba(110, 32, 32, .75); }
 #${EXIT_ID}[hidden] { display: none; }
+/* DX1. Keyboard focus is visible on every control in the avatar card's footer and this sheet. */
+.avatar-footer-actions button:focus-visible, #${SHEET_ID} button:focus-visible, #${SHEET_ID} select:focus-visible,
+#${SHEET_ID} input:focus-visible {
+  outline: 2px solid #22d3ee; outline-offset: 2px;
+}
 @media (max-width: 640px) {
   #${BAR_ID} button { padding: .5rem .55rem; }
   #${SHEET_ID} { max-height: 52%; }
 }
 `;
+
+    /**
+     * DX1. Icon-only buttons in the avatar footer get a spoken name from their tooltip.
+     * `title` alone is a hover hint; a screen reader announced "🎯 direct hit" for Reset
+     * Camera. Done here rather than in index.html, whose line numbers the parity harness pins.
+     */
+    function labelFooter(doc) {
+        const buttons = doc.querySelectorAll ? doc.querySelectorAll('.avatar-footer-actions button') : [];
+        for (const button of buttons) {
+            const name = button.getAttribute('title');
+            if (name && !button.getAttribute('aria-label')) button.setAttribute('aria-label', name);
+        }
+    }
 
     function el(doc, tag, className, text) {
         const node = doc.createElement(tag);
@@ -116,12 +137,16 @@ const DestinationBar = (() => {
         const sheet = el(doc, 'div');
         sheet.id = SHEET_ID;
         sheet.hidden = true;
-        const exit = el(doc, 'button', '', 'Exit');
+        // DX1. "End experience", not "Exit": Exit read as "leave this screen" next to a sheet
+        // whose Close does exactly that. Close dismisses the sheet and never stops anything;
+        // this ends the experience. It lives in the sheet (see experienceBlock), not on the card.
+        const exit = el(doc, 'button', '', 'End experience');
         exit.id = EXIT_ID;
         exit.type = 'button';
         exit.hidden = true;
+        exit.setAttribute('aria-label', 'End the experience');
         host.appendChild(sheet);
-        host.appendChild(exit);
+        labelFooter(doc);
 
         let view = 'home';
         let notice = '';
@@ -179,10 +204,18 @@ const DestinationBar = (() => {
             const status = director.status();
             const active = status.status === 'active' || status.status === 'paused';
             exit.hidden = !active;
-            if (!active || !status.detail) return;
+            if (!active) return;
+            if (!status.detail) {
+                // Running but nothing to show yet: the sheet still offers the way to end it.
+                const only = el(doc, 'div', 'nexus-companion-row');
+                only.appendChild(exit);
+                sheet.appendChild(only);
+                return;
+            }
             const detail = status.detail;
             sheet.appendChild(el(doc, 'p', 'nexus-companion-muted', detail.line || 'Seaside Evening'));
             const row = el(doc, 'div', 'nexus-companion-row');
+            row.appendChild(exit);
             if (status.status === 'active') {
                 const pause = el(doc, 'button', '', 'Pause');
                 pause.type = 'button';
