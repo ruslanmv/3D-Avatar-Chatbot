@@ -283,11 +283,12 @@ describe('each tile completes the journey its button promises', () => {
                 .contractFor('coach')
                 .inputs()
                 .map((i) => i.label)
-        ).toEqual(['Work on something', 'My tasks', 'Learn something']);
+        ).toEqual(['Work on something', 'My tasks', 'Learn something', 'Copilot Hour']);
         const life = panel.contractFor('cohost').inputs();
         expect(life.map((i) => i.label)).toEqual([
             'Talk',
             'Relax together',
+            'An evening together',
             'Move together · Squat',
             'Move together · Push-up',
         ]);
@@ -342,7 +343,9 @@ describe('each tile completes the journey its button promises', () => {
         // reactions are real and tested — what is missing is the detector that feeds them —
         // so a direct start still explains rather than going quiet.
         const { panel } = panelWith([{ id: 'cohost', start: () => ({ ok: true }), stop: () => true }]);
-        expect(panel.choices().map((c) => c.id)).toEqual(['cohost']);
+        // TG2: Life has no tile of its own on the first screen; Playground opens it.
+        expect(panel.choices().map((c) => c.id)).toEqual([]);
+        expect(panel.contractFor('cohost').hidden).toBe(true);
         expect(
             panel
                 .contractFor('cohost')

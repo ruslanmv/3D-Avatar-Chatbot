@@ -184,6 +184,12 @@ const TogetherPanel = (() => {
             this.lastAttempt = null;
             /** The element that opened the chooser, so focus goes back where it came from. */
             this.opener = null;
+            /**
+             * TG2. The setup screens behind this one, so Back goes one step up — a story to
+             * Life, Life to Playground, Playground home — instead of always to the first
+             * screen, which lost the person two levels at once.
+             */
+            this.trail = [];
             this.pipeline = null;
             this.root = null;
             this.state = { state: 'idle', label: '' };
@@ -240,6 +246,7 @@ const TogetherPanel = (() => {
             this.view = this.active ? 'running' : 'chooser';
             this.pending = null;
             this.failure = null;
+            this.trail = [];
             // B36. Whichever control opened this — the toolbar button or the drawer entry —
             // is where focus goes when it closes. Returning to the toolbar after opening
             // from the drawer drops a keyboard user somewhere they never were.
@@ -278,9 +285,23 @@ const TogetherPanel = (() => {
         }
 
         /** Step into one activity's setup, or start it if it has only one way in. */
-        choose(id) {
+        choose(id, { fresh = false } = {}) {
             const contract = this.contractFor(id);
             if (!contract && !this.activities.has(id)) return { ok: false, why: `no activity ${id}` };
+            // TG2. Coming from another setup screen (Playground ▸ Life): remember it for Back.
+            const from = this.open_ && this.view === 'setup' ? this.pending : null;
+            if (from && from !== id) this.trail.push(from);
+            // A tile on the first screen starts that activity's setup from its beginning. A
+            // story picked earlier and abandoned with Cancel otherwise reopened Playground on
+            // that story's screen instead of on its three places.
+            const raw = this.activities.get(id);
+            if (fresh && raw && typeof raw.resetSetup === 'function') {
+                try {
+                    raw.resetSetup();
+                } catch (_) {
+                    /* the setup still opens */
+                }
+            }
 
             // T1. Using it is how you turn it on. Somebody who has just pressed Music has
             // answered the question more clearly than any dialog could ask it, so there is no
@@ -408,6 +429,9 @@ const TogetherPanel = (() => {
             // Life, Copilot and Experiences hand the chooser to a playground or
             // to another activity's own setup. That is not this tile running.
             if (result && result.openActivity) {
+                // TG2. Life ▸ An evening together opens Playground's story screen; Back from
+                // there returns to Life.
+                if (this.view === 'setup' && this.pending === id) this.trail.push(id);
                 this.failure = null;
                 this.pending = null;
                 return this.choose(result.openActivity);
@@ -519,6 +543,30 @@ const TogetherPanel = (() => {
             // started; handing back the copy object would answer a different question and
             // `result.ok` would read `undefined`, which is neither true nor false.
             return { ok: false, why: this.failure.why || String((result && result.why) || 'refused') };
+        }
+
+        /**
+         * TG2. One step up: the setup screen this one was opened from, or the first screen.
+         * It re-shows that screen rather than choosing it again, so a one-option activity
+         * is not started by going back to it.
+         */
+        back() {
+            const leaving = this.activities.get(this.pending);
+            if (leaving && typeof leaving.resetSetup === 'function') {
+                try {
+                    leaving.resetSetup();
+                } catch (_) {
+                    /* going back still works */
+                }
+            }
+            const prev = this.trail.pop();
+            if (!prev || (!this.contractFor(prev) && !this.activities.has(prev))) return this.open();
+            this.view = 'setup';
+            this.pending = prev;
+            this.failure = null;
+            this._paint();
+            this._announce();
+            return { ok: true, why: 'back' };
         }
 
         /** Leave the running activity. The activity puts its own profile back (§6.11). */
@@ -679,6 +727,7 @@ const TogetherPanel = (() => {
                 this.root.appendChild(
                     this._button(this.view === 'chooser' ? 'Cancel' : 'Back', 'nexus-bd-together-cancel', () => {
                         if (this.view === 'chooser') this.close();
+                        else if (this.view === 'setup') this.back();
                         else this.open();
                     })
                 );
@@ -706,7 +755,9 @@ const TogetherPanel = (() => {
                   }));
 
             for (const activity of shown) {
-                const tile = this._button('', 'nexus-bd-together-tile', () => this.choose(activity.id));
+                const tile = this._button('', 'nexus-bd-together-tile', () =>
+                    this.choose(activity.id, { fresh: true })
+                );
                 if (activity.wide) tile.classList.add('is-wide');
                 tile.dataset.activity = activity.id;
                 const name = this.doc.createElement('span');

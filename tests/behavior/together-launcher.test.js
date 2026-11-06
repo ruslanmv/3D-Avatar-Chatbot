@@ -199,8 +199,15 @@ function harness({ ids = ['watch', 'journey', 'music', 'cohost', 'focus', 'coach
         panel.register(activities[id]);
     }
     const launcher = TogetherLauncher.attach({ panel, doc: document, viewer: null });
+    lastPanel = panel;
     return { panel, launcher, consent, activities };
 }
+let lastPanel = null;
+/**
+ * TG2: Life, Copilot and Experiences are reached through Playground, not the first screen. These
+ * tests are about what each place does once open, so they open it the way Playground's tile does.
+ */
+const PLACE_IDS = { Life: 'cohost', Copilot: 'coach', Experiences: 'journey' };
 
 /** Click handlers kick off async starts; let them settle before asserting. */
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -217,6 +224,9 @@ const revealAll = () => {
 }; // no-op now that nothing is hidden
 const tileNamed = (name) => {
     let found = tiles().find((t) => t.textContent.includes(name));
+    if (!found && PLACE_IDS[name] && lastPanel) {
+        return { click: () => lastPanel.choose(PLACE_IDS[name], { fresh: true }), textContent: name };
+    }
     if (!found && moreButton()) {
         revealAll();
         found = tiles().find((t) => t.textContent.includes(name));
@@ -405,9 +415,11 @@ describe('opening the chooser starts nothing at all', () => {
         harness();
         button().click();
         const names = tiles().map((t) => t.querySelector('.nexus-bd-together-name').textContent);
-        // TG1: one door per thing. Focus is started from Life and Copilot, so it has no tile,
-        // and "Help me" is a tile like the others, last.
-        expect(names).toEqual(['Life', 'Copilot', 'Experiences', 'Watch', 'Music', 'Help me']);
+        // TG1–TG2: one door per thing. Life, Copilot and Experiences are inside Playground
+        // (not registered in this harness), Focus is started by Life and Copilot, and
+        // "Help me" is a tile like the others, last.
+        expect(names).toEqual(['Watch', 'Music', 'Help me']);
+        expect(names).not.toContain('Life');
         expect(tiles().filter((t) => t.classList.contains('is-wide'))).toEqual([]);
         expect(moreButton()).toBeNull();
     });
@@ -429,7 +441,8 @@ describe('opening the chooser starts nothing at all', () => {
         panel.register(activity('focus', 'focus', { consent }));
         TogetherLauncher.attach({ panel, doc: document, viewer: null });
         button().click();
-        expect(tiles().map((t) => t.querySelector('.nexus-bd-together-name').textContent)).toEqual(['Life', 'Music']);
+        // Life is behind Playground (TG2); Music, with nothing to play, still has its tile.
+        expect(tiles().map((t) => t.querySelector('.nexus-bd-together-name').textContent)).toEqual(['Music']);
     });
 
     test('no tile names an implementation concept, on either screen', () => {
@@ -457,7 +470,7 @@ describe('opening the chooser starts nothing at all', () => {
                 .map((t) => t.textContent)
                 .join(' ')
         ).not.toContain('Screen Insight');
-        expect(tiles()).toHaveLength(6); // TG1: Focus has no tile of its own
+        expect(tiles()).toHaveLength(3); // TG1–TG2: watch, music, help; the places are in Playground
     });
 
     test('there is no generic Share Screen button on the first view', () => {
@@ -551,6 +564,7 @@ describe('permission comes after the choice, never before', () => {
         expect(options().map((o) => o.firstChild.textContent)).toEqual([
             'Talk',
             'Relax together',
+            'An evening together',
             'Move together · Squat',
             'Move together · Push-up',
         ]);
@@ -559,6 +573,7 @@ describe('permission comes after the choice, never before', () => {
             'Work on something',
             'My tasks',
             'Learn something',
+            'Copilot Hour',
         ]);
         delete window.NEXUS_BD;
     });
@@ -999,5 +1014,21 @@ describe('it behaves like a menu for somebody not using a mouse', () => {
         h.launcher.detach();
         expect(h.launcher.stats.listening).toBe(false);
         expect(() => press('Escape')).not.toThrow();
+    });
+});
+
+describe('TG2: Back goes one step up', () => {
+    test('a place opened from another setup screen returns there, then to the first screen', () => {
+        const h = harness();
+        button().click();
+        h.panel.choose('coach', { fresh: true }); // as Playground's screen would be open here
+        h.panel.choose('cohost'); // opened from that screen
+        expect(h.panel.pending).toBe('cohost');
+        document.querySelector('.nexus-bd-together-cancel').click();
+        expect(h.panel.view).toBe('setup');
+        expect(h.panel.pending).toBe('coach');
+        document.querySelector('.nexus-bd-together-cancel').click();
+        expect(h.panel.view).toBe('chooser');
+        expect(h.panel.activeActivity).toBeNull();
     });
 });

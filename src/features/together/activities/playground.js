@@ -61,6 +61,10 @@ const PlaygroundActivity = (() => {
         note: 'A short story set where we are.',
     });
     const PLAYGROUNDS = Object.freeze([LIFE_EVENING, COPILOT_HOUR, SCENE_TALE]);
+    /** TG2. What Playground's own screen offers: the three places, in their colours. */
+    const PLACES = Object.freeze(['cohost', 'coach', 'journey']);
+    /** Each place's own story, for a page where that place is not loaded. */
+    const PLACE_STORY = Object.freeze({ cohost: 'life-evening', coach: 'copilot-hour', journey: 'scene-tale' });
 
     function playgroundById(id) {
         return PLAYGROUNDS.find((item) => item.id === id) || null;
@@ -2322,7 +2326,8 @@ const PlaygroundActivity = (() => {
             this.id = 'playground';
             this.title = 'Playground';
             this.icon = '✨';
-            this.order = 45;
+            // TG2. First: it holds Life, Copilot and Experiences.
+            this.order = 5;
             this.prompt = 'A little story inspired by this place.';
             this.bus = bus || null;
             this.win = win || globalObject();
@@ -2554,31 +2559,50 @@ const PlaygroundActivity = (() => {
             this._intimateBridge = null;
         }
 
+        /**
+         * TG2. Playground is where the three places are: Life, Copilot, Experiences, as the
+         * same coloured tiles the home grid used to show. It used to list its three stories
+         * here as well — An evening together, Copilot Hour, Scene Tale — which were each
+         * already inside one of those places, so the person met every story twice under two
+         * names. Each story now lives only under its place; this screen only says where.
+         */
+        _storyButton(doc, parent, item) {
+            if (!item) return null;
+            const list = addEl(doc, parent, 'div', 'nexus-bd-together-options');
+            const choice = button(doc, list, item.label, 'nexus-bd-together-option', () => {
+                this.playgroundId = item.id;
+                this.sessionState = 'configure';
+                this.idea = '';
+                this._repaint();
+            });
+            choice.dataset.playground = item.id;
+            return choice;
+        }
+
+        /** TG2. Back to the three places, unless a story is already running. */
+        resetSetup() {
+            if (this.active) return;
+            this.playgroundId = null;
+            this.sessionState = 'pick';
+        }
+
         _paintPicker(panel) {
             const doc = panel.doc;
             addEl(doc, panel.root, 'p', 'nexus-bd-together-subtitle', 'PLAYGROUND');
-            addEl(
-                doc,
-                panel.root,
-                'p',
-                'nexus-bd-together-prompt',
-                // TG1. The one home of her stories: Life, Copilot and Experiences no longer offer
-                // these too, so this says what they are rather than how many.
-                'Short stories we play together. You choose twice.'
-            );
-            const list = addEl(doc, panel.root, 'div', 'nexus-bd-together-options');
-            for (const item of PLAYGROUNDS) {
-                const choice = button(doc, list, item.label, 'nexus-bd-together-option', () => {
-                    this.playgroundId = item.id;
-                    this.sessionState = 'configure';
-                    this.idea = '';
-                    this._repaint();
-                });
-                choice.dataset.playground = item.id;
-                if (item.note) {
-                    const note = addEl(doc, list, 'p', 'nexus-bd-together-note', item.note);
-                    note.dataset.playgroundNote = item.id;
+            const grid = addEl(doc, panel.root, 'div', 'nexus-bd-together-grid');
+            for (const id of PLACES) {
+                const place = typeof panel.contractFor === 'function' ? panel.contractFor(id) : null;
+                if (!place) {
+                    // A place not on this page: offer its story itself, so Playground is never
+                    // an empty screen and no story becomes unreachable.
+                    this._storyButton(doc, panel.root, playgroundById(PLACE_STORY[id]));
+                    continue;
                 }
+                const tile = button(doc, grid, '', 'nexus-bd-together-tile', () => panel.choose(id));
+                tile.dataset.activity = id;
+                addEl(doc, tile, 'span', 'nexus-bd-together-icon', place.icon || '');
+                addEl(doc, tile, 'span', 'nexus-bd-together-name', place.title || id);
+                tile.title = place.title || id;
             }
         }
 
@@ -2622,11 +2646,8 @@ const PlaygroundActivity = (() => {
             // configure screen and used to write Scene Tale's title, question and example over
             // all of them — Life Evening and Copilot Hour both opened as "Scene Tale".
             create.dataset.playground = spec.id;
-            button(doc, list, 'Other playgrounds', 'nexus-bd-together-option', () => {
-                this.playgroundId = null;
-                this.sessionState = 'pick';
-                this._repaint();
-            }).dataset.action = 'other-playgrounds';
+            // TG2. No "Other playgrounds": the panel's Back returns to the place this story
+            // was chosen in, and from there to Playground.
         }
 
         /**

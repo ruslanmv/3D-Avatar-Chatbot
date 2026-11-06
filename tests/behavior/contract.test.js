@@ -173,7 +173,7 @@ describe('the tiles that could not complete', () => {
                 .inputs()
                 .map((i) => i.id)
                 .sort()
-        ).toEqual(['forest', 'seaside']);
+        ).toEqual(['forest', 'scene-tale', 'seaside']);
     });
 
     test('copilot: "just look and help" starts without a checklist', async () => {
@@ -523,21 +523,35 @@ describe('the adapter layer stays an adapter layer', () => {
 // ── TG1: one door per thing ─────────────────────────────────────────────────
 
 describe('each thing in Together has one door', () => {
-    test('the stories live only in Playground, and Focus has no tile of its own', () => {
+    test('each story lives under exactly one place, and the places are inside Playground', () => {
         window.NEXUS_BD = { togetherPanel: { activities: new Map([['coach', fakes.coach()]]) } };
         const adapted = adaptAll({ conversationId: 'c1' });
-        // Life, Copilot and Experiences used to offer An evening together and A story here
-        // too: one feature reached by two names. Playground is where the stories are.
+        // TG2: Life ▸ An evening together, Copilot ▸ Copilot Hour, Experiences ▸ Scene Tale.
+        // Playground used to list the same three stories again; now it shows the places.
+        const stories = {};
         for (const id of ['cohost', 'coach', 'journey']) {
-            const stories = adapted[id].inputs().filter((i) => i.playground);
-            expect(`${id}: ${stories.map((i) => i.id).join(', ')}`).toBe(`${id}: `);
+            stories[id] = adapted[id]
+                .inputs()
+                .filter((i) => i.playground)
+                .map((i) => i.playground);
         }
-        // Relax together and Work on something start Focus; a Focus tile was the same twice.
-        expect(adapted.focus.hidden).toBe(true);
+        expect(stories).toEqual({ cohost: ['life-evening'], coach: ['copilot-hour'], journey: ['scene-tale'] });
+        // Hidden means "no tile on the first screen": the places (Playground opens them) and
+        // Focus (Relax together and Work on something start it).
         expect(
             Object.values(adapted)
                 .filter((a) => a.hidden)
                 .map((a) => a.id)
-        ).toEqual(['focus']);
+                .sort()
+        ).toEqual(['coach', 'cohost', 'focus', 'journey']);
+    });
+
+    test("Playground's own screen shows the three places, not a list of stories", () => {
+        const src = fs.readFileSync(
+            path.join(__dirname, '../../src/features/together/activities/playground.js'),
+            'utf8'
+        );
+        expect(src).toMatch(/const PLACES = Object\.freeze\(\['cohost', 'coach', 'journey'\]\)/);
+        expect(src).not.toMatch(/Other playgrounds'/);
     });
 });

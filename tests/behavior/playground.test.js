@@ -106,7 +106,7 @@ describe('Playground activity contract', () => {
         expect(activity.__contract).toBe(true);
         expect(activity.id).toBe('playground');
         expect(activity.title).toBe('Playground');
-        expect(activity.order).toBe(45);
+        expect(activity.order).toBe(5); // TG2: first, it holds the three places
         expect(activity.inputs()).toEqual([
             expect.objectContaining({ id: 'life-evening', label: 'An evening together', permission: null }),
             expect.objectContaining({ id: 'copilot-hour', label: 'Copilot Hour', permission: null }),

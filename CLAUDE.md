@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-06 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5649 tests in 254 suites, all passing.**
+— lint clean, format clean, **5651 tests in 254 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -352,8 +352,9 @@ she is switched into. `src/companion/` (IIFE, loaded by `boot.js`) holds them.
 
 - **Together is the only way in (IC2).** IC1's strip of three buttons over the
   avatar is no longer added to the page (`DestinationBar` keeps its sheet and
-  Exit, which Together opens via `show()`). The three tiles lead the chooser in
-  their colours: Life #38A9FF, Copilot #26D89A, Experiences #F2C94C.
+  Exit, which Together opens via `show()`). The three tiles are inside Together
+  ▸ Playground (TG2), in their colours: Life #38A9FF, Copilot #26D89A,
+  Experiences #F2C94C.
 - **The conversation moves the context.** At prompt time `index.js`'s
   `noticeTopic` runs `ContextIntent.classify` (pure, local, English and Italian,
   no model call) on the latest user message; only a clear, unambiguous signal
@@ -369,20 +370,27 @@ she is switched into. `src/companion/` (IIFE, loaded by `boot.js`) holds them.
   the activity line, and `STYLE` (one to three sentences, no question every
   turn, never name a mode). `session.end()` makes the suffix `''` again. Copilot
   never receives Life relationship text or memories.
-- **One door per thing (TG1).** The grid is nine tiles: Life, Copilot,
-  Experiences / Watch, Music, Playground / Try-On, Meeting, Help me. The three
-  stories (An evening together, Copilot Hour, Scene Tale) live only in
-  Playground; Focus has no tile (`hidden: true` on its adapter, filtered out of
-  `choices()`) because Life ▸ Relax together and Copilot ▸ Work on something
-  start it. A test fails if a destination tile offers a playground again.
+- **One door per thing (TG1–TG2).** The first screen is six tiles: Playground,
+  Watch, Music / Try-On, Meeting, Help me. **Playground holds the three places**
+  — its screen is only the coloured Life, Copilot and Experiences tiles
+  (`PLACES` in `playground.js`); each story lives under its place (Life ▸ An
+  evening together, Copilot ▸ Copilot Hour, Experiences ▸ Scene Tale) and
+  nowhere else. Life, Copilot, Experiences and Focus are `hidden: true`
+  adapters: registered and started as before, no tile of their own (Focus is
+  started by Relax together and Work on something). If a place is not loaded,
+  Playground offers its story directly rather than an empty screen. **Back goes
+  one step up** (`panel.trail`, `back()`): story → place → Playground → first
+  screen; a first-screen tile passes `{ fresh: true }` so Playground opens on
+  its places, not on a story abandoned earlier (`resetSetup()`).
 - **Every Together choice does what its name says, in one step (IC3).** Life:
-  Talk, Relax together, Move together. Copilot: Work on something (a 25-minute
-  focus block), My tasks, Learn something. Experiences: Seaside evening and the
-  scenes. An option that is really another activity carries `startActivity` +
-  `startInput` and the panel starts it directly (no second menu);
-  `startInput.as` is the name a failure screen uses, so Move together under Life
-  never says "Copilot needs permission", and `context` is the session activity
-  when the option id is more specific (`move-squat` → `move`).
+  Talk, Relax together, An evening together, Move together. Copilot: Work on
+  something (a 25-minute focus block), My tasks, Learn something, Copilot Hour.
+  Experiences: Seaside evening, Scene Tale and the scenes. An option that is
+  really another activity carries `startActivity` + `startInput` and the panel
+  starts it directly (no second menu); `startInput.as` is the name a failure
+  screen uses, so Move together under Life never says "Copilot needs
+  permission", and `context` is the session activity when the option id is more
+  specific (`move-squat` → `move`).
 - **She says one line when it starts or ends (IC3).** `ActivityVoice`: one
   bounded `callLLM` per Together start, newest start wins, epoch-checked,
   nothing while the person is mid-turn or with no model configured, posted like

@@ -109,8 +109,9 @@ const ActivityContract = (() => {
      *
      * Each is `{title, icon, order, prompt, inputs, availability, start, stop, status}`.
      *
-     * TG1: one door per thing. An adapter marked `hidden` (Focus) is started from another
-     * tile and has none of its own; everything else is on the first screen.
+     * TG1–TG2: one door per thing. An adapter marked `hidden` has no tile on the first
+     * screen: Life, Copilot and Experiences are reached through Playground, and Focus is
+     * started by Life and Copilot. Everything else is on the first screen.
      *
      * **Every activity is on the first screen**, in the order the chooser has always shown
      * them. An earlier draft of this batch cut that to four tiles with the rest behind a
@@ -325,7 +326,10 @@ const ActivityContract = (() => {
         coach: {
             title: 'Copilot',
             icon: '🧭',
-            order: 2, // IC2: Life, Copilot, Experiences lead the chooser
+            order: 2,
+            // TG2. Reached through Playground, which shows the three places; the home grid
+            // showing them too was the same three doors twice.
+            hidden: true,
             prompt: 'What do you want to get done?',
             // IC3. Three choices, named by what happens. "Copilot Hour" (a story about
             // finishing something) and the camera exercise coach (Squat) used to sit here:
@@ -358,6 +362,15 @@ const ActivityContract = (() => {
                     permission: null,
                     destination: 'copilot',
                     action: { id: 'learn', label: 'Learn', kind: 'study' },
+                },
+                // TG2. Copilot's story is here, and only here (see Experiences).
+                {
+                    id: 'copilot-hour',
+                    label: 'Copilot Hour',
+                    note: 'One small thing, finished together.',
+                    permission: null,
+                    destination: 'copilot',
+                    playground: 'copilot-hour',
                 },
             ],
             start: (a, { input }) => {
@@ -402,7 +415,10 @@ const ActivityContract = (() => {
         journey: {
             title: 'Experiences',
             icon: '🌙',
-            order: 3, // IC2: Life, Copilot, Experiences lead the chooser
+            order: 3,
+            // TG2. Reached through Playground, which shows the three places; the home grid
+            // showing them too was the same three doors twice.
+            hidden: true,
             prompt: 'Where do you want to go?',
             // IC3. Four places. "By the sea" was a second beach beside Seaside Evening, the
             // richer of the two, so it is not offered twice. The other places now tell the
@@ -415,8 +431,17 @@ const ActivityContract = (() => {
                     destination: 'experiences',
                     action: { id: 'seaside', kind: 'experience', experienceId: 'seaside-evening' },
                 },
-                // TG1. "A story here" lives in Playground with the other two stories. Offered in
-                // both places it was one feature reached by two names.
+                // TG2. Each story lives under the place it belongs to: Scene Tale here, An
+                // evening together under Life, Copilot Hour under Copilot. Playground holds the
+                // three places, not a second list of the same stories.
+                {
+                    id: 'scene-tale',
+                    label: 'Scene Tale',
+                    note: 'A short story set where we are.',
+                    permission: null,
+                    destination: 'experiences',
+                    playground: 'scene-tale',
+                },
                 ...scenesOf(a)
                     .filter((scene) => scene.id !== 'ocean')
                     .map((scene) => ({
@@ -490,7 +515,10 @@ const ActivityContract = (() => {
         cohost: {
             title: 'Life',
             icon: '💬',
-            order: 1, // IC2: Life, Copilot, Experiences lead the chooser
+            order: 1,
+            // TG2. Reached through Playground, which shows the three places; the home grid
+            // showing them too was the same three doors twice.
+            hidden: true,
             prompt: 'How do you want to be together?',
             // IC3. Four choices that each do one thing at once. Relax used to open the Focus
             // tile's "What would you like to understand?" with "Just sit with me" under it — a
@@ -515,7 +543,15 @@ const ActivityContract = (() => {
                     startActivity: 'focus',
                     startInput: { id: 'sit', permission: null, as: 'Relax together' },
                 },
-                // TG1. "An evening together" is a Playground story; it is there, not here too.
+                // TG2. Life's story is here, and only here (see Experiences).
+                {
+                    id: 'life-evening',
+                    label: 'An evening together',
+                    note: 'A quiet story for the two of you.',
+                    permission: null,
+                    destination: 'life',
+                    playground: 'life-evening',
+                },
                 // The exercises are the coach's own list (exercisesOf), so Life never offers
                 // one the coach would refuse; with one exercise it reads "Move together".
                 ...movesOf().map((id, i, all) => ({
