@@ -46,6 +46,11 @@ const ActivityMarks = (() => {
         'meditation',
     ]);
 
+    /** VW3. An activity with a beginning and an end: the list, or any place by name. Pure. */
+    function isExplicit(activity) {
+        return EXPLICIT.includes(activity) || /^place-/.test(String(activity || ''));
+    }
+
     const CSS = `
 .nexus-activity-mark {
   --mark: #38A9FF;
@@ -227,7 +232,7 @@ body.nexus-mobile.nexus-portrait #${PILL_ID} {
                 session.active() &&
                 session.source &&
                 session.source() === 'together' &&
-                EXPLICIT.includes(activity);
+                isExplicit(activity);
             pill.hidden = !explicit;
             if (!explicit) return;
             dock();
@@ -290,7 +295,7 @@ body.nexus-mobile.nexus-portrait #${PILL_ID} {
         };
     }
 
-    return { attach, text, dockOffset, DESTINATIONS, EXPLICIT, PILL_ID, CSS };
+    return { attach, text, dockOffset, isExplicit, DESTINATIONS, EXPLICIT, PILL_ID, CSS };
 })();
 
 if (typeof window !== 'undefined') window.NEXUS_COMPANION_MARKS = ActivityMarks;

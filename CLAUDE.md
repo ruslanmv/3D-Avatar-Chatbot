@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (256 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (257 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-06 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5680 tests in 256 suites, all passing.**
+— lint clean, format clean, **5697 tests in 257 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -436,7 +436,7 @@ she is switched into. `src/companion/` (IIFE, loaded by `boot.js`) holds them.
   that `AMBIENT_VOLUME` sets are not in the repository — the manifests name
   files that were never added — so that change has nothing to play yet.
 
-## Worlds, in VR and on the screen (VW1–VW2)
+## Worlds, in VR and on the screen (VW1–VW3)
 
 Places in the headset: a Poly Haven panorama, CC0 kit props (Kenney, Quaternius,
 KayKit) and retinted light. `src/gltf-viewer/VRWorlds.js` (IIFE, imported by
@@ -481,6 +481,20 @@ KayKit) and retinted light. `src/gltf-viewer/VRWorlds.js` (IIFE, imported by
   trunk looked clear from above). Stylized worlds use `sky` (a gradient) and
   `fog` (snapshotted and restored) instead of a photo. A wide-short screen goes
   to CameraPresets' `bust` while a world is up (`framingFor`).
+- **Places by name, and private rooms only inside Private (VW3).** A world may
+  be `place: true` with a `rating` of `general`, `romantic` or `private`, and a
+  `lightFor` stand-in for devices the heavy one cannot load on (`resolveFor`,
+  `placesFor`). Experiences ▸ Visit a place is the hidden native activity
+  `src/features/together/activities/places.js` (boot list), which enters the
+  session as `place-<id>` — **a dash, not a colon**: CompanionSession keeps only
+  `[a-z0-9-]` activity ids and stored a colon id as no activity.
+  `ActivityMarks.isExplicit` counts `place-*` as an activity with an end.
+  Private's Atmosphere step lists `activity.places()` as "Or a 3D room"; the
+  Intimate activity dispatches `nexus-world-request` `{ id, owner: 'intimate' }`
+  only after `adult.enter()` succeeds, and `{ id: null }` on stop. The engine
+  passes `privateOpen` only for that owner, so a private world is refused by
+  `chooseWorld`, the Settings list, activity mappings and the `?vrWorld=`
+  preview alike — `tests/vr-places.test.js` holds all four.
 
 ## Clearing a conversation
 

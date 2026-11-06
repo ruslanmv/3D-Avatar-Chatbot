@@ -173,7 +173,7 @@ describe('the tiles that could not complete', () => {
                 .inputs()
                 .map((i) => i.id)
                 .sort()
-        ).toEqual(['forest', 'scene-tale', 'seaside']);
+        ).toEqual(['forest', 'places', 'scene-tale', 'seaside']); // VW3: Visit a place
     });
 
     test('copilot: "just look and help" starts without a checklist', async () => {

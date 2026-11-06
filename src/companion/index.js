@@ -45,7 +45,9 @@
             session.active() &&
             session.source() === 'together' &&
             Marks &&
-            Marks.EXPLICIT.indexOf(session.activity()) !== -1;
+            (Marks.isExplicit
+                ? Marks.isExplicit(session.activity())
+                : Marks.EXPLICIT.indexOf(session.activity()) !== -1);
         if (running) return;
         const found = Intent.classify(typeof latest.content === 'string' ? latest.content : '');
         if (!found) return;
@@ -178,7 +180,9 @@
                 session.active() &&
                 session.source() === 'together' &&
                 MarksApi &&
-                MarksApi.EXPLICIT.indexOf(session.activity()) !== -1
+                (MarksApi.isExplicit
+                    ? MarksApi.isExplicit(session.activity())
+                    : MarksApi.EXPLICIT.indexOf(session.activity()) !== -1)
             ) {
                 session.end({ silent: true });
             }
@@ -328,7 +332,9 @@
             session.active() &&
             session.source() === 'together' &&
             MarksApi &&
-            MarksApi.EXPLICIT.indexOf(session.activity()) !== -1 &&
+            (MarksApi.isExplicit
+                ? MarksApi.isExplicit(session.activity())
+                : MarksApi.EXPLICIT.indexOf(session.activity()) !== -1) &&
             session.activity() !== 'seaside';
         const STORIES = ['scene-tale', 'life-evening', 'copilot-hour'];
         const storyNotStarted = function (panel) {

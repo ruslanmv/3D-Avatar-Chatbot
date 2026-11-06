@@ -916,6 +916,590 @@
         }
       ],
       "triangles": 805
+    },
+    {
+      "id": "hotel-suite",
+      "title": "Hotel suite",
+      "note": "A guest room for two, evening light.",
+      "place": true,
+      "rating": "romantic",
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 2400,
+      "activities": [],
+      "sky": {
+        "top": "#3a2c2a",
+        "horizon": "#5a4438",
+        "bottom": "#2a2020"
+      },
+      "fog": {
+        "color": "#3a2c2a",
+        "near": 8,
+        "far": 30
+      },
+      "light": {
+        "sky": "#ffe6cc",
+        "ground": "#5a4030",
+        "hemi": 0.8,
+        "key": "#ffc890",
+        "keyIntensity": 1.0,
+        "fill": "#ffd8c0",
+        "fillIntensity": 0.55,
+        "rim": "#ffcf9a",
+        "rimIntensity": 0.4,
+        "exposure": 1
+      },
+      "props": [
+        {
+          "src": "kits/kenney-furniture-kit/rugRectangle.glb",
+          "width": 2.6,
+          "at": [0, 0, -0.6],
+          "flat": true
+        },
+        {
+          "src": "kits/kenney-furniture-kit/bedDouble.glb",
+          "width": 2.0,
+          "at": [0, 0, -2.5]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/sideTable.glb",
+          "height": 0.5,
+          "at": [-1.55, 0, -2.8]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampRoundTable.glb",
+          "height": 0.45,
+          "at": [-1.55, 0.5, -2.8]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/sideTable.glb",
+          "height": 0.5,
+          "at": [1.55, 0, -2.8]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampRoundTable.glb",
+          "height": 0.45,
+          "at": [1.55, 0.5, -2.8]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/loungeChair.glb",
+          "width": 0.9,
+          "at": [-2.5, 0, -0.6],
+          "turn": 60
+        },
+        {
+          "src": "kits/kenney-furniture-kit/cabinetTelevision.glb",
+          "width": 1.4,
+          "at": [2.6, 0, -0.9],
+          "turn": -90
+        },
+        {
+          "src": "kits/kenney-furniture-kit/pottedPlant.glb",
+          "height": 1.1,
+          "at": [2.4, 0, -2.6]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampSquareFloor.glb",
+          "height": 1.6,
+          "at": [-2.6, 0, -2.4]
+        }
+      ],
+      "ground": {
+        "color": "#7a6250",
+        "radius": 4.5
+      }
+    },
+    {
+      "id": "bedroom",
+      "title": "Bedroom",
+      "note": "A furnished flat: bedroom and living room, night lamps.",
+      "place": true,
+      "rating": "romantic",
+      "tiers": ["desktop", "vr"],
+      "triangles": 39772,
+      "activities": [],
+      "sky": {
+        "top": "#3a2c2a",
+        "horizon": "#5a4438",
+        "bottom": "#2a2020"
+      },
+      "fog": {
+        "color": "#2e2630",
+        "near": 8,
+        "far": 30
+      },
+      "light": {
+        "sky": "#e8d8ff",
+        "ground": "#3a3040",
+        "hemi": 0.75,
+        "key": "#ffd2a8",
+        "keyIntensity": 0.9,
+        "fill": "#b8a8ff",
+        "fillIntensity": 0.5,
+        "rim": "#ffc8b0",
+        "rimIntensity": 0.45,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/bedroom-flat.glb",
+        "at": [0.707, -0.06, -1.414],
+        "turn": -45
+      }
+    },
+    {
+      "id": "bedroom-light",
+      "title": "Bedroom",
+      "note": "A one-bedroom flat, light enough for phones.",
+      "place": true,
+      "rating": "romantic",
+      "tiers": ["mobile"],
+      "triangles": 28760,
+      "activities": [],
+      "sky": {
+        "top": "#3a2c2a",
+        "horizon": "#5a4438",
+        "bottom": "#2a2020"
+      },
+      "light": {
+        "sky": "#e8d8ff",
+        "ground": "#3a3040",
+        "hemi": 0.75,
+        "key": "#ffd2a8",
+        "keyIntensity": 0.9,
+        "fill": "#b8a8ff",
+        "fillIntensity": 0.5,
+        "rim": "#ffc8b0",
+        "rimIntensity": 0.45,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/pixel-flat.glb",
+        "at": [-4.0, -0.13, 1.0],
+        "turn": -180
+      },
+      "lightFor": "bedroom"
+    },
+    {
+      "id": "lagoon-beach",
+      "title": "Lagoon beach",
+      "note": "White sand, a palm and clear water.",
+      "place": true,
+      "rating": "romantic",
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 14208,
+      "activities": [],
+      "sky": {
+        "top": "#58b4ee",
+        "horizon": "#fff1d6",
+        "bottom": "#e6d4a2"
+      },
+      "fog": {
+        "color": "#e9f2f4",
+        "near": 18,
+        "far": 70
+      },
+      "light": {
+        "sky": "#fff6e6",
+        "ground": "#d8c49a",
+        "hemi": 0.95,
+        "key": "#fff0d0",
+        "keyIntensity": 1.25,
+        "fill": "#cfe6ff",
+        "fillIntensity": 0.6,
+        "rim": "#fff4dc",
+        "rimIntensity": 0.35,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/lagoon-beach.glb",
+        "at": [0.0, -0.16, 2.0],
+        "turn": -90
+      },
+      "ground": {
+        "color": "#e8d6a8",
+        "radius": 30
+      }
+    },
+    {
+      "id": "office",
+      "title": "Office",
+      "note": "An open-plan office floor in daylight.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["desktop", "vr"],
+      "triangles": 72326,
+      "activities": [],
+      "sky": {
+        "top": "#cfe0f0",
+        "horizon": "#eef2f6",
+        "bottom": "#6a6a70"
+      },
+      "fog": {
+        "color": "#e6ebf0",
+        "near": 10,
+        "far": 40
+      },
+      "light": {
+        "sky": "#f2f6ff",
+        "ground": "#6a6a70",
+        "hemi": 0.9,
+        "key": "#fff4e0",
+        "keyIntensity": 1.1,
+        "fill": "#e0ecff",
+        "fillIntensity": 0.6,
+        "rim": "#ffffff",
+        "rimIntensity": 0.25,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/downtown-office.glb",
+        "at": [1.945, -0.05, -1.237],
+        "turn": -45
+      }
+    },
+    {
+      "id": "office-light",
+      "title": "Office",
+      "note": "A desk by the window, light enough for phones.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile"],
+      "triangles": 1200,
+      "activities": [],
+      "sky": {
+        "top": "#cfe0f0",
+        "horizon": "#eef2f6",
+        "bottom": "#6a6a70"
+      },
+      "light": {
+        "sky": "#f2f6ff",
+        "ground": "#6a6a70",
+        "hemi": 0.9,
+        "key": "#fff4e0",
+        "keyIntensity": 1.1,
+        "fill": "#e0ecff",
+        "fillIntensity": 0.6,
+        "rim": "#ffffff",
+        "rimIntensity": 0.25,
+        "exposure": 1
+      },
+      "props": [
+        {
+          "src": "kits/kenney-furniture-kit/desk.glb",
+          "width": 1.5,
+          "at": [0, 0, -1.8]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/chairDesk.glb",
+          "height": 0.95,
+          "at": [0, 0, -1.2],
+          "turn": 180
+        },
+        {
+          "src": "kits/kenney-furniture-kit/computerScreen.glb",
+          "height": 0.4,
+          "at": [0, 0.75, -1.95]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/bookcaseOpen.glb",
+          "height": 1.9,
+          "at": [-2.2, 0, -1.9],
+          "turn": 40
+        },
+        {
+          "src": "kits/kenney-furniture-kit/pottedPlant.glb",
+          "height": 1.1,
+          "at": [2.2, 0, -1.2]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampSquareFloor.glb",
+          "height": 1.6,
+          "at": [1.6, 0, -2.2]
+        }
+      ],
+      "ground": {
+        "color": "#8a8a90",
+        "radius": 4
+      },
+      "lightFor": "office"
+    },
+    {
+      "id": "airship-dock",
+      "title": "Airship dock",
+      "note": "Steampunk: an airship moored at a brass workshop at dusk.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["desktop"],
+      "triangles": 141396,
+      "activities": [],
+      "sky": {
+        "top": "#2c4a5a",
+        "horizon": "#f0a868",
+        "bottom": "#3a3028"
+      },
+      "fog": {
+        "color": "#c89870",
+        "near": 18,
+        "far": 70
+      },
+      "light": {
+        "sky": "#ffd8b0",
+        "ground": "#3a2c20",
+        "hemi": 0.75,
+        "key": "#ffb070",
+        "keyIntensity": 1.1,
+        "fill": "#80c0c8",
+        "fillIntensity": 0.5,
+        "rim": "#ffcf8a",
+        "rimIntensity": 0.5,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/airship-dock.glb",
+        "at": [-2.475, -0.1, -13.081],
+        "turn": -45
+      }
+    },
+    {
+      "id": "neon-street",
+      "title": "Neon street",
+      "note": "Cyberpunk: a street of neon signs at night.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 16464,
+      "activities": [],
+      "sky": {
+        "top": "#120c22",
+        "horizon": "#3a1d4a",
+        "bottom": "#0b0b12"
+      },
+      "fog": {
+        "color": "#1a1028",
+        "near": 10,
+        "far": 45
+      },
+      "light": {
+        "sky": "#6a3a80",
+        "ground": "#101018",
+        "hemi": 0.5,
+        "key": "#ff5fc0",
+        "keyIntensity": 0.9,
+        "fill": "#4fd8ff",
+        "fillIntensity": 0.55,
+        "rim": "#a070ff",
+        "rimIntensity": 0.6,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/neon-dispatch.glb",
+        "at": [-0.177, 0, -6.187],
+        "turn": -45
+      }
+    },
+    {
+      "id": "roadside-motel",
+      "title": "Roadside motel",
+      "note": "A neon motel and diner on an empty road at night. Private only.",
+      "place": true,
+      "rating": "private",
+      "tiers": ["desktop", "vr"],
+      "triangles": 38582,
+      "activities": [],
+      "sky": {
+        "top": "#120c22",
+        "horizon": "#3a1d4a",
+        "bottom": "#0b0b12"
+      },
+      "fog": {
+        "color": "#160e22",
+        "near": 12,
+        "far": 60
+      },
+      "light": {
+        "sky": "#6a3a80",
+        "ground": "#101018",
+        "hemi": 0.5,
+        "key": "#ff5fc0",
+        "keyIntensity": 0.9,
+        "fill": "#4fd8ff",
+        "fillIntensity": 0.55,
+        "rim": "#a070ff",
+        "rimIntensity": 0.6,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/roadside-motel.glb",
+        "at": [-7.425, -0.12, -20.86],
+        "turn": -225
+      }
+    },
+    {
+      "id": "roadside-motel-light",
+      "title": "Roadside motel",
+      "note": "A motel room under neon, light enough for phones. Private only.",
+      "place": true,
+      "rating": "private",
+      "tiers": ["mobile"],
+      "triangles": 1500,
+      "activities": [],
+      "sky": {
+        "top": "#120c22",
+        "horizon": "#3a1d4a",
+        "bottom": "#0b0b12"
+      },
+      "light": {
+        "sky": "#6a3a80",
+        "ground": "#101018",
+        "hemi": 0.5,
+        "key": "#ff5fc0",
+        "keyIntensity": 0.9,
+        "fill": "#4fd8ff",
+        "fillIntensity": 0.55,
+        "rim": "#a070ff",
+        "rimIntensity": 0.6,
+        "exposure": 1
+      },
+      "props": [
+        {
+          "src": "kits/kenney-furniture-kit/rugRectangle.glb",
+          "width": 2.4,
+          "at": [0, 0, -0.5],
+          "flat": true
+        },
+        {
+          "src": "kits/kenney-furniture-kit/bedDouble.glb",
+          "width": 1.9,
+          "at": [0, 0, -2.4]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/sideTable.glb",
+          "height": 0.5,
+          "at": [-1.5, 0, -2.6]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampRoundTable.glb",
+          "height": 0.45,
+          "at": [-1.5, 0.5, -2.6]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/sideTable.glb",
+          "height": 0.5,
+          "at": [1.5, 0, -2.6]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampRoundTable.glb",
+          "height": 0.45,
+          "at": [1.5, 0.5, -2.6]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/pottedPlant.glb",
+          "height": 1.1,
+          "at": [2.4, 0, -0.8]
+        }
+      ],
+      "ground": {
+        "color": "#3a2a3a",
+        "radius": 4
+      },
+      "lightFor": "roadside-motel"
+    },
+    {
+      "id": "candlelit-suite",
+      "title": "Candlelit suite",
+      "note": "A hotel room by candlelight. Private only.",
+      "place": true,
+      "rating": "private",
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 2400,
+      "activities": [],
+      "sky": {
+        "top": "#1e0e12",
+        "horizon": "#4a1e22",
+        "bottom": "#140a0c"
+      },
+      "fog": {
+        "color": "#2a1216",
+        "near": 6,
+        "far": 24
+      },
+      "light": {
+        "sky": "#b05a50",
+        "ground": "#2a1418",
+        "hemi": 0.5,
+        "key": "#ff9a60",
+        "keyIntensity": 0.85,
+        "fill": "#ff8a90",
+        "fillIntensity": 0.45,
+        "rim": "#ffb0a0",
+        "rimIntensity": 0.55,
+        "exposure": 1
+      },
+      "props": [
+        {
+          "src": "kits/kenney-furniture-kit/rugRectangle.glb",
+          "width": 2.6,
+          "at": [0, 0, -0.6],
+          "flat": true
+        },
+        {
+          "src": "kits/kenney-furniture-kit/bedDouble.glb",
+          "width": 2.0,
+          "at": [0, 0, -2.5]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/sideTable.glb",
+          "height": 0.5,
+          "at": [-1.55, 0, -2.8]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampRoundTable.glb",
+          "height": 0.45,
+          "at": [-1.55, 0.5, -2.8]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/sideTable.glb",
+          "height": 0.5,
+          "at": [1.55, 0, -2.8]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampRoundTable.glb",
+          "height": 0.45,
+          "at": [1.55, 0.5, -2.8]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/loungeChair.glb",
+          "width": 0.9,
+          "at": [-2.5, 0, -0.6],
+          "turn": 60
+        },
+        {
+          "src": "kits/kenney-furniture-kit/cabinetTelevision.glb",
+          "width": 1.4,
+          "at": [2.6, 0, -0.9],
+          "turn": -90
+        },
+        {
+          "src": "kits/kenney-furniture-kit/pottedPlant.glb",
+          "height": 1.1,
+          "at": [2.4, 0, -2.6]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampSquareFloor.glb",
+          "height": 1.6,
+          "at": [-2.6, 0, -2.4]
+        }
+      ],
+      "ground": {
+        "color": "#4a2a24",
+        "radius": 4.5
+      }
     }
   ]
 }

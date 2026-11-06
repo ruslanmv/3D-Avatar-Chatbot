@@ -62,6 +62,23 @@ shipping.
 | `meadow-courier.glb` | Meadow Courier — cozy village starter scene    | <https://3dassets.dev/packs/meadow-courier>                                                   | 22 448    | 90     |
 | `mmo-realm.glb`      | Medieval MMO Starter Realm — walled town       | <https://3dassets.dev/packs/medieval-mmo-starter-realm>                                       | 224 939   | 1 922  |
 
+**VW3 spaces**, downloaded the same day, same licence, same review:
+
+| File                  | Scene                                              | Source                                                                                        | Triangles | Meshes |
+| --------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------- | --------- | ------ |
+| `bedroom-flat.glb`    | Furnished flat: bedroom and living room            | <https://3dassets.dev/assets/bedroom-and-living-room-furniture-furnis-0989213f-starter-scene> | 39 772    | 161    |
+| `pixel-flat.glb`      | One-bedroom flat (Pixel Modern Apartments)         | <https://3dassets.dev/assets/pixel-modern-apartments-one-bedroom-flat-9c2366e2-starter-scene> | 28 760    | 493    |
+| `lagoon-beach.glb`    | Lagoon beach (Tropical Island and Palm Trees)      | <https://3dassets.dev/assets/tropical-island-ecology-lagoon-beach-122c3ee3-starter-scene>     | 14 208    | 63     |
+| `downtown-office.glb` | Open-plan office floor (Downtown Office Interiors) | <https://3dassets.dev/assets/downtown-office-interiors-open-plan-floo-fc7431a0-starter-scene> | 72 326    | 233    |
+| `airship-dock.glb`    | Airship dock and workshop (Steampunk)              | <https://3dassets.dev/assets/steampunk-airship-dock-and-workshop-airs-10f46afc-starter-scene> | 141 396   | 570    |
+| `neon-dispatch.glb`   | Neon Dispatch (cyberpunk street)                   | <https://3dassets.dev/assets/neon-dispatch-starter-scene>                                     | 16 464    | 178    |
+| `roadside-motel.glb`  | Roadside diner and motel stop                      | <https://3dassets.dev/assets/retro-diner-and-roadside-motel-roadside--784bde2d-starter-scene> | 38 582    | 643    |
+
+Tried and not shipped: the Hotel and Resort guest room (no spot inside it with a
+clear line to the camera — the hotel and candlelit suites are built from the
+Kenney furniture kit instead) and the Cyberpunk Apartment Block (323K triangles,
+over every budget).
+
 The walled town loads on desktop only: it is over the 30K-triangle phone budget
 and over the 150K desktop target, though merged it draws in under twenty calls.
 

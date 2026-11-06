@@ -2301,9 +2301,20 @@ export class ViewerEngine {
                 activity,
                 isAR: !!this.arSupport?._isARSession?.(),
                 tier,
+                requested: this._worldRequest ? this._worldRequest.id : null,
+                privateOpen: !!(this._worldRequest && this._worldRequest.owner === 'intimate'),
             });
         }
-        const world = id ? catalogue.worlds.find((w) => w.id === id) : null;
+        let world = id ? catalogue.worlds.find((w) => w.id === id) : null;
+        // VW3. The ?vrWorld= preview is a checking tool, not a door: it never opens a private room
+        // (those load only at the Private experience's request, after its gates).
+        if (
+            world &&
+            preview &&
+            world.rating === 'private' &&
+            !(this._worldRequest && this._worldRequest.owner === 'intimate')
+        )
+            world = null;
         if (!world) {
             if (this.vrWorlds.activeId) {
                 // Fade to black, back to plain VR, fade in — never a cut (Meta comfort).
@@ -2364,6 +2375,16 @@ export class ViewerEngine {
         this._unwatchVRWorld();
         const onSetting = () => this._applyVRWorld();
         window.addEventListener('nexus-vr-world-change', onSetting);
+        // VW3. The Private experience asks for its room by name (and only it may ask for a
+        // private one); `id: null` from the same owner gives it back.
+        const onRequest = (event) => {
+            const detail = (event && event.detail) || {};
+            if (detail.id) this._worldRequest = { id: String(detail.id), owner: String(detail.owner || '') };
+            else if (!this._worldRequest || this._worldRequest.owner === String(detail.owner || ''))
+                this._worldRequest = null;
+            this._applyVRWorld();
+        };
+        window.addEventListener('nexus-world-request', onRequest);
         let offSession = null;
         try {
             const session = window.__NEXUS_COMPANION_LIVE?.session;
@@ -2379,6 +2400,7 @@ export class ViewerEngine {
         }
         this._vrWorldOff = () => {
             window.removeEventListener('nexus-vr-world-change', onSetting);
+            window.removeEventListener('nexus-world-request', onRequest);
             if (typeof offSession === 'function') offSession();
         };
     }

@@ -135,6 +135,14 @@ const ContextIntent = (() => {
     function label(activity) {
         if (!activity) return '';
         if (LABELS[activity]) return LABELS[activity];
+        // VW3. A place by name: "place-hotel-suite" reads "Hotel suite".
+        if (String(activity).startsWith('place-')) {
+            const id = String(activity)
+                .slice(6)
+                .replace(/-light$/, '');
+            const words = id.replace(/-+/g, ' ');
+            return words.charAt(0).toUpperCase() + words.slice(1);
+        }
         const text = String(activity).replace(/-+/g, ' ');
         return text.charAt(0).toUpperCase() + text.slice(1);
     }

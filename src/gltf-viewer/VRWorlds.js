@@ -49,6 +49,44 @@
      * its triangles; one over MOBILE_TRIANGLES never loads on a phone, whatever its tiers say.
      */
     const TIERS = Object.freeze(['mobile', 'desktop', 'vr']);
+    const RATINGS = Object.freeze(['general', 'romantic', 'private']);
+    // 'place-<id>', not 'place:<id>': CompanionSession keeps only [a-z0-9-] activity ids, and a
+    // colon was silently stored as no activity at all.
+    const PLACE_PREFIX = 'place-';
+
+    /**
+     * VW3. The world to show for a named place on this device, or null. A heavy world gives way
+     * to its light stand-in (`lightFor`) where it cannot load — the phone gets a hotel suite, a
+     * lighter one. A private world needs `privateOpen`: only the Private experience passes it,
+     * and only after its own gates. Pure.
+     */
+    function resolveFor(worlds, id, tier, privateOpen) {
+        const list = Array.isArray(worlds) ? worlds : [];
+        const ok = (w) => w && (w.rating !== 'private' || privateOpen === true);
+        const world = list.find((w) => w.id === id);
+        if (!ok(world)) return null;
+        if (allowedOn(world, tier)) return world.id;
+        const light = list.find((w) => w.lightFor === id && ok(w) && allowedOn(w, tier));
+        return light ? light.id : null;
+    }
+
+    /**
+     * VW3. The places to offer on this device: `include` names the ratings (Experiences offers
+     * general and romantic; Private adds private). One card per place — a light stand-in is
+     * never listed beside the world it stands in for. Pure.
+     */
+    function placesFor(worlds, options) {
+        const o = options || {};
+        const include = Array.isArray(o.include) ? o.include : ['general', 'romantic'];
+        const list = Array.isArray(worlds) ? worlds : [];
+        const out = [];
+        for (const w of list) {
+            if (!w.place || w.lightFor || !include.includes(w.rating)) continue;
+            const shown = resolveFor(list, w.id, o.tier || 'desktop', o.privateOpen === true);
+            if (shown) out.push({ id: w.id, world: shown, title: w.title, note: w.note, rating: w.rating });
+        }
+        return out;
+    }
     const MOBILE_TRIANGLES = 30000;
 
     /** The tier the page is drawing for. Pure. */
@@ -270,6 +308,13 @@
                 sky,
                 scene: sceneSpec,
                 tiers: tiers.length ? tiers : TIERS.slice(),
+                // VW3. general | romantic | private. A private world loads only when the Private
+                // experience asks for it (its own consent and adult gates have already run).
+                rating: RATINGS.includes(raw.rating) ? raw.rating : 'general',
+                // Offered by name in Experiences ▸ Visit a place / Private ▸ Where should we be.
+                place: raw.place === true,
+                // A light stand-in for a heavy world, on the devices the heavy one cannot load on.
+                lightFor: /^[a-z0-9-]{1,40}$/.test(String(raw.lightFor || '')) ? raw.lightFor : null,
                 triangles: Math.max(0, num(raw.triangles, 0)),
                 fog:
                     raw.fog && typeof raw.fog === 'object'
@@ -301,7 +346,16 @@
         // VW2. Only worlds this tier may load: on a phone a heavy world is skipped and the next
         // one for the same activity (a light version) is chosen instead.
         const tier = c.tier || 'vr';
-        const usable = worlds.filter((w) => allowedOn(w, tier));
+        const privateOpen = c.privateOpen === true;
+        // VW3. A place someone asked for by name (Private's room, Experiences ▸ Visit a place)
+        // comes first; the activity id carries it as "place-<id>".
+        const named =
+            c.requested ||
+            (c.activity && String(c.activity).startsWith(PLACE_PREFIX)
+                ? String(c.activity).slice(PLACE_PREFIX.length)
+                : null);
+        if (named) return resolveFor(worlds, named, tier, privateOpen);
+        const usable = worlds.filter((w) => allowedOn(w, tier) && w.rating !== 'private' && !w.lightFor);
         if (c.activity) {
             const byActivity = usable.find((w) => w.activities.includes(c.activity));
             if (byActivity) return byActivity.id;
@@ -1082,7 +1136,13 @@
             };
             add('auto', 'Automatic — follow the experience');
             add('off', 'Off — always plain VR');
-            for (const w of worlds) add(w.id, w.title);
+            // Private worlds are never listed: they load only from inside the Private experience,
+            // after its own consent and adult gates, so a setting could only promise one. Light
+            // stand-ins are chosen for you on a phone.
+            for (const w of worlds) {
+                if (w.lightFor || w.rating === 'private') continue;
+                add(w.id, w.title);
+            }
             select.value = [...select.options].some((op) => op.value === current) ? current : DEFAULT_SETTING;
         }
         fill([]);
@@ -1107,6 +1167,10 @@
         placementOffset,
         tierFor,
         allowedOn,
+        resolveFor,
+        placesFor,
+        RATINGS,
+        PLACE_PREFIX,
         framingFor,
         TIERS,
         MOBILE_TRIANGLES,

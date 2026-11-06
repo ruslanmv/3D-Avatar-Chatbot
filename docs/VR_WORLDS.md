@@ -1,4 +1,4 @@
-# Worlds (VW1–VW2)
+# Worlds (VW1–VW3)
 
 Places to be in, in the headset: a 360° photograph around you, a few real 3D
 objects near her, and light that matches. 13 worlds, all CC0
@@ -29,6 +29,24 @@ Every scene is merged by material when it loads (68 meshes → 11 draw calls,
 1 922 → 19), and so are each world's props. Stylized scenes get a painted
 gradient sky and soft fog instead of a photograph. A wide, short viewport comes
 in to conversation framing while a world is up (`framingFor`).
+
+## Places by name (VW3)
+
+**Experiences ▸ Visit a place** lists the spaces: Hotel suite, Bedroom, Lagoon
+beach, Office, Airship dock (steampunk, desktop only), Neon street (cyberpunk).
+Choosing one starts it like any experience — the status bar reads
+"Experiences · Hotel suite" with End experience, she says one line, and the world
+appears around her. On a phone each place is its light version, and a place with
+none (the airship dock) is not listed.
+
+**Private ▸ Set the atmosphere ▸ Or a 3D room** offers the romantic rooms and the
+private ones — the Roadside motel and the Candlelit suite. A private room is
+never offered anywhere else, never in Settings, never by an activity or a
+`?vrWorld=` preview: the engine loads one only when the Private experience asks,
+and Private asks only after its own gates (Private mode, an avatar Forge
+declares adult, the consent flow) and only once Begin is pressed. Stopping
+Private takes the room away. The rooms are places, nothing more: what happens
+in them is the Private experience's own rules, unchanged.
 
 ## Using it
 

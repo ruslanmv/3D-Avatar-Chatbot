@@ -401,3 +401,42 @@ describe('a returning person gets there in two taps', () => {
         expect(document.querySelector('[data-private-last="1"]')).toBeNull();
     });
 });
+
+describe('VW3: a 3D room for the evening', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const Worlds = require('../../src/gltf-viewer/VRWorlds.js');
+    const catalogue = Worlds.validateCatalogue(
+        JSON.parse(fs.readFileSync(path.join(__dirname, '../../assets/vr-worlds/worlds.json'), 'utf8'))
+    );
+    afterEach(() => {
+        delete window.NEXUS_VR_WORLDS;
+    });
+
+    test('rooms are offered beside the pictures; the request waits for Begin and leaves on stop', async () => {
+        window.NEXUS_VR_WORLDS = Worlds;
+        const requests = [];
+        const onRequest = (e) => requests.push(e.detail);
+        window.addEventListener('nexus-world-request', onRequest);
+        const s = setup();
+        s.activity._worldCatalogue = catalogue;
+        s.panel.choose('intimate');
+        document.querySelector('[data-preset="romantic"]').click();
+
+        const rooms = [...document.querySelectorAll('[data-world]')].map((c) => c.dataset.world);
+        expect(rooms).toEqual(expect.arrayContaining(['hotel-suite', 'candlelit-suite', 'roadside-motel']));
+        document.querySelector('[data-world="candlelit-suite"]').click();
+        expect(s.activity.worldChoice).toBe('candlelit-suite');
+        expect(s.activity.sceneChoice).toBeNull(); // a room or a picture, not both
+        expect(requests).toEqual([]); // nothing loads while choosing
+
+        await getReady();
+        action('begin-private').click();
+        await settle();
+        expect(requests).toEqual([{ id: 'candlelit-suite', owner: 'intimate' }]);
+
+        s.activity.stop('user');
+        expect(requests[requests.length - 1]).toEqual({ id: null, owner: 'intimate' });
+        window.removeEventListener('nexus-world-request', onRequest);
+    });
+});

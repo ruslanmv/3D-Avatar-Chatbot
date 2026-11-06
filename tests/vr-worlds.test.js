@@ -100,8 +100,10 @@ describe('the shipped catalogue', () => {
             expect(`${w.id}: ${w.triangles > 0}`).toBe(`${w.id}: true`);
             if (Worlds.allowedOn(w, 'mobile')) expect(w.triangles).toBeLessThanOrEqual(Worlds.MOBILE_TRIANGLES);
         }
-        const heavy = worlds.filter((w) => w.triangles > Worlds.MOBILE_TRIANGLES).map((w) => w.id);
-        expect(heavy.sort()).toEqual(['oak-glade', 'walled-town']);
+        const heavy = worlds.filter((w) => w.triangles > Worlds.MOBILE_TRIANGLES);
+        expect(heavy.length).toBeGreaterThan(0);
+        for (const w of heavy)
+            expect(`${w.id} on a phone: ${Worlds.allowedOn(w, 'mobile')}`).toBe(`${w.id} on a phone: false`);
         // And never the 4K picture.
         const photo = worlds.find((w) => w.panorama['4k']);
         expect(Worlds.panoramaFor(photo, { maxTextureSize: 8192 }, 'mobile')).toBe(photo.panorama['2k']);

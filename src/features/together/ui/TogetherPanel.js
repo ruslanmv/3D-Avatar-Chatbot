@@ -1088,6 +1088,31 @@ const TogetherPanel = (() => {
                 shell.appendChild(more);
             }
 
+            // VW3. Or a 3D room to be in together, instead of a picture behind her. Romantic and
+            // private places, each resolved to what this device can load (a phone gets the light
+            // ones); the activity asks the engine for it only once Private has started.
+            const rooms = typeof activity.places === 'function' ? activity.places() : [];
+            if (rooms.length) {
+                shell.appendChild(label('Or a 3D room'));
+                const roomCards = doc.createElement('div');
+                roomCards.className = 'nexus-private-scene-cards';
+                for (const room of rooms) {
+                    const card = doc.createElement('button');
+                    card.type = 'button';
+                    card.className = 'nexus-private-scene-card';
+                    card.dataset.world = room.id;
+                    card.classList.toggle('is-selected', activity.worldChoice === room.id);
+                    card.innerHTML =
+                        '<span class="nexus-private-scene-name"></span><span class="nexus-private-scene-note"></span>';
+                    card.querySelector('.nexus-private-scene-name').textContent = room.title;
+                    card.querySelector('.nexus-private-scene-note').textContent =
+                        room.rating === 'private' ? 'Private' : '';
+                    card.addEventListener('click', () => activity.setAtmosphere({ world: room.id }));
+                    roomCards.appendChild(card);
+                }
+                shell.appendChild(roomCards);
+            }
+
             shell.appendChild(label('Music'));
             const music = doc.createElement('div');
             music.className = 'nexus-private-segmented';

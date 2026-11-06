@@ -1539,6 +1539,9 @@ const PlaygroundActivity = (() => {
             this.soundtrackChoice = 'choose';
             /** The ambience scene the evening will use, or `null` for "wherever we are". */
             this.sceneChoice = null;
+            /** VW3. A 3D room to be in instead of a picture behind her (`places()`). */
+            this.worldChoice = null;
+            this._worldCatalogue = null;
             this.preparedPlan = null;
             this.preparedTrack = null;
             this.prepareError = '';
@@ -1627,6 +1630,48 @@ const PlaygroundActivity = (() => {
             return [...first, ...rest].slice(0, Math.max(1, limit));
         }
 
+        /**
+         * VW3. The 3D rooms Private may offer: romantic and private places (a hotel suite, the
+         * candlelit suite, a roadside motel…), resolved to what this device can load — a phone
+         * gets the light stand-ins. Asked for only here, where Private's own gates (adult mode,
+         * an avatar Forge declares adult, the consent flow) already stand in front; the engine
+         * loads a private world only when this activity requests it.
+         */
+        places() {
+            const win = globalObject();
+            const W = win && win.NEXUS_VR_WORLDS;
+            if (!W) return [];
+            if (!this._worldCatalogue) {
+                Promise.resolve(W.loadCatalogue())
+                    .then((c) => {
+                        this._worldCatalogue = c;
+                        this._repaint();
+                    })
+                    .catch(() => {});
+                return [];
+            }
+            const doc = win.document;
+            const mobile = !!(doc && doc.documentElement && doc.documentElement.classList.contains('is-mobile'));
+            return W.placesFor(this._worldCatalogue.worlds, {
+                tier: W.tierFor({ xr: false, mobile }),
+                include: ['romantic', 'private'],
+                privateOpen: true,
+            });
+        }
+
+        _requestWorld(id) {
+            const win = globalObject();
+            try {
+                if (win && typeof win.dispatchEvent === 'function' && typeof win.CustomEvent === 'function') {
+                    win.dispatchEvent(
+                        new win.CustomEvent('nexus-world-request', { detail: { id: id || null, owner: 'intimate' } })
+                    );
+                }
+            } catch (_) {
+                /* the picture behind her stays */
+            }
+        }
+
         showAllScenes() {
             this._showAllScenes = true;
             this._repaint();
@@ -1676,8 +1721,16 @@ const PlaygroundActivity = (() => {
         }
 
         /** Step 2 changed something the background work depends on. */
-        setAtmosphere({ scene, soundtrack } = {}) {
-            if (scene !== undefined) this.sceneChoice = cleanText(scene, 80) || null;
+        setAtmosphere({ scene, soundtrack, world } = {}) {
+            if (scene !== undefined) {
+                this.sceneChoice = cleanText(scene, 80) || null;
+                // A picture or a room, not both: a room covers the picture anyway.
+                if (this.sceneChoice) this.worldChoice = null;
+            }
+            if (world !== undefined) {
+                this.worldChoice = cleanText(world, 60) || null;
+                if (this.worldChoice) this.sceneChoice = null;
+            }
             if (soundtrack !== undefined) {
                 this.soundtrackChoice = ['choose', 'current', 'none'].includes(soundtrack) ? soundtrack : 'choose';
             }
@@ -2117,6 +2170,8 @@ const PlaygroundActivity = (() => {
                 maxLevel: preset.maxLevel,
                 startedAt: this.startedAt,
             });
+            // VW3. The room, only now: after the gates above have all passed.
+            if (this.worldChoice) this._requestWorld(this.worldChoice);
             return { ok: true, why: preset.id, preset: preset.id, maxLevel: preset.maxLevel };
         }
         stop(why = 'user') {
@@ -2133,6 +2188,8 @@ const PlaygroundActivity = (() => {
             this.preparedTrack = null;
             this.prepared = null;
             this._showAllScenes = false;
+            // VW3. The room goes with the session, however it ended.
+            if (wasActive) this._requestWorld(null);
             if (this.adult && this.adult.active && typeof this.adult.exit === 'function') this.adult.exit('hard');
             this._restoreCeiling();
             if (wasActive) busEmit(this.bus, 'intimate:stop', { preset, why });

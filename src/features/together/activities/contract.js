@@ -431,6 +431,16 @@ const ActivityContract = (() => {
                     destination: 'experiences',
                     action: { id: 'seaside', kind: 'experience', experienceId: 'seaside-evening' },
                 },
+                // VW3. The 3D spaces by name — a hotel suite, a beach, a neon street. Places
+                // resolves each to what this device can load and never lists a private one.
+                {
+                    id: 'places',
+                    label: 'Visit a place',
+                    note: 'A hotel suite, a beach, a neon street…',
+                    permission: null,
+                    destination: 'experiences',
+                    openActivity: 'places',
+                },
                 // TG2. Each story lives under the place it belongs to: Scene Tale here, An
                 // evening together under Life, Copilot Hour under Copilot. Playground holds the
                 // three places, not a second list of the same stories.
