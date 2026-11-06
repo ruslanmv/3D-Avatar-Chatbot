@@ -2051,23 +2051,24 @@ body {
         padding: 8px 10px calc(env(safe-area-inset-bottom, 0px) + 8px);
     }
 
+    /* DX2. 44 px: Apple's and Google's minimum touch target (was 42). */
     .chat-input-bar {
-        grid-template-columns: 42px 1fr auto;
+        grid-template-columns: 44px 1fr auto;
         gap: 8px;
     }
 
     .voice-btn-compact {
-        width: 42px;
-        height: 42px;
+        width: 44px;
+        height: 44px;
     }
 
     .chat-input {
-        height: 42px;
+        height: 44px;
         font-size: 16px; /* prevents iOS zoom */
     }
 
     .send-btn {
-        height: 42px;
+        height: 44px;
         min-width: 56px;
         padding: 0 10px;
     }
@@ -4210,16 +4211,18 @@ html.os-android .app-shell {
     height: 100dvh;
 }
 
-/* ── Virtual keyboard handling ── */
+/* ── Virtual keyboard handling ──
+   DX2. Only while the keyboard is really open (html.nexus-keyboard-open, set by
+   MobileChatOverlay when a text field has focus). The height alone also matched every phone held
+   sideways, and she vanished in landscape with no keyboard anywhere. */
 @media (max-height: 450px) and (max-width: 767px) {
-    /* Keyboard is likely open on phone */
-    .avatar-panel {
+    html.nexus-keyboard-open .avatar-panel {
         display: none !important;
     }
-    .chat-panel {
+    html.nexus-keyboard-open .chat-panel {
         max-height: 100% !important;
     }
-    .content-layout {
+    html.nexus-keyboard-open .content-layout {
         grid-template-rows: 1fr !important;
     }
 }
@@ -4324,6 +4327,24 @@ html.quest-3 .xr-btn--ar {
         height: 100%;
         max-height: none;
     }
+
+    /* DX2. A phone on its side is ~340 px tall: the viewport's 240 px minimum plus the button
+       row did not fit, and the buttons ran off the bottom of the screen. Here she shrinks to
+       what is left; the row always fits. */
+    .avatar-panel {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .avatar-card {
+        flex: 1 1 auto;
+        min-height: 0;
+        grid-template-rows: minmax(0, 1fr) auto;
+    }
+
+    .avatar-viewport {
+        min-height: 0;
+    }
 }
 
 /* ── Tablet optimizations ── */
@@ -4415,6 +4436,14 @@ html.is-tablet .chat-input {
 
 .chat-overlay-toggle:hover {
     color: var(--primary);
+}
+
+/* DX2. The chevron is drawn 30 px; its touch target is 44 (Apple's and Google's minimum), by an
+   invisible ring rather than a bigger icon — the same technique the Quest block uses. */
+.chat-overlay-toggle::after {
+    content: '';
+    position: absolute;
+    inset: -7px;
 }
 
 /* Chevron rotation per state */

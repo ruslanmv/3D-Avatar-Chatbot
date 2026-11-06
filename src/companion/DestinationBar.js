@@ -79,7 +79,19 @@ const DestinationBar = (() => {
 }
 @media (max-width: 640px) {
   #${BAR_ID} button { padding: .5rem .55rem; }
-  #${SHEET_ID} { max-height: 52%; }
+  #${SHEET_ID} { max-height: 52%; width: calc(100% - 1.5rem); }
+}
+/* DX2. Close never scrolls away: on a short phone the sheet scrolls, and its only way out was at
+   the bottom of the content, cut off by the sheet's own edge. It stays pinned to the bottom. */
+#${SHEET_ID} button.nexus-companion-close {
+  position: sticky; bottom: -1rem; width: calc(100% + 2.3rem); margin: .7rem -1.15rem -1rem;
+  padding: .7rem 1rem; background: rgba(11, 16, 23, .97); border-top: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 0 0 14px 14px;
+}
+/* DX2. Touch screens get 44 px targets in the sheet too. */
+@media (pointer: coarse) {
+  #${SHEET_ID} button { min-height: 44px; }
+  #${SHEET_ID} button.nexus-companion-close { min-height: 44px; padding: .6rem 1.2rem; }
 }
 `;
 
@@ -94,6 +106,26 @@ const DestinationBar = (() => {
             const name = button.getAttribute('title');
             if (name && !button.getAttribute('aria-label')) button.setAttribute('aria-label', name);
         }
+    }
+
+    /**
+     * DX2. Where the sheet can be without hiding behind the phone's chat sheet.
+     *
+     * On a phone the chat is an overlay sheet across the bottom of the avatar card, taller than
+     * the 4.6 rem the sheet's CSS leaves, so Seaside's choices ran underneath it and the last
+     * lines could not be reached. Pure: takes the two rectangles (card and chat, in viewport
+     * pixels) and answers the sheet's bottom offset and height cap in pixels, or null when the
+     * chat does not overlap the card (desktop: the CSS is already right). The cap also keeps
+     * the top of the card — her face — clear: at most 55% of the space above the chat.
+     */
+    function sheetFit(card, chat, gap) {
+        if (!card || !chat) return null;
+        const g = gap == null ? 8 : gap;
+        if (!(chat.top < card.bottom && chat.bottom > card.top) || chat.left >= card.right || chat.right <= card.left)
+            return null;
+        const free = chat.top - card.top;
+        if (free <= 0) return null;
+        return { bottom: Math.round(card.bottom - chat.top + g), maxHeight: Math.round(Math.max(120, free * 0.55)) };
     }
 
     function el(doc, tag, className, text) {
@@ -507,12 +539,46 @@ const DestinationBar = (() => {
             else if (view === 'preferences') paintPreferences();
             else if (view === 'tasks' || view === 'projects' || view === 'planning') paintTasks(view);
             else if (view === 'saved') paintSaved();
-            else paintHome();
+            // DX2. While an experience runs, the sheet is its controls and nothing else. It used
+            // to add the whole destination menu underneath — Seaside's own buttons, then a
+            // second list offering Seaside again — which on a phone pushed both off the screen.
+            else if (!running()) paintHome();
             if (notice) sheet.appendChild(el(doc, 'p', 'nexus-companion-muted', notice));
             // At the bottom, like Together's own Back.
             sheet.appendChild(back);
             const status = director && director.status();
             exit.hidden = !(status && (status.status === 'active' || status.status === 'paused'));
+            fitSheet();
+        }
+
+        function running() {
+            const status = director && director.status();
+            return !!(status && (status.status === 'active' || status.status === 'paused'));
+        }
+
+        /** DX2. Keep the sheet above the phone's chat sheet (see sheetFit). Fail soft: CSS stays. */
+        function fitSheet() {
+            sheet.style.bottom = '';
+            sheet.style.maxHeight = '';
+            if (sheet.hidden || typeof host.getBoundingClientRect !== 'function') return;
+            try {
+                const chat = doc.querySelector('.chat-card');
+                let below = chat ? chat.getBoundingClientRect() : null;
+                // The experience mini-player docks on top of the chat sheet on a phone (DX2);
+                // the sheet ends above whichever of the two is higher.
+                const bar = doc.getElementById('nexus-activity-pill');
+                if (below && bar && !bar.hidden) {
+                    const r = bar.getBoundingClientRect();
+                    if (r.height > 0 && r.top < below.top)
+                        below = { top: r.top, bottom: below.bottom, left: below.left, right: below.right };
+                }
+                const fit = below ? sheetFit(host.getBoundingClientRect(), below) : null;
+                if (!fit) return;
+                sheet.style.bottom = fit.bottom + 'px';
+                sheet.style.maxHeight = fit.maxHeight + 'px';
+            } catch (_) {
+                /* the CSS position stands */
+            }
         }
 
         exit.addEventListener('click', function () {
@@ -564,7 +630,7 @@ const DestinationBar = (() => {
         };
     }
 
-    return { attach: attach, CSS: CSS, BAR_ID: BAR_ID, SHEET_ID: SHEET_ID, EXIT_ID: EXIT_ID };
+    return { attach: attach, sheetFit: sheetFit, CSS: CSS, BAR_ID: BAR_ID, SHEET_ID: SHEET_ID, EXIT_ID: EXIT_ID };
 })();
 
 if (typeof window !== 'undefined') window.NEXUS_COMPANION_BAR = DestinationBar;

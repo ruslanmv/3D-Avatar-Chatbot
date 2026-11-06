@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-06 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5673 tests in 256 suites, all passing.**
+— lint clean, format clean, **5680 tests in 256 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -401,6 +401,21 @@ she is switched into. `src/companion/` (IIFE, loaded by `boot.js`) holds them.
   experience row. The sheet's Close only dismisses the sheet. Footer buttons get
   `aria-label` from their `title` at runtime (index.html's lines are pinned by
   the parity harness). `tests/companion/desktop-controls.test.js`.
+- **On a phone it is a mini-player (DX2).** In portrait
+  (`body.nexus-mobile.nexus-portrait`) the status bar moves to `<body>` and
+  docks 8 px above the chat sheet (`dockOffset`, re-measured on resize, rotation
+  and a ResizeObserver on `.chat-card`): inside the sheet it pushed the input
+  off screen, and the composer's `backdrop-filter` made it the containing block
+  of a fixed child, so it was clipped. The Seaside sheet is placed above
+  whichever is higher (`DestinationBar.sheetFit`, height capped at 55% of the
+  space above so her face stays clear), shows only the experience's controls
+  while one runs, and keeps Close pinned at its bottom. Touch screens get 44 px
+  targets (`pointer: coarse`), the composer's controls are 44 px. **No backticks
+  in a CSS comment inside a template literal** — one closed the string once. The
+  old "keyboard is open" rule (`max-height: 450px`) hid her on every phone held
+  sideways; it now needs `html.nexus-keyboard-open`, which `MobileChatOverlay`
+  sets while a text field has focus, and phone landscape lets her viewport
+  shrink so the button row fits.
 - **She says one line when it starts or ends (IC3).** `ActivityVoice`: one
   bounded `callLLM` per Together start, newest start wins, epoch-checked,
   nothing while the person is mid-turn or with no model configured, posted like

@@ -78,7 +78,35 @@ const ActivityMarks = (() => {
 }
 #${PILL_ID} button:hover { background: color-mix(in srgb, var(--mark) 26%, transparent); }
 #${PILL_ID} button:focus-visible { outline: 2px solid var(--mark); outline-offset: 2px; }
+/* DX2. On a phone the bar is a mini-player docked on top of the chat sheet, the "now playing"
+   row music and companion apps use, not a row inside it. Inside, it took 52 px of a chat sheet
+   whose height is fixed and pushed the message input below the screen's edge, and it shared the
+   top-right corner with the sheet's collapse chevron. Fixed rather than absolute: the chat sheet
+   clips its overflow, so a bar hanging off its top edge was cut away. dock() keeps the offset
+   8 px above the sheet. (No backticks in this comment: it lives inside a template literal.) */
+body.nexus-mobile.nexus-portrait #${PILL_ID} {
+  position: fixed; left: 10px; right: 10px; bottom: var(--nexus-activity-dock, 120px); width: auto; margin: 0; z-index: 40;
+  background: color-mix(in srgb, var(--mark) 12%, rgba(8, 16, 24, .94));
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 6px 22px rgba(0, 0, 0, .35);
+} {
+  position: absolute; left: 10px; right: 10px; bottom: calc(100% + 8px); width: auto; margin: 0; z-index: 12;
+  background: color-mix(in srgb, var(--mark) 12%, rgba(8, 16, 24, .94));
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 6px 22px rgba(0, 0, 0, .35);
+}
+/* DX2. A fingertip, not a cursor: 44 px is Apple's and Google's minimum touch target. */
+@media (pointer: coarse) {
+  #${PILL_ID} { min-height: 44px; }
+  #${PILL_ID} button { min-height: 44px; padding: .5rem .9rem; }
+}
 `;
+
+    /** How far above the viewport's bottom the mini-player sits: 8 px over the chat sheet. Pure. */
+    function dockOffset(viewportHeight, chatTop, gap) {
+        const h = Number(viewportHeight);
+        const top = Number(chatTop);
+        if (!(h > 0) || !Number.isFinite(top) || top <= 0 || top >= h) return null;
+        return Math.round(h - top + (gap == null ? 8 : gap));
+    }
 
     function where(destination) {
         return DESTINATIONS[destination] || DESTINATIONS.life;
@@ -148,6 +176,50 @@ const ActivityMarks = (() => {
         const shell = doc.querySelector('.chat-input-shell');
         if (shell) shell.insertBefore(pill, shell.firstChild);
 
+        /**
+         * DX2. On a phone, keep the mini-player 8 px above the chat sheet's top edge, measured,
+         * because the sheet expands, collapses and moves with the keyboard. The maths is
+         * dockOffset (pure); this only reads one rectangle. Fail soft: the CSS default stands.
+         */
+        function dock() {
+            try {
+                const win = doc.defaultView;
+                const chat = doc.querySelector('.chat-card');
+                // Portrait only: there the chat is a sheet across the bottom. In landscape it is a
+                // side panel, and the bar belongs in its composer as on a desktop.
+                const cls = doc.body ? doc.body.classList : null;
+                const mobile = !!(cls && cls.contains('nexus-mobile') && cls.contains('nexus-portrait'));
+                // The composer area has a backdrop-filter, which makes it the containing block of
+                // its fixed children: a fixed bar inside it was still clipped by the chat sheet.
+                // On a phone the bar lives in <body>; on a desktop, back at the top of the composer.
+                const shellNow = doc.querySelector('.chat-input-shell');
+                if (mobile && doc.body && pill.parentNode !== doc.body) doc.body.appendChild(pill);
+                else if (!mobile && shellNow && pill.parentNode !== shellNow)
+                    shellNow.insertBefore(pill, shellNow.firstChild);
+                if (!win || !chat || !mobile) return;
+                const offset = dockOffset(win.innerHeight, chat.getBoundingClientRect().top);
+                if (offset != null) pill.style.setProperty('--nexus-activity-dock', offset + 'px');
+            } catch (_) {
+                /* the CSS default stands */
+            }
+        }
+        const win = doc.defaultView;
+        if (win && win.addEventListener) {
+            win.addEventListener('resize', dock);
+            win.addEventListener('orientationchange', dock);
+        }
+        dock();
+        let observer = null;
+        try {
+            const chat = doc.querySelector('.chat-card');
+            if (chat && win && typeof win.ResizeObserver === 'function') {
+                observer = new win.ResizeObserver(dock);
+                observer.observe(chat);
+            }
+        } catch (_) {
+            observer = null;
+        }
+
         function paintPill() {
             const activity = session.activity ? session.activity() : null;
             const explicit =
@@ -158,6 +230,7 @@ const ActivityMarks = (() => {
                 EXPLICIT.includes(activity);
             pill.hidden = !explicit;
             if (!explicit) return;
+            dock();
             const destination = session.destination();
             pill.dataset.destination = destination;
             words.textContent = text(destination, activity, label(activity));
@@ -207,12 +280,17 @@ const ActivityMarks = (() => {
             refresh: paintPill,
             detach() {
                 off();
+                if (win && win.removeEventListener) {
+                    win.removeEventListener('resize', dock);
+                    win.removeEventListener('orientationchange', dock);
+                }
+                if (observer) observer.disconnect();
                 if (pill.parentNode) pill.parentNode.removeChild(pill);
             },
         };
     }
 
-    return { attach, text, DESTINATIONS, EXPLICIT, PILL_ID, CSS };
+    return { attach, text, dockOffset, DESTINATIONS, EXPLICIT, PILL_ID, CSS };
 })();
 
 if (typeof window !== 'undefined') window.NEXUS_COMPANION_MARKS = ActivityMarks;
