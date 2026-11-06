@@ -329,7 +329,7 @@
     {
       "id": "garden-after-dark",
       "title": "Garden after dark",
-      "note": "Lanterns, hedges and flowers by a pond \u2014 a place for stories.",
+      "note": "Lanterns, hedges and flowers by a pond — a place for stories.",
       "activities": ["scene-tale"],
       "panorama": {
         "4k": "panoramas/pond_bridge_night_4k.jpg",
@@ -1500,6 +1500,431 @@
         "color": "#4a2a24",
         "radius": 4.5
       }
+    },
+    {
+      "id": "irish-pub",
+      "title": "Irish pub",
+      "note": "A warm bar with booths and pendant lamps.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["desktop"],
+      "triangles": 94872,
+      "activities": [],
+      "sky": {
+        "top": "#2a1a10",
+        "horizon": "#4a2e1a",
+        "bottom": "#1e140c"
+      },
+      "fog": {
+        "color": "#2a1a10",
+        "near": 7,
+        "far": 26
+      },
+      "light": {
+        "sky": "#ffd9a8",
+        "ground": "#4a3020",
+        "hemi": 0.8,
+        "key": "#ffb870",
+        "keyIntensity": 1.0,
+        "fill": "#ffd0a0",
+        "fillIntensity": 0.55,
+        "rim": "#ffc080",
+        "rimIntensity": 0.45,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/pub-bar-room.glb",
+        "at": [1.25, 0, -3],
+        "turn": 0
+      },
+      "ground": {
+        "color": "#3a2616",
+        "radius": 6
+      }
+    },
+    {
+      "id": "irish-pub-light",
+      "title": "Irish pub",
+      "note": "The bar and a few tables, light enough for phones.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "vr"],
+      "triangles": 29058,
+      "activities": [],
+      "sky": {
+        "top": "#2a1a10",
+        "horizon": "#4a2e1a",
+        "bottom": "#1e140c"
+      },
+      "fog": {
+        "color": "#2a1a10",
+        "near": 7,
+        "far": 26
+      },
+      "light": {
+        "sky": "#ffd9a8",
+        "ground": "#4a3020",
+        "hemi": 0.8,
+        "key": "#ffb870",
+        "keyIntensity": 1.0,
+        "fill": "#ffd0a0",
+        "fillIntensity": 0.55,
+        "rim": "#ffc080",
+        "rimIntensity": 0.45,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/pub-bar-room-light.glb",
+        "at": [1.25, 0, -3],
+        "turn": 0
+      },
+      "ground": {
+        "color": "#3a2616",
+        "radius": 6
+      },
+      "lightFor": "irish-pub"
+    },
+    {
+      "id": "neon-discoteca",
+      "title": "Neon discoteca",
+      "note": "A club with an LED dance floor and a DJ booth.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["desktop"],
+      "triangles": 138814,
+      "activities": [],
+      "sky": {
+        "top": "#0e0a24",
+        "horizon": "#2a1650",
+        "bottom": "#08060f"
+      },
+      "fog": {
+        "color": "#160e30",
+        "near": 8,
+        "far": 32
+      },
+      "light": {
+        "sky": "#7a5cff",
+        "ground": "#120a24",
+        "hemi": 0.55,
+        "key": "#ff4fd8",
+        "keyIntensity": 0.9,
+        "fill": "#4fc8ff",
+        "fillIntensity": 0.6,
+        "rim": "#9a6bff",
+        "rimIntensity": 0.7,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/club-main-room.glb",
+        "at": [-0.25, -0.002, 0.5],
+        "turn": 0
+      }
+    },
+    {
+      "id": "neon-discoteca-light",
+      "title": "Neon discoteca",
+      "note": "The dance floor and the DJ booth, light enough for phones.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "vr"],
+      "triangles": 27904,
+      "activities": [],
+      "sky": {
+        "top": "#0e0a24",
+        "horizon": "#2a1650",
+        "bottom": "#08060f"
+      },
+      "fog": {
+        "color": "#160e30",
+        "near": 8,
+        "far": 32
+      },
+      "light": {
+        "sky": "#7a5cff",
+        "ground": "#120a24",
+        "hemi": 0.55,
+        "key": "#ff4fd8",
+        "keyIntensity": 0.9,
+        "fill": "#4fc8ff",
+        "fillIntensity": 0.6,
+        "rim": "#9a6bff",
+        "rimIntensity": 0.7,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/club-main-room-light.glb",
+        "at": [-0.25, -0.002, 0.5],
+        "turn": 0
+      },
+      "lightFor": "neon-discoteca"
+    },
+    {
+      "id": "private-cabaret",
+      "title": "Private cabaret",
+      "note": "A stage with curtains and golden footlights, just for two.",
+      "place": true,
+      "rating": "private",
+      "tiers": ["desktop", "vr"],
+      "triangles": 68044,
+      "activities": [],
+      "sky": {
+        "top": "#1a0c10",
+        "horizon": "#3a1820",
+        "bottom": "#100608"
+      },
+      "fog": {
+        "color": "#1e0c12",
+        "near": 10,
+        "far": 34
+      },
+      "light": {
+        "sky": "#ffd8a0",
+        "ground": "#3a1418",
+        "hemi": 0.7,
+        "key": "#ffc860",
+        "keyIntensity": 1.15,
+        "fill": "#ff9a8a",
+        "fillIntensity": 0.5,
+        "rim": "#ffd070",
+        "rimIntensity": 0.6,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/cabaret-stage.glb",
+        "at": [0.25, -0.9, 2.5],
+        "turn": 0
+      }
+    },
+    {
+      "id": "private-cabaret-light",
+      "title": "Private cabaret",
+      "note": "The stage and its curtains, light enough for phones.",
+      "place": true,
+      "rating": "private",
+      "tiers": ["mobile"],
+      "triangles": 25160,
+      "activities": [],
+      "sky": {
+        "top": "#1a0c10",
+        "horizon": "#3a1820",
+        "bottom": "#100608"
+      },
+      "fog": {
+        "color": "#1e0c12",
+        "near": 10,
+        "far": 34
+      },
+      "light": {
+        "sky": "#ffd8a0",
+        "ground": "#3a1418",
+        "hemi": 0.7,
+        "key": "#ffc860",
+        "keyIntensity": 1.15,
+        "fill": "#ff9a8a",
+        "fillIntensity": 0.5,
+        "rim": "#ffd070",
+        "rimIntensity": 0.6,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/cabaret-stage-light.glb",
+        "at": [0.25, -0.9, 2.5],
+        "turn": 0
+      },
+      "lightFor": "private-cabaret"
+    },
+    {
+      "id": "private-stream-studio",
+      "title": "Private stream studio",
+      "note": "A pretend streaming set. Nothing is recorded or sent.",
+      "place": true,
+      "rating": "private",
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 1912,
+      "activities": [],
+      "sky": {
+        "top": "#23252e",
+        "horizon": "#3a3d4a",
+        "bottom": "#18191f"
+      },
+      "fog": {
+        "color": "#23252e",
+        "near": 8,
+        "far": 28
+      },
+      "light": {
+        "sky": "#f4f0ff",
+        "ground": "#3a3a48",
+        "hemi": 0.85,
+        "key": "#fff2e6",
+        "keyIntensity": 1.0,
+        "fill": "#d8e4ff",
+        "fillIntensity": 0.7,
+        "rim": "#c8a8ff",
+        "rimIntensity": 0.45,
+        "exposure": 1
+      },
+      "props": [
+        {
+          "src": "kits/kenney-furniture-kit/rugRound.glb",
+          "width": 2.4,
+          "at": [0, 0, -0.5],
+          "flat": true
+        },
+        {
+          "src": "kits/kenney-furniture-kit/loungeDesignSofa.glb",
+          "width": 2.0,
+          "at": [0, 0, -2.3]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampSquareFloor.glb",
+          "height": 1.7,
+          "at": [-1.15, 0, -1.4],
+          "turn": 30
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampSquareFloor.glb",
+          "height": 1.7,
+          "at": [1.15, 0, -1.4],
+          "turn": -30
+        },
+        {
+          "src": "kits/kenney-furniture-kit/desk.glb",
+          "width": 1.4,
+          "at": [-2.0, 0, -1.9],
+          "turn": 35
+        },
+        {
+          "src": "kits/kenney-furniture-kit/computerScreen.glb",
+          "height": 0.4,
+          "at": [-2.0, 0.75, -2.0],
+          "turn": 35
+        },
+        {
+          "src": "kits/kenney-furniture-kit/chairDesk.glb",
+          "height": 0.95,
+          "at": [-1.6, 0, -1.3],
+          "turn": 215
+        },
+        {
+          "src": "kits/kenney-furniture-kit/speaker.glb",
+          "height": 0.9,
+          "at": [2.3, 0, -2.2],
+          "turn": -30
+        },
+        {
+          "src": "kits/kenney-furniture-kit/bookcaseOpenLow.glb",
+          "width": 1.2,
+          "at": [2.6, 0, -0.9],
+          "turn": -90
+        },
+        {
+          "src": "kits/kenney-furniture-kit/pottedPlant.glb",
+          "height": 1.1,
+          "at": [1.2, 0, -2.6]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/plantSmall2.glb",
+          "height": 0.35,
+          "at": [-2.3, 0.75, -1.6]
+        }
+      ],
+      "ground": {
+        "color": "#2c2c36",
+        "radius": 4.5
+      }
+    },
+    {
+      "id": "creative-academy",
+      "title": "Creative academy",
+      "note": "A bright seminar room with whiteboards, for learning together.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["desktop", "vr"],
+      "triangles": 41160,
+      "activities": [],
+      "sky": {
+        "top": "#cfe2f2",
+        "horizon": "#eef4f8",
+        "bottom": "#7a7a80"
+      },
+      "fog": {
+        "color": "#e8eef4",
+        "near": 12,
+        "far": 40
+      },
+      "light": {
+        "sky": "#f4f8ff",
+        "ground": "#707078",
+        "hemi": 0.95,
+        "key": "#fff6e8",
+        "keyIntensity": 1.1,
+        "fill": "#e4eeff",
+        "fillIntensity": 0.65,
+        "rim": "#ffffff",
+        "rimIntensity": 0.25,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/academy-seminar.glb",
+        "at": [-1.414, -0.054, -4.95],
+        "turn": -45
+      },
+      "ground": {
+        "color": "#8a8a90",
+        "radius": 6
+      }
+    },
+    {
+      "id": "creative-academy-light",
+      "title": "Creative academy",
+      "note": "The seminar room, light enough for phones.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile"],
+      "triangles": 29356,
+      "activities": [],
+      "sky": {
+        "top": "#cfe2f2",
+        "horizon": "#eef4f8",
+        "bottom": "#7a7a80"
+      },
+      "fog": {
+        "color": "#e8eef4",
+        "near": 12,
+        "far": 40
+      },
+      "light": {
+        "sky": "#f4f8ff",
+        "ground": "#707078",
+        "hemi": 0.95,
+        "key": "#fff6e8",
+        "keyIntensity": 1.1,
+        "fill": "#e4eeff",
+        "fillIntensity": 0.65,
+        "rim": "#ffffff",
+        "rimIntensity": 0.25,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/academy-seminar-light.glb",
+        "at": [-1.414, -0.054, -4.95],
+        "turn": -45
+      },
+      "ground": {
+        "color": "#8a8a90",
+        "radius": 6
+      },
+      "lightFor": "creative-academy"
     }
   ]
 }

@@ -82,6 +82,47 @@ over every budget).
 The walled town loads on desktop only: it is over the 30K-triangle phone budget
 and over the 150K desktop target, though merged it draws in under twenty calls.
 
+**PG1 playgrounds (the V4 release)**, downloaded 2026-11-06 from 3dassets.dev,
+CC0 1.0 Universal as stated on each asset page (attribution not required), same
+visual review in the app. Two are shipped whole; the rest are **cut down by
+recipe**, not edited by hand: `tools/vr/playground-subsets.json` names each
+output's source and the top-level nodes it keeps, and
+`node tools/vr/subset-scene.mjs` rebuilds them (three r147's loader and exporter
+in headless Chromium). The cut files are float, not quantized, so they are
+larger on disk than their triangle count suggests.
+
+| File                        | From                                              | Source                                                                                        | Triangles |
+| --------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------- | --------- |
+| `pub-bar-room.glb`          | Bar room (Bar, Pub and Brewery Taproom), whole    | <https://3dassets.dev/assets/bar-pub-and-brewery-taproom-bar-room-d134f615-starter-scene>     | 94 872    |
+| `pub-bar-room-light.glb`    | the same, recipe `pub-light`                      | as above                                                                                      | 29 058    |
+| `club-main-room.glb`        | Club main room (Nightclub and DJ Booth), whole    | <https://3dassets.dev/assets/nightclub-and-dj-booth-club-main-room-4e00883e-starter-scene>    | 138 814   |
+| `club-main-room-light.glb`  | the same, recipe `club-light`                     | as above                                                                                      | 27 904    |
+| `cabaret-stage.glb`         | Playhouse stage (Theatre Stage and Backstage)     | <https://3dassets.dev/assets/theatre-stage-and-backstage-playhouse-st-bcd91a59-starter-scene> | 68 044    |
+| `cabaret-stage-light.glb`   | the same, recipe `cabaret-light`                  | as above                                                                                      | 25 160    |
+| `academy-seminar.glb`       | Seminar room (University Lecture Hall and Campus) | <https://3dassets.dev/assets/university-lecture-hall-and-campus-teach-1377fb44-starter-scene> | 41 160    |
+| `academy-seminar-light.glb` | the same, recipe `academy-light`                  | as above                                                                                      | 29 356    |
+
+`sources/playhouse-stage.glb` (202 994 triangles) and
+`sources/lecture-campus.glb` (328 498) are the unmodified downloads the cabaret
+and academy recipes cut from; the app never loads them. The cabaret keeps the
+stage, its curtains and footlights and drops the stalls, the scenery flats and
+backstage; the academy keeps the seminar room only (the tiered lecture hall is
+118K triangles of benches on its own).
+
+The **stream studio** is built from the Kenney Furniture Kit already listed
+above (sofa, floor lamps, desk, screen, speaker, plants): 1 912 triangles.
+
+`previews/*.jpg` are 320×240 crops of this app's own renders of each venue
+(headless Chromium, SwiftShader), made for the venue cards; same licence as the
+repository.
+
+Suggested and not used: **Tavern and Street** by Polymancer (itch.io) — its
+licence was not checked and nothing was downloaded, because the CC0 pub above
+covered the Irish pub; and the taproom starter scene (61K triangles, open
+brewery floor) was downloaded and measured but the bar room read better as a
+pub. No audio was added for any venue: none of these packs ships music, and no
+unlicensed track is used.
+
 ## Asked for and not included
 
 - **Quiet Grove** (polyhangar, CC0) and **Low Poly Nature Pack** (svartskogen,

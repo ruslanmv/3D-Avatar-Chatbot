@@ -34,12 +34,14 @@ describe('the new spaces', () => {
             expect(fs.existsSync(path.join(ROOT, Worlds.ROOT, w.scene.src))).toBe(true);
     });
 
-    test('the motel and the candlelit suite are private; nothing else is', () => {
+    // PG1 added the cabaret and the stream studio; the list stays exact, so a world that turns
+    // private by accident (or stops being private) still fails here.
+    test('the motel, the candlelit suite, the cabaret and the studio are private; nothing else is', () => {
         const priv = worlds
             .filter((w) => w.rating === 'private' && !w.lightFor)
             .map((w) => w.id)
             .sort();
-        expect(priv).toEqual(['candlelit-suite', 'roadside-motel']);
+        expect(priv).toEqual(['candlelit-suite', 'private-cabaret', 'private-stream-studio', 'roadside-motel']);
         // A light stand-in is rated like the world it stands in for.
         for (const w of worlds.filter((x) => x.lightFor)) {
             const heavy = worlds.find((x) => x.id === w.lightFor);
