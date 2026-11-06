@@ -1,0 +1,793 @@
+{
+  "schema": 1,
+  "note": "VW1. Places for VR. Coordinates are metres around her: +z is toward the person, -z behind her. Every file is CC0; see PROVENANCE.md.",
+  "worlds": [
+    {
+      "id": "seaside-evening",
+      "title": "Seaside evening",
+      "note": "A stone terrace over the water at sunset, two lanterns.",
+      "activities": ["seaside"],
+      "panorama": {
+        "4k": "panoramas/venice_sunset_4k.jpg",
+        "2k": "panoramas/venice_sunset_2k.jpg"
+      },
+      "yaw": 0,
+      "ground": false,
+      "light": {
+        "sky": "#ffd2a1",
+        "ground": "#6a4a3a",
+        "hemi": 0.75,
+        "key": "#ffb070",
+        "keyIntensity": 1.25,
+        "fill": "#a9bdff",
+        "fillIntensity": 0.55,
+        "rim": "#ffcf8a",
+        "rimIntensity": 0.6
+      },
+      "props": [
+        {
+          "src": "kits/kenney-fantasy-town-kit/lantern.glb",
+          "height": 1.7,
+          "at": [-1.3, 0, -0.4]
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/lantern.glb",
+          "height": 1.7,
+          "at": [1.4, 0, -0.6]
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/stall-bench.glb",
+          "height": 0.5,
+          "at": [1.7, 0, -1.5],
+          "turn": -35
+        },
+        {
+          "src": "kits/kenney-nature-kit/plant_bushLarge.glb",
+          "height": 0.9,
+          "at": [2.4, 0, 0.3]
+        },
+        {
+          "src": "kits/kenney-nature-kit/rock_smallA.glb",
+          "height": 0.3,
+          "at": [-2.3, 0, 0.6]
+        }
+      ]
+    },
+    {
+      "id": "under-the-trees",
+      "title": "Under the trees",
+      "note": "A quiet clearing in a forest at golden hour.",
+      "activities": ["forest"],
+      "panorama": {
+        "4k": "panoramas/sunset_forest_4k.jpg",
+        "2k": "panoramas/sunset_forest_2k.jpg"
+      },
+      "yaw": 0,
+      "ground": false,
+      "light": {
+        "sky": "#cfe3b0",
+        "ground": "#3d4a22",
+        "hemi": 0.85,
+        "key": "#ffd59a",
+        "keyIntensity": 1.0,
+        "fill": "#b8d4a0",
+        "fillIntensity": 0.5,
+        "rim": "#ffe2a8",
+        "rimIntensity": 0.35
+      },
+      "props": [
+        {
+          "src": "kits/quaternius-stylized-nature/CommonTree_1.gltf",
+          "height": 7,
+          "at": [-3.2, 0, -3.5]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/CommonTree_3.gltf",
+          "height": 8,
+          "at": [3.6, 0, -4.2],
+          "turn": 60
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/CommonTree_2.gltf",
+          "height": 6.5,
+          "at": [-5.2, 0, 0.8],
+          "turn": 120
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/CommonTree_4.gltf",
+          "height": 7.5,
+          "at": [5.0, 0, 0.2],
+          "turn": 200
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Bush_Common_Flowers.gltf",
+          "height": 0.9,
+          "at": [-1.8, 0, -1.6]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Bush_Common_Flowers.gltf",
+          "height": 0.8,
+          "at": [1.9, 0, -1.3]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Fern_1.gltf",
+          "height": 0.6,
+          "at": [-1.2, 0, 0.4]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Fern_1.gltf",
+          "height": 0.5,
+          "at": [1.5, 0, 0.6],
+          "turn": 90
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Mushroom_Common.gltf",
+          "height": 0.18,
+          "at": [0.9, 0, -0.9]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Rock_Medium_1.gltf",
+          "height": 0.5,
+          "at": [-2.4, 0, -0.4]
+        },
+        {
+          "src": "kits/kaykit-forest-nature/Grass_1_A_Color1.gltf",
+          "height": 0.25,
+          "at": [-0.7, 0, -0.9]
+        },
+        {
+          "src": "kits/kaykit-forest-nature/Grass_2_A_Color1.gltf",
+          "height": 0.25,
+          "at": [0.6, 0, -1.8]
+        },
+        {
+          "src": "kits/kaykit-forest-nature/Grass_1_B_Color1.gltf",
+          "height": 0.25,
+          "at": [-2.0, 0, 1.4]
+        },
+        {
+          "src": "kits/kaykit-forest-nature/Grass_2_B_Color1.gltf",
+          "height": 0.25,
+          "at": [2.2, 0, 1.6]
+        }
+      ]
+    },
+    {
+      "id": "starlit-lake",
+      "title": "Starlit lake",
+      "note": "Still water, stars and moonlight. Very little moves.",
+      "activities": ["meditation"],
+      "panorama": {
+        "4k": "panoramas/lakeside_night_4k.jpg",
+        "2k": "panoramas/lakeside_night_2k.jpg"
+      },
+      "yaw": 0,
+      "ground": false,
+      "light": {
+        "sky": "#6f86c8",
+        "ground": "#1a1d28",
+        "hemi": 0.55,
+        "key": "#a9bcff",
+        "keyIntensity": 0.75,
+        "fill": "#ffffff",
+        "fillIntensity": 0.4,
+        "rim": "#b8c8ff",
+        "rimIntensity": 0.5
+      },
+      "props": [
+        {
+          "src": "kits/kenney-nature-kit/log.glb",
+          "width": 1.4,
+          "at": [-2.6, 0, -2.4],
+          "turn": 25
+        },
+        {
+          "src": "kits/kenney-nature-kit/rock_tallA.glb",
+          "height": 1.0,
+          "at": [3.6, 0, -3.6]
+        },
+        {
+          "src": "kits/kenney-nature-kit/grass_leafs.glb",
+          "height": 0.3,
+          "at": [-1.2, 0, -0.4]
+        },
+        {
+          "src": "kits/kenney-nature-kit/grass_leafs.glb",
+          "height": 0.25,
+          "at": [1.3, 0, -0.2]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Pebble_Round_2.gltf",
+          "height": 0.1,
+          "at": [0.6, 0, -1.7]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Pebble_Round_4.gltf",
+          "height": 0.08,
+          "at": [-0.5, 0, -2.1]
+        }
+      ]
+    },
+    {
+      "id": "garden-after-dark",
+      "title": "Garden after dark",
+      "note": "Lanterns, hedges and flowers by a pond \u2014 a place for stories.",
+      "activities": ["scene-tale"],
+      "panorama": {
+        "4k": "panoramas/pond_bridge_night_4k.jpg",
+        "2k": "panoramas/pond_bridge_night_2k.jpg"
+      },
+      "yaw": 0,
+      "ground": false,
+      "light": {
+        "sky": "#7d8fc0",
+        "ground": "#20261c",
+        "hemi": 0.55,
+        "key": "#ffc27a",
+        "keyIntensity": 0.85,
+        "fill": "#8fa6e0",
+        "fillIntensity": 0.45,
+        "rim": "#ffd8a0",
+        "rimIntensity": 0.4
+      },
+      "props": [
+        {
+          "src": "kits/kenney-fantasy-town-kit/lantern.glb",
+          "height": 1.6,
+          "at": [-1.5, 0, -0.8]
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/lantern.glb",
+          "height": 1.6,
+          "at": [1.6, 0, -1.0]
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/hedge.glb",
+          "width": 1.4,
+          "at": [-2.6, 0, -2.4]
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/hedge.glb",
+          "width": 1.4,
+          "at": [2.6, 0, -2.4]
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/hedge-curved.glb",
+          "width": 1.4,
+          "at": [-3.4, 0, -0.6],
+          "turn": 90
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Flower_3_Group.gltf",
+          "height": 0.35,
+          "at": [-0.9, 0, -1.6]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Flower_4_Group.gltf",
+          "height": 0.35,
+          "at": [0.9, 0, -1.9]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Flower_3_Group.gltf",
+          "height": 0.3,
+          "at": [2.0, 0, 0.4]
+        },
+        {
+          "src": "kits/kenney-nature-kit/path_stoneCircle.glb",
+          "width": 1.4,
+          "at": [0, 0, -0.2],
+          "flat": true
+        }
+      ]
+    },
+    {
+      "id": "ocean-sunrise",
+      "title": "Ocean sunrise",
+      "note": "A secluded beach under a peach sky.",
+      "activities": ["ocean"],
+      "panorama": {
+        "4k": "panoramas/secluded_beach_4k.jpg",
+        "2k": "panoramas/secluded_beach_2k.jpg"
+      },
+      "yaw": 0,
+      "ground": false,
+      "light": {
+        "sky": "#ffe0c8",
+        "ground": "#b49a78",
+        "hemi": 0.85,
+        "key": "#ffc49a",
+        "keyIntensity": 1.2,
+        "fill": "#bcd0ff",
+        "fillIntensity": 0.55,
+        "rim": "#ffd8b0",
+        "rimIntensity": 0.45
+      },
+      "props": [
+        {
+          "src": "kits/kenney-nature-kit/tree_palmTall.glb",
+          "height": 4.6,
+          "at": [-3.0, 0, -2.6]
+        },
+        {
+          "src": "kits/kenney-nature-kit/tree_palmBend.glb",
+          "height": 4.0,
+          "at": [3.4, 0, -1.8],
+          "turn": 140
+        },
+        {
+          "src": "kits/kenney-nature-kit/rock_largeA.glb",
+          "height": 1.2,
+          "at": [2.4, 0, 1.4]
+        },
+        {
+          "src": "kits/kenney-nature-kit/rock_smallB.glb",
+          "height": 0.3,
+          "at": [-1.6, 0, 0.6]
+        },
+        {
+          "src": "kits/kenney-nature-kit/canoe.glb",
+          "width": 2.6,
+          "at": [-2.2, 0, 1.6],
+          "turn": 70
+        }
+      ]
+    },
+    {
+      "id": "mountain-lake",
+      "title": "Mountain lake",
+      "note": "Pines and a lake in natural golden-hour light.",
+      "activities": [],
+      "panorama": {
+        "4k": "panoramas/lakes_4k.jpg",
+        "2k": "panoramas/lakes_2k.jpg"
+      },
+      "yaw": 0,
+      "ground": false,
+      "light": {
+        "sky": "#dfe9ff",
+        "ground": "#4c5a33",
+        "hemi": 0.9,
+        "key": "#ffe0b0",
+        "keyIntensity": 1.2,
+        "fill": "#c8d8ff",
+        "fillIntensity": 0.6,
+        "rim": "#fff0d0",
+        "rimIntensity": 0.3
+      },
+      "props": [
+        {
+          "src": "kits/quaternius-stylized-nature/Pine_1.gltf",
+          "height": 8,
+          "at": [-4.2, 0, -3.0]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Pine_3.gltf",
+          "height": 9,
+          "at": [4.4, 0, -3.6]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Pine_2.gltf",
+          "height": 7,
+          "at": [-5.4, 0, 1.6]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Rock_Medium_2.gltf",
+          "height": 0.6,
+          "at": [1.8, 0, -1.2]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Grass_Wispy_Short.gltf",
+          "height": 0.3,
+          "at": [-1.2, 0, -0.6]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Grass_Wispy_Short.gltf",
+          "height": 0.3,
+          "at": [1.0, 0, 0.6]
+        }
+      ]
+    },
+    {
+      "id": "meadow-sunset",
+      "title": "Meadow at sunset",
+      "note": "Soft gold over a field of flowers.",
+      "activities": ["relax", "sunset"],
+      "panorama": {
+        "4k": "panoramas/evening_field_4k.jpg",
+        "2k": "panoramas/evening_field_2k.jpg"
+      },
+      "yaw": 0,
+      "ground": false,
+      "light": {
+        "sky": "#ffd9a8",
+        "ground": "#5a5a2a",
+        "hemi": 0.8,
+        "key": "#ffb77a",
+        "keyIntensity": 1.15,
+        "fill": "#c0ccff",
+        "fillIntensity": 0.5,
+        "rim": "#ffd090",
+        "rimIntensity": 0.55
+      },
+      "props": [
+        {
+          "src": "kits/quaternius-stylized-nature/Flower_3_Group.gltf",
+          "height": 0.35,
+          "at": [-1.4, 0, -1.0]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Flower_4_Group.gltf",
+          "height": 0.35,
+          "at": [1.3, 0, -1.3]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Flower_4_Group.gltf",
+          "height": 0.3,
+          "at": [-2.2, 0, 0.8]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Grass_Wispy_Tall.gltf",
+          "height": 0.6,
+          "at": [2.2, 0, 0.2]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Grass_Wispy_Tall.gltf",
+          "height": 0.55,
+          "at": [-0.6, 0, -2.2]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Clover_1.gltf",
+          "height": 0.12,
+          "at": [0.6, 0, -0.6]
+        },
+        {
+          "src": "kits/kenney-nature-kit/flower_yellowA.glb",
+          "height": 0.3,
+          "at": [-1.3, 0, 0.2]
+        },
+        {
+          "src": "kits/kenney-nature-kit/flower_purpleA.glb",
+          "height": 0.3,
+          "at": [1.0, 0, 0.9]
+        }
+      ]
+    },
+    {
+      "id": "starry-hills",
+      "title": "Stars above the hills",
+      "note": "Dark blue sky and natural starlight, a small campfire.",
+      "activities": [],
+      "panorama": {
+        "4k": "panoramas/qwantani_night_4k.jpg",
+        "2k": "panoramas/qwantani_night_2k.jpg"
+      },
+      "yaw": 0,
+      "ground": false,
+      "light": {
+        "sky": "#5a6ea8",
+        "ground": "#15171c",
+        "hemi": 0.45,
+        "key": "#ffb070",
+        "keyIntensity": 0.7,
+        "fill": "#a6b8ff",
+        "fillIntensity": 0.45,
+        "rim": "#b8c8ff",
+        "rimIntensity": 0.5
+      },
+      "props": [
+        {
+          "src": "kits/kenney-nature-kit/campfire_stones.glb",
+          "width": 0.9,
+          "at": [1.6, 0, -1.2]
+        },
+        {
+          "src": "kits/kenney-nature-kit/campfire_logs.glb",
+          "width": 0.6,
+          "at": [1.6, 0, -1.2]
+        },
+        {
+          "src": "kits/kenney-nature-kit/log.glb",
+          "width": 1.3,
+          "at": [2.8, 0, -2.2],
+          "turn": 110
+        },
+        {
+          "src": "kits/kenney-nature-kit/rock_tallA.glb",
+          "height": 1.3,
+          "at": [-3.2, 0, -3.0]
+        },
+        {
+          "src": "kits/kenney-nature-kit/rock_smallC.glb",
+          "height": 0.25,
+          "at": [-1.4, 0, -0.6]
+        }
+      ]
+    },
+    {
+      "id": "city-rooftop",
+      "title": "City rooftop",
+      "note": "A sofa and a lamp above the city at pink-blue twilight.",
+      "activities": ["work", "copilot-hour"],
+      "panorama": {
+        "4k": "panoramas/sunset_jhbcentral_4k.jpg",
+        "2k": "panoramas/sunset_jhbcentral_2k.jpg"
+      },
+      "yaw": 0,
+      "ground": false,
+      "light": {
+        "sky": "#ffc8d8",
+        "ground": "#3a3a48",
+        "hemi": 0.8,
+        "key": "#ffb39a",
+        "keyIntensity": 1.1,
+        "fill": "#9fb0ff",
+        "fillIntensity": 0.55,
+        "rim": "#ffd0e0",
+        "rimIntensity": 0.4
+      },
+      "props": [
+        {
+          "src": "kits/kenney-furniture-kit/rugRound.glb",
+          "width": 1.6,
+          "at": [0, 0, -0.4],
+          "flat": true
+        },
+        {
+          "src": "kits/kenney-furniture-kit/loungeSofa.glb",
+          "width": 1.7,
+          "at": [0, 0, -2.3]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampRoundFloor.glb",
+          "height": 1.6,
+          "at": [1.5, 0, -2.2]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/sideTable.glb",
+          "height": 0.5,
+          "at": [-1.4, 0, -2.2]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/plantSmall1.glb",
+          "height": 0.25,
+          "at": [-1.4, 0.5, -2.2]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/pottedPlant.glb",
+          "height": 1.1,
+          "at": [-2.4, 0, -0.8]
+        }
+      ]
+    },
+    {
+      "id": "moonlit-courtyard",
+      "title": "Moonlit courtyard",
+      "note": "A violet sky, amber lamps and a stone fountain.",
+      "activities": [],
+      "panorama": {
+        "4k": "panoramas/courtyard_night_4k.jpg",
+        "2k": "panoramas/courtyard_night_2k.jpg"
+      },
+      "yaw": 0,
+      "ground": false,
+      "light": {
+        "sky": "#8a7fc8",
+        "ground": "#2a2420",
+        "hemi": 0.55,
+        "key": "#ffc27a",
+        "keyIntensity": 0.9,
+        "fill": "#9a90e0",
+        "fillIntensity": 0.45,
+        "rim": "#ffd8a0",
+        "rimIntensity": 0.4
+      },
+      "props": [
+        {
+          "src": "kits/kenney-fantasy-town-kit/fountain-round.glb",
+          "width": 2.2,
+          "at": [3.0, 0, -3.0]
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/pillar-stone.glb",
+          "height": 2.6,
+          "at": [-2.4, 0, -2.0]
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/pillar-stone.glb",
+          "height": 2.6,
+          "at": [2.4, 0, -2.0]
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/lantern.glb",
+          "height": 1.6,
+          "at": [-1.4, 0, -0.6]
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/lantern.glb",
+          "height": 1.6,
+          "at": [1.4, 0, -0.6]
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/hedge-large.glb",
+          "width": 1.6,
+          "at": [-3.2, 0, 0.4],
+          "turn": 90
+        }
+      ]
+    },
+    {
+      "id": "cozy-room",
+      "title": "Cozy room",
+      "note": "A warm corner with a sofa, books and lamplight, night outside.",
+      "activities": ["life-evening"],
+      "panorama": {
+        "4k": "panoramas/courtyard_night_4k.jpg",
+        "2k": "panoramas/courtyard_night_2k.jpg"
+      },
+      "yaw": 0,
+      "ground": {
+        "color": "#5a4232",
+        "radius": 5
+      },
+      "light": {
+        "sky": "#ffd6a8",
+        "ground": "#4a3a2a",
+        "hemi": 0.8,
+        "key": "#ffb878",
+        "keyIntensity": 1.0,
+        "fill": "#ffe0c0",
+        "fillIntensity": 0.6,
+        "rim": "#ffcf8a",
+        "rimIntensity": 0.35
+      },
+      "props": [
+        {
+          "src": "kits/kenney-furniture-kit/rugRectangle.glb",
+          "width": 2.2,
+          "at": [0, 0, -0.6],
+          "flat": true
+        },
+        {
+          "src": "kits/kenney-furniture-kit/loungeSofaLong.glb",
+          "width": 2.2,
+          "at": [0, 0, -2.3]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampSquareFloor.glb",
+          "height": 1.6,
+          "at": [1.7, 0, -2.1]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/bookcaseOpen.glb",
+          "height": 1.9,
+          "at": [-2.3, 0, -1.9],
+          "turn": 40
+        },
+        {
+          "src": "kits/kenney-furniture-kit/pottedPlant.glb",
+          "height": 1.1,
+          "at": [2.4, 0, -0.6]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/sideTable.glb",
+          "height": 0.5,
+          "at": [-1.5, 0, -2.3]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampRoundTable.glb",
+          "height": 0.45,
+          "at": [-1.5, 0.5, -2.3]
+        }
+      ]
+    },
+    {
+      "id": "fantasy-village",
+      "title": "Fantasy village",
+      "note": "A wagon, crates and a market stall at dusk.",
+      "activities": [],
+      "panorama": {
+        "4k": "panoramas/evening_field_4k.jpg",
+        "2k": "panoramas/evening_field_2k.jpg"
+      },
+      "yaw": 90,
+      "ground": false,
+      "light": {
+        "sky": "#ffd0a0",
+        "ground": "#4a3a24",
+        "hemi": 0.75,
+        "key": "#ffb070",
+        "keyIntensity": 1.1,
+        "fill": "#b0c0ff",
+        "fillIntensity": 0.5,
+        "rim": "#ffd090",
+        "rimIntensity": 0.5
+      },
+      "props": [
+        {
+          "src": "kits/quaternius-medieval-village/Prop_Wagon.gltf",
+          "width": 2.4,
+          "at": [-2.4, 0, -2.2],
+          "turn": 30
+        },
+        {
+          "src": "kits/quaternius-medieval-village/Prop_Crate.gltf",
+          "height": 0.7,
+          "at": [1.8, 0, -1.6]
+        },
+        {
+          "src": "kits/quaternius-medieval-village/Prop_Crate.gltf",
+          "height": 0.7,
+          "at": [2.4, 0, -1.1],
+          "turn": 25
+        },
+        {
+          "src": "kits/quaternius-medieval-village/Prop_WoodenFence_Single.gltf",
+          "width": 1.6,
+          "at": [-0.8, 0, -3.2]
+        },
+        {
+          "src": "kits/quaternius-medieval-village/Prop_WoodenFence_Single.gltf",
+          "width": 1.6,
+          "at": [0.8, 0, -3.2]
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/stall-red.glb",
+          "height": 2.4,
+          "at": [3.4, 0, -3.4],
+          "turn": -30
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/tree-high.glb",
+          "height": 5,
+          "at": [-4.4, 0, 0.6]
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/lantern.glb",
+          "height": 1.7,
+          "at": [-1.3, 0, -0.5]
+        }
+      ]
+    },
+    {
+      "id": "scifi-sanctuary",
+      "title": "Sci-fi sanctuary",
+      "note": "A quiet platform under the stars, soft blue light.",
+      "activities": [],
+      "panorama": {
+        "4k": "panoramas/qwantani_night_4k.jpg",
+        "2k": "panoramas/qwantani_night_2k.jpg"
+      },
+      "yaw": 180,
+      "ground": false,
+      "light": {
+        "sky": "#7aa0ff",
+        "ground": "#141a2a",
+        "hemi": 0.6,
+        "key": "#9fd0ff",
+        "keyIntensity": 0.85,
+        "fill": "#c0d8ff",
+        "fillIntensity": 0.45,
+        "rim": "#80c0ff",
+        "rimIntensity": 0.6
+      },
+      "props": [
+        {
+          "src": "kits/quaternius-modular-scifi/Columns/Column_Astra.gltf",
+          "height": 3,
+          "at": [-2.2, 0, -2.4]
+        },
+        {
+          "src": "kits/quaternius-modular-scifi/Columns/Column_Astra.gltf",
+          "height": 3,
+          "at": [2.2, 0, -2.4]
+        },
+        {
+          "src": "kits/quaternius-modular-scifi/Props/Prop_Computer.gltf",
+          "height": 1.2,
+          "at": [2.0, 0, 0.2],
+          "turn": -90
+        }
+      ]
+    }
+  ]
+}

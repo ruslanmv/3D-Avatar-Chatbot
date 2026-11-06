@@ -1,0 +1,7 @@
+Cozy Home Interiors — starter scene
+Source: https://3dassets.dev/packs/cozy-home-interiors
+File:   https://cdn.3dassets.dev/assets/17236/v1/model.glb (saved as starter-scene.glb)
+
+License: Creative Commons Zero (CC0 1.0 Universal), as stated on the pack page:
+"Licence: CC0 1.0 Universal (no attribution required)".
+http://creativecommons.org/publicdomain/zero/1.0/

@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (254 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (255 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-06 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5651 tests in 254 suites, all passing.**
+— lint clean, format clean, **5670 tests in 255 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -190,9 +190,10 @@ Try-On, `OD` the outfit dictionary shared with Forge), `V` for VRoid Hub in the
 Avatar Library, `VP` for the VR puppet, `AR` for the AR conversation, `VR` for
 the VR chat panel, `ST` for on-device speech-to-text (`docs/QUEST_STT.md`) and
 `HV` for SonicAgent voice through OllaBridge Cloud (`docs/SONICAGENT_VOICE.md`),
-`IC` for Life/Copilot/Experiences, `MV` for music levels in sessions and `TG`
-for the Together grid. Commit subjects match: `A4: viewport background manager`.
-So `git log --grep 'A4'` and the comment line up.
+`IC` for Life/Copilot/Experiences, `MV` for music levels in sessions, `TG` for
+the Together grid and `VW` for VR worlds (`docs/VR_WORLDS.md`). Commit subjects
+match: `A4: viewport background manager`. So `git log --grep 'A4'` and the
+comment line up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of
@@ -407,6 +408,37 @@ she is switched into. `src/companion/` (IIFE, loaded by `boot.js`) holds them.
   soundtrack at 40 / softened 26 (was 15 / 10), and a story's narration ducks
   other audio to 0.4 (was 0.16). Scene Tale's YouTube soundtrack is not given a
   level — it is the thing they chose to hear. Tests assert ranges, not values.
+  **Correction (VW1):** the scene loops (`src/features/together/scenes/assets/`)
+  that `AMBIENT_VOLUME` sets are not in the repository — the manifests name
+  files that were never added — so that change has nothing to play yet.
+
+## VR worlds (VW1)
+
+Places in the headset: a Poly Haven panorama, CC0 kit props (Kenney, Quaternius,
+KayKit) and retinted light. `src/gltf-viewer/VRWorlds.js` (IIFE, imported by
+`ViewerEngine` for its side effect, `tests/vr-worlds.test.js`), catalogue
+`assets/vr-worlds/worlds.json`, provenance beside it, `docs/VR_WORLDS.md`.
+
+- **Plain VR stays black (XP1).** `chooseWorld`: never in AR, `off` never, a
+  running activity's world (`activities` in the catalogue) first, else the
+  Settings ▸ VR WORLD choice (`nexus_vr_world`); the default `auto` shows
+  nothing. `ViewerEngine._applyVRWorld` runs at `vr-session-start` and on every
+  companion session change or setting change while presenting.
+- **The panorama is a sphere, not `scene.background`** — r147 cannot rotate a
+  background — with every vertex below the camera height flattened onto the
+  floor (`flattenBelow`), so the photograph is the ground.
+- **Snapshot and restore:** `show()` records hemi/key/fill/rim and exposure,
+  `hide()` writes them back and disposes what the world made. `hide()` runs
+  first in `vr-session-end`, before the VR light restore.
+- **Comfort rules are enforced, not suggested:** fade through black on every
+  change (`tick` per frame from `animate()`, in its own `try`), load everything
+  before swapping, and `comfortProblem` drops any prop within 1 m of the person,
+  between the two of you, or inside her — the shipped catalogue must produce no
+  problems.
+- **Kits:** glTF/GLB only, textures ≤ 1024 px; Quaternius Sci-Fi's models were
+  rewired to its `Textures/` folder. Props are centred on their bounding box
+  (`placementOffset`) — kit origins are anywhere.
+- `?vrWorld=<id>` draws a world on the desktop for checking without a headset.
 
 ## Clearing a conversation
 
