@@ -192,6 +192,54 @@
     }
 
     /**
+     * A world's light, with every field filled and the floors applied. Also how a PG1 mood preset
+     * becomes a light (`setMood`), so a preset cannot do what a catalogue entry may not: the
+     * floors under hemi and fill are what keep her face lit, and they hold here too. Pure.
+     */
+    function normalizeLight(raw) {
+        const light = raw && typeof raw === 'object' ? raw : {};
+        return {
+            sky: colour(light.sky, '#ffffff'),
+            ground: colour(light.ground, '#888899'),
+            // A floor under the light that reaches her face: "Starlight — dark
+            // surroundings but a softly lit avatar". A night scene may be dark; she may not.
+            hemi: Math.max(0.4, num(light.hemi, 0.6)),
+            key: colour(light.key, '#ffffff'),
+            keyIntensity: num(light.keyIntensity, 1.2),
+            fill: colour(light.fill, '#ffffff'),
+            fillIntensity: Math.max(0.35, num(light.fillIntensity, 0.85)),
+            rim: colour(light.rim, '#eeeeff'),
+            rimIntensity: num(light.rimIntensity, 0.15),
+            exposure: num(light.exposure, 1),
+        };
+    }
+
+    /**
+     * PG1. A light part-way from `a` to `b` (k from 0 to 1): colours mixed per channel, numbers
+     * interpolated. A mood changes by blending over MOOD_SECONDS rather than cutting, the way a
+     * room's dimmer moves — and never back and forth: nothing here can strobe. Pure.
+     */
+    function blendLight(a, b, k) {
+        const from = normalizeLight(a);
+        const to = normalizeLight(b);
+        const t = Math.max(0, Math.min(1, num(k, 1)));
+        const mix = (x, y) => {
+            const p = parseInt(x.slice(1), 16);
+            const q = parseInt(y.slice(1), 16);
+            const ch = (shift) => Math.round(((p >> shift) & 255) + (((q >> shift) & 255) - ((p >> shift) & 255)) * t);
+            return '#' + ((ch(16) << 16) | (ch(8) << 8) | ch(0)).toString(16).padStart(6, '0');
+        };
+        const out = {};
+        for (const key of Object.keys(to)) {
+            out[key] = typeof to[key] === 'string' ? mix(from[key], to[key]) : from[key] + (to[key] - from[key]) * t;
+        }
+        return out;
+    }
+
+    /** How long a mood takes to settle. Long enough to read as a dimmer, short enough to answer a tap. */
+    const MOOD_SECONDS = 0.9;
+
+    /**
      * Keep the worlds that can be drawn; say why the others were dropped.
      * A world needs an id, a title and a panorama; a prop with an unsafe path or no size is
      * skipped on its own, so one bad line does not cost the person the whole place.
@@ -289,20 +337,7 @@
                       },
                 props: props.slice(0, 40),
                 activities: Array.isArray(raw.activities) ? raw.activities.filter((a) => typeof a === 'string') : [],
-                light: {
-                    sky: colour(light.sky, '#ffffff'),
-                    ground: colour(light.ground, '#888899'),
-                    // A floor under the light that reaches her face: "Starlight — dark
-                    // surroundings but a softly lit avatar". A night scene may be dark; she may not.
-                    hemi: Math.max(0.4, num(light.hemi, 0.6)),
-                    key: colour(light.key, '#ffffff'),
-                    keyIntensity: num(light.keyIntensity, 1.2),
-                    fill: colour(light.fill, '#ffffff'),
-                    fillIntensity: Math.max(0.35, num(light.fillIntensity, 0.85)),
-                    rim: colour(light.rim, '#eeeeff'),
-                    rimIntensity: num(light.rimIntensity, 0.15),
-                    exposure: num(light.exposure, 1),
-                },
+                light: normalizeLight(light),
                 source: raw.source || null,
                 ambient: isAmbientPath(raw.ambient) ? raw.ambient : null,
                 sky,
@@ -544,10 +579,21 @@
             if (value.intensity != null) light.intensity = value.intensity;
         }
 
+        // PG1. The light being shown now, and a mood on its way to it (see setMood).
+        let lightNow = null;
+        let worldNow = null;
+        let mood = null; // { from, to, t }
+
         function applyLight(world) {
+            worldNow = world;
+            mood = null;
+            writeWorldLight(world.light);
+        }
+
+        function writeWorldLight(w) {
             const L = d.lights || {};
             const hex = (c) => parseInt(String(c).slice(1), 16);
-            const w = world.light;
+            lightNow = w;
             writeLight(L.hemi, { color: hex(w.sky), ground: hex(w.ground), intensity: w.hemi });
             writeLight(L.key, { color: hex(w.key), intensity: w.keyIntensity });
             writeLight(L.fill, { color: hex(w.fill), intensity: w.fillIntensity });
@@ -653,6 +699,11 @@
 
         /** Per frame, from ViewerEngine's loop: move the fade with the head and step it. */
         function tick(dt, head) {
+            if (mood) {
+                mood.t = Math.min(1, mood.t + Math.max(0, num(dt, 0)) / MOOD_SECONDS);
+                writeWorldLight(blendLight(mood.from, mood.to, mood.t));
+                if (mood.t >= 1) mood = null;
+            }
             if (!fade) return;
             if (head) fade.position.set(head.x, head.y, head.z);
             fadeOpacity = fadeStep(fadeOpacity, fadeTarget, dt, FADE_SECONDS);
@@ -1039,8 +1090,31 @@
         }
 
         /** Back to plain VR. `leave()` fades; `hide()` (session ending) is immediate. */
+        /**
+         * PG1. Change the light of the world that is up, for a playground's mood ("Warmer",
+         * "Neon"), without touching what hide() restores: the snapshot was taken before the world
+         * and stays the snapshot, so ending the place still gives back the room's own light, with
+         * no second undo to drift. `null` goes back to the world's own light. Blended over
+         * MOOD_SECONDS by tick(); `instant` (reduced motion) writes it at once. Refused with no
+         * world up — a mood is a property of a place, not of plain VR or the desktop viewer.
+         */
+        function setMood(light, options) {
+            if (!activeId || !worldNow) return false;
+            const to = light ? normalizeLight(light) : worldNow.light;
+            if (options && options.instant) {
+                mood = null;
+                writeWorldLight(to);
+            } else {
+                mood = { from: lightNow || worldNow.light, to, t: 0 };
+            }
+            return true;
+        }
+
         function hide() {
             generation += 1;
+            mood = null;
+            worldNow = null;
+            lightNow = null;
             stopAmbient();
             clear();
             restoreLight();
@@ -1071,6 +1145,7 @@
             hide,
             leave,
             tick,
+            setMood,
             get activeId() {
                 return activeId;
             },
@@ -1165,6 +1240,9 @@
         fadeStep,
         comfortProblem,
         placementOffset,
+        normalizeLight,
+        blendLight,
+        MOOD_SECONDS,
         tierFor,
         allowedOn,
         resolveFor,

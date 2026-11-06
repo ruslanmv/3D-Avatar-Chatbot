@@ -2321,7 +2321,11 @@ export class ViewerEngine {
                 await this.vrWorlds.leave();
                 if (seq !== this._vrWorldSeq) return null;
                 if (this.renderer.xr.isPresenting && this._vrBackgroundColor !== 'void') this._showVRGround();
-                this._worldShown(false);
+                this._worldShown(false, null);
+            } else if (this._worldAnnounced) {
+                // PG1. hide() at the end of a VR session takes the world down without a fade, so
+                // nothing above said it went; say so now that it is not coming back.
+                this._worldShown(false, null);
             }
             return null;
         }
@@ -2336,7 +2340,7 @@ export class ViewerEngine {
             tier,
         });
         if (!result.ok && result.why !== 'stale' && this.renderer.xr.isPresenting) this._showVRGround();
-        if (result.ok) this._worldShown(true);
+        if (result.ok) this._worldShown(true, world);
         return result.ok ? world.id : null;
     }
 
@@ -2347,11 +2351,35 @@ export class ViewerEngine {
      * screen, a wide short panel comes in to conversation framing (`framingFor`), and goes back
      * to the full body afterwards; the headset is never framed, the person is the camera.
      */
-    _worldShown(shown) {
+    _worldShown(shown, world) {
         try {
             window.__NEXUS_COMPANION_LIVE?.scene?.setVisible?.(!shown);
         } catch (_) {
             /* the scenery stays as it was */
+        }
+        // PG1. Say which world is up, so a playground can offer what there is to do in it. The
+        // event carries what the engine decided, never a way to decide: `base` is the world a
+        // light stand-in stands in for, and `owner` is set only for a room the Private
+        // experience asked for — the one case a private world is shown at all.
+        this._worldAnnounced = world ? world.id : null;
+        try {
+            const base = world ? world.lightFor || world.id : null;
+            window.dispatchEvent(
+                new CustomEvent('nexus-world-shown', {
+                    detail: world
+                        ? {
+                              id: world.id,
+                              base,
+                              title: world.title,
+                              rating: world.rating,
+                              owner: world.rating === 'private' && this._worldRequest ? this._worldRequest.owner : null,
+                              xr: !!this.renderer.xr.isPresenting,
+                          }
+                        : { id: null },
+                })
+            );
+        } catch (_) {
+            /* nobody is listening */
         }
         if (this.renderer.xr.isPresenting) return;
         const presets = window.NEXUS_CAMERA_PRESETS;
@@ -2385,6 +2413,16 @@ export class ViewerEngine {
             this._applyVRWorld();
         };
         window.addEventListener('nexus-world-request', onRequest);
+        // PG1. A playground's mood: a light for the world that is up, or null for its own.
+        const onMood = (event) => {
+            const detail = (event && event.detail) || {};
+            try {
+                this.vrWorlds?.setMood?.(detail.light || null, { instant: detail.instant === true });
+            } catch (error) {
+                console.warn('[VRWorlds] mood not applied', error);
+            }
+        };
+        window.addEventListener('nexus-world-mood', onMood);
         let offSession = null;
         try {
             const session = window.__NEXUS_COMPANION_LIVE?.session;
@@ -2401,6 +2439,7 @@ export class ViewerEngine {
         this._vrWorldOff = () => {
             window.removeEventListener('nexus-vr-world-change', onSetting);
             window.removeEventListener('nexus-world-request', onRequest);
+            window.removeEventListener('nexus-world-mood', onMood);
             if (typeof offSession === 'function') offSession();
         };
     }
