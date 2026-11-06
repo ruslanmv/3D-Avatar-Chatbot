@@ -436,7 +436,7 @@ she is switched into. `src/companion/` (IIFE, loaded by `boot.js`) holds them.
   that `AMBIENT_VOLUME` sets are not in the repository — the manifests name
   files that were never added — so that change has nothing to play yet.
 
-## VR worlds (VW1)
+## Worlds, in VR and on the screen (VW1–VW2)
 
 Places in the headset: a Poly Haven panorama, CC0 kit props (Kenney, Quaternius,
 KayKit) and retinted light. `src/gltf-viewer/VRWorlds.js` (IIFE, imported by
@@ -463,6 +463,24 @@ KayKit) and retinted light. `src/gltf-viewer/VRWorlds.js` (IIFE, imported by
   rewired to its `Textures/` folder. Props are centred on their bounding box
   (`placementOffset`) — kit origins are anywhere.
 - `?vrWorld=<id>` draws a world on the desktop for checking without a headset.
+- **On the screen too (VW2), and only light worlds on a phone.** The engine
+  watches the companion session for the page's life (it arms once
+  `__NEXUS_COMPANION_LIVE` appears — a phone boots it late) and shows the
+  running experience's world on desktop and mobile; Seaside's placeholder
+  `SceneRuntime` group (`live.scene`) is hidden while a world is up. `tierFor` →
+  `mobile | desktop | vr`; `allowedOn` refuses a world over `MOBILE_TRIANGLES`
+  (30 000) on a phone whatever its `tiers` say, and `chooseWorld` then takes the
+  next world for that activity. Every world declares measured `triangles` (a
+  test enforces it). Settings ▸ VR WORLD applies to the headset only; a screen
+  shows a world only with an experience.
+- **Assembled scenes** (`scene: { src, at, turn }`, `assets/vr-worlds/scenes/`,
+  3dassets.dev, CC0) are merged by material at load (`mergeByMaterial`, keyed by
+  what the material looks like, not its identity — every kit file has its own
+  copy), and so are a world's props. `at`/`turn` put the measured clear spot
+  under her; find one by raycasting, not by eye (a glade spot beside a fallen
+  trunk looked clear from above). Stylized worlds use `sky` (a gradient) and
+  `fog` (snapshotted and restored) instead of a photo. A wide-short screen goes
+  to CameraPresets' `bust` while a world is up (`framingFor`).
 
 ## Clearing a conversation
 

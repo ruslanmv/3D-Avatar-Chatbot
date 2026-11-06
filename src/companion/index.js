@@ -396,6 +396,8 @@
             memory: memory,
             privacy: privacy,
             director: director,
+            // VW2. The experience's placeholder scenery, so a real world can hide it.
+            scene: scene,
             bridge: bridge,
             bar: bar,
             marks: marks,

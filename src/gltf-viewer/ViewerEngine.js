@@ -216,6 +216,22 @@ export class ViewerEngine {
         } catch (_) {
             /* no preview */
         }
+        // VW2. Worlds are for the screen too, not only the headset: an experience brings its
+        // place to the desktop and the phone. The companion boots after the engine, so watch for
+        // it to appear, then follow its session for the life of the page.
+        if (this.vrWorlds) {
+            let tries = 0;
+            const arm = () => {
+                if (window.__NEXUS_COMPANION_LIVE?.session) {
+                    this._watchVRWorld();
+                    this._applyVRWorld();
+                    // A slow phone boots the companion well after the engine: 40 × 0.5 s gave up
+                    // first, and no experience ever brought its world there. One cheap check a
+                    // second, for up to five minutes.
+                } else if (++tries < 300) setTimeout(arm, 1000);
+            };
+            setTimeout(arm, 0);
+        }
 
         // Guard against WebGL context loss — stop animation loop so Three.js
         // doesn't try to render with a dead context. The cancelAnimationFrame
@@ -575,8 +591,9 @@ export class ViewerEngine {
             // activity has one (Seaside evening, Under the trees…). Never in AR. Followed live:
             // starting or ending an experience in the headset changes the place.
             if (!xrCtx.isAR) {
+                // Re-chosen for the headset's tier (a phone-light world may give way to the
+                // full one, and the Settings choice applies only here).
                 this._applyVRWorld();
-                this._watchVRWorld();
             }
 
             // Refresh controller reference after VR session starts
@@ -628,9 +645,11 @@ export class ViewerEngine {
 
             // VW1. Leave the place first: its light snapshot is written back before the VR
             // light restore below, so the two restores compose instead of fighting.
-            this._unwatchVRWorld();
             this._vrWorldSeq += 1;
             this.vrWorlds?.hide();
+            // VW2. Back on the screen, the running experience's world (if any) returns once the
+            // VR light restore below has run, so the world snapshots desktop lighting, not VR's.
+            setTimeout(() => this._applyVRWorld(), 0);
 
             // Restore opaque clear color for desktop rendering
             this.renderer.setClearColor(0x000000, 1);
@@ -2262,6 +2281,10 @@ export class ViewerEngine {
         const seq = ++this._vrWorldSeq;
         const catalogue = await worlds.loadCatalogue();
         if (seq !== this._vrWorldSeq) return null;
+        if (preview) this._vrWorldPreview = preview;
+        preview = preview || this._vrWorldPreview || null;
+        const xr = !!this.renderer.xr.isPresenting;
+        const tier = worlds.tierFor({ xr, mobile: document.documentElement.classList.contains('is-mobile') });
         let id = preview;
         if (!id) {
             let activity = null;
@@ -2277,6 +2300,7 @@ export class ViewerEngine {
                 setting: worlds.readSetting(),
                 activity,
                 isAR: !!this.arSupport?._isARSession?.(),
+                tier,
             });
         }
         const world = id ? catalogue.worlds.find((w) => w.id === id) : null;
@@ -2286,6 +2310,7 @@ export class ViewerEngine {
                 await this.vrWorlds.leave();
                 if (seq !== this._vrWorldSeq) return null;
                 if (this.renderer.xr.isPresenting && this._vrBackgroundColor !== 'void') this._showVRGround();
+                this._worldShown(false);
             }
             return null;
         }
@@ -2294,9 +2319,45 @@ export class ViewerEngine {
         this._hideVRGround();
         const root = this.avatarManager?.currentRoot;
         const anchor = root ? { x: root.position.x, y: 0, z: root.position.z } : { x: 0, y: 0, z: 0 };
-        const result = await this.vrWorlds.show(world, { anchor, activity: preview ? null : this._vrWorldActivity });
+        const result = await this.vrWorlds.show(world, {
+            anchor,
+            activity: preview ? null : this._vrWorldActivity,
+            tier,
+        });
         if (!result.ok && result.why !== 'stale' && this.renderer.xr.isPresenting) this._showVRGround();
+        if (result.ok) this._worldShown(true);
         return result.ok ? world.id : null;
+    }
+
+    /**
+     * VW2. What else changes while a real world is up. The experience's own placeholder scenery
+     * (Seaside's boxes and spheres, `SceneRuntime`) is hidden — the boxes inside a photographed
+     * terrace were the prototype look this replaces — and comes back when the world goes. On a
+     * screen, a wide short panel comes in to conversation framing (`framingFor`), and goes back
+     * to the full body afterwards; the headset is never framed, the person is the camera.
+     */
+    _worldShown(shown) {
+        try {
+            window.__NEXUS_COMPANION_LIVE?.scene?.setVisible?.(!shown);
+        } catch (_) {
+            /* the scenery stays as it was */
+        }
+        if (this.renderer.xr.isPresenting) return;
+        const presets = window.NEXUS_CAMERA_PRESETS;
+        if (!presets) return;
+        try {
+            const el = this.renderer.domElement;
+            const framing = window.NEXUS_VR_WORLDS?.framingFor(el.clientWidth, el.clientHeight);
+            if (shown && framing === 'bust' && typeof presets.transitionTo === 'function') {
+                presets.transitionTo('bust');
+                this._worldFramed = true;
+            } else if (!shown && this._worldFramed && typeof presets.transitionToFullBody === 'function') {
+                presets.transitionToFullBody();
+                this._worldFramed = false;
+            }
+        } catch (_) {
+            /* framing is a nicety */
+        }
     }
 
     _watchVRWorld() {

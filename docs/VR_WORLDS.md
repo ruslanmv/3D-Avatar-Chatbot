@@ -1,8 +1,34 @@
-# VR worlds (VW1)
+# Worlds (VW1–VW2)
 
 Places to be in, in the headset: a 360° photograph around you, a few real 3D
 objects near her, and light that matches. 13 worlds, all CC0
 (`assets/vr-worlds/PROVENANCE.md`).
+
+## On the screen too (VW2)
+
+An experience brings its world to the **desktop and the phone**, not only the
+headset: Seaside evening, Under the trees, Ten quiet minutes, Relax together,
+Scene Tale and the rest show their place around her in the normal viewport, and
+Seaside's placeholder boxes are hidden while it is up. Ending the experience
+fades back to the normal background.
+
+**Phones get only light worlds.** Each world declares its triangles and the
+devices it may load on (`tiers`); a world over 30 000 triangles never loads on a
+phone, which then takes the next world for the same experience. Phones always get
+the 2K picture. So Under the trees is the real oak glade on a desktop and in the
+headset, and the light props version on a phone; Scene Tale is the walled town
+on a desktop and the garden after dark elsewhere.
+
+| World           | Scene                          | Triangles | Where             |
+| --------------- | ------------------------------ | --------- | ----------------- |
+| Oak glade       | 3dassets.dev oak woodland      | 46K       | desktop, VR       |
+| Meadow village  | 3dassets.dev Meadow Courier    | 22K       | phone, desktop, VR|
+| Walled town     | 3dassets.dev MMO starter realm | 225K      | desktop           |
+
+Every scene is merged by material when it loads (68 meshes → 11 draw calls,
+1 922 → 19), and so are each world's props. Stylized scenes get a painted
+gradient sky and soft fog instead of a photograph. A wide, short viewport comes
+in to conversation framing while a world is up (`framingFor`).
 
 ## Using it
 

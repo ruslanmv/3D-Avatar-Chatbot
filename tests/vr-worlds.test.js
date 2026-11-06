@@ -78,12 +78,40 @@ describe('the shipped catalogue', () => {
         }
     });
 
-    test('the experiences have their places', () => {
-        const by = (a) => Worlds.chooseWorld({ worlds, activity: a });
-        expect(by('seaside')).toBe('seaside-evening');
-        expect(by('forest')).toBe('under-the-trees');
-        expect(by('meditation')).toBe('starlit-lake');
-        expect(by('scene-tale')).toBe('garden-after-dark');
+    test('the experiences have their places, on every device', () => {
+        const by = (a, tier) => Worlds.chooseWorld({ worlds, activity: a, tier });
+        for (const tier of Worlds.TIERS) {
+            expect(by('seaside', tier)).toBe('seaside-evening');
+            expect(by('meditation', tier)).toBe('starlit-lake');
+            expect(by('relax', tier)).toBe('meadow-village');
+        }
+        // VW2: the real forest and the walled town on a desktop; a phone gets the light ones.
+        expect(by('forest', 'desktop')).toBe('oak-glade');
+        expect(by('forest', 'vr')).toBe('oak-glade');
+        expect(by('forest', 'mobile')).toBe('under-the-trees');
+        expect(by('scene-tale', 'desktop')).toBe('walled-town');
+        expect(by('scene-tale', 'mobile')).toBe('garden-after-dark');
+        expect(by('scene-tale', 'vr')).toBe('garden-after-dark');
+    });
+
+    test('a phone only ever gets light worlds (VW2)', () => {
+        for (const w of worlds) {
+            // Every world states its triangles, so the rule runs on measured numbers.
+            expect(`${w.id}: ${w.triangles > 0}`).toBe(`${w.id}: true`);
+            if (Worlds.allowedOn(w, 'mobile')) expect(w.triangles).toBeLessThanOrEqual(Worlds.MOBILE_TRIANGLES);
+        }
+        const heavy = worlds.filter((w) => w.triangles > Worlds.MOBILE_TRIANGLES).map((w) => w.id);
+        expect(heavy.sort()).toEqual(['oak-glade', 'walled-town']);
+        // And never the 4K picture.
+        const photo = worlds.find((w) => w.panorama['4k']);
+        expect(Worlds.panoramaFor(photo, { maxTextureSize: 8192 }, 'mobile')).toBe(photo.panorama['2k']);
+    });
+
+    test('every assembled scene is in the repository and has a sky', () => {
+        for (const w of worlds.filter((x) => x.scene)) {
+            expect(fs.existsSync(path.join(ROOT, Worlds.ROOT, w.scene.src))).toBe(true);
+            expect(w.sky || w.panorama['2k']).toBeTruthy();
+        }
     });
 
     test('every kit has its licence beside it, and PROVENANCE names every kit and panorama', () => {
@@ -180,6 +208,29 @@ describe('comfort (Meta VR guidance)', () => {
         expect(o).toBe(1);
         expect(Worlds.fadeStep(1, 0, 0.1, 0.25)).toBeCloseTo(0.6);
         expect(Worlds.fadeStep(0.5, 0.5, 1, 0.25)).toBe(0.5);
+    });
+});
+
+describe('VW2 rules', () => {
+    test('the tier follows the device', () => {
+        expect(Worlds.tierFor({ xr: true, mobile: true })).toBe('vr');
+        expect(Worlds.tierFor({ mobile: true })).toBe('mobile');
+        expect(Worlds.tierFor({})).toBe('desktop');
+    });
+    test('a heavy world is refused on a phone even if it lists the tier', () => {
+        expect(Worlds.allowedOn({ tiers: ['mobile'], triangles: 90000 }, 'mobile')).toBe(false);
+        expect(Worlds.allowedOn({ tiers: ['mobile'], triangles: 9000 }, 'mobile')).toBe(true);
+        expect(Worlds.allowedOn({ tiers: ['desktop'], triangles: 9000 }, 'mobile')).toBe(false);
+    });
+    test('a wide short panel comes in to conversation framing; a tall one keeps her whole', () => {
+        expect(Worlds.framingFor(1100, 420)).toBe('bust');
+        expect(Worlds.framingFor(480, 700)).toBe('fullBody');
+        expect(Worlds.framingFor(1600, 900)).toBe('fullBody');
+    });
+    test('on a screen the Settings choice never forces a world; only an experience brings one', () => {
+        const ws = [{ id: 'a', activities: [], tiers: Worlds.TIERS, triangles: 10 }];
+        expect(Worlds.chooseWorld({ worlds: ws, setting: 'a', tier: 'desktop' })).toBeNull();
+        expect(Worlds.chooseWorld({ worlds: ws, setting: 'a', tier: 'vr' })).toBe('a');
     });
 });
 

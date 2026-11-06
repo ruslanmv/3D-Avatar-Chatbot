@@ -48,6 +48,23 @@ downloaded no model found its textures. The 21 textures are in
 `../Textures/<name>`. Nothing else was changed. Three decal files the kit
 references are not in its download at all; no world uses those decals.
 
+## Assembled scenes (`scenes/`)
+
+Whole starter scenes from 3dassets.dev, downloaded 2026-11-06 for batch VW2,
+used unmodified (the runtime merges their meshes by material at load time).
+Licence: CC0 1.0 Universal, as stated on each pack page. 3dassets.dev reports
+these packs as AI-assisted; each was reviewed visually in the app before
+shipping.
+
+| File                 | Scene                                          | Source                                                                                        | Triangles | Meshes |
+| -------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------- | --------- | ------ |
+| `oak-glade.glb`      | Oak woodland glade (Forest Trees and Woodland) | <https://3dassets.dev/assets/temperate-forest-ecology-oak-woodland-gl-d28b8a78-starter-scene> | 46 091    | 68     |
+| `meadow-courier.glb` | Meadow Courier — cozy village starter scene    | <https://3dassets.dev/packs/meadow-courier>                                                   | 22 448    | 90     |
+| `mmo-realm.glb`      | Medieval MMO Starter Realm — walled town       | <https://3dassets.dev/packs/medieval-mmo-starter-realm>                                       | 224 939   | 1 922  |
+
+The walled town loads on desktop only: it is over the 30K-triangle phone budget
+and over the 150K desktop target, though merged it draws in under twenty calls.
+
 ## Asked for and not included
 
 - **Quiet Grove** (polyhangar, CC0) and **Low Poly Nature Pack** (svartskogen,

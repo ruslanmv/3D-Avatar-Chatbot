@@ -43,6 +43,43 @@
     /** 'auto': only a running activity brings a place; plain VR stays black (XP1). */
     const DEFAULT_SETTING = 'auto';
     const SPHERE_RADIUS = 60;
+    /**
+     * VW2. Where a world may load. A phone gets only light worlds — the person's rule: small
+     * scenes, 2K pictures, nothing that a mid-range phone would drop frames on. A world declares
+     * its triangles; one over MOBILE_TRIANGLES never loads on a phone, whatever its tiers say.
+     */
+    const TIERS = Object.freeze(['mobile', 'desktop', 'vr']);
+    const MOBILE_TRIANGLES = 30000;
+
+    /** The tier the page is drawing for. Pure. */
+    function tierFor(ctx) {
+        const c = ctx || {};
+        if (c.xr) return 'vr';
+        return c.mobile ? 'mobile' : 'desktop';
+    }
+
+    /** May this world load on this tier? Pure. */
+    function allowedOn(world, tier) {
+        if (!world) return false;
+        const tiers = Array.isArray(world.tiers) && world.tiers.length ? world.tiers : TIERS;
+        if (!tiers.includes(tier)) return false;
+        if (tier === 'mobile' && Number(world.triangles) > MOBILE_TRIANGLES) return false;
+        return true;
+    }
+
+    /**
+     * VW2. A wide, short viewport (a laptop's chat-and-avatar split, a phone on its side) made
+     * her tiny: the whole pier fitted and she was a figure in the middle of it. Framing follows
+     * the panel: tall panels keep the full body, wide-short ones come in to conversation
+     * distance (CameraPresets' "bust"). Pure.
+     */
+    function framingFor(width, height) {
+        const w = Number(width);
+        const h = Number(height);
+        if (!(w > 0) || !(h > 0)) return 'fullBody';
+        return w / h > 1.45 && h < 520 ? 'bust' : 'fullBody';
+    }
+
     /** A quarter second each way: long enough to read as a blink, short enough not to wait on. */
     const FADE_SECONDS = 0.25;
     const AMBIENT_VOLUME = 0.6;
@@ -135,10 +172,38 @@
             const pano = raw.panorama || {};
             const sizes = {};
             for (const key of ['4k', '2k']) if (isSafePath(pano[key])) sizes[key] = pano[key];
-            if (!sizes['2k'] && !sizes['4k']) {
-                problems.push(`world ${id}: no usable panorama`);
+            // VW2. A stylized world paints its own sky instead of a photograph: a low-poly
+            // village in front of a photographed Venice reads as two different games.
+            const rawSky = raw.sky && typeof raw.sky === 'object' ? raw.sky : null;
+            const sky = rawSky
+                ? {
+                      top: colour(rawSky.top, '#7fb3e6'),
+                      horizon: colour(rawSky.horizon, '#f3d9b8'),
+                      bottom: colour(rawSky.bottom, '#9bb38a'),
+                  }
+                : null;
+            if (!sizes['2k'] && !sizes['4k'] && !sky) {
+                problems.push(`world ${id}: no usable panorama or sky`);
                 continue;
             }
+            // VW2. An assembled scene: one GLB placed whole (a village, a glade), its meshes merged
+            // by material so ninety pieces draw as eight.
+            let sceneSpec = null;
+            if (raw.scene) {
+                if (!isSafePath(raw.scene.src)) {
+                    problems.push(`world ${id}: scene ${raw.scene.src} has an unsafe path`);
+                    continue;
+                }
+                const at = Array.isArray(raw.scene.at) ? raw.scene.at.map((v) => num(v, 0)) : [0, 0, 0];
+                sceneSpec = {
+                    src: raw.scene.src,
+                    at: [at[0] || 0, at[1] || 0, at[2] || 0],
+                    turn: num(raw.scene.turn, 0),
+                    scale: Math.max(0.01, num(raw.scene.scale, 1)),
+                    merge: raw.scene.merge !== false,
+                };
+            }
+            const tiers = Array.isArray(raw.tiers) ? raw.tiers.filter((t) => TIERS.includes(t)) : TIERS.slice();
             const props = [];
             for (const prop of Array.isArray(raw.props) ? raw.props : []) {
                 if (!prop || !isSafePath(prop.src)) {
@@ -202,6 +267,18 @@
                 },
                 source: raw.source || null,
                 ambient: isAmbientPath(raw.ambient) ? raw.ambient : null,
+                sky,
+                scene: sceneSpec,
+                tiers: tiers.length ? tiers : TIERS.slice(),
+                triangles: Math.max(0, num(raw.triangles, 0)),
+                fog:
+                    raw.fog && typeof raw.fog === 'object'
+                        ? {
+                              color: colour(raw.fog.color, '#cfd8e0'),
+                              near: num(raw.fog.near, 15),
+                              far: num(raw.fog.far, 70),
+                          }
+                        : null,
             });
         }
         return { worlds, problems };
@@ -221,11 +298,17 @@
         const worlds = Array.isArray(c.worlds) ? c.worlds : [];
         const setting = c.setting || DEFAULT_SETTING;
         if (setting === 'off') return null;
+        // VW2. Only worlds this tier may load: on a phone a heavy world is skipped and the next
+        // one for the same activity (a light version) is chosen instead.
+        const tier = c.tier || 'vr';
+        const usable = worlds.filter((w) => allowedOn(w, tier));
         if (c.activity) {
-            const byActivity = worlds.find((w) => w.activities.includes(c.activity));
+            const byActivity = usable.find((w) => w.activities.includes(c.activity));
             if (byActivity) return byActivity.id;
         }
-        if (setting !== DEFAULT_SETTING && worlds.some((w) => w.id === setting)) return setting;
+        // The Settings choice is the headset's (Settings ▸ VR WORLD); on a screen a world comes
+        // only with an experience.
+        if (tier === 'vr' && setting !== DEFAULT_SETTING && usable.some((w) => w.id === setting)) return setting;
         return null;
     }
 
@@ -234,10 +317,11 @@
      * headset (2K is ~5.7, visibly soft); it decodes to 32 MB of texture, which every Quest from
      * the 2 on holds. A GPU whose limit is under 4096 gets the 2K picture rather than a failure.
      */
-    function panoramaFor(world, caps) {
+    function panoramaFor(world, caps, tier) {
         const max = num(caps && caps.maxTextureSize, 4096);
         const pano = (world && world.panorama) || {};
-        if (max >= 4096 && pano['4k']) return pano['4k'];
+        // VW2. A phone always gets the 2K picture: 8 MB of texture instead of 32.
+        if (tier !== 'mobile' && max >= 4096 && pano['4k']) return pano['4k'];
         return pano['2k'] || pano['4k'] || null;
     }
 
@@ -395,6 +479,7 @@
                 fill: read(L.fill),
                 rim: read(L.rim),
                 exposure: d.renderer ? d.renderer.toneMappingExposure : null,
+                fog: d.scene ? d.scene.fog : null,
             };
         }
 
@@ -424,6 +509,7 @@
             writeLight(L.fill, snapshot.fill);
             writeLight(L.rim, snapshot.rim);
             if (d.renderer && snapshot.exposure != null) d.renderer.toneMappingExposure = snapshot.exposure;
+            if (d.scene) d.scene.fog = snapshot.fog || null;
         }
 
         function clear() {
@@ -435,6 +521,8 @@
                     if (node.userData && node.userData.vrWorldOwned) {
                         if (node.geometry) node.geometry.dispose();
                         if (node.material) node.material.dispose();
+                    } else if (node.userData && node.userData.vrWorldGeometry && node.geometry) {
+                        node.geometry.dispose();
                     }
                 });
             }
@@ -547,8 +635,29 @@
             audio = null;
         }
 
-        async function loadPanorama(world) {
-            const url = panoramaFor(world, d.renderer && d.renderer.capabilities);
+        /** VW2. A painted sky: a vertical gradient, 4 × 256 px, for the stylized worlds. */
+        function gradientSky(sky) {
+            const doc = global.document;
+            if (!doc) return null;
+            const canvas = doc.createElement('canvas');
+            canvas.width = 4;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return null;
+            // Texture v runs bottom (0) to top (1); canvas y runs top to bottom.
+            const g = ctx.createLinearGradient(0, 0, 0, 256);
+            g.addColorStop(0, sky.top);
+            g.addColorStop(0.46, sky.horizon);
+            g.addColorStop(0.54, sky.horizon);
+            g.addColorStop(1, sky.bottom);
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, 4, 256);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        async function loadPanorama(world, tier) {
+            if (world.sky && !world.panorama['2k'] && !world.panorama['4k']) return gradientSky(world.sky);
+            const url = panoramaFor(world, d.renderer && d.renderer.capabilities, tier);
             try {
                 return await loadTexture(ROOT + url);
             } catch (error) {
@@ -577,7 +686,9 @@
             } catch (_) {
                 /* default filtering */
             }
-            const sphere = own(new THREE.SphereGeometry(SPHERE_RADIUS, 96, 64));
+            // 72 × 40: 5.7K triangles, enough rings near the horizon for the flattened ground to stay
+            // smooth (96 × 64 was 12K — half of a phone world's budget spent on the sky).
+            const sphere = own(new THREE.SphereGeometry(SPHERE_RADIUS, 72, 40));
             const height = world.cameraHeight;
             const pos = sphere.attributes.position;
             pos.array.set(flattenBelow(pos.array, height));
@@ -604,7 +715,121 @@
             return sky;
         }
 
-        function buildPlace(world, models, anchor) {
+        /**
+         * VW2. One mesh per material instead of one per piece. An assembled scene from a kit is
+         * hundreds of small meshes (the MMO town is 1 922) sharing a dozen materials, and every
+         * mesh is a draw call — on a phone, the cost that matters most. Static scenery does not
+         * need to stay separate, so each material's geometry is baked into world space and
+         * concatenated. Attributes are copied out as floats, which also undoes the kits'
+         * KHR_mesh_quantization (a quantized position cannot hold a transformed value).
+         * Skinned meshes and multi-material meshes are kept as they are.
+         */
+        function materialKey(m) {
+            const tex = (t) =>
+                (t && ((t.source && t.source.data && t.source.data.src) || (t.image && t.image.src))) ||
+                (t ? t.uuid : '');
+            return [
+                m.type,
+                m.color ? m.color.getHexString() : '',
+                tex(m.map),
+                tex(m.normalMap),
+                m.transparent ? 't' : '',
+                m.alphaTest || 0,
+                m.side,
+                m.vertexColors ? 'v' : '',
+                m.emissive ? m.emissive.getHexString() : '',
+                m.roughness == null ? '' : m.roughness.toFixed(2),
+                m.metalness == null ? '' : m.metalness.toFixed(2),
+            ].join('|');
+        }
+
+        function mergeByMaterial(root) {
+            root.updateMatrixWorld(true);
+            const buckets = new Map();
+            const keep = [];
+            root.traverse((node) => {
+                if (!node.isMesh) return;
+                if (node.isSkinnedMesh || node.isInstancedMesh || Array.isArray(node.material) || !node.geometry) {
+                    keep.push(node);
+                    return;
+                }
+                // Grouped by what the material looks like, not by object: every kit file loads
+                // its own copy of the same leaf material, and by identity twenty props stayed
+                // nineteen draw calls.
+                const key = materialKey(node.material);
+                const entry = buckets.get(key) || { material: node.material, meshes: [] };
+                entry.meshes.push(node);
+                buckets.set(key, entry);
+            });
+            const out = new THREE.Group();
+            const v = new THREE.Vector3();
+            const normalMatrix = new THREE.Matrix3();
+            for (const { material, meshes } of buckets.values()) {
+                const names = ['position', 'normal', 'uv', 'color'].filter((name) =>
+                    meshes.every((m) => m.geometry.attributes[name])
+                );
+                if (!names.includes('position')) continue;
+                let vertices = 0;
+                let indices = 0;
+                for (const m of meshes) {
+                    vertices += m.geometry.attributes.position.count;
+                    indices += m.geometry.index ? m.geometry.index.count : m.geometry.attributes.position.count;
+                }
+                const data = {};
+                for (const name of names)
+                    data[name] = new Float32Array(vertices * meshes[0].geometry.attributes[name].itemSize);
+                const index = vertices > 65535 ? new Uint32Array(indices) : new Uint16Array(indices);
+                let vo = 0;
+                let io = 0;
+                for (const m of meshes) {
+                    const g = m.geometry;
+                    const count = g.attributes.position.count;
+                    normalMatrix.getNormalMatrix(m.matrixWorld);
+                    for (let i = 0; i < count; i++) {
+                        v.fromBufferAttribute(g.attributes.position, i).applyMatrix4(m.matrixWorld);
+                        data.position.set([v.x, v.y, v.z], (vo + i) * 3);
+                        if (data.normal) {
+                            v.fromBufferAttribute(g.attributes.normal, i).applyMatrix3(normalMatrix).normalize();
+                            data.normal.set([v.x, v.y, v.z], (vo + i) * 3);
+                        }
+                        if (data.uv) data.uv.set([g.attributes.uv.getX(i), g.attributes.uv.getY(i)], (vo + i) * 2);
+                        if (data.color) {
+                            const c = g.attributes.color;
+                            const row = [c.getX(i), c.getY(i), c.getZ(i)];
+                            if (c.itemSize === 4) row.push(c.getW(i));
+                            data.color.set(row, (vo + i) * c.itemSize);
+                        }
+                    }
+                    if (g.index) for (let k = 0; k < g.index.count; k++) index[io + k] = g.index.getX(k) + vo;
+                    else for (let k = 0; k < count; k++) index[io + k] = vo + k;
+                    io += g.index ? g.index.count : count;
+                    vo += count;
+                }
+                const merged = new THREE.BufferGeometry();
+                for (const name of names) {
+                    merged.setAttribute(
+                        name,
+                        new THREE.BufferAttribute(data[name], meshes[0].geometry.attributes[name].itemSize)
+                    );
+                }
+                merged.setIndex(new THREE.BufferAttribute(index, 1));
+                merged.computeBoundingSphere();
+                const mesh = new THREE.Mesh(merged, material);
+                // Its geometry is this world's; its material is the cached model's.
+                mesh.userData.vrWorldGeometry = true;
+                mesh.castShadow = false;
+                mesh.receiveShadow = false;
+                out.add(mesh);
+            }
+            for (const node of keep) {
+                const copy = node.clone();
+                node.matrixWorld.decompose(copy.position, copy.quaternion, copy.scale);
+                out.add(copy);
+            }
+            return out;
+        }
+
+        function buildPlace(world, models, anchor, sceneModel) {
             const place = new THREE.Group();
             place.position.set(anchor.x, 0, anchor.z);
             if (world.ground) {
@@ -647,6 +872,20 @@
                 blob.name = 'vr-world-contact-shadow';
                 place.add(blob);
             }
+            if (world.scene && sceneModel) {
+                const spec = world.scene;
+                const root = sceneModel.clone(true);
+                root.position.set(0, 0, 0);
+                root.rotation.set(0, 0, 0);
+                root.scale.setScalar(1);
+                const built = spec.merge ? mergeByMaterial(root) : root;
+                built.scale.setScalar(spec.scale);
+                built.rotation.y = (spec.turn * Math.PI) / 180;
+                built.position.set(spec.at[0], spec.at[1], spec.at[2]);
+                built.name = 'vr-world-scene:' + spec.src;
+                place.add(built);
+            }
+            const props = new THREE.Group();
             world.props.forEach((prop, i) => {
                 const source = models[i];
                 if (!source) return;
@@ -669,8 +908,15 @@
                 const centre = placementOffset(box, scale);
                 model.position.set(prop.at[0] - centre.x, prop.at[1] - centre.y, prop.at[2] - centre.z);
                 model.name = 'vr-world-prop:' + prop.src;
-                place.add(model);
+                props.add(model);
             });
+            // VW2. The props too are static: merged by material, a phone's forest of twenty
+            // pieces draws in a handful of calls instead of twenty.
+            if (props.children.length > 1) {
+                const merged = mergeByMaterial(props);
+                merged.name = 'vr-world-props';
+                place.add(merged);
+            } else if (props.children.length) place.add(props);
             return place;
         }
 
@@ -689,8 +935,15 @@
             const anchor = (options && options.anchor) || { x: 0, y: 0, z: 0 };
 
             const missing = [];
-            const [texture, models] = await Promise.all([
-                loadPanorama(world),
+            const tier = (options && options.tier) || 'vr';
+            const scenePromise = world.scene
+                ? loadModel(world.scene.src).catch(() => {
+                      missing.push(world.scene.src);
+                      return null;
+                  })
+                : Promise.resolve(null);
+            const [texture, models, sceneModel] = await Promise.all([
+                loadPanorama(world, tier),
                 Promise.all(
                     world.props.map((prop) =>
                         loadModel(prop.src).catch(() => {
@@ -699,6 +952,7 @@
                         })
                     )
                 ),
+                scenePromise,
             ]);
             if (gen !== generation) {
                 if (texture) texture.dispose();
@@ -717,9 +971,13 @@
             group = new THREE.Group();
             group.name = 'nexus-vr-world-' + world.id;
             group.add(buildSky(world, texture, anchor));
-            group.add(buildPlace(world, models, anchor));
+            group.add(buildPlace(world, models, anchor, sceneModel));
             d.scene.add(group);
             applyLight(world);
+            // Soft distance fog for the stylized scenes: their edges fade into the painted sky
+            // instead of stopping at a cut.
+            if (world.fog && THREE.Fog)
+                d.scene.fog = new THREE.Fog(new THREE.Color(world.fog.color), world.fog.near, world.fog.far);
             activeId = world.id;
             playAmbient(world, options);
             fadeTo(0);
@@ -847,6 +1105,11 @@
         fadeStep,
         comfortProblem,
         placementOffset,
+        tierFor,
+        allowedOn,
+        framingFor,
+        TIERS,
+        MOBILE_TRIANGLES,
         FADE_SECONDS,
         readSetting,
         writeSetting,

@@ -1,7 +1,122 @@
 {
   "schema": 1,
-  "note": "VW1. Places for VR. Coordinates are metres around her: +z is toward the person, -z behind her. Every file is CC0; see PROVENANCE.md.",
+  "note": "VW1. Places for VR. Coordinates are metres around her: +z is toward the person, -z behind her. Every file is CC0; see PROVENANCE.md. VW2: tiers say where a world may load; a phone gets only worlds under 30K triangles.",
   "worlds": [
+    {
+      "id": "oak-glade",
+      "title": "Oak glade",
+      "note": "A real woodland clearing: oaks, birch, ferns and a fallen trunk. Desktop and VR.",
+      "activities": ["forest"],
+      "tiers": ["desktop", "vr"],
+      "triangles": 46091,
+      "sky": {
+        "top": "#8fbfe8",
+        "horizon": "#f2e2c2",
+        "bottom": "#6f8f52"
+      },
+      "fog": {
+        "color": "#d9e4d0",
+        "near": 14,
+        "far": 55
+      },
+      "ground": {
+        "color": "#5d7440",
+        "radius": 24
+      },
+      "scene": {
+        "src": "scenes/oak-glade.glb",
+        "at": [4, 0, -2],
+        "turn": -90
+      },
+      "light": {
+        "sky": "#e6f2d8",
+        "ground": "#4a5a30",
+        "hemi": 0.9,
+        "key": "#ffe2b0",
+        "keyIntensity": 1.1,
+        "fill": "#c8dcb8",
+        "fillIntensity": 0.55,
+        "rim": "#fff0cc",
+        "rimIntensity": 0.35
+      },
+      "props": []
+    },
+    {
+      "id": "meadow-village",
+      "title": "Meadow village",
+      "note": "Cottages, a post office and garden paths on a sunny afternoon. Light enough for phones.",
+      "activities": ["relax"],
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 22448,
+      "sky": {
+        "top": "#86b9ea",
+        "horizon": "#f6e3c4",
+        "bottom": "#a3c08c"
+      },
+      "fog": {
+        "color": "#e3ecd9",
+        "near": 16,
+        "far": 60
+      },
+      "ground": {
+        "color": "#9cbf7e",
+        "radius": 20
+      },
+      "scene": {
+        "src": "scenes/meadow-courier.glb",
+        "at": [1.86, 0, -0.49]
+      },
+      "light": {
+        "sky": "#fff1dc",
+        "ground": "#7d9a5e",
+        "hemi": 0.95,
+        "key": "#ffe6c0",
+        "keyIntensity": 1.15,
+        "fill": "#d0e0ff",
+        "fillIntensity": 0.6,
+        "rim": "#fff2d8",
+        "rimIntensity": 0.35
+      },
+      "props": []
+    },
+    {
+      "id": "walled-town",
+      "title": "Walled town",
+      "note": "A medieval town with towers, shops and a tavern. Desktop only: 225K triangles.",
+      "activities": ["scene-tale"],
+      "tiers": ["desktop"],
+      "triangles": 224939,
+      "sky": {
+        "top": "#7fb0e3",
+        "horizon": "#f4dcc0",
+        "bottom": "#8fae78"
+      },
+      "fog": {
+        "color": "#dfe6dc",
+        "near": 22,
+        "far": 95
+      },
+      "ground": {
+        "color": "#8fb07a",
+        "radius": 45
+      },
+      "scene": {
+        "src": "scenes/mmo-realm.glb",
+        "at": [-0.04, 0, -7.45]
+      },
+      "light": {
+        "sky": "#fff0dc",
+        "ground": "#6f8a58",
+        "hemi": 0.95,
+        "key": "#ffe0b8",
+        "keyIntensity": 1.15,
+        "fill": "#cfdcff",
+        "fillIntensity": 0.6,
+        "rim": "#ffeccc",
+        "rimIntensity": 0.35
+      },
+      "props": []
+    },
     {
       "id": "seaside-evening",
       "title": "Seaside evening",
@@ -51,7 +166,8 @@
           "height": 0.3,
           "at": [-2.3, 0, 0.6]
         }
-      ]
+      ],
+      "triangles": 572
     },
     {
       "id": "under-the-trees",
@@ -150,7 +266,8 @@
           "height": 0.25,
           "at": [2.2, 0, 1.6]
         }
-      ]
+      ],
+      "triangles": 24370
     },
     {
       "id": "starlit-lake",
@@ -206,7 +323,8 @@
           "height": 0.08,
           "at": [-0.5, 0, -2.1]
         }
-      ]
+      ],
+      "triangles": 648
     },
     {
       "id": "garden-after-dark",
@@ -278,7 +396,8 @@
           "at": [0, 0, -0.2],
           "flat": true
         }
-      ]
+      ],
+      "triangles": 4068
     },
     {
       "id": "ocean-sunrise",
@@ -330,7 +449,8 @@
           "at": [-2.2, 0, 1.6],
           "turn": 70
         }
-      ]
+      ],
+      "triangles": 694
     },
     {
       "id": "mountain-lake",
@@ -385,7 +505,8 @@
           "height": 0.3,
           "at": [1.0, 0, 0.6]
         }
-      ]
+      ],
+      "triangles": 13791
     },
     {
       "id": "meadow-sunset",
@@ -450,7 +571,8 @@
           "height": 0.3,
           "at": [1.0, 0, 0.9]
         }
-      ]
+      ],
+      "triangles": 5910
     },
     {
       "id": "starry-hills",
@@ -501,7 +623,8 @@
           "height": 0.25,
           "at": [-1.4, 0, -0.6]
         }
-      ]
+      ],
+      "triangles": 728
     },
     {
       "id": "city-rooftop",
@@ -557,7 +680,8 @@
           "height": 1.1,
           "at": [-2.4, 0, -0.8]
         }
-      ]
+      ],
+      "triangles": 672
     },
     {
       "id": "moonlit-courtyard",
@@ -613,7 +737,8 @@
           "at": [-3.2, 0, 0.4],
           "turn": 90
         }
-      ]
+      ],
+      "triangles": 1656
     },
     {
       "id": "cozy-room",
@@ -678,7 +803,8 @@
           "height": 0.45,
           "at": [-1.5, 0.5, -2.3]
         }
-      ]
+      ],
+      "triangles": 848
     },
     {
       "id": "fantasy-village",
@@ -746,7 +872,8 @@
           "height": 1.7,
           "at": [-1.3, 0, -0.5]
         }
-      ]
+      ],
+      "triangles": 2840
     },
     {
       "id": "scifi-sanctuary",
@@ -787,7 +914,8 @@
           "at": [2.0, 0, 0.2],
           "turn": -90
         }
-      ]
+      ],
+      "triangles": 805
     }
   ]
 }
