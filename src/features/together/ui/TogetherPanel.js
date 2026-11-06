@@ -81,7 +81,7 @@ const TogetherPanel = (() => {
         journey: {
             title: 'Experiences',
             icon: '🌙',
-            order: 20,
+            order: 3, // IC2: Life, Copilot, Experiences lead the chooser
             prompt: 'Where do you want to go?',
             options: [
                 { label: 'Seaside Evening' },
@@ -96,7 +96,7 @@ const TogetherPanel = (() => {
         cohost: {
             title: 'Life',
             icon: '💬',
-            order: 40,
+            order: 1, // IC2: Life, Copilot, Experiences lead the chooser
             prompt: 'How do you want to be together?',
             options: [
                 { label: 'Life Evening' },
@@ -115,7 +115,7 @@ const TogetherPanel = (() => {
         coach: {
             title: 'Copilot',
             icon: '🧭',
-            order: 60,
+            order: 2, // IC2: Life, Copilot, Experiences lead the chooser
             prompt: 'What do you want to get done?',
             options: [
                 { label: 'Copilot Hour' },

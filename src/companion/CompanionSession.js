@@ -43,6 +43,14 @@ const CompanionSession = (() => {
             conversationId: uid('cnv'),
             activeDestination: 'life',
             activeExperienceId: null,
+            // IC2. Which Together option opened the destination ("talk", "relax",
+            // "copilot-hour"…) and whether that session is still on. Selecting a
+            // destination changes what the model is told; ending it stops that.
+            activeActivity: null,
+            // 'together' when a Together option started it, 'conversation' when ContextIntent
+            // noticed the topic move. Only the first kind is an activity with an End.
+            activitySource: null,
+            sessionActive: false,
             avatarState: { id: null },
             sceneState: { id: null, restored: true },
             voiceState: { muted: false, companion: 1, environment: 0.45 },
@@ -72,6 +80,11 @@ const CompanionSession = (() => {
         return 'life';
     }
 
+    /** A Together option id: short, lowercase, dashes. Anything else is not stored. */
+    function activityOf(value) {
+        return typeof value === 'string' && /^[a-z0-9][a-z0-9-]{0,39}$/.test(value) ? value : null;
+    }
+
     function sanitise(raw, now) {
         const base = blank(now);
         if (!raw || typeof raw !== 'object') return base;
@@ -82,6 +95,14 @@ const CompanionSession = (() => {
             typeof raw.conversationId === 'string' && raw.conversationId ? raw.conversationId : base.conversationId;
         base.activeDestination = destinationOf(raw.activeDestination);
         base.activeExperienceId = typeof raw.activeExperienceId === 'string' ? raw.activeExperienceId : null;
+        base.activeActivity = activityOf(raw.activeActivity);
+        base.activitySource =
+            raw.activitySource === 'conversation'
+                ? 'conversation'
+                : raw.activitySource === 'together'
+                  ? 'together'
+                  : null;
+        base.sessionActive = raw.sessionActive === true;
         base.avatarState = {
             id: raw.avatarState && typeof raw.avatarState.id === 'string' ? raw.avatarState.id : null,
         };
@@ -208,6 +229,65 @@ const CompanionSession = (() => {
                 touch();
                 emit('destination:changed', { from: from, to: next, conversationId: state.conversationId });
                 return { ok: true, destination: next, changed: true, conversationId: state.conversationId };
+            },
+            /**
+             * IC2. Set the context: the destination, the activity, and where it came
+             * from (`{ source: 'together' }` by default, `'conversation'` when
+             * ContextIntent noticed the topic move). Always emits `session:entered`;
+             * ActivityMarks decides whether that is worth a line in the chat.
+             */
+            enter: function (id, activity, how) {
+                if (!loaded) load();
+                if (!DESTINATIONS.includes(id) && !LEGACY_DESTINATION[id]) {
+                    return { ok: false, why: 'unknown-destination', destination: state.activeDestination };
+                }
+                const next = destinationOf(id);
+                const from = state.sessionActive ? state.activeDestination : null;
+                const changed = next !== state.activeDestination;
+                state.activeDestination = next;
+                state.activeActivity = activityOf(activity);
+                state.activitySource = how && how.source === 'conversation' ? 'conversation' : 'together';
+                state.sessionActive = true;
+                touch();
+                if (changed) {
+                    emit('destination:changed', {
+                        from: from || next,
+                        to: next,
+                        conversationId: state.conversationId,
+                    });
+                }
+                emit('session:entered', {
+                    from: from,
+                    destination: next,
+                    activity: state.activeActivity,
+                    source: state.activitySource,
+                    conversationId: state.conversationId,
+                });
+                return { ok: true, destination: next, activity: state.activeActivity, changed: changed };
+            },
+            /** IC2. End the destination session. The conversation itself is untouched. */
+            end: function () {
+                if (!loaded) load();
+                if (!state.sessionActive) return { ok: true, ended: false };
+                const destination = state.activeDestination;
+                state.sessionActive = false;
+                state.activeActivity = null;
+                state.activitySource = null;
+                persist();
+                emit('session:ended', { destination: destination, conversationId: state.conversationId });
+                return { ok: true, ended: true, destination: destination };
+            },
+            active: function () {
+                if (!loaded) load();
+                return state.sessionActive === true;
+            },
+            activity: function () {
+                if (!loaded) load();
+                return state.activeActivity;
+            },
+            source: function () {
+                if (!loaded) load();
+                return state.activitySource;
             },
             setExperience: function (id) {
                 if (!loaded) load();

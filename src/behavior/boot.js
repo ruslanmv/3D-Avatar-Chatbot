@@ -253,6 +253,8 @@
         'src/experiences/seaside/SeasideEvening.js',
         'src/experiences/ExperienceDirector.js',
         'src/companion/DestinationBar.js',
+        'src/companion/ContextIntent.js',
+        'src/companion/ActivityMarks.js',
         'src/companion/index.js',
     ];
 

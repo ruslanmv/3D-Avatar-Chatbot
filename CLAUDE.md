@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (251 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (253 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-02 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5579 tests in 250 suites, all passing.**
+— lint clean, format clean, **5630 tests in 253 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -343,6 +343,31 @@ Things to know before touching it:
   choice and deliberately does not call the manager, so the manager's own `_id`
   goes stale. Dropping the argument silently discards a scene chosen in the
   headset (finding A12-1). Both XR exit handlers pass `this._desktopBgKey`.
+
+## Life, Copilot and Experiences (IC1–IC2)
+
+One companion and one conversation; the three are what is going on, not modes
+she is switched into. `src/companion/` (IIFE, loaded by `boot.js`) holds them.
+
+- **Together is the only way in (IC2).** IC1's strip of three buttons over the
+  avatar is no longer added to the page (`DestinationBar` keeps its sheet and
+  Exit, which Together opens via `show()`). The three tiles lead the chooser in
+  their colours: Life #38A9FF, Copilot #26D89A, Experiences #F2C94C.
+- **The conversation moves the context.** At prompt time `index.js`'s
+  `noticeTopic` runs `ContextIntent.classify` (pure, local, English and Italian,
+  no model call) on the latest user message; only a clear, unambiguous signal
+  calls `session.enter(…, { source: 'conversation' })`. A Together activity with
+  a beginning and end (`ActivityMarks.EXPLICIT`: focus block, Seaside, Scene
+  Tale, Life Evening, Copilot Hour) is not replaced by a remark.
+- **One quiet line per change, never stored.** `ActivityMarks` draws "Life ·
+  Relaxing together" between messages when the context changes, and an End pill
+  above the composer only for an explicit activity. Nothing it draws is in
+  `chatHistory`, so none of it reaches the prompt or TTS. No portrait in the
+  chat.
+- **`PromptContext` speaks as one companion**: `SAME`, one "Now: …" sentence,
+  the activity line, and `STYLE` (one to three sentences, no question every
+  turn, never name a mode). `session.end()` makes the suffix `''` again. Copilot
+  never receives Life relationship text or memories.
 
 ## Clearing a conversation
 

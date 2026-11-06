@@ -1,6 +1,13 @@
 /**
  * DestinationBar — Life, Copilot, Experiences (IC1).
  *
+ * IC2: the strip is gone. It was a second navigation on top of the avatar,
+ * beside the Together tiles that already lead to the same three places, and it
+ * covered her face on a phone. Together is the only way in now; this file keeps
+ * the sheet (memories, preferences, tasks, Seaside's controls) and the Exit
+ * button, which Together opens through `show()`. `BAR_ID` stays exported so
+ * an old selector fails visibly rather than matching something else.
+ *
  * A strip on the avatar card and a sheet under it. The avatar stays in the
  * card; the chat column is outside it, so the sheet does not cover the
  * composer. Closing the sheet does not stop an experience. Exit does.
@@ -104,7 +111,6 @@ const DestinationBar = (() => {
         exit.id = EXIT_ID;
         exit.type = 'button';
         exit.hidden = true;
-        host.appendChild(bar);
         host.appendChild(sheet);
         host.appendChild(exit);
 
@@ -112,6 +118,8 @@ const DestinationBar = (() => {
         let notice = '';
 
         function paintBar() {
+            // IC2: the strip is no longer on the page (see the header).
+            if (!bar.parentNode) return;
             bar.textContent = '';
             const current = session.destination();
             for (const destination of catalog.DESTINATIONS) {

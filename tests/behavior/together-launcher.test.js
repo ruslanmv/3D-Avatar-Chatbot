@@ -398,14 +398,14 @@ describe('opening the chooser starts nothing at all', () => {
         expect(source).toContain('class Launcher');
     });
 
-    test('the chooser offers every experience, in the order it has always shown them', () => {
+    test('the chooser offers every experience, Life, Copilot and Experiences first (IC2), then the rest in their order', () => {
         // An earlier draft cut this to four tiles with the rest behind "More together" and
         // hid two more on availability. That removed working features from view to save
         // space nobody asked to save; the grid is the product's face.
         harness();
         button().click();
         const names = tiles().map((t) => t.querySelector('.nexus-bd-together-name').textContent);
-        expect(names).toEqual(['Watch', 'Experiences', 'Music', 'Life', 'Focus', 'Copilot', 'Help me with this']);
+        expect(names).toEqual(['Life', 'Copilot', 'Experiences', 'Watch', 'Music', 'Focus', 'Help me with this']);
         // "Help me with this" is the only wide tile, so it is the only one that leaves the
         // three-column rhythm — and it is last, below the activities rather than among them.
         const wide = tiles().filter((t) => t.classList.contains('is-wide'));
@@ -432,8 +432,8 @@ describe('opening the chooser starts nothing at all', () => {
         TogetherLauncher.attach({ panel, doc: document, viewer: null });
         button().click();
         expect(tiles().map((t) => t.querySelector('.nexus-bd-together-name').textContent)).toEqual([
-            'Music',
             'Life',
+            'Music',
             'Focus',
         ]);
     });

@@ -478,7 +478,7 @@ describe('the chooser shows every activity, in the grid order', () => {
             .map((a) => a.id);
         // Reference layout: three columns of activities, then "Help me with this" as one
         // full-width secondary action below them, then Cancel.
-        expect(byOrder).toEqual(['watch', 'journey', 'music', 'cohost', 'focus', 'coach', 'meeting', 'copilot']);
+        expect(byOrder).toEqual(['cohost', 'coach', 'journey', 'watch', 'music', 'focus', 'meeting', 'copilot']);
     });
 
     test('order is stable and has no ties', () => {

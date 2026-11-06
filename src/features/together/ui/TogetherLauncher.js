@@ -188,6 +188,24 @@ const TogetherLauncher = (() => {
 }
 .nexus-bd-together-tile:hover { background: rgba(34, 211, 238, .13); border-color: rgba(34, 211, 238, .4); }
 .nexus-bd-together-tile:focus-visible { outline: 2px solid var(--accent-cyan, #22d3ee); outline-offset: 2px; }
+/* IC2. The three destinations lead the chooser, in the colours their session cards use in the
+   chat (src/companion/SessionCards.js): Life blue, Copilot green, Experiences yellow. */
+.nexus-bd-together-tile[data-activity="cohost"] { --dest: #38A9FF; }
+.nexus-bd-together-tile[data-activity="coach"] { --dest: #26D89A; }
+.nexus-bd-together-tile[data-activity="journey"] { --dest: #F2C94C; }
+.nexus-bd-together-tile[data-activity="cohost"],
+.nexus-bd-together-tile[data-activity="coach"],
+.nexus-bd-together-tile[data-activity="journey"] {
+  border-color: color-mix(in srgb, var(--dest) 75%, transparent);
+  background: color-mix(in srgb, var(--dest) 16%, rgba(8, 14, 20, .6));
+  font-weight: 700;
+}
+.nexus-bd-together-tile[data-activity="cohost"]:hover,
+.nexus-bd-together-tile[data-activity="coach"]:hover,
+.nexus-bd-together-tile[data-activity="journey"]:hover {
+  background: color-mix(in srgb, var(--dest) 28%, rgba(8, 14, 20, .6));
+  border-color: var(--dest);
+}
 .nexus-bd-together-tile.is-wide { grid-column: 1 / -1; flex-direction: row; justify-content: center; gap: .5rem; }
 .nexus-bd-together-icon { font-size: 1.32rem; line-height: 1; }
 /* The scene stamp on the Scene Tale tile. Sized to sit exactly where the glyph sat, so a tile

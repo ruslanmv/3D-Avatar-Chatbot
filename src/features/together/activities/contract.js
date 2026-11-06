@@ -301,7 +301,7 @@ const ActivityContract = (() => {
         coach: {
             title: 'Copilot',
             icon: '🧭',
-            order: 60,
+            order: 2, // IC2: Life, Copilot, Experiences lead the chooser
             prompt: 'What do you want to get done?',
             inputs: (a) => [
                 {
@@ -380,7 +380,7 @@ const ActivityContract = (() => {
         journey: {
             title: 'Experiences',
             icon: '🌙',
-            order: 20,
+            order: 3, // IC2: Life, Copilot, Experiences lead the chooser
             prompt: 'Where do you want to go?',
             inputs: (a) => [
                 {
@@ -465,7 +465,7 @@ const ActivityContract = (() => {
         cohost: {
             title: 'Life',
             icon: '💬',
-            order: 40,
+            order: 1, // IC2: Life, Copilot, Experiences lead the chooser
             prompt: 'How do you want to be together?',
             inputs: () => [
                 {
@@ -576,9 +576,13 @@ const ActivityContract = (() => {
     function handOff(input) {
         const destination = input && input.destination;
         const live = companionLive();
-        if (destination && live && live.session && typeof live.session.setDestination === 'function') {
+        // IC2. Choosing a destination in Together opens its session: the chat gets the
+        // coloured card and the composer the "Life · Active" line, and the model is told
+        // which destination and activity it is in from the next turn on.
+        if (destination && live && live.session) {
             try {
-                live.session.setDestination(destination);
+                if (typeof live.session.enter === 'function') live.session.enter(destination, input.id);
+                else if (typeof live.session.setDestination === 'function') live.session.setDestination(destination);
             } catch (_) {
                 /* the chooser still opens */
             }

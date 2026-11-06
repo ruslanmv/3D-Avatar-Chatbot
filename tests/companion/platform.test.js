@@ -461,8 +461,10 @@ describe('activity bridge', () => {
 });
 
 describe('destination bar', () => {
-    test('switching the bar does not clear the chat, and leaving an experience pauses it', async () => {
-        document.body.innerHTML = '<div class="avatar-card"></div><input id="speech-text" />';
+    test('switching destination does not clear the chat, and leaving an experience pauses it', async () => {
+        document.body.innerHTML =
+            '<div class="avatar-card"></div><div id="chat-history"></div>' +
+            '<footer class="chat-input-shell"><input id="speech-text" /></footer>';
         const Companion = require('../../src/companion/index');
         const storage = memoryStorage();
         const history = [{ role: 'user', content: 'still here' }];
@@ -477,17 +479,20 @@ describe('destination bar', () => {
             },
             bus: { on() {} },
         });
-        const before = handle.live.session.conversationId();
-        document.querySelector('[data-destination="copilot"]').click();
-        expect(handle.live.session.destination()).toBe('copilot');
-        expect(handle.live.session.conversationId()).toBe(before);
+        const session = handle.live.session;
+        const before = session.conversationId();
+        // IC2: the strip on the avatar card is gone; Together enters a destination.
+        expect(document.querySelector('[data-destination="copilot"][role="tab"]')).toBeNull();
+        session.enter('copilot', 'tasks');
+        expect(session.destination()).toBe('copilot');
+        expect(session.conversationId()).toBe(before);
         expect(history).toHaveLength(1);
-        document.querySelector('[data-destination="experiences"]').click();
+        session.enter('experiences', 'seaside');
         const started = await handle.live.director.start('seaside-evening');
         expect(started.ok).toBe(true);
-        document.querySelector('[data-destination="life"]').click();
+        session.enter('life', 'talk');
         expect(handle.live.director.status().status).toBe('paused');
-        document.querySelector('[data-destination="experiences"]').click();
+        session.enter('experiences', 'seaside');
         expect(handle.live.director.status().status).toBe('active');
         document.getElementById('nexus-companion-exit').click();
         expect(handle.live.director.status().status).toBe('stopped');

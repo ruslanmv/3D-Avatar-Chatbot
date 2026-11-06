@@ -13,6 +13,47 @@
 (function (global) {
     'use strict';
 
+    /**
+     * IC2. The person never has to say "switch to Copilot". At prompt time, before the
+     * context is read, the latest user message is checked once (locally, no model call)
+     * for a clear move — "I'm tired" to Life, "help me finish my report" to Copilot, "let's
+     * go somewhere peaceful" to Experiences. No clear move: the context stays as it was. A
+     * Together activity that is running (a focus block, Seaside) is not replaced by a remark.
+     */
+    let lastSeen = null;
+    function noticeTopic(session) {
+        const Intent = global.NEXUS_COMPANION_INTENT;
+        const history = global.chatHistory;
+        if (!Intent || !history || typeof history.getHistory !== 'function') return;
+        let list = [];
+        try {
+            list = history.getHistory() || [];
+        } catch (_) {
+            return;
+        }
+        let latest = null;
+        for (let i = list.length - 1; i >= 0; i--) {
+            if (list[i] && list[i].role === 'user') {
+                latest = list[i];
+                break;
+            }
+        }
+        if (!latest || latest === lastSeen) return;
+        lastSeen = latest;
+        const Marks = global.NEXUS_COMPANION_MARKS;
+        const running =
+            session.active() &&
+            session.source() === 'together' &&
+            Marks &&
+            Marks.EXPLICIT.indexOf(session.activity()) !== -1;
+        if (running) return;
+        const found = Intent.classify(typeof latest.content === 'string' ? latest.content : '');
+        if (!found) return;
+        if (session.active() && session.destination() === found.destination && session.activity() === found.activity)
+            return;
+        session.enter(found.destination, found.activity, { source: 'conversation' });
+    }
+
     function suffix() {
         const sessionApi = global.NEXUS_COMPANION_SESSION;
         const memoryApi = global.NEXUS_COMPANION_MEMORY;
@@ -20,6 +61,7 @@
         const gateApi = global.NEXUS_COMPANION_PRIVACY;
         if (!sessionApi || !memoryApi || !prompt || !global.__NEXUS_COMPANION_LIVE) return '';
         const live = global.__NEXUS_COMPANION_LIVE;
+        noticeTopic(live.session);
         if (!live.session.customized()) return '';
         const destination = live.session.destination();
         const gate = gateApi.create({
@@ -31,7 +73,14 @@
                 }
             },
         });
-        const input = { customized: true, destination: destination };
+        // IC2. A destination ended in the chat ("End") sends the prompt it sent before.
+        if (typeof live.session.active === 'function' && !live.session.active()) return '';
+        const input = {
+            customized: true,
+            active: true,
+            destination: destination,
+            activity: typeof live.session.activity === 'function' ? live.session.activity() : null,
+        };
         if (destination === 'copilot') {
             const allowed = gate.allows('copilot', 'copilot', live.session.grants());
             input.tasks = allowed.ok ? (live.memory.read('copilot') || {}).tasks || [] : [];
@@ -44,8 +93,13 @@
             input.relationship = life.relationship;
             input.memories = life.memories || [];
             const detail = live.director && live.director.status();
-            if (detail && detail.detail && detail.detail.line)
-                input.experienceLine = detail.detail.id || 'seaside-evening';
+            if (detail && detail.detail && detail.detail.line) {
+                const id = detail.detail.id || 'seaside-evening';
+                input.experienceLine =
+                    id +
+                    (detail.status === 'paused' ? ' (paused)' : '') +
+                    (detail.detail.beat ? ', scene: ' + detail.detail.beat : '');
+            }
         }
         return prompt.suffix(input);
     }
@@ -172,6 +226,25 @@
             },
         });
 
+        // IC2. One quiet line in the chat when the context changes, and an End pill above
+        // the composer while a real activity runs. Missing module, missing chat: the
+        // destinations still work.
+        let marks = null;
+        const Marks = global.NEXUS_COMPANION_MARKS;
+        const Intent = global.NEXUS_COMPANION_INTENT;
+        if (Marks && typeof Marks.attach === 'function') {
+            try {
+                marks = Marks.attach({
+                    doc: options_.doc || global.document,
+                    session: session,
+                    director: director,
+                    label: Intent && Intent.label ? Intent.label : null,
+                });
+            } catch (error) {
+                console.warn('[Companion] activity marks failed to attach — continuing', error);
+            }
+        }
+
         session.on(function (detail) {
             if (detail.type === 'permission:revoked') director.onPermissionRevoked(detail.capability);
             if (detail.type !== 'destination:changed') return;
@@ -199,6 +272,7 @@
             director: director,
             bridge: bridge,
             bar: bar,
+            marks: marks,
             registry: registry,
             behavior: behavior,
         };
@@ -229,6 +303,7 @@
                     /* detach must finish even if the experience is already gone */
                 }
                 if (bar && bar.detach) bar.detach();
+                if (marks && marks.detach) marks.detach();
                 if (global.removeEventListener) {
                     global.removeEventListener('vr-session-start', onVrStart);
                     global.removeEventListener('vr-session-end', onVrEnd);
