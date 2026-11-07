@@ -94,6 +94,14 @@
             const life = live.memory.read('life') || { memories: [], relationship: null };
             input.relationship = life.relationship;
             input.memories = life.memories || [];
+            // V5. What is true about the place she is in, verified by its owners. Never for
+            // Copilot (this branch) and never anything from a private room.
+            try {
+                const situation = live.reactive && live.reactive.promptSuffix ? live.reactive.promptSuffix() : '';
+                if (situation) input.situation = situation;
+            } catch (_) {
+                /* the prompt goes without it */
+            }
             const detail = live.director && live.director.status();
             if (detail && detail.detail && detail.detail.line) {
                 const id = detail.detail.id || 'seaside-evening';
@@ -412,9 +420,23 @@
             behavior: behavior,
         };
         global.__NEXUS_COMPANION_LIVE = live;
+        // V5. The playground's reactive context: observes the verified world and the chips,
+        // reacts through this same BehaviorRouter, and lends the prompt one grounded paragraph.
+        // Ticked from the runtime below, inside the render loop that already exists.
+        let reactive = null;
+        const Reactive = global.NEXUS_PLAYGROUND_REACTIVE;
+        if (Reactive && typeof Reactive.attach === 'function') {
+            try {
+                reactive = Reactive.attach({ live: live, behavior: behavior, global: global });
+                live.reactive = reactive;
+            } catch (error) {
+                console.warn('[Companion] reactive playground context failed to attach — continuing', error);
+            }
+        }
         const runtime = {
             update: function (dt) {
                 director.update(dt);
+                if (reactive) reactive.update(dt);
             },
             trySelect: function (raycaster) {
                 return director.trySelect(raycaster);
@@ -440,6 +462,7 @@
                 if (bar && bar.detach) bar.detach();
                 if (marks && marks.detach) marks.detach();
                 if (voice && voice.detach) voice.detach();
+                if (reactive && reactive.detach) reactive.detach();
                 offPanel();
                 offDirector();
                 if (global.removeEventListener) {

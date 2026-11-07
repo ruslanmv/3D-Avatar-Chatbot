@@ -124,6 +124,10 @@ const PromptContext = (() => {
             parts.push('User-approved moments: ' + memories.map((m) => m.title).join('; ') + '.');
         }
         if (src.experienceLine) parts.push('Current experience: ' + src.experienceLine + '.');
+        // V5. The playground's verified situation (PlaygroundReactiveContext): built only from the
+        // catalogue and from what its owners confirmed, sanitised there, and bounded again here.
+        if (typeof src.situation === 'string' && src.situation)
+            parts.push(src.situation.replace(/[<>{}[\]`]/g, '').slice(0, 520));
         if (activity) parts.push(activity);
         parts.push('You cannot operate the renderer, the camera, or the microphone yourself.');
         parts.push(STYLE);

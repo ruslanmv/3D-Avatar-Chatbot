@@ -266,6 +266,8 @@
         'src/experiences/playgrounds/PlaygroundMoodPresets.js',
         'src/experiences/playgrounds/PlaygroundTemplateCatalog.js',
         'src/experiences/playgrounds/PlaygroundInteractionRouter.js',
+        // V5. After the router (whose reports it reads), before the companion that ticks it.
+        'src/experiences/playgrounds/PlaygroundReactiveContext.js',
         'src/companion/index.js',
     ];
 
