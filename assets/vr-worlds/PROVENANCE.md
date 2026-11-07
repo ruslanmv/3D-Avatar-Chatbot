@@ -112,9 +112,9 @@ backstage; the academy keeps the seminar room only (the tiered lecture hall is
 The **stream studio** is built from the Kenney Furniture Kit already listed
 above (sofa, floor lamps, desk, screen, speaker, plants): 1 912 triangles.
 
-`previews/*.jpg` are 320×240 crops of this app's own renders of each venue
-(headless Chromium, SwiftShader), made for the venue cards; same licence as the
-repository.
+`previews/*.webp` (PG2) are 640×480 renders of every place by name, made by this
+app itself (`tools/vr/render-place-previews.mjs`, headless Chromium with
+SwiftShader) for the venue cards; same licence as the repository.
 
 Suggested and not used: **Tavern and Street** by Polymancer (itch.io) — its
 licence was not checked and nothing was downloaded, because the CC0 pub above

@@ -83,7 +83,19 @@
         for (const w of list) {
             if (!w.place || w.lightFor || !include.includes(w.rating)) continue;
             const shown = resolveFor(list, w.id, o.tier || 'desktop', o.privateOpen === true);
-            if (shown) out.push({ id: w.id, world: shown, title: w.title, note: w.note, rating: w.rating });
+            if (!shown) continue;
+            out.push({
+                id: w.id,
+                world: shown,
+                title: w.title,
+                note: w.note,
+                rating: w.rating,
+                // PG2. For the venue card: a picture URL the page can request, a category, and
+                // two sky colours to paint the card with when there is no picture or it fails.
+                image: w.preview ? ROOT + w.preview : null,
+                category: w.category || null,
+                tint: w.sky ? [w.sky.top, w.sky.horizon] : [w.light.ground, w.light.key],
+            });
         }
         return out;
     }
@@ -350,6 +362,16 @@
                 place: raw.place === true,
                 // A light stand-in for a heavy world, on the devices the heavy one cannot load on.
                 lightFor: /^[a-z0-9-]{1,40}$/.test(String(raw.lightFor || '')) ? raw.lightFor : null,
+                // PG2. The venue card's picture (a 640×480 render of this place, made by
+                // tools/vr/render-place-previews.mjs) and its category chip. Both only decorate a
+                // card: neither decides whether the place is offered, which stays placesFor's.
+                // The picture must be an image file under this catalogue's folder, like any other
+                // path here; anything else is dropped and the card falls back to the sky colours.
+                preview:
+                    /\.(jpe?g|png|webp)$/i.test(String(raw.preview || '')) && isSafePath(raw.preview)
+                        ? raw.preview
+                        : null,
+                category: /^[A-Za-z][A-Za-z &-]{0,19}$/.test(String(raw.category || '')) ? String(raw.category) : null,
                 triangles: Math.max(0, num(raw.triangles, 0)),
                 fog:
                     raw.fog && typeof raw.fog === 'object'

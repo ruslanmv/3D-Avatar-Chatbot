@@ -165,6 +165,24 @@ Not done: sitting on a seat (she has no seat-aligned pose, and a sitting clip
 in mid-air looked wrong), venue music (no licensed tracks), and any measurement
 on a real phone or headset — all of the above is headless Chromium.
 
+## Place pictures (PG2)
+
+Every place by name carries `preview` and `category` in `worlds.json`. The
+pictures are made by `node tools/vr/render-place-previews.mjs` with the app
+running: the real page in headless Chromium, everything but the viewport hidden,
+the place shown the way a person reaches it (the companion session, or for a
+private room the Private experience's own request — simulated by the tool),
+then one shared `SPEC` — `idle/neutral_idle.bvh`, a camera 22° round her at
+3.7 m, eye-closing expressions zeroed for the one frame — and a quality gate
+(not near-black, not one colour, her head in frame). Output: 640×480 WebP,
+q≈84, ≤ 60 KB. `--gpu` uses the machine's GPU instead of SwiftShader;
+`--out` writes elsewhere for comparison. `PLACE_CAMERA` may only mirror the turn
+for a place where a chair crossed her legs (pub, office).
+
+The lagoon beach was turned 180° about her spot (`at` mirrored, `turn` +180):
+its water and palm had been behind the person, so both the card and the place
+showed bare sand.
+
 ## Not done yet
 
 - **No measurement on a headset.** Everything above was checked in headless

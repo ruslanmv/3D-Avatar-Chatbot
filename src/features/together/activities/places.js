@@ -80,9 +80,10 @@
         }
 
         inputs() {
-            // PG1. A place with a playground template is shown as a venue card: its preview
-            // picture and category. The template only decorates the card — which places are
-            // listed is still `placesFor`, above — and a place without one is listed as before.
+            // PG2. Every place is a venue card: its own picture and category from the world
+            // catalogue (`preview`, `category`), and its sky colours as the card's paint when the
+            // picture is missing. A playground template's card (PG1) only fills a gap the
+            // catalogue leaves. Which places are listed is still `placesFor`, above.
             const templates = global && global.NEXUS_PLAYGROUND_TEMPLATES;
             return this._places().map((p) => {
                 const card = templates && typeof templates.cardFor === 'function' ? templates.cardFor(p.id) : null;
@@ -93,10 +94,11 @@
                     permission: null,
                     destination: 'experiences',
                 };
-                if (card) {
-                    input.image = card.image;
-                    input.category = card.category;
-                }
+                const image = p.image || (card && card.image) || null;
+                const category = p.category || (card && card.category) || null;
+                if (image) input.image = image;
+                if (category) input.category = category;
+                if (Array.isArray(p.tint) && p.tint.length) input.tint = p.tint.slice(0, 2);
                 return input;
             });
         }

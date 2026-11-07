@@ -62,7 +62,7 @@
             category: 'Social',
             rating: 'general',
             description: 'A warm bar with booths and pendant lamps.',
-            image: PREVIEWS + 'irish-pub.jpg',
+            image: PREVIEWS + 'irish-pub.webp',
             moods: Object.freeze(['pub-amber', 'cozy-warm']),
             actions: Object.freeze([
                 { id: 'cheers', kind: 'say', label: '🍻 Cheers', text: 'Cheers! What shall we drink to tonight?' },
@@ -83,7 +83,7 @@
             category: 'Nightlife',
             rating: 'general',
             description: 'A club with an LED dance floor and a DJ booth.',
-            image: PREVIEWS + 'neon-discoteca.jpg',
+            image: PREVIEWS + 'neon-discoteca.webp',
             moods: Object.freeze(['neon-blue-purple', 'romantic-evening', 'cozy-warm']),
             actions: Object.freeze([
                 { id: 'dance', kind: 'clip', label: '💃 Dance', stopLabel: '⏹ Stop dancing', clip: 'dance' },
@@ -99,7 +99,7 @@
             category: 'Private',
             rating: 'private',
             description: 'A stage with curtains and golden footlights, just for two.',
-            image: PREVIEWS + 'private-cabaret.jpg',
+            image: PREVIEWS + 'private-cabaret.webp',
             moods: Object.freeze(['cabaret-gold', 'romantic-evening']),
             actions: Object.freeze([
                 { id: 'dance', kind: 'clip', label: '💃 A dance', stopLabel: '⏹ Stop dancing', clip: 'dance' },
@@ -118,7 +118,7 @@
             // a broadcast. No camera, microphone, screen capture or upload is involved.
             simulated: true,
             description: 'A pretend streaming set. Nothing is recorded or sent.',
-            image: PREVIEWS + 'private-stream-studio.jpg',
+            image: PREVIEWS + 'private-stream-studio.webp',
             moods: Object.freeze(['studio-soft', 'neon-blue-purple', 'romantic-evening']),
             actions: Object.freeze([
                 {
@@ -144,7 +144,7 @@
             category: 'Learning',
             rating: 'general',
             description: 'A bright seminar room with whiteboards, for learning together.',
-            image: PREVIEWS + 'creative-academy.jpg',
+            image: PREVIEWS + 'creative-academy.webp',
             moods: Object.freeze(['classroom-day', 'cozy-warm']),
             actions: Object.freeze([
                 {

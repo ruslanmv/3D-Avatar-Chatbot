@@ -1006,7 +1006,9 @@
       "ground": {
         "color": "#7a6250",
         "radius": 4.5
-      }
+      },
+      "preview": "previews/hotel-suite.webp",
+      "category": "Romantic"
     },
     {
       "id": "bedroom",
@@ -1044,7 +1046,9 @@
         "src": "scenes/bedroom-flat.glb",
         "at": [0.707, -0.06, -1.414],
         "turn": -45
-      }
+      },
+      "preview": "previews/bedroom.webp",
+      "category": "Romantic"
     },
     {
       "id": "bedroom-light",
@@ -1114,13 +1118,15 @@
       "props": [],
       "scene": {
         "src": "scenes/lagoon-beach.glb",
-        "at": [0.0, -0.16, 2.0],
-        "turn": -90
+        "at": [-0.0, -0.16, -2.0],
+        "turn": 90
       },
       "ground": {
         "color": "#e8d6a8",
         "radius": 30
-      }
+      },
+      "preview": "previews/lagoon-beach.webp",
+      "category": "Romantic"
     },
     {
       "id": "office",
@@ -1158,7 +1164,9 @@
         "src": "scenes/downtown-office.glb",
         "at": [1.945, -0.05, -1.237],
         "turn": -45
-      }
+      },
+      "preview": "previews/office.webp",
+      "category": "Work"
     },
     {
       "id": "office-light",
@@ -1262,7 +1270,9 @@
         "src": "scenes/airship-dock.glb",
         "at": [-2.475, -0.1, -13.081],
         "turn": -45
-      }
+      },
+      "preview": "previews/airship-dock.webp",
+      "category": "Fantasy"
     },
     {
       "id": "neon-street",
@@ -1300,7 +1310,9 @@
         "src": "scenes/neon-dispatch.glb",
         "at": [-0.177, 0, -6.187],
         "turn": -45
-      }
+      },
+      "preview": "previews/neon-street.webp",
+      "category": "Nightlife"
     },
     {
       "id": "roadside-motel",
@@ -1338,7 +1350,9 @@
         "src": "scenes/roadside-motel.glb",
         "at": [-7.425, -0.12, -20.86],
         "turn": -225
-      }
+      },
+      "preview": "previews/roadside-motel.webp",
+      "category": "Private"
     },
     {
       "id": "roadside-motel-light",
@@ -1499,7 +1513,9 @@
       "ground": {
         "color": "#4a2a24",
         "radius": 4.5
-      }
+      },
+      "preview": "previews/candlelit-suite.webp",
+      "category": "Private"
     },
     {
       "id": "irish-pub",
@@ -1541,7 +1557,9 @@
       "ground": {
         "color": "#3a2616",
         "radius": 6
-      }
+      },
+      "preview": "previews/irish-pub.webp",
+      "category": "Social"
     },
     {
       "id": "irish-pub-light",
@@ -1622,7 +1640,9 @@
         "src": "scenes/club-main-room.glb",
         "at": [-0.25, -0.002, 0.5],
         "turn": 0
-      }
+      },
+      "preview": "previews/neon-discoteca.webp",
+      "category": "Nightlife"
     },
     {
       "id": "neon-discoteca-light",
@@ -1699,7 +1719,9 @@
         "src": "scenes/cabaret-stage.glb",
         "at": [0.25, -0.9, 2.5],
         "turn": 0
-      }
+      },
+      "preview": "previews/private-cabaret.webp",
+      "category": "Private"
     },
     {
       "id": "private-cabaret-light",
@@ -1839,7 +1861,9 @@
       "ground": {
         "color": "#2c2c36",
         "radius": 4.5
-      }
+      },
+      "preview": "previews/private-stream-studio.webp",
+      "category": "Private"
     },
     {
       "id": "creative-academy",
@@ -1881,7 +1905,9 @@
       "ground": {
         "color": "#8a8a90",
         "radius": 6
-      }
+      },
+      "preview": "previews/creative-academy.webp",
+      "category": "Learning"
     },
     {
       "id": "creative-academy-light",

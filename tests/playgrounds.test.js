@@ -221,7 +221,7 @@ describe('the templates', () => {
 
     test('a venue card carries its picture and category; a place without a template carries none', () => {
         expect(Templates.cardFor('irish-pub')).toEqual(
-            expect.objectContaining({ category: 'Social', image: expect.stringMatching(/\.jpg$/) })
+            expect.objectContaining({ category: 'Social', image: expect.stringMatching(/\.(webp|jpe?g)$/) })
         );
         expect(Templates.cardFor('hotel-suite')).toBeNull();
     });
