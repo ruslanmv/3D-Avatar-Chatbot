@@ -40,6 +40,9 @@
         }
         if (!latest || latest === lastSeen) return;
         lastSeen = latest;
+        // LW1: spatial presence is independent of a conversational topic. In particular,
+        // a place entered from conversation must not vanish when the topic changes.
+        if (session.active() && /^place-[a-z0-9-]+$/.test(String(session.activity() || ''))) return;
         const Marks = global.NEXUS_COMPANION_MARKS;
         const running =
             session.active() &&
@@ -137,7 +140,13 @@
     function suffix() {
         const Directive = global.NEXUS_COMPANION_DIRECTIVE;
         const tags =
-            Directive && global.__NEXUS_COMPANION_LIVE ? Directive.systemPromptSuffix(togetherOn() && !!panelOf()) : '';
+            Directive && global.__NEXUS_COMPANION_LIVE
+                ? Directive.systemPromptSuffix(
+                      togetherOn() && !!panelOf(),
+                      global.__NEXUS_COMPANION_LIVE.session.active() &&
+                          /^place-[a-z0-9-]+$/.test(String(global.__NEXUS_COMPANION_LIVE.session.activity() || ''))
+                  )
+                : '';
         return contextSuffix() + tags;
     }
 
