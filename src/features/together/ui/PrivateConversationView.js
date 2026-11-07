@@ -152,6 +152,73 @@ const PrivateConversationView = (() => {
 .nexus-private-controls{display:flex;align-items:center;gap:6px;margin-left:auto;flex:0 0 auto}.nexus-private-btn.is-primary{border-color:rgba(244,128,166,.6);background:rgba(244,128,166,.24);font-weight:650}.nexus-private-btn.is-primary:hover,.nexus-private-btn.is-primary:focus-visible{background:rgba(244,128,166,.34)}.nexus-private-btn.is-secondary{border-color:rgba(255,255,255,.14);background:transparent;opacity:.62}.nexus-private-btn.is-secondary:hover,.nexus-private-btn.is-secondary:focus-visible{opacity:.95;background:rgba(255,255,255,.06)}
 @media(max-width:560px){.nexus-private-bar{flex-wrap:wrap}.nexus-private-controls{margin-left:auto}.nexus-private-step{font-size:.7rem}.nexus-private-rung{width:8px}}
 @media(max-width:560px){#${ROW_ID}{height:calc(100% - 14px);max-height:calc(100% - 14px);margin:6px 0 8px}.nexus-private-shell{flex:1 1 auto}.nexus-private-card{padding:11px 13px;max-height:none}.nexus-private-copy{font-size:.92rem}.nexus-private-soundtrack{margin:0 10px 8px}.nexus-private-soundtrack-player{width:100%}.nexus-private-soundtrack-player .nexus-yt-card{max-width:100%}}@media(max-width:560px) and (max-height:450px){.nexus-private-soundtrack{display:none}}
+/* Premium Private chrome: retain the Conversation and consent owners while letting
+   the companion and scene, not a giant bordered card, be the focal point. */
+#${ROW_ID}{max-width:760px;margin:6px auto 8px}
+#${ROW_ID} .nexus-private-shell{
+  border:1px solid rgba(244,164,189,.22);border-radius:16px;
+  background:rgba(15,17,26,.91);box-shadow:0 8px 30px rgba(0,0,0,.25)
+}
+#${ROW_ID} .nexus-private-heading{
+  align-items:center;padding:8px 12px;
+  background:rgba(25,23,35,.83);border-bottom-color:rgba(255,255,255,.055)
+}
+#${ROW_ID} .nexus-private-kicker{font-size:.68rem;letter-spacing:.08em;color:#f3bbcd}
+#${ROW_ID} .nexus-private-place{max-width:34%;font-size:.71rem;opacity:.65}
+#${ROW_ID} .nexus-private-heading-title{
+  padding:3px 9px;border-radius:999px;
+  border-color:rgba(248,172,198,.25);background:rgba(248,172,198,.09);font-size:.7rem
+}
+#${ROW_ID} .nexus-private-action-slot:empty{display:none}
+#${ROW_ID} .nexus-private-action-slot:not(:empty){
+  display:block;flex:0 0 auto;min-width:0;padding:6px 10px;
+  border-bottom:1px solid rgba(255,255,255,.055)
+}
+#${ROW_ID} #nexus-playground-bar{
+  position:static;display:flex;width:100%;max-width:100%;margin:0;padding:0;
+  background:none;box-shadow:none;border:0;border-radius:0;
+  -webkit-backdrop-filter:none;backdrop-filter:none
+}
+#${ROW_ID} #nexus-playground-bar button{
+  min-height:36px;padding:7px 12px;font-size:.77rem;
+  background:rgba(241,158,190,.07);border-color:rgba(241,158,190,.2)
+}
+#${ROW_ID} .nexus-private-card{max-height:min(30vh,230px);padding:10px 12px}
+#${ROW_ID} .nexus-private-log{gap:9px}
+#${ROW_ID} .nexus-private-copy{font-size:.92rem;line-height:1.45}
+#${ROW_ID} .nexus-private-choices{gap:6px;margin-top:8px;padding-top:8px}
+#${ROW_ID} .nexus-private-choice{
+  min-height:38px;border-radius:11px;padding:8px 11px;
+  border-color:rgba(231,190,210,.18);background:rgba(255,255,255,.045);font-size:.86rem
+}
+#${ROW_ID} .nexus-private-choice:hover,
+#${ROW_ID} .nexus-private-choice:focus-visible{border-color:rgba(241,158,190,.5);background:rgba(241,158,190,.11)}
+#${ROW_ID} .nexus-private-bar{
+  padding:7px 10px;gap:6px;background:rgba(17,19,27,.88)
+}
+#${ROW_ID} .nexus-private-bar .nexus-private-btn{min-height:36px;border-radius:10px;padding:7px 11px;font-size:.8rem}
+#${ROW_ID} .nexus-private-btn:focus-visible{outline:2px solid #f2aec6;outline-offset:2px}
+#${ROW_ID} .nexus-private-btn.is-primary{background:rgba(241,158,190,.15);border-color:rgba(241,158,190,.4)}
+#${ROW_ID} .nexus-private-btn.is-secondary{opacity:.8}
+@media(max-width:767px){
+  #${ROW_ID}{height:auto;max-height:min(44vh,320px);max-height:min(44dvh,320px);margin:6px 0 8px}
+  #${ROW_ID} .nexus-private-shell{flex:0 1 auto;max-height:inherit;width:100%}
+  #${ROW_ID} .nexus-private-card{flex:1 1 auto;min-height:54px;max-height:min(22vh,174px);max-height:min(22dvh,174px)}
+  #${ROW_ID} .nexus-private-bar{flex-wrap:nowrap}
+  #${ROW_ID} .nexus-private-controls{flex-wrap:nowrap;margin-left:auto}
+  #${ROW_ID} .nexus-private-bar .nexus-private-btn{min-height:40px}
+  #${ROW_ID} #nexus-playground-bar button{min-height:44px}
+}
+@media(max-width:420px){
+  #${ROW_ID} .nexus-private-place{max-width:30%}
+  #${ROW_ID} .nexus-private-heading{gap:5px;padding:7px 9px}
+  #${ROW_ID} .nexus-private-bar{padding:6px 8px}
+}
+@media(prefers-reduced-motion:reduce){
+  #${ROW_ID} .nexus-private-shell,
+  #${ROW_ID} .nexus-private-btn,
+  #${ROW_ID} .nexus-private-choice{animation:none;transition:none}
+}
 `;
 
     /**
@@ -248,7 +315,7 @@ const PrivateConversationView = (() => {
             // to show `Sensual` while the footer said `Warm` — ceiling and current, both true, and
             // read by everybody as the application insisting on a state they had not reached. The
             // ladder in the footer carries the ceiling instead, where it needs no explaining.
-            row.innerHTML = `<div class="nexus-private-shell"><header class="nexus-private-heading"><div class="nexus-private-kicker"></div><div class="nexus-private-heading-title"></div><div class="nexus-private-place"></div></header><div class="nexus-private-card"><div class="nexus-private-log"></div></div><div class="nexus-private-soundtrack" hidden></div><footer class="nexus-private-bar"><span class="nexus-private-level" aria-live="polite"></span><span class="nexus-private-status" role="status" aria-live="polite"></span><span class="nexus-private-controls"></span></footer></div>`;
+            row.innerHTML = `<div class="nexus-private-shell"><header class="nexus-private-heading"><div class="nexus-private-kicker"></div><div class="nexus-private-heading-title"></div><div class="nexus-private-place"></div></header><div class="nexus-private-action-slot"></div><div class="nexus-private-card"><div class="nexus-private-log"></div></div><div class="nexus-private-soundtrack" hidden></div><footer class="nexus-private-bar"><span class="nexus-private-level" aria-live="polite"></span><span class="nexus-private-status" role="status" aria-live="polite"></span><span class="nexus-private-controls"></span></footer></div>`;
             row.querySelector('.nexus-private-kicker').textContent = t('card.kicker');
             // Empty when nothing is set, never a placeholder (P14). The slot used to print
             // `this place` — the sentence fragment `currentSceneLabel` returns for prose — as
@@ -268,6 +335,10 @@ const PrivateConversationView = (() => {
             const empty = host.querySelector(':scope > .empty-state');
             if (empty) empty.remove();
             host.appendChild(row);
+            // Keep the existing Playground chips in the Private surface, not across her face.
+            // Only presentation changes; the Playground router still owns each action.
+            if (this.win && typeof this.win.Event === 'function')
+                this.win.dispatchEvent(new this.win.Event('nexus-private-view-layout'));
             this._ensureConversationVisible();
             this._bindComposer();
             this._observeHost(host);
@@ -1003,6 +1074,8 @@ const PrivateConversationView = (() => {
             this._unbindComposer();
             const old = this.doc && this.doc.getElementById(ROW_ID);
             if (old) old.remove();
+            if (old && this.win && typeof this.win.Event === 'function')
+                this.win.dispatchEvent(new this.win.Event('nexus-private-view-layout'));
             if (this._statusTimer && this.win && typeof this.win.clearTimeout === 'function') {
                 this.win.clearTimeout(this._statusTimer);
             }
