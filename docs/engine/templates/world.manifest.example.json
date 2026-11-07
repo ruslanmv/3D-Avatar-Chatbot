@@ -1,0 +1,29 @@
+{
+    "_status": "EXISTS — the real shape of one entry in assets/vr-worlds/worlds.json (validated by VRWorlds.validateCatalogue). This entry is an EXAMPLE: id, file and numbers are placeholders; 'triangles' must be the number tools/vr/subset-scene.mjs printed, and scene.at/turn must be computed from a measured spot (WorldSpots.placementFor), never typed.",
+    "id": "example-loft",
+    "title": "Loft",
+    "note": "A quiet loft with a reading corner and a window seat.",
+    "place": true,
+    "rating": "romantic",
+    "tiers": ["desktop", "vr"],
+    "triangles": 42000,
+    "activities": [],
+    "sky": { "top": "#3a2c2a", "horizon": "#5a4438", "bottom": "#2a2020" },
+    "fog": { "color": "#2e2630", "near": 10, "far": 34 },
+    "light": {
+        "sky": "#e8d8ff",
+        "ground": "#3a3040",
+        "hemi": 0.75,
+        "key": "#ffd2a8",
+        "keyIntensity": 0.9,
+        "fill": "#b8a8ff",
+        "fillIntensity": 0.5,
+        "rim": "#ffc8b0",
+        "rimIntensity": 0.45,
+        "exposure": 1
+    },
+    "props": [],
+    "scene": { "src": "scenes/example-loft.glb", "at": [0, -0.05, 0], "turn": 0 },
+    "preview": "previews/example-loft.webp",
+    "category": "Romantic"
+}

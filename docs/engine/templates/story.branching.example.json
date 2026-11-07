@@ -1,0 +1,21 @@
+{
+    "_status": "PROPOSED — StoryDefinition (NEXUS_WORLD_ENGINE_DESIGN.md §3.8) has no loader. Today implement an authored story like src/experiences/seaside/story.js (pure beats + flags) registered with ExperienceDirector, or a Scene Tale StoryPlan (validateStoryPlan in src/features/together/activities/playground.js). Conditions read verified state only; effects go through owners (presence.go, presence.setMood, a travel proposal).",
+    "schemaVersion": 1,
+    "id": "evening-in-the-loft",
+    "world": "example-loft",
+    "rating": "romantic",
+    "goal": { "en": "A slow evening; she suggests the window seat if the person seems restless.", "it": "Una serata lenta; propone la seduta alla finestra se la persona sembra irrequieta." },
+    "beats": [
+        {
+            "id": "arrive",
+            "line": { "en": "The loft is quiet tonight.", "it": "Il loft è tranquillo stasera." },
+            "choices": [
+                { "id": "window", "label": { "en": "The window seat", "it": "La seduta alla finestra" }, "next": "window", "effect": { "goSpot": "window-seat" } },
+                { "id": "stay", "label": { "en": "Stay here", "it": "Restiamo qui" }, "next": "stay", "effect": { "mood": "relax" } }
+            ]
+        },
+        { "id": "window", "requires": { "spot": "window-seat" }, "line": { "en": "From here the city is all small lights.", "it": "Da qui la città è tutta piccole luci." } },
+        { "id": "stay", "line": { "en": "Then we stay. No hurry.", "it": "Allora restiamo. Senza fretta." } }
+    ],
+    "endings": ["window", "stay"]
+}

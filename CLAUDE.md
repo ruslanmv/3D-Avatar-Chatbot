@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (267 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (268 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-07 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5900 tests in 267 suites, all passing.**
+— lint clean, format clean, **5923 tests in 268 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -581,6 +581,20 @@ KayKit) and retinted light. `src/gltf-viewer/VRWorlds.js` (IIFE, imported by
   two-column card grid (`.is-venues`, 4:3 art box). Together's stylesheet must
   stay in the `nexus-bd-together` namespace — a test enforces it.
   `tests/place-previews.test.js`.
+
+## NEXUS World Engine documentation
+
+**An agent adding a world, spot, object, behaviour or story starts at
+`docs/engine/AI_CODER_START_HERE.md`.** `docs/engine/` covers:
+
+- the AI turn end to end (`NEXUS_AI_ARCHITECTURE.md`)
+- coordinates and the measuring tool (`NEXUS_SPATIAL_COORDINATES.md`)
+- the asset pipeline
+- the engine contracts, each marked EXISTS, PARTIAL or PROPOSED
+- the authoring guides, the templates, three tutorials and the roadmap
+
+`tests/engine-docs.test.js` holds those docs to the code. Change a cited
+function, path or measured spot and update the doc in the same commit.
 
 ## Living Worlds: one place, moved within, left only by yes (LW1–LW5)
 
