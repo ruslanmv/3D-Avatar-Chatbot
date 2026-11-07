@@ -172,6 +172,22 @@ body.nexus-mobile.nexus-portrait #nexus-activity-pill > #${BAR_ID} {
                 const mobile = !!(cls && cls.contains('nexus-mobile') && cls.contains('nexus-portrait'));
                 const shell = doc.querySelector('.chat-input-shell');
                 const pill = doc.getElementById(pillId());
+                // A Private venue uses the SAME verified template chips, but its conversation
+                // owns a compact action slot. Never dock them across the avatar's face.
+                // Without an active Private conversation no Private chips are visible; this
+                // is UI containment, not an authorization shortcut.
+                if (template && template.rating === 'private') {
+                    if (pill) pill.classList.remove('has-actions');
+                    const slot = doc.querySelector('#nexus-private-conversation-row .nexus-private-action-slot');
+                    if (!slot) {
+                        bar.hidden = true;
+                    } else {
+                        if (bar.parentNode !== slot) slot.appendChild(bar);
+                        bar.hidden = false;
+                        bar.style.removeProperty('--nexus-playground-dock');
+                    }
+                    return;
+                }
                 // DX5. One row: the chips, then the End X at its right — inside the End control's
                 // row wherever that row is (the composer on a desktop, docked above the chat
                 // sheet on a phone). A private room has no End row (Private draws its own), so
@@ -428,6 +444,7 @@ body.nexus-mobile.nexus-portrait #nexus-activity-pill > #${BAR_ID} {
         }
 
         win.addEventListener('nexus-world-shown', onShown);
+        win.addEventListener('nexus-private-view-layout', place);
         win.addEventListener('resize', place);
         win.addEventListener('orientationchange', place);
 
@@ -443,6 +460,7 @@ body.nexus-mobile.nexus-portrait #nexus-activity-pill > #${BAR_ID} {
             detach() {
                 clear();
                 win.removeEventListener('nexus-world-shown', onShown);
+                win.removeEventListener('nexus-private-view-layout', place);
                 win.removeEventListener('resize', place);
                 win.removeEventListener('orientationchange', place);
                 if (bar && bar.parentNode) bar.parentNode.removeChild(bar);
