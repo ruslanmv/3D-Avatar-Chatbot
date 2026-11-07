@@ -97,7 +97,9 @@ describe('one quiet line per change, no cards', () => {
         session.enter('experiences', 'seaside');
         director.state = 'active';
         expect(pill().hidden).toBe(false);
-        expect(pill().textContent).toContain('Experiences · Seaside Evening');
+        expect(pill().textContent).toContain('Seaside Evening');
+        // DX5: read by a screen reader, not shown; the X names the place in its tooltip.
+        expect(pill().querySelector('[data-role="end"]').title).toBe('End Seaside Evening');
         pill().querySelector('[data-role="end"]').click();
         expect(director.state).toBe('stopped');
         expect(session.active()).toBe(false);

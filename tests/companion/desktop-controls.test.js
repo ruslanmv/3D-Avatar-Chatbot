@@ -52,7 +52,7 @@ describe('the conversation status bar', () => {
         return { marks, session };
     }
 
-    test('it is its own row before the composer, full width, and names what its X ends', () => {
+    test('it is its own row before the composer, in normal flow, and names what its X ends', () => {
         const { marks } = rig('experiences', 'seaside');
         const shell = document.querySelector('.chat-input-shell');
         expect(shell.firstChild).toBe(marks.pill);
@@ -63,7 +63,8 @@ describe('the conversation status bar', () => {
         expect(end.querySelector('svg')).not.toBeNull();
         expect(end.getAttribute('aria-label')).toBe('End experience');
         expect(end.title).toBe('End Seaside Evening');
-        expect(Marks.CSS).toMatch(/width: 100%/);
+        // DX5: no longer a slab across the composer — a row holding one X at its right.
+        expect(Marks.CSS).toMatch(/\n#nexus-activity-pill \{ display: flex; justify-content: flex-end;/);
         // The desktop rule, at the start of a line; the phone rule (body.nexus-mobile…) is fixed on purpose.
         expect(Marks.CSS).not.toMatch(
             new RegExp('(^|\\n)#' + Marks.PILL_ID + ' \\{[^}]*position:\\s*(absolute|fixed)')
@@ -110,7 +111,7 @@ describe('on a phone the experience is a mini-player above the chat sheet', () =
         document.body.className = '';
     });
     test('fingers get 44 px targets', () => {
-        expect(Marks.CSS).toMatch(/@media \(pointer: coarse\)[\s\S]*min-height: 44px/);
+        expect(Marks.CSS).toMatch(/@media \(pointer: coarse\)[\s\S]*width: 44px; height: 44px/);
         expect(Bar.CSS).toMatch(/@media \(pointer: coarse\)[\s\S]*min-height: 44px/);
     });
     test('no backtick inside either template literal of CSS', () => {

@@ -42,8 +42,6 @@
 }
 #${BAR_ID}::-webkit-scrollbar { display: none; }
 #${BAR_ID}[hidden] { display: none; }
-/* DX3. Folded with the status bar: minimal and hidden show none of it until expanded. */
-html.nexus-status-minimal #${BAR_ID}, html.nexus-status-hidden #${BAR_ID} { display: none; }
 #${BAR_ID}[data-rating="private"] { --mark: #f08fb6; }
 #${BAR_ID} button {
   flex: 0 0 auto; min-height: 32px; padding: .3rem .75rem; border-radius: 999px; white-space: nowrap;
@@ -61,6 +59,13 @@ body.nexus-mobile.nexus-portrait #${BAR_ID} {
 }
 @media (pointer: coarse) {
   #${BAR_ID} button { min-height: 44px; padding: .5rem .9rem; }
+}
+/* DX5. In the End row: the chips take the space to the left of the X and scroll sideways. */
+#nexus-activity-pill.has-actions { justify-content: space-between; align-items: center; gap: 6px; }
+#nexus-activity-pill > #${BAR_ID} { flex: 1 1 auto; min-width: 0; margin: 0; }
+body.nexus-mobile.nexus-portrait #nexus-activity-pill.has-actions { left: calc(10px + env(safe-area-inset-left, 0px)); }
+body.nexus-mobile.nexus-portrait #nexus-activity-pill > #${BAR_ID} {
+  position: static; padding: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none;
 }
 #${BADGE_ID} {
   position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 30; pointer-events: none;
@@ -167,6 +172,16 @@ body.nexus-mobile.nexus-portrait #${BAR_ID} {
                 const mobile = !!(cls && cls.contains('nexus-mobile') && cls.contains('nexus-portrait'));
                 const shell = doc.querySelector('.chat-input-shell');
                 const pill = doc.getElementById(pillId());
+                // DX5. One row: the chips, then the End X at its right — inside the End control's
+                // row wherever that row is (the composer on a desktop, docked above the chat
+                // sheet on a phone). A private room has no End row (Private draws its own), so
+                // there the chips keep their own place below.
+                if (pill && !pill.hidden) {
+                    if (bar.parentNode !== pill) pill.insertBefore(bar, pill.firstChild);
+                    pill.classList.add('has-actions');
+                    return;
+                }
+                if (pill) pill.classList.remove('has-actions');
                 if (mobile) {
                     if (bar.parentNode !== doc.body) doc.body.appendChild(bar);
                     const h = win.innerHeight;
@@ -194,6 +209,8 @@ body.nexus-mobile.nexus-portrait #${BAR_ID} {
         function paint() {
             if (!template) {
                 if (bar) bar.hidden = true;
+                const pill = doc.getElementById(pillId());
+                if (pill) pill.classList.remove('has-actions');
                 return;
             }
             styles();

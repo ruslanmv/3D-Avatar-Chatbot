@@ -53,9 +53,9 @@ describe('End is an X', () => {
 
     test('touch screens get a 44 px target around a small icon', () => {
         expect(Marks.CSS).toMatch(
-            /@media \(pointer: coarse\) \{[\s\S]*\.nexus-activity-icon, #nexus-activity-pill \.nexus-activity-main \{ min-width: 44px; min-height: 44px; \}/
+            /@media \(pointer: coarse\) \{\s*#nexus-activity-pill \.nexus-activity-end \{ width: 44px; height: 44px; \}/
         );
-        expect(Marks.CSS).toMatch(/\.nexus-activity-icon svg \{ width: 14px; height: 14px;/);
+        expect(Marks.CSS).toMatch(/\.nexus-activity-end svg \{ width: 14px; height: 14px;/);
     });
 
     test('asks first only when the running activity says ending would lose something', () => {
@@ -78,96 +78,58 @@ describe('End is an X', () => {
     });
 });
 
-describe('three views', () => {
-    test('compact by default: the name, minimise and End', () => {
+describe('only the X (DX5)', () => {
+    test('one control and nothing else to look at: no name, no dot, no minimise', () => {
         const { marks } = rig();
-        expect(marks.view).toBe('compact');
-        expect(marks.pill.dataset.view).toBe('compact');
-        expect(marks.pill.textContent).toContain('Experiences · Seaside Evening');
-        expect(button(marks, 'nexus-activity-min').getAttribute('aria-label')).toBe('Minimise status');
-        expect(marks.restore.hidden).toBe(true);
+        const buttons = marks.pill.querySelectorAll('button');
+        expect(buttons.length).toBe(1);
+        expect(buttons[0].dataset.role).toBe('end');
+        expect(marks.pill.querySelector('.nexus-activity-dot')).toBeNull();
+        // The name is kept for screen readers only.
+        const words = marks.pill.querySelector('.nexus-activity-words');
+        expect(words.textContent).toBe('Experiences · Seaside Evening');
+        expect(Marks.CSS).toMatch(/\.nexus-activity-words \{\s*position: absolute; width: 1px; height: 1px;[^}]*clip/);
+        expect(words.getAttribute('role')).toBe('status');
+        expect(marks.pill.getAttribute('role')).toBeNull();
     });
 
-    test('minimal: a small chip with the name that expands again', () => {
+    test('the X says what it ends: in its name and in its tooltip', () => {
         const { marks } = rig();
-        button(marks, 'nexus-activity-min').click();
-        expect(marks.pill.dataset.view).toBe('minimal');
-        expect(marks.pill.querySelector('.nexus-activity-words').textContent).toBe('Seaside Evening');
-        // A venue's chips fold away with it.
-        expect(document.documentElement.classList.contains('nexus-status-minimal')).toBe(true);
-        expect(require('../../src/experiences/playgrounds/PlaygroundInteractionRouter').CSS).toMatch(
-            /html\.nexus-status-minimal #nexus-playground-bar/
-        );
-        const main = button(marks, 'nexus-activity-main');
-        expect(main.getAttribute('aria-expanded')).toBe('false');
-        main.click();
-        expect(marks.pill.dataset.view).toBe('compact');
-        expect(Marks.CSS).toMatch(/\[data-view="minimal"\] \{\s*width: auto; max-width: 13\.5rem/);
+        const end = marks.pill.querySelector('[data-role="end"]');
+        expect(end.getAttribute('aria-label')).toBe('End experience');
+        expect(end.title).toBe('End Seaside Evening');
+        const life = rig({ destination: 'life', activity: 'relax' });
+        expect(life.marks.pill.querySelector('[data-role="end"]').getAttribute('aria-label')).toBe('End relax');
     });
 
-    test('hidden: the bar goes, one restore control stays, and restore brings everything back', () => {
-        const { marks } = rig();
-        marks.setView('minimal');
-        button(marks, 'nexus-activity-hide').click();
-        expect(marks.pill.hidden).toBe(true);
-        expect(marks.restore.hidden).toBe(false);
-        expect(marks.restore.getAttribute('aria-label')).toMatch(/^Show /);
-        expect(document.documentElement.classList.contains('nexus-status-hidden')).toBe(true);
-        marks.restore.click();
-        expect(marks.view).toBe('compact');
-        expect(marks.pill.hidden).toBe(false);
-        expect(marks.restore.hidden).toBe(true);
-        expect(document.documentElement.classList.contains('nexus-status-hidden')).toBe(false);
-    });
-
-    test('the choice is remembered', () => {
-        rig().marks.setView('minimal');
-        expect(window.localStorage.getItem(Marks.VIEW_KEY)).toBe('minimal');
-        expect(rig().marks.view).toBe('minimal');
-        window.localStorage.setItem(Marks.VIEW_KEY, 'nonsense');
-        expect(rig().marks.view).toBe('compact');
-    });
-
-    test('nothing explicit running: neither the bar nor the restore control', () => {
-        const { marks } = rig({ destination: 'life', activity: 'talk' });
-        marks.setView('hidden');
-        expect(marks.pill.hidden).toBe(true);
-        expect(marks.restore.hidden).toBe(true);
-        expect(document.documentElement.classList.contains('nexus-status-hidden')).toBe(false);
-    });
-
-    test('one status component: attaching twice in one page is not how the app does it, and the ids are unique', () => {
-        const { marks } = rig();
-        expect(document.querySelectorAll('#' + Marks.PILL_ID).length).toBe(1);
-        expect(document.querySelectorAll('#' + Marks.RESTORE_ID).length).toBe(1);
-        marks.detach();
-        expect(document.getElementById(Marks.PILL_ID)).toBeNull();
-        expect(document.getElementById(Marks.RESTORE_ID)).toBeNull();
-    });
-});
-
-describe('the look', () => {
-    test('thin border, translucent surface, restrained blur; muted accents per destination', () => {
-        const rule = Marks.CSS.match(/\n#nexus-activity-pill \{[^}]*\}/)[0];
-        expect(rule).toMatch(/border: 1px solid/);
-        expect(rule).toMatch(/background: rgba\(/);
-        expect(rule).toMatch(/backdrop-filter: blur\(10px\)/);
-        expect(rule).not.toMatch(/box-shadow/);
-        expect(Marks.CSS).toMatch(/\[data-destination="experiences"\] \{ --mark: #d6b75e; \}/);
-        expect(Marks.CSS).toMatch(/\[data-destination="copilot"\] \{ --mark: #46c79b; \}/);
-        expect(rule).toMatch(/--mark: #5aa9e0/); // Life, the default
+    test('quiet: a small round button with a thin border, no colour of its own, no shadow', () => {
+        const rule = Marks.CSS.match(/\.nexus-activity-end \{[^}]*\}/)[0];
+        expect(rule).toMatch(/border-radius: 50%/);
+        expect(rule).toMatch(/border: 1px solid rgba\(255, 255, 255, \.12\)/);
+        expect(rule).not.toMatch(/box-shadow|--mark/);
         expect(Marks.CSS).toMatch(/\}\s*$/); // no backtick closed the template early
     });
 
-    test('a phone keeps it inside the safe area, above the chat sheet', () => {
-        expect(Marks.CSS).toMatch(/env\(safe-area-inset-left, 0px\)/);
-        expect(Marks.CSS).toMatch(/env\(safe-area-inset-right, 0px\)/);
-        expect(Marks.CSS).toMatch(/bottom: var\(--nexus-activity-dock, 120px\)/);
+    test('nothing explicit running: no X', () => {
+        const { marks } = rig({ destination: 'life', activity: 'talk' });
+        expect(marks.pill.hidden).toBe(true);
+    });
+
+    test('on a phone it docks at the right above the chat sheet, inside the safe area', () => {
+        expect(Marks.CSS).toMatch(
+            /body\.nexus-mobile\.nexus-portrait #nexus-activity-pill \{\s*position: fixed; bottom: var\(--nexus-activity-dock, 120px\); right: calc\(12px \+ env\(safe-area-inset-right, 0px\)\)/
+        );
         const { marks } = rig();
         document.body.classList.add('nexus-mobile', 'nexus-portrait');
         marks.refresh();
         expect(marks.pill.parentNode).toBe(document.body);
-        expect(marks.restore.parentNode).toBe(document.body);
+    });
+
+    test('one component, removed cleanly', () => {
+        const { marks } = rig();
+        expect(document.querySelectorAll('#' + Marks.PILL_ID).length).toBe(1);
+        marks.detach();
+        expect(document.getElementById(Marks.PILL_ID)).toBeNull();
     });
 });
 
@@ -202,7 +164,6 @@ describe('Immersive mode (clean view)', () => {
     test("hides the status, chips and viewport chrome; the chat only by the person's choice", () => {
         for (const sel of [
             '#nexus-activity-pill',
-            '#nexus-activity-restore',
             '#nexus-playground-bar',
             '.avatar-viewport .hud-overlay',
             '.avatar-viewport .status-badge',

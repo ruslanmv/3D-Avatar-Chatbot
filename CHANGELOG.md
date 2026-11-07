@@ -12,9 +12,10 @@ commit subjects (`CLAUDE.md` ▸ Conventions).
   on desktop and phone; Private's rooms show their pictures too.
 - **The lagoon beach faces the water** (the world was turned 180° about her
   spot; it had faced empty sand).
-- **The status bar is an X, not a button.** Compact, minimal and hidden views,
-  remembered; one faint dot restores a hidden bar.
-- **Clean view**: an eye in the corner hides the bar, chips, HUD and (by choice)
+- **The status bar is just an X.** No name, no dot: one small round button that
+  ends the experience (its name and tooltip say what it ends), sharing one row
+  with the place's chips.
+- **Clean view**: an eye in the corner hides the X, chips, HUD and (by choice)
   the chat; one control or Escape brings them back. Nothing stops.
 
 ## V4 release — playgrounds (PG1)

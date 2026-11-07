@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-07 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5752 tests in 260 suites, all passing.**
+— lint clean, format clean, **5750 tests in 260 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -417,22 +417,23 @@ she is switched into. `src/companion/` (IIFE, loaded by `boot.js`) holds them.
   sideways; it now needs `html.nexus-keyboard-open`, which `MobileChatOverlay`
   sets while a text field has focus, and phone landscape lets her viewport
   shrink so the button row fits.
-- **The status bar is quiet and collapsible (DX3).** End is an X
-  (`[data-role="end"]`, `aria-label` "End experience" for an experience, "End
-  <activity>" otherwise, 44 px on touch); End asks first only if the running
-  activity answers `unsavedProgress()` with a sentence (none does yet). Three
-  views, the person's choice, kept in `nexus_status_view`: compact (name,
-  minimise, X), minimal (a chip that expands, plus hide), hidden (one restore
-  dot, `#nexus-activity-restore`). `html.nexus-status-minimal` /
-  `nexus-status-hidden` fold a venue's chips away with it. Thin border,
-  translucent surface, muted accents (Experiences #d6b75e, Life #5aa9e0, Copilot
-  #46c79b), safe-area insets on a phone. **Clean view** is
-  `src/companion/ImmersiveMode.js` (boot list, after ActivityMarks): an eye in
-  the viewport's corner hides the bar, chips, HUD corners, READY badge and (by
-  default, Settings ▸ CLEAN VIEW, `nexus_clean_view_chat`) the chat; one eye in
-  the bottom corner or Escape restores. It is CSS only and names no session — a
-  test greps it — so she and the experience keep going. Not kept across a
-  reload; entering VR or AR leaves it. `tests/companion/status-views.test.js`.
+- **The End control is only an X (DX3, DX5).** At the person's request the
+  status bar was reduced to one small round X (`[data-role="end"]`):
+  `aria-label` "End experience" for an experience, "End <activity>" otherwise; a
+  tooltip naming the place ("End Irish pub"); the name kept in a visually hidden
+  `role="status"` line for screen readers; 44 px on touch. No name, dot,
+  minimise or remembered view — those were tried (DX3–DX4) and removed. A
+  venue's chips sit in the same row, to the left of the X (`.has-actions`; the
+  router inserts them), so the row is one line on desktop and phones; a private
+  room has no End row, and its chips dock on their own. End asks first only if
+  the running activity answers `unsavedProgress()` (none does yet). **Clean
+  view** is `src/companion/ImmersiveMode.js` (boot list, after ActivityMarks):
+  an eye in the viewport's corner hides the X row, chips, HUD corners, READY
+  badge and (by default, Settings ▸ CLEAN VIEW, `nexus_clean_view_chat`) the
+  chat; one eye in the bottom corner or Escape restores. CSS only, naming no
+  session — a test greps it — so she and the experience keep going. Not kept
+  across a reload; entering VR or AR leaves it.
+  `tests/companion/status-views.test.js`.
 - **She says one line when it starts or ends (IC3).** `ActivityVoice`: one
   bounded `callLLM` per Together start, newest start wins, epoch-checked,
   nothing while the person is mid-turn or with no model configured, posted like

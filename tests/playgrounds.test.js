@@ -307,14 +307,19 @@ describe('the chips', () => {
         const bar = document.getElementById(Router.BAR_ID);
         expect(bar.hidden).toBe(false);
         expect(bar.getAttribute('role')).toBe('toolbar');
-        expect(bar.previousElementSibling.id).toBe('nexus-activity-pill');
+        // DX5: in the End row, to the left of the X.
+        expect(bar.parentNode.id).toBe('nexus-activity-pill');
+        expect(bar.parentNode.classList.contains('has-actions')).toBe(true);
         expect(bar.querySelectorAll('button').length).toBe(4);
         shownEvent({ id: null });
         expect(bar.hidden).toBe(true);
+        expect(document.getElementById('nexus-activity-pill').classList.contains('has-actions')).toBe(false);
     });
 
     test('a phone held upright docks them in the page, above the chat sheet', () => {
         document.body.classList.add('nexus-mobile', 'nexus-portrait');
+        // No End row (a private room, say): the chips dock on their own.
+        document.getElementById('nexus-activity-pill').hidden = true;
         shownEvent({ id: 'irish-pub-light', base: 'irish-pub', rating: 'general' });
         const bar = document.getElementById(Router.BAR_ID);
         expect(bar.parentNode).toBe(document.body);

@@ -1,7 +1,7 @@
 /**
  * ImmersiveMode — a clean view of her and the place, on the person's say-so (DX3).
  *
- * The status bar, a place's chips, the viewport's corner brackets and READY badge, and (by
+ * The End button, a place's chips, the viewport's corner brackets and READY badge, and (by
  * choice) the chat composer are all useful and all in front of her. While she and a place are
  * the experience, the person may want none of it. This takes them away together and brings them
  * back with one discreet control — nothing else changes: the companion, the experience, its
@@ -40,13 +40,12 @@
 
     /** What clean view hides. Everything here is a page overlay; none of it runs anything. */
     const CSS = `
-html.${CLASS} #nexus-activity-pill, html.${CLASS} #nexus-activity-restore,
+html.${CLASS} #nexus-activity-pill,
 html.${CLASS} #nexus-playground-bar, html.${CLASS} #nexus-playground-badge,
 html.${CLASS} .avatar-viewport .hud-overlay, html.${CLASS} .avatar-viewport .status-badge,
 html.${CLASS} #${TOGGLE_ID} { display: none !important; }
 html.${CLASS}.${CHAT_CLASS} .chat-input-shell { display: none !important; }
 html.${CLASS}.${CHAT_CLASS} body.nexus-mobile.nexus-portrait .chat-card { visibility: hidden !important; }
-html.nexus-status-hidden #nexus-playground-bar { display: none !important; }
 #${TOGGLE_ID}, #${EXIT_ID} {
   display: inline-grid; place-items: center; width: 30px; height: 30px; padding: 0; margin: 0;
   border: 1px solid rgba(255, 255, 255, .12); border-radius: 50%; color: #c9d5df; cursor: pointer;

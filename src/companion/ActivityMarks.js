@@ -24,10 +24,6 @@ const ActivityMarks = (() => {
 
     const STYLE_ID = 'nexus-activity-style';
     const PILL_ID = 'nexus-activity-pill';
-    const RESTORE_ID = 'nexus-activity-restore';
-    // DX3. How the status shows, chosen by the person and kept between visits.
-    const VIEW_KEY = 'nexus_status_view';
-    const VIEWS = Object.freeze(['compact', 'minimal', 'hidden']);
 
     const DESTINATIONS = Object.freeze({
         life: { title: 'Life', color: '#38A9FF' },
@@ -65,81 +61,36 @@ const ActivityMarks = (() => {
 .nexus-activity-mark[data-destination="experiences"] { --mark: #F2C94C; }
 .nexus-activity-mark .nexus-activity-dot { width: .42rem; height: .42rem; border-radius: 50%; background: var(--mark); }
 .nexus-activity-mark .nexus-activity-where { color: var(--mark); font-weight: 650; }
-/* DX1. A status bar, not a floating pill: its own row at the top of the composer area, in
-   normal flow, so it can never cover a message, the microphone or the input.
-   DX3. Quiet by default. Thin border, a translucent surface with a restrained blur where the
-   browser has one, icon buttons instead of a filled "End experience" slab, and the accent only
-   on the dot and a hairline. Muted accents: Experiences a soft yellow, Life blue, Copilot green.
-   Three views - compact (name, minimise, end), minimal (a small chip that expands) and hidden
-   (one faint restore dot) - chosen by the person and remembered. */
-#${PILL_ID} {
-  --mark: #5aa9e0;
-  display: flex; align-items: center; gap: .25rem; margin: 0 0 .4rem; padding: 2px 3px 2px 10px;
-  width: 100%; box-sizing: border-box; min-height: 34px; border-radius: 12px; color: #c9d5df;
-  border: 1px solid color-mix(in srgb, var(--mark) 22%, rgba(255, 255, 255, .07));
-  background: rgba(14, 20, 28, .55); font: 500 .74rem/1.2 system-ui, sans-serif; letter-spacing: .01em;
-  -webkit-backdrop-filter: blur(10px) saturate(1.15); backdrop-filter: blur(10px) saturate(1.15);
-}
+/* DX1. In normal flow at the top of the composer area, so it never covers a message, the
+   microphone or the input.
+   DX5. Only an X, at the right: a small round button, a thin border, a translucent surface,
+   no colour of its own. The activity it ends is in its name and tooltip, and in a status line
+   kept for screen readers only. */
+#${PILL_ID} { display: flex; justify-content: flex-end; margin: 0 0 .35rem; padding: 0; }
 #${PILL_ID}[hidden] { display: none; }
-#${PILL_ID}[data-destination="copilot"] { --mark: #46c79b; }
-#${PILL_ID}[data-destination="experiences"] { --mark: #d6b75e; }
-#${PILL_ID} .nexus-activity-main {
-  flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: .45rem; padding: 0; margin: 0;
-  background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; min-height: 28px;
+#${PILL_ID} .nexus-activity-words {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0;
 }
-#${PILL_ID} .nexus-activity-words { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#${PILL_ID} .nexus-activity-dot { flex: 0 0 auto; width: .4rem; height: .4rem; border-radius: 50%; background: var(--mark); }
-#${PILL_ID} .nexus-activity-icon {
-  flex: 0 0 auto; display: inline-grid; place-items: center; width: 28px; height: 28px; padding: 0; margin: 0;
-  border: 0; border-radius: 8px; background: transparent; color: #9fb0bf; cursor: pointer;
+#${PILL_ID} .nexus-activity-end {
+  display: inline-grid; place-items: center; width: 30px; height: 30px; padding: 0; margin: 0;
+  border: 1px solid rgba(255, 255, 255, .12); border-radius: 50%; color: #b9c6d2; cursor: pointer;
+  background: rgba(14, 20, 28, .55); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
 }
-#${PILL_ID} .nexus-activity-icon svg { width: 14px; height: 14px; display: block; }
-#${PILL_ID} .nexus-activity-icon:hover, #${PILL_ID} .nexus-activity-main:hover { color: #eef3f7; }
-#${PILL_ID} .nexus-activity-icon:hover { background: rgba(255, 255, 255, .07); }
-#${PILL_ID} button:focus-visible { outline: 2px solid var(--mark); outline-offset: 1px; }
-#${PILL_ID} .nexus-activity-hide { display: none; }
-/* Minimal: a small chip, never full width, so it does not sit across her. */
-#${PILL_ID}[data-view="minimal"] {
-  width: auto; max-width: 13.5rem; display: inline-flex; min-height: 28px; padding: 1px 2px 1px 9px; border-radius: 999px;
-}
-#${PILL_ID}[data-view="minimal"] .nexus-activity-min, #${PILL_ID}[data-view="minimal"] .nexus-activity-end { display: none; }
-#${PILL_ID}[data-view="minimal"] .nexus-activity-hide { display: inline-grid; }
-#${PILL_ID}[data-view="minimal"] .nexus-activity-icon { width: 24px; height: 24px; }
-#${RESTORE_ID} {
-  display: inline-grid; place-items: center; width: 28px; height: 28px; margin: 0 0 .4rem auto; padding: 0;
-  border: 1px solid rgba(255, 255, 255, .1); border-radius: 50%; background: rgba(14, 20, 28, .45); color: #9fb0bf;
-  opacity: .6; cursor: pointer; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
-}
-#${RESTORE_ID}[hidden] { display: none; }
-#${RESTORE_ID}:hover, #${RESTORE_ID}:focus-visible { opacity: 1; color: #eef3f7; }
-#${RESTORE_ID} .nexus-activity-dot { width: .4rem; height: .4rem; border-radius: 50%; background: var(--mark, #5aa9e0); }
-/* DX2. On a phone the bar is a mini-player docked on top of the chat sheet, the "now playing"
-   row music and companion apps use, not a row inside it. Inside, it took 52 px of a chat sheet
-   whose height is fixed and pushed the message input below the screen's edge. Fixed rather
-   than absolute: the chat sheet clips its overflow. dock() keeps the offset 8 px above the sheet,
-   which is above the composer, the microphone and the send button by construction.
-   DX3: inside the safe area on the left and right; the minimal chip and the restore dot sit at
-   the right edge, clear of her. (No backticks in this comment: it lives inside a template literal.) */
-body.nexus-mobile.nexus-portrait #${PILL_ID}, body.nexus-mobile.nexus-portrait #${RESTORE_ID} {
-  position: fixed; bottom: var(--nexus-activity-dock, 120px); margin: 0; z-index: 40;
-}
+#${PILL_ID} .nexus-activity-end svg { width: 14px; height: 14px; display: block; }
+#${PILL_ID} .nexus-activity-end:hover { color: #f1f5f8; background: rgba(255, 255, 255, .1); }
+#${PILL_ID} .nexus-activity-end:focus-visible { outline: 2px solid #d6b75e; outline-offset: 2px; }
+/* DX2. On a phone held upright it docks 8 px above the chat sheet, at the right inside the safe
+   area, clear of her and of the composer, the microphone and the send button. Fixed rather than
+   absolute: the chat sheet clips its overflow. (No backticks in this comment: it lives inside a
+   template literal.) */
 body.nexus-mobile.nexus-portrait #${PILL_ID} {
-  left: calc(10px + env(safe-area-inset-left, 0px)); right: calc(10px + env(safe-area-inset-right, 0px)); width: auto;
-  background: rgba(10, 16, 23, .72);
+  position: fixed; bottom: var(--nexus-activity-dock, 120px); right: calc(12px + env(safe-area-inset-right, 0px));
+  margin: 0; z-index: 40;
 }
-body.nexus-mobile.nexus-portrait #${PILL_ID}[data-view="minimal"] { left: auto; }
-body.nexus-mobile.nexus-portrait #${RESTORE_ID} { right: calc(12px + env(safe-area-inset-right, 0px)); }
-/* DX2. A fingertip, not a cursor: 44 px is Apple's and Google's minimum touch target. The
-   visible icon stays small; the button around it grows. */
+/* A fingertip, not a cursor: 44 px is Apple's and Google's minimum touch target. */
 @media (pointer: coarse) {
-  #${PILL_ID} { min-height: 44px; }
-  #${PILL_ID} .nexus-activity-icon, #${PILL_ID} .nexus-activity-main { min-width: 44px; min-height: 44px; }
-  #${PILL_ID}[data-view="minimal"] { min-height: 44px; }
-  #${PILL_ID}[data-view="minimal"] .nexus-activity-icon { width: 44px; height: 44px; }
-  #${RESTORE_ID} { width: 44px; height: 44px; }
-}
-@media (pointer: fine) {
-  #${PILL_ID} .nexus-activity-end, #${PILL_ID} .nexus-activity-min { min-width: 28px; }
+  #${PILL_ID} .nexus-activity-end { width: 44px; height: 44px; }
 }
 `;
 
@@ -224,79 +175,31 @@ body.nexus-mobile.nexus-portrait #${RESTORE_ID} { right: calc(12px + env(safe-ar
             session.end();
         }
 
-        // ── the status bar above the composer, for explicit activities only ──
-        // DX3. One component, three views. The name (a button: it minimises, or in the minimal
-        // view expands), a minimise icon, a hide icon (minimal view only) and End as an X. A
-        // separate restore dot stands in for all of it while hidden, so the person can always
-        // get back to the controls of what is running.
-        const ICONS = {
-            min: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6.5l4 4 4-4"/></svg>',
-            hide: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 8s2.2-4 6-4 6 4 6 4-2.2 4-6 4-6-4-6-4z"/><path d="M3 13L13 3"/></svg>',
-            end: '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>',
-        };
-        const store = o.storage || (doc.defaultView && doc.defaultView.localStorage) || null;
-        let view = readView(store);
-
+        // ── the End control above the composer, for explicit activities only ──
+        // DX5. Only an X. The person asked for the cleanest thing that still ends what is running:
+        // no name, no dot, no minimise — the place is all around her, the bar only repeated it.
+        // What the X ends is still said: in its accessible name ("End experience"), in its
+        // tooltip ("End Irish pub"), and in a visually hidden status line a screen reader reads
+        // when it appears. The control is a 44 px target on touch around a 14 px glyph.
+        const END_ICON =
+            '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg>';
         const pill = el(doc, 'div');
         pill.id = PILL_ID;
-        pill.setAttribute('role', 'status');
         pill.hidden = true;
-        const main = el(doc, 'button', 'nexus-activity-main');
-        main.type = 'button';
-        const dot = el(doc, 'span', 'nexus-activity-dot');
-        dot.setAttribute('aria-hidden', 'true');
+        // The live region is the hidden name only: a place's chips can sit in this row (a timer
+        // counting down among them), and a status role on the row would read every tick.
         const words = el(doc, 'span', 'nexus-activity-words');
-        main.append(dot, words);
-        const iconButton = (cls, icon, labelText) => {
-            const b = el(doc, 'button', 'nexus-activity-icon ' + cls);
-            b.type = 'button';
-            b.innerHTML = icon;
-            b.setAttribute('aria-label', labelText);
-            b.title = labelText;
-            return b;
-        };
-        const minButton = iconButton('nexus-activity-min', ICONS.min, 'Minimise status');
-        const hideButton = iconButton('nexus-activity-hide', ICONS.hide, 'Hide status');
-        const endButton = iconButton('nexus-activity-end', ICONS.end, 'End experience');
+        words.setAttribute('role', 'status');
+        const endButton = el(doc, 'button', 'nexus-activity-end');
+        endButton.type = 'button';
         endButton.dataset.role = 'end';
-        main.addEventListener('click', () => setView(view === 'compact' ? 'minimal' : 'compact'));
-        minButton.addEventListener('click', () => setView('minimal'));
-        hideButton.addEventListener('click', () => setView('hidden'));
+        endButton.innerHTML = END_ICON;
+        endButton.setAttribute('aria-label', 'End experience');
         endButton.addEventListener('click', end);
-        pill.append(main, minButton, hideButton, endButton);
-
-        const restore = el(doc, 'button');
-        restore.id = RESTORE_ID;
-        restore.type = 'button';
-        restore.hidden = true;
-        const restoreDot = el(doc, 'span', 'nexus-activity-dot');
-        restoreDot.setAttribute('aria-hidden', 'true');
-        restore.appendChild(restoreDot);
-        restore.addEventListener('click', () => {
-            setView('compact');
-            try {
-                main.focus();
-            } catch (_) {
-                /* focus is a courtesy */
-            }
-        });
+        pill.append(words, endButton);
 
         const shell = doc.querySelector('.chat-input-shell');
-        if (shell) {
-            shell.insertBefore(restore, shell.firstChild);
-            shell.insertBefore(pill, shell.firstChild);
-        }
-
-        function setView(next) {
-            if (!VIEWS.includes(next)) return;
-            view = next;
-            try {
-                if (store) store.setItem(VIEW_KEY, next);
-            } catch (_) {
-                /* remembered for this page only */
-            }
-            paintPill();
-        }
+        if (shell) shell.insertBefore(pill, shell.firstChild);
 
         /**
          * DX2. On a phone, keep the mini-player 8 px above the chat sheet's top edge, measured,
@@ -315,17 +218,12 @@ body.nexus-mobile.nexus-portrait #${RESTORE_ID} { right: calc(12px + env(safe-ar
                 // its fixed children: a fixed bar inside it was still clipped by the chat sheet.
                 // On a phone the bar lives in <body>; on a desktop, back at the top of the composer.
                 const shellNow = doc.querySelector('.chat-input-shell');
-                if (mobile && doc.body && pill.parentNode !== doc.body) doc.body.append(pill, restore);
-                else if (!mobile && shellNow && pill.parentNode !== shellNow) {
-                    shellNow.insertBefore(restore, shellNow.firstChild);
+                if (mobile && doc.body && pill.parentNode !== doc.body) doc.body.appendChild(pill);
+                else if (!mobile && shellNow && pill.parentNode !== shellNow)
                     shellNow.insertBefore(pill, shellNow.firstChild);
-                }
                 if (!win || !chat || !mobile) return;
                 const offset = dockOffset(win.innerHeight, chat.getBoundingClientRect().top);
-                if (offset != null) {
-                    pill.style.setProperty('--nexus-activity-dock', offset + 'px');
-                    restore.style.setProperty('--nexus-activity-dock', offset + 'px');
-                }
+                if (offset != null) pill.style.setProperty('--nexus-activity-dock', offset + 'px');
             } catch (_) {
                 /* the CSS default stands */
             }
@@ -355,37 +253,20 @@ body.nexus-mobile.nexus-portrait #${RESTORE_ID} { right: calc(12px + env(safe-ar
                 session.source &&
                 session.source() === 'together' &&
                 isExplicit(activity);
-            const cls = doc.documentElement ? doc.documentElement.classList : null;
-            // DX3. The page knows the view, so a venue's chips fold away with the bar (minimal and
-            // hidden) and come back when it is expanded: one place decides how much is showing.
-            if (cls) {
-                cls.toggle('nexus-status-hidden', explicit && view === 'hidden');
-                cls.toggle('nexus-status-minimal', explicit && view === 'minimal');
-            }
-            pill.hidden = !explicit || view === 'hidden';
-            restore.hidden = !explicit || view !== 'hidden';
+            pill.hidden = !explicit;
             if (!explicit) return;
             dock();
             const destination = session.destination();
             pill.dataset.destination = destination;
-            pill.dataset.view = view;
-            restore.style.setProperty(
-                '--mark',
-                destination === 'experiences' ? '#d6b75e' : destination === 'copilot' ? '#46c79b' : '#5aa9e0'
-            );
             const name = label(activity) || 'activity';
-            words.textContent = view === 'minimal' ? name : text(destination, activity, label(activity));
-            main.title = text(destination, activity, label(activity));
-            main.setAttribute('aria-expanded', view === 'compact' ? 'true' : 'false');
-            main.setAttribute('aria-label', (view === 'compact' ? 'Minimise ' : 'Show ') + main.title);
+            // Read, not seen: "Experiences · Irish pub" for a screen reader.
+            words.textContent = text(destination, activity, label(activity));
             // DX1, DX3. Say what it ends. An experience's X is "End experience"; elsewhere "End"
             // with the activity in its accessible name, so a screen reader hears "End Relaxing
-            // together". The words are in the label, not on the button: the X is the control.
+            // together". The tooltip names the place.
             const endLabel = destination === 'experiences' ? 'End experience' : 'End ' + name;
             endButton.setAttribute('aria-label', endLabel);
-            endButton.title = destination === 'experiences' ? 'End ' + name : endLabel;
-            restore.setAttribute('aria-label', 'Show ' + main.title);
-            restore.title = restore.getAttribute('aria-label');
+            endButton.title = 'End ' + name;
         }
 
         // ── the line in the chat ────────────────────────────────────────────
@@ -423,12 +304,7 @@ body.nexus-mobile.nexus-portrait #${RESTORE_ID} { right: calc(12px + env(safe-ar
         return {
             mounted: true,
             pill: pill,
-            restore: restore,
             refresh: paintPill,
-            setView: setView,
-            get view() {
-                return view;
-            },
             detach() {
                 off();
                 if (win && win.removeEventListener) {
@@ -437,21 +313,8 @@ body.nexus-mobile.nexus-portrait #${RESTORE_ID} { right: calc(12px + env(safe-ar
                 }
                 if (observer) observer.disconnect();
                 if (pill.parentNode) pill.parentNode.removeChild(pill);
-                if (restore.parentNode) restore.parentNode.removeChild(restore);
-                if (doc.documentElement)
-                    doc.documentElement.classList.remove('nexus-status-hidden', 'nexus-status-minimal');
             },
         };
-    }
-
-    /** The remembered view, or compact. Pure apart from the read. */
-    function readView(store) {
-        try {
-            const v = store && store.getItem(VIEW_KEY);
-            return VIEWS.includes(v) ? v : 'compact';
-        } catch (_) {
-            return 'compact';
-        }
     }
 
     return {
@@ -459,13 +322,9 @@ body.nexus-mobile.nexus-portrait #${RESTORE_ID} { right: calc(12px + env(safe-ar
         text,
         dockOffset,
         isExplicit,
-        readView,
         DESTINATIONS,
         EXPLICIT,
         PILL_ID,
-        RESTORE_ID,
-        VIEW_KEY,
-        VIEWS,
         CSS,
     };
 })();
