@@ -2122,6 +2122,19 @@ export class VRPoseSystem {
     }
 
     /**
+     * SD1. Where the posed cloth correction is, for a capture that must not photograph
+     * the frame before it lands. `pending` counts down in update(); `phase` is the worker.
+     */
+    clothStatus() {
+        return {
+            preset: this._currentPreset,
+            pending: this._clothPending,
+            phase: this.cloth ? this.cloth.phase : 'missing',
+            metrics: this.cloth ? this.cloth.last : null,
+        };
+    }
+
+    /**
      * Cycle to the next pose preset with smooth blending.
      * @returns {string} The new preset name
      */

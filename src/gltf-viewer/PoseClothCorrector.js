@@ -203,6 +203,10 @@ export class PoseClothCorrector {
         this.generation = 0;
         this.root = null;
         this.last = null; // the before/after numbers of the last correction, for QA
+        // idle until a pose asks, then pending, then applied / skipped / failed.
+        // The wardrobe audit waits on this instead of a fixed sleep: a screenshot taken
+        // while the worker is still running shows the uncorrected sitting hem.
+        this.phase = 'idle';
         this.onCorrected = options.onCorrected || null;
     }
 
@@ -214,6 +218,7 @@ export class PoseClothCorrector {
     /** Put every corrected garment of `root` back as the file made it. */
     release(root = this.root) {
         this.generation += 1;
+        this.phase = 'idle';
         if (!root) return;
         root.traverse((object) => {
             const geo = object.isSkinnedMesh && object.geometry;
@@ -237,16 +242,24 @@ export class PoseClothCorrector {
     _correct(root) {
         const generation = ++this.generation;
         this.root = root;
+        this.phase = 'pending';
         let found;
         try {
             found = collect(root);
         } catch (error) {
             console.warn('[PoseCloth] could not read the avatar', error);
+            if (generation === this.generation) this.phase = 'failed';
             return Promise.resolve(null);
         }
-        if (!found.body.length || !found.garments.length) return Promise.resolve(null);
+        if (!found.body.length || !found.garments.length) {
+            if (generation === this.generation) this.phase = 'skipped';
+            return Promise.resolve(null);
+        }
         const worker = this._worker();
-        if (!worker) return Promise.resolve(null);
+        if (!worker) {
+            if (generation === this.generation) this.phase = 'skipped';
+            return Promise.resolve(null);
+        }
         root.updateMatrixWorld(true);
         const bodyPos = [];
         const bodyNrm = [];
@@ -286,8 +299,11 @@ export class PoseClothCorrector {
                 rest: world,
                 indices: triangles(g.mesh.geometry),
                 movable: movableOf(g.mesh),
-                // SW2. A shoe is corrected gently: firm relaxation tore a boot's shaft at her knee.
-                profile: /shoes/i.test((g.tag && g.tag.slot) || '') || /Shoes/.test(g.name) ? 'shoe' : undefined,
+                slot: (g.tag && g.tag.slot) || '',
+                templateId: (g.tag && g.tag.templateId) || '',
+                // The worker decides shoe versus span (PoseClothCorrection.correct). Passing the
+                // tag through is what lets a pencil skirt be a span; this module never sees the
+                // correction file, because that file is loaded only inside the worker.
                 // SW3. A boot's shell, sole and lining are one garment (one glTF node, three
                 // materials, three meshes here): corrected apart, the lining was pushed out
                 // through the shell as if it were a layer beneath it.
@@ -303,10 +319,12 @@ export class PoseClothCorrector {
                 if (generation !== this.generation) return resolve(null); // she has moved on
                 if (!answer.ok) {
                     console.warn('[PoseCloth] correction failed:', answer.why);
+                    this.phase = 'failed';
                     return resolve(null);
                 }
                 answer.garments.forEach((result, i) => this._write(meshes[i], result.positions));
                 this.last = answer.garments.map((g) => ({ name: g.name, before: g.before, after: g.after }));
+                this.phase = 'applied';
                 if (this.onCorrected) this.onCorrected(this.last);
                 resolve(this.last);
             };

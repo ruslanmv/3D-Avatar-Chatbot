@@ -157,6 +157,36 @@ against her torso and legs only): briefs 9.8 → 0 mm, dress 8.1 → 0.1 mm, boo
 boot lining 0 mm, worst edges 2.38× / 1.74× / 3.0×; the correction lands about 12 s after
 Apply in software-rendered Chromium.
 
+## SD1: the opening between the thighs
+
+Pushing a vertex out of the nearest surface does not cover the lap. A pencil skirt's
+panel is cut across the gap, 20–36 mm off the skin at rest. When she sits, skinning
+drops that panel into the opening. The opening is not inside either thigh, so the
+push — which only moves a vertex that is inside something — leaves it there, and the
+hem parts over the seat. Measured on a fixture of two thighs and a flat panel
+(`tests/wardrobe/pose-cloth-correction.test.js`): without a span profile the panel
+stays below the thighs while penetration of the thighs themselves goes to 0; with
+`profile: 'span'` the same panel's drop goes from 74 mm to 0 and it sits on the
+support across both tops.
+
+`profileFor` marks a skirt, dress or gown that way, from Forge's `templateId` when
+the node has one and otherwise from the garment name. Jeans, leggings, a catsuit and
+a "dress shirt" are not spans. A patch that only covers one thigh is not between the
+two supports, so it is not lifted. The audit waits on `VRPoseSystem.clothStatus()`
+before it takes a picture: the correction is asynchronous, and a frame grabbed while
+`phase` is still `pending` is the uncorrected hem.
+
+The lift is upward, and only for a vertex that has fallen below its own cut. A
+standing pencil skirt hangs below the tops of the thighs; that is the cut, not a
+drop. Treating every hem below those tops as a failure flagged Grey Pencil Skirt
+while she was standing (133.9 mm, unchanged by the lift). A vertex that is still
+at its cut is not moved. The first live pass aimed the lift at the rest position
+instead. On Black Pencil Mini Skirt in Sitting (Desk) that increased the measured
+drop from 124.1 mm to 130.5 mm, and the photographs show the same parted front.
+That direction is no longer used. The fixture panel, whose rest sits above the
+fallen cloth, still lifts. The live skirt's parted hem is the photograph, and
+`WARDROBE-CLIP-001` stays open.
+
 ## What remains
 
 - **The boot at her knee.** With her skin's weights the shaft collapses at the front of her

@@ -226,3 +226,161 @@ describe('SW3 — seams, pieces of one garment, folds and shoes', () => {
         expect(moved(undefined)).toBeGreaterThan(C.SHOE.maxMove);
     });
 });
+
+/**
+ * SD1. Two thighs and a pencil-skirt panel. Skinning drops the panel into the opening.
+ * The opening is not inside either thigh, so the push leaves it there and the hem parts.
+ * A span garment is lifted back onto the support across both thighs. A patch that only
+ * covers one thigh is not a bridge and does not move.
+ */
+function cylinder(cx, cy, radius, z0, z1, segments = 24, rings = 9) {
+    const pos = [];
+    const nrm = [];
+    for (let i = 0; i < rings; i += 1) {
+        const z = z0 + ((z1 - z0) * i) / (rings - 1);
+        for (let j = 0; j < segments; j += 1) {
+            const a = (2 * Math.PI * j) / segments;
+            const nx = Math.cos(a);
+            const ny = Math.sin(a);
+            nrm.push(nx, ny, 0);
+            pos.push(cx + nx * radius, cy + ny * radius, z);
+        }
+    }
+    return { pos, nrm };
+}
+
+function panel(y, x0, x1, z0, z1, n) {
+    const pos = [];
+    const indices = [];
+    for (let i = 0; i < n; i += 1) {
+        for (let j = 0; j < n; j += 1) {
+            pos.push(x0 + ((x1 - x0) * i) / (n - 1), y, z0 + ((z1 - z0) * j) / (n - 1));
+        }
+    }
+    for (let i = 0; i < n - 1; i += 1) {
+        for (let j = 0; j < n - 1; j += 1) {
+            const a = i * n + j;
+            indices.push(a, a + n, a + 1, a + 1, a + n, a + n + 1);
+        }
+    }
+    return { pos, indices };
+}
+
+describe('SD1 — a skirt panel that falls through the lap', () => {
+    const left = cylinder(-0.09, 0.4, 0.06, -0.1, 0.1);
+    const right = cylinder(0.09, 0.4, 0.06, -0.1, 0.1);
+    const bodyPos = left.pos.concat(right.pos);
+    const bodyNrm = left.nrm.concat(right.nrm);
+    const cloth = panel(0.48, -0.15, 0.15, -0.06, 0.06, 11);
+    const posed = cloth.pos.slice();
+    for (let v = 0; v < posed.length / 3; v += 1) {
+        if (Math.abs(posed[v * 3]) < 0.16) posed[v * 3 + 1] = 0.4;
+    }
+    const garment = { name: 'Pencil Mini Skirt', posed, rest: cloth.pos, indices: cloth.indices };
+
+    function gapHeight(positions) {
+        const ys = [];
+        for (let v = 0; v < positions.length / 3; v += 1) {
+            if (Math.abs(positions[v * 3]) < 0.02) ys.push(positions[v * 3 + 1]);
+        }
+        return Math.min(...ys);
+    }
+
+    test('without the span profile the opening stays below the thighs', () => {
+        const { garments } = C.correct({ bodyPos, bodyNrm, garments: [garment] });
+        expect(gapHeight(garments[0].positions)).toBeLessThan(0.43);
+        expect(garments[0].after.maxPenetrationMm).toBeLessThan(1);
+        expect(garments[0].after.maxSpanDropMm).toBe(0);
+    });
+
+    test('a span skirt is lifted onto the support and the gate passes', () => {
+        const { garments } = C.correct({
+            bodyPos,
+            bodyNrm,
+            garments: [{ ...garment, profile: 'span' }],
+        });
+        const out = garments[0];
+        expect(out.before.maxSpanDropMm).toBeGreaterThan(40);
+        expect(out.after.maxSpanDropMm).toBeLessThan(8);
+        expect(out.after.maxPenetrationMm).toBeLessThan(1);
+        expect(gapHeight(out.positions)).toBeGreaterThan(0.44);
+        expect(C.assess(garments).ok).toBe(true);
+    });
+
+    test('cloth that only covers one thigh is not pulled across the opening', () => {
+        const side = panel(0.47, -0.15, -0.04, -0.04, 0.04, 6);
+        const { garments } = C.correct({
+            bodyPos,
+            bodyNrm,
+            garments: [{ name: 'side', posed: side.pos, rest: side.pos, indices: side.indices, profile: 'span' }],
+        });
+        const out = garments[0].positions;
+        for (let i = 0; i < side.pos.length; i += 1) expect(Math.abs(out[i] - side.pos[i])).toBeLessThan(1e-4);
+    });
+
+    test('catalog ids: skirts and dresses span, jeans and a dress shirt do not, shoes stay shoes', () => {
+        expect(
+            C.profileFor({
+                name: 'Pencil Mini Skirt',
+                slot: 'Bottoms',
+                templateId: 'skirt-glam-pencil-mini-v1',
+            })
+        ).toBe('span');
+        expect(C.profileFor({ name: 'Shirt Dress', slot: 'Onepiece', templateId: 'dress-shirt-v1' })).toBe('span');
+        expect(C.profileFor({ name: 'Satin Nightgown', templateId: 'night-nightgown-v1' })).toBe('span');
+        expect(
+            C.profileFor({ name: 'Straight jeans', slot: 'Bottoms', templateId: 'jeans-straight-v1' })
+        ).toBeUndefined();
+        expect(C.profileFor({ name: 'White dress shirt', slot: 'Tops', templateId: 'top-shirt-v1' })).toBeUndefined();
+        expect(C.profileFor({ name: 'Catsuit', templateId: 'jumpsuit-catsuit-v1' })).toBeUndefined();
+        expect(
+            C.profileFor({ name: 'Ankle Boots [Forge_Shoes_01_CLOTH]', slot: 'Shoes', templateId: 'shoes-ankle-v1' })
+        ).toBe('shoe');
+    });
+
+    test('a Forge skirt name is a span even when the caller did not set a profile', () => {
+        const named = {
+            ...garment,
+            name: 'Black Pencil Mini Skirt [Forge_Bottoms_01_CLOTH]',
+            slot: 'Bottoms',
+            templateId: 'skirt-glam-pencil-mini-v1',
+        };
+        const { garments } = C.correct({ bodyPos, bodyNrm, garments: [named] });
+        expect(garments[0].after.maxSpanDropMm).toBeLessThan(8);
+        expect(gapHeight(garments[0].positions)).toBeGreaterThan(0.44);
+    });
+
+    test('a span panel whose rest sits below it is not pushed further into the opening', () => {
+        const lowRest = cloth.pos.map((value, index) => (index % 3 === 1 ? 0.3 : value));
+        const { garments } = C.correct({
+            bodyPos,
+            bodyNrm,
+            garments: [{ ...garment, profile: 'span', rest: lowRest }],
+        });
+        const out = garments[0];
+        expect(out.before.maxSpanDropMm).toBe(0);
+        expect(out.after.maxSpanDropMm).toBe(0);
+        expect(gapHeight(out.positions)).toBeGreaterThan(0.39);
+        expect(gapHeight(out.positions)).toBeLessThan(0.44);
+    });
+
+    test('a span panel that is still on its cut is not counted as a drop', () => {
+        const flat = cloth.pos.map((value, index) => (index % 3 === 1 ? 0.4 : value));
+        const { garments } = C.correct({
+            bodyPos,
+            bodyNrm,
+            garments: [{ ...garment, profile: 'span', posed: flat, rest: flat.slice() }],
+        });
+        expect(garments[0].before.maxSpanDropMm).toBe(0);
+        expect(gapHeight(garments[0].positions)).toBeLessThan(0.43);
+    });
+
+    test('a square merely labelled dress is not treated as a span', () => {
+        const { garments } = C.correct({
+            bodyPos,
+            bodyNrm,
+            garments: [{ name: 'dress', posed, rest: cloth.pos, indices: cloth.indices }],
+        });
+        expect(gapHeight(garments[0].positions)).toBeLessThan(0.43);
+    });
+});

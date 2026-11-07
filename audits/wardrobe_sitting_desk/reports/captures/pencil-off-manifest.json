@@ -1,0 +1,50 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "poses": [
+    "sittingDesk"
+  ],
+  "unsupportedPoses": {
+    "walking": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+  },
+  "views": [
+    "front",
+    "right",
+    "back",
+    "left"
+  ],
+  "cameraMethod": "camera-orbit",
+  "viewport": "1440x900",
+  "entries": [
+    {
+      "id": "look-look-f9fae4dd7cf04838",
+      "source": "looks",
+      "name": "Black Pencil Mini Skirt",
+      "folder": "screenshots/looks/look-look-f9fae4dd7cf04838",
+      "category": "",
+      "status": "ok",
+      "poses": {
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        },
+        "sittingDesk": {
+          "status": "ok",
+          "preset": "sittingDesk",
+          "clothPhase": "idle",
+          "gate": null,
+          "metrics": [],
+          "images": {
+            "front": "sittingDesk/front.png",
+            "right": "sittingDesk/right.png",
+            "back": "sittingDesk/back.png",
+            "left": "sittingDesk/left.png"
+          },
+          "camera": "camera-orbit"
+        }
+      },
+      "description": "black Pencil Mini Skirt",
+      "lookKey": "look_f9fae4dd7cf04838",
+      "browserErrors": []
+    }
+  ]
+}

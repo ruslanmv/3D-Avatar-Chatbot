@@ -1,0 +1,302 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "poses": [
+    "standing",
+    "sittingDesk"
+  ],
+  "unsupportedPoses": {
+    "walking": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+  },
+  "views": [
+    "front",
+    "right",
+    "back",
+    "left"
+  ],
+  "cameraMethod": "camera-orbit",
+  "viewport": "1440x900",
+  "entries": [
+    {
+      "id": "look-look-698e7f5cac96421d",
+      "source": "looks",
+      "name": "Black Pencil Mini Skirt",
+      "folder": "screenshots/looks/look-look-698e7f5cac96421d",
+      "category": "",
+      "status": "ok",
+      "poses": {
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        },
+        "standing": {
+          "status": "ok",
+          "preset": "standingRelaxed",
+          "clothPhase": "applied",
+          "gate": {
+            "ok": true,
+            "issues": []
+          },
+          "metrics": [
+            {
+              "name": "Beige Slip Shorts [Forge_Bottoms_01_CLOTH]",
+              "before": {
+                "maxPenetrationMm": 21.3,
+                "penetratingPct": 7.36,
+                "maxEdgeStretch": 1.01,
+                "stretchedPct": 0,
+                "maxSpanDropMm": 0
+              },
+              "after": {
+                "maxPenetrationMm": 0,
+                "penetratingPct": 0,
+                "maxEdgeStretch": 1.21,
+                "stretchedPct": 0,
+                "maxSpanDropMm": 0
+              }
+            },
+            {
+              "name": "Beige Tube Top [Forge_Tops_01_CLOTH]",
+              "before": {
+                "maxPenetrationMm": 0,
+                "penetratingPct": 0,
+                "maxEdgeStretch": 1.01,
+                "stretchedPct": 0,
+                "maxSpanDropMm": 0
+              },
+              "after": {
+                "maxPenetrationMm": 0,
+                "penetratingPct": 0,
+                "maxEdgeStretch": 1.01,
+                "stretchedPct": 0,
+                "maxSpanDropMm": 0
+              }
+            },
+            {
+              "name": "White Blouse [Forge_Tops_01_CLOTH]",
+              "before": {
+                "maxPenetrationMm": 41.1,
+                "penetratingPct": 4.74,
+                "maxEdgeStretch": 1.65,
+                "stretchedPct": 0.25,
+                "maxSpanDropMm": 0
+              },
+              "after": {
+                "maxPenetrationMm": 0,
+                "penetratingPct": 0,
+                "maxEdgeStretch": 1.15,
+                "stretchedPct": 0,
+                "maxSpanDropMm": 0
+              }
+            },
+            {
+              "name": "Black Pencil Mini Skirt [Forge_Bottoms_01_CLOTH]",
+              "before": {
+                "maxPenetrationMm": 0,
+                "penetratingPct": 0,
+                "maxEdgeStretch": 1.01,
+                "stretchedPct": 0,
+                "maxSpanDropMm": 10.3
+              },
+              "after": {
+                "maxPenetrationMm": 0,
+                "penetratingPct": 0,
+                "maxEdgeStretch": 1.3,
+                "stretchedPct": 0,
+                "maxSpanDropMm": 7.4
+              }
+            },
+            {
+              "name": "Black Pencil Mini Skirt Waistband [Forge_Bottoms_01_CLOTH]",
+              "before": {
+                "maxPenetrationMm": 0,
+                "penetratingPct": 0,
+                "maxEdgeStretch": 1.01,
+                "stretchedPct": 0,
+                "maxSpanDropMm": 10.5
+              },
+              "after": {
+                "maxPenetrationMm": 0,
+                "penetratingPct": 0,
+                "maxEdgeStretch": 1.24,
+                "stretchedPct": 0,
+                "maxSpanDropMm": 6.2
+              }
+            },
+            {
+              "name": "Grey Tailored Blazer",
+              "before": {
+                "maxPenetrationMm": 25.1,
+                "penetratingPct": 5.31,
+                "maxEdgeStretch": 1.78,
+                "stretchedPct": 0.86,
+                "maxSpanDropMm": 0
+              },
+              "after": {
+                "maxPenetrationMm": 0.6,
+                "penetratingPct": 0,
+                "maxEdgeStretch": 1.2,
+                "stretchedPct": 0,
+                "maxSpanDropMm": 0
+              }
+            }
+          ],
+          "images": {
+            "front": "standing/front.png",
+            "right": "standing/right.png",
+            "back": "standing/back.png",
+            "left": "standing/left.png"
+          },
+          "camera": "camera-orbit"
+        },
+        "sittingDesk": {
+          "status": "ok",
+          "preset": "sittingDesk",
+          "clothPhase": "applied",
+          "gate": {
+            "ok": false,
+            "issues": [
+              {
+                "code": "span-drop",
+                "severity": "P1",
+                "garment": "Black Pencil Mini Skirt [Forge_Bottoms_01_CLOTH]",
+                "metric": "maxSpanDropMm",
+                "value": 24.4,
+                "limit": 8
+              },
+              {
+                "code": "span-drop",
+                "severity": "P1",
+                "garment": "Black Pencil Mini Skirt Waistband [Forge_Bottoms_01_CLOTH]",
+                "metric": "maxSpanDropMm",
+                "value": 22,
+                "limit": 8
+              },
+              {
+                "code": "penetration",
+                "severity": "P1",
+                "garment": "Grey Tailored Blazer",
+                "metric": "maxPenetrationMm",
+                "value": 2.1,
+                "limit": 1
+              }
+            ]
+          },
+          "metrics": [
+            {
+              "name": "Beige Slip Shorts [Forge_Bottoms_01_CLOTH]",
+              "before": {
+                "maxPenetrationMm": 17.5,
+                "penetratingPct": 18.8,
+                "maxEdgeStretch": 2.37,
+                "stretchedPct": 6.91,
+                "maxSpanDropMm": 0
+              },
+              "after": {
+                "maxPenetrationMm": 0,
+                "penetratingPct": 0,
+                "maxEdgeStretch": 1.3,
+                "stretchedPct": 0,
+                "maxSpanDropMm": 0
+              }
+            },
+            {
+              "name": "Beige Tube Top [Forge_Tops_01_CLOTH]",
+              "before": {
+                "maxPenetrationMm": 0,
+                "penetratingPct": 0,
+                "maxEdgeStretch": 1.02,
+                "stretchedPct": 0,
+                "maxSpanDropMm": 0
+              },
+              "after": {
+                "maxPenetrationMm": 0,
+                "penetratingPct": 0,
+                "maxEdgeStretch": 1.02,
+                "stretchedPct": 0,
+                "maxSpanDropMm": 0
+              }
+            },
+            {
+              "name": "White Blouse [Forge_Tops_01_CLOTH]",
+              "before": {
+                "maxPenetrationMm": 42.6,
+                "penetratingPct": 3.86,
+                "maxEdgeStretch": 1.87,
+                "stretchedPct": 2.73,
+                "maxSpanDropMm": 0
+              },
+              "after": {
+                "maxPenetrationMm": 0,
+                "penetratingPct": 0,
+                "maxEdgeStretch": 1.26,
+                "stretchedPct": 0,
+                "maxSpanDropMm": 0
+              }
+            },
+            {
+              "name": "Black Pencil Mini Skirt [Forge_Bottoms_01_CLOTH]",
+              "before": {
+                "maxPenetrationMm": 10.1,
+                "penetratingPct": 2.86,
+                "maxEdgeStretch": 4.2,
+                "stretchedPct": 9.93,
+                "maxSpanDropMm": 59.9
+              },
+              "after": {
+                "maxPenetrationMm": 0,
+                "penetratingPct": 0,
+                "maxEdgeStretch": 1.4,
+                "stretchedPct": 0,
+                "maxSpanDropMm": 24.4
+              }
+            },
+            {
+              "name": "Black Pencil Mini Skirt Waistband [Forge_Bottoms_01_CLOTH]",
+              "before": {
+                "maxPenetrationMm": 0,
+                "penetratingPct": 0,
+                "maxEdgeStretch": 1.66,
+                "stretchedPct": 0.48,
+                "maxSpanDropMm": 21.2
+              },
+              "after": {
+                "maxPenetrationMm": 0,
+                "penetratingPct": 0,
+                "maxEdgeStretch": 1.17,
+                "stretchedPct": 0,
+                "maxSpanDropMm": 22
+              }
+            },
+            {
+              "name": "Grey Tailored Blazer",
+              "before": {
+                "maxPenetrationMm": 21,
+                "penetratingPct": 3.73,
+                "maxEdgeStretch": 2.6,
+                "stretchedPct": 4.56,
+                "maxSpanDropMm": 0
+              },
+              "after": {
+                "maxPenetrationMm": 2.1,
+                "penetratingPct": 0.08,
+                "maxEdgeStretch": 1.3,
+                "stretchedPct": 0,
+                "maxSpanDropMm": 0
+              }
+            }
+          ],
+          "images": {
+            "front": "sittingDesk/front.png",
+            "right": "sittingDesk/right.png",
+            "back": "sittingDesk/back.png",
+            "left": "sittingDesk/left.png"
+          },
+          "camera": "camera-orbit"
+        }
+      },
+      "description": "black Pencil Mini Skirt",
+      "lookKey": "look_698e7f5cac96421d",
+      "browserErrors": []
+    }
+  ]
+}
