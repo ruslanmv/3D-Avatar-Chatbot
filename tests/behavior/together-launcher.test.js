@@ -199,8 +199,15 @@ function harness({ ids = ['watch', 'journey', 'music', 'cohost', 'focus', 'coach
         panel.register(activities[id]);
     }
     const launcher = TogetherLauncher.attach({ panel, doc: document, viewer: null });
+    lastPanel = panel;
     return { panel, launcher, consent, activities };
 }
+let lastPanel = null;
+/**
+ * TG2: Life, Copilot and Experiences are reached through Playground, not the first screen. These
+ * tests are about what each place does once open, so they open it the way Playground's tile does.
+ */
+const PLACE_IDS = { Life: 'cohost', Copilot: 'coach', Experiences: 'journey' };
 
 /** Click handlers kick off async starts; let them settle before asserting. */
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -217,6 +224,9 @@ const revealAll = () => {
 }; // no-op now that nothing is hidden
 const tileNamed = (name) => {
     let found = tiles().find((t) => t.textContent.includes(name));
+    if (!found && PLACE_IDS[name] && lastPanel) {
+        return { click: () => lastPanel.choose(PLACE_IDS[name], { fresh: true }), textContent: name };
+    }
     if (!found && moreButton()) {
         revealAll();
         found = tiles().find((t) => t.textContent.includes(name));
@@ -398,19 +408,19 @@ describe('opening the chooser starts nothing at all', () => {
         expect(source).toContain('class Launcher');
     });
 
-    test('the chooser offers every experience, in the order it has always shown them', () => {
+    test('the chooser offers every experience, Life, Copilot and Experiences first (IC2), then the rest in their order', () => {
         // An earlier draft cut this to four tiles with the rest behind "More together" and
         // hid two more on availability. That removed working features from view to save
         // space nobody asked to save; the grid is the product's face.
         harness();
         button().click();
         const names = tiles().map((t) => t.querySelector('.nexus-bd-together-name').textContent);
-        expect(names).toEqual(['Watch', 'Journey', 'Music', 'Play', 'Focus', 'Coach', 'Help me with this']);
-        // "Help me with this" is the only wide tile, so it is the only one that leaves the
-        // three-column rhythm — and it is last, below the activities rather than among them.
-        const wide = tiles().filter((t) => t.classList.contains('is-wide'));
-        expect(wide.map((t) => t.querySelector('.nexus-bd-together-name').textContent)).toEqual(['Help me with this']);
-        expect(tiles()[tiles().length - 1]).toBe(wide[0]);
+        // TG1–TG2: one door per thing. Life, Copilot and Experiences are inside Playground
+        // (not registered in this harness), Focus is started by Life and Copilot, and
+        // "Help me" is a tile like the others, last.
+        expect(names).toEqual(['Watch', 'Music', 'Help me']);
+        expect(names).not.toContain('Life');
+        expect(tiles().filter((t) => t.classList.contains('is-wide'))).toEqual([]);
         expect(moreButton()).toBeNull();
     });
 
@@ -431,11 +441,8 @@ describe('opening the chooser starts nothing at all', () => {
         panel.register(activity('focus', 'focus', { consent }));
         TogetherLauncher.attach({ panel, doc: document, viewer: null });
         button().click();
-        expect(tiles().map((t) => t.querySelector('.nexus-bd-together-name').textContent)).toEqual([
-            'Music',
-            'Play',
-            'Focus',
-        ]);
+        // Life is behind Playground (TG2); Music, with nothing to play, still has its tile.
+        expect(tiles().map((t) => t.querySelector('.nexus-bd-together-name').textContent)).toEqual(['Music']);
     });
 
     test('no tile names an implementation concept, on either screen', () => {
@@ -445,7 +452,7 @@ describe('opening the chooser starts nothing at all', () => {
         const names = tiles()
             .map((t) => t.querySelector('.nexus-bd-together-name').textContent)
             .join(' ');
-        for (const internal of ['Screen Insight', 'Copilot', 'Capture', 'Co-host', 'Pipeline', 'Behavior Director']) {
+        for (const internal of ['Screen Insight', 'Capture', 'Co-host', 'Pipeline', 'Behavior Director']) {
             expect(names).not.toContain(internal);
         }
     });
@@ -463,7 +470,7 @@ describe('opening the chooser starts nothing at all', () => {
                 .map((t) => t.textContent)
                 .join(' ')
         ).not.toContain('Screen Insight');
-        expect(tiles()).toHaveLength(7);
+        expect(tiles()).toHaveLength(3); // TG1–TG2: watch, music, help; the places are in Playground
     });
 
     test('there is no generic Share Screen button on the first view', () => {
@@ -477,15 +484,17 @@ describe('opening the chooser starts nothing at all', () => {
 // ── permission is activity-scoped ────────────────────────────────────────────
 
 describe('permission comes after the choice, never before', () => {
-    test('Journey never asks for anything', async () => {
+    test('Experiences never asks for anything to open a saved place', async () => {
         const h = harness();
         button().click();
-        tileNamed('Journey').click();
-        expect(overlay().textContent).toContain('Where should we go?');
-        optionNamed('🌊 Ocean').click();
+        tileNamed('Experiences').click();
+        expect(overlay().textContent).toContain('Where do you want to go?');
+        // IC3: the ocean is Seaside evening's; the other saved places are still one tap.
+        expect(options().some((o) => o.textContent === '🌊 Ocean')).toBe(false);
+        optionNamed('🌲 Forest').click();
         await flush();
         expect(h.consent.asked).toEqual([]);
-        expect(h.activities.journey.started).toEqual(['ocean']);
+        expect(h.activities.journey.started).toEqual(['forest']);
     });
 
     test('Focus asks what to understand, and still asks for no permission', async () => {
@@ -495,7 +504,8 @@ describe('permission comes after the choice, never before', () => {
         // either answer.
         const h = harness();
         button().click();
-        tileNamed('Focus').click();
+        // TG1: Focus has no tile; Life and Copilot start it. Open its own screen directly.
+        h.panel.choose('focus');
         expect(overlay().textContent).toContain('What would you like to understand?');
         expect(h.consent.asked).toEqual([]);
         optionNamed('Just sit with me').click();
@@ -528,34 +538,53 @@ describe('permission comes after the choice, never before', () => {
         expect(h.consent.asked).toEqual([]);
     });
 
-    test('Coach asks for the camera exactly once, and says so before it does', async () => {
+    test('Move together asks for the camera exactly once, and says so before it does', async () => {
+        // IC3: the camera coach is Life ▸ Move together; the coach still owns the prompt.
         const h = harness();
+        window.NEXUS_BD = { togetherPanel: h.panel };
         button().click();
-        tileNamed('Coach').click();
-        const squat = optionNamed('Squat');
+        tileNamed('Life').click();
+        const squat = optionNamed('Move together · Squat');
         expect(squat.title).toMatch(/access/);
         squat.click();
         await flush();
         // Coach reaches consent through ScreenInsight. One owner, one prompt.
         expect(h.consent.asked).toEqual(['camera']);
         expect(h.activities.coach.started).toEqual(['squat']);
+        delete window.NEXUS_BD;
     });
 
-    test('Coach offers the exercises Coach actually supports', () => {
+    test('Life offers the exercises Coach actually supports; Copilot is about getting things done', () => {
         // The tile used to hardcode `arg: 'squat'`. B27 has real validation and refuses an
-        // unsupported exercise by name; the setup screen now reads its list.
-        harness();
+        // unsupported exercise by name; Move together reads its list.
+        const h = harness();
+        window.NEXUS_BD = { togetherPanel: h.panel };
         button().click();
-        tileNamed('Coach').click();
-        expect(options().map((o) => o.firstChild.textContent)).toEqual(['Squat', 'Push-up']);
+        tileNamed('Life').click();
+        expect(options().map((o) => o.firstChild.textContent)).toEqual([
+            'Talk',
+            'Relax together',
+            'An evening together',
+            'Move together · Squat',
+            'Move together · Push-up',
+        ]);
+        h.panel.choose('coach');
+        expect(options().map((o) => o.firstChild.textContent)).toEqual([
+            'Work on something',
+            'My tasks',
+            'Learn something',
+            'Copilot Hour',
+        ]);
+        delete window.NEXUS_BD;
     });
 
     test('declining leaves nothing running, and says so instead of going quiet', async () => {
         const h = harness();
         h.consent.grant = false;
         button().click();
-        tileNamed('Play').click();
-        optionNamed('Share game').click();
+        tileNamed('Life').click();
+        // IC3: Share game is off the menu; the panel-owned screen grant is passed directly.
+        await h.panel.startActivity('cohost', { id: 'screen', label: 'Share game', permission: 'screen' });
         await flush();
         expect(h.activities.cohost.started).toEqual([]);
         expect(h.panel.activeActivity).toBeNull();
@@ -583,8 +612,8 @@ describe('permission comes after the choice, never before', () => {
         TogetherLauncher.attach({ panel, doc: document, viewer: null });
 
         button().click();
-        tileNamed('Play').click();
-        optionNamed('Share game').click();
+        tileNamed('Life').click();
+        await panel.startActivity('cohost', { id: 'screen', label: 'Share game', permission: 'screen' });
         await flush();
 
         expect(panel.activeActivity).toBeNull();
@@ -614,7 +643,8 @@ describe('dismissing the menu and leaving the activity are different', () => {
     async function running() {
         const h = harness();
         button().click();
-        tileNamed('Focus').click();
+        // TG1: Focus has no tile; Life and Copilot start it. Open its own screen directly.
+        h.panel.choose('focus');
         optionNamed('Just sit with me').click();
         await flush();
         return h;
@@ -673,7 +703,7 @@ describe('dismissing the menu and leaving the activity are different', () => {
     test('Back from a setup view returns to the chooser without starting anything', () => {
         const h = harness();
         button().click();
-        tileNamed('Coach').click();
+        tileNamed('Copilot').click();
         document.querySelector('.nexus-bd-together-cancel').click();
         expect(overlay().textContent).toContain('What should we do?');
         expect(h.consent.asked).toEqual([]);
@@ -692,7 +722,8 @@ describe('the button says one of three things', () => {
         expect(button().dataset.state).toBe('open');
         expect(button().getAttribute('aria-expanded')).toBe('true');
 
-        tileNamed('Focus').click();
+        // TG1: Focus has no tile; Life and Copilot start it. Open its own screen directly.
+        h.panel.choose('focus');
         optionNamed('Just sit with me').click();
         await flush();
         expect(button().dataset.state).toBe('running');
@@ -705,7 +736,8 @@ describe('the button says one of three things', () => {
         // "something is already running" is stated, and it has to carry which one.
         const h = harness();
         button().click();
-        tileNamed('Focus').click();
+        // TG1: Focus has no tile; Life and Copilot start it. Open its own screen directly.
+        h.panel.choose('focus');
         optionNamed('Just sit with me').click();
         await flush();
         expect(button().getAttribute('aria-label')).toBe('Together — Focus running');
@@ -717,7 +749,8 @@ describe('the button says one of three things', () => {
     test('and it goes back to the plain name when the activity stops', async () => {
         const h = harness();
         button().click();
-        tileNamed('Focus').click();
+        // TG1: Focus has no tile; Life and Copilot start it. Open its own screen directly.
+        h.panel.choose('focus');
         optionNamed('Just sit with me').click();
         await flush();
         await h.panel.stopActivity();
@@ -728,7 +761,8 @@ describe('the button says one of three things', () => {
     test('it is not a feature toggle — the running button reopens the panel', async () => {
         const h = harness();
         button().click();
-        tileNamed('Focus').click();
+        // TG1: Focus has no tile; Life and Copilot start it. Open its own screen directly.
+        h.panel.choose('focus');
         optionNamed('Just sit with me').click();
         await flush();
         expect(h.activities.focus.started).toHaveLength(1);
@@ -745,7 +779,8 @@ describe('the button says one of three things', () => {
         // moment after the panel has closed itself.
         const h = harness();
         button().click();
-        tileNamed('Focus').click();
+        // TG1: Focus has no tile; Life and Copilot start it. Open its own screen directly.
+        h.panel.choose('focus');
         await flush();
         expect(h.panel.activeActivity).toBeNull();
         expect(overlay().textContent).toContain('What would you like to understand?');
@@ -774,7 +809,7 @@ describe('in a headset the chooser is drawn, not laid out', () => {
         document.body.innerHTML = MARKUP;
         const shown = [];
         const panel = TogetherPanel.attach({ consent: fakeConsent(), capture: {}, doc: document });
-        for (const id of ['watch', 'focus']) panel.register(activity(id, id));
+        for (const id of ['watch', 'music']) panel.register(activity(id, id));
         const launcher = TogetherLauncher.attach({
             panel,
             doc: document,
@@ -785,7 +820,7 @@ describe('in a headset the chooser is drawn, not laid out', () => {
         const result = launcher.open();
         expect(result).toEqual({ ok: true, surface: 'xr', spoken: true });
         expect(shown[0].kind).toBe('cards');
-        expect(shown[0].data.cards.map((c) => c.value)).toEqual(['Watch', 'Focus']);
+        expect(shown[0].data.cards.map((c) => c.value)).toEqual(['Watch', 'Music']);
         // The DOM overlay stays shut: it would be invisible in an immersive session anyway.
         expect(panel.isOpen).toBe(false);
     });
@@ -867,7 +902,8 @@ describe('it behaves like a menu for somebody not using a mouse', () => {
     test('Escape never stops a running activity', async () => {
         const h = harness();
         button().click();
-        tileNamed('Focus').click();
+        // TG1: Focus has no tile; Life and Copilot start it. Open its own screen directly.
+        h.panel.choose('focus');
         optionNamed('Just sit with me').click();
         await flush();
         h.launcher.open();
@@ -978,5 +1014,21 @@ describe('it behaves like a menu for somebody not using a mouse', () => {
         h.launcher.detach();
         expect(h.launcher.stats.listening).toBe(false);
         expect(() => press('Escape')).not.toThrow();
+    });
+});
+
+describe('TG2: Back goes one step up', () => {
+    test('a place opened from another setup screen returns there, then to the first screen', () => {
+        const h = harness();
+        button().click();
+        h.panel.choose('coach', { fresh: true }); // as Playground's screen would be open here
+        h.panel.choose('cohost'); // opened from that screen
+        expect(h.panel.pending).toBe('cohost');
+        document.querySelector('.nexus-bd-together-cancel').click();
+        expect(h.panel.view).toBe('setup');
+        expect(h.panel.pending).toBe('coach');
+        document.querySelector('.nexus-bd-together-cancel').click();
+        expect(h.panel.view).toBe('chooser');
+        expect(h.panel.activeActivity).toBeNull();
     });
 });

@@ -1074,6 +1074,14 @@ function animate() {
 
     /* NEXUS_BD — Tier 0 tick. One boolean while behaviorEngine.enabled is false. */
     if (window.NEXUS_BD_ENABLED) window.NEXUS_BD?.update?.(delta);
+    // IC3. Legacy render path only. The shipped ViewerEngine loop calls the
+    // same runtime from inside its own frame, and never via setAnimationLoop
+    // from the experience.
+    try {
+        window.NEXUS_EXPERIENCE_RUNTIME?.update?.(delta);
+    } catch (_) {
+        /* an experience frame must not stop the avatar loop */
+    }
 
     /* NEXUS_PATCH_LIFE_ENGINE_UPDATE_LOOP */
     try {
@@ -3999,7 +4007,12 @@ async function _handleStreamingResponse(text) {
             // W16. Her wardrobe, as a tool: what she can wear and how to put it on. Empty
             // unless the switch is on and Try-On could act on it, so a page without the
             // wardrobe sends the prompt it always sent.
-            (window.NEXUS_WARDROBE_TOOL?.systemPromptSuffix?.() || '');
+            (window.NEXUS_WARDROBE_TOOL?.systemPromptSuffix?.() || '') +
+            // IC1. Empty until a destination has actually been used, so an
+            // untouched page sends the prompt it sent before Life / Copilot /
+            // Experiences existed. Copilot's paragraph never includes Life
+            // memories.
+            (window.NEXUS_COMPANION?.systemPromptSuffix?.() || '');
         let accumulated = '';
         // HV5. Her first sentence spoken while the rest is still being written — only with the
         // SonicAgent streaming voice active and "speak while streaming" on; null otherwise, and
@@ -4012,7 +4025,12 @@ async function _handleStreamingResponse(text) {
             accumulated += token;
             if (voiceStream) voiceStream.push(token);
             // Living NPC: hide the ```motion block while it streams in
-            stream.append(window.NEXUS_MOTION ? window.NEXUS_MOTION.maskStreaming(accumulated) : accumulated);
+            // PG3: a <gesture/> tag is masked like a motion block, so neither flashes mid-stream.
+            stream.append(
+                (window.NEXUS_PLAYGROUND_REACTIVE?.maskStreaming || ((t) => t))(
+                    window.NEXUS_MOTION ? window.NEXUS_MOTION.maskStreaming(accumulated) : accumulated
+                )
+            );
         });
 
         _setTyping(false);
@@ -4056,6 +4074,8 @@ async function _handleStreamingResponse(text) {
         // W16. Take <wardrobe> out and run it, at the same seam: Try-On opens and does the
         // rest. `consume` re-checks the switch, Try-On and the private gate when it runs.
         displayText = window.NEXUS_WARDROBE_TOOL ? window.NEXUS_WARDROBE_TOOL.consume(displayText) : displayText;
+        // IC3. <activity name="relax"/> — she starts what the person asked for, at the same seam.
+        displayText = window.NEXUS_COMPANION?.consume ? window.NEXUS_COMPANION.consume(displayText) : displayText;
         // S4. She asked to look something up. Strip the tag, run the search, then ask her
         // again — the second call carries the results, so the answer comes from her having
         // read them rather than from the app pasting snippets into the chat.
@@ -4170,6 +4190,8 @@ async function _handleNonStreamingResponse(text) {
         // W16. Take <wardrobe> out and run it, at the same seam: Try-On opens and does the
         // rest. `consume` re-checks the switch, Try-On and the private gate when it runs.
         displayText = window.NEXUS_WARDROBE_TOOL ? window.NEXUS_WARDROBE_TOOL.consume(displayText) : displayText;
+        // IC3. <activity name="relax"/> — she starts what the person asked for, at the same seam.
+        displayText = window.NEXUS_COMPANION?.consume ? window.NEXUS_COMPANION.consume(displayText) : displayText;
         // S4. She asked to look something up. Strip the tag, run the search, then ask her
         // again — the second call carries the results, so the answer comes from her having
         // read them rather than from the app pasting snippets into the chat.
@@ -4366,7 +4388,9 @@ function _addErrorWithRetry(originalText, error) {
 
     const textDiv = document.createElement('div');
     textDiv.className = 'message-text';
-    textDiv.textContent = 'Sorry, I encountered an error. ';
+    // PG3: say which failure it was and what to do — a fixed sentence, never the raw error text.
+    const why = window.NEXUS_CHAT_ERROR_TEXT?.describe?.(error) || '';
+    textDiv.textContent = 'Sorry, I encountered an error. ' + (why ? why + ' ' : '');
 
     const retryBtn = document.createElement('button');
     retryBtn.className = 'retry-btn';
@@ -4477,7 +4501,12 @@ async function callLLM(userMessage) {
             // W16. Her wardrobe, as a tool: what she can wear and how to put it on. Empty
             // unless the switch is on and Try-On could act on it, so a page without the
             // wardrobe sends the prompt it always sent.
-            (window.NEXUS_WARDROBE_TOOL?.systemPromptSuffix?.() || '');
+            (window.NEXUS_WARDROBE_TOOL?.systemPromptSuffix?.() || '') +
+            // IC1. Empty until a destination has actually been used, so an
+            // untouched page sends the prompt it sent before Life / Copilot /
+            // Experiences existed. Copilot's paragraph never includes Life
+            // memories.
+            (window.NEXUS_COMPANION?.systemPromptSuffix?.() || '');
 
         // Use structured response for OllaBridge to get attachments
         if (config.provider === 'ollabridge' && typeof window._nexusLLM.sendMessageStructured === 'function') {
@@ -6295,7 +6324,8 @@ function __nexusMediaSuffix() {
             (window.NEXUS_LOOKUP?.systemPromptSuffix?.() || '') +
             (window.NEXUS_TOGETHER_CAPABILITY?.systemPromptSuffix?.() || '') +
             (window.NEXUS_SCENE_AMBIENCE_CAPABILITY?.systemPromptSuffix?.() || '') +
-            (window.NEXUS_WARDROBE_TOOL?.systemPromptSuffix?.() || '')
+            (window.NEXUS_WARDROBE_TOOL?.systemPromptSuffix?.() || '') +
+            (window.NEXUS_COMPANION?.systemPromptSuffix?.() || '')
         );
     } catch (_) {
         return '';
@@ -6462,6 +6492,7 @@ function __nexusServedSuffix() {
         const manager = typeof window !== 'undefined' ? window._nexusLLM : null;
         const served = manager && manager.lastServed;
         if (!served || !served.provider) return '';
+        if (served.notice) return ` · ⚠️ ${served.notice}`; // OB2: the route fell back, say why
         const model = served.model ? ` (${served.model})` : '';
         const tries = served.attempts > 1 ? ` after ${served.attempts - 1} fallback(s)` : '';
         return ` · answered by ${served.provider}${model}${tries}`;
@@ -6869,3 +6900,10 @@ if (window.NEXUS_SPICY) {
         console.log('[main] Spicy mode changed:', window.NEXUS_SPICY.isEnabled() ? 'ON' : 'OFF');
     });
 }
+
+// OB2. The gateway answered with its fallback route because the chosen one is out of credits or at
+// capacity. LLMManager announces it at most once per ten minutes; show it where the person looks.
+window.addEventListener('ollabridge-notice', (e) => {
+    const notice = e && e.detail && e.detail.notice;
+    if (notice) showMessage(notice, 'warning');
+});

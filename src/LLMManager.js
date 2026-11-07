@@ -1272,7 +1272,7 @@
             const res = await this._postOllaBridgeWithRetry(url, headers, body, 2, options);
 
             if (!res.ok) {
-                const gatewayMsg = this._gatewayErrorMessage(res.status);
+                const gatewayMsg = await this._gatewayErrorFor(res);
                 if (gatewayMsg) throw new Error(gatewayMsg);
 
                 // Try to parse structured error from HomePilot via OllaBridge
@@ -1336,8 +1336,52 @@
                           provider: String(info.provider),
                           model: String(info.model || ''),
                           attempts: Number.isFinite(info.attempts) ? info.attempts : null,
+                          // OB2. The chosen route could not answer (out of credits, at capacity,
+                          // a rejected key) and the gateway answered with its fallback route.
+                          fallback: info.fallback === true,
+                          requestedRoute: info.fallback === true ? String(info.requested_route || '') : '',
+                          reason: info.fallback === true ? String(info.reason || '') : '',
+                          notice: info.fallback === true && info.notice ? String(info.notice) : '',
                       }
                     : null;
+            if (this.lastServed && this.lastServed.notice) this._announceNotice(this.lastServed.notice);
+        }
+
+        /**
+         * OB2. Tell the person once that their route is on its fallback — not on every turn.
+         * Production, 2026-11-02: Grok Best's only provider answered "at capacity" to every
+         * request; she now still answers (the gateway falls back to Free Best), and the page
+         * says why once per ten minutes through the `ollabridge-notice` window event, which
+         * main.js shows as a warning toast.
+         */
+        _announceNotice(notice) {
+            const now = Date.now();
+            if (this._lastNotice === notice && now - (this._lastNoticeAt || 0) < 10 * 60 * 1000) return;
+            this._lastNotice = notice;
+            this._lastNoticeAt = now;
+            try {
+                if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
+                    window.dispatchEvent(new CustomEvent('ollabridge-notice', { detail: { notice } }));
+                }
+            } catch (_) {}
+        }
+
+        /**
+         * OB2. The sentence for a failed OllaBridge request. A 503 used to read "the gateway may
+         * be restarting" whatever happened; the gateway now says why in `detail.notice` (every
+         * provider out of credits or at capacity), and that sentence wins when it is there.
+         * @param {Response} res
+         * @returns {Promise<string|null>}
+         */
+        async _gatewayErrorFor(res) {
+            if (res && (res.status === 502 || res.status === 503) && typeof res.clone === 'function') {
+                try {
+                    const body = await res.clone().json();
+                    const notice = body && body.detail && body.detail.notice;
+                    if (typeof notice === 'string' && notice) return notice;
+                } catch (_) {}
+            }
+            return this._gatewayErrorMessage(res.status);
         }
 
         // ===============================================
@@ -1444,7 +1488,7 @@
             const res = await this._postOllaBridgeWithRetry(url, headers, body);
 
             if (!res.ok) {
-                const gatewayMsg = this._gatewayErrorMessage(res.status);
+                const gatewayMsg = await this._gatewayErrorFor(res);
                 if (gatewayMsg) throw new Error(gatewayMsg);
 
                 let errBody = null;

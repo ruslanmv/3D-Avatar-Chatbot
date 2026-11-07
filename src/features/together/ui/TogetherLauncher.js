@@ -188,6 +188,24 @@ const TogetherLauncher = (() => {
 }
 .nexus-bd-together-tile:hover { background: rgba(34, 211, 238, .13); border-color: rgba(34, 211, 238, .4); }
 .nexus-bd-together-tile:focus-visible { outline: 2px solid var(--accent-cyan, #22d3ee); outline-offset: 2px; }
+/* IC2. The three destinations lead the chooser, in the colours their session cards use in the
+   chat (src/companion/SessionCards.js): Life blue, Copilot green, Experiences yellow. */
+.nexus-bd-together-tile[data-activity="cohost"] { --dest: #38A9FF; }
+.nexus-bd-together-tile[data-activity="coach"] { --dest: #26D89A; }
+.nexus-bd-together-tile[data-activity="journey"] { --dest: #F2C94C; }
+.nexus-bd-together-tile[data-activity="cohost"],
+.nexus-bd-together-tile[data-activity="coach"],
+.nexus-bd-together-tile[data-activity="journey"] {
+  border-color: color-mix(in srgb, var(--dest) 75%, transparent);
+  background: color-mix(in srgb, var(--dest) 16%, rgba(8, 14, 20, .6));
+  font-weight: 700;
+}
+.nexus-bd-together-tile[data-activity="cohost"]:hover,
+.nexus-bd-together-tile[data-activity="coach"]:hover,
+.nexus-bd-together-tile[data-activity="journey"]:hover {
+  background: color-mix(in srgb, var(--dest) 28%, rgba(8, 14, 20, .6));
+  border-color: var(--dest);
+}
 .nexus-bd-together-tile.is-wide { grid-column: 1 / -1; flex-direction: row; justify-content: center; gap: .5rem; }
 .nexus-bd-together-icon { font-size: 1.32rem; line-height: 1; }
 /* The scene stamp on the Scene Tale tile. Sized to sit exactly where the glyph sat, so a tile
@@ -347,6 +365,60 @@ const TogetherLauncher = (() => {
 .nexus-bd-together-note {
   display: block; margin-top: .25rem;
   color: #7d8797; font: 400 .68rem/1.35 inherit; letter-spacing: 0;
+}
+/* PG2. Venue cards: the place's own picture across the top of a card, then its name, its
+   category and one line, two to a row. The art box is 4:3 whatever arrives, painted with the
+   place's sky colours underneath, so nothing jumps while pictures load and a missing picture is a
+   coloured card. While the panel shows venues it widens (where :has is supported; elsewhere the
+   cards simply sit in the usual width). The lift on hover is movement, so it is off under reduced
+   motion. */
+@media (min-width: 641px) {
+  #nexus-bd-together-panel:has(.nexus-bd-together-options.is-venues) { width: min(92%, 38rem); max-height: 72%; }
+}
+.nexus-bd-together-options.is-venues {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr)); gap: .7rem;
+}
+.nexus-bd-together-option.nexus-bd-together-venue {
+  display: flex; flex-direction: column; padding: 0; overflow: hidden; border-radius: 14px;
+  background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.1);
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.nexus-bd-together-option.nexus-bd-together-venue:hover {
+  background: rgba(255,255,255,.06); border-color: rgba(242, 201, 76, .55);
+  transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,.35);
+}
+.nexus-bd-together-option.nexus-bd-together-venue:focus-visible {
+  outline: 2px solid #F2C94C; outline-offset: 2px;
+}
+.nexus-bd-together-venueart {
+  position: relative; display: block; width: 100%; aspect-ratio: 4 / 3; background: var(--venue-tint, #1a2230); overflow: hidden;
+}
+.nexus-bd-together-venueart img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.nexus-bd-together-venueart::after {
+  content: ''; position: absolute; inset: auto 0 0 0; height: 30%; pointer-events: none;
+  background: linear-gradient(to top, rgba(8,12,18,.55), transparent);
+}
+.nexus-bd-together-venuebody { display: flex; flex-direction: column; align-items: flex-start; gap: .2rem; padding: .6rem .7rem .7rem; }
+.nexus-bd-together-venuetitle { color: #f1f4f8; font: 650 .88rem/1.2 inherit; }
+.nexus-bd-together-venue .nexus-bd-together-note { margin-top: .1rem; }
+@media (prefers-reduced-motion: reduce) {
+  .nexus-bd-together-option.nexus-bd-together-venue { transition: none; }
+  .nexus-bd-together-option.nexus-bd-together-venue:hover { transform: none; }
+}
+/* A phone keeps two to a row (a single column of 4:3 pictures is a long scroll for thirteen
+   places); the words get a little smaller instead. */
+@media (max-width: 640px) {
+  .nexus-bd-together-options.is-venues { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+  .nexus-bd-together-venuebody { padding: .45rem .5rem .55rem; }
+  .nexus-bd-together-venuetitle { font-size: .8rem; }
+  .nexus-bd-together-venue .nexus-bd-together-note { font-size: .64rem; }
+}
+.nexus-bd-together-optiontag {
+  display: inline-block; justify-self: start; margin-top: .25rem; padding: .05rem .4rem; border-radius: 6px;
+  background: rgba(255,255,255,.08); color: #aeb9c8; font: 600 .6rem/1.5 inherit; letter-spacing: .06em;
+  text-transform: uppercase;
 }
 /* What is being captured, kept separate from what is running (§2a). */
 .nexus-bd-together-sharing {

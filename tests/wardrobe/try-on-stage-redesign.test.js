@@ -96,12 +96,12 @@ describe('Together keeps its activities', () => {
         const tiles = Object.fromEntries(Object.entries(steps).map(([id, step]) => [id, step.icon + ' ' + step.title]));
         expect(tiles).toMatchObject({
             watch: '📺 Watch',
-            journey: '🌊 Journey',
+            journey: '🌙 Experiences',
             music: '🎧 Music',
-            cohost: '🎮 Play',
+            cohost: '💬 Life',
             focus: '🎯 Focus',
-            coach: '🏋 Coach',
-            copilot: '👀 Help me with this',
+            coach: '🧭 Copilot',
+            copilot: '👀 Help me',
         });
     });
 

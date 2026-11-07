@@ -99,6 +99,8 @@
         // P7. Who draws a conversation turn. Before PrivateConversationView, which replaces
         // the drawing while a Private session is running.
         'src/features/chat/ConversationSurface.js',
+        // PG3. One plain sentence for why a reply did not arrive (the error bubble reads it).
+        'src/features/chat/ChatErrorText.js',
         // P14. What a reply says, as opposed to how it asked to be performed. Before
         // TogetherCapability, which consults it at the display seam.
         'src/features/chat/StageDirections.js',
@@ -188,6 +190,7 @@
         // Playground is a native contract activity. The same Together chooser is used by
         // desktop and mobile, so one registration creates the tile on both surfaces.
         'src/features/together/activities/playground.js',
+        'src/features/together/activities/places.js',
         'src/features/together/activities/screen-insight.js',
         // B26 holds the B15 activity above rather than describing its round trip again.
         'src/features/together/activities/copilot.js',
@@ -228,6 +231,48 @@
         'src/features/clips/ui/ClipButton.js',
         'src/behavior/debug/PickLog.js',
         'src/behavior/debug/DebugHUD.js',
+        // IC1–IC3. Destinations and the experience runtime. After the activities
+        // they call, so Together's panel exists before the bar asks it to open
+        // a setup screen. Loaded with the engine: with the engine off, the page
+        // does not fetch them.
+        'src/companion/CompanionSession.js',
+        'src/companion/MemoryScopes.js',
+        'src/companion/PrivacyGate.js',
+        'src/companion/BehaviorRouter.js',
+        'src/companion/PromptContext.js',
+        'src/companion/DestinationCatalog.js',
+        'src/companion/TaskBoard.js',
+        'src/companion/ActivityBridge.js',
+        'src/experiences/SceneManifest.js',
+        'src/experiences/ExperienceMemory.js',
+        'src/experiences/SceneRuntime.js',
+        'src/experiences/SpatialAudioManager.js',
+        'src/experiences/InteractionRouter.js',
+        'src/experiences/ExperienceRegistry.js',
+        'src/experiences/ExperienceSession.js',
+        'src/experiences/formats.js',
+        'src/experiences/seaside/layout.js',
+        'src/experiences/seaside/story.js',
+        'src/experiences/seaside/SeasideEvening.js',
+        'src/experiences/ExperienceDirector.js',
+        'src/companion/DestinationBar.js',
+        'src/companion/ContextIntent.js',
+        'src/companion/ActivityMarks.js',
+        // DX3. Clean view: hides page overlays on request; touches nothing that runs.
+        'src/companion/ImmersiveMode.js',
+        'src/companion/ActivityVoice.js',
+        'src/companion/ActivityDirective.js',
+        // PG1. What there is to do in a place: presets, templates, then the chips that read both.
+        // After ActivityMarks (the chips sit under its status bar), and they only listen for the
+        // engine's nexus-world-shown, so nothing here needs the companion to have booted.
+        'src/experiences/playgrounds/PlaygroundMoodPresets.js',
+        'src/experiences/playgrounds/PlaygroundTemplateCatalog.js',
+        'src/experiences/playgrounds/PlaygroundInteractionRouter.js',
+        // PG3. After the router (whose reports it reads), before the companion that ticks it.
+        // PG3. Tap/hover/ray picking of a venue's anchors; dispatches requests the context checks.
+        'src/experiences/playgrounds/PlaygroundObjectPicker.js',
+        'src/experiences/playgrounds/PlaygroundReactiveContext.js',
+        'src/companion/index.js',
     ];
 
     const CONFIG_URL = 'config/behavior.config.json';
@@ -644,6 +689,14 @@
                     director.adapters.push(director.playground);
                 }
 
+                // VW3. Experiences ▸ Visit a place: the 3D spaces by name. Hidden from the
+                // first screen (Experiences opens it); private places are never offered here.
+                if (global.NEXUS_BD_PLACES) {
+                    director.places = global.NEXUS_BD_PLACES.attach({ bus });
+                    director.togetherPanel.register(director.places);
+                    director.adapters.push(director.places);
+                }
+
                 // Screen Insight (B15). On demand by default: registered, never started,
                 // and its continuous mode is off until somebody deliberately turns it on.
                 if (global.NEXUS_BD_SCREEN_INSIGHT) {
@@ -798,6 +851,23 @@
             bus.on('intent', (intent) => director.handleIntent(intent));
 
             global.NEXUS_BD = director;
+
+            // IC1. Life, Copilot, Experiences. Failure here must not take the
+            // behavior director down with it — the chat and the existing
+            // activities already booted.
+            if (global.NEXUS_COMPANION && typeof global.NEXUS_COMPANION.attach === 'function') {
+                try {
+                    director.companion = global.NEXUS_COMPANION.attach({
+                        panel: director.togetherPanel || null,
+                        bus: bus,
+                        behaviorDirector: director,
+                        doc: global.document,
+                    });
+                    if (director.companion) director.adapters.push(director.companion);
+                } catch (error) {
+                    console.warn('[BD] companion destinations failed to attach — continuing', error);
+                }
+            }
 
             const ms = Math.round((global.performance || Date).now() - started);
             const names = director.adapters.map((a) => a.name).join(', ') || 'none';

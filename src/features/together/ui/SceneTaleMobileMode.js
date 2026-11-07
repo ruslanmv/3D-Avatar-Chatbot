@@ -535,7 +535,7 @@ const SceneTaleMobileMode = (() => {
                             setText(start, 'Starting…');
                             try {
                                 const result = await panel.startActivity('playground', {
-                                    id: 'scene-tale',
+                                    id: activity.playgroundId || 'scene-tale',
                                     permission: null,
                                     preparedPlan: activity.preparedPlan,
                                     soundtrack: activity.preparedSoundtrack,

@@ -72,7 +72,7 @@ const TogetherFailures = (() => {
             // half is fixed, because it is true of every one of these: almost all of
             // Together runs with no HomePilot at all.
             body: (why) =>
-                `${sentence(why)} Everything else — Focus, Journey, Music, Watch and Coach — works without it.`,
+                `${sentence(why)} Everything else — Focus, Experiences, Music, Watch and Copilot — works without it.`,
             actions: [SETTINGS, BACK],
         },
         {

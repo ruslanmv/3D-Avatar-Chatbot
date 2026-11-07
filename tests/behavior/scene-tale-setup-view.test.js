@@ -53,6 +53,7 @@ function mountPanel() {
 function openSceneTale(panel) {
     panel.open();
     document.querySelector('[data-activity=playground]').click();
+    document.querySelector('[data-playground=scene-tale]').click();
     SetupView.install(document);
     SetupView.decorate(document);
     return document.getElementById(TogetherPanel.PANEL_ID);

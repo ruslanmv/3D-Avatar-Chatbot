@@ -79,11 +79,13 @@ const TogetherPanel = (() => {
             ],
         },
         journey: {
-            title: 'Journey',
-            icon: '🌊',
-            order: 20,
-            prompt: 'Where should we go?',
+            title: 'Experiences',
+            icon: '🌙',
+            order: 3, // IC2: Life, Copilot, Experiences lead the chooser
+            prompt: 'Where do you want to go?',
             options: [
+                { label: 'Seaside Evening' },
+                { label: 'Scene Tale' },
                 { label: '🌊 Ocean', arg: 'ocean' },
                 { label: '🌲 Forest', arg: 'forest' },
                 { label: '🕯 Meditation', arg: 'meditation' },
@@ -92,28 +94,39 @@ const TogetherPanel = (() => {
         },
         music: { title: 'Music', icon: '🎧', order: 30, direct: true },
         cohost: {
-            title: 'Play',
-            icon: '🎮',
-            order: 40,
-            prompt: 'Share your game so I can react with you.',
-            options: [{ label: 'Share game', needs: 'screen' }],
+            title: 'Life',
+            icon: '💬',
+            order: 1, // IC2: Life, Copilot, Experiences lead the chooser
+            prompt: 'How do you want to be together?',
+            options: [
+                { label: 'Life Evening' },
+                { label: 'Talk' },
+                { label: 'Relax' },
+                { label: 'Share game', needs: 'screen' },
+            ],
         },
         focus: {
             title: 'Focus',
             icon: '🎯',
             order: 50,
+            hidden: true, // TG1: started from Life and Copilot, no tile of its own
             prompt: '25 min focus · 5 min break',
             options: [{ label: 'Start' }],
         },
         coach: {
-            title: 'Coach',
-            icon: '🏋',
-            order: 60,
-            prompt: 'I need the camera to see your movement.',
-            options: [{ label: 'Use camera', needs: 'camera', arg: 'squat' }],
+            title: 'Copilot',
+            icon: '🧭',
+            order: 2, // IC2: Life, Copilot, Experiences lead the chooser
+            prompt: 'What do you want to get done?',
+            options: [
+                { label: 'Copilot Hour' },
+                { label: 'Tasks' },
+                { label: 'Focus block' },
+                { label: 'Use camera', needs: 'camera', arg: 'squat' },
+            ],
         },
         copilot: {
-            title: 'Help me with this',
+            title: 'Help me',
             icon: '👀',
             order: 70,
             wide: true,
@@ -141,7 +154,7 @@ const TogetherPanel = (() => {
     /** Activities a person would set out to do, in the order the chooser shows them. */
     function choosable(activities) {
         return [...activities.values()]
-            .filter((a) => STEPS[a.id] || a.ui)
+            .filter((a) => (STEPS[a.id] || a.ui) && !metaFor(a).hidden)
             .sort((a, b) => (metaFor(a).order || 99) - (metaFor(b).order || 99));
     }
 
@@ -171,6 +184,12 @@ const TogetherPanel = (() => {
             this.lastAttempt = null;
             /** The element that opened the chooser, so focus goes back where it came from. */
             this.opener = null;
+            /**
+             * TG2. The setup screens behind this one, so Back goes one step up — a story to
+             * Life, Life to Playground, Playground home — instead of always to the first
+             * screen, which lost the person two levels at once.
+             */
+            this.trail = [];
             this.pipeline = null;
             this.root = null;
             this.state = { state: 'idle', label: '' };
@@ -227,6 +246,7 @@ const TogetherPanel = (() => {
             this.view = this.active ? 'running' : 'chooser';
             this.pending = null;
             this.failure = null;
+            this.trail = [];
             // B36. Whichever control opened this — the toolbar button or the drawer entry —
             // is where focus goes when it closes. Returning to the toolbar after opening
             // from the drawer drops a keyboard user somewhere they never were.
@@ -265,9 +285,23 @@ const TogetherPanel = (() => {
         }
 
         /** Step into one activity's setup, or start it if it has only one way in. */
-        choose(id) {
+        choose(id, { fresh = false } = {}) {
             const contract = this.contractFor(id);
             if (!contract && !this.activities.has(id)) return { ok: false, why: `no activity ${id}` };
+            // TG2. Coming from another setup screen (Playground ▸ Life): remember it for Back.
+            const from = this.open_ && this.view === 'setup' ? this.pending : null;
+            if (from && from !== id) this.trail.push(from);
+            // A tile on the first screen starts that activity's setup from its beginning. A
+            // story picked earlier and abandoned with Cancel otherwise reopened Playground on
+            // that story's screen instead of on its three places.
+            const raw = this.activities.get(id);
+            if (fresh && raw && typeof raw.resetSetup === 'function') {
+                try {
+                    raw.resetSetup();
+                } catch (_) {
+                    /* the setup still opens */
+                }
+            }
 
             // T1. Using it is how you turn it on. Somebody who has just pressed Music has
             // answered the question more clearly than any dialog could ask it, so there is no
@@ -379,7 +413,7 @@ const TogetherPanel = (() => {
                     return this._fail(
                         activity,
                         Failures
-                            ? Failures.declined(activity.title)
+                            ? Failures.declined(resolved.as || activity.title)
                             : { ok: false, why: this.consent.reason || 'declined' },
                         { declined: true }
                     );
@@ -391,6 +425,33 @@ const TogetherPanel = (() => {
                 grant: this.consent ? this.consent.grant : null,
                 pipeline: opened,
             });
+
+            // Life, Copilot and Experiences hand the chooser to a playground or
+            // to another activity's own setup. That is not this tile running.
+            if (result && result.openActivity) {
+                // TG2. Life ▸ An evening together opens Playground's story screen; Back from
+                // there returns to Life.
+                if (this.view === 'setup' && this.pending === id) this.trail.push(id);
+                this.failure = null;
+                this.pending = null;
+                return this.choose(result.openActivity);
+            }
+            // IC3. Start another activity straight away with a known option (Relax → Focus's
+            // quiet block), instead of opening its menu and asking again.
+            if (result && result.startActivity && result.startActivity !== id) {
+                this.failure = null;
+                this.pending = null;
+                return this.startActivity(result.startActivity, result.startInput || null);
+            }
+            if (result && result.handedOff) {
+                this.failure = null;
+                this.pending = null;
+                this.view = 'chooser';
+                this.open_ = false;
+                this._paint();
+                this._announce();
+                return { ok: true, why: 'handed-off' };
+            }
 
             if (!result || result.ok === false) {
                 // Whatever *this* call opened goes with the failure. An activity that owns
@@ -456,7 +517,11 @@ const TogetherPanel = (() => {
          * them and went back to the chooser. Never "Something went wrong" — see `failures.js`.
          */
         _fail(activity, result, { declined = false } = {}) {
-            const name = (activity && activity.title) || 'This activity';
+            // IC3. A start handed over from another tile names itself (`as`): Move together
+            // chosen under Life runs on Copilot's coach, and "Copilot needs permission" named
+            // a place the person never went.
+            const attempt = this.lastAttempt && this.lastAttempt.input;
+            const name = (attempt && attempt.as) || (activity && activity.title) || 'This activity';
             this.failure = Failures
                 ? declined
                     ? Failures.declined(name)
@@ -478,6 +543,30 @@ const TogetherPanel = (() => {
             // started; handing back the copy object would answer a different question and
             // `result.ok` would read `undefined`, which is neither true nor false.
             return { ok: false, why: this.failure.why || String((result && result.why) || 'refused') };
+        }
+
+        /**
+         * TG2. One step up: the setup screen this one was opened from, or the first screen.
+         * It re-shows that screen rather than choosing it again, so a one-option activity
+         * is not started by going back to it.
+         */
+        back() {
+            const leaving = this.activities.get(this.pending);
+            if (leaving && typeof leaving.resetSetup === 'function') {
+                try {
+                    leaving.resetSetup();
+                } catch (_) {
+                    /* going back still works */
+                }
+            }
+            const prev = this.trail.pop();
+            if (!prev || (!this.contractFor(prev) && !this.activities.has(prev))) return this.open();
+            this.view = 'setup';
+            this.pending = prev;
+            this.failure = null;
+            this._paint();
+            this._announce();
+            return { ok: true, why: 'back' };
         }
 
         /** Leave the running activity. The activity puts its own profile back (§6.11). */
@@ -539,7 +628,11 @@ const TogetherPanel = (() => {
          * sentence with a reason and a way back (`_fail`). The tile stays.
          */
         choices() {
-            return [...this.adapted.values()].sort((a, b) => (a.order || 99) - (b.order || 99));
+            // TG1. `hidden` is not "unavailable" (that still shows, and says why when chosen):
+            // it is an engine other tiles start, with no door of its own.
+            return [...this.adapted.values()]
+                .filter((a) => !a.hidden)
+                .sort((a, b) => (a.order || 99) - (b.order || 99));
         }
 
         /**
@@ -634,6 +727,7 @@ const TogetherPanel = (() => {
                 this.root.appendChild(
                     this._button(this.view === 'chooser' ? 'Cancel' : 'Back', 'nexus-bd-together-cancel', () => {
                         if (this.view === 'chooser') this.close();
+                        else if (this.view === 'setup') this.back();
                         else this.open();
                     })
                 );
@@ -661,7 +755,9 @@ const TogetherPanel = (() => {
                   }));
 
             for (const activity of shown) {
-                const tile = this._button('', 'nexus-bd-together-tile', () => this.choose(activity.id));
+                const tile = this._button('', 'nexus-bd-together-tile', () =>
+                    this.choose(activity.id, { fresh: true })
+                );
                 if (activity.wide) tile.classList.add('is-wide');
                 tile.dataset.activity = activity.id;
                 const name = this.doc.createElement('span');
@@ -772,7 +868,59 @@ const TogetherPanel = (() => {
                 // including the ones the activity itself will ask for.
                 const asks = input.permission === 'self' ? 'access' : input.permission;
                 if (asks) b.title = `Asks for ${asks === 'meeting' ? 'screen and microphone' : asks} access`;
-                if (input.note) {
+                // PG1–PG2. A venue card: the place's picture across the top, then its name, its
+                // category and one line. An input becomes one only if it brings a picture or a
+                // tint (Places does, for every place); every other option is drawn as before.
+                // The art box has a fixed 4:3 shape and is painted with the place's own sky
+                // colours, so a list of venues does not jump while pictures arrive and a picture
+                // that will not load leaves a coloured card, never a broken image. The picture is
+                // decoration (alt ""); the button's name is the place's.
+                const venue = Boolean(input.image || (Array.isArray(input.tint) && input.tint.length));
+                if (venue) {
+                    list.classList.add('is-venues');
+                    b.classList.add('nexus-bd-together-venue');
+                    b.textContent = '';
+                    b.setAttribute('aria-label', input.note ? `${input.label}. ${input.note}` : input.label);
+                    const art = this.doc.createElement('span');
+                    art.className = 'nexus-bd-together-venueart';
+                    art.setAttribute('aria-hidden', 'true');
+                    const tint = (Array.isArray(input.tint) ? input.tint : []).filter((c) => /^#[0-9a-f]{6}$/i.test(c));
+                    if (tint.length)
+                        art.style.setProperty(
+                            '--venue-tint',
+                            `linear-gradient(160deg, ${tint[0]}, ${tint[1] || tint[0]})`
+                        );
+                    if (input.image) {
+                        const img = this.doc.createElement('img');
+                        img.alt = '';
+                        img.setAttribute('loading', 'lazy');
+                        img.setAttribute('decoding', 'async');
+                        img.width = 640;
+                        img.height = 480;
+                        img.src = String(input.image);
+                        img.addEventListener('error', () => img.remove());
+                        art.appendChild(img);
+                    }
+                    const body = this.doc.createElement('span');
+                    body.className = 'nexus-bd-together-venuebody';
+                    const title = this.doc.createElement('span');
+                    title.className = 'nexus-bd-together-venuetitle';
+                    title.textContent = input.label;
+                    body.appendChild(title);
+                    if (input.category) {
+                        const tag = this.doc.createElement('span');
+                        tag.className = 'nexus-bd-together-optiontag';
+                        tag.textContent = String(input.category);
+                        body.appendChild(tag);
+                    }
+                    if (input.note) {
+                        const note = this.doc.createElement('span');
+                        note.className = 'nexus-bd-together-note';
+                        note.textContent = input.note;
+                        body.appendChild(note);
+                    }
+                    b.append(art, body);
+                } else if (input.note) {
                     const note = this.doc.createElement('span');
                     note.className = 'nexus-bd-together-note';
                     note.textContent = input.note;
@@ -809,7 +957,7 @@ const TogetherPanel = (() => {
             const style = doc.createElement('style');
             style.id = styleId;
             style.textContent =
-                '.nexus-private-setup{display:grid;gap:13px}.nexus-private-setup .nexus-private-setup-kicker{text-align:center;color:#f08fb6;font-weight:750;letter-spacing:.08em;font-size:.72rem}.nexus-private-setup-lead{text-align:center;opacity:.85;margin:0;font-size:1rem;font-weight:650}.nexus-private-preset-grid{display:grid;gap:9px}.nexus-private-preset{display:block;width:100%;text-align:left;border:1px solid rgba(255,255,255,.13);border-radius:14px;padding:13px;background:rgba(255,255,255,.05);color:inherit;font:inherit;cursor:pointer}.nexus-private-preset:hover,.nexus-private-preset:focus-visible{border-color:rgba(240,143,182,.6);background:rgba(240,143,182,.1);outline:none}.nexus-private-preset strong,.nexus-private-preset span{display:block}.nexus-private-preset span{font-size:.8rem;opacity:.68;margin-top:4px}.nexus-private-safety{font-size:.76rem;line-height:1.5;opacity:.62;text-align:center}.nexus-private-begin{width:100%;padding:12px;border:0;border-radius:12px;background:linear-gradient(120deg,#c34f7b,#9a4f9e);color:#fff;font:inherit;font-weight:700;cursor:pointer}.nexus-private-begin:disabled{opacity:.45;cursor:default}.nexus-private-locked{margin:0;padding:12px 13px;border:1px dashed rgba(240,143,182,.3);border-radius:12px;font-size:.82rem;line-height:1.5;opacity:.75}.nexus-private-steps{display:flex;gap:6px;justify-content:center}.nexus-private-steps span{width:18px;height:3px;border-radius:2px;background:rgba(255,255,255,.16)}.nexus-private-steps span.is-on{background:#f08fb6}.nexus-private-label{display:block;opacity:.6;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase}.nexus-private-scene-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.nexus-private-scene-card{display:grid;gap:2px;text-align:left;padding:11px 12px;border-radius:13px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.045);color:inherit;font:inherit;cursor:pointer}.nexus-private-scene-card.is-selected{border-color:rgba(240,143,182,.7);background:rgba(240,143,182,.13)}.nexus-private-scene-name{font-weight:650;font-size:.86rem}.nexus-private-scene-note{font-size:.72rem;opacity:.62}.nexus-private-more{width:100%;text-align:center;font-size:.78rem;opacity:.75}.nexus-private-segmented{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid rgba(255,255,255,.13);border-radius:12px;overflow:hidden}.nexus-private-segment{padding:9px 6px;border:0;background:transparent;color:inherit;font:inherit;font-size:.82rem;cursor:pointer}.nexus-private-segment.is-selected{background:rgba(240,143,182,.18);font-weight:650}.nexus-private-again{display:grid;gap:8px;padding:13px;border-radius:14px;border:1px solid rgba(240,143,182,.28);background:rgba(240,143,182,.08)}.nexus-private-again small{opacity:.6;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase}.nexus-private-again-summary{font-size:.9rem;font-weight:650}.nexus-private-or{text-align:center;margin:0;opacity:.45;font-size:.76rem}';
+                '.nexus-private-setup{display:grid;gap:13px}.nexus-private-setup .nexus-private-setup-kicker{text-align:center;color:#f08fb6;font-weight:750;letter-spacing:.08em;font-size:.72rem}.nexus-private-setup-lead{text-align:center;opacity:.85;margin:0;font-size:1rem;font-weight:650}.nexus-private-preset-grid{display:grid;gap:9px}.nexus-private-preset{display:block;width:100%;text-align:left;border:1px solid rgba(255,255,255,.13);border-radius:14px;padding:13px;background:rgba(255,255,255,.05);color:inherit;font:inherit;cursor:pointer}.nexus-private-preset:hover,.nexus-private-preset:focus-visible{border-color:rgba(240,143,182,.6);background:rgba(240,143,182,.1);outline:none}.nexus-private-preset strong,.nexus-private-preset span{display:block}.nexus-private-preset span{font-size:.8rem;opacity:.68;margin-top:4px}.nexus-private-safety{font-size:.76rem;line-height:1.5;opacity:.62;text-align:center}.nexus-private-begin{width:100%;padding:12px;border:0;border-radius:12px;background:linear-gradient(120deg,#c34f7b,#9a4f9e);color:#fff;font:inherit;font-weight:700;cursor:pointer}.nexus-private-begin:disabled{opacity:.45;cursor:default}.nexus-private-locked{margin:0;padding:12px 13px;border:1px dashed rgba(240,143,182,.3);border-radius:12px;font-size:.82rem;line-height:1.5;opacity:.75}.nexus-private-steps{display:flex;gap:6px;justify-content:center}.nexus-private-steps span{width:18px;height:3px;border-radius:2px;background:rgba(255,255,255,.16)}.nexus-private-steps span.is-on{background:#f08fb6}.nexus-private-label{display:block;opacity:.6;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase}.nexus-private-scene-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.nexus-private-scene-card{display:grid;gap:2px;text-align:left;padding:11px 12px;border-radius:13px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.045);color:inherit;font:inherit;cursor:pointer}.nexus-private-scene-card.is-selected{border-color:rgba(240,143,182,.7);background:rgba(240,143,182,.13)}.nexus-private-scene-name{font-weight:650;font-size:.86rem}.nexus-private-scene-note{font-size:.72rem;opacity:.62}.nexus-private-more{width:100%;text-align:center;font-size:.78rem;opacity:.75}.nexus-private-segmented{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid rgba(255,255,255,.13);border-radius:12px;overflow:hidden}.nexus-private-segment{padding:9px 6px;border:0;background:transparent;color:inherit;font:inherit;font-size:.82rem;cursor:pointer}.nexus-private-segment.is-selected{background:rgba(240,143,182,.18);font-weight:650}.nexus-private-again{display:grid;gap:8px;padding:13px;border-radius:14px;border:1px solid rgba(240,143,182,.28);background:rgba(240,143,182,.08)}.nexus-private-again small{opacity:.6;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase}.nexus-private-again-summary{font-size:.9rem;font-weight:650}.nexus-private-or{text-align:center;margin:0;opacity:.45;font-size:.76rem}.nexus-private-scene-art{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;border-radius:9px;margin-bottom:6px;background:var(--venue-tint,rgba(255,255,255,.06))}';
             (doc.head || doc.documentElement).appendChild(style);
         }
 
@@ -990,6 +1138,56 @@ const TogetherPanel = (() => {
                 );
                 more.dataset.action = 'more-scenes';
                 shell.appendChild(more);
+            }
+
+            // VW3. Or a 3D room to be in together, instead of a picture behind her. Romantic and
+            // private places, each resolved to what this device can load (a phone gets the light
+            // ones); the activity asks the engine for it only once Private has started.
+            const rooms = typeof activity.places === 'function' ? activity.places() : [];
+            if (rooms.length) {
+                shell.appendChild(label('Or a 3D room'));
+                const roomCards = doc.createElement('div');
+                roomCards.className = 'nexus-private-scene-cards';
+                for (const room of rooms) {
+                    const card = doc.createElement('button');
+                    card.type = 'button';
+                    card.className = 'nexus-private-scene-card';
+                    card.dataset.world = room.id;
+                    card.classList.toggle('is-selected', activity.worldChoice === room.id);
+                    card.innerHTML =
+                        '<span class="nexus-private-scene-name"></span><span class="nexus-private-scene-note"></span>';
+                    card.querySelector('.nexus-private-scene-name').textContent = room.title;
+                    card.querySelector('.nexus-private-scene-note').textContent =
+                        room.rating === 'private' ? 'Private' : '';
+                    // PG1–PG2. Each room shows its own picture (the world catalogue's `preview`,
+                    // else a playground template's), on its sky colours while it loads.
+                    const templates = this.doc.defaultView && this.doc.defaultView.NEXUS_PLAYGROUND_TEMPLATES;
+                    const venue =
+                        templates && typeof templates.cardFor === 'function' ? templates.cardFor(room.id) : null;
+                    const picture = room.image || (venue && venue.image) || null;
+                    if (picture) {
+                        const img = doc.createElement('img');
+                        img.className = 'nexus-private-scene-art';
+                        img.alt = '';
+                        img.setAttribute('loading', 'lazy');
+                        img.width = 640;
+                        img.height = 480;
+                        img.src = picture;
+                        const tint = (Array.isArray(room.tint) ? room.tint : []).filter((c) =>
+                            /^#[0-9a-f]{6}$/i.test(c)
+                        );
+                        if (tint.length)
+                            img.style.setProperty(
+                                '--venue-tint',
+                                `linear-gradient(160deg, ${tint[0]}, ${tint[1] || tint[0]})`
+                            );
+                        img.addEventListener('error', () => img.remove());
+                        card.insertBefore(img, card.firstChild);
+                    }
+                    card.addEventListener('click', () => activity.setAtmosphere({ world: room.id }));
+                    roomCards.appendChild(card);
+                }
+                shell.appendChild(roomCards);
             }
 
             shell.appendChild(label('Music'));

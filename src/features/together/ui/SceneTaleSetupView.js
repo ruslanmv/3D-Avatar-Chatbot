@@ -323,6 +323,26 @@ const SceneTaleSetupView = (() => {
         setLifecycle((panel && panel.ownerDocument) || currentDoc, panel, false);
     }
 
+    const SCENE_TALE_COPY = Object.freeze({
+        title: 'Scene Tale',
+        prompt: 'A little story inspired by this place.',
+        placeholder: 'A letter somebody never delivered',
+    });
+
+    /** The title, question and example for the story this setup screen is for. */
+    function storySpec(doc, id) {
+        const win = doc && doc.defaultView;
+        const Playground = win && win.NEXUS_BD_PLAYGROUND;
+        const list = (Playground && Playground.PLAYGROUNDS) || [];
+        const found = id ? list.find((item) => item && item.id === id) : null;
+        if (!found) return SCENE_TALE_COPY;
+        return {
+            title: found.title || found.label || SCENE_TALE_COPY.title,
+            prompt: found.prompt || SCENE_TALE_COPY.prompt,
+            placeholder: found.placeholder || SCENE_TALE_COPY.placeholder,
+        };
+    }
+
     function decorate(doc) {
         if (!doc || !doc.getElementById) return null;
         ensureStyles(doc);
@@ -339,15 +359,19 @@ const SceneTaleSetupView = (() => {
         if (create.dataset.sceneTaleSetupDecorated === '1') return panel;
         create.dataset.sceneTaleSetupDecorated = '1';
 
+        // IC3. The screen's own story, not always Scene Tale's: Life Evening and Copilot Hour
+        // share this layout, and both used to open titled "Scene Tale — a little story
+        // inspired by this place". The playground tags its Create button with the story id.
+        const spec = storySpec(doc, create.dataset.playground);
         const head = panel.querySelector('.nexus-bd-together-head');
         if (head) head.textContent = 'TOGETHER';
         const title = panel.querySelector('.nexus-bd-together-subtitle');
         if (title) {
-            title.textContent = 'Scene Tale';
+            title.textContent = spec.title;
             title.classList.add('nexus-scene-tale-setup-title');
         }
         const prompt = panel.querySelector('.nexus-bd-together-prompt');
-        if (prompt) prompt.textContent = 'A little story inspired by this place.';
+        if (prompt) prompt.textContent = spec.prompt;
 
         const labels = [...panel.querySelectorAll('.nexus-story-setup-label')];
         const placeLabel = labels.find((node) => /^Current place/i.test(node.textContent || '')) || labels[0];
@@ -375,7 +399,7 @@ const SceneTaleSetupView = (() => {
 
         const area = panel.querySelector('#nexus-scene-tale-idea');
         if (area) {
-            area.placeholder = 'A letter somebody never delivered';
+            area.placeholder = spec.placeholder;
             area.setAttribute('aria-label', 'Give me an idea');
             area.rows = 1;
         }

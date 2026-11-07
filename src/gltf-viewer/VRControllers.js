@@ -312,6 +312,17 @@ export class VRControllers {
             return;
         }
 
+        // IC3. An experience object under the ray consumes the click. A miss
+        // falls through, so push-to-talk on an empty ray is unchanged.
+        try {
+            const experience = window.NEXUS_EXPERIENCE_RUNTIME;
+            if (experience && typeof experience.trySelect === 'function' && experience.trySelect(this.raycaster)) {
+                return;
+            }
+        } catch (_) {
+            /* a broken experience ray must not swallow the trigger */
+        }
+
         // VR2. Not on the panel: the right trigger is hold-to-talk (VR only — see TriggerTalk.js).
         const blend = this.renderer?.xr?.getSession?.()?.environmentBlendMode;
         if (TT && TT.isTalkTrigger(inputSource, blend)) {

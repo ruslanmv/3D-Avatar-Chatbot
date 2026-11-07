@@ -69,7 +69,14 @@
      * asserted in tests, so that "we forgot to clear this" and "we chose not to" stay
      * distinguishable a year from now.
      */
-    const KEPT = Object.freeze(['nexus_study_history']);
+    const KEPT = Object.freeze([
+        'nexus_study_history',
+        // Companion destinations. Not the transcript — that stays in KEYS.
+        // Wiping these on CLEAR would delete tasks and approved moments the
+        // person did not ask to forget.
+        'nexus_companion_session_v1',
+        'nexus_companion_memory_v1',
+    ]);
 
     let epoch = 1;
     const listeners = new Set();

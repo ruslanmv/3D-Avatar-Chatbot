@@ -109,6 +109,7 @@ function configure(activity, p) {
     p.register(activity);
     p.open();
     document.querySelector('[data-activity="playground"]').click();
+    document.querySelector('[data-playground="scene-tale"]').click();
     SetupView.decorate(document);
     return document.getElementById(TogetherPanel.PANEL_ID);
 }

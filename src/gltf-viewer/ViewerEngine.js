@@ -33,6 +33,8 @@ import './XRWarmUp.js';
 import './XRSplash.js';
 // XL4. Same pattern: publishes window.NEXUS_XR_ENTRY_TRACE (every step of entering VR, recorded).
 import './XREntryTrace.js';
+// VW1. Same pattern: publishes window.NEXUS_VR_WORLDS (places for VR: panorama, props, light).
+import './VRWorlds.js';
 
 export class ViewerEngine {
     constructor(containerEl) {
@@ -186,6 +188,50 @@ export class ViewerEngine {
         ktx2.detectSupport(this.renderer);
         this.loader.setKTX2Loader(ktx2);
         this.loader.setMeshoptDecoder(MeshoptDecoder);
+
+        // VW1. Places for VR. Built now so it can share this loader; it draws nothing until a
+        // VR session asks for a world (see `_applyVRWorld`). Absent module: plain VR, as before.
+        const worlds = window.NEXUS_VR_WORLDS;
+        this.vrWorlds = worlds
+            ? worlds.createRuntime({
+                  THREE,
+                  scene: this.scene,
+                  loader: this.loader,
+                  renderer: this.renderer,
+                  lights: {
+                      hemi: this._hemiLight,
+                      key: this.directionalLight,
+                      fill: this._fillLight,
+                      rim: this._rimLight,
+                  },
+              })
+            : null;
+        this._vrWorldOff = null;
+        this._vrWorldSeq = 0;
+        // `?vrWorld=<id>` shows a world on the desktop too, so a place can be checked (and
+        // screenshotted) without a headset. Off unless asked for.
+        try {
+            const preview = new URLSearchParams(window.location.search).get('vrWorld');
+            if (preview && this.vrWorlds) setTimeout(() => this._applyVRWorld({ preview }), 0);
+        } catch (_) {
+            /* no preview */
+        }
+        // VW2. Worlds are for the screen too, not only the headset: an experience brings its
+        // place to the desktop and the phone. The companion boots after the engine, so watch for
+        // it to appear, then follow its session for the life of the page.
+        if (this.vrWorlds) {
+            let tries = 0;
+            const arm = () => {
+                if (window.__NEXUS_COMPANION_LIVE?.session) {
+                    this._watchVRWorld();
+                    this._applyVRWorld();
+                    // A slow phone boots the companion well after the engine: 40 × 0.5 s gave up
+                    // first, and no experience ever brought its world there. One cheap check a
+                    // second, for up to five minutes.
+                } else if (++tries < 300) setTimeout(arm, 1000);
+            };
+            setTimeout(arm, 0);
+        }
 
         // Guard against WebGL context loss — stop animation loop so Three.js
         // doesn't try to render with a dead context. The cancelAnimationFrame
@@ -541,6 +587,15 @@ export class ViewerEngine {
                 }
             }
 
+            // VW1. A place to be in, when one was chosen (Settings ▸ VR WORLD) or the running
+            // activity has one (Seaside evening, Under the trees…). Never in AR. Followed live:
+            // starting or ending an experience in the headset changes the place.
+            if (!xrCtx.isAR) {
+                // Re-chosen for the headset's tier (a phone-light world may give way to the
+                // full one, and the Settings choice applies only here).
+                this._applyVRWorld();
+            }
+
             // Refresh controller reference after VR session starts
             this.vrChatPanel.setLeftController(this.vrControllers.controller1);
             console.log('[ViewerEngine] 🎮 Controller reference refreshed for VR session');
@@ -587,6 +642,14 @@ export class ViewerEngine {
 
             // Deactivate passthrough if it was enabled in VR
             this.passthroughEnhancer?.deactivate();
+
+            // VW1. Leave the place first: its light snapshot is written back before the VR
+            // light restore below, so the two restores compose instead of fighting.
+            this._vrWorldSeq += 1;
+            this.vrWorlds?.hide();
+            // VW2. Back on the screen, the running experience's world (if any) returns once the
+            // VR light restore below has run, so the world snapshots desktop lighting, not VR's.
+            setTimeout(() => this._applyVRWorld(), 0);
 
             // Restore opaque clear color for desktop rendering
             this.renderer.setClearColor(0x000000, 1);
@@ -1654,6 +1717,17 @@ export class ViewerEngine {
             } catch (e) {
                 this._frameError('controllers', e);
             }
+            // VW1. The world's fade follows the head; nothing to do when no world was asked for.
+            try {
+                if (this.vrWorlds) {
+                    const cam = xr ? this.renderer.xr.getCamera() : this.camera;
+                    this._vrWorldHead = this._vrWorldHead || new THREE.Vector3();
+                    this._vrWorldHead.setFromMatrixPosition(cam.matrixWorld);
+                    this.vrWorlds.tick(dt, this._vrWorldHead);
+                }
+            } catch (e) {
+                this._frameError('vr world', e);
+            }
             try {
                 this.vrPoseSystem?.update(dt);
             } catch (e) {
@@ -1683,6 +1757,38 @@ export class ViewerEngine {
                 window.NEXUS_MOTION?.update?.(dt);
             } catch (e) {
                 this._frameError('motion', e);
+            }
+
+            // IC3. The experience group updates inside this loop. It must not
+            // install another animation loop — this function is already it.
+            try {
+                const experience = window.NEXUS_EXPERIENCE_RUNTIME;
+                if (experience) {
+                    if (!this._experienceBound && typeof experience.bindViewer === 'function') {
+                        this._experienceBound = true;
+                        experience.bindViewer({
+                            THREE: {
+                                Group: THREE.Group,
+                                Mesh: THREE.Mesh,
+                                BoxGeometry: THREE.BoxGeometry,
+                                SphereGeometry: THREE.SphereGeometry,
+                                CylinderGeometry: THREE.CylinderGeometry,
+                                PlaneGeometry: THREE.PlaneGeometry,
+                                MeshBasicMaterial: THREE.MeshBasicMaterial,
+                                BackSide: THREE.BackSide,
+                                FrontSide: THREE.FrontSide,
+                            },
+                            parent: this.scene,
+                            xrPresenting: () => this.renderer.xr.isPresenting,
+                            blendMode: () => this.renderer.xr.getSession?.()?.environmentBlendMode || null,
+                            narrow: () => window.matchMedia?.('(max-width: 640px)')?.matches === true,
+                            cores: navigator.hardwareConcurrency || 8,
+                        });
+                    }
+                    experience.update?.(dt);
+                }
+            } catch (e) {
+                this._frameError('experience', e);
             }
 
             if (xr) {
@@ -2165,6 +2271,184 @@ export class ViewerEngine {
     // =========================================================================
 
     /** The VR floor grid, created on first use (and by the VR warm-up, XL2). */
+    /**
+     * VW1. Show the world this moment calls for, or plain VR. `preview` forces one (desktop
+     * `?vrWorld=`). A newer call wins: switching places quickly never leaves two worlds up.
+     */
+    async _applyVRWorld({ preview = null } = {}) {
+        const worlds = window.NEXUS_VR_WORLDS;
+        if (!worlds || !this.vrWorlds) return null;
+        const seq = ++this._vrWorldSeq;
+        const catalogue = await worlds.loadCatalogue();
+        if (seq !== this._vrWorldSeq) return null;
+        if (preview) this._vrWorldPreview = preview;
+        preview = preview || this._vrWorldPreview || null;
+        const xr = !!this.renderer.xr.isPresenting;
+        const tier = worlds.tierFor({ xr, mobile: document.documentElement.classList.contains('is-mobile') });
+        let id = preview;
+        if (!id) {
+            let activity = null;
+            try {
+                const session = window.__NEXUS_COMPANION_LIVE?.session;
+                activity = session && session.active && session.active() ? session.activity() : null;
+            } catch (_) {
+                activity = null;
+            }
+            this._vrWorldActivity = activity;
+            id = worlds.chooseWorld({
+                worlds: catalogue.worlds,
+                setting: worlds.readSetting(),
+                activity,
+                isAR: !!this.arSupport?._isARSession?.(),
+                tier,
+                requested: this._worldRequest ? this._worldRequest.id : null,
+                privateOpen: !!(this._worldRequest && this._worldRequest.owner === 'intimate'),
+            });
+        }
+        let world = id ? catalogue.worlds.find((w) => w.id === id) : null;
+        // VW3. The ?vrWorld= preview is a checking tool, not a door: it never opens a private room
+        // (those load only at the Private experience's request, after its gates).
+        if (
+            world &&
+            preview &&
+            world.rating === 'private' &&
+            !(this._worldRequest && this._worldRequest.owner === 'intimate')
+        )
+            world = null;
+        if (!world) {
+            if (this.vrWorlds.activeId) {
+                // Fade to black, back to plain VR, fade in — never a cut (Meta comfort).
+                await this.vrWorlds.leave();
+                if (seq !== this._vrWorldSeq) return null;
+                if (this.renderer.xr.isPresenting && this._vrBackgroundColor !== 'void') this._showVRGround();
+                this._worldShown(false, null);
+            } else if (this._worldAnnounced) {
+                // PG1. hide() at the end of a VR session takes the world down without a fade, so
+                // nothing above said it went; say so now that it is not coming back.
+                this._worldShown(false, null);
+            }
+            return null;
+        }
+        if (this.vrWorlds.activeId === world.id) return world.id;
+        // The world has its own ground; the grid would cut through it.
+        this._hideVRGround();
+        const root = this.avatarManager?.currentRoot;
+        const anchor = root ? { x: root.position.x, y: 0, z: root.position.z } : { x: 0, y: 0, z: 0 };
+        const result = await this.vrWorlds.show(world, {
+            anchor,
+            activity: preview ? null : this._vrWorldActivity,
+            tier,
+        });
+        if (!result.ok && result.why !== 'stale' && this.renderer.xr.isPresenting) this._showVRGround();
+        if (result.ok) this._worldShown(true, world);
+        return result.ok ? world.id : null;
+    }
+
+    /**
+     * VW2. What else changes while a real world is up. The experience's own placeholder scenery
+     * (Seaside's boxes and spheres, `SceneRuntime`) is hidden — the boxes inside a photographed
+     * terrace were the prototype look this replaces — and comes back when the world goes. On a
+     * screen, a wide short panel comes in to conversation framing (`framingFor`), and goes back
+     * to the full body afterwards; the headset is never framed, the person is the camera.
+     */
+    _worldShown(shown, world) {
+        try {
+            window.__NEXUS_COMPANION_LIVE?.scene?.setVisible?.(!shown);
+        } catch (_) {
+            /* the scenery stays as it was */
+        }
+        // PG1. Say which world is up, so a playground can offer what there is to do in it. The
+        // event carries what the engine decided, never a way to decide: `base` is the world a
+        // light stand-in stands in for, and `owner` is set only for a room the Private
+        // experience asked for — the one case a private world is shown at all.
+        this._worldAnnounced = world ? world.id : null;
+        try {
+            const base = world ? world.lightFor || world.id : null;
+            window.dispatchEvent(
+                new CustomEvent('nexus-world-shown', {
+                    detail: world
+                        ? {
+                              id: world.id,
+                              base,
+                              title: world.title,
+                              rating: world.rating,
+                              owner: world.rating === 'private' && this._worldRequest ? this._worldRequest.owner : null,
+                              xr: !!this.renderer.xr.isPresenting,
+                          }
+                        : { id: null },
+                })
+            );
+        } catch (_) {
+            /* nobody is listening */
+        }
+        if (this.renderer.xr.isPresenting) return;
+        const presets = window.NEXUS_CAMERA_PRESETS;
+        if (!presets) return;
+        try {
+            const el = this.renderer.domElement;
+            const framing = window.NEXUS_VR_WORLDS?.framingFor(el.clientWidth, el.clientHeight);
+            if (shown && framing === 'bust' && typeof presets.transitionTo === 'function') {
+                presets.transitionTo('bust');
+                this._worldFramed = true;
+            } else if (!shown && this._worldFramed && typeof presets.transitionToFullBody === 'function') {
+                presets.transitionToFullBody();
+                this._worldFramed = false;
+            }
+        } catch (_) {
+            /* framing is a nicety */
+        }
+    }
+
+    _watchVRWorld() {
+        this._unwatchVRWorld();
+        const onSetting = () => this._applyVRWorld();
+        window.addEventListener('nexus-vr-world-change', onSetting);
+        // VW3. The Private experience asks for its room by name (and only it may ask for a
+        // private one); `id: null` from the same owner gives it back.
+        const onRequest = (event) => {
+            const detail = (event && event.detail) || {};
+            if (detail.id) this._worldRequest = { id: String(detail.id), owner: String(detail.owner || '') };
+            else if (!this._worldRequest || this._worldRequest.owner === String(detail.owner || ''))
+                this._worldRequest = null;
+            this._applyVRWorld();
+        };
+        window.addEventListener('nexus-world-request', onRequest);
+        // PG1. A playground's mood: a light for the world that is up, or null for its own.
+        const onMood = (event) => {
+            const detail = (event && event.detail) || {};
+            try {
+                this.vrWorlds?.setMood?.(detail.light || null, { instant: detail.instant === true });
+            } catch (error) {
+                console.warn('[VRWorlds] mood not applied', error);
+            }
+        };
+        window.addEventListener('nexus-world-mood', onMood);
+        let offSession = null;
+        try {
+            const session = window.__NEXUS_COMPANION_LIVE?.session;
+            if (session && typeof session.on === 'function') {
+                offSession = session.on((detail) => {
+                    if (detail && (detail.type === 'session:entered' || detail.type === 'session:ended')) {
+                        this._applyVRWorld();
+                    }
+                });
+            }
+        } catch (_) {
+            offSession = null;
+        }
+        this._vrWorldOff = () => {
+            window.removeEventListener('nexus-vr-world-change', onSetting);
+            window.removeEventListener('nexus-world-request', onRequest);
+            window.removeEventListener('nexus-world-mood', onMood);
+            if (typeof offSession === 'function') offSession();
+        };
+    }
+
+    _unwatchVRWorld() {
+        if (this._vrWorldOff) this._vrWorldOff();
+        this._vrWorldOff = null;
+    }
+
     _vrGround() {
         if (!this.vrGroundGrid) {
             // Create a grid helper at floor level

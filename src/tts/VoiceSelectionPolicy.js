@@ -116,6 +116,18 @@
             if (v && v.language === language && v.playable) return { voice: v.id, reason: 'chosen' };
         }
 
+        // 2a. HV-FIX 10. A locale with no preset of its own (es-AR: Daniela, added 2026-11, is a
+        // catalog voice) used to borrow another locale's preset — Auto for Español (Argentina)
+        // read "Sharvard (Español (España))" with an Argentine voice installed. A playable voice of
+        // the exact locale, preferred gender first, now comes before a neighbour's preset.
+        if (library && loc && !(presetsOf(library)[loc] || {})[style === 'secretary' ? 'secretary' : 'companion']) {
+            const local = library.voices
+                .filter((v) => playable(v) && v.locale === loc)
+                .sort(rank(gender, loc))
+                .find((v) => gender === 'any' || v.gender === gender);
+            if (local) return { voice: local.id, reason: 'same-locale' };
+        }
+
         // 2. The preset for this locale and style.
         const preset = presetFor(library, loc, language, style);
         if (preset && (!library || playable(byId(library, preset)))) return { voice: preset, reason: 'preset' };

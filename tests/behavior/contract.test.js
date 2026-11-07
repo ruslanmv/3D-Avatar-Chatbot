@@ -153,11 +153,13 @@ describe('the tiles that could not complete', () => {
     test('journey: start/stop reach enter/exit', async () => {
         const raw = fakes.journey();
         const journey = Contract.adapt(raw);
-        const ocean = journey.inputs().find((i) => i.id === 'ocean');
-        expect(ocean.label).toContain('Ocean');
+        // IC3: the ocean scene is not offered beside Seaside evening; the other places are.
+        expect(journey.inputs().find((i) => i.id === 'ocean')).toBeUndefined();
+        const forest = journey.inputs().find((i) => i.id === 'forest');
+        expect(forest.label).toContain('Forest');
 
-        await journey.start({ input: ocean });
-        expect(raw.enter).toHaveBeenCalledWith('ocean');
+        await journey.start({ input: forest });
+        expect(raw.enter).toHaveBeenCalledWith('forest');
         journey.stop('user');
         expect(raw.exit).toHaveBeenCalledWith('user');
     });
@@ -171,7 +173,7 @@ describe('the tiles that could not complete', () => {
                 .inputs()
                 .map((i) => i.id)
                 .sort()
-        ).toEqual(['forest', 'ocean']);
+        ).toEqual(['forest', 'places', 'scene-tale', 'seaside']); // VW3: Visit a place
     });
 
     test('copilot: "just look and help" starts without a checklist', async () => {
@@ -223,6 +225,8 @@ describe('the tiles that could not complete', () => {
 
 describe('exactly one permission owner', () => {
     const owners = () => {
+        // Life ▸ Move together reads the coach's exercises off the live panel.
+        window.NEXUS_BD = { togetherPanel: { activities: new Map([['coach', fakes.coach()]]) } };
         const adapted = adaptAll({ conversationId: 'c1' });
         const out = {};
         for (const [id, activity] of Object.entries(adapted)) {
@@ -244,7 +248,17 @@ describe('exactly one permission owner', () => {
         expect(table.watch.tab).toBe('self');
         expect(table.watch.file).toBeNull();
         expect(Object.values(table.meeting)).toEqual(['self']);
-        expect(new Set(Object.values(table.coach))).toEqual(new Set(['self']));
+        // IC3: exercise moved from Copilot to Life ▸ Move together. The coach still asks for
+        // its own camera ('self'), so the panel must not.
+        expect(table.coach.work).toBeNull();
+        expect(table.coach.tasks).toBeNull();
+        expect(table.coach.learn).toBeNull();
+        expect(table.cohost['move-squat']).toBe('self');
+        expect(table.cohost['move-push-up']).toBe('self');
+        const life = adaptAll({ conversationId: 'c1' }).cohost.inputs();
+        for (const move of life.filter((i) => i.startActivity === 'coach')) {
+            expect(move.startInput.permission).toBe('self');
+        }
         expect(new Set(Object.values(table.copilot))).toEqual(new Set(['self']));
     });
 
@@ -266,10 +280,12 @@ describe('exactly one permission owner', () => {
         }
     });
 
-    test('the one panel-owned grant is the one whose activity never requests', () => {
-        // CoHost takes a pipeline and never touches the consent machine, so the panel is
-        // the right owner there and only there.
-        expect(Object.values(owners().cohost)).toEqual(['screen']);
+    test('Life offers nothing it cannot finish, and its everyday choices ask for nothing', () => {
+        // IC3: "Share game" was the one panel-owned grant here, and it could never work —
+        // nothing produces the game moments CoHost reacts to — so it is not offered.
+        expect(owners().cohost.screen).toBeUndefined();
+        expect(owners().cohost.talk).toBeNull();
+        expect(owners().cohost.relax).toBeNull();
     });
 
     test('a permission value is always null, self, or a consent source', () => {
@@ -355,14 +371,18 @@ describe('a tile that cannot complete says so', () => {
         expect(Contract.adapt(fakes.music()).availability().ok).toBe(true);
     });
 
-    test('play refuses while nothing produces game moments', () => {
-        // The reactions, the tier table and the overlay are all real. What is missing is the
-        // detector that feeds them, so sharing a game would start a co-host that never sees
-        // a moment.
+    test('sharing a game refuses while nothing produces game moments', async () => {
+        // Life itself is available. The reactions, the tier table and the overlay are all
+        // real. What is missing is the detector that feeds them, so sharing a game would
+        // start a co-host that never sees a moment.
         const bare = { id: 'cohost', start: jest.fn(), stop: jest.fn() };
-        const why = Contract.adapt(bare).availability();
-        expect(why.ok).toBe(false);
-        expect(why.why).toMatch(/moment detection/i);
+        const adapted = Contract.adapt(bare);
+        expect(adapted.availability().ok).toBe(true);
+        const share = adapted.inputs().find((input) => input.id === 'screen');
+        const result = await adapted.start({ input: share });
+        expect(result.ok).toBe(false);
+        expect(result.why).toMatch(/moment detection/i);
+        expect(bare.start).not.toHaveBeenCalled();
     });
 
     test('an availability check that throws becomes a reason, not a crash', () => {
@@ -467,9 +487,9 @@ describe('the chooser shows every activity, in the grid order', () => {
         const byOrder = Object.values(adapted)
             .sort((a, b) => a.order - b.order)
             .map((a) => a.id);
-        // Reference layout: three columns of activities, then "Help me with this" as one
-        // full-width secondary action below them, then Cancel.
-        expect(byOrder).toEqual(['watch', 'journey', 'music', 'cohost', 'focus', 'coach', 'meeting', 'copilot']);
+        // TG1: a three-by-three grid, "Help me" last; Focus keeps its place in the order
+        // although it has no tile, so the grid order never shifts when it is shown again.
+        expect(byOrder).toEqual(['cohost', 'coach', 'journey', 'watch', 'music', 'focus', 'meeting', 'copilot']);
     });
 
     test('order is stable and has no ties', () => {
@@ -497,5 +517,41 @@ describe('the adapter layer stays an adapter layer', () => {
         // `pickFile` is a file dialog, which is not capture and never reaches the machine.
         const creates = code.match(/createElement\(([^)]*)\)/g) || [];
         expect(creates).toEqual(["createElement('input')"]);
+    });
+});
+
+// ── TG1: one door per thing ─────────────────────────────────────────────────
+
+describe('each thing in Together has one door', () => {
+    test('each story lives under exactly one place, and the places are inside Playground', () => {
+        window.NEXUS_BD = { togetherPanel: { activities: new Map([['coach', fakes.coach()]]) } };
+        const adapted = adaptAll({ conversationId: 'c1' });
+        // TG2: Life ▸ An evening together, Copilot ▸ Copilot Hour, Experiences ▸ Scene Tale.
+        // Playground used to list the same three stories again; now it shows the places.
+        const stories = {};
+        for (const id of ['cohost', 'coach', 'journey']) {
+            stories[id] = adapted[id]
+                .inputs()
+                .filter((i) => i.playground)
+                .map((i) => i.playground);
+        }
+        expect(stories).toEqual({ cohost: ['life-evening'], coach: ['copilot-hour'], journey: ['scene-tale'] });
+        // Hidden means "no tile on the first screen": the places (Playground opens them) and
+        // Focus (Relax together and Work on something start it).
+        expect(
+            Object.values(adapted)
+                .filter((a) => a.hidden)
+                .map((a) => a.id)
+                .sort()
+        ).toEqual(['coach', 'cohost', 'focus', 'journey']);
+    });
+
+    test("Playground's own screen shows the three places, not a list of stories", () => {
+        const src = fs.readFileSync(
+            path.join(__dirname, '../../src/features/together/activities/playground.js'),
+            'utf8'
+        );
+        expect(src).toMatch(/const PLACES = Object\.freeze\(\['cohost', 'coach', 'journey'\]\)/);
+        expect(src).not.toMatch(/Other playgrounds'/);
     });
 });

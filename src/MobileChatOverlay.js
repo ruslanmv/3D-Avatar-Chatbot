@@ -259,6 +259,27 @@
             window.visualViewport.addEventListener('resize', onViewportResize);
         }
 
+        // DX2. "The keyboard is open" as a fact, not a guess from the viewport's shape. The CSS
+        // used to hide her whenever the page was under 450 px tall — which is also every phone
+        // held sideways (an iPhone 13 in landscape is 750 x 342), so turning the phone made her
+        // disappear with no keyboard in sight. A focused text field on a touch phone is the
+        // signal the major chat apps use; styles/main.css reads html.nexus-keyboard-open.
+        var isTextField = function (el) {
+            if (!el || !el.tagName) return false;
+            var tag = el.tagName.toLowerCase();
+            if (tag === 'textarea' || el.isContentEditable) return true;
+            if (tag !== 'input') return false;
+            var type = (el.getAttribute('type') || 'text').toLowerCase();
+            return ['text', 'search', 'email', 'url', 'tel', 'number', 'password'].indexOf(type) !== -1;
+        };
+        document.addEventListener('focusin', function (e) {
+            html.classList.toggle('nexus-keyboard-open', isTextField(e.target));
+        });
+        document.addEventListener('focusout', function () {
+            // The next focusin (if focus moves to another field) sets it again.
+            html.classList.remove('nexus-keyboard-open');
+        });
+
         // Orientation / resize
         window.addEventListener('orientationchange', onOrientationChange);
         window.addEventListener('resize', function () {

@@ -635,3 +635,13 @@ describe('loading the shipped manifests', () => {
         expect(journey.stats.registered).toEqual(['forest', 'meditation']);
     });
 });
+
+describe('MV1: a scene loop is loud enough to hear', () => {
+    test('the default player loops at a clear level, still under her voice', () => {
+        const audio = Journey.defaultAudio('src/features/together/scenes/assets/forest_loop.ogg');
+        expect(audio.loop).toBe(true);
+        expect(audio.volume).toBeCloseTo(Journey.AMBIENT_VOLUME);
+        expect(Journey.AMBIENT_VOLUME).toBeGreaterThanOrEqual(0.6);
+        expect(Journey.AMBIENT_VOLUME).toBeLessThan(1);
+    });
+});

@@ -243,12 +243,101 @@
         return err;
     }
 
+    // ---- SW1: wake a sleeping speech service instead of failing --------------------------------
+    //
+    // SonicAgent runs on a free Hugging Face Space, and a free Space sleeps after two days with
+    // no traffic. While it sleeps or boots, OllaBridge answers every /v1/voice call with 503
+    // ("the speech service is starting"), and until SW1 the first such answer was final: Settings
+    // said "SonicAgent could not start", the reply was spoken by nobody, and the person had to
+    // guess that waiting a minute and pressing the button again was the fix. Production,
+    // 2026-11-07: the Space had been asleep, and every voice call failed until it was restarted
+    // by hand.
+    //
+    // So a "starting / unavailable" answer is now a reason to wait, not to give up: the gateway
+    // asks the Space itself to wake (one opaque GET — any request to a sleeping Space's own
+    // address starts it, and `no-cors` because we only need it sent, not read), tells the page
+    // it is waking (`sonic-voice-waking`, so Settings can say so instead of an error), and retries
+    // with backoff for up to WAKE_BUDGET_MS. Only codes that mean "not up yet" are retried — a
+    // refused token, a missing route or a bad request fails at once, exactly as before. A 503
+    // has done nothing on the server, so retrying even a POST cannot do anything twice.
+    const WAKE_BUDGET_MS = 75000;
+    const WAKE_PING_EVERY_MS = 120000;
+    const DEFAULT_WAKE_URL = 'https://ruslanmv-sonicagent.hf.space/health/live';
+    const WAKING_CODES = new Set(['backend_warming', 'backend_starting', 'backend_unavailable', 'backend_timeout']);
+
+    /** Is this gateway error one that waiting can fix? Pure. */
+    function isWaking(error) {
+        if (!error) return false;
+        if (error.code === 'voice_routes_missing' || error.code === 'unauthenticated') return false;
+        if (error.status === 502 || error.status === 503 || error.status === 504) return true;
+        return WAKING_CODES.has(error.code) && error.status !== 400 && error.status !== 401 && error.status !== 403;
+    }
+
+    /** How long to wait before attempt `n` (1-based), honouring Retry-After within 2–15 s. Pure. */
+    function wakeDelay(n, retryAfter) {
+        const ra = Number(retryAfter);
+        if (ra > 0) return Math.min(15000, Math.max(2000, ra * 1000));
+        return [3000, 5000, 8000, 12000][n - 1] || 15000;
+    }
+
+    /** The address to nudge awake: the page's override (`''` turns it off), else the project Space. */
+    function wakeUrl() {
+        const cfg = (global && global.NEXUS_SONIC_VOICE_CONFIG) || {};
+        if (typeof cfg.wakeUrl === 'string') return cfg.wakeUrl.trim();
+        return DEFAULT_WAKE_URL;
+    }
+
     function createGateway(deps) {
         const d = deps || {};
         const doFetch = d.fetch || (global && global.fetch && global.fetch.bind(global));
         const info = d.info || gatewayInfo;
+        const sleep = d.sleep || ((ms) => new Promise((r) => setTimeout(r, ms)));
+        const now = d.now || (() => Date.now());
+        const budget = d.wakeBudgetMs != null ? d.wakeBudgetMs : WAKE_BUDGET_MS;
+        const emit =
+            d.emit ||
+            ((name, detail) => {
+                try {
+                    if (global && global.dispatchEvent && global.CustomEvent)
+                        global.dispatchEvent(new global.CustomEvent(name, { detail }));
+                } catch (_) {}
+            });
+        let lastPing = -Infinity;
+
+        function wake() {
+            const url = d.wakeUrl != null ? d.wakeUrl : wakeUrl();
+            if (!url || !/^https:\/\//i.test(url) || now() - lastPing < WAKE_PING_EVERY_MS) return false;
+            lastPing = now();
+            try {
+                const p = doFetch(url, { method: 'GET', mode: 'no-cors', cache: 'no-store', credentials: 'omit' });
+                if (p && typeof p.catch === 'function') p.catch(() => {});
+            } catch (_) {}
+            return true;
+        }
 
         async function call(method, path, body, opts) {
+            const started = now();
+            let attempt = 0;
+            for (;;) {
+                try {
+                    const out = await callOnce(method, path, body, opts);
+                    if (attempt > 0) emit('sonic-voice-awake', { path, ms: now() - started });
+                    return out;
+                } catch (error) {
+                    attempt += 1;
+                    const wait = wakeDelay(attempt, error && error.retryAfter);
+                    if (!isWaking(error) || now() - started + wait > budget) {
+                        if (attempt > 1 && error) error.waitedMs = now() - started;
+                        throw error;
+                    }
+                    wake();
+                    emit('sonic-voice-waking', { path, attempt, waitMs: wait, elapsedMs: now() - started });
+                    await sleep(wait);
+                }
+            }
+        }
+
+        async function callOnce(method, path, body, opts) {
             const g = info();
             if (!g) {
                 const err = new Error('OllaBridge Cloud is not set up.');
@@ -322,6 +411,10 @@
         installedVoices: () => (installed ? installed.slice() : null),
         gatewayInfo,
         createGateway,
+        isWaking,
+        wakeDelay,
+        wakeUrl,
+        WAKE_BUDGET_MS,
         gateway() {
             if (!sharedGateway) sharedGateway = createGateway();
             return sharedGateway;

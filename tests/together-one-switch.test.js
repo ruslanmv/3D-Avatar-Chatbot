@@ -198,7 +198,10 @@ describe('the wiring', () => {
 
     test('choosing a tile turns the switch on', () => {
         const panel = read('src/features/together/ui/TogetherPanel.js');
-        const choose = panel.slice(panel.indexOf('        choose(id) {'), panel.indexOf('        choose(id) {') + 1200);
+        // TG2 gave choose a second parameter and a Back trail before the switch call.
+        const at = panel.indexOf('        choose(id');
+        expect(at).toBeGreaterThan(-1);
+        const choose = panel.slice(at, at + 2400);
         expect(choose).toMatch(/NEXUS_TOGETHER_SWITCH[\s\S]{0,200}enable\('tile'\)/);
     });
 
