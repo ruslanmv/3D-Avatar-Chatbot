@@ -98,7 +98,7 @@ describe('one quiet line per change, no cards', () => {
         director.state = 'active';
         expect(pill().hidden).toBe(false);
         expect(pill().textContent).toContain('Experiences · Seaside Evening');
-        pill().querySelector('button').click();
+        pill().querySelector('[data-role="end"]').click();
         expect(director.state).toBe('stopped');
         expect(session.active()).toBe(false);
         expect(pill().hidden).toBe(true);

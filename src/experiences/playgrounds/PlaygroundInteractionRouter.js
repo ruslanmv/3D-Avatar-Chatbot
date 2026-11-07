@@ -42,6 +42,8 @@
 }
 #${BAR_ID}::-webkit-scrollbar { display: none; }
 #${BAR_ID}[hidden] { display: none; }
+/* DX3. Folded with the status bar: minimal and hidden show none of it until expanded. */
+html.nexus-status-minimal #${BAR_ID}, html.nexus-status-hidden #${BAR_ID} { display: none; }
 #${BAR_ID}[data-rating="private"] { --mark: #f08fb6; }
 #${BAR_ID} button {
   flex: 0 0 auto; min-height: 32px; padding: .3rem .75rem; border-radius: 999px; white-space: nowrap;

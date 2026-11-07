@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (258 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (260 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -128,8 +128,8 @@ Know the coverage gaps, because they are not intuitive:
 
 ### The gate passes. Keep it that way.
 
-Measured 2026-11-06 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5727 tests in 258 suites, all passing.**
+Measured 2026-11-07 with `npm ci` deps installed: `npm run validate` exits **0**
+— lint clean, format clean, **5752 tests in 260 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -417,6 +417,22 @@ she is switched into. `src/companion/` (IIFE, loaded by `boot.js`) holds them.
   sideways; it now needs `html.nexus-keyboard-open`, which `MobileChatOverlay`
   sets while a text field has focus, and phone landscape lets her viewport
   shrink so the button row fits.
+- **The status bar is quiet and collapsible (DX3).** End is an X
+  (`[data-role="end"]`, `aria-label` "End experience" for an experience, "End
+  <activity>" otherwise, 44 px on touch); End asks first only if the running
+  activity answers `unsavedProgress()` with a sentence (none does yet). Three
+  views, the person's choice, kept in `nexus_status_view`: compact (name,
+  minimise, X), minimal (a chip that expands, plus hide), hidden (one restore
+  dot, `#nexus-activity-restore`). `html.nexus-status-minimal` /
+  `nexus-status-hidden` fold a venue's chips away with it. Thin border,
+  translucent surface, muted accents (Experiences #d6b75e, Life #5aa9e0, Copilot
+  #46c79b), safe-area insets on a phone. **Clean view** is
+  `src/companion/ImmersiveMode.js` (boot list, after ActivityMarks): an eye in
+  the viewport's corner hides the bar, chips, HUD corners, READY badge and (by
+  default, Settings ▸ CLEAN VIEW, `nexus_clean_view_chat`) the chat; one eye in
+  the bottom corner or Escape restores. It is CSS only and names no session — a
+  test greps it — so she and the experience keep going. Not kept across a
+  reload; entering VR or AR leaves it. `tests/companion/status-views.test.js`.
 - **She says one line when it starts or ends (IC3).** `ActivityVoice`: one
   bounded `callLLM` per Together start, newest start wins, epoch-checked,
   nothing while the person is mid-turn or with no model configured, posted like
@@ -514,6 +530,17 @@ KayKit) and retinted light. `src/gltf-viewer/VRWorlds.js` (IIFE, imported by
   `LEARNING_BANNED`. Light stand-ins are cut by recipe
   (`tools/vr/playground-subsets.json`, `node tools/vr/subset-scene.mjs`), not by
   hand. `tests/playgrounds.test.js`; `docs/VR_WORLDS.md` ▸ Playgrounds.
+- **Every place has a picture (PG2).** `preview` (an image under
+  `assets/vr-worlds/`, safe-path checked) and `category` on each place in
+  `worlds.json`; `placesFor` hands the card `image`, `category` and `tint` (sky
+  colours, the card's paint when there is no picture). The pictures are renders,
+  not screenshots: `node tools/vr/render-place-previews.mjs [ids] [--gpu]` (app
+  running on :8080) draws each place full-frame with one pose, one three-quarter
+  camera (`SPEC`, per-place `PLACE_CAMERA` only to mirror the turn), eyes open,
+  and refuses dark, flat or empty frames; 640×480 WebP ≤ 60 KB. Places is a
+  two-column card grid (`.is-venues`, 4:3 art box). Together's stylesheet must
+  stay in the `nexus-bd-together` namespace — a test enforces it.
+  `tests/place-previews.test.js`.
 
 ## Clearing a conversation
 

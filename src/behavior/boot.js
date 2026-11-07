@@ -256,6 +256,8 @@
         'src/companion/DestinationBar.js',
         'src/companion/ContextIntent.js',
         'src/companion/ActivityMarks.js',
+        // DX3. Clean view: hides page overlays on request; touches nothing that runs.
+        'src/companion/ImmersiveMode.js',
         'src/companion/ActivityVoice.js',
         'src/companion/ActivityDirective.js',
         // PG1. What there is to do in a place: presets, templates, then the chips that read both.

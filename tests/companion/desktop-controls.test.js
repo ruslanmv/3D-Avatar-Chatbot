@@ -52,14 +52,17 @@ describe('the conversation status bar', () => {
         return { marks, session };
     }
 
-    test('it is its own row before the composer, full width, and names what End ends', () => {
+    test('it is its own row before the composer, full width, and names what its X ends', () => {
         const { marks } = rig('experiences', 'seaside');
         const shell = document.querySelector('.chat-input-shell');
         expect(shell.firstChild).toBe(marks.pill);
         expect(marks.pill.hidden).toBe(false);
-        const end = marks.pill.querySelector('button');
-        expect(end.textContent).toBe('End experience');
-        expect(end.getAttribute('aria-label')).toBe('End Seaside Evening');
+        // DX3. End is an X: no words on it, the words in its accessible name.
+        const end = marks.pill.querySelector('[data-role="end"]');
+        expect(end.textContent.trim()).toBe('');
+        expect(end.querySelector('svg')).not.toBeNull();
+        expect(end.getAttribute('aria-label')).toBe('End experience');
+        expect(end.title).toBe('End Seaside Evening');
         expect(Marks.CSS).toMatch(/width: 100%/);
         // The desktop rule, at the start of a line; the phone rule (body.nexus-mobile…) is fixed on purpose.
         expect(Marks.CSS).not.toMatch(
@@ -67,10 +70,10 @@ describe('the conversation status bar', () => {
         );
     });
 
-    test('a non-experience activity says End, with the activity in its spoken name', () => {
+    test("a non-experience activity's X is called End, with the activity in its spoken name", () => {
         const { marks } = rig('life', 'relax');
-        const end = marks.pill.querySelector('button');
-        expect(end.textContent).toBe('End');
+        const end = marks.pill.querySelector('[data-role="end"]');
+        expect(end.textContent.trim()).toBe('');
         expect(end.getAttribute('aria-label')).toBe('End relax');
     });
 });
@@ -87,7 +90,7 @@ describe('on a phone the experience is a mini-player above the chat sheet', () =
         expect(Marks.dockOffset(0, 300)).toBeNull();
     });
     test('portrait phones only; landscape and desktop keep it in the composer', () => {
-        expect(Marks.CSS).toMatch(/body\.nexus-mobile\.nexus-portrait #nexus-activity-pill \{[^}]*position: fixed/);
+        expect(Marks.CSS).toMatch(/body\.nexus-mobile\.nexus-portrait #nexus-activity-pill[^{]*\{[^}]*position: fixed/);
         const { marks } = (() => {
             document.body.className = 'nexus-mobile';
             document.body.innerHTML = '<div class="chat-card"></div><div class="chat-input-shell"></div>';

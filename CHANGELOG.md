@@ -3,6 +3,20 @@
 Notable changes, newest first. Batches are named as in the code comments and
 commit subjects (`CLAUDE.md` ▸ Conventions).
 
+## Premium places menu and a quieter status bar (PG2, DX3)
+
+- **Every place has a picture.** Thirteen 640×480 renders of the real places,
+  drawn the same way (one pose, one three-quarter camera, eyes open, no UI) by
+  `tools/vr/render-place-previews.mjs`, replace the cropped screenshots.
+- **Places is a card grid**: picture, name, category and one line, two to a row
+  on desktop and phone; Private's rooms show their pictures too.
+- **The lagoon beach faces the water** (the world was turned 180° about her
+  spot; it had faced empty sand).
+- **The status bar is an X, not a button.** Compact, minimal and hidden views,
+  remembered; one faint dot restores a hidden bar.
+- **Clean view**: an eye in the corner hides the bar, chips, HUD and (by choice)
+  the chat; one control or Escape brings them back. Nothing stops.
+
 ## V4 release — playgrounds (PG1)
 
 - **Five venues**, each a world plus a template of things to do there: Irish
