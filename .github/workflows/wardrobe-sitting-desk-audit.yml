@@ -1,0 +1,68 @@
+name: Wardrobe sitting-desk visual audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: 'Which outfits to capture (catalog generates real Forge jobs)'
+        required: true
+        type: choice
+        options: [looks, catalog, both]
+        default: both
+      max_items:
+        description: 'First N per source, 0 = all'
+        required: false
+        default: '0'
+        type: string
+  schedule:
+    - cron: '30 4 * * 0' # Weekly Sunday 04:30 UTC; full catalog can be slow/costly
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          npm ci
+          python -m pip install -r audits/wardrobe_sitting_desk/requirements.txt
+          python -m playwright install --with-deps chromium
+      - name: Start avatar app
+        run: |
+          npm start > /tmp/wardrobe-app.log 2>&1 &
+          for i in $(seq 1 90); do
+            if curl -fsS http://localhost:8080/ >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/wardrobe-app.log
+          exit 1
+      - name: Capture real Try-On outfits
+        env:
+          AUDIT_SOURCE: ${{ github.event_name == 'schedule' && 'both' || inputs.source }}
+          AUDIT_MAX: ${{ github.event_name == 'schedule' && '0' || inputs.max_items }}
+        run: |
+          python audits/wardrobe_sitting_desk/capture.py \
+            --source "$AUDIT_SOURCE" --max-items "$AUDIT_MAX" \
+            --avatar fem_vroid.vrm \
+            --out audits/wardrobe_sitting_desk/runs/ci-${{ github.run_id }}
+      - name: Upload screenshot evidence, including partial runs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wardrobe-sitting-desk-${{ github.run_id }}
+          path: |
+            audits/wardrobe_sitting_desk/runs/
+            /tmp/wardrobe-app.log
+          retention-days: 14
+          if-no-files-found: warn
