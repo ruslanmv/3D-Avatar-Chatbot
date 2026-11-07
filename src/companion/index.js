@@ -40,6 +40,16 @@
         }
         if (!latest || latest === lastSeen) return;
         lastSeen = latest;
+        // LW3–LW5. The person's own turn moves you within a place ("andiamo in cucina"), answers a
+        // pending trip ("sì") or asks for another place. Their words only — never her reply.
+        const live = global.__NEXUS_COMPANION_LIVE;
+        if (live && live.presence && typeof live.presence.observeUser === 'function') {
+            try {
+                live.presence.observeUser(typeof latest.content === 'string' ? latest.content : '');
+            } catch (error) {
+                console.warn('[Companion] world presence could not read the turn — continuing', error);
+            }
+        }
         // LW1: spatial presence is independent of a conversational topic. In particular,
         // a place entered from conversation must not vanish when the topic changes.
         if (session.active() && /^place-[a-z0-9-]+$/.test(String(session.activity() || ''))) return;
@@ -86,6 +96,18 @@
             destination: destination,
             activity: typeof live.session.activity === 'function' ? live.session.activity() : null,
         };
+        // LW3. Where you are, verified, and the one way she may ask to move. WorldPresence leaves
+        // romantic spots and other places out for Copilot, and everything out in a private room.
+        try {
+            if (live.presence) {
+                const here = live.presence.promptSuffix(destination);
+                if (here) input.presence = here;
+                const offer = live.presence.goOffer(destination);
+                if (offer) input.goOffer = offer;
+            }
+        } catch (_) {
+            /* the prompt goes without it */
+        }
         if (destination === 'copilot') {
             const allowed = gate.allows('copilot', 'copilot', live.session.grants());
             input.tasks = allowed.ok ? (live.memory.read('copilot') || {}).tasks || [] : [];
@@ -160,12 +182,24 @@
             live && live.reactive && typeof live.reactive.consumeReply === 'function'
                 ? live.reactive.consumeReply(text)
                 : String(text == null ? '' : text).replace(/<\s*gesture\b[^>]*\/?>(?:\s*<\s*\/\s*gesture\s*>)?/gi, '');
-        if (!Directive || !live) return afterGesture;
-        return Directive.consume(afterGesture, {
+        // LW3–LW5. <go spot/> and <go place/> come out here too; each is a proposal the presence
+        // layer checks against the person's own turn and the verified spots, never permission.
+        const afterGo =
+            live && live.presence && typeof live.presence.consumeReply === 'function'
+                ? live.presence.consumeReply(afterGesture)
+                : String(afterGesture).replace(/<\s*go\b[^>]*\/?>(?:\s*<\s*\/\s*go\s*>)?/gi, '');
+        if (!Directive || !live) return afterGo;
+        return Directive.consume(afterGo, {
             session: live.session,
             director: live.director,
             panel: panelOf,
             enabled: togetherOn,
+            // LW4. Inside a place, relax / focus / story change her manner here, not the world.
+            inPlace: function (name) {
+                return live.presence && typeof live.presence.setMood === 'function'
+                    ? live.presence.setMood(name)
+                    : { ok: false, why: 'place-active' };
+            },
         });
     }
 
@@ -515,6 +549,18 @@
                 console.warn('[Companion] reactive playground context failed to attach — continuing', error);
             }
         }
+        // LW3–LW5. Living Worlds: where the two of you are, verified by the renderer; moving
+        // within a place, and travel that waits for the person's yes. Event-driven, no loop.
+        let presence = null;
+        const Presence = global.NEXUS_WORLD_PRESENCE;
+        if (Presence && typeof Presence.attach === 'function') {
+            try {
+                presence = Presence.attach({ live: live, global: global });
+                live.presence = presence;
+            } catch (error) {
+                console.warn('[Companion] world presence failed to attach — continuing', error);
+            }
+        }
         const runtime = {
             update: function (dt) {
                 director.update(dt);
@@ -548,6 +594,7 @@
                 if (marks && marks.detach) marks.detach();
                 if (voice && voice.detach) voice.detach();
                 if (reactive && reactive.detach) reactive.detach();
+                if (presence && presence.detach) presence.detach();
                 if (picker && picker.detach) picker.detach();
                 offPanel();
                 offDirector();

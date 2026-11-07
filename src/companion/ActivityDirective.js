@@ -57,12 +57,13 @@ const ActivityDirective = (() => {
     function systemPromptSuffix(enabled, placeActive = false) {
         if (!enabled) return '';
         if (placeActive) {
+            // LW4. Inside a place the same tags mean "here": never a different world.
             return (
-                '\n\nThe person is already in a selected place. Keep that world while relaxing, focusing ' +
-                'or telling a story; adapt your words and manner without trying to start a competing activity. ' +
-                'Do not emit relax, focus, seaside or story activity tags while this place is active. ' +
-                'Do not emit any activity tag while a place is selected; use the existing user-controlled End button to leave. ' +
-                'Never claim you moved, sat, picked up an object or changed a light without a confirmed action.'
+                '\n\nYou are both in a place the person chose, and it stays until they leave it. When they ' +
+                'ask for it or clearly agree, you can change how you are together right here by ending your ' +
+                'reply with one tag: <activity name="relax"/> (quiet company), <activity name="story"/> (a ' +
+                'short story set in this very place) or <activity name="focus"/> (they want to concentrate). ' +
+                'These never change the place. Only one tag; leaving is their End button.'
             );
         }
         return (
@@ -89,6 +90,12 @@ const ActivityDirective = (() => {
         // refuse model activity tags (including End) rather than allow an unrequested exit.
         // The existing user-controlled End button still ends a place normally.
         if (isPlaceActive(session)) {
+            // LW4. Relax, focus and story happen HERE: her manner changes, the world does not.
+            // Seaside and End still never run from her reply while a place is up — End is the
+            // person's own button, and Seaside would replace the place.
+            if (['relax', 'focus', 'story'].includes(call.name) && typeof d.inPlace === 'function') {
+                return d.inPlace(call.name);
+            }
             return { ok: false, why: 'place-active' };
         }
         const panel = d.panel ? d.panel() : null;

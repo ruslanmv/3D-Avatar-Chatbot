@@ -272,6 +272,7 @@
         // PG3. Tap/hover/ray picking of a venue's anchors; dispatches requests the context checks.
         'src/experiences/playgrounds/PlaygroundObjectPicker.js',
         'src/experiences/playgrounds/PlaygroundReactiveContext.js',
+        'src/companion/WorldPresence.js',
         'src/companion/index.js',
     ];
 

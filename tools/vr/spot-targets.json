@@ -17,8 +17,8 @@
           "near": ["^090-sofa-three-seat$"],
           "can": ["stand-near", "look-at"],
           "sees": {
-            "en": "the sofa, the TV and the record player",
-            "it": "il divano, la TV e il giradischi"
+            "en": "the sofa with a throw blanket and cushions on it, and the TV across the room",
+            "it": "il divano con sopra una coperta e dei cuscini, e la TV di fronte"
           },
           "rating": "general"
         },
@@ -32,8 +32,8 @@
           "near": ["^097-record-player-and-stand$"],
           "can": ["stand-near", "look-at"],
           "sees": {
-            "en": "the record player and the guitar on its stand",
-            "it": "il giradischi e la chitarra sul suo supporto"
+            "en": "the record player, the guitar on its stand, a side-table lamp and the dog asleep in its bed",
+            "it": "il giradischi, la chitarra sul supporto, una lampada sul tavolino e il cane che dorme nella sua cuccia"
           },
           "rating": "general"
         },

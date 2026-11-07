@@ -58,6 +58,26 @@ const PromptContext = (() => {
     const GESTURE_OFFER =
         /^If a small gesture fits, you may end a reply with one tag: <gesture intent="smile"\/>, <gesture intent="look_at_user"\/>(?:, <gesture intent="dance"\/>, <gesture intent="stop_dancing"\/>)?(?:, or <gesture intent="look_at_object" target="[a-z0-9-]{1,30}(?:\|[a-z0-9-]{1,30}){0,4}"\/>)?\. It is optional, never shown, and you must not say you did it\.$/;
 
+    /**
+     * LW3–LW5. WorldPresence's tag offer, accepted only in its exact generated shape: two fixed
+     * sentences and ids of [a-z0-9-]. Nothing a manifest, a label or a reply wrote can widen it.
+     */
+    const IDS = '[a-z0-9-]{1,30}(?:\\|[a-z0-9-]{1,30}){0,11}';
+    const GO_SPOT =
+        'When they ask to move within this place, end your reply with one tag: <go spot="' + IDS + '"\\/>\\.';
+    const GO_PLACE =
+        'To suggest going somewhere else, ask them and end with <go place="' +
+        IDS +
+        '"\\/>; nothing changes until they say yes\\.';
+    const GO_OFFER = new RegExp('^(?:' + GO_SPOT + '(?: ' + GO_PLACE + ')?|' + GO_PLACE + ')$');
+
+    /** LW3. The shared moment (where you are, what is here), sanitised and bounded here again. */
+    function presenceLine(src) {
+        return typeof src.presence === 'string' && src.presence
+            ? src.presence.replace(/[<>{}[\]`]/g, '').slice(0, 1100)
+            : '';
+    }
+
     function activityLine(id) {
         return (id && ACTIVITY[id]) || '';
     }
@@ -80,6 +100,8 @@ const PromptContext = (() => {
                 'Do not use romantic, intimate, or personal relationship memories in this conversation.',
                 'Do not claim you can see the screen or the camera unless the app has already said sharing is on.',
                 'You cannot operate the renderer, the filesystem, or a device permission yourself.',
+                // LW3. Where you are still holds at work; WorldPresence leaves romantic spots out.
+                presenceLine(src),
                 activity,
                 STYLE,
             ]
@@ -144,13 +166,17 @@ const PromptContext = (() => {
         // PG3. The gesture planner's offer is the one place a tag may appear, so it is accepted
         // only in its exact generated shape — constants and [a-z0-9-] anchor ids, nothing else.
         if (typeof src.gestureOffer === 'string' && GESTURE_OFFER.test(src.gestureOffer)) parts.push(src.gestureOffer);
+        // LW3–LW5. Where you are, verified (WorldPresence), and the one way she may ask to move.
+        const presence = presenceLine(src);
+        if (presence) parts.push(presence);
+        if (typeof src.goOffer === 'string' && GO_OFFER.test(src.goOffer)) parts.push(src.goOffer);
         if (activity) parts.push(activity);
         parts.push('You cannot operate the renderer, the camera, or the microphone yourself.');
         parts.push(STYLE);
         return parts.join(' ');
     }
 
-    return { suffix: suffix, STYLE: STYLE, ACTIVITY: ACTIVITY, SAME: SAME };
+    return { suffix: suffix, STYLE: STYLE, ACTIVITY: ACTIVITY, SAME: SAME, GO_OFFER: GO_OFFER };
 })();
 
 if (typeof window !== 'undefined') window.NEXUS_COMPANION_PROMPT = PromptContext;

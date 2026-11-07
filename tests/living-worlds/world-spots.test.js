@@ -28,6 +28,19 @@ describe('the measured spot files', () => {
         expect(file.coordinateSpace).toBe('scene');
     });
 
+    test('the measured file says what the authoring targets say (labels, sees, can, rating)', () => {
+        const targets = read('tools/vr/spot-targets.json').scenes;
+        for (const f of spotFiles) {
+            const authored = targets[f.scene];
+            expect(authored).toBeTruthy();
+            for (const t of authored.spots) {
+                const m = f.spots.find((x) => x.id === t.id);
+                expect(m).toBeTruthy();
+                for (const key of ['label', 'sees', 'can', 'rating', 'room', 'near']) expect(m[key]).toEqual(t[key]);
+            }
+        }
+    });
+
     test('every verified spot has measured numbers and the measuring margins', () => {
         for (const file of spotFiles) {
             for (const s of file.spots.filter((x) => x.verified)) {
