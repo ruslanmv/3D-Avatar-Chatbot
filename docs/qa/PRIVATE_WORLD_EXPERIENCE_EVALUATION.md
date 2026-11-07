@@ -66,6 +66,16 @@ Real page; two things **simulated and stated**: the deployment config (`NEXUS_PR
 | `adult.exit('hard')` | Intimate stopped, world removed, one revocation, no room anywhere | same |
 | Page errors | none | none |
 
+**Update, PW8 (2026-11-07).** The operator then declared all 17 public
+built-in avatars adult, through the shipped catalog and Forge's policy. The
+refusal of AvatarSample A in the table above is history, not current
+behaviour.
+
+A re-run through the Together panel started Private on every one of the 17
+catalog avatars, and none showed "not been declared adult". The same
+AvatarSample A bytes loaded as an uploaded `blob:` avatar were refused. That
+run also found the uploaded-file hole fixed in PW8 (`wornUrl`).
+
 ## 4. Real-model walkthroughs
 
 Model: OllaBridge `free-best` (a free routed model), through the app's own OllaBridge provider, paired with a token read from a mode-600 file outside the repository and never printed. The person's lines are fixed; her replies are the model's. Trace columns come from the page, not from her words.

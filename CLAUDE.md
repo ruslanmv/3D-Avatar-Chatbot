@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-07 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **6013 tests in 273 suites, all passing.**
+— lint clean, format clean, **6042 tests in 273 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -655,13 +655,24 @@ and the session carries a server attestation. Start at
 `docs/engine/PRIVATE_WORLD_ENGINE.md`. The verdict and the blockers are in
 `docs/qa/PRIVATE_WORLD_RELEASE_READINESS.md`: not production-ready.
 
-- **The avatar must be declared adult (PW1).** Private mode says the _person_ is
-  an adult; whether the _avatar_ depicts one is Forge's `depictsAdult`.
-  `src/features/together/AvatarAdultDeclaration.js` (boot list) is the one place
-  that is asked. `Intimate.start()` awaits it and refuses with its sentence. It
-  fails closed: external avatar, Forge unreachable, unlisted, `'true'` as a
-  string, a throw. Today only VRoid Female is declared, so Private works only
-  with her. Never make private mode stand in for this.
+- **The avatar must be declared adult (PW1, PW8).** Private mode says the
+  _person_ is an adult; whether the _avatar_ depicts one is the operator's
+  declaration. `src/features/together/AvatarAdultDeclaration.js` (boot list) is
+  the one place that is asked, and `Intimate.start()` awaits it and refuses with
+  its sentence. Two sources count:
+    - `depictsAdult: true` on an item of the shipped public catalog
+      `vendor/avatars/avatars.json` (all 17 declared, PW8), only for a
+      same-origin file at exactly `vendor/avatars/<file>`
+    - Forge's `depictsAdult` (`GET /v1/library`, Forge's
+      `assets/library/policy.json`, all five library avatars declared)
+
+    An installed, uploaded, `blob:`, `data:` or other-origin avatar is never
+    declared by the catalog. A worn look is judged as the controller's
+    `original` only while the URL on screen is exactly the controller's
+    `wornUrl`; before PW8, any `blob:` after a haul passed as the original. It
+    fails closed: a string `'true'`, Forge bytes that differ, a throw. Never
+    make private mode stand in for this.
+
 - **`src/experiences/private/PrivateWorldAdapter.js`** (boot list after
   WorldPresence; `live.privateWorld`) owns no consent of its own. Its gate is
   five answers, each exactly `true` and re-asked at every step:

@@ -83,4 +83,5 @@ for that server side.
 | matrix 8 | an answer after revoke-and-reopen, or in the other variant, was narrated | PW5, `epoch` + world check |
 | matrix 8 | a move landing after Clear was narrated (the public apartment too) | PW5, `talkGen` in `WorldPresence` |
 | real model | half a tag (`[[emote:`) left in a cut-off reply | PW6, `StageDirections` tail + `sanitizeReply` |
+| browser (PW8) | an avatar uploaded after a haul (`blob:`) was judged as the haul's original and opened Private | PW8, controller `wornUrl` |
 | real model | asked for an absent spot, her `<go/>` moved them elsewhere without a yes | PW6, named-but-absent → offer |

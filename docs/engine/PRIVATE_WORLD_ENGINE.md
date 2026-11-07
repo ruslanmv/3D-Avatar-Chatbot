@@ -72,24 +72,33 @@ gate already read it. Intimate's own comment claimed the same gate stood in
 front of it, and nothing checked.
 
 `src/features/together/AvatarAdultDeclaration.js` is now the one place that
-question is asked. It answers yes only for a built-in library avatar whose
-bytes match what Forge publishes and which Forge declares adult. Everything
-else is a no, with a sentence:
+question is asked. A declaration comes from one of two places, both the
+operator's:
 
-- an external or custom avatar
-- an unreachable Forge
-- an avatar Forge does not list
+- **The shipped public catalog** (`vendor/avatars/avatars.json`),
+  `depictsAdult: true` per item. The operator declared all 17 public built-in
+  avatars adult on 2026-11-07 (PW8). It counts only for a same-origin file at
+  exactly `vendor/avatars/<file>` that the catalog lists. The catalog is
+  fetched from its own path, never from the merged avatar list, which also
+  holds installed avatars.
+- **Wardrobe Forge's library** (`depictsAdult` in `GET /v1/library`, from
+  the policy file in the Forge repository; all five library avatars are declared).
+
+Everything else is a no, with a sentence:
+
+- an installed or uploaded avatar, or a `blob:`, `data:` or other-origin URL,
+  even if it is named like a catalog file
 - a declaration of `'true'` (a string)
+- a Forge library avatar whose bytes differ from what Forge publishes
 - anything that throws
 
 A yes is cached for 10 minutes per avatar; a no is never cached.
 `Intimate.start()` awaits it and refuses with the sentence. The avatar judged
-is the one on screen; a worn Forge look (`blob:`) is judged by the base avatar
-the wardrobe snapshotted.
-
-Today the live Forge declares exactly one avatar adult: **VRoid Female**
-(`fem-vroid`). Private therefore works only with her until the operator
-declares others. That is the intended behaviour, not a bug.
+is the one on screen. A worn Forge look is judged as the base avatar the
+wardrobe snapshotted, but only while the URL on screen is exactly the look
+the controller is wearing (`wornUrl`). Before PW8, any `blob:` stood for a
+worn look, so an avatar uploaded after a haul passed as the haul's original.
+The browser check caught it.
 
 ## 3. Interactions
 

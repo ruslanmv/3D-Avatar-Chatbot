@@ -150,6 +150,21 @@ describe('she keeps her size when a look is worn', () => {
         expect(viewer.camera.position.z).toBe(4.391);
     });
 
+    it('PW8: records the exact URL it is wearing, and forgets it on restore and on a failed look', async () => {
+        const viewer = fakeViewer();
+        const wardrobe = controller(viewer);
+        expect(wardrobe.wornUrl).toBeNull();
+        await wardrobe.applyLook(look);
+        expect(wardrobe.wornUrl).toBe(look.vrmUrl);
+        await wardrobe.restore();
+        expect(wardrobe.wornUrl).toBeNull();
+        viewer.avatarManager.setAvatarByUrl = async () => {
+            throw new Error('network');
+        };
+        await expect(wardrobe.applyLook(look)).rejects.toThrow('network');
+        expect(wardrobe.wornUrl).toBeNull();
+    });
+
     it('falls back to the manager framing when there is no camera to hold', async () => {
         const viewer = fakeViewer();
         delete viewer.controls;
