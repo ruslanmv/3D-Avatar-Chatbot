@@ -275,8 +275,11 @@
 
         /** Undo what this module changed and forget the room. Safe to call at any time. */
         function revoke(why) {
+            // Idempotent: one consent exit arrives as adult:exit and then private:session-stop, and
+            // the second must not report a second revocation of a room already forgotten.
+            const had = Boolean(wasOpen || lit || dancing || offer || last || !revoked);
             wasOpen = false;
-            revoked = { why: String(why || 'revoked'), at: now() };
+            if (had) revoked = { why: String(why || 'revoked'), at: now() };
             offer = null;
             last = null;
             try {
@@ -303,7 +306,7 @@
                     /* leaving the world stops it too */
                 }
             }
-            emit('nexus-private-world', { kind: 'revoked', why: revoked.why });
+            if (had) emit('nexus-private-world', { kind: 'revoked', why: revoked.why });
         }
 
         function note(id, ok, why) {
