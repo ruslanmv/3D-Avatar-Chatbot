@@ -36,6 +36,42 @@ const BehaviorRouter = (() => {
         walk_to_anchor: { mouthSafe: false, locomotion: true },
     });
 
+    /**
+     * PG3. Where each companion intent is carried out. The Behavior Director's registry speaks
+     * its own vocabulary (`greeting`, `wave`, `nod_along`, `point`, `idle`, …) and declared none
+     * of this router's names except `celebrate`, `sit` and `stand`. An undeclared name reached
+     * `selector.topK`, which then ranked all 166 clips lexically — and a `smile` came out as
+     * `action_attention_seeking`, an arm-waving bid for attention (seen in the V5 walkthrough).
+     *
+     * So every intent says where it goes:
+     *  - `face`: the VRM expression system, never a body clip — a smile is a face, and a
+     *    full-body clip for it is both wrong and heavier (`actuators.expression`);
+     *  - `gaze`: the procedural animator's gaze override, `'user'` (eye contact) or the
+     *    `gazePoint` the caller resolved from a verified anchor (`actuators.gaze`);
+     *  - `registry`: one of the registry's own declared intents, so the selector narrows to
+     *    clips that were tagged for it;
+     *  - none of the above: no channel — the request answers `fallback`, deterministically.
+     * Nothing here falls through to "any clip at all".
+     */
+    const CHANNELS = Object.freeze({
+        greet: Object.freeze({ registry: 'greeting' }),
+        listen: Object.freeze({ registry: 'nod_along' }),
+        speak: Object.freeze({ registry: 'talk' }),
+        smile: Object.freeze({ face: 'happy', intensity: 0.35, ms: 2200 }),
+        look_at_user: Object.freeze({ gaze: 'user', ms: 2500 }),
+        look_at_object: Object.freeze({ gaze: 'target', ms: 2500 }),
+        // No route on purpose: the library's only clip declaring `point` is
+        // `action_attention_seeking` (arm waving overhead), tagged `point` by the description
+        // drafter's attention→point mapping. A pointing gesture that waves both arms at the
+        // person is worse than none. Re-tag it and rebuild the embeddings, then route this.
+        gesture_toward_object: Object.freeze({}),
+        celebrate: Object.freeze({ registry: 'celebrate' }),
+        relax: Object.freeze({ registry: 'idle' }),
+        sit: Object.freeze({ registry: 'sit' }),
+        stand: Object.freeze({ registry: 'stand' }),
+        walk_to_anchor: Object.freeze({}),
+    });
+
     function distance(a, b) {
         if (!a || !b) return Infinity;
         const dx = (a.x || 0) - (b.x || 0);
@@ -113,17 +149,50 @@ const BehaviorRouter = (() => {
                 }
             }
             let applied = 'fallback';
+            let channel = 'none';
+            const route = CHANNELS[name] || {};
             const host = ctx.director || director;
-            if (host && typeof host.handleIntent === 'function') {
+            const actuators = options_.actuators || {};
+            if (route.face && typeof actuators.expression === 'function') {
+                channel = 'expression';
                 try {
-                    const picked = host.handleIntent({
-                        name: name,
-                        source: 'experience',
-                        objectId: ctx.objectId || null,
-                    });
-                    if (picked) applied = 'behavior';
-                } catch (error) {
+                    if (actuators.expression(route.face, route.intensity, route.ms) === true) applied = 'behavior';
+                } catch (_) {
                     applied = 'fallback';
+                }
+            } else if (route.gaze && typeof actuators.gaze === 'function') {
+                channel = 'gaze';
+                const point = route.gaze === 'user' ? { x: 0, y: 0 } : ctx.gazePoint;
+                const valid =
+                    point &&
+                    Number.isFinite(point.x) &&
+                    Number.isFinite(point.y) &&
+                    Math.abs(point.x) <= 1.5 &&
+                    Math.abs(point.y) <= 1.5;
+                try {
+                    if (valid && actuators.gaze(point, route.ms) === true) applied = 'behavior';
+                } catch (_) {
+                    applied = 'fallback';
+                }
+            } else if (route.registry && host && typeof host.handleIntent === 'function') {
+                channel = 'registry';
+                // A host that can say which clips declare the intent is asked first: an empty
+                // answer is a fallback, never a lexical guess over the whole library.
+                const registry = host.registry;
+                const declared =
+                    registry && typeof registry.forIntent === 'function' ? registry.forIntent(route.registry) : null;
+                if (!declared || declared.length) {
+                    try {
+                        const picked = host.handleIntent({
+                            name: route.registry,
+                            source: 'experience',
+                            companionIntent: name,
+                            objectId: ctx.objectId || null,
+                        });
+                        if (picked) applied = 'behavior';
+                    } catch (error) {
+                        applied = 'fallback';
+                    }
                 }
             }
             const result = {
@@ -131,6 +200,7 @@ const BehaviorRouter = (() => {
                 why: applied === 'behavior' ? 'played' : 'no-clip',
                 name: name,
                 applied: applied,
+                channel: channel,
                 at: now(),
             };
             log.push(result);
@@ -139,6 +209,7 @@ const BehaviorRouter = (() => {
 
         return {
             INTENTS: INTENTS,
+            CHANNELS: CHANNELS,
             request: request,
             safePlacement: safePlacement,
             recent: function () {
@@ -150,7 +221,7 @@ const BehaviorRouter = (() => {
         };
     }
 
-    return { INTENTS: INTENTS, create: create, safePlacement: safePlacement, distance: distance };
+    return { INTENTS: INTENTS, CHANNELS: CHANNELS, create: create, safePlacement: safePlacement, distance: distance };
 })();
 
 if (typeof window !== 'undefined') window.NEXUS_COMPANION_BEHAVIOR = BehaviorRouter;

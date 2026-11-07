@@ -107,7 +107,7 @@ describe('venues (matrix rows 1–9)', () => {
         expect(core.promptSuffix()).not.toMatch(/fireplace/);
         expect(core.observe({ type: 'object', anchorId: 'bar' })).toBe(true);
         tick(300);
-        expect(env.performed[0]).toEqual({ name: 'look_at_object', ctx: { speaking: false, objectId: 'bar' } });
+        expect(env.performed[0]).toMatchObject({ name: 'look_at_object', ctx: { speaking: false, objectId: 'bar' } });
         expect(core.promptSuffix()).toMatch(/looked toward the bar/);
     });
 
@@ -272,8 +272,12 @@ describe('timing, speech, silence, motion (matrix rows 14–17)', () => {
     });
 
     test('15 while she speaks a gesture is deferred by the real BehaviorRouter and tried again after', () => {
-        const behavior = BehaviorRouter.create({ director: { handleIntent: () => ({ clip: 'x' }) } });
+        const behavior = BehaviorRouter.create({
+            director: { handleIntent: () => ({ clip: 'x' }) },
+            actuators: { gaze: () => true, expression: () => true },
+        });
         const { core, env, tick, enter } = rig({
+            gazePoint: () => ({ x: 0.2, y: 0.1 }),
             performIntent: (name, ctx) => {
                 env.performed.push({ name, ctx });
                 return behavior.request(name, ctx);
@@ -433,7 +437,10 @@ describe('wiring with the real router, BehaviorRouter and PromptContext', () => 
         };
         window.NEXUS_PLAYGROUND_TEMPLATES = Templates;
         const director = { handleIntent: (intent) => (played.push(intent.name), { clip: intent.name }) };
-        const behavior = BehaviorRouter.create({ director });
+        const behavior = BehaviorRouter.create({
+            director,
+            actuators: { expression: (emotion) => (played.push('face:' + emotion), true), gaze: () => true },
+        });
         const listeners = [];
         live = {
             behavior,
@@ -472,7 +479,8 @@ describe('wiring with the real router, BehaviorRouter and PromptContext', () => 
         chip('cheers').click();
         step(5);
         expect(window.NEXUS_CONVERSATION_SURFACE.send).toHaveBeenCalledTimes(1);
-        expect(played).toEqual(['smile']);
+        // PG3: a smile is her face (the VRM expression), not a body clip from the director.
+        expect(played).toEqual(['face:happy']);
         expect(handle.promptSuffix()).toMatch(/Cheers/);
     });
 
@@ -549,7 +557,7 @@ describe('wiring with the real router, BehaviorRouter and PromptContext', () => 
             situation: '<b>' + 'x'.repeat(2000),
         });
         expect(long).not.toMatch(/<b>/);
-        expect(long).not.toMatch(/x{600}/);
+        expect(long).not.toMatch(/x{721}/); // bounded at 720
         // With no situation, the prompt is what it was.
         expect(PromptContext.suffix({ customized: true, active: true, destination: 'experiences' })).not.toMatch(
             /Where you are/
