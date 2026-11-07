@@ -39,6 +39,18 @@ user-reachable today.
 | 8 | **Node 24.** These runs used Node 22.23.4; the repository pins 24.x | CI / maintainers | Release evidence should be on the pinned runtime |
 | 9 | **Phone layout.** In the private room on a phone profile the venue chips dock across her face and the Private card covers most of her (evaluation D5) | UX / front end | Fails "overlays readable without covering the avatar"; must be checked on a real phone |
 
+## PUI-1 visual remediation (pending validation)
+
+The first premium UI styling/docking change is committed on this branch. It moves verified
+Private template chips from the floating portrait overlay into the existing Private
+conversation surface, and constrains the Private transcript panel height. See
+[`docs/PRIVATE_PREMIUM_UI_REDESIGN.md`](../PRIVATE_PREMIUM_UI_REDESIGN.md) and
+`tests/private-world/premium-ui.test.js`.
+
+**This does not close blocker 9 yet.** The new Jest test, full validation,
+before/after browser screenshots, accessibility check and real phone/Quest evidence
+must be run and recorded. The actual Private World remains disabled by default.
+
 ## Not blockers, but known
 
 - A forged `nexus-playground-action` can make the room believe a dance
