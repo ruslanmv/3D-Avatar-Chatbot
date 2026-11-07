@@ -188,6 +188,22 @@
         function isPrivate() {
             return Boolean(world && world.rating === 'private');
         }
+        /**
+         * PW. Whether this instance may act in the world that is up. The public instance (no
+         * `privateGate`) refuses every private world, exactly as before. The private-only instance
+         * that PrivateWorldAdapter builds refuses every NON-private world, and a private one too
+         * unless its gate answers true at this very moment — asked again at each step, never
+         * remembered — so a withdrawn consent or a lost attestation stops it mid-conversation.
+         */
+        function blocked() {
+            if (typeof d.privateGate !== 'function') return isPrivate();
+            if (!isPrivate()) return true;
+            try {
+                return d.privateGate() !== true;
+            } catch (_) {
+                return true;
+            }
+        }
         function spotById(id) {
             return spots.find((s) => s.id === id) || null;
         }
@@ -236,7 +252,9 @@
             } else if (pending) {
                 cancelProposal('world-changed');
             }
-            if (isPrivate() || !S || !world.scene) return;
+            // The public instance never even loads a private room's spots; the private one loads
+            // only a private room's (whether it may use them is blocked()'s answer, per step).
+            if ((typeof d.privateGate === 'function') !== isPrivate() || !S || !world.scene) return;
             Promise.resolve(S.load(world.scene))
                 .then((n) => {
                     if (gen !== worldGen || !n) return;
@@ -250,7 +268,7 @@
         /** Move within the place. `source`: 'user' (their words), 'menu' (a tap) or 'assistant'. */
         async function go(id, options) {
             const o = options || {};
-            if (!world || isPrivate()) return { ok: false, why: 'no-place' };
+            if (!world || blocked()) return { ok: false, why: 'no-place' };
             const spot = typeof id === 'string' && ID.test(id) ? spotById(id) : null;
             if (!spot) return { ok: false, why: 'unknown-spot' };
             if (spot.id === spotId) return { ok: true, why: 'already-here', spot: spot.id };
@@ -308,7 +326,7 @@
         }
 
         function propose(target, source) {
-            if (!target || isPrivate()) return false;
+            if (!target || blocked()) return false;
             if (world && (target.world === world.id || target.world === world.base)) return false;
             if (pending && pending.target.id === target.id) return true;
             cancelProposal('replaced');
@@ -376,7 +394,7 @@
                     return intent;
                 }
             }
-            if (!world || isPrivate()) return null;
+            if (!world || blocked()) return null;
             // Her suggestion from the last reply ("shall we go to the sofa?") and their yes to it.
             const suggested = offer && offer.turn === turn - 1 ? offer : null;
             offer = null;
@@ -412,7 +430,7 @@
         /** Her reply: strip <go/> and act on it only within the rules above. Replies only. */
         function consumeReply(text) {
             const { clean: out, call } = parseGo(text);
-            if (!call || call.bad || !world || isPrivate()) return out;
+            if (!call || call.bad || !world || blocked()) return out;
             if (call.spot) {
                 const asked = intent && intent.turn === turn && (intent.kind === 'move' || intent.kind === 'spot');
                 if (asked && !(intent.kind === 'spot' && intent.id === call.spot) && !moving)
@@ -451,7 +469,7 @@
 
         /** The SharedMoment paragraph, sanitised; '' when there is no place up. */
         function promptSuffix(destination) {
-            if (!world || isPrivate() || !sessionActive()) return '';
+            if (!world || blocked() || !sessionActive()) return '';
             const here = spotById(spotId);
             const title = world.title;
             const parts = [];
@@ -491,16 +509,23 @@
                 parts.push('They want a short story set right here: use only what is really in this place.');
             if (mood && mood.name === 'focus')
                 parts.push('They are focusing on something here: stay quiet unless they speak.');
+            // PW. A room that offers its own light changes (the Private World's presets, confirmed
+            // by the renderer) must not also be told lights cannot be switched: the model got both
+            // sentences in one prompt and had to pick one.
+            const cannot =
+                d.lightsOffered === true
+                    ? 'sit, lie down, pick things up or open doors'
+                    : 'sit, lie down, pick things up, open doors or switch lights';
             parts.push(
-                'You can stand near things and look at them. You cannot sit, lie down, pick things up, open doors or ' +
-                    'switch lights yet: if they ask, say so warmly or suggest it — never say it happened.'
+                `You can stand near things and look at them. You cannot ${cannot} yet: if they ask, say so warmly ` +
+                    'or suggest it — never say it happened.'
             );
             return clean(parts.join(' '), 1100);
         }
 
         /** The exact tag offer, built only from verified ids; PromptContext checks its shape. */
         function goOffer(destination) {
-            if (!world || isPrivate() || !sessionActive()) return '';
+            if (!world || blocked() || !sessionActive()) return '';
             const ids = visibleSpots(destination)
                 .map((s) => s.id)
                 .filter((id) => id !== spotId)

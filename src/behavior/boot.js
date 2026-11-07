@@ -274,6 +274,7 @@
         'src/experiences/playgrounds/PlaygroundReactiveContext.js',
         'src/features/together/AvatarAdultDeclaration.js',
         'src/companion/WorldPresence.js',
+        'src/experiences/private/PrivateWorldAdapter.js',
         'src/companion/index.js',
     ];
 

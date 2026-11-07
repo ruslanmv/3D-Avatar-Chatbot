@@ -70,6 +70,13 @@ const PromptContext = (() => {
         IDS +
         '"\\/>; nothing changes until they say yes\\.';
     const GO_OFFER = new RegExp('^(?:' + GO_SPOT + '(?: ' + GO_PLACE + ')?|' + GO_PLACE + ')$');
+    /**
+     * PW. PrivateWorldAdapter's act offer: one fixed sentence and [a-z0-9-] ids, nothing else. Used by
+     * NEXUS_PRIVATE_WORLD.promptChunk for Private's own prompt; this module never emits it.
+     */
+    const ACT_OFFER = new RegExp(
+        '^To offer one of these, end your reply with one tag: <act id="[a-z0-9-]{1,40}(?:\\|[a-z0-9-]{1,40}){0,11}"\\/>; it happens only if they say yes\\.$'
+    );
 
     /** LW3. The shared moment (where you are, what is here), sanitised and bounded here again. */
     function presenceLine(src) {
@@ -176,7 +183,7 @@ const PromptContext = (() => {
         return parts.join(' ');
     }
 
-    return { suffix: suffix, STYLE: STYLE, ACTIVITY: ACTIVITY, SAME: SAME, GO_OFFER: GO_OFFER };
+    return { suffix: suffix, STYLE: STYLE, ACTIVITY: ACTIVITY, SAME: SAME, GO_OFFER: GO_OFFER, ACT_OFFER: ACT_OFFER };
 })();
 
 if (typeof window !== 'undefined') window.NEXUS_COMPANION_PROMPT = PromptContext;

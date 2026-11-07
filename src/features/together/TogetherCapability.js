@@ -692,7 +692,26 @@
      * so ordinary remote-persona chat sends byte-for-byte what it sent before.
      */
     function experienceOverlay() {
-        return privateSystemPromptSuffix().trim();
+        const text = privateSystemPromptSuffix().trim();
+        if (!text) return '';
+        const room = privateRoomChunk();
+        return room ? `${text}\n\n${room}` : text;
+    }
+
+    /**
+     * PW. The room a Private session is in, when it is a premium Private World: where you are,
+     * what is really there, what can happen. Asked for only after Private's own suffix came back
+     * non-empty — so only inside Private's prompt — and PrivateWorldAdapter answers '' unless its
+     * own gate holds. Both of Private's prompt paths (the system suffix and the remote-persona
+     * overlay) go through here, so a remote persona is not left describing a room it cannot see.
+     */
+    function privateRoomChunk() {
+        try {
+            const PW = global && global.NEXUS_PRIVATE_WORLD;
+            return PW && typeof PW.promptChunk === 'function' ? String(PW.promptChunk(global) || '') : '';
+        } catch (_) {
+            return '';
+        }
     }
 
     function choicesModel() {
@@ -900,7 +919,11 @@
         // Private session is open.
         if (canSearch() && !privateSessionActive()) chunks.push(INSTRUCTION);
         const privateSuffix = privateSystemPromptSuffix();
-        if (privateSuffix) chunks.push(privateSuffix.trim());
+        if (privateSuffix) {
+            chunks.push(privateSuffix.trim());
+            const room = privateRoomChunk();
+            if (room) chunks.push(room);
+        }
         return chunks.length ? `\n${chunks.join('\n\n')}\n` : '';
     }
 
