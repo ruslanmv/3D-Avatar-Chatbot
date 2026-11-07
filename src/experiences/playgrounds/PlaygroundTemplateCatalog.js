@@ -58,11 +58,12 @@
         Object.freeze({
             id: 'irish-pub',
             world: 'irish-pub',
-            // PG3. Things in the scene she may look at when the person points one out.
+            // PG3. Things in the scene she may look at when the person points one out: `at` is a point in
+            // the scene GLB's own coordinates (or the place's, for a prop world), measured from its nodes.
             anchors: Object.freeze([
-                { id: 'bar', label: 'bar' },
-                { id: 'table', label: 'table' },
-                { id: 'pendant-lamp', label: 'pendant lamp' },
+                { id: 'bar', label: 'bar counter', at: [0, 1.05, 0], space: 'scene' },
+                { id: 'table', label: 'table', at: [-0.4, 0.8, 2.3], space: 'scene' },
+                { id: 'pendant-lamp', label: 'pendant lamp', at: [-1.6, 2.0, 1.9], space: 'scene' },
             ]),
             title: 'Irish pub',
             category: 'Social',
@@ -85,10 +86,12 @@
         Object.freeze({
             id: 'neon-discoteca',
             world: 'neon-discoteca',
-            // PG3. Things in the scene she may look at when the person points one out.
+            // PG3. Things in the scene she may look at when the person points one out: `at` is a point in
+            // the scene GLB's own coordinates (or the place's, for a prop world), measured from its nodes.
             anchors: Object.freeze([
-                { id: 'dj-booth', label: 'DJ booth' },
-                { id: 'dance-floor', label: 'dance floor' },
+                { id: 'dj-booth', label: 'DJ booth', at: [0, 1.25, -4.3], space: 'scene' },
+                { id: 'dance-floor', label: 'dance floor', at: [0.5, 0.05, -1.2], space: 'scene' },
+                { id: 'booth', label: 'seating booth', at: [5, 0.7, 0], space: 'scene' },
             ]),
             title: 'Neon discoteca',
             category: 'Nightlife',
@@ -106,10 +109,12 @@
         Object.freeze({
             id: 'private-cabaret',
             world: 'private-cabaret',
-            // PG3. Things in the scene she may look at when the person points one out.
+            // PG3. Things in the scene she may look at when the person points one out: `at` is a point in
+            // the scene GLB's own coordinates (or the place's, for a prop world), measured from its nodes.
             anchors: Object.freeze([
-                { id: 'stage', label: 'stage' },
-                { id: 'footlights', label: 'footlights' },
+                { id: 'stage', label: 'stage', at: [0, 1.0, -4.0], space: 'scene' },
+                { id: 'footlights', label: 'footlights', at: [0, 1.0, -1.8], space: 'scene' },
+                { id: 'curtain', label: 'curtain', at: [2.5, 3.0, -2.9], space: 'scene' },
             ]),
             title: 'Private cabaret',
             category: 'Private',
@@ -127,10 +132,12 @@
         Object.freeze({
             id: 'private-stream-studio',
             world: 'private-stream-studio',
-            // PG3. Things in the scene she may look at when the person points one out.
+            // PG3. Things in the scene she may look at when the person points one out: `at` is a point in
+            // the scene GLB's own coordinates (or the place's, for a prop world), measured from its nodes.
             anchors: Object.freeze([
-                { id: 'sofa', label: 'sofa' },
-                { id: 'desk', label: 'desk' },
+                { id: 'sofa', label: 'sofa', at: [0, 0.45, -2.3], space: 'place' },
+                { id: 'desk', label: 'desk', at: [-2.0, 0.8, -1.9], space: 'place' },
+                { id: 'lamp', label: 'studio lamp', at: [1.15, 1.3, -1.4], space: 'place' },
             ]),
             title: 'Private stream studio',
             category: 'Private',
@@ -161,10 +168,12 @@
         Object.freeze({
             id: 'creative-academy',
             world: 'creative-academy',
-            // PG3. Things in the scene she may look at when the person points one out.
+            // PG3. Things in the scene she may look at when the person points one out: `at` is a point in
+            // the scene GLB's own coordinates (or the place's, for a prop world), measured from its nodes.
             anchors: Object.freeze([
-                { id: 'whiteboard', label: 'whiteboard' },
-                { id: 'table', label: 'table' },
+                { id: 'whiteboard', label: 'whiteboard', at: [3.6, 1.6, -2.6], space: 'scene' },
+                { id: 'desk', label: 'study desk', at: [2.7, 0.75, -1.6], space: 'scene' },
+                { id: 'noticeboard', label: 'noticeboard', at: [5.3, 1.6, 0.6], space: 'scene' },
             ]),
             title: 'Creative academy',
             category: 'Learning',
@@ -233,9 +242,18 @@
             if (!t.title || !t.description || !t.category)
                 problems.push(`${where}: needs a title, description, category`);
             if (String(t.description || '').length > 90) problems.push(`${where}: description longer than one line`);
-            for (const a of Array.isArray(t.anchors) ? t.anchors : [])
+            for (const a of Array.isArray(t.anchors) ? t.anchors : []) {
                 if (!a || !/^[a-z0-9-]{1,30}$/.test(String(a.id || '')) || !a.label)
                     problems.push(`${where}: anchor needs an id and a label`);
+                else if (
+                    !Array.isArray(a.at) ||
+                    a.at.length !== 3 ||
+                    !a.at.every((n) => Number.isFinite(n) && Math.abs(n) < 50)
+                )
+                    problems.push(`${where}: anchor ${a.id} needs a point [x, y, z]`);
+                else if (a.space != null && a.space !== 'scene' && a.space !== 'place')
+                    problems.push(`${where}: anchor ${a.id} space must be scene or place`);
+            }
             const actions = Array.isArray(t.actions) ? t.actions : [];
             if (!actions.length || actions.length > 4) problems.push(`${where}: needs one to four actions`);
             for (const m of t.moods || []) if (!moodIds.has(m)) problems.push(`${where}: unknown mood ${m}`);

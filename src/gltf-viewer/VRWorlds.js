@@ -958,6 +958,8 @@
 
         function buildPlace(world, models, anchor, sceneModel) {
             const place = new THREE.Group();
+            // PG3. Named, so the object picker can carry a prop world's anchors through it.
+            place.name = 'vr-world-place';
             place.position.set(anchor.x, 0, anchor.z);
             if (world.ground) {
                 const alpha = fadeTexture();
