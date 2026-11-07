@@ -1,5 +1,7 @@
 # Living Worlds — spatial presence and grounded storytelling (LW1–LW6)
 
+**Related:** [Premium entertainment-first roadmap](LIVING_WORLDS_PREMIUM_ROADMAP.md) · [Claude Code implementation handoff](CLAUDE_LIVING_WORLDS_HANDOFF.md)
+
 > **Status:** Implementation started on the draft PR branch. **Only LW1's conservative place-preservation guard, prompt guidance, and regression tests have been added so far.** This document specifies remaining work; it does not claim POI navigation, a new apartment scene, real object manipulation, or headset QA already exists.
 >
 > Baseline audited: `master` at `1cbf92904e1d44f36ef355b186f5f2f03d11f139` (2026-11-07). Source of the regression: user transcript and code analysis of `ContextIntent`, `ActivityDirective`, `VRWorlds`, and `Places`.
