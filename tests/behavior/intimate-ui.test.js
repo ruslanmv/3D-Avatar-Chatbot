@@ -121,6 +121,9 @@ function setup({ requested = true, verified = true, withAdult = true, connected 
 }
 
 beforeEach(() => {
+    // PW: the page wiring asks AvatarAdultDeclaration before Private starts. These flows are about
+    // the Private tile itself, so their avatar is one declared adult; the refusal is tested below.
+    window.NEXUS_AVATAR_ADULT = { check: async () => ({ ok: true, why: 'declared-adult' }) };
     delete window.NEXUS_BD;
     delete window.NEXUS_SPICY;
     delete window.NEXUS_BD_CONSENT_FLOW;
@@ -130,6 +133,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+    delete window.NEXUS_AVATAR_ADULT;
     delete window.NEXUS_BD;
     delete window.NEXUS_SPICY;
     delete window.NEXUS_BD_CONSENT_FLOW;
@@ -279,6 +283,29 @@ describe('Private tile invariant', () => {
         expect(s.adult.exit).toHaveBeenCalledTimes(1);
         expect(s.director.blackboard.nsfwAllowed).toBe(false);
 
+        bridge.detach();
+    });
+
+    test('PW: Private never starts with an avatar that is not declared adult, and says why', async () => {
+        window.NEXUS_AVATAR_ADULT = {
+            check: async () => ({ ok: false, why: 'Private is off for Model Girl: it has not been declared adult.' }),
+        };
+        const s = setup({ requested: true, verified: true, withAdult: true });
+        const bridge = PlaygroundActivity.installIntimateBridge({ bus: s.bus });
+        const r = await s.panel.activities.get('intimate').start({ input: { id: 'romantic' } });
+        expect(r).toEqual({ ok: false, why: 'Private is off for Model Girl: it has not been declared adult.' });
+        expect(s.adult.enter).not.toHaveBeenCalled();
+        expect(s.panel.activities.get('intimate').active).toBe(false);
+        bridge.detach();
+    });
+
+    test('PW: with the declaration module missing, Private fails closed', async () => {
+        delete window.NEXUS_AVATAR_ADULT;
+        const s = setup({ requested: true, verified: true, withAdult: true });
+        const bridge = PlaygroundActivity.installIntimateBridge({ bus: s.bus });
+        const r = await s.panel.activities.get('intimate').start({ input: { id: 'romantic' } });
+        expect(r.ok).toBe(false);
+        expect(s.adult.enter).not.toHaveBeenCalled();
         bridge.detach();
     });
 

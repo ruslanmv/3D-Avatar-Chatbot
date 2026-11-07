@@ -1507,9 +1507,16 @@ const PlaygroundActivity = (() => {
     }
 
     class Intimate {
-        constructor({ bus, adult, capability } = {}) {
+        constructor({ bus, adult, capability, avatarAdult } = {}) {
             this.__contract = true;
             this.id = 'intimate';
+            /**
+             * PW. Is the avatar on screen declared adult (AvatarAdultDeclaration)? Private mode
+             * says the PERSON is an adult; this says the AVATAR depicts one — a different question
+             * with a different owner. The page wiring below always passes it; a construction
+             * without it (unit tests of the flow alone) is the only case that skips it.
+             */
+            this.avatarAdult = typeof avatarAdult === 'function' ? avatarAdult : null;
             this.title = 'Private';
             this.icon = '🔐';
             this.order = 85;
@@ -2155,6 +2162,20 @@ const PlaygroundActivity = (() => {
             if (!preset) return { ok: false, why: `unknown Private preset: ${String(input.id || '')}` };
             if (!this.adult || typeof this.adult.enter !== 'function')
                 return { ok: false, why: 'Private consent flow is unavailable' };
+            if (this.avatarAdult) {
+                let declared = null;
+                try {
+                    declared = await this.avatarAdult();
+                } catch (_) {
+                    declared = null;
+                }
+                if (!declared || declared.ok !== true)
+                    return {
+                        ok: false,
+                        why: (declared && declared.why) || 'Private can’t confirm this avatar right now.',
+                    };
+                if (this.active) return { ok: false, why: 'Private is already running' };
+            }
             this._installCeiling(preset.maxLevel);
             const entered = this.adult.enter();
             if (!entered || entered.ok === false) {
@@ -2279,6 +2300,12 @@ const PlaygroundActivity = (() => {
                         bus: bus || director.bus,
                         adult: director.adult,
                         capability: () => intimateEligibility(director, window.NEXUS_SPICY),
+                        // PW. Never an adult experience with an avatar not declared adult; with the
+                        // declaration module missing, the answer is no (fail closed).
+                        avatarAdult: () =>
+                            window.NEXUS_AVATAR_ADULT && typeof window.NEXUS_AVATAR_ADULT.check === 'function'
+                                ? window.NEXUS_AVATAR_ADULT.check(window)
+                                : { ok: false, why: 'Private can’t confirm this avatar right now.' },
                     });
                     director.intimate = activity;
                     director.togetherPanel.register(activity);
