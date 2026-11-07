@@ -48,7 +48,7 @@ describe('LW1: keep the selected place stable', () => {
         expect(session.activity()).toBe('place-bedroom');
     });
 
-    test('the model may still end a place via the existing End path', async () => {
+    test('the model cannot end a selected place without verified user action', async () => {
         const session = sessionInPlace();
         const panel = { stopActivity: jest.fn(), activeActivity: { id: 'places' } };
         const result = await Directive.run({ name: 'end' }, {
@@ -57,8 +57,11 @@ describe('LW1: keep the selected place stable', () => {
             director: { status: () => ({ status: 'idle' }) },
             enabled: () => true,
         });
-        expect(result).toEqual({ ok: true, why: 'ended' });
-        expect(panel.stopActivity).toHaveBeenCalledWith('end');
+        expect(result).toEqual({ ok: false, why: 'place-active' });
+        expect(panel.stopActivity).not.toHaveBeenCalled();
+        expect(session.activity()).toBe('place-bedroom');
+        // The existing user-owned End control calls session.end() through ActivityMarks.
+        expect(session.end().ended).toBe(true);
         expect(session.active()).toBe(false);
     });
 
@@ -69,7 +72,7 @@ describe('LW1: keep the selected place stable', () => {
         for (const name of ['relax', 'focus', 'seaside', 'story']) {
             expect(inPlace).not.toContain('<activity name="' + name + '"');
         }
-        expect(inPlace).toContain('<activity name="end"/>');
+        expect(inPlace).not.toContain('<activity name="end"/>');
         expect(Directive.systemPromptSuffix(false, true)).toBe('');
     });
 
