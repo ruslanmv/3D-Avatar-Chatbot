@@ -62,7 +62,7 @@ Prefer official supported APIs, documented content reuse and attribution, safe l
 
 ## Implementation sequence
 
-1. **LW1 — in current PR:** Regression guard against model-generated activity tags replacing a selected place; prose grounding; tests. Audit and tighten.
+1. **LW1 — in current branch:** Regression guard against model-generated activity tags replacing a selected place; prose grounding; tests. Audit and tighten.
 2. **LW2 — source-of-truth apartment:** Measure and verify pixel-flat / bedroom-flat actual room spots separately, with geometry and comfort tests. Do not invent coordinates or capabilities.
 3. **LW3 — physically confirmed navigation:** cached-world re-placement/fade, semantic spot selection, prompt from confirmed spot, safe cancel/rollback.
 4. **LW4 — compelling entertainment interactions:** in-place relax, romance-safe dialogue style, story choice consequences, observed-object reaction, grounded animation, local speech/gesture sync. User enters a meaningful space; the companion shares it rather than narrating fantasy actions.
@@ -80,4 +80,4 @@ Prefer official supported APIs, documented content reuse and attribution, safe l
 - Device-specific coordinates/scene variants; no camera teleport in XR; real desktop/mobile and Quest testing evidence.
 - Separate clean prompts and memory scopes for romance/Private versus Copilot/learning.
 - Third-party entertainment/coding integrations are explicitly marked *research only* until legal/technical approvals and working adapters are verified.
-- Record measured tests, screenshots, device limits, accessibility and asset/license provenance. Keep draft PR until verified; never auto-merge.
+- Record measured tests, screenshots, device limits, accessibility and asset/license provenance. Keep changes on the development branch; do not create a pull request unless the user explicitly requests one.
