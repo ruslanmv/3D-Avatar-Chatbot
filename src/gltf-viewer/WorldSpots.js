@@ -118,6 +118,9 @@
                 rating,
                 position: p,
                 facingDeg: facing,
+                // How a screen must frame her here: 'mid' or 'bust' when the room is too small for
+                // the full-body camera to see her past the walls (measured, never assumed).
+                framing: s.framing === 'bust' || s.framing === 'mid' ? s.framing : 'fullBody',
             });
         }
         return {

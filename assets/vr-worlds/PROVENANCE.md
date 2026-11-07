@@ -74,14 +74,16 @@ shipping.
 | `neon-dispatch.glb`   | Neon Dispatch (cyberpunk street)                   | <https://3dassets.dev/assets/neon-dispatch-starter-scene>                                     | 16 464    | 178    |
 | `roadside-motel.glb`  | Roadside diner and motel stop                      | <https://3dassets.dev/assets/retro-diner-and-roadside-motel-roadside--784bde2d-starter-scene> | 38 582    | 643    |
 
-**LW2 — the apartment.** `pixel-flat-home.glb` (26 936 triangles) is
+**LW2 — the apartment.** `pixel-flat-home.glb` (26 468 triangles) is
 `pixel-flat.glb` above, cut by the recipe `home` in
 `tools/vr/playground-subsets.json` (`node tools/vr/subset-scene.mjs home`): the
-six `resident-*` figures and the crib are dropped. A shared flat for the two of
-you should not have strangers cooking in the kitchen or reading in the bed, and
-she would otherwise talk past people standing beside her. Nothing else changed;
-same CC0 source. It is the scene of the `apartment` place on every device and of
-the phone's `bedroom-light`. Its measured spots are
+six `resident-*` figures, the crib and the exercise bike are dropped. A shared
+flat for the two of you should not have strangers cooking in the kitchen or
+reading in the bed, and she would otherwise talk past people standing beside
+her; the bike stood in the walkway, in the foreground of every kitchen and
+dining view (LW3 walkthrough). Nothing else changed; same CC0 source. It is the
+scene of the `apartment` place on every device and of the phone's
+`bedroom-light`. Its measured spots are
 `assets/vr-worlds/spots/pixel-flat-home.json`, written by
 `tools/vr/measure-spots.mjs`, which records this file's SHA-256 so a changed
 model invalidates them.

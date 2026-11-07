@@ -1017,7 +1017,7 @@
       "place": true,
       "rating": "romantic",
       "tiers": ["mobile", "desktop", "vr"],
-      "triangles": 26936,
+      "triangles": 26468,
       "activities": [],
       "sky": {
         "top": "#3a2c2a",
@@ -1044,8 +1044,8 @@
       "props": [],
       "scene": {
         "src": "scenes/pixel-flat-home.glb",
-        "at": [-0.08, -0.16, 1.169],
-        "turn": 75
+        "at": [0.12, -0.16, 1.189],
+        "turn": 80
       },
       "preview": "previews/apartment.webp",
       "category": "Romantic"
@@ -1097,7 +1097,7 @@
       "place": true,
       "rating": "romantic",
       "tiers": ["mobile"],
-      "triangles": 26936,
+      "triangles": 26468,
       "activities": [],
       "sky": {
         "top": "#3a2c2a",

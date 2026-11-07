@@ -24,6 +24,11 @@
  *      chest and eye height, and floor where the person stands. This is the comfort rule of
  *      VRWorlds.comfortProblem (nothing within 1 m of the person, nothing between the two of
  *      you) checked against the room's real walls and furniture, not only against props;
+ *   5b. keeps the facing only if the screen's camera, 4.7 m away along it (the farthest any
+ *      device frames her), sees all of her: rays from three camera points to five body points,
+ *      feet to head and across her width, cross nothing. Only if no point passes is
+ *      CameraPresets' 'mid' camera tried (knees up, 2.3 m), then 'bust'; the spot records which
+ *      framing it needs. Faces are measured double-sided, so no wall is invisible from behind;
  *   6. stays at least minSpacing from every spot measured before it in the same scene: two spots
  *      on one patch of floor are one place to stand, not two places to go;
  *   7. scores what is left: more open view, the thing visible beside or behind her (so the camera
@@ -48,7 +53,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 
-export const TOOL_VERSION = 1;
+export const TOOL_VERSION = 4;
 /** Her body, for clearance: a 0.32 m radius column, checked at four heights above the floor. */
 const PARAMS = {
     bodyRadius: 0.32,
@@ -62,6 +67,26 @@ const PARAMS = {
     personAt: 1.0,
     personRadius: 0.28,
     facingSteps: 72,
+    /**
+     * Where the screen's camera is, measured in the real app (LW3 walkthrough, 2026-11-07): in
+     * front of her along her facing, 3.8–4.65 m away (desktop 4.49, iPhone 13 3.8, Pixel 7 4.65),
+     * at 0.95 m. The first measurement checked only the VR person's 2.2 m and four of six spots
+     * came out behind a wall or an exercise bike on the screen. Every spot must now be seen from
+     * there: rays from three points around the camera to five points of her body, feet to head.
+     */
+    camera: { distance: 4.7, height: 0.95, lateral: [-0.3, 0, 0.3] },
+    bodyPoints: [0.08, 0.45, 0.85, 1.15, 1.45],
+    /**
+     * A small room cannot be seen whole from 4.7 m: every full-body sightline into the bedroom
+     * crosses a wall. CameraPresets' existing 'bust' framing (≈0.9 m from her upper chest) is the
+     * safe framing for such a spot. Tried only when no full-body point exists; the spot then
+     * records framing 'bust' and the screen switches to it while the view is black.
+     */
+    /** CameraPresets 'mid' (LW3): knees up, ≈2.2 m (1.35 × her height) at chest height. */
+    mid: { distance: 2.3, height: 1.1, lateral: [-0.25, 0, 0.25], bodyPoints: [0.45, 0.85, 1.15, 1.45] },
+    bust: { distance: 1.0, height: 1.3, lateral: [-0.15, 0, 0.15], bodyPoints: [1.0, 1.25, 1.5] },
+    /** Sightlines go to her whole width, not only her centre line: clutter at her side is in frame. */
+    bodyWidth: [-0.3, 0, 0.3],
     /** Two spots closer than this are one place to stand, not two places to go. */
     minSpacing: 1.2,
 };
@@ -85,15 +110,37 @@ const r2 = (v) => Math.round(v * 1000) / 1000;
 window.measure = async (src, spots, P) => {
     const g = await new GLTFLoader().loadAsync('/assets/vr-worlds/' + src);
     const scene = g.scene;
+    // Two copies of the room. SOLID: every face blocks from both sides — her body must never be
+    // inside a wall, and a one-sided wall seen from behind is still a wall to stand in (the first
+    // measurement put her half inside the desk wall). AS DRAWN: the renderer's own materials, for
+    // what the camera sees — a one-sided wall facing away is invisible on screen, which is how a
+    // camera outside a room sees into it. Sightlines are cast from the camera toward her, as it looks.
     scene.updateMatrixWorld(true);
-    let root = scene; while (root.children.length === 1 && !root.children[0].isMesh) root = root.children[0];
-    const meshes = []; scene.traverse((m) => { if (m.isMesh) meshes.push(m); });
+    const drawn = [];
+    scene.traverse((m) => {
+        if (!m.isMesh) return;
+        const v = new THREE.Mesh(m.geometry, [].concat(m.material).map((x) => x.clone()).length > 1
+            ? [].concat(m.material).map((x) => x.clone()) : m.material.clone());
+        v.matrixWorld.copy(m.matrixWorld);
+        v.matrixAutoUpdate = false;
+        drawn.push(v);
+    });
+    scene.traverse((m) => {
+        if (m.material) [].concat(m.material).forEach((x) => { x.side = THREE.DoubleSide; });
+    });
+    scene.updateMatrixWorld(true);
+    let root = scene;
+    while (root.children.length === 1 && !root.children[0].isMesh) root = root.children[0];
+    const meshes = [];
+    scene.traverse((m) => {
+        if (m.isMesh) meshes.push(m);
+    });
     const ray = new THREE.Raycaster();
     const DOWN = new THREE.Vector3(0, -1, 0);
     const topOf = (o) => { let n = o; while (n.parent && n.parent !== root) n = n.parent; return n; };
-    function first(origin, dir, far) {
+    function first(origin, dir, far, set) {
         ray.set(origin, dir); ray.far = far;
-        const hits = ray.intersectObjects(meshes, false);
+        const hits = ray.intersectObjects(set || meshes, false);
         return hits.length ? hits[0] : null;
     }
     // The floor height: the most common height of upward faces hit straight down across the scene.
@@ -139,6 +186,24 @@ window.measure = async (src, spots, P) => {
         }
         return open;
     }
+    function cameraSees(x, y, z, yaw, cfg) {
+        const fx = Math.sin(yaw), fz = Math.cos(yaw);
+        const rx = Math.cos(yaw), rz = -Math.sin(yaw);
+        for (const lat of cfg.lateral) {
+            const cam = new THREE.Vector3(
+                x + fx * cfg.distance + rx * lat,
+                y + cfg.height,
+                z + fz * cfg.distance + rz * lat
+            );
+            for (const h of cfg.bodyPoints) for (const w of P.bodyWidth) {
+                const body = new THREE.Vector3(x + rx * w, y + h, z + rz * w);
+                const dir = body.clone().sub(cam);
+                const len = dir.length();
+                if (first(cam, dir.normalize(), len - 0.2, drawn)) return false;
+            }
+        }
+        return true;
+    }
     const results = [];
     const taken = [];
     for (const spot of spots) {
@@ -148,6 +213,9 @@ window.measure = async (src, spots, P) => {
         const box = new THREE.Box3(); things.forEach((t) => box.expandByObject(t));
         const centre = box.getCenter(new THREE.Vector3());
         let best = null; let tried = 0; const why = { floor: 0, body: 0, room: 0, view: 0 };
+        for (const framing of ['fullBody', 'mid', 'bust']) {
+        if (best) break;
+        const cfg = framing === 'fullBody' ? { ...P.camera, bodyPoints: P.bodyPoints } : P[framing];
         for (let x = box.min.x - P.maxFromThing; x <= box.max.x + P.maxFromThing; x += P.gridStep)
             for (let z = box.min.z - P.maxFromThing; z <= box.max.z + P.maxFromThing; z += P.gridStep) {
                 const dx = Math.max(box.min.x - x, 0, x - box.max.x), dz = Math.max(box.min.z - z, 0, z - box.max.z);
@@ -169,16 +237,18 @@ window.measure = async (src, spots, P) => {
                     if (open < P.viewClear) continue;
                     const px = x + Math.sin(yaw) * P.personAt, pz = z + Math.cos(yaw) * P.personAt;
                     if (floorAt(px, pz) == null || !clearRadius(px, y, pz, P.personRadius)) continue;
+                    if (!cameraSees(x, y, z, yaw, cfg)) continue;
                     // The thing seen past her: angle between "behind her" and the direction to it.
                     const toThing = Math.atan2(centre.x - x, centre.z - z);
                     const behind = yaw + Math.PI;
                     const off = Math.abs(Math.atan2(Math.sin(toThing - behind), Math.cos(toThing - behind)));
                     if (off > (80 * Math.PI) / 180) continue;
                     const score = Math.min(open, 4) + 2 * Math.cos(off) - 0.6 * dist;
-                    if (!best || score > best.score) best = { x, y, z, yaw, open, dist, off, score };
+                    if (!best || score > best.score) best = { x, y, z, yaw, open, dist, off, score, framing };
                 }
                 if (!best) why.view++;
             }
+        }
         if (!best) { results.push({ id: spot.id, verified: false, why: 'no measured point passed (' + JSON.stringify(why) + ' of ' + tried + ')' }); continue; }
         taken.push([best.x, best.z]);
         let deg = Math.round((best.yaw * 180) / Math.PI) % 360; if (deg > 180) deg -= 360;
@@ -187,10 +257,12 @@ window.measure = async (src, spots, P) => {
             verified: true,
             position: [r2(best.x), r2(best.y), r2(best.z)],
             facingDeg: deg,
+            framing: best.framing,
             measured: {
                 fromThingM: r2(best.dist),
                 viewOpenM: r2(best.open),
                 thingOffBehindDeg: Math.round((best.off * 180) / Math.PI),
+                framing: best.framing,
                 candidates: tried,
             },
         });
@@ -251,7 +323,7 @@ try {
             if (s.verified)
                 console.log(
                     `  ✓ ${s.id.padEnd(15)} at (${s.position.join(', ')}) facing ${String(s.facingDeg).padStart(4)}°  ` +
-                        `${s.measured.fromThingM} m from it, ${s.measured.viewOpenM} m open, thing ${s.measured.thingOffBehindDeg}° off behind`
+                        `${s.measured.fromThingM} m from it, ${s.measured.viewOpenM} m open, thing ${s.measured.thingOffBehindDeg}° off behind, ${s.framing}`
                 );
             else {
                 failed += 1;

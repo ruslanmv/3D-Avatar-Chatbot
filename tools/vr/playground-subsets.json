@@ -40,7 +40,7 @@
     "home": {
       "src": "assets/vr-worlds/scenes/pixel-flat.glb",
       "out": "assets/vr-worlds/scenes/pixel-flat-home.glb",
-      "drop": ["-resident-", "-crib$"],
+      "drop": ["-resident-", "-crib$", "-indoor-bicycle$"],
       "budget": 30000
     }
   }

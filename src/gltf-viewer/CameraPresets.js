@@ -41,6 +41,10 @@
     /** Bust camera distance factor (relative to avatar height). */
     const BUST_DISTANCE_FACTOR = 0.55;
 
+    /** LW3. Mid (knees-up) distance and target bias, relative to avatar height. */
+    const MID_DISTANCE_FACTOR = 1.35;
+    const MID_Y_BIAS = 0.18;
+
     /** Bust target Y bias (fraction of avatar height above center). */
     const BUST_Y_BIAS = 0.28;
 
@@ -199,6 +203,22 @@
                 return { position, target };
             }
 
+            case 'mid': {
+                // LW3. Knees up, about 2.2 m away: the framing for a spot in a small room (the
+                // apartment's bedroom, its balcony), where the full-body camera would stand behind
+                // a wall and 'bust' is a face close-up. Same direction as fullBody, so changing
+                // between them never swings around her; tools/vr/measure-spots.mjs measures the
+                // sightline for exactly this distance before a spot may ask for it.
+                const bounds = _getAvatarBounds();
+                if (!bounds) return null;
+                const { size, center } = bounds;
+                const target = center.clone();
+                target.y += size.y * MID_Y_BIAS;
+                const dir = new THREE.Vector3(0, 0.03, 1).normalize();
+                const position = target.clone().add(dir.multiplyScalar(size.y * MID_DISTANCE_FACTOR));
+                return { position, target };
+            }
+
             case 'fullBody': {
                 // Replicate frameObject logic without actually calling it
                 const bounds = _getAvatarBounds();
@@ -242,7 +262,7 @@
     /**
      * Smoothly transition the camera to a preset position.
      *
-     * @param {string} preset  - 'fullBody' | 'bust' | 'face'
+     * @param {string} preset  - 'fullBody' | 'mid' | 'bust' | 'face'
      * @param {number} [durationMs] - Transition duration (auto-detected if omitted)
      * @returns {Promise<string>} Resolves with the preset name when complete
      */

@@ -18,6 +18,7 @@ const spotFiles = fs
     .map((f) => read('assets/vr-worlds/spots/' + f));
 const apartment = Spots.normalize(read('assets/vr-worlds/spots/pixel-flat-home.json'));
 const desktopBedroom = Spots.normalize(read('assets/vr-worlds/spots/bedroom-flat.json'));
+const file = (stem) => read('assets/vr-worlds/spots/' + stem + '.json');
 
 describe('the measured spot files', () => {
     test.each(spotFiles.map((f) => [f.scene, f]))('%s was measured on the model that ships', (scene, file) => {
@@ -53,8 +54,19 @@ describe('the measured spot files', () => {
         expect(apartment.spots.map((s) => s.id)).toEqual(
             expect.arrayContaining(['sofa', 'kitchen', 'bed', 'bathroom', 'desk', 'balcony'])
         );
-        expect(desktopBedroom.spots.map((s) => s.id)).toEqual(['bed', 'sofa']);
+        // Measured double-sided (LW3): the desktop bedroom is tight; its first "sofa" spot was
+        // inside a wall. Only the dressing table has room for her and a view of her.
+        expect(desktopBedroom.spots.map((s) => s.id)).toEqual(['dressing-table']);
         expect(desktopBedroom.spots.some((s) => s.id === 'kitchen' || s.id === 'bathroom')).toBe(false);
+    });
+
+    test('every spot says how a screen must frame her, from the measurement', () => {
+        for (const file of spotFiles)
+            for (const s of file.spots.filter((x) => x.verified)) {
+                expect(['fullBody', 'mid', 'bust']).toContain(s.framing);
+                expect(s.measured.framing).toBe(s.framing);
+            }
+        expect(file('pixel-flat-home').spots.find((s) => s.id === 'sofa').framing).toBe('fullBody');
     });
 
     test('a spot claims nothing she cannot do yet: no sitting, lying or holding', () => {
