@@ -38,6 +38,8 @@ jobs:
           npm ci
           python -m pip install -r audits/wardrobe_sitting_desk/requirements.txt
           python -m playwright install --with-deps chromium
+      - name: Offline unit smoke tests
+        run: python -m unittest discover -s audits/wardrobe_sitting_desk -p 'test_*.py' -v
       - name: Start avatar app
         run: |
           npm start > /tmp/wardrobe-app.log 2>&1 &
