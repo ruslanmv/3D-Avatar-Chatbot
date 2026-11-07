@@ -61,7 +61,7 @@ const ActivityDirective = (() => {
                 '\n\nThe person is already in a selected place. Keep that world while relaxing, focusing ' +
                 'or telling a story; adapt your words and manner without trying to start a competing activity. ' +
                 'Do not emit relax, focus, seaside or story activity tags while this place is active. ' +
-                'Only when they explicitly ask to end may you use <activity name="end"/>. ' +
+                'Do not emit any activity tag while a place is selected; use the existing user-controlled End button to leave. ' +
                 'Never claim you moved, sat, picked up an object or changed a light without a confirmed action.'
             );
         }
@@ -85,9 +85,10 @@ const ActivityDirective = (() => {
         if (d.enabled && !d.enabled()) return { ok: false, why: 'together-off' };
         const session = d.session;
         // LW1: an assistant-suggested context change must not silently replace a user-chosen
-        // environment. Until in-place activities are implemented, refuse rather than pretend
-        // an activity started. Explicit End keeps its existing lifecycle.
-        if (call.name !== 'end' && isPlaceActive(session)) {
+        // environment. Until in-place activities and verified user intent are implemented,
+        // refuse model activity tags (including End) rather than allow an unrequested exit.
+        // The existing user-controlled End button still ends a place normally.
+        if (isPlaceActive(session)) {
             return { ok: false, why: 'place-active' };
         }
         const panel = d.panel ? d.panel() : null;
