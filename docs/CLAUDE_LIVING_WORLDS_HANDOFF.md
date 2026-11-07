@@ -1,12 +1,12 @@
 # CLAUDE CODE HANDOFF — Living Worlds, premium entertainment and grounded storytelling
 
-> PR branch: `feat/living-worlds-spatial-storytelling` (base: `master`). **PR intentionally remains draft until implemented and validated.**
+> Standalone development branch: `feat/living-worlds-spatial-storytelling` (base: `master`). **Do not open or reopen a pull request unless the user explicitly requests one.**
 >
 > Read `CLAUDE.md`, `docs/LIVING_WORLDS.md`, and `docs/LIVING_WORLDS_PREMIUM_ROADMAP.md` completely before modifying code.
 
 ## Paste this task into Claude Code
 
-You are continuing an **existing GitHub PR** in https://github.com/ruslanmv/3D-Avatar-Chatbot . Work on branch `feat/living-worlds-spatial-storytelling`, target `master`, rebase/merge upstream only when safe. Do not push directly to `master` or auto-merge. Begin by auditing the branch and running existing targeted Jest tests. This PR contains implemented **LW1 preservation guards and tests**, plus a detailed staged specification; it does **not** yet contain real room navigation, new player integrations, or final VR validation.
+You are continuing work on an **existing standalone GitHub development branch** in https://github.com/ruslanmv/3D-Avatar-Chatbot . Work on branch `feat/living-worlds-spatial-storytelling` only. Do not open or reopen a pull request, do not merge, and do not push directly to `master` unless the user explicitly asks. Begin by auditing the branch and running existing targeted Jest tests. This branch contains implemented **LW1 preservation guards and tests**, plus a detailed staged specification; it does **not** yet contain real room navigation, new player integrations, or final VR validation.
 
 **Product priority: FIRST premium entertainment and companionship, including opt-in romantic/fan-service and—under existing verified adult-only Private gates—erotic experiences; SECOND learning and productivity.** The mission is a coherent, embodied, responsive character in persistent spatial worlds, not a background carousel or a scripted monologue. Maintain short natural English/Italian replies, emotional nuance without manipulation or pretending to be human, smooth VRM animation, lip sync, user agency, accessibility and private-state isolation.
 
@@ -24,7 +24,7 @@ You are continuing an **existing GitHub PR** in https://github.com/ruslanmv/3D-A
 
 8. Build an entertainment-first **premium experience quality pass**: romantic evening, playful nightclub, peaceful forest and optional user-directed fan-service. Deliver at least 3 meaningfully distinct interactions and 2 choices with observable consequences, with natural concise dialogue and synchronized avatar actions. Preserve existing animation ownership, no competing full-body clips, no duplicate render loop and no forced gestures.
 9. Adult/erotic features must remain **strictly opt-in Private experiences** behind existing eligibility/age, consent and permission controls. No unsolicited escalation, non-consensual behavior, persistent adult content in general UI, leakage to Copilot, surprise media auto-play or disclosure of sensitive interaction records. Keep visible stop/exit and prompt cleanup.
-10. **Future feasibility research only** for adult VR/media demos involving `xnxx.com` and `vrporn.com`. Do not assume public APIs or permission to embed/scrape, do not bypass DRM/paywalls/copyright restrictions, and never expose private chat/capture data. Check site terms, licenses, embed restrictions, legal age controls and supported WebXR playback before coding provider adapters. The core PR must not depend on these sites.
+10. **Future feasibility research only** for adult VR/media demos involving `xnxx.com` and `vrporn.com`. Do not assume public APIs or permission to embed/scrape, do not bypass DRM/paywalls/copyright restrictions, and never expose private chat/capture data. Check site terms, licenses, embed restrictions, legal age controls and supported WebXR playback before coding provider adapters. The core implementation must not depend on these sites.
 11. **Secondary phase:** workplace, study, Wikipedia context and authorized coding/GitHub/GitPilot-style integrations. Use official supported interfaces and proper permissions, verify any tool result before claiming work is complete, cite educational content where needed. Workplace context remains professional and isolated from Private/romantic content. Treat GitPilot as a prospective integration, not an assumed existing API.
 
 ### Existing files / systems to inspect and reuse
@@ -42,7 +42,7 @@ Respect the repository's classic-script/ESM boot pattern, one existing render lo
 - Privacy, age/consent and Private -> Copilot regressions hold; user-typed directives never execute; same one conversation and one avatar throughout.
 - No forced VR camera movement, no accessibility or icon-only Exit regression, reduced-motion support, manual Quest and phone verification (or explicitly documented untested devices).
 - Run targeted Jest suites, full `npm run validate`, browser walkthrough/screenshot tests and review asset license/provenance. Record exact results and follow-up limitations in `docs/LIVING_WORLDS_IMPLEMENTATION_REPORT.md`.
-- Keep PR draft until actual code, evidence, security/consent and hardware tests meet acceptance criteria. **Do not claim future adult media integrations, room navigation or worksite connectors already exist.**
+- Keep all changes on this branch until actual code, evidence, security/consent and hardware tests meet acceptance criteria; do not open a pull request without the user's explicit request. **Do not claim future adult media integrations, room navigation or worksite connectors already exist.**
 
 ### Working style
 
