@@ -183,16 +183,33 @@ const PrivateConversationView = (() => {
   min-height:36px;padding:7px 12px;font-size:.77rem;
   background:rgba(241,158,190,.07);border-color:rgba(241,158,190,.2)
 }
-#${ROW_ID} .nexus-private-card{max-height:min(30vh,230px);padding:10px 12px}
+/* PUI-3. The row is exactly the box it lives in, at every width, and only the transcript
+   scrolls. The first redesign capped the card instead (a third of the viewport, 230px, on a desktop; 174px
+   and a 44dvh row on a phone) and the screenshot harness showed what that costs: on a desktop one
+   reply visible and half the column empty; on a phone the row outgrew the chat sheet, the sheet
+   scrolled, and the heading and the chip rail were cut off its top; in phone landscape the footer
+   with Closer and End was cut off its bottom. Sized to the box, the heading, the chip rail and the
+   footer are fixed and always on screen, and her words get whatever is left (P27's rule, which
+   the mobile block above already states, now for every width). */
+#${ROW_ID}{height:calc(100% - 14px);max-height:calc(100% - 14px)}
+#${ROW_ID} .nexus-private-shell{flex:1 1 auto;min-height:0}
+/* The transcript is the one part allowed to shrink, to nothing if it must: on a 320×568 phone
+   the native sheet gives this row ~150 px, and a transcript minimum pushed the footer, End with
+   it, out of the bottom. End is never the thing that gives way. */
+#${ROW_ID} .nexus-private-card{flex:1 1 auto;min-height:0;max-height:none;padding:10px 12px}
 #${ROW_ID} .nexus-private-log{gap:9px}
 #${ROW_ID} .nexus-private-copy{font-size:.92rem;line-height:1.45}
-#${ROW_ID} .nexus-private-choices{gap:6px;margin-top:8px;padding-top:8px}
+/* Suggested replies are a row of pills, not a stack of full-width buttons: stacked, three of them
+   filled the whole visible card on every phone size and not one line of hers was on screen. They
+   wrap on a wide card and scroll sideways on a narrow one, so they cost one line, not three. */
+#${ROW_ID} .nexus-private-choices{flex-direction:row;flex-wrap:wrap;gap:6px;margin-top:8px;padding-top:8px}
 #${ROW_ID} .nexus-private-choice{
-  min-height:38px;border-radius:11px;padding:8px 11px;
-  border-color:rgba(231,190,210,.18);background:rgba(255,255,255,.045);font-size:.86rem
+  flex:0 1 auto;max-width:100%;min-height:36px;border-radius:999px;padding:7px 13px;
+  border-color:rgba(231,190,210,.18);background:rgba(255,255,255,.045);font-size:.84rem
 }
 #${ROW_ID} .nexus-private-choice:hover,
 #${ROW_ID} .nexus-private-choice:focus-visible{border-color:rgba(241,158,190,.5);background:rgba(241,158,190,.11)}
+#${ROW_ID} .nexus-private-choice:focus-visible{outline:2px solid #f2aec6;outline-offset:2px}
 #${ROW_ID} .nexus-private-bar{
   padding:7px 10px;gap:6px;background:rgba(17,19,27,.88)
 }
@@ -200,14 +217,33 @@ const PrivateConversationView = (() => {
 #${ROW_ID} .nexus-private-btn:focus-visible{outline:2px solid #f2aec6;outline-offset:2px}
 #${ROW_ID} .nexus-private-btn.is-primary{background:rgba(241,158,190,.15);border-color:rgba(241,158,190,.4)}
 #${ROW_ID} .nexus-private-btn.is-secondary{opacity:.8}
+#${ROW_ID} .nexus-private-action-slot #nexus-playground-bar{overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain}
 @media(max-width:767px){
-  #${ROW_ID}{height:auto;max-height:min(44vh,320px);max-height:min(44dvh,320px);margin:6px 0 8px}
-  #${ROW_ID} .nexus-private-shell{flex:0 1 auto;max-height:inherit;width:100%}
-  #${ROW_ID} .nexus-private-card{flex:1 1 auto;min-height:54px;max-height:min(22vh,174px);max-height:min(22dvh,174px)}
+  #${ROW_ID} .nexus-private-choices{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain}
+  #${ROW_ID} .nexus-private-choice{flex:0 0 auto;white-space:nowrap}
   #${ROW_ID} .nexus-private-bar{flex-wrap:nowrap}
   #${ROW_ID} .nexus-private-controls{flex-wrap:nowrap;margin-left:auto}
-  #${ROW_ID} .nexus-private-bar .nexus-private-btn{min-height:40px}
-  #${ROW_ID} #nexus-playground-bar button{min-height:44px}
+}
+/* Touch: 44 px for every control a finger uses, the chips, the replies and Closer / End. */
+@media(pointer:coarse){
+  #${ROW_ID} #nexus-playground-bar button,
+  #${ROW_ID} .nexus-private-choice,
+  #${ROW_ID} .nexus-private-bar .nexus-private-btn{min-height:44px}
+}
+/* A phone, or any short screen (held sideways, the keyboard up): the heading and the chip rail
+   share one line, so a whole row of height goes to the transcript. The native chat sheet decides
+   how tall this box is (MobileChatOverlay; untouched), so every row not spent on chrome is a line
+   of hers. Without :has() support the rail simply takes the next line, the layout above. */
+@media(max-height:560px),(max-width:767px){
+  #${ROW_ID} .nexus-private-shell{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto auto}
+  #${ROW_ID} .nexus-private-heading{grid-column:1 / -1;grid-row:1;padding:6px 10px}
+  #${ROW_ID} .nexus-private-shell:has(.nexus-private-action-slot:not(:empty)) .nexus-private-heading{grid-column:1;border-bottom:0}
+  #${ROW_ID} .nexus-private-shell:has(.nexus-private-action-slot:not(:empty)) .nexus-private-action-slot{grid-column:2;grid-row:1;padding:4px 8px 4px 0}
+  #${ROW_ID} .nexus-private-action-slot{grid-column:1 / -1;grid-row:2}
+  #${ROW_ID} .nexus-private-place{display:none}
+  #${ROW_ID} .nexus-private-card{grid-column:1 / -1;grid-row:3;min-height:0;padding:7px 11px}
+  #${ROW_ID} .nexus-private-soundtrack{grid-column:1 / -1;grid-row:4}
+  #${ROW_ID} .nexus-private-bar{grid-column:1 / -1;grid-row:5;padding:5px 9px}
 }
 @media(max-width:420px){
   #${ROW_ID} .nexus-private-place{max-width:30%}

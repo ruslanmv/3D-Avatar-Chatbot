@@ -84,3 +84,46 @@ describe('Premium Private action rail', () => {
         expect(document.querySelector('.nexus-private-action-slot #nexus-playground-bar')).toBeNull();
     });
 });
+
+describe('PUI-3. the row is the box it lives in; only the transcript gives way', () => {
+    /**
+     * Read from the stylesheet: jsdom has no layout. Each rule below answers a failure the
+     * screenshot harness (tools/qa/private-ui-shots.mjs) measured in a real browser:
+     * desktop showed one reply in a half-empty column, phones lost the heading and chip rail
+     * off the top of the sheet, landscape and the 320 px phone lost Closer / End off the bottom.
+     */
+    const css = () => document.getElementById('nexus-private-conversation-styles').textContent;
+    const premium = () => css().slice(css().indexOf('PUI-3.'));
+
+    test('no viewport-height or pixel cap on the transcript; the row fills its box at every width', () => {
+        view.mount({ scene: 'Private cabaret' });
+        expect(premium()).toMatch(
+            /#nexus-private-conversation-row\{height:calc\(100% - 14px\);max-height:calc\(100% - 14px\)\}/
+        );
+        expect(premium()).toMatch(/\.nexus-private-card\{[^}]*max-height:none/);
+        expect(premium()).not.toMatch(/\.nexus-private-card\{[^}]*max-height:min\(/);
+        expect(premium()).not.toMatch(/#nexus-private-conversation-row\{[^}]*max-height:min\(/);
+    });
+
+    test('the transcript may shrink to nothing; End is never what gives way', () => {
+        view.mount({ scene: 'Private cabaret' });
+        expect(premium()).toMatch(/\.nexus-private-card\{[^}]*min-height:0/);
+        // The footer that holds End keeps flex:0 0 auto from the base sheet; nothing overrides it.
+        expect(css()).toMatch(/\.nexus-private-bar\{[^}]*flex:0 0 auto/);
+        expect(premium()).not.toMatch(/\.nexus-private-bar\{[^}]*(display:none|flex:1)/);
+    });
+
+    test('replies are one row of pills, and touch controls are 44 px', () => {
+        view.mount({ scene: 'Private cabaret' });
+        expect(premium()).toMatch(/\.nexus-private-choices\{flex-direction:row/);
+        expect(premium()).toMatch(/@media\(pointer:coarse\)\{[^}]*#nexus-playground-bar button[^}]*min-height:44px/);
+    });
+
+    test('on a phone or a short screen the heading and the chip rail share one line', () => {
+        view.mount({ scene: 'Private cabaret' });
+        expect(premium()).toMatch(/@media\(max-height:560px\),\(max-width:767px\)\{/);
+        expect(premium()).toMatch(
+            /:has\(\.nexus-private-action-slot:not\(:empty\)\) \.nexus-private-action-slot\{grid-column:2;grid-row:1/
+        );
+    });
+});

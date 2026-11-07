@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (273 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (274 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-07 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **6042 tests in 273 suites, all passing.**
+— lint clean, format clean, **6051 tests in 274 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -721,6 +721,17 @@ and the session carries a server attestation. Start at
 - **The cabaret's spots are measured** (tool v5 adds a top-edge aim for low and
   wide objects): 5 on `cabaret-stage.glb`, 3 on the light variant (curtain
   unverified).
+- **Private's card is sized to its box; only the transcript scrolls (PUI-3).** A
+  private room's chips are the venue router's own bar, moved into
+  `.nexus-private-action-slot` and never floated over her. The row is
+  `calc(100% - 14px)` of the chat history at every width. Heading, chip rail and
+  footer are fixed, the transcript may shrink to zero, and End never gives way.
+  On phones and short screens the heading and the rail share one line. Do not
+  cap the card or the row by viewport height: on phones that cut the chips off
+  the sheet's top and End off its bottom. Check a layout change with
+  `node tools/qa/private-ui-shots.mjs`, which measures her face, the chips, the
+  transcript and End at four sizes. Evidence:
+  `docs/qa/PRIVATE_PREMIUM_UI_VISUAL_QA.md`.
 - **These are client checks, not authorization.** Release needs server-side
   enforcement and age assurance; see the security matrix. Tests:
   `tests/private-world/` (unit, 10 deterministic scenarios, the 20-item matrix,

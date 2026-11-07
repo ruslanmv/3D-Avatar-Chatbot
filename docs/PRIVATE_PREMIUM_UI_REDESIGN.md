@@ -95,7 +95,17 @@ The HTML chips are not visible through an immersive WebXR headset as DOM. Keep t
 - `tests/private-world/premium-ui.test.js`
   - New jsdom checks for hidden private chips before mount, shared toolbar in the Private card, hide-on-teardown, preservation of current pace/End, and general-world docking after transition.
 
-**Test status:** These changes were committed through the GitHub connector. **The Jest suite, formatter, browser screenshot comparison and physical-device tests have not been executed in this session.** They are required before calling this fix validated.
+**Test status (update, 2026-11-07):** These changes were then run.
+
+- **Jest:** the first slice broke two existing tests (P27's 30vh rule, and the playground studio chips). Both are fixed.
+- **Browser:** the screenshot harness (`tools/qa/private-ui-shots.mjs`) found three layout failures and PUI-3 fixed them:
+    - the desktop transcript was capped and half the column was empty
+    - on phones, the heading and chips were cut off the sheet's top
+    - in landscape, End was cut off the bottom
+- **Format and gate:** `npm run format` and `npm run validate` exit 0, and the parity check is OK.
+- **Physical devices:** not tested.
+
+See `docs/qa/PRIVATE_PREMIUM_UI_VISUAL_QA.md`.
 
 ### What this does *not* do
 

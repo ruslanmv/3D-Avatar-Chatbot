@@ -47,9 +47,18 @@ conversation surface, and constrains the Private transcript panel height. See
 [`docs/PRIVATE_PREMIUM_UI_REDESIGN.md`](../PRIVATE_PREMIUM_UI_REDESIGN.md) and
 `tests/private-world/premium-ui.test.js`.
 
-**This does not close blocker 9 yet.** The new Jest test, full validation,
-before/after browser screenshots, accessibility check and real phone/Quest evidence
-must be run and recorded. The actual Private World remains disabled by default.
+**Update (PUI-1 to PUI-3, validated in the browser):** the first slice was run against
+`tools/qa/private-ui-shots.mjs` at desktop, 390×844, 320×568 and landscape (SwiftShader). It
+moved the chips off her face, but it capped the card. On phones that cut the heading and chip rail
+off the sheet's top, and in landscape it cut the footer with End off the bottom. PUI-3 sizes the
+row to its box and keeps heading, chips and footer fixed. With it, her face is clear and End is
+visible at all four sizes, and the desktop shows the whole conversation.
+`npm run validate`: exit 0. Evidence: `docs/qa/PRIVATE_PREMIUM_UI_VISUAL_QA.md`.
+
+**Blocker 9 is narrowed, not closed.** On a phone the transcript gets what the native chat
+sheet leaves: about 87 px at 390×844 and about 39 px at 320×568 in the default sheet state.
+Accessibility (screen reader, contrast) and real phone and Quest evidence are still missing.
+The Private World remains disabled by default.
 
 ## Not blockers, but known
 
