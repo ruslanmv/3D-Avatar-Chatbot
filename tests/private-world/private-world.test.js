@@ -397,3 +397,58 @@ describe('the module has no loop, storage, network writes or capture of its own'
         expect(src).toContain("fetch('assets/vr-worlds/private/private-sanctuary.json')");
     });
 });
+
+describe('PW6. what the real-model walkthrough showed in the Private card', () => {
+    test('a reply the token budget cut inside a tag reaches the card without the half tag', () => {
+        const Capability = require('../../src/features/together/TogetherCapability.js');
+        Object.assign(window, {
+            NEXUS_TOGETHER_SWITCH: { isOn: () => true },
+            NEXUS_SPICY: { usable: () => true },
+            NEXUS_BD: {
+                intimate: { active: true, preset: 'affectionate' },
+                adult: { active: true, level: 1 },
+                blackboard: {},
+            },
+        });
+        try {
+            for (const cut of [
+                "I'm glad you're feeling it too. [[emote:",
+                "I'm glad you're feeling it too. [[emote:\n",
+            ])
+                expect(Capability.sanitizeReply(cut)).toBe("I'm glad you're feeling it too.");
+            expect(Capability.sanitizeReply("I'd love to. I'm already feeling the rhythm. [[emote:")).toBe(
+                "I'd love to. I'm already feeling the rhythm."
+            );
+            expect(Capability.sanitizeReply('Plain words.')).toBe('Plain words.');
+        } finally {
+            for (const k of ['NEXUS_TOGETHER_SWITCH', 'NEXUS_SPICY', 'NEXUS_BD']) delete window[k];
+        }
+    });
+});
+
+describe('PW6. a place that is not here is not a blank cheque', () => {
+    test('they name somewhere absent; her own <go/> to another spot waits for their yes', async () => {
+        const s = setup();
+        await flush();
+        s.core.observeUser('andiamo vicino al pianoforte'); // no piano in the cabaret
+        await flush();
+        expect(s.core.promptSuffix('life')).toMatch(/somewhere that is not in this place/);
+        s.core.consumeReply('Qui non c’è un pianoforte. Andiamo nell’angolo salotto? <go spot="lounge"/>');
+        await flush();
+        expect(s.rt.goToSpot).not.toHaveBeenCalled(); // a suggestion, not a move
+        s.core.observeUser('sì');
+        await flush();
+        await flush();
+        expect(s.rt.spotId).toBe('lounge');
+    });
+
+    test('a plain "let\'s move" still lets her choose, as before', async () => {
+        const s = setup();
+        await flush();
+        s.core.observeUser('spostiamoci un po’');
+        s.core.consumeReply('Andiamo. <go spot="lounge"/>');
+        await flush();
+        await flush();
+        expect(s.rt.spotId).toBe('lounge');
+    });
+});

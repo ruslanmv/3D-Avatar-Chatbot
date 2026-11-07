@@ -813,7 +813,12 @@
             // A sanitiser that throws costs the tidying, never the reply.
             return body;
         }
-        if (!result || !result.markers || !result.markers.length) return body;
+        if (!result || typeof result.text !== 'string') return body;
+        // PW. Markup removed with no movement behind it (an unrecognised payload, a tag the token
+        // budget cut in half) still changed the text. This line used to return `body` whenever there
+        // were no markers, which put back exactly what strip() had taken out — the real-model
+        // walkthrough's "[[emote:" in the card.
+        if (!result.markers || !result.markers.length) return result.text || body;
         // The marker was information: a model that wrote `[smile]` was asking for a smile, and
         // the avatar can do that. Throwing it away would turn a formatting bug into a lost
         // signal. The session owns the emit so the source tag and the fail-soft are the same

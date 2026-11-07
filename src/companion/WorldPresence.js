@@ -433,7 +433,7 @@
                     return intent;
                 }
             }
-            if (local && local.move) intent = { kind: 'move', turn };
+            if (local && local.move) intent = { kind: local.named ? 'move-named' : 'move', turn };
             return intent;
         }
 
@@ -513,6 +513,11 @@
             }
             if (intent && intent.turn === turn && intent.kind === 'move' && others.length)
                 parts.push('They want to move somewhere: pick one spot from the list with them.');
+            if (intent && intent.turn === turn && intent.kind === 'move-named')
+                parts.push(
+                    'They asked for somewhere that is not in this place. Say so simply; you may suggest one ' +
+                        'spot from the list, and you go there only if they say yes.'
+                );
             if (mood && mood.name === 'relax')
                 parts.push('You are relaxing together right here: unhurried, few words, no new topics.');
             if (mood && mood.name === 'story')

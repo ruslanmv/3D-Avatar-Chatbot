@@ -205,6 +205,10 @@ describe("intentOf reads the person's own words", () => {
         expect(Spots.intentOf('andiamo da qualche parte', apartment.spots)).toEqual({ move: true });
     });
     test('a room that is not in this model is never matched', () => {
-        expect(Spots.intentOf('andiamo in cucina', desktopBedroom.spots)).toEqual({ move: true });
+        // No spot is matched; the result also says a place was named (PW6), so her own <go/> to
+        // some other spot is only a suggestion. A plain "let's move" names nothing.
+        expect(Spots.intentOf('andiamo in cucina', desktopBedroom.spots)).toEqual({ move: true, named: true });
+        expect(Spots.intentOf('spostiamoci un po', desktopBedroom.spots)).toEqual({ move: true });
+        expect(Spots.intentOf("let's go to the piano", desktopBedroom.spots)).toEqual({ move: true, named: true });
     });
 });

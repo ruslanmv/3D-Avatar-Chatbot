@@ -160,3 +160,22 @@ describe('a direction written as more than one clause (P33)', () => {
         expect(Stage.strip(long).text).toBe(long);
     });
 });
+
+describe('PW. a tag the token budget cut off is not shown', () => {
+    test.each([
+        ["I'd love to. I'm already feeling the rhythm. [[emote:", "I'd love to. I'm already feeling the rhythm."],
+        [
+            "I'm just enjoying the quiet glow of the lights with you. [[emote:happy",
+            "I'm just enjoying the quiet glow of the lights with you.",
+        ],
+        ['Okay. [[emote:happy 0.8]', 'Okay.'],
+    ])('%j', (reply, shown) => {
+        expect(Stage.strip(reply).text).toBe(shown);
+    });
+
+    test('a closed tag, or brackets she closed herself, are not this rule’s business', () => {
+        expect(Stage.strip('Fine [[emote:happy]] ok').text).toBe('Fine ok');
+        expect(Stage.strip('A [[ b ]] c').text).toBe('A [[ b ]] c');
+        expect(Stage.strip('No tags here.').text).toBe('No tags here.');
+    });
+});
