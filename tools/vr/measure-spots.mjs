@@ -53,7 +53,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 
-export const TOOL_VERSION = 4;
+export const TOOL_VERSION = 5;
 /** Her body, for clearance: a 0.32 m radius column, checked at four heights above the floor. */
 const PARAMS = {
     bodyRadius: 0.32,
@@ -226,11 +226,21 @@ window.measure = async (src, spots, P) => {
                 const y = floorAt(x, z); if (y == null) { why.floor++; continue; }
                 if (!clearRadius(x, y, z, P.bodyRadius)) { why.body++; continue; }
                 // Same room: from her chest, the first thing toward the object is the object.
-                const aim = new THREE.Vector3(centre.x, Math.min(Math.max(centre.y, y + 0.4), y + 1.0), centre.z);
+                // v5: a low or wide thing (a strip of footlights at the stage edge, a curtain) is
+                // missed by a chest-height aim that passes over it, so the nearest point of its top
+                // edge is tried too. Either line reaching it first means the same room.
                 const from = new THREE.Vector3(x, y + 1.0, z);
-                const dir = aim.clone().sub(from).normalize();
-                const hit = first(from, dir, from.distanceTo(aim) + 0.5);
-                if (!hit || !things.includes(topOf(hit.object))) { why.room++; continue; }
+                const near = new THREE.Vector3(
+                    Math.min(Math.max(x, box.min.x), box.max.x),
+                    box.max.y - 0.02,
+                    Math.min(Math.max(z, box.min.z), box.max.z)
+                );
+                const aims = [new THREE.Vector3(centre.x, Math.min(Math.max(centre.y, y + 0.4), y + 1.0), centre.z), near];
+                const sees = aims.some((aim) => {
+                    const hit = first(from, aim.clone().sub(from).normalize(), from.distanceTo(aim) + 0.5);
+                    return Boolean(hit && things.includes(topOf(hit.object)));
+                });
+                if (!sees) { why.room++; continue; }
                 for (let k = 0; k < P.facingSteps; k++) {
                     const yaw = (k / P.facingSteps) * Math.PI * 2;
                     const open = openAlong(x, y, z, yaw);
