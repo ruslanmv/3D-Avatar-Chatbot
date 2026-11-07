@@ -5,6 +5,14 @@ commit subjects (`CLAUDE.md` ▸ Conventions).
 
 ## The same companion, reacting to the place (V5 release, PG3)
 
+- Tap, click or point the VR controller at something in a place (the bar, the DJ
+  booth, the study desk) and she looks at it and remembers you pointed it out.
+- Her smile is a smile now, not an arm-waving clip; glances are real glances.
+- She can join in when asked: "let's dance" starts the venue's own dance, and
+  "let's stop" stops it — only ever through the place's buttons.
+- At Seaside she remembers lighting the lantern together.
+- When a reply fails, the chat says why and what to do (pair again, check the
+  connection, retry, or pick another model).
 - In a playground she responds to what really happened: a smile for Cheers, she
   listens for a story or a quiz, keeps still while a dance clip plays and looks
   back when it stops, and stays quiet through a study block.

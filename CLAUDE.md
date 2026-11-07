@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (261 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (263 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-07 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5780 tests in 261 suites, all passing.**
+— lint clean, format clean, **5810 tests in 263 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -551,6 +551,25 @@ KayKit) and retinted light. `src/gltf-viewer/VRWorlds.js` (IIFE, imported by
   Private's end or Copilot. No loop, clip, timer, storage or network of its own
   — a test greps it. `tests/playground-reactive.test.js`;
   `docs/PLAYGROUND_REACTIVE_CONTEXT_V5_HANDOFF.md` ▸ Implementation.
+- **PG3 production pass: intents are routed, objects are pickable, and she may
+  ask for a gesture.** `BehaviorRouter.CHANNELS` sends each intent to a face, a
+  gaze or a registry intent that really exists. An undeclared name used to rank
+  all 166 clips lexically, so `smile` played `action_attention_seeking`. The
+  actuators (`setEmotion`, `setGazeOverride`, timed and token-guarded) live in
+  `src/companion/index.js`. `gesture_toward_object` is routed nowhere until the
+  arm-waving clip loses its `point` tag. `PlaygroundObjectPicker` (boot list
+  before the reactive context) gives hover/click, tap (≤ 8 px, ≤ 450 ms) and the
+  VR ray (`trySelectRay`) over the template's `anchors`, which now carry `at`
+  and `space`. Seaside's `interaction:completed` is a prompt moment only, with
+  no gesture. The reply may end with one `<gesture intent target/>` (`propose`):
+  allowlisted, anchors only, dance and stop only through the venue's chip,
+  refused in Copilot and private rooms. It is stripped at both `displayText`
+  seams and masked while streaming, and offered through `gestureOffer`, an
+  exact-shape field separate from the sanitised paragraph.
+  `src/features/chat/ChatErrorText.js` turns a failed reply into a fixed
+  sentence with a next step and never echoes the error.
+  `tests/playground-pg3.test.js`, `tests/chat-error-text.test.js`;
+  `docs/V5_PRODUCTION_READINESS.md` holds the evidence and the rollback.
 - **Every place has a picture (PG2).** `preview` (an image under
   `assets/vr-worlds/`, safe-path checked) and `category` on each place in
   `worlds.json`; `placesFor` hands the card `image`, `category` and `tint` (sky

@@ -155,3 +155,13 @@ network call or media permission was added; a test greps the module for each.
 - **Grounded dialogue:** proven only up to the prompt. The test environment has no model configured, so its replies are placeholders.
 - **Which clip plays:** the Behavior Director decides which clip a `smile` intent becomes (in the run: `action_attention_seeking`); tuning that mapping is its registry's job, not this module's.
 - **No LLM planning (the optional phase).**
+
+**Production pass (PG3, same day).** Every limit above except hardware was closed. The results are in `docs/V5_PRODUCTION_READINESS.md`:
+
+- **Row 8:** `ExperienceDirector` emits `interaction:completed`. The lantern or shell becomes a shared moment in the paragraph, still with no gesture.
+- **Rows 2–3:** `PlaygroundObjectPicker` handles hover and click on desktop, tap on touch, and the controller ray in VR.
+- **Grounded dialogue:** five-turn runs against a real OllaBridge model in the pub, discoteca, academy and Seaside.
+- **Clip mapping:** `BehaviorRouter.CHANNELS`, so `smile` is now a face, not `action_attention_seeking`.
+- **Planner:** `<gesture …/>`, allowlisted. Dance and stop run only through the venue's own chip.
+
+Still open: a physical phone, a Quest, a real-model run in a private room, and a clip for `gesture_toward_object`.
