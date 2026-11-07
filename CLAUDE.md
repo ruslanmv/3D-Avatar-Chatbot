@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (260 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (261 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-07 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5750 tests in 260 suites, all passing.**
+— lint clean, format clean, **5780 tests in 261 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -531,6 +531,24 @@ KayKit) and retinted light. `src/gltf-viewer/VRWorlds.js` (IIFE, imported by
   `LEARNING_BANNED`. Light stand-ins are cut by recipe
   (`tools/vr/playground-subsets.json`, `node tools/vr/subset-scene.mjs`), not by
   hand. `tests/playgrounds.test.js`; `docs/VR_WORLDS.md` ▸ Playgrounds.
+- **She reacts to the place and the chips (V5).**
+  `src/experiences/playgrounds/PlaygroundReactiveContext.js` (boot list after
+  the router, before `src/companion/index.js`;
+  `__NEXUS_COMPANION_LIVE.reactive`) observes `nexus-world-shown` and the
+  router's `nexus-playground-action` reports, believes a world only if
+  `vrWorlds.activeId` agrees, an action only if the venue's template lists it,
+  an anchor only from the template's `anchors` — never a payload's `owner`.
+  Reactions go through `BehaviorRouter.request` only (lip-sync deferral reused),
+  ticked inside `NEXUS_EXPERIENCE_RUNTIME`, throttled, cooled down, budgeted,
+  generation-checked; nothing while a dance clip owns her body, only `listen`
+  during a study block, nothing on arrival (ActivityVoice owns that). Only
+  `applied: 'behavior'` is described: one sanitised `situation` paragraph via
+  `PromptContext`, Life/Experiences only, never a private room. Private
+  reactions need `privateOpenNow()` (Intimate + consent flow + private mode +
+  the renderer's `intimate` request), re-checked each step and wiped on
+  Private's end or Copilot. No loop, clip, timer, storage or network of its own
+  — a test greps it. `tests/playground-reactive.test.js`;
+  `docs/PLAYGROUND_REACTIVE_CONTEXT_V5_HANDOFF.md` ▸ Implementation.
 - **Every place has a picture (PG2).** `preview` (an image under
   `assets/vr-worlds/`, safe-path checked) and `category` on each place in
   `worlds.json`; `placesFor` hands the card `image`, `category` and `tint` (sky

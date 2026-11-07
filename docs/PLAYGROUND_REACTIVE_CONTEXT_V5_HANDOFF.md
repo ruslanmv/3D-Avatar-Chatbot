@@ -98,3 +98,60 @@ Never invent counts or claim headset FPS without measurement. Record exact comma
 ## Claude Code execution request
 
 Implement this spec **in follow-up commits on the PR head branch**. Prefer small reviewable commits, add files rather than rewrite working ones, preserve unrelated changes, and keep the PR draft until code, tests and screenshots are complete. No direct push to the base branch, no automatic merge. A green test suite is necessary but not sufficient: demonstrate that a specific observed event causes an allowed, visible behavior and grounded dialogue, and that unauthorized events do not.
+
+---
+
+## Implementation (Claude Code, 2026-11-07)
+
+Implemented on this branch. What was built, where, and what is still not proven.
+
+**Module.** `src/experiences/playgrounds/PlaygroundReactiveContext.js` (IIFE + CommonJS, boot
+list after `PlaygroundInteractionRouter`, before `src/companion/index.js`). `create()` is the pure
+core — injected clock and owners, deterministic; `attach()` wires the real ones. Exposes
+`window.NEXUS_PLAYGROUND_REACTIVE`; the live instance is `__NEXUS_COMPANION_LIVE.reactive`.
+
+**Seams used (all additive).**
+
+| Seam | Change |
+| --- | --- |
+| `ViewerEngine._worldShown` → `nexus-world-shown` | read only; accepted only if `vrWorlds.activeId === id` |
+| `PlaygroundInteractionRouter` | one `report(actionId, phase)` → `nexus-playground-action` (`selected`, `started`, `stopped`, `completed`, `failed`) after the router's own effect; a clip is `started` only when `playClip` resolves true, never after the place changed |
+| `PlaygroundTemplateCatalog` | `anchors` per venue (`{ id, label }`), validated; the only targets `look_at_object` may name |
+| `src/companion/index.js` | `Reactive.attach({ live, behavior })`; `reactive.update(dt)` inside the existing `NEXUS_EXPERIENCE_RUNTIME.update`; detached with the facade; `input.situation` in the Life/Experiences branch of `contextSuffix` |
+| `PromptContext.suffix` | appends `situation` (bounded, re-sanitised) for Life/Experiences; Copilot unchanged |
+| `BehaviorRouter.request` | the only way a reaction runs (→ `NEXUS_BD.handleIntent`); its lip-sync deferral and intent allowlist are reused, not copied |
+
+No render loop, renderer, animation mixer, clip playback, camera write, timer, storage write,
+network call or media permission was added; a test greps the module for each.
+
+**Policy as built.**
+
+- Pub: Cheers → `smile`; A story → `listen`; anchors bar, table, pendant lamp.
+- Discoteca: Music → `listen`; while the Dance clip runs nothing else is requested; when it stops, one `look_at_user`.
+- Academy: Quiz/Explain → `listen`; during Study 25 min only `listen` may run; the paragraph asks for quiet.
+- Cabaret / Studio: A song → `smile`, Pretend show → `smile`, Pretend chat → `listen` — only while `privateOpenNow()` (Intimate active, consent flow active, private mode on, renderer request owned by `intimate`), re-checked every step; never in the prompt; wiped on `private:session-stop`, `adult:exit`, Copilot, world change.
+- A one-shot clip chip (Wave, Take a bow) clears the queue: nothing competes with it.
+- **No arrival reaction.** IC3's `ActivityVoice` already turns her toward the person when a place starts; a second request made her smile twice in the first browser run.
+- Throttle 250 ms (≤ 4 Hz), cooldowns per intent, anti-repeat for her own initiative only, at most 6 a minute, a 4 s staleness limit, generation checks on every report and queued item.
+- Only `applied: 'behavior'` is described to the model; fallbacks, deferrals and refusals are not.
+
+**Evidence.**
+
+- `tests/playground-reactive.test.js` — 30 tests: matrix rows 1–7, 9–11, 13–17, the security list, budget/cooldown, and wiring with the real router, BehaviorRouter and PromptContext.
+- `npm run validate`: exit 0 (counts in the PR description).
+- Headless Chromium (SwiftShader), real app, desktop 1440×860 and iPhone SE emulation:
+  - Pub: Cheers → `smile:behavior`, paragraph "Just now they chose Cheers; you smiled."
+  - Discoteca: Dance → `owning: dance`, and Music during the dance requested nothing; stop → `look_at_user:behavior`.
+  - Academy: Study → no reactions over 6 s, paragraph asks for quiet; Quiz → `listen:behavior`.
+  - A forged private `nexus-world-shown` → ignored.
+  - Copilot → no situation paragraph.
+- Picture: `docs/images/playgrounds/v5-reactive-walkthrough.jpg`.
+
+**Not covered / limits.**
+
+- **Row 8 (Seaside lantern):** Seaside's own director owns its interactions and her reaction to them, so V5 adds nothing there — deliberately, to avoid a duplicate gesture. Nothing feeds Seaside's interactions into the paragraph yet.
+- **Rows 18–20:** no UI was added, so the DX5 layout checks still hold; there is no Quest or physical-phone run.
+- **Rows 2–3 (anchors):** the API is in place but there is no tap-to-select-an-object UI yet. A future picker dispatches `nexus-playground-object` `{ anchorId }` and gets validation for free.
+- **Grounded dialogue:** proven only up to the prompt. The test environment has no model configured, so its replies are placeholders.
+- **Which clip plays:** the Behavior Director decides which clip a `smile` intent becomes (in the run: `action_attention_seeking`); tuning that mapping is its registry's job, not this module's.
+- **No LLM planning (the optional phase).**

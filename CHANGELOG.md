@@ -3,6 +3,17 @@
 Notable changes, newest first. Batches are named as in the code comments and
 commit subjects (`CLAUDE.md` ▸ Conventions).
 
+## The same companion, reacting to the place (V5)
+
+- In a playground she responds to what really happened: a smile for Cheers, she
+  listens for a story or a quiz, keeps still while a dance clip plays and looks
+  back when it stops, and stays quiet through a study block.
+- Her model hears one short, verified paragraph about where she is and what she
+  actually did — never a gesture that did not play, never Copilot, never a
+  private room.
+- Everything is checked against its owner (the renderer, the chip catalogue, the
+  Private experience's own gate); forged events do nothing.
+
 ## Premium places menu and a quieter status bar (PG2, DX3)
 
 - **Every place has a picture.** Thirteen 640×480 renders of the real places,
