@@ -99,6 +99,8 @@
         // P7. Who draws a conversation turn. Before PrivateConversationView, which replaces
         // the drawing while a Private session is running.
         'src/features/chat/ConversationSurface.js',
+        // PG3. One plain sentence for why a reply did not arrive (the error bubble reads it).
+        'src/features/chat/ChatErrorText.js',
         // P14. What a reply says, as opposed to how it asked to be performed. Before
         // TogetherCapability, which consults it at the display seam.
         'src/features/chat/StageDirections.js',
@@ -267,6 +269,8 @@
         'src/experiences/playgrounds/PlaygroundTemplateCatalog.js',
         'src/experiences/playgrounds/PlaygroundInteractionRouter.js',
         // PG3. After the router (whose reports it reads), before the companion that ticks it.
+        // PG3. Tap/hover/ray picking of a venue's anchors; dispatches requests the context checks.
+        'src/experiences/playgrounds/PlaygroundObjectPicker.js',
         'src/experiences/playgrounds/PlaygroundReactiveContext.js',
         'src/companion/index.js',
     ];

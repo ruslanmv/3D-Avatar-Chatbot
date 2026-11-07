@@ -4025,7 +4025,12 @@ async function _handleStreamingResponse(text) {
             accumulated += token;
             if (voiceStream) voiceStream.push(token);
             // Living NPC: hide the ```motion block while it streams in
-            stream.append(window.NEXUS_MOTION ? window.NEXUS_MOTION.maskStreaming(accumulated) : accumulated);
+            // PG3: a <gesture/> tag is masked like a motion block, so neither flashes mid-stream.
+            stream.append(
+                (window.NEXUS_PLAYGROUND_REACTIVE?.maskStreaming || ((t) => t))(
+                    window.NEXUS_MOTION ? window.NEXUS_MOTION.maskStreaming(accumulated) : accumulated
+                )
+            );
         });
 
         _setTyping(false);
@@ -4383,7 +4388,9 @@ function _addErrorWithRetry(originalText, error) {
 
     const textDiv = document.createElement('div');
     textDiv.className = 'message-text';
-    textDiv.textContent = 'Sorry, I encountered an error. ';
+    // PG3: say which failure it was and what to do — a fixed sentence, never the raw error text.
+    const why = window.NEXUS_CHAT_ERROR_TEXT?.describe?.(error) || '';
+    textDiv.textContent = 'Sorry, I encountered an error. ' + (why ? why + ' ' : '');
 
     const retryBtn = document.createElement('button');
     retryBtn.className = 'retry-btn';
