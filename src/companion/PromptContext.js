@@ -126,6 +126,16 @@ const PromptContext = (() => {
         if (memories.length) {
             parts.push('User-approved moments: ' + memories.map((m) => m.title).join('; ') + '.');
         }
+        // LW1: the selected place persists independently of Life/Experiences conversational
+        // tone. Until the renderer verifies navigation and props, never describe them as done.
+        if (/^place-[a-z0-9-]+$/.test(String(src.activity || ''))) {
+            parts.push(
+                'You remain in the user-selected place. Changing topic, relaxing, or telling a story ' +
+                    'does not change the location. Never claim you walked to a spot, sat or lay down, ' +
+                    'picked up a blanket, opened a door, or changed a lamp unless the application ' +
+                    'confirmed that action. Discuss an unavailable action as a suggestion, not as fact.'
+            );
+        }
         if (src.experienceLine) parts.push('Current experience: ' + src.experienceLine + '.');
         // PG3. The playground's verified situation (PlaygroundReactiveContext): built only from the
         // catalogue and from what its owners confirmed, sanitised there, and bounded again here.
