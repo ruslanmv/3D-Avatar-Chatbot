@@ -1,7 +1,7 @@
 /**
  * PG2. Every place by name has a picture, and the Places menu is a grid of venue cards.
  *
- * Held here: each of the thirteen places names a preview that exists, is a 640×480 WebP and is
+ * Held here: each of the fourteen places names a preview that exists, is a 640×480 WebP and is
  * small enough for a menu; the catalogue keeps only safe image paths; `placesFor` hands the card
  * its picture, category and fallback paint; the Places activity passes them on; and the panel
  * draws a card with a 4:3 art box whose picture is decoration — the button's name is the place.
@@ -30,9 +30,9 @@ function webpSize(buf) {
 }
 
 describe('the pictures', () => {
-    test('all thirteen places have one: 640×480 WebP, at most 60 KB, and a category', () => {
+    test('all fourteen places have one: 640×480 WebP, at most 60 KB, and a category', () => {
         expect(problems).toEqual([]);
-        expect(named.length).toBe(13);
+        expect(named.length).toBe(14); // LW2 added the apartment
         for (const w of named) {
             expect(`${w.id}: ${w.preview}`).toBe(`${w.id}: previews/${w.id}.webp`);
             expect(w.category).toMatch(/^[A-Z]/);

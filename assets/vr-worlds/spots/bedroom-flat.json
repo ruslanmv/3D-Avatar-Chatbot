@@ -1,0 +1,113 @@
+{
+  "schemaVersion": 1,
+  "scene": "scenes/bedroom-flat.glb",
+  "sha256": "0bec12c1e79f431fea65a65403e90396f7dd3bf7dc010cb2d1a512a4a5c87179",
+  "tool": {
+    "name": "tools/vr/measure-spots.mjs",
+    "version": 1,
+    "params": {
+      "bodyRadius": 0.32,
+      "bodyHeights": [0.12, 0.55, 1.05, 1.55],
+      "gridStep": 0.1,
+      "minFromThing": 0.3,
+      "maxFromThing": 1.3,
+      "floorTolerance": 0.06,
+      "viewClear": 2.2,
+      "viewHeights": [0.95, 1.5],
+      "personAt": 1,
+      "personRadius": 0.28,
+      "facingSteps": 72,
+      "minSpacing": 1.2
+    }
+  },
+  "coordinateSpace": "scene",
+  "floorY": 0.06,
+  "title": {
+    "en": "the bedroom",
+    "it": "la camera da letto"
+  },
+  "spots": [
+    {
+      "id": "bed",
+      "label": {
+        "en": "by the bed",
+        "it": "vicino al letto"
+      },
+      "room": "bedroom",
+      "near": ["^009-double-bed-upholstered$"],
+      "sees": {
+        "en": "the upholstered bed with cushions and a folded throw blanket",
+        "it": "il letto imbottito con i cuscini e una coperta piegata"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "romantic",
+      "verified": true,
+      "position": [-3.605, 0.06, 0.935],
+      "facingDeg": -40,
+      "measured": {
+        "fromThingM": 0.41,
+        "viewOpenM": 6,
+        "thingOffBehindDeg": 20,
+        "candidates": 1302
+      }
+    },
+    {
+      "id": "dressing-table",
+      "label": {
+        "en": "by the dressing table",
+        "it": "vicino alla toeletta"
+      },
+      "room": "bedroom",
+      "near": ["^021-dressing-table$"],
+      "sees": {
+        "en": "the dressing table and its round mirror",
+        "it": "la toeletta con lo specchio rotondo"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": false,
+      "why": "no measured point passed ({\"floor\":429,\"body\":187,\"room\":77,\"view\":1} of 694)"
+    },
+    {
+      "id": "sofa",
+      "label": {
+        "en": "by the sofa",
+        "it": "vicino al divano"
+      },
+      "room": "living-room",
+      "near": ["^024-sofa-three-seat$"],
+      "sees": {
+        "en": "the sofa, the coffee table and the armchair",
+        "it": "il divano, il tavolino e la poltrona"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": true,
+      "position": [4.55, 0.06, -0.51],
+      "facingDeg": 30,
+      "measured": {
+        "fromThingM": 0.977,
+        "viewOpenM": 6,
+        "thingOffBehindDeg": 39,
+        "candidates": 1205
+      }
+    },
+    {
+      "id": "bookcase",
+      "label": {
+        "en": "by the bookcase",
+        "it": "vicino alla libreria"
+      },
+      "room": "living-room",
+      "near": ["^031-bookcase-5-shelf$"],
+      "sees": {
+        "en": "the bookcase and the arc floor lamp",
+        "it": "la libreria e la lampada ad arco"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": false,
+      "why": "no measured point passed ({\"floor\":194,\"body\":234,\"room\":11,\"view\":13} of 452)"
+    }
+  ]
+}

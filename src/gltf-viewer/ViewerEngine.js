@@ -34,6 +34,7 @@ import './XRSplash.js';
 // XL4. Same pattern: publishes window.NEXUS_XR_ENTRY_TRACE (every step of entering VR, recorded).
 import './XREntryTrace.js';
 // VW1. Same pattern: publishes window.NEXUS_VR_WORLDS (places for VR: panorama, props, light).
+import './WorldSpots.js';
 import './VRWorlds.js';
 
 export class ViewerEngine {
