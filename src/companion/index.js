@@ -99,6 +99,8 @@
             try {
                 const situation = live.reactive && live.reactive.promptSuffix ? live.reactive.promptSuffix() : '';
                 if (situation) input.situation = situation;
+                const offer = live.reactive && live.reactive.plannerOffer ? live.reactive.plannerOffer() : '';
+                if (offer) input.gestureOffer = offer;
             } catch (_) {
                 /* the prompt goes without it */
             }
@@ -143,13 +145,69 @@
     function consume(text) {
         const Directive = global.NEXUS_COMPANION_DIRECTIVE;
         const live = global.__NEXUS_COMPANION_LIVE;
-        if (!Directive || !live) return text;
-        return Directive.consume(text, {
+        // PG3. The gesture planner's tag comes out here too — the one seam that covers the
+        // bubble, the transcript, the VR forward and TTS — and is only a proposal after that.
+        const afterGesture =
+            live && live.reactive && typeof live.reactive.consumeReply === 'function'
+                ? live.reactive.consumeReply(text)
+                : String(text == null ? '' : text).replace(/<\s*gesture\b[^>]*\/?>(?:\s*<\s*\/\s*gesture\s*>)?/gi, '');
+        if (!Directive || !live) return afterGesture;
+        return Directive.consume(afterGesture, {
             session: live.session,
             director: live.director,
             panel: panelOf,
             enabled: togetherOn,
         });
+    }
+
+    /**
+     * PG3. The two actuators BehaviorRouter's face and gaze channels use. Small on purpose:
+     * each writes one thing the app already exposes, keeps a token so a later writer wins,
+     * and never touches the mouth shapes lip-sync drives.
+     */
+    function actuatorsFor(g) {
+        let faceToken = 0;
+        let gazeToken = 0;
+        return {
+            expression(emotion, intensity, ms) {
+                const loader = g.NEXUS_VIEWER && g.NEXUS_VIEWER.avatarManager && g.NEXUS_VIEWER.avatarManager.vrmLoader;
+                if (!loader || typeof loader.setEmotion !== 'function') return false;
+                const mine = ++faceToken;
+                loader.setEmotion(emotion, Math.max(0, Math.min(0.6, Number(intensity) || 0.3)));
+                g.setTimeout(
+                    () => {
+                        if (mine !== faceToken) return;
+                        try {
+                            loader.setEmotion('neutral', 0);
+                        } catch (_) {
+                            /* the face settles on its own */
+                        }
+                    },
+                    Number(ms) || 2000
+                );
+                return true;
+            },
+            gaze(point, ms) {
+                const animator = g.NEXUS_PROCEDURAL_ANIMATOR;
+                const xr = g.NEXUS_VIEWER && g.NEXUS_VIEWER.renderer && g.NEXUS_VIEWER.renderer.xr;
+                if (!animator || typeof animator.setGazeOverride !== 'function') return false;
+                if (xr && xr.isPresenting) return false; // the VR gaze controller owns her head
+                const mine = ++gazeToken;
+                animator.setGazeOverride({ x: point.x, y: point.y });
+                g.setTimeout(
+                    () => {
+                        if (mine !== gazeToken) return;
+                        try {
+                            animator.setGazeOverride(null);
+                        } catch (_) {
+                            /* the animator resumes tracking on its own */
+                        }
+                    },
+                    Number(ms) || 2500
+                );
+                return true;
+            },
+        };
     }
 
     function attach(options) {
@@ -209,6 +267,11 @@
         });
         const behavior = Behavior.create({
             director: options_.behaviorDirector || global.NEXUS_BD || null,
+            // PG3. A smile is a face and a look is a gaze: the VRM expression bridge and the
+            // procedural animator's gaze override, both of which already exist. Each is held for
+            // a moment and handed back only if nothing else took it since; in the headset the
+            // VR gaze controller owns her head, so the gaze declines and the request falls back.
+            actuators: actuatorsFor(global),
         });
         const registry = Registry.create();
         const scene = Scene.create({ validate: Manifest.validate });
@@ -424,10 +487,20 @@
         // reacts through this same BehaviorRouter, and lends the prompt one grounded paragraph.
         // Ticked from the runtime below, inside the render loop that already exists.
         let reactive = null;
+        let picker = null;
+        const Picker = global.NEXUS_PLAYGROUND_PICKER;
+        if (Picker && typeof Picker.attach === 'function') {
+            try {
+                picker = Picker.attach({ global: global });
+                live.picker = picker;
+            } catch (error) {
+                console.warn('[Companion] playground object picker failed to attach — continuing', error);
+            }
+        }
         const Reactive = global.NEXUS_PLAYGROUND_REACTIVE;
         if (Reactive && typeof Reactive.attach === 'function') {
             try {
-                reactive = Reactive.attach({ live: live, behavior: behavior, global: global });
+                reactive = Reactive.attach({ live: live, behavior: behavior, global: global, picker: picker });
                 live.reactive = reactive;
             } catch (error) {
                 console.warn('[Companion] reactive playground context failed to attach — continuing', error);
@@ -439,7 +512,10 @@
                 if (reactive) reactive.update(dt);
             },
             trySelect: function (raycaster) {
-                return director.trySelect(raycaster);
+                // The experience's own objects first (Seaside's lantern); then a venue's anchors
+                // on the same controller ray — a request the reactive context still validates.
+                if (director.trySelect(raycaster)) return true;
+                return Boolean(picker && raycaster && raycaster.ray && picker.trySelectRay(raycaster.ray));
             },
             bindViewer: function (host) {
                 return director.bindViewer(host);
@@ -463,6 +539,7 @@
                 if (marks && marks.detach) marks.detach();
                 if (voice && voice.detach) voice.detach();
                 if (reactive && reactive.detach) reactive.detach();
+                if (picker && picker.detach) picker.detach();
                 offPanel();
                 offDirector();
                 if (global.removeEventListener) {

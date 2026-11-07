@@ -55,6 +55,9 @@ const PromptContext = (() => {
         'scene-tale': 'They chose Scene Tale, a story you play through together.',
     });
 
+    const GESTURE_OFFER =
+        /^If a small gesture fits, you may end a reply with one tag: <gesture intent="smile"\/>, <gesture intent="look_at_user"\/>(?:, <gesture intent="dance"\/>, <gesture intent="stop_dancing"\/>)?(?:, or <gesture intent="look_at_object" target="[a-z0-9-]{1,30}(?:\|[a-z0-9-]{1,30}){0,4}"\/>)?\. It is optional, never shown, and you must not say you did it\.$/;
+
     function activityLine(id) {
         return (id && ACTIVITY[id]) || '';
     }
@@ -127,7 +130,10 @@ const PromptContext = (() => {
         // PG3. The playground's verified situation (PlaygroundReactiveContext): built only from the
         // catalogue and from what its owners confirmed, sanitised there, and bounded again here.
         if (typeof src.situation === 'string' && src.situation)
-            parts.push(src.situation.replace(/[<>{}[\]`]/g, '').slice(0, 520));
+            parts.push(src.situation.replace(/[<>{}[\]`]/g, '').slice(0, 720));
+        // PG3. The gesture planner's offer is the one place a tag may appear, so it is accepted
+        // only in its exact generated shape — constants and [a-z0-9-] anchor ids, nothing else.
+        if (typeof src.gestureOffer === 'string' && GESTURE_OFFER.test(src.gestureOffer)) parts.push(src.gestureOffer);
         if (activity) parts.push(activity);
         parts.push('You cannot operate the renderer, the camera, or the microphone yourself.');
         parts.push(STYLE);

@@ -231,6 +231,21 @@ const ExperienceDirector = (() => {
             if (!current || typeof current.interact !== 'function') return { ok: false, why: 'no-experience' };
             if (life.status !== 'active') return { ok: false, why: 'not-active' };
             const result = current.interact(objectId, context());
+            // PG3. Say what happened, once the experience has done it, so the conversation can
+            // know about a shared moment without anybody adding a second gesture for it: the
+            // experience already asked for its own (`result.behavior`). Only a confirmed result.
+            if (result && result.ok && !result.exit)
+                emit('interaction:completed', {
+                    id: life.experienceId || null,
+                    objectId: String(objectId),
+                    line: typeof (result.state && result.state.line) === 'string' ? result.state.line : null,
+                    state: result.state
+                        ? {
+                              lanternLit: result.state.lanternLit === true,
+                              shellTouched: result.state.shellTouched === true,
+                          }
+                        : null,
+                });
             if (result && result.exit)
                 return stop('exit').then(function () {
                     return { ok: true, exit: true };

@@ -125,6 +125,49 @@
         return clean(String(label || '').replace(/[^\p{L}\p{N}\s'’-]/gu, ' '), 40);
     }
 
+    /**
+     * PG3. The model's half of the planner: at most one `<gesture intent="…" target="…"/>` in a
+     * reply. Every tag is stripped — the person never sees or hears one — and only the first is
+     * kept, as a proposal. Pure. Nothing here decides whether it runs; `propose` does.
+     */
+    const GESTURE_TAG = /<\s*gesture\b([^>]*?)\/?>(?:\s*<\s*\/\s*gesture\s*>)?/gi;
+    const PLANNER_INTENTS = Object.freeze([
+        'smile',
+        'look_at_user',
+        'look_at_object',
+        'listen',
+        'dance',
+        'stop_dancing',
+    ]);
+    function readAttr(attrs, name) {
+        const m = new RegExp('\\b' + name + '\\s*=\\s*["\']([^"\']{1,40})["\']', 'i').exec(attrs || '');
+        return m ? m[1].trim() : null;
+    }
+    function parseGesture(text) {
+        const src = String(text == null ? '' : text);
+        let proposal = null;
+        let found = false;
+        const stripped = src.replace(GESTURE_TAG, (whole, attrs) => {
+            found = true;
+            if (!proposal) proposal = { intent: readAttr(attrs, 'intent'), target: readAttr(attrs, 'target') };
+            return '';
+        });
+        return { text: found ? stripped.replace(/[ \t]{2,}/g, ' ').trim() : src, proposal };
+    }
+
+    /**
+     * While a reply streams in, hide a gesture tag from its first character: a whole one, an
+     * unfinished one, or a trailing "<", "<g", "<ge"… that may become one. The final reply goes
+     * through `consumeReply` at the displayText seam; this only keeps it from flashing. Pure.
+     */
+    function maskStreaming(text) {
+        const src = String(text == null ? '' : text);
+        const i = src.search(/<\s*gesture\b/i);
+        if (i !== -1) return src.slice(0, i).replace(/\s+$/, '');
+        const tail = src.match(/<\s*(?:g(?:e(?:s(?:t(?:u(?:r(?:e)?)?)?)?)?)?)?$/i);
+        return tail ? src.slice(0, tail.index).replace(/\s+$/, '') : src;
+    }
+
     function clean(text, max) {
         return String(text == null ? '' : text)
             .replace(/[<>{}[\]`]/g, '')
@@ -150,6 +193,11 @@
             describe: typeof o.describe === 'function' ? o.describe : () => null,
             speaking: typeof o.speaking === 'function' ? o.speaking : deny,
             reducedMotion: typeof o.reducedMotion === 'function' ? o.reducedMotion : deny,
+            // PG3. Where an anchor is on screen now (for the gaze), and the place's things.
+            gazePoint: typeof o.gazePoint === 'function' ? o.gazePoint : () => null,
+            // PG3. Run a venue chip by id, through the chip router — the clip's one owner.
+            runChip: typeof o.runChip === 'function' ? o.runChip : () => false,
+            listAnchors: typeof o.listAnchors === 'function' ? o.listAnchors : () => [],
         };
 
         let generation = 0;
@@ -160,6 +208,9 @@
         let observed = []; // validated person actions: { label, generation }
         let owning = null; // action id of a clip that owns her body
         let quiet = null; // action id of a running study block
+        let lastObject = null; // { id, label, generation } — the last thing they pointed out
+        let stoppedAt = null; // { generation, at } — when a body-owning clip (a dance) last stopped
+        let moments = []; // confirmed shared moments from an experience's own director: { text, at }
         let lastStep = -Infinity;
         let lastName = null;
         let lastAt = {};
@@ -172,6 +223,7 @@
             owning = null;
             quiet = null;
             lastName = null;
+            lastObject = null;
         }
 
         /** Private worlds are honoured only while the Private experience itself says so. */
@@ -198,6 +250,7 @@
             const id = typeof d.id === 'string' ? d.id : null;
             generation += 1;
             softReset();
+            stoppedAt = null;
             world = null;
             if (!id || adapters.verifyWorld(id) !== true) return false;
             const info = adapters.describe(id) || {};
@@ -233,12 +286,66 @@
                 activity: (s && s.activity) || null,
             };
             const toCopilot = next.destination === 'copilot';
+            if (next.activity !== session.activity || !next.active) moments = [];
             session = next;
             if (toCopilot && world && world.profile.private) leaveWorld();
             if (toCopilot) {
                 observed = observed.filter((x) => !x.private);
                 recent = recent.filter((x) => !x.private);
             }
+        }
+
+        /**
+         * PG3. A moment an experience's own director confirmed (Seaside's lantern, its shell).
+         * That director already asked for her gesture; this only remembers it for the
+         * conversation, in the experience's own words, and adds no reaction of its own.
+         */
+        function sharedMoment(detail) {
+            const d = detail || {};
+            const text = clean(typeof d.line === 'string' ? d.line : '', 120);
+            if (!text) return false;
+            moments.push({ text, objectId: clean(d.objectId || '', 20), at: now() });
+            if (moments.length > 2) moments.shift();
+            return true;
+        }
+
+        /**
+         * PG3. A gesture the model proposed in its reply. A proposal, never authority: the intent
+         * must be on the planner's short list (a subset of BehaviorRouter's), a target must be one
+         * of the verified place's own anchors, the place must still be the one the reply was
+         * written in, and the usual budget, cooldowns, clip ownership and study quiet apply.
+         * Private rooms take none — Private has its own conversation and its own rules.
+         */
+        function propose(p, at) {
+            const q = p || {};
+            if (!world || world.profile.private || !allowed(world)) return { ok: false, why: 'no-place' };
+            if (session.destination === 'copilot') return { ok: false, why: 'copilot' };
+            if (at != null && at !== generation) return { ok: false, why: 'stale-generation' };
+            const intent = typeof q.intent === 'string' ? q.intent : '';
+            if (PLANNER_INTENTS.indexOf(intent) < 0) return { ok: false, why: 'intent-not-allowed' };
+            // A dance is the venue's own chip, started or stopped by the router that owns it —
+            // only where the venue has one, and never in the middle of a study block.
+            if (intent === 'dance' || intent === 'stop_dancing') {
+                const chip = danceChip();
+                if (!chip) return { ok: false, why: 'no-dance-here' };
+                if (quiet) return { ok: false, why: 'quiet' };
+                if (intent === 'dance' && owning) return { ok: false, why: 'already-dancing' };
+                if (intent === 'stop_dancing' && owning !== chip) return { ok: false, why: 'not-dancing' };
+                return adapters.runChip(chip) === true ? { ok: true, intent } : { ok: false, why: 'chip-refused' };
+            }
+            let anchor = null;
+            if (intent === 'look_at_object') {
+                anchor = adapters.getAnchor(world.base, typeof q.target === 'string' ? q.target : '');
+                if (!anchor) return { ok: false, why: 'unknown-target' };
+            }
+            if (owning) return { ok: false, why: 'clip-owns-body' };
+            if (quiet && intent !== 'listen') return { ok: false, why: 'quiet' };
+            enqueue(intent, {
+                cause: 'planned',
+                objectId: anchor ? anchor.id : null,
+                label: anchor ? clean(anchor.label || anchor.id, 30) : null,
+            });
+            return { ok: true, intent, target: anchor ? anchor.id : null };
         }
 
         /** Private ended (its own stop, consent withdrawn): wipe everything Private left here. */
@@ -289,6 +396,7 @@
                 } else if (phase === 'stopped' || phase === 'completed' || phase === 'failed') {
                     if (owning === id) {
                         owning = null;
+                        if (phase === 'stopped') stoppedAt = { generation, at: now() };
                         if (phase === 'stopped' && profile.afterOwn)
                             enqueue(profile.afterOwn, { cause: 'the dance ended' });
                     }
@@ -299,6 +407,10 @@
             if (e.type === 'object') {
                 const anchor = adapters.getAnchor(world.base, typeof e.anchorId === 'string' ? e.anchorId : '');
                 if (!anchor) return false;
+                const label = clean(anchor.label || anchor.id, 30);
+                lastObject = { id: anchor.id, label, generation, private: priv };
+                observed.push({ label: 'they pointed out the ' + label, generation, private: priv });
+                if (observed.length > RECENT) observed.shift();
                 if (owning) return true;
                 enqueue('look_at_object', {
                     user: true,
@@ -348,10 +460,10 @@
             }
             let result = null;
             try {
-                result = adapters.performIntent(item.name, {
-                    speaking: adapters.speaking() === true,
-                    objectId: item.objectId,
-                });
+                const ctx = { speaking: adapters.speaking() === true, objectId: item.objectId };
+                // The gaze needs the anchor where it is on screen now, not where it was queued.
+                if (item.name === 'look_at_object' && item.objectId) ctx.gazePoint = adapters.gazePoint(item.objectId);
+                result = adapters.performIntent(item.name, ctx);
             } catch (error) {
                 result = { ok: false, applied: 'none', why: 'threw' };
             }
@@ -380,8 +492,19 @@
          * catalogue, what they chose, and what she actually did.
          */
         function promptSuffix() {
-            if (!world || world.profile.private) return '';
             if (session.destination === 'copilot') return '';
+            const recentMoments = moments.filter((m) => now() - m.at < 10 * 60000);
+            if (!world) {
+                return recentMoments.length
+                    ? clean(
+                          'Shared moment just now: ' +
+                              recentMoments.map((m) => m.text).join(' ') +
+                              ' (it already happened; you may refer to it; do not add people, animals or things that were not mentioned).',
+                          360
+                      )
+                    : '';
+            }
+            if (world.profile.private) return '';
             if (!allowed(world)) return '';
             const parts = [];
             const where = world.title
@@ -389,9 +512,19 @@
                 : '';
             if (where) parts.push('Where you are: ' + where + '.');
             if (world.profile.note) parts.push(world.profile.note);
+            const things = (adapters.listAnchors(world.base) || [])
+                .map((a) => clean(a && a.label, 30))
+                .filter(Boolean)
+                .slice(0, 5);
+            if (things.length) parts.push('Things here you both can see: ' + things.join(', ') + '.');
+            if (recentMoments.length)
+                parts.push('Shared moment just now: ' + recentMoments.map((m) => m.text).join(' '));
+
             if (quiet)
                 parts.push('A study block is running: stay quiet unless they speak, no new topics, no questions.');
             if (owning) parts.push('You are dancing together right now; keep words few.');
+            else if (stoppedAt && stoppedAt.generation === generation && now() - stoppedAt.at < 120000)
+                parts.push('The dance has stopped; you are not dancing now.');
             const did = recent
                 .filter((r) => r.generation === generation && DID[r.name])
                 .slice(-2)
@@ -405,13 +538,42 @@
                 parts.push('Just now ' + saw.join(', then ') + (did.length ? '; ' + did.join(' and ') : '') + '.');
             else if (did.length) parts.push('Just now ' + did.join(' and ') + '.');
             parts.push(
-                'Mention only what is listed here as having happened; never describe an object, action or gesture that is not.'
+                'Mention only what is listed here as having happened; never describe an object, action or gesture that is not, and do not add people, animals or things this description does not name.'
             );
-            return clean(parts.join(' '), 520);
+            return clean(parts.join(' '), 720);
+        }
+
+        /**
+         * PG3. The planner's offer, kept apart from the paragraph because it must carry angle
+         * brackets the paragraph's sanitiser removes. Built only from constants and anchor ids
+         * that match /^[a-z0-9-]+$/, and only where `promptSuffix` would speak at all.
+         */
+        /** The venue's body-owning clip chip (its dance), if it has one and the template lists it. */
+        function danceChip() {
+            if (!world || !world.profile.owns) return null;
+            const id = world.profile.owns[0];
+            const action = adapters.validateAction(world.base, id);
+            return action && action.kind === 'clip' ? id : null;
+        }
+
+        function plannerOffer() {
+            if (!world || world.profile.private || session.destination === 'copilot' || !allowed(world)) return '';
+            const ids = (adapters.listAnchors(world.base) || [])
+                .map((a) => (a && /^[a-z0-9-]{1,30}$/.test(String(a.id)) ? a.id : ''))
+                .filter(Boolean)
+                .slice(0, 5);
+            return (
+                'If a small gesture fits, you may end a reply with one tag: <gesture intent="smile"/>, ' +
+                '<gesture intent="look_at_user"/>' +
+                (danceChip() ? ', <gesture intent="dance"/>, <gesture intent="stop_dancing"/>' : '') +
+                (ids.length ? ', or <gesture intent="look_at_object" target="' + ids.join('|') + '"/>' : '') +
+                '. It is optional, never shown, and you must not say you did it.'
+            );
         }
 
         function dispose() {
             leaveWorld();
+            moments = [];
             session = { active: false, destination: null, activity: null };
             lastAt = {};
             spent = [];
@@ -422,6 +584,9 @@
             leaveWorld,
             syncSession,
             privateEnded,
+            sharedMoment,
+            propose,
+            plannerOffer,
             observe,
             update,
             promptSuffix,
@@ -434,6 +599,8 @@
                     recent: recent.map((r) => ({ name: r.name, label: r.label })),
                     owning,
                     quiet,
+                    lastObject: lastObject ? { id: lastObject.id, label: lastObject.label } : null,
+                    moments: moments.map((m) => m.objectId),
                 };
             },
         };
@@ -517,6 +684,21 @@
                 const t = T && T.TEMPLATES ? T.TEMPLATES.find((x) => x.world === base) : null;
                 return (t && t.actions.find((a) => a.id === actionId)) || null;
             },
+            listAnchors(base) {
+                const T = templates();
+                const t = T && T.TEMPLATES ? T.TEMPLATES.find((x) => x.world === base) : null;
+                return t && Array.isArray(t.anchors) ? t.anchors : [];
+            },
+            runChip(id) {
+                const router = o.router || g.__NEXUS_PLAYGROUND_LIVE;
+                if (!router || typeof router.act !== 'function' || !router.template) return false;
+                router.act(id);
+                return true;
+            },
+            gazePoint(anchorId) {
+                const picker = o.picker || null;
+                return picker && typeof picker.gazePoint === 'function' ? picker.gazePoint(anchorId) : null;
+            },
             getAnchor(base, anchorId) {
                 const T = templates();
                 const t = T && T.TEMPLATES ? T.TEMPLATES.find((x) => x.world === base) : null;
@@ -565,6 +747,15 @@
             sync();
             offSession = sess.on(sync) || (() => {});
         }
+        // PG3. An experience's director confirms its own interactions (Seaside's lantern).
+        let offDirector = () => {};
+        const director = live && live.director;
+        if (director && typeof director.on === 'function') {
+            offDirector =
+                director.on((detail) => {
+                    if (detail && detail.type === 'interaction:completed') core.sharedMoment(detail);
+                }) || (() => {});
+        }
         // Private's own endings, on the bus's registered names.
         const offs = [];
         try {
@@ -593,6 +784,26 @@
                     return '';
                 }
             },
+            plannerOffer() {
+                try {
+                    return core.plannerOffer();
+                } catch (_) {
+                    return '';
+                }
+            },
+            /**
+             * PG3. An assistant reply at the displayText seam: strip every gesture tag, and offer
+             * the first to `propose`. Replies only — the caller never hands a user's text here.
+             */
+            consumeReply(text) {
+                try {
+                    const parsed = parseGesture(text);
+                    if (parsed.proposal) core.propose(parsed.proposal, core.state().generation);
+                    return parsed.text;
+                } catch (_) {
+                    return String(text == null ? '' : text).replace(GESTURE_TAG, '');
+                }
+            },
             detach() {
                 if (g.removeEventListener) {
                     g.removeEventListener('nexus-world-shown', onShown);
@@ -601,6 +812,7 @@
                 }
                 try {
                     offSession();
+                    offDirector();
                 } catch (_) {
                     /* already gone */
                 }
@@ -619,6 +831,9 @@
     const api = {
         create,
         attach,
+        parseGesture,
+        maskStreaming,
+        PLANNER_INTENTS,
         privateOpenNow,
         PROFILES,
         DEFAULT_PROFILE,
