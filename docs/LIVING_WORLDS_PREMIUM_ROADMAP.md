@@ -15,7 +15,7 @@ Product tiers of experience:
 | Foundation: Living Worlds | One genuinely connected, believable apartment with verified room/spot transitions; no surprise background changes | **Implement first, required** |
 | Entertainment: companion moments | Romantic dinner, quiet evening, playful conversation, dance, forest and beach, scene-aware mood, branching stories with consequences | **Next priority** |
 | Optional Private adult experience | Adult-only, user-initiated erotic/romantic themes and fan-service presentation under **existing** Private/Intimate age and consent gates; immediate stop, noncoercive behavior, no auto-escalation | **After stable foundation; gated** |
-| Entertainment media experiments | Explore feasibility of licensed, authorized media presentation with providers including `xnxx.com` and `vrporn.com`, if technically and legally permitted | **Research/spike only; no automatic embedding** |
+| Entertainment media experiments | Explore feasibility of licensed, authorized media presentation with third-party providers, if technically and legally permitted | **Research/spike only; no automatic embedding** |
 | Productivity and learning | Wikipedia-based study/teaching, coding companion, GitHub/GitPilot-style workflows and office venues | **Second priority, after entertainment core** |
 
 ## Premium shared apartment is the proof of quality
@@ -42,7 +42,7 @@ The same identity is used throughout. Affect, gaze, gestures, posture, speech pa
 
 These are **future validation targets, not currently integrated partners**:
 
-### Adult entertainment media: `xnxx.com`, `vrporn.com`
+### Adult entertainment media: third-party providers
 
 Before attempting a demo: determine whether each site permits third-party embedded players, legal age verification, content rights/licensing, cross-origin integration, secure referrers, and VR playback. There is **no assumed public API, licensed content feed or embedding permission**. Do not scrape, mirror, download copyrighted videos, bypass authentication/DRM/geoblocks/paywalls, auto-play unsolicited sexual content, or transmit private companion chat to those services. Require explicit mature-user opt-in and platform compliance; run a vendor feasibility review. If integration is not permitted, provide a respectful external-link experience instead of pretending playback works.
 
