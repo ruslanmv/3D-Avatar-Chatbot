@@ -164,14 +164,81 @@ describe('OllaBridge cloud routes say who answered', () => {
             model: 'grok-4.3',
             x_ollabridge: { route: 'grok-best', provider: 'xai-grok', model: 'grok-4', attempts: 1 },
         });
-        expect({ ...mgr.lastServed }).toEqual({
+        expect({ ...mgr.lastServed }).toMatchObject({
             route: 'grok-best',
             provider: 'xai-grok',
             model: 'grok-4',
             attempts: 1,
+            fallback: false,
+            notice: '',
         });
         // An older gateway names nothing: no guess from the upstream's `model`.
         mgr._noteOllaBridgeServed({ model: 'grok-4.3' });
         expect(mgr.lastServed).toBeNull();
+    });
+});
+
+describe('OB2. a route that falls back says so, once', () => {
+    const seen = [];
+    let LLMManager;
+    beforeAll(() => {
+        const src = fs.readFileSync(path.join(__dirname, '..', 'src', 'LLMManager.js'), 'utf8');
+        const sandbox = {
+            window: { dispatchEvent: (e) => seen.push(e.detail.notice) },
+            CustomEvent: class {
+                constructor(type, init) {
+                    this.type = type;
+                    this.detail = init && init.detail;
+                }
+            },
+            console,
+            setTimeout,
+            clearTimeout,
+        };
+        sandbox.global = sandbox;
+        vm.createContext(sandbox);
+        vm.runInContext(src, sandbox);
+        LLMManager = sandbox.window.LLMManager;
+    });
+
+    const NOTICE =
+        'Grok Best is unavailable: xAI Grok is out of capacity right now (out of credits or rate-limited). ' +
+        'Answered with Free Best instead.';
+    const fellBack = {
+        x_ollabridge: {
+            route: 'free-best',
+            provider: 'groq-free',
+            model: 'llama-3.3-70b',
+            attempts: 1,
+            fallback: true,
+            requested_route: 'grok-best',
+            reason: 'capacity',
+            notice: NOTICE,
+        },
+    };
+
+    test('the notice is recorded and announced once per ten minutes', () => {
+        const mgr = new LLMManager();
+        mgr._noteOllaBridgeServed(fellBack);
+        mgr._noteOllaBridgeServed(fellBack);
+        expect(mgr.lastServed).toMatchObject({ fallback: true, requestedRoute: 'grok-best', reason: 'capacity' });
+        expect(seen).toEqual([NOTICE]);
+        mgr._lastNoticeAt -= 11 * 60 * 1000;
+        mgr._noteOllaBridgeServed(fellBack);
+        expect(seen).toHaveLength(2);
+    });
+
+    test("a 503 shows the gateway's reason instead of 'may be restarting'", async () => {
+        const mgr = new LLMManager();
+        const res = (body) => ({ status: 503, clone: () => ({ json: async () => body }) });
+        const notice =
+            'No AI provider can answer right now: Groq is out of capacity right now. Try again in a few minutes.';
+        await expect(mgr._gatewayErrorFor(res({ detail: { error: 'all_providers_exhausted', notice } }))).resolves.toBe(
+            notice
+        );
+        // An older gateway with no notice: the old sentence.
+        await expect(mgr._gatewayErrorFor(res({ detail: 'x' }))).resolves.toMatch(
+            /OllaBridge is unreachable \(HTTP 503\)/
+        );
     });
 });

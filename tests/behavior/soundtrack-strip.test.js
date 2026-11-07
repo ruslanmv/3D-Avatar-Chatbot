@@ -198,7 +198,9 @@ describe('Private soundtrack', () => {
 
         view.attachSoundtrack(track());
 
-        expect(PrivateConversationView.VOLUME).toBe(15);
+        // Under her voice, but loud enough to hear (MV1: 15 was reported as too low).
+        expect(PrivateConversationView.VOLUME).toBeGreaterThanOrEqual(30);
+        expect(PrivateConversationView.VOLUME).toBeLessThan(60);
         expect(yt.activate).toHaveBeenCalledWith(expect.anything(), expect.anything(), {
             volume: PrivateConversationView.VOLUME,
         });

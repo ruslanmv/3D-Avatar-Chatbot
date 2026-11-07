@@ -463,11 +463,16 @@ const SceneJourney = (() => {
         }
     }
 
+    const AMBIENT_VOLUME = 0.7;
+
     function defaultAudio(url) {
         try {
             const audio = new Audio(url);
             audio.loop = true;
-            audio.volume = 0.35;
+            // MV1. 0.35 was reported as too low to hear under the room and her voice: the
+            // loops are mastered quietly, so a third of an already soft file was close to
+            // nothing on a phone speaker. 0.7 is present without covering her.
+            audio.volume = AMBIENT_VOLUME;
             return audio;
         } catch (error) {
             console.warn('[BD] no ambient audio on this platform', error);
@@ -502,6 +507,8 @@ const SceneJourney = (() => {
         OVERLAY_FIELDS,
         SCENE_STATE,
         SCRIPT_TOLERANCE_MS,
+        AMBIENT_VOLUME,
+        defaultAudio,
     };
 })();
 

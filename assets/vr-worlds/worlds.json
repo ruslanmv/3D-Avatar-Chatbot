@@ -1,0 +1,1956 @@
+{
+  "schema": 1,
+  "note": "VW1. Places for VR. Coordinates are metres around her: +z is toward the person, -z behind her. Every file is CC0; see PROVENANCE.md. VW2: tiers say where a world may load; a phone gets only worlds under 30K triangles.",
+  "worlds": [
+    {
+      "id": "oak-glade",
+      "title": "Oak glade",
+      "note": "A real woodland clearing: oaks, birch, ferns and a fallen trunk. Desktop and VR.",
+      "activities": ["forest"],
+      "tiers": ["desktop", "vr"],
+      "triangles": 46091,
+      "sky": {
+        "top": "#8fbfe8",
+        "horizon": "#f2e2c2",
+        "bottom": "#6f8f52"
+      },
+      "fog": {
+        "color": "#d9e4d0",
+        "near": 14,
+        "far": 55
+      },
+      "ground": {
+        "color": "#5d7440",
+        "radius": 24
+      },
+      "scene": {
+        "src": "scenes/oak-glade.glb",
+        "at": [4, 0, -2],
+        "turn": -90
+      },
+      "light": {
+        "sky": "#e6f2d8",
+        "ground": "#4a5a30",
+        "hemi": 0.9,
+        "key": "#ffe2b0",
+        "keyIntensity": 1.1,
+        "fill": "#c8dcb8",
+        "fillIntensity": 0.55,
+        "rim": "#fff0cc",
+        "rimIntensity": 0.35
+      },
+      "props": []
+    },
+    {
+      "id": "meadow-village",
+      "title": "Meadow village",
+      "note": "Cottages, a post office and garden paths on a sunny afternoon. Light enough for phones.",
+      "activities": ["relax"],
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 22448,
+      "sky": {
+        "top": "#86b9ea",
+        "horizon": "#f6e3c4",
+        "bottom": "#a3c08c"
+      },
+      "fog": {
+        "color": "#e3ecd9",
+        "near": 16,
+        "far": 60
+      },
+      "ground": {
+        "color": "#9cbf7e",
+        "radius": 20
+      },
+      "scene": {
+        "src": "scenes/meadow-courier.glb",
+        "at": [1.86, 0, -0.49]
+      },
+      "light": {
+        "sky": "#fff1dc",
+        "ground": "#7d9a5e",
+        "hemi": 0.95,
+        "key": "#ffe6c0",
+        "keyIntensity": 1.15,
+        "fill": "#d0e0ff",
+        "fillIntensity": 0.6,
+        "rim": "#fff2d8",
+        "rimIntensity": 0.35
+      },
+      "props": []
+    },
+    {
+      "id": "walled-town",
+      "title": "Walled town",
+      "note": "A medieval town with towers, shops and a tavern. Desktop only: 225K triangles.",
+      "activities": ["scene-tale"],
+      "tiers": ["desktop"],
+      "triangles": 224939,
+      "sky": {
+        "top": "#7fb0e3",
+        "horizon": "#f4dcc0",
+        "bottom": "#8fae78"
+      },
+      "fog": {
+        "color": "#dfe6dc",
+        "near": 22,
+        "far": 95
+      },
+      "ground": {
+        "color": "#8fb07a",
+        "radius": 45
+      },
+      "scene": {
+        "src": "scenes/mmo-realm.glb",
+        "at": [-0.04, 0, -7.45]
+      },
+      "light": {
+        "sky": "#fff0dc",
+        "ground": "#6f8a58",
+        "hemi": 0.95,
+        "key": "#ffe0b8",
+        "keyIntensity": 1.15,
+        "fill": "#cfdcff",
+        "fillIntensity": 0.6,
+        "rim": "#ffeccc",
+        "rimIntensity": 0.35
+      },
+      "props": []
+    },
+    {
+      "id": "seaside-evening",
+      "title": "Seaside evening",
+      "note": "A stone terrace over the water at sunset, two lanterns.",
+      "activities": ["seaside"],
+      "panorama": {
+        "4k": "panoramas/venice_sunset_4k.jpg",
+        "2k": "panoramas/venice_sunset_2k.jpg"
+      },
+      "yaw": 0,
+      "ground": false,
+      "light": {
+        "sky": "#ffd2a1",
+        "ground": "#6a4a3a",
+        "hemi": 0.75,
+        "key": "#ffb070",
+        "keyIntensity": 1.25,
+        "fill": "#a9bdff",
+        "fillIntensity": 0.55,
+        "rim": "#ffcf8a",
+        "rimIntensity": 0.6
+      },
+      "props": [
+        {
+          "src": "kits/kenney-fantasy-town-kit/lantern.glb",
+          "height": 1.7,
+          "at": [-1.3, 0, -0.4]
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/lantern.glb",
+          "height": 1.7,
+          "at": [1.4, 0, -0.6]
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/stall-bench.glb",
+          "height": 0.5,
+          "at": [1.7, 0, -1.5],
+          "turn": -35
+        },
+        {
+          "src": "kits/kenney-nature-kit/plant_bushLarge.glb",
+          "height": 0.9,
+          "at": [2.4, 0, 0.3]
+        },
+        {
+          "src": "kits/kenney-nature-kit/rock_smallA.glb",
+          "height": 0.3,
+          "at": [-2.3, 0, 0.6]
+        }
+      ],
+      "triangles": 572
+    },
+    {
+      "id": "under-the-trees",
+      "title": "Under the trees",
+      "note": "A quiet clearing in a forest at golden hour.",
+      "activities": ["forest"],
+      "panorama": {
+        "4k": "panoramas/sunset_forest_4k.jpg",
+        "2k": "panoramas/sunset_forest_2k.jpg"
+      },
+      "yaw": 0,
+      "ground": false,
+      "light": {
+        "sky": "#cfe3b0",
+        "ground": "#3d4a22",
+        "hemi": 0.85,
+        "key": "#ffd59a",
+        "keyIntensity": 1.0,
+        "fill": "#b8d4a0",
+        "fillIntensity": 0.5,
+        "rim": "#ffe2a8",
+        "rimIntensity": 0.35
+      },
+      "props": [
+        {
+          "src": "kits/quaternius-stylized-nature/CommonTree_1.gltf",
+          "height": 7,
+          "at": [-3.2, 0, -3.5]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/CommonTree_3.gltf",
+          "height": 8,
+          "at": [3.6, 0, -4.2],
+          "turn": 60
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/CommonTree_2.gltf",
+          "height": 6.5,
+          "at": [-5.2, 0, 0.8],
+          "turn": 120
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/CommonTree_4.gltf",
+          "height": 7.5,
+          "at": [5.0, 0, 0.2],
+          "turn": 200
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Bush_Common_Flowers.gltf",
+          "height": 0.9,
+          "at": [-1.8, 0, -1.6]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Bush_Common_Flowers.gltf",
+          "height": 0.8,
+          "at": [1.9, 0, -1.3]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Fern_1.gltf",
+          "height": 0.6,
+          "at": [-1.2, 0, 0.4]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Fern_1.gltf",
+          "height": 0.5,
+          "at": [1.5, 0, 0.6],
+          "turn": 90
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Mushroom_Common.gltf",
+          "height": 0.18,
+          "at": [0.9, 0, -0.9]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Rock_Medium_1.gltf",
+          "height": 0.5,
+          "at": [-2.4, 0, -0.4]
+        },
+        {
+          "src": "kits/kaykit-forest-nature/Grass_1_A_Color1.gltf",
+          "height": 0.25,
+          "at": [-0.7, 0, -0.9]
+        },
+        {
+          "src": "kits/kaykit-forest-nature/Grass_2_A_Color1.gltf",
+          "height": 0.25,
+          "at": [0.6, 0, -1.8]
+        },
+        {
+          "src": "kits/kaykit-forest-nature/Grass_1_B_Color1.gltf",
+          "height": 0.25,
+          "at": [-2.0, 0, 1.4]
+        },
+        {
+          "src": "kits/kaykit-forest-nature/Grass_2_B_Color1.gltf",
+          "height": 0.25,
+          "at": [2.2, 0, 1.6]
+        }
+      ],
+      "triangles": 24370
+    },
+    {
+      "id": "starlit-lake",
+      "title": "Starlit lake",
+      "note": "Still water, stars and moonlight. Very little moves.",
+      "activities": ["meditation"],
+      "panorama": {
+        "4k": "panoramas/lakeside_night_4k.jpg",
+        "2k": "panoramas/lakeside_night_2k.jpg"
+      },
+      "yaw": 0,
+      "ground": false,
+      "light": {
+        "sky": "#6f86c8",
+        "ground": "#1a1d28",
+        "hemi": 0.55,
+        "key": "#a9bcff",
+        "keyIntensity": 0.75,
+        "fill": "#ffffff",
+        "fillIntensity": 0.4,
+        "rim": "#b8c8ff",
+        "rimIntensity": 0.5
+      },
+      "props": [
+        {
+          "src": "kits/kenney-nature-kit/log.glb",
+          "width": 1.4,
+          "at": [-2.6, 0, -2.4],
+          "turn": 25
+        },
+        {
+          "src": "kits/kenney-nature-kit/rock_tallA.glb",
+          "height": 1.0,
+          "at": [3.6, 0, -3.6]
+        },
+        {
+          "src": "kits/kenney-nature-kit/grass_leafs.glb",
+          "height": 0.3,
+          "at": [-1.2, 0, -0.4]
+        },
+        {
+          "src": "kits/kenney-nature-kit/grass_leafs.glb",
+          "height": 0.25,
+          "at": [1.3, 0, -0.2]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Pebble_Round_2.gltf",
+          "height": 0.1,
+          "at": [0.6, 0, -1.7]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Pebble_Round_4.gltf",
+          "height": 0.08,
+          "at": [-0.5, 0, -2.1]
+        }
+      ],
+      "triangles": 648
+    },
+    {
+      "id": "garden-after-dark",
+      "title": "Garden after dark",
+      "note": "Lanterns, hedges and flowers by a pond — a place for stories.",
+      "activities": ["scene-tale"],
+      "panorama": {
+        "4k": "panoramas/pond_bridge_night_4k.jpg",
+        "2k": "panoramas/pond_bridge_night_2k.jpg"
+      },
+      "yaw": 0,
+      "ground": false,
+      "light": {
+        "sky": "#7d8fc0",
+        "ground": "#20261c",
+        "hemi": 0.55,
+        "key": "#ffc27a",
+        "keyIntensity": 0.85,
+        "fill": "#8fa6e0",
+        "fillIntensity": 0.45,
+        "rim": "#ffd8a0",
+        "rimIntensity": 0.4
+      },
+      "props": [
+        {
+          "src": "kits/kenney-fantasy-town-kit/lantern.glb",
+          "height": 1.6,
+          "at": [-1.5, 0, -0.8]
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/lantern.glb",
+          "height": 1.6,
+          "at": [1.6, 0, -1.0]
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/hedge.glb",
+          "width": 1.4,
+          "at": [-2.6, 0, -2.4]
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/hedge.glb",
+          "width": 1.4,
+          "at": [2.6, 0, -2.4]
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/hedge-curved.glb",
+          "width": 1.4,
+          "at": [-3.4, 0, -0.6],
+          "turn": 90
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Flower_3_Group.gltf",
+          "height": 0.35,
+          "at": [-0.9, 0, -1.6]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Flower_4_Group.gltf",
+          "height": 0.35,
+          "at": [0.9, 0, -1.9]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Flower_3_Group.gltf",
+          "height": 0.3,
+          "at": [2.0, 0, 0.4]
+        },
+        {
+          "src": "kits/kenney-nature-kit/path_stoneCircle.glb",
+          "width": 1.4,
+          "at": [0, 0, -0.2],
+          "flat": true
+        }
+      ],
+      "triangles": 4068
+    },
+    {
+      "id": "ocean-sunrise",
+      "title": "Ocean sunrise",
+      "note": "A secluded beach under a peach sky.",
+      "activities": ["ocean"],
+      "panorama": {
+        "4k": "panoramas/secluded_beach_4k.jpg",
+        "2k": "panoramas/secluded_beach_2k.jpg"
+      },
+      "yaw": 0,
+      "ground": false,
+      "light": {
+        "sky": "#ffe0c8",
+        "ground": "#b49a78",
+        "hemi": 0.85,
+        "key": "#ffc49a",
+        "keyIntensity": 1.2,
+        "fill": "#bcd0ff",
+        "fillIntensity": 0.55,
+        "rim": "#ffd8b0",
+        "rimIntensity": 0.45
+      },
+      "props": [
+        {
+          "src": "kits/kenney-nature-kit/tree_palmTall.glb",
+          "height": 4.6,
+          "at": [-3.0, 0, -2.6]
+        },
+        {
+          "src": "kits/kenney-nature-kit/tree_palmBend.glb",
+          "height": 4.0,
+          "at": [3.4, 0, -1.8],
+          "turn": 140
+        },
+        {
+          "src": "kits/kenney-nature-kit/rock_largeA.glb",
+          "height": 1.2,
+          "at": [2.4, 0, 1.4]
+        },
+        {
+          "src": "kits/kenney-nature-kit/rock_smallB.glb",
+          "height": 0.3,
+          "at": [-1.6, 0, 0.6]
+        },
+        {
+          "src": "kits/kenney-nature-kit/canoe.glb",
+          "width": 2.6,
+          "at": [-2.2, 0, 1.6],
+          "turn": 70
+        }
+      ],
+      "triangles": 694
+    },
+    {
+      "id": "mountain-lake",
+      "title": "Mountain lake",
+      "note": "Pines and a lake in natural golden-hour light.",
+      "activities": [],
+      "panorama": {
+        "4k": "panoramas/lakes_4k.jpg",
+        "2k": "panoramas/lakes_2k.jpg"
+      },
+      "yaw": 0,
+      "ground": false,
+      "light": {
+        "sky": "#dfe9ff",
+        "ground": "#4c5a33",
+        "hemi": 0.9,
+        "key": "#ffe0b0",
+        "keyIntensity": 1.2,
+        "fill": "#c8d8ff",
+        "fillIntensity": 0.6,
+        "rim": "#fff0d0",
+        "rimIntensity": 0.3
+      },
+      "props": [
+        {
+          "src": "kits/quaternius-stylized-nature/Pine_1.gltf",
+          "height": 8,
+          "at": [-4.2, 0, -3.0]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Pine_3.gltf",
+          "height": 9,
+          "at": [4.4, 0, -3.6]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Pine_2.gltf",
+          "height": 7,
+          "at": [-5.4, 0, 1.6]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Rock_Medium_2.gltf",
+          "height": 0.6,
+          "at": [1.8, 0, -1.2]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Grass_Wispy_Short.gltf",
+          "height": 0.3,
+          "at": [-1.2, 0, -0.6]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Grass_Wispy_Short.gltf",
+          "height": 0.3,
+          "at": [1.0, 0, 0.6]
+        }
+      ],
+      "triangles": 13791
+    },
+    {
+      "id": "meadow-sunset",
+      "title": "Meadow at sunset",
+      "note": "Soft gold over a field of flowers.",
+      "activities": ["relax", "sunset"],
+      "panorama": {
+        "4k": "panoramas/evening_field_4k.jpg",
+        "2k": "panoramas/evening_field_2k.jpg"
+      },
+      "yaw": 0,
+      "ground": false,
+      "light": {
+        "sky": "#ffd9a8",
+        "ground": "#5a5a2a",
+        "hemi": 0.8,
+        "key": "#ffb77a",
+        "keyIntensity": 1.15,
+        "fill": "#c0ccff",
+        "fillIntensity": 0.5,
+        "rim": "#ffd090",
+        "rimIntensity": 0.55
+      },
+      "props": [
+        {
+          "src": "kits/quaternius-stylized-nature/Flower_3_Group.gltf",
+          "height": 0.35,
+          "at": [-1.4, 0, -1.0]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Flower_4_Group.gltf",
+          "height": 0.35,
+          "at": [1.3, 0, -1.3]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Flower_4_Group.gltf",
+          "height": 0.3,
+          "at": [-2.2, 0, 0.8]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Grass_Wispy_Tall.gltf",
+          "height": 0.6,
+          "at": [2.2, 0, 0.2]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Grass_Wispy_Tall.gltf",
+          "height": 0.55,
+          "at": [-0.6, 0, -2.2]
+        },
+        {
+          "src": "kits/quaternius-stylized-nature/Clover_1.gltf",
+          "height": 0.12,
+          "at": [0.6, 0, -0.6]
+        },
+        {
+          "src": "kits/kenney-nature-kit/flower_yellowA.glb",
+          "height": 0.3,
+          "at": [-1.3, 0, 0.2]
+        },
+        {
+          "src": "kits/kenney-nature-kit/flower_purpleA.glb",
+          "height": 0.3,
+          "at": [1.0, 0, 0.9]
+        }
+      ],
+      "triangles": 5910
+    },
+    {
+      "id": "starry-hills",
+      "title": "Stars above the hills",
+      "note": "Dark blue sky and natural starlight, a small campfire.",
+      "activities": [],
+      "panorama": {
+        "4k": "panoramas/qwantani_night_4k.jpg",
+        "2k": "panoramas/qwantani_night_2k.jpg"
+      },
+      "yaw": 0,
+      "ground": false,
+      "light": {
+        "sky": "#5a6ea8",
+        "ground": "#15171c",
+        "hemi": 0.45,
+        "key": "#ffb070",
+        "keyIntensity": 0.7,
+        "fill": "#a6b8ff",
+        "fillIntensity": 0.45,
+        "rim": "#b8c8ff",
+        "rimIntensity": 0.5
+      },
+      "props": [
+        {
+          "src": "kits/kenney-nature-kit/campfire_stones.glb",
+          "width": 0.9,
+          "at": [1.6, 0, -1.2]
+        },
+        {
+          "src": "kits/kenney-nature-kit/campfire_logs.glb",
+          "width": 0.6,
+          "at": [1.6, 0, -1.2]
+        },
+        {
+          "src": "kits/kenney-nature-kit/log.glb",
+          "width": 1.3,
+          "at": [2.8, 0, -2.2],
+          "turn": 110
+        },
+        {
+          "src": "kits/kenney-nature-kit/rock_tallA.glb",
+          "height": 1.3,
+          "at": [-3.2, 0, -3.0]
+        },
+        {
+          "src": "kits/kenney-nature-kit/rock_smallC.glb",
+          "height": 0.25,
+          "at": [-1.4, 0, -0.6]
+        }
+      ],
+      "triangles": 728
+    },
+    {
+      "id": "city-rooftop",
+      "title": "City rooftop",
+      "note": "A sofa and a lamp above the city at pink-blue twilight.",
+      "activities": ["work", "copilot-hour"],
+      "panorama": {
+        "4k": "panoramas/sunset_jhbcentral_4k.jpg",
+        "2k": "panoramas/sunset_jhbcentral_2k.jpg"
+      },
+      "yaw": 0,
+      "ground": false,
+      "light": {
+        "sky": "#ffc8d8",
+        "ground": "#3a3a48",
+        "hemi": 0.8,
+        "key": "#ffb39a",
+        "keyIntensity": 1.1,
+        "fill": "#9fb0ff",
+        "fillIntensity": 0.55,
+        "rim": "#ffd0e0",
+        "rimIntensity": 0.4
+      },
+      "props": [
+        {
+          "src": "kits/kenney-furniture-kit/rugRound.glb",
+          "width": 1.6,
+          "at": [0, 0, -0.4],
+          "flat": true
+        },
+        {
+          "src": "kits/kenney-furniture-kit/loungeSofa.glb",
+          "width": 1.7,
+          "at": [0, 0, -2.3]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampRoundFloor.glb",
+          "height": 1.6,
+          "at": [1.5, 0, -2.2]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/sideTable.glb",
+          "height": 0.5,
+          "at": [-1.4, 0, -2.2]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/plantSmall1.glb",
+          "height": 0.25,
+          "at": [-1.4, 0.5, -2.2]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/pottedPlant.glb",
+          "height": 1.1,
+          "at": [-2.4, 0, -0.8]
+        }
+      ],
+      "triangles": 672
+    },
+    {
+      "id": "moonlit-courtyard",
+      "title": "Moonlit courtyard",
+      "note": "A violet sky, amber lamps and a stone fountain.",
+      "activities": [],
+      "panorama": {
+        "4k": "panoramas/courtyard_night_4k.jpg",
+        "2k": "panoramas/courtyard_night_2k.jpg"
+      },
+      "yaw": 0,
+      "ground": false,
+      "light": {
+        "sky": "#8a7fc8",
+        "ground": "#2a2420",
+        "hemi": 0.55,
+        "key": "#ffc27a",
+        "keyIntensity": 0.9,
+        "fill": "#9a90e0",
+        "fillIntensity": 0.45,
+        "rim": "#ffd8a0",
+        "rimIntensity": 0.4
+      },
+      "props": [
+        {
+          "src": "kits/kenney-fantasy-town-kit/fountain-round.glb",
+          "width": 2.2,
+          "at": [3.0, 0, -3.0]
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/pillar-stone.glb",
+          "height": 2.6,
+          "at": [-2.4, 0, -2.0]
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/pillar-stone.glb",
+          "height": 2.6,
+          "at": [2.4, 0, -2.0]
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/lantern.glb",
+          "height": 1.6,
+          "at": [-1.4, 0, -0.6]
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/lantern.glb",
+          "height": 1.6,
+          "at": [1.4, 0, -0.6]
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/hedge-large.glb",
+          "width": 1.6,
+          "at": [-3.2, 0, 0.4],
+          "turn": 90
+        }
+      ],
+      "triangles": 1656
+    },
+    {
+      "id": "cozy-room",
+      "title": "Cozy room",
+      "note": "A warm corner with a sofa, books and lamplight, night outside.",
+      "activities": ["life-evening"],
+      "panorama": {
+        "4k": "panoramas/courtyard_night_4k.jpg",
+        "2k": "panoramas/courtyard_night_2k.jpg"
+      },
+      "yaw": 0,
+      "ground": {
+        "color": "#5a4232",
+        "radius": 5
+      },
+      "light": {
+        "sky": "#ffd6a8",
+        "ground": "#4a3a2a",
+        "hemi": 0.8,
+        "key": "#ffb878",
+        "keyIntensity": 1.0,
+        "fill": "#ffe0c0",
+        "fillIntensity": 0.6,
+        "rim": "#ffcf8a",
+        "rimIntensity": 0.35
+      },
+      "props": [
+        {
+          "src": "kits/kenney-furniture-kit/rugRectangle.glb",
+          "width": 2.2,
+          "at": [0, 0, -0.6],
+          "flat": true
+        },
+        {
+          "src": "kits/kenney-furniture-kit/loungeSofaLong.glb",
+          "width": 2.2,
+          "at": [0, 0, -2.3]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampSquareFloor.glb",
+          "height": 1.6,
+          "at": [1.7, 0, -2.1]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/bookcaseOpen.glb",
+          "height": 1.9,
+          "at": [-2.3, 0, -1.9],
+          "turn": 40
+        },
+        {
+          "src": "kits/kenney-furniture-kit/pottedPlant.glb",
+          "height": 1.1,
+          "at": [2.4, 0, -0.6]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/sideTable.glb",
+          "height": 0.5,
+          "at": [-1.5, 0, -2.3]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampRoundTable.glb",
+          "height": 0.45,
+          "at": [-1.5, 0.5, -2.3]
+        }
+      ],
+      "triangles": 848
+    },
+    {
+      "id": "fantasy-village",
+      "title": "Fantasy village",
+      "note": "A wagon, crates and a market stall at dusk.",
+      "activities": [],
+      "panorama": {
+        "4k": "panoramas/evening_field_4k.jpg",
+        "2k": "panoramas/evening_field_2k.jpg"
+      },
+      "yaw": 90,
+      "ground": false,
+      "light": {
+        "sky": "#ffd0a0",
+        "ground": "#4a3a24",
+        "hemi": 0.75,
+        "key": "#ffb070",
+        "keyIntensity": 1.1,
+        "fill": "#b0c0ff",
+        "fillIntensity": 0.5,
+        "rim": "#ffd090",
+        "rimIntensity": 0.5
+      },
+      "props": [
+        {
+          "src": "kits/quaternius-medieval-village/Prop_Wagon.gltf",
+          "width": 2.4,
+          "at": [-2.4, 0, -2.2],
+          "turn": 30
+        },
+        {
+          "src": "kits/quaternius-medieval-village/Prop_Crate.gltf",
+          "height": 0.7,
+          "at": [1.8, 0, -1.6]
+        },
+        {
+          "src": "kits/quaternius-medieval-village/Prop_Crate.gltf",
+          "height": 0.7,
+          "at": [2.4, 0, -1.1],
+          "turn": 25
+        },
+        {
+          "src": "kits/quaternius-medieval-village/Prop_WoodenFence_Single.gltf",
+          "width": 1.6,
+          "at": [-0.8, 0, -3.2]
+        },
+        {
+          "src": "kits/quaternius-medieval-village/Prop_WoodenFence_Single.gltf",
+          "width": 1.6,
+          "at": [0.8, 0, -3.2]
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/stall-red.glb",
+          "height": 2.4,
+          "at": [3.4, 0, -3.4],
+          "turn": -30
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/tree-high.glb",
+          "height": 5,
+          "at": [-4.4, 0, 0.6]
+        },
+        {
+          "src": "kits/kenney-fantasy-town-kit/lantern.glb",
+          "height": 1.7,
+          "at": [-1.3, 0, -0.5]
+        }
+      ],
+      "triangles": 2840
+    },
+    {
+      "id": "scifi-sanctuary",
+      "title": "Sci-fi sanctuary",
+      "note": "A quiet platform under the stars, soft blue light.",
+      "activities": [],
+      "panorama": {
+        "4k": "panoramas/qwantani_night_4k.jpg",
+        "2k": "panoramas/qwantani_night_2k.jpg"
+      },
+      "yaw": 180,
+      "ground": false,
+      "light": {
+        "sky": "#7aa0ff",
+        "ground": "#141a2a",
+        "hemi": 0.6,
+        "key": "#9fd0ff",
+        "keyIntensity": 0.85,
+        "fill": "#c0d8ff",
+        "fillIntensity": 0.45,
+        "rim": "#80c0ff",
+        "rimIntensity": 0.6
+      },
+      "props": [
+        {
+          "src": "kits/quaternius-modular-scifi/Columns/Column_Astra.gltf",
+          "height": 3,
+          "at": [-2.2, 0, -2.4]
+        },
+        {
+          "src": "kits/quaternius-modular-scifi/Columns/Column_Astra.gltf",
+          "height": 3,
+          "at": [2.2, 0, -2.4]
+        },
+        {
+          "src": "kits/quaternius-modular-scifi/Props/Prop_Computer.gltf",
+          "height": 1.2,
+          "at": [2.0, 0, 0.2],
+          "turn": -90
+        }
+      ],
+      "triangles": 805
+    },
+    {
+      "id": "hotel-suite",
+      "title": "Hotel suite",
+      "note": "A guest room for two, evening light.",
+      "place": true,
+      "rating": "romantic",
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 2400,
+      "activities": [],
+      "sky": {
+        "top": "#3a2c2a",
+        "horizon": "#5a4438",
+        "bottom": "#2a2020"
+      },
+      "fog": {
+        "color": "#3a2c2a",
+        "near": 8,
+        "far": 30
+      },
+      "light": {
+        "sky": "#ffe6cc",
+        "ground": "#5a4030",
+        "hemi": 0.8,
+        "key": "#ffc890",
+        "keyIntensity": 1.0,
+        "fill": "#ffd8c0",
+        "fillIntensity": 0.55,
+        "rim": "#ffcf9a",
+        "rimIntensity": 0.4,
+        "exposure": 1
+      },
+      "props": [
+        {
+          "src": "kits/kenney-furniture-kit/rugRectangle.glb",
+          "width": 2.6,
+          "at": [0, 0, -0.6],
+          "flat": true
+        },
+        {
+          "src": "kits/kenney-furniture-kit/bedDouble.glb",
+          "width": 2.0,
+          "at": [0, 0, -2.5]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/sideTable.glb",
+          "height": 0.5,
+          "at": [-1.55, 0, -2.8]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampRoundTable.glb",
+          "height": 0.45,
+          "at": [-1.55, 0.5, -2.8]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/sideTable.glb",
+          "height": 0.5,
+          "at": [1.55, 0, -2.8]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampRoundTable.glb",
+          "height": 0.45,
+          "at": [1.55, 0.5, -2.8]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/loungeChair.glb",
+          "width": 0.9,
+          "at": [-2.5, 0, -0.6],
+          "turn": 60
+        },
+        {
+          "src": "kits/kenney-furniture-kit/cabinetTelevision.glb",
+          "width": 1.4,
+          "at": [2.6, 0, -0.9],
+          "turn": -90
+        },
+        {
+          "src": "kits/kenney-furniture-kit/pottedPlant.glb",
+          "height": 1.1,
+          "at": [2.4, 0, -2.6]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampSquareFloor.glb",
+          "height": 1.6,
+          "at": [-2.6, 0, -2.4]
+        }
+      ],
+      "ground": {
+        "color": "#7a6250",
+        "radius": 4.5
+      },
+      "preview": "previews/hotel-suite.webp",
+      "category": "Romantic"
+    },
+    {
+      "id": "bedroom",
+      "title": "Bedroom",
+      "note": "A furnished flat: bedroom and living room, night lamps.",
+      "place": true,
+      "rating": "romantic",
+      "tiers": ["desktop", "vr"],
+      "triangles": 39772,
+      "activities": [],
+      "sky": {
+        "top": "#3a2c2a",
+        "horizon": "#5a4438",
+        "bottom": "#2a2020"
+      },
+      "fog": {
+        "color": "#2e2630",
+        "near": 8,
+        "far": 30
+      },
+      "light": {
+        "sky": "#e8d8ff",
+        "ground": "#3a3040",
+        "hemi": 0.75,
+        "key": "#ffd2a8",
+        "keyIntensity": 0.9,
+        "fill": "#b8a8ff",
+        "fillIntensity": 0.5,
+        "rim": "#ffc8b0",
+        "rimIntensity": 0.45,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/bedroom-flat.glb",
+        "at": [0.707, -0.06, -1.414],
+        "turn": -45
+      },
+      "preview": "previews/bedroom.webp",
+      "category": "Romantic"
+    },
+    {
+      "id": "bedroom-light",
+      "title": "Bedroom",
+      "note": "A one-bedroom flat, light enough for phones.",
+      "place": true,
+      "rating": "romantic",
+      "tiers": ["mobile"],
+      "triangles": 28760,
+      "activities": [],
+      "sky": {
+        "top": "#3a2c2a",
+        "horizon": "#5a4438",
+        "bottom": "#2a2020"
+      },
+      "light": {
+        "sky": "#e8d8ff",
+        "ground": "#3a3040",
+        "hemi": 0.75,
+        "key": "#ffd2a8",
+        "keyIntensity": 0.9,
+        "fill": "#b8a8ff",
+        "fillIntensity": 0.5,
+        "rim": "#ffc8b0",
+        "rimIntensity": 0.45,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/pixel-flat.glb",
+        "at": [-4.0, -0.13, 1.0],
+        "turn": -180
+      },
+      "lightFor": "bedroom"
+    },
+    {
+      "id": "lagoon-beach",
+      "title": "Lagoon beach",
+      "note": "White sand, a palm and clear water.",
+      "place": true,
+      "rating": "romantic",
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 14208,
+      "activities": [],
+      "sky": {
+        "top": "#58b4ee",
+        "horizon": "#fff1d6",
+        "bottom": "#e6d4a2"
+      },
+      "fog": {
+        "color": "#e9f2f4",
+        "near": 18,
+        "far": 70
+      },
+      "light": {
+        "sky": "#fff6e6",
+        "ground": "#d8c49a",
+        "hemi": 0.95,
+        "key": "#fff0d0",
+        "keyIntensity": 1.25,
+        "fill": "#cfe6ff",
+        "fillIntensity": 0.6,
+        "rim": "#fff4dc",
+        "rimIntensity": 0.35,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/lagoon-beach.glb",
+        "at": [-0.0, -0.16, -2.0],
+        "turn": 90
+      },
+      "ground": {
+        "color": "#e8d6a8",
+        "radius": 30
+      },
+      "preview": "previews/lagoon-beach.webp",
+      "category": "Romantic"
+    },
+    {
+      "id": "office",
+      "title": "Office",
+      "note": "An open-plan office floor in daylight.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["desktop", "vr"],
+      "triangles": 72326,
+      "activities": [],
+      "sky": {
+        "top": "#cfe0f0",
+        "horizon": "#eef2f6",
+        "bottom": "#6a6a70"
+      },
+      "fog": {
+        "color": "#e6ebf0",
+        "near": 10,
+        "far": 40
+      },
+      "light": {
+        "sky": "#f2f6ff",
+        "ground": "#6a6a70",
+        "hemi": 0.9,
+        "key": "#fff4e0",
+        "keyIntensity": 1.1,
+        "fill": "#e0ecff",
+        "fillIntensity": 0.6,
+        "rim": "#ffffff",
+        "rimIntensity": 0.25,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/downtown-office.glb",
+        "at": [1.945, -0.05, -1.237],
+        "turn": -45
+      },
+      "preview": "previews/office.webp",
+      "category": "Work"
+    },
+    {
+      "id": "office-light",
+      "title": "Office",
+      "note": "A desk by the window, light enough for phones.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile"],
+      "triangles": 1200,
+      "activities": [],
+      "sky": {
+        "top": "#cfe0f0",
+        "horizon": "#eef2f6",
+        "bottom": "#6a6a70"
+      },
+      "light": {
+        "sky": "#f2f6ff",
+        "ground": "#6a6a70",
+        "hemi": 0.9,
+        "key": "#fff4e0",
+        "keyIntensity": 1.1,
+        "fill": "#e0ecff",
+        "fillIntensity": 0.6,
+        "rim": "#ffffff",
+        "rimIntensity": 0.25,
+        "exposure": 1
+      },
+      "props": [
+        {
+          "src": "kits/kenney-furniture-kit/desk.glb",
+          "width": 1.5,
+          "at": [0, 0, -1.8]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/chairDesk.glb",
+          "height": 0.95,
+          "at": [0, 0, -1.2],
+          "turn": 180
+        },
+        {
+          "src": "kits/kenney-furniture-kit/computerScreen.glb",
+          "height": 0.4,
+          "at": [0, 0.75, -1.95]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/bookcaseOpen.glb",
+          "height": 1.9,
+          "at": [-2.2, 0, -1.9],
+          "turn": 40
+        },
+        {
+          "src": "kits/kenney-furniture-kit/pottedPlant.glb",
+          "height": 1.1,
+          "at": [2.2, 0, -1.2]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampSquareFloor.glb",
+          "height": 1.6,
+          "at": [1.6, 0, -2.2]
+        }
+      ],
+      "ground": {
+        "color": "#8a8a90",
+        "radius": 4
+      },
+      "lightFor": "office"
+    },
+    {
+      "id": "airship-dock",
+      "title": "Airship dock",
+      "note": "Steampunk: an airship moored at a brass workshop at dusk.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["desktop"],
+      "triangles": 141396,
+      "activities": [],
+      "sky": {
+        "top": "#2c4a5a",
+        "horizon": "#f0a868",
+        "bottom": "#3a3028"
+      },
+      "fog": {
+        "color": "#c89870",
+        "near": 18,
+        "far": 70
+      },
+      "light": {
+        "sky": "#ffd8b0",
+        "ground": "#3a2c20",
+        "hemi": 0.75,
+        "key": "#ffb070",
+        "keyIntensity": 1.1,
+        "fill": "#80c0c8",
+        "fillIntensity": 0.5,
+        "rim": "#ffcf8a",
+        "rimIntensity": 0.5,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/airship-dock.glb",
+        "at": [-2.475, -0.1, -13.081],
+        "turn": -45
+      },
+      "preview": "previews/airship-dock.webp",
+      "category": "Fantasy"
+    },
+    {
+      "id": "neon-street",
+      "title": "Neon street",
+      "note": "Cyberpunk: a street of neon signs at night.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 16464,
+      "activities": [],
+      "sky": {
+        "top": "#120c22",
+        "horizon": "#3a1d4a",
+        "bottom": "#0b0b12"
+      },
+      "fog": {
+        "color": "#1a1028",
+        "near": 10,
+        "far": 45
+      },
+      "light": {
+        "sky": "#6a3a80",
+        "ground": "#101018",
+        "hemi": 0.5,
+        "key": "#ff5fc0",
+        "keyIntensity": 0.9,
+        "fill": "#4fd8ff",
+        "fillIntensity": 0.55,
+        "rim": "#a070ff",
+        "rimIntensity": 0.6,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/neon-dispatch.glb",
+        "at": [-0.177, 0, -6.187],
+        "turn": -45
+      },
+      "preview": "previews/neon-street.webp",
+      "category": "Nightlife"
+    },
+    {
+      "id": "roadside-motel",
+      "title": "Roadside motel",
+      "note": "A neon motel and diner on an empty road at night. Private only.",
+      "place": true,
+      "rating": "private",
+      "tiers": ["desktop", "vr"],
+      "triangles": 38582,
+      "activities": [],
+      "sky": {
+        "top": "#120c22",
+        "horizon": "#3a1d4a",
+        "bottom": "#0b0b12"
+      },
+      "fog": {
+        "color": "#160e22",
+        "near": 12,
+        "far": 60
+      },
+      "light": {
+        "sky": "#6a3a80",
+        "ground": "#101018",
+        "hemi": 0.5,
+        "key": "#ff5fc0",
+        "keyIntensity": 0.9,
+        "fill": "#4fd8ff",
+        "fillIntensity": 0.55,
+        "rim": "#a070ff",
+        "rimIntensity": 0.6,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/roadside-motel.glb",
+        "at": [-7.425, -0.12, -20.86],
+        "turn": -225
+      },
+      "preview": "previews/roadside-motel.webp",
+      "category": "Private"
+    },
+    {
+      "id": "roadside-motel-light",
+      "title": "Roadside motel",
+      "note": "A motel room under neon, light enough for phones. Private only.",
+      "place": true,
+      "rating": "private",
+      "tiers": ["mobile"],
+      "triangles": 1500,
+      "activities": [],
+      "sky": {
+        "top": "#120c22",
+        "horizon": "#3a1d4a",
+        "bottom": "#0b0b12"
+      },
+      "light": {
+        "sky": "#6a3a80",
+        "ground": "#101018",
+        "hemi": 0.5,
+        "key": "#ff5fc0",
+        "keyIntensity": 0.9,
+        "fill": "#4fd8ff",
+        "fillIntensity": 0.55,
+        "rim": "#a070ff",
+        "rimIntensity": 0.6,
+        "exposure": 1
+      },
+      "props": [
+        {
+          "src": "kits/kenney-furniture-kit/rugRectangle.glb",
+          "width": 2.4,
+          "at": [0, 0, -0.5],
+          "flat": true
+        },
+        {
+          "src": "kits/kenney-furniture-kit/bedDouble.glb",
+          "width": 1.9,
+          "at": [0, 0, -2.4]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/sideTable.glb",
+          "height": 0.5,
+          "at": [-1.5, 0, -2.6]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampRoundTable.glb",
+          "height": 0.45,
+          "at": [-1.5, 0.5, -2.6]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/sideTable.glb",
+          "height": 0.5,
+          "at": [1.5, 0, -2.6]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampRoundTable.glb",
+          "height": 0.45,
+          "at": [1.5, 0.5, -2.6]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/pottedPlant.glb",
+          "height": 1.1,
+          "at": [2.4, 0, -0.8]
+        }
+      ],
+      "ground": {
+        "color": "#3a2a3a",
+        "radius": 4
+      },
+      "lightFor": "roadside-motel"
+    },
+    {
+      "id": "candlelit-suite",
+      "title": "Candlelit suite",
+      "note": "A hotel room by candlelight. Private only.",
+      "place": true,
+      "rating": "private",
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 2400,
+      "activities": [],
+      "sky": {
+        "top": "#1e0e12",
+        "horizon": "#4a1e22",
+        "bottom": "#140a0c"
+      },
+      "fog": {
+        "color": "#2a1216",
+        "near": 6,
+        "far": 24
+      },
+      "light": {
+        "sky": "#b05a50",
+        "ground": "#2a1418",
+        "hemi": 0.5,
+        "key": "#ff9a60",
+        "keyIntensity": 0.85,
+        "fill": "#ff8a90",
+        "fillIntensity": 0.45,
+        "rim": "#ffb0a0",
+        "rimIntensity": 0.55,
+        "exposure": 1
+      },
+      "props": [
+        {
+          "src": "kits/kenney-furniture-kit/rugRectangle.glb",
+          "width": 2.6,
+          "at": [0, 0, -0.6],
+          "flat": true
+        },
+        {
+          "src": "kits/kenney-furniture-kit/bedDouble.glb",
+          "width": 2.0,
+          "at": [0, 0, -2.5]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/sideTable.glb",
+          "height": 0.5,
+          "at": [-1.55, 0, -2.8]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampRoundTable.glb",
+          "height": 0.45,
+          "at": [-1.55, 0.5, -2.8]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/sideTable.glb",
+          "height": 0.5,
+          "at": [1.55, 0, -2.8]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampRoundTable.glb",
+          "height": 0.45,
+          "at": [1.55, 0.5, -2.8]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/loungeChair.glb",
+          "width": 0.9,
+          "at": [-2.5, 0, -0.6],
+          "turn": 60
+        },
+        {
+          "src": "kits/kenney-furniture-kit/cabinetTelevision.glb",
+          "width": 1.4,
+          "at": [2.6, 0, -0.9],
+          "turn": -90
+        },
+        {
+          "src": "kits/kenney-furniture-kit/pottedPlant.glb",
+          "height": 1.1,
+          "at": [2.4, 0, -2.6]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampSquareFloor.glb",
+          "height": 1.6,
+          "at": [-2.6, 0, -2.4]
+        }
+      ],
+      "ground": {
+        "color": "#4a2a24",
+        "radius": 4.5
+      },
+      "preview": "previews/candlelit-suite.webp",
+      "category": "Private"
+    },
+    {
+      "id": "irish-pub",
+      "title": "Irish pub",
+      "note": "A warm bar with booths and pendant lamps.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["desktop"],
+      "triangles": 94872,
+      "activities": [],
+      "sky": {
+        "top": "#2a1a10",
+        "horizon": "#4a2e1a",
+        "bottom": "#1e140c"
+      },
+      "fog": {
+        "color": "#2a1a10",
+        "near": 7,
+        "far": 26
+      },
+      "light": {
+        "sky": "#ffd9a8",
+        "ground": "#4a3020",
+        "hemi": 0.8,
+        "key": "#ffb870",
+        "keyIntensity": 1.0,
+        "fill": "#ffd0a0",
+        "fillIntensity": 0.55,
+        "rim": "#ffc080",
+        "rimIntensity": 0.45,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/pub-bar-room.glb",
+        "at": [1.25, 0, -3],
+        "turn": 0
+      },
+      "ground": {
+        "color": "#3a2616",
+        "radius": 6
+      },
+      "preview": "previews/irish-pub.webp",
+      "category": "Social"
+    },
+    {
+      "id": "irish-pub-light",
+      "title": "Irish pub",
+      "note": "The bar and a few tables, light enough for phones.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "vr"],
+      "triangles": 29058,
+      "activities": [],
+      "sky": {
+        "top": "#2a1a10",
+        "horizon": "#4a2e1a",
+        "bottom": "#1e140c"
+      },
+      "fog": {
+        "color": "#2a1a10",
+        "near": 7,
+        "far": 26
+      },
+      "light": {
+        "sky": "#ffd9a8",
+        "ground": "#4a3020",
+        "hemi": 0.8,
+        "key": "#ffb870",
+        "keyIntensity": 1.0,
+        "fill": "#ffd0a0",
+        "fillIntensity": 0.55,
+        "rim": "#ffc080",
+        "rimIntensity": 0.45,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/pub-bar-room-light.glb",
+        "at": [1.25, 0, -3],
+        "turn": 0
+      },
+      "ground": {
+        "color": "#3a2616",
+        "radius": 6
+      },
+      "lightFor": "irish-pub"
+    },
+    {
+      "id": "neon-discoteca",
+      "title": "Neon discoteca",
+      "note": "A club with an LED dance floor and a DJ booth.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["desktop"],
+      "triangles": 138814,
+      "activities": [],
+      "sky": {
+        "top": "#0e0a24",
+        "horizon": "#2a1650",
+        "bottom": "#08060f"
+      },
+      "fog": {
+        "color": "#160e30",
+        "near": 8,
+        "far": 32
+      },
+      "light": {
+        "sky": "#7a5cff",
+        "ground": "#120a24",
+        "hemi": 0.55,
+        "key": "#ff4fd8",
+        "keyIntensity": 0.9,
+        "fill": "#4fc8ff",
+        "fillIntensity": 0.6,
+        "rim": "#9a6bff",
+        "rimIntensity": 0.7,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/club-main-room.glb",
+        "at": [-0.25, -0.002, 0.5],
+        "turn": 0
+      },
+      "preview": "previews/neon-discoteca.webp",
+      "category": "Nightlife"
+    },
+    {
+      "id": "neon-discoteca-light",
+      "title": "Neon discoteca",
+      "note": "The dance floor and the DJ booth, light enough for phones.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "vr"],
+      "triangles": 27904,
+      "activities": [],
+      "sky": {
+        "top": "#0e0a24",
+        "horizon": "#2a1650",
+        "bottom": "#08060f"
+      },
+      "fog": {
+        "color": "#160e30",
+        "near": 8,
+        "far": 32
+      },
+      "light": {
+        "sky": "#7a5cff",
+        "ground": "#120a24",
+        "hemi": 0.55,
+        "key": "#ff4fd8",
+        "keyIntensity": 0.9,
+        "fill": "#4fc8ff",
+        "fillIntensity": 0.6,
+        "rim": "#9a6bff",
+        "rimIntensity": 0.7,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/club-main-room-light.glb",
+        "at": [-0.25, -0.002, 0.5],
+        "turn": 0
+      },
+      "lightFor": "neon-discoteca"
+    },
+    {
+      "id": "private-cabaret",
+      "title": "Private cabaret",
+      "note": "A stage with curtains and golden footlights, just for two.",
+      "place": true,
+      "rating": "private",
+      "tiers": ["desktop", "vr"],
+      "triangles": 68044,
+      "activities": [],
+      "sky": {
+        "top": "#1a0c10",
+        "horizon": "#3a1820",
+        "bottom": "#100608"
+      },
+      "fog": {
+        "color": "#1e0c12",
+        "near": 10,
+        "far": 34
+      },
+      "light": {
+        "sky": "#ffd8a0",
+        "ground": "#3a1418",
+        "hemi": 0.7,
+        "key": "#ffc860",
+        "keyIntensity": 1.15,
+        "fill": "#ff9a8a",
+        "fillIntensity": 0.5,
+        "rim": "#ffd070",
+        "rimIntensity": 0.6,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/cabaret-stage.glb",
+        "at": [0.25, -0.9, 2.5],
+        "turn": 0
+      },
+      "preview": "previews/private-cabaret.webp",
+      "category": "Private"
+    },
+    {
+      "id": "private-cabaret-light",
+      "title": "Private cabaret",
+      "note": "The stage and its curtains, light enough for phones.",
+      "place": true,
+      "rating": "private",
+      "tiers": ["mobile"],
+      "triangles": 25160,
+      "activities": [],
+      "sky": {
+        "top": "#1a0c10",
+        "horizon": "#3a1820",
+        "bottom": "#100608"
+      },
+      "fog": {
+        "color": "#1e0c12",
+        "near": 10,
+        "far": 34
+      },
+      "light": {
+        "sky": "#ffd8a0",
+        "ground": "#3a1418",
+        "hemi": 0.7,
+        "key": "#ffc860",
+        "keyIntensity": 1.15,
+        "fill": "#ff9a8a",
+        "fillIntensity": 0.5,
+        "rim": "#ffd070",
+        "rimIntensity": 0.6,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/cabaret-stage-light.glb",
+        "at": [0.25, -0.9, 2.5],
+        "turn": 0
+      },
+      "lightFor": "private-cabaret"
+    },
+    {
+      "id": "private-stream-studio",
+      "title": "Private stream studio",
+      "note": "A pretend streaming set. Nothing is recorded or sent.",
+      "place": true,
+      "rating": "private",
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 1912,
+      "activities": [],
+      "sky": {
+        "top": "#23252e",
+        "horizon": "#3a3d4a",
+        "bottom": "#18191f"
+      },
+      "fog": {
+        "color": "#23252e",
+        "near": 8,
+        "far": 28
+      },
+      "light": {
+        "sky": "#f4f0ff",
+        "ground": "#3a3a48",
+        "hemi": 0.85,
+        "key": "#fff2e6",
+        "keyIntensity": 1.0,
+        "fill": "#d8e4ff",
+        "fillIntensity": 0.7,
+        "rim": "#c8a8ff",
+        "rimIntensity": 0.45,
+        "exposure": 1
+      },
+      "props": [
+        {
+          "src": "kits/kenney-furniture-kit/rugRound.glb",
+          "width": 2.4,
+          "at": [0, 0, -0.5],
+          "flat": true
+        },
+        {
+          "src": "kits/kenney-furniture-kit/loungeDesignSofa.glb",
+          "width": 2.0,
+          "at": [0, 0, -2.3]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampSquareFloor.glb",
+          "height": 1.7,
+          "at": [-1.15, 0, -1.4],
+          "turn": 30
+        },
+        {
+          "src": "kits/kenney-furniture-kit/lampSquareFloor.glb",
+          "height": 1.7,
+          "at": [1.15, 0, -1.4],
+          "turn": -30
+        },
+        {
+          "src": "kits/kenney-furniture-kit/desk.glb",
+          "width": 1.4,
+          "at": [-2.0, 0, -1.9],
+          "turn": 35
+        },
+        {
+          "src": "kits/kenney-furniture-kit/computerScreen.glb",
+          "height": 0.4,
+          "at": [-2.0, 0.75, -2.0],
+          "turn": 35
+        },
+        {
+          "src": "kits/kenney-furniture-kit/chairDesk.glb",
+          "height": 0.95,
+          "at": [-1.6, 0, -1.3],
+          "turn": 215
+        },
+        {
+          "src": "kits/kenney-furniture-kit/speaker.glb",
+          "height": 0.9,
+          "at": [2.3, 0, -2.2],
+          "turn": -30
+        },
+        {
+          "src": "kits/kenney-furniture-kit/bookcaseOpenLow.glb",
+          "width": 1.2,
+          "at": [2.6, 0, -0.9],
+          "turn": -90
+        },
+        {
+          "src": "kits/kenney-furniture-kit/pottedPlant.glb",
+          "height": 1.1,
+          "at": [1.2, 0, -2.6]
+        },
+        {
+          "src": "kits/kenney-furniture-kit/plantSmall2.glb",
+          "height": 0.35,
+          "at": [-2.3, 0.75, -1.6]
+        }
+      ],
+      "ground": {
+        "color": "#2c2c36",
+        "radius": 4.5
+      },
+      "preview": "previews/private-stream-studio.webp",
+      "category": "Private"
+    },
+    {
+      "id": "creative-academy",
+      "title": "Creative academy",
+      "note": "A bright seminar room with whiteboards, for learning together.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["desktop", "vr"],
+      "triangles": 41160,
+      "activities": [],
+      "sky": {
+        "top": "#cfe2f2",
+        "horizon": "#eef4f8",
+        "bottom": "#7a7a80"
+      },
+      "fog": {
+        "color": "#e8eef4",
+        "near": 12,
+        "far": 40
+      },
+      "light": {
+        "sky": "#f4f8ff",
+        "ground": "#707078",
+        "hemi": 0.95,
+        "key": "#fff6e8",
+        "keyIntensity": 1.1,
+        "fill": "#e4eeff",
+        "fillIntensity": 0.65,
+        "rim": "#ffffff",
+        "rimIntensity": 0.25,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/academy-seminar.glb",
+        "at": [-1.414, -0.054, -4.95],
+        "turn": -45
+      },
+      "ground": {
+        "color": "#8a8a90",
+        "radius": 6
+      },
+      "preview": "previews/creative-academy.webp",
+      "category": "Learning"
+    },
+    {
+      "id": "creative-academy-light",
+      "title": "Creative academy",
+      "note": "The seminar room, light enough for phones.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile"],
+      "triangles": 29356,
+      "activities": [],
+      "sky": {
+        "top": "#cfe2f2",
+        "horizon": "#eef4f8",
+        "bottom": "#7a7a80"
+      },
+      "fog": {
+        "color": "#e8eef4",
+        "near": 12,
+        "far": 40
+      },
+      "light": {
+        "sky": "#f4f8ff",
+        "ground": "#707078",
+        "hemi": 0.95,
+        "key": "#fff6e8",
+        "keyIntensity": 1.1,
+        "fill": "#e4eeff",
+        "fillIntensity": 0.65,
+        "rim": "#ffffff",
+        "rimIntensity": 0.25,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/academy-seminar-light.glb",
+        "at": [-1.414, -0.054, -4.95],
+        "turn": -45
+      },
+      "ground": {
+        "color": "#8a8a90",
+        "radius": 6
+      },
+      "lightFor": "creative-academy"
+    }
+  ]
+}

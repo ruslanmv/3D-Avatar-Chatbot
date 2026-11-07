@@ -74,6 +74,7 @@
         ['it-IT', 'Italiano'],
         ['es-ES', 'Español (España)'],
         ['es-MX', 'Español (México)'],
+        ['es-AR', 'Español (Argentina)'], // HV-FIX 10: Daniela
         ['fr-FR', 'Français'],
         ['de-DE', 'Deutsch'],
         ['pt-BR', 'Português (Brasil)'],
@@ -341,6 +342,20 @@
             if (remoteSelected()) load(false);
         });
         if (global.addEventListener) global.addEventListener('nexus-tts-engine', () => render());
+        // SW1. While the gateway waits for a sleeping SonicAgent to boot, say that — in amber,
+        // with the seconds so far — instead of leaving the last error up. A free Space sleeps
+        // after two days unused and takes about a minute to start; "could not start" for a
+        // service that is merely waking sent people to change settings that were right.
+        if (global.addEventListener) {
+            global.addEventListener('sonic-voice-waking', (e) => {
+                if (!remoteSelected()) return;
+                const s = Math.round(((e && e.detail && e.detail.elapsedMs) || 0) / 1000);
+                status(`Waking the speech service (it sleeps when unused)… ${s} s`, 'warn');
+            });
+            global.addEventListener('sonic-voice-awake', () => {
+                if (remoteSelected()) status('The speech service is awake.', 'ok');
+            });
+        }
         const prefEl = doc.getElementById('speech-voice-pref');
         if (prefEl) prefEl.addEventListener('change', () => render());
         const opener = doc.getElementById('settings-btn');

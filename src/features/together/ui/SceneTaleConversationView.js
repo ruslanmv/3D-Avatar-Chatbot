@@ -200,7 +200,8 @@ const SceneTaleConversationView = (() => {
             block.className = 'nexus-story-heading';
             const kicker = doc.createElement('div');
             kicker.className = 'nexus-story-kicker';
-            kicker.textContent = '✨ SCENE TALE';
+            kicker.textContent = playgroundKicker(hud);
+            kicker.dataset.kicker = 'scene-tale';
             const name = doc.createElement('div');
             name.className = 'nexus-story-heading-title';
             const note = doc.createElement('div');
@@ -215,7 +216,15 @@ const SceneTaleConversationView = (() => {
         const name = block.querySelector('.nexus-story-heading-title');
         const nextTitle = String(title || 'Scene Tale');
         if (name && name.textContent !== nextTitle) name.textContent = nextTitle;
+        const kicker = block.querySelector('.nexus-story-kicker');
+        const nextKicker = playgroundKicker(hud);
+        if (kicker && kicker.textContent !== nextKicker) kicker.textContent = nextKicker;
         return block;
+    }
+
+    function playgroundKicker(hud) {
+        const raw = String((hud && hud.dataset && hud.dataset.playgroundKicker) || 'SCENE TALE').replace(/^✨\s*/, '');
+        return `✨ ${raw}`;
     }
 
     function ensureShell(hud) {
@@ -271,6 +280,7 @@ const SceneTaleConversationView = (() => {
         const shell = doc.createElement('div');
         shell.className = 'nexus-story-shell';
         hud.appendChild(shell);
+        if (player.kicker) hud.dataset.playgroundKicker = player.kicker;
         heading(hud, player.plan && player.plan.title);
 
         const card = doc.createElement('div');

@@ -1,8 +1,8 @@
 /**
  * Playground — scene-aware, family-safe shared experiences.
  *
- * V1 deliberately exposes one real experience: Scene Tale. Clicking Playground opens the
- * Scene Tale configuration directly; planning is a separate visible phase; playback starts
+ * Three family-safe playgrounds share this player: Life Evening, Copilot Hour, and Scene Tale.
+ * Clicking Playground asks which one; planning is a separate visible phase; playback starts
  * only from the explicit Start story user gesture. The main 3D viewport stays dominant while
  * a small HUD carries narration, choices, pause/end controls and completion actions.
  *
@@ -24,12 +24,51 @@ const PlaygroundActivity = (() => {
     const FAMILY_BLOCK =
         /\b(?:porn|pornographic|explicit sex|sexual act|nude|naked|rape|incest|self-harm|suicide|gore)\b/i;
 
+    const LIFE_EVENING = Object.freeze({
+        id: 'life-evening',
+        label: 'An evening together',
+        destination: 'life',
+        kicker: 'LIFE EVENING',
+        prompt: 'A quiet hour together. Nothing is recorded.',
+        placeholder: 'Something you want to say tonight',
+        title: 'An evening together',
+        startLabel: 'Begin',
+        permission: null,
+        note: 'A quiet story for the two of you.',
+    });
+    const COPILOT_HOUR = Object.freeze({
+        id: 'copilot-hour',
+        label: 'Copilot Hour',
+        destination: 'copilot',
+        kicker: 'COPILOT HOUR',
+        prompt: 'One small thing, finished together. Nothing is recorded.',
+        placeholder: 'The one thing you want done',
+        title: 'Copilot Hour',
+        startLabel: 'Begin',
+        permission: null,
+        note: 'One small thing, finished together.',
+    });
     const SCENE_TALE = Object.freeze({
         id: 'scene-tale',
         label: 'Scene Tale',
+        destination: 'experiences',
+        kicker: 'SCENE TALE',
+        prompt: 'A little story inspired by this place.',
+        placeholder: 'A letter somebody never delivered',
+        title: 'Scene Tale',
+        startLabel: 'Create story',
         permission: null,
-        note: 'A short interactive story inspired by where we are.',
+        note: 'A short story set where we are.',
     });
+    const PLAYGROUNDS = Object.freeze([LIFE_EVENING, COPILOT_HOUR, SCENE_TALE]);
+    /** TG2. What Playground's own screen offers: the three places, in their colours. */
+    const PLACES = Object.freeze(['cohost', 'coach', 'journey']);
+    /** Each place's own story, for a page where that place is not loaded. */
+    const PLACE_STORY = Object.freeze({ cohost: 'life-evening', coach: 'copilot-hour', journey: 'scene-tale' });
+
+    function playgroundById(id) {
+        return PLAYGROUNDS.find((item) => item.id === id) || null;
+    }
 
     const INTIMATE_PRESETS = Object.freeze([
         Object.freeze({
@@ -390,6 +429,46 @@ const PlaygroundActivity = (() => {
         return { ok: true, plan };
     }
 
+    /**
+     * The same two-choice shape as Scene Tale, with copy that belongs to one destination.
+     * Life is companionship. Copilot is one finished hour. Scene Tale stays the place story.
+     */
+    function branchStory(scene, idea, musicEnabled, copy) {
+        const seed = safeIdea(idea);
+        const place = scene.label;
+        const hook = seed ? copy.hookSeed(place, seed) : copy.hook(place);
+        const raw = {
+            version: 1,
+            id: storyId(copy.title),
+            title: copy.title,
+            sceneId: scene.id,
+            sceneLabel: place,
+            durationSec: 300,
+            startNode: 'opening',
+            music: { query: copy.music(place) },
+            nodes: {
+                opening: { type: 'narration', text: hook, next: 'arrival', pauseAfterMs: 900 },
+                arrival: { type: 'narration', text: copy.arrival(place), next: 'choice-one', pauseAfterMs: 1000 },
+                'choice-one': { type: 'choice', prompt: copy.choiceOne, options: copy.optionsOne },
+                'path-a': { type: 'narration', text: copy.pathA(place), next: 'middle', pauseAfterMs: 1100 },
+                'path-b': { type: 'narration', text: copy.pathB(place), next: 'middle', pauseAfterMs: 1100 },
+                middle: { type: 'narration', text: copy.middle(place), next: 'quiet', pauseAfterMs: 1800 },
+                quiet: { type: 'narration', text: copy.quiet(place), next: 'choice-two', pauseAfterMs: 1800 },
+                'choice-two': { type: 'choice', prompt: copy.choiceTwo, options: copy.optionsTwo },
+                'path-c': { type: 'narration', text: copy.pathC(place), next: 'finale', pauseAfterMs: 1200 },
+                'path-d': { type: 'narration', text: copy.pathD(place), next: 'finale', pauseAfterMs: 1200 },
+                finale: { type: 'narration', text: copy.finale(place), next: 'end', pauseAfterMs: 2500 },
+                end: { type: 'end', text: copy.end },
+            },
+        };
+        return validateStoryPlan(raw, {
+            sceneId: scene.id,
+            sceneLabel: place,
+            musicEnabled,
+            musicQuery: raw.music.query,
+        }).plan;
+    }
+
     function fallbackStory(scene, idea, musicEnabled) {
         const seed = safeIdea(idea);
         const isLetter = /letter|message|note/i.test(seed);
@@ -494,6 +573,94 @@ const PlaygroundActivity = (() => {
             musicEnabled,
             musicQuery: raw.music.query,
         }).plan;
+    }
+
+    const LIFE_COPY = {
+        title: 'The Evening We Kept',
+        music: (place) => `${place} warm quiet evening instrumental`,
+        hook: () =>
+            `Tonight does not ask us to go anywhere. It only asks whether we want to stay in each other's company for a while, with nothing to prove and nothing to finish.`,
+        hookSeed: (_place, seed) =>
+            `Tonight holds one thing you wanted to say: ${seed}. We can sit with it, or we can let the evening carry it without turning it into a task.`,
+        arrival: () =>
+            `She sits where you can see her, close enough to talk and far enough that the quiet still has room. The hour ahead is ordinary on purpose. Ordinary is where a day becomes a life you actually remember.`,
+        choiceOne: 'How should this evening begin?',
+        optionsOne: [
+            { id: 'stay', label: 'Stay and talk', next: 'path-a' },
+            { id: 'walk', label: 'Walk the terrace', next: 'path-b' },
+        ],
+        pathA: () =>
+            `You stay. The first minutes are small: how the day actually felt, which part you would keep, which part you would set down. She does not collect it. She just answers as someone who is here.`,
+        pathB: (place) =>
+            `You walk. ${place} changes a little with each step, and the talking gets easier because neither of you has to look at the other the whole time. The point of the walk is the company, not the distance.`,
+        middle: () =>
+            `Halfway through, the evening stops being a plan and becomes a place you are both in. Nothing dramatic arrives. That is the gift. A life together is mostly made of hours that did not need an audience.`,
+        quiet: () =>
+            `There is a pause long enough to notice you are not performing. She waits inside it instead of filling it. When you are ready, there is one choice left, and it is a small one.`,
+        choiceTwo: 'What should we do with the rest of the hour?',
+        optionsTwo: [
+            { id: 'say', label: 'Say the true thing', next: 'path-c' },
+            { id: 'keep', label: 'Keep the quiet', next: 'path-d' },
+        ],
+        pathC: () =>
+            `You say the true thing, plainly, without dressing it up. She answers in the same register: one sentence that shows she heard the part you were afraid would be missed. The hour does not need a second speech.`,
+        pathD: () =>
+            `You keep the quiet. She understands that not every feeling wants words tonight, and she stays anyway. Being stayed-with is its own answer, and it does not expire when the hour does.`,
+        finale: (place) =>
+            `Before the light changes again, she looks at ${place} and then at you. The evening did not solve a life. It kept one hour of it intact. That is what Life is for: a companion who remains when the useful part of the day is over.`,
+        end: 'We can leave the evening here. Nothing from it has to be stored.',
+    };
+
+    const COPILOT_COPY = {
+        title: 'One Hour, One Thing',
+        music: (place) => `${place} focused gentle instrumental`,
+        hook: () =>
+            `This hour has room for exactly one thing. Not the whole list. Not the mood of the list. One piece of work, finished well enough that the rest can wait without guilt.`,
+        hookSeed: (_place, seed) =>
+            `This hour is for one thing: ${seed}. We will not widen it into a second job. We will make it smaller until it can actually end.`,
+        arrival: () =>
+            `She clears the table the way a good partner does: by naming what is in the way. The pile stays a pile. We pick the piece that, once done, makes the pile less frightening. Then we start.`,
+        choiceOne: 'Where should the hour start?',
+        optionsOne: [
+            { id: 'hard', label: 'The hardest piece', next: 'path-a' },
+            { id: 'easy', label: 'The easy win', next: 'path-b' },
+        ],
+        pathA: () =>
+            `You take the hardest piece first, while the hour is still whole. She breaks it into three moves you can see, and she refuses the fourth one you tried to sneak in. A copilot who adds work is not helping.`,
+        pathB: () =>
+            `You take the easy win first, so the hour begins with proof that finishing is possible. She keeps the win small on purpose. Momentum is a tool, not a reason to open three more tabs.`,
+        middle: () =>
+            `The middle of the hour is the part people abandon. She stays on the same piece. When you drift, she asks which sentence is the next true one, not how you feel about the project. Feeling can come back when the piece is done.`,
+        quiet: () =>
+            `There is a quiet stretch where the work is simply happening. She does not narrate it. The point of a copilot hour is that you look up and the thing is further along than your worry predicted.`,
+        choiceTwo: 'The hour is nearly gone. What now?',
+        optionsTwo: [
+            { id: 'stop', label: 'Stop at the bell', next: 'path-c' },
+            { id: 'step', label: 'One more small step', next: 'path-d' },
+        ],
+        pathC: () =>
+            `You stop at the bell. She writes down the exact next step in one line, so tomorrow does not have to reconstruct it from guilt. Stopping on time is part of the job, not a failure of it.`,
+        pathD: () =>
+            `You take one more small step, and only one. She names it before you start so it cannot grow. When that step is done, the hour is done, even if the larger thing is not.`,
+        finale: (place) =>
+            `She looks around ${place} and closes the hour out loud: here is what finished, here is the next line, here is what we are not carrying tonight. Copilot is not a second brain that never sleeps. It is a companion who helps you stop.`,
+        end: 'The hour is closed. The next step is written down, and the rest can wait.',
+    };
+
+    function friendlyPlace(scene, id) {
+        const label = scene && scene.label;
+        if (label && label !== 'Current Scene' && label !== 'current-scene') return label;
+        if (id === 'life-evening') return 'the room';
+        if (id === 'copilot-hour') return 'the desk';
+        return 'this place';
+    }
+
+    function playgroundStory(id, scene, idea, musicEnabled) {
+        const scoped = { id: (scene && scene.id) || 'current-scene', label: friendlyPlace(scene, id) };
+        if (id === 'life-evening') return branchStory(scoped, idea, musicEnabled, LIFE_COPY);
+        if (id === 'copilot-hour') return branchStory(scoped, idea, musicEnabled, COPILOT_COPY);
+        if (scoped.label === (scene && scene.label)) return fallbackStory(scene, idea, musicEnabled);
+        return fallbackStory(scoped, idea, musicEnabled);
     }
 
     function plannerSystemPrompt() {
@@ -702,7 +869,7 @@ const PlaygroundActivity = (() => {
          * work between them, which made the list read as three instant steps and one that hung.
          * Each step is now marked running before its own work and settled after it.
          */
-        async prepare({ scene, idea = '', music = 'auto', onProgress } = {}) {
+        async prepare({ scene, idea = '', music = 'auto', onProgress, playground = 'scene-tale' } = {}) {
             const safeScene = scene || currentScene(this.win);
             const safeSeed = safeIdea(idea);
             const musicEnabled = music !== 'none';
@@ -765,7 +932,7 @@ const PlaygroundActivity = (() => {
                     }
                 }
             }
-            if (!plan) plan = fallbackStory(safeScene, safeSeed, musicEnabled);
+            if (!plan) plan = playgroundStory(playground, safeScene, safeSeed, musicEnabled);
 
             progress('choices', 'running');
             progress('choices', countChoices(plan) ? 'done' : 'skipped');
@@ -854,6 +1021,11 @@ const PlaygroundActivity = (() => {
         }
     }
 
+    // MV1. How far other sound drops while she narrates. 0.16 took the scene's music almost
+    // to silence under every line, which across a story read as "the music is too low"; 0.4
+    // still clears the way for her voice and keeps the music in the room.
+    const DUCK_VOLUME = 0.4;
+
     class AudioFocusManager {
         constructor({ win, bus } = {}) {
             this.win = win || globalObject();
@@ -874,11 +1046,11 @@ const PlaygroundActivity = (() => {
                     if (!Number.isFinite(volume)) continue;
                     this.saved.push({ media, volume });
                     try {
-                        media.volume = Math.min(volume, 0.16);
+                        media.volume = Math.min(volume, DUCK_VOLUME);
                     } catch (_) {}
                 }
             }
-            busEmit(this.bus, 'story:audio-duck', { volume: 0.16 });
+            busEmit(this.bus, 'story:audio-duck', { volume: DUCK_VOLUME });
         }
 
         restore() {
@@ -924,8 +1096,10 @@ const PlaygroundActivity = (() => {
             timingScale = 1,
             onComplete,
             onReplay,
+            kicker,
         } = {}) {
             this.plan = plan;
+            this.kicker = kicker || 'SCENE TALE';
             this.soundtrack = soundtrack || null;
             this.bus = bus || null;
             this.win = win || globalObject();
@@ -1125,6 +1299,7 @@ const PlaygroundActivity = (() => {
             if (old && old.parentNode) old.parentNode.removeChild(old);
             this.hud = addEl(this.doc, this.doc.body, 'div', '', '');
             this.hud.id = 'nexus-scene-tale-hud';
+            this.hud.dataset.playgroundKicker = this.kicker || 'SCENE TALE';
             this.hud.setAttribute('aria-live', 'polite');
             this.card = addEl(this.doc, this.hud, 'div', 'nexus-story-card');
             this.card.hidden = true;
@@ -1364,6 +1539,9 @@ const PlaygroundActivity = (() => {
             this.soundtrackChoice = 'choose';
             /** The ambience scene the evening will use, or `null` for "wherever we are". */
             this.sceneChoice = null;
+            /** VW3. A 3D room to be in instead of a picture behind her (`places()`). */
+            this.worldChoice = null;
+            this._worldCatalogue = null;
             this.preparedPlan = null;
             this.preparedTrack = null;
             this.prepareError = '';
@@ -1452,6 +1630,48 @@ const PlaygroundActivity = (() => {
             return [...first, ...rest].slice(0, Math.max(1, limit));
         }
 
+        /**
+         * VW3. The 3D rooms Private may offer: romantic and private places (a hotel suite, the
+         * candlelit suite, a roadside motel…), resolved to what this device can load — a phone
+         * gets the light stand-ins. Asked for only here, where Private's own gates (adult mode,
+         * an avatar Forge declares adult, the consent flow) already stand in front; the engine
+         * loads a private world only when this activity requests it.
+         */
+        places() {
+            const win = globalObject();
+            const W = win && win.NEXUS_VR_WORLDS;
+            if (!W) return [];
+            if (!this._worldCatalogue) {
+                Promise.resolve(W.loadCatalogue())
+                    .then((c) => {
+                        this._worldCatalogue = c;
+                        this._repaint();
+                    })
+                    .catch(() => {});
+                return [];
+            }
+            const doc = win.document;
+            const mobile = !!(doc && doc.documentElement && doc.documentElement.classList.contains('is-mobile'));
+            return W.placesFor(this._worldCatalogue.worlds, {
+                tier: W.tierFor({ xr: false, mobile }),
+                include: ['romantic', 'private'],
+                privateOpen: true,
+            });
+        }
+
+        _requestWorld(id) {
+            const win = globalObject();
+            try {
+                if (win && typeof win.dispatchEvent === 'function' && typeof win.CustomEvent === 'function') {
+                    win.dispatchEvent(
+                        new win.CustomEvent('nexus-world-request', { detail: { id: id || null, owner: 'intimate' } })
+                    );
+                }
+            } catch (_) {
+                /* the picture behind her stays */
+            }
+        }
+
         showAllScenes() {
             this._showAllScenes = true;
             this._repaint();
@@ -1501,8 +1721,16 @@ const PlaygroundActivity = (() => {
         }
 
         /** Step 2 changed something the background work depends on. */
-        setAtmosphere({ scene, soundtrack } = {}) {
-            if (scene !== undefined) this.sceneChoice = cleanText(scene, 80) || null;
+        setAtmosphere({ scene, soundtrack, world } = {}) {
+            if (scene !== undefined) {
+                this.sceneChoice = cleanText(scene, 80) || null;
+                // A picture or a room, not both: a room covers the picture anyway.
+                if (this.sceneChoice) this.worldChoice = null;
+            }
+            if (world !== undefined) {
+                this.worldChoice = cleanText(world, 60) || null;
+                if (this.worldChoice) this.sceneChoice = null;
+            }
             if (soundtrack !== undefined) {
                 this.soundtrackChoice = ['choose', 'current', 'none'].includes(soundtrack) ? soundtrack : 'choose';
             }
@@ -1942,6 +2170,8 @@ const PlaygroundActivity = (() => {
                 maxLevel: preset.maxLevel,
                 startedAt: this.startedAt,
             });
+            // VW3. The room, only now: after the gates above have all passed.
+            if (this.worldChoice) this._requestWorld(this.worldChoice);
             return { ok: true, why: preset.id, preset: preset.id, maxLevel: preset.maxLevel };
         }
         stop(why = 'user') {
@@ -1958,6 +2188,8 @@ const PlaygroundActivity = (() => {
             this.preparedTrack = null;
             this.prepared = null;
             this._showAllScenes = false;
+            // VW3. The room goes with the session, however it ended.
+            if (wasActive) this._requestWorld(null);
             if (this.adult && this.adult.active && typeof this.adult.exit === 'function') this.adult.exit('hard');
             this._restoreCeiling();
             if (wasActive) busEmit(this.bus, 'intimate:stop', { preset, why });
@@ -2151,7 +2383,8 @@ const PlaygroundActivity = (() => {
             this.id = 'playground';
             this.title = 'Playground';
             this.icon = '✨';
-            this.order = 45;
+            // TG2. First: it holds Life, Copilot and Experiences.
+            this.order = 5;
             this.prompt = 'A little story inspired by this place.';
             this.bus = bus || null;
             this.win = win || globalObject();
@@ -2163,8 +2396,9 @@ const PlaygroundActivity = (() => {
             this.history = new HistoryStore({ win: this.win });
             this.active = false;
             this.mode = null;
+            this.playgroundId = null;
             this.startedAt = null;
-            this.sessionState = 'configure';
+            this.sessionState = 'pick';
             this.idea = '';
             this.musicChoice = 'auto';
             this.preparedPlan = null;
@@ -2192,7 +2426,7 @@ const PlaygroundActivity = (() => {
             return 'Playground';
         }
         inputs() {
-            return [{ ...SCENE_TALE }];
+            return PLAYGROUNDS.map((item) => ({ ...item }));
         }
         availability() {
             return { ok: true, why: '' };
@@ -2204,6 +2438,7 @@ const PlaygroundActivity = (() => {
             if (this.sessionState === 'preparing') return this._paintPreparing(panel);
             if (this.sessionState === 'ready') return this._paintReady(panel);
             if (this.sessionState === 'error') return this._paintPrepareError(panel);
+            if (this.sessionState === 'pick' || !this.playgroundId) return this._paintPicker(panel);
             return this._paintConfigure(panel);
         }
 
@@ -2232,6 +2467,7 @@ const PlaygroundActivity = (() => {
                     scene,
                     idea: this.idea,
                     music: this.musicChoice,
+                    playground: this.playgroundId || SCENE_TALE.id,
                     onProgress: (step, state) => {
                         if (token !== this._prepareToken) return;
                         // A step never goes backwards. A planner that reports `running` after it
@@ -2288,8 +2524,9 @@ const PlaygroundActivity = (() => {
 
         async start({ input = {} } = {}) {
             if (this.active) return { ok: false, why: 'Playground is already running' };
-            if (String(input.id || '') !== SCENE_TALE.id)
-                return { ok: false, why: `unknown Playground mode: ${String(input.id || '')}` };
+            const spec = playgroundById(String(input.id || this.playgroundId || ''));
+            if (!spec) return { ok: false, why: `unknown Playground mode: ${String(input.id || '')}` };
+            this.playgroundId = spec.id;
             const plan = input.preparedPlan || this.preparedPlan;
             const checked = validateStoryPlan(plan, {
                 sceneId: plan && plan.sceneId,
@@ -2308,6 +2545,7 @@ const PlaygroundActivity = (() => {
                 say: this.say,
                 timingScale: this.timingScale,
                 history: this.history,
+                kicker: spec.kicker,
                 onComplete: () => {
                     this.sessionState = 'complete';
                 },
@@ -2320,7 +2558,15 @@ const PlaygroundActivity = (() => {
                 return started || { ok: false, why: 'Scene Tale player refused to start' };
             this.player = player;
             this.active = true;
-            this.mode = SCENE_TALE.id;
+            this.mode = spec.id;
+            const live = this.win && this.win.__NEXUS_COMPANION_LIVE;
+            if (live && live.session && typeof live.session.setDestination === 'function') {
+                try {
+                    live.session.setDestination(spec.destination);
+                } catch (_) {
+                    /* the story still plays if the destination bar is absent */
+                }
+            }
             this.startedAt = Date.now();
             this.sessionState = 'playing';
             busEmit(this.bus, 'playground:start', {
@@ -2345,7 +2591,10 @@ const PlaygroundActivity = (() => {
             const mode = this.mode;
             this.mode = null;
             this.startedAt = null;
-            if (why !== 'complete') this.sessionState = 'configure';
+            if (why !== 'complete') {
+                this.sessionState = 'pick';
+                this.playgroundId = null;
+            }
             if (wasActive) busEmit(this.bus, 'playground:stop', { mode, why });
             return wasActive;
         }
@@ -2353,8 +2602,9 @@ const PlaygroundActivity = (() => {
         status() {
             if (!this.active) return null;
             const state = this.player && this.player.state ? this.player.state : this.sessionState;
+            const spec = playgroundById(this.mode) || SCENE_TALE;
             return {
-                label: 'Scene Tale',
+                label: spec.label,
                 detail: state === 'waiting-choice' ? 'Your choice' : state === 'paused' ? 'Paused' : 'Playing',
             };
         }
@@ -2366,18 +2616,66 @@ const PlaygroundActivity = (() => {
             this._intimateBridge = null;
         }
 
+        /**
+         * TG2. Playground is where the three places are: Life, Copilot, Experiences, as the
+         * same coloured tiles the home grid used to show. It used to list its three stories
+         * here as well — An evening together, Copilot Hour, Scene Tale — which were each
+         * already inside one of those places, so the person met every story twice under two
+         * names. Each story now lives only under its place; this screen only says where.
+         */
+        _storyButton(doc, parent, item) {
+            if (!item) return null;
+            const list = addEl(doc, parent, 'div', 'nexus-bd-together-options');
+            const choice = button(doc, list, item.label, 'nexus-bd-together-option', () => {
+                this.playgroundId = item.id;
+                this.sessionState = 'configure';
+                this.idea = '';
+                this._repaint();
+            });
+            choice.dataset.playground = item.id;
+            return choice;
+        }
+
+        /** TG2. Back to the three places, unless a story is already running. */
+        resetSetup() {
+            if (this.active) return;
+            this.playgroundId = null;
+            this.sessionState = 'pick';
+        }
+
+        _paintPicker(panel) {
+            const doc = panel.doc;
+            addEl(doc, panel.root, 'p', 'nexus-bd-together-subtitle', 'PLAYGROUND');
+            const grid = addEl(doc, panel.root, 'div', 'nexus-bd-together-grid');
+            for (const id of PLACES) {
+                const place = typeof panel.contractFor === 'function' ? panel.contractFor(id) : null;
+                if (!place) {
+                    // A place not on this page: offer its story itself, so Playground is never
+                    // an empty screen and no story becomes unreachable.
+                    this._storyButton(doc, panel.root, playgroundById(PLACE_STORY[id]));
+                    continue;
+                }
+                const tile = button(doc, grid, '', 'nexus-bd-together-tile', () => panel.choose(id));
+                tile.dataset.activity = id;
+                addEl(doc, tile, 'span', 'nexus-bd-together-icon', place.icon || '');
+                addEl(doc, tile, 'span', 'nexus-bd-together-name', place.title || id);
+                tile.title = place.title || id;
+            }
+        }
+
         _paintConfigure(panel) {
             const doc = panel.doc;
             const scene = currentScene(this.win);
-            addEl(doc, panel.root, 'p', 'nexus-bd-together-subtitle', 'SCENE TALE');
-            addEl(doc, panel.root, 'p', 'nexus-bd-together-prompt', 'A little story inspired by this place.');
+            const spec = playgroundById(this.playgroundId) || SCENE_TALE;
+            addEl(doc, panel.root, 'p', 'nexus-bd-together-subtitle', spec.kicker);
+            addEl(doc, panel.root, 'p', 'nexus-bd-together-prompt', spec.prompt);
             addEl(doc, panel.root, 'span', 'nexus-story-setup-label', 'Current place');
             addEl(doc, panel.root, 'p', 'nexus-bd-together-note', scene.label);
             const label = addEl(doc, panel.root, 'label', 'nexus-story-setup-label', 'Give me an idea · optional');
             const area = addEl(doc, panel.root, 'textarea', 'nexus-story-setup-input');
             area.value = this.idea;
             area.maxLength = 180;
-            area.placeholder = 'A letter somebody never delivered';
+            area.placeholder = spec.placeholder || 'A letter somebody never delivered';
             label.htmlFor = 'nexus-scene-tale-idea';
             area.id = 'nexus-scene-tale-idea';
             addEl(doc, panel.root, 'span', 'nexus-story-setup-label', 'Soundtrack');
@@ -2396,11 +2694,17 @@ const PlaygroundActivity = (() => {
             noneRadio.checked = this.musicChoice === 'none';
             addEl(doc, none, 'span', '', 'No music');
             const list = addEl(doc, panel.root, 'div', 'nexus-bd-together-options');
-            const create = button(doc, list, 'Create story', 'nexus-bd-together-option', () => {
+            const create = button(doc, list, spec.startLabel || 'Create story', 'nexus-bd-together-option', () => {
                 create.disabled = true;
                 this.prepare({ idea: area.value, music: noneRadio.checked ? 'none' : 'auto' });
             });
             create.dataset.action = 'create-story';
+            // IC3. Which story this screen is for. SceneTaleSetupView decorates every
+            // configure screen and used to write Scene Tale's title, question and example over
+            // all of them — Life Evening and Copilot Hour both opened as "Scene Tale".
+            create.dataset.playground = spec.id;
+            // TG2. No "Other playgrounds": the panel's Back returns to the place this story
+            // was chosen in, and from there to Playground.
         }
 
         /**
@@ -2486,7 +2790,7 @@ const PlaygroundActivity = (() => {
             const start = button(doc, list, 'Start story', 'nexus-bd-together-option', () => {
                 start.disabled = true;
                 panel.startActivity('playground', {
-                    id: SCENE_TALE.id,
+                    id: this.playgroundId || SCENE_TALE.id,
                     permission: null,
                     preparedPlan: this.preparedPlan,
                     soundtrack: this.preparedSoundtrack,
@@ -2591,6 +2895,10 @@ const PlaygroundActivity = (() => {
         attach,
         Playground,
         SCENE_TALE,
+        LIFE_EVENING,
+        COPILOT_HOUR,
+        PLAYGROUNDS,
+        playgroundStory,
         StoryPlanner,
         StoryPlayer,
         HistoryStore,

@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (250 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (264 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -128,8 +128,8 @@ Know the coverage gaps, because they are not intuitive:
 
 ### The gate passes. Keep it that way.
 
-Measured 2026-11-02 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **5577 tests in 250 suites, all passing.**
+Measured 2026-11-07 with `npm ci` deps installed: `npm run validate` exits **0**
+— lint clean, format clean, **5817 tests in 264 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -189,9 +189,14 @@ will be rewrapped; files under `docs/` are exempt.
 Try-On, `OD` the outfit dictionary shared with Forge), `V` for VRoid Hub in the
 Avatar Library, `VP` for the VR puppet, `AR` for the AR conversation, `VR` for
 the VR chat panel, `ST` for on-device speech-to-text (`docs/QUEST_STT.md`) and
-`HV` for SonicAgent voice through OllaBridge Cloud (`docs/SONICAGENT_VOICE.md`).
-Commit subjects match: `A4: viewport background manager`. So
-`git log --grep 'A4'` and the comment line up.
+`HV` for SonicAgent voice through OllaBridge Cloud (`docs/SONICAGENT_VOICE.md`),
+`IC` for Life/Copilot/Experiences, `MV` for music levels in sessions, `TG` for
+the Together grid, `VW` for VR worlds (`docs/VR_WORLDS.md`), `PG` for the
+playgrounds (PG1–PG2 the V4 release, PG3 the V5 reactive context; never a VRoid
+`V` batch — the V5 release's first four commits say `V5:` by mistake) and `DX`
+for desktop control layout. Commit subjects match:
+`A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
+up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of
@@ -343,6 +348,239 @@ Things to know before touching it:
   choice and deliberately does not call the manager, so the manager's own `_id`
   goes stale. Dropping the argument silently discards a scene chosen in the
   headset (finding A12-1). Both XR exit handlers pass `this._desktopBgKey`.
+
+## Life, Copilot and Experiences (IC1–IC3)
+
+One companion and one conversation; the three are what is going on, not modes
+she is switched into. `src/companion/` (IIFE, loaded by `boot.js`) holds them.
+
+- **Together is the only way in (IC2).** IC1's strip of three buttons over the
+  avatar is no longer added to the page (`DestinationBar` keeps its sheet and
+  Exit, which Together opens via `show()`). The three tiles are inside Together
+  ▸ Playground (TG2), in their colours: Life #38A9FF, Copilot #26D89A,
+  Experiences #F2C94C.
+- **The conversation moves the context.** At prompt time `index.js`'s
+  `noticeTopic` runs `ContextIntent.classify` (pure, local, English and Italian,
+  no model call) on the latest user message; only a clear, unambiguous signal
+  calls `session.enter(…, { source: 'conversation' })`. A Together activity with
+  a beginning and end (`ActivityMarks.EXPLICIT`: focus block, Seaside, Scene
+  Tale, Life Evening, Copilot Hour) is not replaced by a remark.
+- **One quiet line per change, never stored.** `ActivityMarks` draws "Life ·
+  Relaxing together" between messages when the context changes, and an End pill
+  above the composer only for an explicit activity. Nothing it draws is in
+  `chatHistory`, so none of it reaches the prompt or TTS. No portrait in the
+  chat.
+- **`PromptContext` speaks as one companion**: `SAME`, one "Now: …" sentence,
+  the activity line, and `STYLE` (one to three sentences, no question every
+  turn, never name a mode). `session.end()` makes the suffix `''` again. Copilot
+  never receives Life relationship text or memories.
+- **One door per thing (TG1–TG2).** The first screen is six tiles: Playground,
+  Watch, Music / Try-On, Meeting, Help me. **Playground holds the three places**
+  — its screen is only the coloured Life, Copilot and Experiences tiles
+  (`PLACES` in `playground.js`); each story lives under its place (Life ▸ An
+  evening together, Copilot ▸ Copilot Hour, Experiences ▸ Scene Tale) and
+  nowhere else. Life, Copilot, Experiences and Focus are `hidden: true`
+  adapters: registered and started as before, no tile of their own (Focus is
+  started by Relax together and Work on something). If a place is not loaded,
+  Playground offers its story directly rather than an empty screen. **Back goes
+  one step up** (`panel.trail`, `back()`): story → place → Playground → first
+  screen; a first-screen tile passes `{ fresh: true }` so Playground opens on
+  its places, not on a story abandoned earlier (`resetSetup()`).
+- **Every Together choice does what its name says, in one step (IC3).** Life:
+  Talk, Relax together, An evening together, Move together. Copilot: Work on
+  something (a 25-minute focus block), My tasks, Learn something, Copilot Hour.
+  Experiences: Seaside evening, Scene Tale and the scenes. An option that is
+  really another activity carries `startActivity` + `startInput` and the panel
+  starts it directly (no second menu); `startInput.as` is the name a failure
+  screen uses, so Move together under Life never says "Copilot needs
+  permission", and `context` is the session activity when the option id is more
+  specific (`move-squat` → `move`).
+- **One place to end an experience on desktop, and nothing floats (DX1).** The
+  conversation panel's status bar (`ActivityMarks` pill: a full-width row at the
+  top of `.chat-input-shell`, in normal flow, title left, "End experience" or
+  "End" right with the activity in its `aria-label`) is where it ends. The old
+  red Exit chip was absolutely positioned over the avatar footer's 🎯 Reset
+  Camera; it is now "End experience" inside the DestinationBar sheet's
+  experience row. The sheet's Close only dismisses the sheet. Footer buttons get
+  `aria-label` from their `title` at runtime (index.html's lines are pinned by
+  the parity harness). `tests/companion/desktop-controls.test.js`.
+- **On a phone it is a mini-player (DX2).** In portrait
+  (`body.nexus-mobile.nexus-portrait`) the status bar moves to `<body>` and
+  docks 8 px above the chat sheet (`dockOffset`, re-measured on resize, rotation
+  and a ResizeObserver on `.chat-card`): inside the sheet it pushed the input
+  off screen, and the composer's `backdrop-filter` made it the containing block
+  of a fixed child, so it was clipped. The Seaside sheet is placed above
+  whichever is higher (`DestinationBar.sheetFit`, height capped at 55% of the
+  space above so her face stays clear), shows only the experience's controls
+  while one runs, and keeps Close pinned at its bottom. Touch screens get 44 px
+  targets (`pointer: coarse`), the composer's controls are 44 px. **No backticks
+  in a CSS comment inside a template literal** — one closed the string once. The
+  old "keyboard is open" rule (`max-height: 450px`) hid her on every phone held
+  sideways; it now needs `html.nexus-keyboard-open`, which `MobileChatOverlay`
+  sets while a text field has focus, and phone landscape lets her viewport
+  shrink so the button row fits.
+- **The End control is only an X (DX3, DX5).** At the person's request the
+  status bar was reduced to one small round X (`[data-role="end"]`):
+  `aria-label` "End experience" for an experience, "End <activity>" otherwise; a
+  tooltip naming the place ("End Irish pub"); the name kept in a visually hidden
+  `role="status"` line for screen readers; 44 px on touch. No name, dot,
+  minimise or remembered view — those were tried (DX3–DX4) and removed. A
+  venue's chips sit in the same row, to the left of the X (`.has-actions`; the
+  router inserts them), so the row is one line on desktop and phones; a private
+  room has no End row, and its chips dock on their own. End asks first only if
+  the running activity answers `unsavedProgress()` (none does yet). **Clean
+  view** is `src/companion/ImmersiveMode.js` (boot list, after ActivityMarks):
+  an eye in the viewport's corner hides the X row, chips, HUD corners, READY
+  badge and (by default, Settings ▸ CLEAN VIEW, `nexus_clean_view_chat`) the
+  chat; one eye in the bottom corner or Escape restores. CSS only, naming no
+  session — a test greps it — so she and the experience keep going. Not kept
+  across a reload; entering VR or AR leaves it.
+  `tests/companion/status-views.test.js`.
+- **She says one line when it starts or ends (IC3).** `ActivityVoice`: one
+  bounded `callLLM` per Together start, newest start wins, epoch-checked,
+  nothing while the person is mid-turn or with no model configured, posted like
+  any reply. Tasks and Learn are skipped (their loops already ask), a start she
+  made herself is `silent`, and Move together waits until the panel runs the
+  coach — a fast model otherwise greeted an exercise the camera then refused.
+- **She can start it from the chat (IC3):**
+  `<activity name="relax|focus|seaside|story|end" minutes="…"/>`,
+  `ActivityDirective`, the sixth capability instance — suffixed only while
+  Together is on, consumed at both `displayText` seams. A Together activity is
+  ended silently on reload; nothing claims to be running after it stopped.
+- **Music in sessions is meant to be heard (MV1).** The person found it too low:
+  scene loops play at `SceneJourney.AMBIENT_VOLUME` 0.7 (was 0.35), Private's
+  soundtrack at 40 / softened 26 (was 15 / 10), and a story's narration ducks
+  other audio to 0.4 (was 0.16). Scene Tale's YouTube soundtrack is not given a
+  level — it is the thing they chose to hear. Tests assert ranges, not values.
+  **Correction (VW1):** the scene loops (`src/features/together/scenes/assets/`)
+  that `AMBIENT_VOLUME` sets are not in the repository — the manifests name
+  files that were never added — so that change has nothing to play yet.
+
+## Worlds, in VR and on the screen (VW1–VW3, PG1)
+
+Places in the headset: a Poly Haven panorama, CC0 kit props (Kenney, Quaternius,
+KayKit) and retinted light. `src/gltf-viewer/VRWorlds.js` (IIFE, imported by
+`ViewerEngine` for its side effect, `tests/vr-worlds.test.js`), catalogue
+`assets/vr-worlds/worlds.json`, provenance beside it, `docs/VR_WORLDS.md`.
+
+- **Plain VR stays black (XP1).** `chooseWorld`: never in AR, `off` never, a
+  running activity's world (`activities` in the catalogue) first, else the
+  Settings ▸ VR WORLD choice (`nexus_vr_world`); the default `auto` shows
+  nothing. `ViewerEngine._applyVRWorld` runs at `vr-session-start` and on every
+  companion session change or setting change while presenting.
+- **The panorama is a sphere, not `scene.background`** — r147 cannot rotate a
+  background — with every vertex below the camera height flattened onto the
+  floor (`flattenBelow`), so the photograph is the ground.
+- **Snapshot and restore:** `show()` records hemi/key/fill/rim and exposure,
+  `hide()` writes them back and disposes what the world made. `hide()` runs
+  first in `vr-session-end`, before the VR light restore.
+- **Comfort rules are enforced, not suggested:** fade through black on every
+  change (`tick` per frame from `animate()`, in its own `try`), load everything
+  before swapping, and `comfortProblem` drops any prop within 1 m of the person,
+  between the two of you, or inside her — the shipped catalogue must produce no
+  problems.
+- **Kits:** glTF/GLB only, textures ≤ 1024 px; Quaternius Sci-Fi's models were
+  rewired to its `Textures/` folder. Props are centred on their bounding box
+  (`placementOffset`) — kit origins are anywhere.
+- `?vrWorld=<id>` draws a world on the desktop for checking without a headset.
+- **On the screen too (VW2), and only light worlds on a phone.** The engine
+  watches the companion session for the page's life (it arms once
+  `__NEXUS_COMPANION_LIVE` appears — a phone boots it late) and shows the
+  running experience's world on desktop and mobile; Seaside's placeholder
+  `SceneRuntime` group (`live.scene`) is hidden while a world is up. `tierFor` →
+  `mobile | desktop | vr`; `allowedOn` refuses a world over `MOBILE_TRIANGLES`
+  (30 000) on a phone whatever its `tiers` say, and `chooseWorld` then takes the
+  next world for that activity. Every world declares measured `triangles` (a
+  test enforces it). Settings ▸ VR WORLD applies to the headset only; a screen
+  shows a world only with an experience.
+- **Assembled scenes** (`scene: { src, at, turn }`, `assets/vr-worlds/scenes/`,
+  3dassets.dev, CC0) are merged by material at load (`mergeByMaterial`, keyed by
+  what the material looks like, not its identity — every kit file has its own
+  copy), and so are a world's props. `at`/`turn` put the measured clear spot
+  under her; find one by raycasting, not by eye (a glade spot beside a fallen
+  trunk looked clear from above). Stylized worlds use `sky` (a gradient) and
+  `fog` (snapshotted and restored) instead of a photo. A wide-short screen goes
+  to CameraPresets' `bust` while a world is up (`framingFor`).
+- **Places by name, and private rooms only inside Private (VW3).** A world may
+  be `place: true` with a `rating` of `general`, `romantic` or `private`, and a
+  `lightFor` stand-in for devices the heavy one cannot load on (`resolveFor`,
+  `placesFor`). Experiences ▸ Visit a place is the hidden native activity
+  `src/features/together/activities/places.js` (boot list), which enters the
+  session as `place-<id>` — **a dash, not a colon**: CompanionSession keeps only
+  `[a-z0-9-]` activity ids and stored a colon id as no activity.
+  `ActivityMarks.isExplicit` counts `place-*` as an activity with an end.
+  Private's Atmosphere step lists `activity.places()` as "Or a 3D room"; the
+  Intimate activity dispatches `nexus-world-request` `{ id, owner: 'intimate' }`
+  only after `adult.enter()` succeeds, and `{ id: null }` on stop. The engine
+  passes `privateOpen` only for that owner, so a private world is refused by
+  `chooseWorld`, the Settings list, activity mappings and the `?vrWorld=`
+  preview alike — `tests/vr-places.test.js` holds all four.
+- **Playgrounds: venues with things to do (PG1, the V4 release).** Irish pub,
+  Neon discoteca, Creative academy (general, in Visit a place as venue cards
+  with a preview and category) and Private cabaret, Private stream studio
+  (private, only in Private's rooms). `src/experiences/playgrounds/` (boot list,
+  after ActivityMarks): `PlaygroundMoodPresets` (seven lights),
+  `…TemplateCatalog` (data: up to four actions per venue, kinds `say` / `clip` /
+  `mood` / `timer` / `pretend-live`, `validate`, `forShown`) and
+  `…InteractionRouter` (the chip row, shown on the engine's `nexus-world-shown`
+  and gone with the world). A template never chooses a world; a private one
+  answers only for a private world shown at the `intimate` owner's request.
+  Moods go through `nexus-world-mood` → `runtime.setMood` (a blend over
+  `MOOD_SECONDS`, a cut under reduced motion, refused with no world up, snapshot
+  untouched) — **no strobe, nothing animated**. The studio is pretend: its badge
+  says nothing is recorded or sent, and a test greps the playground files for
+  any capture or network API. The academy's text is checked against
+  `LEARNING_BANNED`. Light stand-ins are cut by recipe
+  (`tools/vr/playground-subsets.json`, `node tools/vr/subset-scene.mjs`), not by
+  hand. `tests/playgrounds.test.js`; `docs/VR_WORLDS.md` ▸ Playgrounds.
+- **She reacts to the place and the chips (PG3, the V5 release).**
+  `src/experiences/playgrounds/PlaygroundReactiveContext.js` (boot list after
+  the router, before `src/companion/index.js`;
+  `__NEXUS_COMPANION_LIVE.reactive`) observes `nexus-world-shown` and the
+  router's `nexus-playground-action` reports, believes a world only if
+  `vrWorlds.activeId` agrees, an action only if the venue's template lists it,
+  an anchor only from the template's `anchors` — never a payload's `owner`.
+  Reactions go through `BehaviorRouter.request` only (lip-sync deferral reused),
+  ticked inside `NEXUS_EXPERIENCE_RUNTIME`, throttled, cooled down, budgeted,
+  generation-checked; nothing while a dance clip owns her body, only `listen`
+  during a study block, nothing on arrival (ActivityVoice owns that). Only
+  `applied: 'behavior'` is described: one sanitised `situation` paragraph via
+  `PromptContext`, Life/Experiences only, never a private room. Private
+  reactions need `privateOpenNow()` (Intimate + consent flow + private mode +
+  the renderer's `intimate` request), re-checked each step and wiped on
+  Private's end or Copilot. No loop, clip, timer, storage or network of its own
+  — a test greps it. `tests/playground-reactive.test.js`;
+  `docs/PLAYGROUND_REACTIVE_CONTEXT_V5_HANDOFF.md` ▸ Implementation.
+- **PG3 production pass: intents are routed, objects are pickable, and she may
+  ask for a gesture.** `BehaviorRouter.CHANNELS` sends each intent to a face, a
+  gaze or a registry intent that really exists. An undeclared name used to rank
+  all 166 clips lexically, so `smile` played `action_attention_seeking`. The
+  actuators (`setEmotion`, `setGazeOverride`, timed and token-guarded) live in
+  `src/companion/index.js`. `gesture_toward_object` is routed nowhere until the
+  arm-waving clip loses its `point` tag. `PlaygroundObjectPicker` (boot list
+  before the reactive context) gives hover/click, tap (≤ 8 px, ≤ 450 ms) and the
+  VR ray (`trySelectRay`) over the template's `anchors`, which now carry `at`
+  and `space`. Seaside's `interaction:completed` is a prompt moment only, with
+  no gesture. The reply may end with one `<gesture intent target/>` (`propose`):
+  allowlisted, anchors only, dance and stop only through the venue's chip,
+  refused in Copilot and private rooms. It is stripped at both `displayText`
+  seams and masked while streaming, and offered through `gestureOffer`, an
+  exact-shape field separate from the sanitised paragraph.
+  `src/features/chat/ChatErrorText.js` turns a failed reply into a fixed
+  sentence with a next step and never echoes the error.
+  `tests/playground-pg3.test.js`, `tests/chat-error-text.test.js`;
+  `docs/V5_PRODUCTION_READINESS.md` holds the evidence and the rollback.
+- **Every place has a picture (PG2).** `preview` (an image under
+  `assets/vr-worlds/`, safe-path checked) and `category` on each place in
+  `worlds.json`; `placesFor` hands the card `image`, `category` and `tint` (sky
+  colours, the card's paint when there is no picture). The pictures are renders,
+  not screenshots: `node tools/vr/render-place-previews.mjs [ids] [--gpu]` (app
+  running on :8080) draws each place full-frame with one pose, one three-quarter
+  camera (`SPEC`, per-place `PLACE_CAMERA` only to mirror the turn), eyes open,
+  and refuses dark, flat or empty frames; 640×480 WebP ≤ 60 KB. Places is a
+  two-column card grid (`.is-venues`, 4:3 art box). Together's stylesheet must
+  stay in the `nexus-bd-together` namespace — a test enforces it.
+  `tests/place-previews.test.js`.
 
 ## Clearing a conversation
 
@@ -631,10 +869,12 @@ the OllaBridge Cloud this app pairs with for chat. **Off by default; additive.**
 - **Voices: `VoiceSelectionPolicy` decides Auto**, from SonicAgent's catalogue
   (`GET /v1/voice/voices`, all 49 entries, in Settings ▸ SPEECH under TTS ENGINE
   via `VoiceStyleSettings`; the VOICE list shows only VOICE LANGUAGE's voices —
-  HV-FIX 7, `forLanguage`). Preset per locale and style first; never another
-  language, never a local Piper id, never `piper_voice`. The voice goes as
-  `voice_id` on every `tts.speak`. Rate and pitch do not apply to SonicAgent and
-  are disabled for it.
+  HV-FIX 7, `forLanguage`). A locale with no preset of its own (es-AR) takes a
+  voice of that exact locale before a neighbour's preset (HV-FIX 10: Daniela,
+  and Serena beside Paola — 52 voices). Preset per locale and style first; never
+  another language, never a local Piper id, never `piper_voice`. The voice goes
+  as `voice_id` on every `tts.speak`. Rate and pitch do not apply to SonicAgent
+  and are disabled for it.
 - **The microphone permission is ticked under STT PROVIDER too (HV-FIX 8)** —
   `#sonic-stt-consent`, the same `consent` as ADVANCED VOICE ▸ I agree, shown
   only while STT PROVIDER is SonicAgent and OllaBridge is paired. Only the
@@ -644,6 +884,19 @@ the OllaBridge Cloud this app pairs with for chat. **Off by default; additive.**
   `QuestVoice.effectiveEngine` never moves a stored SonicAgent to Piper. A
   remote failure in VR is not silently replaced (same rule as desktop). Quick
   start with pictures: `docs/SONICAGENT_QUICKSTART.md`.
+- **A sleeping SonicAgent is woken and waited for, not reported (SW1).** The
+  free Space sleeps after 48 h unused, and OllaBridge then answers every
+  `/v1/voice/*` call with 503. `SonicAgentVoiceConfig.createGateway`'s `call`
+  now retries only "not up yet" answers (502/503/504,
+  `backend_warming|starting|unavailable|timeout`) with backoff (Retry-After
+  clamped to 2–15 s) for up to `WAKE_BUDGET_MS` (75 s). It sends one opaque
+  `no-cors` GET to the Space's own `/health/live` at most every 2 min
+  (`NEXUS_SONIC_VOICE_CONFIG.wakeUrl`, `''` turns it off; never the token), and
+  emits `sonic-voice-waking`/`sonic-voice-awake`, which Settings shows as
+  "Waking the speech service…". A 401, a missing route or a 400 still fails at
+  once. On the server side, SonicAgent's `space-keepalive.yml` wakes the Space
+  on a schedule and restarts it when it is down (`hf/README.md` ▸ Sleep, wake
+  and restart). `tests/stt/sonic-wake.test.js`.
 - **The Settings mic test with SonicAgent runs `RemoteSonicAgentRecognition`**
   (one capture; the meter reads its `onlevel`), never the browser recognizer.
 

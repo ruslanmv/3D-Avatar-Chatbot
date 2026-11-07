@@ -375,6 +375,7 @@ describe('the OllaBridge voice client', () => {
         const g = Config.createGateway({
             fetch,
             info: () => ({ baseUrl: 'https://app.ollabridge.com', token: 'pair-tok' }),
+            wakeBudgetMs: 0, // SW1 waits for a sleeping service; this test is about the error shape
         });
         expect(await g.capabilities(true)).toEqual({ available: true });
         expect(calls[0].url).toBe('https://app.ollabridge.com/v1/voice/capabilities?fresh=1');

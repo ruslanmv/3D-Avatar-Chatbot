@@ -46,7 +46,12 @@ voice of another language. A locale the catalogue lacks (en-AU, pt-PT) widens to
 rather than show nothing. Each entry is labelled name — role — gender — locale — quality; ones the
 server cannot play are listed, disabled, with the reason. Shared-model presets stay separate
 entries (Paola Companion / Secretary, Sharvard Companion / Secretary / Male, Ald, UPMC Jessica /
-Pierre). "Prefer Female" orders the list; it hides nothing. Changing VOICE LANGUAGE clears an
+Pierre). "Prefer Female" orders the list; it hides nothing.
+
+HV-FIX 10 (2026-11-02): SonicAgent's registry adds Serena (Italian, female, medium + high,
+CC-BY-4.0) and Daniela (Spanish, Argentina, female, high, CC-BY-SA-4.0) — 52 voices. VOICE
+LANGUAGE gains Español (Argentina); Auto there is Daniela (a voice of the exact locale comes before
+another locale's preset). Paola stays Auto for Italian; Serena is chosen from the list. Changing VOICE LANGUAGE clears an
 explicit pick, so a voice never carries into another language.
 
 Auto (`src/tts/VoiceSelectionPolicy.js`) resolves, in order: the person's explicit pick (a
