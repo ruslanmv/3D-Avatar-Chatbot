@@ -1,0 +1,35 @@
+{
+    "_status": "EXISTS — the real shape of an experience config read by src/experiences/private/PrivateWorldAdapter.js (validateConfig). Remove _status when you copy it to assets/vr-worlds/private/: any field not in the list refuses the whole config. The worlds and template must already be rated private; the presets, chip and anchor must exist (PlaygroundMoodPresets, the venue template). This example uses the cabaret's real ids so it validates as written.",
+    "schemaVersion": 1,
+    "id": "example-private-lounge",
+    "title": { "en": "Private lounge", "it": "Salotto privato" },
+    "worlds": ["private-cabaret", "private-cabaret-light"],
+    "template": "private-cabaret",
+    "tone": {
+        "en": "Calm and attentive; follow their lead and keep replies short.",
+        "it": "Calma e attenta; segui il loro ritmo e rispondi in breve."
+    },
+    "interactions": [
+        {
+            "id": "light-warm",
+            "kind": "light",
+            "preset": "romantic-evening",
+            "label": { "en": "warmer, softer light", "it": "luce più calda e soffusa" },
+            "words": { "en": ["warmer light"], "it": ["luce più calda"] }
+        },
+        {
+            "id": "light-own",
+            "kind": "light",
+            "preset": null,
+            "label": { "en": "the room's own light", "it": "la luce della stanza" },
+            "words": { "en": ["normal light"], "it": ["luce normale"] }
+        },
+        {
+            "id": "look-stage",
+            "kind": "look",
+            "anchor": "stage",
+            "label": { "en": "a look at the stage", "it": "uno sguardo al palco" },
+            "words": { "en": ["look at the stage"], "it": ["guarda il palco"] }
+        }
+    ]
+}
