@@ -100,7 +100,7 @@ describe('docs/engine exists and links where it says', () => {
 
 describe('the spatial doc says what the measured files say', () => {
     const doc = read(path.join(DOCS, 'NEXUS_SPATIAL_COORDINATES.md'));
-    test.each(['pixel-flat-home', 'bedroom-flat'])(
+    test.each(['pixel-flat-home', 'bedroom-flat', 'cabaret-stage', 'cabaret-stage-light'])(
         '%s: every verified spot is in the table with its numbers',
         (stem) => {
             const file = JSON.parse(read(path.join(ROOT, 'assets/vr-worlds/spots', stem + '.json')));

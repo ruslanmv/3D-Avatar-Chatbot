@@ -253,6 +253,8 @@
         let lit = false; // a light this module changed
         let dancing = false; // a dance this module started and has not seen stop
         let revoked = null; // { why, at }
+        let epoch = 0; // bumped by every revoke: an await that outlives one is stale
+        let inFlight = null; // { id } while an owner has not answered yet
         let wasOpen = false;
 
         function gate() {
@@ -275,6 +277,7 @@
 
         /** Undo what this module changed and forget the room. Safe to call at any time. */
         function revoke(why) {
+            epoch += 1;
             // Idempotent: one consent exit arrives as adult:exit and then private:session-stop, and
             // the second must not report a second revocation of a room already forgotten.
             const had = Boolean(wasOpen || lit || dancing || offer || last || !revoked);
@@ -316,15 +319,39 @@
         }
 
         /** Run one interaction through its owner; report it only when the owner confirms. */
+        function worldNow() {
+            try {
+                const rt = d.runtime && d.runtime();
+                return (rt && rt.activeId) || null;
+            } catch (_) {
+                return null;
+            }
+        }
+
         async function act(id, options) {
             const o = options || {};
             const g = gate();
             if (!g.ok) return { ok: false, act: id, why: g.why };
+            const mine = { id };
+            inFlight = mine;
+            try {
+                return await run(id, o);
+            } finally {
+                if (inFlight === mine) inFlight = null;
+            }
+        }
+
+        async function run(id, o) {
+            // Matrix 8. What an await brings back belongs to the world and the opening it started
+            // in. A revoke-and-reopen, or the other variant of this room, while a dance or a move
+            // was pending is a different session: its answer is dropped, never narrated.
+            const started = { epoch, world: worldNow() };
+            const stale = () => !gate().ok || epoch !== started.epoch || worldNow() !== started.world;
             const a = find(id);
             if (!a) return { ok: false, act: id, why: 'unknown-interaction' };
             if (a.kind === 'go') {
                 const r = await d.presence.go(a.spot, { source: o.source || 'user' });
-                if (!gate().ok) return { ok: false, act: id, why: 'revoked' };
+                if (stale()) return { ok: false, act: id, why: 'stale' };
                 return note(id, Boolean(r && r.ok), r && r.why);
             }
             if (a.kind === 'light') {
@@ -347,7 +374,7 @@
                     : Promise.resolve(null);
                 r.act(a.chip);
                 const phase = await waiting;
-                if (!gate().ok) return { ok: false, act: id, why: 'revoked' };
+                if (stale()) return { ok: false, act: id, why: 'stale' };
                 if (a.kind === 'chip') {
                     dancing = phase === 'started';
                     return note(id, dancing, phase || 'no-answer');
@@ -414,6 +441,14 @@
                 const a = find(last.id);
                 if (a) parts.push(last.ok ? `Just now: ${a.label.en} (confirmed).` : `${a.label.en} did not happen.`);
             }
+            if (inFlight) {
+                const a = find(inFlight.id);
+                if (a)
+                    parts.push(
+                        `Happening now: ${a.label.en}. The app is doing it and has not confirmed it yet: ` +
+                            'do not say it is done.'
+                    );
+            }
             if (offer && offer.turn === turn) {
                 const a = find(offer.id);
                 if (a) parts.push(`You offered ${a.label.en}; it happens only if they say yes.`);
@@ -432,6 +467,7 @@
         }
 
         function reset(why) {
+            epoch += 1;
             offer = null;
             last = null;
             try {
@@ -464,6 +500,7 @@
             },
             state: () => ({
                 open: gate().ok,
+                inFlight: inFlight ? inFlight.id : null,
                 revoked: revoked ? revoked.why : null,
                 offer: offer ? offer.id : null,
                 last: last ? { id: last.id, ok: last.ok, why: last.why } : null,
@@ -581,9 +618,42 @@
             if (config && id && config.worlds.includes(id)) checkAvatar();
             if (core) core.gate();
         };
+        /**
+         * The person's latest turn, read from the conversation surface that took it. A Private
+         * session keeps its turns in its own card, never in `window.chatHistory` (nothing of it is
+         * persisted), so reading chatHistory alone meant the room never heard a Private turn: the
+         * first real-model walkthrough asked for warmer light, nothing changed, and she said "a
+         * warm glow just for us" anyway. Called first thing when Private's prompt is built, so the
+         * request has run (or is in flight) before the room is described; a second call for the
+         * same turn does nothing.
+         */
+        let lastSeen = null;
+        function observeSurface() {
+            if (!core) return null;
+            let list = [];
+            try {
+                const S = g.NEXUS_CONVERSATION_SURFACE;
+                const store = S && typeof S.history === 'function' ? S.history() : g.chatHistory;
+                list = (store && typeof store.getHistory === 'function' && store.getHistory()) || [];
+            } catch (_) {
+                return null;
+            }
+            let latest = null;
+            for (let i = list.length - 1; i >= 0; i--) {
+                if (list[i] && list[i].role === 'user') {
+                    latest = list[i];
+                    break;
+                }
+            }
+            if (!latest || latest === lastSeen) return null;
+            lastSeen = latest;
+            return core.observeUser(typeof latest.content === 'string' ? latest.content : '');
+        }
+
         const proxy = {
             act: (id, opts) => (core ? core.act(id, opts) : Promise.resolve({ ok: false, why: 'not-ready' })),
             observeUser: (t) => (core ? core.observeUser(t) : null),
+            observeSurface,
             consumeReply: (t) => (core ? core.consumeReply(t) : parseAct(t).clean),
             promptSuffix: (dst) => (core ? core.promptSuffix(dst) : ''),
             actOffer: (dst) => (core ? core.actOffer(dst) : ''),
@@ -673,6 +743,8 @@
             const live = g && g.__NEXUS_COMPANION_LIVE;
             const room = live && live.privateWorld;
             if (!room || typeof room.promptSuffix !== 'function') return '';
+            // The person's request in this turn runs before the room is described.
+            if (typeof room.observeSurface === 'function') room.observeSurface();
             const text = room.promptSuffix('life');
             if (!text) return '';
             const P = g.NEXUS_COMPANION_PROMPT;

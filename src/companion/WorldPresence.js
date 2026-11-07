@@ -158,6 +158,7 @@
 
         let world = null; // { id, base, title, rating, scene }
         let worldGen = 0;
+        let talkGen = 0; // bumped by reset(): a move that lands after one is not narrated
         let spots = [];
         let spotId = null;
         let moving = null; // { id, from }
@@ -277,6 +278,7 @@
             if (!rt || typeof rt.goToSpot !== 'function' || rt.activeId !== world.id)
                 return { ok: false, why: 'no-renderer' };
             const gen = worldGen;
+            const talk = talkGen;
             const from = spotId;
             moving = { id: spot.id, from };
             emit('nexus-presence', { kind: 'moving', spot: spot.id, source: o.source || 'user' });
@@ -292,6 +294,14 @@
             }
             if (gen !== worldGen) return { ok: false, why: 'stale' };
             moving = null;
+            // PW. A reset while she was moving (Clear, the Private room revoked and reopened) means
+            // the conversation that asked for this move is gone. Where she now stands is still
+            // a fact and is kept; "just now you both moved" would be a memory of a forgotten turn,
+            // so nothing is said about it.
+            if (talk !== talkGen) {
+                if (r && r.ok && rt.spotId === spot.id) spotId = spot.id;
+                return { ok: false, why: 'stale' };
+            }
             if (!r || !r.ok || rt.spotId !== spot.id) {
                 const here = from ? (spotById(from) || {}).label : null;
                 say(
@@ -548,6 +558,7 @@
         }
 
         function reset(why) {
+            talkGen += 1;
             cancelProposal(why || 'reset');
             endTrip();
             mood = null;
