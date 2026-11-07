@@ -381,6 +381,12 @@ def main() -> int:
                 record(entry)
                 if source == "catalog":
                     time.sleep(opts.delay)
+        except Exception as exc:
+            # Startup/catalog discovery errors also leave an actionable artifact.
+            fatal = {"error": f"{type(exc).__name__}: {exc}", "browserErrors": errors}
+            save_json(out / "fatal-error.json", fatal)
+            print(f"FATAL: {fatal['error']}", file=sys.stderr, flush=True)
+            return 2
         finally:
             save_json(out / "browser-errors.json", errors)
             browser.close()
