@@ -2,7 +2,7 @@
 
 **Related:** [Premium entertainment-first roadmap](LIVING_WORLDS_PREMIUM_ROADMAP.md) · [Claude Code implementation handoff](CLAUDE_LIVING_WORLDS_HANDOFF.md)
 
-> **Status:** Implementation started on the draft PR branch. **Only LW1's conservative place-preservation guard, prompt guidance, and regression tests have been added so far.** This document specifies remaining work; it does not claim POI navigation, a new apartment scene, real object manipulation, or headset QA already exists.
+> **Status:** Implementation started on the standalone development branch. **Only LW1's conservative place-preservation guard, prompt guidance, and regression tests have been added so far.** This document specifies remaining work; it does not claim POI navigation, a new apartment scene, real object manipulation, or headset QA already exists.
 >
 > Baseline audited: `master` at `1cbf92904e1d44f36ef355b186f5f2f03d11f139` (2026-11-07). Source of the regression: user transcript and code analysis of `ContextIntent`, `ActivityDirective`, `VRWorlds`, and `Places`.
 
@@ -20,7 +20,7 @@ A user-chosen place remains until the user ends/leaves it, approves a travel req
 
 User selected `Experiences · Bedroom`, then said `sì mi piace`. The model emitted `<activity name="relax"/>`; `ActivityDirective.run` entered Life/relax, and `VRWorlds.chooseWorld` could select `meadow-village` for the relax activity. The selected bedroom vanished despite no user request to travel. The model also described taking a blanket and operating a lamp without confirmed executable actions.
 
-**LW1 mitigation now in this PR:** `ActivityDirective` refuses competing model activity starts while `place-*` is active, `noticeTopic` preserves explicit place sessions regardless of their source, the prompt stops offering conflicting activity tags, and the place prompt disallows unverified physical-action claims. These guards are intentionally conservative: they prevent false/undesired action, **not** an implementation of in-place relax/focus/story. Claude must supply real in-place activities in LW4 while preserving the same spatial invariant.
+**LW1 mitigation already committed on this branch:** `ActivityDirective` refuses competing model activity starts while `place-*` is active, `noticeTopic` preserves explicit place sessions regardless of their source, the prompt stops offering conflicting activity tags, and the place prompt disallows unverified physical-action claims. These guards are intentionally conservative: they prevent false/undesired action, **not** an implementation of in-place relax/focus/story. Claude must supply real in-place activities in LW4 while preserving the same spatial invariant.
 
 ## Existing capabilities to reuse
 
@@ -145,4 +145,4 @@ Keep a short-lived, destination-scoped **SharedMoment** from *confirmed* world a
 - No false blanket/lamp/bed claims; missing pose action does not produce "I sat".
 - Clear/End/session exit cancels pending travel and cleans listeners; PrivacyGate unchanged.
 - Desktop/mobile and Quest checks, plus reduced-motion/seated and private-to-Copilot regression.
-- Run targeted Jest, full `npm run validate`, browser interactions, and physical-phone/headset checks when hardware is available. Report actual measurements, never inferred FPS. Keep PR draft until validated.
+- Run targeted Jest, full `npm run validate`, browser interactions, and physical-phone/headset checks when hardware is available. Report actual measurements, never inferred FPS. Do not open a pull request automatically. Keep working on this branch until the user asks otherwise.
