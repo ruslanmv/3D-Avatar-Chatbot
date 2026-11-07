@@ -43,8 +43,28 @@ const ActivityDirective = (() => {
         return { call: { name, minutes }, clean };
     }
 
-    function systemPromptSuffix(enabled) {
+    /** A chosen place is spatial presence, not an activity that a reply may replace. */
+    function isPlaceActive(session) {
+        return Boolean(
+            session &&
+                typeof session.active === 'function' &&
+                session.active() &&
+                typeof session.activity === 'function' &&
+                /^place-[a-z0-9-]+$/.test(String(session.activity() || ''))
+        );
+    }
+
+    function systemPromptSuffix(enabled, placeActive = false) {
         if (!enabled) return '';
+        if (placeActive) {
+            return (
+                '\n\nThe person is already in a selected place. Keep that world while relaxing, focusing ' +
+                'or telling a story; adapt your words and manner without trying to start a competing activity. ' +
+                'Do not emit relax, focus, seaside or story activity tags while this place is active. ' +
+                'Only when they explicitly ask to end may you use <activity name="end"/>. ' +
+                'Never claim you moved, sat, picked up an object or changed a light without a confirmed action.'
+            );
+        }
         return (
             '\n\nWhen the person asks for it or clearly agrees, you can start an activity with them by ' +
             'ending your reply with one tag: <activity name="relax"/> (quiet company, no topic), ' +
@@ -64,6 +84,12 @@ const ActivityDirective = (() => {
         if (!call) return { ok: false, why: 'no-call' };
         if (d.enabled && !d.enabled()) return { ok: false, why: 'together-off' };
         const session = d.session;
+        // LW1: an assistant-suggested context change must not silently replace a user-chosen
+        // environment. Until in-place activities are implemented, refuse rather than pretend
+        // an activity started. Explicit End keeps its existing lifecycle.
+        if (call.name !== 'end' && isPlaceActive(session)) {
+            return { ok: false, why: 'place-active' };
+        }
         const panel = d.panel ? d.panel() : null;
         const enter = (destination, activity) => {
             if (session && typeof session.enter === 'function') {
