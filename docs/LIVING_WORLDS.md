@@ -2,7 +2,12 @@
 
 **Related:** [Premium entertainment-first roadmap](LIVING_WORLDS_PREMIUM_ROADMAP.md) · [Claude Code implementation handoff](CLAUDE_LIVING_WORLDS_HANDOFF.md)
 
-> **Status:** Implementation started on the standalone development branch. **Only LW1's conservative place-preservation guard, prompt guidance, and regression tests have been added so far.** This document specifies remaining work; it does not claim POI navigation, a new apartment scene, real object manipulation, or headset QA already exists.
+> **Status (2026-11-07):** LW1–LW5 are implemented on this branch: the place guard, the measured
+> spots, renderer-confirmed moves inside a loaded world, the shared-moment prompt with in-place
+> moods, and travel that waits for the person's yes. See
+> [LIVING_WORLDS_IMPLEMENTATION_REPORT.md](LIVING_WORLDS_IMPLEMENTATION_REPORT.md) for the
+> evidence. Walking along a graph, sit and lie poses, held objects and headset QA are **not**
+> implemented. The specification below is kept as the design of record.
 >
 > Baseline audited: `master` at `1cbf92904e1d44f36ef355b186f5f2f03d11f139` (2026-11-07). Source of the regression: user transcript and code analysis of `ContextIntent`, `ActivityDirective`, `VRWorlds`, and `Places`.
 
