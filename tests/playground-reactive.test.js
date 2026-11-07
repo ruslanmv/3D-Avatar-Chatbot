@@ -1,5 +1,5 @@
 /**
- * V5. PlaygroundReactiveContext — the acceptance matrix in
+ * PG3 (the V5 release). PlaygroundReactiveContext — the acceptance matrix in
  * docs/PLAYGROUND_REACTIVE_CONTEXT_V5_TEST_MATRIX.md, as far as jsdom can hold it.
  *
  * The core is driven with a fake clock and fake owners (row numbers in the test names refer

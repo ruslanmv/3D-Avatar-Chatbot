@@ -94,7 +94,7 @@
             const life = live.memory.read('life') || { memories: [], relationship: null };
             input.relationship = life.relationship;
             input.memories = life.memories || [];
-            // V5. What is true about the place she is in, verified by its owners. Never for
+            // PG3. What is true about the place she is in, verified by its owners. Never for
             // Copilot (this branch) and never anything from a private room.
             try {
                 const situation = live.reactive && live.reactive.promptSuffix ? live.reactive.promptSuffix() : '';
@@ -420,7 +420,7 @@
             behavior: behavior,
         };
         global.__NEXUS_COMPANION_LIVE = live;
-        // V5. The playground's reactive context: observes the verified world and the chips,
+        // PG3. The playground's reactive context: observes the verified world and the chips,
         // reacts through this same BehaviorRouter, and lends the prompt one grounded paragraph.
         // Ticked from the runtime below, inside the render loop that already exists.
         let reactive = null;

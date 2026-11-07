@@ -3,7 +3,7 @@
 Notable changes, newest first. Batches are named as in the code comments and
 commit subjects (`CLAUDE.md` ▸ Conventions).
 
-## The same companion, reacting to the place (V5)
+## The same companion, reacting to the place (V5 release, PG3)
 
 - In a playground she responds to what really happened: a smile for Cheers, she
   listens for a story or a quiz, keeps still while a dance clip plays and looks

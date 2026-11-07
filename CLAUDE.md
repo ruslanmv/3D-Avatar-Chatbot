@@ -192,9 +192,11 @@ the VR chat panel, `ST` for on-device speech-to-text (`docs/QUEST_STT.md`) and
 `HV` for SonicAgent voice through OllaBridge Cloud (`docs/SONICAGENT_VOICE.md`),
 `IC` for Life/Copilot/Experiences, `MV` for music levels in sessions, `TG` for
 the Together grid, `VW` for VR worlds (`docs/VR_WORLDS.md`), `PG` for the
-playgrounds (the V4 release; not a VRoid `V` batch) and `DX` for desktop control
-layout. Commit subjects match: `A4: viewport background manager`. So
-`git log --grep 'A4'` and the comment line up.
+playgrounds (PG1–PG2 the V4 release, PG3 the V5 reactive context; never a VRoid
+`V` batch — the V5 release's first four commits say `V5:` by mistake) and `DX`
+for desktop control layout. Commit subjects match:
+`A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
+up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of
@@ -531,7 +533,7 @@ KayKit) and retinted light. `src/gltf-viewer/VRWorlds.js` (IIFE, imported by
   `LEARNING_BANNED`. Light stand-ins are cut by recipe
   (`tools/vr/playground-subsets.json`, `node tools/vr/subset-scene.mjs`), not by
   hand. `tests/playgrounds.test.js`; `docs/VR_WORLDS.md` ▸ Playgrounds.
-- **She reacts to the place and the chips (V5).**
+- **She reacts to the place and the chips (PG3, the V5 release).**
   `src/experiences/playgrounds/PlaygroundReactiveContext.js` (boot list after
   the router, before `src/companion/index.js`;
   `__NEXUS_COMPANION_LIVE.reactive`) observes `nexus-world-shown` and the

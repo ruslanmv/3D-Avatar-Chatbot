@@ -1,5 +1,5 @@
 /**
- * PlaygroundReactiveContext — the same companion, aware of where she is and what just happened (V5).
+ * PlaygroundReactiveContext — the same companion, aware of where she is and what just happened (PG3, the V5 release).
  *
  * Before this, a playground was scenery plus four chips: the pub came up, the person tapped
  * Cheers, a line went into the chat — and she stood there exactly as she stands in the

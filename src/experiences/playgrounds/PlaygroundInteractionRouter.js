@@ -265,7 +265,7 @@ body.nexus-mobile.nexus-portrait #nexus-activity-pill > #${BAR_ID} {
         }
 
         /**
-         * V5. Say what happened, for PlaygroundReactiveContext, after this file has done it.
+         * PG3. Say what happened, for PlaygroundReactiveContext, after this file has done it.
          * A report and nothing more: this router stays the one owner of every chip's effect,
          * and the listener checks the report against the verified world before using it.
          */

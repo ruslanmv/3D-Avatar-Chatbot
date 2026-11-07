@@ -58,7 +58,7 @@
         Object.freeze({
             id: 'irish-pub',
             world: 'irish-pub',
-            // V5. Things in the scene she may look at when the person points one out.
+            // PG3. Things in the scene she may look at when the person points one out.
             anchors: Object.freeze([
                 { id: 'bar', label: 'bar' },
                 { id: 'table', label: 'table' },
@@ -85,7 +85,7 @@
         Object.freeze({
             id: 'neon-discoteca',
             world: 'neon-discoteca',
-            // V5. Things in the scene she may look at when the person points one out.
+            // PG3. Things in the scene she may look at when the person points one out.
             anchors: Object.freeze([
                 { id: 'dj-booth', label: 'DJ booth' },
                 { id: 'dance-floor', label: 'dance floor' },
@@ -106,7 +106,7 @@
         Object.freeze({
             id: 'private-cabaret',
             world: 'private-cabaret',
-            // V5. Things in the scene she may look at when the person points one out.
+            // PG3. Things in the scene she may look at when the person points one out.
             anchors: Object.freeze([
                 { id: 'stage', label: 'stage' },
                 { id: 'footlights', label: 'footlights' },
@@ -127,7 +127,7 @@
         Object.freeze({
             id: 'private-stream-studio',
             world: 'private-stream-studio',
-            // V5. Things in the scene she may look at when the person points one out.
+            // PG3. Things in the scene she may look at when the person points one out.
             anchors: Object.freeze([
                 { id: 'sofa', label: 'sofa' },
                 { id: 'desk', label: 'desk' },
@@ -161,7 +161,7 @@
         Object.freeze({
             id: 'creative-academy',
             world: 'creative-academy',
-            // V5. Things in the scene she may look at when the person points one out.
+            // PG3. Things in the scene she may look at when the person points one out.
             anchors: Object.freeze([
                 { id: 'whiteboard', label: 'whiteboard' },
                 { id: 'table', label: 'table' },

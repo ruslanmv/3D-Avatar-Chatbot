@@ -103,7 +103,7 @@ Implement this spec **in follow-up commits on the PR head branch**. Prefer small
 
 ## Implementation (Claude Code, 2026-11-07)
 
-Implemented on this branch. What was built, where, and what is still not proven.
+Implemented on this branch. What was built, where, and what is still not proven. The code's batch prefix is **PG3** (the playgrounds' series): `V5` is already a VRoid Hub batch in this repository, so `git log --grep PG3` finds these commits' follow-ups and the comments line up.
 
 **Module.** `src/experiences/playgrounds/PlaygroundReactiveContext.js` (IIFE + CommonJS, boot
 list after `PlaygroundInteractionRouter`, before `src/companion/index.js`). `create()` is the pure
