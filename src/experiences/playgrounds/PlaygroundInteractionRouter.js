@@ -264,9 +264,28 @@ body.nexus-mobile.nexus-portrait #nexus-activity-pill > #${BAR_ID} {
             return false;
         }
 
+        /**
+         * V5. Say what happened, for PlaygroundReactiveContext, after this file has done it.
+         * A report and nothing more: this router stays the one owner of every chip's effect,
+         * and the listener checks the report against the verified world before using it.
+         */
+        function report(actionId, phase) {
+            try {
+                win.dispatchEvent(
+                    new win.CustomEvent('nexus-playground-action', {
+                        detail: { actionId: String(actionId), phase: phase, world: shown },
+                    })
+                );
+            } catch (_) {
+                /* nobody is listening */
+            }
+        }
+
         function stopClip() {
             if (!state.playing) return;
+            const was = state.playing;
             state.playing = null;
+            report(was, 'stopped');
             try {
                 const loader = clips();
                 if (loader && typeof loader.stopClip === 'function') loader.stopClip({ fadeOut: 0.3 });
@@ -284,7 +303,18 @@ body.nexus-mobile.nexus-portrait #nexus-activity-pill > #${BAR_ID} {
                 return;
             }
             try {
-                Promise.resolve(loader.playClip(clip.file, { loop: clip.loop })).catch(() => {});
+                const world = shown;
+                Promise.resolve(loader.playClip(clip.file, { loop: clip.loop }))
+                    .then((played) => {
+                        // Only a clip that really started is reported as started; a late
+                        // answer from a place already left is not reported at all.
+                        if (shown !== world) return;
+                        if (played === false) {
+                            if (state.playing === action.id) state.playing = null;
+                            report(action.id, 'failed');
+                        } else if (clip.loop && state.playing === action.id) report(action.id, 'started');
+                    })
+                    .catch(() => report(action.id, 'failed'));
                 state.playing = clip.loop ? action.id : null;
             } catch (error) {
                 console.warn('[Playground] clip not played', error);
@@ -326,21 +356,28 @@ body.nexus-mobile.nexus-portrait #nexus-activity-pill > #${BAR_ID} {
             host.appendChild(node);
         }
 
-        function stopTimer() {
+        function stopTimer(phase) {
             if (ticker) win.clearInterval(ticker);
+            const was = Boolean(ticker);
             ticker = null;
             state.timerEndsAt = null;
+            if (was && template) {
+                const timer = template.actions.find((a) => a.kind === 'timer');
+                if (timer) report(timer.id, phase || 'stopped');
+            }
         }
 
         function act(id) {
             const action = template && template.actions.find((a) => a.id === id);
             if (!action) return;
+            report(action.id, 'selected');
             if (action.kind === 'say') say(action.text);
             else if (action.kind === 'clip') playClip(action);
             else if (action.kind === 'mood') setMood(state.mood);
             else if (action.kind === 'pretend-live') {
                 state.live = !state.live;
                 badge(state.live);
+                report(action.id, state.live ? 'started' : 'stopped');
             } else if (action.kind === 'timer') {
                 if (state.timerEndsAt && state.timerEndsAt > Date.now()) stopTimer();
                 else {
@@ -348,7 +385,7 @@ body.nexus-mobile.nexus-portrait #nexus-activity-pill > #${BAR_ID} {
                     state.timerEndsAt = Date.now() + action.minutes * 60000;
                     ticker = win.setInterval(() => {
                         if (state.timerEndsAt && Date.now() >= state.timerEndsAt) {
-                            stopTimer();
+                            stopTimer('completed');
                             state.timerDone = true;
                             if (doneTimer) win.clearTimeout(doneTimer);
                             doneTimer = win.setTimeout(() => {
@@ -358,6 +395,7 @@ body.nexus-mobile.nexus-portrait #nexus-activity-pill > #${BAR_ID} {
                         }
                         paint();
                     }, 1000);
+                    report(action.id, 'started');
                     if (action.text) say(action.text);
                 }
             }

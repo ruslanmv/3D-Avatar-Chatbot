@@ -58,6 +58,12 @@
         Object.freeze({
             id: 'irish-pub',
             world: 'irish-pub',
+            // V5. Things in the scene she may look at when the person points one out.
+            anchors: Object.freeze([
+                { id: 'bar', label: 'bar' },
+                { id: 'table', label: 'table' },
+                { id: 'pendant-lamp', label: 'pendant lamp' },
+            ]),
             title: 'Irish pub',
             category: 'Social',
             rating: 'general',
@@ -79,6 +85,11 @@
         Object.freeze({
             id: 'neon-discoteca',
             world: 'neon-discoteca',
+            // V5. Things in the scene she may look at when the person points one out.
+            anchors: Object.freeze([
+                { id: 'dj-booth', label: 'DJ booth' },
+                { id: 'dance-floor', label: 'dance floor' },
+            ]),
             title: 'Neon discoteca',
             category: 'Nightlife',
             rating: 'general',
@@ -95,6 +106,11 @@
         Object.freeze({
             id: 'private-cabaret',
             world: 'private-cabaret',
+            // V5. Things in the scene she may look at when the person points one out.
+            anchors: Object.freeze([
+                { id: 'stage', label: 'stage' },
+                { id: 'footlights', label: 'footlights' },
+            ]),
             title: 'Private cabaret',
             category: 'Private',
             rating: 'private',
@@ -111,6 +127,11 @@
         Object.freeze({
             id: 'private-stream-studio',
             world: 'private-stream-studio',
+            // V5. Things in the scene she may look at when the person points one out.
+            anchors: Object.freeze([
+                { id: 'sofa', label: 'sofa' },
+                { id: 'desk', label: 'desk' },
+            ]),
             title: 'Private stream studio',
             category: 'Private',
             rating: 'private',
@@ -140,6 +161,11 @@
         Object.freeze({
             id: 'creative-academy',
             world: 'creative-academy',
+            // V5. Things in the scene she may look at when the person points one out.
+            anchors: Object.freeze([
+                { id: 'whiteboard', label: 'whiteboard' },
+                { id: 'table', label: 'table' },
+            ]),
             title: 'Creative academy',
             category: 'Learning',
             rating: 'general',
@@ -207,6 +233,9 @@
             if (!t.title || !t.description || !t.category)
                 problems.push(`${where}: needs a title, description, category`);
             if (String(t.description || '').length > 90) problems.push(`${where}: description longer than one line`);
+            for (const a of Array.isArray(t.anchors) ? t.anchors : [])
+                if (!a || !/^[a-z0-9-]{1,30}$/.test(String(a.id || '')) || !a.label)
+                    problems.push(`${where}: anchor needs an id and a label`);
             const actions = Array.isArray(t.actions) ? t.actions : [];
             if (!actions.length || actions.length > 4) problems.push(`${where}: needs one to four actions`);
             for (const m of t.moods || []) if (!moodIds.has(m)) problems.push(`${where}: unknown mood ${m}`);
