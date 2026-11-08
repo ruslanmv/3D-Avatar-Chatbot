@@ -1,0 +1,37 @@
+{
+    "_status": "GENERATED FILE — never write this by hand. This is what tools/vr/measure-spots.mjs writes to assets/vr-worlds/spots/<scene>.json. Every number below is a SAMPLE, not a measurement; sha256 is a placeholder and WorldSpots.load would reject it because no such scene exists.",
+    "schemaVersion": 1,
+    "scene": "scenes/example-loft.glb",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "tool": { "name": "tools/vr/measure-spots.mjs", "version": 4, "params": {} },
+    "coordinateSpace": "scene",
+    "floorY": 0.05,
+    "title": { "en": "the loft", "it": "il loft" },
+    "spots": [
+        {
+            "id": "window-seat",
+            "label": { "en": "by the window seat", "it": "vicino alla seduta sotto la finestra" },
+            "room": "living-room",
+            "near": ["^012-window-seat$"],
+            "sees": { "en": "the window seat and the city lights", "it": "la seduta sotto la finestra e le luci della città" },
+            "can": ["stand-near", "look-at"],
+            "rating": "general",
+            "verified": true,
+            "position": [1.2, 0.05, -0.8],
+            "facingDeg": 30,
+            "framing": "fullBody",
+            "measured": { "fromThingM": 0.45, "viewOpenM": 4.1, "thingOffBehindDeg": 6, "framing": "fullBody", "candidates": 812 }
+        },
+        {
+            "id": "bookshelf",
+            "label": { "en": "by the bookshelf", "it": "vicino alla libreria" },
+            "room": "living-room",
+            "near": ["^020-bookshelf$"],
+            "sees": { "en": "the bookshelf", "it": "la libreria" },
+            "can": ["stand-near", "look-at"],
+            "rating": "general",
+            "verified": false,
+            "why": "no measured point passed ({\"floor\":12,\"body\":340,\"room\":8,\"view\":51} of 411)"
+        }
+    ]
+}

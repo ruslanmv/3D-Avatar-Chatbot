@@ -9,7 +9,7 @@
  *
  * The two are separable, and this file is the separation. What is kept:
  *
- *   - which preset was chosen last          (`affectionate` | `romantic` | `sensual`)
+ *   - which preset was chosen last          (`affectionate` | `romantic` | `sensual` | `mature`)
  *   - which mood was chosen last            (`playful` | `tender`)
  *   - which soundtrack option was chosen    (`choose` | `current` | `none`)
  *   - which scene it happened in            (a catalogue id, slug-shaped)
@@ -42,7 +42,7 @@
      * planner.
      */
     const FIELDS = Object.freeze({
-        preset: Object.freeze(['affectionate', 'romantic', 'sensual']),
+        preset: Object.freeze(['affectionate', 'romantic', 'sensual', 'mature']),
         mood: Object.freeze(['playful', 'tender']),
         soundtrack: Object.freeze(['choose', 'current', 'none']),
     });

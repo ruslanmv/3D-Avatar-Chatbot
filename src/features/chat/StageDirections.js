@@ -357,6 +357,8 @@
      * `[[1]]` and `[[citation needed]]` are left exactly where they are.
      */
     const BARE_EMOTE = /\[\[\s*([^\][\n]{1,60}?)\s*\]\]/g;
+    /** An opening `[[` with no `]]` after it, up to the end of the reply (a truncated tag). */
+    const UNCLOSED_TAIL = /\s*\[\[(?![^\n]*\]\])[^\n]{0,60}\s*$/;
 
     /**
      * Every motion name the app can act on, so a payload can be recognised as one directly.
@@ -439,6 +441,15 @@
             return '';
         });
         text = text.replace(BRACKETED, take).replace(ASTERISKED, take);
+        // PW. A reply the token budget cut off inside a tag ends with half of one. The first
+        // real-model walkthrough of the private cabaret showed "I'm already feeling the rhythm.
+        // [[emote:" in the card: the closed-tag patterns above never match an unclosed one. Only a
+        // `[[` that is never closed before the end is taken — a `[[` she wrote mid-sentence and
+        // closed is the patterns' business, not this one's.
+        text = text.replace(UNCLOSED_TAIL, () => {
+            markers.push('');
+            return '';
+        });
         if (!markers.length) return { text: original, markers: [] };
         // An unrecognised payload pushed an empty marker to force the tidy below; it is not a
         // marker anybody should receive.

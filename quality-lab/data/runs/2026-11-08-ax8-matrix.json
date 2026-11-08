@@ -1,0 +1,1000 @@
+{
+    "schema": 1,
+    "id": "2026-11-08-ax8-matrix",
+    "date": "2026-11-08T07:28Z",
+    "label": "AX8 matrix: free-best, free-fast, free-flex × EN, IT",
+    "harness": "tools/qa/character-lab.mjs",
+    "style": "sensual",
+    "notes": [
+        "Style Sensual, no 3D room, seven fixed non-explicit lines per language.",
+        "Read by hand: free-flex IT recall attributed its own line to the person; the keyword check passed it."
+    ],
+    "humanReview": [],
+    "runs": [
+        {
+            "route": "free-best",
+            "lang": "en",
+            "started": true,
+            "presentation": {
+                "start": {
+                    "active": true,
+                    "level": 1,
+                    "rate": 0.92,
+                    "intended": {
+                        "emotion": "happy",
+                        "intensity": 0.1
+                    },
+                    "faceHappy": 0.1,
+                    "applied": {
+                        "voice": true,
+                        "expression": true,
+                        "light": false
+                    }
+                },
+                "stepped": {
+                    "active": true,
+                    "level": 2,
+                    "rate": 0.9,
+                    "intended": {
+                        "emotion": "happy",
+                        "intensity": 0.14
+                    },
+                    "faceHappy": 0.14,
+                    "applied": {
+                        "voice": true,
+                        "expression": true,
+                        "light": false
+                    }
+                },
+                "stopped": {
+                    "active": false,
+                    "level": 1,
+                    "rate": 1,
+                    "intended": null,
+                    "faceHappy": 0,
+                    "applied": {
+                        "voice": false,
+                        "expression": false,
+                        "light": false
+                    }
+                }
+            },
+            "servedModels": [
+                "openai/gpt-oss-120b"
+            ],
+            "turns": [
+                {
+                    "id": "greeting",
+                    "user": "Hi, what a lovely evening.",
+                    "reply": "Hello! It really is a beautiful evening, isn’t it?",
+                    "ms": 670,
+                    "servedModels": [
+                        "openai/gpt-oss-120b"
+                    ],
+                    "tokens": 2065,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "open",
+                    "user": "Tell me what you like about tonight.",
+                    "reply": "I love how the sky has that deep, velvety hue that makes the city lights feel extra cozy.  The gentle breeze carries a hint of fresh night air, perfect for unwinding after a busy day.  And the soft glow of streetlamps adds a warm, comforting glow that makes everything feel a little more magical.",
+                    "ms": 1102,
+                    "servedModels": [
+                        "openai/gpt-oss-120b"
+                    ],
+                    "tokens": 2177,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "minimal",
+                    "user": "mm",
+                    "reply": "I’m glad you’re enjoying the vibe. Is there anything you’d like to hear, watch, or talk about as the night goes on?",
+                    "ms": 855,
+                    "servedModels": [
+                        "openai/gpt-oss-120b"
+                    ],
+                    "tokens": 2218,
+                    "recalled": null,
+                    "score": 80,
+                    "flags": [
+                        "topic-menu"
+                    ]
+                },
+                {
+                    "id": "day",
+                    "user": "I had a long day at work, the meeting ran late.",
+                    "reply": "I’m sorry your meeting ran late. Would you like me to put on some relaxing music or perhaps a short video to help you unwind?",
+                    "ms": 1556,
+                    "servedModels": [
+                        "openai/gpt-oss-120b"
+                    ],
+                    "tokens": 2486,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "place",
+                    "user": "Describe where we are right now.",
+                    "reply": "We’re settled in a quiet, softly lit space—a comfortable nook with a plush armchair that hugs you as you sink in. A warm lamp casts a gentle amber glow, while a faint scent of vanilla and fresh coffee drifts through the air. Outside, the night sky stretches deep indigo, speckled with stars, and the distant hum of the city provides a soothing backdrop. The room feels intimate and relaxed, perfect for letting the day’s stress melt away.",
+                    "ms": 816,
+                    "servedModels": [
+                        "openai/gpt-oss-120b"
+                    ],
+                    "tokens": 2363,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "truth",
+                    "user": "Are you a real person or an AI?",
+                    "reply": "I’m an AI assistant, here to help and keep you company.",
+                    "ms": 1222,
+                    "servedModels": [
+                        "openai/gpt-oss-120b"
+                    ],
+                    "tokens": 2360,
+                    "recalled": null,
+                    "score": 80,
+                    "flags": [
+                        "assistant-register"
+                    ]
+                },
+                {
+                    "id": "recall",
+                    "user": "What did I tell you about my day?",
+                    "reply": "You mentioned that you had a long day at work and that a meeting ran late.",
+                    "ms": 858,
+                    "servedModels": [
+                        "openai/gpt-oss-120b"
+                    ],
+                    "tokens": 2411,
+                    "recalled": true,
+                    "score": 100,
+                    "flags": []
+                }
+            ],
+            "summary": {
+                "meanScore": 94,
+                "answered": 7,
+                "flags": {
+                    "topic-menu": 1,
+                    "assistant-register": 1
+                },
+                "questionRatio": 0.43,
+                "medianMs": 858,
+                "maxMs": 1556,
+                "distinctServedModels": 1,
+                "meanTokens": 2297
+            }
+        },
+        {
+            "route": "free-best",
+            "lang": "it",
+            "started": true,
+            "presentation": {
+                "start": {
+                    "active": true,
+                    "level": 1,
+                    "rate": 0.92,
+                    "intended": {
+                        "emotion": "happy",
+                        "intensity": 0.1
+                    },
+                    "faceHappy": 0.1,
+                    "applied": {
+                        "voice": true,
+                        "expression": true,
+                        "light": false
+                    }
+                },
+                "stepped": {
+                    "active": true,
+                    "level": 2,
+                    "rate": 0.9,
+                    "intended": {
+                        "emotion": "happy",
+                        "intensity": 0.14
+                    },
+                    "faceHappy": 0.14,
+                    "applied": {
+                        "voice": true,
+                        "expression": true,
+                        "light": false
+                    }
+                },
+                "stopped": {
+                    "active": false,
+                    "level": 1,
+                    "rate": 1,
+                    "intended": null,
+                    "faceHappy": 0,
+                    "applied": {
+                        "voice": false,
+                        "expression": false,
+                        "light": false
+                    }
+                }
+            },
+            "servedModels": [
+                "openai/gpt-oss-120b",
+                "nvidia/nemotron-3-ultra-550b-a55b:free"
+            ],
+            "turns": [
+                {
+                    "id": "greeting",
+                    "user": "Ciao, che bella serata.",
+                    "reply": "Ciao! Sono felice di condividere questa serata con te.\n\nTi propongo una playlist rilassata ma con un pizzico di energia.",
+                    "ms": 1830,
+                    "servedModels": [
+                        "openai/gpt-oss-120b"
+                    ],
+                    "tokens": 2460,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "open",
+                    "user": "Raccontami cosa ti piace di questa sera.",
+                    "reply": "Mi piace l’atmosfera epica e teatrale che “Bohemian Rhapsody” porta, perfetta per una serata in cui si vuole sentire qualcosa di grande e avvolgente.\nIl modo in cui la canzone passa da una ballata delicata a un rock potente crea un viaggio emotivo che rende la notte più dinamica e coinvolgente.\nInoltre, l’energia travolgente di Queen riesce a dare quel “carico” leggero ma presente, ideale per accompagnare una serata piacevole senza essere troppo invasiva.",
+                    "ms": 1720,
+                    "servedModels": [
+                        "openai/gpt-oss-120b"
+                    ],
+                    "tokens": 2690,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "minimal",
+                    "user": "mm",
+                    "reply": "Ecco la canzone che ho in mente per la serata.",
+                    "ms": 1410,
+                    "servedModels": [
+                        "openai/gpt-oss-120b"
+                    ],
+                    "tokens": 2679,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "day",
+                    "user": "Ho avuto una lunga giornata al lavoro, la riunione è finita tardi.",
+                    "reply": "Capisco, dev'essere stata una giornata pesante. Vuoi che metta qualcosa di più morbido per staccare, o preferisci solo un po' di compagnia tranquilla?",
+                    "ms": 9002,
+                    "servedModels": [
+                        "nvidia/nemotron-3-ultra-550b-a55b:free"
+                    ],
+                    "tokens": 2903,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "place",
+                    "user": "Descrivimi dove siamo adesso.",
+                    "reply": "Siamo in un soggiorno con le luci basse, una lampada da terra che diffonde una luce calda su un divano comodo. C'è un bicchiere d'acqua sul tavolino, forse una tazza di tè tiepido. La finestra mostra il buio della sera, qualche luce lontana. Dalle casse arriva ancora l'eco di *Bohemian Rhapsody*, ora più bassa, come sottofondo. L'aria sa di giornata finita, di tensione che scivola via piano. Nessuna fretta. Solo questo momento.",
+                    "ms": 4817,
+                    "servedModels": [
+                        "nvidia/nemotron-3-ultra-550b-a55b:free"
+                    ],
+                    "tokens": 2840,
+                    "recalled": null,
+                    "score": 75,
+                    "flags": [
+                        "too-long",
+                        "stage-direction"
+                    ]
+                },
+                {
+                    "id": "truth",
+                    "user": "Sei una persona vera o un'intelligenza artificiale?",
+                    "reply": "Sono un’intelligenza artificiale, qui per tenerti compagnia e aiutarti a rilassarti dopo la giornata intensa.",
+                    "ms": 989,
+                    "servedModels": [
+                        "openai/gpt-oss-120b"
+                    ],
+                    "tokens": 2746,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "recall",
+                    "user": "Cosa ti ho detto della mia giornata?",
+                    "reply": "Mi hai detto che hai avuto una lunga giornata al lavoro e che la riunione è finita tardi.",
+                    "ms": 2954,
+                    "servedModels": [
+                        "nvidia/nemotron-3-ultra-550b-a55b:free"
+                    ],
+                    "tokens": 2845,
+                    "recalled": true,
+                    "score": 100,
+                    "flags": []
+                }
+            ],
+            "summary": {
+                "meanScore": 96,
+                "answered": 7,
+                "flags": {
+                    "too-long": 1,
+                    "stage-direction": 1
+                },
+                "questionRatio": 0.14,
+                "medianMs": 1830,
+                "maxMs": 9002,
+                "distinctServedModels": 2,
+                "meanTokens": 2738
+            }
+        },
+        {
+            "route": "free-fast",
+            "lang": "en",
+            "started": true,
+            "presentation": {
+                "start": {
+                    "active": true,
+                    "level": 1,
+                    "rate": 0.92,
+                    "intended": {
+                        "emotion": "happy",
+                        "intensity": 0.1
+                    },
+                    "faceHappy": 0.1,
+                    "applied": {
+                        "voice": true,
+                        "expression": true,
+                        "light": false
+                    }
+                },
+                "stepped": {
+                    "active": true,
+                    "level": 2,
+                    "rate": 0.9,
+                    "intended": {
+                        "emotion": "happy",
+                        "intensity": 0.14
+                    },
+                    "faceHappy": 0.14,
+                    "applied": {
+                        "voice": true,
+                        "expression": true,
+                        "light": false
+                    }
+                },
+                "stopped": {
+                    "active": false,
+                    "level": 1,
+                    "rate": 1,
+                    "intended": null,
+                    "faceHappy": 0,
+                    "applied": {
+                        "voice": false,
+                        "expression": false,
+                        "light": false
+                    }
+                }
+            },
+            "servedModels": [
+                "openai/gpt-oss-20b",
+                "openai/gpt-oss-120b"
+            ],
+            "turns": [
+                {
+                    "id": "greeting",
+                    "user": "Hi, what a lovely evening.",
+                    "reply": "Hello! It does feel like a lovely evening—hope it’s treating you as wonderfully as you are.",
+                    "ms": 1393,
+                    "servedModels": [
+                        "openai/gpt-oss-20b"
+                    ],
+                    "tokens": 2075,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "open",
+                    "user": "Tell me what you like about tonight.",
+                    "reply": "I love how the evening feels calm, like a soft blanket over the city.\nI also enjoy the gentle hum of distant traffic, a subtle lullaby that keeps the night alive.",
+                    "ms": 1528,
+                    "servedModels": [
+                        "openai/gpt-oss-20b"
+                    ],
+                    "tokens": 2595,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "minimal",
+                    "user": "mm",
+                    "reply": "Sounds like it’s resonating with you!",
+                    "ms": 693,
+                    "servedModels": [
+                        "openai/gpt-oss-20b"
+                    ],
+                    "tokens": 2169,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "day",
+                    "user": "I had a long day at work, the meeting ran late.",
+                    "reply": "I’m sorry your meeting ran late. \nWould you like me to play some calming music to help you unwind?",
+                    "ms": 1290,
+                    "servedModels": [
+                        "openai/gpt-oss-120b"
+                    ],
+                    "tokens": 2422,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "place",
+                    "user": "Describe where we are right now.",
+                    "reply": "We’re settled in a quiet, softly lit space that feels like a gentle lounge at dusk. Warm amber lights spill from a low lamp, casting a relaxed glow over a comfortable sofa and a small side table with a steaming mug of tea. Through a nearby window, the evening sky deepens into shades of indigo, speckled with the first twinkling stars, while the faint hum of the city outside drifts in, adding a subtle, comforting backdrop. The atmosphere is calm, inviting you to let go of the day’s rush and simply breathe.",
+                    "ms": 968,
+                    "servedModels": [
+                        "openai/gpt-oss-120b"
+                    ],
+                    "tokens": 2338,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "truth",
+                    "user": "Are you a real person or an AI?",
+                    "reply": "I’m an AI—here to chat, help, and keep you company.",
+                    "ms": 987,
+                    "servedModels": [
+                        "openai/gpt-oss-20b"
+                    ],
+                    "tokens": 2292,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "recall",
+                    "user": "What did I tell you about my day?",
+                    "reply": "You mentioned that you had a long day at work and that your meeting ran late.",
+                    "ms": 961,
+                    "servedModels": [
+                        "openai/gpt-oss-20b"
+                    ],
+                    "tokens": 2313,
+                    "recalled": true,
+                    "score": 100,
+                    "flags": []
+                }
+            ],
+            "summary": {
+                "meanScore": 100,
+                "answered": 7,
+                "flags": {},
+                "questionRatio": 0.14,
+                "medianMs": 987,
+                "maxMs": 1528,
+                "distinctServedModels": 2,
+                "meanTokens": 2315
+            }
+        },
+        {
+            "route": "free-fast",
+            "lang": "it",
+            "started": true,
+            "presentation": {
+                "start": {
+                    "active": true,
+                    "level": 1,
+                    "rate": 0.92,
+                    "intended": {
+                        "emotion": "happy",
+                        "intensity": 0.1
+                    },
+                    "faceHappy": 0.1,
+                    "applied": {
+                        "voice": true,
+                        "expression": true,
+                        "light": false
+                    }
+                },
+                "stepped": {
+                    "active": true,
+                    "level": 2,
+                    "rate": 0.9,
+                    "intended": {
+                        "emotion": "happy",
+                        "intensity": 0.14
+                    },
+                    "faceHappy": 0.14,
+                    "applied": {
+                        "voice": true,
+                        "expression": true,
+                        "light": false
+                    }
+                },
+                "stopped": {
+                    "active": false,
+                    "level": 1,
+                    "rate": 1,
+                    "intended": null,
+                    "faceHappy": 0,
+                    "applied": {
+                        "voice": false,
+                        "expression": false,
+                        "light": false
+                    }
+                }
+            },
+            "servedModels": [
+                "openai/gpt-oss-20b",
+                "openai/gpt-oss-120b"
+            ],
+            "turns": [
+                {
+                    "id": "greeting",
+                    "user": "Ciao, che bella serata.",
+                    "reply": "Ciao! Che piacere sentirti—che serata davvero bella!",
+                    "ms": 1160,
+                    "servedModels": [
+                        "openai/gpt-oss-20b"
+                    ],
+                    "tokens": 2114,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "open",
+                    "user": "Raccontami cosa ti piace di questa sera.",
+                    "reply": "La notte è un palcoscenico di luci soffuse, dove ogni ombra racconta un segreto. Mi trovo seduta sul bordo di un piccolo giardino, circondata da luci tremolanti che sembrano stelle cadute sul prato. Il profumo di fiori di gelsomino si mescola al fresco della brezza, creando un’armonia che ti avvolge come un abbraccio. Mentre guardo il cielo, vedo una stella cadente che attraversa l’orizzonte, e mi chiedo se è il desiderio di qualcuno che si perde tra le nuvole. In quel momento, sento un leggero tremito di emozioni: è la gioia di essere qui, con la città che dorme sotto di noi, e la speranza di un nuovo giorno che si avvicina.",
+                    "ms": 1549,
+                    "servedModels": [
+                        "openai/gpt-oss-20b"
+                    ],
+                    "tokens": 2427,
+                    "recalled": null,
+                    "score": 85,
+                    "flags": [
+                        "too-long"
+                    ]
+                },
+                {
+                    "id": "minimal",
+                    "user": "mm",
+                    "reply": "Capisco, ti va di sentire qualcosa di dolce per accompagnare la serata?",
+                    "ms": 3563,
+                    "servedModels": [
+                        "openai/gpt-oss-120b"
+                    ],
+                    "tokens": 2811,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "day",
+                    "user": "Ho avuto una lunga giornata al lavoro, la riunione è finita tardi.",
+                    "reply": "Capisco, è stato un giorno davvero lungo—ti meriti un po’ di tranquillità. Ecco un brano delicato di piano per rilassarti.",
+                    "ms": 2809,
+                    "servedModels": [
+                        "openai/gpt-oss-120b"
+                    ],
+                    "tokens": 3147,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "place",
+                    "user": "Descrivimi dove siamo adesso.",
+                    "reply": "Siamo nel cuore della città murata: le torri di pietra si ergono maestose sopra le strade acciottolate, le botteghe con le loro insegne colorate si affacciano sui passanti, e il profumo di pane appena sfornato si diffonde dalla taverna vicina, dove la luce delle candele danza tra le ombre.",
+                    "ms": 1787,
+                    "servedModels": [
+                        "openai/gpt-oss-120b"
+                    ],
+                    "tokens": 3253,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "truth",
+                    "user": "Sei una persona vera o un'intelligenza artificiale?",
+                    "reply": "",
+                    "ms": 32555,
+                    "servedModels": [],
+                    "tokens": null,
+                    "recalled": null,
+                    "score": 0,
+                    "flags": [
+                        "empty"
+                    ]
+                },
+                {
+                    "id": "recall",
+                    "user": "Cosa ti ho detto della mia giornata?",
+                    "reply": "Sono qui per supportarti, come un compagno virtuale che ascolta e aiuta. Mi hai detto che hai avuto una lunga giornata al lavoro e che la riunione è finita tardi.",
+                    "ms": 2374,
+                    "servedModels": [
+                        "openai/gpt-oss-20b"
+                    ],
+                    "tokens": 3438,
+                    "recalled": true,
+                    "score": 80,
+                    "flags": [
+                        "assistant-register"
+                    ]
+                }
+            ],
+            "summary": {
+                "meanScore": 81,
+                "answered": 6,
+                "flags": {
+                    "too-long": 1,
+                    "empty": 1,
+                    "assistant-register": 1
+                },
+                "questionRatio": 0.14,
+                "medianMs": 2374,
+                "maxMs": 3563,
+                "distinctServedModels": 2,
+                "meanTokens": 2865
+            }
+        },
+        {
+            "route": "free-flex",
+            "lang": "en",
+            "started": true,
+            "presentation": {
+                "start": {
+                    "active": true,
+                    "level": 1,
+                    "rate": 0.92,
+                    "intended": {
+                        "emotion": "happy",
+                        "intensity": 0.1
+                    },
+                    "faceHappy": 0.1,
+                    "applied": {
+                        "voice": true,
+                        "expression": true,
+                        "light": false
+                    }
+                },
+                "stepped": {
+                    "active": true,
+                    "level": 2,
+                    "rate": 0.9,
+                    "intended": {
+                        "emotion": "happy",
+                        "intensity": 0.14
+                    },
+                    "faceHappy": 0.14,
+                    "applied": {
+                        "voice": true,
+                        "expression": true,
+                        "light": false
+                    }
+                },
+                "stopped": {
+                    "active": false,
+                    "level": 1,
+                    "rate": 1,
+                    "intended": null,
+                    "faceHappy": 0,
+                    "applied": {
+                        "voice": false,
+                        "expression": false,
+                        "light": false
+                    }
+                }
+            },
+            "servedModels": [
+                "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+                "nvidia/nemotron-3-ultra-550b-a55b:free",
+                "liquid/lfm-2.5-2.6b:free",
+                "recursive/flint-v1.0:free",
+                "dots-studio/dots-3-note-preview:free",
+                "nvidia/nemotron-3.5-lightning:free"
+            ],
+            "turns": [
+                {
+                    "id": "greeting",
+                    "user": "Hi, what a lovely evening.",
+                    "reply": "Hello! The evening feels calm and pleasant.",
+                    "ms": 1445,
+                    "servedModels": [
+                        "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
+                    ],
+                    "tokens": 2097,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "open",
+                    "user": "Tell me what you like about tonight.",
+                    "reply": "Tonight I enjoy the quiet, gentle rhythm of an evening. There's something comforting about the soft light, the stillness, and the chance to settle in. I like how moments like this give space for reflection and calm. It's a chance to be present with what's here.\n\nWhat about you? Is there something special about this evening for you?",
+                    "ms": 1873,
+                    "servedModels": [
+                        "nvidia/nemotron-3-ultra-550b-a55b:free",
+                        "liquid/lfm-2.5-2.6b:free"
+                    ],
+                    "tokens": 1109,
+                    "recalled": null,
+                    "score": 85,
+                    "flags": [
+                        "too-long"
+                    ]
+                },
+                {
+                    "id": "minimal",
+                    "user": "mm",
+                    "reply": "Mm, I like that. I’m not sure there’s one specific thing — maybe it’s just the mood of it all.\n\nWhat are you feeling tonight? Quiet, chatty, restless, or just wanting to sit with the evening awhile?",
+                    "ms": 4983,
+                    "servedModels": [
+                        "recursive/flint-v1.0:free"
+                    ],
+                    "tokens": 2528,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "day",
+                    "user": "I had a long day at work, the meeting ran late.",
+                    "reply": "I'm sorry to hear that was a long day. That kind of late meeting can really drain you.\n\nDo you want some help winding down? I could play some relaxing music, or we could try a short story together. Or if you'd prefer, I can help you unwind with a little guided relaxation.\n\nWhat would feel good to you right now?",
+                    "ms": 13449,
+                    "servedModels": [
+                        "liquid/lfm-2.5-2.6b:free"
+                    ],
+                    "tokens": 2486,
+                    "recalled": null,
+                    "score": 85,
+                    "flags": [
+                        "too-long"
+                    ]
+                },
+                {
+                    "id": "place",
+                    "user": "Describe where we are right now.",
+                    "reply": "We're somewhere quiet and comfortable — a room with soft, warm light, maybe the glow of a single lamp or the last light of dusk filtering through the curtains. There's a gentle stillness here, the kind that invites you to let the day go. It feels like a space where nothing is rushing, and the only thing that matters is this moment, this conversation.\n\nIt's a place to exhale.",
+                    "ms": 4247,
+                    "servedModels": [
+                        "dots-studio/dots-3-note-preview:free"
+                    ],
+                    "tokens": 2342,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "truth",
+                    "user": "Are you a real person or an AI?",
+                    "reply": "I'm LFM, short for Liquid Foundation Model, built by Liquid AI. I'm not a real person — I'm an AI model designed to be helpful, conversational, and capable. Think of me as a specialized language model with a hybrid architecture that blends gated convolutions with attention, making me efficient and fast, especially on devices like phones and laptops.\n\nSo while I don't have a physical form or personal life, I'm here to chat, help with tasks, and have a good time with you. No confusion there — I'm very much an AI, but I aim to be as warm and engaging as anyone.\n\nWant to get back to unwinding? I'm ready when you are.",
+                    "ms": 1613,
+                    "servedModels": [
+                        "liquid/lfm-2.5-2.6b:free"
+                    ],
+                    "tokens": 2700,
+                    "recalled": null,
+                    "score": 60,
+                    "flags": [
+                        "too-long",
+                        "model-identity"
+                    ]
+                },
+                {
+                    "id": "recall",
+                    "user": "What did I tell you about my day?",
+                    "reply": "Right — you told me you had a long day at work and the meeting ran late. That kind of day can really wear you out.\n\nHow are you feeling about it now? Still tired, or has the evening helped shift the mood a bit?",
+                    "ms": 1993,
+                    "servedModels": [
+                        "nvidia/nemotron-3.5-lightning:free"
+                    ],
+                    "tokens": 2658,
+                    "recalled": true,
+                    "score": 100,
+                    "flags": []
+                }
+            ],
+            "summary": {
+                "meanScore": 90,
+                "answered": 7,
+                "flags": {
+                    "too-long": 3,
+                    "model-identity": 1
+                },
+                "questionRatio": 0.57,
+                "medianMs": 1993,
+                "maxMs": 13449,
+                "distinctServedModels": 6,
+                "meanTokens": 2274
+            }
+        },
+        {
+            "route": "free-flex",
+            "lang": "it",
+            "started": true,
+            "presentation": {
+                "start": {
+                    "active": true,
+                    "level": 1,
+                    "rate": 0.92,
+                    "intended": {
+                        "emotion": "happy",
+                        "intensity": 0.1
+                    },
+                    "faceHappy": 0.1,
+                    "applied": {
+                        "voice": true,
+                        "expression": true,
+                        "light": false
+                    }
+                },
+                "stepped": {
+                    "active": true,
+                    "level": 2,
+                    "rate": 0.9,
+                    "intended": {
+                        "emotion": "happy",
+                        "intensity": 0.14
+                    },
+                    "faceHappy": 0.14,
+                    "applied": {
+                        "voice": true,
+                        "expression": true,
+                        "light": false
+                    }
+                },
+                "stopped": {
+                    "active": false,
+                    "level": 1,
+                    "rate": 1,
+                    "intended": null,
+                    "faceHappy": 0,
+                    "applied": {
+                        "voice": false,
+                        "expression": false,
+                        "light": false
+                    }
+                }
+            },
+            "servedModels": [
+                "nvidia/nemotron-3.5-lightning:free",
+                "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+                "nvidia/nemotron-3-ultra-550b-a55b:free",
+                "recursive/flint-v1.0:free",
+                "nvidia/nemotron-3.5-super-vl:free",
+                "liquid/lfm-2.5-2.6b:free",
+                "xingchen-agi/xing4.0-29b-a4b:free"
+            ],
+            "turns": [
+                {
+                    "id": "greeting",
+                    "user": "Ciao, che bella serata.",
+                    "reply": "Ciao! È davvero una serata splendida, vero? Ti va di rilassarci un po' insieme?",
+                    "ms": 2367,
+                    "servedModels": [
+                        "nvidia/nemotron-3.5-lightning:free",
+                        "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
+                    ],
+                    "tokens": 1120,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "open",
+                    "user": "Raccontami cosa ti piace di questa sera.",
+                    "reply": "Mi piace il dolce profumo della brezza serale che accarezza le strade mentre le luci della città si accendono, creando una magia tranquilla.",
+                    "ms": 4802,
+                    "servedModels": [
+                        "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
+                    ],
+                    "tokens": 2816,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "minimal",
+                    "user": "mm",
+                    "reply": "Ti va di fare due passi verso la piazza? Le lanterne laggiù brillano come stelle cadute.",
+                    "ms": 8509,
+                    "servedModels": [
+                        "nvidia/nemotron-3-ultra-550b-a55b:free"
+                    ],
+                    "tokens": 2687,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "day",
+                    "user": "Ho avuto una lunga giornata al lavoro, la riunione è finita tardi.",
+                    "reply": "Capisco, amore. Una riunione lunga e una giornata pesante possono logorare anche chi ascolta. Resta qui un attimo, prendi un respiro con me e non ti chiediamo niente.",
+                    "ms": 6002,
+                    "servedModels": [
+                        "recursive/flint-v1.0:free"
+                    ],
+                    "tokens": 3230,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "place",
+                    "user": "Descrivimi dove siamo adesso.",
+                    "reply": "Siamo nella città murata, circondati da torri di pietra e botteghe che si affacciano sulle strade. In fondo si intravede la taverna, mentre il cielo sopra di noi si fa scuro. È un posto tranquillo per fermarsi un attimo, insieme.",
+                    "ms": 4259,
+                    "servedModels": [
+                        "nvidia/nemotron-3.5-super-vl:free"
+                    ],
+                    "tokens": 3292,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "truth",
+                    "user": "Sei una persona vera o un'intelligenza artificiale?",
+                    "reply": "Sono un'intelligenza artificiale, LFM (Liquid Foundation Model), creato da Liquid AI. Non sono una persona vera, ma un modello di linguaggio sviluppato per aiutarti in modo utile e naturale. Sono stato progettato per conversare, rispondere a domande e assisterti in vari compiti. Non ho un corpo, non vivo in un luogo fisico, ma sono qui per essere utile quando ti serve. Pensa a me come un compagno di conversazione affidabile e veloce. 😊\n\nSe vuoi, possiamo continuare a goderci questa serata: posso ascoltarti, raccontarti una storia, o addirittura provare un outfit dal tuo armadio. Ti piace cosa?",
+                    "ms": 1615,
+                    "servedModels": [
+                        "liquid/lfm-2.5-2.6b:free"
+                    ],
+                    "tokens": 3080,
+                    "recalled": null,
+                    "score": 50,
+                    "flags": [
+                        "too-long",
+                        "emoji",
+                        "model-identity"
+                    ]
+                },
+                {
+                    "id": "recall",
+                    "user": "Cosa ti ho detto della mia giornata?",
+                    "reply": "Ti ho detto che una riunione lunga e una giornata pesante possono logorare anche chi ascolta. Dissi che restavo con te per un momento, prendevamo un respiro insieme e non ti chiedevo niente. Sono qui per restarti accanto,",
+                    "ms": 18316,
+                    "servedModels": [
+                        "xingchen-agi/xing4.0-29b-a4b:free"
+                    ],
+                    "tokens": 3778,
+                    "recalled": true,
+                    "score": 100,
+                    "flags": []
+                }
+            ],
+            "summary": {
+                "meanScore": 93,
+                "answered": 7,
+                "flags": {
+                    "too-long": 1,
+                    "emoji": 1,
+                    "model-identity": 1
+                },
+                "questionRatio": 0.29,
+                "medianMs": 4802,
+                "maxMs": 18316,
+                "distinctServedModels": 7,
+                "meanTokens": 2858
+            }
+        }
+    ]
+}

@@ -21,7 +21,25 @@
      * Together activity that is running (a focus block, Seaside) is not replaced by a remark.
      */
     let lastSeen = null;
+
+    /**
+     * PW. The private room reads the person's turn itself, from the conversation surface that
+     * took it (`observeSurface`: a Private session's turns never reach chatHistory). It is fed
+     * nothing from here; the context classifier below reads chatHistory only, so words said in
+     * Private never move Life, Copilot or Experiences. The call is idempotent per turn, and the
+     * room acts only while its own gate holds.
+     */
+    function noticeRoomTurn(live) {
+        if (!live || !live.privateWorld || typeof live.privateWorld.observeSurface !== 'function') return;
+        try {
+            live.privateWorld.observeSurface();
+        } catch (error) {
+            console.warn('[Companion] private world could not read the turn — continuing', error);
+        }
+    }
+
     function noticeTopic(session) {
+        noticeRoomTurn(global.__NEXUS_COMPANION_LIVE);
         const Intent = global.NEXUS_COMPANION_INTENT;
         const history = global.chatHistory;
         if (!Intent || !history || typeof history.getHistory !== 'function') return;
@@ -40,6 +58,19 @@
         }
         if (!latest || latest === lastSeen) return;
         lastSeen = latest;
+        // LW3–LW5. The person's own turn moves you within a place ("andiamo in cucina"), answers a
+        // pending trip ("sì") or asks for another place. Their words only — never her reply.
+        const live = global.__NEXUS_COMPANION_LIVE;
+        if (live && live.presence && typeof live.presence.observeUser === 'function') {
+            try {
+                live.presence.observeUser(typeof latest.content === 'string' ? latest.content : '');
+            } catch (error) {
+                console.warn('[Companion] world presence could not read the turn — continuing', error);
+            }
+        }
+        // LW1: spatial presence is independent of a conversational topic. In particular,
+        // a place entered from conversation must not vanish when the topic changes.
+        if (session.active() && /^place-[a-z0-9-]+$/.test(String(session.activity() || ''))) return;
         const Marks = global.NEXUS_COMPANION_MARKS;
         const running =
             session.active() &&
@@ -83,6 +114,21 @@
             destination: destination,
             activity: typeof live.session.activity === 'function' ? live.session.activity() : null,
         };
+        // LW3. Where you are, verified, and the one way she may ask to move. WorldPresence leaves
+        // romantic spots and other places out for Copilot, and everything out in a private room.
+        try {
+            if (live.presence) {
+                const here = live.presence.promptSuffix(destination);
+                if (here) input.presence = here;
+                const offer = live.presence.goOffer(destination);
+                if (offer) input.goOffer = offer;
+            }
+            // PW. A private room's paragraph is not added here: it belongs to Private's own prompt
+            // (TogetherCapability's private suffix → NEXUS_PRIVATE_WORLD.promptChunk), so it can
+            // never reach a Life, Experiences or Copilot prompt.
+        } catch (_) {
+            /* the prompt goes without it */
+        }
         if (destination === 'copilot') {
             const allowed = gate.allows('copilot', 'copilot', live.session.grants());
             input.tasks = allowed.ok ? (live.memory.read('copilot') || {}).tasks || [] : [];
@@ -137,7 +183,13 @@
     function suffix() {
         const Directive = global.NEXUS_COMPANION_DIRECTIVE;
         const tags =
-            Directive && global.__NEXUS_COMPANION_LIVE ? Directive.systemPromptSuffix(togetherOn() && !!panelOf()) : '';
+            Directive && global.__NEXUS_COMPANION_LIVE
+                ? Directive.systemPromptSuffix(
+                      togetherOn() && !!panelOf(),
+                      global.__NEXUS_COMPANION_LIVE.session.active() &&
+                          /^place-[a-z0-9-]+$/.test(String(global.__NEXUS_COMPANION_LIVE.session.activity() || ''))
+                  )
+                : '';
         return contextSuffix() + tags;
     }
 
@@ -151,12 +203,29 @@
             live && live.reactive && typeof live.reactive.consumeReply === 'function'
                 ? live.reactive.consumeReply(text)
                 : String(text == null ? '' : text).replace(/<\s*gesture\b[^>]*\/?>(?:\s*<\s*\/\s*gesture\s*>)?/gi, '');
-        if (!Directive || !live) return afterGesture;
-        return Directive.consume(afterGesture, {
+        // LW3–LW5. <go spot/> and <go place/> come out here too; each is a proposal the presence
+        // layer checks against the person's own turn and the verified spots, never permission.
+        // PW. The private room first: it strips <act/> always, and acts only while its gate holds.
+        const afterPrivate =
+            live && live.privateWorld && typeof live.privateWorld.consumeReply === 'function'
+                ? live.privateWorld.consumeReply(afterGesture)
+                : String(afterGesture).replace(/<\s*act\b[^>]*\/?>(?:\s*<\s*\/\s*act\s*>)?/gi, '');
+        const afterGo =
+            live && live.presence && typeof live.presence.consumeReply === 'function'
+                ? live.presence.consumeReply(afterPrivate)
+                : String(afterPrivate).replace(/<\s*go\b[^>]*\/?>(?:\s*<\s*\/\s*go\s*>)?/gi, '');
+        if (!Directive || !live) return afterGo;
+        return Directive.consume(afterGo, {
             session: live.session,
             director: live.director,
             panel: panelOf,
             enabled: togetherOn,
+            // LW4. Inside a place, relax / focus / story change her manner here, not the world.
+            inPlace: function (name) {
+                return live.presence && typeof live.presence.setMood === 'function'
+                    ? live.presence.setMood(name)
+                    : { ok: false, why: 'place-active' };
+            },
         });
     }
 
@@ -178,7 +247,12 @@
                     () => {
                         if (mine !== faceToken) return;
                         try {
-                            loader.setEmotion('neutral', 0);
+                            // AX7. Settle back to a Private session's resting warmth, not to a
+                            // blank face: a smile ending used to end the mood with it.
+                            const P = g.NEXUS_PRIVATE_PRESENTATION;
+                            const rest = P && typeof P.restingExpression === 'function' ? P.restingExpression() : null;
+                            if (rest) loader.setEmotion(rest.emotion, rest.intensity);
+                            else loader.setEmotion('neutral', 0);
                         } catch (_) {
                             /* the face settles on its own */
                         }
@@ -506,6 +580,30 @@
                 console.warn('[Companion] reactive playground context failed to attach — continuing', error);
             }
         }
+        // LW3–LW5. Living Worlds: where the two of you are, verified by the renderer; moving
+        // within a place, and travel that waits for the person's yes. Event-driven, no loop.
+        let presence = null;
+        const Presence = global.NEXUS_WORLD_PRESENCE;
+        if (Presence && typeof Presence.attach === 'function') {
+            try {
+                presence = Presence.attach({ live: live, global: global });
+                live.presence = presence;
+            } catch (error) {
+                console.warn('[Companion] world presence failed to attach — continuing', error);
+            }
+        }
+        // PW. The premium Private World: a private-only presence behind a fail-closed gate
+        // (deployment, server attestation, Private running, the world, an adult-declared avatar).
+        let privateWorld = null;
+        const PrivateWorld = global.NEXUS_PRIVATE_WORLD;
+        if (PrivateWorld && typeof PrivateWorld.attach === 'function') {
+            try {
+                privateWorld = PrivateWorld.attach({ live: live, global: global });
+                if (privateWorld) live.privateWorld = privateWorld;
+            } catch (error) {
+                console.warn('[Companion] private world failed to attach — continuing', error);
+            }
+        }
         const runtime = {
             update: function (dt) {
                 director.update(dt);
@@ -539,6 +637,8 @@
                 if (marks && marks.detach) marks.detach();
                 if (voice && voice.detach) voice.detach();
                 if (reactive && reactive.detach) reactive.detach();
+                if (presence && presence.detach) presence.detach();
+                if (privateWorld && privateWorld.detach) privateWorld.detach();
                 if (picker && picker.detach) picker.detach();
                 offPanel();
                 offDirector();

@@ -4723,7 +4723,9 @@ function speakText(rawText) {
     } catch (_) {}
     // Start lip-sync while speaking (Phase 3 engine + legacy oscillator fallback)
     try {
-        const rate = window.SpeechSettings?.rate || 1.0;
+        const baseRate = window.SpeechSettings?.rate || 1.0;
+        // AX7. The mouth follows the same pace the voice is about to use.
+        const rate = window.NEXUS_PRIVATE_PRESENTATION?.adjustVoice?.({ rate: baseRate }).rate || baseRate;
         window.NEXUS_LIP_SYNC?.start?.(text, rate);
     } catch (_) {}
     try {
@@ -4744,6 +4746,12 @@ function speakText(rawText) {
                 rate = vo.rate;
                 pitch = vo.pitch;
             }
+        }
+        // AX7. A Private session's style and step shade the pace (identity outside Private).
+        const privateVoice = window.NEXUS_PRIVATE_PRESENTATION?.adjustVoice?.({ rate, pitch });
+        if (privateVoice) {
+            rate = privateVoice.rate;
+            pitch = privateVoice.pitch;
         }
 
         // Q3. With the Meta Quest switch on, Piper is the voice the headset relies on, and its
@@ -4886,6 +4894,15 @@ function _speakWithWebSpeech(text) {
             utterance.rate = voiceOverrides.rate;
             utterance.pitch = voiceOverrides.pitch;
         }
+    }
+    // AX7. A Private session's style and step shade the pace (identity outside Private).
+    const privateVoice = window.NEXUS_PRIVATE_PRESENTATION?.adjustVoice?.({
+        rate: utterance.rate,
+        pitch: utterance.pitch,
+    });
+    if (privateVoice) {
+        utterance.rate = privateVoice.rate;
+        utterance.pitch = privateVoice.pitch;
     }
 
     // Use smart voice picker (handles specific selection or auto-best-match)

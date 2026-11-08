@@ -1,0 +1,9 @@
+{
+    "_status": "EXISTS — copied from the real neon-discoteca template (PlaygroundTemplateCatalog.js). The shape of a gaze anchor in a venue template (src/experiences/playgrounds/PlaygroundTemplateCatalog.js, field 'anchors'; validated by PlaygroundTemplateCatalog.validate). 'at' must be measured in the given space. An anchor is a thing to LOOK AT — not a walkable spot and not a usable object.",
+    "id": "dj-booth",
+    "label": "DJ booth",
+    "at": [0, 1.25, -4.3],
+    "space": "scene",
+    "_affordances_status": "PROPOSED — ObjectAffordance (NEXUS_WORLD_ENGINE_DESIGN.md §3.6) has no loader. look-at is available through gaze; point-at, sit-on, lie-on, pick-up and toggle are unavailable today.",
+    "affordances": [{ "action": "look-at", "status": "available" }, { "action": "pick-up", "status": "unavailable" }]
+}

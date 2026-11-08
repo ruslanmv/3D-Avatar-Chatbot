@@ -1,0 +1,16 @@
+{
+    "_status": "EXISTS — a light phone stand-in is a separate worlds.json entry with lightFor. EXAMPLE values. It is a different model, so it gets its own spots file (assets/vr-worlds/spots/example-loft-light.json) and its own measured arrival placement.",
+    "id": "example-loft-light",
+    "title": "Loft",
+    "note": "The loft, light enough for phones.",
+    "place": true,
+    "rating": "romantic",
+    "tiers": ["mobile"],
+    "triangles": 24000,
+    "activities": [],
+    "lightFor": "example-loft",
+    "sky": { "top": "#3a2c2a", "horizon": "#5a4438", "bottom": "#2a2020" },
+    "light": { "sky": "#e8d8ff", "ground": "#3a3040", "hemi": 0.75, "key": "#ffd2a8", "keyIntensity": 0.9, "fill": "#b8a8ff", "fillIntensity": 0.5, "rim": "#ffc8b0", "rimIntensity": 0.45, "exposure": 1 },
+    "props": [],
+    "scene": { "src": "scenes/example-loft-light.glb", "at": [0, -0.05, 0], "turn": 0 }
+}

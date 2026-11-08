@@ -1,0 +1,352 @@
+{
+  "note": "LW2. What each spot is FOR, per physical scene — never where it is. tools/vr/measure-spots.mjs finds the position and facing by raycasting the real GLB and writes assets/vr-worlds/spots/<scene>.json; a spot it cannot measure is written verified:false and is never offered. near = regexes over the scene's top-level node names (the thing she stands by). room = the area the name belongs to. can = what is honestly possible there today: 'stand-near' and 'look-at' need nothing but a measured spot; nothing here claims sitting, lying down or handling an object, because no seat-aligned pose or hand-held prop exists yet. rating: 'general' or 'romantic' The two cabaret scenes are private rooms (PW): only the Private World's own gated presence reads their spots; the public presence refuses any private world, whatever its spots say.",
+  "scenes": {
+    "scenes/pixel-flat-home.glb": {
+      "title": {
+        "en": "the apartment",
+        "it": "l'appartamento"
+      },
+      "spots": [
+        {
+          "id": "sofa",
+          "label": {
+            "en": "by the sofa",
+            "it": "vicino al divano"
+          },
+          "room": "living-room",
+          "near": ["^090-sofa-three-seat$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the sofa with a throw blanket and cushions on it, and the TV across the room",
+            "it": "il divano con sopra una coperta e dei cuscini, e la TV di fronte"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "record-player",
+          "label": {
+            "en": "by the record player",
+            "it": "vicino al giradischi"
+          },
+          "room": "living-room",
+          "near": ["^097-record-player-and-stand$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the record player, the guitar on its stand, a side-table lamp and the dog asleep in its bed",
+            "it": "il giradischi, la chitarra sul supporto, una lampada sul tavolino e il cane che dorme nella sua cuccia"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "kitchen",
+          "label": {
+            "en": "in the kitchen",
+            "it": "in cucina"
+          },
+          "room": "kitchen",
+          "near": ["^079-kitchen-island-with-stools$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the kitchen island with its stools, the hob and the kettle",
+            "it": "l'isola della cucina con gli sgabelli, i fornelli e il bollitore"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "dining-table",
+          "label": {
+            "en": "by the dining table",
+            "it": "vicino al tavolo da pranzo"
+          },
+          "room": "kitchen",
+          "near": ["^083-dining-table$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the dining table under the pendant lamp",
+            "it": "il tavolo da pranzo sotto la lampada a sospensione"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "bed",
+          "label": {
+            "en": "by the bed",
+            "it": "vicino al letto"
+          },
+          "room": "bedroom",
+          "near": ["^118-double-bed$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the double bed with its bedside lamps",
+            "it": "il letto matrimoniale con le lampade sui comodini"
+          },
+          "rating": "romantic"
+        },
+        {
+          "id": "desk",
+          "label": {
+            "en": "at the desk",
+            "it": "alla scrivania"
+          },
+          "room": "study",
+          "near": ["^125-desk$", "^126-desk-chair$", "^127-monitor-and-keyboard$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the desk with its monitor and keyboard",
+            "it": "la scrivania con monitor e tastiera"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "bathroom",
+          "label": {
+            "en": "in the bathroom",
+            "it": "in bagno"
+          },
+          "room": "bathroom",
+          "near": ["^137-basin-with-cabinet$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the basin and mirror, the bath and the shower",
+            "it": "il lavabo con lo specchio, la vasca e la doccia"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "balcony",
+          "label": {
+            "en": "on the balcony",
+            "it": "sul balcone"
+          },
+          "room": "balcony",
+          "near": ["^148-balcony-table-and-chairs$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the little balcony table and the planter",
+            "it": "il tavolino del balcone e la fioriera"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/bedroom-flat.glb": {
+      "title": {
+        "en": "the bedroom",
+        "it": "la camera da letto"
+      },
+      "spots": [
+        {
+          "id": "bed",
+          "label": {
+            "en": "by the bed",
+            "it": "vicino al letto"
+          },
+          "room": "bedroom",
+          "near": ["^009-double-bed-upholstered$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the upholstered bed with cushions and a folded throw blanket",
+            "it": "il letto imbottito con i cuscini e una coperta piegata"
+          },
+          "rating": "romantic"
+        },
+        {
+          "id": "dressing-table",
+          "label": {
+            "en": "by the dressing table",
+            "it": "vicino alla toeletta"
+          },
+          "room": "bedroom",
+          "near": ["^021-dressing-table$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the dressing table and its round mirror",
+            "it": "la toeletta con lo specchio rotondo"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "sofa",
+          "label": {
+            "en": "by the sofa",
+            "it": "vicino al divano"
+          },
+          "room": "living-room",
+          "near": ["^024-sofa-three-seat$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the sofa, the coffee table and the armchair",
+            "it": "il divano, il tavolino e la poltrona"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "bookcase",
+          "label": {
+            "en": "by the bookcase",
+            "it": "vicino alla libreria"
+          },
+          "room": "living-room",
+          "near": ["^031-bookcase-5-shelf$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the bookcase and the arc floor lamp",
+            "it": "la libreria e la lampada ad arco"
+          },
+          "rating": "general"
+        }
+      ]
+    },
+    "scenes/cabaret-stage.glb": {
+      "title": {
+        "en": "the private cabaret",
+        "it": "il cabaret privato"
+      },
+      "spots": [
+        {
+          "id": "lounge",
+          "label": {
+            "en": "in the lounge corner",
+            "it": "nell'angolo salotto"
+          },
+          "room": "stage",
+          "near": ["^066-set-dressing-armchair$", "^067-set-dressing-table$", "^068-set-dressing-armchair$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "two armchairs and a little table set out on the stage",
+            "it": "due poltrone e un tavolino sistemati sul palco"
+          },
+          "rating": "romantic"
+        },
+        {
+          "id": "center-stage",
+          "label": {
+            "en": "at center stage",
+            "it": "al centro del palco"
+          },
+          "room": "stage",
+          "near": ["^046-backdrop-cloth-on-batten$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the open stage floor and the painted backdrop",
+            "it": "il palco aperto e il fondale dipinto"
+          },
+          "rating": "romantic"
+        },
+        {
+          "id": "footlights",
+          "label": {
+            "en": "by the footlights",
+            "it": "vicino alle luci di ribalta"
+          },
+          "room": "stage",
+          "near": ["^03[0-5]-apron-edge-with-footlight-strip$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the footlights along the stage edge and the dark house beyond",
+            "it": "le luci di ribalta lungo il bordo del palco e la sala buia oltre"
+          },
+          "rating": "romantic"
+        },
+        {
+          "id": "steps",
+          "label": {
+            "en": "by the stage steps",
+            "it": "vicino alla scaletta del palco"
+          },
+          "room": "stage",
+          "near": ["^065-stage-steps$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the steps down from the stage",
+            "it": "la scaletta che scende dal palco"
+          },
+          "rating": "general"
+        },
+        {
+          "id": "curtain",
+          "label": {
+            "en": "by the curtain",
+            "it": "vicino al sipario"
+          },
+          "room": "stage",
+          "near": ["^039-house-tabs-on-track-open$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the heavy house curtain, drawn open",
+            "it": "il pesante sipario, aperto"
+          },
+          "rating": "romantic"
+        }
+      ]
+    },
+    "scenes/cabaret-stage-light.glb": {
+      "title": {
+        "en": "the private cabaret",
+        "it": "il cabaret privato"
+      },
+      "spots": [
+        {
+          "id": "lounge",
+          "label": {
+            "en": "in the lounge corner",
+            "it": "nell'angolo salotto"
+          },
+          "room": "stage",
+          "near": ["^066-set-dressing-armchair$", "^067-set-dressing-table$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "an armchair and a little table set out on the stage",
+            "it": "una poltrona e un tavolino sistemati sul palco"
+          },
+          "rating": "romantic"
+        },
+        {
+          "id": "center-stage",
+          "label": {
+            "en": "at center stage",
+            "it": "al centro del palco"
+          },
+          "room": "stage",
+          "near": ["^046-backdrop-cloth-on-batten$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the open stage floor and the painted backdrop",
+            "it": "il palco aperto e il fondale dipinto"
+          },
+          "rating": "romantic"
+        },
+        {
+          "id": "footlights",
+          "label": {
+            "en": "by the footlights",
+            "it": "vicino alle luci di ribalta"
+          },
+          "room": "stage",
+          "near": ["^03[23]-apron-edge-with-footlight-strip$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the footlights along the stage edge",
+            "it": "le luci di ribalta lungo il bordo del palco"
+          },
+          "rating": "romantic"
+        },
+        {
+          "id": "curtain",
+          "label": {
+            "en": "by the curtain",
+            "it": "vicino al sipario"
+          },
+          "room": "stage",
+          "near": ["^039-house-tabs-on-track-open$"],
+          "can": ["stand-near", "look-at"],
+          "sees": {
+            "en": "the heavy house curtain, drawn open",
+            "it": "il pesante sipario, aperto"
+          },
+          "rating": "romantic"
+        }
+      ]
+    }
+  }
+}

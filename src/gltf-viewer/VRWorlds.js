@@ -1108,6 +1108,10 @@
             if (world.fog && THREE.Fog)
                 d.scene.fog = new THREE.Fog(new THREE.Color(world.fog.color), world.fog.near, world.fog.far);
             activeId = world.id;
+            // LW3. A freshly built place stands her on its own `scene.at`/`turn`, whatever spot an
+            // earlier visit had moved her to; the presence layer re-derives which spot that is.
+            spotNow = null;
+            spotGen += 1;
             playAmbient(world, options);
             fadeTo(0);
             return { ok: true, id: world.id, missing };
@@ -1134,8 +1138,66 @@
             return true;
         }
 
+        // ── LW3: move her to a measured spot inside the world that is up ─────────────────
+        let spotNow = null;
+        let spotGen = 0;
+
+        function sceneNode() {
+            if (!group || !worldNow || !worldNow.scene) return null;
+            return group.getObjectByName('vr-world-scene:' + worldNow.scene.src) || null;
+        }
+
+        /**
+         * LW3. Living Worlds' first kind of movement: within one place, without loading anything.
+         * The view fades to black (the same fade as a world change — never a glide, which is what
+         * makes a headset sick), the already-built scene is turned and moved so the measured spot
+         * is under her and she faces the person, and the view fades back in. She stays at the
+         * origin, so the camera framing, the person's own place in VR and every system that reads
+         * her position are untouched; only the room around the two of them changes.
+         *
+         * The spot must be WorldSpots-normalized data for the scene that is up (the caller looks it
+         * up by scene file, never by world id: the phone and desktop bedrooms are different
+         * models). A world change or hide in the middle wins — the move is dropped with `stale`
+         * and nothing is half-applied. Success is the renderer's answer, `spotId`, never a sentence.
+         */
+        async function goToSpot(spot, options) {
+            const S = global && global.NEXUS_WORLD_SPOTS;
+            if (!S || !THREE) return { ok: false, why: 'no-spots-module' };
+            if (!activeId || !worldNow || !worldNow.scene) return { ok: false, why: 'no-scene' };
+            if (!spot || !Array.isArray(spot.position) || !Number.isFinite(Number(spot.facingDeg)))
+                return { ok: false, why: 'bad-spot' };
+            const world = activeId;
+            const gen = generation;
+            const mine = ++spotGen;
+            const place = S.placementFor(spot, worldNow.scene.scale);
+            if (!(options && options.instant)) await fadeTo(1);
+            if (gen !== generation || mine !== spotGen || activeId !== world) return { ok: false, why: 'stale' };
+            const node = sceneNode();
+            if (!node) {
+                fadeTo(0);
+                return { ok: false, why: 'no-scene' };
+            }
+            node.rotation.y = (place.turn * Math.PI) / 180;
+            node.position.set(place.at[0], place.at[1], place.at[2]);
+            node.updateMatrixWorld(true);
+            spotNow = spot.id;
+            // While the view is black: whatever must change with the room (a screen's framing for
+            // a small room) changes here, so the person never watches it happen.
+            if (options && typeof options.whileDark === 'function') {
+                try {
+                    options.whileDark(spot);
+                } catch (_) {
+                    /* the move stands */
+                }
+            }
+            fadeTo(0);
+            return { ok: true, world, spot: spot.id, generation: gen };
+        }
+
         function hide() {
             generation += 1;
+            spotNow = null;
+            spotGen += 1;
             mood = null;
             worldNow = null;
             lightNow = null;
@@ -1170,8 +1232,23 @@
             leave,
             tick,
             setMood,
+            goToSpot,
             get activeId() {
                 return activeId;
+            },
+            /** LW3. The spot the renderer last confirmed in this world (null: its own arrival spot). */
+            get spotId() {
+                return spotNow;
+            },
+            /** LW3. The physical scene file of the world that is up — spots are looked up by this. */
+            get sceneSrc() {
+                return worldNow && worldNow.scene ? worldNow.scene.src : null;
+            },
+            /** LW3. The world's own arrival placement, to tell which measured spot it is. */
+            get scenePlacement() {
+                return worldNow && worldNow.scene
+                    ? { at: worldNow.scene.at.slice(), turn: worldNow.scene.turn, scale: worldNow.scene.scale }
+                    : null;
             },
             get group() {
                 return group;

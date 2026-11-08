@@ -1,0 +1,9 @@
+{
+    "_status": "PARTIAL — today a destination is one entry in WorldPresence.DESTINATIONS (src/companion/WorldPresence.js); this JSON shape is PROPOSED. worlds are in preference order and resolved per device tier; never a private world; travel always waits for the person's next-turn yes (except a deliberate UI choice).",
+    "id": "loft",
+    "worlds": ["example-loft", "example-loft-light"],
+    "words": { "en": ["loft"], "it": ["loft", "mansarda"] },
+    "requiresConfirmation": true,
+    "rating": "romantic",
+    "code_today": "{ id: 'loft', worlds: ['example-loft', 'example-loft-light'], words: ['loft', 'mansarda'] }"
+}

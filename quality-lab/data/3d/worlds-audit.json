@@ -1,0 +1,1966 @@
+{
+    "schema": 1,
+    "generator": "tools/qa/world-audit.mjs",
+    "rules": {
+        "previewMaxBytes": 61440,
+        "devices": [
+            "desktop",
+            "mobile",
+            "vr"
+        ]
+    },
+    "summary": {
+        "worlds": 38,
+        "places": 14,
+        "standIns": 8,
+        "withSpots": 5,
+        "fails": 0,
+        "warns": 19,
+        "offered": {
+            "desktop": 30,
+            "mobile": 28,
+            "vr": 29
+        },
+        "catalogueProblems": 0,
+        "mobileTriangleBudget": 30000
+    },
+    "worlds": [
+        {
+            "id": "oak-glade",
+            "title": "Oak glade",
+            "kind": "activity world",
+            "rating": "general",
+            "category": null,
+            "activities": [
+                "forest"
+            ],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 46091,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/oak-glade.glb",
+                "exists": true,
+                "bytes": 1586844
+            },
+            "preview": null,
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "001-english-oak-mature",
+                    "metres": 0.34
+                },
+                {
+                    "node": "021-oak-sapling",
+                    "metres": 0.68
+                },
+                {
+                    "node": "003-english-oak-young",
+                    "metres": 0.81
+                }
+            ],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "oak-glade",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "46091 triangles > 30000, no stand-in"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "oak-glade",
+                    "why": "loads itself"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 3 scene parts within 1 m of her spot (001-english-oak-mature 0.34 m, 021-oak-sapling 0.68 m, 003-english-oak-young 0.81 m) — check in a headset or leave out of the VR version"
+                }
+            ]
+        },
+        {
+            "id": "meadow-village",
+            "title": "Meadow village",
+            "kind": "activity world",
+            "rating": "general",
+            "category": null,
+            "activities": [
+                "relax"
+            ],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 22448,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/meadow-courier.glb",
+                "exists": true,
+                "bytes": 2216456
+            },
+            "preview": null,
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "14-meadow-courier-parcel-cart",
+                    "metres": 0.53
+                },
+                {
+                    "node": "24-meadow-courier-picket-fence",
+                    "metres": 0.86
+                },
+                {
+                    "node": "13-meadow-courier-mailbox",
+                    "metres": 0.92
+                }
+            ],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "meadow-village",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "meadow-village",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "meadow-village",
+                    "why": "loads itself"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 3 scene parts within 1 m of her spot (14-meadow-courier-parcel-cart 0.53 m, 24-meadow-courier-picket-fence 0.86 m, 13-meadow-courier-mailbox 0.92 m) — check in a headset or leave out of the VR version"
+                }
+            ]
+        },
+        {
+            "id": "walled-town",
+            "title": "Walled town",
+            "kind": "activity world",
+            "rating": "general",
+            "category": null,
+            "activities": [
+                "scene-tale"
+            ],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 224939,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/mmo-realm.glb",
+                "exists": true,
+                "bytes": 4984148
+            },
+            "preview": null,
+            "props": 0,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "walled-town",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "224939 triangles > 30000, no stand-in"
+                },
+                "vr": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not in its tiers"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "seaside-evening",
+            "title": "Seaside evening",
+            "kind": "activity world",
+            "rating": "general",
+            "category": null,
+            "activities": [
+                "seaside"
+            ],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 572,
+            "look": "panorama",
+            "scene": null,
+            "preview": null,
+            "props": 5,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "seaside-evening",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "seaside-evening",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "seaside-evening",
+                    "why": "loads itself"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "under-the-trees",
+            "title": "Under the trees",
+            "kind": "activity world",
+            "rating": "general",
+            "category": null,
+            "activities": [
+                "forest"
+            ],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 24370,
+            "look": "panorama",
+            "scene": null,
+            "preview": null,
+            "props": 14,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "under-the-trees",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "under-the-trees",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "under-the-trees",
+                    "why": "loads itself"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "starlit-lake",
+            "title": "Starlit lake",
+            "kind": "activity world",
+            "rating": "general",
+            "category": null,
+            "activities": [
+                "meditation"
+            ],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 648,
+            "look": "panorama",
+            "scene": null,
+            "preview": null,
+            "props": 6,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "starlit-lake",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "starlit-lake",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "starlit-lake",
+                    "why": "loads itself"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "garden-after-dark",
+            "title": "Garden after dark",
+            "kind": "activity world",
+            "rating": "general",
+            "category": null,
+            "activities": [
+                "scene-tale"
+            ],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 4068,
+            "look": "panorama",
+            "scene": null,
+            "preview": null,
+            "props": 9,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "garden-after-dark",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "garden-after-dark",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "garden-after-dark",
+                    "why": "loads itself"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "ocean-sunrise",
+            "title": "Ocean sunrise",
+            "kind": "activity world",
+            "rating": "general",
+            "category": null,
+            "activities": [
+                "ocean"
+            ],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 694,
+            "look": "panorama",
+            "scene": null,
+            "preview": null,
+            "props": 5,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "ocean-sunrise",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "ocean-sunrise",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "ocean-sunrise",
+                    "why": "loads itself"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "mountain-lake",
+            "title": "Mountain lake",
+            "kind": "activity world",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 13791,
+            "look": "panorama",
+            "scene": null,
+            "preview": null,
+            "props": 6,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "mountain-lake",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "mountain-lake",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "mountain-lake",
+                    "why": "loads itself"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "meadow-sunset",
+            "title": "Meadow at sunset",
+            "kind": "activity world",
+            "rating": "general",
+            "category": null,
+            "activities": [
+                "relax",
+                "sunset"
+            ],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 5910,
+            "look": "panorama",
+            "scene": null,
+            "preview": null,
+            "props": 8,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "meadow-sunset",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "meadow-sunset",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "meadow-sunset",
+                    "why": "loads itself"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "starry-hills",
+            "title": "Stars above the hills",
+            "kind": "activity world",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 728,
+            "look": "panorama",
+            "scene": null,
+            "preview": null,
+            "props": 5,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "starry-hills",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "starry-hills",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "starry-hills",
+                    "why": "loads itself"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "city-rooftop",
+            "title": "City rooftop",
+            "kind": "activity world",
+            "rating": "general",
+            "category": null,
+            "activities": [
+                "work",
+                "copilot-hour"
+            ],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 672,
+            "look": "panorama",
+            "scene": null,
+            "preview": null,
+            "props": 6,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "city-rooftop",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "city-rooftop",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "city-rooftop",
+                    "why": "loads itself"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "moonlit-courtyard",
+            "title": "Moonlit courtyard",
+            "kind": "activity world",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 1656,
+            "look": "panorama",
+            "scene": null,
+            "preview": null,
+            "props": 6,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "moonlit-courtyard",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "moonlit-courtyard",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "moonlit-courtyard",
+                    "why": "loads itself"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "cozy-room",
+            "title": "Cozy room",
+            "kind": "activity world",
+            "rating": "general",
+            "category": null,
+            "activities": [
+                "life-evening"
+            ],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 848,
+            "look": "panorama",
+            "scene": null,
+            "preview": null,
+            "props": 7,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "cozy-room",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "cozy-room",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "cozy-room",
+                    "why": "loads itself"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "fantasy-village",
+            "title": "Fantasy village",
+            "kind": "activity world",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 2840,
+            "look": "panorama",
+            "scene": null,
+            "preview": null,
+            "props": 8,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "fantasy-village",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "fantasy-village",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "fantasy-village",
+                    "why": "loads itself"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "scifi-sanctuary",
+            "title": "Sci-fi sanctuary",
+            "kind": "activity world",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 805,
+            "look": "panorama",
+            "scene": null,
+            "preview": null,
+            "props": 3,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "scifi-sanctuary",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "scifi-sanctuary",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "scifi-sanctuary",
+                    "why": "loads itself"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "hotel-suite",
+            "title": "Hotel suite",
+            "kind": "place",
+            "rating": "romantic",
+            "category": "Romantic",
+            "activities": [],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 2400,
+            "look": "stylized sky",
+            "scene": null,
+            "preview": {
+                "src": "previews/hotel-suite.webp",
+                "exists": true,
+                "bytes": 13892
+            },
+            "props": 10,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "hotel-suite",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "hotel-suite",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "hotel-suite",
+                    "why": "loads itself"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "apartment",
+            "title": "Apartment",
+            "kind": "place",
+            "rating": "romantic",
+            "category": "Romantic",
+            "activities": [],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 26468,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/pixel-flat-home.glb",
+                "exists": true,
+                "bytes": 1470852
+            },
+            "preview": {
+                "src": "previews/apartment.webp",
+                "exists": true,
+                "bytes": 20308
+            },
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "108-monstera",
+                    "metres": 0.28
+                },
+                {
+                    "node": "102-throw-blanket",
+                    "metres": 0.3
+                },
+                {
+                    "node": "090-sofa-three-seat",
+                    "metres": 0.37
+                },
+                {
+                    "node": "091-sofa-two-seat",
+                    "metres": 0.8
+                }
+            ],
+            "spots": {
+                "file": "assets/vr-worlds/spots/pixel-flat-home.json",
+                "total": 8,
+                "verified": 8,
+                "ids": [
+                    "sofa",
+                    "record-player",
+                    "kitchen",
+                    "dining-table",
+                    "bed",
+                    "desk",
+                    "bathroom",
+                    "balcony"
+                ],
+                "matchesScene": true
+            },
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "apartment",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "apartment",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "apartment",
+                    "why": "loads itself"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 4 scene parts within 1 m of her spot (108-monstera 0.28 m, 102-throw-blanket 0.3 m, 090-sofa-three-seat 0.37 m, 091-sofa-two-seat 0.8 m) — check in a headset or leave out of the VR version"
+                }
+            ]
+        },
+        {
+            "id": "bedroom",
+            "title": "Bedroom",
+            "kind": "place",
+            "rating": "romantic",
+            "category": "Romantic",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "bedroom-light",
+            "triangles": 39772,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/bedroom-flat.glb",
+                "exists": true,
+                "bytes": 1385996
+            },
+            "preview": {
+                "src": "previews/bedroom.webp",
+                "exists": true,
+                "bytes": 14878
+            },
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "027-armchair-lounge",
+                    "metres": 0.16
+                },
+                {
+                    "node": "037-dining-chair-upholstered",
+                    "metres": 0.33
+                },
+                {
+                    "node": "008-flat-wall-door-4m",
+                    "metres": 0.37
+                },
+                {
+                    "node": "034-dining-table-6seat",
+                    "metres": 0.6
+                },
+                {
+                    "node": "038-dining-bench",
+                    "metres": 0.88
+                },
+                {
+                    "node": "042-wall-sconce",
+                    "metres": 0.95
+                }
+            ],
+            "spots": {
+                "file": "assets/vr-worlds/spots/bedroom-flat.json",
+                "total": 4,
+                "verified": 1,
+                "ids": [
+                    "dressing-table"
+                ],
+                "matchesScene": true
+            },
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "bedroom",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "bedroom-light",
+                    "why": "loads its light stand-in bedroom-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "bedroom",
+                    "why": "loads itself"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 6 scene parts within 1 m of her spot (027-armchair-lounge 0.16 m, 037-dining-chair-upholstered 0.33 m, 008-flat-wall-door-4m 0.37 m, 034-dining-table-6seat 0.6 m, 038-dining-bench 0.88 m, 042-wall-sconce 0.95 m) — check in a headset or leave out of the VR version"
+                }
+            ]
+        },
+        {
+            "id": "bedroom-light",
+            "title": "Bedroom",
+            "kind": "stand-in",
+            "rating": "romantic",
+            "category": null,
+            "activities": [],
+            "lightFor": "bedroom",
+            "standIn": null,
+            "triangles": 26468,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/pixel-flat-home.glb",
+                "exists": true,
+                "bytes": 1470852
+            },
+            "preview": null,
+            "props": 0,
+            "vrNear": [],
+            "spots": {
+                "file": "assets/vr-worlds/spots/pixel-flat-home.json",
+                "total": 8,
+                "verified": 8,
+                "ids": [
+                    "sofa",
+                    "record-player",
+                    "kitchen",
+                    "dining-table",
+                    "bed",
+                    "desk",
+                    "bathroom",
+                    "balcony"
+                ],
+                "matchesScene": true
+            },
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "bedroom-light",
+                    "why": "stand-in for bedroom"
+                },
+                "vr": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "lagoon-beach",
+            "title": "Lagoon beach",
+            "kind": "place",
+            "rating": "romantic",
+            "category": "Romantic",
+            "activities": [],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 14208,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/lagoon-beach.glb",
+                "exists": true,
+                "bytes": 302972
+            },
+            "preview": {
+                "src": "previews/lagoon-beach.webp",
+                "exists": true,
+                "bytes": 9512
+            },
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "002-coconut-palm-leaning",
+                    "metres": 0
+                }
+            ],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "lagoon-beach",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "lagoon-beach",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "lagoon-beach",
+                    "why": "loads itself"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 1 scene part within 1 m of her spot (002-coconut-palm-leaning 0 m) — check in a headset or leave out of the VR version"
+                },
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "office",
+            "title": "Office",
+            "kind": "place",
+            "rating": "general",
+            "category": "Work",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "office-light",
+            "triangles": 72326,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/downtown-office.glb",
+                "exists": true,
+                "bytes": 1289984
+            },
+            "preview": {
+                "src": "previews/office.webp",
+                "exists": true,
+                "bytes": 20950
+            },
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "000-bench-desk-6-position-spine",
+                    "metres": 0
+                },
+                {
+                    "node": "009-task-chair-mesh",
+                    "metres": 0.66
+                },
+                {
+                    "node": "001-task-chair-mesh",
+                    "metres": 0.9
+                }
+            ],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "office",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "office-light",
+                    "why": "loads its light stand-in office-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "office",
+                    "why": "loads itself"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 3 scene parts within 1 m of her spot (000-bench-desk-6-position-spine 0 m, 009-task-chair-mesh 0.66 m, 001-task-chair-mesh 0.9 m) — check in a headset or leave out of the VR version"
+                },
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "office-light",
+            "title": "Office",
+            "kind": "stand-in",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": "office",
+            "standIn": null,
+            "triangles": 1200,
+            "look": "stylized sky",
+            "scene": null,
+            "preview": null,
+            "props": 6,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "office-light",
+                    "why": "stand-in for office"
+                },
+                "vr": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "airship-dock",
+            "title": "Airship dock",
+            "kind": "place",
+            "rating": "general",
+            "category": "Fantasy",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "airship-dock-light",
+            "triangles": 141396,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/airship-dock.glb",
+                "exists": true,
+                "bytes": 2391240
+            },
+            "preview": {
+                "src": "previews/airship-dock.webp",
+                "exists": true,
+                "bytes": 32748
+            },
+            "props": 0,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "airship-dock",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "airship-dock-light",
+                    "why": "loads its light stand-in airship-dock-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "airship-dock-light",
+                    "why": "loads its light stand-in airship-dock-light"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "airship-dock-light",
+            "title": "Airship dock",
+            "kind": "stand-in",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": "airship-dock",
+            "standIn": null,
+            "triangles": 29140,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/airship-dock-light.glb",
+                "exists": true,
+                "bytes": 1043044
+            },
+            "preview": null,
+            "props": 0,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "airship-dock-light",
+                    "why": "stand-in for airship-dock"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "airship-dock-light",
+                    "why": "stand-in for airship-dock"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "neon-street",
+            "title": "Neon street",
+            "kind": "place",
+            "rating": "general",
+            "category": "Nightlife",
+            "activities": [],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 16464,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/neon-dispatch.glb",
+                "exists": true,
+                "bytes": 1700644
+            },
+            "preview": {
+                "src": "previews/neon-street.webp",
+                "exists": true,
+                "bytes": 13534
+            },
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "29-neon-dispatch-cantilever-bench",
+                    "metres": 0.57
+                }
+            ],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "neon-street",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "neon-street",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "neon-street",
+                    "why": "loads itself"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 1 scene part within 1 m of her spot (29-neon-dispatch-cantilever-bench 0.57 m) — check in a headset or leave out of the VR version"
+                },
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "roadside-motel",
+            "title": "Roadside motel",
+            "kind": "place",
+            "rating": "private",
+            "category": "Private",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "roadside-motel-light",
+            "triangles": 38582,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/roadside-motel.glb",
+                "exists": true,
+                "bytes": 829588
+            },
+            "preview": {
+                "src": "previews/roadside-motel.webp",
+                "exists": true,
+                "bytes": 10688
+            },
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "046-diner-car-curved-end",
+                    "metres": 0.9
+                }
+            ],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "roadside-motel",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "roadside-motel-light",
+                    "why": "loads its light stand-in roadside-motel-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "roadside-motel",
+                    "why": "loads itself"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 1 scene part within 1 m of her spot (046-diner-car-curved-end 0.9 m) — check in a headset or leave out of the VR version"
+                },
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "roadside-motel-light",
+            "title": "Roadside motel",
+            "kind": "stand-in",
+            "rating": "private",
+            "category": null,
+            "activities": [],
+            "lightFor": "roadside-motel",
+            "standIn": null,
+            "triangles": 1500,
+            "look": "stylized sky",
+            "scene": null,
+            "preview": null,
+            "props": 7,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "roadside-motel-light",
+                    "why": "stand-in for roadside-motel"
+                },
+                "vr": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "candlelit-suite",
+            "title": "Candlelit suite",
+            "kind": "place",
+            "rating": "private",
+            "category": "Private",
+            "activities": [],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 2400,
+            "look": "stylized sky",
+            "scene": null,
+            "preview": {
+                "src": "previews/candlelit-suite.webp",
+                "exists": true,
+                "bytes": 12942
+            },
+            "props": 10,
+            "vrNear": [],
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "candlelit-suite",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "candlelit-suite",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "candlelit-suite",
+                    "why": "loads itself"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "irish-pub",
+            "title": "Irish pub",
+            "kind": "place",
+            "rating": "general",
+            "category": "Social",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "irish-pub-light",
+            "triangles": 94872,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/pub-bar-room.glb",
+                "exists": true,
+                "bytes": 2514464
+            },
+            "preview": {
+                "src": "previews/irish-pub.webp",
+                "exists": true,
+                "bytes": 23644
+            },
+            "props": 0,
+            "vrNear": [],
+            "spots": null,
+            "template": {
+                "id": "irish-pub",
+                "actions": [
+                    "cheers",
+                    "story",
+                    "wave",
+                    "light"
+                ]
+            },
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "irish-pub",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "irish-pub-light",
+                    "why": "loads its light stand-in irish-pub-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "irish-pub-light",
+                    "why": "loads its light stand-in irish-pub-light"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "irish-pub-light",
+            "title": "Irish pub",
+            "kind": "stand-in",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": "irish-pub",
+            "standIn": null,
+            "triangles": 29058,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/pub-bar-room-light.glb",
+                "exists": true,
+                "bytes": 917448
+            },
+            "preview": null,
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "044-pub-table-round-pedestal",
+                    "metres": 0.59
+                },
+                {
+                    "node": "046-spindle-back-chair",
+                    "metres": 0.61
+                },
+                {
+                    "node": "050-pendant-light",
+                    "metres": 0.91
+                }
+            ],
+            "spots": null,
+            "template": {
+                "id": "irish-pub",
+                "actions": [
+                    "cheers",
+                    "story",
+                    "wave",
+                    "light"
+                ]
+            },
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "irish-pub-light",
+                    "why": "stand-in for irish-pub"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "irish-pub-light",
+                    "why": "stand-in for irish-pub"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 3 scene parts within 1 m of her spot (044-pub-table-round-pedestal 0.59 m, 046-spindle-back-chair 0.61 m, 050-pendant-light 0.91 m) — check in a headset or leave out of the VR version"
+                }
+            ]
+        },
+        {
+            "id": "neon-discoteca",
+            "title": "Neon discoteca",
+            "kind": "place",
+            "rating": "general",
+            "category": "Nightlife",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "neon-discoteca-light",
+            "triangles": 138814,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/club-main-room.glb",
+                "exists": true,
+                "bytes": 2430916
+            },
+            "preview": {
+                "src": "previews/neon-discoteca.webp",
+                "exists": true,
+                "bytes": 22672
+            },
+            "props": 0,
+            "vrNear": [],
+            "spots": null,
+            "template": {
+                "id": "neon-discoteca",
+                "actions": [
+                    "dance",
+                    "music",
+                    "wave",
+                    "light"
+                ]
+            },
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "neon-discoteca",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "neon-discoteca-light",
+                    "why": "loads its light stand-in neon-discoteca-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "neon-discoteca-light",
+                    "why": "loads its light stand-in neon-discoteca-light"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "neon-discoteca-light",
+            "title": "Neon discoteca",
+            "kind": "stand-in",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": "neon-discoteca",
+            "standIn": null,
+            "triangles": 27904,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/club-main-room-light.glb",
+                "exists": true,
+                "bytes": 572396
+            },
+            "preview": null,
+            "props": 0,
+            "vrNear": [],
+            "spots": null,
+            "template": {
+                "id": "neon-discoteca",
+                "actions": [
+                    "dance",
+                    "music",
+                    "wave",
+                    "light"
+                ]
+            },
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "neon-discoteca-light",
+                    "why": "stand-in for neon-discoteca"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "neon-discoteca-light",
+                    "why": "stand-in for neon-discoteca"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "private-cabaret",
+            "title": "Private cabaret",
+            "kind": "place",
+            "rating": "private",
+            "category": "Private",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "private-cabaret-light",
+            "triangles": 68044,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/cabaret-stage.glb",
+                "exists": true,
+                "bytes": 1306192
+            },
+            "preview": {
+                "src": "previews/private-cabaret.webp",
+                "exists": true,
+                "bytes": 12542
+            },
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "036-proscenium-arch-frame",
+                    "metres": 0
+                },
+                {
+                    "node": "039-house-tabs-on-track-open",
+                    "metres": 0.14
+                },
+                {
+                    "node": "032-apron-edge-with-footlight-strip",
+                    "metres": 0.5
+                },
+                {
+                    "node": "065-stage-steps",
+                    "metres": 0.51
+                },
+                {
+                    "node": "033-apron-edge-with-footlight-strip",
+                    "metres": 0.56
+                }
+            ],
+            "spots": {
+                "file": "assets/vr-worlds/spots/cabaret-stage.json",
+                "total": 5,
+                "verified": 5,
+                "ids": [
+                    "lounge",
+                    "center-stage",
+                    "footlights",
+                    "steps",
+                    "curtain"
+                ],
+                "matchesScene": true
+            },
+            "template": {
+                "id": "private-cabaret",
+                "actions": [
+                    "dance",
+                    "bow",
+                    "song",
+                    "light"
+                ]
+            },
+            "privateConfig": {
+                "id": "private-sanctuary",
+                "interactions": 6
+            },
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "private-cabaret",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "private-cabaret-light",
+                    "why": "loads its light stand-in private-cabaret-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "private-cabaret",
+                    "why": "loads itself"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 5 scene parts within 1 m of her spot (036-proscenium-arch-frame 0 m, 039-house-tabs-on-track-open 0.14 m, 032-apron-edge-with-footlight-strip 0.5 m, 065-stage-steps 0.51 m, 033-apron-edge-with-footlight-strip 0.56 m) — check in a headset or leave out of the VR version"
+                }
+            ]
+        },
+        {
+            "id": "private-cabaret-light",
+            "title": "Private cabaret",
+            "kind": "stand-in",
+            "rating": "private",
+            "category": null,
+            "activities": [],
+            "lightFor": "private-cabaret",
+            "standIn": null,
+            "triangles": 25160,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/cabaret-stage-light.glb",
+                "exists": true,
+                "bytes": 921944
+            },
+            "preview": null,
+            "props": 0,
+            "vrNear": [],
+            "spots": {
+                "file": "assets/vr-worlds/spots/cabaret-stage-light.json",
+                "total": 4,
+                "verified": 3,
+                "ids": [
+                    "lounge",
+                    "center-stage",
+                    "footlights"
+                ],
+                "matchesScene": true
+            },
+            "template": {
+                "id": "private-cabaret",
+                "actions": [
+                    "dance",
+                    "bow",
+                    "song",
+                    "light"
+                ]
+            },
+            "privateConfig": {
+                "id": "private-sanctuary",
+                "interactions": 6
+            },
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "private-cabaret-light",
+                    "why": "stand-in for private-cabaret"
+                },
+                "vr": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "private-stream-studio",
+            "title": "Private stream studio",
+            "kind": "place",
+            "rating": "private",
+            "category": "Private",
+            "activities": [],
+            "lightFor": null,
+            "standIn": null,
+            "triangles": 1912,
+            "look": "stylized sky",
+            "scene": null,
+            "preview": {
+                "src": "previews/private-stream-studio.webp",
+                "exists": true,
+                "bytes": 12790
+            },
+            "props": 11,
+            "vrNear": [],
+            "spots": null,
+            "template": {
+                "id": "private-stream-studio",
+                "actions": [
+                    "live",
+                    "wave",
+                    "chat",
+                    "light"
+                ]
+            },
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "private-stream-studio",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "private-stream-studio",
+                    "why": "loads itself"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "private-stream-studio",
+                    "why": "loads itself"
+                }
+            },
+            "issues": []
+        },
+        {
+            "id": "creative-academy",
+            "title": "Creative academy",
+            "kind": "place",
+            "rating": "general",
+            "category": "Learning",
+            "activities": [],
+            "lightFor": null,
+            "standIn": "creative-academy-light",
+            "triangles": 41160,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/academy-seminar.glb",
+                "exists": true,
+                "bytes": 1064428
+            },
+            "preview": {
+                "src": "previews/creative-academy.webp",
+                "exists": true,
+                "bytes": 22562
+            },
+            "props": 0,
+            "vrNear": [
+                {
+                    "node": "176-plant-pot",
+                    "metres": 0.45
+                },
+                {
+                    "node": "166-stackable-chair",
+                    "metres": 0.82
+                },
+                {
+                    "node": "164-seminar-table-round-4",
+                    "metres": 0.92
+                }
+            ],
+            "spots": null,
+            "template": {
+                "id": "creative-academy",
+                "actions": [
+                    "study",
+                    "quiz",
+                    "explain",
+                    "light"
+                ]
+            },
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": true,
+                    "shows": "creative-academy",
+                    "why": "loads itself"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "creative-academy-light",
+                    "why": "loads its light stand-in creative-academy-light"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "creative-academy",
+                    "why": "loads itself"
+                }
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 3 scene parts within 1 m of her spot (176-plant-pot 0.45 m, 166-stackable-chair 0.82 m, 164-seminar-table-round-4 0.92 m) — check in a headset or leave out of the VR version"
+                },
+                {
+                    "severity": "warn",
+                    "text": "no measured spots: she cannot move within this place (LW2)"
+                }
+            ]
+        },
+        {
+            "id": "creative-academy-light",
+            "title": "Creative academy",
+            "kind": "stand-in",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": "creative-academy",
+            "standIn": null,
+            "triangles": 29356,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/academy-seminar-light.glb",
+                "exists": true,
+                "bytes": 751436
+            },
+            "preview": null,
+            "props": 0,
+            "vrNear": [],
+            "spots": null,
+            "template": {
+                "id": "creative-academy",
+                "actions": [
+                    "study",
+                    "quiz",
+                    "explain",
+                    "light"
+                ]
+            },
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "creative-academy-light",
+                    "why": "stand-in for creative-academy"
+                },
+                "vr": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                }
+            },
+            "issues": []
+        }
+    ]
+}

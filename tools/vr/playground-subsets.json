@@ -1,5 +1,5 @@
 {
-  "note": "PG1. Recipes for tools/vr/subset-scene.mjs. keep = index ranges of the source's top-level nodes (the kit numbers them 000-\u2026); drop = name patterns removed after keep. budget = the triangle ceiling the output must stay under (30000 is VRWorlds.MOBILE_TRIANGLES).",
+  "note": "PG1. Recipes for tools/vr/subset-scene.mjs. keep = index ranges of the source's top-level nodes (the kit numbers them 000-…); drop = name patterns removed after keep. budget = the triangle ceiling the output must stay under (30000 is VRWorlds.MOBILE_TRIANGLES).",
   "outputs": {
     "pub-light": {
       "src": "assets/vr-worlds/scenes/pub-bar-room.glb",
@@ -35,6 +35,18 @@
       "src": "assets/vr-worlds/sources/lecture-campus.glb",
       "out": "assets/vr-worlds/scenes/academy-seminar-light.glb",
       "keep": ["13-18", "132-136", "148-159", "164-167", "170", "172", "174-177"],
+      "budget": 30000
+    },
+    "home": {
+      "src": "assets/vr-worlds/scenes/pixel-flat.glb",
+      "out": "assets/vr-worlds/scenes/pixel-flat-home.glb",
+      "drop": ["-resident-", "-crib$", "-indoor-bicycle$"],
+      "budget": 30000
+    },
+    "airship-light": {
+      "src": "assets/vr-worlds/scenes/airship-dock.glb",
+      "out": "assets/vr-worlds/scenes/airship-dock-light.glb",
+      "keep": ["31-32", "37-40", "45-47", "65-73", "110", "115", "123", "132-134"],
       "budget": 30000
     }
   }

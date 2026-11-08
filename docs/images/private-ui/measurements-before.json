@@ -1,0 +1,741 @@
+{
+  "base": "http://127.0.0.1:8081",
+  "label": "before",
+  "renderer": "SwiftShader (software) — layout evidence only",
+  "sizes": {
+    "desktop": {
+      "private": {
+        "started": {
+          "ok": true,
+          "why": "intimate"
+        },
+        "world": "private-cabaret",
+        "shots": {
+          "short": {
+            "viewport": {
+              "w": 1440,
+              "h": 900
+            },
+            "canvas": {
+              "x": 16,
+              "y": 85,
+              "w": 533,
+              "h": 744
+            },
+            "face": {
+              "x": 282,
+              "top": 318,
+              "chin": 359
+            },
+            "faceCoveredBy": [],
+            "chips": {
+              "inPrivateCard": false,
+              "rect": {
+                "x": 581,
+                "y": 762,
+                "w": 829,
+                "h": 36
+              },
+              "count": 4
+            },
+            "privateCard": {
+              "x": 583,
+              "y": 157,
+              "w": 825,
+              "h": 400
+            },
+            "transcript": {
+              "visibleH": 306,
+              "contentH": 307
+            },
+            "endVisible": true,
+            "endRect": {
+              "x": 1358,
+              "y": 516,
+              "w": 38,
+              "h": 33
+            },
+            "composerVisible": true,
+            "pageScrollsSideways": false
+          },
+          "long": {
+            "viewport": {
+              "w": 1440,
+              "h": 900
+            },
+            "canvas": {
+              "x": 16,
+              "y": 85,
+              "w": 533,
+              "h": 744
+            },
+            "face": {
+              "x": 282,
+              "top": 318,
+              "chin": 359
+            },
+            "faceCoveredBy": [],
+            "chips": {
+              "inPrivateCard": false,
+              "rect": {
+                "x": 581,
+                "y": 762,
+                "w": 829,
+                "h": 36
+              },
+              "count": 4
+            },
+            "privateCard": {
+              "x": 583,
+              "y": 157,
+              "w": 825,
+              "h": 400
+            },
+            "transcript": {
+              "visibleH": 306,
+              "contentH": 505
+            },
+            "endVisible": true,
+            "endRect": {
+              "x": 1358,
+              "y": 516,
+              "w": 38,
+              "h": 33
+            },
+            "composerVisible": true,
+            "pageScrollsSideways": false
+          }
+        },
+        "errors": []
+      },
+      "experiences": {
+        "world": "irish-pub",
+        "shots": {
+          "reference": {
+            "viewport": {
+              "w": 1440,
+              "h": 900
+            },
+            "canvas": {
+              "x": 16,
+              "y": 85,
+              "w": 533,
+              "h": 744
+            },
+            "face": {
+              "x": 282,
+              "top": 238,
+              "chin": 303
+            },
+            "faceCoveredBy": [],
+            "chips": {
+              "inPrivateCard": false,
+              "rect": {
+                "x": 581,
+                "y": 765,
+                "w": 793,
+                "h": 36
+              },
+              "count": 4
+            },
+            "privateCard": null,
+            "transcript": null,
+            "endVisible": false,
+            "endRect": null,
+            "composerVisible": true,
+            "pageScrollsSideways": false
+          }
+        },
+        "errors": []
+      }
+    },
+    "phone": {
+      "private": {
+        "started": {
+          "ok": true,
+          "why": "intimate"
+        },
+        "world": "private-cabaret",
+        "shots": {
+          "short": {
+            "viewport": {
+              "w": 390,
+              "h": 664
+            },
+            "canvas": {
+              "x": 0,
+              "y": 60,
+              "w": 390,
+              "h": 604
+            },
+            "face": {
+              "x": 195,
+              "top": 253,
+              "chin": 285
+            },
+            "faceCoveredBy": [
+              "button"
+            ],
+            "chips": {
+              "inPrivateCard": false,
+              "rect": {
+                "x": 10,
+                "y": 278,
+                "w": 370,
+                "h": 52
+              },
+              "count": 4
+            },
+            "privateCard": {
+              "x": 12,
+              "y": 364,
+              "w": 366,
+              "h": 199
+            },
+            "transcript": {
+              "visibleH": 105,
+              "contentH": 347
+            },
+            "endVisible": true,
+            "endRect": {
+              "x": 328,
+              "y": 522,
+              "w": 38,
+              "h": 33
+            },
+            "composerVisible": true,
+            "pageScrollsSideways": false
+          },
+          "long": {
+            "viewport": {
+              "w": 390,
+              "h": 664
+            },
+            "canvas": {
+              "x": 0,
+              "y": 60,
+              "w": 390,
+              "h": 604
+            },
+            "face": {
+              "x": 195,
+              "top": 253,
+              "chin": 285
+            },
+            "faceCoveredBy": [
+              "button"
+            ],
+            "chips": {
+              "inPrivateCard": false,
+              "rect": {
+                "x": 10,
+                "y": 278,
+                "w": 370,
+                "h": 52
+              },
+              "count": 4
+            },
+            "privateCard": {
+              "x": 12,
+              "y": 364,
+              "w": 366,
+              "h": 199
+            },
+            "transcript": {
+              "visibleH": 105,
+              "contentH": 607
+            },
+            "endVisible": true,
+            "endRect": {
+              "x": 328,
+              "y": 522,
+              "w": 38,
+              "h": 33
+            },
+            "composerVisible": true,
+            "pageScrollsSideways": false
+          },
+          "keyboard": {
+            "viewport": {
+              "w": 390,
+              "h": 664
+            },
+            "canvas": {
+              "x": 0,
+              "y": 60,
+              "w": 390,
+              "h": 604
+            },
+            "face": {
+              "x": 195,
+              "top": 253,
+              "chin": 285
+            },
+            "faceCoveredBy": [
+              "button"
+            ],
+            "chips": {
+              "inPrivateCard": false,
+              "rect": {
+                "x": 10,
+                "y": 278,
+                "w": 370,
+                "h": 52
+              },
+              "count": 4
+            },
+            "privateCard": {
+              "x": 12,
+              "y": 364,
+              "w": 366,
+              "h": 199
+            },
+            "transcript": {
+              "visibleH": 105,
+              "contentH": 607
+            },
+            "endVisible": true,
+            "endRect": {
+              "x": 328,
+              "y": 522,
+              "w": 38,
+              "h": 33
+            },
+            "composerVisible": true,
+            "pageScrollsSideways": false
+          }
+        },
+        "errors": []
+      },
+      "experiences": {
+        "world": "irish-pub",
+        "shots": {
+          "reference": {
+            "viewport": {
+              "w": 390,
+              "h": 664
+            },
+            "canvas": {
+              "x": 0,
+              "y": 60,
+              "w": 390,
+              "h": 604
+            },
+            "face": {
+              "x": 195,
+              "top": 207,
+              "chin": 253
+            },
+            "faceCoveredBy": [],
+            "chips": {
+              "inPrivateCard": false,
+              "rect": {
+                "x": 10,
+                "y": 524,
+                "w": 323,
+                "h": 44
+              },
+              "count": 4
+            },
+            "privateCard": null,
+            "transcript": null,
+            "endVisible": false,
+            "endRect": null,
+            "composerVisible": true,
+            "pageScrollsSideways": false
+          }
+        },
+        "errors": []
+      }
+    },
+    "small-phone": {
+      "private": {
+        "started": {
+          "ok": true,
+          "why": "intimate"
+        },
+        "world": "private-cabaret",
+        "shots": {
+          "short": {
+            "viewport": {
+              "w": 320,
+              "h": 568
+            },
+            "canvas": {
+              "x": 0,
+              "y": 60,
+              "w": 320,
+              "h": 508
+            },
+            "face": {
+              "x": 160,
+              "top": 222,
+              "chin": 249
+            },
+            "faceCoveredBy": [
+              "button"
+            ],
+            "chips": {
+              "inPrivateCard": false,
+              "rect": {
+                "x": 10,
+                "y": 226,
+                "w": 300,
+                "h": 52
+              },
+              "count": 4
+            },
+            "privateCard": {
+              "x": 12,
+              "y": 316,
+              "w": 296,
+              "h": 151
+            },
+            "transcript": {
+              "visibleH": 57,
+              "contentH": 369
+            },
+            "endVisible": true,
+            "endRect": {
+              "x": 258,
+              "y": 426,
+              "w": 38,
+              "h": 33
+            },
+            "composerVisible": true,
+            "pageScrollsSideways": false
+          },
+          "long": {
+            "viewport": {
+              "w": 320,
+              "h": 568
+            },
+            "canvas": {
+              "x": 0,
+              "y": 60,
+              "w": 320,
+              "h": 508
+            },
+            "face": {
+              "x": 160,
+              "top": 222,
+              "chin": 249
+            },
+            "faceCoveredBy": [
+              "button"
+            ],
+            "chips": {
+              "inPrivateCard": false,
+              "rect": {
+                "x": 10,
+                "y": 226,
+                "w": 300,
+                "h": 52
+              },
+              "count": 4
+            },
+            "privateCard": {
+              "x": 12,
+              "y": 316,
+              "w": 296,
+              "h": 151
+            },
+            "transcript": {
+              "visibleH": 57,
+              "contentH": 630
+            },
+            "endVisible": true,
+            "endRect": {
+              "x": 258,
+              "y": 426,
+              "w": 38,
+              "h": 33
+            },
+            "composerVisible": true,
+            "pageScrollsSideways": false
+          },
+          "keyboard": {
+            "viewport": {
+              "w": 320,
+              "h": 568
+            },
+            "canvas": {
+              "x": 0,
+              "y": 60,
+              "w": 320,
+              "h": 508
+            },
+            "face": {
+              "x": 160,
+              "top": 222,
+              "chin": 249
+            },
+            "faceCoveredBy": [
+              "button"
+            ],
+            "chips": {
+              "inPrivateCard": false,
+              "rect": {
+                "x": 10,
+                "y": 226,
+                "w": 300,
+                "h": 52
+              },
+              "count": 4
+            },
+            "privateCard": {
+              "x": 12,
+              "y": 316,
+              "w": 296,
+              "h": 151
+            },
+            "transcript": {
+              "visibleH": 57,
+              "contentH": 630
+            },
+            "endVisible": true,
+            "endRect": {
+              "x": 258,
+              "y": 426,
+              "w": 38,
+              "h": 33
+            },
+            "composerVisible": true,
+            "pageScrollsSideways": false
+          }
+        },
+        "errors": []
+      },
+      "experiences": {
+        "world": "irish-pub",
+        "shots": {
+          "reference": {
+            "viewport": {
+              "w": 320,
+              "h": 568
+            },
+            "canvas": {
+              "x": 0,
+              "y": 60,
+              "w": 320,
+              "h": 508
+            },
+            "face": {
+              "x": 160,
+              "top": 187,
+              "chin": 225
+            },
+            "faceCoveredBy": [],
+            "chips": {
+              "inPrivateCard": false,
+              "rect": {
+                "x": 10,
+                "y": 428,
+                "w": 260,
+                "h": 44
+              },
+              "count": 4
+            },
+            "privateCard": null,
+            "transcript": null,
+            "endVisible": false,
+            "endRect": null,
+            "composerVisible": true,
+            "pageScrollsSideways": false
+          }
+        },
+        "errors": []
+      }
+    },
+    "landscape": {
+      "private": {
+        "started": {
+          "ok": true,
+          "why": "intimate"
+        },
+        "world": "private-cabaret",
+        "shots": {
+          "short": {
+            "viewport": {
+              "w": 750,
+              "h": 342
+            },
+            "canvas": {
+              "x": 10,
+              "y": 72,
+              "w": 290,
+              "h": 209
+            },
+            "face": {
+              "x": 155,
+              "top": 138,
+              "chin": 149
+            },
+            "faceCoveredBy": [],
+            "chips": {
+              "inPrivateCard": false,
+              "rect": {
+                "x": 320,
+                "y": 202,
+                "w": 410,
+                "h": 48
+              },
+              "count": 4
+            },
+            "privateCard": {
+              "x": 322,
+              "y": 90,
+              "w": 406,
+              "h": 83
+            },
+            "transcript": {
+              "visibleH": 24,
+              "contentH": 353
+            },
+            "endVisible": false,
+            "endRect": {
+              "x": 678,
+              "y": 166,
+              "w": 38,
+              "h": 33
+            },
+            "composerVisible": true,
+            "pageScrollsSideways": false
+          },
+          "long": {
+            "viewport": {
+              "w": 750,
+              "h": 342
+            },
+            "canvas": {
+              "x": 10,
+              "y": 72,
+              "w": 290,
+              "h": 209
+            },
+            "face": {
+              "x": 155,
+              "top": 138,
+              "chin": 149
+            },
+            "faceCoveredBy": [],
+            "chips": {
+              "inPrivateCard": false,
+              "rect": {
+                "x": 320,
+                "y": 202,
+                "w": 410,
+                "h": 48
+              },
+              "count": 4
+            },
+            "privateCard": {
+              "x": 322,
+              "y": 90,
+              "w": 406,
+              "h": 83
+            },
+            "transcript": {
+              "visibleH": 24,
+              "contentH": 573
+            },
+            "endVisible": false,
+            "endRect": {
+              "x": 678,
+              "y": 166,
+              "w": 38,
+              "h": 33
+            },
+            "composerVisible": true,
+            "pageScrollsSideways": false
+          },
+          "keyboard": {
+            "viewport": {
+              "w": 750,
+              "h": 342
+            },
+            "canvas": null,
+            "face": {
+              "x": 0,
+              "top": 0,
+              "chin": 0
+            },
+            "faceCoveredBy": [
+              "off-screen"
+            ],
+            "chips": {
+              "inPrivateCard": false,
+              "rect": {
+                "x": 20,
+                "y": 202,
+                "w": 270,
+                "h": 48
+              },
+              "count": 4
+            },
+            "privateCard": {
+              "x": 22,
+              "y": 90,
+              "w": 266,
+              "h": 83
+            },
+            "transcript": {
+              "visibleH": 24,
+              "contentH": 664
+            },
+            "endVisible": false,
+            "endRect": {
+              "x": 237,
+              "y": 166,
+              "w": 38,
+              "h": 33
+            },
+            "composerVisible": true,
+            "pageScrollsSideways": false
+          }
+        },
+        "errors": []
+      },
+      "experiences": {
+        "world": "irish-pub",
+        "shots": {
+          "reference": {
+            "viewport": {
+              "w": 750,
+              "h": 342
+            },
+            "canvas": {
+              "x": 10,
+              "y": 72,
+              "w": 290,
+              "h": 209
+            },
+            "face": {
+              "x": 155,
+              "top": 104,
+              "chin": 126
+            },
+            "faceCoveredBy": [],
+            "chips": {
+              "inPrivateCard": false,
+              "rect": {
+                "x": 320,
+                "y": 205,
+                "w": 361,
+                "h": 48
+              },
+              "count": 4
+            },
+            "privateCard": null,
+            "transcript": null,
+            "endVisible": false,
+            "endRect": null,
+            "composerVisible": true,
+            "pageScrollsSideways": false
+          }
+        },
+        "errors": []
+      }
+    }
+  }
+}

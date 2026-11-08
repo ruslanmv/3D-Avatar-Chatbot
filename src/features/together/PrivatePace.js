@@ -49,7 +49,10 @@
     const DEFAULT_ENERGY = 'present';
 
     /** What a pace level is called on screen. Indexed from 1, because levels are. */
-    const PACE_LABELS = Object.freeze(['', 'Warm', 'Romantic', 'Sensual']);
+    // AX1. The fourth step is the adult profile's level 4, reachable only from the Mature style where the
+    // session's content capability allows it (PrivateExperienceProfile). Every other style still
+    // stops at its own ceiling; this table only names the step.
+    const PACE_LABELS = Object.freeze(['', 'Warm', 'Romantic', 'Sensual', 'Intimate']);
 
     /**
      * What the forward control says at each level.
@@ -57,7 +60,7 @@
      * `Closer` for the first step and `More` for the second, because the same word twice reads as a
      * control that did not work the first time.
      */
-    const FORWARD_LABELS = Object.freeze(['', 'Closer', 'More', '']);
+    const FORWARD_LABELS = Object.freeze(['', 'Closer', 'More', 'More', '']);
 
     /**
      * The same thing, as something to look up rather than something to print (P14).
@@ -67,10 +70,10 @@
      * this level takes without re-deriving the ladder rule, and then asks `PrivateLocale` for the
      * word in the language the rest of the card is in.
      */
-    const FORWARD_KEYS = Object.freeze(['', 'closer', 'more', '']);
+    const FORWARD_KEYS = Object.freeze(['', 'closer', 'more', 'more', '']);
 
     function ceilingOf(maxLevel) {
-        return Math.max(1, Math.min(3, Math.round(Number(maxLevel) || 3)));
+        return Math.max(1, Math.min(4, Math.round(Number(maxLevel) || 3)));
     }
 
     function clampLevel(value, maxLevel) {

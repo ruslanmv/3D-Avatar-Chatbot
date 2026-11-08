@@ -1,0 +1,13 @@
+{
+    "_status": "PROPOSED — no loader reads behaviour manifests yet. Each field maps to code you edit today: BehaviorRouter.INTENTS (id), BehaviorRouter.CHANNELS (channel + gaze/face/registry), PlaygroundReactiveContext PROFILES (triggers for venue chips). See HOW_TO_ADD_COMPANION_BEHAVIORS.md.",
+    "schemaVersion": 1,
+    "id": "look_out_window",
+    "maps_to": { "intent": "look_at_object", "channel": { "gaze": "target", "ms": 2500 } },
+    "triggers": [{ "on": "spot-arrived", "when": { "spot": "window-seat" } }],
+    "requires": { "anchor": "window" },
+    "priority": 2,
+    "ownsBody": false,
+    "interruptible": true,
+    "cooldownMs": 20000,
+    "describe_only_when": "applied === 'behavior'"
+}
