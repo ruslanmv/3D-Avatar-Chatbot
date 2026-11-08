@@ -426,6 +426,32 @@ export class AvatarManager {
                 throw new Error('Loaded avatar has no scene root');
             }
 
+            // Only the three audited skirts opt into WCL1 under ?cloth=xpbd.
+            // GLTFLoader owns the bufferViews during parsing; retain their bytes
+            // on the tagged node so PoseClothCorrector can address them later.
+            // No extra work or worker message is added for the default page.
+            if (typeof window !== 'undefined' &&
+                new URLSearchParams(window.location.search).get('cloth') === 'xpbd' && gltf.parser) {
+                const pilot = new Set(['dress-a-line-v1', 'skirt-pencil-v1', 'skirt-pleated-mini-v1']);
+                const loads = [];
+                root.traverse((node) => {
+                    const tag = node.userData?.wardrobeForge;
+                    const summary = tag?.clothAsset;
+                    if (!pilot.has(tag?.templateId) || !summary ||
+                        summary.schema !== 'wardrobe.cloth/1' || summary.simulation !== 'xpbd' ||
+                        !Number.isInteger(summary.bufferView)) return;
+                    loads.push(gltf.parser.getDependency('bufferView', summary.bufferView)
+                        .then((buffer) => {
+                            if (thisGeneration !== this._loadGeneration) return;
+                            node.userData.nexusClothBuffer = new Uint8Array(buffer).slice();
+                        })
+                        .catch((error) => {
+                            console.warn('[AvatarManager] WCL1 unavailable; keeping pose corrector', error);
+                        }));
+                });
+                await Promise.all(loads);
+            }
+
             // Safety: remove any avatar that was added by a concurrent load
             // that slipped past the generation check (defensive cleanup)
             if (this.currentRoot) {
