@@ -324,7 +324,9 @@ describe('SD1 — a skirt panel that falls through the lap', () => {
             if (Math.abs(garments[0].positions[v * 3]) < 0.02) ys.push(garments[0].positions[v * 3 + 1]);
         }
         const avg = ys.reduce((sum, y) => sum + y, 0) / ys.length;
-        expect(avg).toBeLessThan(0.7);
+        // Off the knee, and still above the cut, so what is underneath stays visible.
+        expect(avg).toBeGreaterThan(0.68);
+        expect(avg).toBeLessThan(0.8);
         expect(garments[0].after.maxEdgeStretch).toBeLessThanOrEqual(6);
     });
 

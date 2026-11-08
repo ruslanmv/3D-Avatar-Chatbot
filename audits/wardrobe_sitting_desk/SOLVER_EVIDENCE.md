@@ -27,10 +27,19 @@ The upward lift, including a second lift after unfold that held the gained heigh
 
 The gate is still open on the seated skirts and on the leggings. `fixed` stays no. Briefs on these frames stayed at 0 mm.
 
+Walking the hem all the way to the standing cut covered the briefs. A skirt is worn over underwear, and that underwear stays in view. The centre front of a risen hem (rest `|x|` inside 22% of the width, and rest `z` in the front 45%) keeps 90% of the rise. The sides keep 45% and come down the leg. The floor is taken once, on the first call, from the posed rise. Recaptured fronts after that floor:
+
+| Frame | Gate after | Brief-coloured pixels in the crotch window | Picture |
+|---|---|---|---|
+| A-line, Sitting Wide | 6 mm inside, stretch 6×, span 11.2 mm | 362 (the hoop had 390; the full walk to the cut had 70) | The hoop is gone. The beige briefs show between the thighs. The skirt hangs below them. |
+| Pencil skirt, Sitting Wide | 1.6 mm inside, stretch 5.92×, span 20.8 mm | 609 (the hoop had 301; the full walk had 413) | The hoop is gone. The beige briefs show at the centre. The skirt hangs between the knees. |
+
+The catalog briefs on these looks are beige. A white panty is a generation rule in 3D-Wardrobe-Forge: the underskirt takes the panty colour, so white briefs make a white underskirt. This capture cannot show that colour.
+
 ## Still open
 
 1. Crossed-leg contact on the leggings and the boots. Success is stretch at or under 6× and penetration at or under 1 mm on the same frame. The 11× leggings edge is the recorded conflict.
-2. The seated skirts still miss 8 mm of span and the waist gap in the picture. Do not close that by lifting the hem back up to the knee.
+2. The seated skirts still miss the span gate, and the A-line is still 6 mm inside. The waist gap in the picture remains. The centre of the hem stays high so the briefs show; do not send that centre back to the knee, and do not drop it onto the briefs.
 3. The seamless leggings mesh is a worker budget. Do not treat a hang as a penetration bug.
 
 The 2 mm foundation brief is the control. A change that pulls it off the body or through the outer garment fails even if a skirt number improves.

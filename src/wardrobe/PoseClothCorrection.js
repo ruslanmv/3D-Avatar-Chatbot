@@ -691,6 +691,7 @@
             liftSpans();
             project(true);
         }
+        var seatFloor = null;
         function seatRisenHem() {
             var yMin = Infinity;
             var yMax = -Infinity;
@@ -699,16 +700,40 @@
                 if (ry < yMin) yMin = ry;
                 if (ry > yMax) yMax = ry;
             }
+            if (!seatFloor) {
+                // The standing cut hangs over the underwear. The centre front of the
+                // hem stays up, so the panty shows; the sides may come down the leg.
+                var xLo = Infinity;
+                var xHi = -Infinity;
+                var zLo = Infinity;
+                var zHi = -Infinity;
+                for (var b = 0; b < count; b += 1) {
+                    if (rest[b * 3] < xLo) xLo = rest[b * 3];
+                    if (rest[b * 3] > xHi) xHi = rest[b * 3];
+                    if (rest[b * 3 + 2] < zLo) zLo = rest[b * 3 + 2];
+                    if (rest[b * 3 + 2] > zHi) zHi = rest[b * 3 + 2];
+                }
+                var xMid = (xLo + xHi) * 0.5;
+                var xBand = (xHi - xLo) * 0.22;
+                var zFront = zLo + (zHi - zLo) * 0.55;
+                seatFloor = new Float32Array(count);
+                for (var s = 0; s < count; s += 1) {
+                    var rise = out[s * 3 + 1] - rest[s * 3 + 1];
+                    var open = Math.abs(rest[s * 3] - xMid) < xBand && rest[s * 3 + 2] > zFront;
+                    var keep = open ? 0.9 : 0.45;
+                    seatFloor[s] = rise > 0.15 ? rest[s * 3 + 1] + rise * keep : out[s * 3 + 1];
+                }
+            }
             var hemTop = yMin + (yMax - yMin) * 0.4;
             var moved = false;
             for (var v = 0; v < count; v += 1) {
                 if (movable && !movable[v]) continue;
                 if (rest[v * 3 + 1] > hemTop) continue;
                 var dx = rest[v * 3] - out[v * 3];
-                var dy = rest[v * 3 + 1] - out[v * 3 + 1];
+                var dy = seatFloor[v] - out[v * 3 + 1];
                 var dz = rest[v * 3 + 2] - out[v * 3 + 2];
                 // Risen with the leg, not dropped into the lap.
-                if (-dy < 0.15) continue;
+                if (out[v * 3 + 1] - rest[v * 3 + 1] < 0.15) continue;
                 var dist = Math.hypot(dx, dy, dz);
                 if (dist < 0.01) continue;
                 var step = stepWithinTear(v, dx / dist, dy / dist, dz / dist, Math.min(0.02, dist));
