@@ -463,6 +463,13 @@ export class PoseClothCorrector {
                 }
                 this._write(meshes[index], answer.positions);
                 resultRows[index] = { name: given.name, before: null, after: answer.after };
+                // One line per settle (never per frame): what the solver itself saw, so a
+                // failed picture can be told apart from a failed asset (CLOTH_DIAGNOSTICS_CONSOLE).
+                console.info(
+                    '[PoseCloth] xpbd',
+                    given.templateId,
+                    JSON.stringify({ strain: answer.strain, contacts: answer.contacts, after: answer.after })
+                );
             }
             if (generation !== this.generation) return null;
             this.last = resultRows;
