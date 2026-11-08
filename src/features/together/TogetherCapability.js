@@ -769,6 +769,10 @@
         return optional('./PrivateChoices.js', 'NEXUS_PRIVATE_CHOICES');
     }
 
+    function presentationModel() {
+        return optional('./PrivatePresentation.js', 'NEXUS_PRIVATE_PRESENTATION');
+    }
+
     function profileModel() {
         return optional('./PrivateExperienceProfile.js', 'NEXUS_PRIVATE_EXPERIENCE_PROFILE');
     }
@@ -1218,6 +1222,9 @@
                 return { ok: false, why: 'Open Conversation before beginning Private' };
             }
             this._listen();
+            // AX7. The chosen style and the first step, applied through the owners that already
+            // exist (voice pace, resting expression, the room's light) before her first line.
+            this._present(true);
             // The written plan first, so the opening is instant. Asking a provider for one
             // before saying anything would put a silent card in front of somebody who just
             // pressed "Begin private moment", which is the worst possible place for a wait.
@@ -1317,6 +1324,9 @@
                     stop();
                 } catch (_) {}
             }
+            // AX7. Her own voice and face back, whatever ended the session.
+            const presentation = presentationModel();
+            if (presentation) presentation.reset({ global: this.win || global });
             this._unmount();
             this.state = 'complete';
             this._emit('private:session-stop', { preset: this.preset.id, why: why || 'user' });
@@ -1391,6 +1401,8 @@
                 // it answered kindly and pointed nowhere. So the app shows one fixed notice itself,
                 // in the language the person used, written by NEXUS and never spoken aloud.
                 this._showCareNotice(profile.concernLanguage(text));
+                // AX7. Calm voice, neutral face.
+                this._present(false);
             }
             this._pendingQuestion = Boolean(turn && turn.holdsTheFloor);
             // The ledger's clock is turns, not seconds: five turns of talking is real distance and
@@ -1871,7 +1883,11 @@
             this._watchConversation();
             if (!this.bus || typeof this.bus.on !== 'function') return;
             this._unsubscribes.push(
-                this.bus.on('adult:level', () => this._paintLevel()),
+                this.bus.on('adult:level', () => {
+                    this._paintLevel();
+                    // AX7. The step she is at shows in her voice and face, not only in the footer.
+                    this._present(false);
+                }),
                 // A soft exit happened. Repaint, and record that the energy came down with the
                 // pace — and **say nothing** (P11).
                 //
@@ -2472,6 +2488,25 @@
          * question, the texture question — is left alone: those are a question with two answers,
          * and putting a second set underneath would be two questions at once.
          */
+        /**
+         * AX7. Apply the style at the current step (or calm, in care mode). Never throws; the
+         * result says which channels really applied, for the browser check and for honesty.
+         */
+        _present(first) {
+            const presentation = presentationModel();
+            if (!presentation || !this.preset) return null;
+            try {
+                this._presentation = presentation.apply(this.preset.id, this._level(), {
+                    first: first === true,
+                    care: this._care === true,
+                    global: this.win || global,
+                });
+            } catch (_) {
+                this._presentation = null;
+            }
+            return this._presentation;
+        }
+
         /** AX6. The fixed help notice; see `_onUserTurn`. Shown, not said; once per session. */
         _showCareNotice(language) {
             if (this._careNoticeShown) return;

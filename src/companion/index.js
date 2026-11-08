@@ -247,7 +247,12 @@
                     () => {
                         if (mine !== faceToken) return;
                         try {
-                            loader.setEmotion('neutral', 0);
+                            // AX7. Settle back to a Private session's resting warmth, not to a
+                            // blank face: a smile ending used to end the mood with it.
+                            const P = g.NEXUS_PRIVATE_PRESENTATION;
+                            const rest = P && typeof P.restingExpression === 'function' ? P.restingExpression() : null;
+                            if (rest) loader.setEmotion(rest.emotion, rest.intensity);
+                            else loader.setEmotion('neutral', 0);
                         } catch (_) {
                             /* the face settles on its own */
                         }

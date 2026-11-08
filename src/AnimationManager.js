@@ -182,7 +182,11 @@
                 if (emotion.id !== 'idle') {
                     setTimeout(() => {
                         try {
-                            vrmLoader.setEmotion('neutral', 0);
+                            // AX7. Settle to a Private session's resting warmth, if one is active.
+                            const P = window.NEXUS_PRIVATE_PRESENTATION;
+                            const rest = P && P.restingExpression ? P.restingExpression() : null;
+                            if (rest) vrmLoader.setEmotion(rest.emotion, rest.intensity);
+                            else vrmLoader.setEmotion('neutral', 0);
                         } catch (_) {}
                     }, dur - 500);
                 }
