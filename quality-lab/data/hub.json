@@ -1,0 +1,137 @@
+{
+    "schema": 1,
+    "generator": "tools/qa/hub.mjs",
+    "readFirst": [
+        "quality-lab/README.md",
+        "CLAUDE.md"
+    ],
+    "areas": {
+        "ai": {
+            "latestRun": "2026-11-08-ax8-matrix",
+            "runs": 2,
+            "scores": {
+                "free-best·en": 94,
+                "free-best·it": 96,
+                "free-fast·en": 100,
+                "free-fast·it": 81,
+                "free-flex·en": 90,
+                "free-flex·it": 93
+            },
+            "humanReviews": 0
+        },
+        "3d": {
+            "worlds": 37,
+            "offered": {
+                "desktop": 30,
+                "mobile": 27,
+                "vr": 28
+            },
+            "fails": 0,
+            "warns": 10
+        },
+        "atlas": {
+            "zones": 30,
+            "shipped": 30,
+            "planned": 0,
+            "walkableFromHome": {
+                "desktop": 26,
+                "mobile": 10,
+                "vr": 10
+            },
+            "publicZones": 26
+        }
+    },
+    "nextActions": [
+        {
+            "id": "ai-score-free-fast-it",
+            "area": "ai",
+            "priority": 1,
+            "title": "Raise free-fast · it above 90 (now 81)",
+            "why": "Release gate T7. Flags: too-long ×1, empty ×1, assistant-register ×1.",
+            "command": "node tools/qa/character-lab.mjs --routes free-fast --langs it",
+            "files": [
+                "TogetherCapability.js (Private prompt)",
+                "PrivateExperienceProfile.js"
+            ]
+        },
+        {
+            "id": "ai-pin-model",
+            "area": "ai",
+            "priority": 1,
+            "title": "Serve one model per session",
+            "why": "Release gate T8: 5 of 6 runs were answered by more than one model (up to 7).",
+            "command": "node tools/qa/character-lab.mjs --routes <pinned-route> --langs en,it",
+            "files": [
+                "docs/qa/NEXUS_PREMIUM_RELEASE_GATES.md"
+            ]
+        },
+        {
+            "id": "3d-gateway-airship-dock",
+            "area": "3d",
+            "priority": 1,
+            "title": "Make airship-dock load on mobile and vr",
+            "why": "It is the only way from home to the rest of the map on mobile/vr: 10/26 zones walkable on mobile, 10/26 zones walkable on vr. 141,396 triangles; 141396 triangles > 30000, no stand-in; not in its tiers.",
+            "command": "node tools/vr/subset-scene.mjs  (recipe in tools/vr/playground-subsets.json), then add the tier in worlds.json",
+            "files": [
+                "assets/vr-worlds/worlds.json",
+                "tools/vr/playground-subsets.json"
+            ]
+        },
+        {
+            "id": "ai-flag-too-long",
+            "area": "ai",
+            "priority": 2,
+            "title": "Reduce \"too-long\" (6 replies in the latest run)",
+            "why": "A rule Private’s prompt states that models still break; change the prompt, re-run, compare.",
+            "command": "open quality-lab/?area=ai and filter Replies by \"too-long\"",
+            "files": [
+                "TogetherCapability.js (Private prompt)"
+            ]
+        },
+        {
+            "id": "ai-flag-assistant-register",
+            "area": "ai",
+            "priority": 2,
+            "title": "Reduce \"assistant-register\" (2 replies in the latest run)",
+            "why": "A rule Private’s prompt states that models still break; change the prompt, re-run, compare.",
+            "command": "open quality-lab/?area=ai and filter Replies by \"assistant-register\"",
+            "files": [
+                "TogetherCapability.js (Private prompt)"
+            ]
+        },
+        {
+            "id": "ai-flag-model-identity",
+            "area": "ai",
+            "priority": 2,
+            "title": "Reduce \"model-identity\" (2 replies in the latest run)",
+            "why": "A rule Private’s prompt states that models still break; change the prompt, re-run, compare.",
+            "command": "open quality-lab/?area=ai and filter Replies by \"model-identity\"",
+            "files": [
+                "TogetherCapability.js (Private prompt)"
+            ]
+        },
+        {
+            "id": "3d-spots",
+            "area": "3d",
+            "priority": 2,
+            "title": "Measure spots in 8 places",
+            "why": "She cannot move within lagoon-beach, office, airship-dock, neon-street, roadside-motel, irish-pub, neon-discoteca, creative-academy (LW2).",
+            "command": "add targets to tools/vr/spot-targets.json, then node tools/vr/measure-spots.mjs <scene>",
+            "files": [
+                "tools/vr/spot-targets.json",
+                "assets/vr-worlds/spots/"
+            ]
+        },
+        {
+            "id": "ai-human-review",
+            "area": "ai",
+            "priority": 3,
+            "title": "Record a human review of the latest run",
+            "why": "Release gate T9: warmth and character are not scored by any script.",
+            "command": "docs/qa/NEXUS_PREMIUM_EXPERIENCE_SCORECARD.md → humanReview in the run file",
+            "files": [
+                "quality-lab/data/runs/2026-11-08-ax8-matrix.json"
+            ]
+        }
+    ]
+}

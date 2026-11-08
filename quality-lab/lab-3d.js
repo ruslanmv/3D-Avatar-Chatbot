@@ -22,14 +22,19 @@
     // ── area switch ─────────────────────────────────────────────────────────
     function areaFromUrl() {
         const q = new URLSearchParams(location.search).get('area');
-        if (q === '3d' || q === 'ai') return q;
-        return /^#w-/.test(location.hash) ? '3d' : 'ai';
+        if (q === '3d' || q === 'ai' || q === 'atlas') return q;
+        if (/^#w-/.test(location.hash)) return '3d';
+        return /^#a-/.test(location.hash) ? 'atlas' : 'ai';
     }
 
     function setArea(area) {
-        for (const n of document.querySelectorAll('[data-area]')) n.hidden = n.getAttribute('data-area') !== area;
+        // body carries data-area too (for the accent colour); it is never hidden
+        for (const n of document.querySelectorAll('[data-area]:not(body)'))
+            n.hidden = n.getAttribute('data-area') !== area;
         for (const a of document.querySelectorAll('.area'))
             a.setAttribute('aria-selected', String(a.dataset.go === area));
+        document.body.dataset.area = area;
+        window.dispatchEvent(new CustomEvent('lab:area', { detail: area }));
         const q = new URLSearchParams(location.search);
         q.set('area', area);
         history.replaceState(null, '', '?' + q.toString() + location.hash);
@@ -111,7 +116,7 @@
             el('div', { text: w.triangles.toLocaleString('en') }),
             el(
                 'div',
-                { class: 'bar', title: `${pct}% of the phone budget` },
+                { class: 'tri', title: `${pct}% of the phone budget` },
                 el('span', { class: w.triangles > budget ? 'over' : '', style: `width:${pct}%` })
             ),
         ]);

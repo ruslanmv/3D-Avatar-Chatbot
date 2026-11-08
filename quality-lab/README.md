@@ -1,14 +1,18 @@
 # NEXUS Quality Lab
 
-A small static site with two areas of development, and the tooling an AI coder
-uses to improve each. Humans audit it in the browser; agents read and write its
-JSON.
+The research hub for building Nexus: one world to explore with her, a zone at a
+time, on desktop, mobile and VR. A static site with three areas, and the tools
+an AI coder uses to improve each. Humans audit it in the browser; agents read
+and write its JSON.
 
 - **AI quality** (`?area=ai`): how the companion behaves with real models —
   replies, served models, scores, her voice and face, human reviews.
 - **3D quality** (`?area=3d`): whether every world is ready on desktop, phone
   and headset — device availability, triangle budget, previews, measured spots,
   interactions, and a work queue of what is missing.
+- **World atlas** (`?area=atlas`): the Nexus map as regions of zones, what is
+  walkable from home on each device, which zone cuts the map, and new zones as
+  briefs. Phases: `docs/engine/NEXUS_OPEN_WORLD_ROADMAP.md`.
 
 - **Open it:** `npm start`, then `http://127.0.0.1:8080/quality-lab/`
 - **Data:** `quality-lab/data/index.json` → `quality-lab/data/runs/<id>.json`
@@ -17,8 +21,15 @@ JSON.
 
 ## For an AI coder: start here
 
+**Read `quality-lab/data/hub.json` first.** It is small and generated: each
+area's headline numbers and a ranked list of `nextActions`, each with `why`, the
+`command` that starts it and the `files` it touches (priority 1 blocks a device
+or a release gate, 2 is a measured quality gap, 3 is missing coverage). Every
+action is derived from measured data, so it never asks for work already done.
+The page shows the same list with a ready-to-paste prompt for each.
+
 The loop is always the same: **measure → change one thing → measure again →
-publish → commit both.**
+regenerate → commit code and lab data together.**
 
 ```bash
 npm start                                         # the lab drives the real app
@@ -149,6 +160,23 @@ Frame rate, how a scene looks, how she stands in it, comfort beyond prop
 placement, a real phone's GPU, a real headset. Those are the **Checks you run**
 — browser renders and simulations, and device procedures. The audit never marks
 them done.
+
+## The World atlas
+
+`quality-lab/data/atlas/atlas.json` is the one hand-written file in `data/`: the
+design of the map. Everything else about a zone is computed into
+`atlas-audit.json` by `node tools/qa/world-audit.mjs`.
+
+- A **shipped** zone names its catalogue worlds (`worlds`); its device
+  availability, spots, preview and issues come from the 3D audit.
+- A **planned** zone has a `brief` (purpose, mood, activities, spotsWanted,
+  devices, assets) and no worlds; the audit turns it into next steps. Start one
+  with `node tools/qa/new-zone.mjs <id> --region … --dry-run`.
+- **Links** are undirected and are the intended map; the runtime does not use
+  them yet (roadmap W3). A private zone links only to private zones.
+- **Gateways**: a public zone that does not load on a device but sits next to
+  zones you can walk to from home there. Fixing one opens everything behind it;
+  the hub ranks it priority 1.
 
 ## Run file schema (version 1)
 

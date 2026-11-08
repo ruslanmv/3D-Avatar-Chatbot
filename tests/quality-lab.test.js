@@ -60,7 +60,7 @@ describe('Quality Lab data', () => {
         }
     });
 
-    test.each(['lab.js', 'lab-3d.js'])('%s draws data as text, never as HTML', (file) => {
+    test.each(['lab.js', 'lab-3d.js', 'lab-atlas.js', 'lab-hub.js'])('%s draws data as text, never as HTML', (file) => {
         const js = fs.readFileSync(path.join(__dirname, '..', 'quality-lab', file), 'utf8');
         expect(js).not.toMatch(/innerHTML|insertAdjacentHTML|outerHTML|document\.write/);
     });
@@ -86,5 +86,63 @@ describe('Quality Lab 3D audit', () => {
         expect(audit.worlds.map((w) => w.id).sort()).toEqual(catalogue.worlds.map((w) => w.id).sort());
         for (const w of audit.worlds) expect(Object.keys(w.devices).sort()).toEqual(['desktop', 'mobile', 'vr']);
         expect(audit.summary.fails).toBe(0);
+    });
+});
+
+describe('Quality Lab atlas and hub', () => {
+    const run = (args) =>
+        require('child_process').execFileSync(process.execPath, args, {
+            cwd: path.join(__dirname, '..'),
+            stdio: 'pipe',
+            encoding: 'utf8',
+        });
+    const atlas = JSON.parse(fs.readFileSync(path.join(DATA, 'atlas', 'atlas-audit.json'), 'utf8'));
+
+    test('the atlas has no failure, and no link crosses the private boundary', () => {
+        expect(atlas.summary.fails).toBe(0);
+        expect(atlas.problems).toEqual([]);
+        const byId = new Map(atlas.zones.map((z) => [z.id, z]));
+        for (const z of atlas.zones)
+            for (const to of z.links) expect(z.region === 'private').toBe(byId.get(to).region === 'private');
+    });
+
+    test('hub.json is what the generator computes from the lab data today', () => {
+        expect(() => run(['tools/qa/hub.mjs', '--check'])).not.toThrow();
+        const hub = JSON.parse(fs.readFileSync(path.join(DATA, 'hub.json'), 'utf8'));
+        for (const a of hub.nextActions) {
+            expect(['ai', '3d', 'atlas']).toContain(a.area);
+            expect([1, 2, 3]).toContain(a.priority);
+            expect(a.command && a.why && a.files.length).toBeTruthy();
+        }
+        const p = hub.nextActions.map((a) => a.priority);
+        expect([...p].sort()).toEqual(p);
+    });
+
+    test('new-zone validates a brief and refuses a bad one, without writing on --dry-run', () => {
+        const before = fs.readFileSync(path.join(DATA, 'atlas', 'atlas.json'), 'utf8');
+        const out = run([
+            'tools/qa/new-zone.mjs',
+            'test-harbor',
+            '--region',
+            'town',
+            '--purpose',
+            'p',
+            '--mood',
+            'm',
+            '--activities',
+            'relax',
+            '--spots',
+            'stall',
+            '--devices',
+            'desktop,mobile,vr',
+            '--assets',
+            'kit (CC0)',
+            '--links',
+            'neon-street',
+            '--dry-run',
+        ]);
+        expect(JSON.parse(out)).toMatchObject({ id: 'test-harbor', status: 'planned' });
+        expect(() => run(['tools/qa/new-zone.mjs', 'x', '--region', 'nowhere', '--devices', 'ar'])).toThrow();
+        expect(fs.readFileSync(path.join(DATA, 'atlas', 'atlas.json'), 'utf8')).toBe(before);
     });
 });

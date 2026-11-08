@@ -1,0 +1,908 @@
+{
+    "schema": 1,
+    "generator": "tools/qa/world-audit.mjs",
+    "regions": [
+        {
+            "id": "home",
+            "title": "Home quarter",
+            "summary": "Where the evening starts: her apartment and the rooms near it."
+        },
+        {
+            "id": "town",
+            "title": "Old town and nightlife",
+            "summary": "Streets, bars, a club, work and study: places with things to do."
+        },
+        {
+            "id": "wilds",
+            "title": "Wilds and shores",
+            "summary": "Outside the town: woods, a village, a walled town, a lagoon."
+        },
+        {
+            "id": "vistas",
+            "title": "Vistas",
+            "summary": "Panorama places for a quiet moment; small enough for any device."
+        },
+        {
+            "id": "private",
+            "title": "Private quarter",
+            "summary": "Rooms reached only through Private, behind its gate."
+        }
+    ],
+    "problems": [],
+    "summary": {
+        "regions": 5,
+        "zones": 30,
+        "shipped": 30,
+        "planned": 0,
+        "explorable": {
+            "desktop": 30,
+            "mobile": 27,
+            "vr": 28
+        },
+        "publicZones": 26,
+        "reachableFromHome": {
+            "desktop": 26,
+            "mobile": 10,
+            "vr": 10
+        },
+        "gateways": {
+            "desktop": [],
+            "mobile": [
+                "airship-dock"
+            ],
+            "vr": [
+                "airship-dock"
+            ]
+        },
+        "fails": 0
+    },
+    "zones": [
+        {
+            "id": "apartment",
+            "region": "home",
+            "title": "Apartment",
+            "status": "shipped",
+            "worlds": [
+                "apartment"
+            ],
+            "links": [
+                "bedroom",
+                "cozy-room",
+                "hotel-suite",
+                "neon-street"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 8,
+            "preview": {
+                "src": "previews/apartment.webp",
+                "exists": true,
+                "bytes": 20308
+            },
+            "issues": [],
+            "next": []
+        },
+        {
+            "id": "bedroom",
+            "region": "home",
+            "title": "Bedroom",
+            "status": "shipped",
+            "worlds": [
+                "bedroom",
+                "bedroom-light"
+            ],
+            "links": [
+                "apartment"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 1,
+            "preview": {
+                "src": "previews/bedroom.webp",
+                "exists": true,
+                "bytes": 14878
+            },
+            "issues": [],
+            "next": []
+        },
+        {
+            "id": "hotel-suite",
+            "region": "home",
+            "title": "Hotel suite",
+            "status": "shipped",
+            "worlds": [
+                "hotel-suite"
+            ],
+            "links": [
+                "apartment"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 0,
+            "preview": {
+                "src": "previews/hotel-suite.webp",
+                "exists": true,
+                "bytes": 13892
+            },
+            "issues": [],
+            "next": []
+        },
+        {
+            "id": "neon-street",
+            "region": "town",
+            "title": "Neon street",
+            "status": "shipped",
+            "worlds": [
+                "neon-street"
+            ],
+            "links": [
+                "airship-dock",
+                "apartment",
+                "city-rooftop",
+                "irish-pub",
+                "neon-discoteca",
+                "office"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 0,
+            "preview": {
+                "src": "previews/neon-street.webp",
+                "exists": true,
+                "bytes": 13534
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "neon-street: no measured spots: she cannot move within this place (LW2)"
+                }
+            ],
+            "next": [
+                "neon-street: no measured spots: she cannot move within this place (LW2)"
+            ]
+        },
+        {
+            "id": "irish-pub",
+            "region": "town",
+            "title": "Irish pub",
+            "status": "shipped",
+            "worlds": [
+                "irish-pub",
+                "irish-pub-light"
+            ],
+            "links": [
+                "neon-street"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 0,
+            "preview": {
+                "src": "previews/irish-pub.webp",
+                "exists": true,
+                "bytes": 23644
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "irish-pub: no measured spots: she cannot move within this place (LW2)"
+                }
+            ],
+            "next": [
+                "irish-pub: no measured spots: she cannot move within this place (LW2)"
+            ]
+        },
+        {
+            "id": "neon-discoteca",
+            "region": "town",
+            "title": "Neon discoteca",
+            "status": "shipped",
+            "worlds": [
+                "neon-discoteca",
+                "neon-discoteca-light"
+            ],
+            "links": [
+                "neon-street"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 0,
+            "preview": {
+                "src": "previews/neon-discoteca.webp",
+                "exists": true,
+                "bytes": 22672
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "neon-discoteca: no measured spots: she cannot move within this place (LW2)"
+                }
+            ],
+            "next": [
+                "neon-discoteca: no measured spots: she cannot move within this place (LW2)"
+            ]
+        },
+        {
+            "id": "office",
+            "region": "town",
+            "title": "Office",
+            "status": "shipped",
+            "worlds": [
+                "office",
+                "office-light"
+            ],
+            "links": [
+                "creative-academy",
+                "neon-street"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 0,
+            "preview": {
+                "src": "previews/office.webp",
+                "exists": true,
+                "bytes": 20950
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "office: no measured spots: she cannot move within this place (LW2)"
+                }
+            ],
+            "next": [
+                "office: no measured spots: she cannot move within this place (LW2)"
+            ]
+        },
+        {
+            "id": "creative-academy",
+            "region": "town",
+            "title": "Creative academy",
+            "status": "shipped",
+            "worlds": [
+                "creative-academy",
+                "creative-academy-light"
+            ],
+            "links": [
+                "office"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 0,
+            "preview": {
+                "src": "previews/creative-academy.webp",
+                "exists": true,
+                "bytes": 22562
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "creative-academy: no measured spots: she cannot move within this place (LW2)"
+                }
+            ],
+            "next": [
+                "creative-academy: no measured spots: she cannot move within this place (LW2)"
+            ]
+        },
+        {
+            "id": "airship-dock",
+            "region": "town",
+            "title": "Airship dock",
+            "status": "shipped",
+            "worlds": [
+                "airship-dock"
+            ],
+            "links": [
+                "neon-street",
+                "scifi-sanctuary",
+                "walled-town"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": false,
+                "vr": false
+            },
+            "spots": 0,
+            "preview": {
+                "src": "previews/airship-dock.webp",
+                "exists": true,
+                "bytes": 32748
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "airship-dock: no measured spots: she cannot move within this place (LW2)"
+                },
+                {
+                    "severity": "warn",
+                    "text": "airship-dock: not offered on mobile: 141396 triangles > 30000, no stand-in"
+                },
+                {
+                    "severity": "warn",
+                    "text": "airship-dock: not offered on vr: not in its tiers"
+                }
+            ],
+            "next": [
+                "airship-dock: no measured spots: she cannot move within this place (LW2)",
+                "airship-dock: not offered on mobile: 141396 triangles > 30000, no stand-in",
+                "airship-dock: not offered on vr: not in its tiers"
+            ]
+        },
+        {
+            "id": "walled-town",
+            "region": "wilds",
+            "title": "Walled town",
+            "status": "shipped",
+            "worlds": [
+                "walled-town"
+            ],
+            "links": [
+                "airship-dock",
+                "fantasy-village",
+                "meadow-village",
+                "moonlit-courtyard"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": false,
+                "vr": false
+            },
+            "spots": 0,
+            "preview": null,
+            "issues": [],
+            "next": [
+                "panorama or activity world: no spots to measure"
+            ]
+        },
+        {
+            "id": "meadow-village",
+            "region": "wilds",
+            "title": "Meadow village",
+            "status": "shipped",
+            "worlds": [
+                "meadow-village"
+            ],
+            "links": [
+                "lagoon-beach",
+                "meadow-sunset",
+                "oak-glade",
+                "walled-town"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 0,
+            "preview": null,
+            "issues": [],
+            "next": [
+                "panorama or activity world: no spots to measure"
+            ]
+        },
+        {
+            "id": "oak-glade",
+            "region": "wilds",
+            "title": "Oak glade",
+            "status": "shipped",
+            "worlds": [
+                "oak-glade"
+            ],
+            "links": [
+                "meadow-village",
+                "under-the-trees"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": false,
+                "vr": true
+            },
+            "spots": 0,
+            "preview": null,
+            "issues": [],
+            "next": [
+                "panorama or activity world: no spots to measure"
+            ]
+        },
+        {
+            "id": "under-the-trees",
+            "region": "wilds",
+            "title": "Under the trees",
+            "status": "shipped",
+            "worlds": [
+                "under-the-trees"
+            ],
+            "links": [
+                "oak-glade"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 0,
+            "preview": null,
+            "issues": [],
+            "next": [
+                "panorama or activity world: no spots to measure"
+            ]
+        },
+        {
+            "id": "lagoon-beach",
+            "region": "wilds",
+            "title": "Lagoon beach",
+            "status": "shipped",
+            "worlds": [
+                "lagoon-beach"
+            ],
+            "links": [
+                "meadow-village",
+                "seaside-evening"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 0,
+            "preview": {
+                "src": "previews/lagoon-beach.webp",
+                "exists": true,
+                "bytes": 9512
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "lagoon-beach: no measured spots: she cannot move within this place (LW2)"
+                }
+            ],
+            "next": [
+                "lagoon-beach: no measured spots: she cannot move within this place (LW2)"
+            ]
+        },
+        {
+            "id": "seaside-evening",
+            "region": "vistas",
+            "title": "Seaside evening",
+            "status": "shipped",
+            "worlds": [
+                "seaside-evening"
+            ],
+            "links": [
+                "lagoon-beach",
+                "ocean-sunrise"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 0,
+            "preview": null,
+            "issues": [],
+            "next": [
+                "panorama or activity world: no spots to measure"
+            ]
+        },
+        {
+            "id": "ocean-sunrise",
+            "region": "vistas",
+            "title": "Ocean sunrise",
+            "status": "shipped",
+            "worlds": [
+                "ocean-sunrise"
+            ],
+            "links": [
+                "seaside-evening"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 0,
+            "preview": null,
+            "issues": [],
+            "next": [
+                "panorama or activity world: no spots to measure"
+            ]
+        },
+        {
+            "id": "starlit-lake",
+            "region": "vistas",
+            "title": "Starlit lake",
+            "status": "shipped",
+            "worlds": [
+                "starlit-lake"
+            ],
+            "links": [
+                "mountain-lake"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 0,
+            "preview": null,
+            "issues": [],
+            "next": [
+                "panorama or activity world: no spots to measure"
+            ]
+        },
+        {
+            "id": "mountain-lake",
+            "region": "vistas",
+            "title": "Mountain lake",
+            "status": "shipped",
+            "worlds": [
+                "mountain-lake"
+            ],
+            "links": [
+                "meadow-sunset",
+                "starlit-lake"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 0,
+            "preview": null,
+            "issues": [],
+            "next": [
+                "panorama or activity world: no spots to measure"
+            ]
+        },
+        {
+            "id": "meadow-sunset",
+            "region": "vistas",
+            "title": "Meadow at sunset",
+            "status": "shipped",
+            "worlds": [
+                "meadow-sunset"
+            ],
+            "links": [
+                "meadow-village",
+                "mountain-lake",
+                "starry-hills"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 0,
+            "preview": null,
+            "issues": [],
+            "next": [
+                "panorama or activity world: no spots to measure"
+            ]
+        },
+        {
+            "id": "starry-hills",
+            "region": "vistas",
+            "title": "Stars above the hills",
+            "status": "shipped",
+            "worlds": [
+                "starry-hills"
+            ],
+            "links": [
+                "meadow-sunset"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 0,
+            "preview": null,
+            "issues": [],
+            "next": [
+                "panorama or activity world: no spots to measure"
+            ]
+        },
+        {
+            "id": "garden-after-dark",
+            "region": "vistas",
+            "title": "Garden after dark",
+            "status": "shipped",
+            "worlds": [
+                "garden-after-dark"
+            ],
+            "links": [
+                "moonlit-courtyard"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 0,
+            "preview": null,
+            "issues": [],
+            "next": [
+                "panorama or activity world: no spots to measure"
+            ]
+        },
+        {
+            "id": "moonlit-courtyard",
+            "region": "vistas",
+            "title": "Moonlit courtyard",
+            "status": "shipped",
+            "worlds": [
+                "moonlit-courtyard"
+            ],
+            "links": [
+                "garden-after-dark",
+                "walled-town"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 0,
+            "preview": null,
+            "issues": [],
+            "next": [
+                "panorama or activity world: no spots to measure"
+            ]
+        },
+        {
+            "id": "city-rooftop",
+            "region": "vistas",
+            "title": "City rooftop",
+            "status": "shipped",
+            "worlds": [
+                "city-rooftop"
+            ],
+            "links": [
+                "neon-street"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 0,
+            "preview": null,
+            "issues": [],
+            "next": [
+                "panorama or activity world: no spots to measure"
+            ]
+        },
+        {
+            "id": "cozy-room",
+            "region": "vistas",
+            "title": "Cozy room",
+            "status": "shipped",
+            "worlds": [
+                "cozy-room"
+            ],
+            "links": [
+                "apartment"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 0,
+            "preview": null,
+            "issues": [],
+            "next": [
+                "panorama or activity world: no spots to measure"
+            ]
+        },
+        {
+            "id": "fantasy-village",
+            "region": "vistas",
+            "title": "Fantasy village",
+            "status": "shipped",
+            "worlds": [
+                "fantasy-village"
+            ],
+            "links": [
+                "walled-town"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 0,
+            "preview": null,
+            "issues": [],
+            "next": [
+                "panorama or activity world: no spots to measure"
+            ]
+        },
+        {
+            "id": "scifi-sanctuary",
+            "region": "vistas",
+            "title": "Sci-fi sanctuary",
+            "status": "shipped",
+            "worlds": [
+                "scifi-sanctuary"
+            ],
+            "links": [
+                "airship-dock"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 0,
+            "preview": null,
+            "issues": [],
+            "next": [
+                "panorama or activity world: no spots to measure"
+            ]
+        },
+        {
+            "id": "private-cabaret",
+            "region": "private",
+            "title": "Private cabaret",
+            "status": "shipped",
+            "worlds": [
+                "private-cabaret",
+                "private-cabaret-light"
+            ],
+            "links": [
+                "candlelit-suite",
+                "private-stream-studio"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 5,
+            "preview": {
+                "src": "previews/private-cabaret.webp",
+                "exists": true,
+                "bytes": 12542
+            },
+            "issues": [],
+            "next": []
+        },
+        {
+            "id": "private-stream-studio",
+            "region": "private",
+            "title": "Private stream studio",
+            "status": "shipped",
+            "worlds": [
+                "private-stream-studio"
+            ],
+            "links": [
+                "private-cabaret"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 0,
+            "preview": {
+                "src": "previews/private-stream-studio.webp",
+                "exists": true,
+                "bytes": 12790
+            },
+            "issues": [],
+            "next": []
+        },
+        {
+            "id": "candlelit-suite",
+            "region": "private",
+            "title": "Candlelit suite",
+            "status": "shipped",
+            "worlds": [
+                "candlelit-suite"
+            ],
+            "links": [
+                "private-cabaret",
+                "roadside-motel"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 0,
+            "preview": {
+                "src": "previews/candlelit-suite.webp",
+                "exists": true,
+                "bytes": 12942
+            },
+            "issues": [],
+            "next": []
+        },
+        {
+            "id": "roadside-motel",
+            "region": "private",
+            "title": "Roadside motel",
+            "status": "shipped",
+            "worlds": [
+                "roadside-motel",
+                "roadside-motel-light"
+            ],
+            "links": [
+                "candlelit-suite"
+            ],
+            "brief": null,
+            "devices": {
+                "desktop": true,
+                "mobile": true,
+                "vr": true
+            },
+            "spots": 0,
+            "preview": {
+                "src": "previews/roadside-motel.webp",
+                "exists": true,
+                "bytes": 10688
+            },
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "roadside-motel: no measured spots: she cannot move within this place (LW2)"
+                }
+            ],
+            "next": [
+                "roadside-motel: no measured spots: she cannot move within this place (LW2)"
+            ]
+        }
+    ]
+}

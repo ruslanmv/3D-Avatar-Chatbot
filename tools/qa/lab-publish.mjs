@@ -22,6 +22,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
+import { writeHub } from './hub.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../..');
@@ -145,6 +146,7 @@ function main() {
             console.log('rescored', f);
         }
         writeIndex();
+        writeHub();
         return;
     }
     const src = process.argv[2];
@@ -166,6 +168,7 @@ function main() {
     const file = path.join(RUNS, `${id}.json`);
     save(file, doc);
     writeIndex();
+    writeHub();
     console.log('published', path.relative(ROOT, file));
 }
 

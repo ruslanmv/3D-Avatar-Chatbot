@@ -26,6 +26,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { writeHub } from './hub.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../..');
@@ -188,21 +189,203 @@ export function audit() {
     return { schema: 1, generator: 'tools/qa/world-audit.mjs', rules: RULES, summary, worlds: out };
 }
 
-function main() {
-    const text = JSON.stringify(audit(), null, 4) + '\n';
-    if (process.argv.includes('--check')) {
-        const old = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8') : '';
-        if (old !== text) {
-            console.error('quality-lab/data/3d/worlds-audit.json is out of date: run node tools/qa/world-audit.mjs');
-            process.exit(1);
+/**
+ * AX11. The atlas: the Nexus world as regions of zones (quality-lab/data/atlas/atlas.json, a
+ * design file written by people and by tools/qa/new-zone.mjs). This joins it to the world audit,
+ * so a zone's readiness is computed from its worlds and never claimed in the atlas itself.
+ *
+ * Rules: every zone is in a known region; a shipped zone names catalogue worlds and no brief; a
+ * planned zone names no worlds and has a complete brief; links are undirected (declared on either
+ * side) and reach known zones; a private zone links only to private zones — a private room is
+ * reached through Private's gate, never by walking out of a public street. The atlas targets
+ * desktop, mobile and VR; AR is out of scope for now (it shows the person's own room).
+ */
+export const BRIEF_FIELDS = ['purpose', 'mood', 'activities', 'spotsWanted', 'devices', 'assets'];
+
+export function auditAtlas(worldAudit) {
+    const atlas = JSON.parse(fs.readFileSync(path.join(ROOT, 'quality-lab/data/atlas/atlas.json'), 'utf8'));
+    const regions = new Map((atlas.regions || []).map((r) => [r.id, r]));
+    const worlds = new Map(worldAudit.worlds.map((w) => [w.id, w]));
+    const zones = atlas.zones || [];
+    const byId = new Map();
+    const problems = [];
+    for (const z of zones) {
+        if (byId.has(z.id)) problems.push(`zone ${z.id}: duplicate id`);
+        byId.set(z.id, z);
+    }
+    const isPrivate = (z) => z && z.region === 'private';
+
+    // undirected links, union of both sides
+    const links = new Map(zones.map((z) => [z.id, new Set()]));
+    for (const z of zones)
+        for (const to of z.links || []) {
+            if (!byId.has(to)) {
+                problems.push(`zone ${z.id}: links to unknown zone ${to}`);
+                continue;
+            }
+            links.get(z.id).add(to);
+            links.get(to).add(z.id);
         }
-        console.log('world audit up to date');
+
+    const devices = RULES.devices;
+
+    const out = zones.map((z) => {
+        const issues = [];
+        const fail = (text) => issues.push({ severity: 'fail', text });
+        const warn = (text) => issues.push({ severity: 'warn', text });
+        if (!regions.has(z.region)) fail(`unknown region ${z.region}`);
+        for (const to of links.get(z.id) || [])
+            if (isPrivate(z) !== isPrivate(byId.get(to))) fail(`links across the private boundary to ${to}`);
+        if (!(links.get(z.id) || new Set()).size) warn('no links: an island on the map');
+
+        const own = (z.worlds || []).map((id) => worlds.get(id));
+        const dev = {};
+        let next = [];
+        if (z.status === 'shipped') {
+            if (!own.length) fail('shipped zone names no worlds');
+            (z.worlds || []).forEach((id, i) => {
+                if (!own[i]) fail(`world ${id} is not in the catalogue`);
+            });
+            if (z.brief) warn('shipped zone still carries a brief');
+            const present = own.filter(Boolean);
+            for (const d of RULES.devices) dev[d] = present.some((w) => w.devices[d].ok);
+            for (const w of present)
+                for (const i of w.issues) issues.push({ severity: i.severity, text: `${w.id}: ${i.text}` });
+            const spots = present.reduce((n, w) => n + (w.spots ? w.spots.verified : 0), 0);
+            if (!spots && present.some((w) => w.kind === 'activity world'))
+                next.push('panorama or activity world: no spots to measure');
+            next = next.concat(issues.filter((i) => i.severity !== 'fail').map((i) => i.text));
+        } else if (z.status === 'planned') {
+            if ((z.worlds || []).length) fail('planned zone names worlds; mark it shipped');
+            const b = z.brief || {};
+            const missing = BRIEF_FIELDS.filter(
+                (f) => b[f] == null || (Array.isArray(b[f]) && !b[f].length) || b[f] === ''
+            );
+            if (missing.length) fail(`brief incomplete: ${missing.join(', ')}`);
+            for (const d of RULES.devices) dev[d] = false;
+            next = [
+                'source art (CC0 / Apache-compatible) and record provenance',
+                'add the world to assets/vr-worlds/worlds.json with measured triangles',
+                ...(Array.isArray(b.devices) && b.devices.includes('mobile')
+                    ? ['cut a light stand-in under the phone budget']
+                    : []),
+                'measure spots: ' + (Array.isArray(b.spotsWanted) ? b.spotsWanted.join(', ') : '—'),
+                'render the preview',
+                'set status "shipped" with its worlds, regenerate the audit',
+            ];
+        } else fail(`unknown status ${z.status}`);
+        return {
+            id: z.id,
+            region: z.region,
+            title: z.title || (own[0] && own[0].title) || z.id,
+            status: z.status,
+            worlds: z.worlds || [],
+            links: [...(links.get(z.id) || [])].sort(),
+            brief: z.brief || null,
+            devices: dev,
+            // the zone's own world, not its phone stand-in (which may sit on another scene's spots)
+            spots: own[0] && own[0].spots ? own[0].spots.verified : 0,
+            preview: (own.find((w) => w && w.preview && w.preview.exists) || {}).preview || null,
+            issues,
+            next,
+        };
+    });
+
+    // How much of the public map can you walk from home, per device?
+    function reachable(fromId, device) {
+        const seen = new Set();
+        const stack = [fromId];
+        while (stack.length) {
+            const id = stack.pop();
+            const z = out.find((x) => x.id === id);
+            if (!z || seen.has(id) || !z.devices[device] || z.region === 'private') continue;
+            seen.add(id);
+            for (const to of z.links) stack.push(to);
+        }
+        return seen.size;
+    }
+    const pub = out.filter((z) => z.region !== 'private');
+    /**
+     * The zones that cut the map on a device: not loadable there, but next to a zone you can
+     * reach from home there. Making one of these load (a stand-in, a tier) opens everything
+     * behind it — the highest-value 3D work for that device.
+     */
+    function walkable(device) {
+        const seen = new Set();
+        const stack = ['apartment'];
+        while (stack.length) {
+            const id = stack.pop();
+            const z = out.find((x) => x.id === id);
+            if (!z || seen.has(id) || !z.devices[device] || z.region === 'private') continue;
+            seen.add(id);
+            for (const to of z.links) stack.push(to);
+        }
+        return seen;
+    }
+    const gateways = {};
+    for (const d of devices) {
+        const seen = walkable(d);
+        gateways[d] = pub
+            .filter((z) => !z.devices[d] && z.links.some((to) => seen.has(to)))
+            .map((z) => z.id)
+            .sort();
+    }
+    const summary = {
+        regions: regions.size,
+        zones: out.length,
+        shipped: out.filter((z) => z.status === 'shipped').length,
+        planned: out.filter((z) => z.status === 'planned').length,
+        explorable: Object.fromEntries(devices.map((d) => [d, out.filter((z) => z.devices[d]).length])),
+        publicZones: pub.length,
+        reachableFromHome: Object.fromEntries(devices.map((d) => [d, reachable('apartment', d)])),
+        gateways,
+        fails: out.reduce((n, z) => n + z.issues.filter((i) => i.severity === 'fail').length, 0) + problems.length,
+    };
+    return {
+        schema: 1,
+        generator: 'tools/qa/world-audit.mjs',
+        regions: [...regions.values()],
+        problems,
+        summary,
+        zones: out,
+    };
+}
+
+const ATLAS_OUT = path.join(ROOT, 'quality-lab/data/atlas/atlas-audit.json');
+
+function main() {
+    const worldAudit = audit();
+    const outputs = [
+        [OUT, JSON.stringify(worldAudit, null, 4) + '\n'],
+        [ATLAS_OUT, JSON.stringify(auditAtlas(worldAudit), null, 4) + '\n'],
+    ];
+    if (process.argv.includes('--check')) {
+        let stale = false;
+        for (const [file, text] of outputs) {
+            const old = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+            if (old !== text) {
+                console.error(`${path.relative(ROOT, file)} is out of date: run node tools/qa/world-audit.mjs`);
+                stale = true;
+            }
+        }
+        if (stale) process.exit(1);
+        console.log('world and atlas audits up to date');
         return;
     }
-    fs.mkdirSync(path.dirname(OUT), { recursive: true });
-    fs.writeFileSync(OUT, text);
-    const s = JSON.parse(text).summary;
+    for (const [file, text] of outputs) {
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.writeFileSync(file, text);
+    }
+    writeHub();
+    const s = worldAudit.summary;
+    const a = JSON.parse(outputs[1][1]).summary;
     console.log(`audited ${s.worlds} worlds: ${s.fails} fail, ${s.warns} warn ·`, JSON.stringify(s.offered));
+    console.log(
+        `atlas: ${a.zones} zones (${a.shipped} shipped, ${a.planned} planned), ${a.fails} fail · explorable`,
+        JSON.stringify(a.explorable),
+        '· from home',
+        JSON.stringify(a.reachableFromHome)
+    );
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();

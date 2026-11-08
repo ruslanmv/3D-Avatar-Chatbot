@@ -812,6 +812,16 @@ TogetherCapability) owns style data and capability resolution;
   availability, triangles against the phone budget, preview, spots (with scene
   hash), chips, and a work queue. Change a world and regenerate in the same
   commit — the test runs `--check` and fails on any `fail`.
+- **The Quality Lab is the research hub for the open world (AX11–AX12).** A
+  third area, `?area=atlas`, maps Nexus as regions of zones
+  (`quality-lab/data/atlas/atlas.json`, the one hand-written data file) for
+  desktop, mobile and VR — AR is out of scope for now. `world-audit.mjs` also
+  writes `atlas-audit.json`: per-zone readiness from the 3D audit, what is
+  walkable from home per device, and the gateway zones that cut the map.
+  `node tools/qa/new-zone.mjs` starts a zone as a validated brief.
+  `quality-lab/data/hub.json` (`tools/qa/hub.mjs`, called by the other tools) is
+  the first file a session reads: ranked next actions, each with why, command
+  and files. Phases and gates: `docs/engine/NEXUS_OPEN_WORLD_ROADMAP.md`.
 
 ## Clearing a conversation
 
