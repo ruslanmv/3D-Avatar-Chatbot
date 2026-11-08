@@ -10,6 +10,7 @@ const Asset = require('../../src/wardrobe/ClothAsset.js');
 const Sim = require('../../src/wardrobe/ClothSimulation.js');
 const Body = require('../../src/wardrobe/BodyCollision.js');
 const Deform = require('../../src/wardrobe/GarmentDeformation.js');
+const Pilot = require('../../src/wardrobe/XpbdSkirtPilot.js');
 
 function chain() {
     // Hung from a pin. The middle particle is already at rest. The bottom one
@@ -111,9 +112,68 @@ describe('garment strategy', () => {
         expect(Deform.strategyFor('rigid')).toMatch(/rigid/);
         expect(Deform.strategyFor('skinning')).toMatch(/skinning/);
         expect(Deform.selectLod([], 'mobile-low').simulation).toBe('skinning');
-        const summary = { schema: 'wardrobe.cloth/1', simulation: 'xpbd' };
+        const summary = { schema: 'wardrobe.cloth/1', simulation: 'xpbd', profile: 'cloth' };
         expect(Deform.solverFor(summary, 'xpbd')).toBe('xpbd');
         expect(Deform.solverFor(summary, undefined)).toBe('pose-correction');
+        expect(Deform.solverFor({ ...summary, profile: 'corrective' }, 'xpbd')).toBe('pose-correction');
+        expect(Deform.pilotFor({ templateId: 'top-fitted-v1', clothAsset: summary }, 'xpbd')).toBe(false);
+        expect(Deform.pilotFor({ templateId: 'dress-a-line-v1', clothAsset: summary }, 'xpbd')).toBe(true);
         expect(Deform.solverFor({ schema: 'wardrobe.cloth/1', simulation: 'fallback-skinning' }, 'xpbd')).toBe('pose-correction');
+    });
+});
+
+describe('skirt-only lap pilot', () => {
+    test('thigh capsule blocks a hem particle from the underside, at radius 0.2', () => {
+        const state = Sim.create({
+            positions: new Float32Array([0, -0.04, 0]),
+            attachment: new Float32Array([0]), stretch: [], shear: [], bend: [],
+        }, { substeps: 1, iterations: 1 });
+        const thigh = { ...Body.capsule(-0.3, 0, 0, 0.3, 0, 0, 0.2), lap: true };
+        expect(Body.collideLap(state, [thigh], new Uint8Array([1]), 0)).toBe(1);
+        expect(state.x[1]).toBeGreaterThanOrEqual(0.2 - 1e-5);
+    });
+
+    test('two lap contacts average and do not move a pinned waist or a side hem', () => {
+        const state = Sim.create({
+            positions: new Float32Array([0, -0.02, 0, 0.2, -0.02, 0, 0, 0.3, 0]),
+            attachment: new Float32Array([0, 0, 1]), stretch: [], shear: [], bend: [],
+        });
+        const left = { ...Body.capsule(-0.05, 0, -0.02, 0.05, 0, -0.02, 0.2), lap: true };
+        const right = { ...Body.capsule(-0.05, 0, 0.02, 0.05, 0, 0.02, 0.2), lap: true };
+        const n = Body.collideLap(state, [left, right], new Uint8Array([1, 0, 1]), 0);
+        expect(n).toBe(1);
+        expect(state.x[1]).toBeGreaterThan(0.18);
+        expect(state.x[4]).toBeCloseTo(-0.02, 5);
+        expect(state.x[7]).toBeCloseTo(0.3, 5);
+    });
+
+    test('brief clearance holds the front hem above the brief lower silhouette only', () => {
+        const state = Sim.create({
+            positions: new Float32Array([0, 0.2, 0, 0.1, 0.2, 0]),
+            attachment: new Float32Array([0, 0]), stretch: [], shear: [], bend: [],
+        });
+        Body.clearBriefs(state, { minY: 0.28 }, new Uint8Array([1, 0]), 0.012);
+        expect(state.x[1]).toBeCloseTo(0.292, 5);
+        expect(state.x[4]).toBeCloseTo(0.2, 5);
+    });
+
+    test('WCL binding initializes simulation particles from skinned world positions', () => {
+        const asset = {
+            positions: new Float32Array([0, 0, 0, 1, 0, 0]),
+            binding: [
+                { i0: 0, i1: 0, i2: 0, w0: 1, w1: 0, w2: 0 },
+                { i0: 1, i1: 1, i2: 1, w0: 1, w1: 0, w2: 0 },
+            ],
+        };
+        const current = Pilot.initialParticles(asset, new Float32Array([2, 3, 4, 5, 6, 7]));
+        expect(Array.from(current)).toEqual([2, 3, 4, 5, 6, 7]);
+        expect(Pilot.eligible({
+            templateId: 'dress-a-line-v1',
+            clothAsset: { schema: 'wardrobe.cloth/1', profile: 'cloth', simulation: 'xpbd' },
+        })).toBe(true);
+        expect(Pilot.eligible({
+            templateId: 'top-fitted-v1',
+            clothAsset: { schema: 'wardrobe.cloth/1', profile: 'cloth', simulation: 'xpbd' },
+        })).toBe(false);
     });
 });
