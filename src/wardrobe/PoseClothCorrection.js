@@ -428,6 +428,19 @@
     }
 
     /**
+     * Read-only pose_contact metrics for a candidate XPBD result. It must
+     * undergo exactly the same 1mm / 6x / 8mm gate as a legacy frame. A green
+     * XPBD result is never inferred from the absence of metrics.
+     */
+    function inspect(input) {
+        var garment = input.garment;
+        var opt = options(input, { profile: garment.profile || profileFor(garment) });
+        var body = new Surface(Float32Array.from(input.bodyPos), Float32Array.from(input.bodyNrm), opt.cell);
+        return measure(garment.posed, garment.rest,
+            edgesOf(garment.indices, garment.rest), body, opt, garment.movable || null);
+    }
+
+    /**
      * Correct one garment against her skin and the layers already corrected under it. Each is
      * tested on its own: one surface built from all of them answered with the nearest point of
      * any, so a dress vertex nearest a brief read as outside while it was inside her. A layer
@@ -1148,6 +1161,7 @@
         GATE: GATE,
         correct: correct,
         assess: assess,
+        inspect: inspect,
         profileFor: profileFor,
         spanNeed: spanNeed,
         edgesOf: edgesOf,
