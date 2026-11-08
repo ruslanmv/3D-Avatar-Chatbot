@@ -1,0 +1,18 @@
+{
+  "entries": 62,
+  "byStatus": {
+    "not-captured": 62
+  },
+  "poseSlotsExpected": 310,
+  "poseSlotsCaptured": 0,
+  "poseSlotsAccounted": 62,
+  "issues": 4,
+  "bySeverity": {
+    "P1": 1,
+    "P3": 3
+  },
+  "releaseBlockers": [
+    "WARDROBE-CLIP-001"
+  ],
+  "releaseReady": false
+}

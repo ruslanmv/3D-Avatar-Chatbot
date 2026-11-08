@@ -1,0 +1,2125 @@
+{
+  "mode": "inventory-only",
+  "pose": [
+    "standing",
+    "sittingDesk",
+    "sittingWide",
+    "sittingCrossed"
+  ],
+  "views": [
+    "front",
+    "right",
+    "back",
+    "left"
+  ],
+  "entries": [
+    {
+      "id": "garment-top-tee-v1",
+      "source": "catalog",
+      "name": "Basic tee",
+      "garmentId": "top-tee-v1",
+      "folder": "screenshots/top-tee-v1",
+      "category": "Tops",
+      "description": "Relaxed short-sleeved tee.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-top-blouse-v1",
+      "source": "catalog",
+      "name": "Blouse",
+      "garmentId": "top-blouse-v1",
+      "folder": "screenshots/top-blouse-v1",
+      "category": "Tops",
+      "description": "Long-sleeved blouse with a soft drape.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-top-camisole-v1",
+      "source": "catalog",
+      "name": "Camisole",
+      "garmentId": "top-camisole-v1",
+      "folder": "screenshots/top-camisole-v1",
+      "category": "Tops",
+      "description": "Close-fitting sleeveless top.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-top-corset-v1",
+      "source": "catalog",
+      "name": "Corset Top",
+      "garmentId": "top-corset-v1",
+      "folder": "screenshots/top-corset-v1",
+      "category": "Tops",
+      "description": "Boned corset top: fitted from the bust to the natural waist, pointed at centre front.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-top-cropped-cami-v1",
+      "source": "catalog",
+      "name": "Cropped Cami",
+      "garmentId": "top-cropped-cami-v1",
+      "folder": "screenshots/top-cropped-cami-v1",
+      "category": "Tops",
+      "description": "A plain cropped camisole on thin straps, ending above the navel.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-top-corset-cropped-v1",
+      "source": "catalog",
+      "name": "Cropped Corset Top",
+      "garmentId": "top-corset-cropped-v1",
+      "folder": "screenshots/top-corset-cropped-v1",
+      "category": "Tops",
+      "description": "Boned corset top cropped above the natural waist: the waist and lower back left bare above a low-rise waistband.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-top-crop-tee-v1",
+      "source": "catalog",
+      "name": "Cropped Tee",
+      "garmentId": "top-crop-tee-v1",
+      "folder": "screenshots/top-crop-tee-v1",
+      "category": "Tops",
+      "description": "Cropped short-sleeve tee.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-top-fitted-tee-v1",
+      "source": "catalog",
+      "name": "Fitted Tee",
+      "garmentId": "top-fitted-tee-v1",
+      "folder": "screenshots/top-fitted-tee-v1",
+      "category": "Tops",
+      "description": "A close tee cut as panels on her: crew neck, short set-in sleeves, to her hip.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-top-glam-blouse-v1",
+      "source": "catalog",
+      "name": "Fitted V-Neck Blouse",
+      "garmentId": "top-glam-blouse-v1",
+      "folder": "screenshots/top-glam-blouse-v1",
+      "category": "Tops",
+      "description": "A blouse cut close to her body on panels: a V neckline, a defined waist and slim long sleeves.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-top-halter-v1",
+      "source": "catalog",
+      "name": "Halter Crop Top",
+      "garmentId": "top-halter-v1",
+      "folder": "screenshots/top-halter-v1",
+      "category": "Tops",
+      "description": "Cropped halter-neck top.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-top-crop-cami-v1",
+      "source": "catalog",
+      "name": "Lace Crop Cami",
+      "garmentId": "top-crop-cami-v1",
+      "folder": "screenshots/top-crop-cami-v1",
+      "category": "Tops",
+      "description": "Cropped lace camisole on thin straps.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-top-sports-bra-v1",
+      "source": "catalog",
+      "name": "Sports Bra",
+      "garmentId": "top-sports-bra-v1",
+      "folder": "screenshots/top-sports-bra-v1",
+      "category": "Tops",
+      "description": "A gym sports bra, worn as a top: one supportive front across the bust with a moderate scoop, a continuous underband, a high back and wide straps.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-top-tube-v1",
+      "source": "catalog",
+      "name": "Tube Top",
+      "garmentId": "top-tube-v1",
+      "folder": "screenshots/top-tube-v1",
+      "category": "Tops",
+      "description": "Strapless stretch tube top.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-jeans-baggy-v1",
+      "source": "catalog",
+      "name": "Baggy Jeans",
+      "garmentId": "jeans-baggy-v1",
+      "folder": "screenshots/jeans-baggy-v1",
+      "category": "Trousers & jeans",
+      "description": "Relaxed baggy denim jeans.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-trousers-balloon-v1",
+      "source": "catalog",
+      "name": "Balloon Trousers",
+      "garmentId": "trousers-balloon-v1",
+      "folder": "screenshots/trousers-balloon-v1",
+      "category": "Trousers & jeans",
+      "description": "Relaxed balloon-leg trousers.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-trousers-leggings-highwaist-v1",
+      "source": "catalog",
+      "name": "High-Waist Leggings",
+      "garmentId": "trousers-leggings-highwaist-v1",
+      "folder": "screenshots/trousers-leggings-highwaist-v1",
+      "category": "Trousers & jeans",
+      "description": "Plain high-waisted stretch leggings: a smooth, level waistband above her waist, one surface to the ankle, no crossover and no scrunch.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "pending",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-trousers-leggings-v1",
+      "source": "catalog",
+      "name": "Leggings",
+      "garmentId": "trousers-leggings-v1",
+      "folder": "screenshots/trousers-leggings-v1",
+      "category": "Trousers & jeans",
+      "description": "Skin-tight leggings, waist to ankle. Latex, PVC or wet-look by finish.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "pending",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-trousers-leggings-seamless-v1",
+      "source": "catalog",
+      "name": "Seamless Scrunch Leggings",
+      "garmentId": "trousers-leggings-seamless-v1",
+      "folder": "screenshots/trousers-leggings-seamless-v1",
+      "category": "Trousers & jeans",
+      "description": "High-waist seamless gym leggings: a crossover waistband that dips into a V front and back, a scrunch seam gathered over the seat, and a full-length leg to the ankle.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "pending",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-trousers-slim-v1",
+      "source": "catalog",
+      "name": "Slim jeans",
+      "garmentId": "trousers-slim-v1",
+      "folder": "screenshots/trousers-slim-v1",
+      "category": "Trousers & jeans",
+      "description": "Tapered denim-cut trousers.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-jeans-straight-v1",
+      "source": "catalog",
+      "name": "Straight Jeans",
+      "garmentId": "jeans-straight-v1",
+      "folder": "screenshots/jeans-straight-v1",
+      "category": "Trousers & jeans",
+      "description": "Straight-leg denim jeans.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-trousers-straight-v1",
+      "source": "catalog",
+      "name": "Straight trousers",
+      "garmentId": "trousers-straight-v1",
+      "folder": "screenshots/trousers-straight-v1",
+      "category": "Trousers & jeans",
+      "description": "Classic straight-leg trousers.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-trousers-wide-v1",
+      "source": "catalog",
+      "name": "Wide-leg trousers",
+      "garmentId": "trousers-wide-v1",
+      "folder": "screenshots/trousers-wide-v1",
+      "category": "Trousers & jeans",
+      "description": "Loose wide-leg trousers with a long hem.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-dress-a-line-v1",
+      "source": "catalog",
+      "name": "A-line dress",
+      "garmentId": "dress-a-line-v1",
+      "folder": "screenshots/dress-a-line-v1",
+      "category": "Dresses",
+      "description": "Fitted bodice flaring from the waist. The most forgiving dress across body types.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-dress-mini-bodycon-v1",
+      "source": "catalog",
+      "name": "Bodycon Mini Dress",
+      "garmentId": "dress-mini-bodycon-v1",
+      "folder": "screenshots/dress-mini-bodycon-v1",
+      "category": "Dresses",
+      "description": "Close-fitting sleeveless mini dress.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-dress-cocktail-v1",
+      "source": "catalog",
+      "name": "Cocktail dress",
+      "garmentId": "dress-cocktail-v1",
+      "folder": "screenshots/dress-cocktail-v1",
+      "category": "Dresses",
+      "description": "Short party dress with a slight flare.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-dress-evening-column-v1",
+      "source": "catalog",
+      "name": "Evening column gown",
+      "garmentId": "dress-evening-column-v1",
+      "folder": "screenshots/dress-evening-column-v1",
+      "category": "Dresses",
+      "description": "Floor-length narrow column for formal looks.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-dress-wrap-sleeve-v1",
+      "source": "catalog",
+      "name": "Long-sleeved wrap dress",
+      "garmentId": "dress-wrap-sleeve-v1",
+      "folder": "screenshots/dress-wrap-sleeve-v1",
+      "category": "Dresses",
+      "description": "Midi wrap dress with full-length sleeves.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-dress-maxi-sundress-v1",
+      "source": "catalog",
+      "name": "Maxi Sundress",
+      "garmentId": "dress-maxi-sundress-v1",
+      "folder": "screenshots/dress-maxi-sundress-v1",
+      "category": "Dresses",
+      "description": "Floor-length vacation sundress on straps.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-dress-shirt-v1",
+      "source": "catalog",
+      "name": "Shirt Dress",
+      "garmentId": "dress-shirt-v1",
+      "folder": "screenshots/dress-shirt-v1",
+      "category": "Dresses",
+      "description": "Knee-length shirt dress with short sleeves.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-dress-mini-skater-v1",
+      "source": "catalog",
+      "name": "Skater Mini Dress",
+      "garmentId": "dress-mini-skater-v1",
+      "folder": "screenshots/dress-mini-skater-v1",
+      "category": "Dresses",
+      "description": "Fitted bodice, flared mini skirt.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-dress-slip-midi-v1",
+      "source": "catalog",
+      "name": "Slip Dress",
+      "garmentId": "dress-slip-midi-v1",
+      "folder": "screenshots/dress-slip-midi-v1",
+      "category": "Dresses",
+      "description": "Bias-cut midi slip dress on thin straps.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-skirt-a-line-v1",
+      "source": "catalog",
+      "name": "A-line skirt",
+      "garmentId": "skirt-a-line-v1",
+      "folder": "screenshots/skirt-a-line-v1",
+      "category": "Skirts",
+      "description": "Knee-length skirt flaring from the waist.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-skirt-maxi-v1",
+      "source": "catalog",
+      "name": "Maxi skirt",
+      "garmentId": "skirt-maxi-v1",
+      "folder": "screenshots/skirt-maxi-v1",
+      "category": "Skirts",
+      "description": "Floor-length flowing skirt.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-skirt-glam-pencil-mini-v1",
+      "source": "catalog",
+      "name": "Pencil Mini Skirt",
+      "garmentId": "skirt-glam-pencil-mini-v1",
+      "folder": "screenshots/skirt-glam-pencil-mini-v1",
+      "category": "Skirts",
+      "description": "A pencil skirt cut at mid-thigh: high at the waist, close over her hips, tapering slightly to the hem.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-skirt-pencil-v1",
+      "source": "catalog",
+      "name": "Pencil skirt",
+      "garmentId": "skirt-pencil-v1",
+      "folder": "screenshots/skirt-pencil-v1",
+      "category": "Skirts",
+      "description": "Fitted through the waist and seat, tapering to the knee.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-skirt-pleated-mini-v1",
+      "source": "catalog",
+      "name": "Pleated Mini Skirt",
+      "garmentId": "skirt-pleated-mini-v1",
+      "folder": "screenshots/skirt-pleated-mini-v1",
+      "category": "Skirts",
+      "description": "Pleated mini skirt: a 38 mm waistband, fitted over the hips, pressed knife pleats with real folds, a gentle flare below the hip that keeps the front flat.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-skirt-skater-mini-v1",
+      "source": "catalog",
+      "name": "Skater Skirt",
+      "garmentId": "skirt-skater-mini-v1",
+      "folder": "screenshots/skirt-skater-mini-v1",
+      "category": "Skirts",
+      "description": "Fitted at the waist and hips, with a soft, curved flare to a mini hem.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-skirt-slip-midi-v1",
+      "source": "catalog",
+      "name": "Slip Skirt",
+      "garmentId": "skirt-slip-midi-v1",
+      "folder": "screenshots/skirt-slip-midi-v1",
+      "category": "Skirts",
+      "description": "Bias-cut satin midi slip skirt.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-skirt-tiered-maxi-v1",
+      "source": "catalog",
+      "name": "Tiered Maxi Skirt",
+      "garmentId": "skirt-tiered-maxi-v1",
+      "folder": "screenshots/skirt-tiered-maxi-v1",
+      "category": "Skirts",
+      "description": "Floor-length tiered boho skirt.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-skirt-wrap-v1",
+      "source": "catalog",
+      "name": "Wrap Skirt",
+      "garmentId": "skirt-wrap-v1",
+      "folder": "screenshots/skirt-wrap-v1",
+      "category": "Skirts",
+      "description": "Knee-length wrap skirt.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-jacket-cropped-cardigan-v1",
+      "source": "catalog",
+      "name": "Cropped Cardigan",
+      "garmentId": "jacket-cropped-cardigan-v1",
+      "folder": "screenshots/jacket-cropped-cardigan-v1",
+      "category": "Jackets & outerwear",
+      "description": "Cropped knit cardigan.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-jacket-glam-cropped-v1",
+      "source": "catalog",
+      "name": "Fitted Cropped Jacket",
+      "garmentId": "jacket-glam-cropped-v1",
+      "folder": "screenshots/jacket-glam-cropped-v1",
+      "category": "Jackets & outerwear",
+      "description": "A tailored jacket cropped at the waist and cut close to her body, with slim sleeves.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-jacket-trench-v1",
+      "source": "catalog",
+      "name": "Lightweight Trench",
+      "garmentId": "jacket-trench-v1",
+      "folder": "screenshots/jacket-trench-v1",
+      "category": "Jackets & outerwear",
+      "description": "Lightweight belted trench coat.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-jacket-long-cardigan-v1",
+      "source": "catalog",
+      "name": "Oversized Cardigan",
+      "garmentId": "jacket-long-cardigan-v1",
+      "folder": "screenshots/jacket-long-cardigan-v1",
+      "category": "Jackets & outerwear",
+      "description": "Oversized long knit cardigan.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-jacket-oversized-v1",
+      "source": "catalog",
+      "name": "Oversized coat",
+      "garmentId": "jacket-oversized-v1",
+      "folder": "screenshots/jacket-oversized-v1",
+      "category": "Jackets & outerwear",
+      "description": "Long oversized coat with generous clearance.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-jacket-blazer-v1",
+      "source": "catalog",
+      "name": "Tailored blazer",
+      "garmentId": "jacket-blazer-v1",
+      "folder": "screenshots/jacket-blazer-v1",
+      "category": "Jackets & outerwear",
+      "description": "Structured blazer worn over a top.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-shoes-boots-v1",
+      "source": "catalog",
+      "name": "Ankle boots",
+      "garmentId": "shoes-boots-v1",
+      "folder": "screenshots/shoes-boots-v1",
+      "category": "Shoes",
+      "description": "Ankle-height boots.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-shoes-combat-boots-v1",
+      "source": "catalog",
+      "name": "Combat Boots",
+      "garmentId": "shoes-combat-boots-v1",
+      "folder": "screenshots/shoes-combat-boots-v1",
+      "category": "Shoes",
+      "description": "Round-toe combat boots to mid-calf: a lugged 28 mm sole, a stacked heel, laces and a padded collar.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-shoes-flats-v1",
+      "source": "catalog",
+      "name": "Flat shoes",
+      "garmentId": "shoes-flats-v1",
+      "folder": "screenshots/shoes-flats-v1",
+      "category": "Shoes",
+      "description": "Simple closed flats.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-shoes-over-knee-boots-v1",
+      "source": "catalog",
+      "name": "Over-the-Knee Boots",
+      "garmentId": "shoes-over-knee-boots-v1",
+      "folder": "screenshots/shoes-over-knee-boots-v1",
+      "category": "Shoes",
+      "description": "Slim stretch over-the-knee boots: an almond toe, a 90 mm block heel, the shaft close up the leg.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-shoes-over-knee-stiletto-boots-v1",
+      "source": "catalog",
+      "name": "Over-the-Knee Stiletto Boots",
+      "garmentId": "shoes-over-knee-stiletto-boots-v1",
+      "folder": "screenshots/shoes-over-knee-stiletto-boots-v1",
+      "category": "Shoes",
+      "description": "Slim stretch over-the-knee boots on a 100 mm needle heel, pointed toe, the shaft close up the leg.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-shoes-platform-boots-v1",
+      "source": "catalog",
+      "name": "Platform Boots",
+      "garmentId": "shoes-platform-boots-v1",
+      "folder": "screenshots/shoes-platform-boots-v1",
+      "category": "Shoes",
+      "description": "Below-the-knee boots on a 55 mm platform and a 150 mm block heel, zipped up the inside.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-shoes-stiletto-ankle-boots-v1",
+      "source": "catalog",
+      "name": "Stiletto Ankle Boots",
+      "garmentId": "shoes-stiletto-ankle-boots-v1",
+      "folder": "screenshots/shoes-stiletto-ankle-boots-v1",
+      "category": "Shoes",
+      "description": "Pointed-toe ankle boots on a 95 mm needle heel, the shaft fitted to the ankle.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-shorts-denim-v1",
+      "source": "catalog",
+      "name": "Denim Shorts",
+      "garmentId": "shorts-denim-v1",
+      "folder": "screenshots/shorts-denim-v1",
+      "category": "Shorts",
+      "description": "High-waisted denim cut-offs.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-shorts-linen-v1",
+      "source": "catalog",
+      "name": "Linen Shorts",
+      "garmentId": "shorts-linen-v1",
+      "folder": "screenshots/shorts-linen-v1",
+      "category": "Shorts",
+      "description": "Relaxed linen shorts.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-shorts-slip-v1",
+      "source": "catalog",
+      "name": "Slip Shorts",
+      "garmentId": "shorts-slip-v1",
+      "folder": "screenshots/shorts-slip-v1",
+      "category": "Shorts",
+      "description": "Opaque fitted shorts worn under a skirt; ends just below the crotch so it never shows past a hem.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-jumpsuit-catsuit-v1",
+      "source": "catalog",
+      "name": "Catsuit",
+      "garmentId": "jumpsuit-catsuit-v1",
+      "folder": "screenshots/jumpsuit-catsuit-v1",
+      "category": "Jumpsuits",
+      "description": "Full-body catsuit: torso, legs and sleeves as one garment. Latex, metallic or sequin by finish.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-night-pajama-top-v1",
+      "source": "catalog",
+      "name": "Pajama Shirt",
+      "garmentId": "night-pajama-top-v1",
+      "folder": "screenshots/night-pajama-top-v1",
+      "category": "Nightwear",
+      "description": "Loose long-sleeve pajama shirt.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-night-pajama-trousers-v1",
+      "source": "catalog",
+      "name": "Pajama Trousers",
+      "garmentId": "night-pajama-trousers-v1",
+      "folder": "screenshots/night-pajama-trousers-v1",
+      "category": "Nightwear",
+      "description": "Wide pajama trousers.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-night-nightgown-v1",
+      "source": "catalog",
+      "name": "Satin Nightgown",
+      "garmentId": "night-nightgown-v1",
+      "folder": "screenshots/night-nightgown-v1",
+      "category": "Nightwear",
+      "description": "Satin midi nightgown on thin straps.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-legwear-thigh-highs-v1",
+      "source": "catalog",
+      "name": "Thigh-High Stockings",
+      "garmentId": "legwear-thigh-highs-v1",
+      "folder": "screenshots/legwear-thigh-highs-v1",
+      "category": "Legwear",
+      "description": "Sheer thigh-high stockings.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    },
+    {
+      "id": "garment-legwear-tights-v1",
+      "source": "catalog",
+      "name": "Tights",
+      "garmentId": "legwear-tights-v1",
+      "folder": "screenshots/legwear-tights-v1",
+      "category": "Legwear",
+      "description": "Waist-to-toe tights or pantyhose. A layer: worn under skirts and shorts, never replacing them.",
+      "status": "not-captured",
+      "reason": "Catalog enumerated. Garment was not applied and no screenshot was taken.",
+      "previewStatus": "ready",
+      "poses": {
+        "standing": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingDesk": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingWide": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "sittingCrossed": {
+          "status": "not-captured",
+          "reason": "inventory-only; no browser capture"
+        },
+        "walking": {
+          "status": "unsupported",
+          "reason": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
+        }
+      }
+    }
+  ]
+}

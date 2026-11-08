@@ -42,3 +42,9 @@ tests/fixtures/protocol/
 # Quality Lab run data is written by tools/qa/lab-publish.mjs and checked by
 # tests/quality-lab.test.js; reformatting it would fight every publish.
 quality-lab/data/
+
+# Wardrobe audit evidence is what capture.py and print_matrix.py wrote on the day,
+# and the reports are compared byte for byte with later runs. Reformatting them
+# would change recorded evidence to please a style rule. The audit's prose docs
+# beside reports/ are still checked.
+audits/wardrobe_sitting_desk/reports/
