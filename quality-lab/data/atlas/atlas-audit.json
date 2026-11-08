@@ -36,22 +36,22 @@
         "planned": 0,
         "explorable": {
             "desktop": 30,
-            "mobile": 27,
-            "vr": 28
+            "mobile": 28,
+            "vr": 29
         },
         "publicZones": 26,
         "reachableFromHome": {
             "desktop": 26,
-            "mobile": 10,
-            "vr": 10
+            "mobile": 12,
+            "vr": 12
         },
         "gateways": {
             "desktop": [],
             "mobile": [
-                "airship-dock"
+                "walled-town"
             ],
             "vr": [
-                "airship-dock"
+                "walled-town"
             ]
         },
         "fails": 0
@@ -330,8 +330,8 @@
             "brief": null,
             "devices": {
                 "desktop": true,
-                "mobile": false,
-                "vr": false
+                "mobile": true,
+                "vr": true
             },
             "spots": 0,
             "preview": {
@@ -343,20 +343,10 @@
                 {
                     "severity": "warn",
                     "text": "airship-dock: no measured spots: she cannot move within this place (LW2)"
-                },
-                {
-                    "severity": "warn",
-                    "text": "airship-dock: not offered on mobile: 141396 triangles > 30000, no stand-in"
-                },
-                {
-                    "severity": "warn",
-                    "text": "airship-dock: not offered on vr: not in its tiers"
                 }
             ],
             "next": [
-                "airship-dock: no measured spots: she cannot move within this place (LW2)",
-                "airship-dock: not offered on mobile: 141396 triangles > 30000, no stand-in",
-                "airship-dock: not offered on vr: not in its tiers"
+                "airship-dock: no measured spots: she cannot move within this place (LW2)"
             ]
         },
         {

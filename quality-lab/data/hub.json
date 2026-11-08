@@ -20,14 +20,14 @@
             "humanReviews": 0
         },
         "3d": {
-            "worlds": 37,
+            "worlds": 38,
             "offered": {
                 "desktop": 30,
-                "mobile": 27,
-                "vr": 28
+                "mobile": 28,
+                "vr": 29
             },
             "fails": 0,
-            "warns": 10
+            "warns": 8
         },
         "atlas": {
             "zones": 30,
@@ -35,8 +35,8 @@
             "planned": 0,
             "walkableFromHome": {
                 "desktop": 26,
-                "mobile": 10,
-                "vr": 10
+                "mobile": 12,
+                "vr": 12
             },
             "publicZones": 26
         }
@@ -66,11 +66,11 @@
             ]
         },
         {
-            "id": "3d-gateway-airship-dock",
+            "id": "3d-gateway-walled-town",
             "area": "3d",
             "priority": 1,
-            "title": "Make airship-dock load on mobile and vr",
-            "why": "It is the only way from home to the rest of the map on mobile/vr: 10/26 zones walkable on mobile, 10/26 zones walkable on vr. 141,396 triangles; 141396 triangles > 30000, no stand-in; not in its tiers.",
+            "title": "Make walled-town load on mobile and vr",
+            "why": "It is the only way from home to the rest of the map on mobile/vr: 12/26 zones walkable on mobile, 12/26 zones walkable on vr. 224,939 triangles; 224939 triangles > 30000, no stand-in; not in its tiers.",
             "command": "node tools/vr/subset-scene.mjs  (recipe in tools/vr/playground-subsets.json), then add the tier in worlds.json",
             "files": [
                 "assets/vr-worlds/worlds.json",

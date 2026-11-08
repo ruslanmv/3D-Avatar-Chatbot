@@ -12,11 +12,11 @@ its code merges.
 
 | Figure | Value | Source |
 | --- | --- | --- |
-| Worlds in the catalogue | 37 (14 places, 7 phone stand-ins) | 3D audit |
+| Worlds in the catalogue | 38 (14 places, 8 phone stand-ins) | 3D audit |
 | Zones on the map | 30 in 5 regions, 26 public | atlas audit |
-| Offered on desktop / mobile / VR | 30 / 27 / 28 worlds | 3D audit |
-| Walkable from home on desktop / mobile / VR | 26 / 10 / 10 of 26 public zones | atlas audit |
-| The one gateway cutting mobile and VR | `airship-dock` (141 396 triangles, desktop tier only) | atlas audit |
+| Offered on desktop / mobile / VR | 30 / 28 / 29 worlds | 3D audit |
+| Walkable from home on desktop / mobile / VR | 26 / 12 / 12 of 26 public zones | atlas audit |
+| The one gateway cutting mobile and VR | `walled-town` (224 939 triangles, no stand-in); `airship-dock` closed by `airship-dock-light` (29 140) | atlas audit |
 | Places with a scene but no measured spots | 8 | 3D audit |
 
 What exists today (W0): separate places loaded one at a time with a fade, travel only when the person
@@ -29,7 +29,7 @@ under a 30 000-triangle budget (VW2), comfort rules for VR props, private rooms 
 | Phase | What it adds | Gate (measured by the lab) | Status |
 | --- | --- | --- | --- |
 | **W1 Atlas and zone pipeline** | The map as data (`atlas.json`), zones from a brief (`new-zone.mjs`), readiness computed from the 3D audit, ranked next actions (`hub.json`) | atlas audit 0 failures; every shipped zone resolves to catalogue worlds | **done (AX11)** |
-| **W2 One map on every device** | Close the gateways: a light stand-in and VR tier for `airship-dock`; spots for the 8 places without them | walkable from home = public zones on desktop, mobile **and** VR; places without spots = 0 | open |
+| **W2 One map on every device** | Close the gateways: a light stand-in and VR tier for `airship-dock` (done, VW4) and `walled-town`; spots for the 8 places without them | walkable from home = public zones on desktop, mobile **and** VR; places without spots = 0 | open |
 | **W3 Links in the runtime** | Her travel offers follow atlas links (a neighbour first, "a door to …" anchors in a place); a far zone stays a proposal | a test that her `<go place/>` offer is a linked zone; AI lab scenario "where can we go from here?" recalls neighbours | open |
 | **W4 Bigger zones** | A zone made of several scenes loaded in chunks, with level of detail, inside today's three r147 and no-build constraints | per-device frame time from a device report (Quest, mid-range phone), never from headless Chromium | open, needs device runs |
 | **W5 Your world remembers** | What you discovered and where you left her, per person, stored locally and forgotten by Clear (`ConversationReset`) | a persistence test plus the Clear test; no network | open |

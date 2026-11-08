@@ -10,16 +10,16 @@
         ]
     },
     "summary": {
-        "worlds": 37,
+        "worlds": 38,
         "places": 14,
-        "standIns": 7,
+        "standIns": 8,
         "withSpots": 5,
         "fails": 0,
-        "warns": 10,
+        "warns": 8,
         "offered": {
             "desktop": 30,
-            "mobile": 27,
-            "vr": 28
+            "mobile": 28,
+            "vr": 29
         },
         "catalogueProblems": 0,
         "mobileTriangleBudget": 30000
@@ -985,7 +985,7 @@
             "category": "Fantasy",
             "activities": [],
             "lightFor": null,
-            "standIn": null,
+            "standIn": "airship-dock-light",
             "triangles": 141396,
             "look": "assembled scene",
             "scene": {
@@ -1009,30 +1009,62 @@
                     "why": "loads itself"
                 },
                 "mobile": {
-                    "ok": false,
-                    "shows": null,
-                    "why": "141396 triangles > 30000, no stand-in"
+                    "ok": true,
+                    "shows": "airship-dock-light",
+                    "why": "loads its light stand-in airship-dock-light"
                 },
                 "vr": {
-                    "ok": false,
-                    "shows": null,
-                    "why": "not in its tiers"
+                    "ok": true,
+                    "shows": "airship-dock-light",
+                    "why": "loads its light stand-in airship-dock-light"
                 }
             },
             "issues": [
                 {
                     "severity": "warn",
                     "text": "no measured spots: she cannot move within this place (LW2)"
-                },
-                {
-                    "severity": "warn",
-                    "text": "not offered on mobile: 141396 triangles > 30000, no stand-in"
-                },
-                {
-                    "severity": "warn",
-                    "text": "not offered on vr: not in its tiers"
                 }
             ]
+        },
+        {
+            "id": "airship-dock-light",
+            "title": "Airship dock",
+            "kind": "stand-in",
+            "rating": "general",
+            "category": null,
+            "activities": [],
+            "lightFor": "airship-dock",
+            "standIn": null,
+            "triangles": 29140,
+            "look": "assembled scene",
+            "scene": {
+                "src": "scenes/airship-dock-light.glb",
+                "exists": true,
+                "bytes": 1043044
+            },
+            "preview": null,
+            "props": 0,
+            "spots": null,
+            "template": null,
+            "privateConfig": null,
+            "devices": {
+                "desktop": {
+                    "ok": false,
+                    "shows": null,
+                    "why": "not a tier of this stand-in"
+                },
+                "mobile": {
+                    "ok": true,
+                    "shows": "airship-dock-light",
+                    "why": "stand-in for airship-dock"
+                },
+                "vr": {
+                    "ok": true,
+                    "shows": "airship-dock-light",
+                    "why": "stand-in for airship-dock"
+                }
+            },
+            "issues": []
         },
         {
             "id": "neon-street",
