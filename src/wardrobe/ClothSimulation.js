@@ -21,15 +21,17 @@
         }
         return {
             asset: asset,
-            x: new Float32Array(asset.positions),
+            x: new Float32Array(options.initial || asset.positions),
             v: new Float32Array(count * 3),
-            previous: new Float32Array(asset.positions),
+            previous: new Float32Array(options.initial || asset.positions),
             inv: inverse,
             rest: new Float32Array(asset.positions),
             substeps: options.substeps || 4,
             iterations: options.iterations || 4,
             sleeping: false,
             frames: 0,
+            hemMask: options.hemMask || null,
+            centreHemMask: options.centreHemMask || null,
         };
     }
 
@@ -154,6 +156,12 @@
                 solvePairs(state, state.asset.bend, stepDt, options.bendCompliance || 1e-4);
                 if (collide && options.capsules && options.capsules.length) {
                     moved += collide(state, options.capsules, options.thickness || 0.001);
+                    if (Body && Body.collideLap) {
+                        moved += Body.collideLap(state, options.capsules, state.hemMask, options.thickness);
+                    }
+                }
+                if (Body && Body.clearBriefs && options.brief) {
+                    moved += Body.clearBriefs(state, options.brief, state.centreHemMask, options.briefGap);
                 }
             }
             var invDt = 1 / stepDt;
