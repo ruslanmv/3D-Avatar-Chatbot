@@ -6,16 +6,34 @@ change.
 
 ## Start a session here
 
-1. **Read `quality-lab/data/hub.json`** (or call the `nexus-quality-lab` MCP
-   tool `lab_next_actions`): ranked work, each item with why, command and files.
-   The SessionStart hook prints the top three.
+**One command: `/nexus-start [ai|3d|atlas] [goal]`** — it checks the setup,
+takes the top lab action for the area, measures before and after, commits and
+reports. The steps it follows:
+
+1. **Read `quality-lab/data/hub.json`** (or the `nexus-quality-lab` MCP tool
+   `lab_next_actions`): ranked work, each item with why, command and files. The
+   SessionStart hook prints the top three.
 2. **One measurable goal per session.** Plan first when it touches several
    files. `/clear` between unrelated tasks.
 3. **Load only the feature you touch**: the map below names its file in
    `docs/claude/`. Read it before changing that feature.
 4. **Measure, change one thing, measure again**, then `npm run validate` and
-   commit code with any regenerated lab data. Slash commands: `/lab-next`,
-   `/lab-check`, `/new-zone`.
+   commit code with any regenerated lab data. Slash commands: `/nexus-start`,
+   `/lab-next`, `/lab-check`, `/new-zone`.
+
+**Cloud sessions: attach only this repository.** Per the Claude Code docs
+(code.claude.com/docs/en/settings.md ▸ Settings in cloud sessions, and
+cloud-environments.md ▸ What carries over), a session with one repository starts
+inside the clone and loads its `.claude/settings.json` (the hook, and
+`enabledMcpjsonServers`) and `.mcp.json`; a session with several repositories
+starts above the clones and reads neither. The VW4 test session started in
+`/home/user` for that reason. If it happens anyway, `/nexus-start` falls back:
+`cd` into the repo, run `./.claude/hooks/session-start.sh` by hand, and call any
+lab tool with `node tools/qa/lab-call.mjs <tool> '<json>'`.
+
+**Node 24.** Cloud containers ship `/opt/node24` but put Node 22 on PATH; the
+hook puts 24 first for the session (through `$CLAUDE_ENV_FILE`). On Node 22 the
+gate still passes, with an `EBADENGINE` warning from `npm ci`.
 
 ## What this is
 
@@ -142,7 +160,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-08 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **6125 tests in 279 suites, all passing.**
+— lint clean, format clean, **6131 tests in 279 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -275,23 +293,23 @@ Each feature's full notes moved verbatim to `docs/claude/`. The rules below are
 the ones that break things when missed; read the file before changing the
 feature, and fix it there if it is wrong.
 
-| Feature                                           | Rules you must not miss                                                                                                                                                                                                      | Notes                                             |
-| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| Quality Lab (AX7–AX13)                            | Read `hub.json` first; never hand-edit lab data — regenerate with `tools/qa/` (`world-audit.mjs`, `hub.mjs`, `lab-publish.mjs --rescore-all`); MCP server in `.mcp.json` stays dependency-free                               | `quality-lab/README.md`                           |
-| Adult experience, Private presentation            | Intensity is only ConsentFlow's, moved by the person; ceiling only narrows; care mode is never configurable; client checks are not authorization                                                                             | `docs/claude/adult-experience-and-quality-lab.md` |
-| Private World (PW)                                | Off in every build; the avatar's adult declaration is never stood in for by private mode; Private's turns are read from the conversation surface, not `chatHistory`                                                          | `docs/claude/private-world.md`                    |
-| Ambience (A0–A21)                                 | Three prompt-assembly sites (`_handleStreamingResponse`, `callLLM`, `__nexusMediaSuffix`); `src/gltf-viewer/ambience/` loads from `index.html`, not `boot.js`; `camera-contract.json` is generated; default crop is centred  | `docs/claude/ambience.md`                         |
-| Life, Copilot, Experiences, Together (IC, TG, DX) | Together is the only way in; one quiet line per change, never stored; no backticks in a CSS comment inside a template literal                                                                                                | `docs/claude/life-copilot-experiences.md`         |
-| VR worlds and playgrounds (VW, PG)                | Plain VR stays black; place activity ids use a dash; private worlds only at the `intimate` owner's request; comfort rules enforced; every world declares measured `triangles`                                                | `docs/claude/vr-worlds-and-playgrounds.md`        |
-| Living Worlds (LW)                                | Spots are measured, never typed — re-measure when a model changes; another place waits for the person's yes                                                                                                                  | `docs/claude/living-worlds.md`                    |
-| World engine docs                                 | Start at `docs/engine/AI_CODER_START_HERE.md`; change a cited function or path and update the doc in the same commit                                                                                                         | `docs/claude/world-engine-docs.md`                |
-| Wardrobe / Try-On (W, LT, WF, FC, SW)             | `vendor/wardrobe/` changes only via `npm run wardrobe:import`; the controller is the only avatar swapper; the thirty `<script>` tags stay at the end of `<body>` (parity harness); never rebuild the service to switch Forge | `docs/claude/wardrobe.md`                         |
-| Speech-to-text (ST)                               | Construct recognizers only through `NEXUS_STT.recognitionClass()`; on-device chosen but impossible is an error, never a cloud fallback                                                                                       | `docs/claude/speech-to-text.md`                   |
-| SonicAgent voice (HV)                             | Never a silent fallback; consent only from the person's tick; a failure is session-only, never written to storage                                                                                                            | `docs/claude/sonicagent-voice.md`                 |
-| Speech engines, Quest voice (Q1–Q7)               | Stored vs active engine; the Quest switch is off by default and never writes `tts_engine`; Piper never synthesizes on the main thread                                                                                        | `docs/claude/speech-engines-quest-voice.md`       |
-| Page in Quest Browser (Q8–Q9)                     | Looks exactly like desktop Chrome; edit the icon SVGs, never the PNGs                                                                                                                                                        | `docs/claude/quest-browser-page.md`               |
-| Entering VR from a PC (XL1–XL7)                   | Never call `renderer.setAnimationLoop` — use `_setLoop`; every per-frame call in `animate()` in its own `try`                                                                                                                | `docs/claude/vr-entry-from-pc.md`                 |
-| Quest passthrough (XP)                            | Quest VR black, phone AR keeps its background — do not widen without asking; no VR floor grid in AR                                                                                                                          | `docs/claude/quest-passthrough.md`                |
-| Phone AR conversation (AR)                        | Drive voice only through CompanionMode's public API; the pipeline draws every turn once                                                                                                                                      | `docs/claude/phone-ar-conversation.md`            |
-| VR puppet (VP)                                    | Anything that poses her in VR calls `vrPoseSystem.claimBones()` first; release writes the snapshot back                                                                                                                      | `docs/claude/vr-puppet.md`                        |
-| VRoid Hub library (V)                             | Keep both proxies' action lists in step; a pasted link is a lookup, not a search                                                                                                                                             | `docs/claude/vroid-hub.md`                        |
+| Feature                                           | Rules you must not miss                                                                                                                                                                                                           | Notes                                             |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Quality Lab (AX7–AX15)                            | Read `hub.json` first; never hand-edit lab data — regenerate with `tools/qa/` (`world-audit.mjs`, `hub.mjs`, `lab-publish.mjs --rescore-all`); the MCP server stays dependency-free (Playwright only lazily, in `lab_screenshot`) | `quality-lab/README.md`                           |
+| Adult experience, Private presentation            | Intensity is only ConsentFlow's, moved by the person; ceiling only narrows; care mode is never configurable; client checks are not authorization                                                                                  | `docs/claude/adult-experience-and-quality-lab.md` |
+| Private World (PW)                                | Off in every build; the avatar's adult declaration is never stood in for by private mode; Private's turns are read from the conversation surface, not `chatHistory`                                                               | `docs/claude/private-world.md`                    |
+| Ambience (A0–A21)                                 | Three prompt-assembly sites (`_handleStreamingResponse`, `callLLM`, `__nexusMediaSuffix`); `src/gltf-viewer/ambience/` loads from `index.html`, not `boot.js`; `camera-contract.json` is generated; default crop is centred       | `docs/claude/ambience.md`                         |
+| Life, Copilot, Experiences, Together (IC, TG, DX) | Together is the only way in; one quiet line per change, never stored; no backticks in a CSS comment inside a template literal                                                                                                     | `docs/claude/life-copilot-experiences.md`         |
+| VR worlds and playgrounds (VW, PG)                | Plain VR stays black; place activity ids use a dash; private worlds only at the `intimate` owner's request; comfort rules enforced; every world declares measured `triangles`                                                     | `docs/claude/vr-worlds-and-playgrounds.md`        |
+| Living Worlds (LW)                                | Spots are measured, never typed — re-measure when a model changes; another place waits for the person's yes                                                                                                                       | `docs/claude/living-worlds.md`                    |
+| World engine docs                                 | Start at `docs/engine/AI_CODER_START_HERE.md`; change a cited function or path and update the doc in the same commit                                                                                                              | `docs/claude/world-engine-docs.md`                |
+| Wardrobe / Try-On (W, LT, WF, FC, SW)             | `vendor/wardrobe/` changes only via `npm run wardrobe:import`; the controller is the only avatar swapper; the thirty `<script>` tags stay at the end of `<body>` (parity harness); never rebuild the service to switch Forge      | `docs/claude/wardrobe.md`                         |
+| Speech-to-text (ST)                               | Construct recognizers only through `NEXUS_STT.recognitionClass()`; on-device chosen but impossible is an error, never a cloud fallback                                                                                            | `docs/claude/speech-to-text.md`                   |
+| SonicAgent voice (HV)                             | Never a silent fallback; consent only from the person's tick; a failure is session-only, never written to storage                                                                                                                 | `docs/claude/sonicagent-voice.md`                 |
+| Speech engines, Quest voice (Q1–Q7)               | Stored vs active engine; the Quest switch is off by default and never writes `tts_engine`; Piper never synthesizes on the main thread                                                                                             | `docs/claude/speech-engines-quest-voice.md`       |
+| Page in Quest Browser (Q8–Q9)                     | Looks exactly like desktop Chrome; edit the icon SVGs, never the PNGs                                                                                                                                                             | `docs/claude/quest-browser-page.md`               |
+| Entering VR from a PC (XL1–XL7)                   | Never call `renderer.setAnimationLoop` — use `_setLoop`; every per-frame call in `animate()` in its own `try`                                                                                                                     | `docs/claude/vr-entry-from-pc.md`                 |
+| Quest passthrough (XP)                            | Quest VR black, phone AR keeps its background — do not widen without asking; no VR floor grid in AR                                                                                                                               | `docs/claude/quest-passthrough.md`                |
+| Phone AR conversation (AR)                        | Drive voice only through CompanionMode's public API; the pipeline draws every turn once                                                                                                                                           | `docs/claude/phone-ar-conversation.md`            |
+| VR puppet (VP)                                    | Anything that poses her in VR calls `vrPoseSystem.claimBones()` first; release writes the snapshot back                                                                                                                           | `docs/claude/vr-puppet.md`                        |
+| VRoid Hub library (V)                             | Keep both proxies' action lists in step; a pasted link is a lookup, not a search                                                                                                                                                  | `docs/claude/vroid-hub.md`                        |

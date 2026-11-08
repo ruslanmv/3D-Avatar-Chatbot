@@ -125,3 +125,14 @@ KayKit) and retinted light. `src/gltf-viewer/VRWorlds.js` (IIFE, imported by
   two-column card grid (`.is-venues`, 4:3 art box). Together's stylesheet must
   stay in the `nexus-bd-together` namespace — a test enforces it.
   `tests/place-previews.test.js`.
+- **Edit `worlds.json` as text, never by `JSON.parse` and `JSON.stringify`
+  (AX15).** A parse-and-write rewrites numbers (`1.0` becomes `1` on ~30 lines)
+  and reflows every array, which buries the real change in the diff (VW4).
+  Insert the new entry with an editor or a text replacement, then run
+  `node tools/qa/world-audit.mjs` to check it.
+- **Look before you cut (AX15).** `node tools/vr/subset-scene.mjs --list
+  <recipe|scenes/x.glb>` prints every top-level node with its triangles, its
+  distance from her spot (the world's `at`/`turn` applied) and a running total;
+  `lab_screenshot` (MCP, or `node tools/qa/lab-call.mjs lab_screenshot
+  '{"world":"<id>"}'`) shows what desktop and a phone really load —
+  `?vrWorld=` now resolves a place to its stand-in on a phone.

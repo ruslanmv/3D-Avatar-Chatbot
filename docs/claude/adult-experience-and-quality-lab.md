@@ -88,3 +88,12 @@ TogetherCapability) owns style data and capability resolution;
   the same generators: status, next actions, worlds, one world, atlas, score a
   reply, recorded replies, new zone (dry run by default), regenerate, check.
   Stdout is protocol only; a test drives it end to end.
+- **AX15: `lab_screenshot` and `lab-call.mjs`.** The eleventh tool shows a world
+  on desktop (1280×800) and a Pixel 7 inline, with requested → expected
+  (`resolveFor` at the page's tier) → shown ids; one Chromium and warm pages are
+  reused, nexus-proxy is started on a free port only if nothing answers, and it
+  writes only `tmp/shots/`. Playwright is required lazily inside it, so the
+  server still starts without it. Page driving is shared with
+  `render-place-previews.mjs` in `tools/vr/page-driver.mjs`.
+  `node tools/qa/lab-call.mjs <tool> '<json>'` calls any tool from a shell when
+  the server is not loaded. Tool calls are async: answers are matched by id.

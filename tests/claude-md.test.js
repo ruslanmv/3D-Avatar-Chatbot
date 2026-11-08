@@ -27,7 +27,7 @@ describe('CLAUDE.md stays a short, accurate entry point', () => {
         const hook = path.join(ROOT, cmd.replace('$CLAUDE_PROJECT_DIR/', ''));
         expect(fs.existsSync(hook)).toBe(true);
         expect(fs.statSync(hook).mode & 0o111).toBeTruthy();
-        for (const c of ['lab-next', 'lab-check', 'new-zone']) {
+        for (const c of ['nexus-start', 'lab-next', 'lab-check', 'new-zone']) {
             expect(claude).toContain('/' + c);
             expect(fs.existsSync(path.join(ROOT, '.claude', 'commands', c + '.md'))).toBe(true);
         }

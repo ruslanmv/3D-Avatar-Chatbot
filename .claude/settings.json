@@ -10,5 +10,6 @@
         ]
       }
     ]
-  }
+  },
+  "enabledMcpjsonServers": ["nexus-quality-lab"]
 }
