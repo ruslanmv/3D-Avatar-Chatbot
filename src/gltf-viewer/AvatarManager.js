@@ -5,6 +5,7 @@
  */
 
 import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
+import '../wardrobe/XpbdSkirtPilot.js';
 
 export class AvatarManager {
     constructor({ scene, loader, camera, renderer }) {
@@ -478,7 +479,17 @@ export class AvatarManager {
             // Optimize VRM if utilities available
             if (vrm && window.THREE_VRM?.VRMUtils) {
                 try {
-                    window.THREE_VRM.VRMUtils.removeUnnecessaryVertices(vrm.scene);
+                    const compact = (scene) => window.THREE_VRM.VRMUtils.removeUnnecessaryVertices(scene);
+                    // M1. Under a cloth flag, a mesh carrying wardrobe.cloth/1 keeps the
+                    // file vertex order its WCL1 binding addresses. The default page
+                    // (no flag) compacts exactly as before.
+                    const clothFlag = new URLSearchParams(window.location.search).get('cloth');
+                    const pilot = window.NEXUS_XPBD_SKIRT_PILOT;
+                    if (clothFlag && clothFlag !== 'off' && pilot?.compactExceptCloth) {
+                        pilot.compactExceptCloth(vrm.scene, compact);
+                    } else {
+                        compact(vrm.scene);
+                    }
                     window.THREE_VRM.VRMUtils.removeUnnecessaryJoints(vrm.scene);
                 } catch (_) {}
             }

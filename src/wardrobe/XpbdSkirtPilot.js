@@ -127,7 +127,53 @@
         return Number.isFinite(minY) ? { minY: minY } : null;
     }
 
+    // M1. three-vrm's removeUnnecessaryVertices rebuilds every indexed mesh
+    // with its vertices renumbered in order of first use in the index buffer,
+    // even when no vertex is unused. A WCL1 binding addresses the file's own
+    // vertex order, so after that pass the solver wrote particle i onto the
+    // wrong render vertex: the standing A-line opened at the waist at 9.29x
+    // edge stretch (docs/physics/CURRENT_STATE_AUDIT.md 3.1). No backend can
+    // repair a binding that names the wrong vertex, so the fix is upstream of
+    // every solver: a mesh that carries wardrobe.cloth/1 is lifted out of the
+    // scene while the compaction runs and put back at the same child index.
+    // The body, hair and every other mesh are still compacted as before.
+    function carriesClothAsset(node) {
+        for (var walk = node; walk; walk = walk.parent) {
+            var forge = walk.userData && walk.userData.wardrobeForge;
+            var asset = forge && forge.clothAsset;
+            if (asset && asset.schema === 'wardrobe.cloth/1') return true;
+        }
+        return false;
+    }
+
+    function compactExceptCloth(root, compact) {
+        var held = [];
+        root.traverse(function (node) {
+            if (!node.isMesh || !node.parent || !carriesClothAsset(node)) return;
+            held.push({ node: node, parent: node.parent, index: node.parent.children.indexOf(node) });
+        });
+        // Detach after the traverse, so the walk never sees a list it is editing,
+        // and last first: two cloth meshes can share a parent, and taking out the
+        // earlier one first would shift the index recorded for the later one.
+        for (var d = held.length - 1; d >= 0; d -= 1) {
+            held[d].parent.children.splice(held[d].index, 1);
+            held[d].node.parent = null;
+        }
+        try {
+            compact(root);
+        } finally {
+            // First first, so every earlier sibling is back when an index is used.
+            for (var r = 0; r < held.length; r += 1) {
+                held[r].parent.children.splice(held[r].index, 0, held[r].node);
+                held[r].node.parent = held[r].parent;
+            }
+        }
+        return held.length;
+    }
+
     return {
+        carriesClothAsset: carriesClothAsset,
+        compactExceptCloth: compactExceptCloth,
         eligible: eligible,
         initialParticles: initialParticles,
         hemMasks: hemMasks,
