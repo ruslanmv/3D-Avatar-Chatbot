@@ -547,11 +547,20 @@
         } catch (_) {}
     }
 
+    /**
+     * AX7. "Clear" means settle to the face of record: a Private session's resting warmth while
+     * one is active, otherwise neutral. This runs at every IDLE and every speech end, so clearing
+     * to neutral unconditionally wiped the session's expression after her first line — measured
+     * in the Character Quality Lab: `happy` 0 six seconds into a session that had applied 0.1.
+     */
     function _clearEmotion() {
         const vrmLoader = _getVRMLoader();
         if (!vrmLoader) return;
         try {
-            vrmLoader.setEmotion('neutral', 0);
+            const P = global.NEXUS_PRIVATE_PRESENTATION;
+            const rest = P && typeof P.restingExpression === 'function' ? P.restingExpression() : null;
+            if (rest) vrmLoader.setEmotion(rest.emotion, rest.intensity);
+            else vrmLoader.setEmotion('neutral', 0);
         } catch (_) {}
     }
 

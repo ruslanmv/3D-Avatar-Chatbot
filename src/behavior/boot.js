@@ -134,6 +134,13 @@
         // P13. Things you could say next, and the block they ride back in. Before
         // TogetherCapability, which parses it at the display seam.
         'src/features/together/PrivateChoices.js',
+        // AX1. Style, content capability and ceiling, kept apart. Before TogetherCapability,
+        // which builds Private's prompt from it, and the playground activity, which installs its
+        // ceiling.
+        'src/features/together/PrivateExperienceProfile.js',
+        // AX7. The style made visible and audible: voice pace, resting expression, the room's
+        // light. Before TogetherCapability, which applies it, and main.js's speech, which asks it.
+        'src/features/together/PrivatePresentation.js',
         // P20. What an evening needs, loaded before it starts. Before the Together panel and
         // the playground activity, which drive it from the wizard's third step.
         'src/features/together/PrivatePreflight.js',
@@ -272,6 +279,9 @@
         // PG3. Tap/hover/ray picking of a venue's anchors; dispatches requests the context checks.
         'src/experiences/playgrounds/PlaygroundObjectPicker.js',
         'src/experiences/playgrounds/PlaygroundReactiveContext.js',
+        'src/features/together/AvatarAdultDeclaration.js',
+        'src/companion/WorldPresence.js',
+        'src/experiences/private/PrivateWorldAdapter.js',
         'src/companion/index.js',
     ];
 

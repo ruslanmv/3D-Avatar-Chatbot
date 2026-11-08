@@ -87,6 +87,8 @@ const BehaviorEventBus = (() => {
         'private:session-start',
         'private:session-ending',
         'private:session-stop',
+        // AX6. The person's own words suggested they may be in danger; the session is in care mode.
+        'private:care',
         'private:session-complete',
         'private:user-turn',
         'private:mood',

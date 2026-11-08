@@ -1,0 +1,17 @@
+{
+    "schema": 1,
+    "runs": [
+        {
+            "id": "2026-11-08-ax8-matrix",
+            "date": "2026-11-08T07:28Z",
+            "label": "AX8 matrix: free-best, free-fast, free-flex × EN, IT",
+            "file": "runs/2026-11-08-ax8-matrix.json"
+        },
+        {
+            "id": "2026-11-08-before-face-fix",
+            "date": "2026-11-08T07:20Z",
+            "label": "free-best EN, before the AX7 resting-face fix",
+            "file": "runs/2026-11-08-before-face-fix.json"
+        }
+    ]
+}

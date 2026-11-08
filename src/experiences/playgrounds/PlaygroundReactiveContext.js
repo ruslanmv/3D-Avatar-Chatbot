@@ -162,9 +162,11 @@
      */
     function maskStreaming(text) {
         const src = String(text == null ? '' : text);
-        const i = src.search(/<\s*gesture\b/i);
+        // LW3. main.js masks streamed text through this one function, so Living Worlds' <go …/>
+        // is hidden here too (WorldPresence owns the tag; this only keeps it off the screen).
+        const i = src.search(/<\s*(?:gesture|go)\b/i);
         if (i !== -1) return src.slice(0, i).replace(/\s+$/, '');
-        const tail = src.match(/<\s*(?:g(?:e(?:s(?:t(?:u(?:r(?:e)?)?)?)?)?)?)?$/i);
+        const tail = src.match(/<\s*(?:g(?:o|e(?:s(?:t(?:u(?:r(?:e)?)?)?)?)?)?)?$/i);
         return tail ? src.slice(0, tail.index).replace(/\s+$/, '') : src;
     }
 

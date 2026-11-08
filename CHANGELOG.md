@@ -3,6 +3,21 @@
 Notable changes, newest first. Batches are named as in the code comments and
 commit subjects (`CLAUDE.md` ▸ Conventions).
 
+## Living Worlds: one place, moved within, left only by yes (LW1–LW5)
+
+- **The apartment**: a connected flat with a living room, kitchen, bedroom,
+  bathroom and balcony, on phones too. Say "andiamo in cucina" and you both move
+  there, without the world reloading.
+- **Eight measured spots**, each checked so she stands on real floor, out of the
+  furniture, and the screen can see her.
+- **Another place asks first.** "Andiamo in discoteca?" gets a question; only
+  your "sì" takes you there, and she says you've arrived only once you have.
+- **Relaxing, a story or focus happen right where you are.** The background no
+  longer jumps to a meadow because of a reply.
+- **She knows what's really there** (the blanket on the sofa, the dog by the
+  record player) and says plainly what she can't do yet: sit, lie down or hand
+  you things.
+
 ## SonicAgent wakes up instead of failing (SW1)
 
 - When the speech service has been asleep, the app wakes it and waits up to 75

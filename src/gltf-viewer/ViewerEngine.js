@@ -34,6 +34,7 @@ import './XRSplash.js';
 // XL4. Same pattern: publishes window.NEXUS_XR_ENTRY_TRACE (every step of entering VR, recorded).
 import './XREntryTrace.js';
 // VW1. Same pattern: publishes window.NEXUS_VR_WORLDS (places for VR: panorama, props, light).
+import './WorldSpots.js';
 import './VRWorlds.js';
 
 export class ViewerEngine {
@@ -2285,7 +2286,12 @@ export class ViewerEngine {
         preview = preview || this._vrWorldPreview || null;
         const xr = !!this.renderer.xr.isPresenting;
         const tier = worlds.tierFor({ xr, mobile: document.documentElement.classList.contains('is-mobile') });
-        let id = preview;
+        // AX15. The preview resolves like a person's request on this device: on a phone a heavy
+        // place shows its light stand-in (resolveFor), exactly as Visit a place would. It used to
+        // load the id as given, so `?vrWorld=airship-dock` on a phone drew the 141K desktop scene
+        // and a check of "what a phone sees" was wrong. Asked for by exact id (a stand-in, or a
+        // world with no version for this tier), it still shows that id: it is a checking tool.
+        let id = preview ? worlds.resolveFor(catalogue.worlds, preview, tier, true) || preview : null;
         if (!id) {
             let activity = null;
             try {
@@ -2413,6 +2419,27 @@ export class ViewerEngine {
             this._applyVRWorld();
         };
         window.addEventListener('nexus-world-request', onRequest);
+        // LW3. A spot in a small room is measured for CameraPresets' 'mid' or 'bust' framing (the full-body
+        // camera would be behind a wall). Applied while the spot change has the view black, on a
+        // screen only — in a headset the person is the camera and nothing here moves it.
+        const onFraming = (event) => {
+            const detail = (event && event.detail) || {};
+            const presets = window.NEXUS_CAMERA_PRESETS;
+            if (this.renderer.xr.isPresenting || !presets || typeof presets.transitionTo !== 'function') return;
+            try {
+                const el = this.renderer.domElement;
+                const screen = window.NEXUS_VR_WORLDS?.framingFor(el.clientWidth, el.clientHeight);
+                const spot = detail.framing === 'bust' || detail.framing === 'mid' ? detail.framing : 'fullBody';
+                // The closer of the two wins: the spot's room, or a wide short screen (framingFor).
+                const order = ['fullBody', 'mid', 'bust'];
+                const want = order.indexOf(screen) > order.indexOf(spot) ? screen : spot;
+                presets.transitionTo(want, 1);
+                this._worldFramed = want !== 'fullBody' || this._worldFramed;
+            } catch (_) {
+                /* framing is a nicety */
+            }
+        };
+        window.addEventListener('nexus-world-framing', onFraming);
         // PG1. A playground's mood: a light for the world that is up, or null for its own.
         const onMood = (event) => {
             const detail = (event && event.detail) || {};
@@ -2440,6 +2467,7 @@ export class ViewerEngine {
             window.removeEventListener('nexus-vr-world-change', onSetting);
             window.removeEventListener('nexus-world-request', onRequest);
             window.removeEventListener('nexus-world-mood', onMood);
+            window.removeEventListener('nexus-world-framing', onFraming);
             if (typeof offSession === 'function') offSession();
         };
     }

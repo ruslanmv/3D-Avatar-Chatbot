@@ -43,8 +43,29 @@ const ActivityDirective = (() => {
         return { call: { name, minutes }, clean };
     }
 
-    function systemPromptSuffix(enabled) {
+    /** A chosen place is spatial presence, not an activity that a reply may replace. */
+    function isPlaceActive(session) {
+        return Boolean(
+            session &&
+                typeof session.active === 'function' &&
+                session.active() &&
+                typeof session.activity === 'function' &&
+                /^place-[a-z0-9-]+$/.test(String(session.activity() || ''))
+        );
+    }
+
+    function systemPromptSuffix(enabled, placeActive = false) {
         if (!enabled) return '';
+        if (placeActive) {
+            // LW4. Inside a place the same tags mean "here": never a different world.
+            return (
+                '\n\nYou are both in a place the person chose, and it stays until they leave it. When they ' +
+                'ask for it or clearly agree, you can change how you are together right here by ending your ' +
+                'reply with one tag: <activity name="relax"/> (quiet company), <activity name="story"/> (a ' +
+                'short story set in this very place) or <activity name="focus"/> (they want to concentrate). ' +
+                'These never change the place. Only one tag; leaving is their End button.'
+            );
+        }
         return (
             '\n\nWhen the person asks for it or clearly agrees, you can start an activity with them by ' +
             'ending your reply with one tag: <activity name="relax"/> (quiet company, no topic), ' +
@@ -64,6 +85,19 @@ const ActivityDirective = (() => {
         if (!call) return { ok: false, why: 'no-call' };
         if (d.enabled && !d.enabled()) return { ok: false, why: 'together-off' };
         const session = d.session;
+        // LW1: an assistant-suggested context change must not silently replace a user-chosen
+        // environment. Until in-place activities and verified user intent are implemented,
+        // refuse model activity tags (including End) rather than allow an unrequested exit.
+        // The existing user-controlled End button still ends a place normally.
+        if (isPlaceActive(session)) {
+            // LW4. Relax, focus and story happen HERE: her manner changes, the world does not.
+            // Seaside and End still never run from her reply while a place is up — End is the
+            // person's own button, and Seaside would replace the place.
+            if (['relax', 'focus', 'story'].includes(call.name) && typeof d.inPlace === 'function') {
+                return d.inPlace(call.name);
+            }
+            return { ok: false, why: 'place-active' };
+        }
         const panel = d.panel ? d.panel() : null;
         const enter = (destination, activity) => {
             if (session && typeof session.enter === 'function') {

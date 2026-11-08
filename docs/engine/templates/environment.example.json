@@ -1,0 +1,8 @@
+{
+    "_status": "EXISTS — environment fields live on the worlds.json entry (sky | panorama + yaw, fog, light, ground). Moods for venues live in PlaygroundMoodPresets. EXAMPLE values.",
+    "panorama": { "4k": "panoramas/venice_sunset_4k.jpg", "2k": "panoramas/venice_sunset_2k.jpg" },
+    "yaw": 90,
+    "fog": { "color": "#2e2630", "near": 10, "far": 34 },
+    "light": { "sky": "#e8d8ff", "ground": "#3a3040", "hemi": 0.75, "key": "#ffd2a8", "keyIntensity": 0.9, "fill": "#b8a8ff", "fillIntensity": 0.5, "rim": "#ffc8b0", "rimIntensity": 0.45, "exposure": 1 },
+    "ground": { "radius": 6, "color": "#3a4a30" }
+}

@@ -1,0 +1,17 @@
+{
+    "_status": "EXISTS — the authoring shape of one scene in tools/vr/spot-targets.json. It says what each spot is FOR, never where it is. Run `node tools/vr/measure-spots.mjs scenes/example-loft.glb` to measure it.",
+    "scenes/example-loft.glb": {
+        "title": { "en": "the loft", "it": "il loft" },
+        "spots": [
+            {
+                "id": "window-seat",
+                "label": { "en": "by the window seat", "it": "vicino alla seduta sotto la finestra" },
+                "room": "living-room",
+                "near": ["^012-window-seat$"],
+                "can": ["stand-near", "look-at"],
+                "sees": { "en": "the window seat and the city lights", "it": "la seduta sotto la finestra e le luci della città" },
+                "rating": "general"
+            }
+        ]
+    }
+}

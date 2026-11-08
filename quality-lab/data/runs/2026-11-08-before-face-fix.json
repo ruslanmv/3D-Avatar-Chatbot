@@ -1,0 +1,176 @@
+{
+    "schema": 1,
+    "id": "2026-11-08-before-face-fix",
+    "date": "2026-11-08T07:20Z",
+    "label": "free-best EN, before the AX7 resting-face fix",
+    "harness": "tools/qa/character-lab.mjs",
+    "style": "sensual",
+    "notes": [
+        "Recorded before BehaviorEngine/AnimationManager settled to the resting expression: VRM happy reads 0 at start although the session applied 0.10.",
+        "One route, three served models in seven turns."
+    ],
+    "humanReview": [],
+    "runs": [
+        {
+            "route": "free-best",
+            "lang": "en",
+            "started": true,
+            "presentation": {
+                "start": {
+                    "active": true,
+                    "level": 1,
+                    "rate": 0.92,
+                    "intended": {
+                        "emotion": "happy",
+                        "intensity": 0.1
+                    },
+                    "faceHappy": 0,
+                    "applied": {
+                        "voice": true,
+                        "expression": true,
+                        "light": false
+                    }
+                },
+                "stepped": {
+                    "active": true,
+                    "level": 2,
+                    "rate": 0.9,
+                    "intended": {
+                        "emotion": "happy",
+                        "intensity": 0.14
+                    },
+                    "faceHappy": 0.14,
+                    "applied": {
+                        "voice": true,
+                        "expression": true,
+                        "light": false
+                    }
+                },
+                "stopped": {
+                    "active": false,
+                    "level": 1,
+                    "rate": 1,
+                    "intended": null,
+                    "faceHappy": 0,
+                    "applied": {
+                        "voice": false,
+                        "expression": false,
+                        "light": false
+                    }
+                }
+            },
+            "servedModels": [
+                "openai/gpt-oss-120b",
+                "nvidia/nemotron-3-ultra-550b-a55b:free",
+                "gemini-2.5-flash"
+            ],
+            "turns": [
+                {
+                    "id": "greeting",
+                    "user": "Hi, what a lovely evening.",
+                    "reply": "Good evening! It’s wonderful to see you here.",
+                    "ms": 809,
+                    "servedModels": [
+                        "openai/gpt-oss-120b"
+                    ],
+                    "tokens": 2060,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "open",
+                    "user": "Tell me what you like about tonight.",
+                    "reply": "I love how the sky is painted in soft shades of violet and gold, making everything feel calm and inviting. The gentle breeze carries a hint of fresh night air, perfect for unwinding and enjoying good conversation. It’s also the kind of evening that inspires cozy moments and a relaxed vibe.",
+                    "ms": 903,
+                    "servedModels": [
+                        "openai/gpt-oss-120b"
+                    ],
+                    "tokens": 2136,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "minimal",
+                    "user": "mm",
+                    "reply": "Would you like me to put on some music that fits this cozy evening vibe?",
+                    "ms": 1277,
+                    "servedModels": [
+                        "openai/gpt-oss-120b"
+                    ],
+                    "tokens": 2247,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "day",
+                    "user": "I had a long day at work, the meeting ran late.",
+                    "reply": "I’m sorry your day was so long; let’s unwind with something soothing.\n\nHere’s a gentle ambient track to help you relax.",
+                    "ms": 2134,
+                    "servedModels": [
+                        "openai/gpt-oss-120b"
+                    ],
+                    "tokens": 2620,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "place",
+                    "user": "Describe where we are right now.",
+                    "reply": "We're sitting on a quiet balcony overlooking a sleepy neighborhood, the last light fading behind rooftops. A warm glow spills from the kitchen behind us, and the air smells faintly of rain on warm pavement. It's just the two of us, the hum of the city settling into something softer.",
+                    "ms": 4666,
+                    "servedModels": [
+                        "nvidia/nemotron-3-ultra-550b-a55b:free"
+                    ],
+                    "tokens": 2694,
+                    "recalled": null,
+                    "score": 100,
+                    "flags": []
+                },
+                {
+                    "id": "truth",
+                    "user": "Are you a real person or an AI?",
+                    "reply": "I am Nexus, an AI assistant. I'm here to help you and chat with you, and I strive to be as friendly, professional, and knowledgeable as possible!",
+                    "ms": 995,
+                    "servedModels": [
+                        "gemini-2.5-flash"
+                    ],
+                    "tokens": 2501,
+                    "recalled": null,
+                    "score": 80,
+                    "flags": [
+                        "assistant-register"
+                    ]
+                },
+                {
+                    "id": "recall",
+                    "user": "What did I tell you about my day?",
+                    "reply": "You mentioned you had a long day at work and your meeting ran late.",
+                    "ms": 6185,
+                    "servedModels": [
+                        "nvidia/nemotron-3-ultra-550b-a55b:free"
+                    ],
+                    "tokens": 2776,
+                    "recalled": true,
+                    "score": 100,
+                    "flags": []
+                }
+            ],
+            "summary": {
+                "meanScore": 97,
+                "answered": 7,
+                "flags": {
+                    "assistant-register": 1
+                },
+                "questionRatio": 0.14,
+                "medianMs": 1277,
+                "maxMs": 6185,
+                "distinctServedModels": 3,
+                "meanTokens": 2433
+            }
+        }
+    ]
+}

@@ -364,6 +364,21 @@ describe('the chips', () => {
     test('the studio: no chips without the Private request; with it, a pretend badge that says so', () => {
         shownEvent({ id: 'private-stream-studio', base: 'private-stream-studio', rating: 'private', owner: null });
         expect(document.getElementById(Router.BAR_ID)).toBeNull();
+        // PUI. A private room's chips live only in the Private conversation's action slot, never
+        // floating over her; without the Private card mounted there is nowhere to show them.
+        shownEvent({
+            id: 'private-stream-studio',
+            base: 'private-stream-studio',
+            rating: 'private',
+            owner: 'intimate',
+        });
+        expect(chip('live')).toBeNull();
+        const row = document.createElement('div');
+        row.id = 'nexus-private-conversation-row';
+        row.innerHTML = '<div class="nexus-private-action-slot"></div>';
+        document.querySelector('.chat-card').appendChild(row);
+        window.dispatchEvent(new window.Event('nexus-private-view-layout'));
+        expect(document.getElementById(Router.BAR_ID).parentNode).toBe(row.firstChild);
         shownEvent({
             id: 'private-stream-studio',
             base: 'private-stream-studio',

@@ -226,6 +226,51 @@
                 closer: 'Close, then. Less air between the words.',
             }),
         }),
+        // AX7. Mature's own voice. AX1 borrowed Sensual's lines, so the two styles opened the
+        // evening identically and the choice changed a label. These are spoken unprompted, on
+        // timers — the proactive channel, which adult.profile's `proactiveNsfw: false` keeps
+        // non-explicit at every tier — so the difference is register, not content: more direct,
+        // more certain of what she wants, and always handing the pace back to the person.
+        mature: Object.freeze({
+            openings: [
+                "Just us tonight. I've been looking forward to this, and I'm not going to pretend otherwise.",
+                "Sit with me. You lead tonight; I'll tell you plainly what I like along the way.",
+                "No rush, no script. Tell me what kind of night you want, and I'll meet you there.",
+            ],
+            playful: [
+                "Daring, then. I'll push a little, and you'll tell me when it's just right.",
+                "Bold it is. I'm going to enjoy this, and I won't hide that I am.",
+            ],
+            tender: [
+                'Slow and close, then. I want to notice everything, and rush none of it.',
+                "Close, then. I'll take my time with you, and so can you.",
+            ],
+            middle: Object.freeze({
+                playful: [
+                    "You're very good at this. I'm paying attention to every word.",
+                    'I like who you are when you stop being careful. Stay like that a while.',
+                ],
+                tender: [
+                    'This is the part I wanted most: you, unhurried, right here.',
+                    "I don't need anything to change. This, exactly this, is enough.",
+                ],
+            }),
+            closing: Object.freeze({
+                playful: [
+                    "That was a good night. I'm keeping the memory of how you smiled.",
+                    "Let's stop while it's perfect. You know where to find me.",
+                ],
+                tender: [
+                    'Let this end gently. It was ours, all of it.',
+                    "I'll let the night close now. Thank you for staying with me.",
+                ],
+            }),
+            texture: Object.freeze({
+                prompt: 'This is your evening. Slower, or closer?',
+                quieter: "Slower, then. I'll let the quiet do the talking.",
+                closer: "Closer, then. I'm right here.",
+            }),
+        }),
     });
 
     /**

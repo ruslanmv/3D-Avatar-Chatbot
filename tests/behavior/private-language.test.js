@@ -94,7 +94,8 @@ describe('PrivateLocale', () => {
     test('pace levels are clamped rather than trusted', () => {
         speak('en-US');
         expect(PrivateLocale.pace(0)).toBe(PrivateLocale.t('pace.1'));
-        expect(PrivateLocale.pace(9)).toBe(PrivateLocale.t('pace.3'));
+        // AX1: the top step is the fourth now (Mature's Intimate); out of range still clamps to the top.
+        expect(PrivateLocale.pace(9)).toBe(PrivateLocale.t('pace.4'));
         expect(PrivateLocale.pace(undefined)).toBe(PrivateLocale.t('pace.1'));
     });
 });

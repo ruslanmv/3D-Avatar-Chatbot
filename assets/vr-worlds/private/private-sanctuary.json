@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "id": "private-sanctuary",
+  "title": { "en": "Private Sanctuary", "it": "Santuario privato" },
+  "worlds": ["private-cabaret", "private-cabaret-light"],
+  "template": "private-cabaret",
+  "tone": {
+    "en": "Warm, playful and unhurried; follow their lead, keep replies short, and let a quiet moment be quiet.",
+    "it": "Calda, giocosa e senza fretta; segui il loro ritmo, risposte brevi, e lascia che un momento di silenzio resti tale."
+  },
+  "interactions": [
+    {
+      "id": "light-warm",
+      "kind": "light",
+      "preset": "romantic-evening",
+      "label": { "en": "warmer, softer light", "it": "luce più calda e soffusa" },
+      "words": {
+        "en": ["warmer light", "softer light", "dim the lights", "romantic light"],
+        "it": ["luce più calda", "luce soffusa", "abbassa le luci", "luce romantica"]
+      }
+    },
+    {
+      "id": "light-gold",
+      "kind": "light",
+      "preset": "cabaret-gold",
+      "label": { "en": "golden stage light", "it": "luce dorata del palco" },
+      "words": {
+        "en": ["golden light", "stage light", "gold light"],
+        "it": ["luce dorata", "luce del palco", "luci della ribalta"]
+      }
+    },
+    {
+      "id": "light-own",
+      "kind": "light",
+      "preset": null,
+      "label": { "en": "the room's own light", "it": "la luce normale della sala" },
+      "words": { "en": ["normal light", "reset the light"], "it": ["luce normale", "rimetti la luce"] }
+    },
+    {
+      "id": "dance",
+      "kind": "chip",
+      "chip": "dance",
+      "label": { "en": "a dance on the stage", "it": "un ballo sul palco" },
+      "words": { "en": ["dance for me", "let's dance", "a dance"], "it": ["balla per me", "balliamo", "un ballo"] }
+    },
+    {
+      "id": "stop-dance",
+      "kind": "chip-stop",
+      "chip": "dance",
+      "label": { "en": "stop dancing", "it": "smetti di ballare" },
+      "words": {
+        "en": ["stop dancing", "stop the dance"],
+        "it": ["smetti di ballare", "basta ballare", "ferma il ballo"]
+      }
+    },
+    {
+      "id": "look-stage",
+      "kind": "look",
+      "anchor": "stage",
+      "label": { "en": "a look at the stage", "it": "uno sguardo al palco" },
+      "words": { "en": ["look at the stage"], "it": ["guarda il palco"] }
+    }
+  ]
+}

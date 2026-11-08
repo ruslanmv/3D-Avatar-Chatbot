@@ -74,6 +74,20 @@ shipping.
 | `neon-dispatch.glb`   | Neon Dispatch (cyberpunk street)                   | <https://3dassets.dev/assets/neon-dispatch-starter-scene>                                     | 16 464    | 178    |
 | `roadside-motel.glb`  | Roadside diner and motel stop                      | <https://3dassets.dev/assets/retro-diner-and-roadside-motel-roadside--784bde2d-starter-scene> | 38 582    | 643    |
 
+**LW2 — the apartment.** `pixel-flat-home.glb` (26 468 triangles) is
+`pixel-flat.glb` above, cut by the recipe `home` in
+`tools/vr/playground-subsets.json` (`node tools/vr/subset-scene.mjs home`): the
+six `resident-*` figures, the crib and the exercise bike are dropped. A shared
+flat for the two of you should not have strangers cooking in the kitchen or
+reading in the bed, and she would otherwise talk past people standing beside
+her; the bike stood in the walkway, in the foreground of every kitchen and
+dining view (LW3 walkthrough). Nothing else changed; same CC0 source. It is the
+scene of the `apartment` place on every device and of the phone's
+`bedroom-light`. Its measured spots are
+`assets/vr-worlds/spots/pixel-flat-home.json`, written by
+`tools/vr/measure-spots.mjs`, which records this file's SHA-256 so a changed
+model invalidates them.
+
 Tried and not shipped: the Hotel and Resort guest room (no spot inside it with a
 clear line to the camera — the hotel and candlelit suites are built from the
 Kenney furniture kit instead) and the Cyberpunk Apartment Block (323K triangles,
@@ -101,6 +115,7 @@ larger on disk than their triangle count suggests.
 | `cabaret-stage-light.glb`   | the same, recipe `cabaret-light`                  | as above                                                                                      | 25 160    |
 | `academy-seminar.glb`       | Seminar room (University Lecture Hall and Campus) | <https://3dassets.dev/assets/university-lecture-hall-and-campus-teach-1377fb44-starter-scene> | 41 160    |
 | `academy-seminar-light.glb` | the same, recipe `academy-light`                  | as above                                                                                      | 29 356    |
+| `airship-dock-light.glb`    | `airship-dock.glb` above, recipe `airship-light`  | as above (VW3 table)                                                                          | 29 140    |
 
 `sources/playhouse-stage.glb` (202 994 triangles) and
 `sources/lecture-campus.glb` (328 498) are the unmodified downloads the cabaret
@@ -108,6 +123,16 @@ and academy recipes cut from; the app never loads them. The cabaret keeps the
 stage, its curtains and footlights and drops the stalls, the scenery flats and
 backstage; the academy keeps the seminar room only (the tiered lecture hall is
 118K triangles of benches on its own).
+
+The airship dock's phone and VR stand-in (`airship-dock-light`, recipe
+`airship-light`) keeps the airship itself (envelope, nose, keel, gondola, tail,
+both engine pods), its mooring mast and boarding stair, the nine deck plates
+under her and toward the ship, and a few crates, a bollard, sandbags, a toolbox
+and the airscrew rack. It drops the workshop shed, the far deck, the gantry and
+the catwalks, and on purpose every node whose bounding box comes within 1 m of
+her standing spot other than the floor: the jib crane (whose box contains her),
+the catwalk corner (0.03 m) and the ballast weights (0.47 m). In a headset those
+would be in reach. Same `at`/`turn` as the desktop scene.
 
 The **stream studio** is built from the Kenney Furniture Kit already listed
 above (sofa, floor lamps, desk, screen, speaker, plants): 1 912 triangles.

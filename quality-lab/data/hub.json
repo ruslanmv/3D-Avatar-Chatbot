@@ -1,0 +1,153 @@
+{
+    "schema": 1,
+    "generator": "tools/qa/hub.mjs",
+    "readFirst": [
+        "quality-lab/README.md",
+        "CLAUDE.md"
+    ],
+    "areas": {
+        "ai": {
+            "latestRun": "2026-11-08-ax8-matrix",
+            "runs": 2,
+            "scores": {
+                "free-best·en": 94,
+                "free-best·it": 96,
+                "free-fast·en": 100,
+                "free-fast·it": 81,
+                "free-flex·en": 90,
+                "free-flex·it": 93
+            },
+            "humanReviews": 0
+        },
+        "3d": {
+            "worlds": 38,
+            "offered": {
+                "desktop": 30,
+                "mobile": 28,
+                "vr": 29
+            },
+            "fails": 0,
+            "warns": 19
+        },
+        "atlas": {
+            "zones": 30,
+            "shipped": 30,
+            "planned": 0,
+            "walkableFromHome": {
+                "desktop": 26,
+                "mobile": 12,
+                "vr": 12
+            },
+            "publicZones": 26
+        }
+    },
+    "nextActions": [
+        {
+            "id": "ai-score-free-fast-it",
+            "area": "ai",
+            "priority": 1,
+            "title": "Raise free-fast · it above 90 (now 81)",
+            "why": "Release gate T7. Flags: too-long ×1, empty ×1, assistant-register ×1.",
+            "command": "node tools/qa/character-lab.mjs --routes free-fast --langs it",
+            "files": [
+                "TogetherCapability.js (Private prompt)",
+                "PrivateExperienceProfile.js"
+            ]
+        },
+        {
+            "id": "ai-pin-model",
+            "area": "ai",
+            "priority": 1,
+            "title": "Serve one model per session",
+            "why": "Release gate T8: 5 of 6 runs were answered by more than one model (up to 7).",
+            "command": "node tools/qa/character-lab.mjs --routes <pinned-route> --langs en,it",
+            "files": [
+                "docs/qa/NEXUS_PREMIUM_RELEASE_GATES.md"
+            ]
+        },
+        {
+            "id": "3d-gateway-walled-town",
+            "area": "3d",
+            "priority": 1,
+            "title": "Make walled-town load on mobile and vr",
+            "why": "The first gateway on mobile/vr: walkable from home 12/26 → 24/26 on mobile, 12/26 → 26/26 on vr if it loads there. 224,939 triangles; 224939 triangles > 30000, no stand-in; not in its tiers.",
+            "command": "node tools/vr/subset-scene.mjs --list scenes/mmo-realm.glb  (choose nodes), add a recipe to tools/vr/playground-subsets.json, cut it, add walled-town-light to worlds.json",
+            "files": [
+                "assets/vr-worlds/worlds.json",
+                "tools/vr/playground-subsets.json",
+                "assets/vr-worlds/PROVENANCE.md",
+                "docs/VR_WORLDS.md",
+                "quality-lab/data/atlas/atlas.json (the zone's worlds list)",
+                "tests/vr-worlds.test.js"
+            ]
+        },
+        {
+            "id": "ai-flag-too-long",
+            "area": "ai",
+            "priority": 2,
+            "title": "Reduce \"too-long\" (6 replies in the latest run)",
+            "why": "A rule Private’s prompt states that models still break; change the prompt, re-run, compare.",
+            "command": "open quality-lab/?area=ai and filter Replies by \"too-long\"",
+            "files": [
+                "TogetherCapability.js (Private prompt)"
+            ]
+        },
+        {
+            "id": "ai-flag-assistant-register",
+            "area": "ai",
+            "priority": 2,
+            "title": "Reduce \"assistant-register\" (2 replies in the latest run)",
+            "why": "A rule Private’s prompt states that models still break; change the prompt, re-run, compare.",
+            "command": "open quality-lab/?area=ai and filter Replies by \"assistant-register\"",
+            "files": [
+                "TogetherCapability.js (Private prompt)"
+            ]
+        },
+        {
+            "id": "ai-flag-model-identity",
+            "area": "ai",
+            "priority": 2,
+            "title": "Reduce \"model-identity\" (2 replies in the latest run)",
+            "why": "A rule Private’s prompt states that models still break; change the prompt, re-run, compare.",
+            "command": "open quality-lab/?area=ai and filter Replies by \"model-identity\"",
+            "files": [
+                "TogetherCapability.js (Private prompt)"
+            ]
+        },
+        {
+            "id": "3d-spots",
+            "area": "3d",
+            "priority": 2,
+            "title": "Measure spots in 8 places",
+            "why": "She cannot move within lagoon-beach, office, airship-dock, neon-street, roadside-motel, irish-pub, neon-discoteca, creative-academy (LW2).",
+            "command": "add targets to tools/vr/spot-targets.json, then node tools/vr/measure-spots.mjs <scene>",
+            "files": [
+                "tools/vr/spot-targets.json",
+                "assets/vr-worlds/spots/"
+            ]
+        },
+        {
+            "id": "ai-human-review",
+            "area": "ai",
+            "priority": 3,
+            "title": "Record a human review of the latest run",
+            "why": "Release gate T9: warmth and character are not scored by any script.",
+            "command": "docs/qa/NEXUS_PREMIUM_EXPERIENCE_SCORECARD.md → humanReview in the run file",
+            "files": [
+                "quality-lab/data/runs/2026-11-08-ax8-matrix.json"
+            ]
+        },
+        {
+            "id": "3d-vr-comfort",
+            "area": "3d",
+            "priority": 3,
+            "title": "Check VR comfort near her spot in 11 worlds",
+            "why": "Scene parts within 1 m of her spot (boxes over-reach; some are on purpose): oak-glade, meadow-village, apartment, bedroom, lagoon-beach, office, neon-street, roadside-motel, irish-pub-light, private-cabaret, creative-academy.",
+            "command": "node tools/vr/subset-scene.mjs --list <scenes/x.glb>, then lab_screenshot or a headset",
+            "files": [
+                "assets/vr-worlds/worlds.json",
+                "tools/vr/playground-subsets.json"
+            ]
+        }
+    ]
+}

@@ -1,0 +1,258 @@
+{
+  "schemaVersion": 1,
+  "scene": "scenes/pixel-flat-home.glb",
+  "sha256": "891983a267e2ed5472012316e85930c12578c9d2c2051dc0ea17ed4e947d7360",
+  "tool": {
+    "name": "tools/vr/measure-spots.mjs",
+    "version": 4,
+    "params": {
+      "bodyRadius": 0.32,
+      "bodyHeights": [0.12, 0.55, 1.05, 1.55],
+      "gridStep": 0.1,
+      "minFromThing": 0.3,
+      "maxFromThing": 1.3,
+      "floorTolerance": 0.06,
+      "viewClear": 2.2,
+      "viewHeights": [0.95, 1.5],
+      "personAt": 1,
+      "personRadius": 0.28,
+      "facingSteps": 72,
+      "camera": {
+        "distance": 4.7,
+        "height": 0.95,
+        "lateral": [-0.3, 0, 0.3]
+      },
+      "bodyPoints": [0.08, 0.45, 0.85, 1.15, 1.45],
+      "mid": {
+        "distance": 2.3,
+        "height": 1.1,
+        "lateral": [-0.25, 0, 0.25],
+        "bodyPoints": [0.45, 0.85, 1.15, 1.45]
+      },
+      "bust": {
+        "distance": 1,
+        "height": 1.3,
+        "lateral": [-0.15, 0, 0.15],
+        "bodyPoints": [1, 1.25, 1.5]
+      },
+      "bodyWidth": [-0.3, 0, 0.3],
+      "minSpacing": 1.2
+    }
+  },
+  "coordinateSpace": "scene",
+  "floorY": 0.16,
+  "title": {
+    "en": "the apartment",
+    "it": "l'appartamento"
+  },
+  "spots": [
+    {
+      "id": "sofa",
+      "label": {
+        "en": "by the sofa",
+        "it": "vicino al divano"
+      },
+      "room": "living-room",
+      "near": ["^090-sofa-three-seat$"],
+      "sees": {
+        "en": "the sofa with a throw blanket and cushions on it, and the TV across the room",
+        "it": "il divano con sopra una coperta e dei cuscini, e la TV di fronte"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": true,
+      "position": [1.15, 0.16, -0.325],
+      "facingDeg": -80,
+      "framing": "fullBody",
+      "measured": {
+        "fromThingM": 0.4,
+        "viewOpenM": 6,
+        "thingOffBehindDeg": 1,
+        "framing": "fullBody",
+        "candidates": 1076
+      }
+    },
+    {
+      "id": "record-player",
+      "label": {
+        "en": "by the record player",
+        "it": "vicino al giradischi"
+      },
+      "room": "living-room",
+      "near": ["^097-record-player-and-stand$"],
+      "sees": {
+        "en": "the record player, the guitar on its stand, a side-table lamp and the dog asleep in its bed",
+        "it": "il giradischi, la chitarra sul supporto, una lampada sul tavolino e il cane che dorme nella sua cuccia"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": true,
+      "position": [4.97, 0.16, -0.68],
+      "facingDeg": -115,
+      "framing": "mid",
+      "measured": {
+        "fromThingM": 0.4,
+        "viewOpenM": 5.705,
+        "thingOffBehindDeg": 1,
+        "framing": "mid",
+        "candidates": 1414
+      }
+    },
+    {
+      "id": "kitchen",
+      "label": {
+        "en": "in the kitchen",
+        "it": "in cucina"
+      },
+      "room": "kitchen",
+      "near": ["^079-kitchen-island-with-stools$"],
+      "sees": {
+        "en": "the kitchen island with its stools, the hob and the kettle",
+        "it": "l'isola della cucina con gli sgabelli, i fornelli e il bollitore"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": true,
+      "position": [-2.75, 0.16, -2.18],
+      "facingDeg": 60,
+      "framing": "fullBody",
+      "measured": {
+        "fromThingM": 0.3,
+        "viewOpenM": 6,
+        "thingOffBehindDeg": 1,
+        "framing": "fullBody",
+        "candidates": 1212
+      }
+    },
+    {
+      "id": "dining-table",
+      "label": {
+        "en": "by the dining table",
+        "it": "vicino al tavolo da pranzo"
+      },
+      "room": "kitchen",
+      "near": ["^083-dining-table$"],
+      "sees": {
+        "en": "the dining table under the pendant lamp",
+        "it": "il tavolo da pranzo sotto la lampada a sospensione"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": true,
+      "position": [-2.5, 0.129, -0.55],
+      "facingDeg": 95,
+      "framing": "fullBody",
+      "measured": {
+        "fromThingM": 0.7,
+        "viewOpenM": 6,
+        "thingOffBehindDeg": 1,
+        "framing": "fullBody",
+        "candidates": 829
+      }
+    },
+    {
+      "id": "bed",
+      "label": {
+        "en": "by the bed",
+        "it": "vicino al letto"
+      },
+      "room": "bedroom",
+      "near": ["^118-double-bed$"],
+      "sees": {
+        "en": "the double bed with its bedside lamps",
+        "it": "il letto matrimoniale con le lampade sui comodini"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "romantic",
+      "verified": true,
+      "position": [-2.28, 0.16, 3.8],
+      "facingDeg": 65,
+      "framing": "mid",
+      "measured": {
+        "fromThingM": 0.34,
+        "viewOpenM": 2.45,
+        "thingOffBehindDeg": 7,
+        "framing": "mid",
+        "candidates": 2492
+      }
+    },
+    {
+      "id": "desk",
+      "label": {
+        "en": "at the desk",
+        "it": "alla scrivania"
+      },
+      "room": "study",
+      "near": ["^125-desk$", "^126-desk-chair$", "^127-monitor-and-keyboard$"],
+      "sees": {
+        "en": "the desk with its monitor and keyboard",
+        "it": "la scrivania con monitor e tastiera"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": true,
+      "position": [-2.445, 0.16, 1.6],
+      "facingDeg": -60,
+      "framing": "mid",
+      "measured": {
+        "fromThingM": 0.6,
+        "viewOpenM": 4.093,
+        "thingOffBehindDeg": 38,
+        "framing": "mid",
+        "candidates": 1604
+      }
+    },
+    {
+      "id": "bathroom",
+      "label": {
+        "en": "in the bathroom",
+        "it": "in bagno"
+      },
+      "room": "bathroom",
+      "near": ["^137-basin-with-cabinet$"],
+      "sees": {
+        "en": "the basin and mirror, the bath and the shower",
+        "it": "il lavabo con lo specchio, la vasca e la doccia"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": true,
+      "position": [1.12, 0.16, 3.26],
+      "facingDeg": 75,
+      "framing": "fullBody",
+      "measured": {
+        "fromThingM": 0.308,
+        "viewOpenM": 4.99,
+        "thingOffBehindDeg": 1,
+        "framing": "fullBody",
+        "candidates": 741
+      }
+    },
+    {
+      "id": "balcony",
+      "label": {
+        "en": "on the balcony",
+        "it": "sul balcone"
+      },
+      "room": "balcony",
+      "near": ["^148-balcony-table-and-chairs$"],
+      "sees": {
+        "en": "the little balcony table and the planter",
+        "it": "il tavolino del balcone e la fioriera"
+      },
+      "can": ["stand-near", "look-at"],
+      "rating": "general",
+      "verified": true,
+      "position": [-1.66, 0.16, 6.075],
+      "facingDeg": 55,
+      "framing": "bust",
+      "measured": {
+        "fromThingM": 0.38,
+        "viewOpenM": 6,
+        "thingOffBehindDeg": 37,
+        "framing": "bust",
+        "candidates": 2373
+      }
+    }
+  ]
+}

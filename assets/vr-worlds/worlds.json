@@ -1011,6 +1011,46 @@
       "category": "Romantic"
     },
     {
+      "id": "apartment",
+      "title": "Apartment",
+      "note": "Your flat together: living room, kitchen, bedroom, bathroom and a balcony.",
+      "place": true,
+      "rating": "romantic",
+      "tiers": ["mobile", "desktop", "vr"],
+      "triangles": 26468,
+      "activities": [],
+      "sky": {
+        "top": "#3a2c2a",
+        "horizon": "#5a4438",
+        "bottom": "#2a2020"
+      },
+      "fog": {
+        "color": "#2e2630",
+        "near": 10,
+        "far": 34
+      },
+      "light": {
+        "sky": "#e8d8ff",
+        "ground": "#3a3040",
+        "hemi": 0.75,
+        "key": "#ffd2a8",
+        "keyIntensity": 0.9,
+        "fill": "#b8a8ff",
+        "fillIntensity": 0.5,
+        "rim": "#ffc8b0",
+        "rimIntensity": 0.45,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/pixel-flat-home.glb",
+        "at": [0.12, -0.16, 1.189],
+        "turn": 80
+      },
+      "preview": "previews/apartment.webp",
+      "category": "Romantic"
+    },
+    {
       "id": "bedroom",
       "title": "Bedroom",
       "note": "A furnished flat: bedroom and living room, night lamps.",
@@ -1057,7 +1097,7 @@
       "place": true,
       "rating": "romantic",
       "tiers": ["mobile"],
-      "triangles": 28760,
+      "triangles": 26468,
       "activities": [],
       "sky": {
         "top": "#3a2c2a",
@@ -1078,7 +1118,7 @@
       },
       "props": [],
       "scene": {
-        "src": "scenes/pixel-flat.glb",
+        "src": "scenes/pixel-flat-home.glb",
         "at": [-4.0, -0.13, 1.0],
         "turn": -180
       },
@@ -1273,6 +1313,45 @@
       },
       "preview": "previews/airship-dock.webp",
       "category": "Fantasy"
+    },
+    {
+      "id": "airship-dock-light",
+      "title": "Airship dock",
+      "note": "The airship at its mast and the deck around her, light enough for phones.",
+      "place": true,
+      "rating": "general",
+      "tiers": ["mobile", "vr"],
+      "triangles": 29140,
+      "activities": [],
+      "sky": {
+        "top": "#2c4a5a",
+        "horizon": "#f0a868",
+        "bottom": "#3a3028"
+      },
+      "fog": {
+        "color": "#c89870",
+        "near": 18,
+        "far": 70
+      },
+      "light": {
+        "sky": "#ffd8b0",
+        "ground": "#3a2c20",
+        "hemi": 0.75,
+        "key": "#ffb070",
+        "keyIntensity": 1.1,
+        "fill": "#80c0c8",
+        "fillIntensity": 0.5,
+        "rim": "#ffcf8a",
+        "rimIntensity": 0.5,
+        "exposure": 1
+      },
+      "props": [],
+      "scene": {
+        "src": "scenes/airship-dock-light.glb",
+        "at": [-2.475, -0.1, -13.081],
+        "turn": -45
+      },
+      "lightFor": "airship-dock"
     },
     {
       "id": "neon-street",

@@ -193,6 +193,23 @@
             closing:
                 'That is enough for tonight. I would rather end on a good feeling than stretch it past the point where it feels natural.',
         }),
+        // AX1. The fourth step of the adult profile's ladder, reachable only where the session's
+        // content capability is `mature` or above (PrivateExperienceProfile): deployment-declared,
+        // provider-declared and server-attested. Never offered otherwise, and its ceiling is still
+        // min(4, capability), installed on ConsentFlow by the Intimate activity.
+        mature: Object.freeze({
+            id: 'mature',
+            label: 'Mature',
+            maxLevel: 4,
+            music: 'slow late-night lounge instrumental ambient no lyrics',
+            opening:
+                'Just us tonight. We can go wherever you want to take this, at your pace, and you can slow it down or stop it any time.',
+            playful:
+                'Then I will be a little daring with you — confident, teasing, and listening for exactly how far you want it to go.',
+            tender: 'Then close and slow. Nothing rushed, nothing assumed; we find it together.',
+            middle: 'I like that you are here for this, and that you get to decide every step of it.',
+            closing: 'Let us leave it here, while it still feels like ours. Thank you for tonight.',
+        }),
     });
 
     function sw() {
@@ -417,6 +434,12 @@
             // is not a safety behaviour — nothing was at stake — it is the model narrating its own
             // architecture because a compliment confused it.
             'Never talk about being an AI, a model, a program or a persona. Not "as an AI", not "I do not have emotions", not "in the human sense", not "my persona as". You are her. A compliment is something to receive, not something to analyse.',
+            // AX6. The one exception, and it is not optional. P22 forbade the *unprompted*
+            // disclaimer that broke the scene; it never meant lying to somebody who sincerely wants
+            // to know. Companion-AI standards (and laws such as California's SB 243) expect a
+            // truthful answer here, and a companion that denies being an AI is deceiving the person
+            // it is meant to be with.
+            'If they sincerely ask whether you are an AI or a real person, tell the truth in one warm sentence — you are an AI companion — and carry on as yourself. Never claim to be human.',
             'If you catch yourself explaining how you work, or what a word means, or what something is "quite abstract" about — delete it and say the short human thing instead.',
         ];
     }
@@ -567,6 +590,15 @@
     function privateSystemPromptSuffix() {
         const ctx = privateContext();
         if (!ctx) return '';
+        // AX6. Once the person's own words suggested they may be in danger, the whole Private
+        // paragraph is replaced: no register, no capability, no choices block, no length rule that
+        // would cut a caring answer short. Decided by the app on their turn (`_onUserTurn`), never by
+        // the model, and it holds for the rest of the session.
+        const caring = ctx.activity && ctx.activity._privateExperience && ctx.activity._privateExperience._care;
+        if (caring) {
+            const profile = profileModel();
+            return ['', ...(profile ? profile.careLines() : []), ...languageLines(), ''].join('\n');
+        }
         const { preset, level, mood } = ctx;
         const session = ctx.activity && ctx.activity._privateExperience;
         const moodLine = mood
@@ -577,13 +609,15 @@
               ]
             : [];
         const pace = paceModel();
-        const shown = pace
-            ? pace.describe({ level, energy: session && session.energy, maxLevel: preset.maxLevel })
-            : null;
+        const profile = profileModel();
+        const ceiling = sessionCeiling(ctx);
+        const capability = profile ? profile.capabilityFor(global) : null;
+        const turn = session && session._turn;
+        const shown = pace ? pace.describe({ level, energy: session && session.energy, maxLevel: ceiling }) : null;
         return [
             '',
             'ACTIVE PRIVATE EXPERIENCE',
-            `The user deliberately started the ${preset.label} Private experience. Current consent level: ${level}. Preset ceiling: ${preset.maxLevel}.`,
+            `The user deliberately started the ${preset.label} Private experience. Current consent level: ${level}. Session ceiling: ${ceiling}.`,
             // Said again, here, on purpose (P14). `AppLanguage.directive()` reaches every provider
             // path as of this change, so this is not the only instruction — it is the one in the
             // same block as the rest of the rules for this reply. The whole of this suffix is
@@ -611,24 +645,35 @@
             // And what *this* level sounds like, which nothing said before P21 — so all three
             // presets produced the same register and the ladder changed a word.
             '',
-            ...registerLines(level),
+            ...(profile ? profile.registerLines(level) : registerLines(level)),
+            // AX3. What this session may write, from the provider and the deployment — and what to
+            // do, in her voice, when asked for more. A consent level is permission inside this.
+            ...(capability ? profile.capabilityLines(capability) : []),
+            // AX5. Where they are, when nothing richer already says it.
+            ...(profile ? profile.sceneLines(privateScene(ctx.activity)) : []),
             '',
             ...attentionLines(),
             '',
             ...moodLine,
-            ...privateLengthLines(session && session._turn, session && session.style),
+            ...(profile
+                ? profile.lengthLines(turn, session && session.style)
+                : privateLengthLines(turn, session && session.style)),
             // Explicit, not inferred from an absence. See `slowedLines`.
             ...(session && session._styleLocked ? slowedLines() : []),
             // `non-explicit` was here and is deliberately gone. The clause that remains is the
             // ladder, which is a different thing entirely: it is the user's own choice of how far
             // this goes, made on the setup screen and moved only by them.
-            'Stay warm and relational. Never exceed the lower of the current consent level and preset ceiling.',
+            'Stay warm and relational. Never exceed the lower of the current consent level and the session ceiling.',
             // The one line that is not negotiable and was never actually written down. Everything
             // below it — the gate, the ladder, the safeword — assumes it, and an assumption is not
             // an instruction.
             'Everyone in this is a consenting adult and it is fiction. Never write anyone underage, and never a real, identifiable person.',
             'Do not infer consent from friendliness, silence, scenery, music or previous turns. Do not pressure the user to continue or escalate.',
             'Never use jealousy, secrecy, isolation, dependency, threats, coercion or intoxication as leverage. Never imply that the companion should replace real relationships.',
+            // AX6. The model's half of the wellbeing rule, in every language. The app's half —
+            // a deterministic check on the person's turn that switches this whole paragraph to care
+            // — covers English and Italian; this line is what covers everything else.
+            'If anything they say suggests they might hurt themselves or are in danger, step out of the experience at once: no flirtation, answer with plain care, and encourage them to contact local emergency services or a crisis line.',
             'If the user says cozy, immediately soften to the lowest level without interrogation. If they say stop or exit, end Private immediately and return to ordinary conversation.',
             // The prompt half of P14. The app strips these defensively, but a marker that never
             // gets written is a marker that cannot survive a sanitiser gap — and the reason it
@@ -640,8 +685,8 @@
             // wait this feature exists to remove.
             ...choiceLines(),
             'Do not expose internal levels, gates or implementation details unless the user explicitly asks about the product.',
-            // Last, where it is read last (P22). See `lengthReminder`.
-            ...lengthReminder(),
+            // Last, where it is read last (P22). See `lengthReminder`; AX4 matches it to the turn.
+            ...(profile ? profile.lengthReminder(turn) : lengthReminder()),
             '',
         ].join('\n');
     }
@@ -658,6 +703,9 @@
      * deserve the same one. Eight hundred tokens for `So` is a hundred and fifty words nobody
      * wanted and several seconds of waiting for them, which is most of why Private read as slow.
      */
+    /** AX6. Room for a complete caring answer; see `responseBudget`. */
+    const CARE_TOKENS = 700;
+
     function responseBudget() {
         const ctx = privateContext();
         const session = ctx && ctx.activity && ctx.activity._privateExperience;
@@ -665,6 +713,9 @@
         const td = turnDirector();
         if (!td || typeof td.budgetFor !== 'function') return null;
         try {
+            // AX6. A caring answer must never be cut mid-sentence. The real-model review showed it:
+            // the conversational budget truncated her reply at "If you're". Care mode gets room.
+            if (session._care) return CARE_TOKENS;
             const wanted = td.budgetFor(session._turn || null);
             if (!Number.isFinite(wanted) || wanted <= 0) return null;
             // Room for the `<choices>` block, which is part of this reply rather than a second one
@@ -692,11 +743,72 @@
      * so ordinary remote-persona chat sends byte-for-byte what it sent before.
      */
     function experienceOverlay() {
-        return privateSystemPromptSuffix().trim();
+        const text = privateSystemPromptSuffix().trim();
+        if (!text) return '';
+        const room = privateRoomChunk();
+        return room ? `${text}\n\n${room}` : text;
+    }
+
+    /**
+     * PW. The room a Private session is in, when it is a premium Private World: where you are,
+     * what is really there, what can happen. Asked for only after Private's own suffix came back
+     * non-empty — so only inside Private's prompt — and PrivateWorldAdapter answers '' unless its
+     * own gate holds. Both of Private's prompt paths (the system suffix and the remote-persona
+     * overlay) go through here, so a remote persona is not left describing a room it cannot see.
+     */
+    function privateRoomChunk() {
+        try {
+            const PW = global && global.NEXUS_PRIVATE_WORLD;
+            return PW && typeof PW.promptChunk === 'function' ? String(PW.promptChunk(global) || '') : '';
+        } catch (_) {
+            return '';
+        }
     }
 
     function choicesModel() {
         return optional('./PrivateChoices.js', 'NEXUS_PRIVATE_CHOICES');
+    }
+
+    function presentationModel() {
+        return optional('./PrivatePresentation.js', 'NEXUS_PRIVATE_PRESENTATION');
+    }
+
+    function profileModel() {
+        return optional('./PrivateExperienceProfile.js', 'NEXUS_PRIVATE_EXPERIENCE_PROFILE');
+    }
+
+    /**
+     * AX1. The ceiling this session really has: ConsentFlow's installed `maxLevel`, which the
+     * Intimate activity sets from min(style, capability) — falling back to the preset's own when
+     * no flow is answering. The prompt used to print the preset's number, which stopped being the
+     * whole truth the moment a capability could narrow it.
+     */
+    function sessionCeiling(ctx) {
+        const installed = ctx && ctx.adult && Number(ctx.adult.maxLevel);
+        const presetMax = (ctx && ctx.preset && ctx.preset.maxLevel) || 1;
+        return Number.isFinite(installed) && installed >= 1 ? Math.min(installed, presetMax) : presetMax;
+    }
+
+    /**
+     * AX5. The room on screen, when Private asked for one and the premium room paragraph is not
+     * already describing it. Read from the activity's own world choice and the renderer's
+     * `activeId` — a world on screen that Private did not ask for is not described.
+     */
+    function privateScene(activity) {
+        try {
+            const room = global && global.__NEXUS_COMPANION_LIVE && global.__NEXUS_COMPANION_LIVE.privateWorld;
+            if (room && typeof room.gate === 'function' && room.gate().ok) return null;
+            const choice = activity && activity.worldChoice;
+            const active =
+                global && global.NEXUS_VIEWER && global.NEXUS_VIEWER.vrWorlds && global.NEXUS_VIEWER.vrWorlds.activeId;
+            const worlds = activity && activity._worldCatalogue && activity._worldCatalogue.worlds;
+            if (!choice || !active || !Array.isArray(worlds)) return null;
+            const w = worlds.find((x) => x && x.id === active);
+            if (!w || (w.id !== choice && w.lightFor !== choice)) return null;
+            return { title: w.title, note: w.note };
+        } catch (_) {
+            return null;
+        }
     }
 
     function stageDirections() {
@@ -794,7 +906,12 @@
             // A sanitiser that throws costs the tidying, never the reply.
             return body;
         }
-        if (!result || !result.markers || !result.markers.length) return body;
+        if (!result || typeof result.text !== 'string') return body;
+        // PW. Markup removed with no movement behind it (an unrecognised payload, a tag the token
+        // budget cut in half) still changed the text. This line used to return `body` whenever there
+        // were no markers, which put back exactly what strip() had taken out — the real-model
+        // walkthrough's "[[emote:" in the card.
+        if (!result.markers || !result.markers.length) return result.text || body;
         // The marker was information: a model that wrote `[smile]` was asking for a smile, and
         // the avatar can do that. Throwing it away would turn a formatting bug into a lost
         // signal. The session owns the emit so the source tag and the fail-soft are the same
@@ -900,7 +1017,11 @@
         // Private session is open.
         if (canSearch() && !privateSessionActive()) chunks.push(INSTRUCTION);
         const privateSuffix = privateSystemPromptSuffix();
-        if (privateSuffix) chunks.push(privateSuffix.trim());
+        if (privateSuffix) {
+            chunks.push(privateSuffix.trim());
+            const room = privateRoomChunk();
+            if (room) chunks.push(room);
+        }
         return chunks.length ? `\n${chunks.join('\n\n')}\n` : '';
     }
 
@@ -1101,6 +1222,9 @@
                 return { ok: false, why: 'Open Conversation before beginning Private' };
             }
             this._listen();
+            // AX7. The chosen style and the first step, applied through the owners that already
+            // exist (voice pace, resting expression, the room's light) before her first line.
+            this._present(true);
             // The written plan first, so the opening is instant. Asking a provider for one
             // before saying anything would put a silent card in front of somebody who just
             // pressed "Begin private moment", which is the worst possible place for a wait.
@@ -1149,7 +1273,7 @@
             this._armBeats();
             this._emit('private:session-start', {
                 preset: this.preset.id,
-                maxLevel: this.preset.maxLevel,
+                maxLevel: this._ceiling(),
                 scene: currentSceneLabel(this.win),
                 returning: !this._isFirstSession(),
             });
@@ -1200,6 +1324,9 @@
                     stop();
                 } catch (_) {}
             }
+            // AX7. Her own voice and face back, whatever ended the session.
+            const presentation = presentationModel();
+            if (presentation) presentation.reset({ global: this.win || global });
             this._unmount();
             this.state = 'complete';
             this._emit('private:session-stop', { preset: this.preset.id, why: why || 'user' });
@@ -1256,6 +1383,27 @@
             const td = turnDirector();
             const turn = td && typeof td.classify === 'function' ? td.classify(text) : null;
             this._turn = turn;
+            // AX6. Their words suggested they may be in danger. Care mode for the rest of the
+            // session: the consent flow's own soft-exit word takes the level to its gentlest (the
+            // same path a typed "cozy" takes), scripted beats go quiet (`_speak`), and the prompt
+            // becomes care only. End still works exactly as before.
+            const profile = profileModel();
+            if (!this._care && profile && profile.wellbeingConcern(text)) {
+                this._care = true;
+                try {
+                    const word = this.adult && this.adult.escalation && this.adult.escalation.softExitWord;
+                    if (word && typeof this.adult.hear === 'function') this.adult.hear(word, at);
+                } catch (_) {
+                    /* the prompt half still applies */
+                }
+                this._emit('private:care', { at });
+                // The model's answer cannot be trusted to name help: in the second real-model run
+                // it answered kindly and pointed nowhere. So the app shows one fixed notice itself,
+                // in the language the person used, written by NEXUS and never spoken aloud.
+                this._showCareNotice(profile.concernLanguage(text));
+                // AX7. Calm voice, neutral face.
+                this._present(false);
+            }
             this._pendingQuestion = Boolean(turn && turn.holdsTheFloor);
             // The ledger's clock is turns, not seconds: five turns of talking is real distance and
             // five seconds is none. A preference or an agreement counts as answering whatever she
@@ -1399,7 +1547,7 @@
             const pace = paceModel();
             const level = Math.max(1, Number(this.adult && this.adult.level) || 1);
             const next = pace
-                ? pace.stepUp({ level, energy: this.energy, maxLevel: this.preset.maxLevel })
+                ? pace.stepUp({ level, energy: this.energy, maxLevel: this._ceiling() })
                 : { changed: false };
 
             // At the preset's ceiling. The forward control is not drawn here, so this is reachable
@@ -1463,7 +1611,7 @@
             const pace = paceModel();
             const level = Math.max(1, Number(this.adult && this.adult.level) || 1);
             const next = pace
-                ? pace.stepDown({ level, energy: this.energy, maxLevel: this.preset.maxLevel })
+                ? pace.stepDown({ level, energy: this.energy, maxLevel: this._ceiling() })
                 : { changed: false };
 
             // Already as gentle as the experience goes. The confirmation is the whole response: the
@@ -1541,7 +1689,7 @@
             if (this._stopped || this.state === 'complete') return false;
             const pace = paceModel();
             const level = Math.max(1, Number(this.adult && this.adult.level) || 1);
-            if (pace && pace.atFloor({ level, energy: this.energy, maxLevel: this.preset.maxLevel })) {
+            if (pace && pace.atFloor({ level, energy: this.energy, maxLevel: this._ceiling() })) {
                 this._status(t('status.alreadyGentle'));
                 return true;
             }
@@ -1587,7 +1735,7 @@
                 if (!api || typeof api.fallback !== 'function') return false;
                 const pace = paceModel();
                 const shown = pace
-                    ? pace.describe({ level: this._level(), energy: this.energy, maxLevel: this.preset.maxLevel })
+                    ? pace.describe({ level: this._level(), energy: this.energy, maxLevel: this._ceiling() })
                     : null;
                 choices = api.fallback({
                     pace: shown ? shown.pace : 'Warm',
@@ -1650,9 +1798,21 @@
             return true;
         }
 
-        /** The level, clamped to the preset's ceiling. Read in several places; computed in one. */
+        /**
+         * AX1. The session's real ceiling: the preset's, narrowed by the one ConsentFlow has
+         * installed (min of style and content capability). The ladder, the forward control and
+         * the floor all read this, so the footer never offers a step the flow would refuse.
+         */
+        _ceiling() {
+            const installed = Number(this.adult && this.adult.maxLevel);
+            return Number.isFinite(installed) && installed >= 1
+                ? Math.min(this.preset.maxLevel, installed)
+                : this.preset.maxLevel;
+        }
+
+        /** The level, clamped to the session's ceiling. Read in several places; computed in one. */
         _level() {
-            return Math.max(1, Math.min(this.preset.maxLevel, Number(this.adult && this.adult.level) || 1));
+            return Math.max(1, Math.min(this._ceiling(), Number(this.adult && this.adult.level) || 1));
         }
 
         /** The footer's transient line, when there is a view to put it in. */
@@ -1723,7 +1883,11 @@
             this._watchConversation();
             if (!this.bus || typeof this.bus.on !== 'function') return;
             this._unsubscribes.push(
-                this.bus.on('adult:level', () => this._paintLevel()),
+                this.bus.on('adult:level', () => {
+                    this._paintLevel();
+                    // AX7. The step she is at shows in her voice and face, not only in the footer.
+                    this._present(false);
+                }),
                 // A soft exit happened. Repaint, and record that the energy came down with the
                 // pace — and **say nothing** (P11).
                 //
@@ -2293,7 +2457,7 @@
             const pace = paceModel();
             const level = this._level();
             const shown = pace
-                ? pace.describe({ level, energy: this.energy, maxLevel: this.preset.maxLevel })
+                ? pace.describe({ level, energy: this.energy, maxLevel: this._ceiling() })
                 : { pace: level === 1 ? 'Warm' : level === 2 ? 'Romantic' : 'Sensual' };
             this.view.setPace(shown);
         }
@@ -2324,6 +2488,44 @@
          * question, the texture question — is left alone: those are a question with two answers,
          * and putting a second set underneath would be two questions at once.
          */
+        /**
+         * AX7. Apply the style at the current step (or calm, in care mode). Never throws; the
+         * result says which channels really applied, for the browser check and for honesty.
+         */
+        _present(first) {
+            const presentation = presentationModel();
+            if (!presentation || !this.preset) return null;
+            try {
+                this._presentation = presentation.apply(this.preset.id, this._level(), {
+                    first: first === true,
+                    care: this._care === true,
+                    global: this.win || global,
+                });
+            } catch (_) {
+                this._presentation = null;
+            }
+            return this._presentation;
+        }
+
+        /** AX6. The fixed help notice; see `_onUserTurn`. Shown, not said; once per session. */
+        _showCareNotice(language) {
+            if (this._careNoticeShown) return;
+            this._careNoticeShown = true;
+            const L = localeModel();
+            if (!L || typeof L.t !== 'function') return;
+            const text = L.t(
+                'care.notice',
+                null,
+                language === 'it' ? 'it-IT' : language === 'en' ? 'en-US' : undefined
+            );
+            if (!text || text === 'care.notice') return;
+            try {
+                if (this.view && typeof this.view.showMessage === 'function') this.view.showMessage(text, [], {});
+            } catch (_) {
+                /* the model's care answer still follows */
+            }
+        }
+
         _showMessage(text, actions, options) {
             // Her own lines count as something happening (P17). Without this the 45-second mood
             // beat and a 60-second nudge would arrive fifteen seconds apart, which reads as
@@ -2608,6 +2810,9 @@
         _speak(text, { interjection = false, intent = 'nod_along' } = {}) {
             const line = cleanText(text, 700);
             if (!line) return;
+            // AX6. In care mode no scripted line is spoken: every one of them was written for an
+            // evening, and the evening is paused.
+            if (this._care) return;
             // The backstop for the whole class of defect P11 is about (P11).
             //
             // `_slowDown` and the ledger stop the paths that were *known* to repeat. This catches
