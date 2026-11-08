@@ -60,8 +60,31 @@ describe('Quality Lab data', () => {
         }
     });
 
-    test('the page draws model text as text, never as HTML', () => {
-        const js = fs.readFileSync(path.join(__dirname, '..', 'quality-lab', 'lab.js'), 'utf8');
+    test.each(['lab.js', 'lab-3d.js'])('%s draws data as text, never as HTML', (file) => {
+        const js = fs.readFileSync(path.join(__dirname, '..', 'quality-lab', file), 'utf8');
         expect(js).not.toMatch(/innerHTML|insertAdjacentHTML|outerHTML|document\.write/);
+    });
+});
+
+describe('Quality Lab 3D audit', () => {
+    const audit = JSON.parse(fs.readFileSync(path.join(DATA, '3d', 'worlds-audit.json'), 'utf8'));
+
+    test('the committed audit is what the generator computes from the files today', () => {
+        // AX10. A world change and its audit land together: run `node tools/qa/world-audit.mjs`.
+        const run = () =>
+            require('child_process').execFileSync(process.execPath, ['tools/qa/world-audit.mjs', '--check'], {
+                cwd: path.join(__dirname, '..'),
+                stdio: 'pipe',
+            });
+        expect(run).not.toThrow();
+    });
+
+    test('every catalogue world is audited, on all three devices, with no failure', () => {
+        const catalogue = JSON.parse(
+            fs.readFileSync(path.join(__dirname, '..', 'assets', 'vr-worlds', 'worlds.json'), 'utf8')
+        );
+        expect(audit.worlds.map((w) => w.id).sort()).toEqual(catalogue.worlds.map((w) => w.id).sort());
+        for (const w of audit.worlds) expect(Object.keys(w.devices).sort()).toEqual(['desktop', 'mobile', 'vr']);
+        expect(audit.summary.fails).toBe(0);
     });
 });

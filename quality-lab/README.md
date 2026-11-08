@@ -1,8 +1,14 @@
 # NEXUS Quality Lab
 
-A small static site that shows how the companion really behaves with real
-models, and the tooling an AI coder uses to improve it. Humans audit it in the
-browser; agents read and write its JSON.
+A small static site with two areas of development, and the tooling an AI coder
+uses to improve each. Humans audit it in the browser; agents read and write its
+JSON.
+
+- **AI quality** (`?area=ai`): how the companion behaves with real models —
+  replies, served models, scores, her voice and face, human reviews.
+- **3D quality** (`?area=3d`): whether every world is ready on desktop, phone
+  and headset — device availability, triangle budget, previews, measured spots,
+  interactions, and a work queue of what is missing.
 
 - **Open it:** `npm start`, then `http://127.0.0.1:8080/quality-lab/`
 - **Data:** `quality-lab/data/index.json` → `quality-lab/data/runs/<id>.json`
@@ -89,6 +95,60 @@ memory).
 
 Keys are the rubric ids (A1–A8, B1–B5, C1–C3, D1–D4); `score` is 0–3, or
 `"pass"`/`"fail"` for D.
+
+## The 3D area: worlds on desktop, mobile and VR
+
+```bash
+node tools/qa/world-audit.mjs          # regenerate quality-lab/data/3d/worlds-audit.json
+node tools/qa/world-audit.mjs --check  # what the test runs: fails if the audit is stale
+```
+
+The audit is **generated, never written**. It reads `assets/vr-worlds/`
+(catalogue, scenes, panoramas, props, previews, spots, private configs) and asks
+the shipping code the questions the app asks at runtime: `VRWorlds`'
+`validateCatalogue`, `allowedOn`, `resolveFor` (a place shows its light stand-in
+where it cannot load itself) and `comfortProblem`, and the playground
+`TEMPLATES`. Change a world → regenerate → commit both;
+`tests/quality-lab.test.js` fails otherwise, and fails on any `fail` issue.
+
+| Severity | Raised when                                                                                                                                                                                                                         |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| fail     | catalogue problem; scene, panorama, prop or preview file missing; a prop within 1 m of the person, between you, or inside her; a place without a preview, or a preview over 60 KB; spots measured on a different version of the GLB |
+| warn     | a place not offered on a device (no tier, or over the 30 000-triangle phone budget with no stand-in); a place with a scene but no measured spots, so she cannot move within it                                                      |
+
+### Recipe: a new VR space
+
+The page's **New space** section lists the pipeline in order, each step with the
+tool that owns it. In short:
+
+1. art (CC0 / Apache-compatible, provenance recorded)
+2. a `worlds.json` entry with measured `triangles`
+3. a clear spot found by raycasting
+4. a light stand-in if over budget
+5. measured spots
+6. a rendered preview
+7. optional venue template or private config
+8. tests
+9. `node tools/qa/world-audit.mjs`
+
+Then run the browser checks in **Checks you run** and say in the commit which
+you ran. The engine guide is `docs/engine/AI_CODER_START_HERE.md`.
+
+### Recipe: a new integration (a chip, an activity, a behaviour in a place)
+
+Follow the capability pattern in `CLAUDE.md` (switch → capability → directive →
+trusted code), add interactions as data (`PlaygroundTemplateCatalog`, or a
+private config), and let the owner confirm them. The audit shows a world's chips
+and private interactions; the AI area's lab measures how she talks about them.
+Run both areas after an integration: `world-audit.mjs` for the place,
+`character-lab.mjs` for her.
+
+### What the 3D area cannot see
+
+Frame rate, how a scene looks, how she stands in it, comfort beyond prop
+placement, a real phone's GPU, a real headset. Those are the **Checks you run**
+— browser renders and simulations, and device procedures. The audit never marks
+them done.
 
 ## Run file schema (version 1)
 

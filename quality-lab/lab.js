@@ -71,7 +71,9 @@
             `${doc.date} · style ${doc.style || '—'} · ${doc.runs.length} route × language runs · source `,
             el('a', { href: 'data/' + entry.file, text: entry.file })
         );
-        history.replaceState(null, '', '?run=' + encodeURIComponent(id) + location.hash);
+        const q = new URLSearchParams(location.search);
+        q.set('run', id);
+        history.replaceState(null, '', '?' + q.toString() + location.hash);
         const notes = $('#run-notes');
         notes.replaceChildren(...(doc.notes || []).map((n) => el('li', { text: n })));
         drawMatrix(doc);

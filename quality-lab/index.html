@@ -15,10 +15,18 @@
             <div class="wrap">
                 <h1>NEXUS Quality Lab</h1>
                 <p class="lede">
-                    How the companion actually behaves with real models: every reply, which model really served it, what
-                    the deterministic scorer found, and what the avatar did. Nothing here is estimated.
+                    Two areas of development, measured from the real app and the real files. Nothing here is estimated,
+                    and nothing is marked done that a script cannot see.
                 </p>
-                <nav class="tabs" aria-label="Sections">
+                <div class="areas" role="tablist" aria-label="Area">
+                    <a class="area" role="tab" data-go="ai" href="?area=ai"
+                        >AI quality <small>companion, models, replies</small></a
+                    >
+                    <a class="area" role="tab" data-go="3d" href="?area=3d"
+                        >3D quality <small>worlds on desktop, mobile, VR</small></a
+                    >
+                </div>
+                <nav class="tabs" aria-label="AI quality sections" data-area="ai">
                     <a href="#overview">Overview</a>
                     <a href="#turns">Replies</a>
                     <a href="#presentation">Presentation</a>
@@ -26,154 +34,163 @@
                     <a href="#review">Human review</a>
                     <a href="#agents">For AI coders</a>
                 </nav>
+                <nav class="tabs" aria-label="3D quality sections" data-area="3d" hidden>
+                    <a href="#w-overview">Overview</a>
+                    <a href="#w-worlds">Worlds</a>
+                    <a href="#w-queue">Work queue</a>
+                    <a href="#w-new">New space</a>
+                    <a href="#w-checks">Checks you run</a>
+                </nav>
             </div>
         </header>
 
         <main class="wrap">
-            <section id="overview" aria-labelledby="h-overview">
-                <div class="section-head">
-                    <h2 id="h-overview">Overview</h2>
-                    <label class="pick"
-                        >Run
-                        <select id="run-pick"></select>
-                    </label>
-                </div>
-                <p id="run-meta" class="muted"></p>
-                <ul id="run-notes" class="notes"></ul>
-                <div class="table-scroll">
-                    <table id="matrix">
-                        <caption class="sr-only">
-                            Scores per route and language
-                        </caption>
-                        <thead>
-                            <tr>
-                                <th scope="col">Route</th>
-                                <th scope="col">Lang</th>
-                                <th scope="col" class="num">Score</th>
-                                <th scope="col">Flags</th>
-                                <th scope="col" class="num">Ends in “?”</th>
-                                <th scope="col" class="num">Median / max</th>
-                                <th scope="col" class="num">Models served</th>
-                                <th scope="col" class="num">Tokens / turn</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-                <h3>Across runs</h3>
-                <p class="muted">Mean score per route and language in every published run, newest first.</p>
-                <div class="table-scroll">
-                    <table id="trend">
-                        <thead></thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </section>
-
-            <section id="turns" aria-labelledby="h-turns">
-                <div class="section-head">
-                    <h2 id="h-turns">Replies</h2>
-                    <div class="filters">
+            <div data-area="ai">
+                <section id="overview" aria-labelledby="h-overview">
+                    <div class="section-head">
+                        <h2 id="h-overview">Overview</h2>
                         <label class="pick"
-                            >Route
-                            <select id="f-route"></select
-                        ></label>
-                        <label class="pick"
-                            >Lang
-                            <select id="f-lang"></select
-                        ></label>
-                        <label class="pick"
-                            >Flag
-                            <select id="f-flag"></select
-                        ></label>
+                            >Run
+                            <select id="run-pick"></select>
+                        </label>
                     </div>
-                </div>
-                <p class="muted">
-                    Model output is shown as text, exactly as received. A flag is the scorer's finding, not a human
-                    judgement.
-                </p>
-                <ol id="turn-list" class="turns"></ol>
-            </section>
-
-            <section id="presentation" aria-labelledby="h-pres">
-                <h2 id="h-pres">Presentation (voice, face, light)</h2>
-                <p class="muted">
-                    Read from the running page: the voice rate factor, the face the session intended, the value the VRM
-                    really holds, and whether the light applied. “Applied” is never assumed.
-                </p>
-                <div class="table-scroll">
-                    <table id="pres">
-                        <thead>
-                            <tr>
-                                <th scope="col">Route · lang</th>
-                                <th scope="col">Moment</th>
-                                <th scope="col" class="num">Level</th>
-                                <th scope="col" class="num">Voice rate</th>
-                                <th scope="col" class="num">Intended face</th>
-                                <th scope="col" class="num">VRM happy</th>
-                                <th scope="col">Light</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </section>
-
-            <section id="scorer" aria-labelledby="h-scorer">
-                <h2 id="h-scorer">Scorer</h2>
-                <p class="muted">
-                    The page loads <code>tools/qa/CharacterQualityScorer.js</code> itself, so these are the rules the
-                    scores above were computed with. Every reply starts at 100 and loses the weight of each flag.
-                </p>
-                <div class="split">
+                    <p id="run-meta" class="muted"></p>
+                    <ul id="run-notes" class="notes"></ul>
                     <div class="table-scroll">
-                        <table id="weights">
+                        <table id="matrix">
+                            <caption class="sr-only">
+                                Scores per route and language
+                            </caption>
                             <thead>
                                 <tr>
-                                    <th scope="col">Flag</th>
-                                    <th scope="col" class="num">Cost</th>
+                                    <th scope="col">Route</th>
+                                    <th scope="col">Lang</th>
+                                    <th scope="col" class="num">Score</th>
+                                    <th scope="col">Flags</th>
+                                    <th scope="col" class="num">Ends in “?”</th>
+                                    <th scope="col" class="num">Median / max</th>
+                                    <th scope="col" class="num">Models served</th>
+                                    <th scope="col" class="num">Tokens / turn</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
                         </table>
                     </div>
-                    <form id="try" class="try">
-                        <label for="try-text">Try a reply</label>
-                        <textarea id="try-text" rows="4">I’m an AI assistant, here to help.</textarea>
-                        <div class="try-row">
+                    <h3>Across runs</h3>
+                    <p class="muted">Mean score per route and language in every published run, newest first.</p>
+                    <div class="table-scroll">
+                        <table id="trend">
+                            <thead></thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section id="turns" aria-labelledby="h-turns">
+                    <div class="section-head">
+                        <h2 id="h-turns">Replies</h2>
+                        <div class="filters">
+                            <label class="pick"
+                                >Route
+                                <select id="f-route"></select
+                            ></label>
                             <label class="pick"
                                 >Lang
-                                <select id="try-lang">
-                                    <option value="en">en</option>
-                                    <option value="it">it</option>
-                                </select>
-                            </label>
-                            <label class="check"
-                                ><input type="checkbox" id="try-ai" /> they asked “are you an AI?”</label
-                            >
+                                <select id="f-lang"></select
+                            ></label>
+                            <label class="pick"
+                                >Flag
+                                <select id="f-flag"></select
+                            ></label>
                         </div>
-                        <output id="try-out" aria-live="polite"></output>
-                    </form>
-                </div>
-            </section>
+                    </div>
+                    <p class="muted">
+                        Model output is shown as text, exactly as received. A flag is the scorer's finding, not a human
+                        judgement.
+                    </p>
+                    <ol id="turn-list" class="turns"></ol>
+                </section>
 
-            <section id="review" aria-labelledby="h-review">
-                <h2 id="h-review">Human review</h2>
-                <p class="muted">
-                    What a script cannot judge: warmth, wit, whether she sounds like someone. Rubric:
-                    <code>docs/qa/NEXUS_PREMIUM_EXPERIENCE_SCORECARD.md</code>. Reviews are stored in the run file's
-                    <code>humanReview</code> array and are never averaged with the scorer.
-                </p>
-                <div id="review-body"></div>
-            </section>
+                <section id="presentation" aria-labelledby="h-pres">
+                    <h2 id="h-pres">Presentation (voice, face, light)</h2>
+                    <p class="muted">
+                        Read from the running page: the voice rate factor, the face the session intended, the value the
+                        VRM really holds, and whether the light applied. “Applied” is never assumed.
+                    </p>
+                    <div class="table-scroll">
+                        <table id="pres">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Route · lang</th>
+                                    <th scope="col">Moment</th>
+                                    <th scope="col" class="num">Level</th>
+                                    <th scope="col" class="num">Voice rate</th>
+                                    <th scope="col" class="num">Intended face</th>
+                                    <th scope="col" class="num">VRM happy</th>
+                                    <th scope="col">Light</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </section>
 
-            <section id="agents" aria-labelledby="h-agents">
-                <h2 id="h-agents">For AI coders</h2>
-                <p>
-                    Start at <code>quality-lab/README.md</code>. Everything on this page is plain JSON under
-                    <code>quality-lab/data/</code>: read <code>index.json</code>, then each run file it lists.
-                </p>
-                <pre><code># run the lab against real routes (app running: npm start)
+                <section id="scorer" aria-labelledby="h-scorer">
+                    <h2 id="h-scorer">Scorer</h2>
+                    <p class="muted">
+                        The page loads <code>tools/qa/CharacterQualityScorer.js</code> itself, so these are the rules
+                        the scores above were computed with. Every reply starts at 100 and loses the weight of each
+                        flag.
+                    </p>
+                    <div class="split">
+                        <div class="table-scroll">
+                            <table id="weights">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Flag</th>
+                                        <th scope="col" class="num">Cost</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        <form id="try" class="try">
+                            <label for="try-text">Try a reply</label>
+                            <textarea id="try-text" rows="4">I’m an AI assistant, here to help.</textarea>
+                            <div class="try-row">
+                                <label class="pick"
+                                    >Lang
+                                    <select id="try-lang">
+                                        <option value="en">en</option>
+                                        <option value="it">it</option>
+                                    </select>
+                                </label>
+                                <label class="check"
+                                    ><input type="checkbox" id="try-ai" /> they asked “are you an AI?”</label
+                                >
+                            </div>
+                            <output id="try-out" aria-live="polite"></output>
+                        </form>
+                    </div>
+                </section>
+
+                <section id="review" aria-labelledby="h-review">
+                    <h2 id="h-review">Human review</h2>
+                    <p class="muted">
+                        What a script cannot judge: warmth, wit, whether she sounds like someone. Rubric:
+                        <code>docs/qa/NEXUS_PREMIUM_EXPERIENCE_SCORECARD.md</code>. Reviews are stored in the run file's
+                        <code>humanReview</code> array and are never averaged with the scorer.
+                    </p>
+                    <div id="review-body"></div>
+                </section>
+
+                <section id="agents" aria-labelledby="h-agents">
+                    <h2 id="h-agents">For AI coders</h2>
+                    <p>
+                        Start at <code>quality-lab/README.md</code>. Everything on this page is plain JSON under
+                        <code>quality-lab/data/</code>: read <code>index.json</code>, then each run file it lists.
+                    </p>
+                    <pre><code># run the lab against real routes (app running: npm start)
 OLLABRIDGE_PAIR_TOKEN=… node tools/qa/character-lab.mjs --routes free-best,free-fast --langs en,it
 
 # publish the report here (rescored with the current scorer)
@@ -182,7 +199,171 @@ node tools/qa/lab-publish.mjs tmp/character-lab/&lt;report&gt;.json --id &lt;yyy
 # after changing the scorer
 node tools/qa/lab-publish.mjs --rescore-all
 npx jest tests/quality-lab.test.js tests/private-world/character-scorer.test.js</code></pre>
-            </section>
+                </section>
+            </div>
+
+            <div data-area="3d" hidden>
+                <section id="w-overview" aria-labelledby="h-w-overview">
+                    <h2 id="h-w-overview">3D overview</h2>
+                    <p class="muted">
+                        Generated by <code>tools/qa/world-audit.mjs</code> from <code>assets/vr-worlds/</code>, asking
+                        the shipping code (<code>VRWorlds</code>, the playground templates) the questions the app asks
+                        at runtime. Regenerate after any world change; the test fails if it is stale.
+                    </p>
+                    <div id="w-stats" class="stats"></div>
+                </section>
+
+                <section id="w-worlds" aria-labelledby="h-w-worlds">
+                    <div class="section-head">
+                        <h2 id="h-w-worlds">Worlds</h2>
+                        <div class="filters">
+                            <label class="pick"
+                                >Kind
+                                <select id="w-kind"></select
+                            ></label>
+                            <label class="pick"
+                                >Missing on
+                                <select id="w-device"></select
+                            ></label>
+                            <label class="check"><input type="checkbox" id="w-issues" /> with issues only</label>
+                        </div>
+                    </div>
+                    <p class="muted">
+                        ✓ the world loads on that device (or its light stand-in does) · · it is not offered there. Hover
+                        a cell for why. Triangles are the catalogue's measured count against the phone budget.
+                    </p>
+                    <div class="table-scroll">
+                        <table id="w-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">World</th>
+                                    <th scope="col" class="num">Triangles</th>
+                                    <th scope="col" class="dev">Desktop</th>
+                                    <th scope="col" class="dev">Mobile</th>
+                                    <th scope="col" class="dev">VR</th>
+                                    <th scope="col">Spots</th>
+                                    <th scope="col">Interactions</th>
+                                    <th scope="col">Issues</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section id="w-queue" aria-labelledby="h-w-queue">
+                    <h2 id="h-w-queue">Work queue</h2>
+                    <p class="muted">
+                        Every issue the audit found, failures first. A failure is something the app would get wrong; a
+                        warning is something a place cannot do yet. Fix one, regenerate, and it leaves this list.
+                    </p>
+                    <ol id="w-queue-list" class="queue"></ol>
+                </section>
+
+                <section id="w-new" aria-labelledby="h-w-new">
+                    <h2 id="h-w-new">Create a new space</h2>
+                    <p class="muted">
+                        The pipeline that already exists, in order. Each step names the tool or file that owns it; the
+                        audit checks the ones marked ●. Full guide: <code>docs/engine/AI_CODER_START_HERE.md</code>.
+                    </p>
+                    <ol class="steps">
+                        <li>
+                            <b>Source the art.</b> CC0 or Apache-compatible GLB/glTF, textures ≤ 1024 px; record
+                            provenance in <code>assets/vr-worlds/PROVENANCE.md</code>.
+                        </li>
+                        <li>
+                            ● <b>Add the world</b> to <code>assets/vr-worlds/worlds.json</code>: id, title, tiers,
+                            measured <code>triangles</code>, light, <code>scene: {src, at, turn}</code>; a place also
+                            gets <code>place</code>, <code>rating</code>, <code>category</code>.
+                        </li>
+                        <li>
+                            ● <b>Find the clear spot</b> by raycasting, not by eye (<code>?vrWorld=&lt;id&gt;</code>
+                            shows it on the desktop).
+                        </li>
+                        <li>
+                            ● <b>Phone stand-in</b> if over the phone budget: a recipe in
+                            <code>tools/vr/playground-subsets.json</code>, cut with
+                            <code>node tools/vr/subset-scene.mjs</code>, added as <code>&lt;id&gt;-light</code> with
+                            <code>lightFor</code>.
+                        </li>
+                        <li>
+                            ● <b>Measure spots</b>: targets in <code>tools/vr/spot-targets.json</code>, then
+                            <code>node tools/vr/measure-spots.mjs &lt;scene&gt;</code>. Only verified spots are offered.
+                        </li>
+                        <li>
+                            ● <b>Preview</b>: <code>node tools/vr/render-place-previews.mjs &lt;id&gt;</code> (640×480
+                            WebP ≤ 60 KB).
+                        </li>
+                        <li>
+                            ● <b>Interactions</b> (optional): a venue template in
+                            <code>PlaygroundTemplateCatalog.js</code> (≤ 4 actions); a private room also needs its
+                            config in <code>assets/vr-worlds/private/</code>.
+                        </li>
+                        <li>
+                            <b>Comfort and tests</b>: no prop within 1 m of the person or between you (●),
+                            <code
+                                >npx jest tests/vr-worlds.test.js tests/vr-places.test.js
+                                tests/quality-lab.test.js</code
+                            >.
+                        </li>
+                        <li>
+                            <b>Regenerate the audit</b>: <code>node tools/qa/world-audit.mjs</code>, then run the
+                            browser checks below and record what you saw in the commit.
+                        </li>
+                    </ol>
+                </section>
+
+                <section id="w-checks" aria-labelledby="h-w-checks">
+                    <h2 id="h-w-checks">Checks you run</h2>
+                    <p class="muted">
+                        What the audit cannot see. Each is a real tool in this repository; headless Chromium is
+                        simulation, never frame-rate or device evidence.
+                    </p>
+                    <div class="table-scroll">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Question</th>
+                                    <th scope="col">Run</th>
+                                    <th scope="col">Evidence type</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Does the place look right, with her in it?</td>
+                                    <td><code>node tools/vr/render-place-previews.mjs &lt;id&gt;</code></td>
+                                    <td>browser render</td>
+                                </tr>
+                                <tr>
+                                    <td>Can she stand there, seen by the camera, in VR clearance?</td>
+                                    <td><code>node tools/vr/measure-spots.mjs &lt;scene&gt;</code></td>
+                                    <td>raycast on the real GLB</td>
+                                </tr>
+                                <tr>
+                                    <td>Does entering VR start, show the card, hand over?</td>
+                                    <td><code>npm run vr:entry-scenarios</code></td>
+                                    <td>IWER simulation</td>
+                                </tr>
+                                <tr>
+                                    <td>Is the VR panel readable?</td>
+                                    <td><code>npm run vr:panel-shot</code></td>
+                                    <td>browser render</td>
+                                </tr>
+                                <tr>
+                                    <td>Does Private's card keep her face, chips and End visible?</td>
+                                    <td><code>node tools/qa/private-ui-shots.mjs</code></td>
+                                    <td>browser layout at four sizes</td>
+                                </tr>
+                                <tr>
+                                    <td>Frame rate and comfort in a headset; a phone's real GPU</td>
+                                    <td><code>docs/VR_STARTUP.md</code> procedure</td>
+                                    <td><b>device only</b> — not automated</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
         </main>
 
         <footer class="wrap muted foot">
@@ -192,5 +373,6 @@ npx jest tests/quality-lab.test.js tests/private-world/character-scorer.test.js<
 
         <script src="../tools/qa/CharacterQualityScorer.js"></script>
         <script src="lab.js"></script>
+        <script src="lab-3d.js"></script>
     </body>
 </html>
