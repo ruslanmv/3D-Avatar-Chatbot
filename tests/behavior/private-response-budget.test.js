@@ -133,7 +133,8 @@ describe('the prompt says the same thing the budget enforces', () => {
         // The property, not the sentence: brevity is asked for in words as well as enforced by the
         // cap. P22 replaced three graded rules with one hard limit, so the wording moved and the
         // guarantee did not.
-        expect(prompt).toMatch(/two sentences maximum/i);
+        expect(prompt).toMatch(/SENTENCES? MAXIMUM|ONE SHORT SENTENCE/);
+        expect(prompt).toMatch(/hard limit, not a target/);
         expect(prompt).toMatch(/they said almost nothing/i);
 
         s.activity.stop('user');

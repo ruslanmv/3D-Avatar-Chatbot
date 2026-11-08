@@ -92,7 +92,32 @@ const PlaygroundActivity = (() => {
             note: 'A more intimate atmosphere, still consent-gated.',
             maxLevel: 3,
         }),
+        // AX1. Offered only where the session's content capability reaches `mature`
+        // (PrivateExperienceProfile.styleAvailable) — deployment-, provider- and server-declared.
+        Object.freeze({
+            id: 'mature',
+            label: 'Mature',
+            permission: null,
+            note: 'An adult evening at your pace, up to the fourth step, where this site allows it.',
+            maxLevel: 4,
+        }),
     ]);
+
+    /**
+     * AX1. The experience profile, if loaded. Without it only the three original styles exist and
+     * each keeps its own ceiling — the behaviour before AX1, and the fail-closed answer for
+     * `mature`, which needs the profile to say the capability exists.
+     */
+    function experienceProfile() {
+        const win = globalObject();
+        const P = win && win.NEXUS_PRIVATE_EXPERIENCE_PROFILE;
+        return P && typeof P.capabilityFor === 'function' ? P : null;
+    }
+
+    function presetAllowed(preset, capability, P) {
+        if (!P || !capability) return preset.id !== 'mature';
+        return P.styleAvailable(preset.id, capability);
+    }
 
     function globalObject() {
         if (typeof window !== 'undefined') return window;
@@ -2149,7 +2174,12 @@ const PlaygroundActivity = (() => {
         inputs() {
             const gate = this.availability();
             if (!gate || gate.ok === false) return [];
-            return INTIMATE_PRESETS.map((preset) => ({ ...preset }));
+            const P = experienceProfile();
+            const capability = P ? P.capabilityFor(globalObject()) : null;
+            return INTIMATE_PRESETS.filter((preset) => presetAllowed(preset, capability, P)).map((preset) => ({
+                ...preset,
+                maxLevel: P && capability ? P.ceilingFor(preset.id, capability) : preset.maxLevel,
+            }));
         }
         availability() {
             return this.capability();
@@ -2176,7 +2206,18 @@ const PlaygroundActivity = (() => {
                     };
                 if (this.active) return { ok: false, why: 'Private is already running' };
             }
-            this._installCeiling(preset.maxLevel);
+            // AX1. The style's ceiling, narrowed by what this session may actually produce. Asked
+            // again here, not trusted from the setup screen: the provider or the attestation can
+            // change between drawing the choices and pressing Start.
+            const P = experienceProfile();
+            const capability = P ? P.capabilityFor(globalObject()) : null;
+            if (!presetAllowed(preset, capability, P))
+                return {
+                    ok: false,
+                    why: 'This kind of evening isn’t available here: this site or the selected AI provider doesn’t allow it.',
+                };
+            const ceiling = P && capability ? P.ceilingFor(preset.id, capability) : preset.maxLevel;
+            this._installCeiling(ceiling);
             const entered = this.adult.enter();
             if (!entered || entered.ok === false) {
                 this._restoreCeiling();
@@ -2188,12 +2229,12 @@ const PlaygroundActivity = (() => {
             this.sessionState = 'playing';
             busEmit(this.bus, 'intimate:start', {
                 preset: preset.id,
-                maxLevel: preset.maxLevel,
+                maxLevel: ceiling,
                 startedAt: this.startedAt,
             });
             // VW3. The room, only now: after the gates above have all passed.
             if (this.worldChoice) this._requestWorld(this.worldChoice);
-            return { ok: true, why: preset.id, preset: preset.id, maxLevel: preset.maxLevel };
+            return { ok: true, why: preset.id, preset: preset.id, maxLevel: ceiling };
         }
         stop(why = 'user') {
             const wasActive = this.active || Boolean(this.adult && this.adult.active);

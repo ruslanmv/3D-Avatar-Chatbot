@@ -254,6 +254,9 @@
     });
 
     function poolFor(presetId) {
+        // AX1. Mature speaks from Sensual's written lines: its difference is the fourth step and
+        // the session's content capability, which the model carries, not a second set of scripts.
+        if (presetId === 'mature') return POOLS.sensual;
         return POOLS[String(presetId || '')] || POOLS.affectionate;
     }
 

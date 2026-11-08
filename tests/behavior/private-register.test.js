@@ -122,33 +122,41 @@ describe('the prompt says who she is, not only what she must not do', () => {
     });
 });
 
-describe('two sentences, stated as a limit rather than a preference (P22)', () => {
-    test('there is one number, it is two, and it does not vary with the turn', async () => {
-        // This was three graded rules — one sentence, two, "three at most" — and the reported reply
-        // was nine sentences across three paragraphs. A model given a ceiling to interpret takes the
-        // largest number in sight and rounds up.
+describe('a hard limit, stated as a limit, that follows what they asked (P22, AX4)', () => {
+    // P22 replaced three graded rules with one flat "two sentences" after a reported nine-sentence
+    // reply: a model given a ceiling to interpret takes the largest number in sight. AX4 keeps
+    // what that fixed — one stated hard limit per turn, never a paragraph, repeated last — and
+    // lets the limit follow the turn, because a flat two sentences also forbade the one thing a
+    // person asking "tell me about this place" wanted: an answer.
+    test('each turn gets one number, stated as a hard limit, and never a paragraph', async () => {
         const s = setup();
         await s.activity.start({ input: { id: 'sensual' } });
 
-        const short = Capability.privateSystemPromptSuffix();
+        Surface.renderUser('mm');
+        const tiny = Capability.privateSystemPromptSuffix();
         Surface.renderUser('tell me what you have been thinking about all day, in detail');
-        const long = Capability.privateSystemPromptSuffix();
+        const asked = Capability.privateSystemPromptSuffix();
 
-        for (const suffix of [short, long]) {
-            expect(suffix).toContain('LENGTH: TWO SENTENCES MAXIMUM');
+        for (const suffix of [tiny, asked]) {
             expect(suffix).toContain('hard limit, not a target');
-            expect(suffix).not.toMatch(/three sentences at most/);
+            expect(suffix.match(/LENGTH: /g)).toHaveLength(1);
+            expect(suffix).toMatch(/never a (second )?paragraph/i);
         }
+        // Nothing ever offers more than four sentences.
+        for (const suffix of [tiny, asked]) {
+            const n = [...suffix.matchAll(/(ONE|TWO|THREE|FOUR|FIVE|SIX) SENTENCES? MAXIMUM|ONE SHORT SENTENCE/g)];
+            for (const m of n) expect(['FIVE', 'SIX']).not.toContain(m[1]);
+        }
+        expect(tiny).not.toContain('FOUR SENTENCES MAXIMUM');
         s.activity.stop('user');
     });
 
     test('and it is said again last, where it is read last', async () => {
-        // The middle of a long block is what a model skims. Nine tokens at the position with the
-        // most influence over the next thing written.
+        // The middle of a long block is what a model skims.
         const s = setup();
         await s.activity.start({ input: { id: 'sensual' } });
         const suffix = Capability.privateSystemPromptSuffix().trimEnd();
-        expect(suffix.endsWith('Before you answer: two sentences maximum. Shorter is better.')).toBe(true);
+        expect(suffix).toMatch(/Before you answer: (three|four) sentences at most\.( Shorter is better\.)?$/);
         s.activity.stop('user');
     });
 });

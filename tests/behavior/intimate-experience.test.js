@@ -300,7 +300,8 @@ describe('Private runtime integration', () => {
         expect(suffix).toContain('ACTIVE PRIVATE EXPERIENCE');
         expect(suffix).toContain('Romantic');
         expect(suffix).toContain('Current consent level: 1');
-        expect(suffix).toContain('Preset ceiling: 2');
+        // AX1: the ceiling printed is the session's (style narrowed by capability), named as such.
+        expect(suffix).toContain('Session ceiling: 2');
         expect(suffix).toMatch(/consenting adult/i);
 
         s.activity.stop('user');

@@ -134,6 +134,10 @@
         // P13. Things you could say next, and the block they ride back in. Before
         // TogetherCapability, which parses it at the display seam.
         'src/features/together/PrivateChoices.js',
+        // AX1. Style, content capability and ceiling, kept apart. Before TogetherCapability,
+        // which builds Private's prompt from it, and the playground activity, which installs its
+        // ceiling.
+        'src/features/together/PrivateExperienceProfile.js',
         // P20. What an evening needs, loaded before it starts. Before the Together panel and
         // the playground activity, which drive it from the wizard's third step.
         'src/features/together/PrivatePreflight.js',

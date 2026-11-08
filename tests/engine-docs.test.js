@@ -38,6 +38,7 @@ describe('docs/engine exists and links where it says', () => {
         'HOW_TO_CREATE_A_PRIVATE_WORLD.md',
         'PREMIUM_INTERACTION_CONTRACTS.md',
         'PREMIUM_BEHAVIOR_AUTHORING.md',
+        'NEXUS_ADULT_EXPERIENCE_ARCHITECTURE.md',
     ])('%s', (name) => {
         expect(fs.existsSync(path.join(DOCS, name))).toBe(true);
     });

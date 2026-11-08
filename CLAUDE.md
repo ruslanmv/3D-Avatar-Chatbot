@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (274 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (275 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-07 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **6051 tests in 274 suites, all passing.**
+— lint clean, format clean, **6077 tests in 275 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -195,9 +195,11 @@ the Together grid, `VW` for VR worlds (`docs/VR_WORLDS.md`), `LW` for Living
 Worlds (`docs/LIVING_WORLDS.md`), `PG` for the playgrounds (PG1–PG2 the V4
 release, PG3 the V5 reactive context; never a VRoid `V` batch — the V5 release's
 first four commits say `V5:` by mistake), `DX` for desktop control layout and
-`PW` for the Private World (`docs/engine/PRIVATE_WORLD_ENGINE.md`). Commit
-subjects match: `A4: viewport background manager`. So `git log --grep 'A4'` and
-the comment line up.
+`PW` for the Private World (`docs/engine/PRIVATE_WORLD_ENGINE.md`) and `AX` for
+the adult experience configuration
+(`docs/engine/NEXUS_ADULT_EXPERIENCE_ARCHITECTURE.md`). Commit subjects match:
+`A4: viewport background manager`. So `git log --grep 'A4'` and the comment line
+up.
 
 **Comments explain why, at length.** This codebase documents the failure a piece
 of code prevents, not what the code does — read the header of
@@ -737,6 +739,30 @@ and the session carries a server attestation. Start at
   `tests/private-world/` (unit, 10 deterministic scenarios, the 20-item matrix,
   attach). Evidence: `docs/qa/PRIVATE_WORLD_*.md` and
   `docs/qa/NEXUS_PREMIUM_WORLD_INDUSTRIALIZATION_REPORT.md`.
+
+## Adult experience configuration (AX1–AX5)
+
+Private's style, intensity, ceiling and content capability are four separate
+things. `src/features/together/PrivateExperienceProfile.js` (boot list before
+TogetherCapability) owns style data and capability resolution;
+`docs/engine/NEXUS_ADULT_EXPERIENCE_ARCHITECTURE.md` is the design and
+`docs/qa/NEXUS_ADULT_EXPERIENCE_GAP_REPORT.md` the audit.
+
+- **Intensity is still only ConsentFlow's**, moved only by the person. The
+  ceiling installed on ConsentFlow is min(style, capability): it only narrows.
+- **Content capability** is the lowest of the provider's tier (NEXUS default
+  `sensual` for every provider; a deployment may name one) and the site's tier
+  (`window.NEXUS_ADULT_EXPERIENCE_CONFIG`, set by the deployment, never storage
+  or a setting). Nothing above `sensual` without `blackboard.adultVerified`. No
+  build sets the config, so every build behaves as before.
+- **Undeclared, NEXUS adds no content rule of its own** (an earlier product
+  decision, pinned in `tests/behavior/private-register.test.js`); she is told
+  only how to meet a boundary in her own voice. A declared tier is stated.
+- **Mature** (fourth step, "Intimate" in nine languages) is offered only where
+  the capability reaches `mature`; `PrivatePace` and the register now go to 4.
+- **Length follows the turn** (1 / 3 / 4 sentences), still a stated hard limit
+  repeated last (P22's fix kept).
+  `tests/private-world/adult-experience.test.js`.
 
 ## Clearing a conversation
 

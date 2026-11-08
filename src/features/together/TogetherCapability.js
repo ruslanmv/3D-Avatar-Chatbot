@@ -193,6 +193,23 @@
             closing:
                 'That is enough for tonight. I would rather end on a good feeling than stretch it past the point where it feels natural.',
         }),
+        // AX1. The fourth step of the adult profile's ladder, reachable only where the session's
+        // content capability is `mature` or above (PrivateExperienceProfile): deployment-declared,
+        // provider-declared and server-attested. Never offered otherwise, and its ceiling is still
+        // min(4, capability), installed on ConsentFlow by the Intimate activity.
+        mature: Object.freeze({
+            id: 'mature',
+            label: 'Mature',
+            maxLevel: 4,
+            music: 'slow late-night lounge instrumental ambient no lyrics',
+            opening:
+                'Just us tonight. We can go wherever you want to take this, at your pace, and you can slow it down or stop it any time.',
+            playful:
+                'Then I will be a little daring with you — confident, teasing, and listening for exactly how far you want it to go.',
+            tender: 'Then close and slow. Nothing rushed, nothing assumed; we find it together.',
+            middle: 'I like that you are here for this, and that you get to decide every step of it.',
+            closing: 'Let us leave it here, while it still feels like ours. Thank you for tonight.',
+        }),
     });
 
     function sw() {
@@ -577,13 +594,15 @@
               ]
             : [];
         const pace = paceModel();
-        const shown = pace
-            ? pace.describe({ level, energy: session && session.energy, maxLevel: preset.maxLevel })
-            : null;
+        const profile = profileModel();
+        const ceiling = sessionCeiling(ctx);
+        const capability = profile ? profile.capabilityFor(global) : null;
+        const turn = session && session._turn;
+        const shown = pace ? pace.describe({ level, energy: session && session.energy, maxLevel: ceiling }) : null;
         return [
             '',
             'ACTIVE PRIVATE EXPERIENCE',
-            `The user deliberately started the ${preset.label} Private experience. Current consent level: ${level}. Preset ceiling: ${preset.maxLevel}.`,
+            `The user deliberately started the ${preset.label} Private experience. Current consent level: ${level}. Session ceiling: ${ceiling}.`,
             // Said again, here, on purpose (P14). `AppLanguage.directive()` reaches every provider
             // path as of this change, so this is not the only instruction — it is the one in the
             // same block as the rest of the rules for this reply. The whole of this suffix is
@@ -611,12 +630,19 @@
             // And what *this* level sounds like, which nothing said before P21 — so all three
             // presets produced the same register and the ladder changed a word.
             '',
-            ...registerLines(level),
+            ...(profile ? profile.registerLines(level) : registerLines(level)),
+            // AX3. What this session may write, from the provider and the deployment — and what to
+            // do, in her voice, when asked for more. A consent level is permission inside this.
+            ...(capability ? profile.capabilityLines(capability) : []),
+            // AX5. Where they are, when nothing richer already says it.
+            ...(profile ? profile.sceneLines(privateScene(ctx.activity)) : []),
             '',
             ...attentionLines(),
             '',
             ...moodLine,
-            ...privateLengthLines(session && session._turn, session && session.style),
+            ...(profile
+                ? profile.lengthLines(turn, session && session.style)
+                : privateLengthLines(turn, session && session.style)),
             // Explicit, not inferred from an absence. See `slowedLines`.
             ...(session && session._styleLocked ? slowedLines() : []),
             // `non-explicit` was here and is deliberately gone. The clause that remains is the
@@ -640,8 +666,8 @@
             // wait this feature exists to remove.
             ...choiceLines(),
             'Do not expose internal levels, gates or implementation details unless the user explicitly asks about the product.',
-            // Last, where it is read last (P22). See `lengthReminder`.
-            ...lengthReminder(),
+            // Last, where it is read last (P22). See `lengthReminder`; AX4 matches it to the turn.
+            ...(profile ? profile.lengthReminder(turn) : lengthReminder()),
             '',
         ].join('\n');
     }
@@ -716,6 +742,44 @@
 
     function choicesModel() {
         return optional('./PrivateChoices.js', 'NEXUS_PRIVATE_CHOICES');
+    }
+
+    function profileModel() {
+        return optional('./PrivateExperienceProfile.js', 'NEXUS_PRIVATE_EXPERIENCE_PROFILE');
+    }
+
+    /**
+     * AX1. The ceiling this session really has: ConsentFlow's installed `maxLevel`, which the
+     * Intimate activity sets from min(style, capability) — falling back to the preset's own when
+     * no flow is answering. The prompt used to print the preset's number, which stopped being the
+     * whole truth the moment a capability could narrow it.
+     */
+    function sessionCeiling(ctx) {
+        const installed = ctx && ctx.adult && Number(ctx.adult.maxLevel);
+        const presetMax = (ctx && ctx.preset && ctx.preset.maxLevel) || 1;
+        return Number.isFinite(installed) && installed >= 1 ? Math.min(installed, presetMax) : presetMax;
+    }
+
+    /**
+     * AX5. The room on screen, when Private asked for one and the premium room paragraph is not
+     * already describing it. Read from the activity's own world choice and the renderer's
+     * `activeId` — a world on screen that Private did not ask for is not described.
+     */
+    function privateScene(activity) {
+        try {
+            const room = global && global.__NEXUS_COMPANION_LIVE && global.__NEXUS_COMPANION_LIVE.privateWorld;
+            if (room && typeof room.gate === 'function' && room.gate().ok) return null;
+            const choice = activity && activity.worldChoice;
+            const active =
+                global && global.NEXUS_VIEWER && global.NEXUS_VIEWER.vrWorlds && global.NEXUS_VIEWER.vrWorlds.activeId;
+            const worlds = activity && activity._worldCatalogue && activity._worldCatalogue.worlds;
+            if (!choice || !active || !Array.isArray(worlds)) return null;
+            const w = worlds.find((x) => x && x.id === active);
+            if (!w || (w.id !== choice && w.lightFor !== choice)) return null;
+            return { title: w.title, note: w.note };
+        } catch (_) {
+            return null;
+        }
     }
 
     function stageDirections() {
@@ -1177,7 +1241,7 @@
             this._armBeats();
             this._emit('private:session-start', {
                 preset: this.preset.id,
-                maxLevel: this.preset.maxLevel,
+                maxLevel: this._ceiling(),
                 scene: currentSceneLabel(this.win),
                 returning: !this._isFirstSession(),
             });
@@ -1427,7 +1491,7 @@
             const pace = paceModel();
             const level = Math.max(1, Number(this.adult && this.adult.level) || 1);
             const next = pace
-                ? pace.stepUp({ level, energy: this.energy, maxLevel: this.preset.maxLevel })
+                ? pace.stepUp({ level, energy: this.energy, maxLevel: this._ceiling() })
                 : { changed: false };
 
             // At the preset's ceiling. The forward control is not drawn here, so this is reachable
@@ -1491,7 +1555,7 @@
             const pace = paceModel();
             const level = Math.max(1, Number(this.adult && this.adult.level) || 1);
             const next = pace
-                ? pace.stepDown({ level, energy: this.energy, maxLevel: this.preset.maxLevel })
+                ? pace.stepDown({ level, energy: this.energy, maxLevel: this._ceiling() })
                 : { changed: false };
 
             // Already as gentle as the experience goes. The confirmation is the whole response: the
@@ -1569,7 +1633,7 @@
             if (this._stopped || this.state === 'complete') return false;
             const pace = paceModel();
             const level = Math.max(1, Number(this.adult && this.adult.level) || 1);
-            if (pace && pace.atFloor({ level, energy: this.energy, maxLevel: this.preset.maxLevel })) {
+            if (pace && pace.atFloor({ level, energy: this.energy, maxLevel: this._ceiling() })) {
                 this._status(t('status.alreadyGentle'));
                 return true;
             }
@@ -1615,7 +1679,7 @@
                 if (!api || typeof api.fallback !== 'function') return false;
                 const pace = paceModel();
                 const shown = pace
-                    ? pace.describe({ level: this._level(), energy: this.energy, maxLevel: this.preset.maxLevel })
+                    ? pace.describe({ level: this._level(), energy: this.energy, maxLevel: this._ceiling() })
                     : null;
                 choices = api.fallback({
                     pace: shown ? shown.pace : 'Warm',
@@ -1678,9 +1742,21 @@
             return true;
         }
 
-        /** The level, clamped to the preset's ceiling. Read in several places; computed in one. */
+        /**
+         * AX1. The session's real ceiling: the preset's, narrowed by the one ConsentFlow has
+         * installed (min of style and content capability). The ladder, the forward control and
+         * the floor all read this, so the footer never offers a step the flow would refuse.
+         */
+        _ceiling() {
+            const installed = Number(this.adult && this.adult.maxLevel);
+            return Number.isFinite(installed) && installed >= 1
+                ? Math.min(this.preset.maxLevel, installed)
+                : this.preset.maxLevel;
+        }
+
+        /** The level, clamped to the session's ceiling. Read in several places; computed in one. */
         _level() {
-            return Math.max(1, Math.min(this.preset.maxLevel, Number(this.adult && this.adult.level) || 1));
+            return Math.max(1, Math.min(this._ceiling(), Number(this.adult && this.adult.level) || 1));
         }
 
         /** The footer's transient line, when there is a view to put it in. */
@@ -2321,7 +2397,7 @@
             const pace = paceModel();
             const level = this._level();
             const shown = pace
-                ? pace.describe({ level, energy: this.energy, maxLevel: this.preset.maxLevel })
+                ? pace.describe({ level, energy: this.energy, maxLevel: this._ceiling() })
                 : { pace: level === 1 ? 'Warm' : level === 2 ? 'Romantic' : 'Sensual' };
             this.view.setPace(shown);
         }
