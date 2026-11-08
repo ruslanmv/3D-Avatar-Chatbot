@@ -38,3 +38,7 @@ pnpm-lock.yaml
 # every checksum, in exchange for nothing a reader gains. A formatter does not get to
 # restyle a wire format.
 tests/fixtures/protocol/
+
+# Quality Lab run data is written by tools/qa/lab-publish.mjs and checked by
+# tests/quality-lab.test.js; reformatting it would fight every publish.
+quality-lab/data/

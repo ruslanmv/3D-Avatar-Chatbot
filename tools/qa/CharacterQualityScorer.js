@@ -36,6 +36,20 @@
     const IT_WORDS = /\b(?:il|lo|la|gli|che|sono|non|di|per|con|una|questa|sei|mi|ti|ci|è|anche|molto|qui)\b/gi;
     const EN_WORDS = /\b(?:the|and|you|is|are|it|this|that|with|for|not|of|to|my|your|here|very|i'm|i)\b/gi;
 
+    /** What each flag costs. Exported so the Quality Lab page shows the rules actually applied. */
+    const WEIGHTS = Object.freeze({
+        empty: 100,
+        'wrong-language': 30,
+        'ai-disclaimer': 25,
+        'model-identity': 25,
+        'topic-menu': 20,
+        'assistant-register': 20,
+        'too-long': 15,
+        repetitive: 15,
+        'stage-direction': 10,
+        emoji: 10,
+    });
+
     function sentences(text) {
         return String(text || '')
             .replace(/<choices>[\s\S]*?<\/choices>/gi, '')
@@ -102,18 +116,7 @@
         const rep = repetition(text, c.previous);
         if (rep >= 0.35) flags.push('repetitive');
         const endsWithQuestion = /\?\s*$/.test(text.replace(/<choices>[\s\S]*?<\/choices>/gi, '').trim());
-        const weights = {
-            empty: 100,
-            'wrong-language': 30,
-            'ai-disclaimer': 25,
-            'model-identity': 25,
-            'topic-menu': 20,
-            'assistant-register': 20,
-            'too-long': 15,
-            repetitive: 15,
-            'stage-direction': 10,
-            emoji: 10,
-        };
+        const weights = WEIGHTS;
         const lost = flags.reduce((sum, f) => sum + (weights[f] || 0), 0);
         return {
             score: Math.max(0, 100 - lost),
@@ -135,7 +138,7 @@
         return { turns: list.length, meanScore: mean, flags, questionRatio: Math.round(questions * 100) / 100 };
     }
 
-    const api = { score, summarize, languageOf, sentences, repetition };
+    const api = { WEIGHTS, score, summarize, languageOf, sentences, repetition };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_CHARACTER_SCORER = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);

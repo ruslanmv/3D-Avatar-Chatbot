@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>NEXUS Quality Lab</title>
+        <meta
+            name="description"
+            content="Character Quality Lab: real-provider runs, deterministic scores, presentation measurements and human review for the NEXUS companion."
+        />
+        <link rel="stylesheet" href="lab.css" />
+    </head>
+    <body>
+        <header class="top">
+            <div class="wrap">
+                <h1>NEXUS Quality Lab</h1>
+                <p class="lede">
+                    How the companion actually behaves with real models: every reply, which model really served it, what
+                    the deterministic scorer found, and what the avatar did. Nothing here is estimated.
+                </p>
+                <nav class="tabs" aria-label="Sections">
+                    <a href="#overview">Overview</a>
+                    <a href="#turns">Replies</a>
+                    <a href="#presentation">Presentation</a>
+                    <a href="#scorer">Scorer</a>
+                    <a href="#review">Human review</a>
+                    <a href="#agents">For AI coders</a>
+                </nav>
+            </div>
+        </header>
+
+        <main class="wrap">
+            <section id="overview" aria-labelledby="h-overview">
+                <div class="section-head">
+                    <h2 id="h-overview">Overview</h2>
+                    <label class="pick"
+                        >Run
+                        <select id="run-pick"></select>
+                    </label>
+                </div>
+                <p id="run-meta" class="muted"></p>
+                <ul id="run-notes" class="notes"></ul>
+                <div class="table-scroll">
+                    <table id="matrix">
+                        <caption class="sr-only">
+                            Scores per route and language
+                        </caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Route</th>
+                                <th scope="col">Lang</th>
+                                <th scope="col" class="num">Score</th>
+                                <th scope="col">Flags</th>
+                                <th scope="col" class="num">Ends in “?”</th>
+                                <th scope="col" class="num">Median / max</th>
+                                <th scope="col" class="num">Models served</th>
+                                <th scope="col" class="num">Tokens / turn</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <h3>Across runs</h3>
+                <p class="muted">Mean score per route and language in every published run, newest first.</p>
+                <div class="table-scroll">
+                    <table id="trend">
+                        <thead></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="turns" aria-labelledby="h-turns">
+                <div class="section-head">
+                    <h2 id="h-turns">Replies</h2>
+                    <div class="filters">
+                        <label class="pick"
+                            >Route
+                            <select id="f-route"></select
+                        ></label>
+                        <label class="pick"
+                            >Lang
+                            <select id="f-lang"></select
+                        ></label>
+                        <label class="pick"
+                            >Flag
+                            <select id="f-flag"></select
+                        ></label>
+                    </div>
+                </div>
+                <p class="muted">
+                    Model output is shown as text, exactly as received. A flag is the scorer's finding, not a human
+                    judgement.
+                </p>
+                <ol id="turn-list" class="turns"></ol>
+            </section>
+
+            <section id="presentation" aria-labelledby="h-pres">
+                <h2 id="h-pres">Presentation (voice, face, light)</h2>
+                <p class="muted">
+                    Read from the running page: the voice rate factor, the face the session intended, the value the VRM
+                    really holds, and whether the light applied. “Applied” is never assumed.
+                </p>
+                <div class="table-scroll">
+                    <table id="pres">
+                        <thead>
+                            <tr>
+                                <th scope="col">Route · lang</th>
+                                <th scope="col">Moment</th>
+                                <th scope="col" class="num">Level</th>
+                                <th scope="col" class="num">Voice rate</th>
+                                <th scope="col" class="num">Intended face</th>
+                                <th scope="col" class="num">VRM happy</th>
+                                <th scope="col">Light</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="scorer" aria-labelledby="h-scorer">
+                <h2 id="h-scorer">Scorer</h2>
+                <p class="muted">
+                    The page loads <code>tools/qa/CharacterQualityScorer.js</code> itself, so these are the rules the
+                    scores above were computed with. Every reply starts at 100 and loses the weight of each flag.
+                </p>
+                <div class="split">
+                    <div class="table-scroll">
+                        <table id="weights">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Flag</th>
+                                    <th scope="col" class="num">Cost</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <form id="try" class="try">
+                        <label for="try-text">Try a reply</label>
+                        <textarea id="try-text" rows="4">I’m an AI assistant, here to help.</textarea>
+                        <div class="try-row">
+                            <label class="pick"
+                                >Lang
+                                <select id="try-lang">
+                                    <option value="en">en</option>
+                                    <option value="it">it</option>
+                                </select>
+                            </label>
+                            <label class="check"
+                                ><input type="checkbox" id="try-ai" /> they asked “are you an AI?”</label
+                            >
+                        </div>
+                        <output id="try-out" aria-live="polite"></output>
+                    </form>
+                </div>
+            </section>
+
+            <section id="review" aria-labelledby="h-review">
+                <h2 id="h-review">Human review</h2>
+                <p class="muted">
+                    What a script cannot judge: warmth, wit, whether she sounds like someone. Rubric:
+                    <code>docs/qa/NEXUS_PREMIUM_EXPERIENCE_SCORECARD.md</code>. Reviews are stored in the run file's
+                    <code>humanReview</code> array and are never averaged with the scorer.
+                </p>
+                <div id="review-body"></div>
+            </section>
+
+            <section id="agents" aria-labelledby="h-agents">
+                <h2 id="h-agents">For AI coders</h2>
+                <p>
+                    Start at <code>quality-lab/README.md</code>. Everything on this page is plain JSON under
+                    <code>quality-lab/data/</code>: read <code>index.json</code>, then each run file it lists.
+                </p>
+                <pre><code># run the lab against real routes (app running: npm start)
+OLLABRIDGE_PAIR_TOKEN=… node tools/qa/character-lab.mjs --routes free-best,free-fast --langs en,it
+
+# publish the report here (rescored with the current scorer)
+node tools/qa/lab-publish.mjs tmp/character-lab/&lt;report&gt;.json --id &lt;yyyy-mm-dd-name&gt; --label "…"
+
+# after changing the scorer
+node tools/qa/lab-publish.mjs --rescore-all
+npx jest tests/quality-lab.test.js tests/private-world/character-scorer.test.js</code></pre>
+            </section>
+        </main>
+
+        <footer class="wrap muted foot">
+            Static, no build step. Served by <code>npm start</code> at <code>/quality-lab/</code>. Data:
+            <a href="data/index.json">data/index.json</a>.
+        </footer>
+
+        <script src="../tools/qa/CharacterQualityScorer.js"></script>
+        <script src="lab.js"></script>
+    </body>
+</html>

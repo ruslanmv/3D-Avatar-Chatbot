@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (277 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (278 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-08 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **6104 tests in 277 suites, all passing.**
+— lint clean, format clean, **6112 tests in 278 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -798,6 +798,13 @@ TogetherCapability) owns style data and capability resolution;
   Token from `OLLABRIDGE_PAIR_TOKEN` or `--token-file`, never printed. Results:
   `docs/qa/NEXUS_CHARACTER_MODEL_EVALUATION.md`; gates:
   `docs/qa/NEXUS_PREMIUM_RELEASE_GATES.md`.
+- **The Quality Lab site (AX9) is where lab results live.** `quality-lab/`
+  (static, served at `/quality-lab/` by `npm start`; README is the agent's start
+  page) shows every published run: scores, served models, replies, presentation
+  and human reviews. Publish a report with
+  `node tools/qa/lab-publish.mjs <report> --id … --label …`; after any scorer
+  change run `--rescore-all` — `tests/quality-lab.test.js` fails if a stored
+  score is not the current scorer's. Never hand-edit a run file.
 
 ## Clearing a conversation
 

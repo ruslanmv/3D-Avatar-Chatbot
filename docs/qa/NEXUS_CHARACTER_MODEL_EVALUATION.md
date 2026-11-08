@@ -22,11 +22,11 @@ nothing is estimated, and where the provider did not report something the table 
 | free-best | en | 94 | topic-menu 1, assistant-register 1 | 0.43 | 0.86 s / 1.6 s | 1 | 2 297 |
 | free-best | it | 96 | too-long 1, stage-direction 1 | 0.14 | 1.8 s / 9.0 s | 2 | 2 738 |
 | free-fast | en | 100 | — | 0.14 | 0.99 s / 1.5 s | 2 | 2 315 |
-| free-fast | it | 81 | empty 1, too-long 1, assistant-register 1 | 0.14 | 2.4 s / 32.6 s | 2 | 2 865 |
+| free-fast | it | 81 | empty 1, too-long 1, assistant-register 1 | 0.14 | 2.4 s / 3.6 s (+ one empty turn after 32.6 s) | 2 | 2 865 |
 | free-flex | en | 90 | too-long 3, model-identity 1 | 0.57 | 2.0 s / 13.4 s | 6 | 2 274 |
 | free-flex | it | 93 | too-long 1, emoji 1, model-identity 1 | 0.29 | 4.8 s / 18.3 s | 7 | 2 858 |
 
-Latency is send → finished reply as the person waits for it. Tokens are the provider's
+Latency is send → finished reply as the person waits for it, over answered turns. Tokens are the provider's
 `total_tokens`, almost all of it prompt (~2 000 tokens of system prompt per turn). **Cost: not
 reported** — the free routes publish no price and returned `cost: 0` where they returned a cost at all.
 
