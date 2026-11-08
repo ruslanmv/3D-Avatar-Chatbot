@@ -448,3 +448,20 @@ describe('SD1 — a skirt panel that falls through the lap', () => {
         expect(gapHeight(garments[0].positions)).toBeLessThan(0.43);
     });
 });
+
+describe('pose corrector does not walk tee fabric', () => {
+    test('a fitted tee translated with a raised knee remains at its skinned pose', () => {
+        const top = square(R + 0.35, 0.02, 5);
+        const raised = top.pos.slice();
+        for (let i = 1; i < raised.length; i += 3) raised[i] += 0.35;
+        const tee = {
+            name: 'Black Fitted Tee', templateId: 'top-fitted-v1', slot: 'Tops',
+            posed: raised, rest: top.pos, indices: top.indices,
+        };
+        expect(C.profileFor(tee)).toBeUndefined();
+        const { garments } = C.correct({
+            bodyPos: body.pos, bodyNrm: body.nrm, garments: [tee],
+        });
+        expect(Array.from(garments[0].positions)).toEqual(Array.from(Float32Array.from(raised)));
+    });
+});
