@@ -69,3 +69,32 @@ and run `review_pictures.py check`. If a picture regresses, stop sending
 the new modules unless that flag is set.
 
 Deleting `PoseClothCorrection.js` is out of scope until those captures pass.
+
+## PR pilot: opt-in seated skirt contact
+
+Under `?cloth=xpbd`, `AvatarManager` retains the WCL1 glTF buffer view
+for **only** `dress-a-line-v1`, `skirt-pencil-v1`, and
+`skirt-pleated-mini-v1`. `PoseClothCorrector` validates the summary
+(`wardrobe.cloth/1`, `profile: cloth|hybrid-skirt`, `simulation: xpbd`)
+and the render binding before sending an XPBD worker message. Without the
+query flag the worker receives the exact old message with no `solver` field.
+Other garments still run in the pose-correction batch. If the pilot has no
+valid WCL1 data or thigh bones, it falls back to the previous solver.
+
+The pilot initializes particles from the *current posed render vertices* in
+world space, not from the standing cut. The authored WCL1 stretch, shear and
+bend rest constraints are used unchanged. The waistband particles with
+attachment weight >=0.999 are pinned. Thigh capsules follow the current upper-
+and lower-leg bones; a one-sided lap contact keeps skirt-hem particles out
+of the underside of a **seated** thigh, with simultaneous capsule corrections
+averaged. The centre-front hem also clears the lower silhouette of the
+posed brief by a small testable gap; no geometry is cut or sewn.
+
+The pilot currently pre-rolls 24 simulation frames upon pose settlement; it
+is **not yet a verified continuous frame-by-frame real-time cloth engine**.
+The skinned fallback remains essential until live captures show a good result.
+
+Do not call a skirt fixed from this PR alone. The 1 mm penetration, 6x stretch,
+8 mm span-drop gate and the reviewed front pictures must all pass. The 7 and
+8 November CSV reports are immutable historical evidence: never write
+`print_matrix.py --out` into either baseline directory when comparing it.
