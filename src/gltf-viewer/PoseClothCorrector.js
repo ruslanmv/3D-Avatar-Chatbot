@@ -16,6 +16,8 @@
  * skinned cloth as it was.
  */
 import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
+import '../wardrobe/ClothAsset.js';
+import '../wardrobe/XpbdSkirtPilot.js';
 
 const SNAPSHOT = 'nexusPoseClothRest';
 // three r147's BufferAttribute has getX…getW (normalised weights included), not getComponent.
@@ -199,6 +201,8 @@ function movableOf(mesh) {
 export class PoseClothCorrector {
     constructor(options = {}) {
         this.workerUrl = options.workerUrl || new URL('../wardrobe/PoseClothWorker.js', import.meta.url);
+        this.xpbdPilotEnabled = typeof window !== 'undefined' &&
+            new URLSearchParams(window.location.search).get('cloth') === 'xpbd';
         this.worker = null;
         this.generation = 0;
         this.root = null;
@@ -311,6 +315,41 @@ export class PoseClothCorrector {
             };
         });
         const input = { bodyPos: join(bodyPos), bodyNrm: join(bodyNrm), garments };
+
+        // No flag: EXACT original worker request/response path below.
+        // XPBD is an explicit experiment for three catalog template IDs.
+        if (this.xpbdPilotEnabled && typeof window !== 'undefined') {
+            const Pilot = window.NEXUS_XPBD_SKIRT_PILOT;
+            const Decoder = window.NEXUS_CLOTH_ASSET;
+            if (Pilot && Decoder) {
+                const candidates = [];
+                const used = new Set();
+                found.garments.forEach((g, index) => {
+                    const blob = g.node?.userData?.nexusClothBuffer;
+                    if (!Pilot.eligible(g.tag) || !blob || used.has(g.node.uuid)) return;
+                    try {
+                        const asset = Decoder.decode(blob);
+                        const initial = Pilot.initialParticles(asset, garments[index].posed);
+                        const masks = Pilot.hemMasks(asset, root.userData.isVRM ? -1 : 1);
+                        if (!masks.hem.some(Boolean)) throw new Error('garment has no movable hem particles');
+                        candidates.push({ index, asset, blob, initial, masks, tag: g.tag });
+                        used.add(g.node.uuid);
+                    } catch (error) {
+                        console.warn('[PoseCloth] invalid pilot cloth asset; retaining old corrector', error);
+                    }
+                });
+                if (candidates.length) {
+                    const capsules = Pilot.thighCapsules(found.body);
+                    if (capsules.length >= 2) {
+                        const index = found.garments.findIndex((g) =>
+                            /brief/i.test((g.tag && g.tag.templateId) || g.name));
+                        const brief = index >= 0 ? Pilot.briefBounds(garments[index].posed) : null;
+                        return this._correctPilots(worker, generation, input, meshes, candidates, capsules, brief);
+                    }
+                    console.warn('[PoseCloth] thigh skeleton not available; retaining old corrector');
+                }
+            }
+        }
         return new Promise((resolve) => {
             const onMessage = (event) => {
                 const answer = event.data || {};
@@ -331,6 +370,101 @@ export class PoseClothCorrector {
             worker.addEventListener('message', onMessage);
             worker.postMessage({ id: generation, input });
         });
+    }
+
+    /**
+     * Opt-in pilot: excluded garments still go through the old worker unchanged.
+     * Each skirt is sent to XPBD with a WCL1 buffer and skinned WORLD-space
+     * particles. Failed experimental jobs fall back to the previous solver.
+     */
+    async _correctPilots(worker, generation, input, meshes, pilots, capsules, brief) {
+        const selected = new Set(pilots.map((p) => p.index));
+        const legacyIndices = input.garments.map((_, i) => i).filter((i) => !selected.has(i));
+        const resultRows = new Array(input.garments.length);
+        const send = (payload) => new Promise((resolve) => {
+            const onMessage = (event) => {
+                if (!event.data || event.data.id !== payload.id) return;
+                worker.removeEventListener('message', onMessage);
+                resolve(event.data);
+            };
+            worker.addEventListener('message', onMessage);
+            worker.postMessage(payload);
+        });
+        const original = (indices) => ({
+            bodyPos: input.bodyPos,
+            bodyNrm: input.bodyNrm,
+            garments: indices.map((index) => input.garments[index]),
+        });
+        const applyLegacy = (answer, indices) => {
+            if (!answer.ok || !answer.garments || answer.garments.length !== indices.length) {
+                throw new Error(answer.why || 'legacy cloth job failed');
+            }
+            answer.garments.forEach((g, j) => {
+                const index = indices[j];
+                this._write(meshes[index], g.positions);
+                resultRows[index] = { name: g.name, before: g.before, after: g.after };
+            });
+        };
+        try {
+            if (legacyIndices.length) {
+                const answer = await send({
+                    id: generation + ':legacy', input: original(legacyIndices),
+                });
+                if (generation !== this.generation) return null;
+                applyLegacy(answer, legacyIndices);
+            }
+            for (const pilot of pilots) {
+                const index = pilot.index;
+                const given = input.garments[index];
+                const answer = await send({
+                    id: generation + ':xpbd:' + index,
+                    solver: 'xpbd',
+                    summary: pilot.tag.clothAsset,
+                    asset: pilot.blob,
+                    initial: pilot.initial,
+                    hemMask: pilot.masks.hem,
+                    centreHemMask: pilot.masks.centre,
+                    capsules,
+                    brief,
+                    frames: 24,
+                    dt: 1 / 60,
+                    substeps: 2,
+                    iterations: 6,
+                    thickness: 0.001,
+                    measure: {
+                        bodyPos: input.bodyPos,
+                        bodyNrm: input.bodyNrm,
+                        rest: given.rest,
+                        indices: given.indices,
+                        movable: given.movable,
+                        name: given.name,
+                        templateId: given.templateId,
+                    },
+                });
+                if (generation !== this.generation) return null;
+                if (!answer.ok || !answer.positions || !answer.after ||
+                    answer.positions.length !== given.posed.length) {
+                    console.warn('[PoseCloth] pilot failed; reverting this skirt to pose correction', answer.why);
+                    const fallback = await send({
+                        id: generation + ':fallback:' + index, input: original([index]),
+                    });
+                    if (generation !== this.generation) return null;
+                    applyLegacy(fallback, [index]);
+                    continue;
+                }
+                this._write(meshes[index], answer.positions);
+                resultRows[index] = { name: given.name, before: null, after: answer.after };
+            }
+            if (generation !== this.generation) return null;
+            this.last = resultRows;
+            this.phase = 'applied';
+            if (this.onCorrected) this.onCorrected(this.last);
+            return this.last;
+        } catch (error) {
+            if (generation === this.generation) this.phase = 'failed';
+            console.warn('[PoseCloth] pilot batch failed', error);
+            return null;
+        }
     }
 
     /** World-space corrected positions → this garment's bind space, through each vertex's skin. */
