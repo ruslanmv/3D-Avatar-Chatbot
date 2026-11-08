@@ -15,7 +15,7 @@ repository).
 | T4 | Presentation bounded, applied through existing owners, reset on stop, overridden by care | PASS | `presentation.test.js`; browser measurement in the model evaluation |
 | T5 | Face holds the resting expression between turns | PASS (fixed in AX7) | `tests/behavior-engine-facetrack.test.js`; lab measurement |
 | T6 | Gaze follows the style | OPEN — declared, not applied | `NEXUS_EXPERIENCE_PROFILE_CONTRACT.md` |
-| T7 | Deterministic scorer ≥ 90 mean on the release route, EN and IT | see evaluation | `NEXUS_CHARACTER_MODEL_EVALUATION.md` |
+| T7 | Deterministic scorer ≥ 90 mean on the release route, EN and IT | OPEN — free-fast · it scored 81; no route is pinned yet | `NEXUS_CHARACTER_MODEL_EVALUATION.md` |
 | T8 | One model per session (pinned route, or served model stable across turns) | OPEN | evaluation: the free routes switch backends between turns |
 | T9 | Human rubric: no 0 in A, no fail in D, two reviewers, both languages | OPEN — no human scores recorded | `NEXUS_PREMIUM_EXPERIENCE_SCORECARD.md` |
 | T10 | Device check on a real phone and a Quest | OPEN | none for AX7 |

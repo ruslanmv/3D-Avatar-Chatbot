@@ -24,6 +24,33 @@ describe('the scorer flags what Private’s prompt forbids, from real replies', 
         expect(r.score).toBeLessThan(100);
     });
 
+    test.each([
+        // AX8 matrix, 2026-11-08: these scored 100 before the scorer read the typographic apostrophe
+        ['I’m an AI assistant, here to help and keep you company.', 'en', true, ['assistant-register']],
+        [
+            'I’m glad you’re enjoying the vibe. Is there anything you’d like to hear, watch, or talk about as the night goes on?',
+            'en',
+            false,
+            ['topic-menu'],
+        ],
+        [
+            'Sono qui per supportarti, come un compagno virtuale che ascolta e aiuta.',
+            'it',
+            false,
+            ['assistant-register'],
+        ],
+        [
+            "I'm LFM, short for Liquid Foundation Model, built by Liquid AI. I'm not a real person.",
+            'en',
+            true,
+            ['model-identity'],
+        ],
+    ])('matrix reply: %s', (reply, lang, askedAboutAI, expected) => {
+        const r = S.score(reply, { lang, maxSentences: 4, askedAboutAI });
+        for (const f of expected) expect(r.flags).toContain(f);
+        expect(r.flags).not.toContain('ai-disclaimer');
+    });
+
     test('a clean, in-character reply scores 100', () => {
         const r = S.score('Mm. I like that you said it out loud. Stay a while.', { lang: 'en', maxSentences: 3 });
         expect(r).toMatchObject({ score: 100, flags: [], sentences: 3 });

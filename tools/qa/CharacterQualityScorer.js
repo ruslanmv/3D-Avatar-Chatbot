@@ -4,7 +4,7 @@
  * Deterministic and pure, so the same reply always gets the same score and a model comparison is a
  * comparison of models, not of a judge's mood. It checks only what can be checked from the text:
  * the rules Private's own prompt states (length, no emoji, no stage directions, no unprompted AI
- * disclaimer, no topic menu, no assistant register, not every reply a question), the language the
+ * disclaimer, no topic menu, no assistant register, never a model or vendor name, not every reply a question), the language the
  * person wrote in, and repetition against her previous replies. It does not judge warmth, wit or
  * whether a line is good — that is the human rubric in docs/qa/NEXUS_PREMIUM_EXPERIENCE_SCORECARD.md.
  *
@@ -21,9 +21,17 @@
     const AI_DISCLAIMER =
         /\b(?:as an ai|i(?:'| a)m (?:just )?an ai|language model|i don'?t have (?:emotions|feelings)|in the human sense|come (?:un'?|una )?(?:ia|intelligenza artificiale)|sono (?:solo )?un'?(?:ia|intelligenza artificiale)|non ho (?:emozioni|sentimenti))\b/i;
     const TOPIC_MENU =
-        /\b(?:is there anything (?:specific|in particular)|what would you like to (?:talk|chat) about|we could (?:explore|talk about|discuss)|would you like to discuss|c'?è qualcosa (?:in particolare |di specifico )?di cui|di cosa (?:vorresti|ti piacerebbe) parlare|potremmo (?:esplorare|parlare di))\b/i;
+        /\b(?:is there anything (?:specific|in particular)|what would you like to (?:talk|chat) about|(?:is there )?anything (?:else )?you'?d like to (?:hear|watch|do|talk about|chat about)|we could (?:explore|talk about|discuss)|would you like to discuss|c'?è qualcosa (?:in particolare |di specifico )?di cui|di cosa (?:vorresti|ti piacerebbe) parlare|potremmo (?:esplorare|parlare di))\b/i;
     const ASSISTANT =
-        /\b(?:how (?:can|may) i (?:help|assist)|i(?:'| a)m here to (?:help|assist)|happy to help|virtual assistant|come posso aiutarti|sono qui per aiutarti|assistente virtuale|aiutarti in qualsiasi modo)\b/i;
+        /\b(?:how (?:can|may) i (?:help|assist)|(?:i(?:'| a)m )?here to (?:help|assist)|happy to help|(?:virtual|ai) (?:assistant|companion)|come posso aiutarti|(?:sono )?qui per (?:aiutarti|supportarti)|assistente(?: virtuale)?|compagn[oa] virtuale|aiutarti in qualsiasi modo)\b/i;
+    /**
+     * Naming the model, its maker or a vendor is never her answer — not even to "are you an AI?",
+     * where the truthful answer is that she is one, in her own voice. A shared route may hand a
+     * turn to a model that introduces itself by product name (measured: "I'm LFM … built by
+     * Liquid AI"), which is the persona breaking, not honesty.
+     */
+    const MODEL_IDENTITY =
+        /\b(?:liquid ai|openai|anthropic|google ai|meta ai|nvidia|mistral ai|deepseek|alibaba|gpt-?\d|chatgpt|llama|gemini|qwen|nemotron|claude|lfm|foundation model)\b/i;
 
     const IT_WORDS = /\b(?:il|lo|la|gli|che|sono|non|di|per|con|una|questa|sei|mi|ti|ci|è|anche|molto|qui)\b/gi;
     const EN_WORDS = /\b(?:the|and|you|is|are|it|this|that|with|for|not|of|to|my|your|here|very|i'm|i)\b/gi;
@@ -76,7 +84,8 @@
      */
     function score(reply, ctx) {
         const c = ctx || {};
-        const text = String(reply || '');
+        // Models write the typographic apostrophe; every pattern here is written with the plain one.
+        const text = String(reply || '').replace(/[\u2018\u2019\u02BC]/g, "'");
         const flags = [];
         const n = sentences(text);
         const max = Number(c.maxSentences) || 3;
@@ -87,6 +96,7 @@
         if (!c.askedAboutAI && AI_DISCLAIMER.test(text)) flags.push('ai-disclaimer');
         if (TOPIC_MENU.test(text)) flags.push('topic-menu');
         if (ASSISTANT.test(text)) flags.push('assistant-register');
+        if (MODEL_IDENTITY.test(text)) flags.push('model-identity');
         const lang = languageOf(text);
         if (c.lang && lang !== 'unknown' && lang !== c.lang) flags.push('wrong-language');
         const rep = repetition(text, c.previous);
@@ -96,6 +106,7 @@
             empty: 100,
             'wrong-language': 30,
             'ai-disclaimer': 25,
+            'model-identity': 25,
             'topic-menu': 20,
             'assistant-register': 20,
             'too-long': 15,
