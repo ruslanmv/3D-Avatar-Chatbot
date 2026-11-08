@@ -113,3 +113,41 @@ These are the historical seated failures of the legacy path, unchanged.
    SB1 lets it simulate.
 
 Rapier is not compared against this baseline yet. The baseline is not valid.
+
+## Master is the reference
+
+Requested 2026-11-08: compare every change against `master` and do not ship a
+regression. Captured with the same tool, avatar, poses and cameras:
+
+| Condition            | Viewer                                         | Forge                         | Output                              |
+| -------------------- | ---------------------------------------------- | ----------------------------- | ----------------------------------- |
+| master               | `origin/master` `14e5126`, default page        | `origin/main` `26ad911`       | `/tmp/cloth-compare-master-<g>`     |
+| branch default       | this branch, no flag                           | this Forge branch             | `/tmp/cloth-compare-default-<g>`    |
+| branch `?cloth=xpbd` | this branch                                    | this Forge branch             | `/tmp/cloth-contract-<g>`           |
+
+Master does not expose the gate metrics (the evidence API arrived with PR
+#140), so the comparison is by picture. Sheets, front and right per pose, rows
+in the order above: `captures/2026-11-08/master-vs-branch-{aline,pencil,pleated}.webp`.
+
+| Garment | Pose     | Branch default vs master                                                   | Branch `?cloth=xpbd` vs master                                 |
+| ------- | -------- | -------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| A-line  | standing | same                                                                       | **worse**: flap at the back-left hip, shorter frayed hem       |
+| A-line  | seated   | **worse**: skirt drops off the lap and hangs behind the knees in all three side views | **worse**: torn hoop at the hips                    |
+| Pencil  | standing | same                                                                       | **worse**: holes, side flaps                                   |
+| Pencil  | seated   | **worse**: same drop off the lap                                           | **worse**                                                      |
+| Pleated | all      | about the same (legacy corrector in all three)                             | about the same (asset is `fallback-skinning`)                  |
+
+No condition on this branch beats master for these three garments.
+
+- The branch-default regression is **not** from M1/M2 (both are behind the
+  flag; `git log` shows no commit of this PR touches `PoseClothCorrection.js`).
+  It comes from the +587 lines the base stack added to the legacy corrector:
+  `b345da3` (#136), `07ed700` and `a901d04` (#137), `017aec6` (#140). Those PRs
+  should not merge their default-path changes until seated A-line and pencil
+  match master.
+- `?cloth=xpbd` stays an experiment. It must look at least as good as master on
+  every pose of a garment before that garment may leave the flag.
+
+Rule for every later cloth PR: capture master and the change with the same
+command, put the two rows side by side, and treat any pose where the change
+looks worse than master as a regression, whatever the gate numbers say.
