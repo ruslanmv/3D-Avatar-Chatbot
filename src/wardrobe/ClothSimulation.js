@@ -10,7 +10,8 @@
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_CLOTH_SIMULATION = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null, function () {
-    var Body = typeof require === 'function' ? require('./BodyCollision.js') : null;
+    var Body = typeof require === 'function' ? require('./BodyCollision.js') :
+        typeof self !== 'undefined' ? self.NEXUS_BODY_COLLISION : null;
 
     function create(asset, options) {
         options = options || {};
