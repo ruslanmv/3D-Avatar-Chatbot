@@ -67,8 +67,24 @@ self.onmessage = function (event) {
                     }
                 }
             }
+            var metrics = null;
+            if (job.measure) {
+                metrics = NEXUS_POSE_CLOTH_CORRECTION.inspect({
+                    bodyPos: job.measure.bodyPos,
+                    bodyNrm: job.measure.bodyNrm,
+                    garment: {
+                        name: job.measure.name,
+                        templateId: job.measure.templateId,
+                        profile: 'span',
+                        posed: render,
+                        rest: job.measure.rest,
+                        indices: job.measure.indices,
+                        movable: job.measure.movable,
+                    },
+                });
+            }
             self.postMessage({
-                id: job.id, ok: true, positions: render,
+                id: job.id, ok: true, positions: render, after: metrics,
                 strain: NEXUS_CLOTH_SIMULATION.maxStrain(state),
                 contacts: state.frames,
             }, [render.buffer]);
