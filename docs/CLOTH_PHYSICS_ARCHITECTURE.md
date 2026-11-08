@@ -6,6 +6,11 @@ when a caller posts `solver: "xpbd"` and the Forge asset says
 `simulation: "xpbd"` with schema `wardrobe.cloth/1`. Anything else, including
 an omitted flag, stays on the pose corrector.
 
+The audit of why the skirt pilot still fails, and the decision not to
+replace this solver until a Rapier proof of concept beats it on one real
+A-line, is in `docs/physics/`. That set is documentation. It does not change
+the runtime described below.
+
 ## Data flow
 
 1. Forge writes `extras.wardrobeForge.clothAsset` and a `WCL1` buffer view.
