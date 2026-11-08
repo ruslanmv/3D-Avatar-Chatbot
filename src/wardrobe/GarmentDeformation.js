@@ -42,9 +42,23 @@
     function solverFor(assetSummary, requested) {
         if (requested !== 'xpbd') return 'pose-correction';
         if (!assetSummary || assetSummary.simulation !== 'xpbd') return 'pose-correction';
+        if (assetSummary.profile !== 'cloth' && assetSummary.profile !== 'hybrid-skirt') return 'pose-correction';
         if (assetSummary.schema !== 'wardrobe.cloth/1') return 'pose-correction';
         return 'xpbd';
     }
 
-    return { strategyFor: strategyFor, selectLod: selectLod, solverFor: solverFor };
+    // Only the first three explicitly audited skirt looks are opted in.
+    // All other catalog garments retain the old correction even under the flag.
+    var PILOT = {
+        'dress-a-line-v1': true,
+        'skirt-pencil-v1': true,
+        'skirt-pleated-mini-v1': true,
+    };
+
+    function pilotFor(tag, requested) {
+        if (requested !== 'xpbd' || !tag || !PILOT[tag.templateId]) return false;
+        return solverFor(tag.clothAsset, requested) === 'xpbd';
+    }
+
+    return { strategyFor: strategyFor, selectLod: selectLod, solverFor: solverFor, pilotFor: pilotFor };
 });
