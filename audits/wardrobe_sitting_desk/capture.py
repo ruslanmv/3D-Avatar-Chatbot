@@ -660,6 +660,7 @@ def parse_args(argv=None):
     parser.add_argument("--resume", action="store_true", help="Skip completed entries in --out")
     parser.add_argument("--headful", action="store_true")
     parser.add_argument("--only", help="Capture only entries whose name contains this text. An exact name wins.")
+    parser.add_argument("--skip", default="", help="Comma-separated names to leave uncaptured. An exact name matches.")
     parser.add_argument("--look-key", help="Capture only the Try-On look with this data-look-key")
     parser.add_argument("--cloth", choices=("on", "off"), default="on", help="off photographs skinning before the correction")
     parser.add_argument("--inventory-only", action="store_true", help="Fetch the live catalog and do not generate or capture")
@@ -675,6 +676,7 @@ def parse_args(argv=None):
         parser.error("--poses must be chosen from " + ", ".join(POSES))
     if not re.fullmatch(r"[1-9][0-9]*x[1-9][0-9]*", options.size):
         parser.error("--size must be WIDTHxHEIGHT")
+    options.skip = {part.strip() for part in options.skip.split(",") if part.strip()}
     if options.max_items < 0 or options.delay < 0 or options.diff_threshold < 0:
         parser.error("--max-items, --delay and --diff-threshold must be non-negative")
     return options
@@ -809,6 +811,21 @@ def main(argv=None) -> int:
             folder = f"screenshots/{source}/{entry_id}"
             path = out / folder
             path.mkdir(parents=True, exist_ok=True)
+            if name in opts.skip:
+                print(f"[{index}/{len(queue)}] SKIP {source}: {name} (--skip)", flush=True)
+                record(
+                    {
+                        "id": entry_id,
+                        "source": source,
+                        "name": name,
+                        "folder": folder,
+                        "category": item.get("category", ""),
+                        "status": "not-captured",
+                        "reason": "Named in --skip. The cloth correction on this mesh did not finish in a still capture.",
+                        "poses": unsupported_poses(),
+                    }
+                )
+                continue
             if opts.resume and entry_complete(out, previous.get(entry_id, {}), opts.views, opts.poses):
                 print(f"[{index}/{len(queue)}] SKIP {source}: {name}", flush=True)
                 record(previous[entry_id])
@@ -856,6 +873,15 @@ def main(argv=None) -> int:
                         close.first.click(timeout=5000)
                 except Exception:
                     pass
+                # A cloth job that never reports can leave the worker busy, and every later
+                # garment then waits out the same timeout. Reload so the next one starts clean.
+                if entry["failureClass"] == "infrastructure":
+                    try:
+                        open_try_on(page, opts.load_timeout)
+                        remember_camera(page)
+                        print("  reloaded Try-On after the timeout", flush=True)
+                    except Exception as recover_error:
+                        print(f"  reload failed: {recover_error}", file=sys.stderr, flush=True)
             entry["browserErrors"] = errors[start_errors:]
             record(entry)
             if source == "catalog":

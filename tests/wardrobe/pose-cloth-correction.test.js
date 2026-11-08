@@ -375,6 +375,33 @@ describe('SD1 — a skirt panel that falls through the lap', () => {
         expect(gapHeight(garments[0].positions)).toBeLessThan(0.43);
     });
 
+    test('cloth pinched between two opposing surfaces is not torn apart', () => {
+        function sphereAt(cx, cy, cz, r) {
+            const raw = sphere(r, 18, 28);
+            const pos = [];
+            const nrm = raw.nrm;
+            for (let i = 0; i < raw.pos.length; i += 3) {
+                pos.push(raw.pos[i] + cx, raw.pos[i + 1] + cy, raw.pos[i + 2] + cz);
+            }
+            return { pos, nrm };
+        }
+        const left = sphereAt(-0.03, 0, 0, 0.05);
+        const right = sphereAt(0.03, 0, 0, 0.05);
+        const posed = [0, 0, 0, 0.004, 0, 0, 0, 0.004, 0];
+        const { garments } = C.correct({
+            bodyPos: left.pos.concat(right.pos),
+            bodyNrm: left.nrm.concat(right.nrm),
+            garments: [{ name: 'leggings', posed, rest: posed.slice(), indices: [0, 1, 2] }],
+        });
+        const out = garments[0].positions;
+        const stretch = Math.hypot(out[3] - out[0], out[4] - out[1], out[5] - out[2]) / 0.004;
+        expect(stretch).toBeLessThan(6);
+        expect(garments[0].after.maxEdgeStretch).toBeLessThan(6);
+        for (let v = 0; v < 3; v += 1) {
+            expect(Math.hypot(out[v * 3], out[v * 3 + 1], out[v * 3 + 2])).toBeLessThan(0.04);
+        }
+    });
+
     test('a square merely labelled dress is not treated as a span', () => {
         const { garments } = C.correct({
             bodyPos,

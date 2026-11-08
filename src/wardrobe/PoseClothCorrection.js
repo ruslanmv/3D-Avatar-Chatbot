@@ -446,14 +446,6 @@
         var again2 = 0.0015 * 0.0015;
         var asked = new Float32Array(posed.length).fill(NaN);
         var nearBody = new Int32Array(count).fill(-1);
-        function pushOut(surface, v, i) {
-            var s = surface.signed(i, out[v * 3], out[v * 3 + 1], out[v * 3 + 2]);
-            if (s >= o.clearance) return;
-            var push = o.clearance - s;
-            out[v * 3] += surface.nrm[i * 3] * push;
-            out[v * 3 + 1] += surface.nrm[i * 3 + 1] * push;
-            out[v * 3 + 2] += surface.nrm[i * 3 + 2] * push;
-        }
         // SW3. Where her skin folds into itself (behind her knee at 90 degrees, calf against thigh)
         // there is no outside: out of her calf is into her thigh. A boot's rim there was pushed out
         // of one and back out of the other until it stood 60 mm off, its 5 mm rim edge torn to 13x.
@@ -461,6 +453,18 @@
         // any penetration measured (23 mm). Not cloth's: briefs and a dress are carried out of
         // her and then out of each other, legitimately farther, and capped they ended inside.
         var maxMove2 = o.maxMove * o.maxMove;
+        function pushOut(surface, v, i) {
+            var nx = surface.nrm[i * 3];
+            var ny = surface.nrm[i * 3 + 1];
+            var nz = surface.nrm[i * 3 + 2];
+            var s = surface.signed(i, out[v * 3], out[v * 3 + 1], out[v * 3 + 2]);
+            if (s >= o.clearance) return false;
+            var push = o.clearance - s;
+            out[v * 3] += nx * push;
+            out[v * 3 + 1] += ny * push;
+            out[v * 3 + 2] += nz * push;
+            return true;
+        }
         function tether() {
             for (var v = 0; v < count; v += 1) {
                 var tx = out[v * 3] - posed[v * 3];
@@ -499,14 +503,33 @@
                     // took the briefs' worst edge from 2.6x to 3.8x, the dress's from 1.4x to 3.9x.
                     var near = body.nearestK(out[v * 3], out[v * 3 + 1], out[v * 3 + 2], o.reach, 4);
                     var first = -1;
+                    // The first surface that actually moves this vertex wins this pass. A later
+                    // point whose normal faces the other way is the other side of a fold, and
+                    // pushing along both walks the vertex between them. A point that did not
+                    // need to move does not win, so cloth outside one surface and inside the
+                    // next is still pushed out of the next.
+                    var leadX = 0;
+                    var leadY = 0;
+                    var leadZ = 0;
+                    var lead = false;
                     for (var q = 0; q < near.length; q += 1) {
-                        var ex = out[v * 3] - body.pos[near[q] * 3];
-                        var ey = out[v * 3 + 1] - body.pos[near[q] * 3 + 1];
-                        var ez = out[v * 3 + 2] - body.pos[near[q] * 3 + 2];
+                        var pi = near[q];
+                        var ex = out[v * 3] - body.pos[pi * 3];
+                        var ey = out[v * 3 + 1] - body.pos[pi * 3 + 1];
+                        var ez = out[v * 3 + 2] - body.pos[pi * 3 + 2];
                         var dist = Math.sqrt(ex * ex + ey * ey + ez * ez);
                         if (first < 0) first = dist;
                         else if (dist > first + o.creaseWindow) break;
-                        pushOut(body, v, near[q]);
+                        var nx = body.nrm[pi * 3];
+                        var ny = body.nrm[pi * 3 + 1];
+                        var nz = body.nrm[pi * 3 + 2];
+                        if (lead && leadX * nx + leadY * ny + leadZ * nz < 0) continue;
+                        if (pushOut(body, v, pi) && !lead) {
+                            leadX = nx;
+                            leadY = ny;
+                            leadZ = nz;
+                            lead = true;
+                        }
                     }
                 } else if (i >= 0) pushOut(body, v, i);
                 for (var l = 0; l < layers.length; l += 1) {

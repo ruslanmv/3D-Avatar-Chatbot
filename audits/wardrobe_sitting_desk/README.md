@@ -42,3 +42,5 @@ Screenshots stay in gitignored `runs/`. A few comparison frames live in `reports
 ## What this does not claim
 
 The span lift closes the two-thigh fixture. It did not close the live pencil hem. `WARDROBE-CLIP-001` and `WARDROBE-DEFORM-002` stay release blockers. The assessment is [reports/READINESS.md](reports/READINESS.md). The catalog enumeration from 2026-11-07 is [reports/live-catalog-2026-11-07](reports/live-catalog-2026-11-07).
+
+A later Try-On pass applied 61 of the 62 public garments in standing, Sitting (Desk), Sitting (Wide) and Sitting (Crossed), four cameras each. The counts are [reports/catalog-matrix-2026-11-07](reports/catalog-matrix-2026-11-07). Every skirt and dress still drops through the lap. Plain and high-waist leggings still stretch about 39× in Sitting (Crossed). Seamless Scrunch Leggings did not finish its cloth correction and was left uncaptured. Screenshots from that pass are not in git.
