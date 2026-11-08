@@ -909,6 +909,93 @@
         return { ok: issues.length === 0, issues: issues };
     }
 
+    /**
+     * What this mesh can tell a later solver about a seated shape.
+     *
+     * Welded copies are the only seam pairs we have: vertices that already share a rest
+     * position within 0.1 mm. A boundary that merely passes near another boundary is not a
+     * seam. Rest positions are the authored surface, which for these garments is the standing
+     * cut, so they do not contain a seated drape. A connected panel that crosses the opening
+     * can be held together. An open crotch cannot be stitched from proximity alone.
+     */
+    function evidenceOf(rest, indices) {
+        var count = rest.length / 3;
+        var weld = weldOf(rest);
+        var uses = new Map();
+        function tally(a, b) {
+            if (a > b) {
+                var swap = a;
+                a = b;
+                b = swap;
+            }
+            var key = a + ',' + b;
+            uses.set(key, (uses.get(key) || 0) + 1);
+        }
+        for (var t = 0; t + 2 < indices.length; t += 3) {
+            var a = weld.of[indices[t]];
+            var b = weld.of[indices[t + 1]];
+            var c = weld.of[indices[t + 2]];
+            tally(a, b);
+            tally(b, c);
+            tally(c, a);
+        }
+        var parent = [];
+        for (var i = 0; i < weld.count; i += 1) parent.push(i);
+        function find(v) {
+            while (parent[v] !== v) v = parent[v] = parent[parent[v]];
+            return v;
+        }
+        var boundary = [];
+        uses.forEach(function (countUses, key) {
+            var parts = key.split(',');
+            var pa = Number(parts[0]);
+            var pb = Number(parts[1]);
+            var ra = find(pa);
+            var rb = find(pb);
+            if (ra !== rb) parent[rb] = ra;
+            if (countUses === 1) boundary.push([pa, pb]);
+        });
+        var roots = {};
+        for (var p = 0; p < weld.count; p += 1) roots[find(p)] = true;
+        var unpaired = 0;
+        for (var e = 0; e < boundary.length; e += 1) {
+            for (var f = e + 1; f < boundary.length; f += 1) {
+                var e0 = boundary[e];
+                var f0 = boundary[f];
+                if (e0[0] === f0[0] || e0[0] === f0[1] || e0[1] === f0[0] || e0[1] === f0[1]) continue;
+                var ax = rest[weld.reps[e0[0]] * 3] + rest[weld.reps[e0[1]] * 3];
+                var ay = rest[weld.reps[e0[0]] * 3 + 1] + rest[weld.reps[e0[1]] * 3 + 1];
+                var az = rest[weld.reps[e0[0]] * 3 + 2] + rest[weld.reps[e0[1]] * 3 + 2];
+                var bx = rest[weld.reps[f0[0]] * 3] + rest[weld.reps[f0[1]] * 3];
+                var by = rest[weld.reps[f0[0]] * 3 + 1] + rest[weld.reps[f0[1]] * 3 + 1];
+                var bz = rest[weld.reps[f0[0]] * 3 + 2] + rest[weld.reps[f0[1]] * 3 + 2];
+                var dist = Math.hypot(ax - bx, ay - by, az - bz) * 0.5;
+                if (dist > 1e-4 && dist < 0.015) unpaired += 1;
+            }
+        }
+        var xMin = Infinity;
+        var xMax = -Infinity;
+        for (var q = 0; q < weld.count; q += 1) {
+            var x = rest[weld.reps[q] * 3];
+            if (x < xMin) xMin = x;
+            if (x > xMax) xMax = x;
+        }
+        var onePiece = Object.keys(roots).length === 1;
+        var crosses = onePiece && xMin < -0.02 && xMax > 0.02;
+        return {
+            vertices: count,
+            particles: weld.count,
+            copiesWelded: count - weld.count,
+            components: Object.keys(roots).length,
+            boundaryEdges: boundary.length,
+            unpairedBoundaries: unpaired,
+            panelCrossesOpening: crosses,
+            seatedDrapeInRest: false,
+            canEnforceKnownPanel: crosses && unpaired === 0,
+            canRepairOpenSeam: false,
+        };
+    }
+
     var api = {
         DEFAULTS: DEFAULTS,
         SHOE: SHOE,
@@ -920,6 +1007,7 @@
         spanNeed: spanNeed,
         edgesOf: edgesOf,
         weldOf: weldOf,
+        evidenceOf: evidenceOf,
         normalsOf: normalsOf,
         Surface: Surface,
     };

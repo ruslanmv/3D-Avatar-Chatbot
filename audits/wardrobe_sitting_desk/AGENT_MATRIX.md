@@ -2,7 +2,9 @@
 
 Use this when you are Claude or Grok and the task is the wardrobe pictures: debug a miss, or prove a change did not regress.
 
-Read this file before editing `src/wardrobe/PoseClothCorrection.js`. The picture table is the regression list. A green unit test is not a closed live picture.
+Read this file before editing `src/wardrobe/PoseClothCorrection.js`. The picture table is the regression list. Whether the mesh contains a seated shape at all is answered in [SOLVER_EVIDENCE.md](SOLVER_EVIDENCE.md). A connected skirt panel can be held together. An open jeans crotch has no seam pair. Do not replace the solver until those experiments pass the live front frames.
+
+A green unit test is not a closed live picture.
 
 ## Copy this task
 
