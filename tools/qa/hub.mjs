@@ -48,10 +48,7 @@ export function buildHub() {
                             .join(', ') || 'none'
                     }.`,
                     command: `node tools/qa/character-lab.mjs --routes ${r.route} --langs ${r.lang}`,
-                    files: [
-                        'TogetherCapability.js (Private prompt)',
-                        'PrivateExperienceProfile.js',
-                    ],
+                    files: ['TogetherCapability.js (Private prompt)', 'PrivateExperienceProfile.js'],
                 });
         const mixed = latest.runs.filter((r) => r.summary.distinctServedModels > 1);
         if (mixed.length)
@@ -180,7 +177,16 @@ export function writeHub() {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
     const text = JSON.stringify(buildHub(), null, 4) + '\n';
-    if (process.argv.includes('--check')) {
+    if (process.argv.includes('--brief')) {
+        // AX14. What the SessionStart hook prints: short, so it costs little context.
+        const h = JSON.parse(text);
+        const top = h.nextActions.slice(0, 3);
+        console.log('NEXUS Quality Lab — top next actions (quality-lab/data/hub.json, MCP: lab_next_actions):');
+        for (const a of top) console.log(`- P${a.priority} [${a.area}] ${a.title} — start: ${a.command}`);
+        console.log(
+            `${h.nextActions.length} open in all. Feature notes: CLAUDE.md ▸ Feature map. /lab-next takes the top one.`
+        );
+    } else if (process.argv.includes('--check')) {
         if (!fs.existsSync(OUT) || fs.readFileSync(OUT, 'utf8') !== text) {
             console.error('quality-lab/data/hub.json is out of date: run node tools/qa/hub.mjs');
             process.exit(1);
