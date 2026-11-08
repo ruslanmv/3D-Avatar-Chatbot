@@ -89,7 +89,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (275 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (277 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -128,8 +128,8 @@ Know the coverage gaps, because they are not intuitive:
 
 ### The gate passes. Keep it that way.
 
-Measured 2026-11-07 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **6083 tests in 275 suites, all passing.**
+Measured 2026-11-08 with `npm ci` deps installed: `npm run validate` exits **0**
+— lint clean, format clean, **6100 tests in 277 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -777,6 +777,27 @@ TogetherCapability) owns style data and capability resolution;
 - **Length follows the turn** (1 / 3 / 4 sentences), still a stated hard limit
   repeated last (P22's fix kept).
   `tests/private-world/adult-experience.test.js`.
+- **A style is heard and seen, not only read (AX7).**
+  `src/features/together/PrivatePresentation.js` (boot list after the profile)
+  applies `presentationFor` through owners that already exist: `adjustVoice` in
+  both `speakText` paths and lip-sync (≥ 0.8 × the person's rate, slower per
+  step), a resting `happy` on the VRM (0.10 + 0.04 per step, ≤ 0.32) and the
+  room's light once at start. BehaviorEngine, AnimationManager and the companion
+  actuators settle to `restingExpression()` instead of `neutral` — clearing to
+  neutral wiped the mood after her first line. `state().applied` says `false`
+  for an owner that was missing. Gaze is declared, not applied. Care overrides
+  it; stop resets it. Mature has its own beat pool. Contract:
+  `docs/engine/NEXUS_EXPERIENCE_PROFILE_CONTRACT.md`;
+  `tests/private-world/presentation.test.js`.
+- **Character Quality Lab (AX8).** `tools/qa/CharacterQualityScorer.js` (pure,
+  QA only, not in the boot list — kept out of the engine tree so the parity
+  harness stays clean) scores a reply against Private's own rules, the language
+  and repetition. `tools/qa/character-lab.mjs` drives the real page against a
+  real OllaBridge route in EN and IT, records the served model (routes are
+  aliases: one run saw three backends), latency, usage and the AX7 measurements.
+  Token from `OLLABRIDGE_PAIR_TOKEN` or `--token-file`, never printed. Results:
+  `docs/qa/NEXUS_CHARACTER_MODEL_EVALUATION.md`; gates:
+  `docs/qa/NEXUS_PREMIUM_RELEASE_GATES.md`.
 
 ## Clearing a conversation
 
