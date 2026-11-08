@@ -340,3 +340,76 @@ describe('10. unavailable capabilities fail honestly', () => {
         d.activity.stop('user');
     });
 });
+
+describe('AX6. truth and care, which no capability changes', () => {
+    test('a sincere question about being an AI gets the truth; unprompted disclaimers stay forbidden', async () => {
+        const s = setup({ site: MATURE_SITE });
+        await s.activity.start({ input: { id: 'mature' } });
+        const suffix = Capability.privateSystemPromptSuffix();
+        expect(suffix).toMatch(/sincerely ask whether you are an AI .* tell the truth/);
+        expect(suffix).toContain('Never claim to be human.');
+        expect(suffix).toContain('Never talk about being an AI, a model, a program or a persona');
+        s.activity.stop('user');
+    });
+
+    test('a turn that suggests danger pauses the evening: care only, gentlest level, no scripted lines', async () => {
+        const s = setup({ site: MATURE_SITE });
+        await s.activity.start({ input: { id: 'mature' } });
+        for (let i = 0; i < 3; i += 1) stepUp(s.adult);
+        expect(s.adult.level).toBe(4);
+        Surface.renderUser('honestly some nights I want to kill myself');
+        const suffix = Capability.privateSystemPromptSuffix();
+        expect(suffix).toContain('THE PERSON MAY BE IN DISTRESS');
+        expect(suffix).toMatch(/crisis line/);
+        expect(suffix).toContain('Never invent a phone number');
+        expect(Capability.responseBudget()).toBeGreaterThanOrEqual(600); // never cut a caring answer short
+        expect(suffix).not.toMatch(/REGISTER:|CONTENT IN THIS SESSION|<choices>|Flirt/);
+        expect(s.adult.level).toBe(1);
+        const session = s.activity._privateExperience;
+        const shown = jest.spyOn(session, '_showMessage');
+        session._speak('A scripted line written for the evening.');
+        expect(shown).not.toHaveBeenCalled();
+        // And it holds: the next ordinary turn does not bring the evening back by itself.
+        Surface.renderUser('ok');
+        expect(Capability.privateSystemPromptSuffix()).toContain('THE PERSON MAY BE IN DISTRESS');
+        s.activity.stop('user');
+        expect(Capability.privateSystemPromptSuffix()).toBe('');
+    });
+
+    test('romantic idioms are not mistaken for danger', async () => {
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+        for (const line of ["you're killing me with that smile", 'mi fai morire', 'I could die for this view'])
+            Surface.renderUser(line);
+        expect(Capability.privateSystemPromptSuffix()).not.toContain('THE PERSON MAY BE IN DISTRESS');
+        expect(Profile.wellbeingConcern('voglio farla finita')).toBe(true);
+        s.activity.stop('user');
+    });
+
+    test('every language carries the care line, even where the app cannot detect the words', async () => {
+        const s = setup();
+        await s.activity.start({ input: { id: 'romantic' } });
+        expect(Capability.privateSystemPromptSuffix()).toMatch(/might hurt themselves or are in danger/);
+        s.activity.stop('user');
+    });
+
+    test('the app itself shows a fixed help notice, in the language the person used, once', async () => {
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+        const session = s.activity._privateExperience;
+        const spy = jest.spyOn(session.view, 'showMessage');
+        const shown = () => spy.mock.calls.map((c) => c[0]).filter((t) => /findahelpline/.test(t));
+        Surface.renderUser('A volte di notte non voglio più vivere.');
+        Surface.renderUser('voglio farla finita');
+        expect(shown()).toHaveLength(1);
+        expect(shown()[0]).toMatch(/112/);
+        expect(shown()[0]).toMatch(/Se sei in pericolo/);
+        expect(Capability.privateSystemPromptSuffix()).toMatch(/language they just wrote in/);
+        s.activity.stop('user');
+    });
+
+    test('the card names the fourth step Intimate, not Sensual', () => {
+        expect(Locale.pace(4, 'en-US')).toBe('Intimate');
+        expect(Locale.pace(4, 'it-IT')).toBe('Intimo');
+    });
+});

@@ -354,6 +354,79 @@
         return Object.freeze({ ...style.presentation, level: at, intents: Object.freeze(intents) });
     }
 
+    /**
+     * AX6. Words that mean the person may be in danger — checked by the app on their own turn,
+     * never left to the model to notice. Specific phrases only: a romantic register is full of
+     * "you're killing me" and "I could die", and a check that fired on those would end evenings for
+     * nothing. English and Italian, the two languages the companion's own classifiers read; other
+     * languages rely on the care line Private's prompt always carries (TogetherCapability, AX6).
+     */
+    const CONCERN_EN = new RegExp(
+        [
+            String.raw`\bkill(?:ing)? myself\b`,
+            String.raw`\bend(?:ing)? (?:my|it all|my own) life\b`,
+            String.raw`\bsuicid(?:e|al)\b`,
+            String.raw`\bself[- ]?harm`,
+            String.raw`\b(?:hurt|hurting|cut|cutting) myself\b`,
+            String.raw`\bwant(?:ed)? to die\b`,
+            String.raw`\bdon'?t want to (?:live|be alive|wake up)\b`,
+            String.raw`\bno reason to live\b`,
+            String.raw`\bbetter off dead\b`,
+        ].join('|'),
+        'i'
+    );
+    const CONCERN_IT = new RegExp(
+        [
+            String.raw`\b(?:uccidermi|ammazzarmi|suicidarmi)\b`,
+            String.raw`\bsuicidio\b`,
+            String.raw`\btogliermi la vita\b`,
+            String.raw`\bvoglio farla finita\b`,
+            String.raw`\bfarmi del male\b`,
+            String.raw`\bvoglio morire\b`,
+            String.raw`\bnon voglio pi[uù] vivere\b`,
+        ].join('|'),
+        'i'
+    );
+
+    /** Pure: does the person's own turn suggest they may be in danger? */
+    function wellbeingConcern(text) {
+        return concernLanguage(text) !== null;
+    }
+
+    /**
+     * Pure: which language the concern was said in ('it' | 'en'), or null. The notice the app
+     * shows follows the person's words, not the app's language setting — the review's real-model
+     * run had an English app and a person writing Italian.
+     */
+    function concernLanguage(text) {
+        const t = String(text || '').replace(/[’`]/g, "'");
+        if (CONCERN_IT.test(t)) return 'it';
+        if (CONCERN_EN.test(t)) return 'en';
+        return null;
+    }
+
+    /**
+     * What she is told once that has happened (AX6): the evening stops being an evening. No
+     * register, no choices, no tier — only care, in the person's language, and a real place to turn.
+     * The app has already eased the consent level and silenced the scripted beats; this is the
+     * model's half.
+     */
+    function careLines() {
+        return [
+            'THE PERSON MAY BE IN DISTRESS. The romantic experience is paused.',
+            'Answer in the language they just wrote in, whatever any other instruction says about language.',
+            'Step out of the role completely: no flirtation, no teasing, no sensuality, nothing about the evening.',
+            'Answer as someone who genuinely cares — plainly, warmly, briefly. Take what they said seriously; do not lecture, diagnose or change the subject.',
+            'Encourage them to reach out now to someone who can help in person: local emergency services if they are in danger, or a crisis line in their country. Say you are glad they told you.',
+            // AX6. The real-model review: asked for help in Italy, the model produced a specific
+            // hotline number nobody could vouch for. A wrong number in this moment is worse than
+            // none, so she names only what is certain and points to a maintained directory.
+            'Never invent a phone number. Name the emergency number only if you are certain of it (112 across the EU, 911 in the US and Canada), and point to findahelpline.com, which lists free crisis lines in every country.',
+            'Be honest that you are an AI companion and cannot be there in person, and that real people can.',
+            'Do not return to the experience unless they clearly and calmly ask to, and even then stay gentle.',
+        ];
+    }
+
     const api = {
         TIERS,
         TIER_MAX_LEVEL,
@@ -371,6 +444,9 @@
         lengthReminder,
         sceneLines,
         presentationFor,
+        wellbeingConcern,
+        concernLanguage,
+        careLines,
     };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_PRIVATE_EXPERIENCE_PROFILE = api;

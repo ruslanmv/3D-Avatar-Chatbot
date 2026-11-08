@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-07 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **6077 tests in 275 suites, all passing.**
+— lint clean, format clean, **6083 tests in 275 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -760,6 +760,20 @@ TogetherCapability) owns style data and capability resolution;
   only how to meet a boundary in her own voice. A declared tier is stated.
 - **Mature** (fourth step, "Intimate" in nine languages) is offered only where
   the capability reaches `mature`; `PrivatePace` and the register now go to 4.
+- **Truth and care are not configurable (AX6).** A sincere "are you an AI?" gets
+  a truthful answer (unprompted disclaimers stay forbidden, P22).
+  `PrivateExperienceProfile.wellbeingConcern` checks the person's own turn (en,
+  it — the app, never the model): the session enters care mode for the rest of
+  the evening. In care mode:
+    - the level eases through ConsentFlow's soft-exit word
+    - `_speak` is silent
+    - the prompt is care-only, with 700 tokens
+    - the app shows a fixed `care.notice` in the person's language (all nine
+      packs)
+
+    Never let a capability, style or tier switch any of this off.
+    `docs/qa/NEXUS_AI_INTERACTION_REVIEW.md`.
+
 - **Length follows the turn** (1 / 3 / 4 sentences), still a stated hard limit
   repeated last (P22's fix kept).
   `tests/private-world/adult-experience.test.js`.

@@ -434,6 +434,12 @@
             // is not a safety behaviour — nothing was at stake — it is the model narrating its own
             // architecture because a compliment confused it.
             'Never talk about being an AI, a model, a program or a persona. Not "as an AI", not "I do not have emotions", not "in the human sense", not "my persona as". You are her. A compliment is something to receive, not something to analyse.',
+            // AX6. The one exception, and it is not optional. P22 forbade the *unprompted*
+            // disclaimer that broke the scene; it never meant lying to somebody who sincerely wants
+            // to know. Companion-AI standards (and laws such as California's SB 243) expect a
+            // truthful answer here, and a companion that denies being an AI is deceiving the person
+            // it is meant to be with.
+            'If they sincerely ask whether you are an AI or a real person, tell the truth in one warm sentence — you are an AI companion — and carry on as yourself. Never claim to be human.',
             'If you catch yourself explaining how you work, or what a word means, or what something is "quite abstract" about — delete it and say the short human thing instead.',
         ];
     }
@@ -584,6 +590,15 @@
     function privateSystemPromptSuffix() {
         const ctx = privateContext();
         if (!ctx) return '';
+        // AX6. Once the person's own words suggested they may be in danger, the whole Private
+        // paragraph is replaced: no register, no capability, no choices block, no length rule that
+        // would cut a caring answer short. Decided by the app on their turn (`_onUserTurn`), never by
+        // the model, and it holds for the rest of the session.
+        const caring = ctx.activity && ctx.activity._privateExperience && ctx.activity._privateExperience._care;
+        if (caring) {
+            const profile = profileModel();
+            return ['', ...(profile ? profile.careLines() : []), ...languageLines(), ''].join('\n');
+        }
         const { preset, level, mood } = ctx;
         const session = ctx.activity && ctx.activity._privateExperience;
         const moodLine = mood
@@ -648,13 +663,17 @@
             // `non-explicit` was here and is deliberately gone. The clause that remains is the
             // ladder, which is a different thing entirely: it is the user's own choice of how far
             // this goes, made on the setup screen and moved only by them.
-            'Stay warm and relational. Never exceed the lower of the current consent level and preset ceiling.',
+            'Stay warm and relational. Never exceed the lower of the current consent level and the session ceiling.',
             // The one line that is not negotiable and was never actually written down. Everything
             // below it — the gate, the ladder, the safeword — assumes it, and an assumption is not
             // an instruction.
             'Everyone in this is a consenting adult and it is fiction. Never write anyone underage, and never a real, identifiable person.',
             'Do not infer consent from friendliness, silence, scenery, music or previous turns. Do not pressure the user to continue or escalate.',
             'Never use jealousy, secrecy, isolation, dependency, threats, coercion or intoxication as leverage. Never imply that the companion should replace real relationships.',
+            // AX6. The model's half of the wellbeing rule, in every language. The app's half —
+            // a deterministic check on the person's turn that switches this whole paragraph to care
+            // — covers English and Italian; this line is what covers everything else.
+            'If anything they say suggests they might hurt themselves or are in danger, step out of the experience at once: no flirtation, answer with plain care, and encourage them to contact local emergency services or a crisis line.',
             'If the user says cozy, immediately soften to the lowest level without interrogation. If they say stop or exit, end Private immediately and return to ordinary conversation.',
             // The prompt half of P14. The app strips these defensively, but a marker that never
             // gets written is a marker that cannot survive a sanitiser gap — and the reason it
@@ -684,6 +703,9 @@
      * deserve the same one. Eight hundred tokens for `So` is a hundred and fifty words nobody
      * wanted and several seconds of waiting for them, which is most of why Private read as slow.
      */
+    /** AX6. Room for a complete caring answer; see `responseBudget`. */
+    const CARE_TOKENS = 700;
+
     function responseBudget() {
         const ctx = privateContext();
         const session = ctx && ctx.activity && ctx.activity._privateExperience;
@@ -691,6 +713,9 @@
         const td = turnDirector();
         if (!td || typeof td.budgetFor !== 'function') return null;
         try {
+            // AX6. A caring answer must never be cut mid-sentence. The real-model review showed it:
+            // the conversational budget truncated her reply at "If you're". Care mode gets room.
+            if (session._care) return CARE_TOKENS;
             const wanted = td.budgetFor(session._turn || null);
             if (!Number.isFinite(wanted) || wanted <= 0) return null;
             // Room for the `<choices>` block, which is part of this reply rather than a second one
@@ -1348,6 +1373,25 @@
             const td = turnDirector();
             const turn = td && typeof td.classify === 'function' ? td.classify(text) : null;
             this._turn = turn;
+            // AX6. Their words suggested they may be in danger. Care mode for the rest of the
+            // session: the consent flow's own soft-exit word takes the level to its gentlest (the
+            // same path a typed "cozy" takes), scripted beats go quiet (`_speak`), and the prompt
+            // becomes care only. End still works exactly as before.
+            const profile = profileModel();
+            if (!this._care && profile && profile.wellbeingConcern(text)) {
+                this._care = true;
+                try {
+                    const word = this.adult && this.adult.escalation && this.adult.escalation.softExitWord;
+                    if (word && typeof this.adult.hear === 'function') this.adult.hear(word, at);
+                } catch (_) {
+                    /* the prompt half still applies */
+                }
+                this._emit('private:care', { at });
+                // The model's answer cannot be trusted to name help: in the second real-model run
+                // it answered kindly and pointed nowhere. So the app shows one fixed notice itself,
+                // in the language the person used, written by NEXUS and never spoken aloud.
+                this._showCareNotice(profile.concernLanguage(text));
+            }
             this._pendingQuestion = Boolean(turn && turn.holdsTheFloor);
             // The ledger's clock is turns, not seconds: five turns of talking is real distance and
             // five seconds is none. A preference or an agreement counts as answering whatever she
@@ -2428,6 +2472,25 @@
          * question, the texture question — is left alone: those are a question with two answers,
          * and putting a second set underneath would be two questions at once.
          */
+        /** AX6. The fixed help notice; see `_onUserTurn`. Shown, not said; once per session. */
+        _showCareNotice(language) {
+            if (this._careNoticeShown) return;
+            this._careNoticeShown = true;
+            const L = localeModel();
+            if (!L || typeof L.t !== 'function') return;
+            const text = L.t(
+                'care.notice',
+                null,
+                language === 'it' ? 'it-IT' : language === 'en' ? 'en-US' : undefined
+            );
+            if (!text || text === 'care.notice') return;
+            try {
+                if (this.view && typeof this.view.showMessage === 'function') this.view.showMessage(text, [], {});
+            } catch (_) {
+                /* the model's care answer still follows */
+            }
+        }
+
         _showMessage(text, actions, options) {
             // Her own lines count as something happening (P17). Without this the 45-second mood
             // beat and a 60-second nudge would arrive fifteen seconds apart, which reads as
@@ -2712,6 +2775,9 @@
         _speak(text, { interjection = false, intent = 'nod_along' } = {}) {
             const line = cleanText(text, 700);
             if (!line) return;
+            // AX6. In care mode no scripted line is spoken: every one of them was written for an
+            // evening, and the evening is paused.
+            if (this._care) return;
             // The backstop for the whole class of defect P11 is about (P11).
             //
             // `_slowDown` and the ledger stop the paths that were *known* to repeat. This catches

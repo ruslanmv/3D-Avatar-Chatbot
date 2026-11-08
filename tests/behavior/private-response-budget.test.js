@@ -169,7 +169,7 @@ describe('the prompt says the same thing the budget enforces', () => {
         // `non-explicit` is deliberately not in this list any more: the content ceiling now
         // belongs to the model and to whoever runs this install. What must survive a reorder is
         // the consent scaffolding, which is a different thing and is what this test is for.
-        for (const rule of [/consenting adult/i, /do not infer consent/i, /say stop or exit/i, /preset ceiling/i]) {
+        for (const rule of [/consenting adult/i, /do not infer consent/i, /say stop or exit/i, /session ceiling/i]) {
             expect(prompt).toMatch(rule);
         }
         s.activity.stop('user');

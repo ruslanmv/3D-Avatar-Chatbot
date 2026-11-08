@@ -73,6 +73,8 @@
             'pace.2': 'Romantic',
             'pace.3': 'Sensual',
             'pace.4': 'Intimate',
+            'care.notice':
+                'If you are in danger, call your local emergency number now (112 in the EU, 911 in the US and Canada). Free, confidential crisis lines for every country: findahelpline.com',
             'pace.aria.step': 'step {step} of {total}',
             'status.softened': '✓ Pace softened',
             'status.eased': '✓ Pace eased',
@@ -137,6 +139,8 @@
             'pace.2': 'Romántico',
             'pace.3': 'Sensual',
             'pace.4': 'Íntimo',
+            'care.notice':
+                'Si estás en peligro, llama ahora al número de emergencias local (112 en la UE, 911 en EE. UU. y Canadá). Líneas de ayuda gratuitas y confidenciales en cada país: findahelpline.com',
             'pace.aria.step': 'paso {step} de {total}',
             'status.softened': '✓ Ritmo suavizado',
             'status.eased': '✓ Un paso atrás',
@@ -201,6 +205,8 @@
             'pace.2': 'Romantico',
             'pace.3': 'Sensuale',
             'pace.4': 'Intimo',
+            'care.notice':
+                'Se sei in pericolo, chiama subito il numero di emergenza (112 in Italia e in tutta l’UE). Linee di ascolto gratuite e riservate per ogni paese: findahelpline.com',
             'pace.aria.step': 'passo {step} di {total}',
             'status.softened': '✓ Ritmo attenuato',
             'status.eased': '✓ Un passo indietro',
@@ -265,6 +271,8 @@
             'pace.2': 'Romantique',
             'pace.3': 'Sensuel',
             'pace.4': 'Intime',
+            'care.notice':
+                'Si vous êtes en danger, appelez immédiatement le numéro d’urgence local (112 dans l’UE, 911 aux États-Unis et au Canada). Lignes d’écoute gratuites et confidentielles dans chaque pays : findahelpline.com',
             'pace.aria.step': 'étape {step} sur {total}',
             'status.softened': '✓ Rythme adouci',
             'status.eased': '✓ Un pas en arrière',
@@ -329,6 +337,8 @@
             'pace.2': 'Romantisch',
             'pace.3': 'Sinnlich',
             'pace.4': 'Intim',
+            'care.notice':
+                'Wenn du in Gefahr bist, ruf sofort den örtlichen Notruf an (112 in der EU, 911 in den USA und Kanada). Kostenlose, vertrauliche Krisentelefone für jedes Land: findahelpline.com',
             'pace.aria.step': 'Stufe {step} von {total}',
             'status.softened': '✓ Tempo zurückgenommen',
             'status.eased': '✓ Einen Schritt zurück',
@@ -393,6 +403,8 @@
             'pace.2': 'Romântico',
             'pace.3': 'Sensual',
             'pace.4': 'Íntimo',
+            'care.notice':
+                'Se você estiver em perigo, ligue agora para o número de emergência local (190 ou 192 no Brasil, 112 na UE, 911 nos EUA e Canadá). Linhas de apoio gratuitas e confidenciais em cada país: findahelpline.com',
             'pace.aria.step': 'passo {step} de {total}',
             'status.softened': '✓ Ritmo suavizado',
             'status.eased': '✓ Um passo atrás',
@@ -457,6 +469,8 @@
             'pace.2': 'ロマンチック',
             'pace.3': '官能的',
             'pace.4': '親密',
+            'care.notice':
+                '危険を感じている場合は、すぐに地域の緊急番号に電話してください（日本では119または110）。各国の無料・秘密厳守の相談窓口：findahelpline.com',
             'pace.aria.step': '{total} 段階中 {step} 段階目',
             'status.softened': '✓ ペースをゆるめました',
             'status.eased': '✓ ひとつ戻しました',
@@ -521,6 +535,8 @@
             'pace.2': '로맨틱',
             'pace.3': '관능적',
             'pace.4': '친밀한',
+            'care.notice':
+                '위험한 상황이라면 지금 바로 지역 긴급 번호로 전화하세요(한국은 112 또는 119). 각국의 무료·비밀 보장 위기 상담 전화: findahelpline.com',
             'pace.aria.step': '{total}단계 중 {step}단계',
             'status.softened': '✓ 속도를 늦췄어요',
             'status.eased': '✓ 한 단계 뒤로',
@@ -585,6 +601,8 @@
             'pace.2': '浪漫',
             'pace.3': '感性',
             'pace.4': '亲密',
+            'care.notice':
+                '如果你正处于危险之中，请立即拨打当地紧急电话（中国大陆为110或120）。各国免费、保密的危机热线：findahelpline.com',
             'pace.aria.step': '第 {step} 档，共 {total} 档',
             'status.softened': '✓ 已放慢节奏',
             'status.eased': '✓ 退回一档',
@@ -695,7 +713,8 @@
 
     /** What a pace level is called here. Levels are 1-indexed, as they are everywhere else. */
     function pace(level, override) {
-        return t(`pace.${Math.max(1, Math.min(3, Math.round(Number(level) || 1)))}`, null, override);
+        // AX1: four steps now (Mature reaches Intimate); clamping to 3 labelled level 4 Sensual.
+        return t(`pace.${Math.max(1, Math.min(4, Math.round(Number(level) || 1)))}`, null, override);
     }
 
     /** Every language this file can dress the card in. */

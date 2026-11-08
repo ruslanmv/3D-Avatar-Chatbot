@@ -234,7 +234,7 @@ describe('each level sounds like something, which is what the ladder was missing
         expect(suffix).not.toMatch(/never anatomy, never acts/);
         // And the consent scaffolding is untouched — the ladder the user set on the setup screen,
         // and the one line that is not anybody's to configure.
-        expect(suffix).toContain('Never exceed the lower of the current consent level and preset ceiling');
+        expect(suffix).toContain('Never exceed the lower of the current consent level and the session ceiling');
         expect(suffix).toMatch(/consenting adult/i);
         expect(suffix).toMatch(/never write anyone underage/i);
 

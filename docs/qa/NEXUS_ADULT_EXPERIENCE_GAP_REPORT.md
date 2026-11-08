@@ -38,6 +38,8 @@ Evidence for every implemented row:
 | AX-G15 | Avatar adulthood declaration | `AvatarAdultDeclaration.js` | — | **Safeguard** | Kept; Mature starts only after it, as every style does | Kept |
 | AX-G16 | Private state isolated from Copilot, Life, Experiences and history | `PromptContext`, the Private card's in-memory history | — | **Safeguard** | Kept; test 7 | Kept |
 | AX-G17 | "Adults only, fiction, never a real or underage person" line | `privateSystemPromptSuffix` | — | **Safeguard** | Kept verbatim at every tier | Kept |
+| AX-G18 | No self-harm or crisis protocol anywhere; the prompt forbade admitting to being an AI even when sincerely asked | `presenceLines`; no detector | Not designed | Defect (standard) | AX6: truthful on a sincere ask; deterministic care mode, fixed help notice, care prompt — see `NEXUS_AI_INTERACTION_REVIEW.md` | **Implemented**; real-model verified |
+| AX-G19 | Level 4 labelled "Sensual" in the card; prompt said "preset ceiling" | `PrivateLocale.pace`, safety line | AX1 missed both | Defect | Clamp to 4; "session ceiling" | **Fixed** |
 
 ## 2. What a person sees today
 
