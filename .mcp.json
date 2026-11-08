@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "nexus-quality-lab": {
+      "command": "node",
+      "args": ["tools/qa/lab-mcp.mjs"]
+    }
+  }
+}

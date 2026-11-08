@@ -28,6 +28,15 @@ or a release gate, 2 is a measured quality gap, 3 is missing coverage). Every
 action is derived from measured data, so it never asks for work already done.
 The page shows the same list with a ready-to-paste prompt for each.
 
+**Or use the MCP server.** `.mcp.json` registers `nexus-quality-lab`
+(`tools/qa/lab-mcp.mjs`, no dependencies); Claude Code asks once to enable it.
+Its tools: `lab_status`, `lab_next_actions`, `lab_worlds`, `lab_world`,
+`lab_atlas`, `lab_score_reply` (instant scoring while you iterate on a prompt),
+`lab_replies`, `lab_new_zone` (dry run by default), `lab_regenerate` and
+`lab_check`. They run the same generators as the CLIs, so data written through
+them passes the same tests. The real-provider lab is not a tool: it needs the
+app running, a token and minutes per route.
+
 The loop is always the same: **measure → change one thing → measure again →
 regenerate → commit code and lab data together.**
 

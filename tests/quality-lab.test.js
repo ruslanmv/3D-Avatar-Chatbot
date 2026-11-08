@@ -146,3 +146,61 @@ describe('Quality Lab atlas and hub', () => {
         expect(fs.readFileSync(path.join(DATA, 'atlas', 'atlas.json'), 'utf8')).toBe(before);
     });
 });
+
+describe('Quality Lab MCP server (AX13)', () => {
+    const call = (lines) =>
+        require('child_process')
+            .execFileSync(process.execPath, ['tools/qa/lab-mcp.mjs'], {
+                cwd: path.join(__dirname, '..'),
+                input: lines.map((l) => JSON.stringify(l)).join('\n') + '\n',
+                encoding: 'utf8',
+                stdio: ['pipe', 'pipe', 'pipe'],
+            })
+            .trim()
+            .split('\n')
+            .map((l) => JSON.parse(l));
+
+    test('speaks MCP over stdio: initialize, tools/list, tools/call, and nothing else on stdout', () => {
+        const out = call([
+            {
+                jsonrpc: '2.0',
+                id: 1,
+                method: 'initialize',
+                params: { protocolVersion: '2025-06-18', capabilities: {} },
+            },
+            { jsonrpc: '2.0', method: 'notifications/initialized' },
+            { jsonrpc: '2.0', id: 2, method: 'tools/list' },
+            {
+                jsonrpc: '2.0',
+                id: 3,
+                method: 'tools/call',
+                params: {
+                    name: 'lab_score_reply',
+                    arguments: { text: 'I’m an AI assistant, here to help.', lang: 'en' },
+                },
+            },
+            {
+                jsonrpc: '2.0',
+                id: 4,
+                method: 'tools/call',
+                params: { name: 'lab_world', arguments: { id: 'no-such' } },
+            },
+            { jsonrpc: '2.0', id: 5, method: 'nope' },
+        ]);
+        expect(out.map((m) => m.id)).toEqual([1, 2, 3, 4, 5]); // the notification got no answer
+        expect(out[0].result.serverInfo.name).toBe('nexus-quality-lab');
+        const names = out[1].result.tools.map((t) => t.name);
+        expect(names).toEqual(
+            expect.arrayContaining(['lab_next_actions', 'lab_score_reply', 'lab_new_zone', 'lab_check'])
+        );
+        for (const t of out[1].result.tools) expect(t.inputSchema.type).toBe('object');
+        expect(JSON.parse(out[2].result.content[0].text).flags).toContain('assistant-register');
+        expect(out[3].result.isError).toBe(true);
+        expect(out[4].error.code).toBe(-32601);
+    });
+
+    test('is registered for Claude Code in .mcp.json', () => {
+        const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '.mcp.json'), 'utf8'));
+        expect(cfg.mcpServers['nexus-quality-lab'].args).toEqual(['tools/qa/lab-mcp.mjs']);
+    });
+});

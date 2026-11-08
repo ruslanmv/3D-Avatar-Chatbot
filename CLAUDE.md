@@ -129,7 +129,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-08 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **6115 tests in 278 suites, all passing.**
+— lint clean, format clean, **6122 tests in 278 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a
@@ -822,6 +822,12 @@ TogetherCapability) owns style data and capability resolution;
   `quality-lab/data/hub.json` (`tools/qa/hub.mjs`, called by the other tools) is
   the first file a session reads: ranked next actions, each with why, command
   and files. Phases and gates: `docs/engine/NEXUS_OPEN_WORLD_ROADMAP.md`.
+- **The lab is also an MCP server (AX13).** `.mcp.json` registers
+  `nexus-quality-lab` → `tools/qa/lab-mcp.mjs` (stdio, dependency-free — do not
+  add the SDK, it would change the lockfile for every install). Ten tools over
+  the same generators: status, next actions, worlds, one world, atlas, score a
+  reply, recorded replies, new zone (dry run by default), regenerate, check.
+  Stdout is protocol only; a test drives it end to end.
 
 ## Clearing a conversation
 
