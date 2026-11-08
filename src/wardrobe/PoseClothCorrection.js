@@ -777,7 +777,7 @@
         // lap is bare. Walk that hem back toward its cut. A hem that has not risen is left
         // where it is: pulling a hem down to a cut that already hangs below the knee only
         // pushed it deeper into the opening.
-        if (o.span) {
+        if (o.span && o.skirtHem) {
             for (var seat = 0; seat < 30; seat += 1) {
                 if (!seatRisenHem()) break;
                 relax();
@@ -981,6 +981,15 @@
             var indices = new Uint32Array(faces);
             for (var f = 0; f < faces; f += 1) indices[f] = weld.of[fullIndices[f]];
             var og = options(input, { profile: unit.profile });
+            // Only a real skirt or dress can have a risen hem. A tee may be
+            // raised by the same bones, but it must never walk to a skirt cut.
+            og.skirtHem = unit.members.some(function (m) {
+                var item = garments[m];
+                var template = String(item.templateId || '');
+                var name = String(item.name || '').replace(/\\s*\\[Forge_[^\\]]+\\]/g, '');
+                return /skirt|dress|gown|nightgown/i.test(template || name) &&
+                    !/dress\\s+shirt/i.test(name);
+            });
             var welded = correctOne(posed, rest, edgesOf(indices, rest), body, layers, og, movable, indices);
             var corrected = new Float32Array(total * 3);
             for (var w = 0; w < total; w += 1) {
