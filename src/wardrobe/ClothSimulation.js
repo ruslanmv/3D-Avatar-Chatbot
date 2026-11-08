@@ -13,9 +13,55 @@
     var Body = typeof require === 'function' ? require('./BodyCollision.js') :
         typeof self !== 'undefined' ? self.NEXUS_BODY_COLLISION : null;
 
+    // M2. WCL1 rests are the lengths Forge fitted in bind space (T-pose), but
+    // the solver starts every particle where skinning put it in the CURRENT
+    // pose. Holding bind rests then pulls the posed garment back toward the
+    // T-pose: on the A-line the worst constraint went 1.00 -> 2.17 in 24
+    // frames, and it was a 1 mm bodice/skirt bridge, which opened a beige gap
+    // at the waist before any capsule was involved (CURRENT_STATE_AUDIT 3.2).
+    // With restSpace 'pose' each constraint's rest is its length in the skinned
+    // start pose: skinning is the authority on how an attached garment is laid
+    // on her, and the solver only has to answer gravity and contact from there.
+    // The authored length is kept beside it (authoredRest), never scaled by a
+    // global factor, so a later stage can still compare the two.
+    function retargetRests(asset, initial) {
+        function length(a, b) {
+            return Math.hypot(
+                initial[a * 3] - initial[b * 3],
+                initial[a * 3 + 1] - initial[b * 3 + 1],
+                initial[a * 3 + 2] - initial[b * 3 + 2]
+            );
+        }
+        function pairs(list) {
+            if (!list) return;
+            for (var index = 0; index < list.length; index += 1) {
+                var c = list[index];
+                if (c.authoredRest == null) c.authoredRest = c.rest;
+                c.rest = length(c.a, c.b);
+            }
+        }
+        pairs(asset.stretch);
+        pairs(asset.bend);
+        var shear = asset.shear || [];
+        for (var k = 0; k < shear.length; k += 1) {
+            var row = shear[k];
+            if (row.authoredRest == null) row.authoredRest = row.rest;
+            var mx = (initial[row.a * 3] + initial[row.b * 3]) * 0.5;
+            var my = (initial[row.a * 3 + 1] + initial[row.b * 3 + 1]) * 0.5;
+            var mz = (initial[row.a * 3 + 2] + initial[row.b * 3 + 2]) * 0.5;
+            row.rest = Math.hypot(initial[row.c * 3] - mx, initial[row.c * 3 + 1] - my, initial[row.c * 3 + 2] - mz);
+        }
+    }
+
     function create(asset, options) {
         options = options || {};
         var count = asset.positions.length / 3;
+        if (options.restSpace === 'pose') {
+            if (!options.initial || options.initial.length !== asset.positions.length) {
+                throw new Error('pose rests need world-space particle initialization');
+            }
+            retargetRests(asset, options.initial);
+        }
         var inverse = new Float32Array(count);
         for (var index = 0; index < count; index += 1) {
             inverse[index] = asset.attachment[index] >= 0.999 ? 0 : 1;
@@ -199,5 +245,5 @@
         return worst;
     }
 
-    return { create: create, reset: reset, step: step, maxStrain: maxStrain };
+    return { create: create, reset: reset, step: step, maxStrain: maxStrain, retargetRests: retargetRests };
 });

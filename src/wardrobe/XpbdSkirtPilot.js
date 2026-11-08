@@ -171,7 +171,63 @@
         return held.length;
     }
 
+    // M2. The thigh capsule's radius was 0.29 x the upper-leg bone length:
+    // 0.102 m on fem_vroid, whose thigh skin sits about 84 mm from that bone.
+    // The capsule started outside her skin, so it shoved the skirt outward
+    // from inside it (on the order of 10^5 collision reports per standing
+    // settle). The radius is now measured from the posed body itself: every
+    // body vertex closer to this capsule's segment than to the other thigh's,
+    // inside the middle of the bone (so neither the hip nor the knee joint is
+    // sampled), and its median distance to the bone. A median of the vertices
+    // around a limb is a radius the skin passes through, not an envelope
+    // around it. Too few samples keeps the bone-length radius and says so.
+    var FIT_SPAN = [0.2, 0.8];
+    var FIT_REACH_M = 0.2;
+    var FIT_MIN_SAMPLES = 24;
+
+    function segmentDistance(px, py, pz, c) {
+        var dx = c.bx - c.ax, dy = c.by - c.ay, dz = c.bz - c.az;
+        var len2 = dx * dx + dy * dy + dz * dz;
+        var t = len2 > 1e-12 ? ((px - c.ax) * dx + (py - c.ay) * dy + (pz - c.az) * dz) / len2 : 0;
+        var u = Math.max(0, Math.min(1, t));
+        var qx = c.ax + dx * u - px, qy = c.ay + dy * u - py, qz = c.az + dz * u - pz;
+        return { t: t, d: Math.hypot(qx, qy, qz) };
+    }
+
+    function fitCapsulesToBody(capsules, bodyPos) {
+        var samples = capsules.map(function () {
+            return [];
+        });
+        for (var i = 0; i + 2 < bodyPos.length; i += 3) {
+            var best = -1, bestD = Infinity, bestT = 0;
+            for (var k = 0; k < capsules.length; k += 1) {
+                var hit = segmentDistance(bodyPos[i], bodyPos[i + 1], bodyPos[i + 2], capsules[k]);
+                if (hit.d < bestD) {
+                    best = k;
+                    bestD = hit.d;
+                    bestT = hit.t;
+                }
+            }
+            if (best < 0 || bestD > FIT_REACH_M || bestT < FIT_SPAN[0] || bestT > FIT_SPAN[1]) continue;
+            samples[best].push(bestD);
+        }
+        return capsules.map(function (capsule, k) {
+            var list = samples[k].sort(function (a, b) {
+                return a - b;
+            });
+            var out = Object.assign({}, capsule, { boneRadius: capsule.radius, samples: list.length });
+            if (list.length < FIT_MIN_SAMPLES) {
+                out.fitted = false;
+                return out;
+            }
+            out.radius = list[Math.floor(list.length / 2)];
+            out.fitted = true;
+            return out;
+        });
+    }
+
     return {
+        fitCapsulesToBody: fitCapsulesToBody,
         carriesClothAsset: carriesClothAsset,
         compactExceptCloth: compactExceptCloth,
         eligible: eligible,

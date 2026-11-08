@@ -339,7 +339,14 @@ export class PoseClothCorrector {
                     }
                 });
                 if (candidates.length) {
-                    const capsules = Pilot.thighCapsules(found.body);
+                    // M2. Radius from her posed skin, not from the bone length.
+                    const capsules = Pilot.fitCapsulesToBody
+                        ? Pilot.fitCapsulesToBody(Pilot.thighCapsules(found.body), input.bodyPos)
+                        : Pilot.thighCapsules(found.body);
+                    if (typeof console !== 'undefined') {
+                        console.info('[PoseCloth] thigh capsules', capsules.map((c) =>
+                            `${(c.radius * 1000).toFixed(1)}mm (bone ${(c.boneRadius * 1000 || c.radius * 1000).toFixed(1)}mm, ${c.fitted ? c.samples + ' samples' : 'not fitted'})`).join(', '));
+                    }
                     if (capsules.length >= 2) {
                         const index = found.garments.findIndex((g) =>
                             /brief/i.test((g.tag && g.tag.templateId) || g.name));
@@ -419,6 +426,8 @@ export class PoseClothCorrector {
                 const answer = await send({
                     id: generation + ':xpbd:' + index,
                     solver: 'xpbd',
+                    // M2. Rests from the skinned start pose; see ClothSimulation.retargetRests.
+                    restSpace: 'pose',
                     summary: pilot.tag.clothAsset,
                     asset: pilot.blob,
                     initial: pilot.initial,

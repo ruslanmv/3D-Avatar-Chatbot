@@ -35,6 +35,7 @@ self.onmessage = function (event) {
                 initial: job.initial,
                 hemMask: job.hemMask,
                 centreHemMask: job.centreHemMask,
+                restSpace: job.restSpace === 'pose' ? 'pose' : 'bind',
                 substeps: job.substeps || 2,
                 iterations: job.iterations || 6,
             });
