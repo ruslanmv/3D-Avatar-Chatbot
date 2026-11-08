@@ -62,7 +62,50 @@ evidence.
 5. **Do not move the default page with an experiment.** Opt-in flags are cheap.
    The default page is what people see.
 
-## The procedure for the next cloth change
+## Prove three garments before the full catalog
+
+`audits/wardrobe_sitting_desk/prove_three_garments.py` is the procedure as one
+command. It captures the three pilots with the agreed shape (`--source
+catalog`, `fem_vroid.vrm`, four poses, four cameras), checks that each catalog
+name still resolves to its template, writes `<prefix>-summary.json` and `.md`,
+and, given master's captures, a master-versus-candidate sheet per garment.
+
+| Key       | `--only`       | Template                |
+| --------- | -------------- | ----------------------- |
+| `aline`   | `A-line dress` | `dress-a-line-v1`       |
+| `pencil`  | `Pencil skirt` | `skirt-pencil-v1`       |
+| `pleated` | `Pleated mini` | `skirt-pleated-mini-v1` |
+
+```bash
+# master, once (master viewer on :8081, Forge main on :8091)
+python audits/wardrobe_sitting_desk/prove_three_garments.py \
+  --url http://127.0.0.1:8081/ --forge-url http://127.0.0.1:8091 \
+  --out-prefix /tmp/cloth-master
+```
+
+```bash
+# the candidate (this checkout on :8080, a local Forge built from your branch on :8090)
+python audits/wardrobe_sitting_desk/prove_three_garments.py \
+  --url "http://127.0.0.1:8080/?cloth=xpbd" --forge-url http://127.0.0.1:8090 \
+  --out-prefix /tmp/cloth-contract --reference-prefix /tmp/cloth-master
+```
+
+It exits 1 if any garment failed to capture or resolved to another template.
+It never decides that a garment is fixed: read the sheets.
+
+On this branch `?cloth=xpbd` changes nothing — there is no solver here — so the
+candidate run reproduces master. That is intended: it proves the procedure and
+gives the baseline that the first solver commit must beat.
+
+Run on 2026-11-08 with this branch on :8080, the Forge branch
+`claude/clothing-physics-upgrade-9cq16j` on :8090, and master's captures as
+reference: all three garments captured, all three resolved to their templates,
+exit 0, and every pose matches master in both views
+(`captures/2026-11-08/baseline-{aline,pencil,pleated}.webp`,
+`baseline-summary.md`). The gate column reads "not measured": this app reports
+no cloth metrics without a solver, and the summary refuses to call that a pass.
+
+## The same procedure, by hand
 
 ```bash
 # 1. master, once per Forge + avatar combination
