@@ -26,18 +26,25 @@
  *     node tools/vr/render-place-previews.mjs bedroom   # one
  *     node tools/vr/render-place-previews.mjs --gpu     # use this machine's GPU, not SwiftShader
  *     node tools/vr/render-place-previews.mjs --base http://127.0.0.1:8080 --out tmp/previews
+ *     node tools/vr/render-place-previews.mjs airship-dock-light --out tmp/previews  # a stand-in
+ *
+ * AX15. A light stand-in is rendered only when named: it has no desktop tier, so it is shown through
+ * the engine's own `?vrWorld=` path (`_applyVRWorld({ preview })`), which falls back to the exact
+ * id. Page driving shared with the Quality Lab's `lab_screenshot` lives in `./page-driver.mjs`.
  *
  * Writes `assets/vr-worlds/previews/<id>.webp` (or `--out`). The catalogue entry's `preview`
  * names that file; this tool does not edit `worlds.json`.
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { createRequire } from 'node:module';
-import { fileURLToPath } from 'node:url';
+import { ROOT, ISOLATE, SWIFTSHADER, loadPlaywright, waitForWorld } from './page-driver.mjs';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const require = createRequire(import.meta.url);
-const { chromium } = require('playwright');
+const { playwright, why: noPlaywright } = loadPlaywright();
+if (!playwright) {
+    console.error(noPlaywright);
+    process.exit(2);
+}
+const { chromium } = playwright;
 
 const args = process.argv.slice(2);
 const flag = (name) => args.includes(name);
@@ -76,26 +83,15 @@ const PLACE_CAMERA = Object.freeze({
 const yawArg = option('--yaw', null);
 
 const catalogue = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets/vr-worlds/worlds.json'), 'utf8'));
-const places = catalogue.worlds.filter((w) => w.place === true && !w.lightFor && (!only.length || only.includes(w.id)));
+const places = catalogue.worlds.filter((w) => w.place === true && (only.length ? only.includes(w.id) : !w.lightFor));
 if (!places.length) {
     console.error('No place matches', only.join(', '));
     process.exit(1);
 }
 
-const ISOLATE = `
-  body > *:not(.nexus-preview-keep) { visibility: hidden !important; }
-  .avatar-viewport { visibility: visible !important; position: fixed !important; inset: 0 !important;
-    width: 100vw !important; height: 100vh !important; max-width: none !important; max-height: none !important;
-    margin: 0 !important; border: 0 !important; border-radius: 0 !important; z-index: 2147483000 !important; }
-  .avatar-viewport > *:not(canvas) { display: none !important; }
-  .avatar-viewport canvas { visibility: visible !important; width: 100vw !important; height: 100vh !important; }
-`;
-
 fs.mkdirSync(OUT, { recursive: true });
 const browser = await chromium.launch({
-    args: flag('--gpu')
-        ? ['--enable-gpu', '--ignore-gpu-blocklist']
-        : ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'],
+    args: flag('--gpu') ? ['--enable-gpu', '--ignore-gpu-blocklist'] : SWIFTSHADER,
 });
 let failed = 0;
 try {
@@ -150,14 +146,16 @@ async function capture(page, place) {
     const isPrivate = place.rating === 'private';
     // Leave whatever was up, and wait until nothing is.
     await page.evaluate(() => {
+        window.NEXUS_VIEWER._vrWorldPreview = null; // a stand-in shown by preview must not stick
         window.dispatchEvent(new CustomEvent('nexus-world-request', { detail: { id: null, owner: 'intimate' } }));
         const s = window.__NEXUS_COMPANION_LIVE.session;
         if (s.active()) s.end();
     });
     await page.waitForFunction(() => !window.NEXUS_VIEWER.vrWorlds.activeId, null, { timeout: 30000 }).catch(() => {});
     await page.evaluate(
-        ({ id, isPrivate }) => {
-            if (isPrivate)
+        ({ id, isPrivate, standIn }) => {
+            if (standIn) window.NEXUS_VIEWER._applyVRWorld({ preview: id });
+            else if (isPrivate)
                 window.dispatchEvent(new CustomEvent('nexus-world-request', { detail: { id, owner: 'intimate' } }));
             else
                 window.__NEXUS_COMPANION_LIVE.session.enter('experiences', 'place-' + id, {
@@ -165,12 +163,9 @@ async function capture(page, place) {
                     silent: true,
                 });
         },
-        { id: place.id, isPrivate }
+        { id: place.id, isPrivate, standIn: Boolean(place.lightFor) }
     );
-    const shown = await page
-        .waitForFunction((id) => window.NEXUS_VIEWER.vrWorlds.activeId === id, place.id, { timeout: 120000 })
-        .then(() => true)
-        .catch(() => false);
+    const shown = await waitForWorld(page, place.id, 120000);
     if (!shown) return { ok: false, why: 'the world did not come up on a desktop tier' };
     // Out of the fade, the framing the engine chose settled, then ours.
     await page.waitForTimeout(1800);

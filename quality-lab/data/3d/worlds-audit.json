@@ -15,7 +15,7 @@
         "standIns": 8,
         "withSpots": 5,
         "fails": 0,
-        "warns": 8,
+        "warns": 19,
         "offered": {
             "desktop": 30,
             "mobile": 28,
@@ -45,6 +45,20 @@
             },
             "preview": null,
             "props": 0,
+            "vrNear": [
+                {
+                    "node": "001-english-oak-mature",
+                    "metres": 0.34
+                },
+                {
+                    "node": "021-oak-sapling",
+                    "metres": 0.68
+                },
+                {
+                    "node": "003-english-oak-young",
+                    "metres": 0.81
+                }
+            ],
             "spots": null,
             "template": null,
             "privateConfig": null,
@@ -65,7 +79,12 @@
                     "why": "loads itself"
                 }
             },
-            "issues": []
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 3 scene parts within 1 m of her spot (001-english-oak-mature 0.34 m, 021-oak-sapling 0.68 m, 003-english-oak-young 0.81 m) — check in a headset or leave out of the VR version"
+                }
+            ]
         },
         {
             "id": "meadow-village",
@@ -87,6 +106,20 @@
             },
             "preview": null,
             "props": 0,
+            "vrNear": [
+                {
+                    "node": "14-meadow-courier-parcel-cart",
+                    "metres": 0.53
+                },
+                {
+                    "node": "24-meadow-courier-picket-fence",
+                    "metres": 0.86
+                },
+                {
+                    "node": "13-meadow-courier-mailbox",
+                    "metres": 0.92
+                }
+            ],
             "spots": null,
             "template": null,
             "privateConfig": null,
@@ -107,7 +140,12 @@
                     "why": "loads itself"
                 }
             },
-            "issues": []
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 3 scene parts within 1 m of her spot (14-meadow-courier-parcel-cart 0.53 m, 24-meadow-courier-picket-fence 0.86 m, 13-meadow-courier-mailbox 0.92 m) — check in a headset or leave out of the VR version"
+                }
+            ]
         },
         {
             "id": "walled-town",
@@ -129,6 +167,7 @@
             },
             "preview": null,
             "props": 0,
+            "vrNear": [],
             "spots": null,
             "template": null,
             "privateConfig": null,
@@ -167,6 +206,7 @@
             "scene": null,
             "preview": null,
             "props": 5,
+            "vrNear": [],
             "spots": null,
             "template": null,
             "privateConfig": null,
@@ -205,6 +245,7 @@
             "scene": null,
             "preview": null,
             "props": 14,
+            "vrNear": [],
             "spots": null,
             "template": null,
             "privateConfig": null,
@@ -243,6 +284,7 @@
             "scene": null,
             "preview": null,
             "props": 6,
+            "vrNear": [],
             "spots": null,
             "template": null,
             "privateConfig": null,
@@ -281,6 +323,7 @@
             "scene": null,
             "preview": null,
             "props": 9,
+            "vrNear": [],
             "spots": null,
             "template": null,
             "privateConfig": null,
@@ -319,6 +362,7 @@
             "scene": null,
             "preview": null,
             "props": 5,
+            "vrNear": [],
             "spots": null,
             "template": null,
             "privateConfig": null,
@@ -355,6 +399,7 @@
             "scene": null,
             "preview": null,
             "props": 6,
+            "vrNear": [],
             "spots": null,
             "template": null,
             "privateConfig": null,
@@ -394,6 +439,7 @@
             "scene": null,
             "preview": null,
             "props": 8,
+            "vrNear": [],
             "spots": null,
             "template": null,
             "privateConfig": null,
@@ -430,6 +476,7 @@
             "scene": null,
             "preview": null,
             "props": 5,
+            "vrNear": [],
             "spots": null,
             "template": null,
             "privateConfig": null,
@@ -469,6 +516,7 @@
             "scene": null,
             "preview": null,
             "props": 6,
+            "vrNear": [],
             "spots": null,
             "template": null,
             "privateConfig": null,
@@ -505,6 +553,7 @@
             "scene": null,
             "preview": null,
             "props": 6,
+            "vrNear": [],
             "spots": null,
             "template": null,
             "privateConfig": null,
@@ -543,6 +592,7 @@
             "scene": null,
             "preview": null,
             "props": 7,
+            "vrNear": [],
             "spots": null,
             "template": null,
             "privateConfig": null,
@@ -579,6 +629,7 @@
             "scene": null,
             "preview": null,
             "props": 8,
+            "vrNear": [],
             "spots": null,
             "template": null,
             "privateConfig": null,
@@ -615,6 +666,7 @@
             "scene": null,
             "preview": null,
             "props": 3,
+            "vrNear": [],
             "spots": null,
             "template": null,
             "privateConfig": null,
@@ -655,6 +707,7 @@
                 "bytes": 13892
             },
             "props": 10,
+            "vrNear": [],
             "spots": null,
             "template": null,
             "privateConfig": null,
@@ -699,6 +752,24 @@
                 "bytes": 20308
             },
             "props": 0,
+            "vrNear": [
+                {
+                    "node": "108-monstera",
+                    "metres": 0.28
+                },
+                {
+                    "node": "102-throw-blanket",
+                    "metres": 0.3
+                },
+                {
+                    "node": "090-sofa-three-seat",
+                    "metres": 0.37
+                },
+                {
+                    "node": "091-sofa-two-seat",
+                    "metres": 0.8
+                }
+            ],
             "spots": {
                 "file": "assets/vr-worlds/spots/pixel-flat-home.json",
                 "total": 8,
@@ -734,7 +805,12 @@
                     "why": "loads itself"
                 }
             },
-            "issues": []
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 4 scene parts within 1 m of her spot (108-monstera 0.28 m, 102-throw-blanket 0.3 m, 090-sofa-three-seat 0.37 m, 091-sofa-two-seat 0.8 m) — check in a headset or leave out of the VR version"
+                }
+            ]
         },
         {
             "id": "bedroom",
@@ -758,6 +834,32 @@
                 "bytes": 14878
             },
             "props": 0,
+            "vrNear": [
+                {
+                    "node": "027-armchair-lounge",
+                    "metres": 0.16
+                },
+                {
+                    "node": "037-dining-chair-upholstered",
+                    "metres": 0.33
+                },
+                {
+                    "node": "008-flat-wall-door-4m",
+                    "metres": 0.37
+                },
+                {
+                    "node": "034-dining-table-6seat",
+                    "metres": 0.6
+                },
+                {
+                    "node": "038-dining-bench",
+                    "metres": 0.88
+                },
+                {
+                    "node": "042-wall-sconce",
+                    "metres": 0.95
+                }
+            ],
             "spots": {
                 "file": "assets/vr-worlds/spots/bedroom-flat.json",
                 "total": 4,
@@ -786,7 +888,12 @@
                     "why": "loads itself"
                 }
             },
-            "issues": []
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 6 scene parts within 1 m of her spot (027-armchair-lounge 0.16 m, 037-dining-chair-upholstered 0.33 m, 008-flat-wall-door-4m 0.37 m, 034-dining-table-6seat 0.6 m, 038-dining-bench 0.88 m, 042-wall-sconce 0.95 m) — check in a headset or leave out of the VR version"
+                }
+            ]
         },
         {
             "id": "bedroom-light",
@@ -806,6 +913,7 @@
             },
             "preview": null,
             "props": 0,
+            "vrNear": [],
             "spots": {
                 "file": "assets/vr-worlds/spots/pixel-flat-home.json",
                 "total": 8,
@@ -865,6 +973,12 @@
                 "bytes": 9512
             },
             "props": 0,
+            "vrNear": [
+                {
+                    "node": "002-coconut-palm-leaning",
+                    "metres": 0
+                }
+            ],
             "spots": null,
             "template": null,
             "privateConfig": null,
@@ -886,6 +1000,10 @@
                 }
             },
             "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 1 scene part within 1 m of her spot (002-coconut-palm-leaning 0 m) — check in a headset or leave out of the VR version"
+                },
                 {
                     "severity": "warn",
                     "text": "no measured spots: she cannot move within this place (LW2)"
@@ -914,6 +1032,20 @@
                 "bytes": 20950
             },
             "props": 0,
+            "vrNear": [
+                {
+                    "node": "000-bench-desk-6-position-spine",
+                    "metres": 0
+                },
+                {
+                    "node": "009-task-chair-mesh",
+                    "metres": 0.66
+                },
+                {
+                    "node": "001-task-chair-mesh",
+                    "metres": 0.9
+                }
+            ],
             "spots": null,
             "template": null,
             "privateConfig": null,
@@ -937,6 +1069,10 @@
             "issues": [
                 {
                     "severity": "warn",
+                    "text": "VR comfort: 3 scene parts within 1 m of her spot (000-bench-desk-6-position-spine 0 m, 009-task-chair-mesh 0.66 m, 001-task-chair-mesh 0.9 m) — check in a headset or leave out of the VR version"
+                },
+                {
+                    "severity": "warn",
                     "text": "no measured spots: she cannot move within this place (LW2)"
                 }
             ]
@@ -955,6 +1091,7 @@
             "scene": null,
             "preview": null,
             "props": 6,
+            "vrNear": [],
             "spots": null,
             "template": null,
             "privateConfig": null,
@@ -999,6 +1136,7 @@
                 "bytes": 32748
             },
             "props": 0,
+            "vrNear": [],
             "spots": null,
             "template": null,
             "privateConfig": null,
@@ -1044,6 +1182,7 @@
             },
             "preview": null,
             "props": 0,
+            "vrNear": [],
             "spots": null,
             "template": null,
             "privateConfig": null,
@@ -1088,6 +1227,12 @@
                 "bytes": 13534
             },
             "props": 0,
+            "vrNear": [
+                {
+                    "node": "29-neon-dispatch-cantilever-bench",
+                    "metres": 0.57
+                }
+            ],
             "spots": null,
             "template": null,
             "privateConfig": null,
@@ -1109,6 +1254,10 @@
                 }
             },
             "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 1 scene part within 1 m of her spot (29-neon-dispatch-cantilever-bench 0.57 m) — check in a headset or leave out of the VR version"
+                },
                 {
                     "severity": "warn",
                     "text": "no measured spots: she cannot move within this place (LW2)"
@@ -1137,6 +1286,12 @@
                 "bytes": 10688
             },
             "props": 0,
+            "vrNear": [
+                {
+                    "node": "046-diner-car-curved-end",
+                    "metres": 0.9
+                }
+            ],
             "spots": null,
             "template": null,
             "privateConfig": null,
@@ -1160,6 +1315,10 @@
             "issues": [
                 {
                     "severity": "warn",
+                    "text": "VR comfort: 1 scene part within 1 m of her spot (046-diner-car-curved-end 0.9 m) — check in a headset or leave out of the VR version"
+                },
+                {
+                    "severity": "warn",
                     "text": "no measured spots: she cannot move within this place (LW2)"
                 }
             ]
@@ -1178,6 +1337,7 @@
             "scene": null,
             "preview": null,
             "props": 7,
+            "vrNear": [],
             "spots": null,
             "template": null,
             "privateConfig": null,
@@ -1218,6 +1378,7 @@
                 "bytes": 12942
             },
             "props": 10,
+            "vrNear": [],
             "spots": null,
             "template": null,
             "privateConfig": null,
@@ -1262,6 +1423,7 @@
                 "bytes": 23644
             },
             "props": 0,
+            "vrNear": [],
             "spots": null,
             "template": {
                 "id": "irish-pub",
@@ -1315,6 +1477,20 @@
             },
             "preview": null,
             "props": 0,
+            "vrNear": [
+                {
+                    "node": "044-pub-table-round-pedestal",
+                    "metres": 0.59
+                },
+                {
+                    "node": "046-spindle-back-chair",
+                    "metres": 0.61
+                },
+                {
+                    "node": "050-pendant-light",
+                    "metres": 0.91
+                }
+            ],
             "spots": null,
             "template": {
                 "id": "irish-pub",
@@ -1343,7 +1519,12 @@
                     "why": "stand-in for irish-pub"
                 }
             },
-            "issues": []
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 3 scene parts within 1 m of her spot (044-pub-table-round-pedestal 0.59 m, 046-spindle-back-chair 0.61 m, 050-pendant-light 0.91 m) — check in a headset or leave out of the VR version"
+                }
+            ]
         },
         {
             "id": "neon-discoteca",
@@ -1367,6 +1548,7 @@
                 "bytes": 22672
             },
             "props": 0,
+            "vrNear": [],
             "spots": null,
             "template": {
                 "id": "neon-discoteca",
@@ -1420,6 +1602,7 @@
             },
             "preview": null,
             "props": 0,
+            "vrNear": [],
             "spots": null,
             "template": {
                 "id": "neon-discoteca",
@@ -1472,6 +1655,28 @@
                 "bytes": 12542
             },
             "props": 0,
+            "vrNear": [
+                {
+                    "node": "036-proscenium-arch-frame",
+                    "metres": 0
+                },
+                {
+                    "node": "039-house-tabs-on-track-open",
+                    "metres": 0.14
+                },
+                {
+                    "node": "032-apron-edge-with-footlight-strip",
+                    "metres": 0.5
+                },
+                {
+                    "node": "065-stage-steps",
+                    "metres": 0.51
+                },
+                {
+                    "node": "033-apron-edge-with-footlight-strip",
+                    "metres": 0.56
+                }
+            ],
             "spots": {
                 "file": "assets/vr-worlds/spots/cabaret-stage.json",
                 "total": 5,
@@ -1515,7 +1720,12 @@
                     "why": "loads itself"
                 }
             },
-            "issues": []
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "VR comfort: 5 scene parts within 1 m of her spot (036-proscenium-arch-frame 0 m, 039-house-tabs-on-track-open 0.14 m, 032-apron-edge-with-footlight-strip 0.5 m, 065-stage-steps 0.51 m, 033-apron-edge-with-footlight-strip 0.56 m) — check in a headset or leave out of the VR version"
+                }
+            ]
         },
         {
             "id": "private-cabaret-light",
@@ -1535,6 +1745,7 @@
             },
             "preview": null,
             "props": 0,
+            "vrNear": [],
             "spots": {
                 "file": "assets/vr-worlds/spots/cabaret-stage-light.json",
                 "total": 4,
@@ -1596,6 +1807,7 @@
                 "bytes": 12790
             },
             "props": 11,
+            "vrNear": [],
             "spots": null,
             "template": {
                 "id": "private-stream-studio",
@@ -1648,6 +1860,20 @@
                 "bytes": 22562
             },
             "props": 0,
+            "vrNear": [
+                {
+                    "node": "176-plant-pot",
+                    "metres": 0.45
+                },
+                {
+                    "node": "166-stackable-chair",
+                    "metres": 0.82
+                },
+                {
+                    "node": "164-seminar-table-round-4",
+                    "metres": 0.92
+                }
+            ],
             "spots": null,
             "template": {
                 "id": "creative-academy",
@@ -1679,6 +1905,10 @@
             "issues": [
                 {
                     "severity": "warn",
+                    "text": "VR comfort: 3 scene parts within 1 m of her spot (176-plant-pot 0.45 m, 166-stackable-chair 0.82 m, 164-seminar-table-round-4 0.92 m) — check in a headset or leave out of the VR version"
+                },
+                {
+                    "severity": "warn",
                     "text": "no measured spots: she cannot move within this place (LW2)"
                 }
             ]
@@ -1701,6 +1931,7 @@
             },
             "preview": null,
             "props": 0,
+            "vrNear": [],
             "spots": null,
             "template": {
                 "id": "creative-academy",

@@ -28,6 +28,7 @@ import { fileURLToPath } from 'node:url';
 import { audit, auditAtlas } from './world-audit.mjs';
 import { buildHub, writeHub } from './hub.mjs';
 import { loadScorer } from './lab-publish.mjs';
+import { screenshot, shutdown } from './lab-screenshot.mjs';
 
 // stdout is the protocol channel: nothing else may write to it
 console.log = (...a) => console.error(...a);
@@ -258,6 +259,26 @@ export const TOOLS = [
         },
     },
     {
+        name: 'lab_screenshot',
+        description:
+            'See a world (or any app path) on desktop (1280×800) and a phone (Pixel 7 emulation) and get the pictures inline, with requested → expected → shown world ids (VRWorlds.resolveFor at the page tier), tier, triangles, load time, console errors and the frame check. Reuses one Chromium and the app server (starts nexus-proxy on a free port if none answers). Writes only tmp/shots/. Headless SwiftShader render: evidence of what loads and how it is framed, NOT of frame rate or headset comfort.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                world: str('catalogue world id; opens /?vrWorld=<id>'),
+                url: str('any app path instead of world, e.g. "/?area=atlas"'),
+                devices: { type: 'array', items: { type: 'string', enum: ['desktop', 'mobile'] } },
+                wait: { type: 'number', description: 'most ms to wait for the app and the world (default 60000)' },
+                view: {
+                    type: 'string',
+                    enum: ['viewport', 'page'],
+                    description: 'her viewport only (default) or the whole page',
+                },
+            },
+        },
+        run: (a) => screenshot(a),
+    },
+    {
         name: 'lab_check',
         description:
             'Is the committed lab data current? Runs the generators in --check mode (3D audit, atlas audit, hub). Run before committing.',
@@ -287,7 +308,7 @@ export const TOOLS = [
 const INSTRUCTIONS =
     'NEXUS Quality Lab. Start with lab_status or lab_next_actions. Measure before and after a change; write lab data only through lab_regenerate, lab_new_zone or tools/qa/lab-publish.mjs; run lab_check and npm run validate before committing code and regenerated data together. Rules: quality-lab/README.md.';
 
-export function handle(msg) {
+export async function handle(msg) {
     const { id, method, params } = msg || {};
     const reply = (result) => ({ jsonrpc: '2.0', id, result });
     const fail = (code, message) => ({ jsonrpc: '2.0', id, error: { code, message } });
@@ -307,7 +328,9 @@ export function handle(msg) {
         const tool = TOOLS.find((t) => t.name === (params && params.name));
         if (!tool) return fail(-32602, `unknown tool ${params && params.name}`);
         try {
-            const result = tool.run((params && params.arguments) || {});
+            const result = await tool.run((params && params.arguments) || {});
+            // A tool that already speaks MCP content (pictures) is passed through as is.
+            if (result && Array.isArray(result.content)) return reply(result);
             return reply({ content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] });
         } catch (e) {
             return reply({ content: [{ type: 'text', text: String(e.message || e) }], isError: true });
@@ -319,6 +342,13 @@ export function handle(msg) {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
     const rl = readline.createInterface({ input: process.stdin });
+    const pending = new Set();
+    // stdin closed: answer what is in flight, then close Chromium and any app server we started.
+    rl.on('close', async () => {
+        await Promise.allSettled([...pending]);
+        await shutdown();
+        process.exit(0);
+    });
     rl.on('line', (line) => {
         if (!line.trim()) return;
         let msg;
@@ -330,7 +360,10 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             );
             return;
         }
-        const out = handle(msg);
-        if (out) process.stdout.write(JSON.stringify(out) + '\n');
+        const job = handle(msg).then((out) => {
+            if (out) process.stdout.write(JSON.stringify(out) + '\n');
+        });
+        pending.add(job);
+        job.finally(() => pending.delete(job));
     });
 }

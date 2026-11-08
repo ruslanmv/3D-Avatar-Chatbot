@@ -54,7 +54,8 @@
                 "walled-town"
             ]
         },
-        "fails": 0
+        "fails": 0,
+        "unzoned": []
     },
     "zones": [
         {
@@ -83,8 +84,15 @@
                 "exists": true,
                 "bytes": 20308
             },
-            "issues": [],
-            "next": []
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "apartment: VR comfort: 4 scene parts within 1 m of her spot (108-monstera 0.28 m, 102-throw-blanket 0.3 m, 090-sofa-three-seat 0.37 m, 091-sofa-two-seat 0.8 m) — check in a headset or leave out of the VR version"
+                }
+            ],
+            "next": [
+                "apartment: VR comfort: 4 scene parts within 1 m of her spot (108-monstera 0.28 m, 102-throw-blanket 0.3 m, 090-sofa-three-seat 0.37 m, 091-sofa-two-seat 0.8 m) — check in a headset or leave out of the VR version"
+            ]
         },
         {
             "id": "bedroom",
@@ -110,8 +118,15 @@
                 "exists": true,
                 "bytes": 14878
             },
-            "issues": [],
-            "next": []
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "bedroom: VR comfort: 6 scene parts within 1 m of her spot (027-armchair-lounge 0.16 m, 037-dining-chair-upholstered 0.33 m, 008-flat-wall-door-4m 0.37 m, 034-dining-table-6seat 0.6 m, 038-dining-bench 0.88 m, 042-wall-sconce 0.95 m) — check in a headset or leave out of the VR version"
+                }
+            ],
+            "next": [
+                "bedroom: VR comfort: 6 scene parts within 1 m of her spot (027-armchair-lounge 0.16 m, 037-dining-chair-upholstered 0.33 m, 008-flat-wall-door-4m 0.37 m, 034-dining-table-6seat 0.6 m, 038-dining-bench 0.88 m, 042-wall-sconce 0.95 m) — check in a headset or leave out of the VR version"
+            ]
         },
         {
             "id": "hotel-suite",
@@ -170,10 +185,15 @@
             "issues": [
                 {
                     "severity": "warn",
+                    "text": "neon-street: VR comfort: 1 scene part within 1 m of her spot (29-neon-dispatch-cantilever-bench 0.57 m) — check in a headset or leave out of the VR version"
+                },
+                {
+                    "severity": "warn",
                     "text": "neon-street: no measured spots: she cannot move within this place (LW2)"
                 }
             ],
             "next": [
+                "neon-street: VR comfort: 1 scene part within 1 m of her spot (29-neon-dispatch-cantilever-bench 0.57 m) — check in a headset or leave out of the VR version",
                 "neon-street: no measured spots: she cannot move within this place (LW2)"
             ]
         },
@@ -205,10 +225,15 @@
                 {
                     "severity": "warn",
                     "text": "irish-pub: no measured spots: she cannot move within this place (LW2)"
+                },
+                {
+                    "severity": "warn",
+                    "text": "irish-pub-light: VR comfort: 3 scene parts within 1 m of her spot (044-pub-table-round-pedestal 0.59 m, 046-spindle-back-chair 0.61 m, 050-pendant-light 0.91 m) — check in a headset or leave out of the VR version"
                 }
             ],
             "next": [
-                "irish-pub: no measured spots: she cannot move within this place (LW2)"
+                "irish-pub: no measured spots: she cannot move within this place (LW2)",
+                "irish-pub-light: VR comfort: 3 scene parts within 1 m of her spot (044-pub-table-round-pedestal 0.59 m, 046-spindle-back-chair 0.61 m, 050-pendant-light 0.91 m) — check in a headset or leave out of the VR version"
             ]
         },
         {
@@ -273,10 +298,15 @@
             "issues": [
                 {
                     "severity": "warn",
+                    "text": "office: VR comfort: 3 scene parts within 1 m of her spot (000-bench-desk-6-position-spine 0 m, 009-task-chair-mesh 0.66 m, 001-task-chair-mesh 0.9 m) — check in a headset or leave out of the VR version"
+                },
+                {
+                    "severity": "warn",
                     "text": "office: no measured spots: she cannot move within this place (LW2)"
                 }
             ],
             "next": [
+                "office: VR comfort: 3 scene parts within 1 m of her spot (000-bench-desk-6-position-spine 0 m, 009-task-chair-mesh 0.66 m, 001-task-chair-mesh 0.9 m) — check in a headset or leave out of the VR version",
                 "office: no measured spots: she cannot move within this place (LW2)"
             ]
         },
@@ -307,10 +337,15 @@
             "issues": [
                 {
                     "severity": "warn",
+                    "text": "creative-academy: VR comfort: 3 scene parts within 1 m of her spot (176-plant-pot 0.45 m, 166-stackable-chair 0.82 m, 164-seminar-table-round-4 0.92 m) — check in a headset or leave out of the VR version"
+                },
+                {
+                    "severity": "warn",
                     "text": "creative-academy: no measured spots: she cannot move within this place (LW2)"
                 }
             ],
             "next": [
+                "creative-academy: VR comfort: 3 scene parts within 1 m of her spot (176-plant-pot 0.45 m, 166-stackable-chair 0.82 m, 164-seminar-table-round-4 0.92 m) — check in a headset or leave out of the VR version",
                 "creative-academy: no measured spots: she cannot move within this place (LW2)"
             ]
         },
@@ -320,7 +355,8 @@
             "title": "Airship dock",
             "status": "shipped",
             "worlds": [
-                "airship-dock"
+                "airship-dock",
+                "airship-dock-light"
             ],
             "links": [
                 "neon-street",
@@ -398,9 +434,15 @@
             },
             "spots": 0,
             "preview": null,
-            "issues": [],
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "meadow-village: VR comfort: 3 scene parts within 1 m of her spot (14-meadow-courier-parcel-cart 0.53 m, 24-meadow-courier-picket-fence 0.86 m, 13-meadow-courier-mailbox 0.92 m) — check in a headset or leave out of the VR version"
+                }
+            ],
             "next": [
-                "panorama or activity world: no spots to measure"
+                "panorama or activity world: no spots to measure",
+                "meadow-village: VR comfort: 3 scene parts within 1 m of her spot (14-meadow-courier-parcel-cart 0.53 m, 24-meadow-courier-picket-fence 0.86 m, 13-meadow-courier-mailbox 0.92 m) — check in a headset or leave out of the VR version"
             ]
         },
         {
@@ -423,9 +465,15 @@
             },
             "spots": 0,
             "preview": null,
-            "issues": [],
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "oak-glade: VR comfort: 3 scene parts within 1 m of her spot (001-english-oak-mature 0.34 m, 021-oak-sapling 0.68 m, 003-english-oak-young 0.81 m) — check in a headset or leave out of the VR version"
+                }
+            ],
             "next": [
-                "panorama or activity world: no spots to measure"
+                "panorama or activity world: no spots to measure",
+                "oak-glade: VR comfort: 3 scene parts within 1 m of her spot (001-english-oak-mature 0.34 m, 021-oak-sapling 0.68 m, 003-english-oak-young 0.81 m) — check in a headset or leave out of the VR version"
             ]
         },
         {
@@ -479,10 +527,15 @@
             "issues": [
                 {
                     "severity": "warn",
+                    "text": "lagoon-beach: VR comfort: 1 scene part within 1 m of her spot (002-coconut-palm-leaning 0 m) — check in a headset or leave out of the VR version"
+                },
+                {
+                    "severity": "warn",
                     "text": "lagoon-beach: no measured spots: she cannot move within this place (LW2)"
                 }
             ],
             "next": [
+                "lagoon-beach: VR comfort: 1 scene part within 1 m of her spot (002-coconut-palm-leaning 0 m) — check in a headset or leave out of the VR version",
                 "lagoon-beach: no measured spots: she cannot move within this place (LW2)"
             ]
         },
@@ -804,8 +857,15 @@
                 "exists": true,
                 "bytes": 12542
             },
-            "issues": [],
-            "next": []
+            "issues": [
+                {
+                    "severity": "warn",
+                    "text": "private-cabaret: VR comfort: 5 scene parts within 1 m of her spot (036-proscenium-arch-frame 0 m, 039-house-tabs-on-track-open 0.14 m, 032-apron-edge-with-footlight-strip 0.5 m, 065-stage-steps 0.51 m, 033-apron-edge-with-footlight-strip 0.56 m) — check in a headset or leave out of the VR version"
+                }
+            ],
+            "next": [
+                "private-cabaret: VR comfort: 5 scene parts within 1 m of her spot (036-proscenium-arch-frame 0 m, 039-house-tabs-on-track-open 0.14 m, 032-apron-edge-with-footlight-strip 0.5 m, 065-stage-steps 0.51 m, 033-apron-edge-with-footlight-strip 0.56 m) — check in a headset or leave out of the VR version"
+            ]
         },
         {
             "id": "private-stream-studio",
@@ -887,10 +947,15 @@
             "issues": [
                 {
                     "severity": "warn",
+                    "text": "roadside-motel: VR comfort: 1 scene part within 1 m of her spot (046-diner-car-curved-end 0.9 m) — check in a headset or leave out of the VR version"
+                },
+                {
+                    "severity": "warn",
                     "text": "roadside-motel: no measured spots: she cannot move within this place (LW2)"
                 }
             ],
             "next": [
+                "roadside-motel: VR comfort: 1 scene part within 1 m of her spot (046-diner-car-curved-end 0.9 m) — check in a headset or leave out of the VR version",
                 "roadside-motel: no measured spots: she cannot move within this place (LW2)"
             ]
         }

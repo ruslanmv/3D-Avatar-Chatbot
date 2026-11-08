@@ -27,7 +27,7 @@
                 "vr": 29
             },
             "fails": 0,
-            "warns": 8
+            "warns": 19
         },
         "atlas": {
             "zones": 30,
@@ -70,11 +70,15 @@
             "area": "3d",
             "priority": 1,
             "title": "Make walled-town load on mobile and vr",
-            "why": "It is the only way from home to the rest of the map on mobile/vr: 12/26 zones walkable on mobile, 12/26 zones walkable on vr. 224,939 triangles; 224939 triangles > 30000, no stand-in; not in its tiers.",
-            "command": "node tools/vr/subset-scene.mjs  (recipe in tools/vr/playground-subsets.json), then add the tier in worlds.json",
+            "why": "The first gateway on mobile/vr: walkable from home 12/26 → 24/26 on mobile, 12/26 → 26/26 on vr if it loads there. 224,939 triangles; 224939 triangles > 30000, no stand-in; not in its tiers.",
+            "command": "node tools/vr/subset-scene.mjs --list scenes/mmo-realm.glb  (choose nodes), add a recipe to tools/vr/playground-subsets.json, cut it, add walled-town-light to worlds.json",
             "files": [
                 "assets/vr-worlds/worlds.json",
-                "tools/vr/playground-subsets.json"
+                "tools/vr/playground-subsets.json",
+                "assets/vr-worlds/PROVENANCE.md",
+                "docs/VR_WORLDS.md",
+                "quality-lab/data/atlas/atlas.json (the zone's worlds list)",
+                "tests/vr-worlds.test.js"
             ]
         },
         {
@@ -131,6 +135,18 @@
             "command": "docs/qa/NEXUS_PREMIUM_EXPERIENCE_SCORECARD.md → humanReview in the run file",
             "files": [
                 "quality-lab/data/runs/2026-11-08-ax8-matrix.json"
+            ]
+        },
+        {
+            "id": "3d-vr-comfort",
+            "area": "3d",
+            "priority": 3,
+            "title": "Check VR comfort near her spot in 11 worlds",
+            "why": "Scene parts within 1 m of her spot (boxes over-reach; some are on purpose): oak-glade, meadow-village, apartment, bedroom, lagoon-beach, office, neon-street, roadside-motel, irish-pub-light, private-cabaret, creative-academy.",
+            "command": "node tools/vr/subset-scene.mjs --list <scenes/x.glb>, then lab_screenshot or a headset",
+            "files": [
+                "assets/vr-worlds/worlds.json",
+                "tools/vr/playground-subsets.json"
             ]
         }
     ]

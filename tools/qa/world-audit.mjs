@@ -27,6 +27,7 @@ import vm from 'node:vm';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { writeHub } from './hub.mjs';
+import { inspect } from '../vr/scene-nodes.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../..');
@@ -112,6 +113,24 @@ export function audit() {
                 fail(`preview is ${Math.round(preview.bytes / 1024)} KB, over 60 KB`);
         }
 
+        // AX15. VRWorlds.comfortProblem checks props only; an assembled scene's own parts were never
+        // checked, and VW4 applied the 1 m rule to its stand-in by hand. A world that loads itself in
+        // VR now lists every scene part (not floor, not a room shell) whose box comes within 1 m of
+        // her spot. Boxes over-reach (a tree's canopy, a sofa her spot is beside on purpose), so this
+        // is a warning to check in a headset, never a failure.
+        let vrNear = [];
+        if (scene && scene.exists && V.allowedOn(w, 'vr')) {
+            vrNear = inspect(path.join(WORLDS_DIR, scene.src), w.scene)
+                .filter((n) => n.distance < 1 && !n.floor && !n.enclosure)
+                .map((n) => ({ node: n.name, metres: Math.round(n.distance * 100) / 100 }));
+            if (vrNear.length)
+                warn(
+                    `VR comfort: ${vrNear.length} scene part${vrNear.length > 1 ? 's' : ''} within 1 m of her spot (${vrNear
+                        .map((n) => `${n.node} ${n.metres} m`)
+                        .join(', ')}) — check in a headset or leave out of the VR version`
+                );
+        }
+
         const spots = spotsFor(w.scene && w.scene.src);
         if (spots && !spots.matchesScene)
             fail('spots were measured on a different version of the scene — re-run measure-spots');
@@ -160,6 +179,7 @@ export function audit() {
             scene,
             preview,
             props: props.length,
+            vrNear,
             spots,
             template: template
                 ? { id: template.id || template.world, actions: (template.actions || []).map((a) => a.id) }
@@ -248,6 +268,11 @@ export function auditAtlas(worldAudit) {
             });
             if (z.brief) warn('shipped zone still carries a brief');
             const present = own.filter(Boolean);
+            // AX15. A light stand-in belongs to its original's zone; VW4 added one and the atlas
+            // never heard of it, because nothing said to list it.
+            for (const w of present)
+                if (w.standIn && !(z.worlds || []).includes(w.standIn))
+                    warn(`stand-in ${w.standIn} of ${w.id} is not listed in this zone's worlds`);
             for (const d of RULES.devices) dev[d] = present.some((w) => w.devices[d].ok);
             for (const w of present)
                 for (const i of w.issues) issues.push({ severity: i.severity, text: `${w.id}: ${i.text}` });
@@ -340,6 +365,8 @@ export function auditAtlas(worldAudit) {
         reachableFromHome: Object.fromEntries(devices.map((d) => [d, reachable('apartment', d)])),
         gateways,
         fails: out.reduce((n, z) => n + z.issues.filter((i) => i.severity === 'fail').length, 0) + problems.length,
+        // catalogue worlds no zone names: the map does not know them yet
+        unzoned: worldAudit.worlds.map((w) => w.id).filter((id) => !zones.some((z) => (z.worlds || []).includes(id))),
     };
     return {
         schema: 1,

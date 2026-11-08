@@ -17,7 +17,7 @@
         { "id": "neon-discoteca", "region": "town", "status": "shipped", "worlds": ["neon-discoteca", "neon-discoteca-light"], "links": ["neon-street"] },
         { "id": "office", "region": "town", "status": "shipped", "worlds": ["office", "office-light"], "links": ["neon-street", "creative-academy"] },
         { "id": "creative-academy", "region": "town", "status": "shipped", "worlds": ["creative-academy", "creative-academy-light"], "links": ["office"] },
-        { "id": "airship-dock", "region": "town", "status": "shipped", "worlds": ["airship-dock"], "links": ["neon-street", "walled-town"] },
+        { "id": "airship-dock", "region": "town", "status": "shipped", "worlds": ["airship-dock", "airship-dock-light"], "links": ["neon-street", "walled-town"] },
         { "id": "walled-town", "region": "wilds", "status": "shipped", "worlds": ["walled-town"], "links": ["airship-dock", "meadow-village"] },
         { "id": "meadow-village", "region": "wilds", "status": "shipped", "worlds": ["meadow-village"], "links": ["walled-town", "oak-glade", "lagoon-beach"] },
         { "id": "oak-glade", "region": "wilds", "status": "shipped", "worlds": ["oak-glade"], "links": ["meadow-village", "under-the-trees"] },

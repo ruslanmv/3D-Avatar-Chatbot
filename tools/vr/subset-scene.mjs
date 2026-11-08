@@ -19,6 +19,13 @@
  *     node tools/vr/subset-scene.mjs            # every recipe
  *     node tools/vr/subset-scene.mjs pub-light  # one
  *     node tools/vr/subset-scene.mjs --check    # report triangles, write nothing
+ *     node tools/vr/subset-scene.mjs --list <recipe | scenes/x.glb>   # inspect, no browser
+ *
+ * AX15. `--list` prints every top-level node — the index a recipe's `keep` ranges use, its name,
+ * triangles, its distance from her spot with the world's `scene.at`/`turn` applied (the matching
+ * world in worlds.json, else unplaced), floor and room-shell marks, and a running total sorted
+ * nearest first. Choosing what a stand-in keeps is reading that table: stay under the budget, and
+ * leave out anything not floor within 1 m (world-audit warns on those in VR).
  *
  * Prints the measured triangles of every output — the number `worlds.json` must declare.
  */
@@ -29,10 +36,43 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const require = createRequire(import.meta.url);
-const { chromium } = require('playwright');
 
 const recipes = JSON.parse(fs.readFileSync(path.join(ROOT, 'tools/vr/playground-subsets.json'), 'utf8')).outputs;
 const args = process.argv.slice(2);
+
+if (args.includes('--list')) {
+    const { inspect } = await import('./scene-nodes.mjs');
+    const target = args[args.indexOf('--list') + 1];
+    const recipe = recipes[target];
+    const rel = recipe
+        ? recipe.src.replace(/^assets\/vr-worlds\//, '')
+        : String(target || '').replace(/^assets\/vr-worlds\//, '');
+    const file = path.join(ROOT, 'assets/vr-worlds', rel);
+    if (!target || !fs.existsSync(file)) {
+        console.error(
+            'usage: subset-scene.mjs --list <recipe | scenes/x.glb>  (recipes: ' + Object.keys(recipes).join(', ') + ')'
+        );
+        process.exit(2);
+    }
+    const worlds = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets/vr-worlds/worlds.json'), 'utf8')).worlds;
+    const world =
+        worlds.find((w) => w.scene && w.scene.src === rel && !w.lightFor) ||
+        worlds.find((w) => w.scene && w.scene.src === rel);
+    const spec = world ? world.scene : null;
+    console.log(
+        `${rel}: placed as ${world ? world.id + ' (at ' + JSON.stringify(spec.at) + ', turn ' + (spec.turn || 0) + ')' : 'no world — scene origin'}${recipe && recipe.budget ? ', budget ' + recipe.budget : ''}`
+    );
+    console.log('index  metres  triangles  running  mark   name');
+    for (const n of inspect(file, spec)) {
+        const mark = n.floor ? 'floor' : n.enclosure ? 'shell' : n.distance < 1 ? 'NEAR' : '';
+        console.log(
+            `${String(n.index).padStart(5)}  ${(Number.isFinite(n.distance) ? n.distance.toFixed(2) : '—').padStart(6)}  ${String(n.triangles).padStart(9)}  ${String(n.runningTriangles).padStart(7)}  ${mark.padEnd(5)}  ${n.name}`
+        );
+    }
+    process.exit(0);
+}
+
+const { chromium } = require('playwright');
 const check = args.includes('--check');
 const only = args.filter((a) => !a.startsWith('--'));
 const todo = Object.entries(recipes).filter(([name]) => !only.length || only.includes(name));

@@ -187,6 +187,8 @@ describe('Quality Lab MCP server (AX13)', () => {
             },
             { jsonrpc: '2.0', id: 5, method: 'nope' },
         ]);
+        // JSON-RPC answers are matched by id and may arrive in any order (tools/call is async).
+        out.sort((a, b) => a.id - b.id);
         expect(out.map((m) => m.id)).toEqual([1, 2, 3, 4, 5]); // the notification got no answer
         expect(out[0].result.serverInfo.name).toBe('nexus-quality-lab');
         const names = out[1].result.tools.map((t) => t.name);
@@ -202,5 +204,79 @@ describe('Quality Lab MCP server (AX13)', () => {
     test('is registered for Claude Code in .mcp.json', () => {
         const cfg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '.mcp.json'), 'utf8'));
         expect(cfg.mcpServers['nexus-quality-lab'].args).toEqual(['tools/qa/lab-mcp.mjs']);
+    });
+});
+
+describe('lab_screenshot arguments and fallbacks (AX15)', () => {
+    // The tool is an ES module; run its pure parts in a child node. Rendering stays out of Jest.
+    const node = (code) =>
+        JSON.parse(
+            require('child_process').execFileSync(process.execPath, ['--input-type=module', '-e', code], {
+                cwd: path.join(__dirname, '..'),
+                encoding: 'utf8',
+            })
+        );
+    const norm = (args) =>
+        node(`import { normalizeArgs } from './tools/qa/lab-screenshot.mjs';
+            try { console.log(JSON.stringify({ ok: normalizeArgs(${JSON.stringify(args)}) })); }
+            catch (e) { console.log(JSON.stringify({ error: e.message })); }`);
+
+    test('a world opens its ?vrWorld= preview on both devices by default', () => {
+        expect(norm({ world: 'airship-dock' }).ok).toMatchObject({
+            world: 'airship-dock',
+            url: '/?vrWorld=airship-dock',
+            devices: ['desktop', 'mobile'],
+            wait: 60000,
+            view: 'viewport',
+        });
+    });
+
+    test('a url names its world when it carries one; wait is clamped; devices are checked', () => {
+        const r = norm({ url: '/?vrWorld=irish-pub', devices: ['mobile', 'mobile'], wait: 999999 }).ok;
+        expect(r).toMatchObject({ world: 'irish-pub', devices: ['mobile'], wait: 180000, urlGiven: true });
+        expect(norm({ world: 'nope' }).error).toMatch(/no world nope/);
+        expect(norm({ world: 'Bad Id' }).error).toMatch(/not a world id/);
+        expect(norm({}).error).toMatch(/give world/);
+        expect(norm({ world: 'oak-glade', url: '/' }).error).toMatch(/not both/);
+        expect(norm({ url: 'https://example.com' }).error).toMatch(/app path/);
+        expect(norm({ world: 'oak-glade', devices: ['vr'] }).error).toMatch(/devices/);
+    });
+
+    test('without Playwright it answers with the reason instead of failing the server', () => {
+        const r = node(`import { screenshot } from './tools/qa/lab-screenshot.mjs';
+            const r = await screenshot({ world: 'oak-glade' }, () => ({ playwright: null, why: 'Playwright is not installed here' }));
+            console.log(JSON.stringify(r));`);
+        expect(r.isError).toBe(true);
+        expect(r.content[0].text).toMatch(/Playwright is not installed/);
+    });
+
+    test('lab-call.mjs calls one tool without hand-written JSON-RPC', () => {
+        const out = require('child_process').execFileSync(
+            process.execPath,
+            ['tools/qa/lab-call.mjs', 'lab_score_reply', JSON.stringify({ text: 'Mm. Stay a while.', lang: 'en' })],
+            { cwd: path.join(__dirname, '..'), encoding: 'utf8' }
+        );
+        expect(JSON.parse(out).score).toBe(100);
+    });
+});
+
+describe('scene inspection without a browser (AX15)', () => {
+    test('subset-scene --list places the nodes and marks what is within 1 m of her', () => {
+        const out = require('child_process').execFileSync(
+            process.execPath,
+            ['tools/vr/subset-scene.mjs', '--list', 'airship-light'],
+            { cwd: path.join(__dirname, '..'), encoding: 'utf8' }
+        );
+        expect(out).toMatch(/placed as airship-dock \(at/);
+        expect(out).toMatch(/NEAR\s+085-jib-crane/); // the node VW4 left out of the stand-in by hand
+        expect(out).toMatch(/floor\s+046-dock-deck-plate/);
+        const last = out.trim().split('\n').pop();
+        expect(Number(last.trim().split(/\s+/)[3])).toBe(141396); // running total = the catalogue's count
+    });
+
+    test('the stand-in keeps nothing but floor within 1 m, and the audit checks VR scenes', () => {
+        const audit = JSON.parse(fs.readFileSync(path.join(DATA, '3d', 'worlds-audit.json'), 'utf8'));
+        expect(audit.worlds.find((w) => w.id === 'airship-dock-light').vrNear).toEqual([]);
+        expect(audit.worlds.some((w) => w.vrNear.length)).toBe(true);
     });
 });

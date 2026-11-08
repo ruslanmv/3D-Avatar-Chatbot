@@ -25,6 +25,48 @@ const OUT = path.join(DATA, 'hub.json');
 
 const read = (rel) => JSON.parse(fs.readFileSync(path.join(DATA, rel), 'utf8'));
 
+/**
+ * AX15. Every file a stand-in or gateway change touches. VW4 was told two and changed six: the test
+ * that pinned "no stand-in", the provenance table, the VR worlds doc's "desktop only", the atlas
+ * zone (its worlds list) and the roadmap (now generated). Tests are found by grepping for the id, so
+ * the list stays right as tests move.
+ */
+function standInFiles(id) {
+    const tests = [];
+    const walk = (dir) => {
+        for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+            const p = path.join(dir, e.name);
+            if (e.isDirectory()) walk(p);
+            else if (e.name.endsWith('.test.js') && fs.readFileSync(p, 'utf8').includes(`'${id}'`))
+                tests.push(path.relative(ROOT, p).split(path.sep).join('/'));
+        }
+    };
+    walk(path.join(ROOT, 'tests'));
+    return [
+        'assets/vr-worlds/worlds.json',
+        'tools/vr/playground-subsets.json',
+        'assets/vr-worlds/PROVENANCE.md',
+        'docs/VR_WORLDS.md',
+        "quality-lab/data/atlas/atlas.json (the zone's worlds list)",
+        ...tests.sort(),
+    ];
+}
+
+/** Public zones walkable from home on a device if one more zone loaded there. */
+function walkableIfOpened(atlas, openId, device) {
+    const byId = new Map(atlas.zones.map((z) => [z.id, z]));
+    const seen = new Set();
+    const stack = ['apartment'];
+    while (stack.length) {
+        const id = stack.pop();
+        const z = byId.get(id);
+        if (!z || seen.has(id) || z.region === 'private' || !(z.devices[device] || id === openId)) continue;
+        seen.add(id);
+        for (const to of z.links) stack.push(to);
+    }
+    return seen.size;
+}
+
 export function buildHub() {
     const index = read('index.json');
     const latest = index.runs[0] ? read(index.runs[0].file) : null;
@@ -93,15 +135,25 @@ export function buildHub() {
         for (const id of ids) (gates[id] = gates[id] || []).push(device);
     for (const [id, devices] of Object.entries(gates)) {
         const w = worlds.worlds.find((x) => x.id === id);
+        const after = Object.fromEntries(devices.map((d) => [d, walkableIfOpened(atlas, id, d)]));
+        const total = atlas.summary.publicZones;
         add({
             id: `3d-gateway-${id}`,
             area: '3d',
             priority: 1,
             title: `Make ${id} load on ${devices.join(' and ')}`,
-            why: `It is the only way from home to the rest of the map on ${devices.join('/')}: ${devices.map((d) => `${atlas.summary.reachableFromHome[d]}/${atlas.summary.publicZones} zones walkable on ${d}`).join(', ')}.${w ? ` ${w.triangles.toLocaleString('en')} triangles; ${devices.map((d) => w.devices[d].why).join('; ')}.` : ''}`,
+            // AX15. VW4 read "the only way" as "closing it reaches the whole map"; a second gateway
+            // sat behind it. Say "first gateway" and give the number it actually opens.
+            why: `The first gateway on ${devices.join('/')}: walkable from home ${devices
+                .map((d) => `${atlas.summary.reachableFromHome[d]}/${total} → ${after[d]}/${total} on ${d}`)
+                .join(
+                    ', '
+                )} if it loads there.${w ? ` ${w.triangles.toLocaleString('en')} triangles; ${devices.map((d) => w.devices[d].why).join('; ')}.` : ''}`,
             command:
-                'node tools/vr/subset-scene.mjs  (recipe in tools/vr/playground-subsets.json), then add the tier in worlds.json',
-            files: ['assets/vr-worlds/worlds.json', 'tools/vr/playground-subsets.json'],
+                w && w.scene
+                    ? `node tools/vr/subset-scene.mjs --list ${w.scene.src}  (choose nodes), add a recipe to tools/vr/playground-subsets.json, cut it, add ${id}-light to worlds.json`
+                    : `give ${id} a light version or the missing tier in worlds.json`,
+            files: standInFiles(id),
         });
     }
     const noSpots = worlds.worlds
@@ -116,6 +168,17 @@ export function buildHub() {
             why: `She cannot move within ${noSpots.join(', ')} (LW2).`,
             command: 'add targets to tools/vr/spot-targets.json, then node tools/vr/measure-spots.mjs <scene>',
             files: ['tools/vr/spot-targets.json', 'assets/vr-worlds/spots/'],
+        });
+    const near = worlds.worlds.filter((w) => (w.vrNear || []).length);
+    if (near.length)
+        add({
+            id: '3d-vr-comfort',
+            area: '3d',
+            priority: 3,
+            title: `Check VR comfort near her spot in ${near.length} worlds`,
+            why: `Scene parts within 1 m of her spot (boxes over-reach; some are on purpose): ${near.map((w) => w.id).join(', ')}.`,
+            command: 'node tools/vr/subset-scene.mjs --list <scenes/x.glb>, then lab_screenshot or a headset',
+            files: ['assets/vr-worlds/worlds.json', 'tools/vr/playground-subsets.json'],
         });
     for (const w of worlds.worlds)
         for (const i of w.issues.filter((x) => x.severity === 'fail'))
@@ -171,7 +234,75 @@ export function buildHub() {
     };
 }
 
+const ROADMAP = path.join(ROOT, 'docs/engine/NEXUS_OPEN_WORLD_ROADMAP.md');
+const START =
+    '<!-- lab:where-we-are:start — generated by node tools/qa/hub.mjs from the lab audits; do not edit by hand -->';
+const END = '<!-- lab:where-we-are:end -->';
+
+/**
+ * AX15. The roadmap's "Where we are" table, from the audits. It was typed by hand and went stale on
+ * the first regenerate (VW4 had to edit it); now the hub writes it and `--check` covers it.
+ */
+export function whereWeAre() {
+    const w = read('3d/worlds-audit.json').summary;
+    const a = read('atlas/atlas-audit.json').summary;
+    const gw = [...new Set(Object.values(a.gateways).flat())];
+    const rows = [
+        ['Worlds in the catalogue', `${w.worlds} (${w.places} places, ${w.standIns} phone stand-ins)`, '3D audit'],
+        ['Zones on the map', `${a.zones} in ${a.regions} regions, ${a.publicZones} public`, 'atlas audit'],
+        [
+            'Offered on desktop / mobile / VR',
+            `${w.offered.desktop} / ${w.offered.mobile} / ${w.offered.vr} worlds`,
+            '3D audit',
+        ],
+        [
+            'Walkable from home on desktop / mobile / VR',
+            `${a.reachableFromHome.desktop} / ${a.reachableFromHome.mobile} / ${a.reachableFromHome.vr} of ${a.publicZones} public zones`,
+            'atlas audit',
+        ],
+        [
+            'First gateway cutting a device off',
+            gw.length
+                ? gw
+                      .map(
+                          (id) =>
+                              '`' +
+                              id +
+                              '` (' +
+                              Object.entries(a.gateways)
+                                  .filter(([, ids]) => ids.includes(id))
+                                  .map(([d]) => d)
+                                  .join(', ') +
+                              ')'
+                      )
+                      .join('; ')
+                : 'none',
+            'atlas audit',
+        ],
+        ['3D failures / warnings', `${w.fails} / ${w.warns}`, '3D audit'],
+    ];
+    return [
+        START,
+        '',
+        '| Figure | Value | Source |',
+        '| --- | --- | --- |',
+        ...rows.map((r) => `| ${r.join(' | ')} |`),
+        '',
+        'Live figures and the ranked next actions: `quality-lab/data/hub.json`.',
+        '',
+        END,
+    ].join('\n');
+}
+
+function roadmapWith(text) {
+    const a = text.indexOf(START);
+    const b = text.indexOf(END);
+    if (a < 0 || b < 0) throw new Error('roadmap markers missing in ' + path.relative(ROOT, ROADMAP));
+    return text.slice(0, a) + whereWeAre() + text.slice(b + END.length);
+}
+
 export function writeHub() {
+    fs.writeFileSync(ROADMAP, roadmapWith(fs.readFileSync(ROADMAP, 'utf8')));
     fs.writeFileSync(OUT, JSON.stringify(buildHub(), null, 4) + '\n');
 }
 
@@ -191,9 +322,14 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
             console.error('quality-lab/data/hub.json is out of date: run node tools/qa/hub.mjs');
             process.exit(1);
         }
+        const doc = fs.readFileSync(ROADMAP, 'utf8');
+        if (roadmapWith(doc) !== doc) {
+            console.error('the roadmap\'s "Where we are" is out of date: run node tools/qa/hub.mjs');
+            process.exit(1);
+        }
         console.log('hub up to date');
     } else {
-        fs.writeFileSync(OUT, text);
+        writeHub();
         const h = JSON.parse(text);
         console.log(`hub: ${h.nextActions.length} next actions`);
         for (const a of h.nextActions) console.log(`  P${a.priority} [${a.area}] ${a.title}`);
