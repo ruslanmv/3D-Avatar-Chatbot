@@ -14,9 +14,11 @@ Table: audits/wardrobe_sitting_desk/reports/catalog-matrix-2026-11-07/catalog-ma
 Sheets: audits/wardrobe_sitting_desk/reports/catalog-matrix-2026-11-07/sheets/
 
 Do not mark fixed=yes unless you recaptured that picture_path and its bug_found is empty.
+Do not record review_status=pass while bug_found is set.
 Do not raise the cloth gate to hide a number.
 Do not commit the screenshots/ tree.
-WARDROBE-CLIP-001 and the crossed-leg 39x stretch are open. The committed CSV already says fixed=no.
+Production ships only when review_pictures.py check prints "production: pass".
+WARDROBE-CLIP-001 and the crossed-leg 39x stretch are open. The committed CSV says fixed=no and review_status=pending.
 ```
 
 ## What the last run already proved
@@ -35,6 +37,7 @@ Still open, and already in the CSV as `fixed=no`:
 |---|---|
 | `audits/wardrobe_sitting_desk/capture.py` | Browser runner. One Forge job per catalog garment. |
 | `audits/wardrobe_sitting_desk/print_matrix.py` | Turns a finished capture into the CSV and the contact sheets. No browser. |
+| `audits/wardrobe_sitting_desk/review_pictures.py` | Multimodal review. `next`, `record`, `check`. Blocks a release on one miss. |
 | `audits/wardrobe_sitting_desk/quality.py` | Gate: penetration 1 mm, edge stretch 6×, span drop 8 mm. |
 | `reports/catalog-matrix-2026-11-07/catalog-matrix.csv` | One row per picture from the 2026-11-07 run. |
 | `reports/catalog-matrix-2026-11-07/sheets/matrix-*.jpg` | All front frames for one pose on one sheet. Red label = gate miss. |
@@ -57,6 +60,8 @@ The 976 frame PNGs are not in git. They were under the capture `--out` directory
 | `solution` | What to do next. It is not a claim that the change is already in the tree and working. |
 | `fixed` | `no` = this picture still misses the gate, or was never taken. `n/a` = no bug on this pose. `yes` = a later recapture of this same picture came back with an empty `bug_found`. This script never writes `yes`. |
 | `notes` | Cloth phase, and whether the file was on disk. |
+| `review_status` | `pending` until a model looks. Then `pass` or `fail`. |
+| `review_comment` | What the model saw in that picture. Required when the status is recorded. |
 
 Filter `fixed=no` and `view=front` to see each broken outfit once. Judge the front frame. The side and back rows repeat the same bug so the path of every picture is in the table.
 
@@ -106,6 +111,31 @@ python audits/wardrobe_sitting_desk/capture.py \
 ```
 
 Then build a CSV for that directory and diff it. `fixed` may become `n/a` when the bug is gone. You still do not write `yes` until you have looked at the new front frame and the number is under the gate.
+
+## Look at every picture
+
+`review_pictures.py` is the production gate. The metric columns do not ship the clothes. You open each image, write the error you see, and update that row.
+
+```bash
+CSV=audits/wardrobe_sitting_desk/reports/catalog-matrix-2026-11-07/catalog-matrix.csv
+
+python audits/wardrobe_sitting_desk/review_pictures.py next \
+  --csv "$CSV" --run /tmp/wardrobe-catalog-matrix --count 1
+
+python audits/wardrobe_sitting_desk/review_pictures.py record \
+  --csv "$CSV" \
+  --picture screenshots/catalog/garment-02-00-a-line-dress/sittingWide/front.png \
+  --status fail \
+  --comment "Hem fell through the lap. Briefs show in the opening."
+
+python audits/wardrobe_sitting_desk/review_pictures.py check --csv "$CSV"
+```
+
+`next` prints JSON. Open `absolute_path`. Say what the cloth does: clip, hole, torn edge, or clean. Then `record`. Repeat until `next` prints `[]`.
+
+`check` exits 1 if a single row is not `review_status=pass`. It prints the fix procedure: edit one cause, recapture that garment, rebuild the CSV, look again. A `pass` is refused while `bug_found` is still set. Rebuilding the CSV keeps a review only when `bug_found` is unchanged. A new metric miss clears the old comment back to `pending`.
+
+Ship when `check` prints `production: pass` and exits 0.
 
 ## Verify a fix
 

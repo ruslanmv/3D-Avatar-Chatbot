@@ -53,6 +53,8 @@ COLUMNS = (
     "solution",
     "fixed",
     "notes",
+    "review_status",
+    "review_comment",
 )
 
 SPAN_SOLUTION = (
@@ -183,8 +185,29 @@ def picture_rows(manifest: dict, inventory: dict, run_dir: Path | None) -> list[
                         "solution": solution,
                         "fixed": fixed,
                         "notes": " ".join(notes),
+                        "review_status": "pending",
+                        "review_comment": "",
                     }
                 )
+    return rows
+
+
+def carry_reviews(rows: list[dict], previous: list[dict]) -> list[dict]:
+    """Keep a visual review only while the metric bug on that picture is unchanged."""
+    old = {row.get("picture_path") or "": row for row in previous}
+    for row in rows:
+        prev = old.get(row.get("picture_path") or "")
+        status = ((prev or {}).get("review_status") or "").strip()
+        same_bug = prev is not None and (prev.get("bug_found") or "") == (row.get("bug_found") or "")
+        if same_bug and status in ("pass", "fail"):
+            row["review_status"] = status
+            row["review_comment"] = prev.get("review_comment") or ""
+        else:
+            row["review_status"] = "pending"
+            row["review_comment"] = ""
+            if status in ("pass", "fail"):
+                note = " Visual review cleared because bug_found changed."
+                row["notes"] = (row.get("notes") or "").rstrip() + note
     return rows
 
 
@@ -320,6 +343,8 @@ def main(argv=None) -> int:
         print("Refusing to write fixed=yes. Recapture the picture first.", file=sys.stderr)
         return 2
     dest = opts.out / "catalog-matrix.csv"
+    if dest.is_file():
+        rows = carry_reviews(rows, read_csv(dest))
     write_csv(dest, rows)
     print(f"Wrote {len(rows)} picture rows to {dest}")
     if not opts.no_sheets:

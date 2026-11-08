@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from print_matrix import picture_rows, regressions, volume_description, write_csv  # noqa: E402
+from print_matrix import carry_reviews, picture_rows, regressions, volume_description, write_csv  # noqa: E402
 
 
 def manifest():
@@ -78,6 +78,8 @@ class PictureTableTest(unittest.TestCase):
         self.assertIn("maxSpanDropMm=39", desk[0]["bug_found"])
         self.assertIn("WARDROBE-CLIP-001", desk[0]["solution"])
         self.assertTrue(all(row["fixed"] != "yes" for row in rows))
+        self.assertTrue(all(row["review_status"] == "pending" for row in rows))
+        self.assertTrue(all(row["review_comment"] == "" for row in rows))
         self.assertEqual(
             desk[0]["picture_path"],
             "screenshots/catalog/garment-00-00-basic-tee/sittingDesk/front.png",
@@ -107,6 +109,21 @@ class PictureTableTest(unittest.TestCase):
         self.assertIn("was clean", found[0])
         self.assertEqual(regressions(rows, rows), [])
 
+    def test_a_review_survives_only_while_the_bug_is_unchanged(self):
+        rows = picture_rows(manifest(), INVENTORY, None)
+        previous = [dict(row) for row in rows]
+        previous[0]["review_status"] = "pass"
+        previous[0]["review_comment"] = "Closed garment, no clip."
+        kept = carry_reviews([dict(row) for row in rows], previous)
+        self.assertEqual(kept[0]["review_status"], "pass")
+        self.assertEqual(kept[0]["review_comment"], "Closed garment, no clip.")
+        changed = [dict(row) for row in rows]
+        changed[0]["bug_found"] = "Black Basic Tee maxPenetrationMm=4 (limit 1)"
+        cleared = carry_reviews(changed, previous)
+        self.assertEqual(cleared[0]["review_status"], "pending")
+        self.assertEqual(cleared[0]["review_comment"], "")
+        self.assertIn("bug_found changed", cleared[0]["notes"])
+
     def test_csv_round_trip_keeps_the_columns(self):
         rows = picture_rows(manifest(), INVENTORY, None)
         with tempfile.TemporaryDirectory() as directory:
@@ -128,6 +145,8 @@ class PictureTableTest(unittest.TestCase):
                     "solution",
                     "fixed",
                     "notes",
+                    "review_status",
+                    "review_comment",
                 ],
             )
 

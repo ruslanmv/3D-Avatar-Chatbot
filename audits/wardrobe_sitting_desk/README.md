@@ -49,4 +49,8 @@ A later Try-On pass applied 61 of the 62 public garments in standing, Sitting (D
 python audits/wardrobe_sitting_desk/print_matrix.py \
   --run /tmp/wardrobe-catalog-matrix \
   --out audits/wardrobe_sitting_desk/reports/catalog-matrix-2026-11-07
+
+# Look at each picture, write the error, then block the release on any miss.
+python audits/wardrobe_sitting_desk/review_pictures.py check \
+  --csv audits/wardrobe_sitting_desk/reports/catalog-matrix-2026-11-07/catalog-matrix.csv
 ```
