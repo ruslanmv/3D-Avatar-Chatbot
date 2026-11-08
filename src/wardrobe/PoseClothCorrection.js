@@ -53,6 +53,9 @@
         spanClear: 0.008, // deeper inside than this belongs to one surface, which the push owns
         spanDrop: 0.004, // a panel this close to its support is already sitting on it
         spanFace: 0.35, // a thigh only supports the panel where its normal faces the cloth's rest
+        // A push that would leave an edge longer than this is shortened. The crossed knee has
+        // no outside: an unlimited push walked a leggings edge to 39×. 6× is the tear gate.
+        tearLimit: 6,
     };
 
     /**
@@ -453,13 +456,62 @@
         // any penetration measured (23 mm). Not cloth's: briefs and a dress are carried out of
         // her and then out of each other, legitimately farther, and capped they ended inside.
         var maxMove2 = o.maxMove * o.maxMove;
+        var nbrs = [];
+        var nbrRest = [];
+        for (var n = 0; n < count; n += 1) {
+            nbrs.push([]);
+            nbrRest.push([]);
+        }
+        for (var e = 0; e < edges.length; e += 1) {
+            var ea = edges[e][0];
+            var eb = edges[e][1];
+            nbrs[ea].push(eb);
+            nbrRest[ea].push(edges[e][2]);
+            nbrs[eb].push(ea);
+            nbrRest[eb].push(edges[e][2]);
+        }
+        // Largest step along N that keeps every edge of v at or under tearLimit × rest.
+        function stepWithinTear(v, nx, ny, nz, push) {
+            var limit = o.tearLimit;
+            if (!(limit > 0) || !isFinite(limit)) return push;
+            var t = push;
+            var ring = nbrs[v];
+            var rests = nbrRest[v];
+            for (var n = 0; n < ring.length; n += 1) {
+                var u = ring[n] * 3;
+                var dx = out[u] - out[v * 3];
+                var dy = out[u + 1] - out[v * 3 + 1];
+                var dz = out[u + 2] - out[v * 3 + 2];
+                var restLen = rests[n] * limit;
+                var limit2 = restLen * restLen;
+                var b = dx * nx + dy * ny + dz * nz;
+                var c = dx * dx + dy * dy + dz * dz - limit2;
+                var disc = b * b - c;
+                if (disc < 0) {
+                    t = 0;
+                    break;
+                }
+                var span = Math.sqrt(disc);
+                var hi = Math.min(t, b + span);
+                var lo = Math.max(0, b - span);
+                t = lo <= hi ? hi : 0;
+            }
+            return t;
+        }
         function pushOut(surface, v, i) {
             var nx = surface.nrm[i * 3];
             var ny = surface.nrm[i * 3 + 1];
             var nz = surface.nrm[i * 3 + 2];
-            var s = surface.signed(i, out[v * 3], out[v * 3 + 1], out[v * 3 + 2]);
+            var nlen = Math.hypot(nx, ny, nz) || 1;
+            nx /= nlen;
+            ny /= nlen;
+            nz /= nlen;
+            // signed() is the raw dot with the stored normal. A unit normal makes the
+            // clearance a distance, which is what the tear cap's step is measured in.
+            var s = surface.signed(i, out[v * 3], out[v * 3 + 1], out[v * 3 + 2]) / nlen;
             if (s >= o.clearance) return false;
-            var push = o.clearance - s;
+            var push = stepWithinTear(v, nx, ny, nz, o.clearance - s);
+            if (push <= 1e-8) return false;
             out[v * 3] += nx * push;
             out[v * 3 + 1] += ny * push;
             out[v * 3 + 2] += nz * push;
@@ -579,6 +631,7 @@
         // The last word is the surface's, searched afresh. Where her surface folds (thigh into
         // seat) a push along one point's normal can land nearer another, so it is repeated.
         for (var last = 0; last < 3; last += 1) project(true);
+        var restoreSpan = function () {};
         if (o.span) {
             // SD1. Do this after the push. A vertex in the opening is outside both thighs, so the
             // push never moves it, and a relax that runs last pulls a lifted hem back into the
@@ -599,13 +652,37 @@
                         o
                     );
                     if (!hit || !hit.move) continue;
-                    out[v * 3] += hit.x * hit.travel;
-                    out[v * 3 + 1] += hit.y * hit.travel;
-                    out[v * 3 + 2] += hit.z * hit.travel;
+                    var travel = stepWithinTear(v, hit.x, hit.y, hit.z, hit.travel);
+                    if (travel <= 1e-8) continue;
+                    out[v * 3] += hit.x * travel;
+                    out[v * 3 + 1] += hit.y * travel;
+                    out[v * 3 + 2] += hit.z * travel;
                     moved = true;
                 }
                 return moved;
             }
+            // A projection after the lift pushes a bridged hem back down. Hold the height
+            // it just gained, and let the push clear her only in the other two axes.
+            function holdSpan() {
+                var beforeY = new Float32Array(count);
+                for (var v = 0; v < count; v += 1) beforeY[v] = out[v * 3 + 1];
+                if (!liftSpans()) return false;
+                var floorY = new Float32Array(count);
+                for (var v = 0; v < count; v += 1) floorY[v] = out[v * 3 + 1];
+                for (var pass = 0; pass < 3; pass += 1) {
+                    project(true);
+                    for (var u = 0; u < count; u += 1) {
+                        if (movable && !movable[u]) continue;
+                        if (floorY[u] <= beforeY[u] + 1e-4) continue;
+                        var drop = floorY[u] - out[u * 3 + 1];
+                        if (drop <= 0.001) continue;
+                        var step = stepWithinTear(u, 0, 1, 0, drop);
+                        out[u * 3 + 1] += step;
+                    }
+                }
+                return true;
+            }
+            restoreSpan = holdSpan;
             for (var spanRound = 0; spanRound < 3; spanRound += 1) {
                 if (!liftSpans()) break;
                 relax();
@@ -614,13 +691,42 @@
             liftSpans();
             project(true);
         }
+        function seatRisenHem() {
+            var yMin = Infinity;
+            var yMax = -Infinity;
+            for (var i = 0; i < count; i += 1) {
+                var ry = rest[i * 3 + 1];
+                if (ry < yMin) yMin = ry;
+                if (ry > yMax) yMax = ry;
+            }
+            var hemTop = yMin + (yMax - yMin) * 0.4;
+            var moved = false;
+            for (var v = 0; v < count; v += 1) {
+                if (movable && !movable[v]) continue;
+                if (rest[v * 3 + 1] > hemTop) continue;
+                var dx = rest[v * 3] - out[v * 3];
+                var dy = rest[v * 3 + 1] - out[v * 3 + 1];
+                var dz = rest[v * 3 + 2] - out[v * 3 + 2];
+                // Risen with the leg, not dropped into the lap.
+                if (-dy < 0.15) continue;
+                var dist = Math.hypot(dx, dy, dz);
+                if (dist < 0.01) continue;
+                var step = stepWithinTear(v, dx / dist, dy / dist, dz / dist, Math.min(0.02, dist));
+                if (step <= 1e-8) continue;
+                out[v * 3] += (dx / dist) * step;
+                out[v * 3 + 1] += (dy / dist) * step;
+                out[v * 3 + 2] += (dz / dist) * step;
+                moved = true;
+            }
+            return moved;
+        }
         if (indices) {
             // SW3. Pushed out along different normals in a crease, neighbouring vertices crossed
             // and their triangles turned over: Forge's check counted 53 on the boots where skinning
             // left 2, 72 on the boot lining's rim, 37 new on the dress at her hip. A triangle facing
             // against the way skinning faced it is folded; its corners (only theirs) move half way
-            // to their neighbours' mean, the cloth is pulled back to length and the surface clears it again. As Forge's own fit does
-            // (wardrobe/lingerie/fit.py `_unfold`).
+            // to their neighbours' mean, the cloth is pulled back to length and the surface clears
+            // it again. As Forge's own fit does (wardrobe/lingerie/fit.py `_unfold`).
             var reference = facesOf(posed, indices);
             var around = neighboursOf(edges, count);
             for (var round = 0; round < o.unfoldRounds; round += 1) {
@@ -629,6 +735,20 @@
                 project(true);
             }
         }
+        // Skinning swings a long hem up with the knee, so the cut stands out as a ring and the
+        // lap is bare. Walk that hem back toward its cut. A hem that has not risen is left
+        // where it is: pulling a hem down to a cut that already hangs below the knee only
+        // pushed it deeper into the opening.
+        if (o.span) {
+            for (var seat = 0; seat < 30; seat += 1) {
+                if (!seatRisenHem()) break;
+                relax();
+            }
+            project(true);
+        }
+        // Unfold relaxes after the span lift and pulls a bridged hem back into the opening.
+        // The support is the last word. Nothing after this may shorten that edge.
+        restoreSpan();
         return out;
     }
 

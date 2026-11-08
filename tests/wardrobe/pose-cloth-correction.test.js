@@ -293,6 +293,41 @@ describe('SD1 — a skirt panel that falls through the lap', () => {
         expect(garments[0].after.maxSpanDropMm).toBe(0);
     });
 
+    test('a bridged hem stays up when the cloth over each thigh is held down', () => {
+        const movable = new Array(cloth.pos.length / 3).fill(1);
+        for (let v = 0; v < movable.length; v += 1) {
+            if (Math.abs(cloth.pos[v * 3]) > 0.1) movable[v] = 0;
+        }
+        const { garments } = C.correct({
+            bodyPos,
+            bodyNrm,
+            garments: [{ ...garment, profile: 'span', movable }],
+        });
+        expect(garments[0].after.maxSpanDropMm).toBeLessThan(8);
+        expect(garments[0].after.maxEdgeStretch).toBeLessThanOrEqual(6);
+        expect(gapHeight(garments[0].positions)).toBeGreaterThan(0.44);
+    });
+
+    test('a hem swung up with the knee comes back toward its cut', () => {
+        const swung = cloth.pos.slice();
+        for (let v = 0; v < swung.length / 3; v += 1) {
+            swung[v * 3 + 1] += 0.35;
+            swung[v * 3 + 2] += 0.2;
+        }
+        const { garments } = C.correct({
+            bodyPos,
+            bodyNrm,
+            garments: [{ ...garment, profile: 'span', posed: swung }],
+        });
+        const ys = [];
+        for (let v = 0; v < garments[0].positions.length / 3; v += 1) {
+            if (Math.abs(garments[0].positions[v * 3]) < 0.02) ys.push(garments[0].positions[v * 3 + 1]);
+        }
+        const avg = ys.reduce((sum, y) => sum + y, 0) / ys.length;
+        expect(avg).toBeLessThan(0.7);
+        expect(garments[0].after.maxEdgeStretch).toBeLessThanOrEqual(6);
+    });
+
     test('a span skirt is lifted onto the support and the gate passes', () => {
         const { garments } = C.correct({
             bodyPos,
