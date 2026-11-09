@@ -104,6 +104,7 @@
         // P14. What a reply says, as opposed to how it asked to be performed. Before
         // TogetherCapability, which consults it at the display seam.
         'src/features/chat/StageDirections.js',
+        'src/features/chat/ReplyClean.js',
         'src/features/together/TogetherSwitch.js',
         // What a found track is called on screen, and the one strip that says it. Before
         // PrivateConversationView, which draws one, and before anything else that names media;

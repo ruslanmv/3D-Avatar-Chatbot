@@ -203,9 +203,14 @@
     }
 
     function visibleMessageText(message) {
-        if (typeof message === 'string') return stripReasoningWrappers(message);
+        const thought = (text) => {
+            // AX16. A plain "THOUGHT:" paragraph before the answer (not a <think> wrapper).
+            const shared = typeof window !== 'undefined' ? window.NEXUS_REPLY_CLEAN : null;
+            return shared && typeof shared.stripThought === 'function' ? shared.stripThought(text) : text;
+        };
+        if (typeof message === 'string') return thought(stripReasoningWrappers(message));
         if (!message || typeof message !== 'object') return '';
-        const fromContent = stripReasoningWrappers(flattenContent(message.content));
+        const fromContent = thought(stripReasoningWrappers(flattenContent(message.content)));
         if (fromContent) return fromContent;
         // Provider reasoning, reasoning_content and reasoning_details are private
         // metadata, not a final assistant message. The existing empty-completion

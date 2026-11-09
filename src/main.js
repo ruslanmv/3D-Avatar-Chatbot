@@ -4054,6 +4054,8 @@ async function _handleStreamingResponse(text) {
             throw new Error(`${config.provider || 'The provider'} streamed an empty reply.`);
         }
         let displayText = fullText || accumulated;
+        // AX16. A "THOUGHT:" paragraph some backends write into the reply itself is not hers to say.
+        displayText = window.NEXUS_REPLY_CLEAN?.stripThought?.(displayText) ?? displayText;
         // Living NPC: execute the ```motion plan and strip it from display/TTS
         displayText = window.NEXUS_MOTION ? window.NEXUS_MOTION.processReply(displayText) : displayText;
         // T5. Take the <play> tag out and act on it. Here, beside the motion seam, because
@@ -4169,6 +4171,8 @@ async function _handleNonStreamingResponse(text) {
         } else {
             displayText = String(response);
         }
+        // AX16. A "THOUGHT:" paragraph some backends write into the reply itself is not hers to say.
+        displayText = window.NEXUS_REPLY_CLEAN?.stripThought?.(displayText) ?? displayText;
 
         // Living NPC: execute the ```motion plan and strip it from display/TTS
         displayText = window.NEXUS_MOTION ? window.NEXUS_MOTION.processReply(displayText) : displayText;

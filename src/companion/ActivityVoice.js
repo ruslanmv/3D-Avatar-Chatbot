@@ -55,9 +55,20 @@ const ActivityVoice = (() => {
     }
 
     /** Text safe to post: no tags, one paragraph, bounded. Pure. */
-    function clean(text) {
-        const value = String(text == null ? '' : text)
-            .replace(/<[^>]{0,200}>/g, ' ')
+    /**
+     * AX16. Through the shared cleaner, so her start/end line loses the ```motion plan (and runs it,
+     * as the main chat does: the plan is usually "look at the person", which is right for a
+     * greeting), any "THOUGHT:" paragraph and every directive. This used to strip only `<tags>`, and
+     * the motion block every prompt asks for was posted into the chat verbatim.
+     */
+    function clean(text, g) {
+        const shared = g && g.NEXUS_REPLY_CLEAN;
+        const raw = String(text == null ? '' : text);
+        const value = (
+            shared && typeof shared.forDisplay === 'function'
+                ? shared.forDisplay(raw, { global: g, run: true })
+                : raw.replace(/```[\s\S]*?(?:```|$)/g, ' ').replace(/<[^>]{0,200}>/g, ' ')
+        )
             .replace(/\s+/g, ' ')
             .trim();
         if (!value || NOT_CONFIGURED.test(value)) return '';
@@ -144,7 +155,7 @@ const ActivityVoice = (() => {
             // A start that failed while she was being asked (a blocked camera) ends the session:
             // greeting an activity that is not happening is worse than saying nothing.
             if (kind === 'start' && !(session.active() && session.activity() === activity)) return null;
-            const line = clean(reply && typeof reply === 'object' ? reply.text || reply.content : reply);
+            const line = clean(reply && typeof reply === 'object' ? reply.text || reply.content : reply, g);
             if (!line) return null;
             try {
                 if (r && typeof r.isCurrent === 'function' && !r.isCurrent(epoch)) return null; // CLEAR in between
