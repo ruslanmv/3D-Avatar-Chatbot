@@ -1,6 +1,6 @@
 # NEXUS Private — Language Fidelity, Music Consent and Conversational UX Review
 
-**Branch:** \`feat/living-worlds-spatial-storytelling\`  
+**Branch:** `feat/living-worlds-spatial-storytelling`  
 **Audit:** 2026-11-09; user-supplied Italian transcript and source review on this branch.  
 **Status:** P0 music default fix committed; **locale catalog, output safety and real-model validation remain required**. No PR created.
 
@@ -10,10 +10,10 @@ The provided transcript is **not premium-quality Private companionship**. It exp
 
 | ID | Observable symptom | Likely origin / verified source | Severity |
 | --- | --- | --- | --- |
-| LANG-01 | UI/voice Italian but Private author-written replies in English ("I want this unhurried…", "You do not have to answer…") | Verified: \`PrivateBeats.js\` has English-only \`POOLS\`, \`LEVEL_LINES\`, \`plannerSystemPrompt\`; \`PrivateLocale.js\` translates controls/choices, **not story content**. \`TogetherCapability.js\` retains English \`PRIVATE_PRESETS\`, acknowledgement text and scene suffix. | **P0** |
-| LANG-02 | Mixed labels and suggested replies across languages, possible change mid-session | Verified: several \`TogetherPanel.js\` setup labels are literals in English; \`PrivateLocale.t\` falls back to English. \`AppLanguage\` supplies a general LLM directive but does **not translate authored prose**. Prepared plans are not invalidated on language changes. | **P0** |
-| AUDIO-01 | Automatic upbeat lofi track in a private romantic scene, multiple identical playback cards | Verified root cause for auto music: \`Intimate.soundtrackChoice='choose'\`, \`IntimateExperienceSession\` defaults to choose, setup Begin fallback choose, and \`_startSoundtrack()\` searches/plays. The **multiple cards' exact trigger remains unproven**; investigate \`MediaIntent\`, \`PlayDirective\`, \`ConversationPublisher\`, \`SoundtrackStrip\`, \`MediaSession\`, and replayed events. | **P0** |
-| OUTPUT-01 | Raw \`\`\`motion\`\`\` JSON and \`THOUGHT:\` text appear in conversation | Verified model/render boundaries exist: \`src/xr/MotionBlockParser.js\`, \`MotionIntegration.js\`, \`src/main.js\` streaming mask, \`src/LLMManager.js\` \`stripReasoningWrappers\` and \`visibleMessageText\`. **The path that produced this specific transcript has not been traced.** \`visibleMessageText\` can fall back to \`reasoning_content\` when \`content\` is empty; audit this as an information-leak risk. | **P0** |
+| LANG-01 | UI/voice Italian but Private author-written replies in English ("I want this unhurried…", "You do not have to answer…") | Verified: `PrivateBeats.js` has English-only `POOLS`, `LEVEL_LINES`, `plannerSystemPrompt`; `PrivateLocale.js` translates controls/choices, **not story content**. `TogetherCapability.js` retains English `PRIVATE_PRESETS`, acknowledgement text and scene suffix. | **P0** |
+| LANG-02 | Mixed labels and suggested replies across languages, possible change mid-session | Verified: several `TogetherPanel.js` setup labels are literals in English; `PrivateLocale.t` falls back to English. `AppLanguage` supplies a general LLM directive but does **not translate authored prose**. Prepared plans are not invalidated on language changes. | **P0** |
+| AUDIO-01 | Automatic upbeat lofi track in a private romantic scene, multiple identical playback cards | Verified root cause for auto music: `Intimate.soundtrackChoice='choose'`, `IntimateExperienceSession` defaults to choose, setup Begin fallback choose, and `_startSoundtrack()` searches/plays. The **multiple cards' exact trigger remains unproven**; investigate `MediaIntent`, `PlayDirective`, `ConversationPublisher`, `SoundtrackStrip`, `MediaSession`, and replayed events. | **P0** |
+| OUTPUT-01 | Raw ```motion``` JSON and `THOUGHT:` text appear in conversation | Verified model/render boundaries exist: `src/xr/MotionBlockParser.js`, `MotionIntegration.js`, `src/main.js` streaming mask, `src/LLMManager.js` `stripReasoningWrappers` and `visibleMessageText`. **The path that produced this specific transcript has not been traced.** `visibleMessageText` can fall back to `reasoning_content` when `content` is empty; audit this as an information-leak risk. | **P0** |
 | WORLD-01 | Claims "we are at the lake" and describes a bedroom/forest without evidence of scene confirmation | The chat transcript does not prove the renderer loaded these places. Need correlated event trace: user request → authorized travel → renderer confirmation → speech. Do **not** infer that world travel occurred just from dialogue. | **P0** |
 | STORY-01 | Repeated greetings, repeated "Ciao! Come stai?", unsolicited farewell, generic menu questions, faux sensory details | Dialogue planning/novelty and location prompts; verify generation source and no forced scheduled beats in Private. Need transcript-level quality tests, no more generic "how can I help?" style loop. | P1 |
 | AUDIO-02 | A focus/energy lofi playlist clashes with the Private mood | Generic media recommendations are not Private-specific. Must never pick a song without explicit user request; opt-in selection should use preferences and actual music metadata. | P1 |
@@ -22,22 +22,22 @@ The first two are **language architecture failures**, not a need to switch model
 
 ## 2. Already committed — silent by default (first P0 fix)
 
-- \`src/features/together/activities/playground.js\`: new session \`soundtrackChoice='none'\`, unknown setting falls back to none; quick-start from previously stored session defaults to none (old auto choice is not fresh permission).
-- \`src/features/together/TogetherCapability.js\`: absent soundtrack choice means none.
-- \`src/features/together/ui/TogetherPanel.js\`: Begin handoff defaults to none.
-- \`tests/behavior/private-prepare.test.js\`: updated baseline expectations for no search on initial mood choice, explicit \`Auto\` searching, initial \`Off\` selection, and silent "again" entry.
+- `src/features/together/activities/playground.js`: new session `soundtrackChoice='none'`, unknown setting falls back to none; quick-start from previously stored session defaults to none (old auto choice is not fresh permission).
+- `src/features/together/TogetherCapability.js`: absent soundtrack choice means none.
+- `src/features/together/ui/TogetherPanel.js`: Begin handoff defaults to none.
+- `tests/behavior/private-prepare.test.js`: updated baseline expectations for no search on initial mood choice, explicit `Auto` searching, initial `Off` selection, and silent "again" entry.
 
 **Not yet verified in a local browser/test runner in this session.** Re-run all tests. Follow up with separate checks for tracks already playing before Private begins, mid-session explicit requests, player/replay idempotency and stale async music requests. Changing only the initial default cannot guarantee total absence of unexpected audio if a prior player was active.
 
 ## 3. Design principle — one locale identity, many authored resources
 
-The master language is \`AppLanguage.code\` (not a second Private dropdown). It should govern STT, TTS, UI, authored story beats, suggested choices, mood description, provider requests, fallbacks, errors, scene dialogue and voice announcements. Use **BCP 47** identifiers consistently.
+The master language is `AppLanguage.code` (not a second Private dropdown). It should govern STT, TTS, UI, authored story beats, suggested choices, mood description, provider requests, fallbacks, errors, scene dialogue and voice announcements. Use **BCP 47** identifiers consistently.
 
-Current settings/locales: \`en-US\`, \`en-GB\`, \`es-ES\`, \`it-IT\`, \`fr-FR\`, \`de-DE\`, \`pt-BR\`, \`ja-JP\`, \`ko-KR\`, \`zh-CN\`. Confirm actual list and aliases from \`AppLanguage.js\` at implementation time. Support RTL language additions through direction metadata rather than assuming all writing runs left-to-right.
+Current settings/locales: `en-US`, `en-GB`, `es-ES`, `it-IT`, `fr-FR`, `de-DE`, `pt-BR`, `ja-JP`, `ko-KR`, `zh-CN`. Confirm actual list and aliases from `AppLanguage.js` at implementation time. Support RTL language additions through direction metadata rather than assuming all writing runs left-to-right.
 
 Create a **versioned authored prompt catalog** rather than more English literals inside control flow:
 
-\`\`\`text
+```text
 src/features/together/prompts/
   schema.json
   en-US.json
@@ -51,11 +51,11 @@ src/features/together/prompts/
   ko-KR.json
   zh-CN.json
   index.js / generated runtime catalog (compatible with classic scripts)
-\`\`\`
+```
 
 **Proposed catalog schema, not yet accepted by any runtime:**
 
-\`\`\`json
+```json
 {
   "schemaVersion": 1,
   "locale": "it-IT",
@@ -76,7 +76,7 @@ src/features/together/prompts/
     "errors.modelUnavailable": "Non riesco a rispondere in questo momento."
   }
 }
-\`\`\`
+```
 
 This example is an initial **localization seed**, not a finished literary translation. Mature lines must remain subject to the existing consent/content-capability gates; a locale pack never grants adult permissions.
 
@@ -86,39 +86,39 @@ Not all internal English prompt directives are intended for humans. Translation 
 
 Recommended interface:
 
-\`\`\`js
+```js
 const locale = NEXUS_LOCALE.current(); // app settings, read at request time
 const prompt = PromptCatalog.render('private.story.opening', {
   locale, style: session.style, place: verifiedScene.label
 });
-\`\`\`
+```
 
 - Validate catalog schema and **all required keys in every supported locale in CI**, including placeholders, length bounds, banned markup and Unicode normalization.
 - No automatic English fallback for *visible* Private dialogue or TTS. If a content key is missing, use a **verified same-language** neutral fallback or suppress the optional scripted beat with a diagnostic event. For functional safety/exit controls, provide an accessible, explicitly documented emergency fallback.
 - English fallback may remain in internal technical logs; do not transmit Private transcript data to third-party translation services.
 - Have fluent reviewers approve literary/romantic tone, gender/grammar, politeness, and locale appropriateness. A machine-generated translation is draft, not production-ready.
 - Support runtime locale changes: invalidate pending written plans, stop old-language TTS cleanly, load the new locale, and regenerate only future optional beats; do **not** translate or replay previous private dialogue without consent.
-- UI copy must use catalog keys: \`TogetherPanel\`, \`PrivateConversationView\`, \`PrivateChoices\`, \`PrivatePreflight\`, \`SoundtrackStrip\`, \`PrivateBeats\`, \`PrivatePace\`, \`PrivateIdleClock\`, \`PrivatePresentation\`, \`TogetherCapability\`. Avoid literals like "Last time", "Get ready", "Back", "Edit setup", "No music", "Auto music", and "this place feels like a good place for it" in behavior code.
+- UI copy must use catalog keys: `TogetherPanel`, `PrivateConversationView`, `PrivateChoices`, `PrivatePreflight`, `SoundtrackStrip`, `PrivateBeats`, `PrivatePace`, `PrivateIdleClock`, `PrivatePresentation`, `TogetherCapability`. Avoid literals like "Last time", "Get ready", "Back", "Edit setup", "No music", "Auto music", and "this place feels like a good place for it" in behavior code.
 - Log the current locale ID and catalog version **without the Private dialogue text**.
 
 ## 4. Music — explicit action, silence first
 
 **Desired state machine:**
 
-\`\`\`text
+```text
 Private entry -> SILENT (default)
   -> User chooses "Scegli musica" or explicitly asks "Metti musica" -> REQUESTED
   -> Search/selection with user provenance -> PREPARED
   -> Player accepts a real play request -> STARTING
   -> Player reports playing -> PLAYING
   -> Pause / stop / exit / consent withdrawal -> STOPPED
-\`\`\`
+```
 
 Do not confuse a model suggestion, inferred romantic mood, prior auto preference, or general music instruction with a user request. User-approved "Keep current track" is separate from "Play new track". Entering Private with already-running external music requires a deliberate, documented policy (pause/restore vs explicit keep), not implicit playback.
 
 - Remove unsolicited music from default Private prompts and authored suggestions. Do not repeatedly offer playlists.
 - Keep independent **soundtrack** and **narration** channels; mute/duck sound during TTS when an actual track is playing.
-- Deduplicate playback card creation by stable \`requestId\`, \`sessionId\`, track ID and player state. Only create a "Playing" assertion after the player confirms playing; a queued request is not evidence of playback.
+- Deduplicate playback card creation by stable `requestId`, `sessionId`, track ID and player state. Only create a "Playing" assertion after the player confirms playing; a queued request is not evidence of playback.
 - Cancel stale result searches on End, session change or a new request; do not let a late response start a track.
 - Avoid redundant YouTube cards in main public chat during Private. Media UI belongs to one permitted surface; no cross-context transcript persistence.
 - Use explicit user selection even if the browser technically permits autoplay. See MDN https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Autoplay.
@@ -127,19 +127,19 @@ Do not confuse a model suggestion, inferred romantic mood, prior auto preference
 
 **Raw provider response MUST NEVER be the content passed to chat, transcript storage or TTS.** Use a shared output envelope:
 
-\`\`\`text
+```text
 provider response (possibly streaming)
   -> structured channel separation (final vs reasoning, tool/animation metadata)
   -> robust motion/gesture/tool parser (known schema, validation)
   -> safe user-visible text and audio projection
   -> authorization and renderer-confirmed action execution (separate authority)
   -> transcript for this context only
-\`\`\`
+```
 
-- Do not expose \`THOUGHT:\`, \`reasoning_content\`, \`<think>\`, \`<|channel|>analysis\`, JSON or \`\`\`motion\`\`\` blocks to users. Do not republish private internal analysis to logging or TTS.
-- The current \`LLMManager.visibleMessageText\` can fall back to reasoning content when no \`content\` exists. Change the behavior to return a recoverable empty-final error and retry/fallback rather than exposing internal reasoning. The user-supplied inline \`THOUGHT:\` is also not captured by the existing \`<think>\`-only wrapper; write targeted tests before choosing a safe parser.
-- Keep existing \`MotionBlockParser\` and \`MotionIntegration\` action ownership; test **streaming and non-streaming** with incomplete fences at chunk boundaries and malformed JSON. Avoid broad regexes that remove legitimate user quotations.
-- A model's text "we're at the lake" cannot establish location. Confirm \`WorldPresence\` and renderer generation; only then permit a factual arrival line.
+- Do not expose `THOUGHT:`, `reasoning_content`, `<think>`, `<|channel|>analysis`, JSON or ```motion``` blocks to users. Do not republish private internal analysis to logging or TTS.
+- The current `LLMManager.visibleMessageText` can fall back to reasoning content when no `content` exists. Change the behavior to return a recoverable empty-final error and retry/fallback rather than exposing internal reasoning. The user-supplied inline `THOUGHT:` is also not captured by the existing `<think>`-only wrapper; write targeted tests before choosing a safe parser.
+- Keep existing `MotionBlockParser` and `MotionIntegration` action ownership; test **streaming and non-streaming** with incomplete fences at chunk boundaries and malformed JSON. Avoid broad regexes that remove legitimate user quotations.
+- A model's text "we're at the lake" cannot establish location. Confirm `WorldPresence` and renderer generation; only then permit a factual arrival line.
 - For unsupported descriptions (candles, scent, objects), prompt the model with verified scene facts; do not invent physical objects/sounds. Figurative speech is okay when not presented as a verified action or object.
 - Avoid duplicating assistant greeting/closing speech from general chat + Private authored beats. One response owner per event, no duplicate "Ciao" from competing handlers.
 
@@ -190,12 +190,12 @@ Acceptance checks:
 4. Quick repeat of an old session with historical auto setting remains silent.
 5. Explicit "Auto" selection in setup and explicit in-session request each work once, with clear audio ownership.
 6. Media duplicates: no repeated "Playing" card, no auto playlists, no unexpected titles.
-7. Literal \`THOUGHT:\`, \`<think>\`, reasoning-only provider responses, half-streamed \`\`\`motion\`\`\` fences, invalid plans: no raw internal text in chat or TTS.
+7. Literal `THOUGHT:`, `<think>`, reasoning-only provider responses, half-streamed ```motion``` fences, invalid plans: no raw internal text in chat or TTS.
 8. User declines travel: current world persists; confirms travel: speak arrival only after renderer confirmation.
 9. Private context is not stored or leaked to ordinary history; prompt catalog changes do not grant permissions.
 10. Existing age/consent/stop gates and voice/camera device preferences unchanged.
 
-**Commands:** inspect actual \`package.json\` and existing test structure; run focused Jest suites, \`npm run validate\`, behavior-parity check, headless browser screenshot run and available device tests. Do not invent output numbers.
+**Commands:** inspect actual `package.json` and existing test structure; run focused Jest suites, `npm run validate`, behavior-parity check, headless browser screenshot run and available device tests. Do not invent output numbers.
 
 ## 9. Industrial quality gates and references
 
@@ -208,6 +208,6 @@ Acceptance checks:
 
 ## 10. Claude Code continuation requirement
 
-Treat LANG-01, LANG-02, AUDIO-01, OUTPUT-01 and WORLD-01 as separate tickets, not one prompt-tuning issue. Begin with reproducing the existing Italian transcript as deterministic fixtures, audit and commit the smallest real fixes, then build the complete locale catalog and verify 10 locale packs. Keep changes on \`feat/living-worlds-spatial-storytelling\`. **No PR or merge.**
+Treat LANG-01, LANG-02, AUDIO-01, OUTPUT-01 and WORLD-01 as separate tickets, not one prompt-tuning issue. Begin with reproducing the existing Italian transcript as deterministic fixtures, audit and commit the smallest real fixes, then build the complete locale catalog and verify 10 locale packs. Keep changes on `feat/living-worlds-spatial-storytelling`. **No PR or merge.**
 
 For this report's initial music fix, the source was updated via GitHub connector but no Jest or browser test runner was available in the current tool session. All other items remain **recommendations and acceptance requirements until implemented and tested**.
