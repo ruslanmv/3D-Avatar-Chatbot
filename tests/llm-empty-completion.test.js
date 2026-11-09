@@ -246,5 +246,4 @@ describe('OllaBridge reasoning models', () => {
         });
         expect(final.text).toBe('A real final answer.');
     });
-
 });
