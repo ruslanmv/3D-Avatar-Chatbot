@@ -1875,7 +1875,11 @@ const PlaygroundActivity = (() => {
                 if (typeof registry.warm === 'function') await registry.warm();
                 const provider = registry.forCapability('music.search');
                 if (!provider || typeof provider.search !== 'function') return null;
-                const found = await provider.search(key, { max: 3, kind: 'music' });
+                const found = await provider.search(key, { max: 5, kind: 'music' });
+                // AX17. A Private track must fit the evening; none fitting means silence.
+                const capability = win && win.NEXUS_TOGETHER_CAPABILITY;
+                if (capability && typeof capability.pickPrivateTrack === 'function')
+                    return capability.pickPrivateTrack(found);
                 return Array.isArray(found) && found.length ? found[0] : null;
             })().catch(() => {
                 this._trackCache.delete(key);

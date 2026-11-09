@@ -195,10 +195,23 @@ const ConversationPublisher = (() => {
      * overlay, a test. Never throws: this runs from a click in the launcher, and a failure
      * here must close the panel and leave the app alone rather than taking the click down.
      */
+    /**
+     * AX17. The card last published, so the same track is never posted twice in a row. A real
+     * session showed one "Playing “Upbeat Lofi Mix…”" card three times in a row in the chat; the
+     * second and third said nothing new. A repeat while the first card is still on the page answers
+     * that card (and starts it again if asked to play); a different track, or the same one after
+     * its card has gone, publishes as before.
+     */
+    let lastCard = null; // { url, node }
+
     function publish(result, { doc, win, play = false } = {}) {
         const d = doc || (typeof document !== 'undefined' ? document : null);
         const w = win || (typeof window !== 'undefined' ? window : null);
         if (!result || !result.url || !d) return null;
+        if (lastCard && lastCard.url === result.url && lastCard.node && lastCard.node.isConnected) {
+            if (play) start(result, lastCard.node, w);
+            return lastCard.node;
+        }
 
         // D9. Before either presentation, so a model answering the very next turn already
         // knows. Guarded: an install without the context module publishes exactly as before.
@@ -232,6 +245,7 @@ const ConversationPublisher = (() => {
             // Storage full or disabled. The card is live either way.
         }
 
+        if (node) lastCard = { url: result.url, node };
         if (play) start(result, node, w);
         return node;
     }

@@ -272,6 +272,27 @@
         'wording — writing one yourself produces a card that looks official and is invented.',
     ].join('\n');
 
+    /**
+     * AX17. Which search result may play in a Private evening, if any.
+     *
+     * The soundtrack used to be `found[0]`: whatever the search ranked first. A real session asked
+     * for "slow intimate lounge instrumental ambient no lyrics" and got "Upbeat Lofi Mix ⚡️ Beats to
+     * Boost Your Energy & Focus" — the query was right and the first hit was a study playlist. A
+     * title that says it is for energy, work, the gym or a party is refused outright; among the
+     * rest, one whose title says it is slow, soft or instrumental is preferred. Nothing suitable
+     * means no music, never the wrong music. Pure.
+     */
+    const OFF_MOOD =
+        /\b(?:energy|energi[sz]e|energetic|focus|study|studying|concentration|productiv\w*|work(?:out)?|gym|running|cardio|party|upbeat|hype|edm|motivation(?:al)?|boost|coding|trap|hardstyle|kids?|lullab\w*|sleep|asleep)\b/i;
+    const IN_MOOD =
+        /\b(?:instrumental|ambient|slow|soft|piano|lounge|jazz|romantic|calm|candle\w*|evening|night|late|gentle|sensual|intimate|chill)\b/i;
+
+    function pickPrivateTrack(found) {
+        const list = Array.isArray(found) ? found.filter((r) => r && !OFF_MOOD.test(String(r.title || ''))) : [];
+        if (!list.length) return null;
+        return list.find((r) => IN_MOOD.test(String(r.title || ''))) || list[0];
+    }
+
     function cleanText(value, max) {
         return String(value == null ? '' : value)
             .replace(/[\u0000-\u001f\u007f]/g, ' ')
@@ -2707,9 +2728,10 @@
                     if (typeof registry.warm === 'function') await registry.warm();
                     const provider = registry.forCapability('music.search');
                     if (!provider || typeof provider.search !== 'function') return false;
-                    const found = await provider.search(this.preset.music, { max: 3, kind: 'music' });
-                    if (this._stopped || !Array.isArray(found) || !found.length) return false;
-                    track = found[0];
+                    const found = await provider.search(this.preset.music, { max: 5, kind: 'music' });
+                    if (this._stopped) return false;
+                    track = pickPrivateTrack(found);
+                    if (!track) return false;
                 } catch (_) {
                     return false;
                 }
@@ -3066,6 +3088,7 @@
         CHOICE_TOKENS,
         experienceOverlay,
         sanitizeReply,
+        pickPrivateTrack,
     };
 
     if (typeof module !== 'undefined' && module.exports) module.exports = api;

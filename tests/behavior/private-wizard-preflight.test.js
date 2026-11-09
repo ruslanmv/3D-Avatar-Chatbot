@@ -137,10 +137,12 @@ async function settle() {
 }
 
 /** Mood → atmosphere → the checklist, and wait for it. */
-async function toChecklist(s, preset = 'romantic', scene = 'candlelit') {
+async function toChecklist(s, preset = 'romantic', scene = 'candlelit', { music = false } = {}) {
     s.panel.choose('intimate');
     document.querySelector(`[data-preset="${preset}"]`).click();
     if (scene) document.querySelector(`[data-scene="${scene}"]`).click();
+    // AX17. Music is opt-in; tests about the soundtrack path choose it, the rest stay silent.
+    if (music) document.querySelector('[data-music="choose"]').click();
     await settle();
     action('ready-private').click();
     await settle();
@@ -185,7 +187,7 @@ describe('the checklist is real work, named', () => {
 
     test('the work happened — a probe at the real budget, a search, a decode', async () => {
         const s = setup();
-        await toChecklist(s);
+        await toChecklist(s, 'romantic', 'candlelit', { music: true });
 
         // Not a plausible interval: the provider was actually asked, and the scene actually loaded.
         expect(probes(s)).toBe(1);
@@ -338,10 +340,23 @@ describe('a failure never withholds Begin (P25)', () => {
     });
 });
 
+describe('silence unless music is chosen (AX17)', () => {
+    test('a whole wizard with no music choice searches nothing and plays nothing', async () => {
+        const s = setup();
+        await toChecklist(s);
+        action('begin-private').click();
+        await settle();
+        expect(s.search).not.toHaveBeenCalled();
+        expect(s.activity._privateExperience.track).toBeNull();
+        expect(s.activity.preflightShown.list.find((e) => e.id === 'soundtrack').state).toBe('skipped');
+        s.activity.stop('user');
+    });
+});
+
 describe('performance: three screens, one of each piece of work', () => {
     test('the preflight waits on what prewarm started rather than starting again', async () => {
         const s = setup();
-        await toChecklist(s);
+        await toChecklist(s, 'romantic', 'candlelit', { music: true });
         action('begin-private').click();
         await settle();
 
@@ -356,6 +371,7 @@ describe('performance: three screens, one of each piece of work', () => {
         const s = setup();
         s.panel.choose('intimate');
         document.querySelector('[data-preset="romantic"]').click();
+        document.querySelector('[data-music="choose"]').click(); // AX17: music is opt-in
         await settle();
         // Three changes, each of which calls `prewarm`.
         document.querySelector('[data-scene="candlelit"]').click();
@@ -385,7 +401,7 @@ describe('performance: three screens, one of each piece of work', () => {
 
     test('the session starts from what the checklist prepared', async () => {
         const s = setup();
-        await toChecklist(s);
+        await toChecklist(s, 'romantic', 'candlelit', { music: true });
         action('begin-private').click();
         await settle();
 

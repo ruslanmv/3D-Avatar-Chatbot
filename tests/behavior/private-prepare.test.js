@@ -259,6 +259,8 @@ describe('the work is concurrent, and budgeted', () => {
         const s = setup();
         s.panel.choose('intimate');
         document.querySelector('[data-preset="romantic"]').click();
+        // AX17. Music is opt-in: this test is about the chosen-music path, so it chooses it.
+        document.querySelector('[data-music="choose"]').click();
         await settle();
 
         await getReady();
@@ -275,6 +277,7 @@ describe('the work is concurrent, and budgeted', () => {
         const s = setup();
         s.panel.choose('intimate');
         document.querySelector('[data-preset="romantic"]').click();
+        document.querySelector('[data-music="choose"]').click(); // AX17: music is opt-in
         await settle();
         await getReady();
         action('begin-private').click();

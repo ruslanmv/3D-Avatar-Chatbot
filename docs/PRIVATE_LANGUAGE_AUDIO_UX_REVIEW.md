@@ -211,3 +211,16 @@ Acceptance checks:
 Treat LANG-01, LANG-02, AUDIO-01, OUTPUT-01 and WORLD-01 as separate tickets, not one prompt-tuning issue. Begin with reproducing the existing Italian transcript as deterministic fixtures, audit and commit the smallest real fixes, then build the complete locale catalog and verify 10 locale packs. Keep changes on `feat/living-worlds-spatial-storytelling`. **No PR or merge.**
 
 For this report's initial music fix, the source was updated via GitHub connector but no Jest or browser test runner was available in the current tool session. All other items remain **recommendations and acceptance requirements until implemented and tested**.
+
+## 11. Status update — 2026-11-09 (AX16, AX17)
+
+Verified with the full gate (`npm run validate`: 6147 tests, 281 suites, all passing; parity check OK):
+
+| Item | Status | Where |
+| --- | --- | --- |
+| P0A music silent by default | **Verified.** The silent-default commits broke seven existing tests that assumed automatic music; those tests now choose music explicitly where they test the music path, and new tests assert that a Private start with no choice searches nothing and plays nothing. | `tests/behavior/private-*.test.js` |
+| OUTPUT-01 motion blocks and `THOUGHT:` | **Fixed (AX16).** The leaking path was `ActivityVoice` (her start/end line), which stripped `<tags>` only. One shared cleaner, `src/features/chat/ReplyClean.js`, is used there, at both `displayText` seams and in `LLMManager`'s visible-text path. A reply rebuilt from the reasoning channel keeps its last paragraph without the thought (a retry-on-empty, as §5 suggests, is still an option). | `tests/reply-clean.test.js` |
+| AUDIO-02 wrong track | **Fixed (AX17).** `pickPrivateTrack` refuses energy/focus/study/workout/party titles and prefers slow/instrumental ones; nothing suitable means silence. | `tests/behavior/private-music.test.js` |
+| AUDIO-01 repeated "Playing" cards | **Guarded (AX17), cause not reproduced.** `ConversationPublisher.publish` is idempotent for the track whose card is still on the page. The original trigger was not reproduced without a live music provider. | same |
+| Title narrated in Private | **Fixed (AX17).** During Private the media context says only that music they chose is on, never its title. | same |
+| LANG-01/02 locale catalog, WORLD-01, STORY-01 | Open. | — |
