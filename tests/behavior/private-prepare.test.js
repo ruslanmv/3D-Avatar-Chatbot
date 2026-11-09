@@ -174,7 +174,9 @@ describe('two screens, not four', () => {
         // Prefetch, before anybody is waiting on it.
         expect(s.activity.prepared).not.toBeNull();
         await settle();
-        expect(s.search).toHaveBeenCalledTimes(1);
+        // Starting a Private session is not a request to listen to music.
+        expect(s.activity.soundtrackChoice).toBe('none');
+        expect(s.search).not.toHaveBeenCalled();
         // And nothing has entered the consent flow.
         expect(s.adult.enter).not.toHaveBeenCalled();
     });
@@ -221,6 +223,8 @@ describe('the work is concurrent, and budgeted', () => {
         const s = setup({ hangPlan: true });
         s.panel.choose('intimate');
         document.querySelector('[data-preset="romantic"]').click();
+        // Explicit selection, never automatic music when a mood is chosen.
+        document.querySelector('[data-music="choose"]').click();
         await settle();
 
         expect(s.search).toHaveBeenCalledTimes(1);
@@ -323,6 +327,10 @@ describe('the scenes are connected, and each appears once', () => {
             'Keep',
             'Off',
         ]);
+        expect(s.activity.soundtrackChoice).toBe('none');
+        expect(document.querySelector('[data-music="none"]').classList.contains('is-selected')).toBe(true);
+        document.querySelector('[data-music="choose"]').click();
+        expect(s.activity.soundtrackChoice).toBe('choose');
         document.querySelector('[data-music="none"]').click();
         expect(s.activity.soundtrackChoice).toBe('none');
     });
@@ -387,11 +395,14 @@ describe('a returning person gets there in two taps', () => {
         expect(again).not.toBeNull();
         expect(again.textContent).toMatch(/Romantic/);
         expect(again.textContent).toMatch(/Candlelit Room/);
+        expect(again.textContent).toMatch(/No music/);
 
         action('private-again').click();
         await settle();
         expect(s.adult.enter).toHaveBeenCalledTimes(1);
         expect(s.activity._privateExperience.scene).toBe('candlelit');
+        expect(s.activity._privateExperience.soundtrack).toBe('none');
+        expect(s.search).not.toHaveBeenCalled();
         s.activity.stop('user');
     });
 
