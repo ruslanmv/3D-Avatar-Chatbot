@@ -165,9 +165,8 @@
      *   - Harmony and `<think>` wrappers sometimes carry the answer after the
      *     thought, or inside `<|channel|>final<|message|>`.
      *
-     * The chain of thought is not the reply. It is used only when `content`
-     * has no visible words — which is the case that was reaching the bubble as
-     * the literal sentence "No response".
+     * Only final content is user-visible. A provider's reasoning-only completion
+     * produces EmptyCompletionError rather than a speech/chat privacy leak.
      */
     function flattenContent(content) {
         if (typeof content === 'string') return content;
@@ -189,19 +188,6 @@
         return '';
     }
 
-    function reasoningDetailsText(message) {
-        const details = message && message.reasoning_details;
-        if (!Array.isArray(details)) return '';
-        return details
-            .map((part) => {
-                if (!part || typeof part !== 'object') return '';
-                if (typeof part.text === 'string') return part.text;
-                if (typeof part.summary === 'string') return part.summary;
-                return '';
-            })
-            .join('\n');
-    }
-
     function stripReasoningWrappers(text) {
         // Fresh regexes. A shared /g pattern keeps lastIndex between calls, and the
         // second reply of a session would then skip a <think> block the first one saw.
@@ -221,16 +207,10 @@
         if (!message || typeof message !== 'object') return '';
         const fromContent = stripReasoningWrappers(flattenContent(message.content));
         if (fromContent) return fromContent;
-        const fromReasoning = stripReasoningWrappers(
-            flattenContent(message.reasoning_content || message.reasoning || reasoningDetailsText(message))
-        );
-        if (fromReasoning) {
-            // One line in the console the connection check already asks people to
-            // paste. Without it, a reply that came from `reasoning` looks like the
-            // model said the thought out loud for no reason.
-            console.warn('[LLMManager] completion content was empty; the reply was in the reasoning channel.');
-        }
-        return fromReasoning;
+        // Provider reasoning, reasoning_content and reasoning_details are private
+        // metadata, not a final assistant message. The existing empty-completion
+        // recovery path handles a provider that supplied no final text.
+        return '';
     }
 
     /**
