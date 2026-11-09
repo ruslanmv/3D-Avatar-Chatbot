@@ -1067,7 +1067,7 @@
         } = {}) {
             this.activity = activity || null;
             this.preset = PRIVATE_PRESETS[preset] || PRIVATE_PRESETS.affectionate;
-            this.soundtrack = ['choose', 'current', 'none'].includes(soundtrack) ? soundtrack : 'choose';
+            this.soundtrack = ['choose', 'current', 'none'].includes(soundtrack) ? soundtrack : 'none';
             this.adult = adult || null;
             this.director = director || (global && global.NEXUS_BD) || null;
             this.win = win || global || null;
