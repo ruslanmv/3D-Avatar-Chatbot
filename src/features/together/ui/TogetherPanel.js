@@ -1411,7 +1411,7 @@ const TogetherPanel = (() => {
             if (!activity || !activity.prepareInput) return null;
             return this.startActivity('intimate', {
                 ...activity.prepareInput,
-                soundtrack: activity.soundtrackChoice || 'choose',
+                soundtrack: activity.soundtrackChoice || 'none',
                 scene: activity.sceneChoice || null,
                 preparedPlan: activity.preparedPlan,
                 preparedTrack: activity.preparedTrack,
