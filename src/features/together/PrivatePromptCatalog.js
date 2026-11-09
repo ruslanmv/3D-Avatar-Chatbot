@@ -657,6 +657,19 @@
 });
     const SUPPORTED = Object.freeze(['en-US','en-GB',...Object.keys(PACKS)]);
     const STYLE_IDS = Object.freeze(['affectionate','romantic','sensual','mature']);
+    const EASE_PACKS = Object.freeze({
+        'en-US': ['Of course. We can keep things gentle.', 'A step back, then. No hurry.', 'A little slower. Still here.'],
+        'en-GB': ['Of course. We can keep things gentle.', 'A step back, then. No hurry.', 'A little slower. Still here.'],
+        'it-IT': ['Certo. Torniamo a un momento tranquillo.', 'Facciamo un passo indietro, senza fretta.', 'Rallentiamo un po’. Restiamo qui.'],
+        'es-ES': ['Claro. Volvemos a un momento tranquilo.', 'Damos un paso atrás, sin prisa.', 'Vamos un poco más despacio.'],
+        'fr-FR': ['Bien sûr. Retrouvons un moment paisible.', 'On fait un pas en arrière, sans se presser.', 'Ralentissons un peu.'],
+        'de-DE': ['Natürlich. Wir bleiben bei einem sanften Moment.', 'Einen Schritt zurück, ohne Eile.', 'Wir machen etwas langsamer.'],
+        'pt-BR': ['Claro. Voltamos a um momento tranquilo.', 'Vamos dar um passo atrás, sem pressa.', 'Um pouco mais devagar.'],
+        'ja-JP': ['もちろん。穏やかな時間に戻ろう。', '一歩戻って、ゆっくりしよう。', '少しペースを落とそう。'],
+        'ko-KR': ['물론이야. 다시 편안한 분위기로 돌아가자.', '한 걸음 물러서서 천천히 가자.', '속도를 조금 늦추자.'],
+        'zh-CN': ['当然。我们回到轻松的节奏。', '退一步，慢慢来。', '我们放慢一点。'],
+    });
+
     const BASE_LOCALE = 'en-US';
 
     function code(value) {
@@ -688,6 +701,10 @@
         if (locale.startsWith('en-')) return LEVEL_LINES;
         const pack = PACKS[locale];
         return pack ? {2:[pack.levelLines[0]],3:[pack.levelLines[1]],4:[pack.levelLines[2]]} : null;
+    }
+    function easeLines(setting) {
+        const lines = EASE_PACKS[code(setting)];
+        return lines ? { 1: lines[0], 2: lines[1], 3: lines[2] } : null;
     }
     function moodPrompt(setting) {
         const locale = code(setting);
@@ -734,7 +751,7 @@
         }[locale];
         return [labels[0] + ': ' + location, labels[1] + ': ' + name, labels[2]].join('\n');
     }
-    const api = { POOLS, LEVEL_LINES, PACKS, SUPPORTED, BASE_LOCALE, STYLE_IDS, code, poolFor, levelLines, moodPrompt, styleLabel, plannerSystemPrompt, plannerRequest };
+    const api = { POOLS, LEVEL_LINES, PACKS, SUPPORTED, BASE_LOCALE, STYLE_IDS, code, poolFor, levelLines, easeLines, moodPrompt, styleLabel, plannerSystemPrompt, plannerRequest };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_PRIVATE_PROMPT_CATALOG = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);
