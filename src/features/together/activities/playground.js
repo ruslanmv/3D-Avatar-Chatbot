@@ -1833,7 +1833,10 @@ const PlaygroundActivity = (() => {
         _planFor({ preset, place, win }) {
             const beats = privateBeats(win);
             if (!beats || typeof beats.plan !== 'function') return Promise.resolve(null);
-            const key = `${(preset && preset.id) || ''}|${place || ''}|${this.mood || ''}`;
+            // Generated plans are language-dependent: never replay a cached English
+            // story after Settings has switched the app to Italian (or vice versa).
+            const locale = (win && win.AppLanguage && win.AppLanguage.code) || 'en-US';
+            const key = `${(preset && preset.id) || ''}|${place || ''}|${this.mood || ''}|${locale}`;
             const cached = this._planCache.get(key);
             if (cached) return cached;
             let attempt;
