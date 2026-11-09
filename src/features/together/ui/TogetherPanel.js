@@ -1243,7 +1243,9 @@ const TogetherPanel = (() => {
          */
         _privateWord(key, fallback) {
             try {
-                const api = (this.win || (typeof window !== 'undefined' ? window : null)).NEXUS_PRIVATE_LOCALE;
+                const w = this.win || (typeof window !== 'undefined' ? window : null);
+                const api = (w && w.NEXUS_PRIVATE_LOCALE) ||
+                    (typeof module !== 'undefined' && module.exports ? require('../PrivateLocale.js') : null);
                 if (api && typeof api.t === 'function') {
                     const word = api.t(key);
                     if (word && word !== key) return word;
