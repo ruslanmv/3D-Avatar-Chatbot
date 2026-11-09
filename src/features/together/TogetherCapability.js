@@ -1258,14 +1258,15 @@
                 this.plan = api ? api.fallbackPlan(this.preset, { mood: this._rememberedMood() }) : null;
                 this._planAhead();
             }
+            // A wizard plan may have been prepared before Language changed.
+            this._ensurePlanLanguage();
             this._enterScene();
             // The scene sentence only when there is actually a scene — `currentSceneName` is empty
             // rather than a placeholder when no ambience is chosen, so the opening cannot end
             // "…this place feels like a good place for it."
-            const place = currentSceneName(this.win);
-            this._speak(
-                place ? `${this._line('opening')} ${place} feels like a good place for it.` : this._line('opening')
-            );
+            // The catalog owns the complete opening in the selected language.
+            // No English-only location suffix or invented scenery is appended.
+            this._speak(this._line('opening'));
             this._startSoundtrack();
             // Something to tap from the first second (P13). The opening is a scripted line, not a
             // model reply, so there is no block to ride back on — and an RPG that made you wait for
@@ -1682,9 +1683,11 @@
          * and then down again — cannot produce the same sentence twice.
          */
         _speakStepLine(field, level, fallback) {
+            this._ensurePlanLanguage();
             const lines = (this.plan && this.plan[field]) || null;
             const written = lines && (lines[level] || lines[String(level)]);
-            const line = cleanText(written || fallback, 200);
+            const safeFallback = this._currentLanguage().startsWith('en-') ? fallback : '';
+            const line = cleanText(written || safeFallback, 200);
             if (!line) return false;
             const novelty = noveltyModel();
             if (novelty && this.novelty) {
@@ -1902,6 +1905,21 @@
 
         _listen() {
             this._watchConversation();
+            // Future guided beats must immediately adopt the one Settings language.
+            // Existing transcript turns are never translated, replayed or persisted.
+            if (this.win && typeof this.win.addEventListener === 'function') {
+                const onLanguage = () => {
+                    this._ensurePlanLanguage();
+                    try {
+                        if (this.win.speechSynthesis && this.win.speechSynthesis.speaking)
+                            this.win.speechSynthesis.cancel();
+                    } catch (_) {}
+                };
+                this.win.addEventListener('nexus:language-changed', onLanguage);
+                this._unsubscribes.push(() =>
+                    this.win.removeEventListener('nexus:language-changed', onLanguage)
+                );
+            }
             if (!this.bus || typeof this.bus.on !== 'function') return;
             this._unsubscribes.push(
                 this.bus.on('adult:level', () => {
@@ -1992,6 +2010,8 @@
                     // A session that ended while the provider was thinking must not have its
                     // script swapped underneath a completion card.
                     if (!plan || this._stopped || this.state === 'complete') return null;
+                    // Ignore a late plan for the language selected before the request.
+                    if (plan.locale && plan.locale !== this._currentLanguage()) return null;
                     this.plan = plan;
                     this._emit('private:plan-ready', { preset: this.preset.id, source: plan.source });
                     return plan;
@@ -2018,10 +2038,29 @@
             }
         }
 
-        /** One plan field, falling back to the preset's original string for that beat. */
+        _currentLanguage() {
+            const locale = localeModel();
+            return locale && typeof locale.code === 'function' ? locale.code() : 'en-US';
+        }
+
+        /** Discard only future scripted beats after a live language change. */
+        _ensurePlanLanguage() {
+            if (this._stopped || this.state === 'complete') return false;
+            const selected = this._currentLanguage();
+            if (this.plan && this.plan.locale === selected) return false;
+            const api = beats();
+            if (!api || typeof api.fallbackPlan !== 'function') return false;
+            const written = api.fallbackPlan(this.preset, { locale: selected, mood: this.mood });
+            if (!written) return false;
+            this.plan = written;
+            return true;
+        }
+
+        /** Authored lines come from the selected catalog, never an English preset fallback. */
         _line(field) {
+            this._ensurePlanLanguage();
             const fromPlan = this.plan && typeof this.plan[field] === 'string' ? this.plan[field] : '';
-            return fromPlan || this.preset[field] || '';
+            return fromPlan || (this._currentLanguage().startsWith('en-') ? this.preset[field] || '' : '');
         }
 
         /**
@@ -2032,12 +2071,13 @@
          * same instinct as starting at level 1.
          */
         _moodLine(field) {
+            this._ensurePlanLanguage();
             const section = this.plan && this.plan[field];
             if (section && typeof section === 'object') {
                 const chosen = section[this.mood] || section.tender || section.playful;
                 if (chosen) return chosen;
             }
-            return this.preset[field] || '';
+            return this._currentLanguage().startsWith('en-') ? this.preset[field] || '' : '';
         }
 
         _clearTimers() {
@@ -2639,7 +2679,9 @@
             const choose = (mood) => {
                 this.mood = mood;
                 this._answeredOffer();
-                this._speak(this.plan && this.plan.moods ? this.plan.moods[mood] : this.preset[mood]);
+                this._ensurePlanLanguage();
+                const localized = this.plan && this.plan.moods && this.plan.moods[mood];
+                this._speak(localized || (this._currentLanguage().startsWith('en-') ? this.preset[mood] : ''));
                 this._emit('private:mood', { preset: this.preset.id, mood });
             };
             const options = [
@@ -2670,6 +2712,7 @@
          * escalation, and it needs no consent step because it grants nothing.
          */
         _offerTextureChoice() {
+            this._ensurePlanLanguage();
             const texture = (this.plan && this.plan.texture) || null;
             if (!texture || !texture.prompt) {
                 // No fallback sentence any more. "This pace feels good. We can keep it right here."
