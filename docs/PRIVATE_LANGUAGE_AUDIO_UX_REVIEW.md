@@ -1,5 +1,11 @@
 # NEXUS Private — Language Fidelity, Music Consent and Conversational UX Review
 
+## Implementation follow-up — 2026-11-09
+
+The first code upgrade has now been committed. It covers silent-by-default music, a ten-locale Private story/prompt catalog, localized Private setup controls, live locale switching, and reasoning-only output isolation. The shared AX16 ReplyClean implementation also exists on this branch. **This does not close** provider language fidelity, duplicate music cards, streaming-speech sanitization, world-travel confirmation or real-device QA.
+
+See [the implementation and QA handoff](qa/PRIVATE_LANGUAGE_AUDIO_IMPLEMENTATION_REPORT.md) for exact changed files, direct smoke checks and test commands. Original sections below record the initial issue audit and planned acceptance gates.
+
 **Branch:** `feat/living-worlds-spatial-storytelling`  
 **Audit:** 2026-11-09; user-supplied Italian transcript and source review on this branch.  
 **Status:** P0 music default fix committed; **locale catalog, output safety and real-model validation remain required**. No PR created.
