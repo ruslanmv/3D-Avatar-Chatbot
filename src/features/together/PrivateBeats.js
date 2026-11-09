@@ -145,6 +145,7 @@
                 3: pick(levels[3], rng),
                 4: pick(levels[4], rng),
             },
+            easeLines: Catalog.easeLines(language),
         };
         if (MOODS.includes(mood)) plan.mood = mood;
         return plan;
@@ -197,6 +198,7 @@
                       }
                     : written.texture,
             levelLines: { ...written.levelLines },
+            easeLines: { ...written.easeLines },
         };
         const levels = raw.levelLines && typeof raw.levelLines === 'object' ? raw.levelLines : {};
         for (const level of [2, 3, 4]) {
