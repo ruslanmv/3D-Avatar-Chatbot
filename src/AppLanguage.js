@@ -181,6 +181,7 @@
          */
         apply(code, { announce = false } = {}) {
             if (!LANGS[code]) return;
+            const previous = this.code;
             try {
                 localStorage.setItem('app_lang', code);
             } catch (_) {}
@@ -327,6 +328,17 @@
             this._syncing = false;
             this._updateStatus();
 
+            // A single language-change event lets authored Private story plans and
+            // other opt-in experiences discard old-locale content without a reload.
+            // Never carry a private utterance or session details in this event.
+            if (previous !== code && typeof window.dispatchEvent === 'function') {
+                try {
+                    const LangEvent = window.CustomEvent || CustomEvent;
+                    window.dispatchEvent(new LangEvent('nexus:language-changed', {
+                        detail: { previous, code },
+                    }));
+                } catch (_) {}
+            }
             if (announce) this._toast(this.t('langChanged'));
         },
 
