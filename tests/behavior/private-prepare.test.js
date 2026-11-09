@@ -147,6 +147,7 @@ afterEach(() => {
     delete window.NEXUS_DISCOVERY;
     delete window._nexusLLM;
     delete window.NEXUS_PRIVATE_BEATS;
+    delete window.AppLanguage;
     localStorage.clear();
     document.body.innerHTML = '';
 });
@@ -326,9 +327,9 @@ describe('the scenes are connected, and each appears once', () => {
         document.querySelector('[data-preset="romantic"]').click();
 
         expect([...document.querySelectorAll('.nexus-private-segment')].map((b) => b.textContent)).toEqual([
-            'Auto',
-            'Keep',
-            'Off',
+            'Play selected music',
+            'Keep current music',
+            'Off — silent',
         ]);
         expect(s.activity.soundtrackChoice).toBe('none');
         expect(document.querySelector('[data-music="none"]').classList.contains('is-selected')).toBe(true);
@@ -452,5 +453,41 @@ describe('VW3: a 3D room for the evening', () => {
         s.activity.stop('user');
         expect(requests[requests.length - 1]).toEqual({ id: null, owner: 'intimate' });
         window.removeEventListener('nexus-world-request', onRequest);
+    });
+});
+
+describe('Private live language changes', () => {
+    test('future planned lines switch language without changing the world or restarting consent', async () => {
+        window.AppLanguage = { code: 'it-IT' };
+        const s = setup();
+        s.panel.choose('intimate');
+        expect(document.querySelector('.nexus-private-setup-lead').textContent).toMatch(/atmosfera/i);
+        document.querySelector('[data-preset="romantic"]').click();
+        await settle();
+        await getReady();
+        action('begin-private').click();
+        await settle();
+
+        const session = s.activity._privateExperience;
+        expect(session).toBeTruthy();
+        expect(session.plan.locale).toBe('it-IT');
+        const originalScene = session.scene;
+        expect(session.plan.opening).not.toMatch(/This place feels different tonight/);
+
+        window.AppLanguage.code = 'es-ES';
+        window.dispatchEvent(new window.CustomEvent('nexus:language-changed', {
+            detail: { previous: 'it-IT', code: 'es-ES' },
+        }));
+        expect(session.plan.locale).toBe('es-ES');
+        expect(session.scene).toBe(originalScene);
+        expect(s.adult.enter).toHaveBeenCalledTimes(1);
+
+        window.AppLanguage.code = 'it-IT';
+        window.dispatchEvent(new window.CustomEvent('nexus:language-changed', {
+            detail: { previous: 'es-ES', code: 'it-IT' },
+        }));
+        expect(session.plan.locale).toBe('it-IT');
+
+        s.activity.stop('user');
     });
 });
