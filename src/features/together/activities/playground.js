@@ -1568,7 +1568,7 @@ const PlaygroundActivity = (() => {
              */
             this.sessionState = 'mood';
             this.prepareInput = null;
-            this.soundtrackChoice = 'choose';
+            this.soundtrackChoice = 'none';
             /** The ambience scene the evening will use, or `null` for "wherever we are". */
             this.sceneChoice = null;
             /** VW3. A 3D room to be in instead of a picture behind her (`places()`). */
@@ -1734,7 +1734,9 @@ const PlaygroundActivity = (() => {
                     preset: { ...preset },
                     scene: scene ? scene.id : null,
                     sceneLabel: scene ? scene.label : null,
-                    soundtrack: kept.soundtrack || 'choose',
+                    // A remembered track may have been started by the old automatic default.
+                    // Repeating a Private session never constitutes a fresh music request.
+                    soundtrack: 'none',
                 };
             } catch (_) {
                 return null;
@@ -1764,7 +1766,7 @@ const PlaygroundActivity = (() => {
                 if (this.worldChoice) this.sceneChoice = null;
             }
             if (soundtrack !== undefined) {
-                this.soundtrackChoice = ['choose', 'current', 'none'].includes(soundtrack) ? soundtrack : 'choose';
+                this.soundtrackChoice = ['choose', 'current', 'none'].includes(soundtrack) ? soundtrack : 'none';
             }
             this.prewarm();
             this._repaint();
