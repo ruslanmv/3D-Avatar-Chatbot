@@ -120,6 +120,9 @@
         // loads after its first reader gets English for one paint and the chosen language after,
         // which is the flicker this list exists to prevent.
         'src/features/together/PrivateLocale.js',
+        // Authored Private speech and planner rules for every AppLanguage locale.
+        // Must load before PrivateBeats/TogetherCapability to avoid English fallback flashes.
+        'src/features/together/PrivatePromptCatalog.js',
         'src/features/together/ui/PrivateConversationView.js',
         // What she says during a Private session, and the four enums it is allowed to
         // remember between them. Before TogetherCapability, which runs both.
