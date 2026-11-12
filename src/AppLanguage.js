@@ -334,9 +334,11 @@
             if (previous !== code && typeof window.dispatchEvent === 'function') {
                 try {
                     const LangEvent = window.CustomEvent || CustomEvent;
-                    window.dispatchEvent(new LangEvent('nexus:language-changed', {
-                        detail: { previous, code },
-                    }));
+                    window.dispatchEvent(
+                        new LangEvent('nexus:language-changed', {
+                            detail: { previous, code },
+                        })
+                    );
                 } catch (_) {}
             }
             if (announce) this._toast(this.t('langChanged'));

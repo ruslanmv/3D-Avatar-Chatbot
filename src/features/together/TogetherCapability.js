@@ -1264,9 +1264,15 @@
             // The scene sentence only when there is actually a scene — `currentSceneName` is empty
             // rather than a placeholder when no ambience is chosen, so the opening cannot end
             // "…this place feels like a good place for it."
-            // The catalog owns the complete opening in the selected language.
-            // No English-only location suffix or invented scenery is appended.
-            this._speak(this._line('opening'));
+            // The catalog owns the opening in the selected language. AX18a: the place she is in is
+            // named again, through PrivateLocale's `opening.place` in that same language — the
+            // English-only suffix was removed, and with it the one thing grounding the evening in a
+            // real room. A place name is a fact from the scene system, never invented scenery.
+            const place = currentSceneName(this.win);
+            const locale = localeModel();
+            const placeLine =
+                place && locale && typeof locale.t === 'function' ? locale.t('opening.place', { place }) : '';
+            this._speak(placeLine ? `${this._line('opening')} ${placeLine}` : this._line('opening'));
             this._startSoundtrack();
             // Something to tap from the first second (P13). The opening is a scripted line, not a
             // model reply, so there is no block to ride back on — and an RPG that made you wait for
@@ -1916,9 +1922,7 @@
                     } catch (_) {}
                 };
                 this.win.addEventListener('nexus:language-changed', onLanguage);
-                this._unsubscribes.push(() =>
-                    this.win.removeEventListener('nexus:language-changed', onLanguage)
-                );
+                this._unsubscribes.push(() => this.win.removeEventListener('nexus:language-changed', onLanguage));
             }
             if (!this.bus || typeof this.bus.on !== 'function') return;
             this._unsubscribes.push(

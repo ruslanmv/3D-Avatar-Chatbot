@@ -11,27 +11,43 @@ const PrivateLocale = require('../../src/features/together/PrivateLocale.js');
 
 const STYLES = ['affectionate', 'romantic', 'sensual', 'mature'];
 const REQUIRED_UI = [
-    'setup.last', 'setup.continue', 'setup.or', 'setup.question',
-    'setup.privacy', 'setup.back', 'setup.atmosphere', 'setup.where',
-    'setup.keep', 'setup.more', 'setup.room', 'setup.music',
-    'setup.musicAuto', 'setup.musicKeep', 'setup.musicOff', 'setup.cancel',
-    'setup.edit', 'setup.preparing', 'setup.unavailable', 'setup.private',
-    'setup.musicNo', 'setup.musicChosen',
-    ...STYLES.map(id => 'preset.name.' + id),
-    ...STYLES.map(id => 'preset.note.' + id),
+    'setup.last',
+    'setup.continue',
+    'setup.or',
+    'setup.question',
+    'setup.privacy',
+    'setup.back',
+    'setup.atmosphere',
+    'setup.where',
+    'setup.keep',
+    'setup.more',
+    'setup.room',
+    'setup.music',
+    'setup.musicAuto',
+    'setup.musicKeep',
+    'setup.musicOff',
+    'setup.cancel',
+    'setup.edit',
+    'setup.preparing',
+    'setup.unavailable',
+    'setup.private',
+    'setup.musicNo',
+    'setup.musicChosen',
+    ...STYLES.map((id) => 'preset.name.' + id),
+    ...STYLES.map((id) => 'preset.note.' + id),
 ];
 
 describe('a complete native-language Private authoring catalog', () => {
     test('covers each master AppLanguage locale without empty or English fallback story fields', () => {
-        const supported = ['en-US', 'en-GB', 'es-ES', 'it-IT', 'fr-FR', 'de-DE',
-            'pt-BR', 'ja-JP', 'ko-KR', 'zh-CN'];
+        const supported = ['en-US', 'en-GB', 'es-ES', 'it-IT', 'fr-FR', 'de-DE', 'pt-BR', 'ja-JP', 'ko-KR', 'zh-CN'];
         expect(new Set(Catalog.SUPPORTED)).toEqual(new Set(supported));
         for (const locale of supported) {
             for (const id of STYLES) {
                 const plan = Beats.fallbackPlan({ id, maxLevel: 4 }, { locale, rng: () => 0 });
                 expect(plan.locale).toBe(locale);
                 const fields = [
-                    plan.opening, plan.moodPrompt,
+                    plan.opening,
+                    plan.moodPrompt,
                     ...Object.values(plan.moods),
                     ...Object.values(plan.middle),
                     ...Object.values(plan.closing),
@@ -39,7 +55,7 @@ describe('a complete native-language Private authoring catalog', () => {
                     ...Object.values(plan.levelLines),
                     ...Object.values(plan.easeLines),
                 ];
-                fields.forEach(line => {
+                fields.forEach((line) => {
                     expect(typeof line).toBe('string');
                     expect(line.length).toBeGreaterThan(0);
                     expect(line.length).toBeLessThanOrEqual(Beats.MAX_LINE);

@@ -475,17 +475,21 @@ describe('Private live language changes', () => {
         expect(session.plan.opening).not.toMatch(/This place feels different tonight/);
 
         window.AppLanguage.code = 'es-ES';
-        window.dispatchEvent(new window.CustomEvent('nexus:language-changed', {
-            detail: { previous: 'it-IT', code: 'es-ES' },
-        }));
+        window.dispatchEvent(
+            new window.CustomEvent('nexus:language-changed', {
+                detail: { previous: 'it-IT', code: 'es-ES' },
+            })
+        );
         expect(session.plan.locale).toBe('es-ES');
         expect(session.scene).toBe(originalScene);
         expect(s.adult.enter).toHaveBeenCalledTimes(1);
 
         window.AppLanguage.code = 'it-IT';
-        window.dispatchEvent(new window.CustomEvent('nexus:language-changed', {
-            detail: { previous: 'es-ES', code: 'it-IT' },
-        }));
+        window.dispatchEvent(
+            new window.CustomEvent('nexus:language-changed', {
+                detail: { previous: 'es-ES', code: 'it-IT' },
+            })
+        );
         expect(session.plan.locale).toBe('it-IT');
 
         s.activity.stop('user');

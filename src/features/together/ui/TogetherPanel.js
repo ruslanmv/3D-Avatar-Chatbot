@@ -1018,7 +1018,9 @@ const TogetherPanel = (() => {
                 summary.textContent = [
                     last.preset.label,
                     last.sceneLabel,
-                    last.soundtrack === 'none' ? this._privateWord('setup.musicNo', 'No music') : this._privateWord('setup.musicChosen', 'Music selected'),
+                    last.soundtrack === 'none'
+                        ? this._privateWord('setup.musicNo', 'No music')
+                        : this._privateWord('setup.musicChosen', 'Music selected'),
                 ]
                     .filter(Boolean)
                     .join(' · ');
@@ -1065,8 +1067,10 @@ const TogetherPanel = (() => {
                 option.innerHTML = '<strong></strong><span></span>';
                 option.querySelector('strong').textContent =
                     `${input.id === 'sensual' ? '✧' : '♡'} ${this._privateWord(`preset.name.${input.id}`, input.label)}`;
-                option.querySelector('span').textContent =
-                    this._privateWord(`preset.note.${input.id}`, descriptions[input.id] || input.note || '');
+                option.querySelector('span').textContent = this._privateWord(
+                    `preset.note.${input.id}`,
+                    descriptions[input.id] || input.note || ''
+                );
                 // Selecting *is* continuing. A separate Continue button would be a second tap
                 // that carries no new information, and the prefetch wants the mood now.
                 option.addEventListener('click', () => activity && activity.chooseMood(input));
@@ -1079,15 +1083,22 @@ const TogetherPanel = (() => {
                 locked.className = 'nexus-private-locked';
                 locked.dataset.privateLocked = '1';
                 locked.textContent =
-                    (activity && activity.prompt) || (contract && contract.prompt) || this._privateWord('setup.unavailable', 'Private is unavailable.');
+                    (activity && activity.prompt) ||
+                    (contract && contract.prompt) ||
+                    this._privateWord('setup.unavailable', 'Private is unavailable.');
                 shell.appendChild(locked);
             }
 
             const safety = doc.createElement('div');
             safety.className = 'nexus-private-safety';
-            safety.textContent = this._privateWord('setup.privacy', 'You control the pace. Nothing here is added to public history.');
+            safety.textContent = this._privateWord(
+                'setup.privacy',
+                'You control the pace. Nothing here is added to public history.'
+            );
             shell.appendChild(safety);
-            shell.appendChild(this._button(this._privateWord('setup.back', 'Back'), 'nexus-bd-together-option', () => this.back()));
+            shell.appendChild(
+                this._button(this._privateWord('setup.back', 'Back'), 'nexus-bd-together-option', () => this.back())
+            );
             this.root.appendChild(shell);
         }
 
@@ -1137,8 +1148,10 @@ const TogetherPanel = (() => {
             for (const entry of shown) cards.appendChild(cardFor(entry.id, entry.label, ''));
             shell.appendChild(cards);
             if (!activity._showAllScenes && all.length > shown.length) {
-                const more = this._button(`${this._privateWord('setup.more', 'More')} (${all.length - shown.length})`, 'nexus-private-more', () =>
-                    activity.showAllScenes()
+                const more = this._button(
+                    `${this._privateWord('setup.more', 'More')} (${all.length - shown.length})`,
+                    'nexus-private-more',
+                    () => activity.showAllScenes()
                 );
                 more.dataset.action = 'more-scenes';
                 shell.appendChild(more);
@@ -1227,7 +1240,9 @@ const TogetherPanel = (() => {
             begin.addEventListener('click', () => activity.runPreflight());
             shell.appendChild(begin);
 
-            const back = this._button(this._privateWord('setup.back', 'Back'), 'nexus-bd-together-option', () => activity.editSetup());
+            const back = this._button(this._privateWord('setup.back', 'Back'), 'nexus-bd-together-option', () =>
+                activity.editSetup()
+            );
             back.dataset.action = 'edit-private';
             shell.appendChild(back);
             this.root.appendChild(shell);
@@ -1244,7 +1259,8 @@ const TogetherPanel = (() => {
         _privateWord(key, fallback) {
             try {
                 const w = this.win || (typeof window !== 'undefined' ? window : null);
-                const api = (w && w.NEXUS_PRIVATE_LOCALE) ||
+                const api =
+                    (w && w.NEXUS_PRIVATE_LOCALE) ||
                     (typeof module !== 'undefined' && module.exports ? require('../PrivateLocale.js') : null);
                 if (api && typeof api.t === 'function') {
                     const word = api.t(key);
@@ -1293,7 +1309,11 @@ const TogetherPanel = (() => {
 
             const actions = doc.createElement('div');
             actions.className = 'nexus-bd-together-options';
-            const cancel = this._button(this._privateWord('setup.cancel', 'Cancel'), 'nexus-bd-together-option is-stop', () => activity.cancelPreflight());
+            const cancel = this._button(
+                this._privateWord('setup.cancel', 'Cancel'),
+                'nexus-bd-together-option is-stop',
+                () => activity.cancelPreflight()
+            );
             cancel.dataset.action = 'cancel-preflight';
             actions.appendChild(cancel);
             shell.appendChild(actions);
@@ -1326,7 +1346,10 @@ const TogetherPanel = (() => {
             const title = doc.createElement('p');
             title.className = 'nexus-private-setup-lead';
             title.dataset.privateReady = '1';
-            title.textContent = this._privateWord(`preset.name.${preset.id}`, String(preset.label || 'Private')).toUpperCase();
+            title.textContent = this._privateWord(
+                `preset.name.${preset.id}`,
+                String(preset.label || 'Private')
+            ).toUpperCase();
             shell.appendChild(title);
 
             const note = doc.createElement('p');
@@ -1377,7 +1400,9 @@ const TogetherPanel = (() => {
             }
             shell.appendChild(actions);
 
-            const back = this._button(this._privateWord('setup.edit', 'Edit setup'), 'nexus-bd-together-option', () => activity.cancelPreflight());
+            const back = this._button(this._privateWord('setup.edit', 'Edit setup'), 'nexus-bd-together-option', () =>
+                activity.cancelPreflight()
+            );
             back.dataset.action = 'edit-private';
             shell.appendChild(back);
             this.root.appendChild(shell);

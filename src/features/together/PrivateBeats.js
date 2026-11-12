@@ -99,7 +99,8 @@
 
     // Authored phrases and planner instructions live in per-locale catalog resources.
     // Browser boot loads this before PrivateBeats; Jest resolves the same module.
-    const Catalog = (global && global.NEXUS_PRIVATE_PROMPT_CATALOG) ||
+    const Catalog =
+        (global && global.NEXUS_PRIVATE_PROMPT_CATALOG) ||
         (typeof module !== 'undefined' && module.exports ? require('./PrivatePromptCatalog.js') : null);
     const POOLS = Catalog ? Catalog.POOLS : Object.freeze({});
     const LEVEL_LINES = Catalog ? Catalog.LEVEL_LINES : Object.freeze({});
@@ -240,7 +241,11 @@
             if (!llm || typeof llm.sendMessage !== 'function' || (settings && settings.provider === 'none')) {
                 return written;
             }
-            const request = Catalog.plannerRequest((preset && preset.id) || 'affectionate', clean(scene, 120), language);
+            const request = Catalog.plannerRequest(
+                (preset && preset.id) || 'affectionate',
+                clean(scene, 120),
+                language
+            );
             const raw = await llm.sendMessage(request, plannerSystemPrompt(preset, language), []);
             const checked = validatePlan(parsePlan(raw), { preset, locale: language });
             if (!checked.ok) return written;
