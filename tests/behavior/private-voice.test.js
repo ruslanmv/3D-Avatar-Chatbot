@@ -191,3 +191,34 @@ describe('the prompt follows the same gate the session started on (AX18b)', () =
         expect(api).toMatch(/\n\s+usable: function \(\) \{\n\s+return usable\(\);/);
     });
 });
+
+describe('whole sentences, at the turn’s length, and never an empty turn (AX18c)', () => {
+    test('a cut-off ending is dropped and the reply is capped at the turn’s limit', () => {
+        expect(
+            Capability.shapePrivateReply('I love the way your eyes find mine, steady and warm. It makes', null)
+        ).toBe('I love the way your eyes find mine, steady and warm.');
+        const six = 'One. Two. Three. Four. Five. Six.';
+        expect(Capability.shapePrivateReply(six, { intent: 'conversation' })).toBe('One. Two. Three.');
+        expect(Capability.shapePrivateReply(six, { intent: 'question' })).toBe('One. Two. Three. Four.');
+        expect(Capability.shapePrivateReply(six, { intent: 'quiet' })).toBe('One.');
+        expect(Capability.shapePrivateReply('Vieni qui', null)).toBe('Vieni qui'); // one short line stays
+    });
+
+    test('nothing left after cleaning: she answers what they said, once, as herself', async () => {
+        jest.useRealTimers();
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+        window.AppLanguage = { code: 'it-IT' };
+        const asked = [];
+        const llm = {
+            sendMessage: async (msg, system) => (asked.push({ msg, system }), 'Eccomi. Più vicina di così?'),
+        };
+        expect(await Capability.privateRevise('', { llm, userText: "Avvicinati un po'." })).toBe(
+            'Eccomi. Più vicina di così?'
+        );
+        expect(asked).toHaveLength(1);
+        expect(asked[0].msg).toBe("Avvicinati un po'.");
+        expect(asked[0].system).toMatch(/WHO YOU ARE/);
+        s.activity.stop('user');
+    });
+});

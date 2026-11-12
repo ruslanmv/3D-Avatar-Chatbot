@@ -82,10 +82,30 @@
         return parts.slice(i).join(' ').trim();
     }
 
+    /**
+     * AX18c. Reasoning that arrives with no label, as the reply itself. Measured from gpt-oss once
+     * Private's full prompt reached it: "We need to follow the developer instructions. The user asks
+     * …", "User says: "Ciao…" They are expressing affection. According to the instructions…".
+     * Only these openings count — a reply that merely mentions "the user" later on is untouched.
+     */
+    const UNMARKED =
+        /^\s*(?:we (?:need to|have to|must|should) (?:follow|respond|reply|answer|write|produce|output|craft|keep (?:it|the reply)|be (?:concise|brief))\b|(?:the )?user (?:says|said|asks|asked|wants|is asking|is expressing|writes|wrote)\b|according to the (?:developer |system )?instructions\b|the (?:developer|system) (?:instructions?|prompt)\b|let me (?:think|analy[sz]e)\b|okay,? (?:so )?the user\b|first,? i (?:need|should) to\b)/i;
+
     /** Pure. A leading reasoning paragraph removed; text without a marker comes back unchanged. */
     function stripThought(text, options) {
         const o = options || {};
         const value = String(text == null ? '' : text);
+        if (!MARKER.test(value) && UNMARKED.test(value)) {
+            // Unlabelled: the plan is not a reply, and neither is a draft quoted inside it ("We must
+            // respond with something like: "…" etc."). Only a clean final paragraph after a break
+            // is kept; otherwise the caller gets '' and asks again (Private) or fails the turn.
+            const paragraphs = value
+                .split(/\n\s*\n/)
+                .map((p) => p.trim())
+                .filter(Boolean);
+            const last = paragraphs[paragraphs.length - 1] || '';
+            return paragraphs.length > 1 && !UNMARKED.test(last) && !META.test(last) ? last : '';
+        }
         const m = value.match(MARKER);
         if (!m) return value;
         const rest = value.slice(m[0].length);
@@ -175,7 +195,7 @@
             .trim();
     }
 
-    const api = { MARKER, META, stripThought, fromReasoning, forDisplay, looksEnglish };
+    const api = { MARKER, META, UNMARKED, stripThought, fromReasoning, forDisplay, looksEnglish };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_REPLY_CLEAN = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);

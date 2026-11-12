@@ -1029,6 +1029,32 @@
     }
 
     /**
+     * AX18c. Whole sentences, never more than the turn allows. Pure.
+     *
+     * Measured once Private's prompt reached the model: a reply ended "It makes", another ran to
+     * six sentences where the rule said three. The prompt asks; this holds. A dangling fragment
+     * after a complete sentence is dropped (a cut-off is worse than one sentence fewer), and the
+     * reply is capped at the turn's limit: one for "quieter", four for a question or a request,
+     * three otherwise — the same numbers `lengthLines` states.
+     */
+    function shapePrivateReply(text, turn, style) {
+        const value = String(text || '').trim();
+        if (!value) return value;
+        const parts = value.match(/[^.!?…。！？]+(?:[.!?…。！？]+["”»’)]*|$)/g) || [value];
+        const pieces = parts.map((p) => p.trim()).filter(Boolean);
+        const done = (p) => /[.!?…。！？]["”»’)]*$/.test(p);
+        if (pieces.length > 1 && !done(pieces[pieces.length - 1])) pieces.pop();
+        const intent = turn && turn.intent;
+        const max =
+            style === 'quiet' || intent === 'quiet' || intent === 'pace-down'
+                ? 1
+                : ['request', 'question', 'scene-request'].includes(intent)
+                  ? 4
+                  : 3;
+        return pieces.slice(0, max).join(' ');
+    }
+
+    /**
      * AX19. One rewrite, before anyone sees or hears the reply, when it broke character.
      *
      * Only in a Private session outside care mode, only when `privateReplyProblems` finds
@@ -1040,14 +1066,36 @@
         const draft = String(text || '');
         try {
             const ctx = privateContext();
-            if (!ctx || !draft.trim()) return draft;
-            const caring = ctx.activity && ctx.activity._privateExperience && ctx.activity._privateExperience._care;
-            if (caring) return draft;
-            const problems = privateReplyProblems(draft);
-            if (!problems.length) return draft;
+            if (!ctx) return draft;
+            const session = ctx.activity && ctx.activity._privateExperience;
+            if (session && session._care) return draft;
             const w = o.win || global;
             const llm = o.llm || (w && w._nexusLLM);
-            if (!llm || typeof llm.sendMessage !== 'function') return draft;
+            const shape = (t) => shapePrivateReply(t, session && session._turn, session && session.style);
+            const clean = (raw) => {
+                const value = String((raw && raw.text) || raw || '');
+                const out =
+                    w && w.NEXUS_REPLY_CLEAN && typeof w.NEXUS_REPLY_CLEAN.forDisplay === 'function'
+                        ? w.NEXUS_REPLY_CLEAN.forDisplay(value, { global: w })
+                        : value.trim();
+                return shape(sanitizeReply(out.replace(/^["“«]|["”»]$/g, '').trim()));
+            };
+            const timeout = () =>
+                new Promise((resolve) => setTimeout(() => resolve(null), Number(o.timeoutMs) || 12000));
+            const system = () => `${privatePersona()}\n${privateSystemPromptSuffix()}`;
+            // AX18c. Nothing left after cleaning (the reply was the model's plan, or was cut before
+            // any sentence finished): answer what they said, once, as her.
+            if (!draft.trim()) {
+                const said = String(o.userText || '').trim();
+                if (!said || !llm || typeof llm.sendMessage !== 'function') return draft;
+                const raw = await Promise.race([Promise.resolve(llm.sendMessage(said, system(), [])), timeout()]);
+                const fresh = clean(raw);
+                return fresh && !privateReplyProblems(fresh).length ? fresh : draft;
+            }
+            const shaped = shape(draft);
+            const problems = privateReplyProblems(shaped);
+            if (!problems.length) return shaped;
+            if (!llm || typeof llm.sendMessage !== 'function') return shaped;
             const sentences = (draft.match(/[.!?…](?:\s|$)/g) || []).length || 1;
             const instruction = [
                 'Rewrite this reply of yours so it sounds like you — their companion tonight — and not like an assistant or a service.',
@@ -1058,15 +1106,9 @@
                 '',
                 `Your draft: ${draft}`,
             ].join('\n');
-            const system = `${privatePersona()}\n${privateSystemPromptSuffix()}`;
-            const timeout = new Promise((resolve) => setTimeout(() => resolve(null), Number(o.timeoutMs) || 12000));
-            const raw = await Promise.race([Promise.resolve(llm.sendMessage(instruction, system, [])), timeout]);
-            const clean =
-                w && w.NEXUS_REPLY_CLEAN && typeof w.NEXUS_REPLY_CLEAN.forDisplay === 'function'
-                    ? w.NEXUS_REPLY_CLEAN.forDisplay(String((raw && raw.text) || raw || ''), { global: w })
-                    : String((raw && raw.text) || raw || '').trim();
-            const rewritten = sanitizeReply(clean.replace(/^["“«]|["”»]$/g, '').trim());
-            if (!rewritten || privateReplyProblems(rewritten).length >= problems.length) return draft;
+            const raw = await Promise.race([Promise.resolve(llm.sendMessage(instruction, system(), [])), timeout()]);
+            const rewritten = clean(raw);
+            if (!rewritten || privateReplyProblems(rewritten).length >= problems.length) return shaped;
             return rewritten;
         } catch (_) {
             return draft;
@@ -3255,6 +3297,7 @@
         privatePersona,
         privateReplyProblems,
         privateRevise,
+        shapePrivateReply,
         pickPrivateTrack,
     };
 

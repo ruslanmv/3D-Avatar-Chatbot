@@ -4091,7 +4091,8 @@ async function _handleStreamingResponse(text) {
         // AX19. In Private, a reply that broke character (assistant phrasing, a topic menu, a
         // scripted refusal) is rewritten once, before anyone sees or hears it. No-op elsewhere.
         if (window.NEXUS_TOGETHER_CAPABILITY?.privateRevise) {
-            displayText = (await window.NEXUS_TOGETHER_CAPABILITY.privateRevise(displayText)) || displayText;
+            displayText =
+                (await window.NEXUS_TOGETHER_CAPABILITY.privateRevise(displayText, { userText: text })) || displayText;
             if (!_turnIsCurrent(turn)) {
                 if (voiceStream) voiceStream.cancel();
                 stream.discard();
@@ -4099,6 +4100,9 @@ async function _handleStreamingResponse(text) {
                 return;
             }
         }
+        // AX18c. Nothing of hers left once the model's own reasoning was taken out: a failed turn,
+        // reported by the catch below like any other, never an empty bubble or the plan itself.
+        if (!String(displayText || '').trim()) throw new Error('The reply held only the model’s reasoning.');
         stream.finish(displayText);
 
         // Mirror to AR overlay
@@ -4219,12 +4223,15 @@ async function _handleNonStreamingResponse(text) {
         displayText = window.NEXUS_TOGETHER_CAPABILITY?.sanitizeReply?.(displayText) ?? displayText;
         // AX19. Same as the streaming seam: a Private reply that broke character is rewritten once.
         if (window.NEXUS_TOGETHER_CAPABILITY?.privateRevise) {
-            displayText = (await window.NEXUS_TOGETHER_CAPABILITY.privateRevise(displayText)) || displayText;
+            displayText =
+                (await window.NEXUS_TOGETHER_CAPABILITY.privateRevise(displayText, { userText: text })) || displayText;
             if (!_turnIsCurrent(turn)) {
                 setStatus('idle', 'READY');
                 return;
             }
         }
+        // AX18c. As in the streaming path: only reasoning, no reply, is a failed turn.
+        if (!String(displayText || '').trim()) throw new Error('The reply held only the model’s reasoning.');
 
         _surface().renderAssistant(displayText, attachments);
 

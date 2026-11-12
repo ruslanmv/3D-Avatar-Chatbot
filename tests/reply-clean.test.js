@@ -115,3 +115,37 @@ describe('ActivityVoice posts the clean line (the reported leak)', () => {
         delete global.NEXUS_REPLY_CLEAN;
     });
 });
+
+describe('reasoning with no label is not a reply either (AX18c)', () => {
+    test('the measured gpt-oss replies are recognised and nothing of them is kept', () => {
+        expect(
+            Clean.stripThought(
+                'We need to follow the developer instructions. The user asks "What are you thinking right now?" We must respond in first person, short spoken sentences, up to 4 sentences max. Must include a',
+                { lang: 'en-US' }
+            )
+        ).toBe('');
+        expect(
+            Clean.stripThought(
+                'User says: "Ciao. Ho pensato a te tutto il giorno." They are expressing affection. According to the instructions: we must reply as Nexus. We must respond with something like: "Mi fa piacere, mi sento vicina a te" etc.',
+                { lang: 'it-IT' }
+            )
+        ).toBe('');
+    });
+
+    test('a plan followed by a clean final paragraph keeps the paragraph', () => {
+        expect(
+            Clean.stripThought('We need to answer warmly and briefly.\n\nMi fa piacere. Vieni più vicino.', {
+                lang: 'it-IT',
+            })
+        ).toBe('Mi fa piacere. Vieni più vicino.');
+    });
+
+    test('ordinary replies that mention "we" or "the user" are untouched', () => {
+        for (const reply of [
+            'We should stay here a little longer.',
+            'Mm. We need nothing else tonight.',
+            'Ho letto il manuale per the user experience, ma tu sei meglio.',
+        ])
+            expect(Clean.stripThought(reply, { lang: 'en-US' })).toBe(reply);
+    });
+});

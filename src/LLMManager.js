@@ -675,10 +675,16 @@
         }
 
         _tokenBudget(fallback) {
+            const PRIVATE_MAX = 1024;
             try {
                 const api = global && global.NEXUS_TOGETHER_CAPABILITY;
                 const wanted = api && typeof api.responseBudget === 'function' ? api.responseBudget() : null;
-                if (Number.isFinite(wanted) && wanted > 0) return Math.min(wanted, fallback);
+                // AX18c. A budget may lower the ceiling, and may raise it only up to PRIVATE_MAX
+                // (1024). `Math.min` with a 500 default undid Private's raised floor on the
+                // OpenAI-style paths, and a reasoning model spends ~450 tokens before its first
+                // visible word (AX8), so 500 was a cut-off reply, not a short one. The bound keeps
+                // the original rule's point: no feature spends without limit.
+                if (Number.isFinite(wanted) && wanted > 0) return Math.min(wanted, Math.max(fallback, PRIVATE_MAX));
             } catch (_) {
                 // A capability module that throws costs the tuning, never the reply.
             }
