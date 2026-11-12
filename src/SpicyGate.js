@@ -501,6 +501,19 @@
             return usable();
         },
 
+        /**
+         * AX18b. The same answer under the name Private's prompt asks for. TogetherCapability's
+         * `privateContext` has called `gate.usable()` since c4f8eaa, and this object never exposed
+         * it, so the check fell back to the server attestation alone: in a client-only install a
+         * Private session started (Intimate checks `isEnabled()`), and every live reply was written
+         * without Private's prompt — no register, no length rule, no consent rules, and none of
+         * the in-Private guards (the music guard among them). Unit tests mocked `{ usable }` and
+         * never saw the real shape.
+         */
+        usable: function () {
+            return usable();
+        },
+
         /** The user's Settings preference, independent of current trusted availability. */
         isRequested: function () {
             return enabled;

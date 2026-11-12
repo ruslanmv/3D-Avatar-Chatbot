@@ -168,3 +168,26 @@ describe('a reply that breaks character is rewritten once (AX19)', () => {
         s.activity.stop('user');
     });
 });
+
+describe('the prompt follows the same gate the session started on (AX18b)', () => {
+    test('a gate shaped like the real SpicyGate ({ isEnabled }) still gets Private its prompt', async () => {
+        const s = setup();
+        await s.activity.start({ input: { id: 'sensual' } });
+        // A client-only install: no server attestation, the person's own Private Mode on.
+        window.NEXUS_BD.blackboard.adultVerified = false;
+        window.NEXUS_SPICY = { isEnabled: () => true, isRequested: () => true };
+        expect(Capability.privateSessionActive()).toBe(true);
+        expect(Capability.privateSystemPromptSuffix()).toMatch(/LENGTH:/);
+        expect(Capability.privatePersona()).toMatch(/WHO YOU ARE/);
+        window.NEXUS_SPICY = { isEnabled: () => false };
+        expect(Capability.privateSessionActive()).toBe(false);
+        s.activity.stop('user');
+        delete window.NEXUS_SPICY;
+    });
+
+    test('the real SpicyGate exposes usable(), the name the prompt asks for', () => {
+        const src = require('fs').readFileSync(require('path').join(__dirname, '../../src/SpicyGate.js'), 'utf8');
+        const api = src.slice(src.indexOf('window.NEXUS_SPICY = {'));
+        expect(api).toMatch(/\n\s+usable: function \(\) \{\n\s+return usable\(\);/);
+    });
+});

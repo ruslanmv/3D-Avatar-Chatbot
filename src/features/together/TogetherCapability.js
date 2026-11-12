@@ -313,10 +313,18 @@
         if (!director || !activity || !adult || !blackboard) return null;
         if (!activity.active || !adult.active) return null;
         const gate = global && global.NEXUS_SPICY;
-        const eligible =
-            gate && typeof gate.usable === 'function'
-                ? gate.usable() === true
-                : blackboard.adultVerified === true && blackboard.nsfwAllowed === true;
+        // AX18b. `usable()` or, on a gate that names it `isEnabled()` (SpicyGate before AX18b), that —
+        // the same question Intimate's own start asked. Without either, the server attestation.
+        const ask =
+            gate &&
+            (typeof gate.usable === 'function'
+                ? gate.usable
+                : typeof gate.isEnabled === 'function'
+                  ? gate.isEnabled
+                  : null);
+        const eligible = ask
+            ? ask.call(gate) === true
+            : blackboard.adultVerified === true && blackboard.nsfwAllowed === true;
         if (!eligible) return null;
         const preset = PRIVATE_PRESETS[activity.preset] || PRIVATE_PRESETS.affectionate;
         const level = Math.max(1, Math.min(preset.maxLevel, Number(adult.level) || 1));
