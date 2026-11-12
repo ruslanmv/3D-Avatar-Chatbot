@@ -31,6 +31,17 @@ describe('a "THOUGHT:" paragraph is not hers to say', () => {
         expect(Clean.stripThought(reply, { lang: 'it-IT' })).toBe('Vuoi che metta qualcosa di morbido?');
     });
 
+    test('a THINK label is the same leak as THOUGHT', () => {
+        const reply = 'THINK: The user asked for music. I should not read this aloud.\n\nMetto un po’ di musica.';
+        expect(Clean.stripThought(reply, { lang: 'it-IT' })).toBe('Metto un po’ di musica.');
+    });
+
+    test('a streaming buffer hides a half-written tag and a thought', () => {
+        expect(Clean.maskStreaming('Volentieri. <play kind="music">daf')).toBe('Volentieri.');
+        expect(Clean.maskStreaming('THINK: still planning the reply')).toBe('');
+        expect(Clean.maskStreaming('Resto qui con te.')).toBe('Resto qui con te.');
+    });
+
     test('an ordinary reply is never rewritten, even when it talks about thinking', () => {
         for (const reply of [
             'Ci ho pensato: il lago è perfetto stasera.',

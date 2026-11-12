@@ -61,6 +61,7 @@ afterEach(() => {
     delete window.NEXUS_DISCOVERY;
     delete window.NEXUS_BD;
     delete window.NEXUS_SPICY;
+    delete window.NEXUS_PRIVATE_ACTION_BRIDGE;
 });
 
 describe('the prompt stops offering it', () => {
@@ -210,17 +211,27 @@ describe('but the user may still ask, or the setup screen is a one-way door', ()
      * The rule is about *who decides*, not about freezing the session. She must not reach for a
      * different track on her own initiative; the person who chose it may change their mind.
      */
-    test('asking for different music lets the next reply act on it', () => {
+    test('asking for different music stays inside Private', () => {
         privateRunning();
         const intent = { fulfil: jest.fn() };
-        // Blocked on her own initiative...
+        const bridge = { execute: jest.fn(() => Promise.resolve({ ok: true, status: 'pending' })) };
+        // Blocked on her own initiative, and never published into the ordinary chat —
+        // that publisher is what used to draw a card outside the Private card.
         PlayDirective.consume('<play kind="music">jazz</play>', { intent });
         expect(intent.fulfil).not.toHaveBeenCalled();
 
-        // ...allowed once the person asks.
         Capability.noteUserTurn('play something else');
+        window.NEXUS_PRIVATE_ACTION_BRIDGE = bridge;
         PlayDirective.consume('<play kind="music">jazz</play>', { intent });
-        expect(intent.fulfil).toHaveBeenCalled();
+        expect(intent.fulfil).not.toHaveBeenCalled();
+        expect(bridge.execute).toHaveBeenCalledWith(
+            expect.objectContaining({
+                kind: 'music.play',
+                source: 'assistant',
+                args: expect.objectContaining({ query: 'jazz' }),
+            })
+        );
+        delete window.NEXUS_PRIVATE_ACTION_BRIDGE;
     });
 
     test('asking to stop the music counts as asking', () => {

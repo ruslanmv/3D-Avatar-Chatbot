@@ -32,7 +32,9 @@ describe('a Private track must fit the evening', () => {
     test('among neutral titles, one that says it is slow or instrumental is preferred', () => {
         const found = [track('c1', 'Mix Vol. 3 Collection'), track('c2', 'Soft Piano for a Candlelit Evening')];
         expect(Capability.pickPrivateTrack(found).id).toBe('c2');
-        expect(Capability.pickPrivateTrack([track('c3', 'Mix Vol. 3')]).id).toBe('c3');
+        // A title that does not say it fits the evening is not played just because it was
+        // the only hit left. Silence is the honest result; search rank is not a mood.
+        expect(Capability.pickPrivateTrack([track('c3', 'Mix Vol. 3')])).toBeNull();
     });
 });
 

@@ -1129,63 +1129,154 @@
     }
 
     /**
-     * How long a request to change the music or the place stays granted.
+     * How long a request to change one thing stays granted.
      *
-     * One turn's worth of wall clock. The permission is opened by the user's own message and is
-     * meant to cover the reply to it — long enough for a slow local model to finish writing,
-     * short enough that "put something else on" five minutes ago cannot authorise a swap she
-     * decides on later.
+     * One turn's worth of wall clock, opened by the user's own message and meant to cover
+     * the reply to it. Music, the room and the wardrobe each keep their own clock, so a
+     * song does not unlock a scene change and a dress does not unlock either.
      */
     const CHANGE_WINDOW_MS = 120000;
+    const SCENE_CHANGE =
+        /\b(change|switch|move|take us|put us|go)\b[^.?!]{0,40}\b(scene|place|room|somewhere|ambience|background)\b/i;
+    const _grants = { music: 0, scene: 0, wardrobe: 0 };
+    let _saeSerial = 0;
+
+    function actionPolicy() {
+        return optional('../../experiences/private/PrivateActionPolicy.js', 'NEXUS_PRIVATE_ACTION_POLICY');
+    }
+
+    function mediaCommand() {
+        return optional('./MediaCommand.js', 'NEXUS_MEDIA_COMMAND');
+    }
+
+    /** The one action this sentence is, or null when it is just conversation. */
+    function userAction(text) {
+        const said = String(text == null ? '' : text).trim();
+        if (!said) return null;
+        const policy = actionPolicy();
+        try {
+            if (policy && typeof policy.wardrobeRequest === 'function') {
+                const wardrobe = policy.wardrobeRequest(said);
+                if (wardrobe) return wardrobe;
+            }
+        } catch (_) {
+            /* a classifier that throws decides nothing */
+        }
+        const media = mediaCommand();
+        try {
+            if (media && typeof media.privateRequest === 'function') return media.privateRequest(said);
+        } catch (_) {
+            return null;
+        }
+        return null;
+    }
 
     /**
-     * When the user last asked for the music or the place to change, and nothing else.
+     * Which permission this message opens.
      *
-     * Private sets its scene and its soundtrack once, at setup, and the whole point of that
-     * screen is that those decisions are made deliberately and then left alone. So the model
-     * does not get to revisit them — but the *user* must, or the setup screen would be a
-     * one-way door. This is the difference between the two, recorded at the only moment it can
-     * be known: when the person says it.
+     * "Show me several outfits" opens nothing: it is not a wear, and it must not be
+     * read as a soundtrack request either. "Show me jazz" still opens the music
+     * window, because that sentence is about hearing something, without this function
+     * itself starting playback.
      */
-    let _changeAskedAt = 0;
-
-    /** Did this message ask for the music or the place to change? */
-    function asksForChange(text) {
+    function changeKind(text) {
         const said = String(text == null ? '' : text).trim();
-        if (!said) return false;
-        const media = optional('./MediaCommand.js', 'NEXUS_MEDIA_COMMAND');
+        if (!said) return null;
+        let request = null;
         try {
-            if (media && typeof media.action === 'function' && media.action(said)) return true;
-            if (media && typeof media.transport === 'function' && media.transport(said)) return true;
+            request = userAction(said);
+        } catch (_) {
+            request = null;
+        }
+        if (request && request.kind === 'wardrobe.offer') return null;
+        if (request && String(request.kind).indexOf('wardrobe.') === 0) return 'wardrobe';
+        if (request && String(request.kind).indexOf('music.') === 0) return 'music';
+        const media = mediaCommand();
+        try {
+            if (media && typeof media.action === 'function' && media.action(said)) return 'music';
+            if (media && typeof media.transport === 'function' && media.transport(said)) return 'music';
         } catch (_) {
             // A classifier that throws decides nothing; fall through to the scene words.
         }
-        // The scene half. Deliberately narrow: this opens a door, so it should want a sentence
-        // that is plainly about changing where they are, not merely one that mentions a place.
-        return /\b(change|switch|move|take us|put us|go)\b[^.?!]{0,40}\b(scene|place|room|somewhere|ambience|background)\b/i.test(
-            said
-        );
+        if (SCENE_CHANGE.test(said)) return 'scene';
+        return null;
     }
 
-    /** Called with the user's own words. Only the user can open this. */
-    function noteUserTurn(text) {
-        if (asksForChange(text)) _changeAskedAt = Date.now();
+    /** Did this message ask for the music or the place to change? */
+    function asksForChange(text) {
+        const kind = changeKind(text);
+        return kind === 'music' || kind === 'scene';
+    }
+
+    function grantFresh(kind) {
+        return Date.now() - (_grants[kind] || 0) < CHANGE_WINDOW_MS;
     }
 
     /**
-     * May a scene or soundtrack change run right now?
+     * May this change run right now?
      *
-     * Outside Private: always — nothing here narrows ordinary chat. Inside a session: only if
-     * the user asked for it within the window above.
+     * Outside Private, always. Inside a session, only when the user asked for this
+     * kind within the window. With no kind, music or scene is enough — that is the
+     * question existing callers ask. A scene directive passes `'scene'`.
      */
-    function privateChangeAllowed() {
+    function privateChangeAllowed(kind) {
         if (!privateSessionActive()) return true;
-        return Date.now() - _changeAskedAt < CHANGE_WINDOW_MS;
+        if (kind === 'music' || kind === 'scene' || kind === 'wardrobe') return grantFresh(kind);
+        return grantFresh('music') || grantFresh('scene');
+    }
+
+    function privateActionAllowed(kind) {
+        return privateChangeAllowed(kind);
+    }
+
+    /**
+     * The live session as an action may see it. The id is assigned once so a result
+     * that finishes after End can tell it no longer belongs. The consent level is
+     * copied out for readers; nothing here writes it back.
+     */
+    function privateSessionSnapshot() {
+        const ctx = privateContext();
+        if (!ctx) return null;
+        const session = ctx.activity && ctx.activity._privateExperience;
+        if (session && !session.id) session.id = 'private-' + ++_saeSerial;
+        return {
+            id: session && session.id ? session.id : 'private-open',
+            level: ctx.level,
+            mood: ctx.mood || null,
+            active: true,
+            stopped: Boolean(
+                session && (session._stopped || session.state === 'complete' || session.state === 'restoring')
+            ),
+            view: session && session.view ? session.view : null,
+        };
+    }
+
+    /** Called with the user's own words. Only the user can open a permission or start an action. */
+    function noteUserTurn(text) {
+        const kind = changeKind(text);
+        if (kind) _grants[kind] = Date.now();
+        if (!privateSessionActive()) return;
+        let request = null;
+        try {
+            request = userAction(text);
+        } catch (_) {
+            request = null;
+        }
+        if (!request || request.kind === 'wardrobe.offer') return;
+        const bridge = global && global.NEXUS_PRIVATE_ACTION_BRIDGE;
+        if (!bridge || typeof bridge.execute !== 'function') return;
+        try {
+            Promise.resolve(bridge.execute(Object.assign({ source: 'user' }, request))).catch(() => null);
+        } catch (_) {
+            // The sentence still stands. The action is the part that could not run.
+        }
     }
 
     /** Tests, and a session ending: the next one must not inherit a granted permission. */
     function resetChangeWindow() {
-        _changeAskedAt = 0;
+        _grants.music = 0;
+        _grants.scene = 0;
+        _grants.wardrobe = 0;
     }
 
     function systemPromptSuffix() {
@@ -1405,6 +1496,9 @@
             }
             this.startedAt = this.now();
             this.state = 'active';
+            if (!this.id) this.id = 'private-' + ++_saeSerial;
+            // A permission from the previous evening must not survive into this one.
+            resetChangeWindow();
             this._mount();
             if (!this.view) {
                 this.state = 'idle';
@@ -1480,6 +1574,23 @@
             if (this._stopped) return;
             this._stopped = true;
             this.state = 'restoring';
+            resetChangeWindow();
+            // A search or a Forge job still in flight belongs to this session. Cancel it
+            // before the room is put back, so the result cannot land on whatever is next.
+            try {
+                const bridge = this.win && this.win.NEXUS_PRIVATE_ACTION_BRIDGE;
+                if (bridge && typeof bridge.cancel === 'function') bridge.cancel(this.id);
+            } catch (_) {
+                /* ending the session is the part that has to finish */
+            }
+            try {
+                const wardrobe = this.win && this.win.NEXUS_IN_SCENE_WARDROBE;
+                if (wardrobe && typeof wardrobe.release === 'function') {
+                    Promise.resolve(wardrobe.release()).catch(() => null);
+                }
+            } catch (_) {
+                /* the outfit restore is best-effort; the session still ends */
+            }
             this._clearTimers();
             // Nothing can tick a clock for a session nobody is in (P17).
             this._idle = null;
@@ -3287,6 +3398,8 @@
         stripEmoji,
         privateSessionActive,
         privateChangeAllowed,
+        privateActionAllowed,
+        privateSessionSnapshot,
         noteUserTurn,
         asksForChange,
         resetChangeWindow,

@@ -103,6 +103,14 @@ creating looks (WF1)** — see the Forge bullet below.
   `main.js` knows nothing about it. The default works because the Space's five
   library avatars hash-match AvatarIdentity's pins and its CORS allows any
   origin; if either changes, Test connection in Settings says so.
+- **A clothing change during Private stays in the scene (SAE).**
+  `InSceneWardrobe` wears a saved look through `WardrobeService` /
+  `WardrobeController` and never starts Try-On Haul. `WardrobeTool.call` takes
+  that path only while a Private session is running; every other caller still
+  reaches the haul. Autonomy (`nexus_private_wardrobe_autonomy`, default
+  `suggest`), mature categories and whether the look survives Private live in
+  `PrivateActionPolicy`. A Forge result that finishes after the session ends
+  does not apply.
 - **Her wardrobe is a tool, a fifth instance of the capability pattern
   (W15–W17).** `WardrobeTool` holds the MCP-shaped `TOOLS` and the one executor
   `call`; the chat reaches it with `<wardrobe action="…"/>`, consumed at both

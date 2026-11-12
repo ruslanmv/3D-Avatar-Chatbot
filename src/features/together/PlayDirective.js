@@ -132,26 +132,29 @@
      * not after a search round trip. A failed search leaves the sentence standing, which is the
      * right outcome — she said something true, and the media simply did not arrive.
      */
+    function capabilityOf(options) {
+        return (options && options.capability) || (global && global.NEXUS_TOGETHER_CAPABILITY) || null;
+    }
+
     /**
      * Is a Private session running?
      *
-     * Asked at execution time rather than trusted from the prompt, which is the rule this
-     * repository already states: a model can emit a tag it was told about a turn ago, a provider
-     * can answer from a cached prompt, and a reply can outlive the moment it was asked for. The
-     * prompt withholding the instruction is the polite half; this is the half that holds.
+     * This used to mean "the change window is closed", so a person who had just asked for
+     * music made the session look like ordinary chat — and the ordinary player published a
+     * card outside Private. A session stays a session after they ask. The window only
+     * decides whether her tag may be handed to the in-session player.
      */
     function privateActive(options) {
-        const capability = (options && options.capability) || (global && global.NEXUS_TOGETHER_CAPABILITY) || null;
+        const capability = capabilityOf(options);
         if (!capability) return false;
         try {
-            // `privateChangeAllowed` is the question that matters: false only inside a running
-            // session the user has not just asked for a change in. Outside Private it is always
-            // true, so ordinary chat keeps the capability exactly as it was.
-            if (typeof capability.privateChangeAllowed === 'function') {
-                return capability.privateChangeAllowed() !== true;
-            }
             if (typeof capability.privateSessionActive === 'function') {
                 return capability.privateSessionActive() === true;
+            }
+            // A caller that only knows the older question: a closed window is the only
+            // signal it has that a session is running.
+            if (typeof capability.privateChangeAllowed === 'function') {
+                return capability.privateChangeAllowed() === false;
             }
         } catch (_) {
             // A capability that throws is not a Private session anybody can prove is running.
@@ -159,17 +162,46 @@
         return false;
     }
 
+    /** The person asked for music recently enough that her reply may start it. */
+    function musicGranted(options) {
+        const capability = capabilityOf(options);
+        if (!capability) return false;
+        try {
+            if (typeof capability.privateActionAllowed === 'function') {
+                return capability.privateActionAllowed('music') === true;
+            }
+            if (typeof capability.privateChangeAllowed === 'function') {
+                return capability.privateChangeAllowed('music') === true;
+            }
+        } catch (_) {
+            return false;
+        }
+        return false;
+    }
+
     /**
-     * Strip the tag, run the media — except inside Private, where only the first half happens.
+     * Hand a Private music action to the session bridge. Never the ordinary publisher:
+     * that one writes a chat row, and a Private evening does not.
+     */
+    function dispatchPrivate(request) {
+        const bridge = global && global.NEXUS_PRIVATE_ACTION_BRIDGE;
+        if (!bridge || typeof bridge.execute !== 'function') return;
+        try {
+            Promise.resolve(bridge.execute(request)).catch(() => null);
+        } catch (_) {
+            // A player that cannot start must not take the reply down with it.
+        }
+    }
+
+    /**
+     * Strip the tag, then run the media on the path that owns the current experience.
      *
-     * Two reported bugs, one cause. A Private session picks its soundtrack once at setup and that
-     * choice *is* the atmosphere; when she reached for `<play>` mid-conversation a different
-     * track replaced it. And because the media pipeline publishes into the ordinary conversation,
-     * the new song arrived as a `NEXUS` row with a YouTube card in the chat *outside* the Private
-     * card — so a Private session spilled into the transcript it is supposed to stay inside.
-     *
-     * Stripping still happens, always: the raw tag must never reach a bubble, and a reply that
-     * contains one is still a reply worth showing. What stops is the acting on it.
+     * Two reported bugs had one cause. The ordinary player publishes into the ordinary
+     * conversation, so a Private session that reached for `<play>` spilled a `NEXUS` row
+     * and a card outside its own card, and replaced the soundtrack chosen at setup.
+     * Stripping still happens on every path. What changed is where a *granted* request
+     * goes: the Private player, not the ordinary publisher. A tag she emits on her own,
+     * with nobody having asked, is still stripped and not played.
      */
     function consume(text, options = {}) {
         const extracted = extract(text);
@@ -187,13 +219,16 @@
                 // Never lose the reply over a tidy-up.
             }
         }
-        // Everything below this line acts on the world. Inside Private, none of it may.
-        const quiet = privateActive(options);
+        // Inside Private the ordinary publisher stays closed for the whole session.
+        // A granted music request goes to the session player instead, which draws on
+        // Private's own card and does not write a transcript row.
+        const inPrivate = privateActive(options);
 
         if (find) {
             // M6. Show them what there is. Not awaited, for the same reason a play is not:
             // the sentence should appear when she says it, not after a search round trip.
-            const intent = quiet ? null : options.intent || (global && global.NEXUS_MEDIA_INTENT) || null;
+            // A list is the ordinary conversation's picker, so Private never opens it.
+            const intent = inPrivate ? null : options.intent || (global && global.NEXUS_MEDIA_INTENT) || null;
             if (intent && typeof intent.list === 'function') {
                 try {
                     Promise.resolve(intent.list({ query: find.query, kind: find.kind, source: 'model' })).catch(
@@ -211,11 +246,9 @@
             // that claims to act and then does not is worse than the apology T2 removed.
             // `honour` returns false for every reply that made no claim, which is nearly all
             // of them, so the common path is one regex and out.
-            // The backstop is silenced too. It exists to make good on a claim to be playing
-            // something, and inside Private the honest answer is that the soundtrack chosen at
-            // setup is already playing — starting a second one to match her sentence is the very
-            // thing that was reported.
-            const claim = quiet ? null : options.claim || (global && global.NEXUS_PLAY_CLAIM) || null;
+            // The backstop is silenced inside Private. It exists to make good on a claim by
+            // starting the ordinary player, which is the leak this path is here to prevent.
+            const claim = inPrivate ? null : options.claim || (global && global.NEXUS_PLAY_CLAIM) || null;
             if (claim && typeof claim.honour === 'function') {
                 try {
                     claim.honour(clean, options);
@@ -225,7 +258,17 @@
             }
             return clean;
         }
-        const intent = quiet ? null : options.intent || (global && global.NEXUS_MEDIA_INTENT) || null;
+        if (inPrivate) {
+            if (directive.kind === 'music' && musicGranted(options)) {
+                dispatchPrivate({
+                    kind: 'music.play',
+                    source: 'assistant',
+                    args: { query: directive.query },
+                });
+            }
+            return clean;
+        }
+        const intent = options.intent || (global && global.NEXUS_MEDIA_INTENT) || null;
         if (intent && typeof intent.fulfil === 'function') {
             try {
                 Promise.resolve(intent.fulfil({ query: directive.query, kind: directive.kind, source: 'model' })).catch(
@@ -238,7 +281,7 @@
         return clean;
     }
 
-    const api = { TAG, FIND, BARE, extract, has, consume, privateActive };
+    const api = { TAG, FIND, BARE, extract, has, consume, privateActive, musicGranted };
 
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;

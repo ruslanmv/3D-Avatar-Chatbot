@@ -487,6 +487,19 @@ const YouTubeAsk = (() => {
                 return;
             }
 
+            // Private owns its soundtrack and its transcript. Intercepting here would
+            // publish a card into the ordinary conversation and swallow the sentence the
+            // session is waiting to hear. The session records the turn and plays inside
+            // its own card.
+            try {
+                const cap = w && w.NEXUS_TOGETHER_CAPABILITY;
+                if (cap && typeof cap.privateSessionActive === 'function' && cap.privateSessionActive() === true) {
+                    return;
+                }
+            } catch (_) {
+                /* if the check cannot be made, ordinary chat keeps the intercept */
+            }
+
             // M5. "Stop the music" — before anything else, because a request to stop must
             // never be answered by starting something. Only acted on when something is
             // actually playing: with nothing on, "stop" belongs to the conversation, and

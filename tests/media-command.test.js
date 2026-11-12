@@ -150,6 +150,32 @@ describe('"play music please" is not "find music"', () => {
     });
 });
 
+describe('Italian, and a question that only sounds like a request', () => {
+    test.each([
+        ['Sì, suona Daft Punk ora', 'Daft Punk'],
+        ['suona Daft Punk', 'Daft Punk'],
+        ['metti del jazz', 'del jazz'],
+        ['riproduci qualcosa di rilassante', 'qualcosa di rilassante'],
+        ['play something relaxing', 'something relaxing'],
+    ])('%s searches for %s', (said, query) => {
+        expect(Command.action(said)).toBe('execute');
+        expect(Command.privateRequest(said)).toEqual({ kind: 'music.play', args: { query } });
+    });
+
+    test.each(['Che musica ti piace?', 'Che musica ti piace', 'what music do you like'])('%s does not play', (said) => {
+        expect(Command.privateRequest(said)).toBeNull();
+        expect(Command.action(said)).toBeNull();
+    });
+
+    test.each([
+        ['ferma la musica', 'music.stop'],
+        ['metti in pausa', 'music.pause'],
+        ['pausa la musica', 'music.pause'],
+    ])('%s is transport, not a new search', (said, kind) => {
+        expect(Command.privateRequest(said)).toEqual({ kind, args: {} });
+    });
+});
+
 describe('the held list survives being drawn', () => {
     test('a search records what it showed', () => {
         Session.setResults(RESULTS);

@@ -160,6 +160,12 @@
         // what it hands an execute or a pointer to.
         'src/features/together/MediaCommand.js',
         'src/features/together/PlayDirective.js',
+        // SAE. Private music and clothing stay inside the session. After the play
+        // parser and the media intent they call; a request only happens once someone
+        // has spoken, so load order here is about the globals existing before then.
+        'src/experiences/private/PrivateActionPolicy.js',
+        'src/experiences/private/PrivateMediaController.js',
+        'src/experiences/private/PrivateActionBridge.js',
         // T6. One topic, two turns, so "yes" and "play it" point at something.
         'src/features/together/PlayFollowUp.js',
         // T8. She has never searched, so any URL in a reply was invented — this takes it out

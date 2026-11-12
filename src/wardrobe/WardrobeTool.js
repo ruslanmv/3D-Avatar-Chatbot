@@ -469,10 +469,23 @@
         return TAG.test(source) || TAG_WITH_BODY.test(source);
     }
 
+    function privateSessionActive() {
+        try {
+            var cap = global && global.NEXUS_TOGETHER_CAPABILITY;
+            return Boolean(cap && typeof cap.privateSessionActive === 'function' && cap.privateSessionActive());
+        } catch (_) {
+            return false;
+        }
+    }
+
     // ------------------------------------------------------------------ the executor
     /**
      * Run a tool call. Resolves to {ok, why}; never rejects. The one executor for the tag and
      * for any other transport. Everything is re-checked here, at the moment it would run.
+     *
+     * During Private the call stays in the scene. Try-On Haul is a different experience,
+     * and opening it would leave the evening. When Private is not running, the haul is
+     * still the executor it always was.
      */
     async function call(name, args, deps) {
         args = args || {};
@@ -481,6 +494,27 @@
         });
         if (!tool) return { ok: false, why: 'no such tool' };
         if (!isEnabled()) return { ok: false, why: 'Changing her outfit from the chat is turned off in Settings.' };
+        if (privateSessionActive()) {
+            var scene = (deps && deps.inScene) || (global && global.NEXUS_IN_SCENE_WARDROBE);
+            if (!scene || typeof scene.execute !== 'function') {
+                return { ok: false, why: 'Changing clothes stays inside Private, and that path is not ready.' };
+            }
+            try {
+                return (
+                    (await scene.execute(
+                        name,
+                        args,
+                        Object.assign({}, deps, { source: (deps && deps.source) || 'assistant' })
+                    )) || {
+                        ok: false,
+                        why: 'That could not be done.',
+                    }
+                );
+            } catch (error) {
+                console.warn('[Wardrobe] a private wardrobe change failed', error);
+                return { ok: false, why: (error && error.message) || 'That could not be done.' };
+            }
+        }
         var a = activity(deps);
         if (!a || typeof a.request !== 'function') return { ok: false, why: 'Try-On is not available.' };
         try {

@@ -4027,8 +4027,10 @@ async function _handleStreamingResponse(text) {
             // Living NPC: hide the ```motion block while it streams in
             // PG3: a <gesture/> tag is masked like a motion block, so neither flashes mid-stream.
             stream.append(
-                (window.NEXUS_PLAYGROUND_REACTIVE?.maskStreaming || ((t) => t))(
-                    window.NEXUS_MOTION ? window.NEXUS_MOTION.maskStreaming(accumulated) : accumulated
+                (window.NEXUS_REPLY_CLEAN?.maskStreaming || ((t) => t))(
+                    (window.NEXUS_PLAYGROUND_REACTIVE?.maskStreaming || ((t) => t))(
+                        window.NEXUS_MOTION ? window.NEXUS_MOTION.maskStreaming(accumulated) : accumulated
+                    )
                 )
             );
         });
@@ -4630,13 +4632,19 @@ function _applyEmotionFromText(text) {
  * a phrase spoken while streaming and the final text compare like for like.
  */
 function __nexusTextForSpeech(rawText) {
+    let text = rawText;
+    try {
+        if (window.NEXUS_REPLY_CLEAN && typeof window.NEXUS_REPLY_CLEAN.stripThought === 'function') {
+            text = window.NEXUS_REPLY_CLEAN.stripThought(text);
+        }
+    } catch (_) {}
     try {
         if (window.NEXUS_SPEECH_TEXT) {
             const lang = (window.SpeechSettings?.lang || window.AppLanguage?.get?.() || 'en').slice(0, 2);
-            return window.NEXUS_SPEECH_TEXT.forSpeech(rawText, { lang }) || '';
+            return window.NEXUS_SPEECH_TEXT.forSpeech(text, { lang }) || '';
         }
     } catch (_) {}
-    return rawText;
+    return text == null ? '' : String(text);
 }
 
 /**

@@ -67,9 +67,13 @@
     const BARE =
         /^(?:(?:can|could|would|will)\s+(?:you|u)\s+)?(?:please\s+)?(?:play|start|put on)?\s*(?:the\s+)?(?:first|1st|fist|second|2nd|third|3rd|fourth|4th|fifth|5th|last)\s*(?:one|song|track|video)?\s*(?:please)?[.!]?$/i;
 
-    /** Verbs that mean *start it now*. */
+    /**
+     * Verbs that mean *start it now*, including the Italian ones a Private evening
+     * actually hears. A leading "sì" is how a person agrees — "Sì, suona Daft Punk ora"
+     * is a request, not a new sentence the verb list should miss.
+     */
     const EXECUTE =
-        /^(?:(?:can|could|would|will)\s+(?:you|u)\s+)?(?:please\s+)?(?:play|put on|start|queue up|execute|reproduce|listen to)\b/i;
+        /^(?:(?:sì|si|yes|yeah|yep|ok|okay|certo|va bene|volentieri)[,!]?\s+)*(?:(?:can|could|would|will|puoi|potresti)\s+(?:you|u|tu)\s+)?(?:please\s+|per favore\s+)?(?:play|put on|start|queue up|execute|reproduce|listen to|suona(?:re)?|metti(?:\s+su)?|riproduci|riprodurre|ascolta(?:re)?|fai partire|avvia)\b/i;
 
     /**
      * Transport commands, and the states they mean.
@@ -80,6 +84,15 @@
      * carries on.
      */
     const TRANSPORT = [
+        [
+            /^(?:(?:puoi|potresti)\s+)?(?:per favore\s+)?(?:ferma|stoppa|spegni)(?:\s+la)?(?:\s+musica|\s+canzone|\s+brano)\s*(?:per favore)?[.!]?$/i,
+            'stop',
+        ],
+        [/^(?:basta(?:\s+con)?(?:\s+la)?\s+musica)\s*[.!]?$/i, 'stop'],
+        [
+            /^(?:(?:puoi|potresti)\s+)?(?:per favore\s+)?(?:metti in pausa|pausa)(?:\s+la\s+musica)?\s*(?:per favore)?[.!]?$/i,
+            'pause',
+        ],
         [
             /^(?:(?:can|could|would|will)\s+(?:you|u)\s+)?(?:please\s+)?(?:stop|turn (?:it|the \w+) off|shut it off|silence|end)(?:\s+(?:it|this|that|the\s+\w+))?\s*(?:please)?[.!]?$/i,
             'stop',
@@ -201,6 +214,53 @@
         return null;
     }
 
+    /**
+     * A question about taste is not a request to start anything.
+     * "Che musica ti piace?" names music and still must not play.
+     */
+    function preferenceQuestion(text) {
+        const t = String(text == null ? '' : text).trim();
+        if (!t) return false;
+        if (
+            !/\b(?:ti piace|do you like|preferisci|che musica|what music|which music|quale musica|che canzone)\b/i.test(
+                t
+            )
+        ) {
+            return false;
+        }
+        return !/\b(?:suona|metti|play|riproduci|put on|avvia)\b/i.test(t);
+    }
+
+    /** The words to search for, with the politeness and the "ora" taken off. */
+    function queryOf(text) {
+        let t = String(text == null ? '' : text).trim();
+        t = t.replace(/^(?:(?:sì|si|yes|yeah|yep|ok|okay|certo|va bene|volentieri)[,!]?\s+)+/i, '');
+        t = t.replace(
+            /^(?:(?:can|could|would|will|puoi|potresti)\s+(?:you|u|tu)\s+)?(?:please\s+|per favore\s+)?(?:play|put on|start|queue up|execute|reproduce|listen to|suona(?:re)?|metti(?:\s+su)?|riproduci|riprodurre|ascolta(?:re)?|fai partire|avvia)\s+/i,
+            ''
+        );
+        t = t.replace(/\b(?:ora|adesso|now|please|per favore|per noi|subito|grazie)\b[.!?\s]*$/i, '');
+        t = t.replace(/[.!?]+$/g, '').trim();
+        return t || null;
+    }
+
+    /**
+     * A Private music action, or null when the sentence is conversation.
+     * Transport wins over play, so "ferma la musica" never starts a search.
+     */
+    function privateRequest(text) {
+        const t = String(text == null ? '' : text).trim();
+        if (!t || preferenceQuestion(t)) return null;
+        const move = transport(t);
+        if (move === 'stop') return { kind: 'music.stop', args: {} };
+        if (move === 'pause') return { kind: 'music.pause', args: {} };
+        if (move === 'resume') return { kind: 'music.play', args: { resume: true } };
+        if (action(t) !== 'execute') return null;
+        const query = queryOf(t);
+        if (!query) return null;
+        return { kind: 'music.play', args: { query } };
+    }
+
     const api = {
         ORDINALS,
         NUMBERED,
@@ -213,6 +273,9 @@
         resolve,
         action,
         transport,
+        preferenceQuestion,
+        queryOf,
+        privateRequest,
     };
 
     if (typeof module !== 'undefined' && module.exports) {

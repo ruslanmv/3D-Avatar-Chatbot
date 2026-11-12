@@ -1072,6 +1072,68 @@ const PrivateConversationView = (() => {
                 return false;
             }
         }
+        /**
+         * A music or outfit line inside this card.
+         *
+         * It lives in the session row, beside the soundtrack, so a phone and a headset
+         * see the same surface the desktop conversation already has. A second panel
+         * would be a second place to lose the evening. Nothing here is written into
+         * the session history: that array is the transcript, and a status line is not
+         * a turn.
+         */
+        showSeamlessStatus({ kicker, title, detail, undoLabel, onUndo, playLabel, onPlay } = {}) {
+            if (!this.row || !this.doc) return null;
+            let node = this.row.querySelector('.nexus-private-seamless');
+            if (!node) {
+                node = this.doc.createElement('div');
+                node.className = 'nexus-private-seamless';
+                node.setAttribute('role', 'status');
+                node.style.cssText =
+                    'margin:0 14px 8px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.05);display:grid;gap:3px;';
+                const slot = this.row.querySelector('.nexus-private-soundtrack');
+                if (slot && slot.parentNode) slot.parentNode.insertBefore(node, slot);
+                else if (this.shell) this.shell.appendChild(node);
+                else this.row.appendChild(node);
+            }
+            node.textContent = '';
+            const add = (className, text) => {
+                const body = String(text == null ? '' : text).trim();
+                if (!body) return;
+                const line = this.doc.createElement('div');
+                line.className = className;
+                line.textContent = body;
+                node.appendChild(line);
+            };
+            add('nexus-private-seamless-kicker', kicker);
+            add('nexus-private-seamless-title', title);
+            add('nexus-private-seamless-detail', detail);
+            if ((undoLabel && onUndo) || (playLabel && onPlay)) {
+                const actions = this.doc.createElement('div');
+                actions.className = 'nexus-private-seamless-actions';
+                const button = (label, run, name) => {
+                    const el = this.doc.createElement('button');
+                    el.type = 'button';
+                    el.className = 'nexus-private-seamless-' + name;
+                    el.textContent = String(label);
+                    el.addEventListener('click', () => {
+                        try {
+                            run();
+                        } catch (_) {
+                            /* the button is a retry, not a crash */
+                        }
+                    });
+                    actions.appendChild(el);
+                };
+                if (playLabel && typeof onPlay === 'function') button(playLabel, onPlay, 'play');
+                if (undoLabel && typeof onUndo === 'function') button(undoLabel, onUndo, 'undo');
+                node.appendChild(actions);
+            }
+            return node;
+        }
+        clearSeamlessStatus() {
+            const node = this.row && this.row.querySelector('.nexus-private-seamless');
+            if (node) node.remove();
+        }
         showComplete({ onAgain, onBack } = {}) {
             if (!this.row || !this.card) return;
             this.row.classList.add('is-complete');

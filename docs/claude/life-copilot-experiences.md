@@ -98,6 +98,14 @@ she is switched into. `src/companion/` (IIFE, loaded by `boot.js`) holds them.
   `ActivityDirective`, the sixth capability instance — suffixed only while
   Together is on, consumed at both `displayText` seams. A Together activity is
   ended silently on reload; nothing claims to be running after it stopped.
+- **Private music and clothing stay inside the session (SAE).** A `<play>` tag
+  during Private is not given to the ordinary publisher. After the person asks,
+  `PrivateActionBridge` runs `PrivateMediaController`, which searches and draws
+  on the session's own soundtrack strip, and reports playback only once the
+  player confirms it. `YouTubeAsk` does not intercept while Private is running,
+  so the sentence still reaches the session. Outfit changes go through
+  `InSceneWardrobe` rather than opening Try-On Haul. Ending the session cancels
+  anything still in flight. The consent level is not a side effect of either.
 - **Music in sessions is meant to be heard (MV1).** The person found it too low:
   scene loops play at `SceneJourney.AMBIENT_VOLUME` 0.7 (was 0.35), Private's
   soundtrack at 40 / softened 26 (was 15 / 10), and a story's narration ducks

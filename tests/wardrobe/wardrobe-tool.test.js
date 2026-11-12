@@ -149,6 +149,30 @@ describe('WardrobeTool — the tag', () => {
         expect(Tool.scrub('Sure.\nwardrobe action="keep"')).toBe('Sure.');
     });
 
+    test('during Private the call stays in the scene and does not open Try-On', async () => {
+        const a = activity();
+        const scene = { execute: jest.fn(async () => ({ ok: true, why: '', status: 'completed' })) };
+        window.NEXUS_TOGETHER_CAPABILITY = { privateSessionActive: () => true };
+        window.NEXUS_IN_SCENE_WARDROBE = scene;
+        const out = await Tool.call(
+            'wardrobe_wear',
+            { outfit: 'little-black-dress' },
+            { activity: a, source: 'assistant' }
+        );
+        expect(out.ok).toBe(true);
+        expect(a.request).not.toHaveBeenCalled();
+        expect(scene.execute).toHaveBeenCalledWith(
+            'wardrobe_wear',
+            { outfit: 'little-black-dress' },
+            expect.objectContaining({ source: 'assistant', activity: a })
+        );
+        delete window.NEXUS_TOGETHER_CAPABILITY;
+        delete window.NEXUS_IN_SCENE_WARDROBE;
+        const again = await Tool.call('wardrobe_wear', { outfit: 'little-black-dress' }, { activity: a });
+        expect(a.request).toHaveBeenCalledWith('wear', { outfit: 'little-black-dress' });
+        expect(again.ok).toBe(true);
+    });
+
     test('the switch is re-read when the tag runs, not when the prompt was built', async () => {
         const a = activity();
         Tool.setEnabled(false);

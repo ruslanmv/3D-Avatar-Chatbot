@@ -240,7 +240,11 @@
         // always true outside Private, so ordinary ambience is unaffected.
         const together = opts.capability || (global && global.NEXUS_TOGETHER_CAPABILITY) || null;
         try {
-            if (together && typeof together.privateChangeAllowed === 'function' && !together.privateChangeAllowed()) {
+            if (
+                together &&
+                typeof together.privateChangeAllowed === 'function' &&
+                !together.privateChangeAllowed('scene')
+            ) {
                 console.warn('[SceneAmbience] a scene change was requested inside Private — refused');
                 return extracted.clean;
             }

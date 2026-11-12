@@ -39,7 +39,7 @@
 
     /** A line that announces itself as reasoning. Bold markdown around the label is common. */
     const MARKER =
-        /^\s*(?:\*\*|__)?(?:thoughts?|thinking|reasoning|analysis|internal monologue|inner monologue|plan)(?:\*\*|__)?\s*:\s*/i;
+        /^\s*(?:\*\*|__)?(?:thoughts?|think(?:ing)?|reasoning|analysis|internal monologue|inner monologue|plan)(?:\*\*|__)?\s*:\s*/i;
 
     /** Sentences that talk about the reply instead of being it. English: that is how they arrive. */
     const META =
@@ -177,6 +177,32 @@
     }
 
     /**
+     * What may be on screen while a reply is still arriving.
+     *
+     * A finished `<play>` or `<wardrobe>` tag, a half-written one, and a leading
+     * THINK / THOUGHT paragraph are instructions to the app. The bubble that updates
+     * on every token would otherwise read them out, and so would a speech stream
+     * that spoke the same buffer. The final seam still consumes the original text,
+     * so hiding it here does not skip the action.
+     */
+    function maskStreaming(text) {
+        let s = String(text == null ? '' : text);
+        if (MARKER.test(s) || UNMARKED.test(s)) {
+            // The answer, when the model splits it off, is the paragraph after the plan.
+            // Until that break exists the buffer is still the plan.
+            if (!/\n\s*\n/.test(s)) return '';
+            s = stripThought(s);
+        }
+        s = s.replace(/```[\s\S]*$/g, '');
+        s = s.replace(/<play\b[\s\S]*?<\/play\s*>/gi, ' ');
+        s = s.replace(/<wardrobe\b[\s\S]*?(?:<\/wardrobe\s*>|\/>)/gi, ' ');
+        // A directive that has not closed yet, including the words already inside it.
+        s = s.replace(/<(?:play|wardrobe)\b[\s\S]*$/i, ' ');
+        s = s.replace(/<[^>\n]{0,200}$/g, '');
+        return s.replace(/[ \t]{2,}/g, ' ').trim();
+    }
+
+    /**
      * Everything a line posted outside the main chat seam needs before anyone sees or hears it.
      * Never throws; never returns more than it was given.
      */
@@ -195,7 +221,7 @@
             .trim();
     }
 
-    const api = { MARKER, META, UNMARKED, stripThought, fromReasoning, forDisplay, looksEnglish };
+    const api = { MARKER, META, UNMARKED, stripThought, fromReasoning, forDisplay, maskStreaming, looksEnglish };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_REPLY_CLEAN = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);
