@@ -105,7 +105,9 @@ creating looks (WF1)** — see the Forge bullet below.
   origin; if either changes, Test connection in Settings says so.
 - **A clothing change during Private stays in the scene (SAE).**
   `InSceneWardrobe` wears a saved look through `WardrobeService` /
-  `WardrobeController` and never starts Try-On Haul. `WardrobeTool.call` takes
+  `service.controller` (that is where Bootstrap puts the controller) and never
+  starts Try-On Haul. A new look is generated with a `TryOnGenerator` instance,
+  built from the exported class and that same service. `WardrobeTool.call` takes
   that path only while a Private session is running; every other caller still
   reaches the haul. Autonomy (`nexus_private_wardrobe_autonomy`, default
   `suggest`), mature categories and whether the look survives Private live in

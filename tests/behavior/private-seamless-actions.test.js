@@ -96,6 +96,8 @@ afterEach(() => {
     delete window.NEXUS_PRIVATE_MEDIA;
     delete window.NEXUS_IN_SCENE_WARDROBE;
     delete window.NEXUS_MEDIA_COMMAND;
+    delete window.NEXUS_WARDROBE;
+    delete window.NEXUS_TRY_ON_GENERATOR;
     delete window.NEXUS_MEDIA_SESSION;
     delete window.NEXUS_MEDIA_INTENT;
     delete window.NEXUS_CONVERSATION_PUBLISHER;
@@ -341,6 +343,73 @@ describe('clothes change inside the scene', () => {
         expect(max).toBeLessThanOrEqual(1);
         expect(worn[worn.length - 1]).toBe('little-black-dress');
         expect(results.some((item) => item.reason === 'superseded' || item.ok)).toBe(true);
+    });
+
+    test('a clothing noun or “put on” a song is not a wardrobe command', () => {
+        expect(Policy.wardrobeRequest('I like your dress')).toBeNull();
+        expect(Policy.wardrobeRequest("I'm gonna stay here")).toBeNull();
+        expect(Policy.wardrobeRequest('Put on Daft Punk')).toBeNull();
+        expect(Policy.wardrobeRequest('metti del jazz')).toBeNull();
+        expect(Command.privateRequest('Put on Daft Punk')).toEqual(
+            expect.objectContaining({ kind: 'music.play', args: expect.objectContaining({ query: 'Daft Punk' }) })
+        );
+        const bridge = { execute: jest.fn(() => Promise.resolve({ ok: true, status: 'completed' })) };
+        window.NEXUS_PRIVATE_ACTION_BRIDGE = bridge;
+        Capability.noteUserTurn('Put on Daft Punk');
+        expect(bridge.execute).toHaveBeenCalledWith(
+            expect.objectContaining({
+                kind: 'music.play',
+                source: 'user',
+                args: expect.objectContaining({ query: 'Daft Punk' }),
+            })
+        );
+        expect(Capability.privateActionAllowed('wardrobe')).toBe(false);
+        Capability.resetChangeWindow();
+        bridge.execute.mockClear();
+        Capability.noteUserTurn("I'm gonna stay here");
+        expect(bridge.execute).not.toHaveBeenCalled();
+        const dress = Policy.wardrobeRequest('Mettiti un vestito elegante');
+        expect(dress.kind).toBe('wardrobe.wear');
+        expect(dress.args.occasion).toBe('elegant');
+        expect(Policy.wardrobeRequest('Put on the black dress').kind).toBe('wardrobe.wear');
+    });
+
+    test('the page wardrobe service is where the controller and the generator live', async () => {
+        const controller = {
+            applyLook: jest.fn(async (look) => look),
+            original: { url: 'https://example.com/her.vrm' },
+            restore: jest.fn(async () => true),
+        };
+        const created = [];
+        function TryOnGenerator(options) {
+            this.service = options.service;
+            this.create = async (prompt) => {
+                created.push({ prompt, service: options.service });
+                return { name: prompt, vrmUrl: 'https://example.com/made.vrm' };
+            };
+        }
+        const service = { controller, listLooks: async () => [DRESS] };
+        window.NEXUS_WARDROBE = { config: {}, service, panel: {} };
+        window.NEXUS_TRY_ON_GENERATOR = { TryOnGenerator, TryOnError: function TryOnError() {} };
+        const session = Capability.privateSessionSnapshot();
+        const worn = await Wardrobe.execute(
+            'wardrobe_wear',
+            { outfit: 'little-black-dress' },
+            { source: 'user', session, looks: [DRESS], eligibility: { mode: 'open' } }
+        );
+        expect(worn.ok).toBe(true);
+        expect(controller.applyLook).toHaveBeenCalledWith(expect.objectContaining({ id: 'little-black-dress' }));
+
+        const made = await Wardrobe.execute(
+            'wardrobe_create',
+            { prompt: 'black satin dress' },
+            { source: 'user', session, looks: [], eligibility: { mode: 'open' } }
+        );
+        expect(made.ok).toBe(true);
+        expect(created).toEqual([expect.objectContaining({ prompt: 'black satin dress', service })]);
+        expect(controller.applyLook).toHaveBeenCalledWith(
+            expect.objectContaining({ vrmUrl: 'https://example.com/made.vrm' })
+        );
     });
 
     test('“Fammi vedere diversi vestiti” does not navigate and does not grant a wear', () => {

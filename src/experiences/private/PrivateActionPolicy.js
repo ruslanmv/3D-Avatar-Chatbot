@@ -99,12 +99,20 @@
         };
     }
 
+    /** A garment is named, not merely a word that happens to contain one ("gonna" / "I'm gonna"). */
+    var CLOTHING_NOUN =
+        /\b(?:vestito|vestiti|abito|abiti|outfit|outfits|dress(?:es)?|jeans|clothes|abbigliamento)\b|\b(?:la|una|the|a|my)\s+gonna\b/i;
+
     /**
-     * A sentence about clothes, or null.
+     * A sentence that asks her to change clothes, or null.
      *
      * Offer is deliberately not a wear. "Show me several outfits" is an invitation
      * to open Try-On later, and answering it by navigating there — or by dressing
      * her — takes the choice away. Undo and an explicit wear are requests.
+     *
+     * A clothing noun by itself is conversation ("I like your dress"). "Put on" and
+     * "metti" are also how a person starts a song, so they count as clothes only
+     * when a garment is named. "Put on Daft Punk" stays a music request.
      */
     function wardrobeRequest(text) {
         var said = String(text == null ? '' : text).trim();
@@ -119,17 +127,16 @@
             return { kind: 'wardrobe.undo', args: {} };
         }
         var choose = /\b(?:scegli tu|you choose|pick (?:an |the )?outfit|scegli cosa|qualcosa di tuo)\b/i.test(said);
-        var wear =
+        var command =
             choose ||
-            /\b(?:mettiti|indossa|cambiati|wear|change into|put on)\b/i.test(said) ||
-            /\b(?:vestito|abito|outfit|dress|gonna|jeans)\b/i.test(said);
-        if (!wear) return null;
-        if (
-            /\b(?:put on|metti|play|suona)\b/i.test(said) &&
-            /\b(?:music|musica|song|canzone|brano|track)\b/i.test(said)
-        ) {
-            return null;
-        }
+            /\b(?:mettiti|indossa|cambiati)\b/i.test(said) ||
+            /(?:^|\b(?:please|per favore)\s+)(?:wear|change into)\b/i.test(said) ||
+            /\b(?:can you|could you|puoi)\s+(?:wear|change into)\b/i.test(said);
+        var named = CLOTHING_NOUN.test(said);
+        var putOn = /\b(?:put on|metti)\b/i.test(said);
+        var musicNamed = /\b(?:music|musica|song|canzone|brano|track)\b/i.test(said);
+        if (musicNamed && !named) return null;
+        if (!command && !(putOn && named)) return null;
         var occasion = null;
         if (/\b(?:elegant\w*|elegante|formale|gown|black tie)\b/i.test(said)) occasion = 'elegant';
         else if (/\b(?:comodo|comoda|comfort\w*|cozy|rilass\w*|casual)\b/i.test(said)) occasion = 'comfortable';

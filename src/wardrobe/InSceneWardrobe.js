@@ -232,11 +232,59 @@
         return wearable[0] || ranked[0] || null;
     }
 
+    function serviceOf(deps) {
+        if (deps && deps.service) return deps.service;
+        var wardrobe = pick('NEXUS_WARDROBE');
+        return (wardrobe && wardrobe.service) || null;
+    }
+
+    /**
+     * The controller that can actually swap the avatar.
+     *
+     * Bootstrap publishes `{ config, service, panel }`. The controller lives on the
+     * service (`service.controller`), which is also where `applyLook` and `restore`
+     * already go. A top-level `wardrobe.controller` is accepted for a test double
+     * and is not what the page sets.
+     */
+    function controllerOf(deps) {
+        if (deps && deps.controller) return deps.controller;
+        var service = serviceOf(deps);
+        if (service && service.controller) return service.controller;
+        var wardrobe = pick('NEXUS_WARDROBE');
+        return (wardrobe && wardrobe.controller) || null;
+    }
+
+    /**
+     * A generator that has `create`, built the way the haul builds one.
+     *
+     * The page global is `{ TryOnGenerator, TryOnError, ... }`. `create` is a method
+     * of an instance that needs the wardrobe service, so the export itself cannot
+     * be called. An injected object that already has `create` is used as it is.
+     */
+    function generatorOf(deps) {
+        var given = deps && deps.generator;
+        if (given && typeof given.create === 'function') return given;
+        var exported = given || pick('NEXUS_TRY_ON_GENERATOR');
+        if (!exported) return null;
+        if (typeof exported.create === 'function') return exported;
+        var Ctor = exported.TryOnGenerator;
+        if (typeof Ctor !== 'function') return null;
+        try {
+            return new Ctor({
+                service: serviceOf(deps),
+                identity: pick('NEXUS_AVATAR_IDENTITY'),
+                reasons: pick('NEXUS_TRY_ON_REASONS'),
+            });
+        } catch (_) {
+            return null;
+        }
+    }
+
     async function materialise(look, deps, sessionId, mine) {
         if (!look) return null;
         if (look.vrmUrl || look.vrm_url) return look;
         if (mine !== job || !still(deps, sessionId)) return null;
-        var generator = (deps && deps.generator) || pick('NEXUS_TRY_ON_GENERATOR');
+        var generator = generatorOf(deps);
         var prompt = (look.request && look.request.prompt) || look.prompt || look.title || '';
         if (!generator || typeof generator.create !== 'function' || !prompt) return null;
         try {
@@ -281,12 +329,6 @@
             return false;
         }
         return false;
-    }
-
-    function controllerOf(deps) {
-        if (deps && deps.controller) return deps.controller;
-        var wardrobe = pick('NEXUS_WARDROBE');
-        return (wardrobe && wardrobe.controller) || null;
     }
 
     async function execute(name, args, deps) {
