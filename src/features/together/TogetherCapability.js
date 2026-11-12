@@ -294,9 +294,11 @@
         /\b(?:instrumental|ambient|slow|soft|piano|lounge|jazz|romantic|calm|candle\w*|evening|night|late|gentle|sensual|intimate|chill)\b/i;
 
     function pickPrivateTrack(found) {
+        // Private is explicitly opted in, but even then an unsuitable recommendation should
+        // never become the soundtrack. Search-ranking position is not evidence of mood.
+        // Prefer silence over the first unrelated hit.
         const list = Array.isArray(found) ? found.filter((r) => r && !OFF_MOOD.test(String(r.title || ''))) : [];
-        if (!list.length) return null;
-        return list.find((r) => IN_MOOD.test(String(r.title || ''))) || list[0];
+        return list.find((r) => IN_MOOD.test(String(r.title || ''))) || null;
     }
 
     function cleanText(value, max) {
