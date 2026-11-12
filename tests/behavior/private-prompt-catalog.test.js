@@ -69,8 +69,10 @@ describe('a complete native-language Private authoring catalog', () => {
 
     test('Italian is authored in Italian, including the level and easing lines', () => {
         const plan = Beats.fallbackPlan({ id: 'sensual', maxLevel: 3 }, { locale: 'it-IT', rng: () => 0 });
-        expect(plan.opening).toMatch(/Possiamo|voce|tempo/);
-        expect(plan.middle.tender).toMatch(/calma|qui|stare/i);
+        // AX20: the property, not particular words — the lines were rewritten and will be again.
+        const Scorer = require('../../tools/qa/CharacterQualityScorer.js');
+        for (const line of [plan.opening, plan.middle.tender, plan.middle.playful, plan.closing.tender])
+            expect(Scorer.languageOf(line)).toBe('it');
         expect(plan.easeLines[1]).toMatch(/Certo|tranquillo/);
         expect(plan.opening).not.toMatch(/I want this|Let's|You decide/);
         expect(Beats.plannerSystemPrompt({ id: 'romantic', maxLevel: 2 }, 'it-IT')).toMatch(/Scrivi battute/);
