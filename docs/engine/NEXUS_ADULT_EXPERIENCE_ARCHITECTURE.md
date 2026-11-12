@@ -123,44 +123,40 @@ real ConsentFlow, provider capability resolution, no unsolicited escalation, sto
 leakage, context, languages, honest unavailability. The P22 length tests in
 `tests/behavior/private-register.test.js` were rewritten to the new policy's properties.
 
-## Turning Intenso on (AX21)
+## Intenso: on by default, and how to turn it off (AX21–AX22)
 
-Intenso is the fourth Private style (`id: mature`, four steps). Every build in this repository
-ships it **locked**: the setup screen shows the card disabled with one reason, and
-`Intimate.start()` refuses it. It unlocks only when all three of these are true, checked again at
-Start (not trusted from the setup screen):
+Intenso is the fourth Private style (`id: mature`, four steps). Since AX22 it is offered wherever
+Private itself is available: the default content tier is `mature`, and Private is already behind
+the person's own gate (Private Mode on, with its age confirmation). The server's age attestation
+is **not** required for it. That is the owner's decision; note that the person's gate is a
+client-side self-declaration, not verification — a site that must verify age by law needs its own
+check in front of the app.
 
-1. **The site declares the level** for the provider in use, before the app boots:
+To take it away, the site declares less before the app boots:
 
-   ```html
-   <script>
-       window.NEXUS_ADULT_EXPERIENCE_CONFIG = {
-           contentTier: 'mature',
-           providers: { ollabridge: 'mature' }, // only the provider(s) whose terms you checked
-       };
-   </script>
-   ```
+```html
+<script>
+    window.NEXUS_ADULT_EXPERIENCE_CONFIG = { contentTier: 'sensual' };
+    // or for one provider only: { providers: { openai: 'sensual' } }
+</script>
+```
 
-   Declare a provider only after reading its current terms for the model it actually serves. A
-   provider that is not named keeps the `sensual` default.
+The setup screen then shows the card disabled ("Not enabled on this site") and
+`Intimate.start()` refuses it. A declaration that cannot be read (a mistyped tier) resolves to
+`sensual`, never to the default above it.
 
-2. **The server attests the person is an adult.** Only `SessionAdapter` writes
-   `blackboard.adultVerified`, from the server's message. The in-app Private Mode switch never
-   stands in for it; without it nothing above `sensual` resolves
-   (`limitedBy: needs-server-attestation`, shown on the card as "Requires age verification").
-
-3. **Private Mode is on** for the person, as for every Private style.
-
-What Intenso changes once unlocked: four steps instead of three, all moved by the person; the
-step-4 register and example lines (`PrivateVoice` `intense`, nine languages); six sentences for a
-scene or a request from step 3 (`PrivateExperienceProfile.maxSentences`, the single source for the
-prompt and for `shapePrivateReply`); the `intimate` animation intents of `adult.profile` level 4.
+What Intenso changes: four steps instead of three, all moved by the person; the step-4 register
+and example lines (`PrivateVoice` `intense`, nine languages); six sentences for a scene or a
+request from step 3 (`PrivateExperienceProfile.maxSentences`, the single source for the prompt and
+for `shapePrivateReply`); the `intimate` animation intents of `adult.profile` level 4.
 
 What it does not change: she never initiates, the proactive lines stay non-explicit
 (`proactiveNsfw: false`), "cozy" and "stop" work as everywhere, care mode replaces the whole
-register, and a provider's refusal is said once in her voice and never worked around.
+register, and a provider's refusal is said once in her voice and never worked around. What a model
+will actually write at step 4 is the provider's policy, not this app's.
 
 Use one model for the whole session (not a route that switches backends per turn): her voice at
 step 4 depends on it more than anything in the prompt.
 
-The `explicit` tier is separate, uses the same two locks, and is not part of AX21.
+The `explicit` tier is separate: it still needs the site's declaration for the provider in use
+**and** the server's attestation, and no style uses it yet.

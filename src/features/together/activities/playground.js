@@ -93,7 +93,8 @@ const PlaygroundActivity = (() => {
             maxLevel: 3,
         }),
         // AX1. Offered only where the session's content capability reaches `mature`
-        // (PrivateExperienceProfile.styleAvailable) — deployment-, provider- and server-declared.
+        // (PrivateExperienceProfile.styleAvailable). AX22: that is the default, so it is offered
+        // wherever Private is, unless the site declared a lower level.
         Object.freeze({
             id: 'mature',
             label: 'Intense',
@@ -2196,9 +2197,9 @@ const PlaygroundActivity = (() => {
          * reads `inputs()` (the panel's default option, starting from chat, the wizard) treats an
          * entry as something it may start. This grants nothing; `start()` asks the gate again.
          *
-         * `why` is `age` when the site declared the level and only the server's age attestation is
-         * missing, `site` otherwise (nothing declared, or the provider in use is not declared for
-         * it) — the two things a person can be told truthfully.
+         * AX22: Intenso is offered by default, so this is empty unless the site declared a lower
+         * level (`why: 'site'`). `age` is for a style that needs the server's attestation — none
+         * of today's four does; it is here for the one that will.
          */
         lockedInputs() {
             const gate = this.availability();

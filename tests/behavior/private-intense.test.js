@@ -1,5 +1,6 @@
 /**
- * AX21. Intenso: the fourth style, visible but locked until the site and the server unlock it, with
+ * AX21–AX22. Intenso: the fourth style, offered wherever Private is (locked only by a site that
+ * declares less), with
  * a voice of its own at step 4 and room for a scene the person asked for. Against the real profile,
  * voice packs, catalog and Intimate activity; every fixture line is non-explicit.
  */
@@ -37,9 +38,17 @@ afterEach(() => {
         delete window[k];
 });
 
-describe('the card: shown locked, never startable until both locks open', () => {
-    test('nothing declared: three styles to choose, Intenso listed as locked by the site', async () => {
+describe('the card: offered wherever Private is, locked only where the site declared less (AX22)', () => {
+    test('nothing declared, no server attestation: four styles, Intenso with four steps, nothing locked', async () => {
         const a = activity({ adultVerified: false, nsfwAllowed: true });
+        expect(a.inputs().map((i) => i.id)).toEqual(['affectionate', 'romantic', 'sensual', 'mature']);
+        expect(a.inputs().find((i) => i.id === 'mature')).toEqual(expect.objectContaining({ maxLevel: 4 }));
+        expect(a.lockedInputs()).toEqual([]);
+    });
+
+    test('a site that declared a lower level: Intenso is drawn locked and cannot be started', async () => {
+        window.NEXUS_ADULT_EXPERIENCE_CONFIG = { contentTier: 'sensual' };
+        const a = activity({ adultVerified: true, nsfwAllowed: true });
         expect(a.inputs().map((i) => i.id)).toEqual(['affectionate', 'romantic', 'sensual']);
         expect(a.lockedInputs()).toEqual([expect.objectContaining({ id: 'mature', locked: true, why: 'site' })]);
         const started = await a.start({ input: { id: 'mature' } });
@@ -47,27 +56,14 @@ describe('the card: shown locked, never startable until both locks open', () => 
         expect(a.active).toBe(false);
     });
 
-    test('declared by the site but no server age attestation: locked, and the reason is age', async () => {
-        window.NEXUS_ADULT_EXPERIENCE_CONFIG = { contentTier: 'mature', providers: { ollabridge: 'mature' } };
-        const a = activity({ adultVerified: false, nsfwAllowed: true });
-        expect(a.lockedInputs()).toEqual([expect.objectContaining({ id: 'mature', why: 'age' })]);
-        expect((await a.start({ input: { id: 'mature' } })).ok).toBe(false);
-    });
-
-    test('declared and attested: offered with four steps, and nothing is left locked', () => {
-        window.NEXUS_ADULT_EXPERIENCE_CONFIG = { contentTier: 'mature', providers: { ollabridge: 'mature' } };
-        const a = activity({ adultVerified: true, nsfwAllowed: true });
-        expect(a.inputs().find((i) => i.id === 'mature')).toEqual(expect.objectContaining({ maxLevel: 4 }));
-        expect(a.lockedInputs()).toEqual([]);
-    });
-
-    test('Private itself unavailable: no locked card either', () => {
+    test('Private itself unavailable: no styles and no locked card', () => {
         const bus = new EventBus({ debug: false });
         const a = new PlaygroundActivity.IntimateActivity.Intimate({
             bus,
             adult: null,
             capability: () => ({ ok: false, why: 'off' }),
         });
+        expect(a.inputs()).toEqual([]);
         expect(a.lockedInputs()).toEqual([]);
     });
 });
