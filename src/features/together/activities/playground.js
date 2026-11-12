@@ -96,9 +96,9 @@ const PlaygroundActivity = (() => {
         // (PrivateExperienceProfile.styleAvailable) — deployment-, provider- and server-declared.
         Object.freeze({
             id: 'mature',
-            label: 'Mature',
+            label: 'Intense',
             permission: null,
-            note: 'An adult evening at your pace, up to the fourth step, where this site allows it.',
+            note: 'Direct and unhurried, up to the fourth step, where this site allows it.',
             maxLevel: 4,
         }),
     ]);
@@ -2188,6 +2188,28 @@ const PlaygroundActivity = (() => {
             return INTIMATE_PRESETS.filter((preset) => presetAllowed(preset, capability, P)).map((preset) => ({
                 ...preset,
                 maxLevel: P && capability ? P.ceilingFor(preset.id, capability) : preset.maxLevel,
+            }));
+        }
+        /**
+         * AX21. The styles that exist but cannot be started here, each with why — for the setup
+         * screen to draw as a locked card. Kept out of `inputs()` on purpose: everything that
+         * reads `inputs()` (the panel's default option, starting from chat, the wizard) treats an
+         * entry as something it may start. This grants nothing; `start()` asks the gate again.
+         *
+         * `why` is `age` when the site declared the level and only the server's age attestation is
+         * missing, `site` otherwise (nothing declared, or the provider in use is not declared for
+         * it) — the two things a person can be told truthfully.
+         */
+        lockedInputs() {
+            const gate = this.availability();
+            if (!gate || gate.ok === false) return [];
+            const P = experienceProfile();
+            const capability = P ? P.capabilityFor(globalObject()) : null;
+            const limited = (capability && capability.limitedBy) || [];
+            return INTIMATE_PRESETS.filter((preset) => !presetAllowed(preset, capability, P)).map((preset) => ({
+                ...preset,
+                locked: true,
+                why: limited.includes('needs-server-attestation') ? 'age' : 'site',
             }));
         }
         availability() {

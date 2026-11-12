@@ -157,7 +157,11 @@ describe('two screens, not four', () => {
         const s = setup();
         s.panel.choose('intimate');
 
-        expect(document.querySelectorAll('.nexus-private-preset')).toHaveLength(3);
+        // Three to choose; AX21 also draws the style this site has not unlocked, disabled.
+        expect(document.querySelectorAll('.nexus-private-preset[data-preset]')).toHaveLength(3);
+        expect(document.querySelectorAll('.nexus-private-preset:not([data-preset])')).toHaveLength(
+            document.querySelectorAll('.nexus-private-preset:disabled').length
+        );
         // No scene list, no music form, no duration, no progress: one decision.
         expect(document.querySelectorAll('input[name="private-scene"]')).toHaveLength(0);
         expect(document.querySelector('.nexus-private-segmented')).toBeNull();
@@ -212,7 +216,11 @@ describe('two screens, not four', () => {
         action('edit-private').click();
 
         expect(s.activity.sessionState).toBe('mood');
-        expect(document.querySelectorAll('.nexus-private-preset')).toHaveLength(3);
+        // Three to choose; AX21 also draws the style this site has not unlocked, disabled.
+        expect(document.querySelectorAll('.nexus-private-preset[data-preset]')).toHaveLength(3);
+        expect(document.querySelectorAll('.nexus-private-preset:not([data-preset])')).toHaveLength(
+            document.querySelectorAll('.nexus-private-preset:disabled').length
+        );
     });
 });
 

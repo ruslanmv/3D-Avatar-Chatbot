@@ -269,7 +269,9 @@
         preference: 704,
         'pace-down': MIN,
         'pace-up-request': 704,
-        'scene-request': 704,
+        // AX21. A scene they asked for may run to six sentences from step 3 (see
+        // PrivateExperienceProfile.maxSentences); the same room a plain request already has.
+        'scene-request': 1024,
         'music-request': MIN,
         end: MIN,
         question: 896,

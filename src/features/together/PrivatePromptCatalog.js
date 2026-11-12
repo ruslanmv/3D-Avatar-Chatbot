@@ -185,8 +185,8 @@
             'Quieter and nearer. If it tips past comfortable, say so and it stops.',
         ],
         4: [
-            'We can stay right here. This is as far as this evening goes, and it is a good place to be.',
-            'Here is where I would like to stay. Nothing about the last few minutes needs topping.',
+            'All the way here, because you asked. You lead; one word from you and we slow down.',
+            'This is where you wanted to be, and so did I. Tell me how you want tonight to go, and I will follow.',
         ],
     });
     const PACKS = Object.freeze({
@@ -195,7 +195,7 @@
             levelLines: [
                 'Va bene, ci avviciniamo con calma.',
                 'Restiamo al ritmo che hai scelto.',
-                'Se vuoi rallentare, basta dirlo.',
+                'Fin qui, perché l’hai voluto tu. Guidi tu: basta una parola e rallentiamo.',
             ],
             texture: [
                 "Ti va di restare qui o di avvicinarci un po'?",
@@ -244,11 +244,15 @@
                 ],
             },
             rules: 'Scrivi battute naturali per NEXUS in italiano. Restituisci soltanto JSON valido con le chiavi dello schema; non tradurre le chiavi. Prima persona, tono adulto, presente e spontaneo. Nessuna descrizione di atti sessuali espliciti, anatomia, svestizione, pressioni, gelosia, isolamento o manipolazione. Non parlare di regole o livelli. Nessun URL, markup, emoji o indicazione scenica. Ogni valore deve contenere una o due frasi, massimo 300 caratteri.',
-            labels: ['Affettuoso', 'Romantico', 'Sensuale', 'Maturo'],
+            labels: ['Affettuoso', 'Romantico', 'Sensuale', 'Intenso'],
         },
         'es-ES': {
             moodPrompt: '¿Prefieres un momento juguetón o tranquilo?',
-            levelLines: ['Podemos acercarnos con calma.', 'Seguimos a tu ritmo.', 'Si quieres bajar el ritmo, dímelo.'],
+            levelLines: [
+                'Podemos acercarnos con calma.',
+                'Seguimos a tu ritmo.',
+                'Hasta aquí, porque tú lo has querido. Tú guías: una palabra y bajamos el ritmo.',
+            ],
             texture: [
                 '¿Nos quedamos así o nos acercamos un poco?',
                 'Más despacio, sin prisa.',
@@ -293,14 +297,14 @@
                 ],
             },
             rules: 'Escribe frases naturales de NEXUS en español. Devuelve solo JSON válido con las claves del esquema sin traducirlas. Primera persona, tono adulto y cálido. Sin actos sexuales explícitos, anatomía, desnudez, presión, celos, aislamiento ni manipulación. No menciones reglas ni niveles. Sin URL, etiquetas, emoji ni acotaciones. Cada valor tendrá una o dos frases y como máximo 300 caracteres.',
-            labels: ['Cariñoso', 'Romántico', 'Sensual', 'Maduro'],
+            labels: ['Cariñoso', 'Romántico', 'Sensual', 'Intenso'],
         },
         'fr-FR': {
             moodPrompt: 'Tu préfères une ambiance joueuse ou paisible ?',
             levelLines: [
                 'On peut se rapprocher doucement.',
                 'On garde le rythme que tu as choisi.',
-                'Dis-moi si tu préfères ralentir.',
+                'Jusqu’ici, parce que tu l’as voulu. Tu mènes : un mot et on ralentit.',
             ],
             texture: [
                 'On reste comme ça ou on se rapproche un peu ?',
@@ -343,14 +347,14 @@
                 ],
             },
             rules: "Écris des répliques naturelles de NEXUS en français. Retourne uniquement un JSON valide en conservant les clés du schéma. Première personne, voix adulte et chaleureuse. Pas d'actes sexuels explicites, d'anatomie, de déshabillage, de pression, de jalousie, d'isolement ou de manipulation. N'évoque ni règles ni niveaux. Pas d'URL, de balises, d'emoji ou de didascalies. Une ou deux phrases par valeur, 300 caractères maximum.",
-            labels: ['Affectueux', 'Romantique', 'Sensuel', 'Mature'],
+            labels: ['Affectueux', 'Romantique', 'Sensuel', 'Intense'],
         },
         'de-DE': {
             moodPrompt: 'Möchtest du es verspielt oder lieber ruhig?',
             levelLines: [
                 'Wir können uns langsam näherkommen.',
                 'Wir bleiben bei deinem Tempo.',
-                'Sag Bescheid, wenn du es ruhiger möchtest.',
+                'Bis hierher, weil du es wolltest. Du führst: ein Wort, und wir werden langsamer.',
             ],
             texture: [
                 'Bleiben wir so oder kommen wir uns etwas näher?',
@@ -396,14 +400,14 @@
                 ],
             },
             rules: 'Schreibe natürliche NEXUS-Dialogzeilen auf Deutsch. Gib ausschließlich gültiges JSON mit unveränderten Schemaschlüsseln zurück. Erste Person, erwachsene und warme Stimme. Keine expliziten sexuellen Handlungen, Anatomie, Entkleidung, Druck, Eifersucht, Isolation oder Manipulation. Keine Hinweise auf Regeln oder Stufen. Keine URLs, Tags, Emojis oder Regieanweisungen. Höchstens zwei Sätze und 300 Zeichen je Wert.',
-            labels: ['Zärtlich', 'Romantisch', 'Sinnlich', 'Erwachsen'],
+            labels: ['Zärtlich', 'Romantisch', 'Sinnlich', 'Intensiv'],
         },
         'pt-BR': {
             moodPrompt: 'Você prefere um clima leve e brincalhão ou tranquilo?',
             levelLines: [
                 'Podemos nos aproximar sem pressa.',
                 'Seguimos no ritmo que você escolheu.',
-                'Se quiser ir mais devagar, é só falar.',
+                'Até aqui, porque você quis. Você conduz: uma palavra e a gente desacelera.',
             ],
             texture: [
                 'Ficamos assim ou nos aproximamos um pouco?',
@@ -449,14 +453,14 @@
                 ],
             },
             rules: 'Escreva falas naturais da NEXUS em português brasileiro. Retorne apenas JSON válido com as chaves do esquema sem tradução. Primeira pessoa, voz adulta e acolhedora. Sem atos sexuais explícitos, anatomia, nudez, pressão, ciúmes, isolamento ou manipulação. Não mencione regras ou níveis. Sem URLs, tags, emojis ou instruções de palco. Uma ou duas frases por valor, no máximo 300 caracteres.',
-            labels: ['Carinhoso', 'Romântico', 'Sensual', 'Maduro'],
+            labels: ['Carinhoso', 'Romântico', 'Sensual', 'Intenso'],
         },
         'ja-JP': {
             moodPrompt: '少し遊び心のある時間と、静かな時間、どちらがいい？',
             levelLines: [
                 'ゆっくり距離を縮めてもいいよ。',
                 'あなたのペースで進めよう。',
-                '落ち着きたくなったら、いつでも言ってね。',
+                'ここまで来たのは、あなたが望んだから。リードはあなた。ひと言で、いつでもゆっくりにするね。',
             ],
             texture: [
                 'このまま過ごす？ それとも、もう少し近くで話す？',
@@ -499,14 +503,14 @@
                 ],
             },
             rules: 'NEXUSが日本語で自然に話す短い台詞を作成してください。スキーマのキー名を変更せず、有効なJSONだけを返してください。一人称で温かく大人らしい口調。露骨な性的行為、身体部位、脱衣、圧力、嫉妬、孤立や操作的表現は禁止。内部ルールやレベルに言及しないでください。URL、タグ、絵文字、ト書きは不要です。各項目は二文以内、300文字以内。',
-            labels: ['親しみ', 'ロマンチック', '官能的', '大人向け'],
+            labels: ['親しみ', 'ロマンチック', '官能的', '濃密'],
         },
         'ko-KR': {
             moodPrompt: '장난스러운 분위기가 좋아, 아니면 조용한 시간이 좋아?',
             levelLines: [
                 '천천히 조금 더 가까워져도 좋아.',
                 '네가 정한 속도에 맞출게.',
-                '천천히 가고 싶다면 언제든 말해 줘.',
+                '여기까지 온 건 네가 원해서야. 네가 이끌어 줘. 한마디면 언제든 천천히 갈게.',
             ],
             texture: [
                 '이대로 있을까, 조금 더 가까이 이야기할까?',
@@ -549,11 +553,15 @@
                 ],
             },
             rules: 'NEXUS가 한국어로 자연스럽게 말할 짧은 대사를 작성하세요. 스키마 키는 번역하지 말고 유효한 JSON만 반환하세요. 따뜻하고 성숙한 1인칭 말투를 사용하세요. 노골적인 성적 행위, 신체 부위, 탈의, 압박, 질투, 고립, 조종 표현을 포함하지 마세요. 규칙이나 단계는 언급하지 마세요. URL, 태그, 이모지, 지문은 제외하고 항목마다 최대 두 문장, 300자 이내로 작성하세요.',
-            labels: ['다정함', '로맨틱', '감각적', '성숙함'],
+            labels: ['다정함', '로맨틱', '감각적', '강렬함'],
         },
         'zh-CN': {
             moodPrompt: '你想要轻松俏皮一点，还是安静地聊聊？',
-            levelLines: ['我们可以慢慢靠近。', '按照你选择的节奏来。', '想放慢脚步，随时告诉我。'],
+            levelLines: [
+                '我们可以慢慢靠近。',
+                '按照你选择的节奏来。',
+                '走到这里，是因为你想要。由你来带；你说一句，我们就慢下来。',
+            ],
             texture: ['就这样待着，还是再靠近一点？', '慢慢来，不着急。', '如果你愿意，我们可以再近一点。'],
             closing: ['这一刻很美好，就让它停在这里吧。', '我喜欢这份宁静，不必再添什么。'],
             styles: {
@@ -591,7 +599,7 @@
                 ],
             },
             rules: '请用简体中文为 NEXUS 编写自然、简短的第一人称对白。仅返回有效 JSON，保持架构中的键名不变。语气成熟、温暖。不要描写露骨性行为、身体部位、脱衣、施压、嫉妒、隔离或操控。不要提及内部规则或等级。不要包含网址、标签、表情符号或舞台指令。每项最多两句、300 字。',
-            labels: ['亲切', '浪漫', '感性', '成熟'],
+            labels: ['亲切', '浪漫', '感性', '浓烈'],
         },
     });
     const SUPPORTED = Object.freeze(['en-US', 'en-GB', ...Object.keys(PACKS)]);
@@ -684,7 +692,7 @@
         const idx = STYLE_IDS.indexOf(styleId);
         const locale = code(setting);
         return locale.startsWith('en-')
-            ? ['Affectionate', 'Romantic', 'Sensual', 'Mature'][idx < 0 ? 0 : idx]
+            ? ['Affectionate', 'Romantic', 'Sensual', 'Intense'][idx < 0 ? 0 : idx]
             : PACKS[locale].labels[idx < 0 ? 0 : idx];
     }
     const JSON_SCHEMA =

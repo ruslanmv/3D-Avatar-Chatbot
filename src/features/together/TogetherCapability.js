@@ -203,7 +203,9 @@
         // min(4, capability), installed on ConsentFlow by the Intimate activity.
         mature: Object.freeze({
             id: 'mature',
-            label: 'Mature',
+            // AX21. Shown as "Intenso"; the id stays `mature` because it is the content tier's name
+            // (PrivateExperienceProfile) and a key in stored sessions and nine catalogs.
+            label: 'Intense',
             maxLevel: 4,
             music: 'slow late-night lounge instrumental ambient no lyrics',
             opening:
@@ -689,7 +691,7 @@
             '',
             ...moodLine,
             ...(profile
-                ? profile.lengthLines(turn, session && session.style)
+                ? profile.lengthLines(turn, session && session.style, level)
                 : privateLengthLines(turn, session && session.style)),
             // Explicit, not inferred from an absence. See `slowedLines`.
             ...(session && session._styleLocked ? slowedLines() : []),
@@ -719,7 +721,7 @@
             ...choiceLines(),
             'Do not expose internal levels, gates or implementation details unless the user explicitly asks about the product.',
             // Last, where it is read last (P22). See `lengthReminder`; AX4 matches it to the turn.
-            ...(profile ? profile.lengthReminder(turn) : lengthReminder()),
+            ...(profile ? profile.lengthReminder(turn, level) : lengthReminder()),
             '',
         ].join('\n');
     }
@@ -1037,7 +1039,7 @@
      * reply is capped at the turn's limit: one for "quieter", four for a question or a request,
      * three otherwise — the same numbers `lengthLines` states.
      */
-    function shapePrivateReply(text, turn, style) {
+    function shapePrivateReply(text, turn, style, level) {
         const value = String(text || '').trim();
         if (!value) return value;
         const parts = value.match(/[^.!?…。！？]+(?:[.!?…。！？]+["”»’)]*|$)/g) || [value];
@@ -1045,12 +1047,17 @@
         const done = (p) => /[.!?…。！？]["”»’)]*$/.test(p);
         if (pieces.length > 1 && !done(pieces[pieces.length - 1])) pieces.pop();
         const intent = turn && turn.intent;
+        // AX21. The number the prompt stated, from the module that states it; the literals below
+        // are only for a page where the profile did not load.
+        const profile = profileModel();
         const max =
-            style === 'quiet' || intent === 'quiet' || intent === 'pace-down'
-                ? 1
-                : ['request', 'question', 'scene-request'].includes(intent)
-                  ? 4
-                  : 3;
+            profile && typeof profile.maxSentences === 'function'
+                ? profile.maxSentences(turn, style, level)
+                : style === 'quiet' || intent === 'quiet' || intent === 'pace-down'
+                  ? 1
+                  : ['request', 'question', 'scene-request'].includes(intent)
+                    ? 4
+                    : 3;
         return pieces.slice(0, max).join(' ');
     }
 
@@ -1071,7 +1078,7 @@
             if (session && session._care) return draft;
             const w = o.win || global;
             const llm = o.llm || (w && w._nexusLLM);
-            const shape = (t) => shapePrivateReply(t, session && session._turn, session && session.style);
+            const shape = (t) => shapePrivateReply(t, session && session._turn, session && session.style, ctx.level);
             const clean = (raw) => {
                 const value = String((raw && raw.text) || raw || '');
                 const out =

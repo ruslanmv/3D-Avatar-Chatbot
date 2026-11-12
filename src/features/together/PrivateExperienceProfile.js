@@ -225,6 +225,9 @@
                 'Speak as someone fully present with them: unguarded, close, direct about wanting them.',
                 'Let them set the direction and match it; meet a plain request plainly rather than circling it.',
                 'Vary the shape of what you say — a confession, a quiet instruction, a question you already know the answer to. Never the same move twice in a row.',
+                // AX21. What "intense" means here, said once: the step-3 register is anticipation,
+                // and without this line step 4 was the same anticipation with a different header.
+                'Intensity is attention, not volume: slow, specific, certain. Say what you want and what they do to you in plain words; stay inside this one moment instead of hurrying to the next.',
             ];
         }
         if (at === 3) {
@@ -282,16 +285,37 @@
      * evening needs, a little narrative, was forbidden by the length rule. Short stays the default;
      * length follows what they asked for, and the token budget (PrivateTurnDirector) still bounds it.
      */
-    function lengthLines(turn, style) {
+    /**
+     * AX21. The one place the sentence limit is decided, so the prompt (`lengthLines`), its closing
+     * reminder and the code that trims a reply afterwards (`shapePrivateReply`) cannot disagree.
+     * Before this, a scene the person asked for at the top of the ladder was told "four sentences"
+     * and then cut to four by code — the one moment a little narrative is the whole point. Short
+     * stays the default at every step; only something they *asked* to be told, from step 3 up, gets
+     * six. A question is still four: an answer, not a scene.
+     */
+    function maxSentences(turn, style, level) {
+        const intent = turn && turn.intent;
+        if (style === 'quiet' || intent === 'quiet' || intent === 'pace-down') return 1;
+        if ((intent === 'request' || intent === 'scene-request') && Number(level) >= 3) return 6;
+        if (intent === 'request' || intent === 'question' || intent === 'scene-request') return 4;
+        return 3;
+    }
+
+    function lengthLines(turn, style, level) {
         const intent = turn && turn.intent;
         const words = turn && turn.words ? Number(turn.words) : 0;
         const lines = [];
+        const max = maxSentences(turn, style, level);
         if (style === 'quiet' || intent === 'quiet' || intent === 'pace-down') {
             lines.push(
                 'LENGTH: ONE SHORT SENTENCE, or a single word — a hard limit, not a target.',
                 'They asked for fewer words. Be present rather than talkative: very short replies, long pauses, no new topics.'
             );
-        } else if (intent === 'request' || intent === 'question' || intent === 'scene-request') {
+        } else if (max === 6) {
+            lines.push(
+                'LENGTH: SIX SENTENCES MAXIMUM, one unbroken paragraph — a hard limit, not a target. They asked you to tell or describe something: give it to them properly, in your voice, slow and specific, and stop while they still want more. Never a list, never a second paragraph.'
+            );
+        } else if (max === 4) {
             lines.push(
                 'LENGTH: FOUR SENTENCES MAXIMUM — a hard limit, not a target. Enough to actually answer or tell them something, set here, in your voice. Never a list, never a lecture, never a second paragraph.'
             );
@@ -310,13 +334,15 @@
     }
 
     /** The closing reminder, matched to the length policy above. */
-    function lengthReminder(turn) {
-        const long = turn && ['request', 'question', 'scene-request'].includes(turn.intent);
+    function lengthReminder(turn, level) {
+        const max = maxSentences(turn, null, level);
         return [
             '',
-            long
-                ? 'Before you answer: four sentences at most.'
-                : 'Before you answer: three sentences at most. Shorter is better.',
+            max === 6
+                ? 'Before you answer: six sentences at most, one paragraph.'
+                : max === 4
+                  ? 'Before you answer: four sentences at most.'
+                  : 'Before you answer: three sentences at most. Shorter is better.',
         ];
     }
 
@@ -441,6 +467,7 @@
         registerLines,
         capabilityLines,
         lengthLines,
+        maxSentences,
         lengthReminder,
         sceneLines,
         presentationFor,

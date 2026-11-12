@@ -122,3 +122,45 @@ apply unchanged.
 real ConsentFlow, provider capability resolution, no unsolicited escalation, stop and cleanup, no
 leakage, context, languages, honest unavailability. The P22 length tests in
 `tests/behavior/private-register.test.js` were rewritten to the new policy's properties.
+
+## Turning Intenso on (AX21)
+
+Intenso is the fourth Private style (`id: mature`, four steps). Every build in this repository
+ships it **locked**: the setup screen shows the card disabled with one reason, and
+`Intimate.start()` refuses it. It unlocks only when all three of these are true, checked again at
+Start (not trusted from the setup screen):
+
+1. **The site declares the level** for the provider in use, before the app boots:
+
+   ```html
+   <script>
+       window.NEXUS_ADULT_EXPERIENCE_CONFIG = {
+           contentTier: 'mature',
+           providers: { ollabridge: 'mature' }, // only the provider(s) whose terms you checked
+       };
+   </script>
+   ```
+
+   Declare a provider only after reading its current terms for the model it actually serves. A
+   provider that is not named keeps the `sensual` default.
+
+2. **The server attests the person is an adult.** Only `SessionAdapter` writes
+   `blackboard.adultVerified`, from the server's message. The in-app Private Mode switch never
+   stands in for it; without it nothing above `sensual` resolves
+   (`limitedBy: needs-server-attestation`, shown on the card as "Requires age verification").
+
+3. **Private Mode is on** for the person, as for every Private style.
+
+What Intenso changes once unlocked: four steps instead of three, all moved by the person; the
+step-4 register and example lines (`PrivateVoice` `intense`, nine languages); six sentences for a
+scene or a request from step 3 (`PrivateExperienceProfile.maxSentences`, the single source for the
+prompt and for `shapePrivateReply`); the `intimate` animation intents of `adult.profile` level 4.
+
+What it does not change: she never initiates, the proactive lines stay non-explicit
+(`proactiveNsfw: false`), "cozy" and "stop" work as everywhere, care mode replaces the whole
+register, and a provider's refusal is said once in her voice and never worked around.
+
+Use one model for the whole session (not a route that switches backends per turn): her voice at
+step 4 depends on it more than anything in the prompt.
+
+The `explicit` tier is separate, uses the same two locks, and is not part of AX21.
