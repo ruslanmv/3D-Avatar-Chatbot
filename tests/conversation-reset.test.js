@@ -250,7 +250,13 @@ describe('the epoch — pressing CLEAR mid-reply', () => {
     test('and check it before writing anything back', () => {
         // Three places: the streaming result, the plain result, and the error path — each of
         // which appends to the transcript or persists.
-        expect(mainSrc.match(/if \(!_turnIsCurrent\(turn\)\)/g)).toHaveLength(4);
+        expect(mainSrc.match(/if \(!_turnIsCurrent\(turn\)\)/g).length).toBeGreaterThanOrEqual(4);
+        // AX19. Every await added to the pipeline is followed by the same check: the Private
+        // rewrite can take seconds, and a CLEAR in that time must still win.
+        const rewrites = [...mainSrc.matchAll(/await window\.NEXUS_TOGETHER_CAPABILITY\.privateRevise\(/g)];
+        expect(rewrites.length).toBe(2);
+        for (const r of rewrites)
+            expect(mainSrc.slice(r.index, r.index + 400)).toMatch(/if \(!_turnIsCurrent\(turn\)\)/);
     });
 
     test('the streaming fallback does not retry a cleared turn', () => {

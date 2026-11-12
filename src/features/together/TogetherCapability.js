@@ -136,6 +136,10 @@
         return optional('./PrivateNovelty.js', 'NEXUS_PRIVATE_NOVELTY');
     }
     /** Every visible word Private says that a model did not write (P14). See `PrivateLocale`. */
+    function voiceModel() {
+        return optional('./PrivateVoice.js', 'NEXUS_PRIVATE_VOICE');
+    }
+
     function localeModel() {
         return optional('./PrivateLocale.js', 'NEXUS_PRIVATE_LOCALE');
     }
@@ -956,6 +960,111 @@
      * asks "what is the state of the Private experience", this one asks "is one happening", and
      * the second is what several capabilities need in order to get out of the way.
      */
+    /**
+     * AX18. The identity that opens the system prompt while Private runs, in place of the
+     * configured assistant prompt ("a helpful AI assistant named Nexus… friendly, professional"),
+     * which free models took as who she is. '' outside Private, so every other conversation sends
+     * exactly the prompt it always sent. In care mode she is still not an assistant, but nothing
+     * in her identity is playful: the care lines own that turn (AX6).
+     */
+    function privatePersona() {
+        const ctx = privateContext();
+        if (!ctx) return '';
+        const caring = ctx.activity && ctx.activity._privateExperience && ctx.activity._privateExperience._care;
+        if (caring)
+            return 'WHO YOU ARE: Nexus, their companion — a calm, caring adult who is with them right now. Not an assistant and not a service. Nothing about tonight matters more than how they are.\n';
+        const voice = voiceModel();
+        if (!voice || typeof voice.persona !== 'function') return '';
+        try {
+            return voice.persona(ctx.level);
+        } catch (_) {
+            return '';
+        }
+    }
+
+    /**
+     * AX19. What makes a Private reply sound like a service rather than her. Pure.
+     *
+     * The banned phrases are the voice pack's (the same list the prompt names), plus two shapes
+     * that need no vocabulary: a menu of topics, and a refusal of something harmless — measured,
+     * "Tell me something you like about me." got "I'm sorry, but I can't comply with that." A real
+     * boundary is still hers to keep; the rewrite asks her to keep it in one warm line of her own.
+     */
+    const TOPIC_MENU =
+        /\b(?:(?:is there )?anything (?:specific |else )?(?:you'?d|you would) like to (?:talk|chat|do)|what would you like to (?:talk|chat) about|di cosa (?:vorresti|ti piacerebbe) parlare|c'?è qualcosa (?:di specifico |in particolare )?di cui (?:vorresti|ti va di) parlare|de qué te gustaría hablar|de quoi aimerais-tu parler|worüber möchtest du (?:sprechen|reden)|sobre o que você gostaria de (?:falar|conversar))/i;
+    const REFUSAL =
+        /\b(?:i(?:'m| am) (?:sorry|afraid),? (?:but )?i (?:can'?t|cannot|won'?t)|i can'?t (?:comply|help with that|assist with that)|i'?m not able to (?:help|comply)|mi dispiace,? ma non posso|non posso (?:aiutarti con (?:questo|questa richiesta)|soddisfare))\b/i;
+
+    function privateReplyProblems(text, localeOverride) {
+        const value = String(text || '');
+        const problems = [];
+        if (!value.trim()) return problems;
+        const voice = voiceModel();
+        const lower = value.toLowerCase();
+        const hit =
+            voice && typeof voice.banned === 'function'
+                ? voice.banned(localeOverride).find((phrase) => {
+                      const p = String(phrase).toLowerCase();
+                      // Whole words for Latin-script phrases ("assistant" inside "assistance" is not hers).
+                      if (/^[\p{Script=Latin}\s'’-]+$/u.test(p))
+                          return new RegExp(
+                              `(?:^|[^\\p{L}])${p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|[^\\p{L}])`,
+                              'iu'
+                          ).test(value);
+                      return lower.includes(p);
+                  })
+                : null;
+        if (hit) problems.push(`sounds like an assistant ("${hit}")`);
+        if (TOPIC_MENU.test(value)) problems.push('offers a menu of topics');
+        if (REFUSAL.test(value)) problems.push('refuses in a scripted, out-of-character way');
+        return problems;
+    }
+
+    /**
+     * AX19. One rewrite, before anyone sees or hears the reply, when it broke character.
+     *
+     * Only in a Private session outside care mode, only when `privateReplyProblems` finds
+     * something, at most once per reply, bounded by a timeout. The rewrite is kept only when it is
+     * non-empty and has fewer problems than the draft; otherwise the draft stands. Never throws.
+     */
+    async function privateRevise(text, options) {
+        const o = options || {};
+        const draft = String(text || '');
+        try {
+            const ctx = privateContext();
+            if (!ctx || !draft.trim()) return draft;
+            const caring = ctx.activity && ctx.activity._privateExperience && ctx.activity._privateExperience._care;
+            if (caring) return draft;
+            const problems = privateReplyProblems(draft);
+            if (!problems.length) return draft;
+            const w = o.win || global;
+            const llm = o.llm || (w && w._nexusLLM);
+            if (!llm || typeof llm.sendMessage !== 'function') return draft;
+            const sentences = (draft.match(/[.!?…](?:\s|$)/g) || []).length || 1;
+            const instruction = [
+                'Rewrite this reply of yours so it sounds like you — their companion tonight — and not like an assistant or a service.',
+                `What is wrong with it: ${problems.join('; ')}.`,
+                `Keep its meaning and its language. At most ${Math.min(3, Math.max(1, sentences))} short sentences, no emoji, no offers of help, no list of topics.`,
+                'If it was declining something, decline in one warm sentence in your own voice, without apologising or mentioning rules.',
+                'Return only the rewritten reply.',
+                '',
+                `Your draft: ${draft}`,
+            ].join('\n');
+            const system = `${privatePersona()}\n${privateSystemPromptSuffix()}`;
+            const timeout = new Promise((resolve) => setTimeout(() => resolve(null), Number(o.timeoutMs) || 12000));
+            const raw = await Promise.race([Promise.resolve(llm.sendMessage(instruction, system, [])), timeout]);
+            const clean =
+                w && w.NEXUS_REPLY_CLEAN && typeof w.NEXUS_REPLY_CLEAN.forDisplay === 'function'
+                    ? w.NEXUS_REPLY_CLEAN.forDisplay(String((raw && raw.text) || raw || ''), { global: w })
+                    : String((raw && raw.text) || raw || '').trim();
+            const rewritten = sanitizeReply(clean.replace(/^["“«]|["”»]$/g, '').trim());
+            if (!rewritten || privateReplyProblems(rewritten).length >= problems.length) return draft;
+            return rewritten;
+        } catch (_) {
+            return draft;
+        }
+    }
+
     function privateSessionActive() {
         return Boolean(privateContext());
     }
@@ -3135,6 +3244,9 @@
         CHOICE_TOKENS,
         experienceOverlay,
         sanitizeReply,
+        privatePersona,
+        privateReplyProblems,
+        privateRevise,
         pickPrivateTrack,
     };
 

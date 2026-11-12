@@ -120,7 +120,7 @@ runs on `DOMContentLoaded`, after every tag has loaded.
 
 ## Testing
 
-Jest, jsdom, `tests/**/*.test.js` (283 files today, nested ones included), setup
+Jest, jsdom, `tests/**/*.test.js` (284 files today, nested ones included), setup
 in `tests/setup.js`. CommonJS — `require('../src/…')`.
 
 Two things that will bite:
@@ -160,7 +160,7 @@ Know the coverage gaps, because they are not intuitive:
 ### The gate passes. Keep it that way.
 
 Measured 2026-11-08 with `npm ci` deps installed: `npm run validate` exits **0**
-— lint clean, format clean, **6155 tests in 283 suites, all passing.**
+— lint clean, format clean, **6162 tests in 284 suites, all passing.**
 
 This is recent. For most of this project's life the gate did not pass, and
 earlier revisions of this file told you to judge your own work against a

@@ -142,6 +142,7 @@
         // which builds Private's prompt from it, and the playground activity, which installs its
         // ceiling.
         'src/features/together/PrivateExperienceProfile.js',
+        'src/features/together/PrivateVoice.js',
         // AX7. The style made visible and audible: voice pace, resting expression, the room's
         // light. Before TogetherCapability, which applies it, and main.js's speech, which asks it.
         'src/features/together/PrivatePresentation.js',

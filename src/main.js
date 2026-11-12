@@ -3988,7 +3988,7 @@ async function _handleStreamingResponse(text) {
     try {
         const history = _surface().history().getHistory();
         const systemPrompt =
-            (config.systemPrompt || 'You are a helpful AI assistant named Nexus.') +
+            __nexusBasePrompt() +
             (window.NEXUS_MOTION?.systemPromptSuffix?.() || '') +
             // D9. What Together is playing, if anything. Empty string when nothing is, so a
             // chat with no media selected sends the prompt it has always sent.
@@ -4088,6 +4088,17 @@ async function _handleStreamingResponse(text) {
         // the voice together. `[smile]` that reached the synthesiser was her saying the word
         // "smile" out loud. Unchanged unless a Private session is running.
         displayText = window.NEXUS_TOGETHER_CAPABILITY?.sanitizeReply?.(displayText) ?? displayText;
+        // AX19. In Private, a reply that broke character (assistant phrasing, a topic menu, a
+        // scripted refusal) is rewritten once, before anyone sees or hears it. No-op elsewhere.
+        if (window.NEXUS_TOGETHER_CAPABILITY?.privateRevise) {
+            displayText = (await window.NEXUS_TOGETHER_CAPABILITY.privateRevise(displayText)) || displayText;
+            if (!_turnIsCurrent(turn)) {
+                if (voiceStream) voiceStream.cancel();
+                stream.discard();
+                setStatus('idle', 'READY');
+                return;
+            }
+        }
         stream.finish(displayText);
 
         // Mirror to AR overlay
@@ -4206,6 +4217,14 @@ async function _handleNonStreamingResponse(text) {
         // the voice together. `[smile]` that reached the synthesiser was her saying the word
         // "smile" out loud. Unchanged unless a Private session is running.
         displayText = window.NEXUS_TOGETHER_CAPABILITY?.sanitizeReply?.(displayText) ?? displayText;
+        // AX19. Same as the streaming seam: a Private reply that broke character is rewritten once.
+        if (window.NEXUS_TOGETHER_CAPABILITY?.privateRevise) {
+            displayText = (await window.NEXUS_TOGETHER_CAPABILITY.privateRevise(displayText)) || displayText;
+            if (!_turnIsCurrent(turn)) {
+                setStatus('idle', 'READY');
+                return;
+            }
+        }
 
         _surface().renderAssistant(displayText, attachments);
 
@@ -4486,7 +4505,7 @@ async function callLLM(userMessage) {
     if (window._nexusLLM && config.provider !== 'none') {
         const history = _surface().history().getHistory();
         const systemPrompt =
-            (config.systemPrompt || 'You are a helpful AI assistant named Nexus.') +
+            __nexusBasePrompt() +
             (window.NEXUS_MOTION?.systemPromptSuffix?.() || '') +
             // D9. What Together is playing, if anything. Empty string when nothing is, so a
             // chat with no media selected sends the prompt it has always sent.
@@ -6337,6 +6356,18 @@ async function __getWatsonxBearer(apiKeyOrToken) {
  * What Together is playing, for the two AR-mode callers that compose no suffix of their own
  * (D9). Empty string when nothing is playing, or when the feature is not loaded.
  */
+/**
+ * AX18. Who she is at the top of every prompt. The configured prompt ("a helpful AI assistant named
+ * Nexus…") everywhere — except while a Private session runs, where her Private identity replaces it:
+ * measured, the free models took their character from the first identity they read, and answered a
+ * flirt at step 3 like customer service. '' from `privatePersona` outside Private, so nothing else
+ * changes. One function for all three prompt-assembly sites.
+ */
+function __nexusBasePrompt() {
+    const persona = window.NEXUS_TOGETHER_CAPABILITY?.privatePersona?.() || '';
+    return persona || config.systemPrompt || 'You are a helpful AI assistant named Nexus.';
+}
+
 function __nexusMediaSuffix() {
     try {
         return (
@@ -6361,7 +6392,7 @@ async function callOpenAI(userMessage) {
         body: JSON.stringify({
             model: config.model,
             messages: [
-                { role: 'system', content: config.systemPrompt + __nexusMediaSuffix() },
+                { role: 'system', content: __nexusBasePrompt() + __nexusMediaSuffix() },
                 { role: 'user', content: userMessage },
             ],
             max_tokens: 500,
@@ -6385,7 +6416,7 @@ async function callClaude(userMessage) {
         body: JSON.stringify({
             model: config.model,
             max_tokens: 500,
-            system: config.systemPrompt + __nexusMediaSuffix(),
+            system: __nexusBasePrompt() + __nexusMediaSuffix(),
             messages: [{ role: 'user', content: userMessage }],
         }),
     });
@@ -6409,7 +6440,7 @@ async function callWatsonX(userMessage) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${bearer}`, Accept: 'application/json' },
         body: JSON.stringify({
             model_id: config.model,
-            input: `${config.systemPrompt}\n\nUser: ${userMessage}\n\nAssistant:`,
+            input: `${__nexusBasePrompt()}\n\nUser: ${userMessage}\n\nAssistant:`,
             parameters: { max_new_tokens: 300, temperature: 0.7 },
             project_id: config.watsonxProjectId,
         }),
