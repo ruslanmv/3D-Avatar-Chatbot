@@ -1018,7 +1018,8 @@ const TogetherPanel = (() => {
                 const summary = doc.createElement('div');
                 summary.className = 'nexus-private-again-summary';
                 summary.textContent = [
-                    last.preset.label,
+                    // PX8. In the person's language: this read "Intense" on an Italian screen.
+                    this._privateWord(`preset.name.${last.preset.id}`, last.preset.label),
                     last.sceneLabel,
                     last.soundtrack === 'none'
                         ? this._privateWord('setup.musicNo', 'No music')

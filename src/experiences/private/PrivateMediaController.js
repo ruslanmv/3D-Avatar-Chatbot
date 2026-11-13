@@ -60,6 +60,20 @@
             this.listeners = new Set();
             this._unwatch = null;
             this._watch();
+            // PX8. Ask the search providers now, at the start of the evening, so that "no music
+            // search here" is already known when somebody asks — and her reply to that request,
+            // built a moment later, can say so instead of "I'm putting it on".
+            this._warmed = false;
+            try {
+                const registry = this.win && this.win.NEXUS_DISCOVERY;
+                if (registry && typeof registry.warm === 'function') {
+                    Promise.resolve(registry.warm())
+                        .then(() => (this._warmed = true))
+                        .catch(() => (this._warmed = true));
+                } else this._warmed = true;
+            } catch (_) {
+                this._warmed = true;
+            }
         }
 
         status() {
@@ -137,6 +151,11 @@
             const query = asked || mood;
             if (!query) return { ok: false, why: 'empty-query' };
 
+            // Known now, and said now: the prompt for this very turn reads the state synchronously.
+            if (this._warmed && !this._provider()) {
+                this._set(this.state.track ? this._lastKnown() : 'failed', 'no-provider');
+                return { ok: false, why: 'no-provider' };
+            }
             this._set('searching');
             let found = null;
             try {

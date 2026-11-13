@@ -144,8 +144,10 @@
                     const a = s.music;
                     if (a && a.status === 'pending') {
                         if (now.status === 'playing') finish(a, 'completed');
-                        else if (now.status === 'blocked') finish(a, 'blocked', 'autoplay-blocked');
-                        else if (now.status === 'failed') finish(a, 'failed', now.why || 'player-failed');
+                        else if (now.status === 'blocked') {
+                            finish(a, 'blocked', 'autoplay-blocked');
+                            followUp(s, a);
+                        } else if (now.status === 'failed') finish(a, 'failed', now.why || 'player-failed');
                     }
                     emit();
                 })
@@ -202,6 +204,34 @@
         settle(action, status, why, result);
         emit();
         return action;
+    }
+
+    /**
+     * PX8. A request she had already said yes to failed after her reply was written ("I'm putting
+     * it on" — and then the search found nothing). One short line in her voice, in the app's
+     * language, so the conversation does not carry on as if it had worked. Only for the person's
+     * own requests, only when her prompt had not already been told of the failure, never twice.
+     */
+    function followUp(s, action) {
+        if (!action || action.source === 'model' || !action.told || action.toldFailure || action.followed) return;
+        if (!['failed', 'blocked'].includes(action.status) || action.why === 'stale') return;
+        if (action.status === 'blocked' && action.why !== 'autoplay-blocked' && action.why !== 'needs-approval') return;
+        if (action.why === 'needs-approval') return; // the chip is already asking
+        action.followed = true;
+        const key =
+            action.family === 'music'
+                ? action.why === 'autoplay-blocked'
+                    ? 'followup.tap'
+                    : 'followup.music'
+                : 'followup.outfit';
+        try {
+            const loc = s.win.NEXUS_PRIVATE_LOCALE;
+            const line = loc && typeof loc.t === 'function' ? loc.t(key) : '';
+            if (line && line !== key && typeof s.session._speak === 'function' && !s.session._stopped)
+                s.session._speak(line);
+        } catch (_) {
+            /* the strip still says what happened */
+        }
     }
 
     function facts(s, action) {
@@ -280,6 +310,7 @@
         }
         // Whatever the handler concluded, a session that ended meanwhile owns none of it.
         if (state !== s && action.status === 'pending') settle(action, 'blocked', 'stale');
+        if (state === s) followUp(s, action);
         emit();
         return action;
     }
@@ -700,18 +731,33 @@
 
         const now = [];
         const m = s.music;
+        const heard = s.media ? s.media.status() : null;
         if (m && m.turnId === s.turnId) {
+            m.told = true;
             const what = m.params.query ? `“${m.params.query}”` : 'something that suits the evening';
-            if (m.status === 'pending')
+            // The controller may already know it cannot play (no search connected) while the
+            // request is still formally pending.
+            if (m.status === 'pending' && heard && heard.status === 'failed') {
+                m.toldFailure = true;
+                now.push(
+                    `They asked for music (${what}) and it cannot be played here: ${WHY_MUSIC[heard.why] || 'it could not be played'}. Tell them so once, warmly, in your own voice. Do not pretend it is playing.`
+                );
+            } else if (m.status === 'pending')
                 now.push(
                     `They just asked for music (${what}). The app is finding it now. Say, in one short sentence, that you are putting it on. Do not say it is playing yet.`
                 );
             else if (m.status === 'completed') now.push(`The music they asked for (${what}) is playing now.`);
-            else if (m.status === 'failed' || m.status === 'blocked')
+            else if (m.status === 'failed' || m.status === 'blocked') {
+                m.toldFailure = true;
                 now.push(
                     `They asked for music (${what}) and it did not start: ${WHY_MUSIC[m.why] || 'it could not be played'}. Tell them so once, plainly and warmly, in your own voice. Do not pretend it is playing.`
                 );
+            }
         }
+        // PX8. What is not happening is a fact too: without this she "felt the rhythm" of music
+        // that had failed to start.
+        if (!heard || heard.status !== 'playing')
+            now.push('No music is playing right now. Do not describe music, a song or a rhythm as if one were.');
         const last = s.log.length ? s.log[s.log.length - 1] : null;
         if (last && last.turnId === s.turnId && last.family === 'music' && last !== m) {
             const word = { 'music.pause': 'paused', 'music.stop': 'stopped', 'music.resume': 'playing again' }[
@@ -726,6 +772,8 @@
         const w = s.wardrobe;
         if (w && w.turnId === s.turnId) {
             const name = (w.result && w.result.name) || '';
+            w.told = true;
+            if (['failed', 'blocked'].includes(w.status)) w.toldFailure = true;
             if (w.name === 'wardrobe.undo') {
                 now.push(
                     w.status === 'failed'

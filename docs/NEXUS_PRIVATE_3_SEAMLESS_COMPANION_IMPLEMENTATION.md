@@ -221,3 +221,38 @@ No migration. Two optional `localStorage` keys, both the person's:
 | --- | --- | --- |
 | `nexus_private_wardrobe_autonomy` | `off` · `suggest` · `autonomous` | `suggest` |
 | `nexus_private_wardrobe_generate` | `ask` · `allow` | `ask` |
+
+## 11. End-to-end funnel run (PX8, 2026-11-13)
+
+A person's path through the real UI — Together ▸ Private ▸ style ▸ atmosphere ▸ preparing ▸
+Begin ▸ eight turns with a real model (OllaBridge `free-best`, Italian) ▸ two steps closer with the
+footer control ▸ End ▸ "Another private moment" — on desktop (1366×860) and a phone (iPhone 13
+emulation). Harness: real clicks and typing into the composer; no API key for music search.
+
+| Measure | Desktop | Phone |
+| --- | --- | --- |
+| Taps from the Private tile to her first line | 5 | 5 |
+| Of which "preparing" | 7–9 s | 9 s |
+| First line after choosing a style | ≈ 14 s | ≈ 15 s |
+| Reply time per turn | 4–8 s | 5–13 s |
+| Page errors | 0 | 0 |
+
+Found and fixed (PX8):
+
+1. **She said "I'm putting on Daft Punk" and then nothing played** (no music search connected).
+   The providers are now asked when the evening starts, so the failure is known before her reply;
+   a failure that arrives after her reply gets one short line in her voice, in the app language.
+2. **She described music that was not playing** ("I feel the rhythm"). Her prompt now states
+   when no music is playing.
+3. **"Another private moment" went back to the Together menu.** It now reopens Private's setup,
+   where "Continue like last time" is one tap.
+4. **The finished card kept the music line and the outfit chip.** Cleared when End is pressed.
+5. **"Last time: Intense" on an Italian screen.** The summary names the style in the app language.
+6. **On a phone the music notice and the outfit chip took the rows her replies needed** — a card
+   with no conversation visible. The notice now goes after 7 s, "Wearing X · Undo" after 8 s (an
+   offer waiting for a yes stays), and both are compact on small screens.
+
+Not changed, and needs a decision: **a person who has never switched Private Mode on does not see
+Private at all** — the tile is hidden until Settings has it on. That is the current, deliberate
+rule; showing a locked "🔐 Private · 18+" tile that explains how to turn it on would be the usual
+way to make it discoverable.

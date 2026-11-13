@@ -1509,6 +1509,14 @@
 
         beforeActivityStop(why) {
             if (this._stopped) return;
+            // PX8. The music line and the outfit chip describe an evening that is ending; the
+            // completion card that replaces the conversation must not carry them.
+            try {
+                if (this.view && typeof this.view.showActions === 'function') this.view.showActions({});
+                if (this.view && typeof this.view.clearSoundtrack === 'function') this.view.clearSoundtrack();
+            } catch (_) {
+                /* presentation only */
+            }
             this._stopped = true;
             this.state = 'restoring';
             this._clearTimers();
@@ -1702,7 +1710,8 @@
 
         /** PX6. The strip under the conversation follows what the bridge reports. */
         _showActions(now) {
-            if (this._stopped || !this.view || typeof this.view.showActions !== 'function') return;
+            if (this._stopped || this.state === 'complete' || !this.view || typeof this.view.showActions !== 'function')
+                return;
             try {
                 const actions = actionBridge();
                 this.view.showActions(now, {
@@ -3227,8 +3236,21 @@
                 // Not being remembered is exactly how every session behaved before.
             }
             if (this.view) {
+                // PX8. The finished card replaces the conversation the moment End is pressed — well
+                // before the session itself stops — so the evening's music line and outfit chip
+                // are cleared here, not only in `beforeActivityStop`.
+                try {
+                    if (typeof this.view.showActions === 'function') this.view.showActions({});
+                    if (typeof this.view.clearSoundtrack === 'function') this.view.clearSoundtrack();
+                } catch (_) {
+                    /* presentation only */
+                }
                 this.view.showComplete({
-                    onAgain: () => this._requestEnd(true),
+                    // PX8. "Another private moment" is a request for Private, not for the Together
+                    // menu: it used to do exactly what "Back to Together" does, so the person who
+                    // wanted to stay had to find the tile again — and never saw "Continue like last
+                    // time", the one-tap way back in that the setup screen keeps for them.
+                    onAgain: () => this._requestEnd(true, 'intimate'),
                     onBack: () => this._requestEnd(true),
                 });
             }
@@ -3240,7 +3262,7 @@
             });
         }
 
-        _requestEnd(openTogether) {
+        _requestEnd(openTogether, then) {
             const panel = this.director && this.director.togetherPanel;
             if (
                 panel &&
@@ -3249,6 +3271,13 @@
             ) {
                 panel.stopActivity('private complete');
                 if (openTogether && typeof panel.open === 'function') panel.open();
+                if (then && typeof panel.choose === 'function') {
+                    try {
+                        panel.choose(then, { fresh: true });
+                    } catch (error) {
+                        console.warn('[Private] could not reopen the setup', error);
+                    }
+                }
                 return;
             }
             if (this.activity && typeof this.activity.stop === 'function') this.activity.stop('private complete');

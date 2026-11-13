@@ -8,6 +8,10 @@ const PrivateConversationView = (() => {
     'use strict';
 
     const ROW_ID = 'nexus-private-conversation-row';
+    /** PX8. How long a "the music could not start" receipt stays under the conversation. */
+    const MUSIC_NOTICE_MS = 7000;
+    /** PX8. How long "Wearing X · Undo" stays after she has changed. */
+    const OUTFIT_RECEIPT_MS = 8000;
 
     /** How far from the bottom still counts as "at the bottom". See `_atBottom`. */
     const STICK_SLACK_PX = 48;
@@ -151,7 +155,7 @@ const PrivateConversationView = (() => {
 .nexus-private-choices{display:flex;flex-direction:column;gap:6px;margin-top:10px;padding-top:9px;border-top:1px solid rgba(255,255,255,.07)}.nexus-private-choice{text-align:left;font-size:.82rem;line-height:1.35;padding:8px 11px;border-color:rgba(159,216,234,.3);background:rgba(159,216,234,.07);animation:nexus-private-choice-in .22s ease both}.nexus-private-choice:hover,.nexus-private-choice:focus-visible{background:rgba(159,216,234,.16);border-color:rgba(159,216,234,.5)}.nexus-private-choice:nth-child(2){animation-delay:.05s}.nexus-private-choice:nth-child(3){animation-delay:.1s}@keyframes nexus-private-choice-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){.nexus-private-choice{animation:none}}
 .nexus-private-controls{display:flex;align-items:center;gap:6px;margin-left:auto;flex:0 0 auto}.nexus-private-btn.is-primary{border-color:rgba(244,128,166,.6);background:rgba(244,128,166,.24);font-weight:650}.nexus-private-btn.is-primary:hover,.nexus-private-btn.is-primary:focus-visible{background:rgba(244,128,166,.34)}.nexus-private-btn.is-secondary{border-color:rgba(255,255,255,.14);background:transparent;opacity:.62}.nexus-private-btn.is-secondary:hover,.nexus-private-btn.is-secondary:focus-visible{opacity:.95;background:rgba(255,255,255,.06)}
 @media(max-width:560px){.nexus-private-bar{flex-wrap:wrap}.nexus-private-controls{margin-left:auto}.nexus-private-step{font-size:.7rem}.nexus-private-rung{width:8px}}
-@media(max-width:560px){#${ROW_ID}{height:calc(100% - 14px);max-height:calc(100% - 14px);margin:6px 0 8px}.nexus-private-shell{flex:1 1 auto}.nexus-private-card{padding:11px 13px;max-height:none}.nexus-private-copy{font-size:.92rem}.nexus-private-soundtrack{margin:0 10px 8px}.nexus-private-soundtrack-player{width:100%}.nexus-private-soundtrack-player .nexus-yt-card{max-width:100%}}@media(max-width:560px) and (max-height:450px){.nexus-private-soundtrack{display:none}}
+@media(max-width:560px){#${ROW_ID} .nexus-private-outfit{margin:4px 0 0;padding:3px 8px;font-size:.7rem;gap:6px}#${ROW_ID} .nexus-private-outfit-btn{padding:2px 7px;font-size:.68rem}#${ROW_ID} .nexus-private-music-line{padding:2px 8px;font-size:.7rem}#${ROW_ID}{height:calc(100% - 14px);max-height:calc(100% - 14px);margin:6px 0 8px}.nexus-private-shell{flex:1 1 auto}.nexus-private-card{padding:11px 13px;max-height:none}.nexus-private-copy{font-size:.92rem}.nexus-private-soundtrack{margin:0 10px 8px}.nexus-private-soundtrack-player{width:100%}.nexus-private-soundtrack-player .nexus-yt-card{max-width:100%}}@media(max-width:560px) and (max-height:450px){.nexus-private-soundtrack{display:none}}
 /* Premium Private chrome: retain the Conversation and consent owners while letting
    the companion and scene, not a giant bordered card, be the focal point. */
 #${ROW_ID}{max-width:760px;margin:6px auto 8px}
@@ -1099,11 +1103,26 @@ const PrivateConversationView = (() => {
             if (!strip) {
                 // Nothing to control yet (still searching) or nothing at all (it failed): one line.
                 if (!text || status === 'stopped') return;
+                // PX8. A failure is said once, in her reply; the line is the receipt, and it goes
+                // after a few seconds. On a phone it took the space her replies needed — the
+                // first real-device-sized run showed a card with no conversation left in it.
+                const key = `${status}:${music.why || ''}:${music.id || ''}`;
+                if (status === 'failed' && this._musicLineGone === key) return;
                 const line = this.doc.createElement('div');
                 line.className = 'nexus-private-music-line';
                 line.setAttribute('role', 'status');
                 line.textContent = `♫ ${text}`;
                 slot.insertBefore(line, slot.firstChild);
+                if (status === 'failed' && this.win && typeof this.win.setTimeout === 'function') {
+                    if (this._musicLineTimer) this.win.clearTimeout(this._musicLineTimer);
+                    this._musicLineTimer = this.win.setTimeout(() => {
+                        this._musicLineTimer = null;
+                        this._musicLineGone = key;
+                        line.remove();
+                        const holder = this.row && this.row.querySelector('.nexus-private-soundtrack');
+                        if (holder) holder.hidden = !holder.children.length;
+                    }, MUSIC_NOTICE_MS);
+                }
                 return;
             }
             let label = strip.querySelector('.nexus-private-music-state');
@@ -1167,10 +1186,34 @@ const PrivateConversationView = (() => {
                 if (outfit.canUndo) buttons.push(['undo', t('outfit.undo'), handlers.onUndo, true]);
             }
             let chip = slot.querySelector('.nexus-private-outfit');
+            // PX8. "Wearing X · Undo" is a receipt, not a fixture: she is wearing it, visibly, and on
+            // a phone the line took the rows her replies needed. It goes after a few seconds, like
+            // an "Undo send"; "go back to the one before" still works in words. An offer waiting
+            // for a yes, a change in progress and a failure stay until they are resolved.
+            const receipt =
+                !offer &&
+                outfit &&
+                outfit.wearing &&
+                !(action && action.status === 'failed') &&
+                !['creating', 'changing'].includes(outfit.status);
+            const key = receipt ? `worn:${outfit.name}` : null;
+            if (receipt && this._outfitGone === key) text = '';
             if (!text) {
                 if (chip) chip.remove();
                 return;
             }
+            if (receipt && this._outfitKey !== key && this.win && typeof this.win.setTimeout === 'function') {
+                if (this._outfitTimer) this.win.clearTimeout(this._outfitTimer);
+                this._outfitTimer = this.win.setTimeout(() => {
+                    this._outfitTimer = null;
+                    this._outfitGone = key;
+                    const gone = this.row && this.row.querySelector('.nexus-private-outfit');
+                    if (gone) gone.remove();
+                    const holder = this.row && this.row.querySelector('.nexus-private-soundtrack');
+                    if (holder) holder.hidden = !holder.children.length;
+                }, OUTFIT_RECEIPT_MS);
+            }
+            this._outfitKey = key;
             if (!chip) {
                 chip = this.doc.createElement('div');
                 chip.className = 'nexus-private-outfit';
@@ -1408,7 +1451,7 @@ const PrivateConversationView = (() => {
         }
     }
 
-    return { View, ROW_ID, VOLUME, QUIET_VOLUME, HISTORY_WINDOW };
+    return { View, ROW_ID, VOLUME, QUIET_VOLUME, HISTORY_WINDOW, MUSIC_NOTICE_MS, OUTFIT_RECEIPT_MS };
 })();
 
 if (typeof window !== 'undefined') window.NEXUS_PRIVATE_CONVERSATION_VIEW = PrivateConversationView;

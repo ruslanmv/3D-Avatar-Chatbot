@@ -911,3 +911,113 @@ describe('nothing else answers for Private, and nothing is drawn twice', () => {
         expect(ids.size).toBe(Actions.log().length);
     });
 });
+
+describe('PX8. what the end-to-end run found', () => {
+    test('no music search here: known before her reply, so she is told it cannot play', async () => {
+        await begin({ noProvider: true });
+        window.AppLanguage = { code: 'it-IT' };
+        await flush(); // the providers are asked when the evening starts, seconds before anyone types
+        Surface.renderUser('Sì, suona Daft Punk ora.');
+        const told = Capability.privateSystemPromptSuffix();
+        expect(told).toMatch(/no music search is connected/);
+        expect(told).toMatch(/Do not pretend it is playing/);
+        expect(told).not.toMatch(/Say, in one short sentence, that you are putting it on/);
+        await flush();
+    });
+
+    test('she never describes music that is not playing', async () => {
+        await begin();
+        expect(Capability.privateSystemPromptSuffix()).toMatch(/No music is playing right now/);
+        await say('play some Daft Punk');
+        MediaSession.markPlaying();
+        Surface.renderUser('che bello');
+        expect(Capability.privateSystemPromptSuffix()).not.toMatch(/No music is playing right now/);
+        await flush();
+    });
+
+    test('a failure that arrives after she said yes gets one short line in her voice, in the app language', async () => {
+        const w = await begin({ results: [] });
+        window.AppLanguage = { code: 'it-IT' };
+        const spoken = jest.spyOn(w.session, '_speak');
+        Surface.renderUser('suona Daft Punk');
+        expect(Capability.privateSystemPromptSuffix()).toMatch(/The app is finding it now/); // her reply: "I'm putting it on"
+        await flush();
+        expect(Actions.log()[0]).toMatchObject({ status: 'failed', why: 'nothing-found' });
+        expect(spoken).toHaveBeenCalledTimes(1);
+        expect(spoken.mock.calls[0][0]).toMatch(/musica/);
+        // Told once: a second failure report for the same request says nothing more.
+        w.session._showActions(Actions.snapshot());
+        expect(spoken).toHaveBeenCalledTimes(1);
+    });
+
+    test('a failure her prompt already knew about is not said twice', async () => {
+        const w = await begin({ noProvider: true });
+        const spoken = jest.spyOn(w.session, '_speak');
+        Surface.renderUser('play some Daft Punk');
+        Capability.privateSystemPromptSuffix();
+        await flush();
+        expect(spoken).not.toHaveBeenCalled();
+    });
+
+    test('"Another private moment" opens Private again, not the Together menu', async () => {
+        const w = await begin();
+        w.panel.choose = jest.fn();
+        w.session._requestEnd(true, 'intimate');
+        expect(w.panel.stopActivity).toHaveBeenCalled();
+        expect(w.panel.choose).toHaveBeenCalledWith('intimate', { fresh: true });
+    });
+
+    test('the finished card carries no music line and no outfit chip', async () => {
+        const w = await begin({ noProvider: true });
+        await say('play some Daft Punk');
+        await say('Mettiti un vestito elegante.');
+        expect(chip()).not.toBeNull();
+        expect(document.querySelector('.nexus-private-music-line')).not.toBeNull();
+        w.session.beforeActivityStop('user');
+        expect(chip()).toBeNull();
+        expect(document.querySelector('.nexus-private-music-line')).toBeNull();
+        expect(strip()).toBeNull();
+    });
+
+    test('a "music could not start" notice goes after a few seconds and does not come back', async () => {
+        await begin({ noProvider: true });
+        jest.useFakeTimers();
+        Surface.renderUser('play some Daft Punk');
+        for (let i = 0; i < 20; i += 1) await Promise.resolve();
+        expect(document.querySelector('.nexus-private-music-line')).not.toBeNull();
+        jest.advanceTimersByTime(8000);
+        expect(document.querySelector('.nexus-private-music-line')).toBeNull();
+        Actions.declineOffer(); // any later redraw
+        window.NEXUS_BD.intimate._privateExperience._showActions(Actions.snapshot());
+        expect(document.querySelector('.nexus-private-music-line')).toBeNull();
+        jest.useRealTimers();
+    });
+
+    test('"Wearing X · Undo" is a receipt that goes; an offer waiting for a yes stays', async () => {
+        const w = await begin();
+        jest.useFakeTimers();
+        Surface.renderUser('Mettiti un vestito elegante.');
+        for (let i = 0; i < 40; i += 1) {
+            await Promise.resolve();
+            jest.advanceTimersByTime(0);
+        }
+        expect(chip().textContent).toMatch(/Black evening gown/);
+        jest.advanceTimersByTime(9000);
+        expect(chip()).toBeNull();
+        w.session._showActions(Actions.snapshot()); // a later redraw does not bring it back
+        expect(chip()).toBeNull();
+        jest.useRealTimers();
+        // Undo in words still works once the chip has gone.
+        await say('Torna al vestito di prima.');
+        expect(w.controller.restore).toHaveBeenCalledTimes(1);
+        // An offer is not a receipt.
+        await say('che serata');
+        WardrobeTool.consume('Forse questo. <wardrobe action="wear" look="Yellow sundress"/>');
+        await flush();
+        jest.useFakeTimers();
+        w.session._showActions(Actions.snapshot());
+        jest.advanceTimersByTime(30000);
+        expect(chip().classList.contains('is-offer')).toBe(true);
+        jest.useRealTimers();
+    });
+});
