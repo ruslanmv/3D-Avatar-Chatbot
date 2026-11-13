@@ -871,6 +871,11 @@
                 res = await this._postOllaBridge(url, headers, body, options);
 
                 if (res.ok || !RETRYABLE.includes(res.status)) return res;
+                // PX13. A 503 that says the providers behind the gateway are out of quota is not
+                // "between states": asking again runs the gateway's whole provider chain again and
+                // spends more of the same free allowance (OpenRouter's 50 a day) on a request that
+                // cannot succeed. Read the body once — the caller still gets it — and stop.
+                if (await this._saysLimit(res)) return res;
 
                 if (attempt < attemptsFor(res.status)) {
                     const wait = backoffMs[attempt] || 1200;
@@ -882,6 +887,20 @@
                 }
             }
             return res;
+        }
+
+        /** PX13. Whether a failed response's body reports a usage limit. Never throws. */
+        async _saysLimit(res) {
+            try {
+                const copy = typeof res.clone === 'function' ? res.clone() : res;
+                const text = await copy.text();
+                const LIMIT = (typeof window !== 'undefined' && window.NEXUS_CHAT_ERROR_TEXT?.LIMIT) || null;
+                return LIMIT
+                    ? LIMIT.test(String(text || ''))
+                    : /\b(429|402)\b|rate.?limit|quota|credits/i.test(String(text || ''));
+            } catch (_) {
+                return false;
+            }
         }
 
         async _fetchViaProxy(url, method, headers, body, options = {}) {

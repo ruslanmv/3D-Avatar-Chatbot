@@ -4171,6 +4171,15 @@ async function _handleStreamingResponse(text) {
             return;
         }
 
+        // PX13. A usage limit is not fixed by asking again without streaming: the second request
+        // runs the gateway's provider chain again and spends more of the same exhausted daily
+        // allowance. Say so once and stop.
+        if (window.NEXUS_CHAT_ERROR_TEXT?.kind?.(error) === 'limit') {
+            setStatus('idle', 'READY');
+            _addErrorWithRetry(text, error);
+            return;
+        }
+
         // Fallback to non-streaming
         await _handleNonStreamingResponse(text);
     }
@@ -4416,7 +4425,20 @@ function _addErrorWithRetry(originalText, error) {
     const installed = surface && typeof surface.current === 'function' ? surface.current() : null;
     const drawnElsewhere = Boolean(installed) && installed.id !== 'default';
     if (drawnElsewhere) {
-        _surface().renderError('Sorry — I lost my train of thought for a second. Say that again?');
+        // PX13. In the app's language (this line was English inside an Italian evening), and,
+        // when the free service is out of quota, the truth — not an invitation to repeat
+        // yourself into a limit, which only spends more of it.
+        const limit = window.NEXUS_CHAT_ERROR_TEXT?.kind?.(error) === 'limit';
+        const words = window.NEXUS_PRIVATE_LOCALE;
+        const key = limit ? 'error.limit' : 'error.lost';
+        const said = words && typeof words.t === 'function' ? words.t(key) : '';
+        _surface().renderError(
+            said && said !== key
+                ? said
+                : limit
+                  ? 'The AI service has reached its free limit for now — let’s try again a little later.'
+                  : 'Sorry — I lost my train of thought for a second. Say that again?'
+        );
         return;
     }
 
