@@ -193,6 +193,66 @@ describe('garment strategy', () => {
         expect(flagged.solver).toBe('xpbd');
         expect(flagged.xpbd).toHaveLength(1);
         expect(flagged.xpbd[0].name).toBe('A-line dress');
+        const reference = Deform.jobFor(
+            9,
+            { garments: [{ name: 'A-line dress', summary, asset: { bufferView: 3 } }] },
+            '?cloth=xpbd'
+        );
+        expect(reference.solver).toBeUndefined();
+    });
+});
+
+describe('cloth bytes', () => {
+    test('a buffer-view reference is not a payload and resolves through the parser', async () => {
+        expect(Asset.payload({ bufferView: 3 })).toBeNull();
+        expect(Asset.viewIndex({ bufferView: 3 })).toBe(3);
+        const raw = new Uint8Array([87, 67, 76, 49]);
+        const parser = {
+            getDependency(type, index) {
+                expect(type).toBe('bufferView');
+                expect(index).toBe(3);
+                return raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength);
+            },
+        };
+        const bytes = await Asset.bytesFromParser({ bufferView: 3 }, parser);
+        expect(Array.from(bytes)).toEqual([87, 67, 76, 49]);
+        await expect(Asset.bytesFromParser({ bufferView: 3 }, null)).resolves.toBeNull();
+    });
+
+    test('without require, the worker global still clears the brief', () => {
+        const context = {};
+        vm.createContext(context);
+        const dir = path.join(__dirname, '../../src/wardrobe');
+        vm.runInContext(fs.readFileSync(path.join(dir, 'BodyCollision.js'), 'utf8'), context);
+        vm.runInContext(fs.readFileSync(path.join(dir, 'ClothSimulation.js'), 'utf8'), context);
+        const radius = vm.runInContext(
+            `
+            const Sim = globalThis.NEXUS_CLOTH_SIMULATION;
+            const Body = globalThis.NEXUS_BODY_COLLISION;
+            const asset = {
+                positions: new Float32Array([0.05, 0.1, 0]),
+                attachment: new Float32Array([0]),
+                stretch: [],
+                shear: [],
+                bend: [],
+            };
+            const state = Sim.create(asset, { substeps: 1, iterations: 1 });
+            const pelvis = Body.capsule(0, 0, 0, 0, 0.2, 0, 0.1);
+            pelvis.role = 'pelvis';
+            Sim.step(state, 1 / 60, {
+                gravity: 0,
+                capsules: [],
+                brief: pelvis,
+                centre: [0],
+                hem: [],
+                thickness: 0,
+                briefGap: Body.BRIEF_GAP,
+            });
+            Math.hypot(state.x[0], state.x[2]);
+            `,
+            context
+        );
+        expect(radius).toBeGreaterThanOrEqual(0.12 - 1e-4);
     });
 });
 
@@ -230,6 +290,53 @@ describe('pose cloth worker', () => {
         expect(calls).toHaveLength(1);
         expect(messages[0].ok).toBe(true);
         expect(messages[0].garments[0].name).toBe('Fitted Tee');
+        expect(messages[0].garments[0].after.solver).toBeUndefined();
+    });
+
+    test('a buffer-view reference does not discard the pose correction', () => {
+        const messages = [];
+        const context = {
+            importScripts() {},
+            NEXUS_POSE_CLOTH_CORRECTION: {
+                correct(input) {
+                    return {
+                        garments: [
+                            {
+                                name: input.garments[0].name,
+                                positions: new Float32Array(input.garments[0].posed),
+                                before: {},
+                                after: {},
+                            },
+                        ],
+                    };
+                },
+            },
+            self: null,
+        };
+        context.self = context;
+        context.postMessage = (data) => messages.push(data);
+        vm.createContext(context);
+        vm.runInContext(
+            fs.readFileSync(path.join(__dirname, '../../src/wardrobe/PoseClothWorker.js'), 'utf8'),
+            context
+        );
+        context.self.onmessage({
+            data: {
+                id: 5,
+                solver: 'xpbd',
+                input: { garments: [{ name: 'A-line dress', posed: [1, 2, 3] }] },
+                xpbd: [
+                    {
+                        index: 0,
+                        name: 'A-line dress',
+                        summary: { schema: 'wardrobe.cloth/1', profile: 'cloth' },
+                        asset: { bufferView: 3 },
+                    },
+                ],
+            },
+        });
+        expect(messages[0].ok).toBe(true);
+        expect(Array.from(messages[0].garments[0].positions)).toEqual([1, 2, 3]);
         expect(messages[0].garments[0].after.solver).toBeUndefined();
     });
 });

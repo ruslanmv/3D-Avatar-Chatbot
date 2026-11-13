@@ -12,8 +12,12 @@ this branch.
 ## Data flow
 
 1. Forge writes `extras.wardrobeForge.clothAsset` and a `WCL1` buffer view.
-   The layout is `wardrobe/cloth/binary.py` in 3D-Wardrobe-Forge.
+   The layout is `wardrobe/cloth/binary.py` in 3D-Wardrobe-Forge. The extra is
+   a buffer-view index. The page resolves it with the glTF parser and posts
+   the bytes. A reference that is still an index is not posted.
 2. `src/wardrobe/ClothAsset.js` reads that buffer. It does not stitch seams.
+   In a classic worker, `ClothSimulation.js` reads `NEXUS_BODY_COLLISION`
+   from the global because `require` is absent there.
 3. `src/wardrobe/GarmentDeformation.js` maps the profile:
 
    | Profile | What runs |

@@ -10,7 +10,20 @@
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_CLOTH_SIMULATION = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null, function () {
-    var Body = typeof require === 'function' ? require('./BodyCollision.js') : null;
+    var Body = null;
+    if (typeof require === 'function') {
+        try {
+            Body = require('./BodyCollision.js');
+        } catch (error) {
+            Body = null;
+        }
+    }
+
+    /** A classic worker has no require. BodyCollision.js has already set the global. */
+    function bodyApi() {
+        var host = typeof globalThis !== 'undefined' ? globalThis : null;
+        return (host && host.NEXUS_BODY_COLLISION) || Body;
+    }
 
     function create(asset, options) {
         options = options || {};
@@ -132,7 +145,8 @@
         var gravity = options.gravity == null ? -9.81 : options.gravity;
         var damping = options.damping == null ? 0.02 : options.damping;
         var keep = Math.max(0, 1 - damping);
-        var collide = options.collide || (Body && Body.collide);
+        var collision = bodyApi();
+        var collide = options.collide || (collision && collision.collide);
         var stepDt = dt / state.substeps;
         var moved = 0;
         state.sleeping = false;
@@ -158,11 +172,11 @@
                 if (collide && options.capsules && options.capsules.length) {
                     moved += collide(state, options.capsules, options.thickness == null ? 0.001 : options.thickness);
                 }
-                if (Body && options.hem && options.hem.length && options.capsules && options.capsules.length) {
-                    moved += Body.lap(state, options.capsules, options.hem, options.thickness || 0);
+                if (collision && options.hem && options.hem.length && options.capsules && options.capsules.length) {
+                    moved += collision.lap(state, options.capsules, options.hem, options.thickness || 0);
                 }
-                if (Body && options.centre && options.centre.length && options.brief) {
-                    moved += Body.clearBrief(state, options.brief, options.centre, options.briefGap);
+                if (collision && options.centre && options.centre.length && options.brief) {
+                    moved += collision.clearBrief(state, options.brief, options.centre, options.briefGap);
                 }
             }
             var invDt = 1 / stepDt;

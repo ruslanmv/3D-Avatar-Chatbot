@@ -117,5 +117,53 @@
         return binary.subarray(start, start + view.byteLength);
     }
 
-    return { SCHEMA: SCHEMA, decode: decode, readView: readView };
+    function isBytes(value) {
+        return value instanceof ArrayBuffer || (typeof ArrayBuffer !== 'undefined' && ArrayBuffer.isView(value));
+    }
+
+    /** A clothAsset extra may be the bytes, a bufferView index, or `{bufferView: n}`. */
+    function viewIndex(extra) {
+        if (typeof extra === 'number' && extra >= 0 && extra === Math.floor(extra)) return extra;
+        if (!extra || typeof extra !== 'object' || isBytes(extra)) return null;
+        if (typeof extra.bufferView === 'number') return extra.bufferView;
+        if (typeof extra.index === 'number') return extra.index;
+        return null;
+    }
+
+    /**
+     * Bytes to post to the worker. A buffer-view reference is not a payload:
+     * posting it makes decode throw and drops the pose correction too.
+     */
+    function payload(extra) {
+        if (!isBytes(extra)) return null;
+        return extra instanceof Uint8Array
+            ? extra
+            : new Uint8Array(extra.buffer || extra, extra.byteOffset || 0, extra.byteLength);
+    }
+
+    /**
+     * Resolve a clothAsset extra through the glTF parser. `parser.getDependency('bufferView', n)`
+     * is the loader's buffer-view slice. No parser and no bytes means the garment stays
+     * on the pose corrector.
+     */
+    function bytesFromParser(extra, parser) {
+        var ready = payload(extra);
+        if (ready) return Promise.resolve(ready);
+        var index = viewIndex(extra);
+        if (index == null || !parser || typeof parser.getDependency !== 'function') return Promise.resolve(null);
+        return Promise.resolve(parser.getDependency('bufferView', index)).then(function (buffer) {
+            if (!buffer) return null;
+            return new Uint8Array(buffer);
+        });
+    }
+
+    return {
+        SCHEMA: SCHEMA,
+        decode: decode,
+        readView: readView,
+        isBytes: isBytes,
+        viewIndex: viewIndex,
+        payload: payload,
+        bytesFromParser: bytesFromParser,
+    };
 });

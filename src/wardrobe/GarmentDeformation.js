@@ -101,6 +101,12 @@
             var garment = garments[index];
             if (solverFor(garment.summary, requested, garment.name) !== 'xpbd') continue;
             if (!garment.asset) continue;
+            var asset = garment.asset;
+            var bytes =
+                asset instanceof ArrayBuffer ||
+                (typeof ArrayBuffer !== 'undefined' && ArrayBuffer.isView(asset)) ||
+                (asset.stretch && asset.positions);
+            if (!bytes) continue;
             xpbd.push({
                 index: index,
                 name: garment.name,

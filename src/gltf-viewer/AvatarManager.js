@@ -5,6 +5,7 @@
  */
 
 import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
+import { attachClothBytes } from './clothAssetBytes.js';
 
 export class AvatarManager {
     constructor({ scene, loader, camera, renderer }) {
@@ -424,6 +425,14 @@ export class AvatarManager {
             const root = gltf.scene || gltf.scenes?.[0];
             if (!root) {
                 throw new Error('Loaded avatar has no scene root');
+            }
+
+            // A clothAsset extra is a buffer-view index. Resolve it to WCL1 bytes
+            // while the parser is still here. A miss leaves the pose corrector in charge.
+            try {
+                await attachClothBytes(root, gltf.parser);
+            } catch (error) {
+                console.warn('[AvatarManager] cloth asset bytes were not resolved', error);
             }
 
             // Safety: remove any avatar that was added by a concurrent load

@@ -18,12 +18,19 @@ function ensureXpbd() {
     importScripts('ClothAsset.js', 'BodyCollision.js', 'ClothSimulation.js', 'GarmentDeformation.js');
 }
 
+function isPayload(bytes) {
+    if (!bytes || typeof bytes !== 'object') return false;
+    if (bytes.stretch && bytes.positions) return true;
+    return bytes instanceof ArrayBuffer || (typeof ArrayBuffer !== 'undefined' && ArrayBuffer.isView(bytes));
+}
+
 function simulateXpbd(item, skinned) {
     var summary = item.summary || {};
     var choice = NEXUS_GARMENT_DEFORMATION.solverFor(summary, 'xpbd', item.name);
     if (choice !== 'xpbd') return null;
     var bytes = item.asset;
-    var asset = bytes && bytes.stretch ? bytes : NEXUS_CLOTH_ASSET.decode(bytes);
+    if (!isPayload(bytes)) return null;
+    var asset = bytes.stretch ? bytes : NEXUS_CLOTH_ASSET.decode(bytes);
     var state = NEXUS_CLOTH_SIMULATION.create(asset, item.options || {});
     if (skinned && skinned.length === state.x.length) {
         state.x.set(skinned);
@@ -57,19 +64,23 @@ self.onmessage = function (event) {
             var transfer = [];
             var simulated = job.xpbd || [];
             for (var s = 0; s < simulated.length; s += 1) {
-                var item = simulated[s];
-                var skinned =
-                    job.input &&
-                    job.input.garments &&
-                    job.input.garments[item.index] &&
-                    job.input.garments[item.index].posed;
-                var solved = simulateXpbd(item, skinned);
-                var garment = result.garments[item.index];
-                if (!solved || !garment || solved.positions.length !== garment.positions.length) continue;
-                garment.positions = solved.positions;
-                garment.after = garment.after || {};
-                garment.after.solver = 'xpbd';
-                garment.after.maxEdgeStretch = solved.strain;
+                try {
+                    var item = simulated[s];
+                    var skinned =
+                        job.input &&
+                        job.input.garments &&
+                        job.input.garments[item.index] &&
+                        job.input.garments[item.index].posed;
+                    var solved = simulateXpbd(item, skinned);
+                    var garment = result.garments[item.index];
+                    if (!solved || !garment || solved.positions.length !== garment.positions.length) continue;
+                    garment.positions = solved.positions;
+                    garment.after = garment.after || {};
+                    garment.after.solver = 'xpbd';
+                    garment.after.maxEdgeStretch = solved.strain;
+                } catch (error) {
+                    // One bad asset must not drop the pose correction already computed.
+                }
             }
             var garments = result.garments.map(function (g) {
                 transfer.push(g.positions.buffer);

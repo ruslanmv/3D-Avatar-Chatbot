@@ -16,6 +16,7 @@
  * skinned cloth as it was.
  */
 import * as THREE from '../../vendor/three-0.147.0/build/three.module.js';
+import { clothPayload } from './clothAssetBytes.js';
 
 const SNAPSHOT = 'nexusPoseClothRest';
 
@@ -394,7 +395,7 @@ export class PoseClothCorrector {
                 // through the shell as if it were a layer beneath it.
                 group: g.node.uuid,
                 summary: xpbdSummary(g.tag),
-                asset: (g.tag && g.tag.clothAsset) || null,
+                asset: clothPayload(g.tag),
             };
         });
         const input = { bodyPos: join(bodyPos), bodyNrm: join(bodyNrm), garments };
