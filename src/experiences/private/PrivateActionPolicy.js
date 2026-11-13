@@ -67,7 +67,7 @@
     /** name → { family, params: { key: validator } }. A validator returns undefined to drop a key. */
     const ACTIONS = Object.freeze({
         'music.search': { family: 'music', params: { query: (v) => text(v, 120) } },
-        'music.play': { family: 'music', params: { query: (v) => text(v, 120), different: flag } },
+        'music.play': { family: 'music', params: { query: (v) => text(v, 120), different: flag, again: flag } },
         'music.pause': { family: 'music', params: {} },
         'music.resume': { family: 'music', params: {} },
         'music.stop': { family: 'music', params: {} },

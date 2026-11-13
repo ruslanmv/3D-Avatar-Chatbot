@@ -212,6 +212,17 @@
      * language, so the conversation does not carry on as if it had worked. Only for the person's
      * own requests, only when her prompt had not already been told of the failure, never twice.
      */
+    function speakLine(s, key) {
+        try {
+            const loc = s.win.NEXUS_PRIVATE_LOCALE;
+            const line = loc && typeof loc.t === 'function' ? loc.t(key) : '';
+            if (line && line !== key && typeof s.session._speak === 'function' && !s.session._stopped)
+                s.session._speak(line);
+        } catch (_) {
+            /* the strip still says what is playing */
+        }
+    }
+
     function followUp(s, action) {
         if (!action || action.source === 'model' || !action.told || action.toldFailure || action.followed) return;
         if (!['failed', 'blocked'].includes(action.status) || action.why === 'stale') return;
@@ -330,6 +341,12 @@
                 if (!alive()) return settle(action, 'blocked', 'stale');
                 if (!out.ok) return settle(action, 'failed', out.why);
                 action.result = { title: out.track.title || '', creator: out.track.creator || '' };
+                // PX9. Her reply ("putting on Daft Punk") was written before the search said that
+                // only the keyless song can play here. One line in her voice puts that right.
+                if (out.track.sample && p.query && action.told && !action.followed) {
+                    action.followed = true;
+                    speakLine(s, 'followup.sample');
+                }
                 // Still `pending`: only the player can say it is playing (see `begin`).
                 if (s.media.status().status === 'playing') settle(action, 'completed', null, action.result);
                 return null;
@@ -635,6 +652,11 @@
         }
         s.asked[parsed.family] = s.turnId;
         s.lastFamily = parsed.family;
+        // PX10. "Aspetto il brano": the same request again, with what they asked for last time.
+        if (parsed.name === 'music.play' && parsed.params.again) {
+            const before = [...s.log].reverse().find((a) => a.name === 'music.play' && a.source !== 'model');
+            parsed.params = { query: (before && before.params.query) || '' };
+        }
         return request(parsed.name, parsed.params, { source: 'user', turnId: s.turnId });
     }
 
@@ -745,6 +767,10 @@
             } else if (m.status === 'pending')
                 now.push(
                     `They just asked for music (${what}). The app is finding it now. Say, in one short sentence, that you are putting it on. Do not say it is playing yet.`
+                );
+            else if (m.status === 'completed' && heard && heard.sample && m.params.query)
+                now.push(
+                    `Music is playing now, but not ${what}: song search is not connected here, so the one song that plays without it is on (${heard.title}). Say so lightly, in one short sentence — never claim it is ${what}.`
                 );
             else if (m.status === 'completed') now.push(`The music they asked for (${what}) is playing now.`);
             else if (m.status === 'failed' || m.status === 'blocked') {

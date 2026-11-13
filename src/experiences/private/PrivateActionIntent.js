@@ -96,8 +96,38 @@
     const POLITE = "please|pls|per favore|per piacere|por favor|s[’']il te pla[iî]t|bitte|ti prego";
     const CAN_YOU =
         '(?:can|could|would|will) (?:you|u)|puoi|potresti|ti va di|mi|puedes|podrías|podrias|tu peux|peux-tu|pourrais-tu|kannst du|könntest du|você pode|pode|podes';
+    /**
+     * PX10. The small words people put before a request without thinking — "Grazie, suona…",
+     * "Allora metti…", "Poi mettere una canzone" (a typed "Puoi"). Reported from a real session:
+     * each of those reached the model as conversation, and she answered "Che genere preferisci?"
+     * to somebody who had already asked for music three times. Up to three, in any order.
+     */
+    const FILLER =
+        'grazie|thanks|thank you|thx|gracias|merci|danke|obrigad[oa]|poi|allora|adesso|ora|quindi|anche|e|and|then|so|now|also|y|entonces|ahora|et|alors|und|dann|jetzt|então|agora|bene|good|great|perfetto|perfect|perfecto|parfait';
     const LEAD = new RegExp(
-        `^(?:(?:${AFFIRM})[\\s,.!]+)?(?:(?:${POLITE})[\\s,]+)?(?:(${CAN_YOU})\\s+)?(?:(?:${POLITE})[\\s,]+)?`,
+        `^(?:(?:${FILLER}|${AFFIRM})[\\s,.!]+){0,3}(?:(?:${POLITE})[\\s,]+)?(?:(${CAN_YOU})\\s+)?(?:(?:${POLITE})[\\s,]+)?`,
+        'iu'
+    );
+
+    /** Kinds of music: a request that names one is about music even without the word "music". */
+    const GENRE = new RegExp(
+        word(
+            'jazz|rock|pop|lo-?fi|blues|soul|r&b|rnb|funk|disco|techno|house|edm|electronic|elettronica|electrónica|électronique|elektronisch|synthwave|ambient|chill|chillout|lounge|indie|hip hop|hip-hop|rap|reggae|reggaeton|latin[oa]?|salsa|bachata|bossa nova|metal|country|swing|classical|classica|clásica|classique|klassik|clássica|piano|acoustic|acustic[oa]|acústic[oa]|relaxing|rilassante|relajante|relaxante|entspannend|romantic|romantica|romántica|romantique|romantisch|romântica|lenta|slow songs?'
+        ),
+        'iu'
+    );
+
+    /** "I want to hear…", "vorrei ascoltare…": a request phrased as a wish. */
+    const WANT = new RegExp(
+        `^(?:i want to|i'd like to|i would like to|let me|voglio|vorrei|mi va di|quiero|quisiera|me gustaría|je veux|je voudrais|ich will|ich möchte|quero|queria|gostaria de)\\s+(?:hear|listen to|sentire|ascoltare|escuchar|oír|écouter|entendre|hören|ouvir|escutar)\\s+(.+)$`,
+        'iu'
+    );
+
+    /** "Aspetto il brano", "where's the music?" — the request already made, not yet playing. */
+    const WAITING = new RegExp(
+        word(
+            "aspetto|sto aspettando|ancora niente|dov[’']è|dove è|e la musica|allora la musica|waiting for|still waiting|where[’']?s the|where is the|and the music|nothing yet|espero|estoy esperando|dónde está|j[’']attends|où est|ich warte|wo ist|estou esperando|cadê|onde está"
+        ),
         'iu'
     );
 
@@ -283,6 +313,13 @@
         const askedPolitely = Boolean(lead && lead[1]);
         const body = said.slice(lead ? lead[0].length : 0).trim();
         if (!body) return null;
+        // Waiting for music asked for a moment ago is asking for it again — even as a question.
+        if (
+            WAITING.test(said) &&
+            (MEDIA.test(said) || MEDIA_CJK.test(said) || c.lastFamily === 'music') &&
+            !['playing', 'loading', 'searching'].includes(c.musicStatus)
+        )
+            return action('music.play', { query: '', again: true }, 'music');
         // A question is talk, unless it was put as "can you …?".
         const question = /[?？]\s*$/u.test(said);
         if (question && !askedPolitely) return null;
@@ -293,7 +330,7 @@
         if (BARE_PAUSE.test(body) && c.musicStatus === 'playing') return action('music.pause', {}, 'music');
         if (BARE_RESUME.test(body) && ['paused', 'blocked', 'unconfirmed'].includes(c.musicStatus))
             return action('music.resume', {}, 'music');
-        const aboutMusic = MEDIA.test(body) || MEDIA_CJK.test(body);
+        const aboutMusic = MEDIA.test(body) || MEDIA_CJK.test(body) || GENRE.test(body);
         if (aboutMusic) {
             if (/音楽(?:を)?(?:止めて|消して)|음악\s*(?:꺼|멈춰)|(?:停止|关掉|关闭)音乐/u.test(body))
                 return action('music.stop', {}, 'music');
@@ -344,6 +381,10 @@
             return null;
         }
 
+        // ---- "I want to hear some jazz"
+        const wish = WANT.exec(body);
+        if (wish && !question) return action('music.play', { query: queryFrom(wish[1]) }, 'music');
+
         // ---- music: a different one, then a verb of playing
         if (DIFFERENT.test(body) && (aboutMusic || c.lastFamily === 'music' || c.musicStatus === 'playing')) {
             if (!aboutClothes) return action('music.play', { query: '', different: true }, 'music');
@@ -358,7 +399,12 @@
             if (aboutClothes || (styled && !aboutMusic)) return wardrobeFrom(bare);
             if (verb === 'play') {
                 if (!NOT_MUSIC_PLAY.test(rest)) return action('music.play', { query: queryFrom(rest) }, 'music');
-            } else if (aboutMusic || SOMETHING_BY.test(rest.replace(QUANTIFIER, ''))) {
+            } else if (
+                aboutMusic ||
+                SOMETHING_BY.test(rest.replace(QUANTIFIER, '')) ||
+                // PX10. "Ora metti i Coldplay": a name, not a garment. Clothes were ruled out above.
+                /^\p{Lu}/u.test(rest.replace(QUANTIFIER, '').trim())
+            ) {
                 // "metti qualcosa di elegante" was caught above; what is left names an artist.
                 if (
                     !/^(?:something|qualcosa|algo|quelque chose|etwas)\s+(?:di|de|von)\s+\p{Ll}/u.test(rest) ||

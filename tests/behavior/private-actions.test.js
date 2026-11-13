@@ -39,6 +39,8 @@ const LOOKS = [
 const STAND_INS = [
     'NEXUS_MEDIA_SESSION',
     'NEXUS_DISCOVERY',
+    'NEXUS_MEDIA_INTENT',
+    'NEXUS_DISCOVERY_SAMPLES',
     'NEXUS_YT_2D',
     'NEXUS_WARDROBE',
     'NEXUS_TRY_ON_SESSION',
@@ -84,6 +86,11 @@ function world(options) {
     window.NEXUS_DISCOVERY = o.noProvider
         ? { warm: async () => {}, forCapability: () => null }
         : { warm: async () => {}, forCapability: () => ({ search }) };
+    // PX9. The page's own search path (MediaIntent) and its keyless song, as Together uses them.
+    if (o.samples) {
+        window.NEXUS_MEDIA_INTENT = require('../../src/features/together/MediaIntent.js');
+        window.NEXUS_DISCOVERY_SAMPLES = require('../../src/features/discovery/samples.js');
+    }
     // The embed: a card, and — when `activate` runs — the handle the IFrame API would attach.
     const handle = {
         pause: jest.fn(() => true),
@@ -481,15 +488,15 @@ describe('PX3. music inside Private', () => {
         expect(honour).not.toHaveBeenCalled();
     });
 
-    test('no search connected, or nothing found: said as it is, and nothing pretends to play', async () => {
+    test('a search that cannot run at all (no provider and no keyless song): said as it is', async () => {
         await begin({ noProvider: true });
         Surface.renderUser('play some Daft Punk');
         await flush();
-        expect(Actions.log()[0]).toMatchObject({ status: 'failed', why: 'no-provider' });
+        expect(Actions.log()[0]).toMatchObject({ status: 'failed', why: 'search-failed' });
         expect(strip()).toBeNull();
-        expect(document.querySelector('.nexus-private-music-line').textContent).toMatch(/No music search is connected/);
+        expect(document.querySelector('.nexus-private-music-line').textContent).toMatch(/could not start/);
         const told = Capability.privateSystemPromptSuffix();
-        expect(told).toMatch(/it did not start: no music search is connected/);
+        expect(told).toMatch(/it did not start/);
         expect(told).toMatch(/Do not pretend it is playing/);
     });
 
@@ -913,16 +920,34 @@ describe('nothing else answers for Private, and nothing is drawn twice', () => {
 });
 
 describe('PX8. what the end-to-end run found', () => {
-    test('no music search here: known before her reply, so she is told it cannot play', async () => {
-        await begin({ noProvider: true });
+    test('no search key: music plays anyway, the way Together’s Music does — and she does not pretend it is the song asked for', async () => {
+        const w = await begin({ noProvider: true, samples: true });
         window.AppLanguage = { code: 'it-IT' };
-        await flush(); // the providers are asked when the evening starts, seconds before anyone types
+        const spoken = jest.spyOn(w.session, '_speak');
         Surface.renderUser('Sì, suona Daft Punk ora.');
-        const told = Capability.privateSystemPromptSuffix();
-        expect(told).toMatch(/no music search is connected/);
-        expect(told).toMatch(/Do not pretend it is playing/);
-        expect(told).not.toMatch(/Say, in one short sentence, that you are putting it on/);
+        Capability.privateSystemPromptSuffix(); // her reply is written while the search is running
         await flush();
+        // …so when the search says only the keyless song plays, she says so, once, in Italian.
+        expect(spoken).toHaveBeenCalledTimes(1);
+        expect(spoken.mock.calls[0][0]).toMatch(/non la trovo/);
+        // The one song that plays without any key, in Private's own strip.
+        expect(strip()).not.toBeNull();
+        expect(strip().textContent).toMatch(/Bohemian Rhapsody/);
+        expect(document.querySelectorAll('.nexus-yt-card')).toHaveLength(1);
+        expect(document.querySelectorAll('#chat-history .chat-row')).toHaveLength(0);
+        MediaSession.markPlaying();
+        expect(Actions.log()[0].status).toBe('completed');
+        const told = Capability.privateSystemPromptSuffix();
+        expect(told).toMatch(/Music is playing now, but not “Daft Punk”/);
+        expect(told).toMatch(/never claim it is “Daft Punk”/);
+    });
+
+    test('no search key and nothing named: the keyless song plays for "Play music"', async () => {
+        await begin({ noProvider: true, samples: true });
+        await say('Play music.');
+        expect(strip().textContent).toMatch(/Bohemian Rhapsody/);
+        MediaSession.markPlaying();
+        expect(Capability.privateSystemPromptSuffix()).toMatch(/is playing now/);
     });
 
     test('she never describes music that is not playing', async () => {
@@ -948,15 +973,6 @@ describe('PX8. what the end-to-end run found', () => {
         // Told once: a second failure report for the same request says nothing more.
         w.session._showActions(Actions.snapshot());
         expect(spoken).toHaveBeenCalledTimes(1);
-    });
-
-    test('a failure her prompt already knew about is not said twice', async () => {
-        const w = await begin({ noProvider: true });
-        const spoken = jest.spyOn(w.session, '_speak');
-        Surface.renderUser('play some Daft Punk');
-        Capability.privateSystemPromptSuffix();
-        await flush();
-        expect(spoken).not.toHaveBeenCalled();
     });
 
     test('"Another private moment" opens Private again, not the Together menu', async () => {
@@ -1019,5 +1035,46 @@ describe('PX8. what the end-to-end run found', () => {
         jest.advanceTimersByTime(30000);
         expect(chip().classList.contains('is-offer')).toBe(true);
         jest.useRealTimers();
+    });
+});
+
+describe('PX10. the music requests from a real Italian session', () => {
+    test.each([
+        ['Poi mettere una  canzone', {}, ''],
+        ['Grazie, suona qualcosa di rilassante', {}, 'rilassante'],
+        ['allora metti della musica', {}, ''],
+        ['ok, mettimi qualcosa di jazz', {}, 'jazz'],
+        ['vorrei ascoltare un po di jazz', {}, 'jazz'],
+        ['Ora metti i Coldplay', {}, 'Coldplay'],
+        ['I want to hear some Daft Punk', {}, 'Daft Punk'],
+    ])('%s → music', (text, ctx, query) => {
+        const got = Intent.parse(text, ctx);
+        expect(got && got.name).toBe('music.play');
+        expect(got.params.query).toBe(query);
+    });
+
+    test.each(['Grazie, sei dolce', 'Mi piace il jazz', 'e poi?', 'grazie'])('still talk: %s', (text) => {
+        expect(Intent.parse(text)).toBeNull();
+    });
+
+    test('"Aspetto il brano" asks again for what they asked last — and not while it is playing', async () => {
+        const w = await begin();
+        await say('Grazie, suona qualcosa di rilassante');
+        MediaSession.markBlocked();
+        await say('Aspetto il brano');
+        expect(w.search).toHaveBeenCalledTimes(2);
+        expect(w.search.mock.calls[1][0]).toBe('rilassante');
+        MediaSession.markPlaying();
+        await say('Aspetto il brano');
+        expect(w.search).toHaveBeenCalledTimes(2);
+    });
+
+    test('music asked for in the evening plays low, under her voice', async () => {
+        const w = await begin();
+        await say('metti una canzone');
+        const options = window.NEXUS_YT_2D.activate.mock.calls[0][2];
+        expect(options.volume).toBeLessThan(40);
+        expect(options.volume).toBeGreaterThan(15); // MV1: 15 could not be heard
+        expect(w.search).toHaveBeenCalledTimes(1);
     });
 });

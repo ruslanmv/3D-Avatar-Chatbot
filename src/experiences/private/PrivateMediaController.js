@@ -40,6 +40,13 @@
         selected: 'stopped',
     });
 
+    /**
+     * PX10. Music asked for during the evening plays low, under her voice: the person wants it
+     * in the room, not over the conversation. Below the setup soundtrack's 40 (MV1, raised from
+     * 15, which was too quiet to hear on most speakers) and above "slow down"'s 26.
+     */
+    const REQUESTED_VOLUME = 30;
+
     /** How long a tap on play may go unconfirmed before the strip stops saying "starting…". */
     const CONFIRM_MS = 6000;
 
@@ -60,20 +67,6 @@
             this.listeners = new Set();
             this._unwatch = null;
             this._watch();
-            // PX8. Ask the search providers now, at the start of the evening, so that "no music
-            // search here" is already known when somebody asks — and her reply to that request,
-            // built a moment later, can say so instead of "I'm putting it on".
-            this._warmed = false;
-            try {
-                const registry = this.win && this.win.NEXUS_DISCOVERY;
-                if (registry && typeof registry.warm === 'function') {
-                    Promise.resolve(registry.warm())
-                        .then(() => (this._warmed = true))
-                        .catch(() => (this._warmed = true));
-                } else this._warmed = true;
-            } catch (_) {
-                this._warmed = true;
-            }
         }
 
         status() {
@@ -83,6 +76,7 @@
                 why: this.state.why,
                 title: t ? String(t.title || '') : '',
                 creator: t ? String(t.creator || '') : '',
+                sample: Boolean(t && this.state.sample),
                 id: t ? String(t.id || '') : '',
             };
         }
@@ -151,34 +145,28 @@
             const query = asked || mood;
             if (!query) return { ok: false, why: 'empty-query' };
 
-            // Known now, and said now: the prompt for this very turn reads the state synchronously.
-            if (this._warmed && !this._provider()) {
-                this._set(this.state.track ? this._lastKnown() : 'failed', 'no-provider');
-                return { ok: false, why: 'no-provider' };
-            }
             this._set('searching');
             let found = null;
             try {
-                const registry = this.win && this.win.NEXUS_DISCOVERY;
-                if (registry && typeof registry.warm === 'function') await registry.warm();
-                const provider = this._provider();
-                if (!provider) {
-                    if (stillMine()) this._set(this.state.track ? this._lastKnown() : 'failed', 'no-provider');
-                    return { ok: false, why: 'no-provider' };
-                }
-                found = await provider.search(query, { max: 5, kind: 'music' });
+                found = await this._search(query);
             } catch (_) {
-                if (stillMine()) this._set(this.state.track ? this._lastKnown() : 'failed', 'search-failed');
-                return { ok: false, why: 'search-failed' };
+                found = null;
             }
             if (!stillMine()) return { ok: false, why: 'stale' };
+            if (found === null) {
+                this._set(this.state.track ? this._lastKnown() : 'failed', 'search-failed');
+                return { ok: false, why: 'search-failed' };
+            }
 
             const current = this.state.track;
             let results = (Array.isArray(found) ? found : []).filter((r) => r && r.id);
             if (p.different && current) results = results.filter((r) => String(r.id) !== String(current.id));
             // A request that named something gets the provider's first answer for it. One that
             // named nothing gets the first that suits the evening, and silence if none does.
-            const track = asked ? results[0] : this.pick ? this.pick(results) : results[0];
+            // PX9. The keyless sample is not a search result and has no mood to judge: when it is
+            // all there is, it is what plays — exactly as in Together's Music.
+            const samples = results.length > 0 && results.every((r) => r.sample);
+            const track = asked || samples ? results[0] : this.pick ? this.pick(results) : results[0];
             if (!track) {
                 this._set(current ? this._lastKnown() : 'failed', 'nothing-found');
                 return { ok: false, why: 'nothing-found' };
@@ -196,8 +184,10 @@
             try {
                 const media = this.win && this.win.NEXUS_MEDIA_SESSION;
                 this.state.track = track;
+                // Whether this is what they asked for or the one song that plays without a key.
+                this.state.sample = Boolean(track.sample);
                 if (media && typeof media.requestPlay === 'function') media.requestPlay(track, { source: 'private' });
-                view.attachSoundtrack(track);
+                view.attachSoundtrack(track, { volume: REQUESTED_VOLUME });
                 // The session hands the music back when it ends, exactly as for a soundtrack
                 // chosen at setup.
                 session._ownsMedia = true;
@@ -218,6 +208,26 @@
                 this._settle = null;
                 if (this.state.status === 'loading' && this.state.track) this._set(this._lastKnown());
             }, CONFIRM_MS);
+        }
+
+        /**
+         * PX9. The same search Together's Music uses (`MediaIntent.search`): the connected
+         * provider — a visitor's key or the deployment's — and, when there is none, the keyless
+         * sample song. Private asked the provider directly before, so a deployment without a
+         * search key, where Together played music, had none in Private. `[]` for nothing found,
+         * `null` for a search that could not run at all.
+         */
+        async _search(query) {
+            const intent = this.win && this.win.NEXUS_MEDIA_INTENT;
+            if (intent && typeof intent.search === 'function') return intent.search(query, 'music');
+            const registry = this.win && this.win.NEXUS_DISCOVERY;
+            if (registry && typeof registry.warm === 'function') await registry.warm();
+            const provider = this._provider();
+            if (provider) return provider.search(query, { max: 5, kind: 'music' });
+            const samples = this.win && this.win.NEXUS_DISCOVERY_SAMPLES;
+            const fallback =
+                samples && typeof samples.forCapability === 'function' ? samples.forCapability('music.search') : [];
+            return fallback && fallback.length ? fallback : null;
         }
 
         /** What `MediaSession` last said about this track, when a search leaves it untouched. */
@@ -322,7 +332,7 @@
         }
     }
 
-    const api = { PrivateMediaController, FROM_SESSION, CONFIRM_MS };
+    const api = { PrivateMediaController, FROM_SESSION, CONFIRM_MS, REQUESTED_VOLUME };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_PRIVATE_MEDIA_CONTROLLER = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);

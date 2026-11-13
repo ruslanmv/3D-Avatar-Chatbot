@@ -256,3 +256,20 @@ Not changed, and needs a decision: **a person who has never switched Private Mod
 Private at all** — the tile is hidden until Settings has it on. That is the current, deliberate
 rule; showing a locked "🔐 Private · 18+" tile that explains how to turn it on would be the usual
 way to make it discoverable.
+
+## 12. Music works the way Together's does (PX9–PX10, 2026-11-13)
+
+- **Same search as Together.** Private asked the search provider directly, so a deployment
+  without a search key had no music in Private while Together's Music played. It now calls
+  `MediaIntent.search` — the connected provider (a visitor's key or the deployment's
+  `/api/yt/search`) and, with neither, the keyless sample song. No key is required.
+- **Honest about the sample.** When only the sample can play and they named something else, her
+  prompt says so, and a reply already written ("putting on Daft Punk") gets one short line in the
+  app language ("Quella qui non la trovo, allora ho messo questa per noi.").
+- **More requests recognised** (a real Italian session): fillers before the verb ("Grazie,
+  suona…", "Allora metti…", a typed "Poi" for "Puoi"); genres as music words ("mettimi qualcosa
+  di jazz"); wishes ("vorrei ascoltare…"); an artist after "metti" ("Ora metti i Coldplay");
+  and waiting ("Aspetto il brano", "e la musica?") asks again for the last request unless
+  something is already playing.
+- **Low volume.** Music asked for during the evening starts at 30 (setup soundtrack 40, "slow
+  down" 26).
