@@ -67,6 +67,11 @@ class CaptureHelpersTest(unittest.TestCase):
         self.assertEqual(found[0]["pose"], "sittingWide")
         self.assertEqual(found[0]["actual"], "maxPenetrationMm is 6")
 
+    def test_original_sitting_desk_capture_still_parses(self):
+        opts = parse_args(["--poses", "sittingDesk", "--views", "front,side,back"])
+        self.assertEqual(opts.poses, ["sittingDesk"])
+        self.assertEqual(opts.views, ["front", "side", "back"])
+
     def test_views_have_independent_angles(self):
         self.assertEqual(VIEWS["front"], 0)
         self.assertEqual(VIEWS["right"], 90)

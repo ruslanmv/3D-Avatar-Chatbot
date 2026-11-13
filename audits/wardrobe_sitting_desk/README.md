@@ -38,7 +38,23 @@ Default poses: `standing` (`standingRelaxed`), `sittingDesk`, `sittingWide`,
 `sittingCrossed`.
 
 Default views: `front` (0°), `right` (90°), `back` (180°), `left` (270°). The
-older names `side` and `opposite-side` still work.
+older names `side` and `opposite-side` still work. `side` is the same orbit as
+`right`.
+
+## Sitting Desk, the original capture
+
+PR #135 photographed Sitting Desk from the front, the side, and the back. That
+run is this runner with the pose and the cameras limited:
+
+```bash
+python audits/wardrobe_sitting_desk/capture.py \
+  --source both --avatar fem_vroid.vrm \
+  --poses sittingDesk \
+  --views front,side,back
+```
+
+It still waits for the cloth correction, writes the gate, and can be printed
+with `print_matrix.py`. It does not replace the four-pose audit.
 
 ## Run
 
