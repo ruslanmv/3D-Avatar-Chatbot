@@ -15,8 +15,8 @@ A green unit test is not a closed live picture.
 
 ```text
 Repo: 3D-Avatar-Chatbot
-Branch: claude/awesome-brown-khqcdj
-Base: master
+Branch: cursor/wardrobe-audit-living-worlds-5f80
+Base: feat/living-worlds-spatial-storytelling
 Read: audits/wardrobe_sitting_desk/AGENT_MATRIX.md
 Table: audits/wardrobe_sitting_desk/reports/catalog-matrix-2026-11-07/catalog-matrix.csv
 Sheets: audits/wardrobe_sitting_desk/reports/catalog-matrix-2026-11-07/sheets/

@@ -1,6 +1,6 @@
 # Wardrobe visual audit
 
-Brought onto `master` (`4ff5ae0`) for `claude/awesome-brown-khqcdj`. The scripts
+Brought onto `feat/living-worlds-spatial-storytelling` (`7171d77`). The scripts
 and the 7 November and 8 November tables are the ones from PR #137, commit
 `5d78262`. Product code is unchanged.
 
