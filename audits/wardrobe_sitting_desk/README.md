@@ -1,33 +1,44 @@
 # Wardrobe visual audit
 
-Brought onto `master` (`4ff5ae0`) for `claude/awesome-brown-khqcdj`. The
-scripts and the 7 November and 8 November tables are the ones from PR #137,
-commit `5d78262`. Product code is unchanged.
+Brought onto `master` (`4ff5ae0`) for `claude/awesome-brown-khqcdj`. The scripts
+and the 7 November and 8 November tables are the ones from PR #137, commit
+`5d78262`. Product code is unchanged.
 
 On this tree `VRPoseSystem` has no `clothStatus()`, and `PoseClothCorrector`
-does not set `phase`. `capture.py` records that phase in the page: `release`
-is idle, `correct` is pending, and the worker answer is applied, skipped, or
+does not set `phase`. `capture.py` records that phase in the page: `release` is
+idle, `correct` is pending, and the worker answer is applied, skipped, or
 failed. `cloth.last` is still `{name, before, after}`. `after` has
-`maxPenetrationMm` and `maxEdgeStretch`. It does not have `maxSpanDropMm`, so
-a new capture will not flag the 8 mm span gate until the worker reports that
-field again. The historical CSVs are not rewritten.
+`maxPenetrationMm` and `maxEdgeStretch`. It does not have `maxSpanDropMm`, so a
+new capture will not flag the 8 mm span gate until the worker reports that field
+again. The historical CSVs are not rewritten.
 
 Repeatable evidence for Try-On looks and the live Forge catalog. The runner can:
 
-1. Fetch the public catalog and mark every garment `not-captured` (`--inventory-only`). This does not generate clothing.
-2. Open the app, apply each selected look or garment, pose her, and save four camera orbits per pose.
-3. Wait until the cloth correction is applied, skipped, or failed. A fixed sleep is only the short settle after that.
-4. Write `issues.json`, `report.html`, `report.md`, `summary.json` and `READINESS.md`. Failures are `infrastructure`, `generation`, `pose` or `capture`.
-5. Compare a previous run with `--baseline` and `--diff-threshold`. A pixel delta is a review item (`confirmed: false`), not an automatic defect.
+1. Fetch the public catalog and mark every garment `not-captured`
+   (`--inventory-only`). This does not generate clothing.
+2. Open the app, apply each selected look or garment, pose her, and save four
+   camera orbits per pose.
+3. Wait until the cloth correction is applied, skipped, or failed. A fixed sleep
+   is only the short settle after that.
+4. Write `issues.json`, `report.html`, `report.md`, `summary.json` and
+   `READINESS.md`. Failures are `infrastructure`, `generation`, `pose` or
+   `capture`.
+5. Compare a previous run with `--baseline` and `--diff-threshold`. A pixel
+   delta is a review item (`confirmed: false`), not an automatic defect.
 6. Resume a partial run with `--resume`.
 
-Camera orbits rotate the existing Three.js camera around its target (`camera-orbit`). They do not yaw the avatar. `walking` is recorded `unsupported` on every entry: locomotion follows the viewer and is not a Pose Studio preset.
+Camera orbits rotate the existing Three.js camera around its target
+(`camera-orbit`). They do not yaw the avatar. `walking` is recorded
+`unsupported` on every entry: locomotion follows the viewer and is not a Pose
+Studio preset.
 
 ## Poses and views
 
-Default poses: `standing` (`standingRelaxed`), `sittingDesk`, `sittingWide`, `sittingCrossed`.
+Default poses: `standing` (`standingRelaxed`), `sittingDesk`, `sittingWide`,
+`sittingCrossed`.
 
-Default views: `front` (0°), `right` (90°), `back` (180°), `left` (270°). The older names `side` and `opposite-side` still work.
+Default views: `front` (0°), `right` (90°), `back` (180°), `left` (270°). The
+older names `side` and `opposite-side` still work.
 
 ## Run
 
@@ -47,15 +58,32 @@ python audits/wardrobe_sitting_desk/capture.py --source looks --max-items 1
 python audits/wardrobe_sitting_desk/capture.py --source both --avatar fem_vroid.vrm --max-items 0
 ```
 
-Screenshots stay in gitignored `runs/`. A few comparison frames live in `reports/evidence/` so the bug records have a stable path. GitHub Actions uploads a full run. Pull requests run the offline tests only. The weekly schedule captures shipped looks and does not generate. A catalog dispatch must set `allow_generation` or the job refuses to start.
+Screenshots stay in gitignored `runs/`. A few comparison frames live in
+`reports/evidence/` so the bug records have a stable path. GitHub Actions
+uploads a full run. Pull requests run the offline tests only. The weekly
+schedule captures shipped looks and does not generate. A catalog dispatch must
+set `allow_generation` or the job refuses to start.
 
-`--only` is a substring, and an exact name wins when one exists. Several looks can share a name, so a retest passes `--look-key` with the rail's `data-look-key`.
+`--only` is a substring, and an exact name wins when one exists. Several looks
+can share a name, so a retest passes `--look-key` with the rail's
+`data-look-key`.
 
 ## What this does not claim
 
-The span lift closes the two-thigh fixture. It did not close the live pencil hem. `WARDROBE-CLIP-001` and `WARDROBE-DEFORM-002` stay release blockers. The assessment is [reports/READINESS.md](reports/READINESS.md). The catalog enumeration from 2026-11-07 is [reports/live-catalog-2026-11-07](reports/live-catalog-2026-11-07).
+The span lift closes the two-thigh fixture. It did not close the live pencil
+hem. `WARDROBE-CLIP-001` and `WARDROBE-DEFORM-002` stay release blockers. The
+assessment is [reports/READINESS.md](reports/READINESS.md). The catalog
+enumeration from 2026-11-07 is
+[reports/live-catalog-2026-11-07](reports/live-catalog-2026-11-07).
 
-A later Try-On pass applied 61 of the 62 public garments in standing, Sitting (Desk), Sitting (Wide) and Sitting (Crossed), four cameras each. The picture table, contact sheets, and the rerun steps for a later coder are in [AGENT_MATRIX.md](AGENT_MATRIX.md) and [reports/catalog-matrix-2026-11-07](reports/catalog-matrix-2026-11-07). Every skirt and dress still drops through the lap. Plain and high-waist leggings still stretch about 39× in Sitting (Crossed). Seamless Scrunch Leggings did not finish its cloth correction and was left uncaptured. The frame PNGs are not in git.
+A later Try-On pass applied 61 of the 62 public garments in standing, Sitting
+(Desk), Sitting (Wide) and Sitting (Crossed), four cameras each. The picture
+table, contact sheets, and the rerun steps for a later coder are in
+[AGENT_MATRIX.md](AGENT_MATRIX.md) and
+[reports/catalog-matrix-2026-11-07](reports/catalog-matrix-2026-11-07). Every
+skirt and dress still drops through the lap. Plain and high-waist leggings still
+stretch about 39× in Sitting (Crossed). Seamless Scrunch Leggings did not finish
+its cloth correction and was left uncaptured. The frame PNGs are not in git.
 
 ```bash
 python audits/wardrobe_sitting_desk/print_matrix.py \

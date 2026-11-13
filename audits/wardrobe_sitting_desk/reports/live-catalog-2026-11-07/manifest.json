@@ -1,17 +1,7 @@
 {
   "mode": "inventory-only",
-  "pose": [
-    "standing",
-    "sittingDesk",
-    "sittingWide",
-    "sittingCrossed"
-  ],
-  "views": [
-    "front",
-    "right",
-    "back",
-    "left"
-  ],
+  "pose": ["standing", "sittingDesk", "sittingWide", "sittingCrossed"],
+  "views": ["front", "right", "back", "left"],
   "entries": [
     {
       "id": "garment-top-tee-v1",

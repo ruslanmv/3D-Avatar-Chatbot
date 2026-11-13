@@ -1,17 +1,10 @@
 {
   "url": "http://127.0.0.1:8080/",
-  "poses": [
-    "sittingDesk"
-  ],
+  "poses": ["sittingDesk"],
   "unsupportedPoses": {
     "walking": "AvatarLocomotionSystem walks by following the viewer. It is not a Pose Studio preset, so a still audit has no walk frame to apply."
   },
-  "views": [
-    "front",
-    "right",
-    "back",
-    "left"
-  ],
+  "views": ["front", "right", "back", "left"],
   "cameraMethod": "camera-orbit",
   "viewport": "1440x900",
   "entries": [

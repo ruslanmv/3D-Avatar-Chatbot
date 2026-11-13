@@ -11,8 +11,6 @@
     "P1": 1,
     "P3": 3
   },
-  "releaseBlockers": [
-    "WARDROBE-CLIP-001"
-  ],
+  "releaseBlockers": ["WARDROBE-CLIP-001"],
   "releaseReady": false
 }
