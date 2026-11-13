@@ -152,6 +152,15 @@
         // P17. The clock that notices silence — stages, never intensity. Before
         // TogetherCapability, which drives it from the beat tick it already has.
         'src/features/together/PrivateIdleClock.js',
+        // PX1–PX6. Private 3.0: actions asked for in a Private conversation happen in it. Before
+        // TogetherCapability only so the reader meets them in dependency order — each resolves
+        // the others (and the wardrobe globals `index.html` loads later) when it runs, not here.
+        'src/experiences/private/PrivateActionIntent.js',
+        'src/experiences/private/PrivateActionPolicy.js',
+        'src/experiences/private/PrivateMediaController.js',
+        'src/experiences/private/OutfitDecisionEngine.js',
+        'src/experiences/private/InSceneWardrobe.js',
+        'src/experiences/private/PrivateActionBridge.js',
         'src/features/together/TogetherCapability.js',
         // T3/T5. The one function that finds and plays, and the parser that lets her ask for
         // it. After the publisher's dependencies, before the launcher.

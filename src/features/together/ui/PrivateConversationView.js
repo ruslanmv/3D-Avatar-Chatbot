@@ -144,7 +144,7 @@ const PrivateConversationView = (() => {
     const CSS = `
 #${ROW_ID}{display:flex;flex-direction:column;width:100%;max-height:calc(100% - 18px);min-height:0;margin:8px 0 10px;box-sizing:border-box;color:inherit}
 #${ROW_ID} *{box-sizing:border-box}.nexus-private-shell{display:flex;flex-direction:column;min-height:0;overflow:hidden;overflow:clip;border:1px solid rgba(244,128,166,.4);border-radius:16px;background:linear-gradient(145deg,rgba(39,15,36,.9),rgba(22,13,28,.82));box-shadow:0 16px 50px rgba(23,5,21,.3);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
-.nexus-private-heading{display:flex;align-items:baseline;gap:8px;padding:9px 13px;border-bottom:1px solid rgba(255,255,255,.07);font-size:.74rem;flex:0 0 auto;background:linear-gradient(145deg,rgba(35,13,33,.97),rgba(26,14,31,.95))}.nexus-private-kicker{color:#f49aba;font-size:.72rem;font-weight:750;letter-spacing:.09em}.nexus-private-heading-title{font-weight:700;margin:0}.nexus-private-place{order:2;font-size:.74rem;opacity:.5;margin-left:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:45%}.nexus-private-heading-title{order:3;flex:0 0 auto;padding:2px 9px;border-radius:999px;border:1px solid rgba(244,128,166,.32);background:rgba(244,128,166,.12);color:#f6b9cd;font-size:.72rem;letter-spacing:.02em}.nexus-private-card{flex:1 1 auto;min-height:0;padding:12px 14px;max-height:34vh;overflow-y:auto;overscroll-behavior:contain}.nexus-private-log{display:grid;gap:10px}.nexus-private-turn{display:grid;gap:2px}.nexus-private-who{font-size:.62rem;letter-spacing:.1em;font-weight:700;opacity:.42}.nexus-private-turn.is-you .nexus-private-who{color:#9fd8ea}.nexus-private-turn.is-her .nexus-private-who{color:#f08fb6}.nexus-private-turn.is-you .nexus-private-copy{opacity:.78}.nexus-private-copy{font-size:.95rem;line-height:1.5;white-space:pre-wrap;text-wrap:pretty}.nexus-private-turn.is-streaming .nexus-private-copy::after{content:'▍';opacity:.5;animation:nexus-private-caret 1s steps(2) infinite}@keyframes nexus-private-caret{0%,100%{opacity:.15}50%{opacity:.7}}.nexus-private-pending{padding-top:9px;border-top:1px solid rgba(255,255,255,.07);opacity:.8}.nexus-private-thinking{display:flex;align-items:center;gap:5px;margin-top:12px;height:10px}.nexus-private-dot{width:6px;height:6px;border-radius:50%;background:#f49aba;opacity:.35;animation:nexus-private-dot 1.25s ease-in-out infinite}.nexus-private-dot:nth-child(2){animation-delay:.18s}.nexus-private-dot:nth-child(3){animation-delay:.36s}@keyframes nexus-private-dot{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:.95;transform:translateY(-3px)}}.nexus-private-kicker{animation:nexus-private-breathe 5.5s ease-in-out infinite}@keyframes nexus-private-breathe{0%,100%{opacity:.72}50%{opacity:1}}@media(prefers-reduced-motion:reduce){.nexus-private-dot,.nexus-private-kicker,.nexus-private-turn.is-streaming .nexus-private-copy::after{animation:none}.nexus-private-dot{opacity:.6}}.nexus-private-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:11px}.nexus-private-btn{border:1px solid rgba(240,143,182,.32);background:rgba(240,143,182,.09);color:inherit;border-radius:10px;padding:8px 10px;text-align:center;font:inherit;font-size:.8rem;cursor:pointer}.nexus-private-btn:hover,.nexus-private-btn:focus-visible{background:rgba(244,128,166,.18);outline:none}.nexus-private-btn:disabled{cursor:default;opacity:.4}.nexus-private-btn.is-chosen{opacity:.85;border-color:rgba(240,143,182,.55);background:rgba(240,143,182,.16)}.nexus-private-bar{display:flex;align-items:center;gap:8px;padding:7px 11px;border-top:1px solid rgba(255,255,255,.07);flex:0 0 auto;background:linear-gradient(145deg,rgba(30,12,29,.97),rgba(22,13,28,.96))}.nexus-private-level{font-size:.72rem;opacity:.6;flex:1}.nexus-private-bar .nexus-private-btn{padding:6px 9px;font-size:.76rem}.nexus-private-soundtrack{flex:0 0 auto;margin:0 11px 9px;font-size:.74rem}.nexus-private-soundtrack-strip{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:5px 9px;border:1px solid rgba(240,143,182,.16);border-radius:9px;background:rgba(240,143,182,.05)}.nexus-private-soundtrack-copy{min-width:0;flex:1}.nexus-private-soundtrack-kicker{display:none}.nexus-private-soundtrack-title{font-size:.74rem;line-height:1.3;opacity:.72;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nexus-private-soundtrack-creator{display:none}.nexus-private-soundtrack-toggle{border:0;background:transparent;color:inherit;opacity:.5;padding:2px 4px;font:inherit;font-size:.7rem;cursor:pointer;flex:0 0 auto;text-decoration:underline}.nexus-private-soundtrack-toggle:hover,.nexus-private-soundtrack-toggle:focus-visible{opacity:.9;outline:none}.nexus-private-soundtrack-player{display:none;width:min(280px,100%);margin-top:9px}.nexus-private-soundtrack-player.is-open{display:block}.nexus-private-soundtrack-player .nexus-yt-card{width:100%;max-width:280px;margin:0}.nexus-private-soundtrack-player .nexus-yt-meta{font-size:.72rem}.nexus-private-complete{font-size:1rem;font-weight:750;margin-bottom:6px}.nexus-private-note{font-size:.84rem;line-height:1.5;opacity:.74}.is-complete .nexus-private-bar{display:none}
+.nexus-private-heading{display:flex;align-items:baseline;gap:8px;padding:9px 13px;border-bottom:1px solid rgba(255,255,255,.07);font-size:.74rem;flex:0 0 auto;background:linear-gradient(145deg,rgba(35,13,33,.97),rgba(26,14,31,.95))}.nexus-private-kicker{color:#f49aba;font-size:.72rem;font-weight:750;letter-spacing:.09em}.nexus-private-heading-title{font-weight:700;margin:0}.nexus-private-place{order:2;font-size:.74rem;opacity:.5;margin-left:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:45%}.nexus-private-heading-title{order:3;flex:0 0 auto;padding:2px 9px;border-radius:999px;border:1px solid rgba(244,128,166,.32);background:rgba(244,128,166,.12);color:#f6b9cd;font-size:.72rem;letter-spacing:.02em}.nexus-private-card{flex:1 1 auto;min-height:0;padding:12px 14px;max-height:34vh;overflow-y:auto;overscroll-behavior:contain}.nexus-private-log{display:grid;gap:10px}.nexus-private-turn{display:grid;gap:2px}.nexus-private-who{font-size:.62rem;letter-spacing:.1em;font-weight:700;opacity:.42}.nexus-private-turn.is-you .nexus-private-who{color:#9fd8ea}.nexus-private-turn.is-her .nexus-private-who{color:#f08fb6}.nexus-private-turn.is-you .nexus-private-copy{opacity:.78}.nexus-private-copy{font-size:.95rem;line-height:1.5;white-space:pre-wrap;text-wrap:pretty}.nexus-private-turn.is-streaming .nexus-private-copy::after{content:'▍';opacity:.5;animation:nexus-private-caret 1s steps(2) infinite}@keyframes nexus-private-caret{0%,100%{opacity:.15}50%{opacity:.7}}.nexus-private-pending{padding-top:9px;border-top:1px solid rgba(255,255,255,.07);opacity:.8}.nexus-private-thinking{display:flex;align-items:center;gap:5px;margin-top:12px;height:10px}.nexus-private-dot{width:6px;height:6px;border-radius:50%;background:#f49aba;opacity:.35;animation:nexus-private-dot 1.25s ease-in-out infinite}.nexus-private-dot:nth-child(2){animation-delay:.18s}.nexus-private-dot:nth-child(3){animation-delay:.36s}@keyframes nexus-private-dot{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:.95;transform:translateY(-3px)}}.nexus-private-kicker{animation:nexus-private-breathe 5.5s ease-in-out infinite}@keyframes nexus-private-breathe{0%,100%{opacity:.72}50%{opacity:1}}@media(prefers-reduced-motion:reduce){.nexus-private-dot,.nexus-private-kicker,.nexus-private-turn.is-streaming .nexus-private-copy::after{animation:none}.nexus-private-dot{opacity:.6}}.nexus-private-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:11px}.nexus-private-btn{border:1px solid rgba(240,143,182,.32);background:rgba(240,143,182,.09);color:inherit;border-radius:10px;padding:8px 10px;text-align:center;font:inherit;font-size:.8rem;cursor:pointer}.nexus-private-btn:hover,.nexus-private-btn:focus-visible{background:rgba(244,128,166,.18);outline:none}.nexus-private-btn:disabled{cursor:default;opacity:.4}.nexus-private-btn.is-chosen{opacity:.85;border-color:rgba(240,143,182,.55);background:rgba(240,143,182,.16)}.nexus-private-bar{display:flex;align-items:center;gap:8px;padding:7px 11px;border-top:1px solid rgba(255,255,255,.07);flex:0 0 auto;background:linear-gradient(145deg,rgba(30,12,29,.97),rgba(22,13,28,.96))}.nexus-private-level{font-size:.72rem;opacity:.6;flex:1}.nexus-private-bar .nexus-private-btn{padding:6px 9px;font-size:.76rem}.nexus-private-soundtrack{flex:0 0 auto;margin:0 11px 9px;font-size:.74rem}.nexus-private-soundtrack-strip{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:5px 9px;border:1px solid rgba(240,143,182,.16);border-radius:9px;background:rgba(240,143,182,.05)}.nexus-private-soundtrack-copy{min-width:0;flex:1}.nexus-private-soundtrack-kicker{display:none}.nexus-private-soundtrack-title{font-size:.74rem;line-height:1.3;opacity:.72;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nexus-private-soundtrack-creator{display:none}.nexus-private-soundtrack-toggle{border:0;background:transparent;color:inherit;opacity:.5;padding:2px 4px;font:inherit;font-size:.7rem;cursor:pointer;flex:0 0 auto;text-decoration:underline}.nexus-private-soundtrack-toggle:hover,.nexus-private-soundtrack-toggle:focus-visible{opacity:.9;outline:none}.nexus-private-soundtrack-player{display:none;width:min(280px,100%);margin-top:9px}.nexus-private-soundtrack-player.is-open{display:block}.nexus-private-soundtrack-player .nexus-yt-card{width:100%;max-width:280px;margin:0}.nexus-private-soundtrack-player .nexus-yt-meta{font-size:.72rem}.nexus-private-music-state{font-size:.7rem;opacity:.6;flex:0 0 auto;white-space:nowrap}.nexus-private-music-line{padding:5px 9px;font-size:.74rem;opacity:.72}.nexus-private-music-toggle{flex:0 0 auto;width:26px;height:26px;border-radius:50%;border:1px solid rgba(240,143,182,.4);background:rgba(240,143,182,.12);color:inherit;font:inherit;font-size:.7rem;line-height:1;cursor:pointer;padding:0}.nexus-private-music-toggle:hover,.nexus-private-music-toggle:focus-visible{background:rgba(244,128,166,.26);outline:none}.nexus-private-outfit{display:flex;align-items:center;gap:8px;margin-top:6px;padding:5px 9px;border:1px solid rgba(240,143,182,.16);border-radius:9px;background:rgba(240,143,182,.05);font-size:.74rem}.nexus-private-outfit-text{flex:1;min-width:0;opacity:.78;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.nexus-private-outfit.is-offer .nexus-private-outfit-text{white-space:normal;opacity:.92}.nexus-private-outfit-btn{flex:0 0 auto;border:1px solid rgba(240,143,182,.32);background:rgba(240,143,182,.09);color:inherit;border-radius:8px;padding:3px 9px;font:inherit;font-size:.72rem;cursor:pointer}.nexus-private-outfit-btn:hover,.nexus-private-outfit-btn:focus-visible{background:rgba(244,128,166,.2);outline:none}.nexus-private-outfit-btn.is-quiet{border-color:transparent;background:transparent;opacity:.6;text-decoration:underline}.nexus-private-complete{font-size:1rem;font-weight:750;margin-bottom:6px}.nexus-private-note{font-size:.84rem;line-height:1.5;opacity:.74}.is-complete .nexus-private-bar{display:none}
 .nexus-private-status{font-size:.72rem;opacity:0;transition:opacity .28s ease;color:#9fd8ea;flex:0 0 auto;white-space:nowrap}.nexus-private-status.is-visible{opacity:.85}
 .nexus-private-shell.is-gentle{border-color:rgba(244,128,166,.24);box-shadow:0 12px 36px rgba(23,5,21,.24)}.is-gentle .nexus-private-kicker{animation:none;opacity:.6}
 .nexus-private-level{display:flex;align-items:center;gap:5px}.nexus-private-step{font-size:.72rem;opacity:.3;transition:opacity .3s ease,color .3s ease}.nexus-private-step.is-reached{opacity:.6;color:#f49aba}.nexus-private-step.is-current{opacity:1;font-weight:700;letter-spacing:.01em}.nexus-private-rung{width:12px;height:1px;background:currentColor;opacity:.22;flex:0 0 auto}
@@ -1000,7 +1000,10 @@ const PrivateConversationView = (() => {
             const slot = this.row.querySelector('.nexus-private-soundtrack');
             if (!slot) return null;
             const strips = (this.win && this.win.NEXUS_SOUNDTRACK_STRIP) || StripApi;
+            // PX6. The outfit chip lives in the same slot and is not the soundtrack's to erase.
+            const outfit = slot.querySelector('.nexus-private-outfit');
             slot.textContent = '';
+            if (outfit) slot.appendChild(outfit);
             slot.hidden = false;
             if (!strips || typeof strips.render !== 'function') {
                 slot.textContent = `♫ ${track.title || t('soundtrack.fallback')}`;
@@ -1032,10 +1035,165 @@ const PrivateConversationView = (() => {
                 slot.textContent = `♫ ${track.title || t('soundtrack.fallback')}`;
                 return null;
             }
-            slot.appendChild(built.strip);
-            if (built.card) slot.appendChild(built.player);
+            const chip = slot.querySelector('.nexus-private-outfit');
+            slot.insertBefore(built.strip, chip);
+            if (built.card) slot.insertBefore(built.player, chip);
             this._soundtrackCard = built.card || null;
             return built;
+        }
+
+        /**
+         * PX3. Take the soundtrack off the row — the strip, and the player inside it.
+         *
+         * For a stop that had no player to talk to: removing the iframe is the one thing that
+         * certainly silences it. The outfit chip beside it stays.
+         */
+        clearSoundtrack() {
+            const slot = this.row && this.row.querySelector('.nexus-private-soundtrack');
+            if (!slot) return false;
+            for (const node of [...slot.children]) {
+                if (!node.classList.contains('nexus-private-outfit')) node.remove();
+            }
+            this._soundtrackCard = null;
+            slot.hidden = !slot.children.length;
+            return true;
+        }
+
+        /**
+         * PX6. What the action bridge reports, drawn where the soundtrack already sits: the
+         * music's real state with one play/pause control, and a line for her outfit with Undo —
+         * or, when a change needs a yes, the question and its two answers.
+         *
+         * Inline and small on purpose. A routine song or a change of dress is not a reason for a
+         * panel, a modal or a second screen, and nothing here is placed over her.
+         *
+         * @param {object} now  `PrivateActionBridge.snapshot()`
+         * @param {object} handlers  `{ onMusic(move), onUndo(), onApprove(), onDecline() }`
+         */
+        showActions(now, handlers = {}) {
+            const slot = this.row && this.row.querySelector('.nexus-private-soundtrack');
+            if (!slot) return false;
+            this._paintMusic(slot, (now && now.music) || null, handlers);
+            this._paintOutfit(slot, now || {}, handlers);
+            slot.hidden = !slot.children.length;
+            return true;
+        }
+
+        _paintMusic(slot, music, handlers) {
+            const status = music ? music.status : 'idle';
+            const strip = slot.querySelector('[data-private-soundtrack]');
+            for (const old of slot.querySelectorAll('.nexus-private-music-line')) old.remove();
+            const words = {
+                searching: 'music.searching',
+                loading: 'music.loading',
+                playing: 'music.playing',
+                paused: 'music.paused',
+                blocked: 'music.blocked',
+                stopped: 'music.stopped',
+            };
+            let text = words[status] ? t(words[status]) : '';
+            if (status === 'failed') {
+                const known = ['no-provider', 'nothing-found'].includes(music.why) ? music.why : 'other';
+                text = t(`music.failed.${known}`);
+            }
+            if (!strip) {
+                // Nothing to control yet (still searching) or nothing at all (it failed): one line.
+                if (!text || status === 'stopped') return;
+                const line = this.doc.createElement('div');
+                line.className = 'nexus-private-music-line';
+                line.setAttribute('role', 'status');
+                line.textContent = `♫ ${text}`;
+                slot.insertBefore(line, slot.firstChild);
+                return;
+            }
+            let label = strip.querySelector('.nexus-private-music-state');
+            let button = strip.querySelector('.nexus-private-music-toggle');
+            // A soundtrack chosen at setup is not this controller's: it keeps the strip it had.
+            if (!text) {
+                if (label) label.remove();
+                if (button) button.remove();
+                return;
+            }
+            const anchor = strip.querySelector('.nexus-private-soundtrack-toggle');
+            if (!label) {
+                label = this.doc.createElement('span');
+                label.className = 'nexus-private-music-state';
+                label.setAttribute('role', 'status');
+                label.setAttribute('aria-live', 'polite');
+                strip.insertBefore(label, anchor);
+            }
+            if (!button) {
+                button = this.doc.createElement('button');
+                button.type = 'button';
+                button.className = 'nexus-private-music-toggle';
+                button.dataset.privateMusic = 'toggle';
+                strip.insertBefore(button, anchor);
+            }
+            label.textContent = text;
+            const playing = status === 'playing' || status === 'loading';
+            button.textContent = playing ? '❚❚' : '▶';
+            button.setAttribute('aria-label', t(playing ? 'music.pause' : 'music.play'));
+            button.dataset.move = playing ? 'pause' : 'resume';
+            // Reassigned, not added: one listener however many times the state is redrawn.
+            button.onclick = () => {
+                if (typeof handlers.onMusic === 'function') handlers.onMusic(button.dataset.move);
+            };
+        }
+
+        _paintOutfit(slot, now, handlers) {
+            const outfit = now.outfit || null;
+            const action = now.outfitAction || null;
+            const offer = now.offer || null;
+            let text = '';
+            const buttons = [];
+            if (offer) {
+                text = t(offer.kind === 'wear' ? 'outfit.offer.wear' : 'outfit.offer.create', {
+                    name: offer.name || '',
+                });
+                buttons.push(['approve', t('outfit.yes'), handlers.onApprove, false]);
+                buttons.push(['decline', t('outfit.no'), handlers.onDecline, true]);
+            } else if (outfit && outfit.status === 'creating') {
+                text = t('outfit.creating');
+            } else if (outfit && outfit.status === 'changing') {
+                text = t('outfit.changing');
+            } else if (action && action.status === 'failed') {
+                const known = ['adult-ineligible', 'no-match', 'forge-unavailable'].includes(action.why)
+                    ? action.why
+                    : 'other';
+                text = t(`outfit.failed.${known}`);
+                if (outfit && outfit.canUndo) buttons.push(['undo', t('outfit.undo'), handlers.onUndo, true]);
+            } else if (outfit && outfit.wearing) {
+                text = t('outfit.wearing', { name: outfit.name || '…' });
+                if (outfit.canUndo) buttons.push(['undo', t('outfit.undo'), handlers.onUndo, true]);
+            }
+            let chip = slot.querySelector('.nexus-private-outfit');
+            if (!text) {
+                if (chip) chip.remove();
+                return;
+            }
+            if (!chip) {
+                chip = this.doc.createElement('div');
+                chip.className = 'nexus-private-outfit';
+                chip.setAttribute('role', 'status');
+                slot.appendChild(chip);
+            }
+            chip.classList.toggle('is-offer', Boolean(offer));
+            chip.textContent = '';
+            const copy = this.doc.createElement('span');
+            copy.className = 'nexus-private-outfit-text';
+            copy.textContent = `👗 ${text}`;
+            chip.appendChild(copy);
+            for (const [id, label, handler, quiet] of buttons) {
+                const b = this.doc.createElement('button');
+                b.type = 'button';
+                b.className = `nexus-private-outfit-btn${quiet ? ' is-quiet' : ''}`;
+                b.dataset.privateOutfit = id;
+                b.textContent = label;
+                b.addEventListener('click', () => {
+                    if (typeof handler === 'function') handler();
+                });
+                chip.appendChild(b);
+            }
         }
 
         /**
