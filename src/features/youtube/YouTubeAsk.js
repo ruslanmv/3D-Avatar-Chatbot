@@ -458,6 +458,19 @@ const YouTubeAsk = (() => {
             const command = w && w.NEXUS_MEDIA_COMMAND;
             const intents = w && w.NEXUS_MEDIA_INTENT;
 
+            // PX6. A Private session hears its own requests. Everything below answers in the
+            // ordinary chat — a "Playing …" row, a result list, a YouTube card — and that is the
+            // transcript a Private evening must leave nothing in. So the message is left alone
+            // and goes down the normal send path, where the session's action bridge reads it
+            // (in every app language, which the patterns here are not) and plays it in Private's
+            // own strip. Outside Private nothing changes.
+            try {
+                const actions = w && w.NEXUS_PRIVATE_ACTIONS;
+                if (actions && typeof actions.active === 'function' && actions.active()) return;
+            } catch (_) {
+                /* a bridge that cannot answer is not a Private session */
+            }
+
             // S3. A study session has just asked what to learn, so this message is the answer
             // — before any media parsing, or "play me some music theory" gets treated as a
             // request to play music rather than as the topic.

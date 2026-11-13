@@ -143,6 +143,10 @@
     function localeModel() {
         return optional('./PrivateLocale.js', 'NEXUS_PRIVATE_LOCALE');
     }
+    /** PX6. The one door an action takes into a Private session. See `PrivateActionBridge`. */
+    function actionBridge() {
+        return optional('../../experiences/private/PrivateActionBridge.js', 'NEXUS_PRIVATE_ACTIONS');
+    }
     /** The stages of a silence (P17). See `PrivateIdleClock`. */
     function idleModel() {
         return optional('./PrivateIdleClock.js', 'NEXUS_PRIVATE_IDLE_CLOCK');
@@ -697,6 +701,9 @@
                 : privateLengthLines(turn, session && session.style)),
             // Explicit, not inferred from an absence. See `slowedLines`.
             ...(session && session._styleLocked ? slowedLines() : []),
+            // PX6. What she can do in this room, and what is happening right now because they
+            // asked. Facts from the bridge: she never says music is playing unless the player did.
+            ...privateActionLines(),
             // `non-explicit` was here and is deliberately gone. The clause that remains is the
             // ladder, which is a different thing entirely: it is the user's own choice of how far
             // this goes, made on the setup screen and moved only by them.
@@ -726,6 +733,15 @@
             ...(profile ? profile.lengthReminder(turn, level) : lengthReminder()),
             '',
         ].join('\n');
+    }
+
+    function privateActionLines() {
+        try {
+            const actions = actionBridge();
+            return actions && typeof actions.promptLines === 'function' ? actions.promptLines() : [];
+        } catch (_) {
+            return [];
+        }
     }
 
     /**
@@ -1411,6 +1427,21 @@
                 return { ok: false, why: 'Open Conversation before beginning Private' };
             }
             this._listen();
+            // PX6. From here until the session stops, music, outfits and dancing asked for in this
+            // conversation happen in this conversation. Bound to *this* session: a result that
+            // arrives for an earlier one is dropped.
+            try {
+                const actions = actionBridge();
+                if (actions && typeof actions.begin === 'function') {
+                    actions.begin(this, { win: this.win, pick: pickPrivateTrack });
+                    this._unwatchActions =
+                        typeof actions.onChange === 'function'
+                            ? actions.onChange((now) => this._showActions(now))
+                            : null;
+                }
+            } catch (error) {
+                console.warn('[Private] actions are unavailable for this session', error);
+            }
             // AX7. The chosen style and the first step, applied through the owners that already
             // exist (voice pace, resting expression, the room's light) before her first line.
             this._present(true);
@@ -1478,9 +1509,27 @@
 
         beforeActivityStop(why) {
             if (this._stopped) return;
+            // PX8. The music line and the outfit chip describe an evening that is ending; the
+            // completion card that replaces the conversation must not carry them.
+            try {
+                if (this.view && typeof this.view.showActions === 'function') this.view.showActions({});
+                if (this.view && typeof this.view.clearSoundtrack === 'function') this.view.clearSoundtrack();
+            } catch (_) {
+                /* presentation only */
+            }
             this._stopped = true;
             this.state = 'restoring';
             this._clearTimers();
+            // PX6. Before the music and the room are handed back: anything still on its way for
+            // this session is now stale, and her outfit goes back to what she wore when it began.
+            try {
+                if (typeof this._unwatchActions === 'function') this._unwatchActions();
+                this._unwatchActions = null;
+                const actions = actionBridge();
+                if (actions && typeof actions.end === 'function') actions.end(this);
+            } catch (error) {
+                console.warn('[Private] actions could not be closed cleanly', error);
+            }
             // Nothing can tick a clock for a session nobody is in (P17).
             this._idle = null;
             this._stopSoundtrack();
@@ -1640,7 +1689,40 @@
                 // ceiling decide — and so "come closer" cannot skip a step the button could not.
                 this._advanceIntensity();
             }
+            // PX6. Last, on purpose: `end`, a slow-down and care were decided above and the bridge
+            // does not parse those turns. Whatever it starts is in progress by the time the prompt
+            // for this turn is built, so her reply can say what is actually happening.
+            this._askActions(text, turn);
             return turn;
+        }
+
+        /** PX6. Their words to the action bridge. Never throws; never awaited. */
+        _askActions(text, turn) {
+            try {
+                const actions = actionBridge();
+                if (!actions || typeof actions.onUserTurn !== 'function') return;
+                const pending = actions.onUserTurn(text, turn);
+                if (pending && typeof pending.catch === 'function') pending.catch(() => null);
+            } catch (error) {
+                console.warn('[Private] an action request failed', error);
+            }
+        }
+
+        /** PX6. The strip under the conversation follows what the bridge reports. */
+        _showActions(now) {
+            if (this._stopped || this.state === 'complete' || !this.view || typeof this.view.showActions !== 'function')
+                return;
+            try {
+                const actions = actionBridge();
+                this.view.showActions(now, {
+                    onMusic: (move) => actions.request(`music.${move}`, {}, { source: 'control' }),
+                    onUndo: () => actions.request('wardrobe.undo', {}, { source: 'control' }),
+                    onApprove: () => actions.approveOffer('control'),
+                    onDecline: () => actions.declineOffer(),
+                });
+            } catch (error) {
+                console.warn('[Private] the action strip could not be drawn', error);
+            }
         }
 
         /**
@@ -3154,8 +3236,21 @@
                 // Not being remembered is exactly how every session behaved before.
             }
             if (this.view) {
+                // PX8. The finished card replaces the conversation the moment End is pressed — well
+                // before the session itself stops — so the evening's music line and outfit chip
+                // are cleared here, not only in `beforeActivityStop`.
+                try {
+                    if (typeof this.view.showActions === 'function') this.view.showActions({});
+                    if (typeof this.view.clearSoundtrack === 'function') this.view.clearSoundtrack();
+                } catch (_) {
+                    /* presentation only */
+                }
                 this.view.showComplete({
-                    onAgain: () => this._requestEnd(true),
+                    // PX8. "Another private moment" is a request for Private, not for the Together
+                    // menu: it used to do exactly what "Back to Together" does, so the person who
+                    // wanted to stay had to find the tile again — and never saw "Continue like last
+                    // time", the one-tap way back in that the setup screen keeps for them.
+                    onAgain: () => this._requestEnd(true, 'intimate'),
                     onBack: () => this._requestEnd(true),
                 });
             }
@@ -3167,7 +3262,7 @@
             });
         }
 
-        _requestEnd(openTogether) {
+        _requestEnd(openTogether, then) {
             const panel = this.director && this.director.togetherPanel;
             if (
                 panel &&
@@ -3176,6 +3271,13 @@
             ) {
                 panel.stopActivity('private complete');
                 if (openTogether && typeof panel.open === 'function') panel.open();
+                if (then && typeof panel.choose === 'function') {
+                    try {
+                        panel.choose(then, { fresh: true });
+                    } catch (error) {
+                        console.warn('[Private] could not reopen the setup', error);
+                    }
+                }
                 return;
             }
             if (this.activity && typeof this.activity.stop === 'function') this.activity.stop('private complete');

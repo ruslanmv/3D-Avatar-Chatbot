@@ -32,6 +32,9 @@
  * The main chat seam keeps its own order (directives are *consumed* there, not scrubbed — they are
  * instructions to execute); it only adds `stripThought` before them.
  *
+ *   - `maskStreaming(partial, { lang })` (PX7) — the same guarantees for text that is still
+ *     arriving: what the bubble draws and what a streamed voice is given, token by token.
+ *
  * Exposes: window.NEXUS_REPLY_CLEAN
  */
 (function (global) {
@@ -195,7 +198,74 @@
             .trim();
     }
 
-    const api = { MARKER, META, UNMARKED, stripThought, fromReasoning, forDisplay, looksEnglish };
+    /** The tags this app's directives use; the only markup the streaming mask removes. */
+    const DIRECTIVES = [
+        'play',
+        'find',
+        'wardrobe',
+        'ambience',
+        'activity',
+        'go',
+        'gesture',
+        'act',
+        'think',
+        'thinking',
+    ];
+    const THINK_BLOCK = /<think(?:ing)?\b[^>]*>[\s\S]*?(?:<\/think(?:ing)?\s*>|$)/gi;
+    const BODIED = /<(play|find)\b[^>]*>[\s\S]*?(?:<\/\1\s*>|$)/gi;
+    const WHOLE_TAG = new RegExp(`<\\/?(?:${DIRECTIVES.join('|')})\\b[^>]{0,300}>`, 'gi');
+    const LABELS = ['thought', 'thoughts', 'thinking', 'reasoning', 'analysis', 'plan'];
+
+    /**
+     * PX7. What may be shown — and spoken — of a reply that is still being written.
+     *
+     * Every cleaner above runs on the finished text, at the `displayText` seam. A streamed reply
+     * is on screen, and with "speak while streaming" in her voice, for seconds before that seam
+     * exists: "THOUGHT: The user wants music…" was drawn token by token and read aloud, and
+     * `<wardrobe action="wear"…` sat in the bubble until the stream ended. The final text was
+     * clean; the person had already seen and heard the rest.
+     *
+     * So the partial text goes through this first. Pure, and for a reply with none of these in
+     * it, the identity: ordinary streaming is byte for byte what it was.
+     *
+     *   - a reasoning paragraph (labelled or not) shows nothing until its paragraph break, then
+     *     only what `stripThought` keeps;
+     *   - `<think>…` and `<play>…</play>` are removed with their bodies, closed or not yet;
+     *   - a directive tag is removed, and so is the unfinished start of one at the very end
+     *     (`<ward`), so it never flashes while its last characters arrive.
+     */
+    function maskStreaming(text, options) {
+        const o = options || {};
+        let value = String(text == null ? '' : text);
+        if (!value) return value;
+        const lang = o.lang || appLang(o.global || global);
+        value = value.replace(THINK_BLOCK, '');
+        const head = value
+            .replace(/^[\s*_]+/, '')
+            .slice(0, 12)
+            .toLowerCase();
+        // The label itself, half-typed: "THOU" is not yet "THOUGHT:" and must not flash either.
+        if (head && head.length < 10 && !/\s/.test(head) && LABELS.some((w) => w.startsWith(head))) return '';
+        if (MARKER.test(value) || UNMARKED.test(value)) {
+            value = /\n\s*\n/.test(value) ? stripThought(value, { lang }) : '';
+        }
+        value = value.replace(BODIED, '').replace(WHOLE_TAG, '');
+        // The unfinished start of a directive at the very end. Only that: "<3" and "a < b" are
+        // text, and are shown as soon as the character after the bracket says so.
+        const open = value.lastIndexOf('<');
+        if (open !== -1 && value.indexOf('>', open) === -1) {
+            const rest = value.slice(open);
+            const started = /^<\/?([a-z]+)(\s[^<>]*)?$/i.exec(rest);
+            const lone = /^<\/?$/.test(rest);
+            const name = started ? started[1].toLowerCase() : '';
+            const partial =
+                started && (started[2] ? DIRECTIVES.includes(name) : DIRECTIVES.some((d) => d.startsWith(name)));
+            if (lone || partial) value = value.slice(0, open);
+        }
+        return value;
+    }
+
+    const api = { MARKER, META, UNMARKED, stripThought, fromReasoning, forDisplay, looksEnglish, maskStreaming };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     if (global) global.NEXUS_REPLY_CLEAN = api;
 })(typeof window !== 'undefined' ? window : typeof globalThis !== 'undefined' ? globalThis : null);

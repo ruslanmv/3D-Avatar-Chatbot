@@ -160,6 +160,26 @@
     }
 
     /**
+     * PX6. The Private session's action bridge, while a session is running; null otherwise.
+     * `options.actions` is for tests; `false` there means "no bridge", so the older behaviour
+     * (quiet, or allowed by the change window) can still be exercised.
+     */
+    function privateActions(options) {
+        if (options && options.actions === false) return null;
+        const capability = (options && options.capability) || (global && global.NEXUS_TOGETHER_CAPABILITY) || null;
+        const actions = (options && options.actions) || (global && global.NEXUS_PRIVATE_ACTIONS) || null;
+        try {
+            if (!actions || typeof actions.active !== 'function' || !actions.active()) return null;
+            if (capability && typeof capability.privateSessionActive === 'function') {
+                return capability.privateSessionActive() === true ? actions : null;
+            }
+            return actions;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /**
      * Strip the tag, run the media — except inside Private, where only the first half happens.
      *
      * Two reported bugs, one cause. A Private session picks its soundtrack once at setup and that
@@ -186,6 +206,23 @@
             } catch (_) {
                 // Never lose the reply over a tidy-up.
             }
+        }
+        // PX6. Inside a Private session nothing below may run at all, allowed or not: every one of
+        // those paths ends in `ConversationPublisher`, which posts an ordinary chat row — and a
+        // Private evening leaves nothing in the public transcript. A music tag she wrote goes to
+        // the session's own action bridge instead, where the policy decides (the person has to
+        // have asked) and the track plays in Private's strip. `<find>` has no Private form: a
+        // catalogue of results is the ordinary chat's furniture.
+        const actions = privateActions(options);
+        if (actions) {
+            if (directive && directive.kind === 'music' && typeof actions.fromModel === 'function') {
+                try {
+                    Promise.resolve(actions.fromModel('music.play', { query: directive.query })).catch(() => null);
+                } catch (_) {
+                    // A directive that cannot run must not take the reply down with it.
+                }
+            }
+            return clean;
         }
         // Everything below this line acts on the world. Inside Private, none of it may.
         const quiet = privateActive(options);
@@ -238,7 +275,7 @@
         return clean;
     }
 
-    const api = { TAG, FIND, BARE, extract, has, consume, privateActive };
+    const api = { TAG, FIND, BARE, extract, has, consume, privateActive, privateActions };
 
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;
