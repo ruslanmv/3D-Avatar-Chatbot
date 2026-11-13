@@ -33,7 +33,10 @@ const PrivateConversationView = (() => {
     //
     // MV1. 15 turned out to be too low to hear at all on most speakers — the person asked for
     // the music to be louder during sessions. 40 is still well under her voice.
-    const VOLUME = 40;
+    //
+    // PX11. Reversed by the owner after hearing it with her speaking: the music must sit far
+    // enough under her voice that every word is clear — 10 % or less. 10.
+    const VOLUME = 10;
 
     /**
      * Where the soundtrack goes once somebody has asked for less (P11).
@@ -42,7 +45,7 @@ const PrivateConversationView = (() => {
      * change in the app; lowering it lets the room get quieter, which is what was asked for. Still
      * audible, so nobody has to wonder whether the player broke.
      */
-    const QUIET_VOLUME = 26;
+    const QUIET_VOLUME = 6; // PX11: two thirds of 10, rounded down
 
     /**
      * How many turns stay on screen.

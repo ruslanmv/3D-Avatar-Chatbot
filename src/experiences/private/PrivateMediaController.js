@@ -42,10 +42,11 @@
 
     /**
      * PX10. Music asked for during the evening plays low, under her voice: the person wants it
-     * in the room, not over the conversation. Below the setup soundtrack's 40 (MV1, raised from
-     * 15, which was too quiet to hear on most speakers) and above "slow down"'s 26.
+     * in the room, not over the conversation. The same 10 as the setup soundtrack
+     * (PrivateConversationView.VOLUME); "slow down" takes both to 6.
      */
-    const REQUESTED_VOLUME = 30;
+    // PX11. The owner's level for every Private soundtrack: 10 % or less, so her voice is clear.
+    const REQUESTED_VOLUME = 10;
 
     /** How long a tap on play may go unconfirmed before the strip stops saying "starting…". */
     const CONFIRM_MS = 6000;

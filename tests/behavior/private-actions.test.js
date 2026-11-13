@@ -1073,8 +1073,9 @@ describe('PX10. the music requests from a real Italian session', () => {
         const w = await begin();
         await say('metti una canzone');
         const options = window.NEXUS_YT_2D.activate.mock.calls[0][2];
-        expect(options.volume).toBeLessThan(40);
-        expect(options.volume).toBeGreaterThan(15); // MV1: 15 could not be heard
+        // PX11. 10 % or less, so her voice is always clear over it.
+        expect(options.volume).toBeLessThanOrEqual(10);
+        expect(options.volume).toBeGreaterThan(0);
         expect(w.search).toHaveBeenCalledTimes(1);
     });
 });

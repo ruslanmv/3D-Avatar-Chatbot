@@ -271,5 +271,5 @@ way to make it discoverable.
   di jazz"); wishes ("vorrei ascoltare…"); an artist after "metti" ("Ora metti i Coldplay");
   and waiting ("Aspetto il brano", "e la musica?") asks again for the last request unless
   something is already playing.
-- **Low volume.** Music asked for during the evening starts at 30 (setup soundtrack 40, "slow
-  down" 26).
+- **Low volume (PX11).** Every Private soundtrack — asked for during the evening or chosen at
+  setup — plays at 10 %, so her voice is always clear; "slow down" takes it to 6.
