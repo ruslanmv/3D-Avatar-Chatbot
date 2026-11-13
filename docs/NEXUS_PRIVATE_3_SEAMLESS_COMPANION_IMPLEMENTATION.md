@@ -20,7 +20,7 @@ things were not verified and are needed before release:
 | Phone, Quest/VR, AR | **Not tested.** Desktop Chromium only. |
 | A real model's replies with the new prompt lines | **Not measured.** The action path was driven directly; no LLM was connected in the browser runs. |
 
-Automated gate: `npm run validate` exits 0 — **6255 tests in 286 suites**. Parity harness OK
+Automated gate: `npm run validate` exits 0 — **6260 tests in 287 suites**. Parity harness OK
 (re-recorded once: a line-number shift in `src/main.js`, no new reference). Lab checks up to date.
 
 ## 2. The two reported bugs, and their causes
